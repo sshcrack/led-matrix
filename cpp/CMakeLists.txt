@@ -28,6 +28,12 @@ find_package(ImageMagick COMPONENTS Magick++)
 include_directories(${ImageMagick_INCLUDE_DIRS})
 target_link_libraries(main PRIVATE ${ImageMagick_LIBRARIES})
 
+# Curl
+find_package(CURL REQUIRED) 
+include_directories(${CURL_INCLUDE_DIR})
+target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
+
+
 # Main Target Compile
 
 target_compile_features(main PRIVATE cxx_std_23)

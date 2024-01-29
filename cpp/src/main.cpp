@@ -1,24 +1,15 @@
 // scraper.cpp
 
 #include <iostream>
-#include "pixel_art.h"
 
 #include "led-matrix.h"
 #include "graphics.h"
 #include "canvas.h"
+#include "pixel_art.h"
 
-#include <ctype.h>
-#include <getopt.h>
-#include <math.h>
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <termios.h>
-#include <unistd.h>
-
-#include <deque>
-
 #include "interrupt.h"
+#include <Magick++.h>
 
 using namespace rgb_matrix;
 
@@ -31,6 +22,8 @@ int usage(const char *progname)
 
 int main(int argc, char *argv[])
 {
+    Magick::InitializeMagick(*argv);
+
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
     if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
@@ -47,24 +40,21 @@ int main(int argc, char *argv[])
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
+
+    std::optional<int> page_end_opt = get_page_size();
+    if(!page_end_opt.has_value()) {
+        std::cerr << "could not convert page " << std::endl;
+        return;
+    }
+
     bool running = true;
-    std::cout << "Press Q to quit" << std::flush;
+    int page_end = page_end_opt.value();
+
+    std::cout << "Press Q to quit" << std::endl;
     while (!interrupt_received && running)
     {
-        update_canvas(canvas);
+        update_canvas(canvas, page_end);
         canvas = matrix->SwapOnVSync(canvas);
-
-        const char c = tolower(getch());
-        switch (c)
-        {
-            // All kinds of conditions which we use to exit
-        case 0x1B: // Escape
-        case 'q':  // 'Q'uit
-        case 0x04: // End of file
-        case 0x00: // Other issue from getch()
-            running = false;
-            break;
-        }
     }
 
     // Finished. Shut down the RGB matrix.

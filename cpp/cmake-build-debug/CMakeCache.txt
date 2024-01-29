@@ -230,6 +230,54 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
+//The directory containing a CMake configuration file for CURL.
+CURL_DIR:PATH=CURL_DIR-NOTFOUND
+
+//Path to a file.
+CURL_INCLUDE_DIR:PATH=CURL_INCLUDE_DIR-NOTFOUND
+
+//Path to a library.
+CURL_LIBRARY_DEBUG:FILEPATH=CURL_LIBRARY_DEBUG-NOTFOUND
+
+//Path to a library.
+CURL_LIBRARY_RELEASE:FILEPATH=CURL_LIBRARY_RELEASE-NOTFOUND
+
+//Path to the ImageMagick binary directory.
+IMAGEMAGICK_BINARY_PATH:PATH=ImageMagick_EXECUTABLE_DIR-NOTFOUND
+
+//Path to ImageMagick's composite executable.
+IMAGEMAGICK_COMPOSITE_EXECUTABLE:FILEPATH=
+
+//Path to ImageMagick's convert executable.
+IMAGEMAGICK_CONVERT_EXECUTABLE:FILEPATH=
+
+//Path to ImageMagick's import executable.
+IMAGEMAGICK_IMPORT_EXECUTABLE:FILEPATH=
+
+//Path to ImageMagick's mogrify executable.
+IMAGEMAGICK_MOGRIFY_EXECUTABLE:FILEPATH=
+
+//Path to ImageMagick's montage executable.
+IMAGEMAGICK_MONTAGE_EXECUTABLE:FILEPATH=
+
+//Path to the ImageMagick binary directory.
+ImageMagick_EXECUTABLE_DIR:PATH=ImageMagick_EXECUTABLE_DIR-NOTFOUND
+
+//Path to the ImageMagick arch-specific include dir.
+ImageMagick_Magick++_ARCH_INCLUDE_DIR:PATH=/usr/include/x86_64-linux-gnu/ImageMagick-6
+
+//Path to the ImageMagick arch-independent include dir.
+ImageMagick_Magick++_INCLUDE_DIR:PATH=/usr/include/ImageMagick-6
+
+//Path to the ImageMagick Magick++ library.
+ImageMagick_Magick++_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libMagick++-6.Q16.so
+
+//Arguments to supply to pkg-config
+PKG_CONFIG_ARGN:STRING=
+
+//pkg-config executable
+PKG_CONFIG_EXECUTABLE:FILEPATH=/usr/bin/pkg-config
+
 //The directory containing a CMake configuration file for cpr.
 cpr_DIR:PATH=cpr_DIR-NOTFOUND
 
@@ -241,6 +289,15 @@ main_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 main_SOURCE_DIR:STATIC=/home/hendrik/ledmat/cpp
+
+//Path to a library.
+pkgcfg_lib_PC_Magick++_Magick++-6.Q16:FILEPATH=/usr/lib/x86_64-linux-gnu/libMagick++-6.Q16.so
+
+//Path to a library.
+pkgcfg_lib_PC_Magick++_MagickCore-6.Q16:FILEPATH=/usr/lib/x86_64-linux-gnu/libMagickCore-6.Q16.so
+
+//Path to a library.
+pkgcfg_lib_PC_Magick++_MagickWand-6.Q16:FILEPATH=/usr/lib/x86_64-linux-gnu/libMagickWand-6.Q16.so
 
 
 ########################
@@ -388,6 +445,102 @@ CMAKE_TAPI-ADVANCED:INTERNAL=1
 CMAKE_UNAME:INTERNAL=/usr/bin/uname
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CURL_DIR
+CURL_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CURL_INCLUDE_DIR
+CURL_INCLUDE_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CURL_LIBRARY_DEBUG
+CURL_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: CURL_LIBRARY_RELEASE
+CURL_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
+//Details about finding ImageMagick
+FIND_PACKAGE_MESSAGE_DETAILS_ImageMagick:INTERNAL=[/usr/lib/x86_64-linux-gnu/libMagick++-6.Q16.so][v()]
+//ADVANCED property for variable: IMAGEMAGICK_BINARY_PATH
+IMAGEMAGICK_BINARY_PATH-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: IMAGEMAGICK_COMPOSITE_EXECUTABLE
+IMAGEMAGICK_COMPOSITE_EXECUTABLE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: IMAGEMAGICK_CONVERT_EXECUTABLE
+IMAGEMAGICK_CONVERT_EXECUTABLE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: IMAGEMAGICK_IMPORT_EXECUTABLE
+IMAGEMAGICK_IMPORT_EXECUTABLE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: IMAGEMAGICK_MOGRIFY_EXECUTABLE
+IMAGEMAGICK_MOGRIFY_EXECUTABLE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: IMAGEMAGICK_MONTAGE_EXECUTABLE
+IMAGEMAGICK_MONTAGE_EXECUTABLE-ADVANCED:INTERNAL=1
+PC_CURL_CFLAGS:INTERNAL=
+PC_CURL_CFLAGS_I:INTERNAL=
+PC_CURL_CFLAGS_OTHER:INTERNAL=
+PC_CURL_FOUND:INTERNAL=
+PC_CURL_INCLUDEDIR:INTERNAL=
+PC_CURL_LIBDIR:INTERNAL=
+PC_CURL_LIBS:INTERNAL=
+PC_CURL_LIBS_L:INTERNAL=
+PC_CURL_LIBS_OTHER:INTERNAL=
+PC_CURL_LIBS_PATHS:INTERNAL=
+PC_CURL_MODULE_NAME:INTERNAL=
+PC_CURL_PREFIX:INTERNAL=
+PC_CURL_STATIC_CFLAGS:INTERNAL=
+PC_CURL_STATIC_CFLAGS_I:INTERNAL=
+PC_CURL_STATIC_CFLAGS_OTHER:INTERNAL=
+PC_CURL_STATIC_LIBDIR:INTERNAL=
+PC_CURL_STATIC_LIBS:INTERNAL=
+PC_CURL_STATIC_LIBS_L:INTERNAL=
+PC_CURL_STATIC_LIBS_OTHER:INTERNAL=
+PC_CURL_STATIC_LIBS_PATHS:INTERNAL=
+PC_CURL_VERSION:INTERNAL=
+PC_CURL_libcurl_INCLUDEDIR:INTERNAL=
+PC_CURL_libcurl_LIBDIR:INTERNAL=
+PC_CURL_libcurl_PREFIX:INTERNAL=
+PC_CURL_libcurl_VERSION:INTERNAL=
+PC_Magick++_CFLAGS:INTERNAL=-I/usr/include/x86_64-linux-gnu/ImageMagick-6;-I/usr/include/ImageMagick-6;-fopenmp;-DMAGICKCORE_HDRI_ENABLE=0;-DMAGICKCORE_QUANTUM_DEPTH=16
+PC_Magick++_CFLAGS_I:INTERNAL=
+PC_Magick++_CFLAGS_OTHER:INTERNAL=-fopenmp;-DMAGICKCORE_HDRI_ENABLE=0;-DMAGICKCORE_QUANTUM_DEPTH=16
+PC_Magick++_FOUND:INTERNAL=1
+PC_Magick++_INCLUDEDIR:INTERNAL=/usr/include/ImageMagick-6
+PC_Magick++_INCLUDE_DIRS:INTERNAL=/usr/include/x86_64-linux-gnu/ImageMagick-6;/usr/include/ImageMagick-6
+PC_Magick++_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lMagick++-6.Q16;-lMagickWand-6.Q16;-lMagickCore-6.Q16
+PC_Magick++_LDFLAGS_OTHER:INTERNAL=
+PC_Magick++_LIBDIR:INTERNAL=/usr/lib/x86_64-linux-gnu
+PC_Magick++_LIBRARIES:INTERNAL=Magick++-6.Q16;MagickWand-6.Q16;MagickCore-6.Q16
+PC_Magick++_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu
+PC_Magick++_LIBS:INTERNAL=
+PC_Magick++_LIBS_L:INTERNAL=
+PC_Magick++_LIBS_OTHER:INTERNAL=
+PC_Magick++_LIBS_PATHS:INTERNAL=
+PC_Magick++_MODULE_NAME:INTERNAL=Magick++
+PC_Magick++_Magick++_INCLUDEDIR:INTERNAL=
+PC_Magick++_Magick++_LIBDIR:INTERNAL=
+PC_Magick++_Magick++_PREFIX:INTERNAL=
+PC_Magick++_Magick++_VERSION:INTERNAL=
+PC_Magick++_PREFIX:INTERNAL=/usr
+PC_Magick++_STATIC_CFLAGS:INTERNAL=-I/usr/include/x86_64-linux-gnu/ImageMagick-6;-I/usr/include/ImageMagick-6;-fopenmp;-DMAGICKCORE_HDRI_ENABLE=0;-DMAGICKCORE_QUANTUM_DEPTH=16
+PC_Magick++_STATIC_CFLAGS_I:INTERNAL=
+PC_Magick++_STATIC_CFLAGS_OTHER:INTERNAL=-fopenmp;-DMAGICKCORE_HDRI_ENABLE=0;-DMAGICKCORE_QUANTUM_DEPTH=16
+PC_Magick++_STATIC_INCLUDE_DIRS:INTERNAL=/usr/include/x86_64-linux-gnu/ImageMagick-6;/usr/include/ImageMagick-6
+PC_Magick++_STATIC_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lMagick++-6.Q16;-L/usr/lib/x86_64-linux-gnu;-lMagick++-6.Q16;-llcms2;-lfreetype;-llqr-1;-lglib-2.0;-lfftw3;-lxml2;-lfontconfig;-lfreetype;-lXext;-lSM;-lICE;-lX11;-lXt;-llzma;-lbz2;-lz;-lltdl;-lm;-lpthread;-lgomp;-lm;-lMagickWand-6.Q16;-L/usr/lib/x86_64-linux-gnu;-lMagickWand-6.Q16;-llcms2;-lfreetype;-llqr-1;-lglib-2.0;-lfftw3;-lxml2;-lfontconfig;-lfreetype;-lXext;-lSM;-lICE;-lX11;-lXt;-llzma;-lbz2;-lz;-lltdl;-lm;-lpthread;-lgomp;-lm;-lMagickCore-6.Q16;-L/usr/lib/x86_64-linux-gnu;-lMagickCore-6.Q16;-llcms2;-lfreetype;-llqr-1;-lglib-2.0;-lfftw3;-lxml2;-lfontconfig;-lfreetype;-lXext;-lSM;-lICE;-lX11;-lXt;-llzma;-lbz2;-lz;-lltdl;-lm;-lpthread;-lgomp;-lm
+PC_Magick++_STATIC_LDFLAGS_OTHER:INTERNAL=
+PC_Magick++_STATIC_LIBDIR:INTERNAL=
+PC_Magick++_STATIC_LIBRARIES:INTERNAL=Magick++-6.Q16;Magick++-6.Q16;lcms2;freetype;lqr-1;glib-2.0;fftw3;xml2;fontconfig;freetype;Xext;SM;ICE;X11;Xt;lzma;bz2;z;ltdl;m;pthread;gomp;m;MagickWand-6.Q16;MagickWand-6.Q16;lcms2;freetype;lqr-1;glib-2.0;fftw3;xml2;fontconfig;freetype;Xext;SM;ICE;X11;Xt;lzma;bz2;z;ltdl;m;pthread;gomp;m;MagickCore-6.Q16;MagickCore-6.Q16;lcms2;freetype;lqr-1;glib-2.0;fftw3;xml2;fontconfig;freetype;Xext;SM;ICE;X11;Xt;lzma;bz2;z;ltdl;m;pthread;gomp;m
+PC_Magick++_STATIC_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu;/usr/lib/x86_64-linux-gnu;/usr/lib/x86_64-linux-gnu;/usr/lib/x86_64-linux-gnu
+PC_Magick++_STATIC_LIBS:INTERNAL=
+PC_Magick++_STATIC_LIBS_L:INTERNAL=
+PC_Magick++_STATIC_LIBS_OTHER:INTERNAL=
+PC_Magick++_STATIC_LIBS_PATHS:INTERNAL=
+PC_Magick++_VERSION:INTERNAL=6.9.11
+//ADVANCED property for variable: PKG_CONFIG_ARGN
+PKG_CONFIG_ARGN-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: PKG_CONFIG_EXECUTABLE
+PKG_CONFIG_EXECUTABLE-ADVANCED:INTERNAL=1
 //linker supports push/pop state
 _CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED:INTERNAL=TRUE
+__pkg_config_arguments_PC_Magick++:INTERNAL=QUIET;Magick++
+__pkg_config_checked_PC_CURL:INTERNAL=1
+__pkg_config_checked_PC_Magick++:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_PC_Magick++_Magick++-6.Q16
+pkgcfg_lib_PC_Magick++_Magick++-6.Q16-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_PC_Magick++_MagickCore-6.Q16
+pkgcfg_lib_PC_Magick++_MagickCore-6.Q16-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_PC_Magick++_MagickWand-6.Q16
+pkgcfg_lib_PC_Magick++_MagickWand-6.Q16-ADVANCED:INTERNAL=1
+prefix_result:INTERNAL=/usr/lib/x86_64-linux-gnu
 
