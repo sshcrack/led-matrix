@@ -5,22 +5,50 @@
 #include "libxml/xpath.h"
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <curl/curl.h>
+#include <cstddef>
+#include <cstring>
 
-std::string base = "https://pixeljoint.com/";
-std::string search_url = "/pixels/new_icons.asp?q=1";
+using namespace std;
 
-void download_image(std::string url_str) {
+string base = "https://pixeljoint.com/";
+string search_url = "/pixels/new_icons.asp?q=1";
+
+
+size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    size_t written = fwrite(ptr, size, nmemb, stream);
+    return written;
+}
+
+bool download_image(const string& url_str, const char *out_file) {
+    string merged_url = base + url_str;
+    FILE *fp;
+
+    if(strlen(out_file) > FILENAME_MAX) {
+        cout << "File name too long" << endl;
+        return false;
+    }
+
+
     auto curl = curl_easy_init();
     if(curl) {
+        fp = fopen(out_file, "wb");
+
+
         CURLcode res;
-        curl_easy_setopt(curl, CURLOPT_URL, base + url_str);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
+
+        if(res != CURLcode::CURLE_OK) {
+
+        }
     }
 }
 
-htmlDocPtr fetch_page(std::string url_str)
+htmlDocPtr fetch_page(const string& url_str)
 {
     auto url = cpr::Url{base + url_str};
 
@@ -44,30 +72,30 @@ bool Post::fetch_link()
     }
 
     xmlNodePtr img = mainimg->nodesetval->nodeTab[0];
-    std::string src = std::string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *)"src")));
+    string src = string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *)"src")));
 
     this->image = src;
     return true;
 }
 
-std::optional<int> get_page_size()
+optional<int> get_page_size()
 {
     // parse the HTML document returned by the server
     htmlDocPtr doc = fetch_page(search_url);
 
-    std::vector<Post> pixel_posts;
+    vector<Post> pixel_posts;
 
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr page_option = xmlXPathEvalExpression((xmlChar *)"/html/body/div[3]/div[2]/div[1]/div/div[1]/span/select/option[last()]", context);
-    std::optional<int> page_end;
+    optional<int> page_end;
 
     if (page_option->nodesetval->nodeNr != 0)
     {
         xmlNodePtr el = page_option->nodesetval->nodeTab[0];
-        std::string value = std::string(reinterpret_cast<char *>(xmlGetProp(el, (xmlChar *)"value")));
+        string value = string(reinterpret_cast<char *>(xmlGetProp(el, (xmlChar *)"value")));
         try
         {
-            page_end = std::stoi(value);
+            page_end = stoi(value);
         }
         catch (exception &err)
         {
@@ -78,15 +106,15 @@ std::optional<int> get_page_size()
     return page_end;
 }
 
-std::vector<Post> get_posts(int page)
+vector<Post> get_posts(int page)
 {
-    std::cout << "Getting posts from page " << page << "...\n";
-    std::string url = search_url + "&pg=" + std::to_string(page);
+    cout << "Getting posts from page " << page << "...\n";
+    string url = search_url + "&pg=" + to_string(page);
 
     // parse the HTML document returned by the server
     htmlDocPtr doc = fetch_page(url);
 
-    std::vector<Post> pixel_posts;
+    vector<Post> pixel_posts;
 
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr posts_links = xmlXPathEvalExpression((xmlChar *)"//a[contains(@class, 'imglink')]", context);
@@ -101,11 +129,11 @@ std::vector<Post> get_posts(int page)
         xmlXPathSetContextNode(post_link, context);
 
         xmlNodePtr image_html_element = xmlXPathEvalExpression((xmlChar *)".//img", context)->nodesetval->nodeTab[0];
-        std::string thumbnail = std::string(reinterpret_cast<char *>(xmlGetProp(image_html_element, (xmlChar *)"src")));
+        string thumbnail = string(reinterpret_cast<char *>(xmlGetProp(image_html_element, (xmlChar *)"src")));
 
-        std::string url = std::string(reinterpret_cast<char *>(xmlGetProp(post_link, (xmlChar *)"href")));
+        string a_href = string(reinterpret_cast<char *>(xmlGetProp(post_link, (xmlChar *)"href")));
 
-        Post pixel_post = Post(thumbnail, url);
+        Post pixel_post = Post(thumbnail, a_href);
         pixel_posts.push_back(pixel_post);
     }
 
