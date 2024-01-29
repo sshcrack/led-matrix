@@ -1,0 +1,1 @@
+{"verbose":true,"ignore":["target",".git", "pixel-mover.o", "pixel-mover"],"delay":1000,"root_folder":".","exec":"/bin/bash ./run.sh"}

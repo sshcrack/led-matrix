@@ -1,0 +1,26 @@
+[package]
+name = "ledmat"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.79"
+bytes = "1.5.0"
+clap = { version = "3.0", features = ["cargo"] }
+embedded-graphics = "0.8.0"
+embedded-graphics-core = "0.4.0"
+embedded-graphics-simulator = { version = "0.6.0", optional = true }
+image = { version = "0.24.8", features = ["png", "rgb"] }
+lazy_static = "1.4.0"
+rand = "0.8.5"
+reqwest = { version = "0.11.23" }
+rpi-led-matrix = { version = "0.4.0", features = ["args", "embeddedgraphics"], git = "https://github.com/mmhobi7/rust-rpi-rgb-led-matrix" }
+scraper = "0.18.1"
+tinygif = "0.0.4"
+tokio = { version = "1.35.1", features = ["full"] }
+url = "2.5.0"
+
+[features]
+"simulator" = [ "embedded-graphics-simulator" ]

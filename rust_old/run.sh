@@ -1,0 +1,1 @@
+cargo watch -x 'run -- --parallel 2 --chain 2 --cols 64 --rows 64 --slowdown-gpio 1'
