@@ -17,7 +17,7 @@ bool LoadImageAndScale(const char *filename,
     if (e.what()) *err_msg = e.what();
     return false;
   }
-  if (frames.size() == 0) {
+  if (frames.empty()) {
     fprintf(stderr, "No image found.");
     return false;
   }
