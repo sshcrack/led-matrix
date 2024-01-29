@@ -1,0 +1,1 @@
+void update_canvas(rgb_matrix::Canvas *canvas);
