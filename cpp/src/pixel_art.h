@@ -19,4 +19,5 @@ class Post
         }
 };
 
-std::vector<Post> get_posts(u_int32_t page);
+std::vector<Post> get_posts(int page);
+std::optional<int> get_page_size();

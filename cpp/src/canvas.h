@@ -1,1 +1,1 @@
-void update_canvas(rgb_matrix::Canvas *canvas);
+void update_canvas(rgb_matrix::Canvas *canvas, int page_end);
