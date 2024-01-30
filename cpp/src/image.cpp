@@ -1,5 +1,7 @@
 #include <vector>
 #include <iostream>
+#include "led-matrix.h"
+#include "content-streamer.h"
 #include <Magick++.h>
 #include "spdlog/spdlog.h"
 
@@ -61,4 +63,26 @@ bool LoadImageAndScale(const char *filename,
     }
 
     return true;
+}
+
+
+void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
+                   bool do_center,
+                   rgb_matrix::FrameCanvas *scratch,
+                   rgb_matrix::StreamWriter *output) {
+    scratch->Clear();
+    const int x_offset = do_center ? (scratch->width() - img.columns()) / 2 : 0;
+    const int y_offset = do_center ? (scratch->height() - img.rows()) / 2 : 0;
+    for (size_t y = 0; y < img.rows(); ++y) {
+        for (size_t x = 0; x < img.columns(); ++x) {
+            const Magick::Color &c = img.pixelColor(x, y);
+            if (c.alphaQuantum() < 255) {
+                scratch->SetPixel(x + x_offset, y + y_offset,
+                                  ScaleQuantumToChar(c.redQuantum()),
+                                  ScaleQuantumToChar(c.greenQuantum()),
+                                  ScaleQuantumToChar(c.blueQuantum()));
+            }
+        }
+    }
+    output->Stream(*scratch, delay_time_us);
 }

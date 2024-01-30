@@ -99,6 +99,8 @@ bool Post::fetch_link() {
     string src = string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")));
 
     this->image = src;
+
+    this->file_name = src.substr(src.find_last_of('/') +1);
     return true;
 }
 

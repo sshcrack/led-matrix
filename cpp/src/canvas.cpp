@@ -1,13 +1,15 @@
-#include "led-matrix.h"
+#include "canvas.h"
 #include "pixel_art.h"
 #include "interrupt.h"
-#include "image.h"
-#include "canvas.h"
 #include <sys/time.h>
 #include "spdlog/spdlog.h"
+#include "image.h"
+#include "utils.h"
+#include <vector>
 
-#include <random>
 #include <Magick++.h>
+#include <tuple>
+#include <future>
 
 using namespace std;
 using namespace spdlog;
@@ -17,83 +19,67 @@ using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
-
-
-tmillis_t GetTimeInMillis() {
-    struct timeval tp{};
-    gettimeofday(&tp, nullptr);
-    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
-}
-
-void SleepMillis(tmillis_t milli_seconds) {
-    if (milli_seconds <= 0) return;
-    struct timespec ts{};
-    ts.tv_sec = milli_seconds / 1000;
-    ts.tv_nsec = (milli_seconds % 1000) * 1000000;
-    nanosleep(&ts, nullptr);
-}
-
-void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
-                          bool do_center,
-                          rgb_matrix::FrameCanvas *scratch,
-                          rgb_matrix::StreamWriter *output) {
-    scratch->Clear();
-    const int x_offset = do_center ? (scratch->width() - img.columns()) / 2 : 0;
-    const int y_offset = do_center ? (scratch->height() - img.rows()) / 2 : 0;
-    for (size_t y = 0; y < img.rows(); ++y) {
-        for (size_t x = 0; x < img.columns(); ++x) {
-            const Magick::Color &c = img.pixelColor(x, y);
-            if (c.alphaQuantum() < 255) {
-                scratch->SetPixel(x + x_offset, y + y_offset,
-                                  ScaleQuantumToChar(c.redQuantum()),
-                                  ScaleQuantumToChar(c.greenQuantum()),
-                                  ScaleQuantumToChar(c.blueQuantum()));
-            }
-        }
+optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int width) {
+    item->fetch_link();
+    if(!item->image.has_value() || !item->file_name.has_value()) {
+        error("Could not load image {}", item->url);
+        return nullopt;
     }
-    output->Stream(*scratch, delay_time_us);
+
+    string img_url = item->image.value();
+    string file_name = item->file_name.value();
+
+    // Downloading image first
+    download_image(img_url, file_name);
+
+    vector<Magick::Image> frames;
+    string err_msg;
+    if (!LoadImageAndScale(file_name.c_str(), width, height, false, false, &frames, &err_msg)) {
+        error("Error loading image: {}", err_msg);
+        return nullopt;
+    }
+
+
+    optional<vector<Magick::Image>> res;
+    res = frames;
+
+    return res;
 }
 
-void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
+
+void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pages) {
     const int height = matrix->height();
     const int width = matrix->width();
 
-    int start = 1;
-    if(page_end > 10) {
-        page_end = 10;
-    }
 
-    random_device rd; // obtain a random number from hardware
-    mt19937 gen(rd()); // seed the generator
-    uniform_int_distribution<> distr(start, page_end); // define the range
-    auto posts = get_posts(distr(gen));
+    int curr = (*total_pages)[0];
+    total_pages->erase(total_pages->begin());
+    total_pages->push_back(curr);
 
-    for (auto &item: posts) {
+    auto posts = get_posts(curr);
+    std::future<std::optional<std::vector<Magick::Image>>> next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[0], height, width);
+
+    for (size_t i = 0; i < posts.size(); i++) {
         if(interrupt_received)
             break;
 
+
+        Post item = posts[i];        
         tmillis_t start_loading = GetTimeInMillis();
 
-        item.fetch_link();
-        if(!item.image.has_value()) {
-            error("Could not load image {}", item.url);
-            continue;
+        optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
+        if(i != posts.size() -1) {
+            next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[i +1], height, width);
         }
-        string img_url = item.image.value();
-        string out_file = img_url.substr(img_url.find_last_of('/') +1);
 
-        // Downloading image first
-        download_image(img_url, out_file);
-
-        vector<Magick::Image> frames;
-        string err_msg;
-        if (!LoadImageAndScale(out_file.c_str(), width, height, false, false, &frames, &err_msg)) {
-            error("Error loading image: {}", err_msg);
+        if(!frames_opt.has_value()) {
+            error("Could not load image {}", item.url);
             continue;
         }
 
 
         FileInfo *file_info;
+        vector<Magick::Image> frames = frames_opt.value();
 
         ImageParams params = ImageParams();
         if(frames.size() > 1) {
@@ -120,9 +106,12 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
 
 
         info("Processing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", img_url, out_file);
+        info("Showing animation for {} ({})", item.url, item.image);
         DisplayAnimation(file_info, matrix, canvas);
-        remove(out_file.c_str());
+
+        item.file_name.and_then([](string file_name) {
+            remove(file_name.c_str());
+        });
     }
 }
 
