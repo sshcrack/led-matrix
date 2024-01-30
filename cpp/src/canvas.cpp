@@ -45,9 +45,9 @@ void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
             const Magick::Color &c = img.pixelColor(x, y);
             if (c.alphaQuantum() < 255) {
                 scratch->SetPixel(x + x_offset, y + y_offset,
-                                  MagickCore::ScaleQuantumToChar(c.redQuantum()),
-                                  MagickCore::ScaleQuantumToChar(c.greenQuantum()),
-                                  MagickCore::ScaleQuantumToChar(c.blueQuantum()));
+                                  ScaleQuantumToChar(c.redQuantum()),
+                                  ScaleQuantumToChar(c.greenQuantum()),
+                                  ScaleQuantumToChar(c.blueQuantum()));
             }
         }
     }
@@ -58,8 +58,10 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
     const int height = matrix->height();
     const int width = matrix->width();
 
-
     int start = 1;
+    if(page_end > 10) {
+        page_end = 10;
+    }
 
     random_device rd; // obtain a random number from hardware
     mt19937 gen(rd()); // seed the generator
@@ -69,22 +71,23 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
     for (auto &item: posts) {
         if(interrupt_received)
             break;
-/*
+
+        tmillis_t start_loading = GetTimeInMillis();
+
         item.fetch_link();
         if(!item.image.has_value()) {
             error("Could not load image {}", item.url);
             continue;
         }
         string img_url = item.image.value();
-*/
-        string out_file = "penguin_fish_anim.gif";//img_url.substr(img_url.find_last_of('/') +1);
+        string out_file = img_url.substr(img_url.find_last_of('/') +1);
 
         // Downloading image first
-        //download_image(img_url, out_file);
+        download_image(img_url, out_file);
 
         vector<Magick::Image> frames;
         string err_msg;
-        if (!LoadImageAndScale(out_file.c_str(), width, height, true, true, &frames, &err_msg)) {
+        if (!LoadImageAndScale(out_file.c_str(), width, height, false, false, &frames, &err_msg)) {
             error("Error loading image: {}", err_msg);
             continue;
         }
@@ -116,9 +119,10 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
 
-        info("Showing animation for {} ({})", out_file, out_file);
+        info("Processing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+        info("Showing animation for {} ({})", img_url, out_file);
         DisplayAnimation(file_info, matrix, canvas);
-        //remove(out_file.c_str());
+        remove(out_file.c_str());
     }
 }
 
@@ -128,38 +132,24 @@ void DisplayAnimation(const FileInfo *file,
     const tmillis_t duration_ms = (file->is_multi_frame
                                    ? file->params.anim_duration_ms
                                    : file->params.wait_ms);
-
     rgb_matrix::StreamReader reader(file->content_stream);
-
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
     const tmillis_t override_anim_delay = file->params.anim_delay_ms;
-    while (!interrupt_received && GetTimeInMillis() < end_time_ms) {
+    for (int k = 0;
+         !interrupt_received
+         && GetTimeInMillis() < end_time_ms;
+         ++k) {
         uint32_t delay_us = 0;
-        bool success_reading = reader.GetNext(offscreen_canvas, &delay_us);
-
-        if(!success_reading) {
-            reader.Rewind();
-            debug("Rewinding...");
-            continue;
+        while (!interrupt_received && GetTimeInMillis() <= end_time_ms
+               && reader.GetNext(offscreen_canvas, &delay_us)) {
+            const tmillis_t anim_delay_ms =
+                    override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
+            const tmillis_t start_wait_ms = GetTimeInMillis();
+            offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
+                                                   file->params.vsync_multiple);
+            const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
+            SleepMillis(anim_delay_ms - time_already_spent);
         }
-
-        const tmillis_t anim_delay_ms =
-                override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
-
-        const tmillis_t start_wait_ms = GetTimeInMillis();
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, file->params.vsync_multiple);
-        const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
-/*
-        if(!file->is_multi_frame) {
-            auto sleep_time = file->params.wait_ms - time_already_spent;
-            debug("Sleeping for {}", sleep_time);
-            SleepMillis(sleep_time);
-            break;
-        }
-*/
-        auto sleep_time = anim_delay_ms - time_already_spent;
-        debug("Sleeping for {}", sleep_time);
-
-        SleepMillis(sleep_time);
+        reader.Rewind();
     }
 }
