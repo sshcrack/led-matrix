@@ -26,8 +26,8 @@ int usage(const char *progname)
 
 int main(int argc, char *argv[])
 {
-    spdlog::cfg::load_env_levels();
     Magick::InitializeMagick(*argv);
+    spdlog::cfg::load_env_levels();
 
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;

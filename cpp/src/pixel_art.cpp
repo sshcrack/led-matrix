@@ -22,16 +22,15 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return written;
 }
 
-void rm_nonprinting (std::string& str)
-{
-    str.erase (std::remove_if (str.begin(), str.end(),
-                               [](unsigned char c){
-                                   return !std::isprint(c);
-                               }),
-               str.end());
+void rm_nonprinting(std::string &str) {
+    str.erase(std::remove_if(str.begin(), str.end(),
+                             [](unsigned char c) {
+                                 return !std::isprint(c);
+                             }),
+              str.end());
 }
 
-bool download_image(const string &url_str, const string& tmp) {
+bool download_image(const string &url_str, const string &tmp) {
     const char *out_file = tmp.c_str();
 
     string merged_url = base + url_str;
@@ -48,7 +47,7 @@ bool download_image(const string &url_str, const string& tmp) {
     if (curl) {
         errno = 0;
         fp = fopen(out_file, "wb");
-        if(fp == nullptr) {
+        if (fp == nullptr) {
             error("Could not open file " + to_string(errno));
             return false;
         }
@@ -78,9 +77,10 @@ htmlDocPtr fetch_page(const string &url_str) {
     auto url = cpr::Url{base + url_str};
 
     cpr::Header headers = {
-            {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
-            {"Cookie",     "v=av=&dimo=%3C%3D&anim=&iso=&ob=search&dint=&pg=2&search=&tran=&colors=2&d=&colorso=%3E%3D&dim=128&owner=0; path=/"}};
-
+            {"User-Agent",
+             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
+//            {"Cookie",     "v=av=&dimo=%3C%3D&anim=&iso=&ob=search&dint=&pg=2&search=&tran=&colors=2&d=&colorso=%3E%3D&dim=128&owner=0; path=/"}
+    };
     auto response = cpr::Get(url, headers);
     return htmlReadMemory(response.text.c_str(), response.text.length(), nullptr, nullptr,
                           HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
