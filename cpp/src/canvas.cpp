@@ -20,13 +20,14 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
 optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int width) {
+    tmillis_t start_loading = GetTimeInMillis();
     item->fetch_link();
     if(!item->image.has_value() || !item->file_name.has_value()) {
         error("Could not load image {}", item->url);
         return nullopt;
     }
 
-    string img_url = item->image.value();
+    string img_url = "https://pixeljoint.com/files/icons/full/springsmall.png";//item->image.value();
     string file_name = item->file_name.value();
 
     // Downloading image first
@@ -34,7 +35,7 @@ optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int widt
 
     vector<Magick::Image> frames;
     string err_msg;
-    if (!LoadImageAndScale(file_name.c_str(), width, height, false, false, &frames, &err_msg)) {
+    if (!LoadImageAndScale(file_name.c_str(), width, height, true, true, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
         return nullopt;
     }
@@ -42,6 +43,7 @@ optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int widt
 
     optional<vector<Magick::Image>> res;
     res = frames;
+        debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return res;
 }
