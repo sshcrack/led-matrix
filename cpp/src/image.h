@@ -6,6 +6,7 @@
 bool LoadImageAndScale(const char *filename,
                        int target_width, int target_height,
                        bool fill_width, bool fill_height,
+                       bool contain_img,
                        std::vector<Magick::Image> *result,
                        std::string *err_msg);
 
