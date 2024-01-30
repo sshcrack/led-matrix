@@ -4,11 +4,14 @@
 #include "image.h"
 #include "canvas.h"
 #include <sys/time.h>
+#include "spdlog/spdlog.h"
 
 #include <random>
 #include <Magick++.h>
 
 using namespace std;
+using namespace spdlog;
+
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -17,20 +20,20 @@ using rgb_matrix::StreamReader;
 
 
 tmillis_t GetTimeInMillis() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
+    struct timeval tp{};
+    gettimeofday(&tp, nullptr);
     return tp.tv_sec * 1000 + tp.tv_usec / 1000;
 }
 
 void SleepMillis(tmillis_t milli_seconds) {
     if (milli_seconds <= 0) return;
-    struct timespec ts;
+    struct timespec ts{};
     ts.tv_sec = milli_seconds / 1000;
     ts.tv_nsec = (milli_seconds % 1000) * 1000000;
-    nanosleep(&ts, NULL);
+    nanosleep(&ts, nullptr);
 }
 
-void StoreInStream(const Magick::Image &img, int delay_time_us,
+void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
                           bool do_center,
                           rgb_matrix::FrameCanvas *scratch,
                           rgb_matrix::StreamWriter *output) {
@@ -52,7 +55,6 @@ void StoreInStream(const Magick::Image &img, int delay_time_us,
 }
 
 void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
-    canvas->Clear();
     const int height = canvas->height();
     const int width = canvas->width();
 
@@ -70,7 +72,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
 
         item.fetch_link();
         if(!item.image.has_value()) {
-            cerr << "Could not load image " << item.url << endl;
+            error("Could not load image {}", item.url);
             continue;
         }
 
@@ -83,20 +85,27 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         vector<Magick::Image> frames;
         string err_msg;
         if (!LoadImageAndScale(out_file.c_str(), width, height, true, true, &frames, &err_msg)) {
-            cerr << "Error loading image: " << err_msg << endl;
+            error("Error loading image: {}", err_msg);
             continue;
         }
 
 
         FileInfo *file_info;
 
+        ImageParams params = ImageParams();
+        if(frames.size() > 1) {
+            params.anim_duration_ms = 15000;
+        } else {
+            params.wait_ms = 5000;
+        }
+
         file_info = new FileInfo();
-        file_info->params = ImageParams();
+        file_info->params = params;
         file_info->content_stream = new rgb_matrix::MemStreamIO();
         file_info->is_multi_frame = frames.size() > 1;
         rgb_matrix::StreamWriter out(file_info->content_stream);
         for (const auto & img : frames) {
-            int64_t delay_time_us;
+            tmillis_t delay_time_us;
             if (file_info->is_multi_frame) {
                 delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
             } else {
@@ -107,9 +116,8 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
 
-        cout << "showing anim" << endl;
+        info("Showing animation for {} ({})", img_url, out_file);
         DisplayAnimation(file_info, matrix, canvas);
-        cout << "Deleting outfile" << endl;
         remove(out_file.c_str());
     }
 }
@@ -120,26 +128,36 @@ void DisplayAnimation(const FileInfo *file,
     const tmillis_t duration_ms = (file->is_multi_frame
                                    ? file->params.anim_duration_ms
                                    : file->params.wait_ms);
+
     rgb_matrix::StreamReader reader(file->content_stream);
-    int loops = file->params.loops;
+
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
     const tmillis_t override_anim_delay = file->params.anim_delay_ms;
-    for (int k = 0;
-         (loops < 0 || k < loops)
-         && !interrupt_received
-         && GetTimeInMillis() < end_time_ms;
-         ++k) {
+    while (!interrupt_received && GetTimeInMillis() < end_time_ms) {
         uint32_t delay_us = 0;
-        while (!interrupt_received && GetTimeInMillis() <= end_time_ms
-               && reader.GetNext(offscreen_canvas, &delay_us)) {
-            const tmillis_t anim_delay_ms =
-                    override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
-            const tmillis_t start_wait_ms = GetTimeInMillis();
-            offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
-                                                   file->params.vsync_multiple);
-            const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
-            SleepMillis(anim_delay_ms - time_already_spent);
+        bool success_reading = reader.GetNext(offscreen_canvas, &delay_us);
+
+        if(!success_reading) {
+            reader.Rewind();
+            continue;
         }
-        reader.Rewind();
+
+        const tmillis_t anim_delay_ms =
+                override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
+
+        const tmillis_t start_wait_ms = GetTimeInMillis();
+        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, file->params.vsync_multiple);
+        const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
+
+        if(!file->is_multi_frame) {
+            auto sleep_time = file->params.wait_ms - time_already_spent;
+            debug("Sleeping for %d", sleep_time);
+            SleepMillis(sleep_time);
+            break;
+        }
+
+        debug("Waiting for frame");
+        SleepMillis(anim_delay_ms - time_already_spent);
+
     }
 }

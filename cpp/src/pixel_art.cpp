@@ -6,12 +6,13 @@
 #include <iostream>
 #include <optional>
 #include <curl/curl.h>
-#include <cstddef>
 #include <cstring>
 #include <Magick++.h>
-#include <magick/image.h>
+#include "spdlog/spdlog.h"
 
 using namespace std;
+using namespace spdlog;
+
 
 string base = "https://pixeljoint.com";
 string search_url = "/pixels/new_icons.asp?q=1";
@@ -34,10 +35,10 @@ bool download_image(const string &url_str, const string& tmp) {
     const char *out_file = tmp.c_str();
 
     string merged_url = base + url_str;
-    cout << "Downloading " << merged_url << " to " << out_file << endl;
+    debug("Downloading " + merged_url + " to " + out_file);
 
     if (strlen(out_file) > FILENAME_MAX) {
-        cout << "File name too long" << endl;
+        error("File name too long");
         return false;
     }
 
@@ -48,7 +49,7 @@ bool download_image(const string &url_str, const string& tmp) {
         errno = 0;
         fp = fopen(out_file, "wb");
         if(fp == nullptr) {
-            cout << "Could not open file" << errno << endl;
+            error("Could not open file " + to_string(errno));
             return false;
         }
 
@@ -62,10 +63,10 @@ bool download_image(const string &url_str, const string& tmp) {
 
         fclose(fp);
         if (res == CURLcode::CURLE_OK) {
-            cout << "done" << endl;
+            debug("done");
             return true;
         } else {
-            cout << "curl error " << res << endl;
+            error("curl error " + to_string(res));
         }
     }
 
@@ -73,16 +74,14 @@ bool download_image(const string &url_str, const string& tmp) {
 }
 
 htmlDocPtr fetch_page(const string &url_str) {
-    cout << "url" << endl;
+    debug("Fetching page " + url_str);
     auto url = cpr::Url{base + url_str};
 
     cpr::Header headers = {
             {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
             {"Cookie",     "v=av=&dimo=%3C%3D&anim=&iso=&ob=search&dint=&pg=2&search=&tran=&colors=2&d=&colorso=%3E%3D&dim=128&owner=0; path=/"}};
 
-    cout << "send" << endl;
     auto response = cpr::Get(url, headers);
-    cout << "return" << endl;
     return htmlReadMemory(response.text.c_str(), response.text.length(), nullptr, nullptr,
                           HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
 }
@@ -104,6 +103,8 @@ bool Post::fetch_link() {
 }
 
 optional<int> get_page_size() {
+    info("Getting page size...");
+
     // parse the HTML document returned by the server
     htmlDocPtr doc = fetch_page(search_url);
 
@@ -128,11 +129,13 @@ optional<int> get_page_size() {
             cout << "Conversion failure" << endl;
         }
     }
+
+    debug("Obtained page size of " + to_string(page_end.value_or(-1)));
     return page_end;
 }
 
 vector<Post> get_posts(int page) {
-    cout << "Getting posts from page " << page << "...\n" << endl;
+    info("Getting posts from page " + to_string(page) + "...");
     string url = search_url + "&pg=" + to_string(page);
 
     // parse the HTML document returned by the server
