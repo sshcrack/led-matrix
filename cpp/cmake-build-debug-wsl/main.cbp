@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="main"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\..\;CMake Files\..\..\;CMake Files\..\..\vcpkg\;CMake Files\..\..\vcpkg\scripts\;CMake Files\..\..\vcpkg\scripts\buildsystems\;CMake Files\..\..\vcpkg\installed\;CMake Files\..\..\vcpkg\installed\x64-linux\;CMake Files\..\..\vcpkg\installed\x64-linux\share\;CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\;CMake Files\..\..\vcpkg\installed\x64-linux\share\zlib\;CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\;CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\;CMake Files\..\..\vcpkg\installed\x64-linux\share\iconv\;CMake Files\..\..\vcpkg\installed\x64-linux\share\liblzma\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="main">
+				<Option output="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/main" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DMAGICKCORE_QUANTUM_DEPTH=16"/>
+					<Add option="-DMAGICKCORE_HDRI_ENABLE=0"/>
+					<Add option="-DCURL_STATICLIB"/>
+					<Add option="-DLIBXML_STATIC"/>
+					<Add directory="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include"/>
+					<Add directory="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib"/>
+					<Add directory="/usr/include/ImageMagick-6"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/ImageMagick-6"/>
+					<Add directory="/home/hendrik/vcpkg/installed/x64-linux/include"/>
+					<Add directory="/home/hendrik/vcpkg/installed/x64-linux/include/libxml2"/>
+					<Add directory="/usr/include/c++/12"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/12"/>
+					<Add directory="/usr/include/c++/12/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/12/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 main"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="main/fast">
+				<Option output="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/main" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DMAGICKCORE_QUANTUM_DEPTH=16"/>
+					<Add option="-DMAGICKCORE_HDRI_ENABLE=0"/>
+					<Add option="-DCURL_STATICLIB"/>
+					<Add option="-DLIBXML_STATIC"/>
+					<Add directory="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include"/>
+					<Add directory="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib"/>
+					<Add directory="/usr/include/ImageMagick-6"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/ImageMagick-6"/>
+					<Add directory="/home/hendrik/vcpkg/installed/x64-linux/include"/>
+					<Add directory="/home/hendrik/vcpkg/installed/x64-linux/include/libxml2"/>
+					<Add directory="/usr/include/c++/12"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/12"/>
+					<Add directory="/usr/include/c++/12/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/12/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 main/fast"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/hendrik/ledmat/cpp/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/hendrik/ledmat/cpp/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/canvas.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/content-streamer.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/graphics.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/led-matrix-c.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/led-matrix.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/pixel-mapper.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/thread.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/include/threaded-canvas-manipulator.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/bdf-font.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/content-streamer.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/framebuffer.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/gpio.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/gpio.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/graphics.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/hardware-mapping.c">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/hardware-mapping.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/led-matrix-c.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/led-matrix.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/multiplex-mappers.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/options-initialize.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/pixel-mapper.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/rpi-rgb-led-matrix/lib/thread.cc">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/canvas.cpp">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/canvas.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/image.cpp">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/image.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/interrupt.cpp">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/interrupt.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/main.cpp">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/pixel_art.cpp">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/src/pixel_art.h">
+			<Option target="main"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/scripts/buildsystems/vcpkg.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\scripts\buildsystems\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/CURLConfig.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/CURLConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/CURLTargets-debug.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/CURLTargets-release.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/CURLTargets.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/curl/vcpkg-cmake-wrapper.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\curl\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/zlib/vcpkg-cmake-wrapper.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\zlib\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/cpr/cprConfig.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/cpr/cprConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/cpr/cprTargets-debug.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/cpr/cprTargets-release.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/cpr/cprTargets.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\cpr\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/libxml2-config-version.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/libxml2-config.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/libxml2-export-debug.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/libxml2-export-release.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/libxml2-export.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/libxml2/vcpkg-cmake-wrapper.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\libxml2\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/iconv/vcpkg-cmake-wrapper.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\iconv\"/>
+		</Unit>
+		<Unit filename="/home/hendrik/ledmat/cpp/../../vcpkg/installed/x64-linux/share/liblzma/vcpkg-cmake-wrapper.cmake">
+			<Option virtualFolder="CMake Files\..\..\vcpkg\installed\x64-linux\share\liblzma\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

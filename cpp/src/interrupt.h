@@ -1,6 +1,3 @@
-volatile bool interrupt_received = false;
-void InterruptHandler(int signo) {
-  interrupt_received = true;
-}
+extern volatile bool interrupt_received;
 
-char getch();
+extern void InterruptHandler(int signo);

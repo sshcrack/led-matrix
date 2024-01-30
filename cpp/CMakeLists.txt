@@ -24,7 +24,7 @@ add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
 
 add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
-find_package(ImageMagick COMPONENTS Magick++)
+find_package(ImageMagick COMPONENTS Magick++ MagickCore)
 include_directories(${ImageMagick_INCLUDE_DIRS})
 target_link_libraries(main PRIVATE ${ImageMagick_LIBRARIES})
 
