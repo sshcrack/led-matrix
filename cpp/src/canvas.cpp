@@ -76,7 +76,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
         string img_url = item.image.value();
-        string out_file = img_url.substr(img_url.find_last_of('/') +1);
+        string out_file = "test.gif";//img_url.substr(img_url.find_last_of('/') +1);
 
         // Downloading image first
         download_image(img_url, out_file);

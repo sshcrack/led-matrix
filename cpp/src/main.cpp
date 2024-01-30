@@ -27,6 +27,9 @@ int main(int argc, char *argv[])
 
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
+
+    runtime_opt.drop_priv_user = getenv("SUDO_UID");
+    runtime_opt.drop_priv_group = getenv("SUDO_GID");
     if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
                                            &matrix_options, &runtime_opt))
     {
