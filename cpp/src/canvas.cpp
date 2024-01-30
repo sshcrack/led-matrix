@@ -55,8 +55,8 @@ void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
 }
 
 void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
-    const int height = canvas->height();
-    const int width = canvas->width();
+    const int height = matrix->height();
+    const int width = matrix->width();
 
 
     int start = 1;
@@ -69,18 +69,18 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
     for (auto &item: posts) {
         if(interrupt_received)
             break;
-
+/*
         item.fetch_link();
         if(!item.image.has_value()) {
             error("Could not load image {}", item.url);
             continue;
         }
-
         string img_url = item.image.value();
-        string out_file = img_url.substr(img_url.find_last_of('/') +1);
+*/
+        string out_file = "penguin_fish_anim.gif";//img_url.substr(img_url.find_last_of('/') +1);
 
         // Downloading image first
-        download_image(img_url, out_file);
+        //download_image(img_url, out_file);
 
         vector<Magick::Image> frames;
         string err_msg;
@@ -116,9 +116,9 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
 
-        info("Showing animation for {} ({})", img_url, out_file);
+        info("Showing animation for {} ({})", out_file, out_file);
         DisplayAnimation(file_info, matrix, canvas);
-        remove(out_file.c_str());
+        //remove(out_file.c_str());
     }
 }
 
@@ -139,6 +139,7 @@ void DisplayAnimation(const FileInfo *file,
 
         if(!success_reading) {
             reader.Rewind();
+            debug("Rewinding...");
             continue;
         }
 
@@ -148,16 +149,17 @@ void DisplayAnimation(const FileInfo *file,
         const tmillis_t start_wait_ms = GetTimeInMillis();
         offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, file->params.vsync_multiple);
         const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
-
+/*
         if(!file->is_multi_frame) {
             auto sleep_time = file->params.wait_ms - time_already_spent;
-            debug("Sleeping for %d", sleep_time);
+            debug("Sleeping for {}", sleep_time);
             SleepMillis(sleep_time);
             break;
         }
+*/
+        auto sleep_time = anim_delay_ms - time_already_spent;
+        debug("Sleeping for {}", sleep_time);
 
-        debug("Waiting for frame");
-        SleepMillis(anim_delay_ms - time_already_spent);
-
+        SleepMillis(sleep_time);
     }
 }
