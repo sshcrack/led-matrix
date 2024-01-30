@@ -3,14 +3,16 @@
 #include <iostream>
 
 #include "led-matrix.h"
-#include "graphics.h"
 #include "canvas.h"
 #include "pixel_art.h"
 #include "image.h"
 #include "interrupt.h"
 
 #include <csignal>
+#include <vector>
 #include <Magick++.h>
+#include <numeric>
+#include <random>
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
 
@@ -58,11 +60,15 @@ int main(int argc, char *argv[])
     }
 
     int page_end = page_end_opt.value();
+    vector<int> total_pages(page_end);
+    iota(total_pages.begin(), total_pages.end(), 1);
 
-    std::cout << "Press Q to quit" << std::endl;
+    shuffle(total_pages.begin(), total_pages.end(), random_device());
+
+    cout << "Press Q to quit" << endl;
     while (!interrupt_received)
     {
-        update_canvas(canvas, matrix, page_end);
+        update_canvas(canvas, matrix, &total_pages);
     }
 
     // Finished. Shut down the RGB matrix.

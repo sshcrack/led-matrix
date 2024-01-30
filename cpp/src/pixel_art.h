@@ -11,6 +11,7 @@ class Post
 {
     public:
         optional<string> image;
+        optional<string> file_name;
         string thumbnail;
         string url;
 

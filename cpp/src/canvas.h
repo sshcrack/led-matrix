@@ -1,13 +1,14 @@
 #include "content-streamer.h"
 #include "led-matrix.h"
+#include "utils.h"
+#include <vector>
 
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
-typedef int64_t tmillis_t;
-void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end);
+void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, std::vector<int>* page_end);
 
 
 static const tmillis_t distant_future = (1LL<<40); // that is a while.
