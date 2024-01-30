@@ -27,7 +27,7 @@ optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int widt
         return nullopt;
     }
 
-    string img_url = "https://pixeljoint.com/files/icons/full/springsmall.png";//item->image.value();
+    string img_url = item->image.value();
     string file_name = item->file_name.value();
 
     // Downloading image first
@@ -35,7 +35,9 @@ optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int widt
 
     vector<Magick::Image> frames;
     string err_msg;
-    if (!LoadImageAndScale(file_name.c_str(), width, height, true, true, &frames, &err_msg)) {
+
+    bool contain_img = true;
+    if (!LoadImageAndScale(file_name.c_str(), width, height, true, true, contain_img, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
         return nullopt;
     }

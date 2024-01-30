@@ -79,7 +79,7 @@ htmlDocPtr fetch_page(const string &url_str) {
     cpr::Header headers = {
             {"User-Agent",
              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
-//            {"Cookie",     "v=av=&dimo=%3C%3D&anim=&iso=&ob=search&dint=&pg=2&search=&tran=&colors=2&d=&colorso=%3E%3D&dim=128&owner=0; path=/"}
+            {"Cookie",     "v=ob=rating; path=/"}
     };
     auto response = cpr::Get(url, headers);
     return htmlReadMemory(response.text.c_str(), response.text.length(), nullptr, nullptr,

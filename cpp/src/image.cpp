@@ -10,10 +10,14 @@ using namespace spdlog;
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 bool LoadImageAndScale(const char *filename,
-                       int target_width, int target_height,
+                       int canvas_width, int canvas_height,
                        bool fill_width, bool fill_height,
+                       bool contain_img,
                        std::vector<Magick::Image> *result,
                        std::string *err_msg) {
+    int target_width = canvas_width;
+    int target_height = canvas_height;
+
     std::vector<Magick::Image> frames;
     try {
         readImages(&frames, filename);
@@ -39,16 +43,17 @@ bool LoadImageAndScale(const char *filename,
     const float width_fraction = (float)target_width / img_width;
     const float height_fraction = (float)target_height / img_height;
     if (fill_width && fill_height) {
-        debug("Fractions are {} and {}", width_fraction, height_fraction);
         // Scrolling diagonally. Fill as much as we can get in available space.
         // Largest scale fraction determines that.
-        const float larger_fraction = (width_fraction > height_fraction)
+
+        // Covers if contain_img is false (chooses largest fraction) and if contain_img is true (chooses smallest fraction)
+        const bool which_factor = contain_img ? width_fraction < height_fraction : width_fraction > height_fraction;
+
+        const float factor = which_factor
                                       ? width_fraction
                                       : height_fraction;
-        target_width = (int) roundf(larger_fraction * img_width);
-        target_height = (int) roundf(larger_fraction * img_height);
-
-        debug("Scaling to {}x{}", target_width, target_height);
+        target_width = (int) roundf(factor * img_width);
+        target_height = (int) roundf(factor * img_height);
     }
     else if (fill_height) {
         // Horizontal scrolling: Make things fit in vertical space.
@@ -61,8 +66,20 @@ bool LoadImageAndScale(const char *filename,
         target_height = (int) roundf(width_fraction * img_height);
     }
 
-    for (size_t i = 0; i < result->size(); ++i) {
-        (*result)[i].scale(Magick::Geometry(target_width, target_height));
+
+    int offset_x = 0;
+    int offset_y = 0;
+
+    if(canvas_height < target_height) {
+        offset_y = (target_height - canvas_height) / 2;
+    } else if(canvas_width < target_width) {
+        offset_x = (target_width - canvas_width) / 2;
+    }
+
+    debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width, canvas_height, offset_x, offset_y);
+    for (auto & i : *result) {
+        i.scale(Magick::Geometry(target_width, target_height));
+        i.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
     }
 
     return true;
