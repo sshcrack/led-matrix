@@ -30,8 +30,7 @@ void rm_nonprinting (std::string& str)
                str.end());
 }
 
-bool download_image(const string &url_str, string& tmp) {
-    rm_nonprinting(tmp);
+bool download_image(const string &url_str, const string& tmp) {
     const char *out_file = tmp.c_str();
 
     string merged_url = base + url_str;
@@ -44,10 +43,8 @@ bool download_image(const string &url_str, string& tmp) {
 
 
     FILE *fp;
-    cout << "curl init" << endl;
     auto curl = curl_easy_init();
     if (curl) {
-        cout << "open" << endl;
         errno = 0;
         fp = fopen(out_file, "wb");
         if(fp == nullptr) {
@@ -57,21 +54,18 @@ bool download_image(const string &url_str, string& tmp) {
 
 
         CURLcode res;
-        cout << "opt" << endl;
-        curl_easy_setopt(curl, CURLOPT_URL, url_str.c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, merged_url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-        cout << "perform" << endl;
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
 
-        cout << "close" << endl;
         fclose(fp);
         if (res == CURLcode::CURLE_OK) {
             cout << "done" << endl;
             return true;
         } else {
-            cout << "error" << res << endl;
+            cout << "curl error " << res << endl;
         }
     }
 
@@ -117,7 +111,7 @@ optional<int> get_page_size() {
 
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr page_option = xmlXPathEvalExpression(
-            (xmlChar *) "//div[1]/span/select/option", context);
+            (xmlChar *) "//div[1]/span/select/option[last()]", context);
     optional<int> page_end = std::nullopt;
 
     int size = page_option->nodesetval->nodeNr;
@@ -126,17 +120,14 @@ optional<int> get_page_size() {
 
         xmlNodePtr el = page_option->nodesetval->nodeTab[last_index];
         xmlXPathSetContextNode(el, context);
-        cout << "cast" << endl;
         string value = string(reinterpret_cast<char *>(xmlGetProp(el, (xmlChar *) "value")));
         try {
-            cout << "stoi" << endl;
             page_end = stoi(value);
         }
         catch (exception &err) {
             cout << "Conversion failure" << endl;
         }
     }
-    cout << "end" << endl;
     return page_end;
 }
 

@@ -59,7 +59,6 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
 
     int start = 1;
 
-    cout << "Getting random.." << endl;
     random_device rd; // obtain a random number from hardware
     mt19937 gen(rd()); // seed the generator
     uniform_int_distribution<> distr(start, page_end); // define the range
@@ -76,7 +75,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
         string img_url = item.image.value();
-        string out_file = "test.gif";//img_url.substr(img_url.find_last_of('/') +1);
+        string out_file = img_url.substr(img_url.find_last_of('/') +1);
 
         // Downloading image first
         download_image(img_url, out_file);
@@ -108,7 +107,10 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, int page_end) {
         }
 
 
+        cout << "showing anim" << endl;
         DisplayAnimation(file_info, matrix, canvas);
+        cout << "Deleting outfile" << endl;
+        remove(out_file.c_str());
     }
 }
 
