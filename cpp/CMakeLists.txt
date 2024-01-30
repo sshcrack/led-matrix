@@ -33,6 +33,9 @@ find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
 
+# spdlog
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(main PRIVATE spdlog::spdlog)
 
 # Main Target Compile
 

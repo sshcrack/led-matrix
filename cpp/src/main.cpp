@@ -9,10 +9,13 @@
 #include "image.h"
 #include "interrupt.h"
 
-#include <signal.h>
+#include <csignal>
 #include <Magick++.h>
+#include "spdlog/spdlog.h"
+#include "spdlog/cfg/env.h"
 
 using namespace rgb_matrix;
+using namespace spdlog;
 
 int usage(const char *progname)
 {
@@ -23,11 +26,13 @@ int usage(const char *progname)
 
 int main(int argc, char *argv[])
 {
+    spdlog::cfg::load_env_levels();
     Magick::InitializeMagick(*argv);
 
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
 
+    debug("Parsing rgb matrix from cmdline");
     runtime_opt.drop_priv_user = getenv("SUDO_UID");
     runtime_opt.drop_priv_group = getenv("SUDO_GID");
     if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
@@ -40,15 +45,15 @@ int main(int argc, char *argv[])
     if (matrix == nullptr)
         return usage(argv[0]);
 
+    debug("Creating canvas");
     rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    std::cout << "Getting page size..." << std::endl;
     std::optional<int> page_end_opt = get_page_size();
     if(!page_end_opt.has_value()) {
-        std::cerr << "could not convert page " << std::endl;
+        error("could not convert page");
         return -1;
     }
 
@@ -58,7 +63,6 @@ int main(int argc, char *argv[])
     while (!interrupt_received)
     {
         update_canvas(canvas, matrix, page_end);
-        canvas = matrix->SwapOnVSync(canvas);
     }
 
     // Finished. Shut down the RGB matrix.
