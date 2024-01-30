@@ -24,4 +24,4 @@ class Post
 
 std::vector<Post> get_posts(int page);
 std::optional<int> get_page_size();
-bool download_image(const string& url_str, string& out_file);
+bool download_image(const string& url_str, const string& out_file);
