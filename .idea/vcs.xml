@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cpp/rpi-rgb-led-matrix" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/rust_old/target/armv7-unknown-linux-gnueabihf/debug/build/rpi-led-matrix-sys-de018300fd4cb51a/out/cpp-library" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/rust_old/target/debug/build/rpi-led-matrix-sys-f74772a24ba3bcf1/out/cpp-library" vcs="Git" />
+  </component>
+</project>

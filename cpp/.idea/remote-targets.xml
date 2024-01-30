@@ -6,7 +6,6 @@
         <config>
           <option name="projectRootOnTarget" value="/home/pi/ledmat/build" />
           <option name="serverName" value="pi@10.6.0.23:22 key" />
-          <option name="useRsync" value="true" />
         </config>
       </target>
     </targets>
