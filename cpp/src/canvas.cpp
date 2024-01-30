@@ -105,12 +105,14 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pa
         }
 
 
-        info("Processing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", item.url, item.image);
+        info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+        info("Showing animation for {} ({})", item.url, item.image.value_or("(NO_URL)"));
         DisplayAnimation(file_info, matrix, canvas);
 
         item.file_name.and_then([](string file_name) {
             remove(file_name.c_str());
+
+            return std::optional<string>();
         });
     }
 }
