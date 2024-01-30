@@ -39,6 +39,7 @@ bool LoadImageAndScale(const char *filename,
     const float width_fraction = (float)target_width / img_width;
     const float height_fraction = (float)target_height / img_height;
     if (fill_width && fill_height) {
+        debug("Fractions are {} and {}", width_fraction, height_fraction);
         // Scrolling diagonally. Fill as much as we can get in available space.
         // Largest scale fraction determines that.
         const float larger_fraction = (width_fraction > height_fraction)
@@ -46,6 +47,8 @@ bool LoadImageAndScale(const char *filename,
                                       : height_fraction;
         target_width = (int) roundf(larger_fraction * img_width);
         target_height = (int) roundf(larger_fraction * img_height);
+
+        debug("Scaling to {}x{}", target_width, target_height);
     }
     else if (fill_height) {
         // Horizontal scrolling: Make things fit in vertical space.
