@@ -6,9 +6,10 @@
 #include "graphics.h"
 #include "canvas.h"
 #include "pixel_art.h"
+#include "image.h"
+#include "interrupt.h"
 
 #include <signal.h>
-#include "interrupt.h"
 #include <Magick++.h>
 
 using namespace rgb_matrix;
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
     }
 
     RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
-    if (matrix == NULL)
+    if (matrix == nullptr)
         return usage(argv[0]);
 
     rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
@@ -41,24 +42,25 @@ int main(int argc, char *argv[])
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
+    std::cout << "Getting page size..." << std::endl;
     std::optional<int> page_end_opt = get_page_size();
     if(!page_end_opt.has_value()) {
         std::cerr << "could not convert page " << std::endl;
-        return;
+        return -1;
     }
 
-    bool running = true;
     int page_end = page_end_opt.value();
 
     std::cout << "Press Q to quit" << std::endl;
-    while (!interrupt_received && running)
+    while (!interrupt_received)
     {
-        update_canvas(canvas, page_end);
+        update_canvas(canvas, matrix, page_end);
         canvas = matrix->SwapOnVSync(canvas);
     }
 
     // Finished. Shut down the RGB matrix.
     delete matrix;
     printf("\n");
+
     return 0;
 }

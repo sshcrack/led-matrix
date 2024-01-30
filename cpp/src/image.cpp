@@ -1,4 +1,5 @@
 #include <vector>
+#include <iostream>
 #include <cpr/cpr.h>
 #include <Magick++.h>
 #include <magick/image.h>
@@ -10,6 +11,7 @@ bool LoadImageAndScale(const char *filename,
                               bool fill_width, bool fill_height,
                               std::vector<Magick::Image> *result,
                               std::string *err_msg) {
+std::cout << "reading and scaling images.." << std::endl;
   std::vector<Magick::Image> frames;
   try {
     readImages(&frames, filename);
@@ -22,6 +24,7 @@ bool LoadImageAndScale(const char *filename,
     return false;
   }
 
+  std::cout << "Doing frame stuff" << std::endl;
   // Put together the animation from single frames. GIFs can have nasty
   // disposal modes, but they are handled nicely by coalesceImages()
   if (frames.size() > 1) {
@@ -30,10 +33,12 @@ bool LoadImageAndScale(const char *filename,
     result->push_back(frames[0]);   // just a single still image.
   }
 
+    std::cout << "res" << std::endl;
   const int img_width = (*result)[0].columns();
   const int img_height = (*result)[0].rows();
   const float width_fraction = (float)target_width / img_width;
   const float height_fraction = (float)target_height / img_height;
+    std::cout << "f" << std::endl;
   if (fill_width && fill_height) {
     // Scrolling diagonally. Fill as much as we can get in available space.
     // Largest scale fraction determines that.
@@ -54,6 +59,7 @@ bool LoadImageAndScale(const char *filename,
     target_height = (int) roundf(width_fraction * img_height);
   }
 
+    std::cout << "sc" << std::endl;
   for (size_t i = 0; i < result->size(); ++i) {
     (*result)[i].scale(Magick::Geometry(target_width, target_height));
   }
