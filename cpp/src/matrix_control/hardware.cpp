@@ -44,6 +44,7 @@ void hardware_mainloop(int page_end, RGBMatrix *matrix, FrameCanvas *canvas) {
 }
 
 expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
+    /*
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
 
@@ -75,5 +76,6 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
 
     int page_end = page_end_opt.value();
 
-    return std::async(hardware_mainloop, page_end, matrix, canvas);
+    return std::async(hardware_mainloop, page_end, matrix, canvas);*/
+    return unexpected(-1);
 }
