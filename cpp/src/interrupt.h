@@ -1,3 +1,5 @@
-extern volatile bool interrupt_received;
+#include <atomic>
+
+extern std::atomic<bool> interrupt_received;
 
 extern void InterruptHandler(int signo);

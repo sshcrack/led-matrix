@@ -1,6 +1,6 @@
 #include "content-streamer.h"
 #include "led-matrix.h"
-#include "utils.h"
+#include "../utils.h"
 #include <vector>
 
 using rgb_matrix::Canvas;

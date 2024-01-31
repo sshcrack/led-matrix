@@ -1,14 +1,12 @@
 #include "canvas.h"
 #include "pixel_art.h"
-#include "interrupt.h"
-#include <sys/time.h>
+#include "../interrupt.h"
 #include "spdlog/spdlog.h"
 #include "image.h"
-#include "utils.h"
+#include "../utils.h"
 #include <vector>
 
 #include <Magick++.h>
-#include <tuple>
 #include <future>
 
 using namespace std;
