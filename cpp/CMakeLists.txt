@@ -8,7 +8,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/lib
 )
 
-file(GLOB SOURCES
+file(GLOB_RECURSE SOURCES
     src/*.h
     src/*.cpp
 )
@@ -52,5 +52,5 @@ find_package(LibXml2 REQUIRED)
 target_link_libraries(main PRIVATE LibXml2::LibXml2)
 
 # HTTP Server
-find_package(restinio CONFIG REQUIRED)
+find_package(restinio REQUIRED)
 target_link_libraries(main PRIVATE restinio::restinio)
