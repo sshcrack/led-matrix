@@ -1,4 +1,4 @@
 echo Building
-make -C build
+make -C cmake-build-pi-release
 echo Running
 sudo ./run.sh
