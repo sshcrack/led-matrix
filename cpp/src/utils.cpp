@@ -1,7 +1,10 @@
 #include "utils.h"
+#include "shared.h"
 #include <sys/time.h>
-#include <ctime>
+#include <thread>
+#include <spdlog/spdlog.h>
 
+using namespace spdlog;
 
 tmillis_t GetTimeInMillis() {
     struct timeval tp{};
@@ -12,8 +15,14 @@ tmillis_t GetTimeInMillis() {
 
 void SleepMillis(tmillis_t milli_seconds) {
     if (milli_seconds <= 0) return;
-    struct timespec ts{};
-    ts.tv_sec = milli_seconds / 1000;
-    ts.tv_nsec = (milli_seconds % 1000) * 1000000;
-    nanosleep(&ts, nullptr);
+    tmillis_t end_time = GetTimeInMillis() + milli_seconds;
+
+    while(GetTimeInMillis() < end_time) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        if(skip_image) {
+            debug("Skipping...");
+            skip_image.store(false);
+            break;
+        }
+    }
 }

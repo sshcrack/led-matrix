@@ -8,6 +8,6 @@
 using server_t = restinio::http_server_t<>;
 using namespace std;
 
-expected<tuple<server_t*, thread>, string> server_mainloop(uint16_t port);
+restinio::request_handling_status_t req_handler(const restinio::request_handle_t &req);
 
 #endif

@@ -4,6 +4,7 @@
 #include "spdlog/spdlog.h"
 #include "image.h"
 #include "../utils.h"
+#include "../shared.h"
 #include <vector>
 
 #include <Magick++.h>
@@ -17,10 +18,10 @@ using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
-optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int width) {
+optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int width) {
     tmillis_t start_loading = GetTimeInMillis();
     item->fetch_link();
-    if(!item->image.has_value() || !item->file_name.has_value()) {
+    if (!item->image.has_value() || !item->file_name.has_value()) {
         error("Could not load image {}", item->url);
         return nullopt;
     }
@@ -43,13 +44,13 @@ optional<vector<Magick::Image>> prefetch_images(Post* item, int height, int widt
 
     optional<vector<Magick::Image>> res;
     res = frames;
-        debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+    debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return res;
 }
 
 
-void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pages) {
+void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pages) {
     const int height = matrix->height();
     const int width = matrix->width();
 
@@ -59,23 +60,25 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pa
     total_pages->push_back(curr);
 
     auto posts = get_posts(curr);
-    std::future<std::optional<std::vector<Magick::Image>>> next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[0], height, width);
+    std::future<std::optional<std::vector<Magick::Image>>> next_post_frames = std::async(std::launch::async,
+                                                                                         &prefetch_images, &posts[0],
+                                                                                         height, width);
 
     for (size_t i = 0; i < posts.size(); i++) {
-        if(interrupt_received)
+        if (interrupt_received)
             break;
 
 
-        Post item = posts[i];        
+        Post *item = &posts[i];
         tmillis_t start_loading = GetTimeInMillis();
 
         optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
-        if(i != posts.size() -1) {
-            next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[i +1], height, width);
+        if (i != posts.size() - 1) {
+            next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[i + 1], height, width);
         }
 
-        if(!frames_opt.has_value()) {
-            error("Could not load image {}", item.url);
+        if (!frames_opt.has_value()) {
+            error("Could not load image {}", item->url);
             continue;
         }
 
@@ -84,7 +87,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pa
         vector<Magick::Image> frames = frames_opt.value();
 
         ImageParams params = ImageParams();
-        if(frames.size() > 1) {
+        if (frames.size() > 1) {
             params.anim_duration_ms = 15000;
         } else {
             params.wait_ms = 5000;
@@ -95,7 +98,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pa
         file_info->content_stream = new rgb_matrix::MemStreamIO();
         file_info->is_multi_frame = frames.size() > 1;
         rgb_matrix::StreamWriter out(file_info->content_stream);
-        for (const auto & img : frames) {
+        for (const auto &img: frames) {
             tmillis_t delay_time_us;
             if (file_info->is_multi_frame) {
                 delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
@@ -108,10 +111,10 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int>* total_pa
 
 
         info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", item.url, item.image.value_or("(NO_URL)"));
+        info("Showing animation for {} ({})", item->url, item->image.value_or("(NO_URL)"));
         DisplayAnimation(file_info, matrix, canvas);
 
-        item.file_name.and_then([](string file_name) {
+        item->file_name.and_then([](const string &file_name) {
             remove(file_name.c_str());
 
             return std::optional<string>();
@@ -129,11 +132,11 @@ void DisplayAnimation(const FileInfo *file,
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
     const tmillis_t override_anim_delay = file->params.anim_delay_ms;
     for (int k = 0;
-         !interrupt_received
-         && GetTimeInMillis() < end_time_ms;
-         ++k) {
+         !interrupt_received && !skip_image
+         && GetTimeInMillis() < end_time_ms; ++k) {
         uint32_t delay_us = 0;
-        while (!interrupt_received && GetTimeInMillis() <= end_time_ms
+        while (!interrupt_received && !skip_image
+               && GetTimeInMillis() <= end_time_ms
                && reader.GetNext(offscreen_canvas, &delay_us)) {
             const tmillis_t anim_delay_ms =
                     override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;

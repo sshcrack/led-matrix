@@ -4,21 +4,22 @@ project(main VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 23)
 
 INCLUDE_DIRECTORIES(
-  ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/include
-  ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/lib
+        ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/include
+        ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/lib
 )
 
 file(GLOB_RECURSE SOURCES
-    src/*.h
-    src/*.cpp
+        src/*.h
+        src/*.cpp
 )
-
 
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
 # Add an executable with the above sources
-add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
+add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES} ${RWLOCK_HEADER_FILES}
+        src/shared.cpp
+        src/shared.h)
 
 # ImageMagick
 
@@ -29,7 +30,7 @@ target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
 #target_link_libraries(main PRIVATE ${graphicsmagick_LIBRARIES})
 
 # Curl
-find_package(CURL REQUIRED) 
+find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
 
@@ -53,4 +54,5 @@ target_link_libraries(main PRIVATE LibXml2::LibXml2)
 
 # HTTP Server
 find_package(restinio REQUIRED)
+
 target_link_libraries(main PRIVATE restinio::restinio)
