@@ -3,3 +3,5 @@
 //
 
 #include "shared.h"
+
+std::atomic<bool> skip_image = false;

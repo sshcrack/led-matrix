@@ -2,13 +2,14 @@
 #include <Magick++.h>
 #include "led-matrix.h"
 #include <magick/image.h>
+using namespace std;
 
-bool LoadImageAndScale(const char *filename,
-                       int target_width, int target_height,
+bool LoadImageAndScale(const string& path,
+                       int canvas_width, int canvas_height,
                        bool fill_width, bool fill_height,
                        bool contain_img,
-                       std::vector<Magick::Image> *result,
-                       std::string *err_msg);
+                       vector<Magick::Image> *result,
+                       string *err_msg);
 
 void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
                    bool do_center,

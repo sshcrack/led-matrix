@@ -40,7 +40,7 @@ void hardware_mainloop(int page_end, RGBMatrix *matrix, FrameCanvas *canvas) {
 
     // Finished. Shut down the RGB matrix.
     delete matrix;
-    printf("\n");
+    error("Finished, shutting down...");
 }
 
 expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
