@@ -12,6 +12,9 @@ class Config {
 private:
         shared_mutex json_mutex;
         nlohmann::json json;
+
+        shared_mutex update_mutex;
+        bool dirty;
 public:
     explicit Config(const string& filename) {
         if(!filesystem::exists(filename)) {
@@ -23,10 +26,13 @@ public:
 
         ifstream f(filename);
         this->json = json::parse(f);
+        this->dirty = false;
     }
 
     string get_str(const string& key);
     void set_str(const string &key, const string& value);
+    void mark_dirty(bool dirty_local);
+    bool is_dirty();
 };
 
 

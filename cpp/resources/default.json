@@ -1,3 +1,9 @@
 {
-  "test": "hi"
+  "groups": {
+    "DEFAULT": {
+      "name": "Random Pages",
+      "pages":  [1, -1]
+    }
+  },
+  "curr": "DEFAULT"
 }

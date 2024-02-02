@@ -1,6 +1,5 @@
 #include "canvas.h"
 #include "pixel_art.h"
-#include "../interrupt.h"
 #include "spdlog/spdlog.h"
 #include <filesystem>
 #include "image.h"
@@ -23,9 +22,17 @@ using rgb_matrix::StreamReader;
 string root_dir = "images/";
 
 optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int width) {
-    debug("Checking if exists");
-    if(!filesystem::exists(root_dir)) {
-        filesystem::create_directory(root_dir);
+    if (!filesystem::exists(root_dir)) {
+        try {
+            auto res = filesystem::create_directory(root_dir);
+            if(!res) {
+                error("Could not create directory at {}.", root_dir);
+                exit(-1);
+            }
+        } catch (exception& ex) {
+            error("Could not create directory at {} with exception: {}", root_dir, ex.what());
+            exit(-1);
+        }
     }
 
     tmillis_t start_loading = GetTimeInMillis();
@@ -41,9 +48,8 @@ optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int widt
 
 
     // Downloading image first
-    if(!filesystem::exists(path + "0")) {
+    if (!filesystem::exists(path + "0"))
         download_image(img_url, path);
-    }
 
     vector<Magick::Image> frames;
     string err_msg;
@@ -73,12 +79,12 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
     total_pages->push_back(curr);
 
     auto posts = get_posts(curr);
-    std::future<std::optional<std::vector<Magick::Image>>> next_post_frames = std::async(std::launch::async,
-                                                                                         &prefetch_images, &posts[0],
-                                                                                         height, width);
+    future<optional<vector<Magick::Image>>> next_post_frames = async(launch::async,
+                                                                     &prefetch_images, &posts[0],
+                                                                     height, width);
 
     for (size_t i = 0; i < posts.size(); i++) {
-        if (interrupt_received)
+        if (exit_canvas_update)
             break;
 
 
@@ -86,9 +92,8 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
         tmillis_t start_loading = GetTimeInMillis();
 
         optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
-        if (i != posts.size() - 1) {
-            next_post_frames = std::async(std::launch::async, &prefetch_images, &posts[i + 1], height, width);
-        }
+        if (i != posts.size() - 1)
+            next_post_frames = async(launch::async, &prefetch_images, &posts[i + 1], height, width);
 
         if (!frames_opt.has_value()) {
             error("Could not load image {}", item->url);
@@ -110,6 +115,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
         file_info->params = params;
         file_info->content_stream = new rgb_matrix::MemStreamIO();
         file_info->is_multi_frame = frames.size() > 1;
+
         rgb_matrix::StreamWriter out(file_info->content_stream);
         for (const auto &img: frames) {
             tmillis_t delay_time_us;
@@ -130,7 +136,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
         item->file_name.and_then([](const string &file_name) {
             remove(file_name.c_str());
 
-            return std::optional<string>();
+            return optional<string>();
         });
     }
 }
@@ -145,10 +151,10 @@ void DisplayAnimation(const FileInfo *file,
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
     const tmillis_t override_anim_delay = file->params.anim_delay_ms;
     for (int k = 0;
-         !interrupt_received && !skip_image
+         !exit_canvas_update && !skip_image
          && GetTimeInMillis() < end_time_ms; ++k) {
         uint32_t delay_us = 0;
-        while (!interrupt_received && !skip_image
+        while (!exit_canvas_update && !skip_image
                && GetTimeInMillis() <= end_time_ms
                && reader.GetNext(offscreen_canvas, &delay_us)) {
             const tmillis_t anim_delay_ms =

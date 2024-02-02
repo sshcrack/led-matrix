@@ -19,7 +19,7 @@ void SleepMillis(tmillis_t milli_seconds) {
 
     while(GetTimeInMillis() < end_time) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        if(skip_image) {
+        if(skip_image || exit_canvas_update) {
             debug("Skipping...");
             skip_image.store(false);
             break;
