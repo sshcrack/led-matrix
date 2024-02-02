@@ -62,7 +62,6 @@ bool download_image(const string &url_str, const string &tmp) {
 
         fclose(fp);
         if (res == CURLcode::CURLE_OK) {
-            debug("done");
             return true;
         } else {
             error("curl error " + to_string(res));

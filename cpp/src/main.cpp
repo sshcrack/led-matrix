@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     info("Hardware initialized successfully");
 
-    hardware->share().wait();
+    hardware->wait();
 
     info("Stopping http server");
 

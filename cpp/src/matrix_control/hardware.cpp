@@ -5,6 +5,7 @@
 #include "pixel_art.h"
 #include "image.h"
 #include "../interrupt.h"
+#include "../shared.h"
 
 #include <csignal>
 #include <vector>
@@ -27,20 +28,23 @@ int usage(const char *progname)
 }
 
 void hardware_mainloop(int page_end, RGBMatrix *matrix, FrameCanvas *canvas) {
-    vector<int> total_pages(page_end);
-    iota(total_pages.begin(), total_pages.end(), 1);
+    while(!interrupt_received) {
+        vector<int> total_pages(page_end);
+        iota(total_pages.begin(), total_pages.end(), 1);
 
-    shuffle(total_pages.begin(), total_pages.end(), random_device());
+        shuffle(total_pages.begin(), total_pages.end(), random_device());
 
-    cout << "Press Ctrl+C to quit" << endl;
-    while (!interrupt_received)
-    {
-        update_canvas(canvas, matrix, &total_pages);
+        cout << "Press Ctrl+C to quit" << endl;
+        while (!config->is_dirty() && !interrupt_received)
+        {
+            update_canvas(canvas, matrix, &total_pages);
+        }
+
     }
 
     // Finished. Shut down the RGB matrix.
     delete matrix;
-    error("Finished, shutting down...");
+    info("Finished, shutting down...");
 }
 
 expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
@@ -61,7 +65,6 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     if (matrix == nullptr)
         return unexpected(usage(argv[0]));
 
-    debug("Creating canvas");
     rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
 
     signal(SIGTERM, InterruptHandler);

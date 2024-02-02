@@ -23,8 +23,9 @@ bool LoadImageAndScale(const string& str_path,
     debug("Checking if exists");
     // Checking if first exists
 
-    filesystem::path first_frame = filesystem::path(path);
+    filesystem::path first_frame = filesystem::path(path.string());
     first_frame.replace_extension("0" + ext);
+
     if(filesystem::exists(first_frame)) {
         int i = 0;
         while(true) {
@@ -35,12 +36,10 @@ bool LoadImageAndScale(const string& str_path,
                 break;
             }
 
-            debug("Reading");
             Magick::Image img;
             img.read(curr);
 
             result->push_back(img);
-            debug("Next");
             i++;
         }
 
@@ -123,13 +122,15 @@ bool LoadImageAndScale(const string& str_path,
 
         img->scale(Magick::Geometry(target_width, target_height));
         img->crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
-        debug("Writing img to {}", curr.string());
-        img->write(curr);
-        debug("Written");
+        try {
+            img->write(curr);
+        } catch (std::exception& e) {
+            if (e.what()) *err_msg = e.what();
+            return false;
+        }
     }
 
 
-    debug("Return");
     return true;
 }
 
