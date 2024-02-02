@@ -3,6 +3,7 @@
 #include <Magick++.h>
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
+#include "shared.h"
 #include "matrix_control/hardware.h"
 
 using namespace spdlog;
@@ -11,6 +12,10 @@ using namespace std;
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
     spdlog::cfg::load_env_levels();
+    debug("Loading config");
+
+    config = new Config("config.json");
+
     debug("Starting mainloop");
     uint16_t port = 8080;
 
@@ -35,7 +40,7 @@ int main(int argc, char *argv[]) {
     }
     };
 
-    debug("Initializing...");
+    debug("Initializing... val: {}", config->get_str("test"));
     auto hardware = initialize_hardware(argc, argv);
 
     if (!hardware.has_value()) {
