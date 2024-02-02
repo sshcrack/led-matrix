@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="Pi (6ff93185-e5ed-425a-9c12-d590a4e1f4e8)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false" showDifferentInSync="false" showNewOnSourceInSync="false" showNewOnTargetInSync="false">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false" showDifferentInSync="false" showNewOnSourceInSync="false" showNewOnTargetInSync="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
-      <paths name="Pi (6ff93185-e5ed-425a-9c12-d590a4e1f4e8)">
+      <paths name="Pi (ea2b759e-0f88-4e69-8d7c-c43cfb5bdd7a)">
         <serverdata>
           <mappings>
-            <mapping deploy="/ledmat" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/pi/ledmat" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-wsl" />
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-pi-release" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
             <excludedPath local="true" path="$PROJECT_DIR$/build" />
-            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-wsl" />
-            <excludedPath path="//wsl.localhost/Debian/home/hendrik/ledmat/" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="Pi Root (ce905dc5-5940-436f-b48e-54dcd3732259)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/root/ledmat" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-pi-release" />
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-release" />
             <excludedPath local="true" path="$PROJECT_DIR$/build" />
           </excludedPaths>
         </serverdata>
