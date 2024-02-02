@@ -1,31 +1,67 @@
 #include <vector>
-#include <iostream>
 #include "led-matrix.h"
 #include "content-streamer.h"
 #include <Magick++.h>
+#include <filesystem>
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;
+using namespace std;
 
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
-bool LoadImageAndScale(const char *filename,
+bool LoadImageAndScale(const string& str_path,
                        int canvas_width, int canvas_height,
                        bool fill_width, bool fill_height,
                        bool contain_img,
-                       std::vector<Magick::Image> *result,
-                       std::string *err_msg) {
+                       vector<Magick::Image> *result,
+                       string *err_msg) {
+
+    filesystem::path path = filesystem::path(str_path);
+    string ext = path.extension();
+
+    debug("Checking if exists");
+    // Checking if first exists
+
+    filesystem::path first_frame = filesystem::path(path);
+    first_frame.replace_extension("0" + ext);
+    if(filesystem::exists(first_frame)) {
+        int i = 0;
+        while(true) {
+            filesystem::path curr = filesystem::path(path);
+            curr.replace_extension(to_string(i) + ext);
+
+            if(!filesystem::exists(curr)) {
+                break;
+            }
+
+            debug("Reading");
+            Magick::Image img;
+            img.read(curr);
+
+            result->push_back(img);
+            debug("Next");
+            i++;
+        }
+
+        if(!result->empty()) {
+            return true;
+        }
+
+        error("Error loading file, trying again");
+    }
+
     int target_width = canvas_width;
     int target_height = canvas_height;
 
-    std::vector<Magick::Image> frames;
+    vector<Magick::Image> frames;
     try {
-        readImages(&frames, filename);
+        readImages(&frames, path);
     } catch (std::exception& e) {
         if (e.what()) *err_msg = e.what();
         return false;
     }
-    if (frames.size() == 0) {
+    if (frames.empty()) {
         fprintf(stderr, "No image found.");
         return false;
     }
@@ -76,12 +112,24 @@ bool LoadImageAndScale(const char *filename,
         offset_x = (target_width - canvas_width) / 2;
     }
 
+
+
     debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width, canvas_height, offset_x, offset_y);
-    for (auto & i : *result) {
-        i.scale(Magick::Geometry(target_width, target_height));
-        i.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
+    for (int i = 0; i < result->size(); i++) {
+        filesystem::path curr = filesystem::path(path);
+        curr.replace_extension(to_string(i) + ext);
+
+        auto img = &result->at(i);
+
+        img->scale(Magick::Geometry(target_width, target_height));
+        img->crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
+        debug("Writing img to {}", curr.string());
+        img->write(curr);
+        debug("Written");
     }
 
+
+    debug("Return");
     return true;
 }
 

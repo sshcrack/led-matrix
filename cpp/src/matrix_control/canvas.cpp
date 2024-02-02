@@ -2,6 +2,7 @@
 #include "pixel_art.h"
 #include "../interrupt.h"
 #include "spdlog/spdlog.h"
+#include <filesystem>
 #include "image.h"
 #include "../utils.h"
 #include "../shared.h"
@@ -18,7 +19,15 @@ using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
+
+string root_dir = "images/";
+
 optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int width) {
+    debug("Checking if exists");
+    if(!filesystem::exists(root_dir)) {
+        filesystem::create_directory(root_dir);
+    }
+
     tmillis_t start_loading = GetTimeInMillis();
     item->fetch_link();
     if (!item->image.has_value() || !item->file_name.has_value()) {
@@ -27,16 +36,20 @@ optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int widt
     }
 
     string img_url = item->image.value();
-    string file_name = item->file_name.value();
+    string base_name = item->file_name.value();
+    string path = root_dir + base_name;
+
 
     // Downloading image first
-    download_image(img_url, file_name);
+    if(!filesystem::exists(path + "0")) {
+        download_image(img_url, path);
+    }
 
     vector<Magick::Image> frames;
     string err_msg;
 
     bool contain_img = true;
-    if (!LoadImageAndScale(file_name.c_str(), width, height, true, true, contain_img, &frames, &err_msg)) {
+    if (!LoadImageAndScale(path, width, height, true, true, contain_img, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
         return nullopt;
     }
