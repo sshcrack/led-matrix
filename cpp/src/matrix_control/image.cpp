@@ -23,25 +23,14 @@ bool LoadImageAndScale(const string& str_path,
     debug("Checking if exists");
     // Checking if first exists
 
-    filesystem::path first_frame = filesystem::path(path.string());
-    first_frame.replace_extension("0" + ext);
-
-    if(filesystem::exists(first_frame)) {
-        int i = 0;
-        while(true) {
-            filesystem::path curr = filesystem::path(path);
-            curr.replace_extension(to_string(i) + ext);
-
-            if(!filesystem::exists(curr)) {
-                break;
-            }
-
-            Magick::Image img;
-            img.read(curr);
-
-            result->push_back(img);
-            i++;
+    if(filesystem::exists(path)) {
+        try {
+            readImages(result, path);
+        } catch (exception ex) {
+            *err_msg = ex.what();
+            return false;
         }
+
 
         if(!result->empty()) {
             return true;
@@ -114,20 +103,17 @@ bool LoadImageAndScale(const string& str_path,
 
 
     debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width, canvas_height, offset_x, offset_y);
-    for (int i = 0; i < result->size(); i++) {
-        filesystem::path curr = filesystem::path(path);
-        curr.replace_extension(to_string(i) + ext);
+    for (auto & img : *result) {
+        img.scale(Magick::Geometry(target_width, target_height));
+        img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
+    }
 
-        auto img = &result->at(i);
 
-        img->scale(Magick::Geometry(target_width, target_height));
-        img->crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
-        try {
-            img->write(curr);
-        } catch (std::exception& e) {
-            if (e.what()) *err_msg = e.what();
-            return false;
-        }
+    try {
+        writeImages(result->begin(), result->end(), path);
+    } catch (std::exception& e) {
+        if (e.what()) *err_msg = e.what();
+        return false;
     }
 
 

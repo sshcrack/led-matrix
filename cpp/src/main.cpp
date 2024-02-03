@@ -14,24 +14,26 @@ int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     debug("Loading config");
 
-    config = new Config("config.json");
+    config = new Config::MainConfig("config.data");
 
     debug("Starting mainloop");
     uint16_t port = 8080;
+
+    string host = "0.0.0.0";
 
     server_t server{
             restinio::own_io_context(),
             restinio::server_settings_t<>{}
                     .port(port)
-                    .address("localhost")
+                    .address(host)
                     .request_handler(req_handler)
     };
 
-    thread control_thread{[&server, &port] {
+    thread control_thread{[&server, &port, &host] {
         // Use restinio::run to launch RESTinio's server.
         // This run() will return only if server stopped from
         // some other thread.
-        info("Listening on http://localhost:{}/", port);
+        info("Listening on http://{}:{}/", host, port);
         restinio::run(restinio::on_thread_pool(
                 1, // Count of worker threads for RESTinio.
                 restinio::skip_break_signal_handling(), // Don't react to Ctrl+C.
@@ -40,7 +42,7 @@ int main(int argc, char *argv[]) {
     }
     };
 
-    debug("Initializing... val: {}", config->get_str("test"));
+    debug("Initializing...");
     auto hardware = initialize_hardware(argc, argv);
 
     if (!hardware.has_value()) {

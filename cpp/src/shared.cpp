@@ -1,6 +1,6 @@
 #include "shared.h"
-#include "Config.h"
+#include "config/MainConfig.h"
 
 std::atomic<bool> skip_image = false;
 std::atomic<bool> exit_canvas_update = false;
-Config* config = nullptr;
+Config::MainConfig* config = nullptr;

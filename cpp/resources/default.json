@@ -2,7 +2,24 @@
   "groups": {
     "DEFAULT": {
       "name": "Random Pages",
-      "pages":  [1, -1]
+      "images": [
+        {
+          "type": "pages",
+          "argument": {
+            "begin": 0,
+            "end": -1
+          }
+        }
+      ]
+    },
+    "Pupp": {
+      "name": "Pupp",
+      "images": [
+        {
+          "type": "collection",
+          "argument": ["dog.gif"]
+        }
+      ]
     }
   },
   "curr": "DEFAULT"
