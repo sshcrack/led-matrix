@@ -70,7 +70,7 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    std::optional<int> page_end_opt = get_page_size();
+    std::optional<int> page_end_opt = ScrapedPost::get_pages();
     if(!page_end_opt.has_value()) {
         error("could not convert page");
         return unexpected(-1);

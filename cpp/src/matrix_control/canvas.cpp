@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 #include <filesystem>
 #include "image.h"
+#include "post.h"
 #include "../utils.h"
 #include "../shared.h"
 #include <vector>
@@ -19,68 +20,18 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
 
-string root_dir = "images/";
-
-optional<vector<Magick::Image>> prefetch_images(Post *item, int height, int width) {
-    if (!filesystem::exists(root_dir)) {
-        try {
-            auto res = filesystem::create_directory(root_dir);
-            if(!res) {
-                error("Could not create directory at {}.", root_dir);
-                exit(-1);
-            }
-        } catch (exception& ex) {
-            error("Could not create directory at {} with exception: {}", root_dir, ex.what());
-            exit(-1);
-        }
-    }
-
-    tmillis_t start_loading = GetTimeInMillis();
-    item->fetch_link();
-    if (!item->image.has_value() || !item->file_name.has_value()) {
-        error("Could not load image {}", item->url);
-        return nullopt;
-    }
-
-    string img_url = item->image.value();
-    string base_name = item->file_name.value();
-    string path = root_dir + base_name;
-
-
-    // Downloading image first
-    if (!filesystem::exists(path + "0"))
-        download_image(img_url, path);
-
-    vector<Magick::Image> frames;
-    string err_msg;
-
-    bool contain_img = true;
-    if (!LoadImageAndScale(path, width, height, true, true, contain_img, &frames, &err_msg)) {
-        error("Error loading image: {}", err_msg);
-        return nullopt;
-    }
-
-
-    optional<vector<Magick::Image>> res;
-    res = frames;
-    debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-
-    return res;
-}
-
-
 void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pages) {
     const int height = matrix->height();
     const int width = matrix->width();
 
 
-    int curr = (*total_pages)[0];
+    int curr_page = (*total_pages)[0];
     total_pages->erase(total_pages->begin());
-    total_pages->push_back(curr);
+    total_pages->push_back(curr_page);
 
-    auto posts = get_posts(curr);
+    auto posts = ScrapedPost::get_posts(curr_page);
     future<optional<vector<Magick::Image>>> next_post_frames = async(launch::async,
-                                                                     &prefetch_images, &posts[0],
+                                                                     &Post::fetch_images, &posts[0],
                                                                      height, width);
 
     for (size_t i = 0; i < posts.size(); i++) {
@@ -88,15 +39,15 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
             break;
 
 
-        Post *item = &posts[i];
+        ScrapedPost *item = &posts[i];
         tmillis_t start_loading = GetTimeInMillis();
 
         optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
         if (i != posts.size() - 1)
-            next_post_frames = async(launch::async, &prefetch_images, &posts[i + 1], height, width);
+            next_post_frames = async(launch::async, &Post::fetch_images, &posts[i + 1], height, width);
 
         if (!frames_opt.has_value()) {
-            error("Could not load image {}", item->url);
+            error("Could not load image {}", item->get_post_url());
             continue;
         }
 
@@ -130,14 +81,8 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
 
 
         info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", item->url, item->image.value_or("(NO_URL)"));
+        info("Showing animation for {} ({})", item->get_post_url(), item->get_image());
         DisplayAnimation(file_info, matrix, canvas);
-
-        item->file_name.and_then([](const string &file_name) {
-            remove(file_name.c_str());
-
-            return optional<string>();
-        });
     }
 }
 
