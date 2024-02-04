@@ -25,8 +25,8 @@ namespace Config {
         bool is_dirty();
 
         string get_curr_id();
-        ConfigData::Group get_curr();
-        map<string, ConfigData::Group> get_groups();
+        ConfigData::Preset get_curr();
+        map<string, ConfigData::Preset> get_groups();
 
         void setCurr(string id);
         bool save();

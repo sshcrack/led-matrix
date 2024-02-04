@@ -16,12 +16,12 @@ namespace ConfigData {
         j = p->to_json();
     }
 
-    void to_json(json& j, const Group& p)  {
+    void to_json(json& j, const Preset& p)  {
         spdlog::debug("To json group", to_string(j));
         vector<json> image_json;
 
-        image_json.reserve(p.images.size());
-        for (const auto &item: p.images)
+        image_json.reserve(p.categories.size());
+        for (const auto &item: p.categories)
             image_json.push_back(item->to_json());
 
         j = json{{"name", p.name, "images", image_json}};
@@ -38,7 +38,7 @@ namespace ConfigData {
         j.at("groups").get_to(p.groups);
     }
 
-    void from_json(const json& j, Group& p) {
+    void from_json(const json& j, Preset& p) {
         spdlog::debug("from json group", to_string(j));
         j.at("name").get_to(p.name);
 
@@ -51,7 +51,7 @@ namespace ConfigData {
         for (const auto &item: image_json)
             images.push_back(ImageTypes::General::from_json(item));
 
-        p.images = images;
+        p.categories = images;
     }
 
     void from_json(const json& j, ImageTypes::General*& p) {
@@ -59,7 +59,7 @@ namespace ConfigData {
         p = ImageTypes::General::from_json(j);
     }
 
-    void Group::randomize() {
-        std::shuffle(this->images.begin(), this->images.end(), std::random_device());
+    void Preset::randomize() {
+        std::shuffle(this->categories.begin(), this->categories.end(), std::random_device());
     }
 }
