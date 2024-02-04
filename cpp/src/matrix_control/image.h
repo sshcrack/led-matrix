@@ -1,6 +1,9 @@
+#pragma once
+
 #include <vector>
 #include <Magick++.h>
 #include "led-matrix.h"
+#include "../header_fix/fix-content-streamer.h"
 #include <magick/image.h>
 using namespace std;
 

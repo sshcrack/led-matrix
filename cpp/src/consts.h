@@ -1,9 +1,8 @@
+#pragma once
+
 #include <string>
+#include <atomic>
 
-#ifndef MAIN_CONSTS_H
-#define MAIN_CONSTS_H
 namespace Constants {
-    std::string root_dir = "images/";
+    const static std::string root_dir = "images/";
 }
-
-#endif //MAIN_CONSTS_H

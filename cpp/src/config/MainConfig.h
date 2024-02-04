@@ -1,5 +1,4 @@
-#ifndef MAIN_MAINCONFIG_H
-#define MAIN_MAINCONFIG_H
+#pragma once
 
 #include <shared_mutex>
 #include <nlohmann/json.hpp>
@@ -38,11 +37,8 @@ namespace Config {
         bool is_dirty();
 
         string get_curr();
-        map<string, ConfigData::ImageType> get_groups();
+        map<string, ConfigData::Groups> get_groups();
 
         void setCurr(string id);
     };
 }
-
-
-#endif //MAIN_MAINCONFIG_H

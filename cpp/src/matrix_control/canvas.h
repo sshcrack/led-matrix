@@ -1,5 +1,7 @@
-#include "content-streamer.h"
+#pragma once
+
 #include "led-matrix.h"
+#include "../header_fix/fix-content-streamer.h"
 #include "../utils.h"
 #include <vector>
 

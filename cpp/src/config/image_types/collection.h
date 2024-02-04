@@ -1,5 +1,4 @@
-#ifndef MAIN_COLLECTION_H
-#define MAIN_COLLECTION_H
+#pragma once
 
 #include "general.h"
 namespace ImageTypes {
@@ -11,10 +10,8 @@ namespace ImageTypes {
     public:
         optional<Post> get_next_image() override;
         void flush() override;
+        json to_json();
 
         explicit Collection(const json& arguments);
     };
 }
-
-
-#endif //MAIN_COLLECTION_H

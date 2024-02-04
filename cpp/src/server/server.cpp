@@ -11,7 +11,7 @@ using namespace spdlog;
 using namespace restinio;
 using json = nlohmann::json;
 
-void reply_with_json(const request_handle_t &req, const json j, http_status_line_t status = status_ok()) {
+void reply_with_json(const request_handle_t &req, const json& j, http_status_line_t status = status_ok()) {
     req->create_response(std::move(status))
             .append_header_date_field()
             .append_header(http_field::content_type, "application/data; charset=utf-8")

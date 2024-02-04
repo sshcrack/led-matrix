@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     debug("Loading config");
 
+    //TODO fix issues for height not being available when fetching images
     config = new Config::MainConfig("config.data");
 
     debug("Starting mainloop");

@@ -1,11 +1,9 @@
+#pragma once
 
 #include <string>
 #include <optional>
 #include <Magick++.h>
 #include <vector>
-
-#ifndef MAIN_POST_H
-#define MAIN_POST_H
 
 using namespace std;
 class Post
@@ -20,8 +18,8 @@ public:
     }
 
     string get_filename();
-    string get_image();
-    optional<vector<Magick::Image>> fetch_images(int width, int height);
+    string get_image_url();
+    optional<vector<Magick::Image>> process_images(int width, int height);
 };
 
 class ScrapedPost: public Post
@@ -42,6 +40,3 @@ public:
     static std::vector<ScrapedPost> get_posts(int page);
     static std::optional<int> get_pages();
 };
-
-
-#endif //MAIN_POST_H

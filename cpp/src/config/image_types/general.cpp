@@ -1,13 +1,22 @@
 #include "general.h"
+#include "pages.h"
+#include "collection.h"
 #include <stdexcept>
-/*
-optional<Post> ImageTypes::General::get_next_image() {
-    throw std::logic_error("Function not yet implemented");
+#include "fmt/core.h"
+
+
+ImageTypes::General::General(const json& arguments) {
 }
 
-void ImageTypes::General::flush() {
-    throw std::logic_error("Function not yet implemented");
-}
-*/
-ImageTypes::General::General(const json& arguments) {
+ImageTypes::General* ImageTypes::General::from_json(const json &j) {
+    string t = j["type"].get<string>();
+    const json& arguments = j["arguments"];
+
+    if(t == "pages")
+        return new ImageTypes::Pages(arguments);
+
+    if(t == "collection")
+        return new ImageTypes::Collection(arguments);
+
+    throw std::runtime_error(fmt::format("Invalid type {}", t));
 }

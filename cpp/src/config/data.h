@@ -1,20 +1,15 @@
-#ifndef MAIN_DATA_H
-#define MAIN_DATA_H
+#pragma once
 
+#include "image_types/general.h"
 #include <nlohmann/json.hpp>
 using namespace std;
 using json = nlohmann::json;
 
 
 namespace ConfigData {
-    struct ImageType {
-        string img_type;
-        vector<json> arguments;
-    };
-
     struct Groups {
         string name;
-        vector<ImageType> images;
+        vector<ImageTypes::General*> images;
     };
 
     struct Root {
@@ -23,11 +18,10 @@ namespace ConfigData {
     };
 
     void to_json(json& j, const Root& p);
-    void to_json(json& j, const ImageType& p);
+    void to_json(json& j, const Groups& p);
+    void to_json(json& j, const ImageTypes::General*& p);
 
     void from_json(const json& j, Root& p);
-    void from_json(const json& j, ImageType& p);
+    void from_json(const json& j, Groups& p);
+    void from_json(const json& j, ImageTypes::General*& p);
 }
-
-
-#endif //MAIN_DATA_H
