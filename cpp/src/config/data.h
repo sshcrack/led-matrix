@@ -7,21 +7,24 @@ using json = nlohmann::json;
 
 
 namespace ConfigData {
-    struct Groups {
+    struct Group {
         string name;
         vector<ImageTypes::General*> images;
+
+    public:
+        void randomize();
     };
 
     struct Root {
-        map<string, Groups> groups;
+        map<string, Group> groups;
         string curr;
     };
 
     void to_json(json& j, const Root& p);
-    void to_json(json& j, const Groups& p);
+    void to_json(json& j, const Group& p);
     void to_json(json& j, const ImageTypes::General*& p);
 
     void from_json(const json& j, Root& p);
-    void from_json(const json& j, Groups& p);
+    void from_json(const json& j, Group& p);
     void from_json(const json& j, ImageTypes::General*& p);
 }

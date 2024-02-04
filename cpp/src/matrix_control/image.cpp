@@ -18,14 +18,17 @@ bool LoadImageAndScale(const string& str_path,
                        string *err_msg) {
 
     filesystem::path path = filesystem::path(str_path);
+    filesystem::path img_processed = path;
+
     string ext = path.extension();
+    img_processed.replace_extension("_p" + ext);
 
     debug("Checking if exists");
     // Checking if first exists
 
-    if(filesystem::exists(path)) {
+    if(filesystem::exists(img_processed)) {
         try {
-            readImages(result, path);
+            readImages(result, img_processed);
         } catch (exception ex) {
             *err_msg = ex.what();
             return false;
@@ -110,7 +113,7 @@ bool LoadImageAndScale(const string& str_path,
 
 
     try {
-        writeImages(result->begin(), result->end(), path);
+        writeImages(result->begin(), result->end(), img_processed);
     } catch (std::exception& e) {
         if (e.what()) *err_msg = e.what();
         return false;

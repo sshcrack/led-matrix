@@ -4,6 +4,7 @@
 
 #include "data.h"
 #include <nlohmann/json.hpp>
+#include <random>
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -15,7 +16,7 @@ namespace ConfigData {
         j = p->to_json();
     }
 
-    void to_json(json& j, const Groups& p)  {
+    void to_json(json& j, const Group& p)  {
         spdlog::debug("To json group", to_string(j));
         vector<json> image_json;
 
@@ -37,7 +38,7 @@ namespace ConfigData {
         j.at("groups").get_to(p.groups);
     }
 
-    void from_json(const json& j, Groups& p) {
+    void from_json(const json& j, Group& p) {
         spdlog::debug("from json group", to_string(j));
         j.at("name").get_to(p.name);
 
@@ -56,5 +57,9 @@ namespace ConfigData {
     void from_json(const json& j, ImageTypes::General*& p) {
         spdlog::debug("from json imgtype", to_string(j));
         p = ImageTypes::General::from_json(j);
+    }
+
+    void Group::randomize() {
+        std::shuffle(this->images.begin(), this->images.end(), std::random_device());
     }
 }

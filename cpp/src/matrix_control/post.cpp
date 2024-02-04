@@ -128,17 +128,17 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     }
 
     tmillis_t start_loading = GetTimeInMillis();
-    string filename = get_filename();
+    string file_path = root_dir + get_filename();
 
     // Downloading image first
-    if (!filesystem::exists(filename))
-        download_image(image_url, filename);
+    if (!filesystem::exists(file_path))
+        download_image(image_url, file_path);
 
     vector<Magick::Image> frames;
     string err_msg;
 
     bool contain_img = true;
-    if (!LoadImageAndScale(filename, width, height, true, true, contain_img, &frames, &err_msg)) {
+    if (!LoadImageAndScale(file_path, width, height, true, true, contain_img, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
         return nullopt;
     }
