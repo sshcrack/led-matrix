@@ -3,15 +3,11 @@
 #include <vector>
 #include "../consts.h"
 #include "cpr/cpr.h"
-#include "libxml/HTMLparser.h"
 #include "libxml/xpath.h"
 #include <iostream>
 #include <optional>
-#include <curl/curl.h>
-#include <cstring>
 #include <Magick++.h>
 #include "image.h"
-#include <optional>
 #include "../utils.h"
 #include "spdlog/spdlog.h"
 
@@ -113,11 +109,11 @@ string Post::get_filename() {
     return this->file_name;
 }
 
-string Post::get_image() {
+string Post::get_image_url() {
     return this->image_url;
 }
 
-optional<vector<Magick::Image>> Post::fetch_images(int width, int height) {
+optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     if (!filesystem::exists(root_dir)) {
         try {
             auto res = filesystem::create_directory(root_dir);
@@ -132,16 +128,17 @@ optional<vector<Magick::Image>> Post::fetch_images(int width, int height) {
     }
 
     tmillis_t start_loading = GetTimeInMillis();
+    string filename = get_filename();
 
     // Downloading image first
-    if (!filesystem::exists(file_name))
-        download_image(image_url, file_name);
+    if (!filesystem::exists(filename))
+        download_image(image_url, filename);
 
     vector<Magick::Image> frames;
     string err_msg;
 
     bool contain_img = true;
-    if (!LoadImageAndScale(file_name, width, height, true, true, contain_img, &frames, &err_msg)) {
+    if (!LoadImageAndScale(filename, width, height, true, true, contain_img, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
         return nullopt;
     }

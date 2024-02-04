@@ -1,6 +1,4 @@
-#ifndef MAIN_PAGES_H
-#define MAIN_PAGES_H
-
+#pragma once
 
 #include "general.h"
 namespace ImageTypes {
@@ -13,8 +11,7 @@ namespace ImageTypes {
     public:
         void flush() override;
         optional<Post> get_next_image() override;
+        const json to_json();
         explicit Pages(const json& arguments);
     };
 }
-
-#endif //MAIN_PAGES_H

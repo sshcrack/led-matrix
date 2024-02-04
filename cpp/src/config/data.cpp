@@ -9,15 +9,22 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace ConfigData {
-    void to_json(json& j, const ImageType& p)  {
-        j = json{{"name", p.img_type, "arguments", p.arguments}};
+    void to_json(json& j, const ImageTypes::General*& p)  {
+        j = p->to_json();
+    }
+
+    void to_json(json& j, const Groups& p)  {
+        vector<json> image_json;
+
+        image_json.reserve(p.images.size());
+        for (const auto &item: p.images)
+            image_json.push_back(item->to_json());
+
+        j = json{{"name", p.name, "images", image_json}};
     }
 
     void to_json(json& j, const Root& p) {
-        json t;
-        to_json(t, p.groups);
-
-        j = json{{"groups", t}, {"curr", p.curr}};
+        j = json{{"groups", p.groups}, {"curr", p.curr}};
     }
 
     void from_json(const json& j, Root& p) {
@@ -25,8 +32,22 @@ namespace ConfigData {
         j.at("groups").get_to(p.groups);
     }
 
-    void from_json(const json& j, ImageType& p) {
-        j.at("arguments").get_to(p.arguments);
-        j.at("name").get_to(p.img_type);
+    void from_json(const json& j, Groups& p) {
+        j.at("name").get_to(p.name);
+
+        vector<json> image_json;
+        j.at("images").get_to(image_json);
+
+        vector<ImageTypes::General*> images;
+        images.reserve(image_json.size());
+
+        for (const auto &item: image_json)
+            images.push_back(ImageTypes::General::from_json(item));
+
+        p.images = images;
+    }
+
+    void from_json(const json& j, ImageTypes::General*& p) {
+        p = ImageTypes::General::from_json(j);
     }
 }

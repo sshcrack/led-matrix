@@ -1,8 +1,6 @@
 #include "canvas.h"
-#include "pixel_art.h"
-#include "spdlog/spdlog.h"
-#include <filesystem>
 #include "image.h"
+#include "spdlog/spdlog.h"
 #include "post.h"
 #include "../utils.h"
 #include "../shared.h"
@@ -31,7 +29,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
 
     auto posts = ScrapedPost::get_posts(curr_page);
     future<optional<vector<Magick::Image>>> next_post_frames = async(launch::async,
-                                                                     &Post::fetch_images, &posts[0],
+                                                                     &Post::process_images, &posts[0],
                                                                      height, width);
 
     for (size_t i = 0; i < posts.size(); i++) {
@@ -44,7 +42,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
 
         optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
         if (i != posts.size() - 1)
-            next_post_frames = async(launch::async, &Post::fetch_images, &posts[i + 1], height, width);
+            next_post_frames = async(launch::async, &Post::process_images, &posts[i + 1], height, width);
 
         if (!frames_opt.has_value()) {
             error("Could not load image {}", item->get_post_url());
@@ -81,7 +79,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pa
 
 
         info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", item->get_post_url(), item->get_image());
+        info("Showing animation for {} ({})", item->get_post_url(), item->get_image_url());
         DisplayAnimation(file_info, matrix, canvas);
     }
 }

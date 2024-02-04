@@ -3,7 +3,6 @@
 #include "led-matrix.h"
 #include "canvas.h"
 #include "pixel_art.h"
-#include "image.h"
 #include "../interrupt.h"
 #include "../shared.h"
 

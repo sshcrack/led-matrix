@@ -20,15 +20,15 @@ namespace Config {
         return this->data.curr;
     }
 
-    map<string, ConfigData::ImageType> MainConfig::get_groups() {
-        shared_lock<shared_mutex> lock(this->data_mutex);
-
-        return this->data.groups;
-    }
-
     void MainConfig::setCurr(string id) {
         unique_lock<shared_mutex> lock(this->data_mutex);
 
         this->data.curr = std::move(id);
+        this->mark_dirty(true);
+    }
+
+    map<string, ConfigData::Groups> MainConfig::get_groups() {
+        shared_lock<shared_mutex> lock(this->data_mutex);
+        return this->data.groups;
     }
 }

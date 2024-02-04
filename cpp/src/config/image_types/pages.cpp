@@ -22,21 +22,27 @@ void ImageTypes::Pages::flush() {
 }
 
 optional<Post> ImageTypes::Pages::get_next_image() {
-    if(curr_posts.empty() && total_pages.empty())
-        return nullopt;
+    while(!curr_posts.empty() || !total_pages.empty()) {
+        if(curr_posts.empty()) {
+            int next_page = total_pages[0];
+            total_pages.erase(total_pages.begin());
 
-    if(curr_posts.empty()) {
-        int next_page = total_pages[0];
-        total_pages.erase(total_pages.begin());
+            curr_posts = ScrapedPost::get_posts(next_page);
+            if(curr_posts.empty())
+                return nullopt;
+        }
 
-        curr_posts = ScrapedPost::get_posts(next_page);
-        if(curr_posts.empty())
-            return nullopt;
+        ScrapedPost curr = curr_posts[0];
+        curr_posts.erase(curr_posts.begin());
+
+        bool success = curr.fetch_link();
+        if(!success)
+            continue;
+
+        return curr;
     }
 
-    ScrapedPost curr = curr_posts[0];
-    curr_posts.erase(curr_posts.begin());
-
+    return nullopt;
 }
 
 ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
@@ -56,4 +62,16 @@ ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
     page_end = p_end;
 
     total_pages = generate_rand_pages(page_begin, page_end);
+}
+
+const json ImageTypes::Pages::to_json() {
+    json j =  json();
+    j["type"] = "pages";
+    json args = json();
+    args["begin"] = page_begin;
+    args["end"] = page_end;
+
+    j["arguments"] = args;
+
+    return j;
 }

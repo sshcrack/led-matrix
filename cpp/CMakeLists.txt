@@ -22,24 +22,7 @@ file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
 # Add an executable with the above sources
-add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES} ${RWLOCK_HEADER_FILES}
-        src/shared.cpp
-        src/shared.h
-        src/config/MainConfig.cpp
-        src/config/MainConfig.h
-        resources/resources.h.in
-        src/config/data.cpp
-        src/config/data.h
-        src/config/image_types/pages.cpp
-        src/config/image_types/pages.h
-        src/config/image_types/collection.cpp
-        src/config/image_types/collection.h
-        src/config/image_types/general.cpp
-        src/config/image_types/general.h
-        src/matrix_control/post.cpp
-        src/matrix_control/post.h
-        src/consts.h
-)
+add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES} ${RWLOCK_HEADER_FILES})
 
 # ImageMagick
 
@@ -80,3 +63,7 @@ target_link_libraries(main PRIVATE restinio::restinio)
 # JSON
 find_package(nlohmann_json 3.2.0 REQUIRED)
 target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+# Fmt
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(main PRIVATE fmt::fmt)
