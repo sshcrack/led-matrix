@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     debug("Loading config");
 
     //TODO fix issues for height not being available when fetching images
-    config = new Config::MainConfig("config.data");
+    config = new Config::MainConfig("config.json");
 
     debug("Starting mainloop");
     uint16_t port = 8080;

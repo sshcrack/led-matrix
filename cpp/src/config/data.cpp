@@ -4,16 +4,19 @@
 
 #include "data.h"
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace ConfigData {
     void to_json(json& j, const ImageTypes::General*& p)  {
+        spdlog::debug("To json imgtype", to_string(j));
         j = p->to_json();
     }
 
     void to_json(json& j, const Groups& p)  {
+        spdlog::debug("To json group", to_string(j));
         vector<json> image_json;
 
         image_json.reserve(p.images.size());
@@ -24,15 +27,18 @@ namespace ConfigData {
     }
 
     void to_json(json& j, const Root& p) {
+        spdlog::debug("To json root", to_string(j));
         j = json{{"groups", p.groups}, {"curr", p.curr}};
     }
 
     void from_json(const json& j, Root& p) {
+        spdlog::debug("from json root", to_string(j));
         j.at("curr").get_to(p.curr);
         j.at("groups").get_to(p.groups);
     }
 
     void from_json(const json& j, Groups& p) {
+        spdlog::debug("from json group", to_string(j));
         j.at("name").get_to(p.name);
 
         vector<json> image_json;
@@ -48,6 +54,7 @@ namespace ConfigData {
     }
 
     void from_json(const json& j, ImageTypes::General*& p) {
+        spdlog::debug("from json imgtype", to_string(j));
         p = ImageTypes::General::from_json(j);
     }
 }

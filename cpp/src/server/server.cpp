@@ -14,8 +14,9 @@ using json = nlohmann::json;
 void reply_with_json(const request_handle_t &req, const json& j, http_status_line_t status = status_ok()) {
     req->create_response(std::move(status))
             .append_header_date_field()
-            .append_header(http_field::content_type, "application/data; charset=utf-8")
-            .set_body(to_string(j));
+            .append_header(http_field::content_type, "application/json; charset=utf-8")
+            .set_body(to_string(j))
+            .done();
 }
 
 void reply_with_error(const request_handle_t &req, const string msg, http_status_line_t status = status_bad_request()) {
@@ -31,7 +32,7 @@ request_handling_status_t req_handler(const request_handle_t &req) {
     if (http_method_get() != req->header().method())
         return request_rejected();
 
-    auto target = req->header().request_target();
+    auto target = req->header().path();
     const auto qp = restinio::parse_query(req->header().query());
 
     if (target == "/skip") {
@@ -41,20 +42,27 @@ request_handling_status_t req_handler(const request_handle_t &req) {
         return request_accepted();
     }
 
+    debug("Target is {}", target);
     if (target == "/preset") {
+        debug("Has id: {}", qp.has("id"));
         if (!qp.has("id")) {
             reply_with_error(req, "No Id given");
             return request_accepted();
         }
 
         string id { qp["id"] };
+        debug("Id is {}, finding", id);
         auto groups = config->get_groups();
         if (groups.find(id) == groups.end()) {
+            debug("Error return", id);
             reply_with_error(req, "Invalid id");
             return request_accepted();
         }
 
+        debug("Id {} exists in groups.", id);
         config->setCurr(id);
+        reply_success(req);
+        return request_accepted();
     }
 
     return request_rejected();
