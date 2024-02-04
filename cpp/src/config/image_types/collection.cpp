@@ -1,15 +1,19 @@
 #include "collection.h"
 #include "random"
+#include "spdlog/spdlog.h"
 
 optional<Post> ImageTypes::Collection::get_next_image() {
-    if(images.empty())
+    if(images.empty()) {
+        spdlog::debug("Empty, returning...");
         return nullopt;
+    }
 
     auto curr_img = images[0];
     images.erase(images.begin());
 
     already_shown.push_back(curr_img);
 
+    spdlog::debug("Returning curr img {}", curr_img.get_image_url());
     return curr_img;
 }
 
@@ -26,8 +30,10 @@ ImageTypes::Collection::Collection(const json &arguments) : General(arguments) {
     vector<string> imgs = arguments.template get<vector<string>>();
     images.reserve(imgs.size());
 
-    for (const auto &item: imgs)
+    for (const auto &item: imgs) {
+        spdlog::debug("Adding {} to group", item);
         images.push_back(*new Post(item));
+    }
 }
 
 json ImageTypes::Collection::to_json() {

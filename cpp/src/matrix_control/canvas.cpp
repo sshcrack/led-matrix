@@ -18,70 +18,79 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
 
-void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix, vector<int> *total_pages) {
+void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix) {
     const int height = matrix->height();
     const int width = matrix->width();
 
+    auto curr_setting = config->get_curr();
+    curr_setting.randomize();
 
-    int curr_page = (*total_pages)[0];
-    total_pages->erase(total_pages->begin());
-    total_pages->push_back(curr_page);
-
-    auto posts = ScrapedPost::get_posts(curr_page);
-    future<optional<vector<Magick::Image>>> next_post_frames = async(launch::async,
-                                                                     &Post::process_images, &posts[0],
-                                                                     height, width);
-
-    for (size_t i = 0; i < posts.size(); i++) {
-        if (exit_canvas_update)
+    debug("Randomizing with total of {} image categories", curr_setting.images.size());
+    for (const auto &img_category: curr_setting.images) {
+        if(exit_canvas_update) {
+            debug("Breaking");
             break;
-
-
-        ScrapedPost *item = &posts[i];
-        tmillis_t start_loading = GetTimeInMillis();
-
-        optional<vector<Magick::Image>> frames_opt = next_post_frames.get();
-        if (i != posts.size() - 1)
-            next_post_frames = async(launch::async, &Post::process_images, &posts[i + 1], height, width);
-
-        if (!frames_opt.has_value()) {
-            error("Could not load image {}", item->get_post_url());
-            continue;
         }
 
+        debug("Getting next...");
+        future<optional<Post>> next_img = async(launch::async, &ImageTypes::General::get_next_image, img_category);
+        while(!exit_canvas_update) {
+            debug("start loop");
+            tmillis_t start_loading = GetTimeInMillis();
 
-        FileInfo *file_info;
-        vector<Magick::Image> frames = frames_opt.value();
+            optional<Post> fut = next_img.get();
+            if(!fut.has_value())
+                break;
 
-        ImageParams params = ImageParams();
-        if (frames.size() > 1) {
-            params.anim_duration_ms = 15000;
-        } else {
-            params.wait_ms = 5000;
-        }
+            Post next_p = fut.value();
+            next_img = async(launch::async, &ImageTypes::General::get_next_image, img_category);
 
-        file_info = new FileInfo();
-        file_info->params = params;
-        file_info->content_stream = new rgb_matrix::MemStreamIO();
-        file_info->is_multi_frame = frames.size() > 1;
-
-        rgb_matrix::StreamWriter out(file_info->content_stream);
-        for (const auto &img: frames) {
-            tmillis_t delay_time_us;
-            if (file_info->is_multi_frame) {
-                delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
-            } else {
-                delay_time_us = file_info->params.wait_ms * 1000;  // single image.
+            auto frames_opt = next_p.process_images(width, height);
+            if(!frames_opt.has_value()) {
+                error("Could not load image {}", next_p.get_image_url());
+                //TODO Optimize here, exclude not loadable images
+                continue;
             }
-            if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
-            StoreInStream(img, delay_time_us, true, canvas, &out);
+
+
+            FileInfo *file_info;
+            vector<Magick::Image> frames = frames_opt.value();
+
+            ImageParams params = ImageParams();
+            if (frames.size() > 1) {
+                params.anim_duration_ms = 15000;
+            } else {
+                params.wait_ms = 5000;
+            }
+
+            file_info = new FileInfo();
+            file_info->params = params;
+            file_info->content_stream = new rgb_matrix::MemStreamIO();
+            file_info->is_multi_frame = frames.size() > 1;
+
+            rgb_matrix::StreamWriter out(file_info->content_stream);
+            for (const auto &img: frames) {
+                tmillis_t delay_time_us;
+                if (file_info->is_multi_frame) {
+                    delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
+                } else {
+                    delay_time_us = file_info->params.wait_ms * 1000;  // single image.
+                }
+                if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
+                StoreInStream(img, delay_time_us, true, canvas, &out);
+            }
+
+
+            info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+            info("Showing animation for {} ({})", next_p.get_filename(), next_p.get_image_url());
+            DisplayAnimation(file_info, matrix, canvas);
+            debug("End display");
         }
-
-
-        info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        info("Showing animation for {} ({})", item->get_post_url(), item->get_image_url());
-        DisplayAnimation(file_info, matrix, canvas);
+        debug("Flushing");
+        img_category->flush();
+        debug("Done");
     }
+    debug("End of func");
 }
 
 
@@ -100,6 +109,7 @@ void DisplayAnimation(const FileInfo *file,
         while (!exit_canvas_update && !skip_image
                && GetTimeInMillis() <= end_time_ms
                && reader.GetNext(offscreen_canvas, &delay_us)) {
+            debug("Showing loop with {}", exit_canvas_update.load(memory_order_acq_rel));
             const tmillis_t anim_delay_ms =
                     override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
             const tmillis_t start_wait_ms = GetTimeInMillis();
@@ -108,6 +118,7 @@ void DisplayAnimation(const FileInfo *file,
             const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
             SleepMillis(anim_delay_ms - time_already_spent);
         }
+        debug("Rewind with {}", exit_canvas_update.load(memory_order_acq_rel));
         reader.Rewind();
     }
 }

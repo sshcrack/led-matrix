@@ -36,8 +36,9 @@ namespace Config {
         void mark_dirty(bool dirty_local);
         bool is_dirty();
 
-        string get_curr();
-        map<string, ConfigData::Groups> get_groups();
+        string get_curr_id();
+        ConfigData::Group get_curr();
+        map<string, ConfigData::Group> get_groups();
 
         void setCurr(string id);
     };

@@ -7,12 +7,8 @@
 #include "../shared.h"
 
 #include <csignal>
-#include <vector>
 #include <expected>
 #include <variant>
-#include <Magick++.h>
-#include <numeric>
-#include <random>
 #include <future>
 #include "spdlog/spdlog.h"
 
@@ -26,19 +22,12 @@ int usage(const char *progname)
     return 1;
 }
 
-void hardware_mainloop(int page_end, RGBMatrix *matrix, FrameCanvas *canvas) {
+void hardware_mainloop(RGBMatrix *matrix, FrameCanvas *canvas) {
+    cout << "Press Ctrl+C to quit" << endl;
     while(!interrupt_received) {
-        vector<int> total_pages(page_end);
-        iota(total_pages.begin(), total_pages.end(), 1);
-
-        shuffle(total_pages.begin(), total_pages.end(), random_device());
-
-        cout << "Press Ctrl+C to quit" << endl;
-        while (!config->is_dirty() && !interrupt_received)
-        {
-            update_canvas(canvas, matrix, &total_pages);
-        }
-
+        exit_canvas_update = false;
+        debug("new update");
+        update_canvas(canvas, matrix);
     }
 
     // Finished. Shut down the RGB matrix.
@@ -69,13 +58,5 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    std::optional<int> page_end_opt = ScrapedPost::get_pages();
-    if(!page_end_opt.has_value()) {
-        error("could not convert page");
-        return unexpected(-1);
-    }
-
-    int page_end = page_end_opt.value();
-
-    return std::async(hardware_mainloop, page_end, matrix, canvas);
+    return std::async(hardware_mainloop, matrix, canvas);
 }
