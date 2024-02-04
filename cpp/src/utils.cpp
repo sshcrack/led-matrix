@@ -17,12 +17,27 @@ void SleepMillis(tmillis_t milli_seconds) {
     if (milli_seconds <= 0) return;
     tmillis_t end_time = GetTimeInMillis() + milli_seconds;
 
-    while(GetTimeInMillis() < end_time) {
+    while (GetTimeInMillis() < end_time) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        if(skip_image || exit_canvas_update) {
-            debug("Skipping...");
+        if (skip_image || exit_canvas_update) {
             skip_image.store(false);
             break;
         }
+    }
+}
+
+bool try_remove(const std::filesystem::path& file_path) {
+    if (!filesystem::exists(file_path))
+        return true;
+
+    try {
+        debug("Removing {}", file_path.string());
+        auto res = filesystem::remove(file_path);
+        debug("Done removing.");
+
+        return res;
+    } catch (exception &ex) {
+        warn("Could not delete file {}", file_path.string());
+        return false;
     }
 }

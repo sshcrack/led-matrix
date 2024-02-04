@@ -4,10 +4,12 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
 #include "shared.h"
+#include <nlohmann/json.hpp>
 #include "matrix_control/hardware.h"
 
 using namespace spdlog;
 using namespace std;
+using json = nlohmann::json;
 
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
@@ -55,6 +57,9 @@ int main(int argc, char *argv[]) {
     info("Hardware initialized successfully");
 
     hardware->wait();
+    info("Saving config...");
+    config->save();
+
 
     info("Stopping http server");
 

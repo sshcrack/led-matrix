@@ -3,6 +3,7 @@
 #include <vector>
 #include <Magick++.h>
 #include "led-matrix.h"
+#include <filesystem>
 #include "../header_fix/fix-content-streamer.h"
 #include <magick/image.h>
 using namespace std;
@@ -18,3 +19,5 @@ void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
                    bool do_center,
                    rgb_matrix::FrameCanvas *scratch,
                    rgb_matrix::StreamWriter *output);
+
+filesystem::path to_processed_path(const filesystem::path& path);

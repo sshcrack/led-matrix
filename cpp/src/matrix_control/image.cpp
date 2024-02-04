@@ -8,6 +8,13 @@
 using namespace spdlog;
 using namespace std;
 
+filesystem::path to_processed_path(const filesystem::path& path) {
+    filesystem::path processed = path;
+    processed.replace_extension("p" + processed.extension().string());
+
+    return processed;
+}
+
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 bool LoadImageAndScale(const string& str_path,
@@ -18,10 +25,7 @@ bool LoadImageAndScale(const string& str_path,
                        string *err_msg) {
 
     filesystem::path path = filesystem::path(str_path);
-    filesystem::path img_processed = path;
-
-    string ext = path.extension();
-    img_processed.replace_extension("_p" + ext);
+    filesystem::path img_processed = to_processed_path(path);
 
     debug("Checking if exists");
     // Checking if first exists
@@ -29,7 +33,7 @@ bool LoadImageAndScale(const string& str_path,
     if(filesystem::exists(img_processed)) {
         try {
             readImages(result, img_processed);
-        } catch (exception ex) {
+        } catch (exception& ex) {
             *err_msg = ex.what();
             return false;
         }
@@ -144,3 +148,4 @@ void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
     }
     output->Stream(*scratch, delay_time_us);
 }
+

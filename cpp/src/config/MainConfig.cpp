@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 
+using namespace spdlog;
 namespace Config {
     void MainConfig::mark_dirty(bool dirty_local) {
         unique_lock<shared_mutex> lock(this->update_mutex);
@@ -14,9 +15,7 @@ namespace Config {
     }
 
     bool MainConfig::is_dirty() {
-        spdlog::debug("Checking if dirty...");
         shared_lock<shared_mutex> lock(this->update_mutex);
-        spdlog::debug("Returning");
         return this->dirty;
     }
 
@@ -42,5 +41,42 @@ namespace Config {
     map<string, ConfigData::Group> MainConfig::get_groups() {
         shared_lock<shared_mutex> lock(this->data_mutex);
         return this->data.groups;
+    }
+
+    bool MainConfig::save() {
+        try {
+            debug("Acquiring lock to save config...");
+            shared_lock<shared_mutex> lock(this->data_mutex);
+
+            info("Saving config...");
+            json as_json = this->data;
+            string out = as_json.dump();
+
+            ofstream file;
+            file.open(file_name);
+            file << out;
+            file.close();
+            info("Done saving config.");
+        } catch (exception& ex) {
+            error("could not save config: {}", ex.what());
+            return false;
+        }
+
+        return true;
+    }
+
+    MainConfig::MainConfig(const string &filename) : file_name(filename) {
+        if (!filesystem::exists(filename)) {
+            ofstream file;
+            file.open(filename);
+            file << jsonDefault;
+            file.close();
+        }
+
+        ifstream f(filename);
+        json temp = json::parse(f);
+
+        this->data = temp.template get<ConfigData::Root>();
+        this->dirty = false;
     }
 }

@@ -29,7 +29,7 @@ bool ScrapedPost::fetch_link() {
     string src = string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")));
 
     this->image_url = src;
-    this->file_name = src.substr(src.find_last_of('/') +1);
+    this->file_name = src.substr(src.find_last_of('/') + 1);
     return true;
 }
 
@@ -114,25 +114,29 @@ string Post::get_image_url() {
 }
 
 optional<vector<Magick::Image>> Post::process_images(int width, int height) {
+    debug("Preprocessing img {}", image_url);
     if (!filesystem::exists(root_dir)) {
         try {
             auto res = filesystem::create_directory(root_dir);
-            if(!res) {
+            if (!res) {
                 error("Could not create directory at {}.", root_dir);
                 exit(-1);
             }
-        } catch (exception& ex) {
+        } catch (exception &ex) {
             error("Could not create directory at {} with exception: {}", root_dir, ex.what());
             exit(-1);
         }
     }
 
     tmillis_t start_loading = GetTimeInMillis();
-    string file_path = root_dir + get_filename();
+    string file_path = filesystem::path(root_dir + get_filename());
+    filesystem::path processed_img = to_processed_path(file_path);
 
     // Downloading image first
-    if (!filesystem::exists(file_path))
+    if (!filesystem::exists(processed_img)) {
+        try_remove(file_path);
         download_image(image_url, file_path);
+    }
 
     vector<Magick::Image> frames;
     string err_msg;
@@ -140,8 +144,12 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     bool contain_img = true;
     if (!LoadImageAndScale(file_path, width, height, true, true, contain_img, &frames, &err_msg)) {
         error("Error loading image: {}", err_msg);
+        try_remove(file_path);
+
         return nullopt;
     }
+
+    try_remove(file_path);
 
 
     optional<vector<Magick::Image>> res;

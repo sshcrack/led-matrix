@@ -6,7 +6,8 @@
 #include "fmt/core.h"
 
 
-ImageTypes::General::General(const json& arguments) {
+ImageTypes::General::General(const json& arguments) : initial_arguments(arguments) {
+
 }
 
 ImageTypes::General* ImageTypes::General::from_json(const json &j) {
