@@ -17,21 +17,9 @@ namespace Config {
 
         shared_mutex update_mutex;
         bool dirty;
+        const string &file_name;
     public:
-        explicit MainConfig(const string &filename) {
-            if (!filesystem::exists(filename)) {
-                ofstream file;
-                file.open(filename);
-                file << jsonDefault;
-                file.close();
-            }
-
-            ifstream f(filename);
-            json temp = json::parse(f);
-
-            this->data = temp.template get<ConfigData::Root>();
-            this->dirty = false;
-        }
+        explicit MainConfig(const string &filename);
 
         void mark_dirty(bool dirty_local);
         bool is_dirty();
@@ -41,5 +29,7 @@ namespace Config {
         map<string, ConfigData::Group> get_groups();
 
         void setCurr(string id);
+        bool save();
+
     };
 }

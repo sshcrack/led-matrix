@@ -26,7 +26,6 @@ void hardware_mainloop(RGBMatrix *matrix, FrameCanvas *canvas) {
     cout << "Press Ctrl+C to quit" << endl;
     while(!interrupt_received) {
         exit_canvas_update = false;
-        debug("new update");
         update_canvas(canvas, matrix);
     }
 

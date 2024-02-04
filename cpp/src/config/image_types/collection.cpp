@@ -1,5 +1,6 @@
 #include "collection.h"
 #include "random"
+#include "../../consts.h"
 #include "spdlog/spdlog.h"
 
 optional<Post> ImageTypes::Collection::get_next_image() {
@@ -13,7 +14,6 @@ optional<Post> ImageTypes::Collection::get_next_image() {
 
     already_shown.push_back(curr_img);
 
-    spdlog::debug("Returning curr img {}", curr_img.get_image_url());
     return curr_img;
 }
 
@@ -32,7 +32,7 @@ ImageTypes::Collection::Collection(const json &arguments) : General(arguments) {
 
     for (const auto &item: imgs) {
         spdlog::debug("Adding {} to group", item);
-        images.push_back(*new Post(item));
+        images.push_back(*new Post(Constants::post_img_url + item));
     }
 }
 

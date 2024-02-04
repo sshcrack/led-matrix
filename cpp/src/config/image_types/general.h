@@ -7,7 +7,7 @@ using json = nlohmann::json;
 namespace ImageTypes {
     class General {
     private:
-        json initial_arguments;
+        const json& initial_arguments;
     public:
         explicit General(const json& arguments);
         virtual optional<Post> get_next_image() = 0;
