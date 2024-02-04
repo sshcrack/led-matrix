@@ -4,6 +4,7 @@
 #include "canvas.h"
 #include "pixel_art.h"
 #include "../interrupt.h"
+#include "../consts.h"
 #include "../shared.h"
 
 #include <csignal>
@@ -53,6 +54,8 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
         return unexpected(usage(argv[0]));
 
     rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
+    Constants::height = canvas->height();
+    Constants::width = canvas->width();
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);

@@ -13,7 +13,7 @@
 
 using namespace spdlog;
 using namespace std;
-using namespace Constants;
+string root_dir = Constants::root_dir;
 string search_url = "/pixels/new_icons.asp?q=1";
 
 bool ScrapedPost::fetch_link() {

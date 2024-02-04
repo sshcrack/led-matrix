@@ -17,6 +17,21 @@ using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
+optional<tuple<vector<Magick::Image>, Post>> get_next_image(ImageTypes::General* category, int width, int height) {
+    auto post = category->get_next_image();
+    if(!post.has_value())
+        return nullopt;
+
+
+    auto frames_opt = post->process_images(width, height);
+    if(!frames_opt.has_value()) {
+        error("Could not load image {}", post->get_image_url());
+        //TODO Optimize here, exclude not loadable images
+        return nullopt;
+    }
+
+    return make_tuple(frames_opt.value(), post.value());
+}
 
 void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix) {
     const int height = matrix->height();
@@ -25,33 +40,26 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix) {
     auto curr_setting = config->get_curr();
     curr_setting.randomize();
 
-    debug("Randomizing with total of {} image categories", curr_setting.images.size());
-    for (const auto &img_category: curr_setting.images) {
+    debug("Randomizing with total of {} image categories", curr_setting.categories.size());
+    for (const auto &img_category: curr_setting.categories) {
         if(exit_canvas_update) {
             break;
         }
 
-        future<optional<Post>> next_img = async(launch::async, &ImageTypes::General::get_next_image, img_category);
+        auto next_img = async(launch::async, get_next_image, img_category, width, height);
         while(!exit_canvas_update) {
             tmillis_t start_loading = GetTimeInMillis();
 
-            optional<Post> fut = next_img.get();
-            if(!fut.has_value())
+            auto info_opt = next_img.get();
+            if(!info_opt.has_value())
                 break;
 
-            Post next_p = fut.value();
-            next_img = async(launch::async, &ImageTypes::General::get_next_image, img_category);
-
-            auto frames_opt = next_p.process_images(width, height);
-            if(!frames_opt.has_value()) {
-                error("Could not load image {}", next_p.get_image_url());
-                //TODO Optimize here, exclude not loadable images
-                continue;
-            }
-
+            next_img = async(launch::async, get_next_image, img_category, width, height);
 
             FileInfo *file_info;
-            vector<Magick::Image> frames = frames_opt.value();
+            auto tuple = info_opt.value();
+            auto frames = get<0>(tuple);
+            auto post = get<1>(tuple);
 
             ImageParams params = ImageParams();
             if (frames.size() > 1) {
@@ -79,7 +87,7 @@ void update_canvas(FrameCanvas *canvas, RGBMatrix *matrix) {
 
 
             info("Showing image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-            info("Showing animation for {} ({})", next_p.get_filename(), next_p.get_image_url());
+            info("Showing animation for {} ({})", post.get_filename(), post.get_image_url());
             DisplayAnimation(file_info, matrix, canvas);
         }
         img_category->flush();

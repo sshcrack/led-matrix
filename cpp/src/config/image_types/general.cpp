@@ -7,7 +7,7 @@
 
 
 ImageTypes::General::General(const json& arguments) : initial_arguments(arguments) {
-
+    spdlog::debug("Initial arguments for general are {}", arguments.dump());
 }
 
 ImageTypes::General* ImageTypes::General::from_json(const json &j) {

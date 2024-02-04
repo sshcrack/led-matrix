@@ -2,6 +2,7 @@
 #include "shared.h"
 #include <sys/time.h>
 #include <thread>
+#include <regex>
 #include <spdlog/spdlog.h>
 
 using namespace spdlog;
@@ -26,7 +27,7 @@ void SleepMillis(tmillis_t milli_seconds) {
     }
 }
 
-bool try_remove(const std::filesystem::path& file_path) {
+bool try_remove(const filesystem::path& file_path) {
     if (!filesystem::exists(file_path))
         return true;
 
@@ -40,4 +41,24 @@ bool try_remove(const std::filesystem::path& file_path) {
         warn("Could not delete file {}", file_path.string());
         return false;
     }
+}
+
+bool is_valid_filename(const string& filename) {
+    regex file_regex("^[\\w\\-. ]+$");
+    std::smatch sm;
+    regex_match(filename, sm, file_regex);
+
+    if(sm.empty())
+        return false;
+
+    return true;
+}
+
+
+bool replace(std::string &str, const std::string &from, const std::string &to) {
+    size_t start_pos = str.find(from);
+    if (start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
 }

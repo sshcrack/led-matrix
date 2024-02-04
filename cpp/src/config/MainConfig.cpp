@@ -25,7 +25,7 @@ namespace Config {
         return this->data.curr;
     }
 
-    ConfigData::Group MainConfig::get_curr() {
+    ConfigData::Preset MainConfig::get_curr() {
         shared_lock<shared_mutex> lock(this->data_mutex);
 
         return this->data.groups[data.curr];
@@ -38,7 +38,7 @@ namespace Config {
         this->mark_dirty(true);
     }
 
-    map<string, ConfigData::Group> MainConfig::get_groups() {
+    map<string, ConfigData::Preset> MainConfig::get_groups() {
         shared_lock<shared_mutex> lock(this->data_mutex);
         return this->data.groups;
     }
