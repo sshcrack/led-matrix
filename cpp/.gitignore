@@ -1,3 +1,5 @@
 build
 CMakeFiles
 cmake-build-*
+.idea/deployment.xml
+.idea/other.xml
