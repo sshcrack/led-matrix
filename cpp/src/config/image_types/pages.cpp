@@ -64,7 +64,7 @@ ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
     total_pages = generate_rand_pages(page_begin, page_end);
 }
 
-const json ImageTypes::Pages::to_json() {
+json ImageTypes::Pages::to_json() {
     json j =  json();
     j["type"] = "pages";
     json args = json();

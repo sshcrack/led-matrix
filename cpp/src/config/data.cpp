@@ -13,7 +13,8 @@ using json = nlohmann::json;
 namespace ConfigData {
     void to_json(json& j, const ImageTypes::General*& p)  {
         spdlog::debug("To json imgtype", to_string(j));
-        j = p->to_json();
+        auto& c = const_cast<ImageTypes::General *&>(p);
+        j = c->to_json();
     }
 
     void to_json(json& j, const Preset& p)  {
@@ -29,13 +30,13 @@ namespace ConfigData {
 
     void to_json(json& j, const Root& p) {
         spdlog::debug("To json root", to_string(j));
-        j = json{{"groups", p.groups}, {"curr", p.curr}};
+        j = json{{"groups", p.presets}, {"curr", p.curr}};
     }
 
     void from_json(const json& j, Root& p) {
         spdlog::debug("from json root", to_string(j));
         j.at("curr").get_to(p.curr);
-        j.at("groups").get_to(p.groups);
+        j.at("groups").get_to(p.presets);
     }
 
     void from_json(const json& j, Preset& p) {

@@ -28,19 +28,26 @@ namespace Config {
     ConfigData::Preset MainConfig::get_curr() {
         shared_lock<shared_mutex> lock(this->data_mutex);
 
-        return this->data.groups[data.curr];
+        return this->data.presets[data.curr];
     }
 
-    void MainConfig::setCurr(string id) {
+    void MainConfig::set_curr(string id) {
         unique_lock<shared_mutex> lock(this->data_mutex);
 
         this->data.curr = std::move(id);
         this->mark_dirty(true);
     }
 
+    void MainConfig::set_presets(const string& id, ConfigData::Preset preset) {
+        unique_lock<shared_mutex> lock(this->data_mutex);
+
+        this->data.presets[id] = std::move(preset);
+        this->mark_dirty(true);
+    }
+
     map<string, ConfigData::Preset> MainConfig::get_groups() {
         shared_lock<shared_mutex> lock(this->data_mutex);
-        return this->data.groups;
+        return this->data.presets;
     }
 
     bool MainConfig::save() {

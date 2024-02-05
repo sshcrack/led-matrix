@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "../utils.h"
 #include "server_utils.h"
+#include "uuid_v4.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -30,6 +31,14 @@ request_handling_status_t handle_post(const request_handle_t &req) {
         ConfigData::Preset pr;
         try {
             pr = j.template get<ConfigData::Preset>();
+            std::string uuid = UUIDv4::UUID().bytes();
+
+            config->set_presets(uuid, pr);
+            json return_j;
+            return_j["success"] = "Preset has been added";
+            return_j["id"] = uuid;
+
+            reply_with_json(req, return_j);
         } catch (exception& ex) {
             warn("Invalid preset");
 
@@ -37,4 +46,6 @@ request_handling_status_t handle_post(const request_handle_t &req) {
             return request_accepted();
         }
     }
+
+    return request_rejected();
 }
