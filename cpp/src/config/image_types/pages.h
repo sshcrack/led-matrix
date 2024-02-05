@@ -11,7 +11,7 @@ namespace ImageTypes {
     public:
         void flush() override;
         optional<Post> get_next_image() override;
-        const json to_json();
+        json to_json() override;
         explicit Pages(const json& arguments);
     };
 }

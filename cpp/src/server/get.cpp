@@ -38,7 +38,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
             return request_accepted();
         }
 
-        config->setCurr(id);
+        config->set_curr(id);
         reply_success(req);
         return request_accepted();
     }

@@ -11,6 +11,7 @@ configure_file(resources/resources.h.in ${CMAKE_SOURCE_DIR}/src/resources.h @ONL
 INCLUDE_DIRECTORIES(
         ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/include
         ${CMAKE_SOURCE_DIR}/rpi-rgb-led-matrix/lib
+        ${CMAKE_SOURCE_DIR}/uuid_v4/
 )
 
 file(GLOB_RECURSE SOURCES
@@ -20,9 +21,11 @@ file(GLOB_RECURSE SOURCES
 
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
+file(GLOB_RECURSE UUID_HEADER_FILES ${PROJECT_SOURCE_DIR}/uuid_v4/*.h)
+file(GLOB_RECURSE UUID_SRC_FILES ${PROJECT_SOURCE_DIR}/uuid_v4/*.c*)
 
 # Add an executable with the above sources
-add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES} ${RWLOCK_HEADER_FILES})
+add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES} ${UUID_HEADER_FILES} ${UUID_SRC_FILES})
 
 # ImageMagick
 

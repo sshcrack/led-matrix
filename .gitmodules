@@ -1,3 +1,6 @@
 [submodule "cpp/rpi-rgb-led-matrix"]
 	path = cpp/rpi-rgb-led-matrix
 	url = https://github.com/hzeller/rpi-rgb-led-matrix
+[submodule "cpp/uuid_v4"]
+	path = cpp/uuid_v4
+	url = https://github.com/crashoz/uuid_v4

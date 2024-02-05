@@ -16,7 +16,7 @@ namespace ConfigData {
     };
 
     struct Root {
-        map<string, Preset> groups;
+        map<string, Preset> presets;
         string curr;
     };
 

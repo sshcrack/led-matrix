@@ -13,9 +13,7 @@ namespace ImageTypes {
         virtual optional<Post> get_next_image() = 0;
         virtual void flush() = 0;
 
-        [[nodiscard]] virtual json to_json() const {
-            throw runtime_error(fmt::format("Can not convert general to const (Initial arguments: {}", to_string(initial_arguments)));
-        };
+        virtual json to_json() = 0;
 
         static General* from_json(const json& j);
     };
