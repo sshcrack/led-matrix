@@ -45,7 +45,7 @@ namespace Config {
         this->mark_dirty(true);
     }
 
-    map<string, ConfigData::Preset> MainConfig::get_groups() {
+    map<string, ConfigData::Preset> MainConfig::get_presets() {
         shared_lock<shared_mutex> lock(this->data_mutex);
         return this->data.presets;
     }
