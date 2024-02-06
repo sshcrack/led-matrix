@@ -2,7 +2,7 @@
 
 #include "led-matrix.h"
 #include "../header_fix/fix-content-streamer.h"
-#include "../utils.h"
+#include "../utils/utils.h"
 #include <vector>
 
 using rgb_matrix::Canvas;

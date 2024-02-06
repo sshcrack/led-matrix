@@ -1,10 +1,10 @@
 #include "restinio/all.hpp"
-#include "../shared.h"
+#include "../utils/shared.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "server_utils.h"
-#include "uuid_v4.h"
+#include "../utils/uuid.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -31,7 +31,7 @@ request_handling_status_t handle_post(const request_handle_t &req) {
         ConfigData::Preset pr;
         try {
             pr = j.template get<ConfigData::Preset>();
-            std::string uuid = UUIDv4::UUID().bytes();
+            std::string uuid = uuid::generate_uuid_v4();
 
             config->set_presets(uuid, pr);
             json return_j;
@@ -40,11 +40,11 @@ request_handling_status_t handle_post(const request_handle_t &req) {
 
             reply_with_json(req, return_j);
         } catch (exception& ex) {
-            warn("Invalid preset");
+            warn("Invalid preset with {}", ex.what());
 
             reply_with_error(req, "Could not serialize json");
-            return request_accepted();
         }
+        return request_accepted();
     }
 
     return request_rejected();

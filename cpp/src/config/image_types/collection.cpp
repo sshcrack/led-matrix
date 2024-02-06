@@ -1,6 +1,6 @@
 #include "collection.h"
 #include "random"
-#include "../../consts.h"
+#include "../../utils/consts.h"
 #include "spdlog/spdlog.h"
 
 optional<Post> ImageTypes::Collection::get_next_image() {
@@ -32,7 +32,7 @@ ImageTypes::Collection::Collection(const json &arguments) : General(arguments) {
 
     for (const auto &item: imgs) {
         spdlog::debug("Adding {} to group", item);
-        images.push_back(*new Post(Constants::post_img_url + item));
+        images.push_back(*new Post(item));
     }
 }
 
@@ -45,9 +45,12 @@ json ImageTypes::Collection::to_json() {
     vector<string> stringified;
     stringified.reserve(total.size());
 
+    auto prefix_len = Constants::post_img_url.length();
     for (auto item: total)
-        stringified.push_back(item.get_image_url());
+        stringified.push_back(item.get_image_name());
 
-    json j = stringified;
-    return j;
+    return json{
+            {"type", "collection"},
+            {"arguments", stringified}
+    };
 };

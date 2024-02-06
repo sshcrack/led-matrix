@@ -1,11 +1,11 @@
 {
-  "groups": {
+  "presets": {
     "DEFAULT": {
       "name": "Random Pages",
       "images": [
         {
           "type": "pages",
-          "argument": {
+          "arguments": {
             "begin": 0,
             "end": -1
           }
@@ -17,7 +17,7 @@
       "images": [
         {
           "type": "collection",
-          "argument": ["shira_combof.gif"]
+          "arguments": ["shira_combof.gif"]
         }
       ]
     }

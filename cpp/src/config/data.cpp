@@ -25,33 +25,41 @@ namespace ConfigData {
         for (const auto &item: p.categories)
             image_json.push_back(item->to_json());
 
-        j = json{{"name", p.name, "images", image_json}};
+        j = json{
+            {"name", p.name},
+            {"images", image_json}
+        };
     }
 
     void to_json(json& j, const Root& p) {
         spdlog::debug("To json root", to_string(j));
-        j = json{{"groups", p.presets}, {"curr", p.curr}};
+        j = json{
+            {"presets", p.presets},
+            {"curr", p.curr}
+        };
     }
 
     void from_json(const json& j, Root& p) {
         spdlog::debug("from json root", to_string(j));
         j.at("curr").get_to(p.curr);
-        j.at("groups").get_to(p.presets);
+        j.at("presets").get_to(p.presets);
     }
 
     void from_json(const json& j, Preset& p) {
-        spdlog::debug("from json group", to_string(j));
+        spdlog::debug("from json preset {}", to_string(j));
         j.at("name").get_to(p.name);
 
-        vector<json> image_json;
-        j.at("images").get_to(image_json);
+        spdlog::debug("From image get");
+        vector<json> image_json = j.at("images");
 
         vector<ImageTypes::General*> images;
         images.reserve(image_json.size());
 
+        spdlog::debug("array");
         for (const auto &item: image_json)
             images.push_back(ImageTypes::General::from_json(item));
 
+        spdlog::debug("set");
         p.categories = images;
     }
 

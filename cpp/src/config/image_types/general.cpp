@@ -13,7 +13,7 @@ ImageTypes::General::General(const json& arguments) : initial_arguments(argument
 ImageTypes::General* ImageTypes::General::from_json(const json &j) {
     spdlog::debug("Getting type of {}", to_string(j));
     string t = j["type"].get<string>();
-    const json& arguments = j["argument"];
+    const json& arguments = j["arguments"];
 
     if(t == "pages")
         return new ImageTypes::Pages(arguments);
