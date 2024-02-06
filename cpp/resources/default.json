@@ -11,15 +11,6 @@
           }
         }
       ]
-    },
-    "Pupp": {
-      "name": "Pupp",
-      "images": [
-        {
-          "type": "collection",
-          "arguments": ["shira_combof.gif"]
-        }
-      ]
     }
   },
   "curr": "DEFAULT"

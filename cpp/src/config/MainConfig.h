@@ -26,7 +26,7 @@ namespace Config {
 
         string get_curr_id();
         ConfigData::Preset get_curr();
-        map<string, ConfigData::Preset> get_groups();
+        map<string, ConfigData::Preset> get_presets();
 
         void set_curr(string id);
         void set_presets(const string& id, ConfigData::Preset preset);

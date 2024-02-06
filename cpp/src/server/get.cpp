@@ -25,21 +25,46 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    if (target == "/preset") {
+    if (target == "/set_preset") {
         if (!qp.has("id")) {
             reply_with_error(req, "No Id given");
             return request_accepted();
         }
 
         string id{qp["id"]};
-        auto groups = config->get_groups();
-        if (groups.find(id) == groups.end()) {
+        auto presets = config->get_presets();
+        if (presets.find(id) == presets.end()) {
             reply_with_error(req, "Invalid id");
             return request_accepted();
         }
 
         config->set_curr(id);
         reply_success(req);
+        return request_accepted();
+    }
+
+    if(target == "/presets") {
+        auto presets = config->get_presets();
+        if (!qp.has("id")) {
+            vector<string> keys;
+            for (const auto &item: presets) {
+                keys.push_back(item.first);
+            }
+
+            json j = keys;
+            reply_with_json(req, j);
+            return request_accepted();
+        }
+
+        string id{qp["id"]};
+        auto p = presets.find(id);
+        if (p == presets.end()) {
+            reply_with_error(req, "Could not find id");
+            return request_accepted();
+        }
+
+        json j = p->second;
+        reply_with_json(req, j);
         return request_accepted();
     }
 
@@ -122,7 +147,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
     }
 
     if(target == "/list_presets") {
-        auto groups = config->get_groups();
+        auto groups = config->get_presets();
         json j(groups);
 
         reply_with_json(req, j);
