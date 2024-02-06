@@ -2,8 +2,8 @@
 #include "image.h"
 #include "spdlog/spdlog.h"
 #include "post.h"
-#include "../utils.h"
-#include "../shared.h"
+#include "../utils/utils.h"
+#include "../utils/shared.h"
 #include <vector>
 
 #include <Magick++.h>

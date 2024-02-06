@@ -68,7 +68,6 @@ bool download_image(const string &url_str, const string &tmp) {
 }
 
 htmlDocPtr fetch_page(const string &url_str) {
-    debug("Fetching page " + url_str);
     auto url = cpr::Url{base + url_str};
 
     cpr::Header headers = {

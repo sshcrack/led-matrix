@@ -3,7 +3,7 @@
 #include <Magick++.h>
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
-#include "shared.h"
+#include "utils/shared.h"
 #include <nlohmann/json.hpp>
 #include "matrix_control/hardware.h"
 

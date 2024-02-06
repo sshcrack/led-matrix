@@ -4,8 +4,8 @@
 #include "canvas.h"
 #include "pixel_art.h"
 #include "../interrupt.h"
-#include "../consts.h"
-#include "../shared.h"
+#include "../utils/consts.h"
+#include "../utils/shared.h"
 
 #include <csignal>
 #include <expected>

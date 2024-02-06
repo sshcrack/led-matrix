@@ -1,5 +1,6 @@
 #include "pages.h"
 #include "random"
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 
 vector<int> generate_rand_pages(int page_begin, int page_end) {
@@ -28,8 +29,10 @@ optional<Post> ImageTypes::Pages::get_next_image() {
             total_pages.erase(total_pages.begin());
 
             curr_posts = ScrapedPost::get_posts(next_page);
-            if(curr_posts.empty())
+            if(curr_posts.empty()) {
+                spdlog::debug("Current posts are empty, returning");
                 return nullopt;
+            }
         }
 
         ScrapedPost curr = curr_posts[0];
@@ -65,13 +68,12 @@ ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
 }
 
 json ImageTypes::Pages::to_json() {
-    json j =  json();
-    j["type"] = "pages";
     json args = json();
     args["begin"] = page_begin;
     args["end"] = page_end;
 
-    j["arguments"] = args;
-
-    return j;
+    return json{
+        {"type", "pages"},
+        {"arguments", args}
+    };
 }

@@ -1,14 +1,14 @@
 #include "post.h"
 #include "pixel_art.h"
 #include <vector>
-#include "../consts.h"
+#include "../utils/consts.h"
 #include "cpr/cpr.h"
 #include "libxml/xpath.h"
 #include <iostream>
 #include <optional>
 #include <Magick++.h>
 #include "image.h"
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;
@@ -26,10 +26,19 @@ bool ScrapedPost::fetch_link() {
     }
 
     xmlNodePtr img = mainimg->nodesetval->nodeTab[0];
-    string src = string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")));
+    auto prefix_len = Constants::post_img_url.length();
+    string img_name(
+            string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")))
+                    .substr(prefix_len)
+    );
 
-    this->image_url = src;
-    this->file_name = src.substr(src.find_last_of('/') + 1);
+    this->image_name = img_name;
+    string f_name = img_name;
+    if(f_name.contains("/")) {
+        f_name = f_name.substr(img_name.find_last_of('/') + 1);
+    }
+
+    this->file_name = f_name;
     return true;
 }
 
@@ -94,11 +103,12 @@ vector<ScrapedPost> ScrapedPost::get_posts(int page) {
         pixel_posts.push_back(pixel_post);
     }
 
+    debug("Returning posts");
     return pixel_posts;
 }
 
 bool ScrapedPost::has_fetched_image() {
-    return this->image_url != this->thumbnail;
+    return this->get_image_url() != this->thumbnail;
 }
 
 string ScrapedPost::get_post_url() {
@@ -110,11 +120,11 @@ string Post::get_filename() {
 }
 
 string Post::get_image_url() {
-    return this->image_url;
+    return Constants::post_img_url + this->get_image_name();
 }
 
 optional<vector<Magick::Image>> Post::process_images(int width, int height) {
-    debug("Preprocessing img {}", image_url);
+    debug("Preprocessing img {}", image_name);
     if (!filesystem::exists(root_dir)) {
         try {
             auto res = filesystem::create_directory(root_dir);
@@ -135,7 +145,7 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     // Downloading image first
     if (!filesystem::exists(processed_img)) {
         try_remove(file_path);
-        download_image(image_url, file_path);
+        download_image(get_image_url(), file_path);
     }
 
     vector<Magick::Image> frames;
@@ -157,4 +167,8 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return res;
+}
+
+string Post::get_image_name() {
+    return image_name;
 }

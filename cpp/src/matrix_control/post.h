@@ -9,16 +9,17 @@ using namespace std;
 class Post
 {
 protected:
-    string image_url;
+    string image_name;
     string file_name;
 public:
-    explicit Post(const string& src) {
-        this->image_url = src;
-        this->file_name = src.substr(src.find_last_of('/') +1);
+    explicit Post(const string& img_name) {
+        this->image_name = img_name;
+        this->file_name = img_name.substr(img_name.find_last_of('/') + 1);
     }
 
     string get_filename();
     string get_image_url();
+    string get_image_name();
     optional<vector<Magick::Image>> process_images(int width, int height);
 };
 

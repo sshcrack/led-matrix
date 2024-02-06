@@ -1,11 +1,11 @@
 #include "restinio/all.hpp"
-#include "../shared.h"
+#include "../utils/shared.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
 #include "../matrix_control/image.h"
 #include "server_utils.h"
-#include "../utils.h"
-#include "../consts.h"
+#include "../utils/utils.h"
+#include "../utils/consts.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
