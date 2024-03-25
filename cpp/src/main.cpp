@@ -4,6 +4,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
 #include "utils/shared.h"
+#include "./spotify.h"
 #include <nlohmann/json.hpp>
 #include "matrix_control/hardware.h"
 
@@ -18,7 +19,11 @@ int main(int argc, char *argv[]) {
 
     //TODO fix issues for height not being available when fetching images
     config = new Config::MainConfig("config.json");
-    config->save();
+
+    debug("Checking spotify config...");
+
+    auto spotify = new Spotify();
+    spotify->initialize();
 
     debug("Starting mainloop");
     uint16_t port = 8080;

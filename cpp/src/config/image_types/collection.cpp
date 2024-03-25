@@ -45,7 +45,6 @@ json ImageTypes::Collection::to_json() {
     vector<string> stringified;
     stringified.reserve(total.size());
 
-    auto prefix_len = Constants::post_img_url.length();
     for (auto item: total)
         stringified.push_back(item.get_image_name());
 
