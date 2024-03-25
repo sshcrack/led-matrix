@@ -13,5 +13,10 @@
       ]
     }
   },
-  "curr": "DEFAULT"
+  "curr": "DEFAULT",
+  "spotify": {
+    "access_token": "",
+    "refresh_token": "",
+    "expires_at": 0
+  }
 }

@@ -31,6 +31,12 @@ namespace Config {
         return this->data.presets[data.curr];
     }
 
+    ConfigData::SpotifyData MainConfig::get_spotify() {
+        shared_lock<shared_mutex> lock(this->data_mutex);
+
+        return this->data.spotify;
+    }
+
     void MainConfig::set_curr(string id) {
         unique_lock<shared_mutex> lock(this->data_mutex);
 
