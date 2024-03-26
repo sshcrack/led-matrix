@@ -20,6 +20,9 @@ namespace ConfigData {
         optional<string> access_token;
         optional<string> refresh_token;
         tmillis_t expires_at;
+
+        bool is_expired() const;
+        bool has_auth() const;
     };
 
     struct Root {

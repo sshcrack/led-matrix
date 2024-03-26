@@ -11,8 +11,6 @@ using namespace std;
 using namespace spdlog;
 
 
-string base = "https://pixeljoint.com";
-
 size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     size_t written = fwrite(ptr, size, nmemb, stream);
     return written;
@@ -29,7 +27,7 @@ void rm_nonprinting(std::string &str) {
 bool download_image(const string &url_str, const string &tmp) {
     const char *out_file = tmp.c_str();
 
-    string merged_url = base + url_str;
+    string merged_url = url_str;
     debug("Downloading " + merged_url + " to " + out_file);
 
     if (strlen(out_file) > FILENAME_MAX) {
@@ -67,8 +65,9 @@ bool download_image(const string &url_str, const string &tmp) {
     return false;
 }
 
+string page_base = "https://pixeljoint.com";
 htmlDocPtr fetch_page(const string &url_str) {
-    auto url = cpr::Url{base + url_str};
+    auto url = cpr::Url{page_base + url_str};
 
     cpr::Header headers = {
             {"User-Agent",

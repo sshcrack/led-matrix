@@ -4,7 +4,8 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
 #include "utils/shared.h"
-#include "./spotify.h"
+#include "spotify/shared_spotify.h"
+#include "spotify/spotify.h"
 #include <nlohmann/json.hpp>
 #include "matrix_control/hardware.h"
 
@@ -21,8 +22,7 @@ int main(int argc, char *argv[]) {
     config = new Config::MainConfig("config.json");
 
     debug("Checking spotify config...");
-
-    auto spotify = new Spotify();
+    spotify = new Spotify();
     spotify->initialize();
 
     debug("Starting mainloop");
@@ -63,13 +63,14 @@ int main(int argc, char *argv[]) {
     info("Hardware initialized successfully");
 
     hardware->wait();
-    info("Saving config...");
+    info("Hardware thread stopped. Saving config...");
     config->save();
 
 
     info("Stopping http server");
 
     restinio::initiate_shutdown(server);
+    spotify->terminate();
     control_thread.join();
     return 0;
 }

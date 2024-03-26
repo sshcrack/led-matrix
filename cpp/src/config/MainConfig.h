@@ -17,9 +17,9 @@ namespace Config {
 
         shared_mutex update_mutex;
         bool dirty;
-        const string &file_name;
+        const string file_name;
     public:
-        explicit MainConfig(const string &filename);
+        explicit MainConfig(const string filename);
 
         void mark_dirty(bool dirty_local);
         bool is_dirty();
@@ -29,9 +29,11 @@ namespace Config {
         ConfigData::Preset get_curr();
         map<string, ConfigData::Preset> get_presets();
 
+        void set_spotify(ConfigData::SpotifyData spotify);
         void set_curr(string id);
         void set_presets(const string& id, ConfigData::Preset preset);
         bool save();
+        string get_filename();
 
     };
 }

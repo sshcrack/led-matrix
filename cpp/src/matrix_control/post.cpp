@@ -78,15 +78,18 @@ vector<ScrapedPost> ScrapedPost::get_posts(int page) {
     info("Getting posts from page " + to_string(page) + "...");
     string url = search_url + "&pg=" + to_string(page);
 
+    debug("Fetch page");
     // parse the HTML document returned by the server
     htmlDocPtr doc = fetch_page(url);
 
     vector<ScrapedPost> pixel_posts;
 
+    debug("stuff 1");
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr posts_links = xmlXPathEvalExpression((xmlChar *) "//a[contains(@class, 'imglink')]", context);
 
     // iterate over the list of industry card elements
+    debug("stuff 2");
     for (int i = 0; i < posts_links->nodesetval->nodeNr; ++i) {
         // get the current element of the loop
         xmlNodePtr post_link = posts_links->nodesetval->nodeTab[i];
@@ -145,7 +148,7 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     // Downloading image first
     if (!filesystem::exists(processed_img)) {
         try_remove(file_path);
-        download_image(get_image_url(), file_path);
+        download_image("https://pixeljoint.com" + get_image_url(), file_path);
     }
 
     vector<Magick::Image> frames;

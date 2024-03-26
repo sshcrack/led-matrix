@@ -3,7 +3,7 @@ const querystring = require("querystring")
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = 'http://localhost:8888/callback';
+const redirect_uri = 'http://10.6.0.23:8888/callback';
 
 
 
@@ -61,7 +61,7 @@ app.get('/callback', async function(req, res) {
             }
         }).then(e => e.json())
 
-        console.log(response)
+        console.log(JSON.stringify(response))
 
         res.send({success: true})
         process.exit(0)
@@ -69,4 +69,4 @@ app.get('/callback', async function(req, res) {
 });
 
 const port = parseInt(process.argv[2]);
-app.listen(port, () => console.log(`URL_AUTH: Visit http://localhost:${port}/login to authorize`))
+app.listen(port, () => {})
