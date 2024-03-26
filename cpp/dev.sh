@@ -4,4 +4,4 @@ set -e
 echo Building
 make -C cmake-build-pi-release
 echo Running
-sudo ./run.sh
+sudo "PATH=$PATH:/home/pi/.nvm/versions/node/v21.6.1/bin" ./run.sh

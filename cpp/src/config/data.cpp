@@ -12,7 +12,6 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     void to_json(json& j, const ImageTypes::General*& p)  {
-        spdlog::debug("To json imgtype", to_string(j));
         auto& c = const_cast<ImageTypes::General *&>(p);
         j = c->to_json();
     }
@@ -27,7 +26,6 @@ namespace ConfigData {
     }
 
     void to_json(json& j, const Preset& p)  {
-        spdlog::debug("To json group", to_string(j));
         vector<json> image_json;
 
         image_json.reserve(p.categories.size());
@@ -41,8 +39,6 @@ namespace ConfigData {
     }
 
     void to_json(json& j, const Root& p) {
-        spdlog::debug("To json root", to_string(j));
-
         j = json{
             {"presets", p.presets},
             {"curr", p.curr},
@@ -100,5 +96,13 @@ namespace ConfigData {
 
     void Preset::randomize() {
         std::shuffle(this->categories.begin(), this->categories.end(), std::random_device());
+    }
+
+    bool SpotifyData::has_auth() const {
+        return !(this->access_token->empty() || this->refresh_token->empty() || this->expires_at == 0);
+    }
+
+    bool SpotifyData::is_expired() const {
+        return GetTimeInMillis() > this->expires_at;
     }
 }

@@ -3,6 +3,8 @@
 #include "led-matrix.h"
 #include "../header_fix/fix-content-streamer.h"
 #include "../utils/utils.h"
+#include "image.h"
+#include "post.h"
 #include <vector>
 
 using rgb_matrix::Canvas;
@@ -31,5 +33,6 @@ struct FileInfo {
 };
 
 
+FileInfo GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas);
 void DisplayAnimation(const FileInfo *file,
                       RGBMatrix *matrix, FrameCanvas *offscreen_canvas);
