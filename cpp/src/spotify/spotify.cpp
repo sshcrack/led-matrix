@@ -136,6 +136,10 @@ std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currentl
         return nullopt;
     }
 
+    if(!res->value().contains("item")) {
+        warn("Spotify state does not contain item: {}", res->value().dump());
+        return unexpected("Invalid server response: " + res->value().dump());
+    }
     return SpotifyState(res->value());
 }
 
@@ -216,13 +220,11 @@ void Spotify::start_control_thread() {
 
                 this->currently_playing.emplace(state);
 
-                debug("Marked as dirty.");
                 this->is_dirty = true;
                 std::this_thread::sleep_for(std::chrono::seconds(5));
             } else {
                 this->currently_playing.reset();
 
-                debug("Marked as dirty.");
                 this->is_dirty = true;
                 std::this_thread::sleep_for(std::chrono::seconds(15));
             }

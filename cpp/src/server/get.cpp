@@ -18,6 +18,14 @@ request_handling_status_t handle_get(const request_handle_t &req) {
     auto target = req->header().path();
     const auto qp = restinio::parse_query(req->header().query());
 
+    if (target == "/toggle") {
+        turned_off.store(!turned_off.load());
+        exit_canvas_update.store(true);
+
+        reply_with_json(req, {{"turned_off", turned_off.load()}});
+        return request_accepted();
+    }
+
     if (target == "/skip") {
         skip_image.store(true);
         reply_success(req);
@@ -43,7 +51,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    if(target == "/presets") {
+    if (target == "/presets") {
         auto presets = config->get_presets();
         if (!qp.has("id")) {
             vector<string> keys;
@@ -146,7 +154,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    if(target == "/list_presets") {
+    if (target == "/list_presets") {
         auto groups = config->get_presets();
         json j(groups);
 

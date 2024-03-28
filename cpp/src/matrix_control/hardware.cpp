@@ -23,11 +23,16 @@ int usage(const char *progname)
     return 1;
 }
 
-void hardware_mainloop(RGBMatrix *matrix, FrameCanvas *canvas) {
+void hardware_mainloop(RGBMatrix *matrix) {
     cout << "Press Ctrl+C to quit" << endl;
     while(!interrupt_received) {
+        update_canvas(matrix);
         exit_canvas_update = false;
-        update_canvas(canvas, matrix);
+
+        while(turned_off) {
+            matrix->Clear();
+            SleepMillis(1000);
+        }
     }
 
     // Finished. Shut down the RGB matrix.
@@ -52,10 +57,6 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
     if (matrix == nullptr)
         return unexpected(usage(argv[0]));
-
-    rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
-    Constants::height = canvas->height();
-    Constants::width = canvas->width();
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);

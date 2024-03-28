@@ -75,17 +75,14 @@ namespace ConfigData {
         spdlog::debug("from json preset {}", to_string(j));
         j.at("name").get_to(p.name);
 
-        spdlog::debug("From image get");
         vector<json> image_json = j.at("images");
 
         vector<ImageTypes::General*> images;
         images.reserve(image_json.size());
 
-        spdlog::debug("array");
         for (const auto &item: image_json)
             images.push_back(ImageTypes::General::from_json(item));
 
-        spdlog::debug("set");
         p.categories = images;
     }
 
