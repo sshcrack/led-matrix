@@ -61,5 +61,5 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    return std::async(hardware_mainloop, matrix, canvas);
+    return std::async(hardware_mainloop, matrix);
 }

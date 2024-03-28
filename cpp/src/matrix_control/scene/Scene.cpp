@@ -3,6 +3,7 @@
 //
 
 #include "Scene.h"
+using namespace Scenes;
 
 Scene::Scene(RGBMatrix *matrix) {
     this->offscreen_canvas = matrix->CreateFrameCanvas();

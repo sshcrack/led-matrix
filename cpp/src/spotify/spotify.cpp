@@ -68,6 +68,7 @@ bool Spotify::initialize() {
     auto any_empty = spotify.access_token->empty() || spotify.refresh_token->empty() || spotify.expires_at == 0;
 
     if (!any_empty) {
+        debug("Curr time {}", GetTimeInMillis());
         bool is_expired = GetTimeInMillis() > spotify.expires_at;
         if (is_expired) {
             debug("Is expired. Refreshing...");
