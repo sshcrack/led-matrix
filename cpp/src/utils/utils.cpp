@@ -10,10 +10,7 @@
 using namespace spdlog;
 
 tmillis_t GetTimeInMillis() {
-    struct timeval tp{};
-
-    gettimeofday(&tp, nullptr);
-    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 void SleepMillis(tmillis_t milli_seconds) {
@@ -106,4 +103,12 @@ std::expected<std::string,std::string> execute_process(const string& cmd, const 
     std::remove(out_file);
 
     return out_stream.str();
+}
+
+void floatPixelSet(rgb_matrix::FrameCanvas* canvas, int x, int y, float r, float g, float b) {
+    const uint8_t rByte = static_cast<uint8_t>(max(0.0f, min(1.0f, r)) * 255.0f);
+    const uint8_t gByte = static_cast<uint8_t>(max(0.0f, min(1.0f, g)) * 255.0f);
+    const uint8_t bByte = static_cast<uint8_t>(max(0.0f, min(1.0f, b)) * 255.0f);
+
+    canvas->SetPixel(x, y, rByte, gByte, bByte);
 }
