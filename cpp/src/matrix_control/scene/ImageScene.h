@@ -50,7 +50,7 @@ namespace Scenes {
         explicit CurrPreset(ConfigData::Preset preset) : preset(std::move(preset)), curr_category(0) {}
     };
 
-    class PresetScene : public Scene {
+    class ImageScene : public Scene {
     private:
         std::optional<CurrAnimation> curr_animation;
         std::optional<CurrPreset> curr_preset;

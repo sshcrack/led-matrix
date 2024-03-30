@@ -1,7 +1,7 @@
 #include "canvas.h"
 #include "../utils/utils.h"
 #include "scene/Scene.h"
-#include "scene/PresetScene.h"
+#include "scene/ImageScene.h"
 #include "scene/WatermelonPlasmaScene.h"
 #include "scene/WaveScene.h"
 #include "scene/SpotifyScene.h"
@@ -16,7 +16,7 @@ void update_canvas(RGBMatrix *matrix) {
     auto watermelon_plasma_scene = Scenes::WatermelonPlasmaScene(matrix);
     auto wave_scene = Scenes::WaveScene(matrix);
     auto spotify_scene = Scenes::SpotifyScene(matrix);
-    auto preset_scene = Scenes::PresetScene(matrix);
+    auto preset_scene = Scenes::ImageScene(matrix);
 
     while (!exit_canvas_update) {
         if(spotify->has_changed())
