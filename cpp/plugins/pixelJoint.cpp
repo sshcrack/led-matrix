@@ -1,18 +1,17 @@
-//
-// Created by sshcrack on 28.03.24.
-//
-
-
 #include "pixelJoint.h"
+#include "matrix_control/scene/ImageScene.h"
 #include <vector>
 #include <string>
 
-using namespace std;
+using std::vector;
+using std::map;
 
-vector<map<string, Scenes::Scene>> PixelJoint::get_scenes() {
-    return {};
+map<string, Scenes::Scene*> PixelJoint::get_scenes(rgb_matrix::RGBMatrix *matrix) {
+    return {
+        {"pixelJoint", new Scenes::ImageScene(matrix)}
+    };
 }
 
-vector<map<string, ImageTypes::General>> PixelJoint::get_images_types() {
+map<string, ImageTypes::General*> PixelJoint::get_images_types() {
     return {};
 }
