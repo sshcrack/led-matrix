@@ -1,4 +1,4 @@
-#include "PresetScene.h"
+#include "ImageScene.h"
 #include "../image.h"
 #include "spdlog/spdlog.h"
 #include "../../utils/utils.h"
@@ -19,7 +19,7 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
 
-bool PresetScene::DisplayAnimation(RGBMatrix *matrix) {
+bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     auto curr = &curr_animation.value();
 
     if (skip_image || GetTimeInMillis() > curr->end_time_ms) {
@@ -54,7 +54,7 @@ bool PresetScene::DisplayAnimation(RGBMatrix *matrix) {
 }
 
 
-bool PresetScene::tick(RGBMatrix *matrix) {
+bool ImageScene::tick(RGBMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
         auto res = get_next_anim(matrix, 0);
         if (!res.has_value()) {
@@ -68,7 +68,7 @@ bool PresetScene::tick(RGBMatrix *matrix) {
     return DisplayAnimation(matrix);
 }
 
-expected<CurrAnimation, string> PresetScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
+expected <CurrAnimation, string> ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }
@@ -108,7 +108,7 @@ expected<CurrAnimation, string> PresetScene::get_next_anim(RGBMatrix *matrix, in
         return get_next_anim(matrix, recursiveness + 1);
     }
 
-    next_img = async(launch::async, PresetScene::get_next_image, img_category, width, height);
+    next_img = async(launch::async, ImageScene::get_next_image, img_category, width, height);
     auto val = info_opt.value();
     if (!val.has_value()) {
         debug("There was an error with the previous image. Waiting for new image to download and process...");
@@ -129,8 +129,8 @@ expected<CurrAnimation, string> PresetScene::get_next_anim(RGBMatrix *matrix, in
     return CurrAnimation(file, reader, end_time_ms, override_anim_delay);
 }
 
-expected<optional<ImageInfo>, string>
-PresetScene::get_next_image(ImageTypes::General *category, int width, int height) {
+expected <optional<ImageInfo>, string>
+ImageScene::get_next_image(ImageTypes::General *category, int width, int height) {
     auto post = category->get_next_image();
     if (!post.has_value()) {
         return unexpected("End of images for category");
@@ -147,7 +147,7 @@ PresetScene::get_next_image(ImageTypes::General *category, int width, int height
     return make_tuple(frames_opt.value(), post.value());
 }
 
-FileInfo PresetScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
+FileInfo ImageScene::GetFileInfo(tuple <vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
     auto frames = get<0>(p_info);
     auto post = get<1>(p_info);
 
