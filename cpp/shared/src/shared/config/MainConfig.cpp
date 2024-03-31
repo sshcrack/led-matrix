@@ -1,6 +1,6 @@
-#include "config/MainConfig.h"
+#include "shared/config/MainConfig.h"
 #include <mutex>
-#include "utils/shared.h"
+#include "shared/utils/shared.h"
 #include <utility>
 #include <spdlog/spdlog.h>
 

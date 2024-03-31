@@ -1,12 +1,12 @@
 #include "restinio/all.hpp"
-#include "utils/shared.h"
-#include "post.h"
+#include "shared/utils/shared.h"
+#include "shared/post.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
-#include "../matrix_control/image.h"
+#include "shared/utils/canvas_image.h"
 #include "server_utils.h"
-#include "utils/utils.h"
-#include "utils/consts.h"
+#include "shared/utils/utils.h"
+#include "shared/utils/consts.h"
 #include "utils/canvas_consts.h"
 #include <spdlog/spdlog.h>
 

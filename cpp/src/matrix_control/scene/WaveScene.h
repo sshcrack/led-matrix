@@ -1,6 +1,6 @@
 #pragma once
 #include "Scene.h"
-#include "utils/FrameTimer.h"
+#include "shared/utils/FrameTimer.h"
 
 
 using Scenes::Scene;

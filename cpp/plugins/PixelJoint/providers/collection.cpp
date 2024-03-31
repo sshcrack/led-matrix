@@ -1,7 +1,7 @@
 #include "collection.h"
-#include "random"
-#include "utils/canvas_consts.h"
+#include <random>
 #include "spdlog/spdlog.h"
+using std::nullopt;
 
 optional<Post> ImageProviders::Collection::get_next_image() {
     if (images.empty()) {
@@ -18,7 +18,7 @@ optional<Post> ImageProviders::Collection::get_next_image() {
 }
 
 void ImageProviders::Collection::flush() {
-    std::shuffle(already_shown.begin(), already_shown.end(), random_device());
+    std::shuffle(already_shown.begin(), already_shown.end(), std::random_device());
 
     images.reserve(images.size() + already_shown.size());
     images.insert(images.end(), already_shown.begin(), already_shown.end());

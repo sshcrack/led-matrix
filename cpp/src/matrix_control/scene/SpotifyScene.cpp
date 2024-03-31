@@ -2,8 +2,8 @@
 #include "Magick++.h"
 #include <spdlog/spdlog.h>
 #include "../../spotify/shared_spotify.h"
-#include "../image.h"
-#include "utils/image_fetch.h"
+#include "shared/utils/canvas_image.h"
+#include "shared/utils/image_fetch.h"
 #include "led-matrix.h"
 
 using rgb_matrix::FrameCanvas;

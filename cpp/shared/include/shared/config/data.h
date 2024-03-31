@@ -1,8 +1,8 @@
 #pragma once
 
-#include "image_providers/general.h"
+#include "config/image_providers/general.h"
 #include <nlohmann/json.hpp>
-#include "utils/utils.h"
+#include "shared/utils/utils.h"
 using namespace std;
 using json = nlohmann::json;
 

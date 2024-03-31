@@ -1,5 +1,5 @@
 
-#include "config/data.h"
+#include "shared/config/data.h"
 #include <nlohmann/json.hpp>
 #include <random>
 #include <spdlog/spdlog.h>

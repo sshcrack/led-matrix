@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 project(SharedTools VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 23)
+add_definitions(-DPLUGIN_TEST=1)
 
 
 file(GLOB_RECURSE SHARED_SOURCES

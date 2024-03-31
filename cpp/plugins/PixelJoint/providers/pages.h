@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/image_providers/general.h"
+#include "../scraper/scraped_post.h"
 
 namespace ImageProviders {
     class Pages : public General {

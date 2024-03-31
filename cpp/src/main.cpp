@@ -10,7 +10,7 @@
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
 #include "server/server.h"
-#include "utils/shared.h"
+#include "shared/utils/shared.h"
 
 using namespace spdlog;
 using namespace std;
