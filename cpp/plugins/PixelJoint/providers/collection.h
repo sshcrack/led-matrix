@@ -1,6 +1,6 @@
 #pragma once
 
-#include "general.h"
+#include "config/image_providers/general.h"
 namespace ImageProviders {
     class Collection: public General {
     private:

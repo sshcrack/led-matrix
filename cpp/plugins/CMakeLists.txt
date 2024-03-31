@@ -38,6 +38,8 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     find_package(spdlog CONFIG REQUIRED)
     target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
 
+    # Require SharedTools
+    target_link_libraries(${LIB_NAME} PRIVATE SharedTools)
 
     # Custom configuration
     include("${P_DIR}/CMakeLists.txt" OPTIONAL)

@@ -1,14 +1,14 @@
 #include "post.h"
-#include "../../plugins/PixelJoint/scenes/image/fetch.h"
+#include "../scenes/image/fetch.h"
 #include <vector>
-#include "../utils/consts.h"
+#include "utils/consts.h"
 #include "cpr/cpr.h"
 #include "libxml/xpath.h"
 #include <iostream>
 #include <optional>
 #include <Magick++.h>
-#include "image.h"
-#include "../utils/utils.h"
+#include "matrix_control/image.h"
+#include "utils/utils.h"
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;

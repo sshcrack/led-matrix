@@ -1,6 +1,6 @@
 #include "general.h"
-#include "pages.h"
-#include "collection.h"
+#include "../../../../plugins/PixelJoint/providers/pages.h"
+#include "../../../../plugins/PixelJoint/providers/collection.h"
 #include "spdlog/spdlog.h"
 #include <stdexcept>
 #include "fmt/core.h"
