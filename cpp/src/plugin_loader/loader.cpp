@@ -16,10 +16,10 @@
 std::set<std::string> libNames;
 std::mutex libLock;
 
-void pluginMainloop(std::atomic<bool> &running, unsigned int update_s) {
+void pluginMainloop(unsigned int update_s) {
     const auto naptime = std::chrono::milliseconds(100);
 
-    while (running) {
+    while (!interrupt_received) {
         for (std::string pl_name: libNames) {
             void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY);
 
@@ -44,7 +44,7 @@ void pluginMainloop(std::atomic<bool> &running, unsigned int update_s) {
         }
 
         unsigned int napped = 0;
-        while (running) {
+        while (!interrupt_received) {
             // spin here too, so we can check running status multiple
             // times during a long sleep
             if (napped > update_s * 1000) {
@@ -58,10 +58,10 @@ void pluginMainloop(std::atomic<bool> &running, unsigned int update_s) {
     std::cout << "Exiting pluginMainloop thread" << std::endl;
 }
 
-void updateLibs(std::atomic<bool> &running, unsigned int update_s) {
+void updateLibs(unsigned int update_s) {
     const auto naptime = std::chrono::milliseconds(100);
 
-    while (running) {
+    while (!interrupt_received) {
         std::cout << "Checking for new libs" << std::endl;
 
 #if __APPLE__
@@ -86,8 +86,8 @@ void updateLibs(std::atomic<bool> &running, unsigned int update_s) {
         }
 
         unsigned int napped = 0;
-        while (running) {
-            // spin here too, so we can check running status multiple
+        while (!interrupt_received) {
+            // spin here too, so we can check interrupt_received status multiple
             // times during a long sleep
             if (napped > update_s * 1000) {
                 break;
@@ -102,8 +102,8 @@ void updateLibs(std::atomic<bool> &running, unsigned int update_s) {
 
 
 std::pair<std::thread, std::thread> PluginLoader::initialize() {
-    std::thread updateThread(updateLibs, std::ref(interrupt_received), 5);
-    std::thread mainloopThread(pluginMainloop, std::ref(interrupt_received), 5);
+    std::thread updateThread(updateLibs, 5);
+    std::thread mainloopThread(pluginMainloop, 5);
 
     return { std::move(updateThread), std::move(mainloopThread) };
 }
