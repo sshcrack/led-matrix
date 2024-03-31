@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include "data.h"
-#include "../resources.h"
+#include "resources.h"
 
 using namespace std;
 using json = nlohmann::json;

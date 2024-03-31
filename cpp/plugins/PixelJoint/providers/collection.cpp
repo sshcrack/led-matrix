@@ -1,6 +1,6 @@
 #include "collection.h"
 #include "random"
-#include "../../utils/consts.h"
+#include "utils/consts.h"
 #include "spdlog/spdlog.h"
 
 optional<Post> ImageProviders::Collection::get_next_image() {

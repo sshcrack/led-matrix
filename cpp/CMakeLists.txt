@@ -25,8 +25,11 @@ file(GLOB_RECURSE SOURCES
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
+add_subdirectory(shared)
+
 # Adding plugins
 add_subdirectory(plugins)
+
 
 # Add an executable with the above sources
 add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
@@ -36,6 +39,9 @@ add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
 
 target_compile_features(main PRIVATE cxx_std_23)
 
+
+# Require SharedTools
+target_link_libraries(main PRIVATE SharedTools)
 
 # ImageMagick
 

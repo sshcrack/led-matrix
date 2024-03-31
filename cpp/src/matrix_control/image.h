@@ -4,7 +4,7 @@
 #include <Magick++.h>
 #include "led-matrix.h"
 #include <filesystem>
-#include "../header_fix/fix-content-streamer.h"
+#include "content-streamer.h"
 #include <magick/image.h>
 using namespace std;
 
