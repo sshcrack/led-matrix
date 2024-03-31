@@ -4,7 +4,7 @@
 #include "fmt/core.h"
 
 using json = nlohmann::json;
-namespace ImageTypes {
+namespace ImageProviders {
     class General {
     private:
         const json& initial_arguments;

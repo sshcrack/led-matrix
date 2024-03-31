@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace PluginLoader {
+namespace Plugins {
     std::vector<std::string> lib_glob(const std::string &pattern);
 }
 

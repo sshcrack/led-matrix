@@ -1,6 +1,6 @@
 #include "lib_name.h"
 
-std::pair<std::string, std::string> PluginLoader::get_lib_name(std::string &path) {
+std::pair<std::string, std::string> Plugins::get_lib_name(std::string &path) {
     // hue, https://stackoverflow.com/a/4318543/4765406
     std::string bn(basename(&path[0]));
 

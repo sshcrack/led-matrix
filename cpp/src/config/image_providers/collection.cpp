@@ -3,7 +3,7 @@
 #include "../../utils/consts.h"
 #include "spdlog/spdlog.h"
 
-optional<Post> ImageTypes::Collection::get_next_image() {
+optional<Post> ImageProviders::Collection::get_next_image() {
     if(images.empty()) {
         spdlog::debug("Empty, returning...");
         return nullopt;
@@ -17,7 +17,7 @@ optional<Post> ImageTypes::Collection::get_next_image() {
     return curr_img;
 }
 
-void ImageTypes::Collection::flush() {
+void ImageProviders::Collection::flush() {
     std::shuffle(already_shown.begin(), already_shown.end(), random_device());
 
     images.reserve(images.size() + already_shown.size());
@@ -26,7 +26,7 @@ void ImageTypes::Collection::flush() {
     already_shown.clear();
 }
 
-ImageTypes::Collection::Collection(const json &arguments) : General(arguments) {
+ImageProviders::Collection::Collection(const json &arguments) : General(arguments) {
     vector<string> imgs = arguments.template get<vector<string>>();
     images.reserve(imgs.size());
 
@@ -36,7 +36,7 @@ ImageTypes::Collection::Collection(const json &arguments) : General(arguments) {
     }
 }
 
-json ImageTypes::Collection::to_json() {
+json ImageProviders::Collection::to_json() {
     vector<Post> total = images;
     total.reserve(images.size() + already_shown.size());
 

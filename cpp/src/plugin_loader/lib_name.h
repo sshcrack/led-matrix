@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace PluginLoader {
+namespace Plugins {
     std::pair<std::string, std::string> get_lib_name(std::string &path);
 }
 

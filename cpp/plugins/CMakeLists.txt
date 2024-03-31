@@ -9,11 +9,14 @@ file(GLOB PLUGIN_SOURCES
 foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     get_filename_component(LIB_NAME ${PLUGIN_SOURCE} NAME_WE)
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
-    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCE})
+    file(GLOB_RECURSE PLUGIN_ALL_SOURCES ${LIB_NAME}/*.cpp)
+
+    message(PL="${PLUGIN_ALL_SOURCES}")
+    add_library(${LIB_NAME} SHARED ${PLUGIN_ALL_SOURCES})
 
 
     # Compiler target
-    target_compile_features(${LIB_NAME} PRIVATE cxx_std_23)
+    target_compile_features(${LIB_NAME} PUBLIC cxx_std_23)
 
     # Image Magick
     find_package(unofficial-graphicsmagick CONFIG REQUIRED)

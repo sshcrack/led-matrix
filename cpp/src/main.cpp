@@ -18,18 +18,18 @@ int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
     spdlog::cfg::load_env_levels();
     debug("Loading plugins...");
-    auto res = PluginLoader::initialize();
+    auto res = new Plugins::PluginManager();
 
-    debug("Loading config");
+    debug("Loaded {} Scenes and {} Image Types", res->get_scenes().size(), res->get_image_type().size());
 
-    //TODO fix issues for height not being available when fetching images
+    debug("Loading config...");
     config = new Config::MainConfig("config.json");
 
     debug("Checking spotify config...");
     spotify = new Spotify();
     spotify->initialize();
 
-    debug("Starting mainloop");
+    debug("Starting mainloop_thread");
     uint16_t port = 8080;
 
     string host = "0.0.0.0";
@@ -77,7 +77,6 @@ int main(int argc, char *argv[]) {
     spotify->terminate();
     control_thread.join();
 
-    res.first.join();
-    res.second.join();
+    res->terminate();
     return 0;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "general.h"
-namespace ImageTypes {
+namespace ImageProviders {
     class Pages: public General {
     private:
         int page_end, page_begin;
