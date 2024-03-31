@@ -1,9 +1,7 @@
 #include "lib_glob.h"
 
-using namespace PluginLoader;
-
 // based on https://stackoverflow.com/a/8615450/4765406
-std::vector<std::string> lib_glob(const std::string &pattern) {
+std::vector<std::string> PluginLoader::lib_glob(const std::string &pattern) {
     glob_t glob_result;
     memset(&glob_result, 0, sizeof(glob_result));
 
