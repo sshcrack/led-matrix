@@ -1,9 +1,9 @@
 #include "ImageScene.h"
-#include "../image.h"
+#include "matrix_control/image.h"
 #include "spdlog/spdlog.h"
-#include "../../utils/utils.h"
-#include "../../utils/shared.h"
-#include "../pixel_art.h"
+#include "utils/utils.h"
+#include "utils/shared.h"
+#include "matrix_control/pixel_art.h"
 #include <vector>
 
 #include <Magick++.h>

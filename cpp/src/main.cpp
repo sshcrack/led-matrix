@@ -2,6 +2,7 @@
 #include "server/server.h"
 #include <Magick++.h>
 #include "spdlog/spdlog.h"
+#include "plugin_loader/loader.h"
 #include "spdlog/cfg/env.h"
 #include "utils/shared.h"
 #include "spotify/shared_spotify.h"
@@ -16,6 +17,9 @@ using json = nlohmann::json;
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
     spdlog::cfg::load_env_levels();
+    debug("Loading plugins...");
+    auto res = PluginLoader::initialize();
+
     debug("Loading config");
 
     //TODO fix issues for height not being available when fetching images
@@ -72,5 +76,8 @@ int main(int argc, char *argv[]) {
     restinio::initiate_shutdown(server);
     spotify->terminate();
     control_thread.join();
+
+    res.first.join();
+    res.second.join();
     return 0;
 }
