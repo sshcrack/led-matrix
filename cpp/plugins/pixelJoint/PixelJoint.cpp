@@ -1,5 +1,5 @@
-#include "pixelJoint.h"
-#include "matrix_control/scene/ImageScene.h"
+#include "PixelJoint.h"
+#include "scenes/ImageScene.h"
 #include <vector>
 #include <string>
 
@@ -8,10 +8,21 @@ using std::map;
 
 map<string, Scenes::Scene*> PixelJoint::get_scenes(rgb_matrix::RGBMatrix *matrix) {
     return {
-        {"pixelJoint", new Scenes::ImageScene(matrix)}
+        {"images", new Scenes::ImageScene(matrix)}
     };
 }
 
 map<string, ImageTypes::General*> PixelJoint::get_images_types() {
     return {};
+}
+
+
+extern "C" PixelJoint *createPixelJoint()
+{
+    return new PixelJoint;
+}
+
+extern "C" void destroyPixelJoint(PixelJoint *p)
+{
+    delete p;
 }
