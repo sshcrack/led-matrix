@@ -1,4 +1,4 @@
-#include "pixel_art.h"
+#include "fetch.h"
 #include "cpr/cpr.h"
 #include "libxml/HTMLparser.h"
 #include <iostream>
@@ -27,8 +27,7 @@ void rm_nonprinting(std::string &str) {
 bool download_image(const string &url_str, const string &tmp) {
     const char *out_file = tmp.c_str();
 
-    string merged_url = url_str;
-    debug("Downloading " + merged_url + " to " + out_file);
+    debug("Downloading " + url_str + " to " + out_file);
 
     if (strlen(out_file) > FILENAME_MAX) {
         error("File name too long");
@@ -48,7 +47,7 @@ bool download_image(const string &url_str, const string &tmp) {
 
 
         CURLcode res;
-        curl_easy_setopt(curl, CURLOPT_URL, merged_url.c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, url_str.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
         res = curl_easy_perform(curl);

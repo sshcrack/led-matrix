@@ -4,7 +4,6 @@
 #include <nlohmann/json.hpp>
 
 
-#ifndef PLUGIN_TEST
 #include "spotify/shared_spotify.h"
 #include "spotify/spotify.h"
 #include <Magick++.h>
@@ -12,21 +11,20 @@
 #include "matrix_control/hardware.h"
 #include "server/server.h"
 #include "utils/shared.h"
-#endif
 
 using namespace spdlog;
 using namespace std;
 using json = nlohmann::json;
 
 int main(int argc, char *argv[]) {
-    //Magick::InitializeMagick(*argv);
-    //spdlog::cfg::load_env_levels();
+    Magick::InitializeMagick(*argv);
+    spdlog::cfg::load_env_levels();
     debug("Loading plugins...");
     auto res = new Plugins::PluginManager();
 
 #ifndef PLUGIN_TEST
     debug("Loaded {} Scenes and {} Image Types", res->get_scenes().size(), res->get_image_type().size());
-
+#endif
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
@@ -82,7 +80,6 @@ int main(int argc, char *argv[]) {
     restinio::initiate_shutdown(server);
     spotify->terminate();
     control_thread.join();
-#endif
 
     res->terminate();
     return 0;

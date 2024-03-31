@@ -1,12 +1,11 @@
 #include "spotify.h"
 #include <cstdio>
 #include <string>
+#include <cpr/cpr.h>
 #include <spdlog/spdlog.h>
-#include <curl/curl.h>
 #include <cstdlib>
 #include <iostream>
 
-#include "../utils/base64.h"
 #include "../utils/shared.h"
 #include "../utils/utils.h"
 
@@ -27,40 +26,23 @@ bool Spotify::refresh() {
         return false;
     }
 
-    auto curl = curl_easy_init();
+    std::string readBuffer;
 
-    if (curl) {
-        std::string readBuffer;
+    std::string url = "https://accounts.spotify.com/api/token";
+    std::string post_fields = "grant_type=refresh_token&refresh_token=" + spAuth.refresh_token.value();
 
-        std::string url = "https://accounts.spotify.com/api/token";
-        std::string post_fields = "grant_type=refresh_token&refresh_token=" + spAuth.refresh_token.value();
+    std::string auth = client_id + ":" + client_secret;
 
-        std::string auth = client_id + ":" + client_secret;
-        std::string auth_header = "Authorization: Basic " + base64_encode(auth);
+    auto r = cpr::Post(cpr::Url{url},
+                       cpr::Payload{
+                               {"grant_type",    "refresh_token"},
+                               {"refresh_token", spAuth.refresh_token.value()}
+                       },
+                       cpr::Authentication(client_id, client_secret, cpr::AuthMode::BASIC)
+    );
 
-        struct curl_slist *headers;
-        headers = curl_slist_append(headers, auth_header.c_str());
-
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            error("curl_easy_perform() failed: {}", curl_easy_strerror(res));
-        }
-
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-
-        debug("Saving to config...");
-        return Spotify::save_resp_to_config(readBuffer);
-    }
-
-    error("Could not initialize curl!?");
-    return false;
+    debug("Saving to config...");
+    return Spotify::save_resp_to_config(readBuffer);
 }
 
 bool Spotify::initialize() {
@@ -87,11 +69,11 @@ bool Spotify::initialize() {
 
 
     auto out = execute_process("node", {curr.string(), "8888"});
-    if(!out.has_value())
+    if (!out.has_value())
         return false;
 
     auto res = Spotify::save_resp_to_config(out.value());
-    if(!res)
+    if (!res)
         return false;
 
     this->start_control_thread();
@@ -111,8 +93,8 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     auto curr = config->get_spotify();
     string refresh_token = curr.refresh_token.value();
 
-    if(parsed.contains("refresh_token")) {
-       parsed.at("refresh_token").get_to(refresh_token);
+    if (parsed.contains("refresh_token")) {
+        parsed.at("refresh_token").get_to(refresh_token);
     }
 
     [[maybe_unused]] tmillis_t expires_in = GetTimeInMillis() + expires_in_seconds * 1000;
@@ -129,15 +111,15 @@ Spotify::Spotify() {
 
 std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currently_playing() {
     auto res = Spotify::authenticated_get("https://api.spotify.com/v1/me/player/currently-playing?market=DE");
-    if(!res.has_value()) {
+    if (!res.has_value()) {
         return unexpected(res.error());
     }
 
-    if(!res.value().has_value()) {
+    if (!res.value().has_value()) {
         return nullopt;
     }
 
-    if(!res->value().contains("item")) {
+    if (!res->value().contains("item")) {
         warn("Spotify state does not contain item: {}", res->value().dump());
         return unexpected("Invalid server response: " + res->value().dump());
     }
@@ -162,6 +144,7 @@ std::expected<optional<json>, std::string> Spotify::authenticated_get(const stri
     CURL *curl = curl_easy_init();
     if (curl) {
         std::string readBuffer;
+
 
         // Set the URL
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -202,7 +185,7 @@ void Spotify::start_control_thread() {
     thread c_thread{[this] {
         while (!this->should_terminate) {
             std::expected<optional<SpotifyState>, std::string> data = this->inner_fetch_currently_playing();
-            if(!data.has_value()) {
+            if (!data.has_value()) {
                 error("Could not get currently playing: {}", data.error());
                 std::this_thread::sleep_for(std::chrono::seconds(15));
 
@@ -210,7 +193,7 @@ void Spotify::start_control_thread() {
             }
 
             auto opt_state = data.value();
-            if(this->currently_playing.has_value()) {
+            if (this->currently_playing.has_value()) {
                 this->last_playing.emplace(this->currently_playing.value());
             } else {
                 this->last_playing.reset();
@@ -251,13 +234,13 @@ std::optional<SpotifyState> Spotify::get_currently_playing() {
  * Checks if the current track has changed from the previous call of this function
  */
 bool Spotify::has_changed() {
-    if(!this->is_dirty)
+    if (!this->is_dirty)
         return false;
 
     this->is_dirty = false;
 
     debug("Checking if has changed");
-    if(this->last_playing.has_value() != this->currently_playing.has_value())
+    if (this->last_playing.has_value() != this->currently_playing.has_value())
         return true;
 
     return this->last_playing->get_track().get_id() != this->currently_playing->get_track().get_id();

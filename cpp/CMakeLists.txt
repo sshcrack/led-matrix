@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(main VERSION 0.1.0)
 
-add_definitions(-DPLUGIN_TEST=1)
+add_definitions(-DPLUGIN_TEST=0)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -31,33 +31,20 @@ add_subdirectory(plugins)
 # Add an executable with the above sources
 add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
 
-# ImageMagick
-
-find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
-
-# Curl
-find_package(CURL REQUIRED)
-include_directories(${CURL_INCLUDE_DIR})
-target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
-
-# spdlog
-find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(main PRIVATE spdlog::spdlog)
 
 # Main Target Compile
 
 target_compile_features(main PRIVATE cxx_std_23)
 
-# HTPT Requests
 
-find_package(cpr CONFIG REQUIRED)
-target_link_libraries(main PRIVATE cpr::cpr)
+# ImageMagick
 
-# HTTP Parsing
+find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
 
-find_package(LibXml2 REQUIRED)
-target_link_libraries(main PRIVATE LibXml2::LibXml2)
+# spdlog
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(main PRIVATE spdlog::spdlog)
 
 # HTTP Server
 find_package(restinio REQUIRED)
@@ -75,3 +62,8 @@ target_link_libraries(main PRIVATE fmt::fmt)
 
 # Link plugins as well
 target_link_libraries(main PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
+
+# HTTP Requests
+
+find_package(cpr CONFIG REQUIRED)
+target_link_libraries(main PRIVATE cpr::cpr)

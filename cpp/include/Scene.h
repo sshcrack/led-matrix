@@ -12,7 +12,10 @@ namespace Scenes {
         FrameCanvas* offscreen_canvas;
 
     public:
-        explicit Scene(RGBMatrix* matrix);
+        explicit Scene(RGBMatrix* matrix) {
+            offscreen_canvas = matrix->CreateFrameCanvas();
+
+        }
         // Returns true if the scene is done and should be removed
         virtual bool tick(RGBMatrix *matrix) = 0;
     };

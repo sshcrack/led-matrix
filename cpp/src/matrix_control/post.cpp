@@ -1,5 +1,5 @@
 #include "post.h"
-#include "pixel_art.h"
+#include "../../plugins/PixelJoint/scenes/image/fetch.h"
 #include <vector>
 #include "../utils/consts.h"
 #include "cpr/cpr.h"

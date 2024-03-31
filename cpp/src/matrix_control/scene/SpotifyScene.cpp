@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 #include "../../spotify/shared_spotify.h"
 #include "../image.h"
-#include "../pixel_art.h"
+#include "../../../plugins/PixelJoint/scenes/image/fetch.h"
 #include "led-matrix.h"
 
 using rgb_matrix::FrameCanvas;

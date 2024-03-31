@@ -1,6 +1,6 @@
 #include "canvas.h"
 #include "../utils/utils.h"
-#include "scene/Scene.h"
+#include "Scene.h"
 #include "scene/WatermelonPlasmaScene.h"
 #include "scene/WaveScene.h"
 #include "scene/SpotifyScene.h"
