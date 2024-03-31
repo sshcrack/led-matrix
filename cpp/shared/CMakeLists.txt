@@ -8,8 +8,7 @@ file(GLOB_RECURSE SHARED_SOURCES
         src/*.cpp
 )
 
-
-add_library(${PROJECT_NAME} STATIC)
+add_library(${PROJECT_NAME} SHARED)
 target_sources(${PROJECT_NAME}
         PRIVATE
         ${SHARED_SOURCES}
@@ -28,3 +27,24 @@ target_include_directories(${PROJECT_NAME}
         # where external projects will look for the library's public headers
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+
+# spdlog
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+
+
+# JSON
+find_package(nlohmann_json 3.2.0 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
+
+# Fmt
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+
+
+# HTTP Parsing
+
+find_package(LibXml2 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
+

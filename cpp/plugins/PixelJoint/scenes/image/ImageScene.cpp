@@ -3,7 +3,7 @@
 #include "spdlog/spdlog.h"
 #include "utils/utils.h"
 #include "utils/shared.h"
-#include "fetch.h"
+#include "utils/image_fetch.h"
 #include <vector>
 
 #include <Magick++.h>

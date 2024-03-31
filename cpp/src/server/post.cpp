@@ -1,10 +1,10 @@
 #include "restinio/all.hpp"
-#include "../utils/shared.h"
+#include "utils/shared.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
-#include "../utils/utils.h"
+#include "utils/utils.h"
 #include "server_utils.h"
-#include "../utils/uuid.h"
+#include "utils/uuid.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;

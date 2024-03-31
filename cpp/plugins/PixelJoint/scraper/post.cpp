@@ -1,7 +1,6 @@
 #include "post.h"
-#include "../scenes/image/fetch.h"
+#include "utils/image_fetch.h"
 #include <vector>
-#include "utils/consts.h"
 #include "cpr/cpr.h"
 #include "libxml/xpath.h"
 #include <iostream>
@@ -9,6 +8,7 @@
 #include <Magick++.h>
 #include "matrix_control/image.h"
 #include "utils/utils.h"
+#include "utils/consts.h"
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;
@@ -115,12 +115,9 @@ string ScrapedPost::get_post_url() {
     return this->post_url;
 }
 
-string Post::get_filename() {
-    return this->file_name;
-}
 
 string Post::get_image_url() {
-    return Constants::post_img_url + this->get_image_name();
+    return "https://pixeljoint.com" + Constants::post_img_url + this->get_image_name();
 }
 
 optional<vector<Magick::Image>> Post::process_images(int width, int height) {
@@ -145,7 +142,7 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     // Downloading image first
     if (!filesystem::exists(processed_img)) {
         try_remove(file_path);
-        download_image("https://pixeljoint.com" + get_image_url(), file_path);
+        download_image(get_image_url(), file_path);
     }
 
     vector<Magick::Image> frames;
@@ -167,8 +164,4 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return res;
-}
-
-string Post::get_image_name() {
-    return image_name;
 }
