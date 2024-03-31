@@ -2,8 +2,8 @@
 
 #include <optional>
 #include "Scene.h"
-#include "../../utils/utils.h"
-#include "../../spotify/state.h"
+#include "utils/utils.h"
+#include "spotify/state.h"
 
 namespace Scenes {
     struct SpotifyFileInfo {

@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "../utils/shared.h"
-#include "../utils/utils.h"
+#include "utils/shared.h"
+#include "utils/utils.h"
 
 using namespace spdlog;
 

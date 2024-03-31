@@ -2,7 +2,7 @@
 
 #include "led-matrix.h"
 #include "content-streamer.h"
-#include "../utils/utils.h"
+#include "utils/utils.h"
 #include "image.h"
 #include "../../plugins/PixelJoint/scraper/post.h"
 #include <vector>

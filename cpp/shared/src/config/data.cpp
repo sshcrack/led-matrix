@@ -1,8 +1,5 @@
-//
-// Created by hendrik on 2/2/24.
-//
 
-#include "data.h"
+#include "config/data.h"
 #include <nlohmann/json.hpp>
 #include <random>
 #include <spdlog/spdlog.h>

@@ -1,11 +1,7 @@
-//
-// Created by hendrik on 3/28/24.
-//
 
 #include "WatermelonPlasmaScene.h"
-#include "../../utils/utils.h"
+#include "utils/utils.h"
 #include <cmath>
-#include <iostream>
 
 using namespace std;
 

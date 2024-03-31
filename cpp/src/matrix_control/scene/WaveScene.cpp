@@ -4,7 +4,7 @@
 
 #include "WaveScene.h"
 #include <cmath>
-#include "../../utils/utils.h"
+#include "utils/utils.h"
 
 
 static float *map = nullptr;

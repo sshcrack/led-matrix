@@ -32,44 +32,40 @@ add_subdirectory(plugins)
 
 
 # Add an executable with the above sources
-add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
 
 
 # Main Target Compile
 
-target_compile_features(main PRIVATE cxx_std_23)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 
 # Require SharedTools
-target_link_libraries(main PRIVATE SharedTools)
+target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
 
 # ImageMagick
 
 find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
 
 # spdlog
 find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(main PRIVATE spdlog::spdlog)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
 # HTTP Server
 find_package(restinio REQUIRED)
 
-target_link_libraries(main PRIVATE restinio::restinio)
+target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 
 # JSON
 find_package(nlohmann_json 3.2.0 REQUIRED)
-target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
-
-# Fmt
-find_package(fmt CONFIG REQUIRED)
-target_link_libraries(main PRIVATE fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 
 # Link plugins as well
-target_link_libraries(main PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
 
 # HTTP Requests
 
 find_package(cpr CONFIG REQUIRED)
-target_link_libraries(main PRIVATE cpr::cpr)
+target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)

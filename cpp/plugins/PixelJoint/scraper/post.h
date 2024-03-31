@@ -17,9 +17,14 @@ public:
         this->file_name = img_name.substr(img_name.find_last_of('/') + 1);
     }
 
-    string get_filename();
-    string get_image_url();
-    string get_image_name();
+    string get_filename() {
+        return this->file_name;
+    }
+
+    virtual string get_image_url() = 0;
+    string get_image_name() {
+        return image_name;
+    }
     optional<vector<Magick::Image>> process_images(int width, int height);
 };
 
