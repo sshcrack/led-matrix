@@ -17,12 +17,12 @@ vector<int> generate_rand_pages(int page_begin, int page_end) {
 }
 
 
-void ImageTypes::Pages::flush() {
+void ImageProviders::Pages::flush() {
     curr_posts.clear();
     total_pages = generate_rand_pages(page_begin, page_end);
 }
 
-optional<Post> ImageTypes::Pages::get_next_image() {
+optional<Post> ImageProviders::Pages::get_next_image() {
     while(!curr_posts.empty() || !total_pages.empty()) {
         if(curr_posts.empty()) {
             int next_page = total_pages[0];
@@ -48,7 +48,7 @@ optional<Post> ImageTypes::Pages::get_next_image() {
     return nullopt;
 }
 
-ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
+ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
     int p_begin = arguments["begin"].get<int>();
     int p_end = arguments["end"].get<int>();
 
@@ -67,7 +67,7 @@ ImageTypes::Pages::Pages(const json &arguments) : General(arguments) {
     total_pages = generate_rand_pages(page_begin, page_end);
 }
 
-json ImageTypes::Pages::to_json() {
+json ImageProviders::Pages::to_json() {
     json args = json();
     args["begin"] = page_begin;
     args["end"] = page_end;

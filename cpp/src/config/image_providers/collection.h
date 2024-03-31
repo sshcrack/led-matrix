@@ -1,7 +1,7 @@
 #pragma once
 
 #include "general.h"
-namespace ImageTypes {
+namespace ImageProviders {
     class Collection: public General {
     private:
         vector<Post> images;

@@ -1,109 +1,90 @@
 #include <dlfcn.h>
 
-#include <atomic>
-#include <iostream>
-#include <mutex>
 #include <set>
-#include <thread>
+#include <spdlog/spdlog.h>
 
 #include "loader.h"
-#include "interrupt.h"
 #include "lib_name.h"
 #include "lib_glob.h"
 #include "plugin.h"
 
+using namespace spdlog;
+using Plugins::BasicPlugin;
 
-std::set<std::string> libNames;
-std::mutex libLock;
+Plugins::PluginManager::PluginManager() {
+    const std::string libGlob("plugins/*.so");
 
-void pluginMainloop(unsigned int update_s) {
-    const auto naptime = std::chrono::milliseconds(100);
+    std::vector<std::string> filenames = Plugins::lib_glob(libGlob);
 
-    while (!interrupt_received) {
-        for (std::string pl_name: libNames) {
-            void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY);
-
-            std::pair<std::string, std::string> delibbed =
-                    PluginLoader::get_lib_name(pl_name);
-
-            BasicPlugin *(*create)();
-            void (*destroy)(BasicPlugin *);
-
-            std::string cn = "create" + delibbed.second;
-            std::string dn = "destroy" + delibbed.second;
-
-            create = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
-            destroy = (void (*)(BasicPlugin *)) dlsym(dlhandle, dn.c_str());
-
-            BasicPlugin *p = create();
-
-            std::cout << "invoking " << pl_name << "get image types";
-            p->get_images_types();
-
-            destroy(p);
-        }
-
-        unsigned int napped = 0;
-        while (!interrupt_received) {
-            // spin here too, so we can check running status multiple
-            // times during a long sleep
-            if (napped > update_s * 1000) {
-                break;
-            }
-            std::this_thread::sleep_for(naptime);
-            napped += 100;
-        }
+    std::set<std::string> libNames;
+    for (const std::string &p_name: filenames) {
+        libNames.insert(p_name);
     }
 
-    std::cout << "Exiting pluginMainloop thread" << std::endl;
+
+    // Loading libs to memory
+
+    for (std::string pl_name: libNames) {
+        void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+
+        std::pair<std::string, std::string> delibbed =
+                Plugins::get_lib_name(pl_name);
+
+        BasicPlugin *(*create)();
+
+        std::string cn = "create" + delibbed.second;
+        std::string dn = "destroy" + delibbed.second;
+
+        std::cout << "CreateFunc: '" << cn << "' Destroy: '" << dn << "'" << std::endl;
+        flush(std::cout);
+        create = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
+        if(create == nullptr) {
+            error("Could not find symbol '{}' for Plugin '{}'. Output: {}", cn, pl_name, dlerror());
+            std::exit(-1);
+        }
+
+        BasicPlugin *p = create();
+
+        info("Loaded plugin {}", pl_name);
+        loaded_plugins.emplace_back(dlhandle, dn, p);
+    }
 }
 
-void updateLibs(unsigned int update_s) {
-    const auto naptime = std::chrono::milliseconds(100);
+void Plugins::PluginManager::terminate() {
+    info("Destroying plugins...");
+    for (const auto &item: loaded_plugins) {
+        void (*destroy)(BasicPlugin *);
+        destroy = (void (*)(BasicPlugin *)) dlsym(get<0>(item), get<1>(item).c_str());
 
-    while (!interrupt_received) {
-        std::cout << "Checking for new libs" << std::endl;
+        destroy(get<2>(item));
+    }
+}
 
-#if __APPLE__
-        const std::string libGlob("plugins/*.dylib");
-#else
-        const std::string libGlob("plugins/*.so");
-#endif
+std::vector<Plugins::SceneWrapper*> Plugins::PluginManager::get_scenes() {
+    std::vector<Plugins::SceneWrapper*> scenes;
 
-        std::vector<std::string> filenames = PluginLoader::lib_glob(libGlob);
-
-        size_t before = libNames.size();
-        libLock.lock(); // get locked, boi ------------------------------//
-        for (const std::string &p_name: filenames) {                            //
-            libNames.insert(p_name);                                     //
-        }                                                                //
-        libLock.unlock(); // got 'em ------------------------------------//
-        size_t after = libNames.size();
-
-        if (after - before > 0) {
-            std::cout << "Found " << after - before << " new plugins";
-            std::cout << std::endl;
-        }
-
-        unsigned int napped = 0;
-        while (!interrupt_received) {
-            // spin here too, so we can check interrupt_received status multiple
-            // times during a long sleep
-            if (napped > update_s * 1000) {
-                break;
-            }
-            std::this_thread::sleep_for(naptime);
-            napped += 100;
-        }
+    for (const auto &item: get_plugins()) {
+        scenes.insert(scenes.end(), item->get_scenes().begin(), item->get_scenes().end());
     }
 
-    std::cout << "Exiting update thread" << std::endl;
+    return scenes;
 }
 
+std::vector<Plugins::BasicPlugin *> Plugins::PluginManager::get_plugins() {
+    std::vector<Plugins::BasicPlugin*> plugins;
+    for (const auto &item: loaded_plugins) {
+        plugins.emplace_back(get<2>(item));
+    }
 
-std::pair<std::thread, std::thread> PluginLoader::initialize() {
-    std::thread updateThread(updateLibs, 5);
-    std::thread mainloopThread(pluginMainloop, 5);
-
-    return { std::move(updateThread), std::move(mainloopThread) };
+    return plugins;
 }
+
+std::vector<Plugins::ImageTypeWrapper *> Plugins::PluginManager::get_image_type() {
+    std::vector<Plugins::ImageTypeWrapper*> types;
+    for (const auto &item: get_plugins()) {
+        types.insert(types.end(), item->get_images_types().begin(), item->get_images_types().end());
+    }
+
+    return types;
+}
+

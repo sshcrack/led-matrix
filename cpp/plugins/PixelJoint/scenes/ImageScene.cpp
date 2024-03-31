@@ -11,7 +11,6 @@
 
 using namespace std;
 using namespace spdlog;
-using namespace Scenes;
 
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
@@ -68,7 +67,7 @@ bool ImageScene::tick(RGBMatrix *matrix) {
     return DisplayAnimation(matrix);
 }
 
-expected <CurrAnimation, string> ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
+expected<CurrAnimation, string> ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }
@@ -129,8 +128,8 @@ expected <CurrAnimation, string> ImageScene::get_next_anim(RGBMatrix *matrix, in
     return CurrAnimation(file, reader, end_time_ms, override_anim_delay);
 }
 
-expected <optional<ImageInfo>, string>
-ImageScene::get_next_image(ImageTypes::General *category, int width, int height) {
+expected<optional<ImageInfo>, string>
+ImageScene::get_next_image(ImageProviders::General *category, int width, int height) {
     auto post = category->get_next_image();
     if (!post.has_value()) {
         return unexpected("End of images for category");
@@ -147,7 +146,7 @@ ImageScene::get_next_image(ImageTypes::General *category, int width, int height)
     return make_tuple(frames_opt.value(), post.value());
 }
 
-FileInfo ImageScene::GetFileInfo(tuple <vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
+FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
     auto frames = get<0>(p_info);
     auto post = get<1>(p_info);
 
@@ -178,4 +177,12 @@ FileInfo ImageScene::GetFileInfo(tuple <vector<Magick::Image>, Post> p_info, Fra
 
     info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
     return file_info;
+}
+
+Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
+    return new ImageScene(matrix);
+}
+
+string ImageSceneWrapper::get_name() {
+    return "image_scene";
 }

@@ -2,14 +2,15 @@
 
 #include <vector>
 #include <string>
-#include "config/image_types/general.h"
-#include "led-matrix.h"
-#include "matrix_control/scene/Scene.h"
+#include "wrappers.h"
 
-using std::map;
+using std::vector;
+using std::string;
 
-class BasicPlugin {
-public:
-    virtual map<string, ImageTypes::General*> get_images_types() = 0;
-    virtual map<string, Scenes::Scene*> get_scenes(rgb_matrix::RGBMatrix* matrix) = 0;
-};
+namespace Plugins {
+    class BasicPlugin {
+    public:
+        virtual vector<ImageTypeWrapper*> get_images_types() = 0;
+        virtual vector<SceneWrapper*> get_scenes() = 0;
+    };
+}

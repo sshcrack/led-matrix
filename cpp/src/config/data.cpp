@@ -11,8 +11,8 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace ConfigData {
-    void to_json(json& j, const ImageTypes::General*& p)  {
-        auto& c = const_cast<ImageTypes::General *&>(p);
+    void to_json(json& j, const ImageProviders::General*& p)  {
+        auto& c = const_cast<ImageProviders::General *&>(p);
         j = c->to_json();
     }
 
@@ -77,18 +77,18 @@ namespace ConfigData {
 
         vector<json> image_json = j.at("images");
 
-        vector<ImageTypes::General*> images;
+        vector<ImageProviders::General*> images;
         images.reserve(image_json.size());
 
         for (const auto &item: image_json)
-            images.push_back(ImageTypes::General::from_json(item));
+            images.push_back(ImageProviders::General::from_json(item));
 
         p.categories = images;
     }
 
-    void from_json(const json& j, ImageTypes::General*& p) {
+    void from_json(const json& j, ImageProviders::General*& p) {
         spdlog::debug("from json imgtype", to_string(j));
-        p = ImageTypes::General::from_json(j);
+        p = ImageProviders::General::from_json(j);
     }
 
     void Preset::randomize() {
