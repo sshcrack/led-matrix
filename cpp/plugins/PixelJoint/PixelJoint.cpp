@@ -1,7 +1,9 @@
 #include "PixelJoint.h"
+
 #ifndef PLUGIN_TEST
-    #include "scenes/ImageScene.h"
+#include "scenes/ImageScene.h"
 #endif
+
 #include <vector>
 
 using std::vector;
@@ -18,19 +20,19 @@ vector<ImageTypeWrapper *> PixelJoint::get_images_types() {
 }
 
 #else
+
 string PixelJoint::test() {
     return "Yoo pixel joint";
 }
+
 #endif
 
 PixelJoint::PixelJoint() = default;
 
-extern "C" PixelJoint *createPixelJoint()
-{
+extern "C" PixelJoint *createPixelJoint() {
     return new PixelJoint();
 }
 
-extern "C" void destroyPixelJoint(PixelJoint *c)
-{
+extern "C" void destroyPixelJoint(PixelJoint *c) {
     delete c;
 }

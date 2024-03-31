@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../../plugins/PixelJoint/scraper/post.h"
+#include "../../../../plugins/PixelJoint/scraper/scraped_post.h"
 #include "nlohmann/json.hpp"
 #include "fmt/core.h"
 

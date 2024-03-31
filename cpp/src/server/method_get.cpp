@@ -1,5 +1,6 @@
 #include "restinio/all.hpp"
 #include "utils/shared.h"
+#include "post.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
 #include "../matrix_control/image.h"
@@ -105,18 +106,18 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    string img_prefix = "/image/";
-    if (target.starts_with(img_prefix)) {
-        string file_name(target.substr(img_prefix.length()));
-        if (!is_valid_filename(file_name)) {
-            reply_with_error(req, "Invalid filename");
+    if (target.starts_with("/image")) {
+        if (!qp.has("url")) {
+            reply_with_error(req, "No url given");
             return request_accepted();
         }
 
-        filesystem::path file_path(Constants::root_dir + file_name);
+        string remote_url{qp["url"]};
+
+        auto post = new Post(remote_url);
+        filesystem::path file_path(Constants::root_dir + post->get_filename());
         filesystem::path processing_path = to_processed_path(file_path);
         if (!filesystem::exists(processing_path)) {
-            auto post = new Post(Constants::post_img_url + file_path.filename().string());
             auto res = post->process_images(Constants::width, Constants::height);
 
             if (!res.has_value() || !filesystem::exists(processing_path)) {
@@ -148,7 +149,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
 
         req->create_response(status_ok())
                 .append_header_date_field()
-                .append_header(http_field::content_type, fmt::format("{}", content_type))
+                .append_header(http_field::content_type, content_type)
                 .set_body(sendfile(processing_path))
                 .done();
 

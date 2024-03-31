@@ -111,3 +111,9 @@ void floatPixelSet(rgb_matrix::FrameCanvas* canvas, int x, int y, float r, float
 
     canvas->SetPixel(x, y, rByte, gByte, bByte);
 }
+
+std::string stringify_url(const string &url) {
+    std::hash<std::string> hasher;
+    size_t hashed_url = hasher(url);
+    return std::to_string(hashed_url);
+}
