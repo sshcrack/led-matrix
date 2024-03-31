@@ -1,4 +1,4 @@
-#include "post.h"
+#include "scraped_post.h"
 #include "utils/image_fetch.h"
 #include <vector>
 #include "cpr/cpr.h"
@@ -16,30 +16,28 @@ using namespace std;
 string root_dir = Constants::root_dir;
 string search_url = "/pixels/new_icons.asp?q=1";
 
-bool ScrapedPost::fetch_link() {
+optional<Post> ScrapedPost::fetch_link() {
+    if (cached_post)
+        return cached_post;
+
     htmlDocPtr doc = fetch_page(this->post_url);
 
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr mainimg = xmlXPathEvalExpression((xmlChar *) "//*[@id=\"mainimg\"]", context);
     if (mainimg->nodesetval->nodeNr == 0) {
-        return false;
+        return nullopt;
     }
 
     xmlNodePtr img = mainimg->nodesetval->nodeTab[0];
-    auto prefix_len = Constants::post_img_url.length();
-    string img_name(
+    string img_path(
             string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")))
-                    .substr(prefix_len)
     );
 
-    this->image_name = img_name;
-    string f_name = img_name;
-    if(f_name.contains("/")) {
-        f_name = f_name.substr(img_name.find_last_of('/') + 1);
-    }
 
-    this->file_name = f_name;
-    return true;
+    string img_url = "https://pixeljoint.com" + img_path;
+    cached_post = Post(img_url);
+
+    return cached_post;
 }
 
 optional<int> ScrapedPost::get_pages() {
@@ -107,21 +105,13 @@ vector<ScrapedPost> ScrapedPost::get_posts(int page) {
     return pixel_posts;
 }
 
-bool ScrapedPost::has_fetched_image() {
-    return this->get_image_url() != this->thumbnail;
-}
-
 string ScrapedPost::get_post_url() {
     return this->post_url;
 }
 
 
-string Post::get_image_url() {
-    return "https://pixeljoint.com" + Constants::post_img_url + this->get_image_name();
-}
-
 optional<vector<Magick::Image>> Post::process_images(int width, int height) {
-    debug("Preprocessing img {}", image_name);
+    debug("Preprocessing img {}", img_url);
     if (!filesystem::exists(root_dir)) {
         try {
             auto res = filesystem::create_directory(root_dir);

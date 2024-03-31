@@ -15,7 +15,9 @@ INCLUDE_DIRECTORIES(
         ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/lib
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2
 )
+
 
 file(GLOB_RECURSE SOURCES
         src/*.h
@@ -32,7 +34,12 @@ add_subdirectory(plugins)
 
 
 # Add an executable with the above sources
-add_executable(${PROJECT_NAME} ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
+add_executable(${PROJECT_NAME}
+        ${SOURCES}
+        ${RGB_SRC_FILES}
+        ${RGB_HEADER_FILES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 
 # Main Target Compile

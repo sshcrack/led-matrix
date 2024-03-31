@@ -65,13 +65,14 @@ bool download_image(const string &url_str, const string &tmp) {
 }
 
 string page_base = "https://pixeljoint.com";
+
 htmlDocPtr fetch_page(const string &url_str) {
     auto url = cpr::Url{page_base + url_str};
 
     cpr::Header headers = {
             {"User-Agent",
-             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
-            {"Cookie",     "v=ob=rating; path=/"}
+                       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
+            {"Cookie", "v=ob=rating; path=/"}
     };
     auto response = cpr::Get(url, headers);
     return htmlReadMemory(response.text.c_str(), response.text.length(), nullptr, nullptr,

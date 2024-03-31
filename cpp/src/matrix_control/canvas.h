@@ -4,7 +4,7 @@
 #include "content-streamer.h"
 #include "utils/utils.h"
 #include "image.h"
-#include "../../plugins/PixelJoint/scraper/post.h"
+#include "../../plugins/PixelJoint/scraper/scraped_post.h"
 #include <vector>
 
 using rgb_matrix::Canvas;

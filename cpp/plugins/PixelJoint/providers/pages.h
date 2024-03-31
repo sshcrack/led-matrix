@@ -1,8 +1,9 @@
 #pragma once
 
 #include "config/image_providers/general.h"
+
 namespace ImageProviders {
-    class Pages: public General {
+    class Pages : public General {
     private:
         int page_end, page_begin;
         vector<ScrapedPost> curr_posts;
@@ -10,8 +11,11 @@ namespace ImageProviders {
 
     public:
         void flush() override;
+
         optional<Post> get_next_image() override;
+
         json to_json() override;
-        explicit Pages(const json& arguments);
+
+        explicit Pages(const json &arguments);
     };
 }

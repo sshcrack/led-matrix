@@ -4,8 +4,8 @@
 #include <filesystem>
 #include "nlohmann/json.hpp"
 #include "utils/utils.h"
-#include "post.h"
-#include "get.h"
+#include "method_post.h"
+#include "method_get.h"
 
 using namespace std;
 using namespace restinio;
