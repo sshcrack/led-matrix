@@ -179,6 +179,8 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     return file_info;
 }
 
+
+#ifndef PLUGIN_TEST
 Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
     return new ImageScene(matrix);
 }
@@ -186,3 +188,5 @@ Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
 string ImageSceneWrapper::get_name() {
     return "image_scene";
 }
+
+#endif

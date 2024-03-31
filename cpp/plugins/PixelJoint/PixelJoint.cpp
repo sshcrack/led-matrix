@@ -1,12 +1,12 @@
 #include "PixelJoint.h"
-#include "scenes/ImageScene.h"
+#ifndef PLUGIN_TEST
+    #include "scenes/ImageScene.h"
+#endif
 #include <vector>
-#include <string>
 
 using std::vector;
-using std::map;
 
-
+#ifndef PLUGIN_TEST
 vector<SceneWrapper *> PixelJoint::get_scenes() {
     return {
         new ImageSceneWrapper()
@@ -16,6 +16,12 @@ vector<SceneWrapper *> PixelJoint::get_scenes() {
 vector<ImageTypeWrapper *> PixelJoint::get_images_types() {
     return {};
 }
+
+#else
+string PixelJoint::test() {
+    return "Yoo pixel joint";
+}
+#endif
 
 PixelJoint::PixelJoint() = default;
 

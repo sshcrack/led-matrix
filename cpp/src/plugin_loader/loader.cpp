@@ -60,15 +60,6 @@ void Plugins::PluginManager::terminate() {
     }
 }
 
-std::vector<Plugins::SceneWrapper*> Plugins::PluginManager::get_scenes() {
-    std::vector<Plugins::SceneWrapper*> scenes;
-
-    for (const auto &item: get_plugins()) {
-        scenes.insert(scenes.end(), item->get_scenes().begin(), item->get_scenes().end());
-    }
-
-    return scenes;
-}
 
 std::vector<Plugins::BasicPlugin *> Plugins::PluginManager::get_plugins() {
     std::vector<Plugins::BasicPlugin*> plugins;
@@ -79,6 +70,19 @@ std::vector<Plugins::BasicPlugin *> Plugins::PluginManager::get_plugins() {
     return plugins;
 }
 
+
+#ifndef PLUGIN_TEST
+std::vector<Plugins::SceneWrapper*> Plugins::PluginManager::get_scenes() {
+    std::vector<Plugins::SceneWrapper*> scenes;
+
+    for (const auto &item: get_plugins()) {
+        scenes.insert(scenes.end(), item->get_scenes().begin(), item->get_scenes().end());
+    }
+
+    return scenes;
+}
+
+
 std::vector<Plugins::ImageTypeWrapper *> Plugins::PluginManager::get_image_type() {
     std::vector<Plugins::ImageTypeWrapper*> types;
     for (const auto &item: get_plugins()) {
@@ -88,3 +92,4 @@ std::vector<Plugins::ImageTypeWrapper *> Plugins::PluginManager::get_image_type(
     return types;
 }
 
+#endif
