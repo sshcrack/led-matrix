@@ -161,7 +161,7 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     file_info.content_stream = new rgb_matrix::MemStreamIO();
     file_info.is_multi_frame = frames.size() > 1;
     rgb_matrix::StreamWriter out(file_info.content_stream);
-/*
+
     for (const auto &img: frames) {
         tmillis_t delay_time_us;
         if (file_info.is_multi_frame) {
@@ -172,11 +172,11 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
         if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
-*/
-/*
+
+
 
     info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
-    return file_info;*/
+    return file_info;
 }
 
 
