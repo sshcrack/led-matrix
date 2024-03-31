@@ -5,9 +5,9 @@
 #include <utility>
 #include <future>
 #include "Scene.h"
-#include "utils/utils.h"
 #include "plugin.h"
-#include "config/data.h"
+#include "shared/utils/utils.h"
+#include "shared/config/data.h"
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;

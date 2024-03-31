@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(main VERSION 0.1.0)
 
-add_definitions(-DPLUGIN_TEST=0)
+add_definitions(-DPLUGIN_TEST=1)
 
 set(CMAKE_CXX_STANDARD 23)
 

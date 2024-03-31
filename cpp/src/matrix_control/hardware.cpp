@@ -3,7 +3,7 @@
 #include "led-matrix.h"
 #include "canvas.h"
 #include "../interrupt.h"
-#include "utils/shared.h"
+#include "shared/utils/shared.h"
 
 #include <csignal>
 #include <expected>

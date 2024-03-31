@@ -2,7 +2,7 @@
 
 #include <optional>
 #include "Scene.h"
-#include "utils/utils.h"
+#include "shared/utils/utils.h"
 #include "spotify/state.h"
 
 namespace Scenes {

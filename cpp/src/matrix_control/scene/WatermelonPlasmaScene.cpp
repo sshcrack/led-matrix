@@ -1,6 +1,6 @@
 
 #include "WatermelonPlasmaScene.h"
-#include "utils/utils.h"
+#include "shared/utils/utils.h"
 #include <cmath>
 
 using namespace std;

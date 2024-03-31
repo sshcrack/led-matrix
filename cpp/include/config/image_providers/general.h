@@ -1,7 +1,7 @@
 #pragma once
-#include "../../../../plugins/PixelJoint/scraper/scraped_post.h"
 #include "nlohmann/json.hpp"
 #include "fmt/core.h"
+#include "shared/post.h"
 
 using json = nlohmann::json;
 namespace ImageProviders {

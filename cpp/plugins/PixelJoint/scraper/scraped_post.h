@@ -1,6 +1,6 @@
 #pragma once
 
-#include "post.h"
+#include "shared/post.h"
 #include <string>
 #include <optional>
 #include <Magick++.h>

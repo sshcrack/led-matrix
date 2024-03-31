@@ -1,5 +1,5 @@
 #include <atomic>
-#include "utils/shared.h"
+#include "shared/utils/shared.h"
 
 std::atomic<bool> interrupt_received = false;
 
