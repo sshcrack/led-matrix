@@ -2,7 +2,7 @@
 
 #include "led-matrix.h"
 #include "canvas.h"
-#include "pixel_art.h"
+#include "../../plugins/PixelJoint/scenes/image/fetch.h"
 #include "../interrupt.h"
 #include "../utils/consts.h"
 #include "../utils/shared.h"

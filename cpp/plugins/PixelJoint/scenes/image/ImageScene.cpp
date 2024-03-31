@@ -3,7 +3,7 @@
 #include "spdlog/spdlog.h"
 #include "utils/utils.h"
 #include "utils/shared.h"
-#include "matrix_control/pixel_art.h"
+#include "fetch.h"
 #include <vector>
 
 #include <Magick++.h>

@@ -4,7 +4,7 @@
 #include <optional>
 #include <utility>
 #include <future>
-#include "matrix_control/scene/Scene.h"
+#include "Scene.h"
 #include "utils/utils.h"
 #include "plugin.h"
 #include "config/data.h"
