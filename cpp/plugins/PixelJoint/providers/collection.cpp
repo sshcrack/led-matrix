@@ -1,6 +1,7 @@
 #include "collection.h"
 #include <random>
 #include <spdlog/spdlog.h>
+
 using std::nullopt;
 
 optional<Post> ImageProviders::Collection::get_next_image() {
@@ -48,8 +49,17 @@ json ImageProviders::Collection::to_json() {
     for (auto item: total)
         stringified.push_back(item.get_image_url());
 
-    return json{
-            {"type",      "collection"},
-            {"arguments", stringified}
-    };
+    return stringified;
 };
+
+ImageProviders::General *ImageProviders::CollectionWrapper::create_default() {
+    return new Collection(json::parse("[]"));
+}
+
+ImageProviders::General *ImageProviders::CollectionWrapper::from_json(const json &json) {
+    return Collection::from_json(json);
+}
+
+string ImageProviders::CollectionWrapper::get_name() {
+    return "collection";
+}

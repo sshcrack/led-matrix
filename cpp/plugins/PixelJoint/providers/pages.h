@@ -2,6 +2,7 @@
 
 #include "config/image_providers/general.h"
 #include "../scraper/scraped_post.h"
+#include "wrappers.h"
 
 namespace ImageProviders {
     class Pages : public General {
@@ -18,5 +19,11 @@ namespace ImageProviders {
         json to_json() override;
 
         explicit Pages(const json &arguments);
+    };
+
+    class PagesWrapper : public Plugins::ImageProviderWrapper {
+        ImageProviders::General * create_default() override;
+        ImageProviders::General * from_json(const nlohmann::json &json) override;
+        string get_name() override;
     };
 }

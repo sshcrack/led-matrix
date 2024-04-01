@@ -6,10 +6,11 @@ using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
 using Plugins::BasicPlugin;
 
-class PixelJoint : public BasicPlugin {
+class SpotifyScenes : public BasicPlugin {
 public:
-    PixelJoint();
+    SpotifyScenes();
 
     vector<SceneWrapper *> get_scenes() override;
+
     vector<ImageProviderWrapper *> get_image_providers() override;
 };

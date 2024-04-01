@@ -68,8 +68,17 @@ json ImageProviders::Pages::to_json() {
     args["begin"] = page_begin;
     args["end"] = page_end;
 
-    return json{
-            {"type",      "pages"},
-            {"arguments", args}
-    };
+    return args;
+}
+
+ImageProviders::General *ImageProviders::PagesWrapper::create_default() {
+    return new ImageProviders::Pages({{"begin", 1}, {"end", -1}});
+}
+
+ImageProviders::General *ImageProviders::PagesWrapper::from_json(const json &json) {
+    return new ImageProviders::Pages(json);
+}
+
+string ImageProviders::PagesWrapper::get_name() {
+    return "pages";
 }

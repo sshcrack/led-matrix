@@ -3,6 +3,7 @@
 #include "config/image_providers/general.h"
 #include <nlohmann/json.hpp>
 #include "shared/utils/utils.h"
+#include "wrappers.h"
 using namespace std;
 using json = nlohmann::json;
 
@@ -10,7 +11,8 @@ using json = nlohmann::json;
 namespace ConfigData {
     struct Preset {
         string name;
-        vector<ImageProviders::General*> categories;
+        vector<Scenes::Scene*> scenes;
+        vector<ImageProviders::General*> providers;
 
     public:
         void randomize();

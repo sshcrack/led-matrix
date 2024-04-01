@@ -1,6 +1,6 @@
 
 #include "spdlog/spdlog.h"
-#include "plugin_loader/loader.h"
+#include "shared/plugin_loader/loader.h"
 #include <nlohmann/json.hpp>
 
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     pl->initialize();
 
     auto scenes = pl->get_scenes();
-    auto image_types = pl->get_image_type();
+    auto image_types = pl->get_image_providers();
     info("Loaded {} Scenes and {} Image Types", scenes.size(), image_types.size());
 
     debug("Loading config...");

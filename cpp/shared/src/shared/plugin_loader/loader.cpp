@@ -3,7 +3,7 @@
 #include <set>
 #include <spdlog/spdlog.h>
 
-#include "loader.h"
+#include "shared/plugin_loader/loader.h"
 #include "lib_name.h"
 #include "lib_glob.h"
 #include "plugin.h"
@@ -12,7 +12,7 @@ using namespace spdlog;
 using Plugins::BasicPlugin;
 using Plugins::PluginManager;
 using Plugins::SceneWrapper;
-using Plugins::ImageTypeWrapper;
+using Plugins::ImageProviderWrapper;
 
 PluginManager::PluginManager() = default;
 
@@ -49,10 +49,11 @@ std::vector<SceneWrapper *> PluginManager::get_scenes() {
 }
 
 
-std::vector<ImageTypeWrapper *> PluginManager::get_image_type() {
-    std::vector<ImageTypeWrapper *> types;
+std::vector<ImageProviderWrapper *> PluginManager::get_image_providers() {
+    std::vector<ImageProviderWrapper *> types;
     for (const auto &item: get_plugins()) {
-        types.insert(types.end(), item->get_images_types().begin(), item->get_images_types().end());
+        auto pl_providers = item->get_image_providers();
+        types.insert(types.end(), pl_providers.begin(), pl_providers.end());
     }
 
     return types;
@@ -99,14 +100,24 @@ void PluginManager::initialize() {
     }
 
     info("Loaded plugins.");
+    for (const auto &item: get_image_providers()) {
+        auto defaultClass = item->create_default();
+
+        img_provider_map[typeid(defaultClass).name()] = item->get_name();
+    }
     initialized = true;
 }
 
-PluginManager* PluginManager::instance_= nullptr;
+PluginManager *PluginManager::instance_ = nullptr;
+
 PluginManager *PluginManager::instance() {
-    if(instance_==nullptr){
+    if (instance_ == nullptr) {
         instance_ = new PluginManager();
     }
 
     return instance_;
+}
+
+std::optional<string> Plugins::PluginManager::get_name_of_provider(ImageProviders::General *provider) {
+    return img_provider_map[typeid(provider).name()];
 }
