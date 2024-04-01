@@ -15,6 +15,7 @@ namespace ImageProviders {
         void flush() override;
 
         json to_json() override;
+        string get_name() const override;
 
         explicit Collection(const json &arguments);
     };
@@ -23,6 +24,5 @@ namespace ImageProviders {
     class CollectionWrapper : public Plugins::ImageProviderWrapper {
         ImageProviders::General * create_default() override;
         ImageProviders::General * from_json(const nlohmann::json &json) override;
-        string get_name() override;
     };
 }

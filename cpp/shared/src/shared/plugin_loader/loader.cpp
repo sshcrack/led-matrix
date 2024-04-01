@@ -70,7 +70,7 @@ void PluginManager::initialize() {
     const std::string libGlob("plugins/*.so");
 
 
-    std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + libGlob);
+    std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + "/" + libGlob);
 
     std::set<std::string> libNames;
     for (const std::string &p_name: filenames) {
@@ -105,18 +105,8 @@ void PluginManager::initialize() {
     }
 
     info("Loaded plugins.");
-    for (const auto &item: get_image_providers()) {
-        auto defaultClass = item->create_default();
+    info("Loading providers to register...");
 
-        img_provider_map[typeid(defaultClass).name()] = item->get_name();
-    }
-
-
-    for (const auto &item: get_scenes()) {
-        auto defaultClass = item->create_default();
-
-        scene_provider_map[typeid(defaultClass).name()] = item->get_name();
-    }
     initialized = true;
 }
 
@@ -128,12 +118,4 @@ PluginManager *PluginManager::instance() {
     }
 
     return instance_;
-}
-
-std::optional<string> Plugins::PluginManager::get_name_of_provider(ImageProviders::General *provider) {
-    return img_provider_map[typeid(provider).name()];
-}
-
-std::optional<string> Plugins::PluginManager::get_name_of_scene(Scenes::Scene *provider) {
-    return scene_provider_map[typeid(provider).name()];
 }

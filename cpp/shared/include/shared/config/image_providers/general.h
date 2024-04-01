@@ -9,6 +9,7 @@ namespace ImageProviders {
         explicit General(const json& arguments);
         virtual optional<Post> get_next_image() = 0;
         virtual void flush() = 0;
+        [[nodiscard]] virtual string get_name() const = 0;
 
         virtual json to_json() = 0;
 

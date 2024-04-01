@@ -1,0 +1,1 @@
+sudo SPOTIFY_CLIENT_ID=3e20d6d23f07497881028e7db45c3446 SPOTIFY_CLIENT_SECRET=8239c9add0b7473fa1d48b17dc378695 SPDLOG_LEVEL=debug gdb --args ./cmake-build-pi-release/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-slowdown-gpio 3 --led-pixel-mapper Rotate:270

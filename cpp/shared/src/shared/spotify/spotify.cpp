@@ -26,8 +26,6 @@ bool Spotify::refresh() {
         return false;
     }
 
-    std::string readBuffer;
-
     std::string url = "https://accounts.spotify.com/api/token";
     std::string post_fields = "grant_type=refresh_token&refresh_token=" + spAuth.refresh_token.value();
 
@@ -41,8 +39,13 @@ bool Spotify::refresh() {
                        cpr::Authentication(client_id, client_secret, cpr::AuthMode::BASIC)
     );
 
+    if (r.status_code != 200) {
+        error("Could not refresh token: {}", r.text);
+        return false;
+    }
+
     debug("Saving to config...");
-    return Spotify::save_resp_to_config(readBuffer);
+    return Spotify::save_resp_to_config(r.text);
 }
 
 bool Spotify::initialize() {
@@ -81,11 +84,10 @@ bool Spotify::initialize() {
 }
 
 bool Spotify::save_resp_to_config(const std::string &json_resp) {
+    debug("Saving '{}' to config...", json_resp);
     auto parsed = json::parse(json_resp);
     string access_token;
     uint expires_in_seconds;
-
-    cout << "Response is " << json_resp << std::endl;
 
     parsed.at("access_token").get_to(access_token);
     parsed.at("expires_in").get_to(expires_in_seconds);
@@ -237,7 +239,7 @@ bool Spotify::has_changed(bool update_dirty) {
     if (!this->is_dirty)
         return false;
 
-    if(update_dirty)
+    if (update_dirty)
         this->is_dirty = false;
 
     debug("Checking if has changed");

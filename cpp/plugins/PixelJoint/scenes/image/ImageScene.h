@@ -67,12 +67,12 @@ private:
 
 public:
     bool tick(RGBMatrix *matrix) override;
+    string get_name() const override;
 
     using Scenes::Scene::Scene;
 };
 
 class ImageSceneWrapper : public Plugins::SceneWrapper {
-    string get_name() override;
     Scenes::Scene * create_default() override;
     Scenes::Scene * from_json(const nlohmann::json &args) override;
 };

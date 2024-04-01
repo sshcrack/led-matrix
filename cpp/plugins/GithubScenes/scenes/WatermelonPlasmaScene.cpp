@@ -35,7 +35,7 @@ bool Scenes::WatermelonPlasmaScene::tick(rgb_matrix::RGBMatrix *matrix) {
     return false;
 }
 
-string Scenes::WatermelonPlasmaSceneWrapper::get_name() {
+string Scenes::WatermelonPlasmaScene::get_name() const {
     return "watermelon_plasma";
 }
 

@@ -18,12 +18,12 @@ namespace Scenes {
         using Scene::Scene::Scene;
 
         void initialize(rgb_matrix::RGBMatrix *matrix) override;
+        [[nodiscard]] string get_name() const override;
     };
 
 
     class WaveSceneWrapper : public Plugins::SceneWrapper {
     public:
-        string get_name() override;
 
         Scenes::Scene * create_default() override;
         Scenes::Scene * from_json(const nlohmann::json &args) override;

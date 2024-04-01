@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
     spotify = new Spotify();
     spotify->initialize();
 
+    config->save();
+
     debug("Starting mainloop_thread");
     uint16_t port = 8080;
 

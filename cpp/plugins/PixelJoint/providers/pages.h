@@ -17,6 +17,7 @@ namespace ImageProviders {
         optional<Post> get_next_image() override;
 
         json to_json() override;
+        string get_name() const override;
 
         explicit Pages(const json &arguments);
     };
@@ -25,7 +26,5 @@ namespace ImageProviders {
         ImageProviders::General *create_default() override;
 
         ImageProviders::General *from_json(const nlohmann::json &json) override;
-
-        string get_name() override;
     };
 }

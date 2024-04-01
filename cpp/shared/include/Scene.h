@@ -30,6 +30,7 @@ namespace Scenes {
         [[nodiscard]] virtual tmillis_t get_duration() const;
 
         [[nodiscard]] virtual nlohmann::json to_json() const;
+        [[nodiscard]] virtual string get_name() const = 0;
 
         virtual void initialize(RGBMatrix *matrix);
 
@@ -38,8 +39,6 @@ namespace Scenes {
         // Returns true if the scene is done and should be removed
         virtual bool tick(RGBMatrix *matrix) = 0;
 
-        static Scene * from_json(const nlohmann::json &j);
+        static Scene *from_json(const nlohmann::json &j);
     };
-
-
 }

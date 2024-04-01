@@ -11,13 +11,13 @@ namespace Scenes {
         FrameTimer frameTimer;
     public:
         bool tick(rgb_matrix::RGBMatrix *matrix) override;
+        string get_name() const override;
 
         using Scenes::Scene::Scene;
     };
 
     class WatermelonPlasmaSceneWrapper : public Plugins::SceneWrapper {
     public:
-        string get_name() override;
 
         Scenes::Scene *create_default() override;
 
