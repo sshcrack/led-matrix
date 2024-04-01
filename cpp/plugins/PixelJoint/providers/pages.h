@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config/image_providers/general.h"
+#include "shared/config/image_providers/general.h"
 #include "../scraper/scraped_post.h"
 #include "wrappers.h"
 
@@ -22,8 +22,10 @@ namespace ImageProviders {
     };
 
     class PagesWrapper : public Plugins::ImageProviderWrapper {
-        ImageProviders::General * create_default() override;
-        ImageProviders::General * from_json(const nlohmann::json &json) override;
+        ImageProviders::General *create_default() override;
+
+        ImageProviders::General *from_json(const nlohmann::json &json) override;
+
         string get_name() override;
     };
 }

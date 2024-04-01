@@ -5,8 +5,6 @@
 using json = nlohmann::json;
 namespace ImageProviders {
     class General {
-    private:
-        const json& initial_arguments;
     public:
         explicit General(const json& arguments);
         virtual optional<Post> get_next_image() = 0;

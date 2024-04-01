@@ -1,11 +1,11 @@
-#include "config/image_providers/general.h"
+#include "shared/config/image_providers/general.h"
 #include "shared/plugin_loader/loader.h"
 #include "spdlog/spdlog.h"
 #include <stdexcept>
 #include "fmt/core.h"
 
 
-ImageProviders::General::General(const json& arguments) : initial_arguments(arguments) {
+ImageProviders::General::General(const json& arguments) {
     spdlog::debug("Initial arguments for general are {}", arguments.dump());
 }
 

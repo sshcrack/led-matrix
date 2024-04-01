@@ -3,11 +3,11 @@
 
 using namespace Scenes;
 
-extern "C" SpotifyScenes *createSpotifyScenes() {
+extern "C" [[maybe_unused]] SpotifyScenes *createSpotifyScenes() {
     return new SpotifyScenes();
 }
 
-extern "C" void destroySpotifyScenes(SpotifyScenes *c) {
+extern "C" [[maybe_unused]] void destroySpotifyScenes(SpotifyScenes *c) {
     delete c;
 }
 

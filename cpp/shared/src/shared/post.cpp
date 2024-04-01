@@ -9,12 +9,14 @@
 #include "shared/utils/utils.h"
 #include "shared/utils/consts.h"
 #include "spdlog/spdlog.h"
+#include "picosha2.h"
 
 using namespace spdlog;
 using namespace std;
 
 
 string root_dir = Constants::root_dir;
+
 optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     debug("Preprocessing img {}", img_url);
     if (!filesystem::exists(root_dir)) {
@@ -59,4 +61,25 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return res;
+}
+
+Post::Post(const string &img_url) {
+    this->img_url = img_url;
+
+    auto last_index = img_url.find_last_of('.');
+    string file_ext = ".unknown";
+    if (last_index != std::string::npos) {
+        file_ext = img_url.substr(img_url.find_last_of('.'));
+    }
+
+    picosha2::hash256_hex_string(this->img_url, this->file_name);
+    this->file_name += file_ext;
+}
+
+string Post::get_filename() {
+    return file_name;
+}
+
+string Post::get_image_url() {
+    return img_url;
 }

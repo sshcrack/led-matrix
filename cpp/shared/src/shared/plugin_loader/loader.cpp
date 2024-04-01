@@ -105,6 +105,13 @@ void PluginManager::initialize() {
 
         img_provider_map[typeid(defaultClass).name()] = item->get_name();
     }
+
+
+    for (const auto &item: get_scenes()) {
+        auto defaultClass = item->create_default();
+
+        scene_provider_map[typeid(defaultClass).name()] = item->get_name();
+    }
     initialized = true;
 }
 
@@ -120,4 +127,8 @@ PluginManager *PluginManager::instance() {
 
 std::optional<string> Plugins::PluginManager::get_name_of_provider(ImageProviders::General *provider) {
     return img_provider_map[typeid(provider).name()];
+}
+
+std::optional<string> Plugins::PluginManager::get_name_of_scene(Scenes::Scene *provider) {
+    return scene_provider_map[typeid(provider).name()];
 }

@@ -32,6 +32,6 @@ public:
     void terminate();
     std::optional<SpotifyState> get_currently_playing();
 
-    bool has_changed();
+    bool has_changed(bool update_dirty);
 };
 

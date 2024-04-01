@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5.0)
 set(CMAKE_CXX_STANDARD 23)
 
 file(GLOB PLUGIN_SOURCES
-        */*.cpp
+        */*.c*
 )
 
 foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
@@ -18,10 +18,11 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     message(STATUS "Adding plugin: ${LIB_NAME}")
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
-    file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.cpp)
+    file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)
 
     add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${RGB_SRC_FILES})
 
+    target_include_directories(${LIB_NAME} PRIVATE ${RGB_HEADER_DIR})
 
     # Compiler target
     target_compile_features(${LIB_NAME} PRIVATE cxx_std_23)

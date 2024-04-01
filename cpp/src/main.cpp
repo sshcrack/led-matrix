@@ -4,8 +4,8 @@
 #include <nlohmann/json.hpp>
 
 
-#include "spotify/shared_spotify.h"
-#include "spotify/spotify.h"
+#include "shared/spotify/shared_spotify.h"
+#include "shared/spotify/spotify.h"
 #include <Magick++.h>
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
