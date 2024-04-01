@@ -1,4 +1,4 @@
-#include "pages.h.disabled"
+#include "pages.h."
 #include <random>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
