@@ -1,4 +1,4 @@
-#include "ImageScene.h.disabled"
+#include "ImageScene.h"
 #include "spdlog/spdlog.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
