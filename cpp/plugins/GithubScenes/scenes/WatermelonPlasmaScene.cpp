@@ -27,10 +27,30 @@ bool Scenes::WatermelonPlasmaScene::tick(rgb_matrix::RGBMatrix *matrix) {
             float u = pow(cos(9 * pixel + 0.5f * xp + t) * 0.5f + 0.5f, 2);
             float v = pow(sin(9 * pixel + 0.5f * yp + t) * 0.5f + 0.5f, 2);
 
-            floatPixelSet(offscreen_canvas, x, y, u, v, (u+v) / 2);
+            floatPixelSet(offscreen_canvas, x, y, u, v, (u + v) / 2);
         }
     }
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
     return false;
 }
+
+string Scenes::WatermelonPlasmaSceneWrapper::get_name() {
+    return "watermelon_plasma";
+}
+
+
+Scene* Scenes::WatermelonPlasmaSceneWrapper::create_default() {
+    const nlohmann::json json = {
+            {"weight",   1},
+            {"duration", 15000}
+    };
+
+    return new WatermelonPlasmaScene(json::parse(json.dump()));
+}
+
+Scenes::Scene *Scenes::WatermelonPlasmaSceneWrapper::from_json(const json &json) {
+    return new WatermelonPlasmaScene(json);
+}
+
+

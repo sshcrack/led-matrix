@@ -22,7 +22,7 @@ bool Spotify::refresh() {
     auto spAuth = config->get_spotify();
 
     if (!spAuth.has_auth()) {
-        error("Spotify does not have auth");
+        error("SpotifyScenes does not have auth");
         return false;
     }
 
@@ -120,7 +120,7 @@ std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currentl
     }
 
     if (!res->value().contains("item")) {
-        warn("Spotify state does not contain item: {}", res->value().dump());
+        warn("SpotifyScenes state does not contain item: {}", res->value().dump());
         return unexpected("Invalid server response: " + res->value().dump());
     }
     return SpotifyState(res->value());

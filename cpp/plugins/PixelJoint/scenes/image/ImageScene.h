@@ -73,5 +73,6 @@ public:
 
 class ImageSceneWrapper : public Plugins::SceneWrapper {
     string get_name() override;
-    Scenes::Scene * create(rgb_matrix::RGBMatrix *matrix) override;
+    Scenes::Scene * create_default() override;
+    Scenes::Scene * from_json(const nlohmann::json &args) override;
 };

@@ -1,7 +1,7 @@
-#include "SpotifyScene.h"
+#include "CoverOnlyScene.h"
 #include "Magick++.h"
 #include <spdlog/spdlog.h>
-#include "../../spotify/shared_spotify.h"
+#include "spotify/shared_spotify.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 #include "led-matrix.h"
@@ -12,7 +12,7 @@ using namespace spdlog;
 using namespace std;
 using namespace Scenes;
 
-bool SpotifyScene::DisplaySpotifySong(RGBMatrix *matrix) {
+bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     if (!curr_reader) {
         rgb_matrix::StreamReader temp(curr_info->content_stream);
         curr_reader.emplace(temp);
@@ -85,7 +85,7 @@ bool SpotifyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     return false;
 }
 
-bool SpotifyScene::tick(RGBMatrix *matrix) {
+bool CoverOnlyScene::tick(RGBMatrix *matrix) {
     if (!curr_info.has_value()) {
         auto temp = this->get_info(matrix);
         if (!temp) {
@@ -99,7 +99,7 @@ bool SpotifyScene::tick(RGBMatrix *matrix) {
     return DisplaySpotifySong(matrix);
 }
 
-optional<SpotifyFileInfo> SpotifyScene::get_info(RGBMatrix *matrix) {
+optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     info("Showing spotify song change");
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
@@ -147,4 +147,16 @@ optional<SpotifyFileInfo> SpotifyScene::get_info(RGBMatrix *matrix) {
     }
 
     return file_info;
+}
+
+string CoverOnlySceneWrapper::get_name() {
+    return "spotify";
+}
+
+Scenes::Scene *CoverOnlySceneWrapper::create_default() {
+    return new CoverOnlyScene(Scene::get_config(3, 10 * 1000));
+}
+
+Scenes::Scene *CoverOnlySceneWrapper::from_json(const json &args) {
+    return new CoverOnlyScene(args);
 }

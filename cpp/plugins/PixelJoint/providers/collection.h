@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/image_providers/general.h"
+#include "wrappers.h"
 
 namespace ImageProviders {
     class Collection : public General {
@@ -16,5 +17,12 @@ namespace ImageProviders {
         json to_json() override;
 
         explicit Collection(const json &arguments);
+    };
+
+
+    class CollectionWrapper : public Plugins::ImageProviderWrapper {
+        ImageProviders::General * create_default() override;
+        ImageProviders::General * from_json(const nlohmann::json &json) override;
+        string get_name() override;
     };
 }

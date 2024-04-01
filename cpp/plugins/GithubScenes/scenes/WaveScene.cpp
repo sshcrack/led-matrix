@@ -1,6 +1,6 @@
-//
-// Created by hendrik on 3/28/24.
-//
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
+#pragma ide diagnostic ignored "cert-msc50-cpp"
 
 #include "WaveScene.h"
 #include <cmath>
@@ -12,14 +12,14 @@ static float *map = nullptr;
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }
 
 
-void Scenes::WaveScene::drawMap(rgb_matrix::RGBMatrix* matrix, float *map) {
+void Scenes::WaveScene::drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap) {
     for (int y = 0; y < matrix->height(); y++) {
         for (int x = 0; x < matrix->width(); x++) {
             const int i = xyToIndex(matrix->width(), x, y);
             floatPixelSet(offscreen_canvas, x, y,
-                                  std::pow(map[i], 4 + (map[i] * 0.5)) * std::cos(map[i]),
-                                  std::pow(map[i], 3 + (map[i] * 0.5)) * std::sin(map[i]),
-                                  std::pow(map[i], 2 + (map[i] * 0.5)));
+                          std::pow(iMap[i], 4 + (iMap[i] * 0.5)) * std::cos(iMap[i]),
+                          std::pow(iMap[i], 3 + (iMap[i] * 0.5)) * std::sin(iMap[i]),
+                          std::pow(iMap[i], 2 + (iMap[i] * 0.5)));
         }
     }
 }
@@ -40,7 +40,7 @@ bool Scenes::WaveScene::tick(rgb_matrix::RGBMatrix *matrix) {
 
                 for (int u = -1; u <= 1; u++) {
                     for (int v = -1; v <= 1; v++) {
-                        if (u == 0 && u == 0) {
+                        if (u == 0 /*&& u == 0*/) {
                             continue;
                         }
 
@@ -73,7 +73,9 @@ bool Scenes::WaveScene::tick(rgb_matrix::RGBMatrix *matrix) {
     return false;
 }
 
-Scenes::WaveScene::WaveScene(rgb_matrix::RGBMatrix *matrix) : Scene(matrix) {
+void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix) {
+    Scene::initialize(matrix);
+
     std::srand(std::time(nullptr));
 
     map = new float[matrix->width() * matrix->height()];
@@ -85,3 +87,17 @@ Scenes::WaveScene::WaveScene(rgb_matrix::RGBMatrix *matrix) : Scene(matrix) {
         }
     }
 }
+
+string WaveSceneWrapper::get_name() {
+    return "wave";
+}
+
+Scenes::Scene *WaveSceneWrapper::create_default() {
+    return new WaveScene(Scene::get_config(1, 15000));
+}
+
+Scenes::Scene *WaveSceneWrapper::from_json(const json &args) {
+    return new WaveScene(args);
+}
+
+#pragma clang diagnostic pop

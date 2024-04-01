@@ -77,12 +77,12 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no
         auto temp = config->get_curr();
         temp.randomize();
 
-        debug("Randomizing with total of {} image categories", temp.categories.size());
+        debug("Randomizing with total of {} image providers", temp.providers.size());
         auto p = CurrPreset(temp);
         this->curr_preset.emplace(p);
     }
 
-    auto categories = this->curr_preset->preset.categories;
+    auto categories = this->curr_preset->preset.providers;
     if (this->curr_preset->curr_category >= categories.size()) {
         this->curr_preset->curr_category = 0;
     }
@@ -178,10 +178,15 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     return file_info;
 }
 
-Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
-    return new ImageScene(matrix);
-}
 
 string ImageSceneWrapper::get_name() {
     return "image_scene";
+}
+
+Scenes::Scene *ImageSceneWrapper::from_json(const json &args) {
+    return new ImageScene(args);
+}
+
+Scenes::Scene *ImageSceneWrapper::create_default() {
+    return new ImageScene(Scenes::Scene::get_config(30, 50 * 1000));
 }
