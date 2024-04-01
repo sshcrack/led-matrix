@@ -1,10 +1,10 @@
 #include "canvas.h"
-#include "../utils/utils.h"
-#include "scene/Scene.h"
+#include "shared/utils/utils.h"
+#include "Scene.h"
 #include "scene/WatermelonPlasmaScene.h"
 #include "scene/WaveScene.h"
 #include "scene/SpotifyScene.h"
-#include "../utils/shared.h"
+#include "shared/utils/shared.h"
 #include "../spotify/shared_spotify.h"
 using namespace std;
 

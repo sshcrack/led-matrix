@@ -10,10 +10,11 @@ configure_file(resources/resources.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/resource
 
 INCLUDE_DIRECTORIES(
         ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/lib
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2
 )
+
 
 file(GLOB_RECURSE SOURCES
         src/*.h
@@ -23,53 +24,53 @@ file(GLOB_RECURSE SOURCES
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
+set(RGB_SRC_FILES ${RGB_SRC_FILES} CACHE INTERNAL "RGB Source Files")
+
+add_subdirectory(shared)
+
 # Adding plugins
 add_subdirectory(plugins)
 
+
 # Add an executable with the above sources
-add_executable(main ${SOURCES} ${RGB_SRC_FILES} ${RGB_HEADER_FILES})
+add_executable(${PROJECT_NAME}
+        ${SOURCES}
+        ${RGB_SRC_FILES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+
+# Main Target Compile
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+
+
+# Require SharedTools
+target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
 
 # ImageMagick
 
 find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
-
-# Curl
-find_package(CURL REQUIRED)
-include_directories(${CURL_INCLUDE_DIR})
-target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
 
 # spdlog
 find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(main PRIVATE spdlog::spdlog)
-
-# Main Target Compile
-
-target_compile_features(main PRIVATE cxx_std_23)
-
-# HTPT Requests
-
-find_package(cpr CONFIG REQUIRED)
-target_link_libraries(main PRIVATE cpr::cpr)
-
-# HTTP Parsing
-
-find_package(LibXml2 REQUIRED)
-target_link_libraries(main PRIVATE LibXml2::LibXml2)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
 # HTTP Server
 find_package(restinio REQUIRED)
 
-target_link_libraries(main PRIVATE restinio::restinio)
+target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 
 # JSON
 find_package(nlohmann_json 3.2.0 REQUIRED)
-target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
-
-# Fmt
-find_package(fmt CONFIG REQUIRED)
-target_link_libraries(main PRIVATE fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 
 # Link plugins as well
-target_link_libraries(main PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
+
+# HTTP Requests
+
+find_package(cpr CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)

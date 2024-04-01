@@ -2,10 +2,8 @@
 
 #include "led-matrix.h"
 #include "canvas.h"
-#include "pixel_art.h"
 #include "../interrupt.h"
-#include "../utils/consts.h"
-#include "../utils/shared.h"
+#include "shared/utils/shared.h"
 
 #include <csignal>
 #include <expected>
@@ -16,8 +14,7 @@
 using namespace rgb_matrix;
 using namespace spdlog;
 
-int usage(const char *progname)
-{
+int usage(const char *progname) {
     fprintf(stderr, "usage: %s [options]\n", progname);
     rgb_matrix::PrintMatrixFlags(stderr);
     return 1;
@@ -25,11 +22,11 @@ int usage(const char *progname)
 
 void hardware_mainloop(RGBMatrix *matrix) {
     cout << "Press Ctrl+C to quit" << endl;
-    while(!interrupt_received) {
+    while (!interrupt_received) {
         update_canvas(matrix);
         exit_canvas_update = false;
 
-        while(turned_off) {
+        while (turned_off) {
             matrix->Clear();
             SleepMillis(1000);
         }
@@ -49,8 +46,7 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
     runtime_opt.drop_priv_group = getenv("SUDO_GID");
 
     if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
-                                           &matrix_options, &runtime_opt))
-    {
+                                           &matrix_options, &runtime_opt)) {
         return unexpected(usage(argv[0]));
     }
 

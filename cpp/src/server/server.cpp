@@ -1,11 +1,11 @@
 #include "restinio/all.hpp"
 #include "server.h"
-#include "../utils/shared.h"
+#include "shared/utils/shared.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"
-#include "../utils/utils.h"
-#include "post.h"
-#include "get.h"
+#include "shared/utils/utils.h"
+#include "method_post.h"
+#include "method_get.h"
 
 using namespace std;
 using namespace restinio;

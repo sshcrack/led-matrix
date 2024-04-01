@@ -1,11 +1,9 @@
 #include "PixelJoint.h"
-#include "scenes/ImageScene.h"
+#include "scenes/image/ImageScene.h"
+
 #include <vector>
-#include <string>
 
 using std::vector;
-using std::map;
-
 
 vector<SceneWrapper *> PixelJoint::get_scenes() {
     return {
@@ -19,12 +17,10 @@ vector<ImageTypeWrapper *> PixelJoint::get_images_types() {
 
 PixelJoint::PixelJoint() = default;
 
-extern "C" PixelJoint *createPixelJoint()
-{
+extern "C" PixelJoint *createPixelJoint() {
     return new PixelJoint();
 }
 
-extern "C" void destroyPixelJoint(PixelJoint *c)
-{
+extern "C" void destroyPixelJoint(PixelJoint *c) {
     delete c;
 }

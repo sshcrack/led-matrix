@@ -1,26 +1,33 @@
 
-#include "server/server.h"
-#include <Magick++.h>
 #include "spdlog/spdlog.h"
 #include "plugin_loader/loader.h"
-#include "spdlog/cfg/env.h"
-#include "utils/shared.h"
+#include <nlohmann/json.hpp>
+
+
 #include "spotify/shared_spotify.h"
 #include "spotify/spotify.h"
-#include <nlohmann/json.hpp>
+#include <Magick++.h>
+#include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
+#include "server/server.h"
+#include "shared/utils/shared.h"
 
 using namespace spdlog;
 using namespace std;
 using json = nlohmann::json;
+using Plugins::PluginManager;
 
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
     spdlog::cfg::load_env_levels();
-    debug("Loading plugins...");
-    auto res = new Plugins::PluginManager();
 
-    debug("Loaded {} Scenes and {} Image Types", res->get_scenes().size(), res->get_image_type().size());
+    debug("Loading plugins...");
+    auto pl = PluginManager::instance();
+    pl->initialize();
+
+    auto scenes = pl->get_scenes();
+    auto image_types = pl->get_image_type();
+    info("Loaded {} Scenes and {} Image Types", scenes.size(), image_types.size());
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
@@ -77,6 +84,6 @@ int main(int argc, char *argv[]) {
     spotify->terminate();
     control_thread.join();
 
-    res->terminate();
+    pl->terminate();
     return 0;
 }

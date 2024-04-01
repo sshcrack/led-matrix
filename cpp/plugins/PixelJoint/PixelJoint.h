@@ -1,4 +1,5 @@
 #pragma once
+
 #include "plugin.h"
 
 using Plugins::SceneWrapper;
