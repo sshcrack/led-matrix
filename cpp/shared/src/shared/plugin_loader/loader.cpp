@@ -63,9 +63,14 @@ void PluginManager::initialize() {
     if (initialized)
         return;
 
+    auto exec_dir = get_exec_dir();
+    if (!exec_dir)
+        throw std::runtime_error("Could not get executable directory");
+
     const std::string libGlob("plugins/*.so");
 
-    std::vector<std::string> filenames = Plugins::lib_glob(libGlob);
+
+    std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + libGlob);
 
     std::set<std::string> libNames;
     for (const std::string &p_name: filenames) {

@@ -133,3 +133,17 @@ int get_random_number_inclusive(int start, int end) {
     // Generate and return the random number
     return dist(engine);
 }
+
+std::optional<std::string> get_exec_dir() {
+    char result[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+    const char *path;
+
+    if (count == -1)
+        return nullopt;
+
+    path = result;
+    std::filesystem::path full_path(path);
+
+    return full_path.parent_path().string();
+}
