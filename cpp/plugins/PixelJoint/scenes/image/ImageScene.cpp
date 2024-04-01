@@ -108,7 +108,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no
         return get_next_anim(matrix, recursiveness + 1);
     }
 
-    //next_img = async(launch::async, ImageScene::get_next_image, img_category, width, height);
+    next_img = async(launch::async, ImageScene::get_next_image, img_category, width, height);
     auto val = info_opt.value();
     if (!val.has_value()) {
         debug("There was an error with the previous image. Waiting for new image to download and process...");
@@ -166,10 +166,8 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
 
     debug("Storingg offscreen {} another {} frames {}", canvas == nullptr, file_info.content_stream == nullptr, frames.size());
     std::flush(std::cout);
-    /*rgb_matrix::StreamWriter out(file_info.content_stream);
+    rgb_matrix::StreamWriter out(file_info.content_stream);
     for (const auto &img: frames) {
-        debug("Storing  {} offscreen {}", img == nullptr, canvas == nullptr);
-        std::flush(std::cout);
         tmillis_t delay_time_us;
         if (file_info.is_multi_frame) {
             delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
@@ -179,7 +177,7 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
         if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
-*/
+
     info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
     return file_info;
 }

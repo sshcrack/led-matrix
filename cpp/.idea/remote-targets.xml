@@ -4,14 +4,14 @@
     <targets>
       <target name="pi@10.6.0.23:22" type="ssh/sftp" uuid="bf8b6546-d8a8-49c5-bc27-5154d8a4fd92">
         <config>
-          <option name="projectRootOnTarget" value="$PROJECT_DIR$/../../../../pi/ledmat/builb" />
+          <option name="projectRootOnTarget" value="$PROJECT_DIR$/../../../../pi/ledmat/build" />
           <option name="serverName" value="pi@10.6.0.23:22 key" />
           <option name="useRsync" value="true" />
         </config>
       </target>
       <target name="root@10.6.0.23:22" type="ssh/sftp" uuid="9cb085f4-0f3e-476a-bb22-701e11c18938">
         <config>
-          <option name="projectRootOnTarget" value="/root/ledmat" />
+          <option name="projectRootOnTarget" value="$PROJECT_DIR$/../../../../pi/ledmat/build" />
           <option name="serverName" value="root@10.6.0.23:22 key" />
           <option name="useRsync" value="true" />
         </config>

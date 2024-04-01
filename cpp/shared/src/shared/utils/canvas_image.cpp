@@ -116,6 +116,11 @@ bool LoadImageAndScale(const string& str_path,
         //img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
     }
 
+    std::for_each(result->begin(), result->end(), [target_width, target_height, canvas_width, canvas_height, offset_x, offset_y](Magick::Image &img) {
+        img.scale(Magick::Geometry(target_width, target_height));
+        img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
+    });
+
     std::flush(std::cout);
     std::cout << "Accessing" << std::endl;
     std::cout << "Done" << std::endl;
