@@ -1,7 +1,7 @@
 #include "CoverOnlyScene.h"
 #include "Magick++.h"
 #include <spdlog/spdlog.h>
-#include "spotify/shared_spotify.h"
+#include "shared/spotify/shared_spotify.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 #include "led-matrix.h"
@@ -147,6 +147,13 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     }
 
     return file_info;
+}
+
+int CoverOnlyScene::get_weight() const {
+    if (spotify->has_changed(false))
+        return 100;
+
+    return Scene::get_weight();
 }
 
 string CoverOnlySceneWrapper::get_name() {

@@ -1,4 +1,4 @@
-#include "spotify.h"
+#include "shared/spotify/spotify.h"
 #include <cstdio>
 #include <string>
 #include <cpr/cpr.h>
@@ -233,11 +233,12 @@ std::optional<SpotifyState> Spotify::get_currently_playing() {
 /**
  * Checks if the current track has changed from the previous call of this function
  */
-bool Spotify::has_changed() {
+bool Spotify::has_changed(bool update_dirty) {
     if (!this->is_dirty)
         return false;
 
-    this->is_dirty = false;
+    if(update_dirty)
+        this->is_dirty = false;
 
     debug("Checking if has changed");
     if (this->last_playing.has_value() != this->currently_playing.has_value())

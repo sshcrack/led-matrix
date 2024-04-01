@@ -4,27 +4,15 @@ project(main VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 23)
 
 
-# Resources
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/resources/default.json RESOURCE_DATA HEX)
-configure_file(resources/resources.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/resources.h @ONLY)
-
-INCLUDE_DIRECTORIES(
-        ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2
-)
-
-
 file(GLOB_RECURSE SOURCES
-        src/*.h
-        src/*.cpp
+        src/*.c*
 )
+
 
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
-file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
 set(RGB_SRC_FILES ${RGB_SRC_FILES} CACHE INTERNAL "RGB Source Files")
+set(RGB_HEADER_DIR ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include CACHE INTERNAL "RGB Header Directory")
 
 add_subdirectory(shared)
 
@@ -36,9 +24,12 @@ add_subdirectory(plugins)
 add_executable(${PROJECT_NAME}
         ${SOURCES}
         ${RGB_SRC_FILES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+target_include_directories(${PROJECT_NAME} PRIVATE
+        ${RGB_HEADER_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 # Main Target Compile
 

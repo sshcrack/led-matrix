@@ -3,7 +3,7 @@
 #include <optional>
 #include "Scene.h"
 #include "shared/utils/utils.h"
-#include "spotify/state.h"
+#include "shared/spotify/state.h"
 #include "wrappers.h"
 
 namespace Scenes {
@@ -27,13 +27,16 @@ namespace Scenes {
 
     public:
         bool tick(RGBMatrix *matrix) override;
+        int get_weight() const override;
 
         using Scene::Scene;
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {
         string get_name() override;
-        Scenes::Scene * create_default() override;
-        Scenes::Scene * from_json(const nlohmann::json &args) override;
+
+        Scenes::Scene *create_default() override;
+
+        Scenes::Scene *from_json(const nlohmann::json &args) override;
     };
 }

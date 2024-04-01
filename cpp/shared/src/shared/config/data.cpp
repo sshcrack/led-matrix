@@ -9,6 +9,22 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace ConfigData {
+    void to_json(json &j, const Scenes::Scene *&p) {
+        auto &c = const_cast<Scenes::Scene *&>(p);
+        auto pl = Plugins::PluginManager::instance();
+
+        auto type_str = pl->get_name_of_scene(c);
+        if (!type_str.has_value()) {
+            spdlog::error("Could not get name of scene");
+            throw runtime_error(fmt::format("Could not get name of scene: {}", c->to_json().dump()));
+        }
+
+        j = {
+                {"type",      type_str.value()},
+                {"arguments", c->to_json()}
+        };
+    }
+
     void to_json(json &j, const ImageProviders::General *&p) {
         auto &c = const_cast<ImageProviders::General *&>(p);
         auto pl = Plugins::PluginManager::instance();
@@ -38,18 +54,26 @@ namespace ConfigData {
         vector<json> image_json;
 
         image_json.reserve(p.providers.size());
-        for (const auto &item: p.providers)
-            image_json.push_back(item->to_json());
+        for (const auto &item: p.providers) {
+            json local_j;
+            to_json(local_j, (const ImageProviders::General *&) item);
+
+            image_json.push_back(local_j);
+        }
 
         vector<json> scenes_json;
         scenes_json.reserve(p.scenes.size());
-        for (const auto &item: p.scenes)
-            scenes_json.push_back(item->to_json());
+        for (const auto &item: p.scenes) {
+            json local_j;
+            to_json(local_j, (const Scenes::Scene *&) item);
+
+            scenes_json.push_back(local_j);
+        }
 
         j = json{
                 {"name",   p.name},
                 {"images", image_json},
-                {"scenes", }
+                {"scenes", scenes_json}
         };
     }
 
@@ -91,6 +115,7 @@ namespace ConfigData {
         j.at("name").get_to(p.name);
 
         vector<json> image_json = j.at("images");
+        vector<json> scenes_json = j.at("scenes");
 
         vector<ImageProviders::General *> images;
         images.reserve(image_json.size());
@@ -98,12 +123,24 @@ namespace ConfigData {
         for (const auto &item: image_json)
             images.push_back(ImageProviders::General::from_json(item));
 
+        vector<Scenes::Scene *> scenes;
+        scenes.reserve(scenes_json.size());
+
+        for (const auto &item: scenes_json)
+            scenes.push_back(Scenes::Scene::from_json(item));
+
         p.providers = images;
+        p.scenes = scenes;
     }
 
     void from_json(const json &j, ImageProviders::General *&p) {
         spdlog::debug("from json imgtype", to_string(j));
         p = ImageProviders::General::from_json(j);
+    }
+
+    void from_json(const json &j, Scenes::Scene *&p) {
+        spdlog::debug("from json scene", to_string(j));
+        p = Scenes::Scene::from_json(j);
     }
 
     void Preset::randomize() {

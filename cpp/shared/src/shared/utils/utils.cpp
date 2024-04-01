@@ -5,11 +5,13 @@
 #include <thread>
 #include <regex>
 #include <spdlog/spdlog.h>
+#include <random>
 
 using namespace spdlog;
 
 tmillis_t GetTimeInMillis() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 void SleepMillis(tmillis_t milli_seconds) {
@@ -61,7 +63,7 @@ bool replace(std::string &str, const std::string &from, const std::string &to) {
     return true;
 }
 
-std::expected<std::string,std::string> execute_process(const string& cmd, const vector<std::string> &args) {
+std::expected<std::string, std::string> execute_process(const string &cmd, const vector<std::string> &args) {
     std::stringstream fullCmd;
     fullCmd << cmd;
 
@@ -104,7 +106,7 @@ std::expected<std::string,std::string> execute_process(const string& cmd, const 
     return out_stream.str();
 }
 
-void floatPixelSet(rgb_matrix::FrameCanvas* canvas, int x, int y, float r, float g, float b) {
+void floatPixelSet(rgb_matrix::FrameCanvas *canvas, int x, int y, float r, float g, float b) {
     const uint8_t rByte = static_cast<uint8_t>(max(0.0f, min(1.0f, r)) * 255.0f);
     const uint8_t gByte = static_cast<uint8_t>(max(0.0f, min(1.0f, g)) * 255.0f);
     const uint8_t bByte = static_cast<uint8_t>(max(0.0f, min(1.0f, b)) * 255.0f);
@@ -116,4 +118,18 @@ std::string stringify_url(const string &url) {
     std::hash<std::string> hasher;
     size_t hashed_url = hasher(url);
     return std::to_string(hashed_url);
+}
+
+int get_random_number_inclusive(int start, int end) {
+    // Use a random_device to seed the generator
+    std::random_device rd;
+
+    // Use a Mersenne Twister engine for random number generation
+    std::mt19937 engine(rd());
+
+    // Use a uniform distribution for the range
+    std::uniform_int_distribution<> dist(start, end);
+
+    // Generate and return the random number
+    return dist(engine);
 }

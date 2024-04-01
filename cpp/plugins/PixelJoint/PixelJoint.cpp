@@ -23,10 +23,10 @@ vector<ImageProviderWrapper *> PixelJoint::get_image_providers() {
 
 PixelJoint::PixelJoint() = default;
 
-extern "C" PixelJoint *createGithubScenes() {
+extern "C" [[maybe_unused]] PixelJoint *createGithubScenes() {
     return new PixelJoint();
 }
 
-extern "C" void destroyPixelJoint(PixelJoint *c) {
+extern "C" [[maybe_unused]] void destroyPixelJoint(PixelJoint *c) {
     delete c;
 }

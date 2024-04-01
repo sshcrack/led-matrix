@@ -3,7 +3,7 @@
 #include <nlohmann/json.hpp>
 #include "led-matrix.h"
 #include "Scene.h"
-#include "config/image_providers/general.h"
+#include "shared/config/image_providers/general.h"
 #include "shared/utils/utils.h"
 
 namespace Plugins {
@@ -21,7 +21,6 @@ namespace Plugins {
         virtual string get_name() = 0;
 
         virtual Scenes::Scene *create_default() = 0;
-
         virtual Scenes::Scene *from_json(const nlohmann::json &args) = 0;
     };
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config/image_providers/general.h"
+#include "shared/config/image_providers/general.h"
 #include "wrappers.h"
 
 namespace ImageProviders {

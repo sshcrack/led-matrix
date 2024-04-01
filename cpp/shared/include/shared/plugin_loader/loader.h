@@ -4,7 +4,7 @@
 #include <vector>
 #include <typeinfo>
 #include "plugin.h"
-#include "config/image_providers/general.h"
+#include "shared/config/image_providers/general.h"
 
 namespace Plugins {
     class PluginManager {
@@ -17,6 +17,7 @@ namespace Plugins {
 
         // Key: Type Value: Name
         std::map<const char*, string> img_provider_map = {};
+        std::map<const char*, string> scene_provider_map = {};
         bool initialized = false;
 
         explicit PluginManager();
@@ -31,6 +32,7 @@ namespace Plugins {
         void terminate();
 
         std::optional<string> get_name_of_provider(ImageProviders::General *provider);
+        std::optional<string> get_name_of_scene(Scenes::Scene *provider);
         std::vector<Plugins::BasicPlugin *> get_plugins();
         std::vector<Plugins::SceneWrapper *> get_scenes();
         std::vector<Plugins::ImageProviderWrapper *> get_image_providers();

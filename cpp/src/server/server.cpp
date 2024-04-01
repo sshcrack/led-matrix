@@ -1,9 +1,8 @@
-#include "restinio/all.hpp"
 #include "server.h"
+#include "restinio/all.hpp"
 #include "shared/utils/shared.h"
 #include <filesystem>
-#include "nlohmann/json.hpp"
-#include "shared/utils/utils.h"
+#include <nlohmann/json.hpp>
 #include "method_post.h"
 #include "method_get.h"
 
