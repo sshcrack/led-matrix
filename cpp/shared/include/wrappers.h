@@ -8,19 +8,34 @@
 
 namespace Plugins {
     class ImageProviderWrapper {
+    private:
+        string _cachedName;
     public:
         virtual ImageProviders::General *create_default() = 0;
 
         virtual ImageProviders::General *from_json(const nlohmann::json &json) = 0;
 
-        virtual string get_name() = 0;
+        virtual string get_name() {
+            if (_cachedName.empty())
+                _cachedName = create_default()->get_name();
+
+            return _cachedName;
+        }
     };
 
     class SceneWrapper {
+    private:
+        string _cachedName;
     public:
-        virtual string get_name() = 0;
+        virtual string get_name() {
+            if (_cachedName.empty())
+                _cachedName = create_default()->get_name();
+
+            return _cachedName;
+        }
 
         virtual Scenes::Scene *create_default() = 0;
+
         virtual Scenes::Scene *from_json(const nlohmann::json &args) = 0;
     };
 }

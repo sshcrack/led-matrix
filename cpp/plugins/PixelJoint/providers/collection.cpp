@@ -52,14 +52,15 @@ json ImageProviders::Collection::to_json() {
     return stringified;
 };
 
+string ImageProviders::Collection::get_name() const {
+    return "collection";
+}
+
+
 ImageProviders::General *ImageProviders::CollectionWrapper::create_default() {
     return new Collection(json::parse("[]"));
 }
 
 ImageProviders::General *ImageProviders::CollectionWrapper::from_json(const json &json) {
     return Collection::from_json(json);
-}
-
-string ImageProviders::CollectionWrapper::get_name() {
-    return "collection";
 }

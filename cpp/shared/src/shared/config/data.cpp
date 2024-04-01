@@ -6,43 +6,33 @@
 #include <spdlog/spdlog.h>
 
 using namespace std;
+using namespace spdlog;
 using json = nlohmann::json;
 
 namespace ConfigData {
     void to_json(json &j, const Scenes::Scene *&p) {
         auto &c = const_cast<Scenes::Scene *&>(p);
-        auto pl = Plugins::PluginManager::instance();
 
-        auto type_str = pl->get_name_of_scene(c);
-        if (!type_str.has_value()) {
-            spdlog::error("Could not get name of scene");
-            throw runtime_error(fmt::format("Could not get name of scene: {}", c->to_json().dump()));
-        }
-
+        debug("Scene {} to json", c->get_name());
         j = {
-                {"type",      type_str.value()},
+                {"type",      c->get_name()},
                 {"arguments", c->to_json()}
         };
     }
 
     void to_json(json &j, const ImageProviders::General *&p) {
         auto &c = const_cast<ImageProviders::General *&>(p);
-        auto pl = Plugins::PluginManager::instance();
 
-        auto type_str = pl->get_name_of_provider(c);
-        if (!type_str.has_value()) {
-            spdlog::error("Could not get name of provider");
-            throw runtime_error(fmt::format("Could not get name of provider: {}", c->to_json().dump()));
-        }
-
+        debug("Image provider to json {}", c->get_name());
         j = {
-                {"type",      type_str.value()},
+                {"type",      c->get_name()},
                 {"arguments", c->to_json()}
         };
     }
 
 
     void to_json(json &j, const SpotifyData &p) {
+        debug("Spotify data to json");
         j = json{
                 {"expires_at",    p.expires_at},
                 {"access_token",  p.access_token.value_or("")},
@@ -51,6 +41,7 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Preset &p) {
+        debug("Preset to json");
         vector<json> image_json;
 
         image_json.reserve(p.providers.size());
@@ -78,6 +69,7 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Root &p) {
+        debug("Root to json");
         j = json{
                 {"presets", p.presets},
                 {"curr",    p.curr},

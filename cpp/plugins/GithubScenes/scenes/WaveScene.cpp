@@ -88,7 +88,7 @@ void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix) {
     }
 }
 
-string WaveSceneWrapper::get_name() {
+string WaveScene::get_name() const {
     return "wave";
 }
 

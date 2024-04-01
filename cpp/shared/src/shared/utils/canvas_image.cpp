@@ -3,6 +3,7 @@
 #include "content-streamer.h"
 #include <Magick++.h>
 #include <filesystem>
+#include <iostream>
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;
@@ -111,9 +112,14 @@ bool LoadImageAndScale(const string& str_path,
 
     debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width, canvas_height, offset_x, offset_y);
     for (auto & img : *result) {
-        img.scale(Magick::Geometry(target_width, target_height));
-        img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
+        //img.scale(Magick::Geometry(target_width, target_height));
+        //img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
     }
+
+    std::flush(std::cout);
+    std::cout << "Accessing" << std::endl;
+    std::cout << "Done" << std::endl;
+    std::flush(std::cout);
 
 
     try {

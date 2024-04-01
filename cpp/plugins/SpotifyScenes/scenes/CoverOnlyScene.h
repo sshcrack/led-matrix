@@ -27,14 +27,14 @@ namespace Scenes {
 
     public:
         bool tick(RGBMatrix *matrix) override;
-        int get_weight() const override;
+        [[nodiscard]] int get_weight() const override;
+        [[nodiscard]] string get_name() const override;
+        [[nodiscard]] nlohmann::json to_json() const override;
 
         using Scene::Scene;
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {
-        string get_name() override;
-
         Scenes::Scene *create_default() override;
 
         Scenes::Scene *from_json(const nlohmann::json &args) override;

@@ -57,8 +57,9 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
 
 
     optional<vector<Magick::Image>> res;
-    res = frames;
     debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+
+    res = std::move(frames);
 
     return res;
 }

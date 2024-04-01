@@ -71,14 +71,16 @@ json ImageProviders::Pages::to_json() {
     return args;
 }
 
+string ImageProviders::Pages::get_name() const {
+    return "pages";
+}
+
+
 ImageProviders::General *ImageProviders::PagesWrapper::create_default() {
-    return new ImageProviders::Pages({{"begin", 1}, {"end", -1}});
+    return new ImageProviders::Pages({{"begin", 1},
+                                      {"end",   -1}});
 }
 
 ImageProviders::General *ImageProviders::PagesWrapper::from_json(const json &json) {
     return new ImageProviders::Pages(json);
-}
-
-string ImageProviders::PagesWrapper::get_name() {
-    return "pages";
 }

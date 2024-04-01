@@ -1,8 +1,12 @@
 #include "Scene.h"
+
+#include <spdlog/spdlog.h>
+#include <utility>
 #include "shared/plugin_loader/loader.h"
 
+using namespace spdlog;
 
-Scenes::Scene * Scenes::Scene::from_json(const nlohmann::json &j) {
+Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
     string t = j["type"].get<string>();
     const nlohmann::json &arguments = j["arguments"];
 
@@ -29,6 +33,7 @@ bool Scenes::Scene::is_initialized() {
 }
 
 nlohmann::json Scenes::Scene::to_json() const {
+    debug("Default scene json");
     return {
             {"weight",   get_weight()},
             {"duration", get_duration()}
@@ -54,4 +59,3 @@ nlohmann::json Scenes::Scene::get_config(int weight, tmillis_t duration) {
             {"duration", duration}
     };
 }
-

@@ -15,9 +15,6 @@ namespace Plugins {
         /// Handle, Dn, Plugin
         std::vector<std::tuple<void *, string, Plugins::BasicPlugin *>> loaded_plugins;
 
-        // Key: Type Value: Name
-        std::map<const char*, string> img_provider_map = {};
-        std::map<const char*, string> scene_provider_map = {};
         bool initialized = false;
 
         explicit PluginManager();
@@ -31,8 +28,6 @@ namespace Plugins {
         void initialize();
         void terminate();
 
-        std::optional<string> get_name_of_provider(ImageProviders::General *provider);
-        std::optional<string> get_name_of_scene(Scenes::Scene *provider);
         std::vector<Plugins::BasicPlugin *> get_plugins();
         std::vector<Plugins::SceneWrapper *> get_scenes();
         std::vector<Plugins::ImageProviderWrapper *> get_image_providers();
