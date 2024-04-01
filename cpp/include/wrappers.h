@@ -1,8 +1,8 @@
 #pragma once
-#include "config/image_providers/general.h"
-#include "led-matrix.h"
-#include "matrix_control/scene/Scene.h"
 #include <nlohmann/json.hpp>
+#include "led-matrix.h"
+#include "Scene.h"
+#include "config/image_providers/general.h"
 
 namespace Plugins {
     class ImageTypeWrapper {

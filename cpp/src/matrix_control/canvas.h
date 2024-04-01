@@ -1,10 +1,10 @@
 #pragma once
 
 #include "led-matrix.h"
-#include "../header_fix/fix-content-streamer.h"
-#include "../utils/utils.h"
-#include "image.h"
-#include "post.h"
+#include "shared/post.h"
+#include "content-streamer.h"
+#include "shared/utils/utils.h"
+#include "shared/utils/canvas_image.h"
 #include <vector>
 
 using rgb_matrix::Canvas;
