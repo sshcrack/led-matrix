@@ -1,7 +1,7 @@
 #pragma once
 
 #include "shared/config/image_providers/general.h"
-#include "../scraper/scraped_post.h.disabled"
+#include "../scraper/scraped_post.h"
 #include "wrappers.h"
 
 namespace ImageProviders {

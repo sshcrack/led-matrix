@@ -115,7 +115,7 @@ namespace ConfigData {
         j.at("name").get_to(p.name);
 
         vector<json> image_json = j.at("images");
-        vector<json> scenes_json = j.at("scenes");
+
 
         vector<ImageProviders::General *> images;
         images.reserve(image_json.size());
@@ -123,14 +123,26 @@ namespace ConfigData {
         for (const auto &item: image_json)
             images.push_back(ImageProviders::General::from_json(item));
 
+
         vector<Scenes::Scene *> scenes;
-        scenes.reserve(scenes_json.size());
+        if (j.contains("scenes")) {
+            vector<json> scenes_json = j.at("scenes");
 
-        for (const auto &item: scenes_json)
-            scenes.push_back(Scenes::Scene::from_json(item));
+            scenes.reserve(scenes_json.size());
 
-        p.providers = images;
+            for (const auto &item: scenes_json)
+                scenes.push_back(Scenes::Scene::from_json(item));
+
+        } else {
+            spdlog::info("No scenes in preset. Adding default...");
+            auto pl = Plugins::PluginManager::instance();
+            for (const auto &item: pl->get_scenes()) {
+                scenes.emplace_back(item->create_default());
+            }
+        }
+
         p.scenes = scenes;
+        p.providers = images;
     }
 
     void from_json(const json &j, ImageProviders::General *&p) {

@@ -1,4 +1,4 @@
-#include "scraped_post.h.disabled"
+#include "scraped_post.h"
 #include "shared/utils/image_fetch.h"
 #include <vector>
 #include "libxml/xpath.h"

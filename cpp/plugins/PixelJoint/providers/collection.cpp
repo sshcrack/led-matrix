@@ -1,4 +1,4 @@
-#include "collection.h.disabled"
+#include "collection.h"
 #include <random>
 #include <spdlog/spdlog.h>
 
