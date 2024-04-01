@@ -1,6 +1,5 @@
 #pragma once
-#include "nlohmann/json.hpp"
-#include "fmt/core.h"
+#include <nlohmann/json.hpp>
 #include "shared/post.h"
 
 using json = nlohmann::json;

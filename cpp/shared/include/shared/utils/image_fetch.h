@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include<optional>
+#include <optional>
 #include <utility>
 #include <vector>
 #include <Magick++.h>

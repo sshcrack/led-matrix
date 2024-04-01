@@ -10,8 +10,58 @@
 
 using namespace spdlog;
 using Plugins::BasicPlugin;
+using Plugins::PluginManager;
+using Plugins::SceneWrapper;
+using Plugins::ImageTypeWrapper;
 
-Plugins::PluginManager::PluginManager() {
+PluginManager::PluginManager() = default;
+
+void PluginManager::terminate() {
+    info("Destroying plugins...");
+    for (const auto &item: loaded_plugins) {
+        void (*destroy)(BasicPlugin *);
+        destroy = (void (*)(BasicPlugin *)) dlsym(get < 0 > (item), get < 1 > (item).c_str());
+
+        destroy(get < 2 > (item));
+    }
+}
+
+
+std::vector<BasicPlugin *> PluginManager::get_plugins() {
+    std::vector<BasicPlugin *> plugins;
+    for (const auto &item: loaded_plugins) {
+        plugins.emplace_back(get < 2 > (item));
+    }
+
+    return plugins;
+}
+
+
+std::vector<SceneWrapper *> PluginManager::get_scenes() {
+    std::vector<SceneWrapper *> scenes;
+
+    for (const auto &item: get_plugins()) {
+        auto pl_scenes = item->get_scenes();
+        scenes.insert(scenes.end(), pl_scenes.begin(), pl_scenes.end());
+    }
+
+    return scenes;
+}
+
+
+std::vector<ImageTypeWrapper *> PluginManager::get_image_type() {
+    std::vector<ImageTypeWrapper *> types;
+    for (const auto &item: get_plugins()) {
+        types.insert(types.end(), item->get_images_types().begin(), item->get_images_types().end());
+    }
+
+    return types;
+}
+
+void PluginManager::initialize() {
+    if (initialized)
+        return;
+
     const std::string libGlob("plugins/*.so");
 
     std::vector<std::string> filenames = Plugins::lib_glob(libGlob);
@@ -25,7 +75,7 @@ Plugins::PluginManager::PluginManager() {
     // Loading libs to memory
 
     for (std::string pl_name: libNames) {
-        void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+        void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY);
 
         std::pair<std::string, std::string> delibbed =
                 Plugins::get_lib_name(pl_name);
@@ -35,10 +85,9 @@ Plugins::PluginManager::PluginManager() {
         std::string cn = "create" + delibbed.second;
         std::string dn = "destroy" + delibbed.second;
 
-        std::cout << "CreateFunc: '" << cn << "' Destroy: '" << dn << "'" << std::endl;
         flush(std::cout);
         create = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
-        if(create == nullptr) {
+        if (create == nullptr) {
             error("Could not find symbol '{}' for Plugin '{}'. Output: {}", cn, pl_name, dlerror());
             std::exit(-1);
         }
@@ -48,48 +97,16 @@ Plugins::PluginManager::PluginManager() {
         info("Loaded plugin {}", pl_name);
         loaded_plugins.emplace_back(dlhandle, dn, p);
     }
+
+    info("Loaded plugins.");
+    initialized = true;
 }
 
-void Plugins::PluginManager::terminate() {
-    info("Destroying plugins...");
-    for (const auto &item: loaded_plugins) {
-        void (*destroy)(BasicPlugin *);
-        destroy = (void (*)(BasicPlugin *)) dlsym(get<0>(item), get<1>(item).c_str());
-
-        destroy(get<2>(item));
-    }
-}
-
-
-std::vector<Plugins::BasicPlugin *> Plugins::PluginManager::get_plugins() {
-    std::vector<Plugins::BasicPlugin*> plugins;
-    for (const auto &item: loaded_plugins) {
-        plugins.emplace_back(get<2>(item));
+PluginManager* PluginManager::instance_= nullptr;
+PluginManager *PluginManager::instance() {
+    if(instance_==nullptr){
+        instance_ = new PluginManager();
     }
 
-    return plugins;
+    return instance_;
 }
-
-
-#ifndef PLUGIN_TEST
-std::vector<Plugins::SceneWrapper*> Plugins::PluginManager::get_scenes() {
-    std::vector<Plugins::SceneWrapper*> scenes;
-
-    for (const auto &item: get_plugins()) {
-        scenes.insert(scenes.end(), item->get_scenes().begin(), item->get_scenes().end());
-    }
-
-    return scenes;
-}
-
-
-std::vector<Plugins::ImageTypeWrapper *> Plugins::PluginManager::get_image_type() {
-    std::vector<Plugins::ImageTypeWrapper*> types;
-    for (const auto &item: get_plugins()) {
-        types.insert(types.end(), item->get_images_types().begin(), item->get_images_types().end());
-    }
-
-    return types;
-}
-
-#endif

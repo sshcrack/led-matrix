@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(main VERSION 0.1.0)
 
-add_definitions(-DPLUGIN_TEST=1)
-
 set(CMAKE_CXX_STANDARD 23)
 
 
@@ -12,7 +10,6 @@ configure_file(resources/resources.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/resource
 
 INCLUDE_DIRECTORIES(
         ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/rpi-rgb-led-matrix/lib
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2
@@ -27,6 +24,8 @@ file(GLOB_RECURSE SOURCES
 file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
 file(GLOB_RECURSE RGB_HEADER_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include/*.h)
 
+set(RGB_SRC_FILES ${RGB_SRC_FILES} CACHE INTERNAL "RGB Source Files")
+
 add_subdirectory(shared)
 
 # Adding plugins
@@ -37,7 +36,6 @@ add_subdirectory(plugins)
 add_executable(${PROJECT_NAME}
         ${SOURCES}
         ${RGB_SRC_FILES}
-        ${RGB_HEADER_FILES}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 

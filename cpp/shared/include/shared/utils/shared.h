@@ -1,6 +1,6 @@
 #include <atomic>
 #include <optional>
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include "shared/config/MainConfig.h"
 
 extern std::atomic<bool>  skip_image;

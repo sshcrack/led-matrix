@@ -3,27 +3,36 @@
 #include <thread>
 #include <vector>
 #include "plugin.h"
-#ifndef PLUGIN_TEST
-#include "matrix_control/scene/Scene.h"
 #include "config/image_providers/general.h"
-#endif
 
 namespace Plugins {
     class PluginManager {
+    protected:
+        static PluginManager *instance_;
+
     private:
         /// Handle, Dn, Plugin
         std::vector<std::tuple<void *, string, Plugins::BasicPlugin *>> loaded_plugins;
+        bool initialized = false;
+
+        explicit PluginManager();
 
     public:
-        explicit PluginManager();
+
+        PluginManager(PluginManager &other) = delete;
+
+        void operator=(const PluginManager &) = delete;
+
+        static PluginManager *instance();
+
+        void initialize();
 
         void terminate();
 
         std::vector<Plugins::BasicPlugin *> get_plugins();
 
-#ifndef PLUGIN_TEST
-        std::vector<Plugins::SceneWrapper*> get_scenes();
-        std::vector<Plugins::ImageTypeWrapper*> get_image_type();
-#endif
+        std::vector<Plugins::SceneWrapper *> get_scenes();
+
+        std::vector<Plugins::ImageTypeWrapper *> get_image_type();
     };
 }

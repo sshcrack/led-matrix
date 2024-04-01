@@ -3,8 +3,8 @@
 #include <vector>
 #include <Magick++.h>
 #include "led-matrix.h"
-#include <filesystem>
 #include "content-streamer.h"
+#include <filesystem>
 #include <magick/image.h>
 using namespace std;
 

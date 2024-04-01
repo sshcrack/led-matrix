@@ -67,7 +67,8 @@ bool ImageScene::tick(RGBMatrix *matrix) {
     return DisplayAnimation(matrix);
 }
 
-expected<CurrAnimation, string> ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
+expected<CurrAnimation, string>
+ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }
@@ -160,8 +161,8 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     file_info.params = params;
     file_info.content_stream = new rgb_matrix::MemStreamIO();
     file_info.is_multi_frame = frames.size() > 1;
-    rgb_matrix::StreamWriter out(file_info.content_stream);
 
+    rgb_matrix::StreamWriter out(file_info.content_stream);
     for (const auto &img: frames) {
         tmillis_t delay_time_us;
         if (file_info.is_multi_frame) {
@@ -173,14 +174,10 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
 
-
-
     info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
     return file_info;
 }
 
-
-#ifndef PLUGIN_TEST
 Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
     return new ImageScene(matrix);
 }
@@ -188,5 +185,3 @@ Scenes::Scene *ImageSceneWrapper::create(rgb_matrix::RGBMatrix *matrix) {
 string ImageSceneWrapper::get_name() {
     return "image_scene";
 }
-
-#endif
