@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_CXX_STANDARD 23)
-add_definitions(-DPLUGIN_TEST=1)
 
 file(GLOB PLUGIN_SOURCES
         */*.cpp
@@ -21,7 +20,7 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
     file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.cpp)
 
-    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL})
+    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${RGB_SRC_FILES})
 
 
     # Compiler target

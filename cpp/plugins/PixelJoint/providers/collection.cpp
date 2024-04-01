@@ -1,6 +1,6 @@
 #include "collection.h"
 #include <random>
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 using std::nullopt;
 
 optional<Post> ImageProviders::Collection::get_next_image() {

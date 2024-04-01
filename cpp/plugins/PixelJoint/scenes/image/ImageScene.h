@@ -71,10 +71,7 @@ public:
     using Scenes::Scene::Scene;
 };
 
-#ifndef PLUGIN_TEST
 class ImageSceneWrapper : public Plugins::SceneWrapper {
     string get_name() override;
     Scenes::Scene * create(rgb_matrix::RGBMatrix *matrix) override;
 };
-
-#endif
