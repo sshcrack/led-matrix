@@ -115,7 +115,6 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no
         return get_next_anim(matrix, recursiveness + 1);
     }
 
-    debug("Get file info");
     auto file = GetFileInfo(val.value(), offscreen_canvas);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
@@ -132,7 +131,6 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no
 
 expected<optional<ImageInfo>, string>
 ImageScene::get_next_image(ImageProviders::General *category, int width, int height) {
-    debug("Getting next image for category {}", category->get_name());
     auto post = category->get_next_image();
     if (!post.has_value()) {
         return unexpected("End of images for category");
@@ -164,8 +162,6 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     file_info.content_stream = new rgb_matrix::MemStreamIO();
     file_info.is_multi_frame = frames.size() > 1;
 
-    debug("Storingg offscreen {} another {} frames {}", canvas == nullptr, file_info.content_stream == nullptr, frames.size());
-    std::flush(std::cout);
     rgb_matrix::StreamWriter out(file_info.content_stream);
     for (const auto &img: frames) {
         tmillis_t delay_time_us;

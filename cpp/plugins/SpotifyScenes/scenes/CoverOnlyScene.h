@@ -29,7 +29,6 @@ namespace Scenes {
         bool tick(RGBMatrix *matrix) override;
         [[nodiscard]] int get_weight() const override;
         [[nodiscard]] string get_name() const override;
-        [[nodiscard]] nlohmann::json to_json() const override;
 
         using Scene::Scene;
     };

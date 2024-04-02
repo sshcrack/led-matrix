@@ -25,7 +25,6 @@ LoadImageAndScale(const string &str_path, int canvas_width, int canvas_height, b
     filesystem::path path = filesystem::path(str_path);
     filesystem::path img_processed = to_processed_path(path);
 
-    debug("Checking if exists");
     // Checking if first exists
 
     vector<Magick::Image> result;

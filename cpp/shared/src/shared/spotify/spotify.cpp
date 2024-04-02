@@ -110,7 +110,7 @@ Spotify::Spotify() {
     auto id = std::getenv("SPOTIFY_CLIENT_ID");
     auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
 
-    if(id && secret) {
+    if (id && secret) {
         client_id = id;
         client_secret = secret;
     } else {
@@ -203,6 +203,7 @@ void Spotify::start_control_thread() {
             }
 
             auto opt_state = data.value();
+            std::unique_lock<std::mutex> lock(mtx);
             if (this->currently_playing.has_value()) {
                 this->last_playing.emplace(this->currently_playing.value());
             } else {
@@ -215,11 +216,13 @@ void Spotify::start_control_thread() {
                 this->currently_playing.emplace(state);
 
                 this->is_dirty = true;
+                lock.unlock();
                 std::this_thread::sleep_for(std::chrono::seconds(5));
             } else {
                 this->currently_playing.reset();
 
                 this->is_dirty = true;
+                lock.unlock();
                 std::this_thread::sleep_for(std::chrono::seconds(15));
             }
 
@@ -237,6 +240,7 @@ void Spotify::terminate() {
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {
+    std::lock_guard lock(mtx);
     return this->currently_playing;
 }
 
@@ -251,6 +255,7 @@ bool Spotify::has_changed(bool update_dirty) {
         this->is_dirty = false;
 
     debug("Checking if has changed");
+    std::lock_guard lock(mtx);
     if (this->last_playing.has_value() != this->currently_playing.has_value())
         return true;
 

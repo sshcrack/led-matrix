@@ -37,7 +37,7 @@ void hardware_mainloop(RGBMatrix *matrix) {
     info("Finished, shutting down...");
 }
 
-expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
+int start_hardware_mainloop(int argc, char *argv[]) {
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
 
@@ -47,15 +47,17 @@ expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]) {
 
     if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
                                            &matrix_options, &runtime_opt)) {
-        return unexpected(usage(argv[0]));
+        return usage(argv[0]);
     }
 
     RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
     if (matrix == nullptr)
-        return unexpected(usage(argv[0]));
+        return usage(argv[0]);
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
 
-    return std::async(hardware_mainloop, matrix);
+    debug("Running hardware mainloop...");
+    hardware_mainloop(matrix);
+    return 0;
 }

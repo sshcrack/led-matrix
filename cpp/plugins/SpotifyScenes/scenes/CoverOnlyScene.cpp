@@ -122,7 +122,6 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     string out_file = "/tmp/spotify_cover." + track.get_id() + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
-        debug("Downloading");
         download_image(cover, out_file);
     }
 
@@ -140,7 +139,6 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     file_info.content_stream = new rgb_matrix::MemStreamIO();
 
 
-    std::flush(std::cout);
     rgb_matrix::StreamWriter out(file_info.content_stream);
     for (const auto &img: frames) {
         StoreInStream(img, 100 * 1000, true, offscreen_canvas, &out);
@@ -150,22 +148,17 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
 }
 
 int CoverOnlyScene::get_weight() const {
-    if (spotify->has_changed(false))
+    if (spotify != nullptr && spotify->has_changed(false)) {
+        debug("Returning weight");
+        std::flush(cout);
         return 100;
+    }
 
     return Scene::get_weight();
 }
 
 string CoverOnlyScene::get_name() const {
     return "spotify";
-}
-
-nlohmann::json CoverOnlyScene::to_json() const {
-    debug("Cover only weight");
-    auto j = nlohmann::json::parse(Scene::to_json().dump());
-    j["weight"] = Scene::get_weight();
-
-    return j;
 }
 
 Scenes::Scene *CoverOnlySceneWrapper::create_default() {

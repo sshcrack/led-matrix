@@ -18,6 +18,8 @@ PluginManager::PluginManager() = default;
 
 void PluginManager::terminate() {
     info("Destroying plugins...");
+    std::flush(std::cout);
+
     for (const auto &item: loaded_plugins) {
         void (*destroy)(BasicPlugin *);
         destroy = (void (*)(BasicPlugin *)) dlsym(get < 0 > (item), get < 1 > (item).c_str());
@@ -91,7 +93,6 @@ void PluginManager::initialize() {
         std::string cn = "create" + delibbed.second;
         std::string dn = "destroy" + delibbed.second;
 
-        flush(std::cout);
         create = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
         if (create == nullptr) {
             error("Could not find symbol '{}' for Plugin '{}'. Output: {}", cn, pl_name, dlerror());

@@ -64,18 +64,19 @@ int main(int argc, char *argv[]) {
     }
     };
 
-    debug("Initializing...");
-    auto hardware = initialize_hardware(argc, argv);
+    debug("Initializing hardware...");
+    auto hardware_code = start_hardware_mainloop(argc, argv);
 
-    if (!hardware.has_value()) {
-        error("Could not initialize hardware.");
+    if (hardware_code != 0) {
+        error("Could not initialize hardware_code.");
         restinio::initiate_shutdown(server);
-        return hardware.error();
+
+        debug("Terminating plugin loader...");
+        pl->terminate();
+
+        return hardware_code;
     }
 
-    info("Hardware initialized successfully");
-
-    hardware->wait();
     info("Hardware thread stopped. Saving config...");
     config->save();
 
@@ -83,9 +84,14 @@ int main(int argc, char *argv[]) {
     info("Stopping http server");
 
     restinio::initiate_shutdown(server);
+
+    debug("Terminating spotify...");
     spotify->terminate();
+
+    debug("Joining control thread...");
     control_thread.join();
 
+    debug("Terminating plugin loader...");
     pl->terminate();
     return 0;
 }

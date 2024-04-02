@@ -95,7 +95,6 @@ vector<ScrapedPost> ScrapedPost::get_posts(int page) {
         pixel_posts.push_back(pixel_post);
     }
 
-    debug("Returning posts");
     return pixel_posts;
 }
 
