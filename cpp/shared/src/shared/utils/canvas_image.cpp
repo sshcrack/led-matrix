@@ -1,4 +1,4 @@
-#include <vector>
+#include "shared/utils/canvas_image.h"
 #include "led-matrix.h"
 #include "content-streamer.h"
 #include <Magick++.h>
@@ -18,12 +18,9 @@ filesystem::path to_processed_path(const filesystem::path& path) {
 
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
-bool LoadImageAndScale(const string& str_path,
-                       int canvas_width, int canvas_height,
-                       bool fill_width, bool fill_height,
-                       bool contain_img,
-                       vector<Magick::Image> *result,
-                       string *err_msg) {
+std::expected<vector<Magick::Image>, string>
+LoadImageAndScale(const string &str_path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
+                  bool contain_img) {
 
     filesystem::path path = filesystem::path(str_path);
     filesystem::path img_processed = to_processed_path(path);
@@ -31,20 +28,18 @@ bool LoadImageAndScale(const string& str_path,
     debug("Checking if exists");
     // Checking if first exists
 
+    vector<Magick::Image> result;
     if(filesystem::exists(img_processed)) {
         try {
-            readImages(result, img_processed);
+            readImages(&result, img_processed);
         } catch (exception& ex) {
-            *err_msg = ex.what();
-            return false;
+            return unexpected(ex.what());
         }
 
 
-        if(!result->empty()) {
-            return true;
+        if(!result.empty()) {
+            return result;
         }
-
-        error("Error loading file, trying again");
     }
 
     int target_width = canvas_width;
@@ -54,24 +49,22 @@ bool LoadImageAndScale(const string& str_path,
     try {
         readImages(&frames, path);
     } catch (std::exception& e) {
-        if (e.what()) *err_msg = e.what();
-        return false;
+        return unexpected(e.what());
     }
     if (frames.empty()) {
-        fprintf(stderr, "No image found.");
-        return false;
+        return unexpected("No image found.");
     }
 
     // Put together the animation from single frames. GIFs can have nasty
     // disposal modes, but they are handled nicely by coalesceImages()
     if (frames.size() > 1) {
-        Magick::coalesceImages(result, frames.begin(), frames.end());
+        Magick::coalesceImages(&result, frames.begin(), frames.end());
     } else {
-        result->push_back(frames[0]);   // just a single still image.
+        result.push_back(frames[0]);   // just a single still image.
     }
 
-    const int img_width = (*result)[0].columns();
-    const int img_height = (*result)[0].rows();
+    const int img_width = result[0].columns();
+    const int img_height = result[0].rows();
     const float width_fraction = (float)target_width / img_width;
     const float height_fraction = (float)target_height / img_height;
     if (fill_width && fill_height) {
@@ -111,31 +104,19 @@ bool LoadImageAndScale(const string& str_path,
 
 
     debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width, canvas_height, offset_x, offset_y);
-    for (auto & img : *result) {
-        //img.scale(Magick::Geometry(target_width, target_height));
-        //img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
-    }
-
-    std::for_each(result->begin(), result->end(), [target_width, target_height, canvas_width, canvas_height, offset_x, offset_y](Magick::Image &img) {
+    for (auto & img : result) {
         img.scale(Magick::Geometry(target_width, target_height));
         img.crop(Magick::Geometry(canvas_width,canvas_height, offset_x, offset_y));
-    });
-
-    std::flush(std::cout);
-    std::cout << "Accessing" << std::endl;
-    std::cout << "Done" << std::endl;
-    std::flush(std::cout);
-
+    }
 
     try {
-        writeImages(result->begin(), result->end(), img_processed);
+        writeImages(result.begin(), result.end(), img_processed);
     } catch (std::exception& e) {
-        if (e.what()) *err_msg = e.what();
-        return false;
+        return unexpected(e.what());
     }
 
 
-    return true;
+    return result;
 }
 
 

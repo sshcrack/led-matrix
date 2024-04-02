@@ -42,26 +42,22 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
         download_image(get_image_url(), file_path);
     }
 
-    vector<Magick::Image> frames;
-    string err_msg;
-
     bool contain_img = true;
-    if (!LoadImageAndScale(file_path, width, height, true, true, contain_img, &frames, &err_msg)) {
-        error("Error loading image: {}", err_msg);
+    auto res = LoadImageAndScale(file_path, width, height, true, true, contain_img);
+    if (!res) {
+        error("Error loading image: {}", res.error());
         try_remove(file_path);
 
         return nullopt;
     }
 
+    vector<Magick::Image> frames = std::move(res.value());
     try_remove(file_path);
 
 
-    optional<vector<Magick::Image>> res;
     debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
-    res = std::move(frames);
-
-    return res;
+    return frames;
 }
 
 Post::Post(const string &img_url) {
