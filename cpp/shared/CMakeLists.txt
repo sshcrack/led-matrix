@@ -23,7 +23,6 @@ target_include_directories(${PROJECT_NAME}
         PRIVATE
         # where the library itself will look for its internal headers
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${RGB_HEADER_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2
         PUBLIC
         # where top-level project will look for the library's public headers
@@ -32,7 +31,7 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_directories(${PROJECT_NAME} PRIVATE ${RGB_SRC_FILES})
+target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
 
 
 # spdlog

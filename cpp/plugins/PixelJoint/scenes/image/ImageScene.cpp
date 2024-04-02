@@ -47,6 +47,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
 
+    debug("Waiting for {}", anim_delay_ms - time_already_spent);
     SleepMillis(anim_delay_ms - time_already_spent);
 
     return false;
@@ -55,6 +56,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 
 bool ImageScene::tick(RGBMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
+        debug("Getting next animation");
         auto res = get_next_anim(matrix, 0);
         if (!res.has_value()) {
             error("Error getting next animation: {}", res.error());
@@ -152,7 +154,7 @@ FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, Fram
     auto post = get<1>(p_info);
 
     ImageParams params = ImageParams();
-    if (frames.size() > 1) {
+    if (frames.size() == 1) {
         params.anim_duration_ms = 15000;
     } else {
         params.wait_ms = 5000;

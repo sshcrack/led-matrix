@@ -9,11 +9,7 @@ file(GLOB_RECURSE SOURCES
 )
 
 
-file(GLOB_RECURSE RGB_SRC_FILES ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/lib/*.c*)
-
-set(RGB_SRC_FILES ${RGB_SRC_FILES} CACHE INTERNAL "RGB Source Files")
-set(RGB_HEADER_DIR ${PROJECT_SOURCE_DIR}/rpi-rgb-led-matrix/include CACHE INTERNAL "RGB Header Directory")
-
+add_subdirectory(rpi-rgb-led-matrix)
 add_subdirectory(shared)
 
 # Adding plugins
@@ -23,11 +19,9 @@ add_subdirectory(plugins)
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
         ${SOURCES}
-        ${RGB_SRC_FILES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        ${RGB_HEADER_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -38,6 +32,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 # Require SharedTools
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
+target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
 
 # ImageMagick
 

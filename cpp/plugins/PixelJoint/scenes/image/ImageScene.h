@@ -35,7 +35,7 @@ struct CurrAnimation {
     const tmillis_t end_time_ms;
     const tmillis_t override_anim_delay;
 
-    CurrAnimation(FileInfo file, rgb_matrix::StreamReader reader, const tmillis_t end_time_ms,
+    CurrAnimation(FileInfo file, const rgb_matrix::StreamReader& reader, const tmillis_t end_time_ms,
                   const tmillis_t override_anim_delay) : file(file), reader(reader), end_time_ms(end_time_ms),
                                                          override_anim_delay(override_anim_delay) {}
 };
@@ -67,7 +67,7 @@ private:
 
 public:
     bool tick(RGBMatrix *matrix) override;
-    string get_name() const override;
+    [[nodiscard]] string get_name() const override;
 
     using Scenes::Scene::Scene;
 };

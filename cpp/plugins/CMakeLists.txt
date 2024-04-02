@@ -30,6 +30,8 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     # Default dependencies
 
+    target_link_libraries(${LIB_NAME} PRIVATE rpi-rgb-led-matrix)
+
     # ImageMagick
     find_package(unofficial-graphicsmagick CONFIG REQUIRED)
     target_link_libraries(${LIB_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
