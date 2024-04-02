@@ -33,10 +33,7 @@ bool try_remove(const filesystem::path &file_path) {
 
     try {
         debug("Removing {}", file_path.string());
-        auto res = filesystem::remove(file_path);
-        debug("Done removing.");
-
-        return res;
+        return filesystem::remove(file_path);
     } catch (exception &ex) {
         warn("Could not delete file {}", file_path.string());
         return false;

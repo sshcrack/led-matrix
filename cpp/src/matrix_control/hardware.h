@@ -3,4 +3,4 @@
 #include <expected>
 #include <future>
 
-std::expected<std::future<void>, int> initialize_hardware(int argc, char *argv[]);
+int start_hardware_mainloop(int argc, char *argv[]);

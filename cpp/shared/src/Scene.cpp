@@ -34,9 +34,10 @@ bool Scenes::Scene::is_initialized() {
 
 nlohmann::json Scenes::Scene::to_json() const {
     debug("Default scene json");
+
     return {
-            {"weight",   get_weight()},
-            {"duration", get_duration()}
+            {"weight",   weight},
+            {"duration", duration}
     };
 }
 

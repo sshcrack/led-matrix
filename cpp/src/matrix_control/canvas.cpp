@@ -29,7 +29,6 @@ void update_canvas(RGBMatrix *matrix) {
         for (const auto &item: scenes) {
             auto weight = item->get_weight();
 
-            debug("Weight of {} is {}", item->get_name(), weight);
             weighted_scenes.emplace_back(weight, item);
             total_weight += weight;
         }

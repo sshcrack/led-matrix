@@ -15,6 +15,7 @@ private:
 
     std::string client_id;
     std::string client_secret;
+    std::mutex mtx;
 
     std::optional<SpotifyState> last_playing;
     std::optional<SpotifyState> currently_playing;
