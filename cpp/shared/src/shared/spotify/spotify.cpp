@@ -107,8 +107,16 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
 }
 
 Spotify::Spotify() {
-    client_id = std::getenv("SPOTIFY_CLIENT_ID");
-    client_secret = std::getenv("SPOTIFY_CLIENT_SECRET");
+    auto id = std::getenv("SPOTIFY_CLIENT_ID");
+    auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
+
+    if(id && secret) {
+        client_id = id;
+        client_secret = secret;
+    } else {
+        error("No spotify client id or secret found in env");
+        throw runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in env");
+    }
 }
 
 std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currently_playing() {

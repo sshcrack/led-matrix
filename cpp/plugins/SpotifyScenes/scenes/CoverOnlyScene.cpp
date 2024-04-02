@@ -129,7 +129,7 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     vector<Magick::Image> frames;
     string err_msg;
 
-    LoadImageAndScale(out_file, matrix->width(), matrix->height(), true, true, false, &frames, &err_msg);
+    LoadImageAndScale(out_file, matrix->width(), matrix->height(), true, true, false);
     if (!err_msg.empty()) {
         error("Error loading image: {}", err_msg);
         return nullopt;
