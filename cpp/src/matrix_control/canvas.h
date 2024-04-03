@@ -18,9 +18,9 @@ void update_canvas(RGBMatrix *matrix);
 static const tmillis_t distant_future = (1LL<<40); // that is a while.
 
 struct ImageParams {
-    ImageParams() : anim_duration_ms(distant_future), wait_ms(1500),
+    ImageParams() : duration_ms(distant_future), wait_ms(1500),
                     anim_delay_ms(-1), vsync_multiple(1) {}
-    tmillis_t anim_duration_ms;  // If this is an animation, duration to show.
+    tmillis_t duration_ms;  // If this is an animation, duration to show.
     tmillis_t wait_ms;           // Regular image: duration to show.
     tmillis_t anim_delay_ms;     // Animation delay override.
     int vsync_multiple;

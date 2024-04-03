@@ -259,5 +259,8 @@ bool Spotify::has_changed(bool update_dirty) {
     if (this->last_playing.has_value() != this->currently_playing.has_value())
         return true;
 
+    if(!this->last_playing.has_value() || !this->currently_playing.has_value())
+        return true;
+
     return this->last_playing->get_track().get_id() != this->currently_playing->get_track().get_id();
 }

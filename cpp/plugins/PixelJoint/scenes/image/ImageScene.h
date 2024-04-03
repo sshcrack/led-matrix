@@ -14,12 +14,9 @@ using rgb_matrix::RGBMatrix;
 
 static const tmillis_t distant_future = (1LL << 40); // that is a while.
 struct ImageParams {
-    ImageParams() : anim_duration_ms(distant_future), wait_ms(1500),
-                    anim_delay_ms(-1), vsync_multiple(1) {}
+    ImageParams() : duration_ms(distant_future), vsync_multiple(1) {}
 
-    tmillis_t anim_duration_ms;  // If this is an animation, duration to show.
-    tmillis_t wait_ms;           // Regular image: duration to show.
-    tmillis_t anim_delay_ms;     // Animation delay override.
+    tmillis_t duration_ms;  // If this is an animation, duration to show.
     int vsync_multiple;
 };
 
@@ -33,11 +30,9 @@ struct CurrAnimation {
     FileInfo file;
     rgb_matrix::StreamReader reader;
     const tmillis_t end_time_ms;
-    const tmillis_t override_anim_delay;
 
-    CurrAnimation(FileInfo file, const rgb_matrix::StreamReader& reader, const tmillis_t end_time_ms,
-                  const tmillis_t override_anim_delay) : file(file), reader(reader), end_time_ms(end_time_ms),
-                                                         override_anim_delay(override_anim_delay) {}
+    CurrAnimation(FileInfo file, const rgb_matrix::StreamReader& reader, const tmillis_t end_time_ms) : file(file), reader(reader), end_time_ms(end_time_ms)
+    {}
 };
 
 using ImageInfo = tuple<vector<Magick::Image>, Post>;
