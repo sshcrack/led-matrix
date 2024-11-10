@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <cstdlib>
 #include <iostream>
+#include <variant>
 
 #include "shared/utils/shared.h"
 #include "shared/utils/utils.h"
@@ -119,7 +120,7 @@ Spotify::Spotify() {
     }
 }
 
-std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currently_playing() {
+std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spotify::inner_fetch_currently_playing() {
     auto res = Spotify::authenticated_get("https://api.spotify.com/v1/me/player/currently-playing?market=DE");
     if (!res.has_value()) {
         return unexpected(res.error());
@@ -131,20 +132,25 @@ std::expected<optional<SpotifyState>, std::string> Spotify::inner_fetch_currentl
 
     if (!res->value().contains("item")) {
         warn("SpotifyScenes state does not contain item: {}", res->value().dump());
-        return unexpected("Invalid server response: " + res->value().dump());
+        return unexpected(make_pair("Invalid server response: " + res->value().dump(), nullopt));
     }
     return SpotifyState(res->value());
 }
 
-std::expected<optional<json>, std::string> Spotify::authenticated_get(const string &url) {
+/**
+ * Simple curl get to the given url with spotify bearer authentication
+ * @param url The url to get from
+ * @return The json response or error with a string message an an optional retry-after
+ */
+std::expected<optional<json>, std::pair<string, std::optional<int>>> Spotify::authenticated_get(const string &url) {
     auto data = config->get_spotify();
     if (!data.has_auth()) {
-        return unexpected("No auth data");
+        return unexpected(make_pair("No auth data", nullopt));
     }
 
     if (data.is_expired()) {
         if (!this->refresh()) {
-            return unexpected("Could not refresh token");
+            return unexpected(make_pair("Could not refresh token", nullopt));
         }
 
         data = config->get_spotify();
@@ -174,7 +180,20 @@ std::expected<optional<json>, std::string> Spotify::authenticated_get(const stri
         if (res != CURLE_OK) {
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
-            return unexpected("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
+            return unexpected(make_pair("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)), nullopt));
+        }
+
+
+        long http_code = 0;
+        curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+        if (http_code == 429) {
+            int retry_after = 0;
+            curl_easy_getinfo(curl, CURLINFO_RETRY_AFTER, &retry_after);
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+
+            return unexpected(make_pair("Rate limited", retry_after));
         }
 
         // Cleanup
@@ -185,18 +204,29 @@ std::expected<optional<json>, std::string> Spotify::authenticated_get(const stri
             return nullopt;
         }
 
-        return json::parse(readBuffer);
+        try {
+            return json::parse(readBuffer);
+        } catch (exception &ex) {
+            spdlog::trace("Couldn't parse payload: {}", readBuffer);
+            return unexpected(make_pair(std::string("Could not parse json: ") + ex.what(), nullopt));
+        }
     }
 
-    return unexpected("Could not initialize curl!?");
+    return unexpected(make_pair("Could not initialize curl!?", nullopt));
 }
 
 void Spotify::start_control_thread() {
     thread c_thread{[this] {
         while (!this->should_terminate) {
-            std::expected<optional<SpotifyState>, std::string> data = this->inner_fetch_currently_playing();
+            auto data = this->inner_fetch_currently_playing();
             if (!data.has_value()) {
-                error("Could not get currently playing: {}", data.error());
+                if(data.error().second.has_value()) {
+                    warn("Rate limited. Waiting for {}s", data.error().second.value());
+                    std::this_thread::sleep_for(std::chrono::seconds(data.error().second.value()));
+                    continue;
+                }
+
+                error("Could not get currently playing: {}", data.error().first);
                 std::this_thread::sleep_for(std::chrono::seconds(15));
 
                 continue;
@@ -259,7 +289,7 @@ bool Spotify::has_changed(bool update_dirty) {
     if (this->last_playing.has_value() != this->currently_playing.has_value())
         return true;
 
-    if(!this->last_playing.has_value() || !this->currently_playing.has_value())
+    if (!this->last_playing.has_value() || !this->currently_playing.has_value())
         return true;
 
     return this->last_playing->get_track().get_id() != this->currently_playing->get_track().get_id();
