@@ -10,8 +10,8 @@
 class Spotify {
 private:
     static bool save_resp_to_config(const std::string& json_resp);
-    std::expected<std::optional<nlohmann::json >, std::string> authenticated_get(const std::string& url);
-    std::expected<std::optional<SpotifyState>, std::string> inner_fetch_currently_playing();
+    std::expected<std::optional<nlohmann::json >, std::pair<std::string, std::optional<int>>> authenticated_get(const std::string& url);
+    std::expected<std::optional<SpotifyState>, std::pair<std::string, std::optional<int>>> inner_fetch_currently_playing();
 
     std::string client_id;
     std::string client_secret;

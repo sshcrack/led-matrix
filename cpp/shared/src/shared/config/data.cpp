@@ -13,7 +13,6 @@ namespace ConfigData {
     void to_json(json &j, const Scenes::Scene *&p) {
         auto &c = const_cast<Scenes::Scene *&>(p);
 
-        debug("Scene {} to json", c->get_name());
         j = {
                 {"type",      c->get_name()},
                 {"arguments", c->to_json()}
@@ -23,7 +22,6 @@ namespace ConfigData {
     void to_json(json &j, const ImageProviders::General *&p) {
         auto &c = const_cast<ImageProviders::General *&>(p);
 
-        debug("Image provider to json {}", c->get_name());
         j = {
                 {"type",      c->get_name()},
                 {"arguments", c->to_json()}
@@ -32,7 +30,6 @@ namespace ConfigData {
 
 
     void to_json(json &j, const SpotifyData &p) {
-        debug("Spotify data to json");
         j = json{
                 {"expires_at",    p.expires_at},
                 {"access_token",  p.access_token.value_or("")},
@@ -41,7 +38,6 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Preset &p) {
-        debug("Preset to json");
         vector<json> image_json;
 
         image_json.reserve(p.providers.size());
@@ -69,7 +65,6 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Root &p) {
-        debug("Root to json");
         j = json{
                 {"presets", p.presets},
                 {"curr",    p.curr},
@@ -78,7 +73,6 @@ namespace ConfigData {
     }
 
     void from_json(const json &j, Root &p) {
-        spdlog::debug("from json root", to_string(j));
         j.at("curr").get_to(p.curr);
         j.at("presets").get_to(p.presets);
         j.at("spotify").get_to(p.spotify);
@@ -103,7 +97,6 @@ namespace ConfigData {
     }
 
     void from_json(const json &j, Preset &p) {
-        spdlog::debug("from json preset {}", to_string(j));
         j.at("name").get_to(p.name);
 
         vector<json> image_json = j.at("images");
@@ -138,12 +131,10 @@ namespace ConfigData {
     }
 
     void from_json(const json &j, ImageProviders::General *&p) {
-        spdlog::debug("from json imgtype", to_string(j));
         p = ImageProviders::General::from_json(j);
     }
 
     void from_json(const json &j, Scenes::Scene *&p) {
-        spdlog::debug("from json scene", to_string(j));
         p = Scenes::Scene::from_json(j);
     }
 
