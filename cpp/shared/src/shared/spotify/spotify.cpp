@@ -142,7 +142,8 @@ std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spo
  * @param url The url to get from
  * @return The json response or error with a string message an an optional retry-after
  */
-std::expected<optional<json>, std::pair<string, std::optional<int>>> Spotify::authenticated_get(const string &url) {
+std::expected<optional<json>, std::pair<string, std::optional<int>>>
+Spotify::authenticated_get(const std::string &url, bool refresh) {
     auto data = config->get_spotify();
     if (!data.has_auth()) {
         return unexpected(make_pair("No auth data", nullopt));
@@ -180,7 +181,8 @@ std::expected<optional<json>, std::pair<string, std::optional<int>>> Spotify::au
         if (res != CURLE_OK) {
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
-            return unexpected(make_pair("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)), nullopt));
+            return unexpected(
+                    make_pair("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)), nullopt));
         }
 
 
@@ -205,7 +207,21 @@ std::expected<optional<json>, std::pair<string, std::optional<int>>> Spotify::au
         }
 
         try {
-            return json::parse(readBuffer);
+            auto j = json::parse(readBuffer);
+            if (http_code != 401 || !refresh)
+                return j;
+
+            std::string message;
+            j.at("error").at("message").get_to(message);
+
+            if (!message.contains("access") || !message.contains("expired"))
+                return j;
+
+            if (!this->refresh()) {
+                return unexpected(make_pair("Could not refresh token", nullopt));
+            }
+
+            return this->authenticated_get(url, false);
         } catch (exception &ex) {
             spdlog::trace("Couldn't parse payload: {}", readBuffer);
             return unexpected(make_pair(std::string("Could not parse json: ") + ex.what(), nullopt));
@@ -215,22 +231,33 @@ std::expected<optional<json>, std::pair<string, std::optional<int>>> Spotify::au
     return unexpected(make_pair("Could not initialize curl!?", nullopt));
 }
 
+void Spotify::busy_wait(int seconds) {
+    for (int i = 0; i < seconds; i++) {
+        if (this->should_terminate.load())
+            return;
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
 void Spotify::start_control_thread() {
     thread c_thread{[this] {
         while (!this->should_terminate) {
+            trace("Fetching currently playing...");
             auto data = this->inner_fetch_currently_playing();
             if (!data.has_value()) {
-                if(data.error().second.has_value()) {
+                if (data.error().second.has_value()) {
                     warn("Rate limited. Waiting for {}s", data.error().second.value());
-                    std::this_thread::sleep_for(std::chrono::seconds(data.error().second.value()));
+                    busy_wait(data.error().second.value());
                     continue;
                 }
 
                 error("Could not get currently playing: {}", data.error().first);
-                std::this_thread::sleep_for(std::chrono::seconds(15));
+                busy_wait(15);
 
                 continue;
             }
+
 
             auto opt_state = data.value();
             std::unique_lock<std::mutex> lock(mtx);
@@ -243,17 +270,18 @@ void Spotify::start_control_thread() {
             if (opt_state.has_value()) {
                 SpotifyState state = std::move(opt_state.value());
 
+                spdlog::debug("Currently playing: {}", state.get_track().get_id());
                 this->currently_playing.emplace(state);
 
                 this->is_dirty = true;
                 lock.unlock();
-                std::this_thread::sleep_for(std::chrono::seconds(5));
+                busy_wait(10);
             } else {
                 this->currently_playing.reset();
 
                 this->is_dirty = true;
                 lock.unlock();
-                std::this_thread::sleep_for(std::chrono::seconds(15));
+                busy_wait(15);
             }
 
         }
@@ -266,7 +294,8 @@ void Spotify::start_control_thread() {
 
 void Spotify::terminate() {
     this->should_terminate.store(true);
-    this->control_thread.join();
+    if(this->control_thread.joinable())
+        this->control_thread.join();
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {

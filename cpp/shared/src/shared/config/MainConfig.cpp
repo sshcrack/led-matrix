@@ -70,7 +70,7 @@ namespace Config {
 
             info("Saving config at '{}'..", file_name);
             json as_json = this->data;
-            string out = as_json.dump();
+            string out = as_json.dump(2);
 
             ofstream file;
             file.open(file_name);

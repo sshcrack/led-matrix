@@ -20,5 +20,5 @@ ImageProviders::General* ImageProviders::General::from_json(const json &j) {
         }
     }
 
-    throw std::runtime_error(fmt::format("Invalid type {}", t));
+    throw std::runtime_error(fmt::format("Invalid image provider type '{}'", t));
 }
