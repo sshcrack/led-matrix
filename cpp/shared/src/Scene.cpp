@@ -17,7 +17,7 @@ Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
         }
     }
 
-    throw std::runtime_error(fmt::format("Invalid type {}", t));
+    throw std::runtime_error(fmt::format("Invalid type '{}'", t));
 }
 
 void Scenes::Scene::initialize(RGBMatrix *matrix) {

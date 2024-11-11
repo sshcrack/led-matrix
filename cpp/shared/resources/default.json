@@ -9,6 +9,10 @@
             "begin": 0,
             "end": -1
           }
+        },
+        {
+            "type": "spotify",
+            "arguments": {}
         }
       ]
     }

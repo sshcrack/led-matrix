@@ -1,10 +1,11 @@
 const express = require("express")
 const querystring = require("querystring")
+const port = parseInt(process.argv[2]);
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = 'http://10.6.0.23:8888/callback';
-
+const redirect_uri = `http://10.6.0.23:${port}/callback`;
+console.log("Redirect URI is", redirect_uri)
 
 
 function makeid(length) {
@@ -68,5 +69,4 @@ app.get('/callback', async function(req, res) {
     }
 });
 
-const port = parseInt(process.argv[2]);
-app.listen(port, () => {})
+app.listen(port, () => {console.log("Listening")})
