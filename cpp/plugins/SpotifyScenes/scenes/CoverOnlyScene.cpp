@@ -31,13 +31,20 @@ bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     const tmillis_t start_time = GetTimeInMillis();
 
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
-    if (GetTimeInMillis() >= end_time_ms)
+    if (GetTimeInMillis() >= end_time_ms) {
+        trace("Reached end time, returning");
         return true;
+    }
 
     uint32_t delay_us = 0;
+
+    // If we can't get the picture to canvas
     if (!curr_reader->GetNext(offscreen_canvas, &delay_us)) {
+        // Try to rewind
         curr_reader->Rewind();
+        // And get again, if fails, return
         if (!curr_reader->GetNext(offscreen_canvas, &delay_us)) {
+            trace("Returning, reader done");
             return true;
         }
     }
@@ -48,6 +55,7 @@ bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     tmillis_t time_spent = GetTimeInMillis() - start_time;
     tmillis_t track_loc = progress_ms + time_spent;
     if (track_loc > duration) {
+        trace("Track end reached, returning!");
         return true;
     }
 
@@ -66,13 +74,12 @@ bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     DrawLine(offscreen_canvas, w, 0, w, h, color);
 
 
-    /*
+
     float progress = (float) track_loc / (float) duration;
     int line_width = matrix->width() * progress;
 
 
     DrawLine(offscreen_canvas, 0, 0, line_width, 0, rgb_matrix::Color(255, 255, 255));
-    */
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
                                            curr_info->vsync_multiple);
 
@@ -89,7 +96,7 @@ bool CoverOnlyScene::tick(RGBMatrix *matrix) {
     if (!curr_info.has_value()) {
         auto temp = this->get_info(matrix);
         if (!temp) {
-            error("Could not get spotify cover image");
+            error("Could not get spotify cover image: '{}'", temp.error());
             return true;
         }
 
@@ -99,42 +106,37 @@ bool CoverOnlyScene::tick(RGBMatrix *matrix) {
     return DisplaySpotifySong(matrix);
 }
 
-optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
-    info("Showing spotify song change");
+expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(RGBMatrix *matrix) {
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
-        return nullopt;
+        return unexpected("Nothing currently playing");
     }
-
     curr_state.emplace(temp.value());
-    if (!curr_state.has_value()) {
-        return nullopt;
-    }
 
     auto track = curr_state->get_track();
     auto temp2 = track.get_cover();
     if (!temp2.has_value()) {
-        return nullopt;
+        return unexpected("No track cover for track '" + track.get_id() + "'");
     }
 
 
-    auto cover = temp2.value();
+    const auto& cover = temp2.value();
     string out_file = "/tmp/spotify_cover." + track.get_id() + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
         download_image(cover, out_file);
     }
 
-    vector<Magick::Image> frames;
-    string err_msg;
+    auto res = LoadImageAndScale(out_file, matrix->width(), matrix->height(), true, true, false);
+    if (!res) {
+        try_remove(out_file);
 
-    LoadImageAndScale(out_file, matrix->width(), matrix->height(), true, true, false);
-    if (!err_msg.empty()) {
-        error("Error loading image: {}", err_msg);
-        return nullopt;
+        return unexpected(res.error());
     }
 
+    vector<Magick::Image> frames = std::move(res.value());
     SpotifyFileInfo file_info = SpotifyFileInfo();
+
     file_info.wait_ms = 15000;
     file_info.content_stream = new rgb_matrix::MemStreamIO();
 
@@ -149,8 +151,6 @@ optional<SpotifyFileInfo> CoverOnlyScene::get_info(RGBMatrix *matrix) {
 
 int CoverOnlyScene::get_weight() const {
     if (spotify != nullptr && spotify->has_changed(false)) {
-        debug("Returning weight");
-        std::flush(cout);
         return 100;
     }
 
@@ -162,7 +162,7 @@ string CoverOnlyScene::get_name() const {
 }
 
 Scenes::Scene *CoverOnlySceneWrapper::create_default() {
-    return new CoverOnlyScene(Scene::get_config(3, 10 * 1000));
+    return new CoverOnlyScene(Scene::create_default(3, 10 * 1000));
 }
 
 Scenes::Scene *CoverOnlySceneWrapper::from_json(const json &args) {

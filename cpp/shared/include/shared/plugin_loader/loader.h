@@ -12,7 +12,7 @@ namespace Plugins {
         static PluginManager *instance_;
 
     private:
-        /// Handle, Dn, Plugin
+        /// Handle, DestroyFunction, Plugin
         std::vector<std::tuple<void *, string, Plugins::BasicPlugin *>> loaded_plugins;
 
         bool initialized = false;

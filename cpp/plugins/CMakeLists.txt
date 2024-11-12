@@ -19,8 +19,9 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     message(STATUS "Adding plugin: ${LIB_NAME}")
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
     file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)
+    file(GLOB_RECURSE PLUGIN_HEADERS_ALL ${LIB_NAME}/*.h*)
 
-    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${RGB_SRC_FILES})
+    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${PLUGIN_HEADERS_ALL} ${RGB_SRC_FILES})
 
     target_include_directories(${LIB_NAME} PRIVATE ${RGB_HEADER_DIR})
 

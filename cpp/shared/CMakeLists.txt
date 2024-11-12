@@ -11,7 +11,8 @@ file(GLOB_RECURSE SHARED_SOURCES
         src/*.c*
 )
 
-add_library(${PROJECT_NAME} SHARED)
+add_library(${PROJECT_NAME} SHARED
+        include/logger.hpp)
 target_sources(${PROJECT_NAME}
         PRIVATE
         ${SHARED_SOURCES}

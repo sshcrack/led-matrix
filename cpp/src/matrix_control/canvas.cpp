@@ -1,7 +1,6 @@
 #include "canvas.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
-#include "shared/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 #include <iostream>
 
@@ -22,7 +21,6 @@ void update_canvas(RGBMatrix *matrix) {
 
 
     while (!exit_canvas_update) {
-        debug("New while loop");
         int total_weight = 0;
 
         vector<std::pair<int, Scenes::Scene *>> weighted_scenes;
@@ -33,11 +31,7 @@ void update_canvas(RGBMatrix *matrix) {
             total_weight += weight;
         }
 
-        debug("Getting random number...");
-        std::flush(std::cout);
         auto selected = get_random_number_inclusive(0, total_weight);
-        debug("Selected is {}", selected);
-        std::flush(std::cout);
         int curr_weight = 0;
 
         Scenes::Scene *scene = nullptr;
@@ -57,6 +51,7 @@ void update_canvas(RGBMatrix *matrix) {
         }
 
 
+        info("Displaying scene {}", scene->get_name());
         tmillis_t start_ms = GetTimeInMillis();
         tmillis_t end_ms = start_ms + scene->get_duration();
 

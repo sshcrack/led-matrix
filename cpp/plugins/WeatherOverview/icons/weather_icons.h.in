@@ -1,0 +1,5 @@
+#pragma once
+
+#include "shared/resources.h"
+
+static std::string ICON_JSON = hex_to_string("@RESOURCE_DATA@");

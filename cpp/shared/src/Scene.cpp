@@ -28,13 +28,11 @@ void Scenes::Scene::initialize(RGBMatrix *matrix) {
     initialized = true;
 }
 
-bool Scenes::Scene::is_initialized() {
+bool Scenes::Scene::is_initialized() const {
     return initialized;
 }
 
 nlohmann::json Scenes::Scene::to_json() const {
-    debug("Default scene json");
-
     return {
             {"weight",   weight},
             {"duration", duration}
@@ -54,7 +52,7 @@ Scenes::Scene::Scene(const json &json) {
     duration = json["duration"];
 }
 
-nlohmann::json Scenes::Scene::get_config(int weight, tmillis_t duration) {
+nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {
     return {
             {"weight",   weight},
             {"duration", duration}

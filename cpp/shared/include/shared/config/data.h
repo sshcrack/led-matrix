@@ -29,6 +29,7 @@ namespace ConfigData {
 
     struct Root {
         map<string, Preset> presets;
+        map<string, string> pluginConfigs;
         SpotifyData spotify;
         string curr;
     };
