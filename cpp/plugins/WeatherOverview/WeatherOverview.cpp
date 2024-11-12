@@ -19,8 +19,9 @@ vector<ImageProviderWrapper *> WeatherOverview::get_image_providers() {
 
 void check_config() {
     auto conf = config->get_plugin_configs();
-    if(conf.find("weatherApiKey") == conf.end()) {
-        throw std::runtime_error("Config value 'pluginConfigs.weatherApiKey' is not set. Set it to an OpenWeatherMap API key.");
+    if (conf.find("weatherApiKey") == conf.end()) {
+        throw std::runtime_error(
+                "Config value 'pluginConfigs.weatherApiKey' is not set. Set it to an OpenWeatherMap API key.");
     }
 
     LOCATION_LAT = conf["weatherLat"];
@@ -29,6 +30,17 @@ void check_config() {
 
 vector<SceneWrapper *> WeatherOverview::get_scenes() {
     check_config();
+    if (!hasLoadedFonts) {
+        hasLoadedFonts = true;
+        auto headerRes = HEADER_FONT.LoadFont(HEADER_FONT_FILE.c_str());
+        auto bodyRes = BODY_FONT.LoadFont(BODY_FONT_FILE.c_str());
+
+        if (!headerRes)
+            throw std::runtime_error("Could not load header font at " + HEADER_FONT_FILE);
+
+        if (!bodyRes)
+            throw std::runtime_error("Could not load body font at " + BODY_FONT_FILE);
+    }
 
     return {
             new WeatherSceneWrapper(),

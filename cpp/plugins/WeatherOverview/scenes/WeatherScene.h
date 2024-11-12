@@ -2,11 +2,13 @@
 
 #include "Scene.h"
 #include "wrappers.h"
+#include "../WeatherParser.h"
 
 namespace Scenes {
     class WeatherScene : public Scene {
     public:
         bool tick(RGBMatrix *matrix) override;
+
         [[nodiscard]] string get_name() const override;
 
         using Scene::Scene;
