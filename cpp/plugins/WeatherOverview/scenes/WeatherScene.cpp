@@ -1,5 +1,12 @@
+#include <spdlog/spdlog.h>
 #include "WeatherScene.h"
 #include "../Constants.h"
+#include "../icons/weather_icons.h"
+#include "shared/utils/consts.h"
+#include "shared/utils/canvas_image.h"
+#include "shared/utils/image_fetch.h"
+
+string root_dir = Constants::root_dir;
 
 Scenes::Scene *Scenes::WeatherSceneWrapper::create_default() {
     return new WeatherScene(Scene::create_default(3, 20 * 1000));
@@ -14,6 +21,39 @@ string Scenes::WeatherScene::get_name() const {
 }
 
 bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
+    auto data_res = parser->get_data();
+    if (!data_res) {
+        spdlog::warn("Could not get weather data_res: {}", data_res.error());
+        return true;
+    }
+
+    auto data = data_res.value();
+    string file_path = std::filesystem::path(root_dir + "weather_icon" + std::to_string(data.weatherCode) + ".png");
+    std::filesystem::path processed_img = to_processed_path(file_path);
+
+    // Downloading image first
+    if (!filesystem::exists(processed_img)) {
+        try_remove(file_path);
+        auto res = download_image(data.icon_url, file_path);
+        if (!res) {
+            spdlog::warn("Could not download image");
+            return true;
+        }
+    }
+
+    bool contain_img = true;
+    auto res = LoadImageAndScale(file_path, 50, 50, true, true, contain_img);
+    if (!res) {
+        spdlog::error("Error loading image: {}", res.error());
+        try_remove(file_path);
+
+        return true;
+    }
+
+    vector<Magick::Image> frames = std::move(res.value());
+    try_remove(file_path);
+
+
     /**
      * export enum SkyColor {
 	DAY_CLEAR = "#3aa1d5",
@@ -22,44 +62,10 @@ bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
 	NIGHT_CLOUDS = "#2d2e34"
 }
      */
-    offscreen_canvas->Fill();
+    offscreen_canvas->Fill(data.color.r, data.color.g, data.color.b);
+    DrawText(offscreen_canvas, BODY_FONT, 0, HEADER_FONT.height(), {255, 255, 255}, data.description.c_str());
+
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
     return false;
-}
-
-
-std::expected<std::string, std::string> fetch_api() {
-    //TODO
-    return "";
-}
-
-struct WeatherData {
-    int color;
-};
-
-std::expected<WeatherData, string> parse_weather_data(const std::string &str_data) {
-    nlohmann::json json;
-    try {
-        json = nlohmann::json::parse(str_data);
-
-
-        auto curr = json.at("current");
-        bool night = curr["is_day"].get<int>() == 0;
-        bool clouds = curr["cloud_cover"].get<int>() > 50;
-
-        int color = SkyColor::DAY_CLEAR;
-
-        if (clouds) color = SkyColor::DAY_CLOUDS;
-        if (night) color = SkyColor::NIGHT_CLEAR;
-        if (clouds && night) color = SkyColor::NIGHT_CLOUDS;
-
-
-        auto data = WeatherData();
-        data.color = color;
-
-        return data;
-    } catch (std::exception &ex) {
-        return std::unexpected("Could not parse json: " + std::string(ex.what()));
-    }
 }

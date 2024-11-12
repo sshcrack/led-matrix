@@ -4,6 +4,3 @@
 [submodule "cpp/shared/PicoSHA2"]
 	path = cpp/shared/PicoSHA2
 	url = https://github.com/okdshin/PicoSHA2
-[submodule "cpp/plugins/WeatherOverview/icons/weather_icons"]
-	path = cpp/plugins/WeatherOverview/icons/weather_icons
-	url = https://gist.github.com/stellasphere/9490c195ed2b53c707087c8c2db4ec0c
