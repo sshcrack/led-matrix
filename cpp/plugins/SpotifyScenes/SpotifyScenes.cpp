@@ -1,4 +1,5 @@
 #include "SpotifyScenes.h"
+#include "shared/utils/shared.h"
 #include "scenes/CoverOnlyScene.h"
 
 using namespace Scenes;

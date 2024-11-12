@@ -23,7 +23,7 @@ namespace Scenes {
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
 
-        std::optional<SpotifyFileInfo> get_info(RGBMatrix *matrix);
+        std::expected<SpotifyFileInfo, std::string> get_info(RGBMatrix *matrix);
 
     public:
         bool tick(RGBMatrix *matrix) override;

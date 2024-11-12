@@ -313,7 +313,6 @@ bool Spotify::has_changed(bool update_dirty) {
     if (update_dirty)
         this->is_dirty = false;
 
-    debug("Checking if has changed");
     std::lock_guard lock(mtx);
     if (this->last_playing.has_value() != this->currently_playing.has_value())
         return true;

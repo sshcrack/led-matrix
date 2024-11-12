@@ -93,7 +93,7 @@ string WaveScene::get_name() const {
 }
 
 Scenes::Scene *WaveSceneWrapper::create_default() {
-    return new WaveScene(Scene::get_config(1, 15000));
+    return new WaveScene(Scene::create_default(1, 15000));
 }
 
 Scenes::Scene *WaveSceneWrapper::from_json(const json &args) {

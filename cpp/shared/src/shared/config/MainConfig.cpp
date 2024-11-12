@@ -111,4 +111,15 @@ namespace Config {
     string MainConfig::get_filename() {
         return this->file_name;
     }
+
+    map<string, string> MainConfig::get_plugin_configs() const {
+        return this->data.pluginConfigs;
+    }
+
+    void MainConfig::set_plugin_config(const std::string& pluginId, const string &config) {
+        unique_lock<shared_mutex> lock(this->data_mutex);
+
+        this->data.pluginConfigs[pluginId] = config;
+        this->mark_dirty(true);
+    }
 }

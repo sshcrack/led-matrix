@@ -21,7 +21,7 @@ namespace Scenes {
         FrameCanvas *offscreen_canvas = nullptr;
 
     public:
-        static nlohmann::json get_config(int weight, tmillis_t duration);
+        static nlohmann::json create_default(int weight, tmillis_t duration);
 
         explicit Scene(const nlohmann::json &json);
 
@@ -34,7 +34,7 @@ namespace Scenes {
 
         virtual void initialize(RGBMatrix *matrix);
 
-        bool is_initialized();
+        bool is_initialized() const;
 
         // Returns true if the scene is done and should be removed
         virtual bool tick(RGBMatrix *matrix) = 0;
