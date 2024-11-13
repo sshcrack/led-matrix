@@ -144,3 +144,21 @@ std::optional<std::string> get_exec_dir() {
 
     return full_path.parent_path().string();
 }
+
+std::vector<uint8_t> magick_to_rgb(const Magick::Image &img) {
+    std::vector<uint8_t> buffer;
+    buffer.reserve(img.columns() * img.rows() * 3);
+
+    for (int x = 0; x < img.rows(); ++x) {
+        for (int y = 0; y < img.columns(); ++y) {
+            const Magick::Color &c = img.pixelColor(x, y);
+            if (c.alphaQuantum() < 256) {
+                buffer.push_back(ScaleQuantumToChar(c.redQuantum()));
+                buffer.push_back(ScaleQuantumToChar(c.greenQuantum()));
+                buffer.push_back(ScaleQuantumToChar(c.blueQuantum()));
+            }
+        }
+    }
+
+    return buffer;
+}

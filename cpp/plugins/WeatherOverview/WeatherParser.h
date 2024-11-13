@@ -1,7 +1,3 @@
-//
-// Created by hendrik on 11/12/24.
-//
-
 #pragma once
 
 #include <expected>
@@ -22,14 +18,17 @@ struct WeatherData {
     int weatherCode;
 };
 
-long CACHE_INVALIDATION = 1000 * 60 * 15;
+static long CACHE_INVALIDATION = 1000 * 60 * 15;
 
 class WeatherParser {
 private:
     tmillis_t last_fetch = 0;
     std::optional<WeatherData> cached_data;
+    bool changed = false;
 public:
     static std::expected<std::string, std::string> fetch_api();
+    bool has_changed();
+    void unmark_changed();
 
     static std::expected<WeatherData, std::string> parse_weather_data(const std::string &str_data);
 

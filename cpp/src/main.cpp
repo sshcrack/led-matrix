@@ -25,18 +25,22 @@ int main(int argc, char *argv[]) {
     auto pl = PluginManager::instance();
     pl->initialize();
 
-    auto scenes = pl->get_scenes();
-    auto image_types = pl->get_image_providers();
-    info("Loaded {} Scenes and {} Image Types", scenes.size(), image_types.size());
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
+
 
     debug("Checking spotify config...");
     spotify = new Spotify();
     spotify->initialize();
 
     config->save();
+
+    auto scenes = pl->get_scenes();
+    auto image_types = pl->get_image_providers();
+    info("Loaded {} Scenes and {} Image Types", scenes.size(), image_types.size());
+
+
 
     debug("Starting mainloop_thread");
     uint16_t port = 8080;
