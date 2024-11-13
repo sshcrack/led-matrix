@@ -71,8 +71,17 @@ std::expected<WeatherData, std::string> WeatherParser::get_data() {
         return std::unexpected(data.error());
     }
 
+    changed = true;
     last_fetch = curr;
     cached_data = data.value();
 
     return data.value();
+}
+
+bool WeatherParser::has_changed() {
+    return changed;
+}
+
+void WeatherParser::unmark_changed() {
+    changed = false;
 }

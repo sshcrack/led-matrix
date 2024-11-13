@@ -6,6 +6,7 @@
 #include <expected>
 #include <optional>
 #include <vector>
+#include <Magick++.h>
 
 typedef int64_t tmillis_t;
 
@@ -21,3 +22,5 @@ std::optional<std::string> get_exec_dir();
 
 int get_random_number_inclusive(int start, int end);
 std::expected<std::string,std::string> execute_process(const std::string& cmd, const std::vector<std::string>& args);
+
+std::vector<uint8_t> magick_to_rgb(const Magick::Image& img);

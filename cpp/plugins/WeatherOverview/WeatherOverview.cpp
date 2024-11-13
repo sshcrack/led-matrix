@@ -1,3 +1,4 @@
+#include <iostream>
 #include "WeatherOverview.h"
 #include "scenes/WeatherScene.h"
 #include "shared/utils/shared.h"
@@ -18,10 +19,18 @@ vector<ImageProviderWrapper *> WeatherOverview::get_image_providers() {
 }
 
 void check_config() {
+    std::cout << "Checking config" << std::endl << std::flush;
+
     auto conf = config->get_plugin_configs();
-    if (conf.find("weatherApiKey") == conf.end()) {
+    if (conf.find("weatherLat") == conf.end()) {
+        std::cout << "throwing error" << std::endl << std::flush;
         throw std::runtime_error(
-                "Config value 'pluginConfigs.weatherApiKey' is not set. Set it to an OpenWeatherMap API key.");
+                "Config value 'pluginConfigs.weatherLat' is not set. Set it to the latitude of the city you want to display the weather for.");
+    }
+
+    if (conf.find("weatherLon") == conf.end()) {
+        throw std::runtime_error(
+                "Config value 'pluginConfigs.weatherLon' is not set. Set it to the longitude of the city you want to display the weather for.");
     }
 
     LOCATION_LAT = conf["weatherLat"];
