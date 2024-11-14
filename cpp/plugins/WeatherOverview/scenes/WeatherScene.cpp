@@ -27,7 +27,9 @@ string Scenes::WeatherScene::get_name() const {
     return "weather";
 }
 
-bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
+bool should_render = true;
+
+bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
     auto data_res = parser->get_data();
     if (!data_res) {
         spdlog::warn("Could not get weather data_res: {}", data_res.error());
@@ -35,7 +37,8 @@ bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
     }
 
     auto data = data_res.value();
-    if (parser->has_changed() || !images.has_value()) {
+    auto should_calc_images = parser->has_changed() || !images.has_value();
+    if (should_calc_images && !data.icon_url.empty()) {
         string file_path = std::filesystem::path(root_dir + "weather_icon" + std::to_string(data.weatherCode) + ".png");
         std::filesystem::path processed_img = to_processed_path(file_path);
 
@@ -66,6 +69,7 @@ bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
         img.currentIcon = magick_to_rgb(frames.at(0));
 
         images = img;
+        should_render = true;
     }
 
     /**
@@ -76,15 +80,34 @@ bool Scenes::WeatherScene::tick(RGBMatrix *matrix) {
 	NIGHT_CLOUDS = "#2d2e34"
 }
      */
+    if (!should_render)
+        return false;
+
+    offscreen_canvas->Clear();
     offscreen_canvas->Fill(data.color.r, data.color.g, data.color.b);
-    DrawText(offscreen_canvas, BODY_FONT, 0, HEADER_FONT.height(), {255, 255, 255}, data.description.c_str());
 
     // Images must be a value here
-    SetImage(offscreen_canvas, 0, 0,
-             images->currentIcon.data(), images->currentIcon.size(),
-             main_icon_size, main_icon_size, false);
+    if (images.has_value()) {
+        SetImageTransparent(offscreen_canvas, 0, 0,
+                            images->currentIcon.data(), images->currentIcon.size(),
+                            main_icon_size, main_icon_size, 0, 0, 0);
+    }
 
+
+    auto header_y = HEADER_FONT.height() / 2 + main_icon_size / 2;
+    DrawText(offscreen_canvas, HEADER_FONT, 60, header_y,
+             {255, 255, 255}, data.temperature.c_str());
+
+    spdlog::trace("Header height: {} with baseline {} with {}", header_y, HEADER_FONT.baseline(), data.temperature);
+    DrawText(offscreen_canvas, BODY_FONT, 60, header_y + 20,
+             {255, 255, 255}, data.description.c_str());
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+    should_render = false;
     return false;
+}
+
+void Scenes::WeatherScene::cleanup(rgb_matrix::RGBMatrix *matrix) {
+    should_render = true;
+    Scene::cleanup(matrix);
 }

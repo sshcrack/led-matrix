@@ -4,11 +4,10 @@
 #include "canvas.h"
 #include "../interrupt.h"
 #include "shared/utils/shared.h"
+#include "shared/matrix.h"
 
 #include <csignal>
 #include <expected>
-#include <variant>
-#include <future>
 #include "spdlog/spdlog.h"
 
 using namespace rgb_matrix;
@@ -20,7 +19,7 @@ int usage(const char *progname) {
     return 1;
 }
 
-void hardware_mainloop(RGBMatrix *matrix) {
+void hardware_mainloop(ProxyMatrix *matrix) {
     cout << "Press Ctrl+C to quit" << endl;
     while (!interrupt_received) {
         update_canvas(matrix);
@@ -50,7 +49,7 @@ int start_hardware_mainloop(int argc, char *argv[]) {
         return usage(argv[0]);
     }
 
-    RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
+    ProxyMatrix *matrix = ProxyMatrix::CreateFromOptions(matrix_options, runtime_opt);
     if (matrix == nullptr)
         return usage(argv[0]);
 

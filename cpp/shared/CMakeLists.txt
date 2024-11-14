@@ -7,16 +7,39 @@ set(CMAKE_CXX_STANDARD 23)
 file(READ resources/default.json RESOURCE_DATA HEX)
 configure_file(resources/resources.h.in include/shared/resources.h @ONLY)
 
-file(GLOB_RECURSE SHARED_SOURCES
-        src/*.c*
-)
+option(USE_EMULATOR "Enable emulator support" OFF)
+if(USE_EMULATOR)
+    add_definitions(-DUSE_EMULATOR)
+endif()
 
 add_library(${PROJECT_NAME} SHARED
-        include/logger.hpp)
-target_sources(${PROJECT_NAME}
-        PRIVATE
-        ${SHARED_SOURCES}
-)
+        include/logger.hpp
+        src/shared/config/data.cpp
+        src/Scene.cpp
+        src/shared/post.cpp
+        src/shared/utils/utils.cpp
+        src/shared/utils/shared.cpp
+        src/shared/utils/image_fetch.cpp
+        src/shared/utils/FrameTimer.cpp
+        src/shared/utils/canvas_image.cpp
+        src/shared/spotify/shared_spotify.cpp
+        src/shared/spotify/spotify.cpp
+        src/shared/spotify/state.cpp
+        src/shared/spotify/track.cpp
+        src/shared/plugin_loader/lib_glob.cpp
+        src/shared/plugin_loader/lib_glob.h
+        src/shared/plugin_loader/lib_name.cpp
+        src/shared/plugin_loader/lib_name.h
+        src/shared/plugin_loader/loader.cpp
+        src/shared/config/MainConfig.cpp
+        src/shared/emulator/MatrixEmulator.cpp
+        src/shared/config/image_providers/general.cpp
+        include/shared/emulator/MatrixEmulator.h
+        include/shared/matrix.h
+        src/shared/emulator/FrameCanvasEmulator.cpp
+        include/shared/emulator/FrameCanvasEmulator.h
+        include/shared/emulator/CanvasEmulator.h)
+
 # Main Target Compile
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)

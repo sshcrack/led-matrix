@@ -13,5 +13,9 @@ namespace Plugins {
         virtual vector<Plugins::ImageProviderWrapper *> get_image_providers() = 0;
 
         virtual vector<Plugins::SceneWrapper *> get_scenes() = 0;
+
+        virtual std::optional<string> post_init() {
+            return std::nullopt;
+        };
     };
 }

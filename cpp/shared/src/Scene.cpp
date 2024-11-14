@@ -1,7 +1,6 @@
 #include "Scene.h"
 
 #include <spdlog/spdlog.h>
-#include <utility>
 #include "shared/plugin_loader/loader.h"
 
 using namespace spdlog;
@@ -20,7 +19,7 @@ Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
     throw std::runtime_error(fmt::format("Invalid type '{}'", t));
 }
 
-void Scenes::Scene::initialize(RGBMatrix *matrix) {
+void Scenes::Scene::initialize(ProxyMatrix *matrix) {
     if (initialized)
         return;
 
@@ -58,3 +57,5 @@ nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {
             {"duration", duration}
     };
 }
+
+void Scenes::Scene::cleanup(ProxyMatrix *matrix) {}

@@ -36,10 +36,17 @@ int main(int argc, char *argv[]) {
 
     config->save();
 
+    for (const auto &item: pl->get_plugins()) {
+        auto err = item->post_init();
+        if (err.has_value()) {
+            spdlog::error(err.value());
+            std::exit(-1);
+        }
+    }
+
     auto scenes = pl->get_scenes();
     auto image_types = pl->get_image_providers();
     info("Loaded {} Scenes and {} Image Types", scenes.size(), image_types.size());
-
 
 
     debug("Starting mainloop_thread");

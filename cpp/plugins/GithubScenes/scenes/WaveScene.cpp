@@ -12,7 +12,7 @@ static float *map = nullptr;
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }
 
 
-void Scenes::WaveScene::drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap) {
+void Scenes::WaveScene::drawMap(ProxyMatrix *matrix, float *iMap) {
     for (int y = 0; y < matrix->height(); y++) {
         for (int x = 0; x < matrix->width(); x++) {
             const int i = xyToIndex(matrix->width(), x, y);
@@ -24,7 +24,7 @@ void Scenes::WaveScene::drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap) {
     }
 }
 
-bool Scenes::WaveScene::tick(rgb_matrix::RGBMatrix *matrix) {
+bool Scenes::WaveScene::render(ProxyMatrix *matrix) {
     float *lastMap = map;
     map = new float[matrix->width() * matrix->height()];
 
@@ -73,7 +73,7 @@ bool Scenes::WaveScene::tick(rgb_matrix::RGBMatrix *matrix) {
     return false;
 }
 
-void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix) {
+void WaveScene::initialize(ProxyMatrix *matrix) {
     Scene::initialize(matrix);
 
     std::srand(std::time(nullptr));

@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <fmt/format.h>
 #include "led-matrix.h"
+#include "shared/matrix.h"
 #include "content-streamer.h"
 
 using rgb_matrix::FrameCanvas;
@@ -18,7 +19,7 @@ namespace Scenes {
     protected:
         int weight = 0;
         tmillis_t duration = 0;
-        FrameCanvas *offscreen_canvas = nullptr;
+        ProxyFrameCanvas *offscreen_canvas = nullptr;
 
     public:
         static nlohmann::json create_default(int weight, tmillis_t duration);
@@ -32,12 +33,13 @@ namespace Scenes {
         [[nodiscard]] virtual nlohmann::json to_json() const;
         [[nodiscard]] virtual string get_name() const = 0;
 
-        virtual void initialize(RGBMatrix *matrix);
+        virtual void initialize(ProxyMatrix *matrix);
+        virtual void cleanup(ProxyMatrix *matrix);
 
-        bool is_initialized() const;
+        [[nodiscard]] bool is_initialized() const;
 
         // Returns true if the scene is done and should be removed
-        virtual bool tick(RGBMatrix *matrix) = 0;
+        virtual bool render(ProxyMatrix *matrix) = 0;
 
         static Scene *from_json(const nlohmann::json &j);
     };
