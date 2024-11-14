@@ -1,8 +1,8 @@
 #include "canvas.h"
+#include "shared/matrix.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
 #include <spdlog/spdlog.h>
-#include <iostream>
 
 using namespace std;
 using namespace spdlog;
@@ -10,7 +10,7 @@ using namespace spdlog;
 using rgb_matrix::RGBMatrix;
 
 
-void update_canvas(RGBMatrix *matrix) {
+void update_canvas(ProxyMatrix *matrix) {
     auto preset = config->get_curr();
     auto scenes = preset.scenes;
 
@@ -56,14 +56,16 @@ void update_canvas(RGBMatrix *matrix) {
         tmillis_t end_ms = start_ms + scene->get_duration();
 
         while (GetTimeInMillis() < end_ms) {
-            auto should_exit = scene->tick(matrix);
+            auto should_exit = scene->render(matrix);
 
-            if(should_exit) {
+            if (should_exit) {
                 debug("Exiting scene early.");
                 break;
             }
 
             SleepMillis(10);
         }
+
+        scene->cleanup(matrix);
     }
 }

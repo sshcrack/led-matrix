@@ -6,13 +6,11 @@
 #include "shared/utils/image_fetch.h"
 #include "led-matrix.h"
 
-using rgb_matrix::FrameCanvas;
-using rgb_matrix::RGBMatrix;
 using namespace spdlog;
 using namespace std;
 using namespace Scenes;
 
-bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
+bool CoverOnlyScene::DisplaySpotifySong(ProxyMatrix *matrix) {
     if (!curr_reader) {
         rgb_matrix::StreamReader temp(curr_info->content_stream);
         curr_reader.emplace(temp);
@@ -92,7 +90,7 @@ bool CoverOnlyScene::DisplaySpotifySong(RGBMatrix *matrix) {
     return false;
 }
 
-bool CoverOnlyScene::tick(RGBMatrix *matrix) {
+bool CoverOnlyScene::render(ProxyMatrix *matrix) {
     if (!curr_info.has_value()) {
         auto temp = this->get_info(matrix);
         if (!temp) {
@@ -106,7 +104,7 @@ bool CoverOnlyScene::tick(RGBMatrix *matrix) {
     return DisplaySpotifySong(matrix);
 }
 
-expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(RGBMatrix *matrix) {
+expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(ProxyMatrix *matrix) {
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
         return unexpected("Nothing currently playing");
@@ -150,11 +148,16 @@ expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(RGBMatrix *matrix) {
 }
 
 int CoverOnlyScene::get_weight() const {
-    if (spotify != nullptr && spotify->has_changed(false)) {
-        return 100;
+    if (spotify != nullptr) {
+        if(spotify->has_changed(false))
+            return 100;
+
+        if(spotify->get_currently_playing().has_value())
+            return Scene::get_weight();
     }
 
-    return Scene::get_weight();
+    // Don't display this scene if no song is playing
+    return 0;
 }
 
 string CoverOnlyScene::get_name() const {

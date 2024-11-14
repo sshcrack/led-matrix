@@ -41,7 +41,7 @@ bool download_image(const string &url_str, const string &tmp) {
         errno = 0;
         fp = fopen(out_file, "wb");
         if (fp == nullptr) {
-            error("Could not open file " + to_string(errno));
+            error("Could not open file " + to_string(errno) + " at path " + out_file);
             return false;
         }
 

@@ -68,7 +68,8 @@ namespace ConfigData {
         j = json{
                 {"presets", p.presets},
                 {"curr",    p.curr},
-                {"spotify", p.spotify}
+                {"spotify", p.spotify},
+                {"pluginConfigs", p.pluginConfigs}
         };
     }
 
@@ -76,6 +77,7 @@ namespace ConfigData {
         j.at("curr").get_to(p.curr);
         j.at("presets").get_to(p.presets);
         j.at("spotify").get_to(p.spotify);
+        j.at("pluginConfigs").get_to(p.pluginConfigs);
     }
 
     void from_json(const json &j, SpotifyData &p) {

@@ -10,7 +10,7 @@ namespace Scenes {
     private:
         FrameTimer frameTimer;
     public:
-        bool tick(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(ProxyMatrix *matrix) override;
         string get_name() const override;
 
         using Scenes::Scene::Scene;

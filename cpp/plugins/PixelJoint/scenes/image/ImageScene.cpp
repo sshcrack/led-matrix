@@ -12,13 +12,10 @@
 using namespace std;
 using namespace spdlog;
 
-using rgb_matrix::Canvas;
-using rgb_matrix::FrameCanvas;
-using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
 
-bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
+bool ImageScene::DisplayAnimation(ProxyMatrix *matrix) {
     auto curr = &curr_animation.value();
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
@@ -28,10 +25,11 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     }
 
     uint32_t delay_us = 0;
+    //TODO I think this isn't safe like at all
     auto reader = &(curr_animation->reader);
-    if (!reader->GetNext(offscreen_canvas, &delay_us)) {
+    if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
         reader->Rewind();
-        if (!reader->GetNext(offscreen_canvas, &delay_us)) {
+        if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
             return true;
         }
     }
@@ -52,7 +50,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 }
 
 
-bool ImageScene::tick(RGBMatrix *matrix) {
+bool ImageScene::render(ProxyMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
         debug("Getting next animation");
         auto res = get_next_anim(matrix, 0);
@@ -68,7 +66,7 @@ bool ImageScene::tick(RGBMatrix *matrix) {
 }
 
 expected<CurrAnimation, string>
-ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
+ImageScene::get_next_anim(ProxyMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }

@@ -1,6 +1,7 @@
 #include "WeatherParser.h"
 
 WeatherParser* parser = new WeatherParser();
-bool hasLoadedFonts = false;
 std::string LOCATION_LAT;
 std::string LOCATION_LON;
+rgb_matrix::Font HEADER_FONT = rgb_matrix::Font();
+rgb_matrix::Font BODY_FONT = rgb_matrix::Font();

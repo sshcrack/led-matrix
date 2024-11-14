@@ -7,10 +7,10 @@
 namespace Scenes {
     class WeatherScene : public Scene {
     public:
-        bool tick(RGBMatrix *matrix) override;
+        bool render(RGBMatrix *matrix) override;
 
         [[nodiscard]] string get_name() const override;
-
+        void cleanup(rgb_matrix::RGBMatrix *matrix) override;
         using Scene::Scene;
     };
 

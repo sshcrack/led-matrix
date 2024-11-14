@@ -149,14 +149,17 @@ std::vector<uint8_t> magick_to_rgb(const Magick::Image &img) {
     std::vector<uint8_t> buffer;
     buffer.reserve(img.columns() * img.rows() * 3);
 
-    for (int x = 0; x < img.rows(); ++x) {
-        for (int y = 0; y < img.columns(); ++y) {
+    for (int y = 0; y < img.columns(); ++y) {
+        for (int x = 0; x < img.rows(); ++x) {
             const Magick::Color &c = img.pixelColor(x, y);
-            if (c.alphaQuantum() < 256) {
-                buffer.push_back(ScaleQuantumToChar(c.redQuantum()));
-                buffer.push_back(ScaleQuantumToChar(c.greenQuantum()));
-                buffer.push_back(ScaleQuantumToChar(c.blueQuantum()));
-            }
+            float alpha = 1.0f - (static_cast<float>(ScaleQuantumToChar(c.alphaQuantum())) / 255.0f);
+
+            buffer.push_back(
+                    static_cast<unsigned char>(static_cast<float>(ScaleQuantumToChar(c.redQuantum())) * alpha));
+            buffer.push_back(
+                    static_cast<unsigned char>(static_cast<float>(ScaleQuantumToChar(c.greenQuantum())) * alpha));
+            buffer.push_back(
+                    static_cast<unsigned char>(static_cast<float>(ScaleQuantumToChar(c.blueQuantum())) * alpha));
         }
     }
 

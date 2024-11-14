@@ -15,6 +15,7 @@ struct WeatherData {
     RGB color{};
     std::string icon_url;
     std::string description;
+    std::string temperature;
     int weatherCode;
 };
 
