@@ -15,7 +15,7 @@ using namespace spdlog;
 using rgb_matrix::StreamReader;
 
 
-bool ImageScene::DisplayAnimation(ProxyMatrix *matrix) {
+bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
     auto curr = &curr_animation.value();
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
@@ -50,7 +50,7 @@ bool ImageScene::DisplayAnimation(ProxyMatrix *matrix) {
 }
 
 
-bool ImageScene::render(ProxyMatrix *matrix) {
+bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
         debug("Getting next animation");
         auto res = get_next_anim(matrix, 0);
@@ -66,7 +66,7 @@ bool ImageScene::render(ProxyMatrix *matrix) {
 }
 
 expected<CurrAnimation, string>
-ImageScene::get_next_anim(ProxyMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
+ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }

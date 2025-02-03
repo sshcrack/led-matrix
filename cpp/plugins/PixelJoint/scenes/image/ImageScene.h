@@ -6,7 +6,6 @@
 #include <future>
 #include "Scene.h"
 #include "plugin.h"
-#include "shared/matrix.h"
 #include "shared/utils/utils.h"
 #include "shared/config/data.h"
 
@@ -50,9 +49,9 @@ private:
     optional<std::future<expected<optional<ImageInfo>, string>>> next_img;
 
 
-    bool DisplayAnimation(ProxyMatrix *matrix);
+    bool DisplayAnimation(rgb_matrix::RGBMatrix *matrix);
 
-    expected<CurrAnimation, string> get_next_anim(ProxyMatrix *matrix, int recursiveness);
+    expected<CurrAnimation, string> get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness);
 
     static expected<optional<ImageInfo>, string>
     get_next_image(ImageProviders::General *category, int width, int height);
@@ -60,7 +59,7 @@ private:
     static FileInfo GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas);
 
 public:
-    bool render(ProxyMatrix *matrix) override;
+    bool render(rgb_matrix::RGBMatrix *matrix) override;
     [[nodiscard]] string get_name() const override;
 
     using Scenes::Scene::Scene;

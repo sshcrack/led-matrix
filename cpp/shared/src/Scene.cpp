@@ -19,7 +19,7 @@ Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
     throw std::runtime_error(fmt::format("Invalid type '{}'", t));
 }
 
-void Scenes::Scene::initialize(ProxyMatrix *matrix) {
+void Scenes::Scene::initialize(rgb_matrix::RGBMatrix *matrix) {
     if (initialized)
         return;
 
@@ -58,4 +58,4 @@ nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {
     };
 }
 
-void Scenes::Scene::cleanup(ProxyMatrix *matrix) {}
+void Scenes::Scene::cleanup(rgb_matrix::RGBMatrix *matrix) {}

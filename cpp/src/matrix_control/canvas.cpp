@@ -1,5 +1,4 @@
 #include "canvas.h"
-#include "shared/matrix.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
 #include <spdlog/spdlog.h>
@@ -10,7 +9,7 @@ using namespace spdlog;
 using rgb_matrix::RGBMatrix;
 
 
-void update_canvas(ProxyMatrix *matrix) {
+void update_canvas(RGBMatrix *matrix) {
     auto preset = config->get_curr();
     auto scenes = preset.scenes;
 

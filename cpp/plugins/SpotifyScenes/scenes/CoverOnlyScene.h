@@ -17,16 +17,16 @@ namespace Scenes {
 
     class CoverOnlyScene : public Scene {
     private:
-        bool DisplaySpotifySong(ProxyMatrix *matrix);
+        bool DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix);
 
         std::optional<SpotifyFileInfo> curr_info;
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
 
-        std::expected<SpotifyFileInfo, std::string> get_info(ProxyMatrix *matrix);
+        std::expected<SpotifyFileInfo, std::string> get_info(rgb_matrix::RGBMatrix *matrix);
 
     public:
-        bool render(ProxyMatrix *matrix) override;
+        bool render(rgb_matrix::RGBMatrix *matrix) override;
         [[nodiscard]] int get_weight() const override;
         [[nodiscard]] string get_name() const override;
 
