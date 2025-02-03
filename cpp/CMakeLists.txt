@@ -60,3 +60,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
 
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
+
+
+#Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916

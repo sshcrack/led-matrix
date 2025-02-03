@@ -8,3 +8,19 @@ MatrixEmulator *MatrixEmulator::CreateFromOptions(const rgb_matrix::RGBMatrix::O
     return new MatrixEmulator(options);
 }
 
+void MatrixEmulator::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
+    CanvasEmulator::SetPixel(x, y, red, green, blue);
+}
+
+void MatrixEmulator::Clear() {
+    CanvasEmulator::Clear();
+}
+
+void MatrixEmulator::Fill(uint8_t red, uint8_t green, uint8_t blue) {
+    CanvasEmulator::Fill(red, green, blue);
+}
+
+FrameCanvasEmulator *MatrixEmulator::CreateFrameCanvas() {
+    return nullptr;
+}
+
