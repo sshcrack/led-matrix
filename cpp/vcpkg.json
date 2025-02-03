@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    "cpr",
+    "fmt",
+    "libxml2",
+    "nlohmann-json",
+    "spdlog",
+    "graphicsmagick",
+    "restinio"
+  ]
+}

@@ -1,6 +1,6 @@
 #pragma once
 
-#define USE_EMULATOR
+// #define USE_EMULATOR
 
 //TODO move to cmake, but I really tried and I don't know how to do it
 #ifdef USE_EMULATOR
@@ -15,5 +15,5 @@ using ProxyCanvas = CanvasEmulator;
 #include "led-matrix.h"
 using ProxyFrameCanvas = rgb_matrix::FrameCanvas;
 using ProxyMatrix = rgb_matrix::RGBMatrix;
-using ProxyCanvas = rgb_matrix::Canvas
+using ProxyCanvas = rgb_matrix::Canvas;
 #endif
