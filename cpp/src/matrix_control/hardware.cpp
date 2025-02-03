@@ -4,7 +4,6 @@
 #include "canvas.h"
 #include "../interrupt.h"
 #include "shared/utils/shared.h"
-#include "shared/matrix.h"
 
 #include <csignal>
 #include <expected>
@@ -19,7 +18,7 @@ int usage(const char *progname) {
     return 1;
 }
 
-void hardware_mainloop(ProxyMatrix *matrix) {
+void hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
     cout << "Press Ctrl+C to quit" << endl;
     while (!interrupt_received) {
         update_canvas(matrix);
@@ -49,7 +48,7 @@ int start_hardware_mainloop(int argc, char *argv[]) {
         return usage(argv[0]);
     }
 
-    ProxyMatrix *matrix = ProxyMatrix::CreateFromOptions(matrix_options, runtime_opt);
+    rgb_matrix::RGBMatrix *matrix = rgb_matrix::RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
     if (matrix == nullptr)
         return usage(argv[0]);
 

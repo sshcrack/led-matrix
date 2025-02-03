@@ -32,13 +32,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/plugin_loader/lib_name.h
         src/shared/plugin_loader/loader.cpp
         src/shared/config/MainConfig.cpp
-        src/shared/emulator/MatrixEmulator.cpp
-        src/shared/config/image_providers/general.cpp
-        include/shared/emulator/MatrixEmulator.h
-        include/shared/matrix.h
-        src/shared/emulator/FrameCanvasEmulator.cpp
-        include/shared/emulator/FrameCanvasEmulator.h
-        include/shared/emulator/CanvasEmulator.h)
+        src/shared/config/image_providers/general.cpp)
 
 # Main Target Compile
 

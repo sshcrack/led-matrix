@@ -10,7 +10,7 @@ using namespace spdlog;
 using namespace std;
 using namespace Scenes;
 
-bool CoverOnlyScene::DisplaySpotifySong(ProxyMatrix *matrix) {
+bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
     if (!curr_reader) {
         rgb_matrix::StreamReader temp(curr_info->content_stream);
         curr_reader.emplace(temp);
@@ -90,7 +90,7 @@ bool CoverOnlyScene::DisplaySpotifySong(ProxyMatrix *matrix) {
     return false;
 }
 
-bool CoverOnlyScene::render(ProxyMatrix *matrix) {
+bool CoverOnlyScene::render(rgb_matrix::RGBMatrix *matrix) {
     if (!curr_info.has_value()) {
         auto temp = this->get_info(matrix);
         if (!temp) {
@@ -104,7 +104,7 @@ bool CoverOnlyScene::render(ProxyMatrix *matrix) {
     return DisplaySpotifySong(matrix);
 }
 
-expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(ProxyMatrix *matrix) {
+expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(rgb_matrix::RGBMatrix *matrix) {
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
         return unexpected("Nothing currently playing");

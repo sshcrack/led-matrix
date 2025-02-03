@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Scene.h"
-#include "shared/matrix.h"
 #include "wrappers.h"
 #include "shared/utils/FrameTimer.h"
 
@@ -12,13 +11,13 @@ namespace Scenes {
     private:
         FrameTimer frameTimer;
 
-        void drawMap(ProxyMatrix *matrix, float *iMap);
+        void drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap);
 
     public:
-        bool render(ProxyMatrix *matrix) override;
+        bool render(rgb_matrix::RGBMatrix *matrix) override;
         using Scene::Scene::Scene;
 
-        void initialize(ProxyMatrix *matrix) override;
+        void initialize(rgb_matrix::RGBMatrix *matrix) override;
         [[nodiscard]] string get_name() const override;
     };
 
