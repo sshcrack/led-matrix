@@ -1,5 +1,5 @@
 
-#include "shared/spotify/track.h"
+#include "track.h"
 
 #include <utility>
 

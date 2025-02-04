@@ -4,8 +4,8 @@
 #include <nlohmann/json.hpp>
 
 
-#include "shared/spotify/shared_spotify.h"
-#include "shared/spotify/spotify.h"
+#include "../plugins/SpotifyScenes/manager/shared_spotify.h"
+#include "../plugins/SpotifyScenes/manager/spotify.h"
 #include <Magick++.h>
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
@@ -28,13 +28,6 @@ int main(int argc, char *argv[]) {
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
-
-
-    debug("Checking spotify config...");
-    spotify = new Spotify();
-    spotify->initialize();
-
-    config->save();
 
     for (const auto &item: pl->get_plugins()) {
         auto err = item->post_init();

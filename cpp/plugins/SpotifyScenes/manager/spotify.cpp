@@ -1,4 +1,4 @@
-#include "shared/spotify/spotify.h"
+#include "spotify.h"
 #include <cstdio>
 #include <string>
 #include <cpr/cpr.h>
