@@ -3,7 +3,7 @@
 #include <optional>
 #include "Scene.h"
 #include "shared/utils/utils.h"
-#include "shared/spotify/state.h"
+#include "../manager/state.h"
 #include "wrappers.h"
 
 namespace Scenes {
@@ -23,7 +23,7 @@ namespace Scenes {
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
 
-        std::expected<SpotifyFileInfo, std::string> get_info(rgb_matrix::RGBMatrix *matrix);
+        std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrix *matrix);
 
     public:
         bool render(rgb_matrix::RGBMatrix *matrix) override;

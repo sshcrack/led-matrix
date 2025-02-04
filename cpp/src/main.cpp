@@ -89,9 +89,6 @@ int main(int argc, char *argv[]) {
 
     restinio::initiate_shutdown(server);
 
-    debug("Terminating spotify...");
-    spotify->terminate();
-
     debug("Joining control thread...");
     control_thread.join();
 

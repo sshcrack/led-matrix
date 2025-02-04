@@ -13,9 +13,8 @@ using std::string;
 namespace Scenes {
     class Scene {
     private:
-        bool initialized = false;
-
     protected:
+        bool initialized = false;
         int weight = 0;
         tmillis_t duration = 0;
         rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;

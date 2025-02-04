@@ -1,7 +1,7 @@
 #include "CoverOnlyScene.h"
 #include "Magick++.h"
 #include <spdlog/spdlog.h>
-#include "shared/spotify/shared_spotify.h"
+#include "../manager/shared_spotify.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 #include "led-matrix.h"
@@ -17,18 +17,9 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
     }
 
     const tmillis_t duration_ms = (curr_info->wait_ms);
-
-
-    long progress_ms = curr_state->get_progress_ms();
-    long duration = curr_state->get_track().get_duration();
-    float flash_duration = 5000;
-
-    int w = matrix->width() - 1;
-    int h = matrix->height() - 1;
-
     const tmillis_t start_time = GetTimeInMillis();
+    const tmillis_t end_time_ms = start_time + duration_ms;
 
-    const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
     if (GetTimeInMillis() >= end_time_ms) {
         trace("Reached end time, returning");
         return true;
@@ -50,34 +41,49 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
-    tmillis_t time_spent = GetTimeInMillis() - start_time;
-    tmillis_t track_loc = progress_ms + time_spent;
-    if (track_loc > duration) {
-        trace("Track end reached, returning!");
-        return true;
+    auto progress = curr_state->get_progress() / 0.25f;
+    auto top_prog = std::clamp(progress, 0.0f, 1.0f);
+    auto right_prog = std::clamp(progress - 1.0f, 0.0f, 1.0f);
+    auto bottom_prog = std::clamp(progress - 2.0f, 0.0f, 1.0f);
+    auto left_prog = std::clamp(progress - 3.0f, 0.0f, 1.0f);
+
+    int max_x = matrix->width();
+    int max_y = matrix->height();
+/*
+    if (GetTimeInMillis() % 10 == 0) {
+        trace("Progress: {} {} {} {} duration {} and prog {} ", top_prog, right_prog, bottom_prog, left_prog,
+              curr_state->get_track().get_duration(), curr_state->get_progress_ms());
     }
+*/
+    if (top_prog > 0.0f)
+        DrawLine(offscreen_canvas,
+                 0, 0,
+                 max_x * top_prog, 0,
+                 rgb_matrix::Color(255, 255, 255)
+        );
 
-    double brightness = abs(sin(M_PI * ((float) time_spent / flash_duration)));
-    uint8_t p_brightness = brightness * 255;
+    if (right_prog > 0.0f)
+        DrawLine(offscreen_canvas,
+                 max_x - 1, 0,
+                 max_x - 1, max_y * right_prog,
+                 rgb_matrix::Color(255, 255, 255)
+        );
 
-    auto color = rgb_matrix::Color(0, p_brightness, 0);
+    if (bottom_prog > 0.0f)
+        DrawLine(offscreen_canvas,
+                 max_x * (1.0f - bottom_prog), max_y - 1,
+                 max_x, max_y - 1,
+                 rgb_matrix::Color(255, 255, 255)
+        );
 
-    // Bottom / Top
-    DrawLine(offscreen_canvas, 0, 0, w, 0, color);
-    DrawLine(offscreen_canvas, 0, h, w, h, color);
-
-
-    // Left / Right
-    DrawLine(offscreen_canvas, 0, 0, 0, h, color);
-    DrawLine(offscreen_canvas, w, 0, w, h, color);
-
-
-
-    float progress = (float) track_loc / (float) duration;
-    int line_width = matrix->width() * progress;
+    if (left_prog > 0.0f)
+        DrawLine(offscreen_canvas,
+                 0, max_y * (1.0f - left_prog),
+                 0, max_y,
+                 rgb_matrix::Color(255, 255, 255)
+        );
 
 
-    DrawLine(offscreen_canvas, 0, 0, line_width, 0, rgb_matrix::Color(255, 255, 255));
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
                                            curr_info->vsync_multiple);
 
@@ -91,25 +97,31 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 }
 
 bool CoverOnlyScene::render(rgb_matrix::RGBMatrix *matrix) {
-    if (!curr_info.has_value()) {
-        auto temp = this->get_info(matrix);
-        if (!temp) {
-            error("Could not get spotify cover image: '{}'", temp.error());
-            return true;
-        }
-
-        curr_info.emplace(temp.value());
+    auto temp = this->refresh_info(matrix);
+    if (!temp) {
+        error("Could not get spotify cover image: '{}'", temp.error());
+        return true;
     }
 
     return DisplaySpotifySong(matrix);
 }
 
-expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(rgb_matrix::RGBMatrix *matrix) {
+expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matrix) {
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
         return unexpected("Nothing currently playing");
     }
+
+    if (!temp.value().is_playing() && false)
+        return unexpected("Media is paused, skipping");
+
+    if (curr_state.has_value() && curr_state->get_track().get_id() == temp.value().get_track().get_id()) {
+        curr_state.emplace(temp.value());
+        return {};
+    }
+
     curr_state.emplace(temp.value());
+    trace("New track, refreshing state: {}", temp.value().get_track().get_id());
 
     auto track = curr_state->get_track();
     auto temp2 = track.get_cover();
@@ -118,14 +130,16 @@ expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(rgb_matrix::RGBMatrix
     }
 
 
-    const auto& cover = temp2.value();
+    const auto &cover = temp2.value();
     string out_file = "/tmp/spotify_cover." + track.get_id() + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
         download_image(cover, out_file);
     }
 
-    auto res = LoadImageAndScale(out_file, matrix->width(), matrix->height(), true, true, false);
+    int margin = 2;
+    auto res = LoadImageAndScale(out_file, matrix->width() - margin * 2, matrix->height() - margin * 2, true, true,
+                                 false);
     if (!res) {
         try_remove(out_file);
 
@@ -140,19 +154,25 @@ expected<SpotifyFileInfo, string> CoverOnlyScene::get_info(rgb_matrix::RGBMatrix
 
 
     rgb_matrix::StreamWriter out(file_info.content_stream);
-    for (const auto &img: frames) {
+    for (const auto &cover: frames) {
+        Magick::Image img(Magick::Geometry(matrix->width(), matrix->height()), Magick::Color("black"));
+        img.draw(Magick::DrawableCompositeImage(margin, margin, matrix->width() - margin, matrix->height() - margin,
+                                                cover));
+
         StoreInStream(img, 100 * 1000, true, offscreen_canvas, &out);
     }
 
-    return file_info;
+    curr_info.emplace(file_info);
+    curr_reader = std::nullopt;
+    return {};
 }
 
 int CoverOnlyScene::get_weight() const {
     if (spotify != nullptr) {
-        if(spotify->has_changed(false))
+        if (spotify->has_changed(false))
             return 100;
 
-        if(spotify->get_currently_playing().has_value())
+        if (spotify->get_currently_playing().has_value())
             return Scene::get_weight();
     }
 

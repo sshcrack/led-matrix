@@ -2,6 +2,7 @@
 
 #include "./track.h"
 #include <nlohmann/json.hpp>
+#include "shared/utils/utils.h"
 
 struct SpotifyState {
 private:
@@ -16,5 +17,7 @@ public:
 
     long get_progress_ms();
 
-    float get_progress();
+    float get_progress(tmillis_t additional_ms = 0);
+
+    bool is_playing();
 };
