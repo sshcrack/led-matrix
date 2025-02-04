@@ -22,10 +22,6 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/utils/image_fetch.cpp
         src/shared/utils/FrameTimer.cpp
         src/shared/utils/canvas_image.cpp
-        src/shared/spotify/shared_spotify.cpp
-        src/shared/spotify/spotify.cpp
-        src/shared/spotify/state.cpp
-        src/shared/spotify/track.cpp
         src/shared/plugin_loader/lib_glob.cpp
         src/shared/plugin_loader/lib_glob.h
         src/shared/plugin_loader/lib_name.cpp

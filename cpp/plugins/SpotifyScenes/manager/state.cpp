@@ -1,4 +1,4 @@
-#include "shared/spotify/state.h"
+#include "state.h"
 
 SpotifyState::SpotifyState(nlohmann::json state_json) : state_json(std::move(state_json)),track(SpotifyTrack(this->state_json.at("item"))) {
     // Empty constructor

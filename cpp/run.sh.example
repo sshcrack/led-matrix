@@ -1,0 +1,1 @@
+PLUGIN_DIR=../lib/plugins LD_LIBRARY_PATH=./run/lib/ SPOTIFY_CLIENT_ID=(something) SPOTIFY_CLIENT_SECRET=some-secret-here SPDLOG_LEVEL=debug ./run/bin/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-slowdown-gpio 3 --led-pixel-mapper Rotate:270
