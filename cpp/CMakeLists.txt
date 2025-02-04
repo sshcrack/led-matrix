@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(main VERSION 0.1.0)
 
+# Set default install prefix to build directory if not specified
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
+endif()
+
+# Add installation paths
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 23)
 
 
@@ -63,3 +71,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
+
+# Install target
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Add sync to RPI if enabled
+option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)
+if(SYNC_TO_RPI)
+    install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
+endif()
+

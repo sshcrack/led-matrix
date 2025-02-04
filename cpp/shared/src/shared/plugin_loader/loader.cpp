@@ -69,7 +69,9 @@ void PluginManager::initialize() {
     if (!exec_dir)
         throw std::runtime_error("Could not get executable directory");
 
-    const std::string libGlob("plugins/*.so");
+    const char* plugin_dir = getenv("PLUGIN_DIR");
+
+    const std::string libGlob(plugin_dir == nullptr ? "plugins/*.so" : std::string(plugin_dir) + "/*.so");
 
 
     std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + "/" + libGlob);
@@ -105,7 +107,7 @@ void PluginManager::initialize() {
         loaded_plugins.emplace_back(dlhandle, dn, p);
     }
 
-    info("Loaded plugins.");
+    info("Loaded a total of {} plugins.", libNames.size());
     info("Loading providers to register...");
 
     initialized = true;

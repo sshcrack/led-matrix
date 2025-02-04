@@ -4,7 +4,7 @@ const port = parseInt(process.argv[2]);
 
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = `http://10.6.0.23:${port}/callback`;
+const redirect_uri = `http://127.0.0.1:${port}/callback`;
 console.log("Redirect URI is", redirect_uri)
 
 

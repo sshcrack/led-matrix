@@ -3,6 +3,7 @@
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
 #include "shared/utils/image_fetch.h"
+#include "shared/interrupt.h"
 #include "shared/utils/canvas_image.h"
 #include <vector>
 
@@ -44,7 +45,20 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
 
-    SleepMillis(anim_delay_ms - time_already_spent);
+    tmillis_t to_wait = anim_delay_ms - time_already_spent;
+    while (to_wait > 0) {
+        if(interrupt_received) {
+            return true;
+        }
+
+        if(to_wait < 250) {
+            SleepMillis(to_wait);
+            break;
+        }
+
+        SleepMillis(250);
+        to_wait -= 250;
+    }
 
     return false;
 }

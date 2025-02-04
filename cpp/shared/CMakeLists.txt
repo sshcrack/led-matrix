@@ -32,7 +32,8 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/plugin_loader/lib_name.h
         src/shared/plugin_loader/loader.cpp
         src/shared/config/MainConfig.cpp
-        src/shared/config/image_providers/general.cpp)
+        src/shared/config/image_providers/general.cpp
+        src/shared/interrupt.cpp)
 
 # Main Target Compile
 
@@ -71,7 +72,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 find_package(LibXml2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
 
-
 # ImageMagick
 find_package(unofficial-graphicsmagick CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+
+include(GNUInstallDirs)
+
+# Installation
+install(TARGETS ${PROJECT_NAME}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)

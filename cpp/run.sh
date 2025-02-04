@@ -1,1 +1,1 @@
-SPOTIFY_CLIENT_ID=3e20d6d23f07497881028e7db45c3446 SPOTIFY_CLIENT_SECRET=8239c9add0b7473fa1d48b17dc378695 SPDLOG_LEVEL=debug ./cmake-build-pi-release/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-slowdown-gpio 3 --led-pixel-mapper Rotate:270
+PLUGIN_DIR=../lib/plugins LD_LIBRARY_PATH=./run/lib/ SPOTIFY_CLIENT_ID=e6be7b6b83c14848af2d1cf108e6eab7 SPOTIFY_CLIENT_SECRET=962aa45642444a3584f92e4520bbf465 SPDLOG_LEVEL=debug ./run/bin/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-slowdown-gpio 3 --led-pixel-mapper Rotate:270
