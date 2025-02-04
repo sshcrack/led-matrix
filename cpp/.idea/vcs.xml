@@ -2,6 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/anim/RGBMatrixAnimations" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/anim/RGBMatrixAnimations/examples/RGBMatrix_RPi/rpi-rgb-led-matrix" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/rpi-rgb-led-matrix" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/shared/PicoSHA2" vcs="Git" />
   </component>

@@ -134,6 +134,8 @@ std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spo
         warn("SpotifyScenes state does not contain item: {}", res->value().dump());
         return unexpected(make_pair("Invalid server response: " + res->value().dump(), nullopt));
     }
+
+    res->value()["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     return SpotifyState(res->value());
 }
 
