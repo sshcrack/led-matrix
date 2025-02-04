@@ -5,3 +5,4 @@ cmake-build-*
 .idea/other.xml
 config.json
 vcpkg_installed
+run.sh
