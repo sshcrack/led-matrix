@@ -9,8 +9,8 @@ extern std::string LOCATION_LAT;
 extern std::string LOCATION_LON;
 extern WeatherParser *parser;
 
-static std::string HEADER_FONT_FILE = "./rpi-rgb-led-matrix/fonts/7x13.bdf";
-static std::string BODY_FONT_FILE = "./rpi-rgb-led-matrix/fonts/5x8.bdf";
+static std::string HEADER_FONT_FILE = std::string(FONT_DIRECTORY) + "/7x13.bdf";
+static std::string BODY_FONT_FILE = std::string(FONT_DIRECTORY) + "/5x8.bdf";
 
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;

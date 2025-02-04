@@ -48,4 +48,9 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     # Custom configuration
     include("${P_DIR}/CMakeLists.txt" OPTIONAL)
 
+    # Install plugin
+    install(TARGETS ${LIB_NAME}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins
+    )
+
 endforeach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
