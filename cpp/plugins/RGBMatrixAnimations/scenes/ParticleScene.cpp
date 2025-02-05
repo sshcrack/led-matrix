@@ -48,7 +48,7 @@ bool ParticleScene::render(RGBMatrix *matrix) {
     }
     
     prevTime = now;
-    return false;
+    return true;
 }
 
 uint64_t ParticleScene::micros() {

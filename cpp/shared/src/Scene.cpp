@@ -23,7 +23,11 @@ void Scenes::Scene::initialize(rgb_matrix::RGBMatrix *matrix) {
     if (initialized)
         return;
 
-    offscreen_canvas = matrix->CreateFrameCanvas();
+    if (create_offscreen)
+        offscreen_canvas = matrix->CreateFrameCanvas();
+
+    matrix_height = matrix->height();
+    matrix_width = matrix->width();
     initialized = true;
 }
 
@@ -46,9 +50,10 @@ int Scenes::Scene::get_weight() const {
     return weight;
 }
 
-Scenes::Scene::Scene(const json &json) {
+Scenes::Scene::Scene(const json &json, bool p_create_offscreen) {
     weight = json["weight"];
     duration = json["duration"];
+    create_offscreen = p_create_offscreen;
 }
 
 nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {

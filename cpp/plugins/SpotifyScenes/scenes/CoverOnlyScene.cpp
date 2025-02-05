@@ -22,7 +22,7 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
     if (GetTimeInMillis() >= end_time_ms) {
         trace("Reached end time, returning");
-        return true;
+        return false;
     }
 
     uint32_t delay_us = 0;
@@ -34,7 +34,7 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
         // And get again, if fails, return
         if (!curr_reader->GetNext(offscreen_canvas, &delay_us)) {
             trace("Returning, reader done");
-            return true;
+            return false;
         }
     }
 
@@ -90,17 +90,17 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
     if (time_already_spent > 100)
-        return false;
+        return true;
 
     SleepMillis(100 - time_already_spent);
-    return false;
+    return true;
 }
 
 bool CoverOnlyScene::render(rgb_matrix::RGBMatrix *matrix) {
     auto temp = this->refresh_info(matrix);
     if (!temp) {
         error("Could not get spotify cover image: '{}'", temp.error());
-        return true;
+        return false;
     }
 
     return DisplaySpotifySong(matrix);

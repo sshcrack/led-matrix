@@ -13,8 +13,14 @@ using std::string;
 namespace Scenes {
     class Scene {
     private:
+        bool create_offscreen = false;
     protected:
         bool initialized = false;
+        /// Only available after initialization
+        int matrix_width;
+        /// Only available after initialization
+        int matrix_height;
+
         int weight = 0;
         tmillis_t duration = 0;
         rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;
@@ -22,7 +28,7 @@ namespace Scenes {
     public:
         static nlohmann::json create_default(int weight, tmillis_t duration);
 
-        explicit Scene(const nlohmann::json &json);
+        explicit Scene(const nlohmann::json &json, bool create_offscreen = true);
 
         [[nodiscard]] virtual int get_weight() const;
 
@@ -36,7 +42,7 @@ namespace Scenes {
 
         [[nodiscard]] bool is_initialized() const;
 
-        // Returns true if the scene is done and should be removed
+        /// Returns true if the scene should continue rendering, false if not
         virtual bool render(rgb_matrix::RGBMatrix *matrix) = 0;
 
         static Scene *from_json(const nlohmann::json &j);

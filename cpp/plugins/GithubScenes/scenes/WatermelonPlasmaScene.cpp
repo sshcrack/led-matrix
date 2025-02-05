@@ -32,7 +32,7 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::RGBMatrix *matrix) {
     }
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
-    return false;
+    return true;
 }
 
 string Scenes::WatermelonPlasmaScene::get_name() const {
