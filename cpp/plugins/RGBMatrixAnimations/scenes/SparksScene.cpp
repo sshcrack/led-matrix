@@ -4,7 +4,7 @@
 using namespace Scenes;
 
 SparksScene::SparksScene(const nlohmann::json &config)
-    : ParticleScene(config), ax(0), ay(0) {
+        : ParticleScene(config), ax(0), ay(0) {
     // Sparks-specific defaults
     numParticles = config.value("numParticles", 40);
     shake = config.value("shake", 5);
@@ -32,21 +32,21 @@ void SparksScene::initializeParticles() {
     int16_t maxVel = 10000;
 
     for (int i = 0; i < numParticles; i++) {
-        int16_t vx = renderer->random_int16(-maxVel, maxVel+1);
-        int16_t vy = renderer->random_int16(-maxVel, maxVel+1);
-        
+        int16_t vx = renderer->random_int16(-maxVel, maxVel + 1);
+        int16_t vy = renderer->random_int16(-maxVel, maxVel + 1);
+
         if (vx > 0) {
-            vx += maxVel/5;  
+            vx += maxVel / 5;
         } else {
-            vx -= maxVel/5;
+            vx -= maxVel / 5;
         }
-        
+
         if (vy > 0) {
-            vy += maxVel/5;  
+            vy += maxVel / 5;
         } else {
-            vy -= maxVel/5;
+            vy -= maxVel / 5;
         }
-        
+
         animation->addParticle(yellow, vx, vy);
     }
 
@@ -55,19 +55,24 @@ void SparksScene::initializeParticles() {
     animation->setAcceleration(ax, ay);
 }
 
+void SparksScene::cleanup(rgb_matrix::RGBMatrix *matrix) {
+    animation->clearParticles();
+    initializeParticles();
+}
+
 string SparksScene::get_name() const {
     return "sparks";
 }
 
 Scene *SparksSceneWrapper::create_default() {
     const nlohmann::json json = {
-        {"weight", 1},
-        {"duration", 15000},
-        {"numParticles", 40},
-        {"acceleration", 1},
-        {"shake", 5},
-        {"bounce", 250},
-        {"delay_ms", 10}
+            {"weight",       1},
+            {"duration",     15000},
+            {"numParticles", 40},
+            {"acceleration", 1},
+            {"shake",        5},
+            {"bounce",       250},
+            {"delay_ms",     10}
     };
     return new SparksScene(json);
 }

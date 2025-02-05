@@ -16,6 +16,8 @@ namespace Scenes {
         int paddle_height;
         float ball_speed;
         float paddle_speed;
+        float speed_multiplier = 1.0f;
+        float max_speed_multiplier = 3.0f;
         
         float ball_x;
         float ball_y;
@@ -30,6 +32,14 @@ namespace Scenes {
         float prev_ball_y;
         float prev_left_paddle_y;
         float prev_right_paddle_y;
+
+        int frame_counter = 0;
+        int update_frequency = 3;  // Update every N frames
+
+        // Timing control
+        std::chrono::steady_clock::time_point last_update;
+        float target_frame_time = 1.0f/60.0f;  // 60 FPS
+        float accumulated_time = 0.0f;
 
     public:
         explicit PingPongGameScene(const nlohmann::json &config);

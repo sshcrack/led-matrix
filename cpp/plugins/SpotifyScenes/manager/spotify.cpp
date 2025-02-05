@@ -135,7 +135,10 @@ std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spo
         return unexpected(make_pair("Invalid server response: " + res->value().dump(), nullopt));
     }
 
-    res->value()["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    if (res->value().contains("timestamp"))
+        res->value()["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+
     return SpotifyState(res->value());
 }
 
@@ -272,7 +275,11 @@ void Spotify::start_control_thread() {
             if (opt_state.has_value()) {
                 SpotifyState state = std::move(opt_state.value());
 
-                spdlog::debug("Currently playing: {}", state.get_track().get_id());
+                auto id_opt = state.get_track().get_id();
+
+                if (id_opt.has_value())
+                    spdlog::debug("Currently playing: {}", id_opt.value());
+
                 this->currently_playing.emplace(state);
 
                 this->is_dirty = true;
@@ -296,7 +303,7 @@ void Spotify::start_control_thread() {
 
 void Spotify::terminate() {
     this->should_terminate.store(true);
-    if(this->control_thread.joinable())
+    if (this->control_thread.joinable())
         this->control_thread.join();
 }
 

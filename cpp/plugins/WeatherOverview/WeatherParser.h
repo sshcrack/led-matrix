@@ -12,11 +12,11 @@ struct RGB {
 };
 
 struct WeatherData {
-    RGB color{};
-    std::string icon_url;
-    std::string description;
-    std::string temperature;
-    int weatherCode;
+    RGB color{0, 0, 0};  // Default to black
+    std::string icon_url{""};
+    std::string description{"No data"};
+    std::string temperature{"N/A"};
+    int weatherCode{0};
 };
 
 static long CACHE_INVALIDATION = 1000 * 60 * 15;
