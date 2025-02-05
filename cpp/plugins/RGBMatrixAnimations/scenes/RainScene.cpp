@@ -5,44 +5,40 @@
 using namespace Scenes;
 
 RainScene::RainScene(const nlohmann::json &config)
-    : Scene(config),
-      prevTime(0),
-      lastFpsLog(0),
-      frameCount(0)
+    : ParticleScene(config),
+      cols(nullptr),
+      vels(nullptr),
+      lengths(nullptr),
+      counter(0),
+      currentColorId(1),
+      totalColors(0)
 {
-    delay_ms = config.value("delay_ms", 10);
+    // Rain-specific defaults
     numParticles = config.value("numParticles", 4000);
     velocity = config.value("velocity", 6000);
-    accel = config.value("acceleration", 1);
     shake = config.value("shake", 0);
     bounce = config.value("bounce", 0);
-    cols = nullptr;
-    vels = nullptr;
-    lengths = nullptr;
-    counter = 0;
-    currentColorId = 1;
-    totalColors = 0;
 }
 
 RainScene::~RainScene() {
-    delete animation;
     delete[] cols;
     delete[] vels;
     delete[] lengths;
 }
 
 void RainScene::initialize(RGBMatrix *p_matrix) {
-    initialized = true;
-
     matrix = p_matrix;
     totalCols = p_matrix->width() / 1.4;
-
-    // Reinitialize renderer with proper dimensions
-    renderer = new RainMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-
+    
+    // Use ParticleMatrixRenderer directly instead of RainMatrixRenderer
+    renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
     animation = new GravityParticles(*renderer, shake, bounce);
     animation->setAcceleration(0, -accel);
 
+    initializeParticles();
+}
+
+void RainScene::initializeParticles() {
     initializeColumns();
     createColorPalette();
 }
@@ -128,25 +124,9 @@ void RainScene::createColorPalette() {
 bool RainScene::render(RGBMatrix *matrix) {
     addNewParticles();
     removeOldParticles();
-    animation->runCycle();
-
-    // Limit the animation frame rate to MAX_FPS
-    uint8_t MAX_FPS = 1000/delay_ms;
-    uint32_t t;
-    while((t = micros() - prevTime) < (100000L / MAX_FPS));
     
-    frameCount++;
-    uint64_t now = micros();
-    
-    // Log FPS once per second
-    if (now - lastFpsLog >= 1000000) {  // 1 second in microseconds
-        spdlog::debug("FPS: {:.2f}", (float)frameCount * 1000000.0f / (now - lastFpsLog));
-        frameCount = 0;
-        lastFpsLog = now;
-    }
-    
-    prevTime = now;
-    return false;
+    // Call parent class render which handles animation and FPS
+    return ParticleScene::render(matrix);
 }
 
 void RainScene::addNewParticles() {
@@ -194,16 +174,6 @@ void RainScene::removeOldParticles() {
             }
         }
     }
-}
-
-int16_t RainScene::random_int16(int16_t a, int16_t b) {
-    return a + rand() % (b - a);
-}
-
-uint64_t RainScene::micros() {
-    return std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now().time_since_epoch()
-    ).count();
 }
 
 string RainScene::get_name() const {
