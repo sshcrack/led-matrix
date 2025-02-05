@@ -33,7 +33,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
     auto data_res = parser->get_data();
     if (!data_res) {
         spdlog::warn("Could not get weather data_res: {}", data_res.error());
-        return true;
+        return false;
     }
 
     auto data = data_res.value();
@@ -48,7 +48,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
             auto res = download_image(data.icon_url, file_path);
             if (!res) {
                 spdlog::warn("Could not download image");
-                return true;
+                return false;
             }
         }
 
@@ -58,7 +58,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
             spdlog::error("Error loading image: {}", res.error());
             try_remove(file_path);
 
-            return true;
+            return false;
         }
 
         vector<Magick::Image> frames = std::move(res.value());
@@ -104,7 +104,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
     should_render = false;
-    return false;
+    return true;
 }
 
 void Scenes::WeatherScene::cleanup(rgb_matrix::RGBMatrix *matrix) {

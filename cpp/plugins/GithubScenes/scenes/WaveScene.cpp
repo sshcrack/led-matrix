@@ -70,7 +70,7 @@ bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
     drawMap(matrix, map);
 
     matrix->SwapOnVSync(offscreen_canvas);
-    return false;
+    return true;
 }
 
 void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix) {

@@ -56,9 +56,9 @@ void update_canvas(RGBMatrix *matrix) {
         tmillis_t end_ms = start_ms + scene->get_duration();
 
         while (GetTimeInMillis() < end_ms) {
-            auto should_exit = scene->render(matrix);
+            auto should_continue = scene->render(matrix);
 
-            if (should_exit || interrupt_received) {
+            if (!should_continue || interrupt_received) {
                 debug("Exiting scene early.");
                 break;
             }

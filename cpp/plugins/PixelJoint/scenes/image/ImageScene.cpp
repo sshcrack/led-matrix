@@ -22,7 +22,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 
     if (skip_image || GetTimeInMillis() > curr->end_time_ms) {
         this->curr_animation.reset();
-        return true;
+        return false;
     }
 
     uint32_t delay_us = 0;
@@ -31,7 +31,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
     if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
         reader->Rewind();
         if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
-            return true;
+            return false;
         }
     }
 
@@ -48,7 +48,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
     tmillis_t to_wait = anim_delay_ms - time_already_spent;
     while (to_wait > 0) {
         if(interrupt_received) {
-            return true;
+            return false;
         }
 
         if(to_wait < 250) {
@@ -60,7 +60,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
         to_wait -= 250;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -70,7 +70,7 @@ bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
         auto res = get_next_anim(matrix, 0);
         if (!res.has_value()) {
             error("Error getting next animation: {}", res.error());
-            return true;
+            return false;
         }
 
         this->curr_animation.emplace(res.value());
