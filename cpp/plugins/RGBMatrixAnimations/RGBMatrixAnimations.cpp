@@ -1,5 +1,6 @@
 #include "RGBMatrixAnimations.h"
 #include "scenes/RainScene.h"
+#include "scenes/SparksScene.h"
 
 using namespace Scenes;
 
@@ -17,7 +18,8 @@ vector<ImageProviderWrapper *> RGBMatrixAnimations::get_image_providers() {
 
 vector<SceneWrapper *> RGBMatrixAnimations::get_scenes() {
     return {
-            new RainSceneWrapper()
+            new RainSceneWrapper(),
+            new SparksSceneWrapper()
     };
 }
 

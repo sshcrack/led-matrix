@@ -1,6 +1,7 @@
 #include "canvas.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
+#include "shared/interrupt.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -57,7 +58,7 @@ void update_canvas(RGBMatrix *matrix) {
         while (GetTimeInMillis() < end_ms) {
             auto should_exit = scene->render(matrix);
 
-            if (should_exit) {
+            if (should_exit || interrupt_received) {
                 debug("Exiting scene early.");
                 break;
             }
