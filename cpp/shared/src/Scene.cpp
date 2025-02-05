@@ -6,8 +6,11 @@
 using namespace spdlog;
 
 Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
+    if (!j.contains("type"))
+        throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
+
     string t = j["type"].get<string>();
-    const nlohmann::json &arguments = j["arguments"];
+    const nlohmann::json &arguments = j.value("arguments", nlohmann::json::object());
 
     auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_scenes()) {
@@ -51,6 +54,8 @@ int Scenes::Scene::get_weight() const {
 }
 
 Scenes::Scene::Scene(const json &json, bool p_create_offscreen) {
+    if (!json.contains("weight") || !json.contains("duration"))
+        throw std::runtime_error("Scene json does not contain weight or duration");
     weight = json["weight"];
     duration = json["duration"];
     create_offscreen = p_create_offscreen;

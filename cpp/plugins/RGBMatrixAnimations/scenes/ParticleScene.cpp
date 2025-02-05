@@ -5,7 +5,7 @@
 using namespace Scenes;
 
 ParticleScene::ParticleScene(const nlohmann::json &config)
-    : Scene(config),
+    : Scene(config, false),
       prevTime(0),
       lastFpsLog(0),
       frameCount(0)

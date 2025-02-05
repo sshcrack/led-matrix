@@ -17,6 +17,8 @@ namespace Scenes {
         ~SparksScene() override;
         [[nodiscard]] string get_name() const override;
         void initialize(RGBMatrix *p_matrix) override;
+
+        void cleanup(rgb_matrix::RGBMatrix *matrix) override;
     };
 
     class SparksSceneWrapper : public Plugins::SceneWrapper {

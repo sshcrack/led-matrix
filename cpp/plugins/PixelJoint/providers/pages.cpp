@@ -45,8 +45,8 @@ optional<Post> ImageProviders::Pages::get_next_image() {
 }
 
 ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
-    int p_begin = arguments["begin"].get<int>();
-    int p_end = arguments["end"].get<int>();
+    int p_begin = arguments.value("begin", 0);
+    int p_end = arguments.value("end", -1);
 
     if (p_end == -1) {
         auto pages = ScrapedPost::get_pages();

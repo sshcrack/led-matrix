@@ -10,8 +10,11 @@ ImageProviders::General::General(const json& arguments) {
 }
 
 ImageProviders::General* ImageProviders::General::from_json(const json &j) {
+    if(!j.contains("type"))
+        throw std::runtime_error(fmt::format("No image provider type given for '{}'", j.dump()));
+
     string t = j["type"].get<string>();
-    const json& arguments = j["arguments"];
+    const json& arguments = j.value("arguments", json::object());
 
     auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_image_providers()) {

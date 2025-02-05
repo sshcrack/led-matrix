@@ -41,7 +41,13 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
-    auto progress = curr_state->get_progress() / 0.25f;
+    auto progress_opt = curr_state->get_progress();
+    if (!progress_opt.has_value()) {
+        error("Could not get progress");
+        return false;
+    }
+
+    auto progress = progress_opt.value() / 0.25f;
     auto top_prog = std::clamp(progress, 0.0f, 1.0f);
     auto right_prog = std::clamp(progress - 1.0f, 0.0f, 1.0f);
     auto bottom_prog = std::clamp(progress - 2.0f, 0.0f, 1.0f);
@@ -121,17 +127,22 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
     }
 
     curr_state.emplace(temp.value());
-    trace("New track, refreshing state: {}", temp.value().get_track().get_id());
+    auto track_id_opt = temp.value().get_track().get_id();
+    if(!track_id_opt.has_value())
+        return unexpected("No track id");
+
+    string track_id = track_id_opt.value();
+    trace("New track, refreshing state: {}", track_id);
 
     auto track = curr_state->get_track();
     auto temp2 = track.get_cover();
     if (!temp2.has_value()) {
-        return unexpected("No track cover for track '" + track.get_id() + "'");
+        return unexpected("No track cover for track '" + track_id + "'");
     }
 
 
     const auto &cover = temp2.value();
-    string out_file = "/tmp/spotify_cover." + track.get_id() + ".jpg";
+    string out_file = "/tmp/spotify_cover." + track_id + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
         download_image(cover, out_file);

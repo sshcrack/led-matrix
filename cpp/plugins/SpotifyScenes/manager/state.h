@@ -17,7 +17,7 @@ public:
 
     long get_progress_ms();
 
-    float get_progress(tmillis_t additional_ms = 0);
+    std::optional<float> get_progress(tmillis_t additional_ms = 0);
 
     bool is_playing();
 };

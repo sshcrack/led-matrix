@@ -27,13 +27,13 @@ vector<SceneWrapper *> WeatherOverview::get_scenes() {
 
 std::optional<string> WeatherOverview::post_init() {
     auto conf = config->get_plugin_configs();
-    if (conf.find("weatherLat") == conf.end()) {
+    if (!conf.contains("weatherLat")) {
         std::cout << "throwing error" << std::endl << std::flush;
         return "Config value 'pluginConfigs.weatherLat' is not set."
                "Set it to the latitude of the city you want to display the weather for.";
     }
 
-    if (conf.find("weatherLon") == conf.end()) {
+    if (!conf.contains("weatherLon")) {
         return
                 "Config value 'pluginConfigs.weatherLon' is not set."
                 "Set it to the longitude of the city you want to display the weather for.";
