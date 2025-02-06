@@ -38,7 +38,7 @@ namespace Scenes {
             rotated = true;
         }
 
-        if (!bestMove.empty()) {
+        if (!bestMove.empty() && !grid.isAnimating) {
             if (bestMove[0] == 'r') {
                 grid.movePiece(1, 9);
                 bestMove.pop_back();
@@ -58,15 +58,19 @@ namespace Scenes {
 
         auto current_time = std::chrono::steady_clock::now();
         auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
-            current_time - last_fall_time).count();
+                current_time - last_fall_time).count();
 
-        if (time_since_last_fall >= fall_speed_ms) {
+        if (time_since_last_fall >= fall_speed_ms && !grid.isAnimating) {
             grid.gravity(1);
             last_fall_time = current_time;
         }
 
-        grid.clearLine();
-        grid.update();
+        if (grid.isAnimating) {
+            grid.updateAnimation();
+        } else {
+            grid.clearLine();
+            grid.update();
+        }
 
         if (grid.gameOver) {
             gameOver = true;
@@ -124,6 +128,23 @@ namespace Scenes {
         return "tetris";
     }
 
+    void TetrisScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
+        if (gameOver) {
+            // Reset game state
+            grid = Grid();  // Create new grid
+            gameOver = false;
+            fixed = false;
+            rotated = false;
+
+            // Reset move planning
+            bestMove = brain.getBestMove(grid);
+            bestRotation = (int) bestMove.back() - 48;
+            bestMove.pop_back();
+
+            // Reset fall timing
+            last_fall_time = std::chrono::steady_clock::now();
+        }
+    }
 
     Scenes::Scene *TetrisSceneWrapper::create_default() {
         return new TetrisScene(Scene::create_default(3, 10 * 1000));
