@@ -26,14 +26,15 @@ namespace Scenes {
         };
         
         // Replace Color array with RGB values
-        const RGB colorList[7] = {
+        const RGB colorList[8] = {
             {255, 255, 0},   // YELLOW
             {255, 165, 0},   // ORANGE
             {148, 0, 211},   // VIOLET
             {255, 0, 0},     // RED
             {0, 255, 0},     // GREEN
             {255, 192, 203}, // PINK
-            {0, 0, 139}      // DARKBLUE
+            {0, 0, 139},      // DARKBLUE
+            {255, 255, 255}      // DARKBLUE
         };
 
         int offsets[7][2] = {{35, -30}, {5, 15}, {20, 0}, {-10, 0}, {15, -15}, {20, 0}, {20, 5}};
@@ -50,6 +51,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
         void initialize(rgb_matrix::RGBMatrix *matrix) override;
+        void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
 
         [[nodiscard]] std::string get_name() const override;
 
