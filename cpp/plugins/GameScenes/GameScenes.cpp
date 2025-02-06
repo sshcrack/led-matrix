@@ -2,7 +2,7 @@
 #include "shared/utils/shared.h"
 #include "spdlog/spdlog.h"
 #include "scenes/PingPongGameScene.h"
-#include "scenes/TetrisGameScene.h"
+#include "scenes/tetris/TetrisScene.h"
 #include "scenes/MazeGeneratorScene.h"
 
 using namespace Scenes;
@@ -22,7 +22,7 @@ vector<ImageProviderWrapper *> GameScenes::get_image_providers() {
 vector<SceneWrapper *> GameScenes::get_scenes() {
     return {
             new PingPongGameSceneWrapper(),
-            new TetrisGameSceneWrapper(),
+            new TetrisSceneWrapper(),
             new MazeGeneratorSceneWrapper()
     };
 }

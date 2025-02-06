@@ -38,7 +38,7 @@ namespace Scenes {
         [[nodiscard]] virtual string get_name() const = 0;
 
         virtual void initialize(rgb_matrix::RGBMatrix *matrix);
-        virtual void cleanup(rgb_matrix::RGBMatrix *matrix);
+        virtual void after_render_stop(rgb_matrix::RGBMatrix *matrix);
 
         [[nodiscard]] bool is_initialized() const;
 

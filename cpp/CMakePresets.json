@@ -4,8 +4,13 @@
         {
             "name": "default",
             "binaryDir": "${sourceDir}/build",
+            "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "$ENV{HOME}/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "VCPKG_TARGET_TRIPLET": "arm64-rpi",
+                "CMAKE_CHAINLOAD_TOOLCHAIN_FILE": "$ENV{HOME}/Documents/cpp/rpi-cross-compile/PI.cmake",
+                "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/share/weather-overview/fonts"
             }
         }
     ]

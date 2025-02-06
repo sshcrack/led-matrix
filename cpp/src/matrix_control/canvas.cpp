@@ -66,6 +66,6 @@ void update_canvas(RGBMatrix *matrix) {
             //SleepMillis(10);
         }
 
-        scene->cleanup(matrix);
+        scene->after_render_stop(matrix);
     }
 }

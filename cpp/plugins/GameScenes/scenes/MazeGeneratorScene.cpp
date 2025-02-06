@@ -1,12 +1,13 @@
 #include "MazeGeneratorScene.h"
 #include <algorithm>
 #include <queue>
+#include <spdlog/spdlog.h>
 
 using namespace Scenes;
 
 MazeGeneratorScene::MazeGeneratorScene(const nlohmann::json &config) : Scene(config, false) {
-    step_delay = config.value("step_delay", 0.00025f);
-    solve_delay = config.value("solve_delay", 0.00025f);
+    step_delay = config.value("step_delay", 0.0001f);
+    solve_delay = config.value("solve_delay", 0.01f);
     final_delay = config.value("final_delay", 2.0f);
     
     wall_r = config.value("wall_r", 255);
@@ -21,17 +22,25 @@ MazeGeneratorScene::MazeGeneratorScene(const nlohmann::json &config) : Scene(con
     solution_g = config.value("solution_g", 255);
     solution_b = config.value("solution_b", 0);
 
-    visited_r = config.value("visited_r", 64);
+    visited_r = config.value("visited_r", 127);
     visited_g = config.value("visited_g", 0);
-    visited_b = config.value("visited_b", 64);
+    visited_b = config.value("visited_b", 127);
+
+    start_r = config.value("start_r", 255);
+    start_g = config.value("start_g", 165);
+    start_b = config.value("start_b", 0);
+    
+    goal_r = config.value("goal_r", 255);
+    goal_g = config.value("goal_g", 0);
+    goal_b = config.value("goal_b", 0);
 }
 
 void MazeGeneratorScene::initialize(rgb_matrix::RGBMatrix *matrix) {
     Scene::initialize(matrix);
     
-    // Make sure we have odd dimensions for the maze
-    maze_width = (matrix->width() - 1) / 2 * 2 + 1;
-    maze_height = (matrix->height() - 1) / 2 * 2 + 1;
+    // Make sure we have odd dimensions for the maze, but half the size
+    maze_width = (matrix->width() / 2 - 1) / 2 * 2 + 1;
+    maze_height = (matrix->height() / 2 - 1) / 2 * 2 + 1;
     
     rng.seed(std::random_device()());
     last_update = std::chrono::steady_clock::now();
@@ -43,8 +52,14 @@ void MazeGeneratorScene::initializeMaze() {
     // Initialize all cells as walls
     maze.resize(maze_height, std::vector<CellState>(maze_width, WALL));
     
-    // Start from top-left corner (1,1)
-    maze[1][1] = PATH;
+    // Mark start position and ensure it has a path
+    maze[1][1] = START;
+    maze[1][2] = PATH;  // Create initial path from start
+    
+    // Mark goal position and ensure it has a path
+    maze[maze_height-2][maze_width-2] = GOAL;
+    maze[maze_height-2][maze_width-3] = PATH;  // Create initial path to goal
+    
     generation_stack.push_back({1, 1});
 }
 
@@ -53,7 +68,13 @@ bool MazeGeneratorScene::generateStep() {
         return false;
         
     auto [x, y] = generation_stack.back();
-    maze[y][x] = PATH;
+    
+    // Don't overwrite START, GOAL, or their adjacent paths
+    if (maze[y][x] != START && maze[y][x] != GOAL &&
+        !((x == 2 && y == 1) ||  // Path next to start
+          (x == maze_width-3 && y == maze_height-2))) {  // Path next to goal
+        maze[y][x] = PATH;
+    }
     
     // Get all neighbors with distance 2 (potential paths)
     std::vector<std::pair<int, int>> neighbors;
@@ -62,7 +83,11 @@ bool MazeGeneratorScene::generateStep() {
         int ny = y + dir.second;
         if (nx > 0 && nx < maze_width-1 && ny > 0 && ny < maze_height-1 
             && maze[ny][nx] == WALL) {
-            neighbors.push_back({nx, ny});
+            // Don't allow blocking the fixed paths near start/goal
+            if (!((nx == 2 && ny == 1) ||  // Path next to start
+                  (nx == maze_width-3 && ny == maze_height-2))) {  // Path next to goal
+                neighbors.push_back({nx, ny});
+            }
         }
     }
     
@@ -83,59 +108,64 @@ bool MazeGeneratorScene::generateStep() {
     return true;
 }
 
-void MazeGeneratorScene::solveMaze() {
-    std::priority_queue<Cell*, std::vector<Cell*>, std::greater<>> open_set;
-    std::vector<std::vector<Cell>> cells(maze_height, std::vector<Cell>(maze_width));
+void MazeGeneratorScene::initializeSolver() {
+    solver_state.cells.resize(maze_height, std::vector<Cell>(maze_width));
     
     // Initialize start cell (1,1)
-    Cell* start = &cells[1][1];
+    Cell* start = &solver_state.cells[1][1];
     start->x = 1;
     start->y = 1;
-    start->f_score = calculateHScore(1, 1, maze_width-2, maze_height-2);
-    open_set.push(start);
+    start->cost = calculateDistance(1, 1, maze_width - 2, maze_height - 2);
+    solver_state.open_set.push(start);
+    solver_state.initialized = true;
+}
+
+bool MazeGeneratorScene::solveStep() {
+    if (solver_state.open_set.empty()) return false;
     
-    while (!open_set.empty()) {
-        Cell* current = open_set.top();
-        open_set.pop();
-        
-        // Check if we reached the goal
-        if (current->x == maze_width-2 && current->y == maze_height-2) {
-            // Reconstruct path
-            while (current) {
+    Cell* current = solver_state.open_set.top();
+    solver_state.open_set.pop();
+    
+    // Check if we reached the goal
+    if (maze[current->y][current->x] == GOAL) {  // Changed goal check to use cell state
+        // Reconstruct path
+        while (current) {
+            if (maze[current->y][current->x] != START && maze[current->y][current->x] != GOAL) {
                 maze[current->y][current->x] = SOLUTION;
-                current = current->parent;
             }
-            solving_complete = true;
-            return;
+            current = current->parent;
         }
-        
-        std::vector<std::pair<int, int>> neighbors;
-        getNeighbors(current->x, current->y, neighbors);
-        
-        for (const auto& [nx, ny] : neighbors) {
-            if (maze[ny][nx] != WALL) {
-                int tentative_g = current->g_score + 1;
-                Cell* neighbor = &cells[ny][nx];
+        return false; // Done solving
+    }
+    
+    std::vector<std::pair<int, int>> neighbors;
+    getNeighbors(current->x, current->y, neighbors);
+    
+    for (const auto& [nx, ny] : neighbors) {
+        if (maze[ny][nx] != WALL) {
+            int steps = current->steps + 1;
+            Cell* neighbor = &solver_state.cells[ny][nx];
+
+            if (steps < neighbor->steps || neighbor->steps == 0) {
+                neighbor->x = nx;
+                neighbor->y = ny;
+
+                neighbor->parent = current;
+                neighbor->steps = steps;
+                neighbor->cost = steps + calculateDistance(nx, ny, maze_width - 2, maze_height - 2);
                 
-                if (tentative_g < neighbor->g_score || neighbor->g_score == 0) {
-                    neighbor->x = nx;
-                    neighbor->y = ny;
-                    neighbor->parent = current;
-                    neighbor->g_score = tentative_g;
-                    neighbor->f_score = tentative_g + calculateHScore(nx, ny, maze_width-2, maze_height-2);
-                    
-                    // Mark as visited unless it's part of the solution or currently highlighted
-                    if (maze[ny][nx] != SOLUTION && maze[ny][nx] != HIGHLIGHT) {
-                        maze[ny][nx] = VISITED;
-                    }
-                    open_set.push(neighbor);
+                if (maze[ny][nx] != START && maze[ny][nx] != GOAL) {
+                    maze[ny][nx] = VISITED;
                 }
+                solver_state.open_set.push(neighbor);
             }
         }
     }
+    
+    return true;
 }
 
-int MazeGeneratorScene::calculateHScore(int x1, int y1, int x2, int y2) {
+int MazeGeneratorScene::calculateDistance(int x1, int y1, int x2, int y2) {
     return std::abs(x1 - x2) + std::abs(y1 - y2);
 }
 
@@ -143,30 +173,48 @@ void MazeGeneratorScene::getNeighbors(int x, int y, std::vector<std::pair<int, i
     for (const auto& dir : std::vector<std::pair<int, int>>{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}) {
         int nx = x + dir.first;
         int ny = y + dir.second;
-        if (nx > 0 && nx < maze_width-1 && ny > 0 && ny < maze_height-1) {
+        if (nx > 0 && nx < maze_width -1 && ny > 0 && ny < maze_height -1) {
             neighbors.push_back({nx, ny});
         }
     }
 }
 
 void MazeGeneratorScene::updateCanvas(rgb_matrix::Canvas* canvas) {
+    // Calculate offset to center the smaller maze
+    int offset_x = (canvas->width() - maze_width) / 2;
+    int offset_y = (canvas->height() - maze_height) / 2;
+    
+    // Clear the entire canvas first
+    for (int y = 0; y < canvas->height(); ++y) {
+        for (int x = 0; x < canvas->width(); ++x) {
+            canvas->SetPixel(x, y, 0, 0, 0);
+        }
+    }
+    
+    // Draw the maze with offset
     for (int y = 0; y < maze_height; ++y) {
         for (int x = 0; x < maze_width; ++x) {
             switch (maze[y][x]) {
                 case WALL:
-                    canvas->SetPixel(x, y, wall_r, wall_g, wall_b);
+                    canvas->SetPixel(x + offset_x, y + offset_y, wall_r, wall_g, wall_b);
                     break;
                 case PATH:
-                    canvas->SetPixel(x, y, 0, 0, 0);  // Empty path
+                    canvas->SetPixel(x + offset_x, y + offset_y, 0, 0, 0);
                     break;
                 case HIGHLIGHT:
-                    canvas->SetPixel(x, y, highlight_r, highlight_g, highlight_b);
+                    canvas->SetPixel(x + offset_x, y + offset_y, highlight_r, highlight_g, highlight_b);
                     break;
                 case SOLUTION:
-                    canvas->SetPixel(x, y, solution_r, solution_g, solution_b);
+                    canvas->SetPixel(x + offset_x, y + offset_y, solution_r, solution_g, solution_b);
                     break;
                 case VISITED:
-                    canvas->SetPixel(x, y, visited_r, visited_g, visited_b);
+                    canvas->SetPixel(x + offset_x, y + offset_y, visited_r, visited_g, visited_b);
+                    break;
+                case START:
+                    canvas->SetPixel(x + offset_x, y + offset_y, start_r, start_g, start_b);
+                    break;
+                case GOAL:
+                    canvas->SetPixel(x + offset_x, y + offset_y, goal_r, goal_g, goal_b);
                     break;
             }
         }
@@ -181,22 +229,29 @@ bool MazeGeneratorScene::render(rgb_matrix::RGBMatrix *matrix) {
     accumulated_time += delta;
 
     if (!generation_complete) {
-        if (accumulated_time >= step_delay) {
-            accumulated_time = 0;
-            // Convert previous highlight back to path
-            for (int y = 0; y < maze_height; ++y) {
-                for (int x = 0; x < maze_width; ++x) {
-                    if (maze[y][x] == HIGHLIGHT) {
-                        maze[y][x] = PATH;
+        // Process multiple generation steps per frame for speed
+        for (int i = 0; i < 5 && !generation_complete; i++) {
+            if (accumulated_time >= step_delay) {
+                accumulated_time = 0;
+                // Convert previous highlight back to path
+                for (int y = 0; y < maze_height; ++y) {
+                    for (int x = 0; x < maze_width; ++x) {
+                        if (maze[y][x] == HIGHLIGHT) {
+                            maze[y][x] = PATH;
+                        }
                     }
                 }
+                generation_complete = !generateStep();
             }
-            generation_complete = !generateStep();
         }
     } else if (!solving_complete) {
+        if (!solver_state.initialized) {
+            initializeSolver();
+        }
+        
         if (accumulated_time >= solve_delay) {
             accumulated_time = 0;
-            solveMaze();
+            solving_complete = !solveStep();
         }
     } else {
         completion_time += delta;
@@ -211,6 +266,23 @@ bool MazeGeneratorScene::render(rgb_matrix::RGBMatrix *matrix) {
 
 string MazeGeneratorScene::get_name() const {
     return "maze";
+}
+
+void MazeGeneratorScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
+    if(!solving_complete)
+        return;
+
+    // Reset the scene for next time
+    generation_complete = false;
+    solving_complete = false;
+    solution_found = false;
+    accumulated_time = 0;
+    completion_time = 0;
+    solver_state = {};
+    generation_stack.clear();
+    maze.clear();
+
+    initializeMaze();
 }
 
 Scenes::Scene *MazeGeneratorSceneWrapper::create_default() {

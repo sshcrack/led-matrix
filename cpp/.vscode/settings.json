@@ -1,6 +1,4 @@
 {
-    "C_Cpp.errorSquiggles": "enabled",
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "files.associations": {
         "*.scss": "scss",
         "vector": "cpp",
@@ -70,5 +68,5 @@
         "charconv": "cpp",
         "csignal": "cpp",
         "cstring": "cpp"
-    }
+    },
 }
