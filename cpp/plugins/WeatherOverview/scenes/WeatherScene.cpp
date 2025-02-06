@@ -107,7 +107,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
     return true;
 }
 
-void Scenes::WeatherScene::cleanup(rgb_matrix::RGBMatrix *matrix) {
+void Scenes::WeatherScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
     should_render = true;
-    Scene::cleanup(matrix);
+    Scene::after_render_stop(matrix);
 }

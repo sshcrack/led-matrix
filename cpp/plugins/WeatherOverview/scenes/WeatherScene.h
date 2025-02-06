@@ -10,7 +10,7 @@ namespace Scenes {
         bool render(RGBMatrix *matrix) override;
 
         [[nodiscard]] string get_name() const override;
-        void cleanup(rgb_matrix::RGBMatrix *matrix) override;
+        void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
         using Scene::Scene;
     };
 

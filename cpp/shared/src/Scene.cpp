@@ -68,4 +68,4 @@ nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {
     };
 }
 
-void Scenes::Scene::cleanup(rgb_matrix::RGBMatrix *matrix) {}
+void Scenes::Scene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {}
