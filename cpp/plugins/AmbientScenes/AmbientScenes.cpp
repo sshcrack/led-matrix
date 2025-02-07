@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 #include "scenes/StarFieldScene.h"
 #include "scenes/MetaBlobScene.h"
+#include "scenes/FireScene.h"
 
 using namespace Scenes;
 
@@ -21,7 +22,8 @@ vector<ImageProviderWrapper *> AmbientScenes::get_image_providers() {
 vector<SceneWrapper *> AmbientScenes::get_scenes() {
     return {
             new StarFieldSceneWrapper(),
-            new MetaBlobSceneWrapper()
+            new MetaBlobSceneWrapper(),
+            new FireSceneWrapper()
     };
 }
 
