@@ -3,7 +3,7 @@
 #include "spdlog/spdlog.h"
 #include "scenes/PingPongGameScene.h"
 #include "scenes/tetris/TetrisScene.h"
-#include "scenes/MazeGeneratorScene.h"
+#include "scenes/MazeGameScene.h"
 
 using namespace Scenes;
 
@@ -23,7 +23,7 @@ vector<SceneWrapper *> GameScenes::get_scenes() {
     return {
             new PingPongGameSceneWrapper(),
             new TetrisSceneWrapper(),
-            new MazeGeneratorSceneWrapper()
+            new MazeGameSceneWrapper()
     };
 }
 
