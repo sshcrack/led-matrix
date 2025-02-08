@@ -169,7 +169,11 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         std::vector<json> scenes;
 
         for (const auto &item: config->get_curr().scenes) {
-            scenes.push_back(item->to_json());
+            json j;
+            j["name"] = item->get_name();
+            j["properties"] = item->to_json();
+
+            scenes.push_back(j);
         }
 
         reply_with_json(req, scenes);
@@ -185,10 +189,17 @@ request_handling_status_t handle_get(const request_handle_t &req) {
             std::vector<json> properties_json;
 
             for (const auto &item1: properties) {
+                if (item1->getName() == "duration" || item1->getName() == "weight")
+                    continue;
+
                 json j1;
                 item1->dump_to_json(j1);
 
-                properties_json.push_back(j1);
+                json j2;
+                j2["name"] = item1->getName();
+                j2["default_value"] = j1[item1->getName()];
+
+                properties_json.push_back(j2);
             }
 
             json j1 = {
