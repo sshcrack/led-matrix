@@ -8,6 +8,7 @@
 #include "shared/utils/utils.h"
 #include "shared/utils/consts.h"
 #include "utils/canvas_consts.h"
+#include "shared/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -163,6 +164,45 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         reply_with_json(req, j);
         return request_accepted();
     }
+
+    if (target == "/get_curr") {
+        std::vector<json> scenes;
+
+        for (const auto &item: config->get_curr().scenes) {
+            scenes.push_back(item->to_json());
+        }
+
+        reply_with_json(req, scenes);
+        return request_accepted();
+    }
+
+    if (target == "/list_scenes") {
+        auto scenes = Plugins::PluginManager::instance()->get_scenes();
+        std::vector<json> j;
+
+        for (const auto &item: scenes) {
+            auto properties = item->get_default()->get_properties();
+            std::vector<json> properties_json;
+
+            for (const auto &item1: properties) {
+                json j1;
+                item1->dump_to_json(j1);
+
+                properties_json.push_back(j1);
+            }
+
+            json j1 = {
+                    {"name",       item->get_name()},
+                    {"properties", properties_json}
+            };
+
+            j.push_back(j1);
+        }
+
+        reply_with_json(req, j);
+        return request_accepted();
+    }
+
 
     return request_rejected();
 }

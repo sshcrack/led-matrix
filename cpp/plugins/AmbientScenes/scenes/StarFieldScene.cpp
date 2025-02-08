@@ -88,7 +88,10 @@ namespace Scenes {
     }
 
     void StarFieldScene::register_properties() {
-        add_property(&num_stars, &speed, &enable_twinkle, &max_depth);
+        add_property(&num_stars);
+        add_property(&speed);
+        add_property(&enable_twinkle);
+        add_property(&max_depth);
     }
 
     Scenes::Scene *StarFieldSceneWrapper::create() {

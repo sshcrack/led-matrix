@@ -11,17 +11,6 @@
 namespace Scenes {
     class PingPongGameScene : public Scene {
     private:
-        /*
-         *     ball_size = config.value("ball_size", 2);
-    paddle_width = config.value("paddle_width", 2);
-    paddle_height = config.value("paddle_height", 8);
-    ball_speed = config.value("ball_speed", 0.3f);     // Increased from 0.1f
-    paddle_speed = config.value("paddle_speed", 0.15f); // Increased from 0.05f
-    target_frame_time = 1.0f / config.value("target_fps", 60.0f);
-    speed_multiplier = config.value("speed_multiplier", 1.0f);
-    max_speed_multiplier = config.value("max_speed_multiplier", 4.0f);
-         */
-
         Property<int> ball_size = Property("ball_size", 2);
         Property<int> paddle_width = Property("paddle_width", 2);
         Property<int> paddle_height = Property("paddle_height", 8);

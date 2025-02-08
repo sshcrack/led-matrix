@@ -25,15 +25,21 @@ namespace Plugins {
 
     class SceneWrapper {
     private:
-        string _cachedName;
+        Scenes::Scene *default_scene;
     public:
         virtual Scenes::Scene *create() = 0;
 
         virtual string get_name() {
-            if (_cachedName.empty())
-                _cachedName = create()->get_name();
+            return get_default()->get_name();
+        }
 
-            return _cachedName;
+        Scenes::Scene *get_default() {
+            if (default_scene == nullptr) {
+                default_scene = create();
+                default_scene->register_properties();
+            }
+
+            return default_scene;
         }
     };
 }

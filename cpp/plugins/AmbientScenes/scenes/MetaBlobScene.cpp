@@ -124,7 +124,11 @@ namespace Scenes {
     }
 
     void MetaBlobScene::register_properties() {
-        add_property(&num_blobs, &threshold, &speed, &move_range, &color_speed);
+        add_property(&num_blobs);
+        add_property(&threshold);
+        add_property(&speed);
+        add_property(&move_range);
+        add_property(&color_speed);
     }
 
     Scenes::Scene *MetaBlobSceneWrapper::create() {

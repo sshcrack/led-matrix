@@ -50,5 +50,10 @@ uint64_t ParticleScene::micros() {
 }
 
 void ParticleScene::register_properties() {
-    add_property(&numParticles, &velocity, &accel, &shake, &bounce, &delay_ms);
+    add_property(&numParticles);
+    add_property(&velocity);
+    add_property(&accel);
+    add_property(&shake);
+    add_property(&bounce);
+    add_property(&delay_ms);
 }
