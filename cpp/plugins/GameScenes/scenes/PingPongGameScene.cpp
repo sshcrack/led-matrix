@@ -135,8 +135,14 @@ PingPongGameScene::PingPongGameScene() : Scene(false) {
 }
 
 void PingPongGameScene::register_properties() {
-    add_property(&ball_size, &paddle_width, &paddle_height, &ball_speed, &paddle_speed, &target_fps, &speed_multiplier,
-                 &max_speed_multiplier);
+    add_property(&ball_size);
+    add_property(&paddle_width);
+    add_property(&paddle_height);
+    add_property(&ball_speed);
+    add_property(&paddle_speed);
+    add_property(&target_fps);
+    add_property(&speed_multiplier);
+    add_property(&max_speed_multiplier);
 }
 
 void PingPongGameScene::load_properties(const json &j) {

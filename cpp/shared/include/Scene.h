@@ -16,23 +16,7 @@ namespace Scenes {
     class Scene {
     private:
         bool create_offscreen = false;
-        std::vector<std::pair<string, PropertyBase*>> properties;
-
-        template<typename T>
-        void add_property_single(Property<T> *property) {
-            std::string name = property->getName();
-            for (const auto &item: properties) {
-                if (item.second == property) {
-                    return;
-                }
-
-                if (item.first == name) {
-                    throw std::runtime_error(fmt::format("Property with name '{}' already exists", name));
-                }
-            }
-
-            properties.emplace_back(name, property);
-        }
+        std::vector<PropertyBase *> properties;
 
     protected:
         bool initialized = false;
@@ -48,6 +32,17 @@ namespace Scenes {
 
     public:
         explicit Scene(bool create_offscreen = true);
+
+        void add_property(PropertyBase *property) {
+            std::string name = property->getName();
+            for (const auto &item: properties) {
+                if (item->getName() == name) {
+                    throw std::runtime_error(fmt::format("Property with name '{}' already exists", name));
+                }
+            }
+
+            properties.emplace_back(property);
+        }
 
         [[nodiscard]] virtual int get_weight() const;
 
@@ -72,17 +67,8 @@ namespace Scenes {
 
         virtual void load_properties(const nlohmann::json &j);
 
-        template<typename T>
-        void add_property(Property<T> *property) {
-            add_property_single(property);
-        }
-
-        template<typename T, typename... Args>
-        void add_property(Property<T> *t, Args... args) // recursive variadic function
-        {
-            add_property_single(t);
-
-            add_property(args...);
+        std::vector<PropertyBase *> get_properties() {
+            return properties;
         }
     };
 }

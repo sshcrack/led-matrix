@@ -46,8 +46,7 @@ bool Scenes::Scene::is_initialized() const {
 nlohmann::json Scenes::Scene::to_json() const {
     nlohmann::json j;
     for (auto item: properties) {
-        item.second->dump_to_json(j);
-
+        item->dump_to_json(j);
     }
 
     return j;
@@ -64,13 +63,14 @@ int Scenes::Scene::get_weight() const {
 Scenes::Scene::Scene(bool p_create_offscreen) {
     create_offscreen = p_create_offscreen;
 
-    add_property(&weight, &duration);
+    add_property(&weight);
+    add_property(&duration);
 }
 
 void Scenes::Scene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {}
 
 void Scenes::Scene::load_properties(const json &j) {
     for (const auto &item: properties) {
-        item.second->load_from_json(j);
+        item->load_from_json(j);
     }
 }
