@@ -5,7 +5,7 @@
 #include <fstream>
 #include "data.h"
 #include "shared/resources.h"
-#include "plugin.h"
+#include "plugin/main.h"
 
 using namespace std;
 using json = nlohmann::json;

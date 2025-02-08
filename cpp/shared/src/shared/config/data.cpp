@@ -124,7 +124,7 @@ namespace ConfigData {
             spdlog::info("No scenes in preset. Adding default...");
             auto pl = Plugins::PluginManager::instance();
             for (const auto &item: pl->get_scenes()) {
-                scenes.emplace_back(item->create_default());
+                scenes.emplace_back(item->create());
             }
         }
 

@@ -1,7 +1,7 @@
 #include "MazeGameScene.h"
 
 namespace Scenes {
-    MazeGameScene::MazeGameScene(const nlohmann::json &config) : Scene(config) {
+    MazeGameScene::MazeGameScene() : Scene() {
         rng = std::mt19937(std::random_device()());
     }
 
@@ -290,11 +290,7 @@ namespace Scenes {
             initialize_maze();
     }
 
-    Scenes::Scene *MazeGameSceneWrapper::create_default() {
-        return new MazeGameScene(Scene::create_default(3, 10 * 1000));
-    }
-
-    Scenes::Scene *MazeGameSceneWrapper::from_json(const json &args) {
-        return new MazeGameScene(args);
+    Scenes::Scene *MazeGameSceneWrapper::create() {
+        return new MazeGameScene();
     }
 }

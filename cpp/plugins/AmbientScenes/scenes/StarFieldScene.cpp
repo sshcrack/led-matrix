@@ -3,8 +3,8 @@
 
 namespace Scenes {
     void StarFieldScene::Star::respawn(float max_depth) {
-        x = (float)(rand() % 2000 - 1000) / 1000.0f;
-        y = (float)(rand() % 2000 - 1000) / 1000.0f;
+        x = (float) (rand() % 2000 - 1000) / 1000.0f;
+        y = (float) (rand() % 2000 - 1000) / 1000.0f;
         z = max_depth;  // Start at maximum depth
     }
 
@@ -12,25 +12,21 @@ namespace Scenes {
         z -= speed;
     }
 
-    StarFieldScene::StarFieldScene(const nlohmann::json &config) :
-            Scene(config),
+    StarFieldScene::StarFieldScene() :
+            Scene(),
             gen(rd()) {
-        num_stars = config.value("num_stars", 50);
-        speed = config.value("speed", 0.02f);
-        enable_twinkle = config.value("enable_twinkle", true);
-        max_depth = config.value("max_depth", 3.0f);
     }
 
     void StarFieldScene::initialize(rgb_matrix::RGBMatrix *matrix) {
         Scene::initialize(matrix);
-        stars.resize(num_stars);
+        stars.resize(num_stars.get());
         dis = std::uniform_real_distribution<>(0.0, 1.0);
-        
+
         // Initialize stars at different depths
-        for (auto& star : stars) {
-            star.x = (float)(rand() % 2000 - 1000) / 1000.0f;
-            star.y = (float)(rand() % 2000 - 1000) / 1000.0f;
-            star.z = (float)(rand() % (int)(max_depth * 1000)) / 1000.0f;
+        for (auto &star: stars) {
+            star.x = (float) (rand() % 2000 - 1000) / 1000.0f;
+            star.y = (float) (rand() % 2000 - 1000) / 1000.0f;
+            star.z = (float) (rand() % (int) (max_depth.get() * 1000)) / 1000.0f;
         }
     }
 
@@ -40,12 +36,12 @@ namespace Scenes {
         int center_x = matrix->width() / 2;
         int center_y = matrix->height() / 2;
 
-        for (auto& star : stars) {
-            star.update(speed);
-            
+        for (auto &star: stars) {
+            star.update(speed.get());
+
             // Respawn star if it passes the viewer
             if (star.z <= 0.0f) {
-                star.respawn(max_depth);
+                star.respawn(max_depth.get());
             }
 
             // Project 3D coordinates to 2D screen space with perspective division
@@ -54,7 +50,7 @@ namespace Scenes {
             int y = static_cast<int>(star.y * perspective * center_y + center_y);
 
             // Calculate brightness based on z-position with non-linear falloff
-            float depth_factor = (max_depth - star.z) / max_depth;
+            float depth_factor = (max_depth.get() - star.z) / max_depth.get();
             uint8_t brightness = static_cast<uint8_t>(255 * std::pow(depth_factor, 0.5f));
 
             // Add twinkle effect
@@ -65,9 +61,9 @@ namespace Scenes {
             // Draw star if it's within bounds
             if (x >= 0 && x < matrix->width() && y >= 0 && y < matrix->height()) {
                 offscreen_canvas->SetPixel(x, y, brightness, brightness, brightness);
-                
+
                 // Add subtle glow for closer stars
-                if (star.z < max_depth * 0.3f) {
+                if (star.z < max_depth.get() * 0.3f) {
                     uint8_t glow = brightness / 4;
                     for (int dx = -1; dx <= 1; dx++) {
                         for (int dy = -1; dy <= 1; dy++) {
@@ -91,11 +87,11 @@ namespace Scenes {
         return "starfield";
     }
 
-    Scenes::Scene *StarFieldSceneWrapper::create_default() {
-        return new StarFieldScene(Scene::create_default(3, 10 * 1000));
+    void StarFieldScene::register_properties() {
+        add_property(&num_stars, &speed, &enable_twinkle, &max_depth);
     }
 
-    Scenes::Scene *StarFieldSceneWrapper::from_json(const nlohmann::json &args) {
-        return new StarFieldScene(args);
+    Scenes::Scene *StarFieldSceneWrapper::create() {
+        return new StarFieldScene();
     }
 }

@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 #include "shared/plugin_loader/loader.h"
+#include "plugin/property.h"
 
 using namespace spdlog;
 
@@ -15,7 +16,11 @@ Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
     auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_scenes()) {
         if (item->get_name() == t) {
-            return item->from_json(arguments);
+            Scene *scene = item->create();
+
+            scene->register_properties();
+            scene->load_properties(arguments);
+            return scene;
         }
     }
 
@@ -39,33 +44,33 @@ bool Scenes::Scene::is_initialized() const {
 }
 
 nlohmann::json Scenes::Scene::to_json() const {
-    return {
-            {"weight",   weight},
-            {"duration", duration}
-    };
+    nlohmann::json j;
+    for (auto item: properties) {
+        item.second->dump_to_json(j);
+
+    }
+
+    return j;
 }
 
 tmillis_t Scenes::Scene::get_duration() const {
-    return duration;
+    return duration.get();
 }
 
 int Scenes::Scene::get_weight() const {
-    return weight;
+    return weight.get();
 }
 
-Scenes::Scene::Scene(const json &json, bool p_create_offscreen) {
-    if (!json.contains("weight") || !json.contains("duration"))
-        throw std::runtime_error("Scene json does not contain weight or duration");
-    weight = json["weight"];
-    duration = json["duration"];
+Scenes::Scene::Scene(bool p_create_offscreen) {
     create_offscreen = p_create_offscreen;
-}
 
-nlohmann::json Scenes::Scene::create_default(int weight, tmillis_t duration) {
-    return {
-            {"weight",   weight},
-            {"duration", duration}
-    };
+    add_property(&weight, &duration);
 }
 
 void Scenes::Scene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {}
+
+void Scenes::Scene::load_properties(const json &j) {
+    for (const auto &item: properties) {
+        item.second->load_from_json(j);
+    }
+}

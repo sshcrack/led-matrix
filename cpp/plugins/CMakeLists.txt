@@ -42,6 +42,11 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     find_package(spdlog CONFIG REQUIRED)
     target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
 
+    # HTTP Server
+    find_package(restinio REQUIRED)
+
+    target_link_libraries(${LIB_NAME} PRIVATE restinio::restinio)
+
     # Require SharedTools
     target_link_libraries(${LIB_NAME} PRIVATE SharedTools)
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugin.h"
+#include "plugin/main.h"
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;

@@ -92,12 +92,8 @@ string WaveScene::get_name() const {
     return "wave";
 }
 
-Scenes::Scene *WaveSceneWrapper::create_default() {
-    return new WaveScene(Scene::create_default(1, 15000));
-}
-
-Scenes::Scene *WaveSceneWrapper::from_json(const json &args) {
-    return new WaveScene(args);
+Scenes::Scene *WaveSceneWrapper::create() {
+    return new WaveScene();
 }
 
 #pragma clang diagnostic pop

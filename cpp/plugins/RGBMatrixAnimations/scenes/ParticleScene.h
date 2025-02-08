@@ -42,13 +42,13 @@ namespace Scenes {
         rgb_matrix::Canvas* matrix;
         ParticleMatrixRenderer* renderer;
         GravityParticles* animation;
-        
-        int16_t accel;
-        uint16_t shake;
-        uint16_t numParticles;
-        uint8_t bounce;
-        int delay_ms;
-        int16_t velocity;  // Added velocity member
+
+        Property<int> numParticles = Property("numParticles", 40);
+        Property<int16_t> velocity = Property<int16_t>("velocity", 6000);
+        Property<int> accel = Property("acceleration", 1);
+        Property<int> shake = Property("shake", 5);
+        Property<int> bounce = Property("bounce", 250);
+        Property<int> delay_ms = Property("delay_ms", 10);
         
         uint64_t prevTime;
         uint64_t lastFpsLog;
@@ -62,10 +62,12 @@ namespace Scenes {
         virtual void initializeParticles() = 0;
 
     public:
-        explicit ParticleScene(const nlohmann::json &config);
+        explicit ParticleScene();
         virtual ~ParticleScene();
 
-        bool render(RGBMatrix *matrix) override;
+        void register_properties() override;
+
+        bool render(RGBMatrix *rgbMatrix) override;
         void initialize(RGBMatrix *p_matrix) override;
     };
 }

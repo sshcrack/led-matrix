@@ -9,11 +9,10 @@
 using namespace std;
 
 namespace Scenes {
-    TetrisScene::TetrisScene(const nlohmann::json &config) :
-            Scene(config) {
+    TetrisScene::TetrisScene() :
+            Scene() {
         bestParams = NeuralNetwork(BEST_PARAMS);
         brain = Brain(bestParams);
-        fall_speed_ms = config.value("fall_speed_ms", 100); // default 300ms for faster falling
         last_fall_time = std::chrono::steady_clock::now();
     }
 
@@ -60,7 +59,7 @@ namespace Scenes {
         auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
                 current_time - last_fall_time).count();
 
-        if (time_since_last_fall >= fall_speed_ms && !grid.isAnimating) {
+        if (time_since_last_fall >= fall_speed_ms.get() && !grid.isAnimating) {
             grid.gravity(1);
             last_fall_time = current_time;
         }
@@ -146,11 +145,7 @@ namespace Scenes {
         }
     }
 
-    Scenes::Scene *TetrisSceneWrapper::create_default() {
-        return new TetrisScene(Scene::create_default(3, 10 * 1000));
-    }
-
-    Scenes::Scene *TetrisSceneWrapper::from_json(const nlohmann::json &args) {
-        return new TetrisScene(args);
+    Scenes::Scene *TetrisSceneWrapper::create() {
+        return new TetrisScene();
     }
 }

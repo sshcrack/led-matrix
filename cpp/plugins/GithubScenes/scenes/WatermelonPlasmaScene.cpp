@@ -40,17 +40,7 @@ string Scenes::WatermelonPlasmaScene::get_name() const {
 }
 
 
-Scene* Scenes::WatermelonPlasmaSceneWrapper::create_default() {
-    const nlohmann::json json = {
-            {"weight",   1},
-            {"duration", 15000}
-    };
-
-    return new WatermelonPlasmaScene(json::parse(json.dump()));
+Scene* Scenes::WatermelonPlasmaSceneWrapper::create() {
+    return new WatermelonPlasmaScene();
 }
-
-Scenes::Scene *Scenes::WatermelonPlasmaSceneWrapper::from_json(const json &json) {
-    return new WatermelonPlasmaScene(json);
-}
-
 

@@ -3,12 +3,12 @@
 
 using namespace Scenes;
 
-SparksScene::SparksScene(const nlohmann::json &config)
-        : ParticleScene(config), ax(0), ay(0) {
+SparksScene::SparksScene()
+        : ParticleScene(), ax(0), ay(0) {
     // Sparks-specific defaults
-    numParticles = config.value("numParticles", 40);
-    shake = config.value("shake", 5);
-    bounce = config.value("bounce", 250);
+    numParticles = Property("numParticles", 40);
+    shake = Property("shake", 5);
+    bounce = Property("bounce", 250);
 }
 
 SparksScene::~SparksScene() {
@@ -22,7 +22,7 @@ void SparksScene::initialize(RGBMatrix *p_matrix) {
 
     // Use ParticleMatrixRenderer directly instead of SparksMatrixRenderer
     renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake, bounce);
+    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
 
     initializeParticles();
 }
@@ -31,7 +31,7 @@ void SparksScene::initializeParticles() {
     RGB_color yellow = {255, 200, 120};
     int16_t maxVel = 10000;
 
-    for (int i = 0; i < numParticles; i++) {
+    for (int i = 0; i < numParticles.get(); i++) {
         int16_t vx = renderer->random_int16(-maxVel, maxVel + 1);
         int16_t vy = renderer->random_int16(-maxVel, maxVel + 1);
 
@@ -51,7 +51,7 @@ void SparksScene::initializeParticles() {
     }
 
     ax = 0;
-    ay = -accel;
+    ay = -accel.get();
     animation->setAcceleration(ax, ay);
 }
 
@@ -64,19 +64,6 @@ string SparksScene::get_name() const {
     return "sparks";
 }
 
-Scene *SparksSceneWrapper::create_default() {
-    const nlohmann::json json = {
-            {"weight",       1},
-            {"duration",     15000},
-            {"numParticles", 40},
-            {"acceleration", 1},
-            {"shake",        5},
-            {"bounce",       250},
-            {"delay_ms",     10}
-    };
-    return new SparksScene(json);
-}
-
-Scene *SparksSceneWrapper::from_json(const nlohmann::json &args) {
-    return new SparksScene(args);
+Scene *SparksSceneWrapper::create() {
+    return new SparksScene();
 }

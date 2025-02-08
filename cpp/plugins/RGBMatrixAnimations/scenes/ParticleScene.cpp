@@ -4,19 +4,11 @@
 
 using namespace Scenes;
 
-ParticleScene::ParticleScene(const nlohmann::json &config)
-    : Scene(config, false),
-      prevTime(0),
-      lastFpsLog(0),
-      frameCount(0)
-{
-    delay_ms = config.value("delay_ms", 10);
-    numParticles = config.value("numParticles", 40);
-    accel = config.value("acceleration", 1);
-    shake = config.value("shake", 5);
-    bounce = config.value("bounce", 250);
-    velocity = config.value("velocity", 6000);  // Added velocity initialization
-}
+ParticleScene::ParticleScene()
+        : Scene(false),
+          prevTime(0),
+          lastFpsLog(0),
+          frameCount(0) {}
 
 ParticleScene::~ParticleScene() {
     delete animation;
@@ -27,26 +19,26 @@ void ParticleScene::initialize(RGBMatrix *p_matrix) {
     initialized = true;
     matrix = p_matrix;
     renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake, bounce);
+    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
     initializeParticles();
 }
 
-bool ParticleScene::render(RGBMatrix *matrix) {
+bool ParticleScene::render(RGBMatrix *rgbMatrix) {
     animation->runCycle();
 
-    uint8_t MAX_FPS = 1000/delay_ms;
+    uint8_t MAX_FPS = 1000 / delay_ms.get();
     uint32_t t;
-    while((t = micros() - prevTime) < (100000L / MAX_FPS));
-    
+    while ((t = micros() - prevTime) < (100000L / MAX_FPS));
+
     frameCount++;
     uint64_t now = micros();
-    
+
     if (now - lastFpsLog >= 1000000) {
-        spdlog::debug("FPS: {:.2f}", (float)frameCount * 1000000.0f / (now - lastFpsLog));
+        spdlog::debug("FPS: {:.2f}", (float) frameCount * 1000000.0f / (now - lastFpsLog));
         frameCount = 0;
         lastFpsLog = now;
     }
-    
+
     prevTime = now;
     return true;
 }
@@ -55,4 +47,8 @@ uint64_t ParticleScene::micros() {
     uint64_t us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::
                                                                         now().time_since_epoch()).count();
     return us;
+}
+
+void ParticleScene::register_properties() {
+    add_property(&numParticles, &velocity, &accel, &shake, &bounce, &delay_ms);
 }

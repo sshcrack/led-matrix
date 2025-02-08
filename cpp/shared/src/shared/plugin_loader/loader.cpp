@@ -6,7 +6,7 @@
 #include "shared/plugin_loader/loader.h"
 #include "lib_name.h"
 #include "lib_glob.h"
-#include "plugin.h"
+#include "plugin/main.h"
 
 using namespace spdlog;
 using Plugins::BasicPlugin;

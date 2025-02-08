@@ -15,12 +15,8 @@ struct Images {
 
 std::optional<Images> images;
 
-Scenes::Scene *Scenes::WeatherSceneWrapper::create_default() {
-    return new WeatherScene(Scene::create_default(3, 20 * 1000));
-}
-
-Scenes::Scene *Scenes::WeatherSceneWrapper::from_json(const json &args) {
-    return new WeatherScene(args);
+Scenes::Scene *Scenes::WeatherSceneWrapper::create() {
+    return new WeatherScene();
 }
 
 string Scenes::WeatherScene::get_name() const {
