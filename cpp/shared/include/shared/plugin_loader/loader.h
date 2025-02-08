@@ -3,7 +3,7 @@
 #include <thread>
 #include <vector>
 #include <typeinfo>
-#include "plugin.h"
+#include "plugin/main.h"
 #include "shared/config/image_providers/general.h"
 
 namespace Plugins {

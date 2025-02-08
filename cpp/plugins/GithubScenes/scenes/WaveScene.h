@@ -15,17 +15,20 @@ namespace Scenes {
 
     public:
         bool render(rgb_matrix::RGBMatrix *matrix) override;
+
         using Scene::Scene::Scene;
 
         void initialize(rgb_matrix::RGBMatrix *matrix) override;
+
         [[nodiscard]] string get_name() const override;
+
+        void register_properties() override {}
     };
 
 
     class WaveSceneWrapper : public Plugins::SceneWrapper {
     public:
 
-        Scenes::Scene * create_default() override;
-        Scenes::Scene * from_json(const nlohmann::json &args) override;
+        Scenes::Scene *create() override;
     };
 }

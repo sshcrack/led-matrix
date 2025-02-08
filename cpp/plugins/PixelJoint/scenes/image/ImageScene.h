@@ -5,7 +5,7 @@
 #include <utility>
 #include <future>
 #include "Scene.h"
-#include "plugin.h"
+#include "plugin/main.h"
 #include "shared/utils/utils.h"
 #include "shared/config/data.h"
 
@@ -61,11 +61,11 @@ private:
 public:
     bool render(rgb_matrix::RGBMatrix *matrix) override;
     [[nodiscard]] string get_name() const override;
+    void register_properties() override {}
 
     using Scenes::Scene::Scene;
 };
 
 class ImageSceneWrapper : public Plugins::SceneWrapper {
-    Scenes::Scene * create_default() override;
-    Scenes::Scene * from_json(const nlohmann::json &args) override;
+    Scenes::Scene * create() override;
 };

@@ -62,6 +62,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 
+# HTTP Server
+find_package(restinio REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
+
 
 # HTTP Parsing
 

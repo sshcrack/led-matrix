@@ -27,15 +27,13 @@ namespace Plugins {
     private:
         string _cachedName;
     public:
+        virtual Scenes::Scene *create() = 0;
+
         virtual string get_name() {
             if (_cachedName.empty())
-                _cachedName = create_default()->get_name();
+                _cachedName = create()->get_name();
 
             return _cachedName;
         }
-
-        virtual Scenes::Scene *create_default() = 0;
-
-        virtual Scenes::Scene *from_json(const nlohmann::json &args) = 0;
     };
 }

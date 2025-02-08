@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Scene.h"
-#include "plugin.h"
+#include "plugin/main.h"
 #include <vector>
 #include <random>
 
@@ -24,13 +24,14 @@ namespace Scenes {
         std::mt19937 gen;
         std::uniform_real_distribution<> dis;
 
-        int num_stars;
-        float speed;
-        bool enable_twinkle;
-        float max_depth;
+        Property<int> num_stars = Property<int>("num_stars", 50);
+        Property<float> speed = Property<float>("speed", 0.02f);
+        Property<bool> enable_twinkle = Property<bool>("enable_twinkle", true);
+        Property<float> max_depth = Property<float>("max_depth", 3.0f);
 
     public:
-        explicit StarFieldScene(const nlohmann::json &config);
+        explicit StarFieldScene();
+        void register_properties() override;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 
@@ -42,8 +43,6 @@ namespace Scenes {
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create_default() override;
-
-        Scenes::Scene *from_json(const nlohmann::json &args) override;
+        Scenes::Scene *create();
     };
 }

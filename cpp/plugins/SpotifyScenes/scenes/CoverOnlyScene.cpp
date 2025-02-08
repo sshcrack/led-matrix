@@ -195,10 +195,6 @@ string CoverOnlyScene::get_name() const {
     return "spotify";
 }
 
-Scenes::Scene *CoverOnlySceneWrapper::create_default() {
-    return new CoverOnlyScene(Scene::create_default(3, 10 * 1000));
-}
-
-Scenes::Scene *CoverOnlySceneWrapper::from_json(const json &args) {
-    return new CoverOnlyScene(args);
+Scenes::Scene *CoverOnlySceneWrapper::create() {
+    return new CoverOnlyScene();
 }

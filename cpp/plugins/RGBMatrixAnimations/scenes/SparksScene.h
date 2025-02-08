@@ -13,7 +13,7 @@ namespace Scenes {
         void initializeParticles() override;
 
     public:
-        explicit SparksScene(const nlohmann::json &config);
+        explicit SparksScene();
         ~SparksScene() override;
         [[nodiscard]] string get_name() const override;
         void initialize(RGBMatrix *p_matrix) override;
@@ -22,7 +22,6 @@ namespace Scenes {
     };
 
     class SparksSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create_default() override;
-        Scenes::Scene *from_json(const nlohmann::json &args) override;
+        Scenes::Scene *create() override;
     };
 }

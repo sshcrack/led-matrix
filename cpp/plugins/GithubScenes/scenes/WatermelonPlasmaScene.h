@@ -11,7 +11,10 @@ namespace Scenes {
         FrameTimer frameTimer;
     public:
         bool render(rgb_matrix::RGBMatrix *matrix) override;
+
         string get_name() const override;
+
+        void register_properties() override {}
 
         using Scenes::Scene::Scene;
     };
@@ -19,8 +22,6 @@ namespace Scenes {
     class WatermelonPlasmaSceneWrapper : public Plugins::SceneWrapper {
     public:
 
-        Scenes::Scene *create_default() override;
-
-        Scenes::Scene *from_json(const nlohmann::json &json) override;
+        Scenes::Scene *create() override;
     };
 }

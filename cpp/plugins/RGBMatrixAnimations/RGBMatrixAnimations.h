@@ -4,7 +4,7 @@
 /// https://github.com/Footleg/RGBMatrixAnimations/tree/main
 /// I just converted it so fit the plugin format
 
-#include "plugin.h"
+#include "plugin/main.h"
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;

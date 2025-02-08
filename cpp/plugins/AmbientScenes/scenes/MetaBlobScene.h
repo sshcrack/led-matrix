@@ -1,26 +1,26 @@
 #pragma once
 
 #include "Scene.h"
-#include "plugin.h"
+#include "plugin/main.h"
 #include <vector>
 #include <random>
 
 namespace Scenes {
     class MetaBlobScene : public Scene {
     private:
+        Property<int> num_blobs = Property("num_blobs", 10);
+        Property<float> threshold = Property("threshold", 0.0003f);
+        Property<float> speed = Property("speed", 0.25f);
+        Property<float> move_range = Property("move_range", 0.5f);
+        Property<float> color_speed = Property("color_speed", 0.033f);
+
+        float time;
         struct Blob {
             float x, y;
             float radius;
 
             Blob(float x, float y, float radius) : x(x), y(y), radius(radius) {}
         };
-
-        float time;
-        int num_blobs;
-        float threshold;
-        float speed;
-        float move_range;
-        float color_speed;  // Add color cycling speed parameter
 
         std::vector<Blob> blobs;
 
@@ -32,20 +32,19 @@ namespace Scenes {
         float calculate_field(float x, float y, const Blob &blob) const;
 
     public:
-        explicit MetaBlobScene(const nlohmann::json &config);
+        explicit MetaBlobScene();
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 
         void initialize(rgb_matrix::RGBMatrix *matrix) override;
 
         [[nodiscard]] std::string get_name() const override;
+        void register_properties() override;
 
         using Scene::Scene;
     };
 
     class MetaBlobSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create_default() override;
-
-        Scenes::Scene *from_json(const nlohmann::json &args) override;
+        Scenes::Scene *create();
     };
 }

@@ -4,20 +4,19 @@
 
 using namespace Scenes;
 
-RainScene::RainScene(const nlohmann::json &config)
-    : ParticleScene(config),
-      cols(nullptr),
-      vels(nullptr),
-      lengths(nullptr),
-      counter(0),
-      currentColorId(1),
-      totalColors(0)
-{
-    // Rain-specific defaults
-    numParticles = config.value("numParticles", 4000);
-    velocity = config.value("velocity", 6000);
-    shake = config.value("shake", 0);
-    bounce = config.value("bounce", 0);
+RainScene::RainScene()
+        : ParticleScene(),
+          cols(nullptr),
+          vels(nullptr),
+          lengths(nullptr),
+          counter(0),
+          currentColorId(1),
+          totalColors(0) {
+
+    numParticles = Property("numParticles", 4000);
+    velocity = Property<int16_t>("velocity", 6000);
+    shake = Property("shake", 0);
+    bounce = Property("bounce", 0);
 }
 
 RainScene::~RainScene() {
@@ -29,11 +28,11 @@ RainScene::~RainScene() {
 void RainScene::initialize(RGBMatrix *p_matrix) {
     matrix = p_matrix;
     totalCols = p_matrix->width() / 1.4;
-    
+
     // Use ParticleMatrixRenderer directly instead of RainMatrixRenderer
     renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake, bounce);
-    animation->setAcceleration(0, -accel);
+    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
+    animation->setAcceleration(0, -accel.get());
 
     initializeParticles();
 }
@@ -48,9 +47,10 @@ void RainScene::initializeColumns() {
     vels = new uint16_t[totalCols];
     lengths = new uint8_t[totalCols];
 
+    float v = velocity.get();
     for (uint16_t x = 0; x < totalCols; ++x) {
         cols[x] = matrix->width();
-        vels[x] = random_int16(velocity/4, velocity);
+        vels[x] = random_int16(v / 4, v);
         lengths[x] = 0;
     }
 }
@@ -62,58 +62,58 @@ void RainScene::createColorPalette() {
     uint16_t colID = 0;
 
     // Create color gradient: green -> yellow -> red -> magenta -> blue -> cyan -> green
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Green to yellow
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
             red = uint16_t(brightness * i / 255);
             green = brightness;
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Yellow to red
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
             red = brightness;
-            green = uint16_t(brightness * (255-i) / 255);
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            green = uint16_t(brightness * (255 - i) / 255);
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Red to magenta
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
             red = brightness;
             blue = uint16_t(brightness * i / 255);
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Magenta to blue
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
-            red = uint16_t(brightness * (255-i) / 255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
+            red = uint16_t(brightness * (255 - i) / 255);
             blue = brightness;
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Blue to cyan
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
             green = uint16_t(brightness * i / 255);
             blue = brightness;
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
-    for (uint16_t i = 0; i <= 255; i++){
+    for (uint16_t i = 0; i <= 255; i++) {
         //Cyan to green
-        for (uint8_t j = 0; j < shadeSize; j++){
-            brightness = random_int16(50,255);
+        for (uint8_t j = 0; j < shadeSize; j++) {
+            brightness = random_int16(50, 255);
             green = brightness;
-            blue = uint16_t(brightness * (255-i) / 255);
-            colID = renderer->getColourId(RGB_color(red,green,blue));
+            blue = uint16_t(brightness * (255 - i) / 255);
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
 
@@ -124,14 +124,15 @@ void RainScene::createColorPalette() {
 bool RainScene::render(RGBMatrix *matrix) {
     addNewParticles();
     removeOldParticles();
-    
+
     // Call parent class render which handles animation and FPS
     return ParticleScene::render(matrix);
 }
 
 void RainScene::addNewParticles() {
     const uint16_t stepSize = 1;
-    if (animation->getParticleCount() >= numParticles) return;
+    if (animation->getParticleCount() >= numParticles.get()) return;
+    float v = velocity.get();
 
     counter++;
     if (counter >= stepSize) counter = 0;
@@ -149,28 +150,28 @@ void RainScene::addNewParticles() {
             }
             cols[i] = newPos;
             lengths[i] = random_int16(8, 24);
-            vels[i] = random_int16(velocity/4, velocity);
+            vels[i] = random_int16(v / 4, v);
         }
 
-        if (renderer->getPixelValue((renderer->getGridHeight()-1) * renderer->getGridWidth() + cols[i]) == false) {
+        if (renderer->getPixelValue((renderer->getGridHeight() - 1) * renderer->getGridWidth() + cols[i]) == false) {
             if (counter == 0) {
                 currentColorId++;
                 if (currentColorId >= totalColors) currentColorId = 1;
             }
             RGB_color color = renderer->getColor(currentColorId);
-            animation->addParticle(cols[i], renderer->getGridHeight()-1, color, 0, -vels[i]);
+            animation->addParticle(cols[i], renderer->getGridHeight() - 1, color, 0, -vels[i]);
             lengths[i]--;
         }
     }
 }
 
 void RainScene::removeOldParticles() {
-    uint16_t removeNum = std::min((uint16_t) (numParticles - 1), (uint16_t)matrix->width());
+    uint16_t removeNum = std::min((uint16_t) (numParticles.get() - 1), (uint16_t) matrix->width());
     if (animation->getParticleCount() > removeNum) {
         for (uint16_t i = 0; i < removeNum; i++) {
-            auto particle = animation->getParticle(removeNum-1-i);
+            auto particle = animation->getParticle(removeNum - 1 - i);
             if (particle.y == 0) {
-                animation->deleteParticle(removeNum-1-i);
+                animation->deleteParticle(removeNum - 1 - i);
             }
         }
     }
@@ -181,21 +182,6 @@ string RainScene::get_name() const {
 }
 
 
-
-Scene *RainSceneWrapper::create_default() {
-    const nlohmann::json json = {
-        {"weight", 1},
-        {"duration", 15000},
-        {"numParticles", 4000},
-        {"velocity", 6000},
-        {"acceleration", 1},
-        {"shake", 0},
-        {"bounce", 0},
-        {"delay_ms", 10}
-    };
-    return new RainScene(json);
-}
-
-Scene *RainSceneWrapper::from_json(const nlohmann::json &args) {
-    return new RainScene(args);
+Scene *RainSceneWrapper::create() {
+    return new RainScene();
 }

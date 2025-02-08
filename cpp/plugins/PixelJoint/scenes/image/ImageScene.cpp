@@ -188,10 +188,6 @@ string ImageScene::get_name() const {
     return "image_scene";
 }
 
-Scenes::Scene *ImageSceneWrapper::from_json(const json &args) {
-    return new ImageScene(args);
-}
-
-Scenes::Scene *ImageSceneWrapper::create_default() {
-    return new ImageScene(Scenes::Scene::create_default(150, 50 * 1000));
+Scenes::Scene *ImageSceneWrapper::create() {
+    return new ImageScene();
 }
