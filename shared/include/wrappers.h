@@ -5,6 +5,7 @@
 #include "Scene.h"
 #include "shared/config/image_providers/general.h"
 #include "shared/utils/utils.h"
+#include <iostream>
 
 namespace Plugins {
     class ImageProviderWrapper {
@@ -13,7 +14,8 @@ namespace Plugins {
     public:
         virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create_default() = 0;
 
-        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> from_json(const nlohmann::json &json) = 0;
+        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+        from_json(const nlohmann::json &json) = 0;
 
         virtual string get_name() {
             if (_cachedName.empty())
@@ -24,17 +26,19 @@ namespace Plugins {
     };
 
     class SceneWrapper {
-    private:
-        std::shared_ptr<Scenes::Scene> default_scene;
+    protected:
+        Scenes::Scene *default_scene;
+        std::vector<Scenes::Scene *> _scenes;
     public:
-        virtual std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() = 0;
-        virtual ~SceneWrapper() {}
+        virtual Scenes::Scene *create() = 0;
+
+        virtual ~SceneWrapper() = 0;
 
         virtual string get_name() {
             return get_default()->get_name();
         }
 
-        std::shared_ptr<Scenes::Scene> get_default() {
+        Scenes::Scene *get_default() {
             if (default_scene == nullptr) {
                 default_scene = create();
                 default_scene->register_properties();

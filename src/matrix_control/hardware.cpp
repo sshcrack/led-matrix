@@ -23,7 +23,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
     while (!interrupt_received) {
-        offscreen_canvas = update_canvas(matrix, offscreen_canvas);
+        update_canvas(matrix, offscreen_canvas);
         exit_canvas_update = false;
 
         while (turned_off) {

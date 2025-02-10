@@ -12,7 +12,7 @@ using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::StreamReader;
 
-FrameCanvas *update_canvas(RGBMatrix *matrix, FrameCanvas *pCanvas);
+void update_canvas(RGBMatrix *matrix, FrameCanvas *&offscreen_canvas);
 
 
 static const tmillis_t distant_future = (1LL<<40); // that is a while.

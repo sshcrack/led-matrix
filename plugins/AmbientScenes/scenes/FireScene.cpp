@@ -118,10 +118,9 @@ void FireScene::load_properties(const json &j) {
     update_delay = 1.0f / frames_per_second.get();
 }
 
-void deleteFireScene(Scenes::Scene *scene) {
-    delete scene;
-}
+Scenes::Scene * FireSceneWrapper::create() {
+    auto ptr = new FireScene();
+    _scenes.push_back(ptr);
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FireSceneWrapper::create() {
-    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new FireScene(), deleteFireScene);
+    return ptr;
 }

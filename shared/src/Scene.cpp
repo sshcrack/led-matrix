@@ -6,7 +6,7 @@
 
 using namespace spdlog;
 
-std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> Scenes::Scene::from_json(const nlohmann::json &j) {
+Scenes::Scene * Scenes::Scene::from_json(const nlohmann::json &j) {
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
 
