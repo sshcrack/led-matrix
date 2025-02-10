@@ -1,6 +1,6 @@
-[submodule "cpp/rpi-rgb-led-matrix"]
-	path = cpp/rpi-rgb-led-matrix
+[submodule "rpi-rgb-led-matrix"]
+	path = rpi-rgb-led-matrix
 	url = https://github.com/sshcrack/rpi-rgb-led-matrix.git
-[submodule "cpp/shared/PicoSHA2"]
-	path = cpp/shared/PicoSHA2
+[submodule "shared/PicoSHA2"]
+	path = shared/PicoSHA2
 	url = https://github.com/okdshin/PicoSHA2

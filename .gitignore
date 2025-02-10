@@ -1,12 +1,8 @@
-demo
-minimal-example
-text-example
-c-example
-clock
-scrolling-text-example
-ledcat
-
-
-# Added by cargo
-
-/target
+build
+CMakeFiles
+cmake-build-*
+.idea/deployment.xml
+.idea/other.xml
+config.json
+vcpkg_installed
+run.sh
