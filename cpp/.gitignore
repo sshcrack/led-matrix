@@ -1,8 +1,0 @@
-build
-CMakeFiles
-cmake-build-*
-.idea/deployment.xml
-.idea/other.xml
-config.json
-vcpkg_installed
-run.sh
