@@ -1,7 +1,8 @@
 #include "StarFieldScene.h"
+#include "GeneralSceneDeleter.h"
 #include <cmath>
 
-namespace Scenes {
+namespace AmbientScenes {
     void StarFieldScene::Star::respawn(float max_depth) {
         x = (float) (rand() % 2000 - 1000) / 1000.0f;
         y = (float) (rand() % 2000 - 1000) / 1000.0f;
@@ -18,7 +19,7 @@ namespace Scenes {
     }
 
     void StarFieldScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, nullptr);
+        Scene::initialize(matrix, l_offscreen_canvas);
         stars.resize(num_stars.get());
         dis = std::uniform_real_distribution<>(0.0, 1.0);
 
@@ -94,7 +95,7 @@ namespace Scenes {
         add_property(&max_depth);
     }
 
-    Scenes::Scene *StarFieldSceneWrapper::create() {
-        return new StarFieldScene();
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> StarFieldSceneWrapper::create() {
+        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new StarFieldScene(), deleteScene);
     }
 }

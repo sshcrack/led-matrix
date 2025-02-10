@@ -17,7 +17,7 @@ namespace Scenes {
     }
 
     void TetrisScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, nullptr);
+        Scene::initialize(matrix, l_offscreen_canvas);
 
         // Calculate scaling and offsets
         block_size = std::min(matrix->width() / 10, matrix->height() / 20);
@@ -145,7 +145,7 @@ namespace Scenes {
         }
     }
 
-    Scenes::Scene *TetrisSceneWrapper::create() {
-        return new TetrisScene();
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> TetrisSceneWrapper::create() {
+        return std::make_unique<TetrisScene>();
     }
 }

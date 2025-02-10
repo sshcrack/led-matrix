@@ -10,9 +10,9 @@
 
 using namespace spdlog;
 using Plugins::BasicPlugin;
+using Plugins::ImageProviderWrapper;
 using Plugins::PluginManager;
 using Plugins::SceneWrapper;
-using Plugins::ImageProviderWrapper;
 
 PluginManager::PluginManager() = default;
 
@@ -28,9 +28,8 @@ void PluginManager::terminate() {
     }
 }
 
-
-std::vector<BasicPlugin *> PluginManager::get_plugins() {
-    std::vector<BasicPlugin *> plugins;
+std::vector<Plugins::BasicPlugin*> PluginManager::get_plugins() {
+    std::vector<Plugins::BasicPlugin*> plugins;
     for (const auto &item: loaded_plugins) {
         plugins.emplace_back(get < 2 > (item));
     }
@@ -38,24 +37,27 @@ std::vector<BasicPlugin *> PluginManager::get_plugins() {
     return plugins;
 }
 
-
-std::vector<SceneWrapper *> PluginManager::get_scenes() {
-    std::vector<SceneWrapper *> scenes;
+std::vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> PluginManager::get_scenes() {
+    std::vector<std::unique_ptr<SceneWrapper, void(*)(SceneWrapper*)>> scenes;
 
     for (const auto &item: get_plugins()) {
         auto pl_scenes = item->get_scenes();
-        scenes.insert(scenes.end(), pl_scenes.begin(), pl_scenes.end());
+        scenes.insert(scenes.end(),
+                      std::make_move_iterator(pl_scenes.begin()),
+                      std::make_move_iterator(pl_scenes.end()));
     }
 
     return scenes;
 }
 
-
-std::vector<ImageProviderWrapper *> PluginManager::get_image_providers() {
-    std::vector<ImageProviderWrapper *> types;
+std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> PluginManager::get_image_providers() {
+    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> types;
     for (const auto &item: get_plugins()) {
         auto pl_providers = item->get_image_providers();
-        types.insert(types.end(), pl_providers.begin(), pl_providers.end());
+        types.insert(types.end(),
+                     std::make_move_iterator(pl_providers.begin()),
+                     std::make_move_iterator(pl_providers.end())
+        );
     }
 
     return types;
@@ -69,10 +71,9 @@ void PluginManager::initialize() {
     if (!exec_dir)
         throw std::runtime_error("Could not get executable directory");
 
-    const char* plugin_dir = getenv("PLUGIN_DIR");
+    const char *plugin_dir = getenv("PLUGIN_DIR");
 
     const std::string libGlob(plugin_dir == nullptr ? "plugins/*.so" : std::string(plugin_dir) + "/*.so");
-
 
     std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + "/" + libGlob);
 
@@ -80,7 +81,6 @@ void PluginManager::initialize() {
     for (const std::string &p_name: filenames) {
         libNames.insert(p_name);
     }
-
 
     // Loading libs to memory
 

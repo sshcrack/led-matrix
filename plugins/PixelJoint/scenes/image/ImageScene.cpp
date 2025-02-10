@@ -28,9 +28,9 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
     uint32_t delay_us = 0;
     //TODO I think this isn't safe like at all
     auto reader = &(curr_animation->reader);
-    if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
+    if (!reader->GetNext(offscreen_canvas, &delay_us)) {
         reader->Rewind();
-        if (!reader->GetNext(reinterpret_cast<FrameCanvas *>(offscreen_canvas), &delay_us)) {
+        if (!reader->GetNext(offscreen_canvas, &delay_us)) {
             return false;
         }
     }
@@ -139,7 +139,7 @@ ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { //
 }
 
 expected<optional<ImageInfo>, string>
-ImageScene::get_next_image(ImageProviders::General *category, int width, int height) {
+ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height) {
     auto post = category->get_next_image();
     if (!post.has_value()) {
         return unexpected("End of images for category");
@@ -188,6 +188,6 @@ string ImageScene::get_name() const {
     return "image_scene";
 }
 
-Scenes::Scene *ImageSceneWrapper::create() {
-    return new ImageScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ImageSceneWrapper::create() {
+    return std::make_unique<ImageScene>();
 }

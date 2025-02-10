@@ -38,6 +38,6 @@ namespace Scenes {
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create() override;
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
     };
 }

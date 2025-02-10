@@ -6,7 +6,7 @@ namespace Scenes {
     }
 
     void MazeGameScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, nullptr);
+        Scene::initialize(matrix, l_offscreen_canvas);
         // Calculate maze size to maintain odd dimensions
         int minSize = std::min(matrix->width(), matrix->height()) / 2;
         if (minSize % 2 == 0) {
@@ -290,7 +290,7 @@ namespace Scenes {
             initialize_maze();
     }
 
-    Scenes::Scene *MazeGameSceneWrapper::create() {
-        return new MazeGameScene();
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MazeGameSceneWrapper::create() {
+        return std::make_unique<MazeGameScene>();
     }
 }

@@ -106,7 +106,7 @@ bool PingPongGameScene::render(rgb_matrix::RGBMatrix *matrix) {
 }
 
 void PingPongGameScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, nullptr);
+    Scene::initialize(matrix, l_offscreen_canvas);
     last_update = std::chrono::steady_clock::now();
     accumulated_time = 0.0f;
 
@@ -152,6 +152,6 @@ void PingPongGameScene::load_properties(const json &j) {
     curr_speed_multiplier = speed_multiplier.get();
 }
 
-Scenes::Scene *PingPongGameSceneWrapper::create() {
-    return new PingPongGameScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> PingPongGameSceneWrapper::create() {
+    return std::make_unique<PingPongGameScene>();
 }

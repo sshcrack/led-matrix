@@ -5,8 +5,8 @@
 #include <vector>
 #include <random>
 
-namespace Scenes {
-    class FireScene : public Scene {
+namespace AmbientScenes {
+class FireScene : public Scenes::Scene {
     private:
         int width = 0;
         int height = 0;
@@ -42,6 +42,6 @@ namespace Scenes {
     };
 
     class FireSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create();
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
     };
 }

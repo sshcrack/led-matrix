@@ -16,12 +16,11 @@ namespace Scenes {
         explicit SparksScene();
         ~SparksScene() override;
         [[nodiscard]] string get_name() const override;
-        void initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 
         void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
     };
 
     class SparksSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create() override;
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
     };
 }

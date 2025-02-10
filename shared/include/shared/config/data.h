@@ -10,8 +10,8 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     struct Preset {
-        vector<Scenes::Scene*> scenes;
-        vector<ImageProviders::General*> providers;
+        vector<std::shared_ptr<Scenes::Scene>> scenes;
+        vector<std::shared_ptr<ImageProviders::General>> providers;
 
     public:
         void randomize();

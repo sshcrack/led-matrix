@@ -23,7 +23,7 @@ FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
     while (!exit_canvas_update) {
         int total_weight = 0;
 
-        vector<std::pair<int, Scenes::Scene *>> weighted_scenes;
+        vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> weighted_scenes;
         for (const auto &item: scenes) {
             auto weight = item->get_weight();
 
@@ -34,7 +34,7 @@ FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
         auto selected = get_random_number_inclusive(0, total_weight);
         int curr_weight = 0;
 
-        Scenes::Scene *scene = nullptr;
+        std::shared_ptr<Scenes::Scene> scene;
         for (const auto &item: weighted_scenes) {
             curr_weight += item.first;
 

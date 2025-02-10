@@ -15,8 +15,7 @@ using std::string;
 namespace Scenes {
     class Scene {
     private:
-        bool create_offscreen = false;
-        std::vector<PropertyBase *> properties;
+        std::vector<std::shared_ptr<PropertyBase>> properties;
 
     protected:
         bool initialized = false;
@@ -31,6 +30,7 @@ namespace Scenes {
     public:
         rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;
         explicit Scene();
+        virtual ~Scene() {};
 
         void add_property(PropertyBase *property) {
             std::string name = property->getName();
@@ -60,13 +60,13 @@ namespace Scenes {
         /// Returns true if the scene should continue rendering, false if not
         virtual bool render(rgb_matrix::RGBMatrix *matrix) = 0;
 
-        static Scene *from_json(const nlohmann::json &j);
+        static std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> from_json(const nlohmann::json &j);
 
         virtual void register_properties() = 0;
 
         virtual void load_properties(const nlohmann::json &j);
 
-        std::vector<PropertyBase *> get_properties() {
+        std::vector<std::shared_ptr<PropertyBase>> get_properties() {
             return properties;
         }
     };

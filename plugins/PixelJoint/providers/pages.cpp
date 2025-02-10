@@ -76,11 +76,13 @@ string ImageProviders::Pages::get_name() const {
 }
 
 
-ImageProviders::General *ImageProviders::PagesWrapper::create_default() {
-    return new ImageProviders::Pages({{"begin", 1},
-                                      {"end",   -1}});
+std::unique_ptr<ImageProviders::General> ImageProviders::PagesWrapper::create_default() {
+    json j = {{"begin", 1},
+              {"end",   -1}};
+
+    return std::make_unique<ImageProviders::Pages>(j);
 }
 
-ImageProviders::General *ImageProviders::PagesWrapper::from_json(const json &json) {
-    return new ImageProviders::Pages(json);
+std::unique_ptr<ImageProviders::General> ImageProviders::PagesWrapper::from_json(const json &json) {
+    return std::make_unique<ImageProviders::Pages>(json);
 }

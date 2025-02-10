@@ -101,14 +101,14 @@ namespace ConfigData {
         vector<json> image_json = j.at("images");
 
 
-        vector<ImageProviders::General *> images;
+        vector<std::shared_ptr<ImageProviders::General>> images;
         images.reserve(image_json.size());
 
         for (const auto &item: image_json)
             images.push_back(ImageProviders::General::from_json(item));
 
 
-        vector<Scenes::Scene *> scenes;
+        vector<std::shared_ptr<Scenes::Scene>> scenes;
         if (j.contains("scenes")) {
             vector<json> scenes_json = j.at("scenes");
 
@@ -125,16 +125,16 @@ namespace ConfigData {
             }
         }
 
-        p.scenes = scenes;
-        p.providers = images;
+        p.scenes = std::move(scenes);
+        p.providers = std::move(images);
     }
 
-    void from_json(const json &j, ImageProviders::General *&p) {
-        p = ImageProviders::General::from_json(j);
+    void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General*)>&p) {
+        p = std::move(ImageProviders::General::from_json(j));
     }
 
-    void from_json(const json &j, Scenes::Scene *&p) {
-        p = Scenes::Scene::from_json(j);
+    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)>&p) {
+        p = std::move(Scenes::Scene::from_json(j));
     }
 
     void Preset::randomize() {
