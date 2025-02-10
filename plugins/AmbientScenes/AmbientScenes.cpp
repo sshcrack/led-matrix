@@ -22,7 +22,7 @@ vector<std::unique_ptr<ImageProviderWrapper>> AmbientPlugin::get_image_providers
 
 extern "C" void deleteSceneWrapper(Plugins::SceneWrapper* wrapper) {
     std::cout << "Deleting wrapper" << std::endl << std::flush;
-    //delete wrapper;
+    delete wrapper;
 }
 
 vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AmbientPlugin::get_scenes() {
