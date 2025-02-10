@@ -6,7 +6,7 @@
 #include <random>
 
 namespace AmbientScenes {
-class StarFieldScene : public Scenes::Scene {
+    class StarFieldScene : public Scenes::Scene {
     private:
         struct Star {
             float x, y, z;
@@ -31,6 +31,7 @@ class StarFieldScene : public Scenes::Scene {
 
     public:
         explicit StarFieldScene();
+
         void register_properties() override;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
@@ -43,6 +44,15 @@ class StarFieldScene : public Scenes::Scene {
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        Scenes::Scene *create() override;
+
+        ~StarFieldSceneWrapper() override {
+            if (default_scene != nullptr)
+                delete default_scene;
+
+            std::cout << "Deleting star scene" << std::endl << std::flush;
+            for (auto scene: _scenes)
+                delete scene;
+        };
     };
 }

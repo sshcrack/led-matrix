@@ -108,7 +108,7 @@ namespace ConfigData {
             images.push_back(ImageProviders::General::from_json(item));
 
 
-        vector<std::shared_ptr<Scenes::Scene>> scenes;
+        vector<Scenes::Scene*> scenes;
         if (j.contains("scenes")) {
             vector<json> scenes_json = j.at("scenes");
 
@@ -133,7 +133,7 @@ namespace ConfigData {
         p = std::move(ImageProviders::General::from_json(j));
     }
 
-    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)>&p) {
+    void from_json(const json &j, Scenes::Scene *&p) {
         p = std::move(Scenes::Scene::from_json(j));
     }
 

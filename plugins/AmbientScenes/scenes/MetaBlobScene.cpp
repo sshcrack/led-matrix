@@ -132,7 +132,10 @@ namespace AmbientScenes {
         add_property(&color_speed);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MetaBlobSceneWrapper::create() {
-        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MetaBlobScene(), deleteScene);
+    Scenes::Scene * MetaBlobSceneWrapper::create() {
+        auto ptr = new MetaBlobScene();
+        _scenes.push_back(ptr);
+
+        return ptr;
     }
 }

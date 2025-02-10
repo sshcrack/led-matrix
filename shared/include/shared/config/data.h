@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     struct Preset {
-        vector<std::shared_ptr<Scenes::Scene>> scenes;
+        vector<Scenes::Scene*> scenes;
         vector<std::shared_ptr<ImageProviders::General>> providers;
 
     public:

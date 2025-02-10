@@ -10,7 +10,7 @@ using namespace spdlog;
 using rgb_matrix::RGBMatrix;
 
 
-FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
+void update_canvas(RGBMatrix *matrix, FrameCanvas *&offscreen_canvas) {
     auto preset = config->get_curr();
     auto scenes = preset.scenes;
 
@@ -70,6 +70,4 @@ FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
         scene->after_render_stop(matrix);
         offscreen_canvas = scene->offscreen_canvas;
     }
-
-    return offscreen_canvas;
 }

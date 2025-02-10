@@ -45,6 +45,15 @@ class MetaBlobScene : public Scenes::Scene {
     };
 
     class MetaBlobSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        Scenes::Scene * create();
+
+        ~MetaBlobSceneWrapper() override {
+            if (default_scene != nullptr)
+                delete default_scene;
+
+            std::cout << "Deleting blob scene" << std::endl << std::flush;
+            for (auto scene: _scenes)
+                delete scene;
+        };
     };
 }
