@@ -15,8 +15,8 @@ struct Images {
 
 std::optional<Images> images;
 
-Scenes::Scene *Scenes::WeatherSceneWrapper::create() {
-    return new WeatherScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWrapper::create() {
+    return std::make_unique<WeatherScene>();
 }
 
 string Scenes::WeatherScene::get_name() const {

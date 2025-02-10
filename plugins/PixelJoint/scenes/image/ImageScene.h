@@ -54,7 +54,7 @@ private:
     expected<CurrAnimation, string> get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness);
 
     static expected<optional<ImageInfo>, string>
-    get_next_image(ImageProviders::General *category, int width, int height);
+    get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height);
 
     static FileInfo GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas);
 
@@ -67,5 +67,5 @@ public:
 };
 
 class ImageSceneWrapper : public Plugins::SceneWrapper {
-    Scenes::Scene * create() override;
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
 };

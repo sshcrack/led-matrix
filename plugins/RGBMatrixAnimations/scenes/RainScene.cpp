@@ -182,6 +182,6 @@ string RainScene::get_name() const {
 }
 
 
-Scene *RainSceneWrapper::create() {
-    return new RainScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> RainSceneWrapper::create() {
+    return std::make_unique<RainScene>();
 }

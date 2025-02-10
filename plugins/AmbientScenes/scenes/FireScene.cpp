@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace Scenes;
+using namespace AmbientScenes;
 
 FireScene::FireScene() : Scene() {
     accumulated_time = 0;
@@ -118,6 +118,10 @@ void FireScene::load_properties(const json &j) {
     update_delay = 1.0f / frames_per_second.get();
 }
 
-Scene *FireSceneWrapper::create() {
-    return new FireScene();
+void deleteFireScene(Scenes::Scene *scene) {
+    delete scene;
+}
+
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FireSceneWrapper::create() {
+    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new FireScene(), deleteFireScene);
 }

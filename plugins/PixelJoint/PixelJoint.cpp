@@ -8,17 +8,19 @@
 using std::vector;
 using namespace ImageProviders;
 
-vector<SceneWrapper *> PixelJoint::get_scenes() {
-    return {
-            new ImageSceneWrapper()
-    };
+vector<std::unique_ptr<ImageProviderWrapper>> PixelJoint::get_image_providers() {
+    auto scenes = vector<std::unique_ptr<ImageProviderWrapper>>();
+    scenes.push_back(std::make_unique<CollectionWrapper>());
+    scenes.push_back(std::make_unique<PagesWrapper>());
+
+    return scenes;
 }
 
-vector<ImageProviderWrapper *> PixelJoint::get_image_providers() {
-    return {
-            new CollectionWrapper(),
-            new PagesWrapper()
-    };
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> PixelJoint::get_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    scenes.push_back(std::make_unique<ImageSceneWrapper>());
+
+    return scenes;
 }
 
 PixelJoint::PixelJoint() = default;

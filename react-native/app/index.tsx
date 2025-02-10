@@ -72,7 +72,7 @@ export default function Screen() {
     <Text className="text-2xl pt-5 pb-5">Presets</Text>
     <View className='flex flex-row flex-wrap gap-5 w-full items-center'>
       {presets.data && Object.entries(presets.data).map(([key, preset]) => {
-        return <Preset key={Math.random()} preset={preset} name={key} isActive />
+        return <Preset key={Math.random()} preset={preset} name={key} isActive={status.data?.current === key} />
       })}
     </View>
   </>

@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         // some other thread.
         info("Listening on http://{}:{}/", host, port);
         restinio::run(restinio::on_thread_pool(
-                1, // Count of worker threads for RESTinio.
+                2, // Count of worker threads for RESTinio.
                 restinio::skip_break_signal_handling(), // Don't react to Ctrl+C.
                 server) // Server to be run.
         );

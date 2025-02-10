@@ -1,7 +1,8 @@
 #include "MetaBlobScene.h"
+#include "./GeneralSceneDeleter.h"
 #include <cmath>
 
-namespace Scenes {
+namespace AmbientScenes {
     float MetaBlobScene::rand_sin(int i) const {
         return std::sin(float(i) * 1.64f);
     }
@@ -36,7 +37,7 @@ namespace Scenes {
     }
 
     void MetaBlobScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, nullptr);
+        Scene::initialize(matrix, l_offscreen_canvas);
         blobs.reserve(num_blobs.get());
     }
 
@@ -131,7 +132,7 @@ namespace Scenes {
         add_property(&color_speed);
     }
 
-    Scenes::Scene *MetaBlobSceneWrapper::create() {
-        return new MetaBlobScene();
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MetaBlobSceneWrapper::create() {
+        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MetaBlobScene(), deleteScene);
     }
 }

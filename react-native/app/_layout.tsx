@@ -63,10 +63,11 @@ export default function RootLayout() {
         <Stack.Screen
           name='modify-preset/[id]'
           getId={({ params }) => `modify-preset-${params?.id}`}
-          options={{
-            title: 'Modify Preset',
+          options={({ route }) => ({
+            //@ts-ignore
+            title: `Modify ${route.params?.id}`,
             headerRight: () => <ThemeToggle />,
-          }}
+          })}
         />
       </Stack>
       <Toast />

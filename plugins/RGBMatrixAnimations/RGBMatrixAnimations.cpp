@@ -12,15 +12,16 @@ extern "C" [[maybe_unused]] void destroyRGBMatrixAnimations(RGBMatrixAnimations 
     delete c;
 }
 
-vector<ImageProviderWrapper *> RGBMatrixAnimations::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> RGBMatrixAnimations::get_image_providers() {
     return {};
 }
 
-vector<SceneWrapper *> RGBMatrixAnimations::get_scenes() {
-    return {
-            new RainSceneWrapper(),
-            new SparksSceneWrapper()
-    };
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> RGBMatrixAnimations::get_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    scenes.push_back(std::make_unique<RainSceneWrapper>());
+    scenes.push_back(std::make_unique<SparksSceneWrapper>());
+
+    return scenes;
 }
 
 RGBMatrixAnimations::RGBMatrixAnimations() = default;

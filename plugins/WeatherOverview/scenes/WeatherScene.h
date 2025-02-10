@@ -20,7 +20,7 @@ namespace Scenes {
 
 
     class WeatherSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create() override;
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
     };
 }
 

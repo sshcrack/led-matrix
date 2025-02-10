@@ -74,7 +74,7 @@ bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
 }
 
 void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, nullptr);
+    Scene::initialize(matrix, l_offscreen_canvas);
 
     std::srand(std::time(nullptr));
 
@@ -92,8 +92,8 @@ string WaveScene::get_name() const {
     return "wave";
 }
 
-Scenes::Scene *WaveSceneWrapper::create() {
-    return new WaveScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> WaveSceneWrapper::create() {
+    return std::make_unique<WaveScene>();
 }
 
 #pragma clang diagnostic pop

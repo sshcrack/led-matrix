@@ -5,8 +5,8 @@
 #include <vector>
 #include <random>
 
-namespace Scenes {
-    class StarFieldScene : public Scene {
+namespace AmbientScenes {
+class StarFieldScene : public Scenes::Scene {
     private:
         struct Star {
             float x, y, z;
@@ -43,6 +43,6 @@ namespace Scenes {
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create();
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
     };
 }

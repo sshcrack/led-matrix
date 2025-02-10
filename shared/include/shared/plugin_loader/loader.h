@@ -28,8 +28,8 @@ namespace Plugins {
         void initialize();
         void terminate();
 
-        std::vector<Plugins::BasicPlugin *> get_plugins();
-        std::vector<Plugins::SceneWrapper *> get_scenes();
-        std::vector<Plugins::ImageProviderWrapper *> get_image_providers();
+        std::vector<Plugins::BasicPlugin*> get_plugins();
+        std::vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> get_scenes();
+        std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
     };
 }

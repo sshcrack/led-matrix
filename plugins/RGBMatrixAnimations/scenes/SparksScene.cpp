@@ -16,17 +16,6 @@ SparksScene::~SparksScene() {
     delete renderer;
 }
 
-void SparksScene::initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    initialized = true;
-    matrix = p_matrix;
-
-    // Use ParticleMatrixRenderer directly instead of SparksMatrixRenderer
-    renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
-
-    initializeParticles();
-}
-
 void SparksScene::initializeParticles() {
     RGB_color yellow = {255, 200, 120};
     int16_t maxVel = 10000;
@@ -64,6 +53,6 @@ string SparksScene::get_name() const {
     return "sparks";
 }
 
-Scene *SparksSceneWrapper::create() {
-    return new SparksScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> SparksSceneWrapper::create() {
+    return std::make_unique<SparksScene>();
 }

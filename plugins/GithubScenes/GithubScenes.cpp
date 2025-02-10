@@ -12,16 +12,16 @@ extern "C" [[maybe_unused]] void destroyGithubScenes(GithubScenes *c) {
     delete c;
 }
 
-vector<ImageProviderWrapper *> GithubScenes::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> GithubScenes::get_image_providers() {
     return {};
 }
 
-vector<SceneWrapper *> GithubScenes::get_scenes() {
-    return {
-        // These scenes are taken from https://github.com/Knifa/matryx-gl/tree/3f815663b5c883ef52da5b895206d68d756d59c8
-            new WatermelonPlasmaSceneWrapper(),
-            new WaveSceneWrapper()
-    };
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GithubScenes::get_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    scenes.push_back(std::make_unique<WatermelonPlasmaSceneWrapper>());
+    scenes.push_back(std::make_unique<WaveSceneWrapper>());
+
+    return scenes;
 }
 
 GithubScenes::GithubScenes() = default;

@@ -40,7 +40,7 @@ string Scenes::WatermelonPlasmaScene::get_name() const {
 }
 
 
-Scene* Scenes::WatermelonPlasmaSceneWrapper::create() {
-    return new WatermelonPlasmaScene();
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WatermelonPlasmaSceneWrapper::create() {
+    return std::make_unique<WatermelonPlasmaScene>();
 }
 

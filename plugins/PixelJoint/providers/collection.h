@@ -22,7 +22,7 @@ namespace ImageProviders {
 
 
     class CollectionWrapper : public Plugins::ImageProviderWrapper {
-        ImageProviders::General * create_default() override;
-        ImageProviders::General * from_json(const nlohmann::json &json) override;
+        std::unique_ptr<ImageProviders::General> create_default() override;
+        std::unique_ptr<ImageProviders::General> from_json(const nlohmann::json &json) override;
     };
 }

@@ -5,8 +5,8 @@
 #include <vector>
 #include <random>
 
-namespace Scenes {
-    class MetaBlobScene : public Scene {
+namespace AmbientScenes {
+class MetaBlobScene : public Scenes::Scene {
     private:
         Property<int> num_blobs = Property("num_blobs", 10);
         Property<float> threshold = Property("threshold", 0.0003f);
@@ -45,6 +45,6 @@ namespace Scenes {
     };
 
     class MetaBlobSceneWrapper : public Plugins::SceneWrapper {
-        Scenes::Scene *create();
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
     };
 }

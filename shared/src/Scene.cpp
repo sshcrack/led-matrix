@@ -6,7 +6,7 @@
 
 using namespace spdlog;
 
-Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
+std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> Scenes::Scene::from_json(const nlohmann::json &j) {
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
 
@@ -16,7 +16,7 @@ Scenes::Scene *Scenes::Scene::from_json(const nlohmann::json &j) {
     auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_scenes()) {
         if (item->get_name() == t) {
-            Scene *scene = item->create();
+            auto scene = item->create();
 
             scene->register_properties();
             scene->load_properties(arguments);
