@@ -10,9 +10,10 @@ using namespace spdlog;
 using namespace std;
 string search_url = "/pixels/new_icons.asp?q=1";
 
-optional<Post> ScrapedPost::fetch_link() {
-    if (cached_post)
-        return cached_post;
+optional<std::unique_ptr<Post, void (*)(Post *)>> ScrapedPost::fetch_link() {
+    //TODO
+    //if (cached_post)
+    //    return cached_post;
 
     htmlDocPtr doc = fetch_page(this->post_url);
 
@@ -29,9 +30,13 @@ optional<Post> ScrapedPost::fetch_link() {
 
 
     string img_url = "https://pixeljoint.com" + img_path;
-    cached_post = Post(img_url);
+    //cached_post =
 
-    return cached_post;
+    std::unique_ptr<Post, void (*)(Post *)> post = {new Post(img_url), [](Post *post) {
+        delete post;
+    }};
+
+    return post;
 }
 
 optional<int> ScrapedPost::get_pages() {
@@ -66,14 +71,14 @@ optional<int> ScrapedPost::get_pages() {
     return page_end;
 }
 
-vector<ScrapedPost> ScrapedPost::get_posts(int page) {
+vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> ScrapedPost::get_posts(int page) {
     info("Getting posts from page " + to_string(page) + "...");
     string url = search_url + "&pg=" + to_string(page);
 
     // parse the HTML document returned by the server
     htmlDocPtr doc = fetch_page(url);
 
-    vector<ScrapedPost> pixel_posts;
+    vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> pixel_posts;
 
     xmlXPathContextPtr context = xmlXPathNewContext(doc);
     xmlXPathObjectPtr posts_links = xmlXPathEvalExpression((xmlChar *) "//a[contains(@class, 'imglink')]", context);
@@ -91,8 +96,10 @@ vector<ScrapedPost> ScrapedPost::get_posts(int page) {
 
         string a_href = string(reinterpret_cast<char *>(xmlGetProp(post_link, (xmlChar *) "href")));
 
-        ScrapedPost pixel_post = ScrapedPost(thumbnail, a_href);
-        pixel_posts.push_back(pixel_post);
+        auto pixel_post = new ScrapedPost(thumbnail, a_href);
+        pixel_posts.push_back({pixel_post, [](ScrapedPost *post) {
+            delete post;
+        }});
     }
 
     return pixel_posts;

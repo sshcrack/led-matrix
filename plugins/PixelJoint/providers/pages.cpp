@@ -22,23 +22,27 @@ void ImageProviders::Pages::flush() {
     total_pages = generate_rand_pages(page_begin, page_end);
 }
 
-optional<Post> ImageProviders::Pages::get_next_image() {
+optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+ImageProviders::Pages::get_next_image() {
     while (!curr_posts.empty() || !total_pages.empty()) {
         if (curr_posts.empty()) {
             int next_page = total_pages[0];
             total_pages.erase(total_pages.begin());
 
-            curr_posts = ScrapedPost::get_posts(next_page);
+            curr_posts = std::move(ScrapedPost::get_posts(next_page));
             if (curr_posts.empty()) {
                 spdlog::debug("Current posts are empty, returning");
                 return nullopt;
             }
         }
 
-        ScrapedPost curr = curr_posts[0];
-        curr_posts.erase(curr_posts.begin());
+        auto curr = curr_posts.erase(curr_posts.begin()).base();
 
-        return curr.fetch_link();
+        auto link = curr->get()->fetch_link();
+        if (!link.has_value())
+            return nullopt;
+
+        return std::move(link.value());
     }
 
     return nullopt;

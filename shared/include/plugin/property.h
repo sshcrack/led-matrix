@@ -8,6 +8,7 @@ protected:
     std::string name;
 public:
     explicit PropertyBase(std::string propertyName) : name(std::move(propertyName)) {}
+    virtual ~PropertyBase() = default;
 
     virtual void load_from_json(const nlohmann::json &j) = 0;
 
@@ -28,7 +29,7 @@ private:
 public:
     explicit Property(const std::string &propertyName, const T &defaultValue,
                       bool required = false)
-            : value(defaultValue), PropertyBase(std::move(propertyName)), required(required) {}
+            : PropertyBase(propertyName), value(defaultValue), required(required), registered(false) {}
 
     const T &get() const {
         if (!registered)

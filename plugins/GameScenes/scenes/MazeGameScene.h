@@ -51,7 +51,7 @@ namespace Scenes {
             float f_cost = INFINITY;
             std::pair<int, int> parent = {-1, -1};
 
-            float calculate_f_cost() const {
+            [[nodiscard]] float calculate_f_cost() const {
                 return g_cost + h_cost;
             }
         };
@@ -61,12 +61,13 @@ namespace Scenes {
         std::vector<std::pair<int, int>> closed_set;
         bool path_found = false;
 
-        float calculate_heuristic(int x1, int y1, int x2, int y2) const;
+        [[nodiscard]] float calculate_heuristic(int x1, int y1, int x2, int y2) const;
 
-        std::vector<std::pair<int, int>> get_neighbors(int x, int y) const;
+        [[nodiscard]] std::vector<std::pair<int, int>> get_neighbors(int x, int y) const;
 
     public:
         explicit MazeGameScene();
+        ~MazeGameScene() override = default;
 
         void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
 

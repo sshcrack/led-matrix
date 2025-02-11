@@ -96,6 +96,11 @@ string WaveScene::get_name() const {
     return "wave";
 }
 
+WaveScene::~WaveScene() {
+    delete map;
+    Scene::~Scene();
+}
+
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> WaveSceneWrapper::create() {
     return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new WaveScene(), [](Scenes::Scene* scene) {
         delete scene;

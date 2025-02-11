@@ -11,7 +11,7 @@ extern "C" [[maybe_unused]] SpotifyScenes *createSpotifyScenes() {
 }
 
 extern "C" [[maybe_unused]] void destroySpotifyScenes(SpotifyScenes *c) {
-    spotify->terminate();
+    delete spotify;  // The destructor will handle termination
     delete c;
 }
 

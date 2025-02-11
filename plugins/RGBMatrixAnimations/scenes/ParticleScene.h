@@ -63,7 +63,7 @@ namespace Scenes {
 
     public:
         explicit ParticleScene();
-        virtual ~ParticleScene();
+        ~ParticleScene() override;
 
         void register_properties() override;
 

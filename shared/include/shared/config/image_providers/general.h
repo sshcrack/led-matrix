@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <variant>
 #include "shared/post.h"
 
 using json = nlohmann::json;
@@ -9,9 +10,10 @@ namespace ImageProviders {
     public:
         explicit General(const json &arguments);
 
-        virtual ~General() = default;
+        virtual ~General() = 0;
 
-        virtual optional<std::unique_ptr<Post, void (*)(Post *)>> get_next_image() = 0;
+        virtual optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+        get_next_image() = 0;
 
         virtual void flush() = 0;
 

@@ -30,6 +30,7 @@ namespace Scenes {
         std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrix *matrix);
 
     public:
+        ~CoverOnlyScene() override = default;
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 
         [[nodiscard]] int get_weight() const override;

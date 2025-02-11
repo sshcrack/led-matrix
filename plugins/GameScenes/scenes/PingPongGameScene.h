@@ -46,6 +46,7 @@ namespace Scenes {
 
     public:
         explicit PingPongGameScene();
+        ~PingPongGameScene() override = default;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
         void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;

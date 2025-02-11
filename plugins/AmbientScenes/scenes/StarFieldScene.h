@@ -31,6 +31,7 @@ class StarFieldScene : public Scenes::Scene {
 
     public:
         explicit StarFieldScene();
+        ~StarFieldScene() override = default;
         void register_properties() override;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;

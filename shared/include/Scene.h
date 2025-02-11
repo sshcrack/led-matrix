@@ -29,8 +29,8 @@ namespace Scenes {
 
     public:
         rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;
-        explicit Scene();
-        virtual ~Scene() {};
+        Scene();
+        virtual ~Scene() = 0;
 
         void add_property(PropertyBase *property) {
             std::string name = property->getName();
@@ -40,7 +40,7 @@ namespace Scenes {
                 }
             }
 
-            properties.emplace_back(property);
+            properties.push_back(std::shared_ptr<PropertyBase>(property));
         }
 
         [[nodiscard]] virtual int get_weight() const;
