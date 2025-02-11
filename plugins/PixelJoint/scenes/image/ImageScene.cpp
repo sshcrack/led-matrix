@@ -40,7 +40,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedValue"
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
-                                           curr->file->params->vsync_multiple);
+                                           curr->file->params.vsync_multiple);
 #pragma clang diagnostic pop
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
@@ -73,13 +73,21 @@ bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
             return false;
         }
 
-        this->curr_animation.emplace(res.value());
+        this->curr_animation.emplace(std::move(res.value()));
     }
 
     return DisplayAnimation(matrix);
 }
 
-expected<std::unique_ptr<CurrAnimation, void (*)(CurrAnimation *)>, string>
+Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>> &post) {
+    if (holds_alternative<std::unique_ptr<Post, void (*)(Post *)>>(post)) {
+        return get < 0 > (post).get();
+    } else {
+        return get < 1 > (post).get();
+    }
+}
+
+expected<CurrAnimation, string>
 ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
@@ -121,49 +129,62 @@ ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { //
     }
 
     next_img = async(launch::async, ImageScene::get_next_image, img_category, width, height);
-    auto val = info_opt.value();
-    if (!val.has_value()) {
+    auto val_opt = std::move(info_opt.value());
+    if (!val_opt.has_value()) {
         debug("There was an error with the previous image. Waiting for new image to download and process...");
         return get_next_anim(matrix, recursiveness + 1);
     }
 
-    auto file = GetFileInfo(val.value(), offscreen_canvas);
+    auto val = std::move(val_opt.value());
+
+    auto raw_ptr = get_pointer_raw(val.post);
+    auto filename = raw_ptr->get_filename();
+    auto image_url = raw_ptr->get_filename();
+
+    auto file = GetFileInfo(val.frames, offscreen_canvas);
+    info("Loaded p_info for {} ({})", filename, image_url);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-    const tmillis_t duration_ms = file.params->duration_ms;
+    const tmillis_t duration_ms = file->params.duration_ms;
 
-    rgb_matrix::StreamReader reader(file.content_stream);
+    rgb_matrix::StreamReader reader(file->content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    return {new CurrAnimation(file, reader, end_time_ms), [](CurrAnimation *anim) {
-        delete anim;
-    }};
+    return CurrAnimation(std::move(file), reader, end_time_ms);
 }
 
+
 expected<optional<ImageInfo>, string>
-ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General>& category, int width, int height) {
-    auto post = category->get_next_image();
-    if (!post.has_value()) {
+ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height) {
+    auto post_opt = category->get_next_image();
+    if (!post_opt.has_value()) {
         return unexpected("End of images for category");
     }
 
-    auto frames_opt = post->get()->process_images(width, height);
+
+    auto post = std::move(post_opt.value());
+    auto raw_post = get_pointer_raw(post);
+    auto frames_opt = raw_post->process_images(width, height);
+
     if (!frames_opt.has_value()) {
-        error("Could not load image {}", post->get()->get_image_url());
+        auto image_url = raw_post->get_image_url();
+
+        error("Could not load image {}", image_url);
+
 //TODO Optimize here, exclude not loadable images
         return nullopt;
     }
 
-    return make_tuple(frames_opt.value(), post.value());
+    return ImageInfo{
+            .frames = std::move(frames_opt.value()),
+            .post = std::move(post)
+    };
 }
 
 std::unique_ptr<FileInfo, void (*)(FileInfo *)>
-ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
-    auto frames = get < 0 > (p_info);
-    auto post = get < 1 > (p_info);
-
-    auto params = new ImageParams();
-    params->duration_ms = 15000;
+ImageScene::GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas) {
+    auto params = ImageParams();
+    params.duration_ms = 15000;
 
     auto file_info = new FileInfo();
     file_info->params = params;
@@ -176,13 +197,11 @@ ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *
         if (file_info->is_multi_frame) {
             delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
         } else {
-            delay_time_us = file_info->params->duration_ms * 1000;  // single image.
+            delay_time_us = file_info->params.duration_ms * 1000;  // single image.
         }
         if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
-
-    info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
 
     return {file_info, [](FileInfo *info) {
         delete info;

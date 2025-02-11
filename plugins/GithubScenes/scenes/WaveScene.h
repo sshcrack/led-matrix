@@ -17,6 +17,7 @@ namespace Scenes {
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 
         using Scene::Scene::Scene;
+        ~WaveScene() override;
 
         void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 

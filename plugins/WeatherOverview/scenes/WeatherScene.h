@@ -16,6 +16,7 @@ namespace Scenes {
         void register_properties() override {}
 
         using Scene::Scene;
+        ~WeatherScene() override = default;
     };
 
 

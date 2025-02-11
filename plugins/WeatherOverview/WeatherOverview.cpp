@@ -12,6 +12,7 @@ extern "C" [[maybe_unused]] WeatherOverview *createWeatherOverview() {
 }
 
 extern "C" [[maybe_unused]] void destroyWeatherOverview(WeatherOverview *c) {
+    delete parser;
     delete c;
 }
 

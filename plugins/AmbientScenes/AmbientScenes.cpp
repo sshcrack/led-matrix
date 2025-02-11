@@ -25,7 +25,7 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> AmbientPlugin::c
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new StarFieldSceneWrapper(), destructor));
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new MetaBlobSceneWrapper(), destructor));
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FireSceneWrapper(), destructor));
-    
+
     return scenes;
 }
 
@@ -33,5 +33,6 @@ vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
 AmbientPlugin::create_image_providers() {
     return {};
 }
+
 
 AmbientPlugin::AmbientPlugin() = default;

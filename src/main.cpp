@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     };
 
     debug("Initializing hardware...");
-    auto hardware_code = start_hardware_mainloop(argc, argv);
+    auto hardware_code = 0;//start_hardware_mainloop(argc, argv);
 
     if (hardware_code != 0) {
         error("Could not initialize hardware_code.");
@@ -92,7 +92,11 @@ int main(int argc, char *argv[]) {
     debug("Joining control thread...");
     control_thread.join();
 
+    debug("Deleting config...");
+    delete config;
+
     debug("Terminating plugin loader...");
     pl->terminate();
+
     return 0;
 }

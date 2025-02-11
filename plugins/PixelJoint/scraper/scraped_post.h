@@ -5,6 +5,7 @@
 #include <optional>
 #include <Magick++.h>
 #include <vector>
+#include <memory>
 
 using namespace std;
 
@@ -12,9 +13,9 @@ class ScrapedPost {
 protected:
     string thumbnail;
     string post_url;
-    optional<Post> cached_post;
+    optional<std::shared_ptr<Post>> cached_post;
 public:
-    optional<Post> fetch_link();
+    optional<std::unique_ptr<Post, void(*)(Post*)>> fetch_link();
 
     string get_post_url();
 
@@ -23,7 +24,7 @@ public:
         this->post_url = std::move(url);
     }
 
-    static std::vector<ScrapedPost> get_posts(int page);
+    static vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> get_posts(int page);
 
     static std::optional<int> get_pages();
 };

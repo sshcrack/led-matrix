@@ -4,7 +4,8 @@
 
 using std::nullopt;
 
-optional<Post> ImageProviders::Collection::get_next_image() {
+optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+ImageProviders::Collection::get_next_image() {
     if (images.empty()) {
         spdlog::debug("Empty, returning...");
         return nullopt;
@@ -33,12 +34,14 @@ ImageProviders::Collection::Collection(const json &arguments) : General(argument
 
     for (const auto &item: imgs) {
         spdlog::debug("Adding {} to group", item);
-        images.push_back(*new Post(item));
+        images.push_back({new Post(item), [](Post *post) {
+            delete post;
+        }});
     }
 }
 
 json ImageProviders::Collection::to_json() {
-    vector<Post> total = images;
+    vector<std::shared_ptr<Post>> total = images;
     total.reserve(images.size() + already_shown.size());
 
     total.insert(total.end(), already_shown.begin(), already_shown.end());
@@ -47,7 +50,7 @@ json ImageProviders::Collection::to_json() {
     stringified.reserve(total.size());
 
     for (auto item: total)
-        stringified.push_back(item.get_image_url());
+        stringified.push_back(item->get_image_url());
 
     return stringified;
 };
@@ -64,6 +67,7 @@ ImageProviders::CollectionWrapper::create_default() {
     }};
 }
 
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> ImageProviders::CollectionWrapper::from_json(const json &json) {
+std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+ImageProviders::CollectionWrapper::from_json(const json &json) {
     return Collection::from_json(json);
 }

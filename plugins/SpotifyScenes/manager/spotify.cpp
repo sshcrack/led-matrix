@@ -61,7 +61,7 @@ bool Spotify::initialize() {
             return Spotify::refresh();
         }
 
-        this->start_control_thread();
+        //this->start_control_thread();
         return true;
     }
 
@@ -118,6 +118,10 @@ Spotify::Spotify() {
         error("No spotify client id or secret found in env");
         throw runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in env");
     }
+}
+
+Spotify::~Spotify() {
+    terminate();
 }
 
 std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spotify::inner_fetch_currently_playing() {

@@ -33,6 +33,7 @@ class MetaBlobScene : public Scenes::Scene {
 
     public:
         explicit MetaBlobScene();
+        ~MetaBlobScene() override = default;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 

@@ -19,32 +19,31 @@ struct ImageParams {
 };
 
 struct FileInfo {
-    ImageParams *params;      // Each file might have specific timing settings
+    ImageParams params;      // Each file might have specific timing settings
     bool is_multi_frame{};
     rgb_matrix::StreamIO *content_stream{};
 
     ~FileInfo() {
         delete content_stream;
-        delete params;
     }
 };
 
 struct CurrAnimation {
-    FileInfo *file;
+    std::unique_ptr<FileInfo, void (*)(FileInfo *)> file;
     rgb_matrix::StreamReader reader;
     const tmillis_t end_time_ms;
 
-    CurrAnimation(FileInfo *file, const rgb_matrix::StreamReader &reader, const tmillis_t end_time_ms) : file(file),
-                                                                                                         reader(reader),
-                                                                                                         end_time_ms(
-                                                                                                                 end_time_ms) {}
-
-    ~CurrAnimation() {
-        delete file;
-    }
+    CurrAnimation(std::unique_ptr<FileInfo, void (*)(FileInfo *)> file, const rgb_matrix::StreamReader &reader,
+                  const tmillis_t end_time_ms) : file(std::move(file)),
+                                                 reader(reader),
+                                                 end_time_ms(
+                                                         end_time_ms) {}
 };
 
-using ImageInfo = tuple<vector<Magick::Image>, std::unique_ptr<Post, void (*)(Post *)>>;
+struct ImageInfo {
+    vector<Magick::Image> frames;
+    std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>> post;
+};
 
 struct CurrPreset {
     ConfigData::Preset preset;
@@ -62,14 +61,14 @@ private:
 
     bool DisplayAnimation(rgb_matrix::RGBMatrix *matrix);
 
-    expected<std::unique_ptr<CurrAnimation, void (*)(CurrAnimation *)>, string>
+    expected<CurrAnimation, string>
     get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness);
 
-    static expected<optional<std::unique_ptr<ImageInfo, void (*)(ImageInfo)>>, string>
+    static expected<optional<ImageInfo>, string>
     get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height);
 
     static std::unique_ptr<FileInfo, void (*)(FileInfo *)>
-    GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas);
+    GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
 
 public:
     bool render(rgb_matrix::RGBMatrix *matrix) override;
@@ -79,6 +78,7 @@ public:
     void register_properties() override {}
 
     using Scenes::Scene::Scene;
+    ~ImageScene() override = default;
 };
 
 class ImageSceneWrapper : public Plugins::SceneWrapper {

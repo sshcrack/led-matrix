@@ -28,7 +28,7 @@ private:
 
 public:
     explicit Spotify();
-
+    ~Spotify();  // Add destructor declaration
 
     void start_control_thread();
     bool initialize();

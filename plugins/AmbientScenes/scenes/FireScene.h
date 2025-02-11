@@ -30,6 +30,7 @@ class FireScene : public Scenes::Scene {
 
     public:
         explicit FireScene();
+        ~FireScene() override = default;
 
         bool render(rgb_matrix::RGBMatrix *matrix) override;
 
