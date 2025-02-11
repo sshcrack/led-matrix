@@ -12,11 +12,11 @@ using namespace Scenes;
 
 bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
     if (!curr_reader) {
-        rgb_matrix::StreamReader temp(curr_info->content_stream);
+        rgb_matrix::StreamReader temp(curr_info->get()->content_stream);
         curr_reader.emplace(temp);
     }
 
-    const tmillis_t duration_ms = (curr_info->wait_ms);
+    const tmillis_t duration_ms = (curr_info->get()->wait_ms);
     const tmillis_t start_time = GetTimeInMillis();
     const tmillis_t end_time_ms = start_time + duration_ms;
 
@@ -91,7 +91,7 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
 
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
-                                           curr_info->vsync_multiple);
+                                           curr_info->get()->vsync_multiple);
 
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
@@ -158,13 +158,13 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
     }
 
     vector<Magick::Image> frames = std::move(res.value());
-    SpotifyFileInfo file_info = SpotifyFileInfo();
+    auto file_info = new SpotifyFileInfo();
 
-    file_info.wait_ms = 15000;
-    file_info.content_stream = new rgb_matrix::MemStreamIO();
+    file_info->wait_ms = 15000;
+    file_info->content_stream = new rgb_matrix::MemStreamIO();
 
 
-    rgb_matrix::StreamWriter out(file_info.content_stream);
+    rgb_matrix::StreamWriter out(file_info->content_stream);
     for (const auto &cover: frames) {
         Magick::Image img(Magick::Geometry(matrix->width(), matrix->height()), Magick::Color("black"));
         img.draw(Magick::DrawableCompositeImage(margin, margin, matrix->width() - margin, matrix->height() - margin,
@@ -173,7 +173,11 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
         StoreInStream(img, 100 * 1000, true, offscreen_canvas, &out);
     }
 
-    curr_info.emplace(file_info);
+    curr_info.emplace(std::move(
+            std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>(file_info, [](SpotifyFileInfo *info) {
+                delete info;
+            })));
+
     curr_reader = std::nullopt;
     return {};
 }

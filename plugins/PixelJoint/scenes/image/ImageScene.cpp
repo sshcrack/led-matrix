@@ -40,7 +40,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedValue"
     offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
-                                           curr->file.params.vsync_multiple);
+                                           curr->file->params->vsync_multiple);
 #pragma clang diagnostic pop
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
@@ -79,7 +79,7 @@ bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
     return DisplayAnimation(matrix);
 }
 
-expected<CurrAnimation, string>
+expected<std::unique_ptr<CurrAnimation, void (*)(CurrAnimation *)>, string>
 ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
@@ -130,25 +130,26 @@ ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { //
     auto file = GetFileInfo(val.value(), offscreen_canvas);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-    const tmillis_t duration_ms = file.params.duration_ms;
+    const tmillis_t duration_ms = file.params->duration_ms;
 
     rgb_matrix::StreamReader reader(file.content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    return CurrAnimation(file, reader, end_time_ms);
+    return {new CurrAnimation(file, reader, end_time_ms), [](CurrAnimation *anim) {
+        delete anim;
+    }};
 }
 
 expected<optional<ImageInfo>, string>
-ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height) {
+ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General>& category, int width, int height) {
     auto post = category->get_next_image();
     if (!post.has_value()) {
         return unexpected("End of images for category");
     }
 
-
-    auto frames_opt = post->process_images(width, height);
+    auto frames_opt = post->get()->process_images(width, height);
     if (!frames_opt.has_value()) {
-        error("Could not load image {}", post->get_image_url());
+        error("Could not load image {}", post->get()->get_image_url());
 //TODO Optimize here, exclude not loadable images
         return nullopt;
     }
@@ -156,31 +157,36 @@ ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, in
     return make_tuple(frames_opt.value(), post.value());
 }
 
-FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
+std::unique_ptr<FileInfo, void (*)(FileInfo *)>
+ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
     auto frames = get < 0 > (p_info);
     auto post = get < 1 > (p_info);
 
-    ImageParams params = ImageParams();
-    params.duration_ms = 15000;
-    FileInfo file_info = FileInfo();
-    file_info.params = params;
-    file_info.content_stream = new rgb_matrix::MemStreamIO();
-    file_info.is_multi_frame = frames.size() > 1;
+    auto params = new ImageParams();
+    params->duration_ms = 15000;
 
-    rgb_matrix::StreamWriter out(file_info.content_stream);
+    auto file_info = new FileInfo();
+    file_info->params = params;
+    file_info->content_stream = new rgb_matrix::MemStreamIO();
+    file_info->is_multi_frame = frames.size() > 1;
+
+    rgb_matrix::StreamWriter out(file_info->content_stream);
     for (const auto &img: frames) {
         tmillis_t delay_time_us;
-        if (file_info.is_multi_frame) {
+        if (file_info->is_multi_frame) {
             delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
         } else {
-            delay_time_us = file_info.params.duration_ms * 1000;  // single image.
+            delay_time_us = file_info->params->duration_ms * 1000;  // single image.
         }
         if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
 
     info("Loaded p_info for {} ({})", post.get_filename(), post.get_image_url());
-    return file_info;
+
+    return {file_info, [](FileInfo *info) {
+        delete info;
+    }};
 }
 
 
