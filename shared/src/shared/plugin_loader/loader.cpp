@@ -22,41 +22,41 @@ void PluginManager::terminate() {
 
     for (const auto &item: loaded_plugins) {
         void (*destroy)(BasicPlugin *);
-        destroy = (void (*)(BasicPlugin *)) dlsym(get < 0 > (item), get < 1 > (item).c_str());
+        destroy = (void (*)(BasicPlugin *)) dlsym(item.handle, item.destroyFnName.c_str());
 
-        destroy(get < 2 > (item));
+        destroy(item.plugin);
     }
 }
 
-std::vector<Plugins::BasicPlugin*> PluginManager::get_plugins() {
-    std::vector<Plugins::BasicPlugin*> plugins;
+std::vector<Plugins::BasicPlugin *> PluginManager::get_plugins() {
+    std::vector<Plugins::BasicPlugin *> plugins;
     for (const auto &item: loaded_plugins) {
-        plugins.emplace_back(get < 2 > (item));
+        plugins.emplace_back(item.plugin);
     }
 
     return plugins;
 }
 
-std::vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> PluginManager::get_scenes() {
-    std::vector<std::unique_ptr<SceneWrapper, void(*)(SceneWrapper*)>> scenes;
+std::vector<std::shared_ptr<SceneWrapper>> PluginManager::get_scenes() {
+    std::vector<std::shared_ptr<SceneWrapper>> scenes;
 
     for (const auto &item: get_plugins()) {
         auto pl_scenes = item->get_scenes();
         scenes.insert(scenes.end(),
-                      std::make_move_iterator(pl_scenes.begin()),
-                      std::make_move_iterator(pl_scenes.end()));
+                      pl_scenes.begin(),
+                      pl_scenes.end());
     }
 
     return scenes;
 }
 
-std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> PluginManager::get_image_providers() {
-    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> types;
+std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> PluginManager::get_image_providers() {
+    std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> types;
     for (const auto &item: get_plugins()) {
         auto pl_providers = item->get_image_providers();
         types.insert(types.end(),
-                     std::make_move_iterator(pl_providers.begin()),
-                     std::make_move_iterator(pl_providers.end())
+                     pl_providers.begin(),
+                     pl_providers.end()
         );
     }
 
@@ -72,9 +72,7 @@ void PluginManager::initialize() {
         throw std::runtime_error("Could not get executable directory");
 
     const char *plugin_dir = getenv("PLUGIN_DIR");
-
     const std::string libGlob(plugin_dir == nullptr ? "plugins/*.so" : std::string(plugin_dir) + "/*.so");
-
     std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + "/" + libGlob);
 
     std::set<std::string> libNames;
@@ -83,31 +81,60 @@ void PluginManager::initialize() {
     }
 
     // Loading libs to memory
+    for (const std::string& pl_name: libNames) {
+        // Clear any existing errors
+        dlerror();
 
-    for (std::string pl_name: libNames) {
         void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY);
+        if (dlhandle == nullptr) {
+            error("Failed to load plugin '{}': {}", pl_name, dlerror());
+            continue;  // Skip this plugin and try the next one
+        }
 
-        std::pair<std::string, std::string> delibbed =
-                Plugins::get_lib_name(pl_name);
-
-        BasicPlugin *(*create)();
-
+        std::string pl_copy = pl_name;
+        std::pair<std::string, std::string> delibbed = Plugins::get_lib_name(pl_copy);
         std::string cn = "create" + delibbed.second;
         std::string dn = "destroy" + delibbed.second;
 
-        create = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
-        if (create == nullptr) {
-            error("Could not find symbol '{}' for Plugin '{}'. Output: {}", cn, pl_name, dlerror());
-            std::exit(-1);
+        // Clear any existing errors before dlsym
+        dlerror();
+
+        BasicPlugin *(*create)() = (BasicPlugin *(*)()) dlsym(dlhandle, cn.c_str());
+        const char* dlsym_error = dlerror();
+
+        if (dlsym_error != nullptr) {
+            error("Symbol lookup error in plugin '{}': {}", pl_name, dlsym_error);
+            error("Expected symbol '{}' not found", cn);
+            dlclose(dlhandle);
+            continue;  // Skip this plugin and try the next one
         }
 
-        BasicPlugin *p = create();
+        // Verify destroy function exists before creating plugin
+        dlerror();
+        void* destroy_sym = dlsym(dlhandle, dn.c_str());
+        if (dlerror() != nullptr) {
+            error("Destroy function '{}' not found in plugin '{}'", dn, pl_name);
+            dlclose(dlhandle);
+            continue;
+        }
 
-        info("Loaded plugin {}", pl_name);
-        loaded_plugins.emplace_back(dlhandle, dn, p);
+        try {
+            BasicPlugin *p = create();
+            info("Successfully loaded plugin {}", pl_name);
+
+            PluginInfo info = {
+                .handle = dlhandle,
+                .destroyFnName = dn,
+                .plugin = p,
+            };
+            loaded_plugins.emplace_back(info);
+        } catch (const std::exception& e) {
+            error("Failed to initialize plugin '{}': {}", pl_name, e.what());
+            dlclose(dlhandle);
+        }
     }
 
-    info("Loaded a total of {} plugins.", libNames.size());
+    info("Loaded a total of {} plugins.", loaded_plugins.size());
     info("Loading providers to register...");
 
     initialized = true;

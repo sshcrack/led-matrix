@@ -128,7 +128,7 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
 
     curr_state.emplace(temp.value());
     auto track_id_opt = temp.value().get_track().get_id();
-    if(!track_id_opt.has_value())
+    if (!track_id_opt.has_value())
         return unexpected("No track id");
 
     string track_id = track_id_opt.value();
@@ -196,5 +196,7 @@ string CoverOnlyScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> CoverOnlySceneWrapper::create() {
-    return std::make_unique<CoverOnlyScene>();
+    return {new CoverOnlyScene(), [](Scenes::Scene *scene) {
+        delete scene;
+    }};
 }

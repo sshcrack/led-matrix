@@ -16,10 +16,6 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
         continue()
     endif ()
 
-    if(NOT LIB_NAME STREQUAL "AmbientScenes")
-        continue()
-    endif()
-
     message(STATUS "Adding plugin: ${LIB_NAME}")
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
     file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)

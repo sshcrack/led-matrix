@@ -57,10 +57,13 @@ string ImageProviders::Collection::get_name() const {
 }
 
 
-std::unique_ptr<ImageProviders::General> ImageProviders::CollectionWrapper::create_default() {
-    return std::make_unique<Collection>(json::parse("[]"));
+std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+ImageProviders::CollectionWrapper::create_default() {
+    return {new Collection(json::parse("[]")), [](ImageProviders::General *scene) {
+        delete scene;
+    }};
 }
 
-std::unique_ptr<ImageProviders::General> ImageProviders::CollectionWrapper::from_json(const json &json) {
+std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> ImageProviders::CollectionWrapper::from_json(const json &json) {
     return Collection::from_json(json);
 }

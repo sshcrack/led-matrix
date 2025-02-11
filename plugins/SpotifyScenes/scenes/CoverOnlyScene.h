@@ -13,6 +13,9 @@ namespace Scenes {
         int vsync_multiple;
 
         SpotifyFileInfo() : content_stream(nullptr), wait_ms(1500), vsync_multiple(1) {}
+        ~SpotifyFileInfo() {
+            delete content_stream;
+        }
     };
 
     class CoverOnlyScene : public Scene {

@@ -1,7 +1,6 @@
 #include <spdlog/spdlog.h>
 #include "WeatherScene.h"
 #include "../Constants.h"
-#include "../icons/weather_icons.h"
 #include "shared/utils/consts.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
@@ -16,7 +15,9 @@ struct Images {
 std::optional<Images> images;
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWrapper::create() {
-    return std::make_unique<WeatherScene>();
+    return {new WeatherScene(), [](Scenes::Scene *scene) {
+        delete scene;
+    }};
 }
 
 string Scenes::WeatherScene::get_name() const {

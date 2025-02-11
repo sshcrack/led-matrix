@@ -16,22 +16,22 @@ extern "C" [[maybe_unused]] void destroyAmbientScenes(AmbientPlugin *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper>> AmbientPlugin::get_image_providers() {
-    return {};
-}
+vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> AmbientPlugin::create_scenes() {
+    auto destructor = [](SceneWrapper *scene) {
+        delete scene;
+    };
 
-extern "C" void deleteSceneWrapper(Plugins::SceneWrapper* wrapper) {
-    std::cout << "Deleting wrapper" << std::endl << std::flush;
-    delete wrapper;
-}
-
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AmbientPlugin::get_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>>();
-    scenes.push_back(std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>(new StarFieldSceneWrapper(), deleteSceneWrapper));
-    scenes.push_back(std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>(new MetaBlobSceneWrapper(), deleteSceneWrapper));
-    scenes.push_back(std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>(new FireSceneWrapper(), deleteSceneWrapper));
-
+    vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> scenes;
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new StarFieldSceneWrapper(), destructor));
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new MetaBlobSceneWrapper(), destructor));
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FireSceneWrapper(), destructor));
+    
     return scenes;
+}
+
+vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+AmbientPlugin::create_image_providers() {
+    return {};
 }
 
 AmbientPlugin::AmbientPlugin() = default;

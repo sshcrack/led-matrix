@@ -26,18 +26,12 @@ RainScene::~RainScene() {
 }
 
 void RainScene::initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    matrix = p_matrix;
     totalCols = p_matrix->width() / 1.4;
-
-    // Use ParticleMatrixRenderer directly instead of RainMatrixRenderer
-    renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
-    animation->setAcceleration(0, -accel.get());
-
-    initializeParticles();
+    ParticleScene::initialize(p_matrix, l_offscreen_canvas);
 }
 
 void RainScene::initializeParticles() {
+    animation->setAcceleration(0, -accel.get());
     initializeColumns();
     createColorPalette();
 }
@@ -183,5 +177,7 @@ string RainScene::get_name() const {
 
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> RainSceneWrapper::create() {
-    return std::make_unique<RainScene>();
+    return {new RainScene(), [](Scenes::Scene *scene) {
+        delete scene;
+    }};
 }

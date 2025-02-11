@@ -21,7 +21,6 @@ namespace Scenes {
 
     class WatermelonPlasmaSceneWrapper : public Plugins::SceneWrapper {
     public:
-
         std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
     };
 }

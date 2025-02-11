@@ -15,13 +15,16 @@ extern "C" [[maybe_unused]] void destroyWeatherOverview(WeatherOverview *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper>> WeatherOverview::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+WeatherOverview::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> WeatherOverview::get_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
-    scenes.push_back(std::make_unique<WeatherSceneWrapper>());
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> WeatherOverview::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
+    scenes.push_back({new WeatherSceneWrapper(), [](SceneWrapper *scene) {
+        delete scene;
+    }});
 
     return scenes;
 }
