@@ -12,7 +12,10 @@ install(FILES
 )
 
 # Define font directory with default value
-set(WEATHER_FONT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/share/weather-overview/fonts" CACHE PATH "Path to font directory")
+if(NOT DEFINED WEATHER_FONT_DIRECTORY)
+    set(WEATHER_FONT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/share/weather-overview/fonts" CACHE PATH "Path to font directory")
+endif()
+message(STATUS "Using font directory: ${WEATHER_FONT_DIRECTORY}")
 
 # Set font directory path for compilation
 target_compile_definitions(WeatherOverview PRIVATE

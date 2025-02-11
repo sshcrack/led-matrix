@@ -13,6 +13,7 @@ namespace Scenes {
         int vsync_multiple;
 
         SpotifyFileInfo() : content_stream(nullptr), wait_ms(1500), vsync_multiple(1) {}
+
         ~SpotifyFileInfo() {
             delete content_stream;
         }
@@ -22,7 +23,7 @@ namespace Scenes {
     private:
         bool DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix);
 
-        std::optional<SpotifyFileInfo> curr_info;
+        std::optional<std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>> curr_info;
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
 
