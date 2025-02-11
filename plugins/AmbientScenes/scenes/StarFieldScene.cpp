@@ -1,5 +1,4 @@
 #include "StarFieldScene.h"
-#include "GeneralSceneDeleter.h"
 #include <cmath>
 
 namespace AmbientScenes {
@@ -96,6 +95,8 @@ namespace AmbientScenes {
     }
 
     std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> StarFieldSceneWrapper::create() {
-        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new StarFieldScene(), deleteScene);
+        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new StarFieldScene(), [](Scenes::Scene* scene) {
+            delete scene;
+        });
     }
 }

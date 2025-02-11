@@ -22,6 +22,10 @@ struct FileInfo {
     ImageParams params;      // Each file might have specific timing settings
     bool is_multi_frame{};
     rgb_matrix::StreamIO *content_stream{};
+
+    ~FileInfo() {
+        delete content_stream;
+    }
 };
 
 struct CurrAnimation {

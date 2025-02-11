@@ -1,5 +1,4 @@
 #include "MetaBlobScene.h"
-#include "./GeneralSceneDeleter.h"
 #include <cmath>
 
 namespace AmbientScenes {
@@ -133,6 +132,8 @@ namespace AmbientScenes {
     }
 
     std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MetaBlobSceneWrapper::create() {
-        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MetaBlobScene(), deleteScene);
+        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MetaBlobScene(), [](Scenes::Scene* scene) {
+            delete scene;
+        });
     }
 }

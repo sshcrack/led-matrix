@@ -15,15 +15,19 @@ extern "C" [[maybe_unused]] void destroyGameScenes(GameScenes *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper>> GameScenes::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> GameScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GameScenes::get_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
-    scenes.push_back(std::make_unique<PingPongGameSceneWrapper>());
-    scenes.push_back(std::make_unique<TetrisSceneWrapper>());
-    scenes.push_back(std::make_unique<MazeGameSceneWrapper>());
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GameScenes::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
+    auto destroyScene = [](SceneWrapper *scene) {
+        delete scene;
+    };
+
+    scenes.push_back({new PingPongGameSceneWrapper(), destroyScene});
+    scenes.push_back({new TetrisSceneWrapper(), destroyScene});
+    scenes.push_back({new MazeGameSceneWrapper(), destroyScene});
 
     return scenes;
 }

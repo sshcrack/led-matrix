@@ -12,14 +12,18 @@ extern "C" [[maybe_unused]] void destroyGithubScenes(GithubScenes *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper>> GithubScenes::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>> GithubScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GithubScenes::get_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
-    scenes.push_back(std::make_unique<WatermelonPlasmaSceneWrapper>());
-    scenes.push_back(std::make_unique<WaveSceneWrapper>());
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GithubScenes::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>>();
+    auto deleteScene = [](SceneWrapper* scene) {
+        delete scene;
+    };
+
+    scenes.push_back({new WatermelonPlasmaSceneWrapper(), deleteScene});
+    scenes.push_back({new WaveSceneWrapper(), deleteScene});
 
     return scenes;
 }

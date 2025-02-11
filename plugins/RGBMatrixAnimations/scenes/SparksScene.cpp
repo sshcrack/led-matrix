@@ -54,5 +54,7 @@ string SparksScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> SparksSceneWrapper::create() {
-    return std::make_unique<SparksScene>();
+    return {new SparksScene(), [](Scenes::Scene *scene) {
+        delete scene;
+    }};
 }

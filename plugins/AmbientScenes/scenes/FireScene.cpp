@@ -123,5 +123,7 @@ void deleteFireScene(Scenes::Scene *scene) {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FireSceneWrapper::create() {
-    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new FireScene(), deleteFireScene);
+    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new FireScene(), [](Scenes::Scene* scene) {
+        delete scene;
+    });
 }

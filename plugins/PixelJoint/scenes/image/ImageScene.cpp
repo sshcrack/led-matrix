@@ -47,11 +47,11 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 
     tmillis_t to_wait = anim_delay_ms - time_already_spent;
     while (to_wait > 0) {
-        if(interrupt_received) {
+        if (interrupt_received) {
             return false;
         }
 
-        if(to_wait < 250) {
+        if (to_wait < 250) {
             SleepMillis(to_wait);
             break;
         }
@@ -157,8 +157,8 @@ ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, in
 }
 
 FileInfo ImageScene::GetFileInfo(tuple<vector<Magick::Image>, Post> p_info, FrameCanvas *canvas) {
-    auto frames = get<0>(p_info);
-    auto post = get<1>(p_info);
+    auto frames = get < 0 > (p_info);
+    auto post = get < 1 > (p_info);
 
     ImageParams params = ImageParams();
     params.duration_ms = 15000;
@@ -189,5 +189,7 @@ string ImageScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ImageSceneWrapper::create() {
-    return std::make_unique<ImageScene>();
+    return {new ImageScene(), [](Scenes::Scene *scene) {
+        delete scene;
+    }};
 }

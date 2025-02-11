@@ -15,13 +15,16 @@ extern "C" [[maybe_unused]] void destroySpotifyScenes(SpotifyScenes *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper>> SpotifyScenes::get_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+SpotifyScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> SpotifyScenes::get_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
-    scenes.push_back(std::make_unique<CoverOnlySceneWrapper>());
+vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> SpotifyScenes::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
+    scenes.push_back({new CoverOnlySceneWrapper(), [](SceneWrapper *scene) {
+        delete scene;
+    }});
 
     return scenes;
 }

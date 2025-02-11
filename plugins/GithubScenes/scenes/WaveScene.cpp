@@ -70,6 +70,10 @@ bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
     drawMap(matrix, map);
 
     matrix->SwapOnVSync(offscreen_canvas);
+    if(lastMap != nullptr) {
+        delete[] lastMap;
+    }
+
     return true;
 }
 
@@ -93,7 +97,9 @@ string WaveScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> WaveSceneWrapper::create() {
-    return std::make_unique<WaveScene>();
+    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new WaveScene(), [](Scenes::Scene* scene) {
+        delete scene;
+    });
 }
 
 #pragma clang diagnostic pop
