@@ -10,8 +10,8 @@ namespace AmbientScenes {
         float x = 0.5f + 0.1f * rand_sin(i);
         float y = 0.5f + 0.1f * rand_sin(i + 42);
 
-        x += move_range.get() * std::sin(speed.get() * time * rand_sin(i + 2)) * rand_sin(i + 56);
-        y += move_range.get() * -std::sin(speed.get() * time) * rand_sin(i * 9);
+        x += move_range->get() * std::sin(speed->get() * time * rand_sin(i + 2)) * rand_sin(i + 56);
+        y += move_range->get() * -std::sin(speed->get() * time) * rand_sin(i * 9);
 
         float radius = 0.1f * std::abs(rand_sin(i + 3));
 
@@ -37,7 +37,7 @@ namespace AmbientScenes {
 
     void MetaBlobScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
         Scene::initialize(matrix, l_offscreen_canvas);
-        blobs.reserve(num_blobs.get());
+        blobs.reserve(num_blobs->get());
     }
 
     bool MetaBlobScene::render(rgb_matrix::RGBMatrix *matrix) {
@@ -45,12 +45,12 @@ namespace AmbientScenes {
 
         // Update blob positions
         blobs.clear();
-        for (int i = 0; i < num_blobs.get(); i++) {
+        for (int i = 0; i < num_blobs->get(); i++) {
             blobs.push_back(get_blob(matrix, i, time));
         }
 
         // Calculate base color from time (use color_speed to control rate of change)
-        float hue = std::fmod(time * color_speed.get(), 1.0f);
+        float hue = std::fmod(time * color_speed->get(), 1.0f);
 
         // Convert hue to RGB
         auto hue_to_rgb = [](float h) {
@@ -93,7 +93,7 @@ namespace AmbientScenes {
                     dist_sum += calculate_field(x, y, blob);
                 }
 
-                float threshold_l = this->threshold.get();
+                float threshold_l = this->threshold->get();
                 if (dist_sum > threshold_l) {
                     // Mix between center and edge colors
                     float t = std::min(1.0f, (dist_sum - threshold_l) / threshold_l);
@@ -124,16 +124,16 @@ namespace AmbientScenes {
     }
 
     void MetaBlobScene::register_properties() {
-        add_property(&num_blobs);
-        add_property(&threshold);
-        add_property(&speed);
-        add_property(&move_range);
-        add_property(&color_speed);
+        add_property(num_blobs);
+        add_property(threshold);
+        add_property(speed);
+        add_property(move_range);
+        add_property(color_speed);
     }
 
     std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MetaBlobSceneWrapper::create() {
-        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MetaBlobScene(), [](Scenes::Scene* scene) {
-            delete scene;
-        });
+        return {new MetaBlobScene(), [](Scenes::Scene *scene) {
+            delete (MetaBlobScene *) scene;
+        }};
     }
 }

@@ -50,7 +50,7 @@ namespace Scenes {
         int offset_x = 0;   // Horizontal centering offset
         int offset_y = 0;   // Vertical centering offset
 
-        Property<int> fall_speed_ms = Property("fall_speed_ms", 100);
+        PropertyPointer<int> fall_speed_ms = MAKE_PROPERTY("fall_speed_ms", int, 100);
         std::chrono::steady_clock::time_point last_fall_time;
 
     public:
@@ -65,7 +65,7 @@ namespace Scenes {
         [[nodiscard]] std::string get_name() const override;
 
         void register_properties() override {
-            add_property(&fall_speed_ms);
+            add_property(fall_speed_ms);
         }
 
         using Scene::Scene;

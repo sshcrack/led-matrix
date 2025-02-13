@@ -1,0 +1,50 @@
+{
+  "curr": "Random Pages",
+  "pluginConfigs": {
+    "weatherLat": "52.69064",
+    "weatherLon": "7.29097"
+  },
+  "presets": {
+    "Random Pages": {
+      "images": [],
+      "scenes": [
+        {
+          "arguments": {
+            "duration": 10000,
+            "enable_twinkle": true,
+            "max_depth": 3.0,
+            "num_stars": 50,
+            "speed": 0.019999999552965164,
+            "weight": 5
+          },
+          "type": "starfield"
+        },
+        {
+          "arguments": {
+            "color_speed": 0.032999999821186066,
+            "duration": 5000,
+            "move_range": 0.5,
+            "num_blobs": 10,
+            "speed": 0.25,
+            "threshold": 0.0003000000142492354,
+            "weight": 5
+          },
+          "type": "metablob"
+        },
+        {
+          "arguments": {
+            "duration": 5000,
+            "fps": 30.0,
+            "weight": 1
+          },
+          "type": "fire"
+        }
+      ]
+    }
+  },
+  "spotify": {
+    "access_token": "BQDy5ZOFQ7xV_q422LhGvqxlkEAowyUV3MgmPr3_LIu-ERRtiT21S5siJlC8xE7Mc6o-KzRdNmj_9sOsGk2meUZBUsodX_RXTuXQ0pbpFZ-KLpHnZeTB_2AE39zoXCDnDiR90nOH32wBaNLp24xc8zgiZ-EWPb_OORPScKZ4jaDwdiAVKK83-zCiJxN8KQ11c6xKsUyeRwSI6mzuul1KwRfZ8sTZG8NUG_6U-STX6JHG1Lu1J19dxtRvrX7_Ce8mhA8YW3NJ1oWDVE4DOA",
+    "expires_at": 1739311002763,
+    "refresh_token": "AQBnrfU0-8l9WsHWqSZNiB3VfYf8-VR9605ACM61Bz0WIRsh4pvD1Yv9uvbmXX0aWLTv7o_EpxoxdRwFpfbErOYpfXEG_6QCQCTo0e4BCdqmTUQDtHLZFcR9Zwf0dpzzLbc"
+  }
+}

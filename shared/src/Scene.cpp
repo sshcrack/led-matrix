@@ -51,16 +51,16 @@ nlohmann::json Scenes::Scene::to_json() const {
 }
 
 tmillis_t Scenes::Scene::get_duration() const {
-    return duration.get();
+    return duration->get();
 }
 
 int Scenes::Scene::get_weight() const {
-    return weight.get();
+    return weight->get();
 }
 
 Scenes::Scene::Scene() {
-    add_property(&weight);
-    add_property(&duration);
+    add_property(weight);
+    add_property(duration);
 }
 
 void Scenes::Scene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {}

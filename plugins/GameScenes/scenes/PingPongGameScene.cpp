@@ -7,10 +7,10 @@
 using namespace Scenes;
 
 bool PingPongGameScene::render(rgb_matrix::RGBMatrix *matrix) {
-    float ball_size_l = this->ball_size.get();
-    float paddle_width_l = this->paddle_width.get();
-    float paddle_height_l = this->paddle_height.get();
-    float paddle_speed_l = this->paddle_speed.get();
+    float ball_size_l = this->ball_size->get();
+    float paddle_width_l = this->paddle_width->get();
+    float paddle_height_l = this->paddle_height->get();
+    float paddle_speed_l = this->paddle_speed->get();
 
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
@@ -72,13 +72,13 @@ bool PingPongGameScene::render(rgb_matrix::RGBMatrix *matrix) {
     if (ball_x <= paddle_width_l && ball_y >= left_paddle_y && ball_y <= left_paddle_y + paddle_height_l) {
         ball_dx = -ball_dx;
         ball_x = paddle_width_l;
-        curr_speed_multiplier = std::min(curr_speed_multiplier + 0.1f, max_speed_multiplier.get());
+        curr_speed_multiplier = std::min(curr_speed_multiplier + 0.1f, max_speed_multiplier->get());
     }
     if (ball_x >= matrix_width - paddle_width_l - ball_size_l &&
         ball_y >= right_paddle_y && ball_y <= right_paddle_y + paddle_height_l) {
         ball_dx = -ball_dx;
         ball_x = matrix_width - paddle_width_l - ball_size_l;
-        curr_speed_multiplier = std::min(curr_speed_multiplier + 0.1f, max_speed_multiplier.get());
+        curr_speed_multiplier = std::min(curr_speed_multiplier + 0.1f, max_speed_multiplier->get());
     }
 
     // Reset ball if it goes out of bounds
@@ -113,12 +113,12 @@ void PingPongGameScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::Fr
     // Initialize ball at center
     ball_x = matrix_width / 2.0f;
     ball_y = matrix_height / 2.0f;
-    ball_dx = ball_speed.get();
-    ball_dy = ball_speed.get();
+    ball_dx = ball_speed->get();
+    ball_dy = ball_speed->get();
 
     // Initialize paddles at center
-    left_paddle_y = matrix_height / 2.0f - paddle_height.get() / 2.0f;
-    right_paddle_y = matrix_height / 2.0f - paddle_height.get() / 2.0f;
+    left_paddle_y = matrix_height / 2.0f - paddle_height->get() / 2.0f;
+    right_paddle_y = matrix_height / 2.0f - paddle_height->get() / 2.0f;
 
     // Initialize previous positions
     prev_ball_x = ball_x;
@@ -135,21 +135,21 @@ PingPongGameScene::PingPongGameScene() : Scene() {
 }
 
 void PingPongGameScene::register_properties() {
-    add_property(&ball_size);
-    add_property(&paddle_width);
-    add_property(&paddle_height);
-    add_property(&ball_speed);
-    add_property(&paddle_speed);
-    add_property(&target_fps);
-    add_property(&speed_multiplier);
-    add_property(&max_speed_multiplier);
+    add_property(ball_size);
+    add_property(paddle_width);
+    add_property(paddle_height);
+    add_property(ball_speed);
+    add_property(paddle_speed);
+    add_property(target_fps);
+    add_property(speed_multiplier);
+    add_property(max_speed_multiplier);
 }
 
 void PingPongGameScene::load_properties(const json &j) {
     Scene::load_properties(j);
 
-    target_frame_time = 1.0f / target_fps.get();
-    curr_speed_multiplier = speed_multiplier.get();
+    target_frame_time = 1.0f / target_fps->get();
+    curr_speed_multiplier = speed_multiplier->get();
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> PingPongGameSceneWrapper::create() {

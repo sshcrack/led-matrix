@@ -8,11 +8,11 @@
 namespace AmbientScenes {
 class MetaBlobScene : public Scenes::Scene {
     private:
-        Property<int> num_blobs = Property("num_blobs", 10);
-        Property<float> threshold = Property("threshold", 0.0003f);
-        Property<float> speed = Property("speed", 0.25f);
-        Property<float> move_range = Property("move_range", 0.5f);
-        Property<float> color_speed = Property("color_speed", 0.033f);
+        PropertyPointer<int> num_blobs = MAKE_PROPERTY("num_blobs", int, 10);
+        PropertyPointer<float> threshold = MAKE_PROPERTY("threshold", float, 0.0003f);
+        PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.25f);
+        PropertyPointer<float> move_range = MAKE_PROPERTY("move_range", float, 0.5f);
+        PropertyPointer<float> color_speed = MAKE_PROPERTY("color_speed", float, 0.033f);
 
         float time;
         struct Blob {

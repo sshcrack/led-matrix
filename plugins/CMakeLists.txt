@@ -6,13 +6,13 @@ file(GLOB PLUGIN_SOURCES
         */*.c*
 )
 
-foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
+foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
     get_filename_component(P_DIR ${PLUGIN_SOURCE} DIRECTORY)
     get_filename_component(P_DIR_NAME ${P_DIR} NAME)
 
     get_filename_component(LIB_NAME ${PLUGIN_SOURCE} NAME_WE)
 
-    if(NOT P_DIR_NAME STREQUAL LIB_NAME)
+    if (NOT P_DIR_NAME STREQUAL LIB_NAME)
         continue()
     endif ()
 
@@ -55,7 +55,7 @@ foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     # Install plugin
     install(TARGETS ${LIB_NAME}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins
     )
 
-endforeach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
+endforeach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
