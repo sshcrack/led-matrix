@@ -24,10 +24,10 @@ class StarFieldScene : public Scenes::Scene {
         std::mt19937 gen;
         std::uniform_real_distribution<> dis;
 
-        Property<int> num_stars = Property<int>("num_stars", 50);
-        Property<float> speed = Property<float>("speed", 0.02f);
-        Property<bool> enable_twinkle = Property<bool>("enable_twinkle", true);
-        Property<float> max_depth = Property<float>("max_depth", 3.0f);
+        PropertyPointer<int> num_stars = MAKE_PROPERTY("num_stars", int, 50);
+        PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.02f);
+        PropertyPointer<bool> enable_twinkle = MAKE_PROPERTY("enable_twinkle", bool, true);
+        PropertyPointer<float> max_depth = MAKE_PROPERTY("max_depth", float, 3.0f);
 
     public:
         explicit StarFieldScene();

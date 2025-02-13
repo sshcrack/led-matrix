@@ -43,13 +43,13 @@ namespace Scenes {
         ParticleMatrixRenderer* renderer;
         GravityParticles* animation;
 
-        Property<int> numParticles = Property("numParticles", 40);
-        Property<int16_t> velocity = Property<int16_t>("velocity", 6000);
-        Property<int> accel = Property("acceleration", 1);
-        Property<int> shake = Property("shake", 5);
-        Property<int> bounce = Property("bounce", 250);
-        Property<int> delay_ms = Property("delay_ms", 10);
-        
+        PropertyPointer<int> numParticles = MAKE_PROPERTY("numParticles", int, 40);
+        PropertyPointer<int16_t> velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
+        PropertyPointer<int> accel = MAKE_PROPERTY("acceleration", int, 1);
+        PropertyPointer<int> shake = MAKE_PROPERTY("shake", int, 5);
+        PropertyPointer<int> bounce = MAKE_PROPERTY("bounce", int, 250);
+        PropertyPointer<int> delay_ms = MAKE_PROPERTY("delay_ms", int, 10);
+
         uint64_t prevTime;
         uint64_t lastFpsLog;
         uint32_t frameCount;

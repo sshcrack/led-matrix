@@ -20,14 +20,14 @@ void ParticleScene::initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::Fram
 
     matrix = p_matrix;
     renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake.get(), bounce.get());
+    animation = new GravityParticles(*renderer, shake->get(), bounce->get());
     initializeParticles();
 }
 
 bool ParticleScene::render(RGBMatrix *rgbMatrix) {
     animation->runCycle();
 
-    uint8_t MAX_FPS = 1000 / delay_ms.get();
+    uint8_t MAX_FPS = 1000 / delay_ms->get();
     uint32_t t;
     while ((t = micros() - prevTime) < (100000L / MAX_FPS));
 
@@ -51,12 +51,12 @@ uint64_t ParticleScene::micros() {
 }
 
 void ParticleScene::register_properties() {
-    add_property(&numParticles);
-    add_property(&velocity);
-    add_property(&accel);
-    add_property(&shake);
-    add_property(&bounce);
-    add_property(&delay_ms);
+    add_property(numParticles);
+    add_property(velocity);
+    add_property(accel);
+    add_property(shake);
+    add_property(bounce);
+    add_property(delay_ms);
 }
 
 void ParticleScene::after_render_stop(rgb_matrix::RGBMatrix *m) {

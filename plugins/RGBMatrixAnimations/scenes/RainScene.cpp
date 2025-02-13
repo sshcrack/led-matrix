@@ -13,10 +13,10 @@ RainScene::RainScene()
           currentColorId(1),
           totalColors(0) {
 
-    numParticles = Property("numParticles", 4000);
-    velocity = Property<int16_t>("velocity", 6000);
-    shake = Property("shake", 0);
-    bounce = Property("bounce", 0);
+    numParticles = MAKE_PROPERTY("numParticles", int, 4000);
+    velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
+    shake = MAKE_PROPERTY("shake", int, 0);
+    bounce = MAKE_PROPERTY("bounce", int, 0);
 }
 
 RainScene::~RainScene() {
@@ -31,7 +31,7 @@ void RainScene::initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCan
 }
 
 void RainScene::initializeParticles() {
-    animation->setAcceleration(0, -accel.get());
+    animation->setAcceleration(0, -accel->get());
     initializeColumns();
     createColorPalette();
 }
@@ -41,7 +41,7 @@ void RainScene::initializeColumns() {
     vels = new uint16_t[totalCols];
     lengths = new uint8_t[totalCols];
 
-    float v = velocity.get();
+    float v = velocity->get();
     for (uint16_t x = 0; x < totalCols; ++x) {
         cols[x] = matrix->width();
         vels[x] = random_int16(v / 4, v);
@@ -125,8 +125,8 @@ bool RainScene::render(RGBMatrix *matrix) {
 
 void RainScene::addNewParticles() {
     const uint16_t stepSize = 1;
-    if (animation->getParticleCount() >= numParticles.get()) return;
-    float v = velocity.get();
+    if (animation->getParticleCount() >= numParticles->get()) return;
+    float v = velocity->get();
 
     counter++;
     if (counter >= stepSize) counter = 0;
@@ -160,7 +160,7 @@ void RainScene::addNewParticles() {
 }
 
 void RainScene::removeOldParticles() {
-    uint16_t removeNum = std::min((uint16_t) (numParticles.get() - 1), (uint16_t) matrix->width());
+    uint16_t removeNum = std::min((uint16_t) (numParticles->get() - 1), (uint16_t) matrix->width());
     if (animation->getParticleCount() > removeNum) {
         for (uint16_t i = 0; i < removeNum; i++) {
             auto particle = animation->getParticle(removeNum - 1 - i);

@@ -14,6 +14,7 @@ namespace ConfigData {
         vector<std::shared_ptr<ImageProviders::General>> providers;
 
     public:
+        ~Preset() = default;  // Add explicit destructor
         void randomize();
     };
 
@@ -31,6 +32,8 @@ namespace ConfigData {
         map<string, string> pluginConfigs;
         SpotifyData spotify;
         string curr;
+        
+        ~Root() = default;  // Add explicit destructor
     };
 
     void to_json(json& j, const Root& p);

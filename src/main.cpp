@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     };
 
     debug("Initializing hardware...");
-    auto hardware_code = 0;//start_hardware_mainloop(argc, argv);
+    auto hardware_code = start_hardware_mainloop(argc, argv);
 
     if (hardware_code != 0) {
         error("Could not initialize hardware_code.");
@@ -80,7 +80,6 @@ int main(int argc, char *argv[]) {
 
         return hardware_code;
     }
-
     info("Hardware thread stopped. Saving config...");
     config->save();
 
@@ -94,6 +93,7 @@ int main(int argc, char *argv[]) {
 
     debug("Deleting config...");
     delete config;
+
 
     debug("Terminating plugin loader...");
     pl->terminate();

@@ -59,7 +59,7 @@ namespace Scenes {
         auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
                 current_time - last_fall_time).count();
 
-        if (time_since_last_fall >= fall_speed_ms.get() && !grid.isAnimating) {
+        if (time_since_last_fall >= fall_speed_ms->get() && !grid.isAnimating) {
             grid.gravity(1);
             last_fall_time = current_time;
         }

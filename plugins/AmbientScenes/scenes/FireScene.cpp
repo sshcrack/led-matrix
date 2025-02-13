@@ -109,13 +109,13 @@ string FireScene::get_name() const {
 }
 
 void FireScene::register_properties() {
-    add_property(&frames_per_second);
+    add_property(frames_per_second);
 }
 
 void FireScene::load_properties(const json &j) {
     Scene::load_properties(j);
 
-    update_delay = 1.0f / frames_per_second.get();
+    update_delay = 1.0f / frames_per_second->get();
 }
 
 void deleteFireScene(Scenes::Scene *scene) {
@@ -123,7 +123,7 @@ void deleteFireScene(Scenes::Scene *scene) {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FireSceneWrapper::create() {
-    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new FireScene(), [](Scenes::Scene* scene) {
-        delete scene;
-    });
+    return {new FireScene(), [](Scenes::Scene *scene) {
+        delete (FireScene *) scene;
+    }};
 }

@@ -20,7 +20,7 @@ class FireScene : public Scenes::Scene {
 
         [[nodiscard]] float fbm(float x, float y) const;
 
-        Property<float> frames_per_second = Property("fps", 30.0f);
+        PropertyPointer<float> frames_per_second = MAKE_PROPERTY("fps", float, 30.0f);
         [[maybe_unused]] float update_delay;      // Delay between updates in seconds
         float accumulated_time;
 

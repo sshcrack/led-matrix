@@ -17,14 +17,20 @@ extern "C" [[maybe_unused]] void destroyAmbientScenes(AmbientPlugin *c) {
 }
 
 vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> AmbientPlugin::create_scenes() {
-    auto destructor = [](SceneWrapper *scene) {
-        delete scene;
-    };
-
     vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> scenes;
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new StarFieldSceneWrapper(), destructor));
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new MetaBlobSceneWrapper(), destructor));
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FireSceneWrapper(), destructor));
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new StarFieldSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (StarFieldSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new MetaBlobSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (MetaBlobSceneWrapper *) scene;
+                                                                             }));
+    scenes.push_back(
+            std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FireSceneWrapper(), [](SceneWrapper *scene) {
+                delete (FireSceneWrapper *) scene;
+            }));
 
     return scenes;
 }

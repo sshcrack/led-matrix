@@ -7,6 +7,7 @@
 #include "content-streamer.h"
 #include "plugin/property.h"
 #include <vector>
+#include "shared/utils/PropertyMacros.h"
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -19,20 +20,20 @@ namespace Scenes {
 
     protected:
         bool initialized = false;
-        /// Only available after initialization
         int matrix_width;
-        /// Only available after initialization
         int matrix_height;
 
-        Property<int> weight = Property("weight", 1, true);
-        Property<tmillis_t> duration = Property("duration", static_cast<tmillis_t>(0), true);
+        PropertyPointer<int> weight = MAKE_PROPERTY_REQ("weight", int, 1);
+        PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 0);
 
     public:
         rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;
-        Scene();
-        virtual ~Scene() = 0;
 
-        void add_property(PropertyBase *property) {
+        Scene();
+
+        virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
+
+        void add_property(std::shared_ptr<PropertyBase> property) {
             std::string name = property->getName();
             for (const auto &item: properties) {
                 if (item->getName() == name) {
@@ -40,7 +41,7 @@ namespace Scenes {
                 }
             }
 
-            properties.push_back(std::shared_ptr<PropertyBase>(property));
+            properties.push_back(property);
         }
 
         [[nodiscard]] virtual int get_weight() const;
@@ -60,7 +61,7 @@ namespace Scenes {
         /// Returns true if the scene should continue rendering, false if not
         virtual bool render(rgb_matrix::RGBMatrix *matrix) = 0;
 
-        static std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> from_json(const nlohmann::json &j);
+        static std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> from_json(const nlohmann::json &j);
 
         virtual void register_properties() = 0;
 
