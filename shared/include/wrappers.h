@@ -30,7 +30,7 @@ namespace Plugins {
         std::shared_ptr<Scenes::Scene> default_scene;
     public:
         virtual std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() = 0;
-        virtual ~SceneWrapper() {}
+        virtual ~SceneWrapper() = default;
 
         virtual string get_name() {
             return get_default()->get_name();

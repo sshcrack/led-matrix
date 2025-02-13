@@ -10,7 +10,7 @@ namespace ImageProviders {
     public:
         explicit General(const json &arguments);
 
-        virtual ~General() = 0;
+        virtual ~General();  // Changed from pure virtual to virtual
 
         virtual optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
         get_next_image() = 0;
