@@ -65,7 +65,7 @@ bool Spotify::initialize() {
         return true;
     }
 
-    auto curr = std::filesystem::current_path() / "spotify/authorize.js";
+    auto curr = std::filesystem::current_path() / "plugins/SpotifyScenes/spotify/authorize.js";
 
 
     printf("Path %s \n", curr.string().c_str());
