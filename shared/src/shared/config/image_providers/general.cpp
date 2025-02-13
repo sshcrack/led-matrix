@@ -9,6 +9,8 @@ ImageProviders::General::General(const json& arguments) {
     spdlog::debug("Initial arguments for general are {}", arguments.dump());
 }
 
+ImageProviders::General::~General() = default;
+
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> ImageProviders::General::from_json(const json &j) {
     if(!j.contains("type"))
         throw std::runtime_error(fmt::format("No image provider type given for '{}'", j.dump()));
