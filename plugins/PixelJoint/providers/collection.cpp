@@ -53,7 +53,7 @@ json ImageProviders::Collection::to_json() {
         stringified.push_back(item->get_image_url());
 
     return stringified;
-};
+}
 
 string ImageProviders::Collection::get_name() const {
     return "collection";

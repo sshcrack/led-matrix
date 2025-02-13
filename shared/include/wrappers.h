@@ -11,6 +11,8 @@ namespace Plugins {
     private:
         string _cachedName;
     public:
+        virtual ~ImageProviderWrapper() = default;
+
         virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create_default() = 0;
 
         virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> from_json(const nlohmann::json &json) = 0;
