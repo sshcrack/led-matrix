@@ -21,7 +21,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 
     if (skip_image || GetTimeInMillis() > curr->get()->end_time_ms) {
         this->curr_animation.reset();
-        return false;
+        return true;
     }
 
     uint32_t delay_us = 0;
@@ -29,6 +29,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(offscreen_canvas, &delay_us)) {
         reader->Rewind();
         if (!reader->GetNext(offscreen_canvas, &delay_us)) {
+            this->curr_animation.reset();
             return false;
         }
     }
@@ -45,6 +46,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     tmillis_t to_wait = anim_delay_ms - time_already_spent;
     while (to_wait > 0) {
         if (interrupt_received) {
+            this->curr_animation.reset();
             return false;
         }
 
@@ -63,6 +65,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 
 bool ImageScene::render(RGBMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
+        // This is only called once on first render
         debug("Getting next animation");
         auto res = get_next_anim(matrix, 0);
         if (!res.has_value()) {
@@ -109,7 +112,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
 
     tmillis_t start_loading = GetTimeInMillis();
 
-    auto info_res = next_img->get();
+    auto info_res = std::move(next_img->get());
     if (!info_res.has_value()) {
         warn("Could not get next image. Trying again. Error was: {}", info_res.error());
         return get_next_anim(matrix, recursiveness + 1);
@@ -121,7 +124,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
         img_category->flush();
         this->curr_category++;
 
-        debug("No value for info res. Flushing and moving onto next category.");
+        debug("No images left. Flushing and moving onto next category.");
         return get_next_anim(matrix, recursiveness + 1);
     }
 
@@ -130,18 +133,18 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
 
     auto raw_ptr = get_pointer_raw(post);
     auto filename = raw_ptr->get_filename();
-    auto image_url = raw_ptr->get_filename();
+    auto image_url = raw_ptr->get_image_url();
 
-    auto file = GetFileInfo(frames, offscreen_canvas);
+    auto file = GetFileInfo(std::move(frames), offscreen_canvas);
     info("Loaded p_info for {} ({})", filename, image_url);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-    const tmillis_t duration_ms = file.params.duration_ms;
+    const tmillis_t duration_ms = file->params.duration_ms;
 
-    StreamReader reader(file.content_stream);
+    StreamReader reader(file->content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(new CurrAnimation(reader, end_time_ms),
+    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(new CurrAnimation(reader, end_time_ms, std::move(file)),
                                                                  [](CurrAnimation *anim) {
                                                                      delete anim;
                                                                  });
@@ -166,8 +169,7 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
     if (!frames_opt.has_value()) {
         auto image_url = raw_post->get_image_url();
 
-        error("Could not load image {}", image_url);
-        return nullopt;
+        return unexpected("Could not load image " + image_url);
     }
 
     if (is_exiting.load()) {
@@ -181,22 +183,29 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
     };
 }
 
-FileInfo ImageScene::GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas) {
+std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(vector<Magick::Image> frames,
+                                                                       FrameCanvas *canvas) {
     auto params = ImageParams();
     params.duration_ms = 15000;
 
-    auto file_info = FileInfo();
-    file_info.params = params;
-    file_info.content_stream = new rgb_matrix::MemStreamIO();
-    file_info.is_multi_frame = frames.size() > 1;
+    std::unique_ptr<FileInfo, void(*)(FileInfo *)> file_info = {
+        new FileInfo(),
+        [](FileInfo *file) {
+            delete file;
+        }
+    };
 
-    rgb_matrix::StreamWriter out(file_info.content_stream);
+    file_info->params = params;
+    file_info->content_stream = new rgb_matrix::MemStreamIO();
+    file_info->is_multi_frame = frames.size() > 1;
+
+    rgb_matrix::StreamWriter out(file_info->content_stream);
     for (const auto &img: frames) {
         tmillis_t delay_time_us;
-        if (file_info.is_multi_frame) {
+        if (file_info->is_multi_frame) {
             delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
         } else {
-            delay_time_us = file_info.params.duration_ms * 1000; // single image.
+            delay_time_us = file_info->params.duration_ms * 1000; // single image.
         }
         if (delay_time_us <= 0) delay_time_us = 100 * 1000; // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
