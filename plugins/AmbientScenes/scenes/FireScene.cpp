@@ -12,19 +12,19 @@ FireScene::FireScene() : Scene() {
     time = 0.0f;
 }
 
-void FireScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+void FireScene::initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(matrix, l_offscreen_canvas);
     width = matrix->width();
     height = matrix->height();
     last_update = std::chrono::steady_clock::now();
 }
 
-float FireScene::hash12(float x, float y) {
+float FireScene::hash12(const float x, const float y) {
     // Simplified hash function
     return std::fmod(std::sin(x * 12.9898f + y * 78.233f) * 43758.5453f, 1.0f);
 }
 
-float FireScene::linear_noise(float x, float y) {
+float FireScene::linear_noise(const float x, const float y) {
     int ix = std::floor(x);
     int iy = std::floor(y);
     float fx = x - ix;
@@ -46,7 +46,7 @@ float FireScene::linear_noise(float x, float y) {
     );
 }
 
-float FireScene::fbm(float x, float y) const {
+float FireScene::fbm(const float x, const float y) const {
     float uv_x = x * 3.0f - 1.0f;
     float uv_y = y * 2.0f - 0.25f - 2.0f * time;
 
@@ -124,6 +124,6 @@ void deleteFireScene(Scenes::Scene *scene) {
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FireSceneWrapper::create() {
     return {new FireScene(), [](Scenes::Scene *scene) {
-        delete (FireScene *) scene;
+        delete dynamic_cast<FireScene *>(scene);
     }};
 }

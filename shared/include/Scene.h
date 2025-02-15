@@ -15,7 +15,6 @@ using std::string;
 
 namespace Scenes {
     class Scene {
-    private:
         std::vector<std::shared_ptr<PropertyBase>> properties;
 
     protected:
@@ -27,13 +26,13 @@ namespace Scenes {
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 0);
 
     public:
-        rgb_matrix::FrameCanvas *offscreen_canvas = nullptr;
+        FrameCanvas *offscreen_canvas = nullptr;
 
         Scene();
 
         virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
 
-        void add_property(std::shared_ptr<PropertyBase> property) {
+        void add_property(const std::shared_ptr<PropertyBase> &property) {
             std::string name = property->getName();
             for (const auto &item: properties) {
                 if (item->getName() == name) {
@@ -52,16 +51,16 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
 
-        virtual void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas);
+        virtual void initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas);
 
-        virtual void after_render_stop(rgb_matrix::RGBMatrix *matrix);
+        virtual void after_render_stop(RGBMatrix *matrix);
 
         [[nodiscard]] bool is_initialized() const;
 
         /// Returns true if the scene should continue rendering, false if not
-        virtual bool render(rgb_matrix::RGBMatrix *matrix) = 0;
+        virtual bool render(RGBMatrix *matrix) = 0;
 
-        static std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> from_json(const nlohmann::json &j);
+        static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
 
         virtual void register_properties() = 0;
 

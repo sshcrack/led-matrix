@@ -32,6 +32,7 @@
 
 #include "RGBMatrixRenderer.h"
 #include <stdexcept>
+#include <spdlog/spdlog.h>
 
 // default constructor
 RGBMatrixRenderer::RGBMatrixRenderer(uint16_t width, uint16_t height, uint8_t brightnessLimit, bool inCubeMode)
@@ -613,9 +614,7 @@ uint16_t RGBMatrixRenderer::getColourId(RGB_color colour)
             else {
                 //Set to closest matching colour
                 id = closestMatch;
-char msg3[64];
-sprintf(msg3, "Asked for (%d,%d,%d) but got (%d,%d,%d)\n", colour.r,  colour.g, colour.b, palette[id].r, palette[id].g, palette[id].b);
-outputMessage(msg3);
+                spdlog::warn("Asked for ({},{},{}) but got ({},{},{})", colour.r,  colour.g, colour.b, palette[id].r, palette[id].g, palette[id].b);
             }
         }
     }

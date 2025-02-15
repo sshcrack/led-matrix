@@ -3,28 +3,27 @@
 #include "shared/post.h"
 #include <string>
 #include <optional>
-#include <Magick++.h>
 #include <vector>
 #include <memory>
 
-using namespace std;
+namespace pixeljoint {
 
 class ScrapedPost {
-protected:
-    string thumbnail;
-    string post_url;
-    optional<std::shared_ptr<Post>> cached_post;
+private:
+    std::string thumbnail;
+    std::string post_url;
+    static constexpr const char* BASE_URL = "https://pixeljoint.com";
+    static constexpr const char* SEARCH_URL = "/pixels/new_icons.asp?q=1";
+
 public:
-    optional<std::unique_ptr<Post, void(*)(Post*)>> fetch_link();
+    ScrapedPost(std::string_view thumbnail, std::string_view url);
 
-    string get_post_url();
+    std::optional<std::unique_ptr<Post>> fetch_link() const;
+    const std::string& get_post_url() const { return post_url; }
+    const std::string& get_thumbnail() const { return thumbnail; }
 
-    ScrapedPost(string thumbnail, string url) {
-        this->thumbnail = std::move(thumbnail);
-        this->post_url = std::move(url);
-    }
-
-    static vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> get_posts(int page);
-
+    static std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)>> get_posts(int page);
     static std::optional<int> get_pages();
 };
+
+} // namespace pixeljoint

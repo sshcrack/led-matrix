@@ -2,16 +2,17 @@
 
 #include "Scene.h"
 #include "wrappers.h"
-#include "shared/utils/FrameTimer.h"
 #include "../anim/gravityparticles.h"
+#include <spdlog/spdlog.h>
 #include <led-matrix.h>
 
 namespace Scenes {
     class ParticleMatrixRenderer : public RGBMatrixRenderer {
     public:
-        ParticleMatrixRenderer(uint16_t width, uint16_t height, rgb_matrix::Canvas* canvas)
-            : RGBMatrixRenderer(width, height), canvas_(canvas) {}
-        
+        ParticleMatrixRenderer(uint16_t width, uint16_t height, rgb_matrix::Canvas *canvas)
+            : RGBMatrixRenderer(width, height), canvas_(canvas) {
+        }
+
         void setPixel(uint16_t x, uint16_t y, RGB_color colour) override {
             if (canvas_) {
                 canvas_->SetPixel(x, gridHeight - y - 1, colour.r, colour.g, colour.b);
@@ -22,26 +23,23 @@ namespace Scenes {
             // Nothing to do - pixels are shown immediately on the matrix
         }
 
-        void outputMessage(char msg[]) override {
-            fprintf(stderr, msg);
-        }
-
         void msSleep(int ms) override {
             usleep(ms * 1000);
         }
 
         int16_t random_int16(int16_t a, int16_t b) override {
-            return a + rand()%(b-a);
+            return a + rand() % (b - a);
         }
+
     protected:
-        rgb_matrix::Canvas* canvas_;
+        rgb_matrix::Canvas *canvas_;
     };
 
     class ParticleScene : public Scene {
     protected:
-        rgb_matrix::Canvas* matrix;
-        ParticleMatrixRenderer* renderer;
-        GravityParticles* animation;
+        rgb_matrix::Canvas *matrix;
+        std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
+        std::optional<std::unique_ptr<GravityParticles, void(*)(GravityParticles *)> > animation;
 
         PropertyPointer<int> numParticles = MAKE_PROPERTY("numParticles", int, 40);
         PropertyPointer<int16_t> velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
@@ -55,20 +53,25 @@ namespace Scenes {
         uint32_t frameCount;
 
         static uint64_t micros();
-        int16_t random_int16(int16_t a, int16_t b) {  // Added helper function
-            return renderer ? renderer->random_int16(a, b) : a + rand() % (b - a);
+
+        int16_t random_int16(int16_t a, int16_t b) {
+            // Added helper function
+            return renderer ? renderer->get()->random_int16(a, b) : a + rand() % (b - a);
         }
 
         virtual void initializeParticles() = 0;
 
     public:
         explicit ParticleScene();
-        ~ParticleScene() override;
+
+        ~ParticleScene() override = default;
 
         void register_properties() override;
 
         bool render(RGBMatrix *rgbMatrix) override;
+
         void initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+
         void after_render_stop(rgb_matrix::RGBMatrix *m) override;
     };
 }

@@ -10,11 +10,10 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     struct Preset {
-        vector<std::shared_ptr<Scenes::Scene>> scenes;
-        vector<std::shared_ptr<ImageProviders::General>> providers;
+        vector<std::shared_ptr<Scenes::Scene> > scenes;
+        vector<std::shared_ptr<ImageProviders::General> > providers;
 
-    public:
-        ~Preset() = default;  // Add explicit destructor
+        ~Preset() = default; // Add explicit destructor
         void randomize();
     };
 
@@ -24,27 +23,36 @@ namespace ConfigData {
         tmillis_t expires_at;
 
         [[nodiscard]] bool is_expired() const;
+
         [[nodiscard]] bool has_auth() const;
     };
 
     struct Root {
-        map<string, Preset> presets;
+        map<string, std::shared_ptr<Preset>> presets;
         map<string, string> pluginConfigs;
         SpotifyData spotify;
         string curr;
-        
-        ~Root() = default;  // Add explicit destructor
+
+        ~Root() = default;
     };
 
-    void to_json(json& j, const Root& p);
-    void to_json(json& j, const Preset& p);
-    void to_json(json& j, const SpotifyData& p);
-    void to_json(json& j, const ImageProviders::General*& p);
-    void to_json(json& j, const Scenes::Scene*& p);
+    void to_json(json &j, const Root &p);
 
-    void from_json(const json& j, Root& p);
-    void from_json(const json& j, Preset& p);
-    void from_json(const json& j, SpotifyData& p);
-    void from_json(const json& j, ImageProviders::General*& p);
-    void from_json(const json& j, Scenes::Scene*& p);
+    void to_json(json &j, std::shared_ptr<Preset> p);
+
+    void to_json(json &j, const SpotifyData &p);
+
+    void to_json(json &j, const ImageProviders::General *&p);
+
+    void to_json(json &j, const Scenes::Scene *&p);
+
+    void from_json(const json &j, Root &p);
+
+    void from_json(const json &j, std::shared_ptr<Preset> &p);
+
+    void from_json(const json &j, SpotifyData &p);
+
+    void from_json(const json &j, ImageProviders::General *&p);
+
+    void from_json(const json &j, Scenes::Scene *&p);
 }

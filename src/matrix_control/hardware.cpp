@@ -19,7 +19,7 @@ int usage(const char *progname) {
 }
 
 void hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
-    cout << "Press Ctrl+C to quit" << endl;
+    info("Press Ctrl+C to quit");
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
     while (!interrupt_received) {

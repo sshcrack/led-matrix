@@ -96,7 +96,7 @@ namespace AmbientScenes {
 
     std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> StarFieldSceneWrapper::create() {
         return {new StarFieldScene(), [](Scenes::Scene *scene) {
-            delete (StarFieldScene *) scene;
+            delete dynamic_cast<StarFieldScene *>(scene);
         }};
     }
 }

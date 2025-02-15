@@ -20,7 +20,7 @@ ImageProviders::Collection::get_next_image() {
 }
 
 void ImageProviders::Collection::flush() {
-    std::shuffle(already_shown.begin(), already_shown.end(), std::random_device());
+    std::ranges::shuffle(already_shown, std::random_device());
 
     images.reserve(images.size() + already_shown.size());
     images.insert(images.end(), already_shown.begin(), already_shown.end());
@@ -62,7 +62,7 @@ string ImageProviders::Collection::get_name() const {
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::CollectionWrapper::create_default() {
-    return {new Collection(json::parse("[]")), [](ImageProviders::General *scene) {
+    return {new Collection(json::parse("[]")), [](General *scene) {
         delete scene;
     }};
 }

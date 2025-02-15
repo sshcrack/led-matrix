@@ -16,16 +16,18 @@ extern "C" [[maybe_unused]] void destroyWeatherOverview(WeatherOverview *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
 WeatherOverview::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> WeatherOverview::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
-    scenes.push_back({new WeatherSceneWrapper(), [](SceneWrapper *scene) {
-        delete scene;
-    }});
+vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> >();
+    scenes.push_back({
+        new WeatherSceneWrapper(), [](SceneWrapper *scene) {
+            delete scene;
+        }
+    });
 
     return scenes;
 }
@@ -35,7 +37,7 @@ std::optional<string> WeatherOverview::post_init() {
     if (!conf.contains("weatherLat")) {
         std::cout << "throwing error" << std::endl << std::flush;
         return "Config value 'pluginConfigs.weatherLat' is not set."
-               "Set it to the latitude of the city you want to display the weather for.";
+                "Set it to the latitude of the city you want to display the weather for.";
     }
 
     if (!conf.contains("weatherLon")) {
@@ -47,10 +49,23 @@ std::optional<string> WeatherOverview::post_init() {
     LOCATION_LAT = conf["weatherLat"];
     LOCATION_LON = conf["weatherLon"];
 
+    const std::filesystem::path lib_path(get_plugin_location());
+    const auto parent = lib_path.parent_path();
+
+    auto weather_dir = parent / "weather-overview/fonts";
+    if (std::getenv("WEATHER_FONT_DIRECTORY") != nullptr) {
+        const std::string env_var = std::getenv("WEATHER_FONT_DIRECTORY");;
+        weather_dir = env_var;
+    }
+
+    spdlog::trace("Using fonts in {}", parent.c_str());
+    const std::string HEADER_FONT_FILE = std::string(weather_dir) + "/7x13.bdf";
+    const std::string BODY_FONT_FILE = std::string(weather_dir) + "/5x8.bdf";
+
 
     spdlog::debug("Loading font...");
-    auto headerRes = HEADER_FONT.LoadFont(HEADER_FONT_FILE.c_str());
-    auto bodyRes = BODY_FONT.LoadFont(BODY_FONT_FILE.c_str());
+    const auto headerRes = HEADER_FONT.LoadFont(HEADER_FONT_FILE.c_str());
+    const auto bodyRes = BODY_FONT.LoadFont(BODY_FONT_FILE.c_str());
 
     if (!headerRes)
         return "Could not load header font at " + HEADER_FONT_FILE;
@@ -60,5 +75,3 @@ std::optional<string> WeatherOverview::post_init() {
 
     return BasicPlugin::post_init();
 }
-
-WeatherOverview::WeatherOverview() = default;

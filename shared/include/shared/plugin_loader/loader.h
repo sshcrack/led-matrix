@@ -1,8 +1,6 @@
 #pragma once
 
-#include <thread>
 #include <vector>
-#include <typeinfo>
 #include "plugin/main.h"
 #include "shared/config/image_providers/general.h"
 
@@ -24,6 +22,7 @@ namespace Plugins {
     private:
         /// Handle, DestroyFunction, Plugin
         std::vector<PluginInfo> loaded_plugins;
+        std::vector<std::shared_ptr<SceneWrapper>> all_scenes;
 
         bool initialized = false;
 
@@ -36,10 +35,12 @@ namespace Plugins {
 
         static PluginManager *instance();
         void initialize();
-        void terminate();
+        void delete_references();
+        void destroy_plugins();
 
         std::vector<Plugins::BasicPlugin*> get_plugins();
-        std::vector<std::shared_ptr<SceneWrapper>> get_scenes();
+
+        std::vector<std::shared_ptr<SceneWrapper>> &get_scenes();
         std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
     };
 }

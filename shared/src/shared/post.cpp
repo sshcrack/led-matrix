@@ -39,7 +39,7 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
     // Downloading image first
     if (!filesystem::exists(processed_img)) {
         try_remove(file_path);
-        download_image(get_image_url(), file_path);
+        utils::download_image(get_image_url(), file_path);
     }
 
     bool contain_img = true;

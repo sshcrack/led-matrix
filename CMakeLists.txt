@@ -9,6 +9,10 @@ endif()
 # Add installation paths
 include(GNUInstallDirs)
 
+# Set RPATH settings
+set(CMAKE_INSTALL_RPATH "$ORIGIN")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
 set(CMAKE_CXX_STANDARD 23)
 
 
@@ -74,8 +78,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 # Install target
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION "."
 )
+
+# Create plugins and fonts directories
+install(DIRECTORY DESTINATION "plugins")
 
 # Add sync to RPI if enabled
 option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)

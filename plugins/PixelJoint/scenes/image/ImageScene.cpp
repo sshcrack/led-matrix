@@ -2,7 +2,6 @@
 #include "spdlog/spdlog.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/shared.h"
-#include "shared/utils/image_fetch.h"
 #include "shared/interrupt.h"
 #include "shared/utils/canvas_image.h"
 #include <vector>
@@ -16,19 +15,18 @@ using namespace spdlog;
 using rgb_matrix::StreamReader;
 
 
-bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
+bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     auto curr = &curr_animation.value();
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
-    if (skip_image || GetTimeInMillis() > curr->end_time_ms) {
+    if (skip_image || GetTimeInMillis() > curr->get()->end_time_ms) {
         this->curr_animation.reset();
         return false;
     }
 
     uint32_t delay_us = 0;
     //TODO I think this isn't safe like at all
-    auto reader = &(curr_animation->reader);
-    if (!reader->GetNext(offscreen_canvas, &delay_us)) {
+    if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(offscreen_canvas, &delay_us)) {
         reader->Rewind();
         if (!reader->GetNext(offscreen_canvas, &delay_us)) {
             return false;
@@ -39,8 +37,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnusedValue"
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas,
-                                           curr->file->params.vsync_multiple);
+    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
 #pragma clang diagnostic pop
 
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
@@ -64,7 +61,7 @@ bool ImageScene::DisplayAnimation(rgb_matrix::RGBMatrix *matrix) {
 }
 
 
-bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool ImageScene::render(RGBMatrix *matrix) {
     if (!this->curr_animation.has_value()) {
         debug("Getting next animation");
         auto res = get_next_anim(matrix, 0);
@@ -79,83 +76,83 @@ bool ImageScene::render(rgb_matrix::RGBMatrix *matrix) {
     return DisplayAnimation(matrix);
 }
 
-Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>> &post) {
-    if (holds_alternative<std::unique_ptr<Post, void (*)(Post *)>>(post)) {
-        return get < 0 > (post).get();
-    } else {
-        return get < 1 > (post).get();
+Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > &post) {
+    if (holds_alternative<std::unique_ptr<Post, void (*)(Post *)> >(post)) {
+        return get<0>(post).get();
     }
+
+    return get<1>(post).get();
 }
 
-expected<CurrAnimation, string>
-ImageScene::get_next_anim(rgb_matrix::RGBMatrix *matrix, int recursiveness) { // NOLINT(*-no-recursion)
+expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
+ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
+    // NOLINT(*-no-recursion)
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }
 
-    if (!this->curr_preset.has_value()) {
-        auto temp = config->get_curr();
-        temp.randomize();
+    auto curr_preset = config->get_curr();
 
-        debug("Randomizing with total of {} image providers", temp.providers.size());
-        auto p = CurrPreset(temp);
-        this->curr_preset.emplace(p);
-    }
-
-    auto categories = this->curr_preset->preset.providers;
-    if (this->curr_preset->curr_category >= categories.size()) {
-        this->curr_preset->curr_category = 0;
+    auto categories = curr_preset->providers;
+    if (this->curr_category >= categories.size()) {
+        this->curr_category = 0;
     }
 
     int width = matrix->width();
     int height = matrix->height();
 
 
-    auto img_category = categories[this->curr_preset->curr_category];
-    if (!this->next_img.has_value()) {
-        this->next_img = async(launch::async, get_next_image, img_category, width, height);
+    auto img_category = categories[this->curr_category];
+    if (!this->next_img.has_value() || !this->next_img->valid()) {
+        this->next_img = async(launch::async, get_next_image, img_category, width, height, std::ref(is_exiting));
     }
 
     tmillis_t start_loading = GetTimeInMillis();
 
-    auto info_opt = next_img->get();
+    auto info_res = next_img->get();
+    if (!info_res.has_value()) {
+        warn("Could not get next image. Trying again. Error was: {}", info_res.error());
+        return get_next_anim(matrix, recursiveness + 1);
+    }
+
+    auto info_opt = std::move(info_res.value());
     if (!info_opt.has_value()) {
         // No images left, new category
         img_category->flush();
-        this->curr_preset->curr_category++;
+        this->curr_category++;
 
-        debug("Flushing category, moving to next one...");
+        debug("No value for info res. Flushing and moving onto next category.");
         return get_next_anim(matrix, recursiveness + 1);
     }
 
-    next_img = async(launch::async, ImageScene::get_next_image, img_category, width, height);
-    auto val_opt = std::move(info_opt.value());
-    if (!val_opt.has_value()) {
-        debug("There was an error with the previous image. Waiting for new image to download and process...");
-        return get_next_anim(matrix, recursiveness + 1);
-    }
+    next_img = async(launch::async, get_next_image, img_category, width, height, std::ref(is_exiting));
+    auto [frames, post] = std::move(info_opt.value());
 
-    auto val = std::move(val_opt.value());
-
-    auto raw_ptr = get_pointer_raw(val.post);
+    auto raw_ptr = get_pointer_raw(post);
     auto filename = raw_ptr->get_filename();
     auto image_url = raw_ptr->get_filename();
 
-    auto file = GetFileInfo(val.frames, offscreen_canvas);
+    auto file = GetFileInfo(frames, offscreen_canvas);
     info("Loaded p_info for {} ({})", filename, image_url);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-    const tmillis_t duration_ms = file->params.duration_ms;
+    const tmillis_t duration_ms = file.params.duration_ms;
 
-    rgb_matrix::StreamReader reader(file->content_stream);
+    StreamReader reader(file.content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    return CurrAnimation(std::move(file), reader, end_time_ms);
+    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(new CurrAnimation(reader, end_time_ms),
+                                                                 [](CurrAnimation *anim) {
+                                                                     delete anim;
+                                                                 });
+
+    return res;
 }
 
 
 expected<optional<ImageInfo>, string>
-ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, int width, int height) {
+ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &category, const int width,
+                           const int height, const atomic<bool> &is_exiting) {
     auto post_opt = category->get_next_image();
     if (!post_opt.has_value()) {
         return unexpected("End of images for category");
@@ -163,49 +160,49 @@ ImageScene::get_next_image(std::shared_ptr<ImageProviders::General> category, in
 
 
     auto post = std::move(post_opt.value());
-    auto raw_post = get_pointer_raw(post);
+    const auto raw_post = get_pointer_raw(post);
     auto frames_opt = raw_post->process_images(width, height);
 
     if (!frames_opt.has_value()) {
         auto image_url = raw_post->get_image_url();
 
         error("Could not load image {}", image_url);
+        return nullopt;
+    }
 
-//TODO Optimize here, exclude not loadable images
+    if (is_exiting.load()) {
+        debug("Exiting image scene...");
         return nullopt;
     }
 
     return ImageInfo{
-            .frames = std::move(frames_opt.value()),
-            .post = std::move(post)
+        .frames = std::move(frames_opt.value()),
+        .post = std::move(post)
     };
 }
 
-std::unique_ptr<FileInfo, void (*)(FileInfo *)>
-ImageScene::GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas) {
+FileInfo ImageScene::GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas) {
     auto params = ImageParams();
     params.duration_ms = 15000;
 
-    auto file_info = new FileInfo();
-    file_info->params = params;
-    file_info->content_stream = new rgb_matrix::MemStreamIO();
-    file_info->is_multi_frame = frames.size() > 1;
+    auto file_info = FileInfo();
+    file_info.params = params;
+    file_info.content_stream = new rgb_matrix::MemStreamIO();
+    file_info.is_multi_frame = frames.size() > 1;
 
-    rgb_matrix::StreamWriter out(file_info->content_stream);
+    rgb_matrix::StreamWriter out(file_info.content_stream);
     for (const auto &img: frames) {
         tmillis_t delay_time_us;
-        if (file_info->is_multi_frame) {
+        if (file_info.is_multi_frame) {
             delay_time_us = img.animationDelay() * 10000; // unit in 1/100s
         } else {
-            delay_time_us = file_info->params.duration_ms * 1000;  // single image.
+            delay_time_us = file_info.params.duration_ms * 1000; // single image.
         }
-        if (delay_time_us <= 0) delay_time_us = 100 * 1000;  // 1/10sec
+        if (delay_time_us <= 0) delay_time_us = 100 * 1000; // 1/10sec
         StoreInStream(img, delay_time_us, true, canvas, &out);
     }
 
-    return {file_info, [](FileInfo *info) {
-        delete info;
-    }};
+    return file_info;
 }
 
 
@@ -214,7 +211,9 @@ string ImageScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ImageSceneWrapper::create() {
-    return {new ImageScene(), [](Scenes::Scene *scene) {
-        delete scene;
-    }};
+    return {
+        new ImageScene(), [](Scenes::Scene *scene) {
+            delete scene;
+        }
+    };
 }

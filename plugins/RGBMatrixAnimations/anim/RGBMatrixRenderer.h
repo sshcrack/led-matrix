@@ -103,7 +103,6 @@ class RGBMatrixRenderer
         void clearImage();
         virtual void showPixels() = 0;
         virtual void msSleep(int) = 0;
-        virtual void outputMessage(char[]) = 0;
         virtual int16_t random_int16(int16_t a, int16_t b) = 0;
         RGB_color getRandomColour();
         RGB_color newRandomColour();

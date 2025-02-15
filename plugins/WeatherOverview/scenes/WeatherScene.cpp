@@ -42,9 +42,9 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
         // Downloading image first
         if (!filesystem::exists(processed_img)) {
             try_remove(file_path);
-            auto res = download_image(data.icon_url, file_path);
-            if (!res) {
-                spdlog::warn("Could not download image");
+            auto res = utils::download_image(data.icon_url, file_path);
+            if (!res.success) {
+                spdlog::warn("Could not download image {}", res.error_message);
                 return false;
             }
         }

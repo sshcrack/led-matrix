@@ -17,8 +17,8 @@ RGBMatrixAnimations::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> RGBMatrixAnimations::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
+vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> RGBMatrixAnimations::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>();
     auto deleteScene = [](SceneWrapper *scene) {
         delete scene;
     };

@@ -6,3 +6,4 @@ cmake-build-*
 config.json
 vcpkg_installed
 run.sh
+images

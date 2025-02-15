@@ -1,5 +1,3 @@
-message(STATUS "Linking curl and cpr")
-
 # Curl
 find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})

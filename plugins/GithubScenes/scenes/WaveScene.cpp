@@ -7,12 +7,10 @@
 #include "shared/utils/utils.h"
 
 
-static float *map = nullptr;
-
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }
 
 
-void Scenes::WaveScene::drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap) {
+void WaveScene::drawMap(RGBMatrix *matrix, float *iMap) {
     for (int y = 0; y < matrix->height(); y++) {
         for (int x = 0; x < matrix->width(); x++) {
             const int i = xyToIndex(matrix->width(), x, y);
@@ -70,14 +68,13 @@ bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
     drawMap(matrix, map);
 
     matrix->SwapOnVSync(offscreen_canvas);
-    if(lastMap != nullptr) {
-        delete[] lastMap;
-    }
+    delete[] lastMap;
+
 
     return true;
 }
 
-void WaveScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+void WaveScene::initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(matrix, l_offscreen_canvas);
 
     std::srand(std::time(nullptr));
@@ -97,13 +94,15 @@ string WaveScene::get_name() const {
 }
 
 WaveScene::~WaveScene() {
-    delete map;
+    delete[] map;
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> WaveSceneWrapper::create() {
-    return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new WaveScene(), [](Scenes::Scene* scene) {
-        delete scene;
-    });
+std::unique_ptr<Scene, void (*)(Scene *)> WaveSceneWrapper::create() {
+    return {
+        new WaveScene(), [](Scene *scene) {
+            delete scene;
+        }
+    };
 }
 
 #pragma clang diagnostic pop

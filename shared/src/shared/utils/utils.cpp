@@ -132,17 +132,22 @@ int get_random_number_inclusive(int start, int end) {
 }
 
 std::optional<std::string> get_exec_dir() {
-    char result[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-    const char *path;
-
-    if (count == -1)
-        return nullopt;
-
-    path = result;
-    std::filesystem::path full_path(path);
-
-    return full_path.parent_path().string();
+    std::array<char, PATH_MAX> result{};  // Zero-initialized array
+    ssize_t count = readlink("/proc/self/exe", result.data(), result.size() - 1);
+    
+    if (count == -1) {
+        return std::nullopt;
+    }
+    
+    // Ensure null termination
+    result[count] = '\0';
+    
+    try {
+        std::filesystem::path full_path(result.data());
+        return full_path.parent_path().string();
+    } catch (const std::filesystem::filesystem_error& e) {
+        return std::nullopt;
+    }
 }
 
 std::vector<uint8_t> magick_to_rgb(const Magick::Image &img) {

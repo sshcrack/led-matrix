@@ -13,7 +13,6 @@ if(USE_EMULATOR)
 endif()
 
 add_library(${PROJECT_NAME} SHARED
-        include/logger.hpp
         src/shared/config/data.cpp
         src/Scene.cpp
         src/shared/post.cpp
@@ -81,5 +80,5 @@ include(GNUInstallDirs)
 
 # Installation
 install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION "."
 )

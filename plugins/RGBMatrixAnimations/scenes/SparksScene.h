@@ -8,13 +8,15 @@
 
 namespace Scenes {
     class SparksScene : public ParticleScene {
-    private:
         int16_t ax, ay;
+
         void initializeParticles() override;
 
     public:
         explicit SparksScene();
-        ~SparksScene() override;
+
+        ~SparksScene() override = default;
+
         [[nodiscard]] string get_name() const override;
 
         void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
