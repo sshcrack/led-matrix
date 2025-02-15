@@ -28,18 +28,25 @@ struct FileInfo {
     rgb_matrix::StreamIO *content_stream{};
 
     ~FileInfo() {
+        spdlog::trace("Deleting content stream");
+        std::flush(std::cout);
         delete content_stream;
     }
 };
 
 struct CurrAnimation {
     rgb_matrix::StreamReader reader;
+    std::unique_ptr<FileInfo, void(*)(FileInfo *)> file;
     const tmillis_t end_time_ms;
 
     CurrAnimation(const rgb_matrix::StreamReader &reader,
-                  const tmillis_t end_time_ms): reader(reader),
-                                                end_time_ms(
-                                                    end_time_ms) {
+                  const tmillis_t end_time_ms,
+                  std::unique_ptr<FileInfo, void(*)(FileInfo *)> file): reader(reader), file(std::move(file)), end_time_ms(end_time_ms) {
+    }
+
+    ~CurrAnimation() {
+        spdlog::trace("Deleting animation");
+        std::flush(std::cout);
     }
 };
 
@@ -48,10 +55,11 @@ struct ImageInfo {
     std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > post;
 };
 
-class ImageScene : public Scenes::Scene {
+class ImageScene final : public Scenes::Scene {
     std::optional<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> > curr_animation;
     uint curr_category = 0;
     std::atomic<bool> is_exiting{false};
+    std::atomic<bool> has_image{false};
 
     optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
 
@@ -64,7 +72,7 @@ class ImageScene : public Scenes::Scene {
     static expected<optional<ImageInfo>, string>
     get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height, const atomic<bool> &is_exiting);
 
-    static FileInfo GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
+    static std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
 
 public:
     /// Return true if scene should continue rendering
