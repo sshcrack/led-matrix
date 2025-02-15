@@ -1,14 +1,17 @@
 #pragma once
 
-#include <iostream>
+#include <string>
 #include <optional>
-#include <utility>
-#include <vector>
-#include <Magick++.h>
-#include <magick/image.h>
 #include "libxml/HTMLparser.h"
 
-using namespace std;
+namespace utils {
+    constexpr const char* DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+    
+    struct DownloadResult {
+        bool success;
+        std::string error_message;
+    };
 
-bool download_image(const string& url_str, const string& out_file);
-htmlDocPtr fetch_page(const string &url_str);
+    DownloadResult download_image(const std::string& url_str, const std::string& out_file);
+    std::optional<htmlDocPtr> fetch_page(const std::string& url_str, const std::string& base_url = "");
+}

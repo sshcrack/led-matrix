@@ -1,80 +1,78 @@
 #include "shared/utils/image_fetch.h"
-#include "cpr/cpr.h"
-#include "libxml/HTMLparser.h"
-#include <iostream>
+#include <cpr/cpr.h>
+#include <spdlog/spdlog.h>
 #include <curl/curl.h>
-#include <cstring>
-#include <Magick++.h>
-#include "spdlog/spdlog.h"
+#include <memory>
 
-using namespace std;
-using namespace spdlog;
+namespace utils {
 
-
-size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    size_t written = fwrite(ptr, size, nmemb, stream);
-    return written;
+namespace {
+    size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
+        return fwrite(ptr, size, nmemb, stream);
+    }
 }
 
-void rm_nonprinting(std::string &str) {
-    str.erase(std::remove_if(str.begin(), str.end(),
-                             [](unsigned char c) {
-                                 return !std::isprint(c);
-                             }),
-              str.end());
-}
-
-bool download_image(const string &url_str, const string &tmp) {
-    const char *out_file = tmp.c_str();
-
-    debug("Downloading " + url_str + " to " + out_file);
-
-    if (strlen(out_file) > FILENAME_MAX) {
-        error("File name too long");
-        return false;
+DownloadResult download_image(const std::string& url_str, const std::string& tmp) {
+    if (tmp.length() >= FILENAME_MAX) {
+        return {false, "File name too long"};
     }
 
+    spdlog::debug("Downloading {} to {}", url_str, tmp);
 
-    FILE *fp;
-    auto curl = curl_easy_init();
-    if (curl) {
-        errno = 0;
-        fp = fopen(out_file, "wb");
-        if (fp == nullptr) {
-            error("Could not open file " + to_string(errno) + " at path " + out_file);
-            return false;
-        }
-
-
-        CURLcode res;
-        curl_easy_setopt(curl, CURLOPT_URL, url_str.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-        res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-
-        fclose(fp);
-        if (res == CURLcode::CURLE_OK) {
-            return true;
-        } else {
-            error("curl error " + to_string(res));
-        }
+    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
+    if (!curl) {
+        return {false, "Failed to initialize CURL"};
     }
 
-    return false;
+    FILE* fp = fopen(tmp.c_str(), "wb");
+    if (!fp) {
+        return {false, "Failed to open output file: " + std::string(strerror(errno))};
+    }
+
+    curl_easy_setopt(curl.get(), CURLOPT_URL, url_str.c_str());
+    curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, write_data);
+    curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl.get(), CURLOPT_USERAGENT, DEFAULT_USER_AGENT);
+
+    auto res = curl_easy_perform(curl.get());
+    fclose(fp);
+
+    if (res != CURLE_OK) {
+        return {false, curl_easy_strerror(res)};
+    }
+
+    return {true, ""};
 }
 
-string page_base = "https://pixeljoint.com";
+std::optional<htmlDocPtr> fetch_page(const std::string& url_str, const std::string& base_url) {
+    cpr::Session session;
+    session.SetUrl(cpr::Url{base_url + url_str});
+    session.SetHeader({
+        {"User-Agent", DEFAULT_USER_AGENT},
+        {"Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"}
+    });
+    
+    auto response = session.Get();
+    
+    if (response.status_code != 200) {
+        spdlog::error("HTTP request failed with status code: {}", response.status_code);
+        return std::nullopt;
+    }
 
-htmlDocPtr fetch_page(const string &url_str) {
-    auto url = cpr::Url{page_base + url_str};
+    htmlDocPtr doc = htmlReadMemory(
+        response.text.c_str(),
+        response.text.length(),
+        nullptr,
+        nullptr,
+        HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR
+    );
 
-    cpr::Header headers = {
-            {"User-Agent",
-                       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"},
-            {"Cookie", "v=ob=rating; path=/"}
-    };
-    auto response = cpr::Get(url, headers);
-    return htmlReadMemory(response.text.c_str(), response.text.length(), nullptr, nullptr,
-                          HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
+    if (!doc) {
+        spdlog::error("Failed to parse HTML document");
+        return std::nullopt;
+    }
+
+    return doc;
 }
+
+} // namespace utils

@@ -10,9 +10,9 @@ using namespace spdlog;
 using rgb_matrix::RGBMatrix;
 
 
-FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
+FrameCanvas *update_canvas(RGBMatrix *matrix, FrameCanvas *offscreen_canvas) {
     auto preset = config->get_curr();
-    auto scenes = preset.scenes;
+    auto scenes = preset->scenes;
 
     for (const auto &item: scenes) {
         if (!item->is_initialized())
@@ -23,7 +23,7 @@ FrameCanvas* update_canvas(RGBMatrix *matrix, FrameCanvas* offscreen_canvas) {
     while (!exit_canvas_update) {
         int total_weight = 0;
 
-        vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> weighted_scenes;
+        vector<std::pair<int, std::shared_ptr<Scenes::Scene> > > weighted_scenes;
         for (const auto &item: scenes) {
             auto weight = item->get_weight();
 

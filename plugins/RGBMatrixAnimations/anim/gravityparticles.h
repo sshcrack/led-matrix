@@ -47,6 +47,7 @@
 #include <tuple>
 
 #include "RGBMatrixRenderer.h"
+#include <memory>
 
 
 class GravityParticles
@@ -60,7 +61,7 @@ class GravityParticles
     protected:
     private:
         int delayms;
-        RGBMatrixRenderer &renderer;
+        std::shared_ptr<RGBMatrixRenderer> renderer;
         Particle* particles;
         uint16_t spaceMultiplier;
         uint16_t maxParticles;
@@ -76,7 +77,7 @@ class GravityParticles
         uint8_t bounce;
     //functions
     public:
-        GravityParticles(RGBMatrixRenderer&,uint16_t,uint8_t=10);
+        GravityParticles(std::shared_ptr<RGBMatrixRenderer>,uint16_t,uint8_t=10);
         ~GravityParticles();
         void runCycle();
         void setAcceleration(int16_t,int16_t);

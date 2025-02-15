@@ -1,110 +1,182 @@
 #include "scraped_post.h"
 #include "shared/utils/image_fetch.h"
-#include <vector>
-#include "libxml/xpath.h"
-#include <iostream>
-#include <optional>
+#include <libxml/xpath.h>
 #include <spdlog/spdlog.h>
 
-using namespace spdlog;
-using namespace std;
-string search_url = "/pixels/new_icons.asp?q=1";
+namespace pixeljoint {
+    namespace {
+        struct XmlXPathObjGuard {
+            xmlXPathObjectPtr obj;
 
-optional<std::unique_ptr<Post, void (*)(Post *)>> ScrapedPost::fetch_link() {
-    //TODO
-    //if (cached_post)
-    //    return cached_post;
+            explicit XmlXPathObjGuard(xmlXPathObjectPtr o) : obj(o) {
+            }
 
-    htmlDocPtr doc = fetch_page(this->post_url);
+            ~XmlXPathObjGuard() { xmlXPathFreeObject(obj); }
+        };
 
-    xmlXPathContextPtr context = xmlXPathNewContext(doc);
-    xmlXPathObjectPtr mainimg = xmlXPathEvalExpression((xmlChar *) "//*[@id=\"mainimg\"]", context);
-    if (mainimg->nodesetval->nodeNr == 0) {
-        return nullopt;
+        // Add cleanup helper
+        void cleanup_xml_node(xmlNodePtr node) {
+            if (node) {
+                if (node->children) xmlFreeNodeList(node->children);
+                xmlFree(node);
+            }
+        }
     }
 
-    xmlNodePtr img = mainimg->nodesetval->nodeTab[0];
-    string img_path(
-            string(reinterpret_cast<char *>(xmlGetProp(img, (xmlChar *) "src")))
-    );
+    ScrapedPost::ScrapedPost(std::string_view thumbnail, std::string_view url)
+        : thumbnail(thumbnail)
+          , post_url(url) {
+    }
 
+    std::optional<std::unique_ptr<Post> > ScrapedPost::fetch_link() const {
+        auto doc_opt = utils::fetch_page(post_url, BASE_URL);
+        if (!doc_opt) {
+            spdlog::error("Failed to fetch page: {}", post_url);
+            return std::nullopt;
+        }
 
-    string img_url = "https://pixeljoint.com" + img_path;
-    //cached_post =
+        auto doc = doc_opt.value();
+        auto context = xmlXPathNewContext(doc);
 
-    std::unique_ptr<Post, void (*)(Post *)> post = {new Post(img_url), [](Post *post) {
-        delete post;
-    }};
+        auto mainimg = xmlXPathEvalExpression(BAD_CAST "//*[@id=\"mainimg\"]", context);
 
-    return post;
-}
+        if (!mainimg->nodesetval || mainimg->nodesetval->nodeNr == 0) {
+            xmlXPathFreeObject(mainimg);
+            xmlXPathFreeContext(context);
+            xmlFreeDoc(doc);
 
-optional<int> ScrapedPost::get_pages() {
-    info("Getting page size...");
+            spdlog::error("No main image found on page");
+            return std::nullopt;
+        }
 
-    // parse the HTML document returned by the server
-    htmlDocPtr doc = fetch_page(search_url);
+        xmlNodePtr img = mainimg->nodesetval->nodeTab[0];
+        auto src_prop = xmlGetProp(img, BAD_CAST "src");
+        if (!src_prop) {
+            xmlXPathFreeObject(mainimg);
+            xmlXPathFreeContext(context);
+            xmlFreeDoc(doc);
 
-    vector<ScrapedPost> pixel_posts;
+            spdlog::error("No src attribute found on main image");
+            return std::nullopt;
+        }
 
-    xmlXPathContextPtr context = xmlXPathNewContext(doc);
-    xmlXPathObjectPtr page_option = xmlXPathEvalExpression(
-            (xmlChar *) "//div[1]/span/select/option[last()]", context);
-    optional<int> page_end = std::nullopt;
+        std::string img_url = BASE_URL + std::string(reinterpret_cast<char *>(src_prop));
+        xmlFree(src_prop);
 
-    int size = page_option->nodesetval->nodeNr;
-    if (size != 0) {
-        int last_index = size - 1;
+        xmlXPathFreeObject(mainimg);
+        xmlXPathFreeContext(context);
+        xmlFreeDoc(doc);
 
-        xmlNodePtr el = page_option->nodesetval->nodeTab[last_index];
-        xmlXPathSetContextNode(el, context);
-        string value = string(reinterpret_cast<char *>(xmlGetProp(el, (xmlChar *) "value")));
+        return std::make_unique<Post>(img_url);
+    }
+
+    std::optional<int> ScrapedPost::get_pages() {
+        auto doc_opt = utils::fetch_page(SEARCH_URL, BASE_URL);
+        if (!doc_opt) {
+            spdlog::error("Failed to fetch search page");
+            return std::nullopt;
+        }
+
+        auto doc = doc_opt.value();
+        auto context = xmlXPathNewContext(doc);
+
+        auto page_option = xmlXPathEvalExpression(
+            BAD_CAST "//div[1]/span/select/option[last()]",
+            context
+        );
+
+        if (!page_option->nodesetval || page_option->nodesetval->nodeNr == 0) {
+            spdlog::error("No pagination found");
+
+            xmlXPathFreeObject(page_option);
+            xmlXPathFreeContext(context);
+            xmlFreeDoc(doc);
+            return std::nullopt;
+        }
+
+        xmlNodePtr el = page_option->nodesetval->nodeTab[0];
+        auto value_prop = xmlGetProp(el, BAD_CAST "value");
+        if (!value_prop) {
+            spdlog::error("No value attribute found on page option");
+
+            xmlXPathFreeObject(page_option);
+            xmlXPathFreeContext(context);
+            xmlFreeDoc(doc);
+            return std::nullopt;
+        }
+
+        std::string value(reinterpret_cast<char *>(value_prop));
+        xmlFree(value_prop);
+
+        xmlXPathFreeObject(page_option);
+        xmlXPathFreeContext(context);
+        xmlFreeDoc(doc);
+
         try {
-            page_end = stoi(value);
-        }
-        catch (exception &err) {
-            cout << "Conversion failure" << endl;
+            return std::stoi(value);
+        } catch (const std::exception &e) {
+            spdlog::error("Failed to parse page number: {}", e.what());
+            return std::nullopt;
         }
     }
 
-    debug("Obtained page size of " + to_string(page_end.value_or(-1)));
-    return page_end;
-}
+    std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)> > ScrapedPost::get_posts(int page) {
+        std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)> > posts;
 
-vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> ScrapedPost::get_posts(int page) {
-    info("Getting posts from page " + to_string(page) + "...");
-    string url = search_url + "&pg=" + to_string(page);
+        std::string url = SEARCH_URL + std::string("&pg=") + std::to_string(page);
+        auto doc_opt = utils::fetch_page(url, BASE_URL);
+        if (!doc_opt) {
+            spdlog::error("Failed to fetch page {}", page);
+            return posts;
+        }
 
-    // parse the HTML document returned by the server
-    htmlDocPtr doc = fetch_page(url);
+        auto doc = doc_opt.value();
+        auto context = xmlXPathNewContext(doc);
 
-    vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> pixel_posts;
+        auto posts_links = xmlXPathEvalExpression(
+            BAD_CAST "//a[contains(@class, 'imglink')]",
+            context
+        );
 
-    xmlXPathContextPtr context = xmlXPathNewContext(doc);
-    xmlXPathObjectPtr posts_links = xmlXPathEvalExpression((xmlChar *) "//a[contains(@class, 'imglink')]", context);
+        if (!posts_links->nodesetval) {
+            xmlXPathFreeObject(posts_links);
+            xmlXPathFreeContext(context);
+            xmlFreeDoc(doc);
 
-    // iterate over the list of industry card elements
-    for (int i = 0; i < posts_links->nodesetval->nodeNr; ++i) {
-        // get the current element of the loop
-        xmlNodePtr post_link = posts_links->nodesetval->nodeTab[i];
-        // set the libxml2 context to the current element
-        // to limit the XPath selectors to its children
-        xmlXPathSetContextNode(post_link, context);
+            return posts;
+        };
 
-        xmlNodePtr image_html_element = xmlXPathEvalExpression((xmlChar *) ".//img", context)->nodesetval->nodeTab[0];
-        string thumbnail = string(reinterpret_cast<char *>(xmlGetProp(image_html_element, (xmlChar *) "src")));
+        for (int i = 0; i < posts_links->nodesetval->nodeNr; ++i) {
+            xmlNodePtr post_link = posts_links->nodesetval->nodeTab[i];
+            xmlXPathSetContextNode(post_link, context);
 
-        string a_href = string(reinterpret_cast<char *>(xmlGetProp(post_link, (xmlChar *) "href")));
+            auto image_result = xmlXPathEvalExpression(BAD_CAST ".//img", context);
+            if (!image_result->nodesetval || image_result->nodesetval->nodeNr == 0) {
+                xmlXPathFreeObject(image_result);
+                continue;
+            }
 
-        auto pixel_post = new ScrapedPost(thumbnail, a_href);
-        pixel_posts.push_back({pixel_post, [](ScrapedPost *post) {
-            delete post;
-        }});
+            xmlNodePtr image_element = image_result->nodesetval->nodeTab[0];
+            auto src = xmlGetProp(image_element, BAD_CAST "src");
+            auto href = xmlGetProp(post_link, BAD_CAST "href");
+
+            if (src && href) {
+                std::string src_str(reinterpret_cast<char *>(src));
+                std::string href_str(reinterpret_cast<char *>(href));
+                posts.push_back({
+                    new ScrapedPost(src_str, href_str),
+                    [](ScrapedPost *post) { delete post; }
+                });
+            }
+
+            xmlXPathFreeObject(image_result);
+            if (src) xmlFree(src);
+            if (href) xmlFree(href);
+        }
+
+        xmlXPathFreeObject(posts_links);
+        xmlXPathFreeContext(context);
+        xmlFreeDoc(doc);
+        return posts;
     }
-
-    return pixel_posts;
-}
-
-string ScrapedPost::get_post_url() {
-    return this->post_url;
-}
+} // namespace pixeljoint

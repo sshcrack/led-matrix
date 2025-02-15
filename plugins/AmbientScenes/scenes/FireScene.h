@@ -7,7 +7,6 @@
 
 namespace AmbientScenes {
 class FireScene : public Scenes::Scene {
-    private:
         int width = 0;
         int height = 0;
         float time = 0.0f;  // Simulation time
@@ -21,7 +20,7 @@ class FireScene : public Scenes::Scene {
         [[nodiscard]] float fbm(float x, float y) const;
 
         PropertyPointer<float> frames_per_second = MAKE_PROPERTY("fps", float, 30.0f);
-        [[maybe_unused]] float update_delay;      // Delay between updates in seconds
+        [[maybe_unused]] float update_delay{};      // Delay between updates in seconds
         float accumulated_time;
 
         std::chrono::steady_clock::time_point last_update;
@@ -32,9 +31,9 @@ class FireScene : public Scenes::Scene {
         explicit FireScene();
         ~FireScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(RGBMatrix *matrix) override;
 
-        void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) override;
 
         [[nodiscard]] string get_name() const override;
 

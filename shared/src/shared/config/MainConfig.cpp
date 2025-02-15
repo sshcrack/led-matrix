@@ -6,67 +6,68 @@
 
 
 using namespace spdlog;
+
 namespace Config {
-    void MainConfig::mark_dirty(bool dirty_local) {
-        unique_lock<shared_mutex> lock(this->update_mutex);
-        if(dirty_local)
+    void MainConfig::mark_dirty(const bool dirty_local) {
+        unique_lock lock(this->update_mutex);
+        if (dirty_local)
             exit_canvas_update = true;
         this->dirty = dirty_local;
     }
 
     bool MainConfig::is_dirty() {
-        shared_lock<shared_mutex> lock(this->update_mutex);
+        shared_lock lock(this->update_mutex);
         return this->dirty;
     }
 
     string MainConfig::get_curr_id() {
-        shared_lock<shared_mutex> lock(this->data_mutex);
+        shared_lock lock(this->data_mutex);
 
         return this->data.curr;
     }
 
-    ConfigData::Preset MainConfig::get_curr() {
-        shared_lock<shared_mutex> lock(this->data_mutex);
+    std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
+        shared_lock lock(this->data_mutex);
 
         return this->data.presets[data.curr];
     }
 
     ConfigData::SpotifyData MainConfig::get_spotify() {
-        shared_lock<shared_mutex> lock(this->data_mutex);
+        shared_lock lock(this->data_mutex);
 
         return this->data.spotify;
     }
 
     void MainConfig::set_spotify(ConfigData::SpotifyData spotify) {
-        unique_lock<shared_mutex> lock(this->data_mutex);
+        unique_lock lock(this->data_mutex);
 
         this->data.spotify = std::move(spotify);
         this->mark_dirty(true);
     }
 
     void MainConfig::set_curr(string id) {
-        unique_lock<shared_mutex> lock(this->data_mutex);
+        unique_lock lock(this->data_mutex);
 
         this->data.curr = std::move(id);
         this->mark_dirty(true);
     }
 
-    void MainConfig::set_presets(const string& id, ConfigData::Preset preset) {
-        unique_lock<shared_mutex> lock(this->data_mutex);
+    void MainConfig::set_presets(const string &id, std::shared_ptr<ConfigData::Preset> preset) {
+        unique_lock lock(this->data_mutex);
 
         this->data.presets[id] = std::move(preset);
         this->mark_dirty(true);
     }
 
-    map<string, ConfigData::Preset> MainConfig::get_presets() {
-        shared_lock<shared_mutex> lock(this->data_mutex);
+    map<string, std::shared_ptr<ConfigData::Preset>> MainConfig::get_presets() {
+        shared_lock lock(this->data_mutex);
         return this->data.presets;
     }
 
     bool MainConfig::save() {
         try {
             debug("Acquiring lock to save config...");
-            shared_lock<shared_mutex> lock(this->data_mutex);
+            shared_lock lock(this->data_mutex);
 
             info("Saving config at '{}'..", file_name);
             json as_json = this->data;
@@ -75,14 +76,14 @@ namespace Config {
             ofstream file;
             file.open(file_name);
 
-            if(!(file << out)) {
+            if (!(file << out)) {
                 error("Could not write to file '{}'", file_name);
                 return false;
             }
 
             file.close();
             info("Done saving config.");
-        } catch (exception& ex) {
+        } catch (exception &ex) {
             error("could not save config: {}", ex.what());
             return false;
         }
@@ -104,11 +105,11 @@ namespace Config {
 
         f.close();
 
-        this->data = temp.template get<ConfigData::Root>();
+        this->data = temp.get<ConfigData::Root>();
         this->dirty = false;
     }
 
-    string MainConfig::get_filename() {
+    string MainConfig::get_filename() const {
         return this->file_name;
     }
 
@@ -116,8 +117,8 @@ namespace Config {
         return this->data.pluginConfigs;
     }
 
-    void MainConfig::set_plugin_config(const std::string& pluginId, const string &config) {
-        unique_lock<shared_mutex> lock(this->data_mutex);
+    void MainConfig::set_plugin_config(const std::string &pluginId, const string &config) {
+        unique_lock lock(this->data_mutex);
 
         this->data.pluginConfigs[pluginId] = config;
         this->mark_dirty(true);

@@ -11,7 +11,7 @@ vector<int> generate_rand_pages(int page_begin, int page_end) {
     for (int i = page_begin; i < page_end; ++i)
         total_p.push_back(i + 1);
 
-    std::shuffle(total_p.begin(), total_p.end(), random_device());
+    std::shuffle(total_p.begin(), total_p.end(), std::random_device());
 
     return total_p;
 }
@@ -29,10 +29,10 @@ ImageProviders::Pages::get_next_image() {
             int next_page = total_pages[0];
             total_pages.erase(total_pages.begin());
 
-            curr_posts = std::move(ScrapedPost::get_posts(next_page));
+            curr_posts = std::move(pixeljoint::ScrapedPost::get_posts(next_page));
             if (curr_posts.empty()) {
                 spdlog::debug("Current posts are empty, returning");
-                return nullopt;
+                return std::nullopt;
             }
         }
 
@@ -40,12 +40,12 @@ ImageProviders::Pages::get_next_image() {
 
         auto link = curr->get()->fetch_link();
         if (!link.has_value())
-            return nullopt;
+            return std::nullopt;
 
         return std::move(link.value());
     }
 
-    return nullopt;
+    return std::nullopt;
 }
 
 ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
@@ -53,9 +53,9 @@ ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
     int p_end = arguments.value("end", -1);
 
     if (p_end == -1) {
-        auto pages = ScrapedPost::get_pages();
+        auto pages = pixeljoint::ScrapedPost::get_pages();
         if (!pages.has_value())
-            throw runtime_error("Could not get page size");
+            throw std::runtime_error("Could not get page size");
 
         p_end = pages.value();
     }

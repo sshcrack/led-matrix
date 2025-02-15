@@ -5,27 +5,35 @@
 using namespace Scenes;
 
 ParticleScene::ParticleScene()
-        : Scene(),
-          prevTime(0),
-          lastFpsLog(0),
-          frameCount(0) {}
-
-ParticleScene::~ParticleScene() {
-    delete animation;
-    delete renderer;
+    : Scene(),
+      prevTime(0),
+      lastFpsLog(0),
+      frameCount(0),
+      matrix(nullptr) {
 }
 
-void ParticleScene::initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+void ParticleScene::initialize(RGBMatrix *p_matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(p_matrix, l_offscreen_canvas);
 
     matrix = p_matrix;
-    renderer = new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix);
-    animation = new GravityParticles(*renderer, shake->get(), bounce->get());
+
+    renderer = {
+        new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix), [](ParticleMatrixRenderer *r) {
+            delete r;
+        }
+    };
+
+    animation = {
+        new GravityParticles(renderer.value(), shake->get(), bounce->get()), [](GravityParticles *a) {
+            delete a;
+        }
+    };
+
     initializeParticles();
 }
 
 bool ParticleScene::render(RGBMatrix *rgbMatrix) {
-    animation->runCycle();
+    animation->get()->runCycle();
 
     uint8_t MAX_FPS = 1000 / delay_ms->get();
     uint32_t t;
@@ -46,7 +54,7 @@ bool ParticleScene::render(RGBMatrix *rgbMatrix) {
 
 uint64_t ParticleScene::micros() {
     uint64_t us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::
-                                                                        now().time_since_epoch()).count();
+        now().time_since_epoch()).count();
     return us;
 }
 
@@ -59,6 +67,6 @@ void ParticleScene::register_properties() {
     add_property(delay_ms);
 }
 
-void ParticleScene::after_render_stop(rgb_matrix::RGBMatrix *m) {
-    this->animation->clearParticles();
+void ParticleScene::after_render_stop(RGBMatrix *m) {
+    this->animation->get()->clearParticles();
 }

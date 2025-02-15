@@ -11,18 +11,13 @@ SparksScene::SparksScene()
     bounce = MAKE_PROPERTY("bounce", int, 250);
 }
 
-SparksScene::~SparksScene() {
-    delete animation;
-    delete renderer;
-}
-
 void SparksScene::initializeParticles() {
     RGB_color yellow = {255, 200, 120};
     int16_t maxVel = 10000;
 
     for (int i = 0; i < numParticles->get(); i++) {
-        int16_t vx = renderer->random_int16(-maxVel, maxVel + 1);
-        int16_t vy = renderer->random_int16(-maxVel, maxVel + 1);
+        int16_t vx = renderer->get()->random_int16(-maxVel, maxVel + 1);
+        int16_t vy = renderer->get()->random_int16(-maxVel, maxVel + 1);
 
         if (vx > 0) {
             vx += maxVel / 5;
@@ -36,16 +31,16 @@ void SparksScene::initializeParticles() {
             vy -= maxVel / 5;
         }
 
-        animation->addParticle(yellow, vx, vy);
+        animation->get()->addParticle(yellow, vx, vy);
     }
 
     ax = 0;
     ay = -accel->get();
-    animation->setAcceleration(ax, ay);
+    animation->get()->setAcceleration(ax, ay);
 }
 
 void SparksScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
-    animation->clearParticles();
+    animation->get()->clearParticles();
     initializeParticles();
 }
 

@@ -1,4 +1,3 @@
-
 #include "shared/config/data.h"
 #include "shared/plugin_loader/loader.h"
 #include <nlohmann/json.hpp>
@@ -14,8 +13,8 @@ namespace ConfigData {
         auto &c = const_cast<Scenes::Scene *&>(p);
 
         j = {
-                {"type",      c->get_name()},
-                {"arguments", c->to_json()}
+            {"type", c->get_name()},
+            {"arguments", c->to_json()}
         };
     }
 
@@ -23,25 +22,25 @@ namespace ConfigData {
         auto &c = const_cast<ImageProviders::General *&>(p);
 
         j = {
-                {"type",      c->get_name()},
-                {"arguments", c->to_json()}
+            {"type", c->get_name()},
+            {"arguments", c->to_json()}
         };
     }
 
 
     void to_json(json &j, const SpotifyData &p) {
         j = json{
-                {"expires_at",    p.expires_at},
-                {"access_token",  p.access_token.value_or("")},
-                {"refresh_token", p.refresh_token.value_or("")}
+            {"expires_at", p.expires_at},
+            {"access_token", p.access_token.value_or("")},
+            {"refresh_token", p.refresh_token.value_or("")}
         };
     }
 
-    void to_json(json &j, const Preset &p) {
+    void to_json(json &j, std::shared_ptr<Preset> p) {
         vector<json> image_json;
 
-        image_json.reserve(p.providers.size());
-        for (const auto &item: p.providers) {
+        image_json.reserve(p->providers.size());
+        for (const auto &item: p->providers) {
             json local_j;
             to_json(local_j, (const ImageProviders::General *&) item);
 
@@ -49,8 +48,8 @@ namespace ConfigData {
         }
 
         vector<json> scenes_json;
-        scenes_json.reserve(p.scenes.size());
-        for (const auto &item: p.scenes) {
+        scenes_json.reserve(p->scenes.size());
+        for (const auto &item: p->scenes) {
             json local_j;
             to_json(local_j, (const Scenes::Scene *&) item);
 
@@ -58,17 +57,17 @@ namespace ConfigData {
         }
 
         j = json{
-                {"images", image_json},
-                {"scenes", scenes_json}
+            {"images", image_json},
+            {"scenes", scenes_json}
         };
     }
 
     void to_json(json &j, const Root &p) {
         j = json{
-                {"presets", p.presets},
-                {"curr",    p.curr},
-                {"spotify", p.spotify},
-                {"pluginConfigs", p.pluginConfigs}
+            {"presets", p.presets},
+            {"curr", p.curr},
+            {"spotify", p.spotify},
+            {"pluginConfigs", p.pluginConfigs}
         };
     }
 
@@ -97,18 +96,18 @@ namespace ConfigData {
         p.expires_at = expires_at;
     }
 
-    void from_json(const json &j, Preset &p) {
+    void from_json(const json &j, std::shared_ptr<Preset> &p) {
         vector<json> image_json = j.at("images");
 
 
-        vector<std::shared_ptr<ImageProviders::General>> images;
+        vector<std::shared_ptr<ImageProviders::General> > images;
         images.reserve(image_json.size());
 
         for (const auto &item: image_json)
             images.push_back(ImageProviders::General::from_json(item));
 
 
-        vector<std::shared_ptr<Scenes::Scene>> scenes;
+        vector<std::shared_ptr<Scenes::Scene> > scenes;
         if (j.contains("scenes")) {
             vector<json> scenes_json = j.at("scenes");
 
@@ -116,24 +115,31 @@ namespace ConfigData {
 
             for (const auto &item: scenes_json)
                 scenes.push_back(Scenes::Scene::from_json(item));
-
         } else {
-            spdlog::info("No scenes in preset. Adding default...");
+            info("No scenes in preset. Adding default...");
             auto pl = Plugins::PluginManager::instance();
             for (const auto &item: pl->get_scenes()) {
                 scenes.emplace_back(item->create());
             }
         }
 
-        p.scenes = std::move(scenes);
-        p.providers = std::move(images);
+
+        p = {
+            new Preset(),
+            [](Preset *p) {
+                delete p;
+            }
+        };
+
+        p->scenes = std::move(scenes);
+        p->providers = std::move(images);
     }
 
-    void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General*)>&p) {
+    void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General *)> &p) {
         p = std::move(ImageProviders::General::from_json(j));
     }
 
-    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)>&p) {
+    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> &p) {
         p = std::move(Scenes::Scene::from_json(j));
     }
 

@@ -181,7 +181,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
     if (target == "/get_curr") {
         std::vector<json> scenes;
 
-        for (const auto &item: config->get_curr().scenes) {
+        for (const auto &item: config->get_curr()->scenes) {
             json j;
             j["name"] = item->get_name();
             j["properties"] = item->to_json();

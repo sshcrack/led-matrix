@@ -8,7 +8,7 @@ namespace ImageProviders {
     class Pages : public General {
     private:
         int page_end, page_begin;
-        vector<std::unique_ptr<ScrapedPost, void (*)(ScrapedPost *)>> curr_posts;
+        vector<std::unique_ptr<pixeljoint::ScrapedPost, void (*)(pixeljoint::ScrapedPost *)>> curr_posts;
         vector<int> total_pages;
 
     public:

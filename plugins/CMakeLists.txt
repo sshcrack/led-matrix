@@ -55,7 +55,7 @@ foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     # Install plugin
     install(TARGETS ${LIB_NAME}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins
+            LIBRARY DESTINATION "plugins"
     )
 
 endforeach (PLUGIN_SOURCE ${PLUGIN_SOURCES})

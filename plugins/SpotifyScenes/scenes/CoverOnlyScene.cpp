@@ -145,7 +145,7 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
     string out_file = "/tmp/spotify_cover." + track_id + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
-        download_image(cover, out_file);
+        utils::download_image(cover, out_file);
     }
 
     int margin = 2;

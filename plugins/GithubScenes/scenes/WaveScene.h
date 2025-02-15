@@ -9,6 +9,7 @@ using namespace Scenes;
 namespace Scenes {
     class WaveScene : public Scene {
     private:
+        float *map = nullptr;
         FrameTimer frameTimer;
 
         void drawMap(rgb_matrix::RGBMatrix *matrix, float *iMap);
