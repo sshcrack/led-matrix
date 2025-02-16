@@ -37,7 +37,8 @@ bool ParticleScene::render(RGBMatrix *rgbMatrix) {
 
     uint8_t MAX_FPS = 1000 / delay_ms->get();
     uint32_t t;
-    while ((t = micros() - prevTime) < (100000L / MAX_FPS));
+    while ((t = micros() - prevTime) < (100000L / MAX_FPS)) {
+    }
 
     frameCount++;
     uint64_t now = micros();

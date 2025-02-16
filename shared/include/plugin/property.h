@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+
 class PropertyBase {
 protected:
     std::string name;
@@ -20,8 +21,7 @@ public:
 };
 
 template<typename T>
-class Property : public PropertyBase {
-private:
+class Property final : public PropertyBase {
     T value;
     bool required;
     bool registered;
