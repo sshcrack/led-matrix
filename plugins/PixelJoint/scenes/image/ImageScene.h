@@ -72,7 +72,8 @@ class ImageScene final : public Scenes::Scene {
     static expected<optional<ImageInfo>, string>
     get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height, const atomic<bool> &is_exiting);
 
-    static std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
+    std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
+    PropertyPointer<tmillis_t> image_display_duration = MAKE_PROPERTY("display_duration", tmillis_t, 15000);
 
 public:
     /// Return true if scene should continue rendering

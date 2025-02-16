@@ -17,22 +17,32 @@ namespace Scenes {
         uint16_t totalColors;
         uint32_t counter;
 
-        
+
         void initializeParticles() override;
+
         void initializeColumns();
+
         void createColorPalette();
+
         void addNewParticles();
+
         void removeOldParticles();
 
     public:
         explicit RainScene();
+
         ~RainScene() override;
+
         bool render(RGBMatrix *matrix) override;
-        void initialize(rgb_matrix::RGBMatrix *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;  // Add override here instead
+
+        void initialize(RGBMatrix *p_matrix, FrameCanvas *l_offscreen_canvas) override; // Add override here instead
         [[nodiscard]] string get_name() const override;
+
+        void after_render_stop(RGBMatrix *matrix) override {
+        }
     };
 
     class RainSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
     };
 }

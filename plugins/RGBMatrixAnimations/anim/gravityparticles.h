@@ -60,7 +60,6 @@ class GravityParticles
         };
     protected:
     private:
-        int delayms;
         std::shared_ptr<RGBMatrixRenderer> renderer;
         Particle* particles;
         uint16_t spaceMultiplier;

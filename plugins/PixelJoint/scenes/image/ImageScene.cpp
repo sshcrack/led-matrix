@@ -167,7 +167,7 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
     auto frames_opt = raw_post->process_images(width, height);
 
     if (!frames_opt.has_value()) {
-        auto image_url = raw_post->get_image_url();
+        const auto image_url = raw_post->get_image_url();
 
         return unexpected("Could not load image " + image_url);
     }
@@ -186,7 +186,7 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
 std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(vector<Magick::Image> frames,
                                                                        FrameCanvas *canvas) {
     auto params = ImageParams();
-    params.duration_ms = 15000;
+    params.duration_ms = image_display_duration->get();
 
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> file_info = {
         new FileInfo(),
