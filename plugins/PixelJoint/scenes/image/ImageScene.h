@@ -55,6 +55,16 @@ struct ImageInfo {
     std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > post;
 };
 
+const std::string PROVIDER_DEFAULT = R"(
+{
+  "type": "pages",
+  "arguments": {
+    "begin": 0,
+    "end": -1
+  }
+}
+)";
+
 class ImageScene final : public Scenes::Scene {
     std::optional<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> > curr_animation;
     std::vector<std::shared_ptr<ImageProviders::General>> providers;
@@ -76,7 +86,7 @@ class ImageScene final : public Scenes::Scene {
 
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
     PropertyPointer<tmillis_t> image_display_duration = MAKE_PROPERTY("display_duration", tmillis_t, 15000);
-    PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("providers", nlohmann::json, nlohmann::json::array());
+    PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("providers", nlohmann::json, nlohmann::json::parse(PROVIDER_DEFAULT));
 
 public:
     /// Return true if scene should continue rendering

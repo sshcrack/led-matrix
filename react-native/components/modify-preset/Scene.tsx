@@ -1,36 +1,24 @@
-import { Text } from '@rn-primitives/label';
+import { Text } from '~/components/ui/text';
 import { View } from 'react-native';
 import { Scene } from '~/components/apiTypes/list_presets';
 import { Property } from '../apiTypes/list_scenes';
-import PropertyManage from './Property';
-import DurationProperty from './DurationProperty';
-import WeightProperty from './WeightProperty';
+import { DynamicPluginProperty } from './property_list';
+import { titleCase } from '~/lib/utils';
 
-export default function SceneComponent({ data, properties }: { data: Scene, properties: Property[] }) {
+export default function SceneComponent({ data, properties }: { data: Scene, properties: Property<any>[] }) {
     const entries = Object.entries(data.arguments)
 
-    return <View className="align-center w-full pb-10">
-        <Text className='text-center text-2xl font-semibold'>{data.type}</Text>
+    return <View className="align-center w-full pb-10 flex-col gap-5">
+        <Text className='text-center text-2xl font-semibold'>{titleCase(data.type)}</Text>
         {
             entries.map(([propertyName, value]) => {
-                if(propertyName === "duration") {
-                    return <DurationProperty key={propertyName} value={value}/>
-                }
-
-                if(propertyName === "weight") {
-                    return <WeightProperty key={propertyName} value={value} />
-                }
-
                 const property = properties.find(property => property.name === propertyName)
-                if (!property) return <Text>Property {propertyName} could not be found.</Text>
-
                 const defaultVal = property?.default_value
 
-                return <PropertyManage
+                return <DynamicPluginProperty
                     key={propertyName}
                     propertyName={propertyName}
                     defaultVal={defaultVal}
-                    property={property}
                     value={value}
                 />
             })

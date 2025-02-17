@@ -58,7 +58,6 @@ string ImageProviders::Collection::get_name() const {
     return "collection";
 }
 
-
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::CollectionWrapper::create_default() {
     return {new Collection(json::parse("[]")), [](General *scene) {

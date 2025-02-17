@@ -1,27 +1,114 @@
 {
+  "curr": "Random Pages",
+  "pluginConfigs": {
+  },
   "presets": {
-    "DEFAULT": {
-      "name": "Random Pages",
-      "images": [
+    "Random Pages": {
+      "images": [],
+      "scenes": [
         {
-          "type": "pages",
           "arguments": {
-            "begin": 0,
-            "end": -1
-          }
+            "duration": 15000,
+            "weight": 10
+          },
+          "type": "watermelon_plasma"
         },
         {
-            "type": "spotify",
-            "arguments": {}
+          "arguments": {
+            "duration": 15000,
+            "weight": 10
+          },
+          "type": "wave"
+        },
+        {
+          "arguments": {
+            "duration": 50000,
+            "providers": [
+              {
+                "arguments": {
+                  "begin": 0,
+                  "end": 84
+                },
+                "type": "pages"
+              }
+            ],
+            "weight": 70
+          },
+          "type": "image_scene"
+        },
+        {
+          "arguments": {
+            "duration": 10000,
+            "weight": 3
+          },
+          "type": "weather"
+        },
+        {
+          "arguments": {
+            "duration": 10000,
+            "weight": 15
+          },
+          "type": "spotify"
+        },
+        {
+          "arguments": {
+            "duration": 20000,
+            "weight": 4
+          },
+          "type": "rain"
+        },
+        {
+          "arguments": {
+            "duration": 10000,
+            "weight": 4
+          },
+          "type": "sparks"
+        },
+        {
+          "arguments": {
+            "duration": 10000,
+            "weight": 2
+          },
+          "type": "ping_pong"
+        },
+        {
+          "arguments": {
+            "duration": 15000,
+            "weight": 5
+          },
+          "type": "tetris"
+        },
+        {
+          "arguments": {
+            "duration": 1200000,
+            "weight": 2
+          },
+          "type": "maze"
+        },
+        {
+          "arguments": {
+            "duration": 10000,
+            "weight": 5
+          },
+          "type": "starfield"
+        },
+        {
+          "arguments": {
+            "duration": 5000,
+            "weight": 5
+          },
+          "type": "metablob"
+        },
+        {
+          "arguments": {
+            "duration": 5000,
+            "weight": 1
+          },
+          "type": "fire"
         }
       ]
     }
   },
-  "curr": "DEFAULT",
   "spotify": {
-    "access_token": "",
-    "refresh_token": "",
-    "expires_at": 0
-  },
-  "pluginConfigs": {}
+  }
 }
