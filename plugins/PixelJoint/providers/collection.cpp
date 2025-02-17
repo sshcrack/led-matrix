@@ -29,11 +29,10 @@ void ImageProviders::Collection::flush() {
 }
 
 ImageProviders::Collection::Collection(const json &arguments) : General(arguments) {
-    vector<string> imgs = arguments.template get<vector<string>>();
+    vector<string> imgs = arguments.get<vector<string>>();
     images.reserve(imgs.size());
 
     for (const auto &item: imgs) {
-        spdlog::debug("Adding {} to group", item);
         images.push_back({new Post(item), [](Post *post) {
             delete post;
         }});
@@ -69,5 +68,7 @@ ImageProviders::CollectionWrapper::create_default() {
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::CollectionWrapper::from_json(const json &json) {
-    return Collection::from_json(json);
+    return {new Collection(json), [](General *p) {
+        delete p;
+    }};
 }

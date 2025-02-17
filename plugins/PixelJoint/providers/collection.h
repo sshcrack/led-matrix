@@ -5,13 +5,13 @@
 
 namespace ImageProviders {
     class Collection : public General {
-    private:
-        vector<std::shared_ptr<Post>> images;
-        vector<std::shared_ptr<Post>> already_shown;
+        vector<std::shared_ptr<Post> > images;
+        vector<std::shared_ptr<Post> > already_shown;
 
     public:
-        optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+        optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > >
         get_next_image() override;
+
         ~Collection() override = default;
 
         void flush() override;
@@ -25,9 +25,9 @@ namespace ImageProviders {
 
 
     class CollectionWrapper : public Plugins::ImageProviderWrapper {
-        std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create_default() override;
+        std::unique_ptr<General, void (*)(General *)> create_default() override;
 
-        std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+        std::unique_ptr<General, void (*)(General *)>
         from_json(const nlohmann::json &json) override;
     };
 }

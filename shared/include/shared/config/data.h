@@ -11,10 +11,8 @@ using json = nlohmann::json;
 namespace ConfigData {
     struct Preset {
         vector<std::shared_ptr<Scenes::Scene> > scenes;
-        vector<std::shared_ptr<ImageProviders::General> > providers;
 
         ~Preset() = default; // Add explicit destructor
-        void randomize();
     };
 
     struct SpotifyData {
