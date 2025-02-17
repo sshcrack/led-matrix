@@ -1,4 +1,3 @@
-import { Text } from '@rn-primitives/label';
 import { useLocalSearchParams } from 'expo-router';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +5,7 @@ import { Preset } from '~/components/apiTypes/list_presets';
 import useFetch from '~/components/useFetch';
 import SceneComponent from '../../components/modify-preset/Scene';
 import { ListScenes, Property } from '~/components/apiTypes/list_scenes';
+import { Text } from '~/components/ui/text';
 
 type SceneWrapperProps = {
     isLoading: boolean,
