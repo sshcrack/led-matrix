@@ -57,6 +57,8 @@ struct ImageInfo {
 
 class ImageScene final : public Scenes::Scene {
     std::optional<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> > curr_animation;
+    std::vector<std::shared_ptr<ImageProviders::General>> providers;
+
     uint curr_category = 0;
     std::atomic<bool> is_exiting{false};
     std::atomic<bool> has_image{false};
@@ -74,6 +76,7 @@ class ImageScene final : public Scenes::Scene {
 
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
     PropertyPointer<tmillis_t> image_display_duration = MAKE_PROPERTY("display_duration", tmillis_t, 15000);
+    PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("providers", nlohmann::json, nlohmann::json::array());
 
 public:
     /// Return true if scene should continue rendering
@@ -82,6 +85,8 @@ public:
     [[nodiscard]] string get_name() const override;
 
     void register_properties() override {
+        add_property(image_display_duration);
+        add_property(json_providers);
     }
 
     using Scene::Scene;
@@ -93,8 +98,10 @@ public:
             next_img.value().wait();
         }
     }
+
+    void load_properties(const nlohmann::json &j) override;
 };
 
-class ImageSceneWrapper : public Plugins::SceneWrapper {
+class ImageSceneWrapper final : public Plugins::SceneWrapper {
     std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
 };

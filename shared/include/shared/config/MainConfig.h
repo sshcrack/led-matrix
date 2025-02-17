@@ -4,7 +4,6 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include "data.h"
-#include "shared/resources.h"
 #include "plugin/main.h"
 
 using namespace std;
@@ -12,7 +11,6 @@ using json = nlohmann::json;
 
 namespace Config {
     class MainConfig {
-    private:
         shared_mutex data_mutex;
         ConfigData::Root data;
 

@@ -21,6 +21,6 @@ namespace ImageProviders {
 
         virtual json to_json() = 0;
 
-        static std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> from_json(const json &j);
+        static std::unique_ptr<General, void (*)(General *)> from_json(const json &j);
     };
 }

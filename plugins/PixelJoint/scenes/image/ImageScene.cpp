@@ -8,6 +8,7 @@
 
 #include <Magick++.h>
 #include <future>
+#include <shared/plugin_loader/loader.h>
 
 using namespace std;
 using namespace spdlog;
@@ -94,10 +95,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
         return unexpected("Too many recursions");
     }
 
-    auto curr_preset = config->get_curr();
-
-    auto categories = curr_preset->providers;
-    if (this->curr_category >= categories.size()) {
+    if (this->curr_category >= providers.size()) {
         this->curr_category = 0;
     }
 
@@ -105,7 +103,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     int height = matrix->height();
 
 
-    auto img_category = categories[this->curr_category];
+    auto img_category = providers[this->curr_category];
     if (!this->next_img.has_value() || !this->next_img->valid()) {
         this->next_img = async(launch::async, get_next_image, img_category, width, height, std::ref(is_exiting));
     }
@@ -217,6 +215,35 @@ std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(vector<Ma
 
 string ImageScene::get_name() const {
     return "image_scene";
+}
+
+void ImageScene::load_properties(const nlohmann::json &j) {
+    Scene::load_properties(j);
+
+    auto is_array = json_providers.get()->get().is_array();
+    if (!is_array)
+        throw std::runtime_error("Providers of image scene " + this->get_name() + " must be an array");
+
+    auto arr = json_providers->get();
+    if (arr.size() == 0)
+        throw std::runtime_error("No image providers given for image scene " + this->get_name());
+
+    auto pl_providers = Plugins::PluginManager::instance()->get_image_providers();
+    for (const auto provider_json : arr) {
+        auto name = provider_json["type"].get<std::string>();
+
+        bool found = false;
+        for (const auto & image_provider_wrapper : pl_providers) {
+            if (name == image_provider_wrapper->get_name()) {
+                providers.push_back(image_provider_wrapper->from_json(provider_json["arguments"]));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            throw std::runtime_error("Could not find image provider '" + name + "'");
+    }
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ImageSceneWrapper::create() {

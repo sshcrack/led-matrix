@@ -39,14 +39,6 @@ namespace ConfigData {
     void to_json(json &j, std::shared_ptr<Preset> p) {
         vector<json> image_json;
 
-        image_json.reserve(p->providers.size());
-        for (const auto &item: p->providers) {
-            json local_j;
-            to_json(local_j, (const ImageProviders::General *&) item);
-
-            image_json.push_back(local_j);
-        }
-
         vector<json> scenes_json;
         scenes_json.reserve(p->scenes.size());
         for (const auto &item: p->scenes) {
@@ -97,16 +89,6 @@ namespace ConfigData {
     }
 
     void from_json(const json &j, std::shared_ptr<Preset> &p) {
-        vector<json> image_json = j.at("images");
-
-
-        vector<std::shared_ptr<ImageProviders::General> > images;
-        images.reserve(image_json.size());
-
-        for (const auto &item: image_json)
-            images.push_back(ImageProviders::General::from_json(item));
-
-
         vector<std::shared_ptr<Scenes::Scene> > scenes;
         if (j.contains("scenes")) {
             vector<json> scenes_json = j.at("scenes");
@@ -132,7 +114,6 @@ namespace ConfigData {
         };
 
         p->scenes = std::move(scenes);
-        p->providers = std::move(images);
     }
 
     void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General *)> &p) {
@@ -141,10 +122,6 @@ namespace ConfigData {
 
     void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> &p) {
         p = std::move(Scenes::Scene::from_json(j));
-    }
-
-    void Preset::randomize() {
-        std::shuffle(this->providers.begin(), this->providers.end(), std::random_device());
     }
 
     bool SpotifyData::has_auth() const {

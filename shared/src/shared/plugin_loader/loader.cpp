@@ -61,8 +61,8 @@ std::vector<std::shared_ptr<SceneWrapper>> &PluginManager::get_scenes() {
     return all_scenes;
 }
 
-std::vector<std::shared_ptr<Plugins::ImageProviderWrapper> > PluginManager::get_image_providers() {
-    std::vector<std::shared_ptr<Plugins::ImageProviderWrapper> > types;
+std::vector<std::shared_ptr<ImageProviderWrapper> > PluginManager::get_image_providers() {
+    std::vector<std::shared_ptr<ImageProviderWrapper> > types;
     for (const auto &item: get_plugins()) {
         auto pl_providers = item->get_image_providers();
         types.insert(types.end(),

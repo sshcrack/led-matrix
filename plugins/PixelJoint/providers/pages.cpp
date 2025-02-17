@@ -85,14 +85,14 @@ ImageProviders::PagesWrapper::create_default() {
     json j = {{"begin", 1},
               {"end",   -1}};
 
-    return {new ImageProviders::Pages(j), [](ImageProviders::General *p) {
+    return {new Pages(j), [](General *p) {
         delete p;
     }};
 }
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::PagesWrapper::from_json(const json &json) {
-    return {new ImageProviders::Pages(json), [](ImageProviders::General *p) {
+    return {new Pages(json), [](General *p) {
         delete p;
     }};
 }

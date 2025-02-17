@@ -1,7 +1,6 @@
 #include "shared/post.h"
 #include "shared/utils/image_fetch.h"
 #include <vector>
-#include "libxml/xpath.h"
 #include <iostream>
 #include <optional>
 #include <Magick++.h>
@@ -32,8 +31,8 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
         }
     }
 
-    tmillis_t start_loading = GetTimeInMillis();
-    string file_path = filesystem::path(root_dir + get_filename());
+    const tmillis_t start_loading = GetTimeInMillis();
+    const string file_path = filesystem::path(root_dir + get_filename());
     filesystem::path processed_img = to_processed_path(file_path);
 
     // Downloading image first
@@ -42,7 +41,7 @@ optional<vector<Magick::Image>> Post::process_images(int width, int height) {
         utils::download_image(get_image_url(), file_path);
     }
 
-    bool contain_img = true;
+    constexpr bool contain_img = true;
     auto res = LoadImageAndScale(file_path, width, height, true, true, contain_img);
     if (!res) {
         error("Error loading image: {}", res.error());
