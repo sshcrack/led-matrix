@@ -24,17 +24,15 @@
     "@rn-primitives/tooltip": "~1.1.0",
     "@rn-primitives/types": "^1.1.0",
     "@types/humanize-duration": "^3.27.4",
-    "@uidotdev/usehooks": "^2.4.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "expo": "^52.0.25",
+    "expo": "~52.0.35",
     "expo-linking": "^7.0.5",
     "expo-navigation-bar": "~4.0.7",
     "expo-router": "~4.0.16",
-    "expo-splash-screen": "~0.29.20",
+    "expo-splash-screen": "~0.29.22",
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.7",
-    "humanize-duration": "^3.32.1",
     "lucide-react-native": "^0.475.0",
     "nativewind": "^4.1.23",
     "react": "18.3.1",
@@ -57,5 +55,26 @@
     "@types/react": "~18.3.12",
     "typescript": "^5.3.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "lucide-react-native",
+          "@rn-primitives/avatar",
+          "@rn-primitives/context-menu",
+          "@rn-primitives/label",
+          "@rn-primitives/portal",
+          "@rn-primitives/progress",
+          "@rn-primitives/slot",
+          "@rn-primitives/switch",
+          "@rn-primitives/tooltip",
+          "@rn-primitives/types",
+          "class-variance-authority",
+          "tailwindcss",
+          "tailwindcss-animate"
+        ]
+      }
+    }
+  }
 }
