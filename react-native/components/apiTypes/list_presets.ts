@@ -3,14 +3,9 @@ export interface ListPresets {
 }
 
 export interface Preset {
-    images: Image[];
     scenes: Scene[];
 }
 
-export interface Image {
-    arguments: ImageArguments;
-    type:      string;
-}
 
 export interface ImageArguments {
     begin: number;
@@ -20,6 +15,7 @@ export interface ImageArguments {
 export interface Scene {
     arguments: SceneArguments;
     type:      string;
+    uuid: string;
 }
 
 export interface SceneArguments {

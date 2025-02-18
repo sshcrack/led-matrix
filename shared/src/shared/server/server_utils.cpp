@@ -1,11 +1,9 @@
-#include "server_utils.h"
+#include "shared/server/server_utils.h"
 #include "restinio/all.hpp"
 #include "shared/utils/shared.h"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include "nlohmann/json.hpp"
-#include "shared/utils/utils.h"
-#include "utils/canvas_consts.h"
 
 using namespace std;
 using namespace spdlog;

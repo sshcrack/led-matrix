@@ -25,6 +25,7 @@ namespace Scenes {
         PropertyPointer<int> weight = MAKE_PROPERTY_REQ("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
 
+        std::string uuid;
     public:
         FrameCanvas *offscreen_canvas = nullptr;
 
@@ -41,6 +42,10 @@ namespace Scenes {
             }
 
             properties.push_back(property);
+        }
+
+        [[nodiscard]] std::string get_uuid() const {
+            return this->uuid;
         }
 
         [[nodiscard]] virtual int get_weight() const;

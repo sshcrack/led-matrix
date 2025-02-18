@@ -12,4 +12,6 @@ public:
 
     vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() override;
     vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>> create_image_providers() override;
+
+    std::optional<restinio::request_handling_status_t> handle_request(const restinio::request_handle_t &req) override;;
 };

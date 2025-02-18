@@ -4,7 +4,7 @@
 #include <filesystem>
 #include "nlohmann/json.hpp"
 #include "shared/utils/canvas_image.h"
-#include "server_utils.h"
+#include "shared/server/server_utils.h"
 #include "shared/utils/utils.h"
 #include "shared/utils/consts.h"
 #include "utils/canvas_consts.h"

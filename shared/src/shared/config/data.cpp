@@ -14,7 +14,8 @@ namespace ConfigData {
 
         j = {
             {"type", c->get_name()},
-            {"arguments", c->to_json()}
+            {"arguments", c->to_json()},
+            {"uuid", c->get_uuid()}
         };
     }
 

@@ -4,6 +4,9 @@ import { TypeId } from '../apiTypes/list_scenes';
 import { Text } from '../ui/text';
 import GeneralProperty from './properties/GeneralProperty';
 import ProvidersProperty from './properties/ProvidersProperty';
+import { SceneContext } from './SceneContext';
+import { useCallback } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 
 
 export type DynamicPluginPropertyProps<T> = {
@@ -11,7 +14,8 @@ export type DynamicPluginPropertyProps<T> = {
     typeId: TypeId,
     value: T,
     defaultVal: T,
-    setScene: ReactSetState<Scene>
+    setScene: ReactSetState<Scene>,
+    sceneId: string
 }
 
 
@@ -19,8 +23,7 @@ export type PluginPropertyProps<T> = {
     propertyName: string,
     typeId: TypeId,
     value: T,
-    defaultVal: T,
-    setValue: (value: T) => void
+    defaultVal: T
 }
 
 export const propertyComponents = {
@@ -30,31 +33,35 @@ export const propertyComponents = {
 
 type ComponentKeys = keyof typeof propertyComponents;
 
-export function DynamicPluginProperty({ setScene: setData, ...props }: DynamicPluginPropertyProps<any>) {
+export function DynamicPluginProperty({ setScene: setData, sceneId, ...props }: DynamicPluginPropertyProps<any>) {
     const Component = propertyComponents[props.propertyName as ComponentKeys] ?? propertyComponents["general"]
+
+    const local = useLocalSearchParams()
+    const presetId = local.id
+    if (typeof presetId !== "string")
+        return <Text>Invalid preset id {JSON.stringify(presetId)}</Text>
 
     if (!Component)
         return <Text>Unknown Property type {props.propertyName}</Text>
 
-    return <Component
-        setValue={(value) => setData((prev) => {
-            if (!prev) {
-                console.log("Prev is null")
-                return prev
-            }
+    return (
+        <SceneContext.Provider
+            value={{
+                sceneId: sceneId,
+                presetId: presetId,
+                setScene: setData,
+                updateProperty: useCallback((propertyName: string, value: any) => {
+                    setData((prev) => {
+                        if (!prev) return prev;
 
-            const prev_value = prev.arguments[props.propertyName]
-            if (typeof prev_value !== typeof value) {
-                console.error(`Invalid type for ${props.propertyName} expected ${typeof prev_value} got ${typeof value}`)
-                return { ...prev }
-            }
-
-            const clone = JSON.parse(JSON.stringify(prev))
-            clone.arguments[props.propertyName] = value
-
-            return clone
-        })}
-
-        {...props}
-    />
+                        const clone = JSON.parse(JSON.stringify(prev));
+                        clone.arguments[propertyName] = value;
+                        return clone;
+                    });
+                }, [setData])
+            }}
+        >
+            <Component {...props} />
+        </SceneContext.Provider>
+    );
 }

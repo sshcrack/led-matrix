@@ -28,7 +28,9 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/plugin_loader/loader.cpp
         src/shared/config/MainConfig.cpp
         src/shared/config/image_providers/general.cpp
-        src/shared/interrupt.cpp)
+        src/shared/interrupt.cpp
+        src/shared/server/server_utils.cpp
+)
 
 # Main Target Compile
 

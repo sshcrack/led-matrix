@@ -28,16 +28,16 @@ function SceneWrapper({ data, setData, listScenes: listScenes, error, errorPrope
     data.scenes.sort((a, b) => b.arguments.weight - a.arguments.weight)
 
     return <View className="w-full gap-5">
-        {data.scenes.map((data, i) => {
+        {data.scenes.map(data => {
             const properties = listScenes.find(scene => scene.name === data.type)?.properties ?? []
             return <SceneComponent
-                key={`${data.type}-${i}`}
+                key={data.uuid}
                 setSceneData={e => {
                     setData((prev) => {
                         if (!prev)
                             return prev
 
-                        const scene = prev.scenes[i]
+                        const scene = prev.scenes.find(e => e.uuid === data.uuid)
                         if (!scene)
                             return prev
 
