@@ -69,6 +69,14 @@ export default function RootLayout() {
             headerRight: () => <ThemeToggle />,
           })}
         />
+        <Stack.Screen
+          name='modify-providers/[preset_id]/[scene_id]'
+          getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
+          options={{
+            title: `Configure Providers of Scene`,
+            headerRight: () => <ThemeToggle />,
+          }}
+        />
       </Stack>
       <Toast />
       <PortalHost />

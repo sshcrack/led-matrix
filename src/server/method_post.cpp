@@ -3,7 +3,7 @@
 #include <filesystem>
 #include "nlohmann/json.hpp"
 #include "shared/utils/uuid.h"
-#include "server_utils.h"
+#include "shared/server/server_utils.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;

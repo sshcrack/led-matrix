@@ -8,11 +8,13 @@ import { RotateCcw } from '~/lib/icons/RotateCcw';
 import { parse, format } from '@lukeed/ms';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardTypeOptions } from 'react-native';
+import { usePropertyUpdate } from '../SceneContext';
 
 export type NumberType = "float" | "int"
 
 export default function numberPropertyBuilder(min: number, max: number, number_type: NumberType = "int", millis: boolean = false) {
-    return function NumberProperty({ value, defaultVal, setValue, propertyName }: PluginPropertyProps<number>) {
+    return function NumberProperty({ value, defaultVal, propertyName }: Omit<PluginPropertyProps<number>, 'setValue'>) {
+        const setValue = usePropertyUpdate(propertyName);
         const title = titleCase(propertyName)
 
         const valueStr = useMemo(() => {
@@ -21,12 +23,9 @@ export default function numberPropertyBuilder(min: number, max: number, number_t
                 numVal = Math.round(value * 1000) / 1000
             }
 
-            const strVal = millis ? format(numVal) as string : numVal.toString()
-
-            return numVal === 0 ? "" : strVal
+            return millis ? format(numVal) as string : numVal.toString()
         }, [value])
         const [modifiedVal, setModifiedVal] = useState<string>(valueStr)
-        const [_, setUpdate] = useState(0)
 
         useEffect(() => {
             setModifiedVal(valueStr)
@@ -55,17 +54,16 @@ export default function numberPropertyBuilder(min: number, max: number, number_t
 
                         if (isNaN(int))
                             int = number_type === "float" ? parseFloat(modifiedVal) : parseInt(modifiedVal)
-                        const toSet = isNaN(int) ? min : Math.max(min, int)
+                        const toSet = isNaN(int) ? defaultVal : Math.max(min, int)
 
                         setValue(Math.min(toSet, max))
-                        setUpdate(Math.random())
                     }}
                     value={modifiedVal}
                     onChangeText={(text) => setModifiedVal(text)}
                     autoCorrect={false}
                     autoCapitalize='none'
                     keyboardType={keyboardType}
-                    className='w-full'
+                    className='flex-1'
                 />
             </View>
         </View>
