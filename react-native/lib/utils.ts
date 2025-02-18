@@ -6,3 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 export const titleCase = (s: string) =>
   s.replace(/^_*(.)|_+(.)/g, (s, c, d) => c ? c.toUpperCase() : ' ' + d.toUpperCase())
+
+export type ReactSetState<T> = React.Dispatch<React.SetStateAction<T>>

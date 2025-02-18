@@ -14,3 +14,14 @@ A starting point to help you set up your project quickly and use the common comp
 <img src="https://github.com/mrzachnugent/react-native-reusables/assets/63797719/42c94108-38a7-498b-9c70-18640420f1bc"
      alt="starter-base-template"
      style="width:270px;" />
+
+
+## Troubleshooting
+If you are trying to build the project using
+```bash
+eas build -p android --profile preview --local # (Or similar)
+```
+And you get an error for prebuild stuff, run
+```bash
+yarn expo prebuild
+```

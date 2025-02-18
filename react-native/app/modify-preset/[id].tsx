@@ -4,18 +4,21 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Preset } from '~/components/apiTypes/list_presets';
 import useFetch from '~/components/useFetch';
 import SceneComponent from '../../components/modify-preset/Scene';
-import { ListScenes, Property } from '~/components/apiTypes/list_scenes';
+import { ListScenes } from '~/components/apiTypes/list_scenes';
 import { Text } from '~/components/ui/text';
+import { ReactSetState } from '~/lib/utils';
+import { useEffect, useState } from 'react';
 
 type SceneWrapperProps = {
     isLoading: boolean,
     data: Preset | null,
+    setData: ReactSetState<Preset | null>,
     listScenes: ListScenes[] | null,
     error: Error | null
     errorProperties: Error | null
 }
 
-function SceneWrapper({ data, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
+function SceneWrapper({ data, setData, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
     if (isLoading)
         return <Text>Loading...</Text>
 
@@ -27,7 +30,26 @@ function SceneWrapper({ data, listScenes: listScenes, error, errorProperties, is
     return <View className="w-full gap-5">
         {data.scenes.map((data, i) => {
             const properties = listScenes.find(scene => scene.name === data.type)?.properties ?? []
-            return <SceneComponent key={i} data={data} properties={properties}/>
+            return <SceneComponent
+                key={`${data.type}-${i}`}
+                setSceneData={e => {
+                    setData((prev) => {
+                        if (!prev)
+                            return prev
+
+                        const scene = prev.scenes[i]
+                        if (!scene)
+                            return prev
+
+                        const args = typeof e === "function" ? e(scene) : e
+
+                        scene.arguments = args.arguments
+                        return { ...prev }
+                    })
+                }}
+                sceneData={data}
+                properties={properties}
+            />
         })}
     </View>
 }
@@ -42,6 +64,12 @@ export default function ModifyPreset() {
     const { data: properties, error: errorProperty, isLoading: isLoadingProperty, setRetry: setPropertyRetry } = useFetch<ListScenes[]>(`/list_scenes`)
 
 
+    const [modifiedData, setModifiedData] = useState<Preset | null>(null)
+    useEffect(() => {
+        if (data)
+            setModifiedData(data)
+    }, [data])
+
     const isLoading = isLoadingPreset || isLoadingProperty
     return <SafeAreaProvider>
         <SafeAreaView className="flex-1" edges={['top']}>
@@ -52,9 +80,17 @@ export default function ModifyPreset() {
                     refreshing={isLoading}
                     onRefresh={() => {
                         setRetry(Math.random())
+                        setPropertyRetry(Math.random())
                     }} />
             }>
-                <SceneWrapper errorProperties={errorProperty} listScenes={properties} data={data} error={error} isLoading={isLoading} />
+                <SceneWrapper
+                    errorProperties={errorProperty}
+                    listScenes={properties}
+                    data={modifiedData}
+                    setData={setModifiedData}
+                    error={error}
+                    isLoading={isLoading}
+                />
             </ScrollView>
         </SafeAreaView>
     </SafeAreaProvider >
