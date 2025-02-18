@@ -1,11 +1,17 @@
 import { Text } from '~/components/ui/text';
 import { View } from 'react-native';
-import { Scene } from '~/components/apiTypes/list_presets';
+import { Preset, Scene } from '~/components/apiTypes/list_presets';
 import { Property } from '../apiTypes/list_scenes';
 import { DynamicPluginProperty } from './property_list';
-import { titleCase } from '~/lib/utils';
+import { ReactSetState, titleCase } from '~/lib/utils';
 
-export default function SceneComponent({ data, properties }: { data: Scene, properties: Property<any>[] }) {
+export type SceneComponentProps = {
+    sceneData: Scene,
+    properties: Property<any>[],
+    setSceneData: ReactSetState<Scene>
+}
+
+export default function SceneComponent({ sceneData: data, setSceneData, properties }: SceneComponentProps) {
     const entries = Object.entries(data.arguments)
 
     return <View className="align-center w-full pb-10 flex-col gap-5">
@@ -20,6 +26,9 @@ export default function SceneComponent({ data, properties }: { data: Scene, prop
                     propertyName={propertyName}
                     defaultVal={defaultVal}
                     value={value}
+                    setScene={e => {
+                        setSceneData(e)
+                    }}
                 />
             })
         }
