@@ -1,13 +1,14 @@
 import { ReactSetState } from '~/lib/utils';
+import { Scene } from '../apiTypes/list_presets';
+import { TypeId } from '../apiTypes/list_scenes';
 import { Text } from '../ui/text';
 import GeneralProperty from './properties/GeneralProperty';
 import ProvidersProperty from './properties/ProvidersProperty';
-import { Preset, Scene } from '../apiTypes/list_presets';
-import DurationProperty from './properties/DurationProperty';
 
 
 export type DynamicPluginPropertyProps<T> = {
     propertyName: string,
+    typeId: TypeId,
     value: T,
     defaultVal: T,
     setScene: ReactSetState<Scene>
@@ -16,6 +17,7 @@ export type DynamicPluginPropertyProps<T> = {
 
 export type PluginPropertyProps<T> = {
     propertyName: string,
+    typeId: TypeId,
     value: T,
     defaultVal: T,
     setValue: (value: T) => void
@@ -23,8 +25,6 @@ export type PluginPropertyProps<T> = {
 
 export const propertyComponents = {
     "general": GeneralProperty,
-    "duration": DurationProperty,
-    //"weight": WeightProperty,
     "providers": ProvidersProperty
 }
 

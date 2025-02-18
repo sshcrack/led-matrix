@@ -23,7 +23,7 @@ namespace Scenes {
         int matrix_height;
 
         PropertyPointer<int> weight = MAKE_PROPERTY_REQ("weight", int, 1);
-        PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 0);
+        PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
 
     public:
         FrameCanvas *offscreen_canvas = nullptr;

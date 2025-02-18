@@ -13,6 +13,7 @@
     "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
   },
   "dependencies": {
+    "@lukeed/ms": "^2.0.2",
     "@react-navigation/native": "^7.0.0",
     "@rn-primitives/avatar": "~1.1.0",
     "@rn-primitives/context-menu": "^1.1.0",

@@ -19,12 +19,14 @@ export default function SceneComponent({ sceneData: data, setSceneData, properti
         {
             entries.map(([propertyName, value]) => {
                 const property = properties.find(property => property.name === propertyName)
-                const defaultVal = property?.default_value
+                if(!property)
+                    return <Text>Unknown Property {propertyName}</Text>
 
                 return <DynamicPluginProperty
                     key={propertyName}
                     propertyName={propertyName}
-                    defaultVal={defaultVal}
+                    typeId={property.type_id}
+                    defaultVal={property.default_value}
                     value={value}
                     setScene={e => {
                         setSceneData(e)

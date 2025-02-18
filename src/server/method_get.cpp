@@ -202,15 +202,13 @@ request_handling_status_t handle_get(const request_handle_t &req) {
             std::vector<json> properties_json;
 
             for (const auto &item1: properties) {
-                if (item1->getName() == "duration" || item1->getName() == "weight")
-                    continue;
-
                 json j1;
                 item1->dump_to_json(j1);
 
                 json j2;
                 j2["name"] = item1->getName();
                 j2["default_value"] = j1[item1->getName()];
+                j2["type_id"] = item1->get_type_id();
 
                 properties_json.push_back(j2);
             }
