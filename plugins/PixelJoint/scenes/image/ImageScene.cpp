@@ -46,7 +46,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 
     tmillis_t to_wait = anim_delay_ms - time_already_spent;
     while (to_wait > 0) {
-        if (interrupt_received) {
+        if (interrupt_received || exit_canvas_update) {
             this->curr_animation.reset();
             return false;
         }

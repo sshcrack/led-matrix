@@ -9,11 +9,11 @@
 using namespace spdlog;
 
 namespace Config {
-    void MainConfig::mark_dirty(const bool dirty_local) {
+    void MainConfig::mark_dirty() {
         unique_lock lock(this->update_mutex);
-        if (dirty_local)
-            exit_canvas_update = true;
-        this->dirty = dirty_local;
+
+        exit_canvas_update = true;
+        this->dirty = true;
     }
 
     bool MainConfig::is_dirty() {
@@ -43,21 +43,21 @@ namespace Config {
         unique_lock lock(this->data_mutex);
 
         this->data.spotify = std::move(spotify);
-        this->mark_dirty(true);
+        this->mark_dirty();
     }
 
     void MainConfig::set_curr(string id) {
         unique_lock lock(this->data_mutex);
 
         this->data.curr = std::move(id);
-        this->mark_dirty(true);
+        this->mark_dirty();
     }
 
     void MainConfig::set_presets(const string &id, std::shared_ptr<ConfigData::Preset> preset) {
         unique_lock lock(this->data_mutex);
 
         this->data.presets[id] = std::move(preset);
-        this->mark_dirty(true);
+        this->mark_dirty();
     }
 
     map<string, std::shared_ptr<ConfigData::Preset>> MainConfig::get_presets() {
@@ -122,6 +122,6 @@ namespace Config {
         unique_lock lock(this->data_mutex);
 
         this->data.pluginConfigs[pluginId] = config;
-        this->mark_dirty(true);
+        this->mark_dirty();
     }
 }

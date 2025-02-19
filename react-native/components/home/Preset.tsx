@@ -1,13 +1,24 @@
 import { Link } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Preset as ApiPreset } from '../apiTypes/list_presets';
+import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
 import { Text } from '../ui/text';
-import { View } from 'react-native';
 
-export default function Preset({ preset, name, isActive }: { preset: ApiPreset, name: string, isActive?: boolean }) {
+export type PresetProps = {
+    preset: ApiPreset,
+    name: string,
+    isActive?: boolean,
+    setStatusRefresh: () => void
+}
 
-    return <Card className={`w-[20rem] ${isActive ? "border-[3px] border-green-400" : ""}`}>
+export default function Preset({ preset, name, isActive, setStatusRefresh }: PresetProps) {
+    const [isSettingActive, setIsSettingActive] = useState(false);
+
+    return <Card className={`w-[20rem] border-[3px] ${isActive ? "border-green-400" : "border-gray-100"}`}>
         <CardHeader>
             <Text
                 numberOfLines={1}
@@ -20,8 +31,29 @@ export default function Preset({ preset, name, isActive }: { preset: ApiPreset, 
             <CardDescription>{preset.scenes.length} Scenes</CardDescription>
         </CardHeader>
         <CardContent className='gap-5'>
-            <Button disabled={isActive} variant="outline">
-                <Text>Set Active</Text>
+            <Button
+                disabled={isActive || isSettingActive}
+                onPress={() => {
+                    if (isSettingActive)
+                        return
+
+                    setIsSettingActive(true)
+                    fetch(`${process.env.EXPO_PUBLIC_API_URL}/set_preset?id=${encodeURIComponent(name)}`)
+                        .then(() => setStatusRefresh())
+                        .catch(e => {
+                            Toast.show({
+                                type: "error",
+                                text1: "Error setting status",
+                                text2: e.message
+                            })
+                        })
+                        .finally(() => setIsSettingActive(false))
+                }}
+                variant="outline"
+                className='flex gap-2 items-center justify-center flex-row'
+            >
+                {isSettingActive && <Loader />}
+                <Text>{isSettingActive ? "Setting active..." : "Set Active"}</Text>
             </Button>
 
             <View className='flex gap-2 flex-row w-full'>
