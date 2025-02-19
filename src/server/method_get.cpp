@@ -19,7 +19,7 @@ using json = nlohmann::json;
 request_handling_status_t handle_get(const request_handle_t &req) {
 
     auto target = req->header().path();
-    const auto qp = restinio::parse_query(req->header().query());
+    const auto qp = parse_query(req->header().query());
 
     if (target == "/toggle") {
         turned_off.store(!turned_off.load());
@@ -71,8 +71,8 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         auto presets = config->get_presets();
         if (!qp.has("id")) {
             vector<string> keys;
-            for (const auto &item: presets) {
-                keys.push_back(item.first);
+            for (const auto &key: presets | views::keys) {
+                keys.push_back(key);
             }
 
             json j = keys;
@@ -98,7 +98,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
                 .append_header(http_field::content_type, "application/json; charset=utf8");
         res.append_body("[");
 
-        filesystem::directory_iterator iterator = filesystem::directory_iterator(Constants::root_dir);
+        auto iterator = filesystem::directory_iterator(Constants::root_dir);
         bool is_first = true;
         for (const auto &entry: iterator) {
             string file_name = entry.path().filename().string();
@@ -131,18 +131,18 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         auto post = new Post(remote_url);
         filesystem::path file_path(Constants::root_dir + post->get_filename());
         filesystem::path processing_path = to_processed_path(file_path);
-        if (!filesystem::exists(processing_path)) {
+        if (!exists(processing_path)) {
             auto res = post->process_images(Constants::width, Constants::height);
 
-            if (!res.has_value() || !filesystem::exists(processing_path)) {
+            if (!res.has_value() || !exists(processing_path)) {
                 reply_with_error(req, "Could not get file", status_internal_server_error());
                 return request_accepted();
             }
         }
 
         string ext = file_path.extension();
-        transform(ext.begin(), ext.end(), ext.begin(),
-                  [](unsigned char c) { return tolower(c); }
+        ranges::transform(ext, ext.begin(),
+                          [](const unsigned char c) { return tolower(c); }
         );
 
         string mime;

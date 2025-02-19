@@ -12,12 +12,16 @@ export default function useFetch<T>(path_name: string, timeout: number = 15000) 
     }
 
     useEffect(() => {
-        setData(null)
-        setError(null)
         fetch(`${process.env.EXPO_PUBLIC_API_URL}${path_name}`, { signal: AbortSignal.timeout(timeout) })
             .then((res) => res.json())
-            .then((data) => setData(data))
-            .catch((error) => setError(error));
+            .then((data) => {
+                setData(data)
+                setError(null)
+            })
+            .catch((error) => {
+                setError(error)
+                setData(null)
+            });
     }, [retry])
 
     return { data, error, isLoading: !data && !error, setRetry }

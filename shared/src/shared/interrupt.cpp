@@ -1,7 +1,7 @@
 #include <atomic>
 #include "shared/utils/shared.h"
 
-std::atomic<bool> interrupt_received = false;
+std::atomic interrupt_received = false;
 
 void InterruptHandler(int signo) {
     interrupt_received = true;

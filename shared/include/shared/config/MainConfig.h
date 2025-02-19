@@ -20,7 +20,7 @@ namespace Config {
     public:
         explicit MainConfig(string filename);
 
-        void mark_dirty(bool dirty_local);
+        void mark_dirty();
         bool is_dirty();
 
         string get_curr_id();

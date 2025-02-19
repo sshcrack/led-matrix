@@ -1,3 +1,4 @@
+#pragma once
 #include <atomic>
 
 extern std::atomic<bool> interrupt_received;
