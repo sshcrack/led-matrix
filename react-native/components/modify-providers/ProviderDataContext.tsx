@@ -1,17 +1,29 @@
 import React, { createContext, useContext } from 'react';
 import { ProviderValue } from '../apiTypes/list_scenes';
+import { ReactSetState } from '~/lib/utils';
 
 
-const ProviderDataContext = createContext<ProviderValue | null>(null);
+export type ProviderDataState = {
+    data: ProviderValue | null,
+    setData: ReactSetState<ProviderValue>
+}
 
-export function ProviderDataProvider({ data, children }: React.PropsWithChildren<{ data: ProviderValue }>) {
-    return <ProviderDataContext.Provider value={data}>
+export const ProviderDataContext = createContext<ProviderDataState>(null as any);
+
+export function ProviderDataProvider({ data, setData, children }: React.PropsWithChildren<{
+    data: ProviderValue,
+    setData: ReactSetState<ProviderValue>
+}>) {
+    return <ProviderDataContext.Provider value={{
+        data,
+        setData
+    }}>
         {children}
     </ProviderDataContext.Provider>
 }
 
 export function useProviderData<T>() {
-    const context = useContext(ProviderDataContext) as T;
+    const data = useContext(ProviderDataContext).data as T;
 
-    return context
+    return data
 }

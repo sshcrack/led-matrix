@@ -18,7 +18,7 @@ export type SceneComponentProps = {
 }
 
 export default function SceneComponent({ sceneData: data, setSceneData, properties }: SceneComponentProps) {
-    const [isOpen, setOpen] = useState(false)
+    const [isOpen, setOpen] = useState(true)
     const rotation = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({

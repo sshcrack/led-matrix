@@ -3,4 +3,4 @@
 #include <expected>
 #include <future>
 
-int start_hardware_mainloop(int argc, char *argv[]);
+int start_hardware_mainloop(rgb_matrix::RGBMatrix *matrix);

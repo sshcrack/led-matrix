@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <shared/utils/consts.h>
+#include "WeatherParser.h"
 
 // To get longitude / latitude of a city
 // https://geocoding-api.open-meteo.com/v1/search?language=en&format=json&name=(Name of city)&count=(something)
@@ -17,6 +19,7 @@ static std::string get_api_url() {
            "&current=temperature_2m,is_day,rain,weather_code,cloud_cover&daily=weather_code&timezone=Europe%2FBerlin";
 }
 
+const static std::filesystem::path weather_dir = Constants::root_dir / "weather";
 enum SkyColor {
     DAY_CLEAR = 0x3aa1d5,
     DAY_CLOUDS = 0x7c8c9a,

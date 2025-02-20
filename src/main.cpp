@@ -4,6 +4,8 @@
 
 
 #include <Magick++.h>
+
+#include "../plugins/WeatherOverview/Constants.h"
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
 #include "server/server.h"
@@ -14,12 +16,40 @@ using namespace std;
 using json = nlohmann::json;
 using Plugins::PluginManager;
 
+int usage(const char *progname) {
+    fprintf(stderr, "usage: %s [options]\n", progname);
+    rgb_matrix::PrintMatrixFlags(stderr);
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
     cfg::load_env_levels();
 
+    RGBMatrix::Options matrix_options;
+    rgb_matrix::RuntimeOptions runtime_opt;
+
+    // Should be in hardware.cpp but this actually drops privileges, so I moved it here
+
+    debug("Parsing rgb matrix from cmdline");
+    runtime_opt.drop_priv_user = getenv("SUDO_UID");
+    runtime_opt.drop_priv_group = getenv("SUDO_GID");
+
+    if (!ParseOptionsFromFlags(&argc, &argv,
+                                           &matrix_options, &runtime_opt)) {
+        return usage(argv[0]);
+    }
+
+    RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
+    if (matrix == nullptr)
+        return usage(argv[0]);
+
+    if (!filesystem::exists(Constants::root_dir)) {
+        filesystem::create_directory(Constants::root_dir);
+    }
+
     debug("Loading plugins...");
-    auto pl = PluginManager::instance();
+    const auto pl = PluginManager::instance();
     pl->initialize();
 
 
@@ -27,7 +57,7 @@ int main(int argc, char *argv[]) {
     config = new Config::MainConfig("config.json");
 
     for (const auto &item: pl->get_plugins()) {
-        auto err = item->post_init();
+        const auto err = item->post_init();
         if (err.has_value()) {
             error(err.value());
             std::exit(-1);
@@ -65,7 +95,7 @@ int main(int argc, char *argv[]) {
     };
 
     debug("Initializing hardware...");
-    auto hardware_code = start_hardware_mainloop(argc, argv);
+    auto hardware_code = start_hardware_mainloop(matrix);
 
     if (hardware_code != 0) {
         error("Could not initialize hardware_code.");

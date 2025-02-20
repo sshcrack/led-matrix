@@ -13,7 +13,7 @@ protected:
     string img_url;
     string file_name;
 public:
-    explicit Post(const string &img_url);
+    explicit Post(const string &img_url, bool maybe_fetch_type = true);
 
     string get_filename();
 

@@ -20,12 +20,12 @@ ImageProviders::Collection::get_next_image() {
 }
 
 void ImageProviders::Collection::flush() {
-    std::ranges::shuffle(already_shown, std::random_device());
-
     images.reserve(images.size() + already_shown.size());
     images.insert(images.end(), already_shown.begin(), already_shown.end());
 
     already_shown.clear();
+    std::ranges::shuffle(images, std::random_device());
+    spdlog::trace("Collection was flushed. Images have now {}", images.size());
 }
 
 ImageProviders::Collection::Collection(const json &arguments) : General(arguments) {

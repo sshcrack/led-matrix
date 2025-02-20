@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 
+export function getApiUrl(path: string) {
+    return `${process.env.EXPO_PUBLIC_API_URL}${path}`
+}
+
 export default function useFetch<T>(path_name: string, timeout: number = 15000) {
     const [data, setData] = useState<T | null>(null);
     const [error, setError] = useState<Error | null>(null);
@@ -12,7 +16,7 @@ export default function useFetch<T>(path_name: string, timeout: number = 15000) 
     }
 
     useEffect(() => {
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}${path_name}`, { signal: AbortSignal.timeout(timeout) })
+        fetch(getApiUrl(path_name), { signal: AbortSignal.timeout(timeout) })
             .then((res) => res.json())
             .then((data) => {
                 setData(data)

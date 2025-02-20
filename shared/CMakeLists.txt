@@ -30,6 +30,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/config/image_providers/general.cpp
         src/shared/interrupt.cpp
         src/shared/server/server_utils.cpp
+        src/shared/server/MimeTypes.cpp
 )
 
 # Main Target Compile
