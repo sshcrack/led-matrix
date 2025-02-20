@@ -10,7 +10,7 @@ import { Button } from '~/components/ui/button';
 import { Label } from '~/components/ui/label';
 import { Switch } from '~/components/ui/switch';
 import { Text } from '~/components/ui/text';
-import useFetch from '~/components/useFetch';
+import useFetch, { getApiUrl } from '~/components/useFetch';
 
 
 export default function Screen() {
@@ -33,7 +33,7 @@ export default function Screen() {
     if (!settingStatus)
       return
 
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/set_enabled?enabled=${turnedOn ? "true" : "false"}`)
+    fetch(getApiUrl(`/set_enabled?enabled=${turnedOn ? "true" : "false"}`))
       .catch(e => {
         Toast.show({
           type: "error",

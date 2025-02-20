@@ -13,7 +13,7 @@ namespace utils {
         }
     }
 
-    static std::string FILE_PROTOCOL = "file:///";
+    static std::string FILE_PROTOCOL = "file://";
 
     std::expected<void, std::string> download_image(const std::string &url_str, const std::string &file_out) {
         if (file_out.length() >= FILENAME_MAX) {
@@ -21,7 +21,7 @@ namespace utils {
         }
 
         if (url_str.starts_with(FILE_PROTOCOL)) {
-            const auto local_file = url_str.substr(FILE_PROTOCOL.length() + 1);
+            const auto local_file = url_str.substr(FILE_PROTOCOL.length());
             try {
                 fs::copy_file(local_file, file_out);
                 return {};

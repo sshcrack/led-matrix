@@ -7,6 +7,7 @@ import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
 import { Text } from '../ui/text';
+import { getApiUrl } from '../useFetch';
 
 export type PresetProps = {
     preset: ApiPreset,
@@ -38,7 +39,7 @@ export default function Preset({ preset, name, isActive, setStatusRefresh }: Pre
                         return
 
                     setIsSettingActive(true)
-                    fetch(`${process.env.EXPO_PUBLIC_API_URL}/set_preset?id=${encodeURIComponent(name)}`)
+                    fetch(getApiUrl(`/set_preset?id=${encodeURIComponent(name)}`))
                         .then(() => setStatusRefresh())
                         .catch(e => {
                             Toast.show({

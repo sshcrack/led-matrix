@@ -5,9 +5,10 @@
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 
-string root_dir = Constants::root_dir;
-
 int main_icon_size = 50;
+
+namespace fs = std::filesystem;
+
 struct Images {
     std::vector<uint8_t> currentIcon;
 };
@@ -15,9 +16,11 @@ struct Images {
 std::optional<Images> images;
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWrapper::create() {
-    return {new WeatherScene(), [](Scenes::Scene *scene) {
-        delete scene;
-    }};
+    return {
+        new WeatherScene(), [](Scenes::Scene *scene) {
+            delete scene;
+        }
+    };
 }
 
 string Scenes::WeatherScene::get_name() const {
@@ -36,11 +39,17 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
     auto data = data_res.value();
     auto should_calc_images = parser->has_changed() || !images.has_value();
     if (should_calc_images && !data.icon_url.empty()) {
-        string file_path = std::filesystem::path(root_dir + "weather_icon" + std::to_string(data.weatherCode) + ".png");
-        std::filesystem::path processed_img = to_processed_path(file_path);
+        const auto weather_dir_path = fs::path(weather_dir);
+        if (!exists(weather_dir_path)) {
+            fs::create_directory(weather_dir);
+        }
+
+
+        string file_path = weather_dir_path / ("weather_icon" + std::to_string(data.weatherCode) + ".png");
+        fs::path processed_img = to_processed_path(file_path);
 
         // Downloading image first
-        if (!filesystem::exists(processed_img)) {
+        if (!fs::exists(processed_img)) {
             try_remove(file_path);
             auto res = utils::download_image(data.icon_url, file_path);
             if (!res) {

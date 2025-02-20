@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ProviderValue } from '~/components/apiTypes/list_scenes';
@@ -14,6 +15,12 @@ export default function ModifyPreset() {
         return <Text>Error: Invalid ID</Text>
 
     const { isLoading, setRetry, data, error } = useFetch<ProviderValue[]>(`/pixeljoint/providers?preset_id=${encodeURIComponent(preset_id)}&scene_id=${encodeURIComponent(scene_id)}`)
+    const [modifiedData, setModifiedData] = useState<ProviderValue[] | null>(data)
+
+    useEffect(() => {
+        setModifiedData(data)
+    }, [data])
+
     return <SafeAreaProvider>
         <SafeAreaView className="flex-1 w-full" edges={['top']}>
             <ScrollView className='flex-1 gap-5 p-4 bg-secondary/30 w-full' contentContainerStyle={{
@@ -25,7 +32,7 @@ export default function ModifyPreset() {
                         setRetry(Math.random())
                     }} />
             }>
-                {data && <GeneralProvider data={data} />}
+                {modifiedData && <GeneralProvider data={modifiedData} setData={setModifiedData} />}
                 {error && <Text>Error: {error.message ?? JSON.stringify(error)}</Text>}
                 {isLoading && <>
                     <Loader />

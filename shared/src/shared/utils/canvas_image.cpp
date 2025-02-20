@@ -19,11 +19,10 @@ filesystem::path to_processed_path(const filesystem::path &path) {
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 std::expected<vector<Magick::Image>, string>
-LoadImageAndScale(const string &str_path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
+LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
                   bool contain_img) {
 
-    filesystem::path path = filesystem::path(str_path);
-    filesystem::path img_processed = to_processed_path(path);
+    const filesystem::path img_processed = to_processed_path(path);
 
     // Checking if first exists
 

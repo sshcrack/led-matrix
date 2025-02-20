@@ -30,8 +30,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "me.sshcrack.ledmatrix",
-      "usesCleartextTraffic": true
+      "package": "me.sshcrack.ledmatrix"
     },
     "web": {
       "bundler": "metro",
@@ -40,6 +39,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-image-picker",
       [
         "expo-build-properties",
         {

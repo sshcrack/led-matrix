@@ -2,6 +2,8 @@
 #include "shared/utils/shared.h"
 #include "shared/post.h"
 #include <filesystem>
+#include <shared/server/MimeTypes.h>
+
 #include "nlohmann/json.hpp"
 #include "shared/utils/canvas_image.h"
 #include "shared/server/server_utils.h"
@@ -17,7 +19,6 @@ using namespace restinio;
 using json = nlohmann::json;
 
 request_handling_status_t handle_get(const request_handle_t &req) {
-
     auto target = req->header().path();
     const auto qp = parse_query(req->header().query());
 
@@ -29,8 +30,8 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    if(target == "/set_enabled") {
-        if(!qp.has("enabled")) {
+    if (target == "/set_enabled") {
+        if (!qp.has("enabled")) {
             reply_with_error(req, "No enabled given");
             return request_accepted();
         }
@@ -98,7 +99,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
                 .append_header(http_field::content_type, "application/json; charset=utf8");
         res.append_body("[");
 
-        auto iterator = filesystem::directory_iterator(Constants::root_dir);
+        auto iterator = filesystem::directory_iterator(Constants::post_dir);
         bool is_first = true;
         for (const auto &entry: iterator) {
             string file_name = entry.path().filename().string();
@@ -128,10 +129,11 @@ request_handling_status_t handle_get(const request_handle_t &req) {
 
         string remote_url{qp["url"]};
 
-        auto post = new Post(remote_url);
-        filesystem::path file_path(Constants::root_dir + post->get_filename());
+        std::unique_ptr<Post, void(*)(Post *)> post = {new Post(remote_url), [](Post *p) { delete p; }};
+        filesystem::path file_path(Constants::post_dir / post->get_filename());
         filesystem::path processing_path = to_processed_path(file_path);
         if (!exists(processing_path)) {
+            // ReSharper disable once CppTooWideScopeInitStatement
             auto res = post->process_images(Constants::width, Constants::height);
 
             if (!res.has_value() || !exists(processing_path)) {
@@ -141,25 +143,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         }
 
         string ext = file_path.extension();
-        ranges::transform(ext, ext.begin(),
-                          [](const unsigned char c) { return tolower(c); }
-        );
-
-        string mime;
-        if (ext == ".gif") {
-            mime = "gif";
-        }
-        if (ext == ".png") {
-            mime = "png";
-        }
-        if (ext == "jpeg" || ext == "jpg") {
-            mime = "jpeg";
-        }
-
-        string content_type = "application/octet-stream";
-        if (!mime.empty()) {
-            content_type = "image/" + mime;
-        }
+        string content_type = MimeTypes::getType("file" + ext);
 
         req->create_response(status_ok())
                 .append_header_date_field()
@@ -214,8 +198,8 @@ request_handling_status_t handle_get(const request_handle_t &req) {
             }
 
             json j1 = {
-                    {"name",       item->get_name()},
-                    {"properties", properties_json}
+                {"name", item->get_name()},
+                {"properties", properties_json}
             };
 
             j.push_back(j1);
@@ -225,7 +209,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
         return request_accepted();
     }
 
-    if(target == "/status") {
+    if (target == "/status") {
         json j;
         j["turned_off"] = turned_off.load();
         j["current"] = config->get_curr_id();

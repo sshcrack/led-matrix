@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-#include <atomic>
-
 namespace Constants {
-    const static std::string root_dir = "images/";
+    const static std::filesystem::path root_dir = std::filesystem::current_path() / "images";
+    const static std::filesystem::path post_dir = root_dir / "processed";
 }
