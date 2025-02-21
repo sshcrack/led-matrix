@@ -1,16 +1,17 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useContext, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { UploadImgResponse } from '~/components/apiTypes/pixeljoint/upload_img';
+import Loader from '~/components/Loader';
+import { Button } from '~/components/ui/button';
+import { getApiUrl } from '~/components/useFetch';
 import { Plus } from '~/lib/icons/Plus';
 import { getImageUrl } from '~/lib/utils';
 import { CollectionProvider as CollectionJson } from '../../apiTypes/list_scenes';
-import { ProviderDataContext, useProviderData } from '../ProviderDataContext';
+import { ProviderDataContext } from '../ProviderDataContext';
 import CollectionItem from './CollectionItem';
-import * as ImagePicker from 'expo-image-picker';
-import { Button } from '~/components/ui/button';
-import Toast from 'react-native-toast-message';
-import Loader from '~/components/Loader';
-import { getApiUrl } from '~/components/useFetch';
-import { UploadImgResponse } from '~/components/apiTypes/pixeljoint/upload_img';
+import { useSubConfig } from '~/components/configShare/ConfigProvider';
 
 export interface DataProp {
     id: number;
@@ -105,7 +106,7 @@ export default function CollectionProvider() {
             }}
             variant="outline"
             size={null}
-            className='justify-center items-center text-slate-800 shadow m-3 border-2 border-dashed h-[128px] w-[128px]'
+            className='justify-center items-center text-slate-800 shadow p-3 border-2 border-dashed h-[128px] w-[128px]'
         >
             {uploading ? <Loader /> : <Plus className="text-foreground" />}
         </Button>

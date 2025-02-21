@@ -1,18 +1,18 @@
-import { Text } from '~/components/ui/text';
-import { View } from 'react-native';
-import { Preset, Scene } from '~/components/apiTypes/list_presets';
-import { Property } from '../apiTypes/list_scenes';
-import { DynamicPluginProperty } from './property_list';
-import { ReactSetState, titleCase } from '~/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { useMemo, useState } from 'react';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { ChevronDown } from '~/lib/icons/ChevronDown';
 import { format } from '@lukeed/ms';
-import { useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Scene } from '~/components/apiTypes/list_presets';
+import { Text } from '~/components/ui/text';
+import { ChevronDown } from '~/lib/icons/ChevronDown';
+import { ReactSetState, titleCase } from '~/lib/utils';
+import { Property } from '../apiTypes/list_scenes';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { DynamicPluginProperty } from './property_list';
 
 export type SceneComponentProps = {
     sceneData: Scene,
+    index: number,
     properties: Property<any>[],
     setSceneData: ReactSetState<Scene>
 }
