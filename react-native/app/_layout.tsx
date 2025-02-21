@@ -1,16 +1,18 @@
 import '~/global.css';
 
 import { DarkTheme, DefaultTheme, Theme, ThemeProvider } from '@react-navigation/native';
+import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 import { Platform } from 'react-native';
-import { NAV_THEME } from '~/lib/constants';
-import { useColorScheme } from '~/lib/useColorScheme';
-import { PortalHost } from '@rn-primitives/portal';
+import Toast from 'react-native-toast-message';
+import SaveButton from '~/components/configShare/SaveButton';
 import { ThemeToggle } from '~/components/ThemeToggle';
 import { setAndroidNavigationBar } from '~/lib/android-navigation-bar';
-import Toast from 'react-native-toast-message';
+import { NAV_THEME } from '~/lib/constants';
+import { useColorScheme } from '~/lib/useColorScheme';
+import { ConfigProvider } from '~/components/configShare/ConfigProvider';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -23,7 +25,7 @@ const DARK_THEME: Theme = {
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 export default function RootLayout() {
@@ -52,32 +54,34 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
       <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-      <Stack>
-        <Stack.Screen
-          name='index'
-          options={{
-            title: 'LED Matrix Controller',
-            headerRight: () => <ThemeToggle />,
-          }}
-        />
-        <Stack.Screen
-          name='modify-preset/[id]'
-          getId={({ params }) => `modify-preset-${params?.id}`}
-          options={({ route }) => ({
-            //@ts-ignore
-            title: `Modify ${route.params?.id}`,
-            headerRight: () => <ThemeToggle />,
-          })}
-        />
-        <Stack.Screen
-          name='modify-providers/[preset_id]/[scene_id]'
-          getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
-          options={{
-            title: `Configure Providers of Scene`,
-            headerRight: () => <ThemeToggle />,
-          }}
-        />
-      </Stack>
+      <ConfigProvider>
+        <Stack>
+          <Stack.Screen
+            name='index'
+            options={{
+              title: 'LED Matrix Controller',
+              headerRight: () => <ThemeToggle />,
+            }}
+          />
+          <Stack.Screen
+            name='modify-preset/[id]'
+            getId={({ params }) => `modify-preset-${params?.id}`}
+            options={({ route }) => ({
+              //@ts-ignore
+              title: `Modify ${route.params?.id}`,
+              headerRight: () => <SaveButton />,
+            })}
+          />
+          <Stack.Screen
+            name='modify-providers/[preset_id]/[scene_id]'
+            getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
+            options={{
+              title: `Configure Providers of Scene`,
+              headerRight: () => <SaveButton />,
+            }}
+          />
+        </Stack>
+      </ConfigProvider>
       <Toast />
       <PortalHost />
     </ThemeProvider>

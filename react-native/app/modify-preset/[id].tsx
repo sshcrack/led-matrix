@@ -8,17 +8,17 @@ import { ListScenes } from '~/components/apiTypes/list_scenes';
 import { Text } from '~/components/ui/text';
 import { ReactSetState } from '~/lib/utils';
 import { useEffect, useState } from 'react';
+import { useSubConfig } from '~/components/configShare/ConfigProvider';
 
 type SceneWrapperProps = {
     isLoading: boolean,
     data: Preset | null,
-    setData: ReactSetState<Preset | null>,
     listScenes: ListScenes[] | null,
     error: Error | null
     errorProperties: Error | null
 }
 
-function SceneWrapper({ data, setData, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
+function SceneWrapper({ data, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
     if (isLoading)
         return <Text>Loading...</Text>
 
@@ -28,25 +28,11 @@ function SceneWrapper({ data, setData, listScenes: listScenes, error, errorPrope
     data.scenes.sort((a, b) => b.arguments.weight - a.arguments.weight)
 
     return <View className="w-full gap-5">
-        {data.scenes.map(data => {
+        {data.scenes.map((data, i) => {
             const properties = listScenes.find(scene => scene.name === data.type)?.properties ?? []
             return <SceneComponent
                 key={data.uuid}
-                setSceneData={e => {
-                    setData((prev) => {
-                        if (!prev)
-                            return prev
-
-                        const scene = prev.scenes.find(e => e.uuid === data.uuid)
-                        if (!scene)
-                            return prev
-
-                        const args = typeof e === "function" ? e(scene) : e
-
-                        scene.arguments = args.arguments
-                        return { ...prev }
-                    })
-                }}
+                index={i}
                 sceneData={data}
                 properties={properties}
             />
@@ -62,12 +48,12 @@ export default function ModifyPreset() {
 
     const { data, error, isLoading: isLoadingPreset, setRetry } = useFetch<Preset>(`/presets?id=${encodeURIComponent(id)}`)
     const { data: properties, error: errorProperty, isLoading: isLoadingProperty, setRetry: setPropertyRetry } = useFetch<ListScenes[]>(`/list_scenes`)
+    const { config, setSubConfig } = useSubConfig(id, "")
 
 
-    const [modifiedData, setModifiedData] = useState<Preset | null>(null)
     useEffect(() => {
         if (data)
-            setModifiedData(data)
+            setSubConfig(data)
     }, [data])
 
     const isLoading = isLoadingPreset || isLoadingProperty
@@ -86,8 +72,6 @@ export default function ModifyPreset() {
                 <SceneWrapper
                     errorProperties={errorProperty}
                     listScenes={properties}
-                    data={modifiedData}
-                    setData={setModifiedData}
                     error={error}
                     isLoading={isLoading}
                 />

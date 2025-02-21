@@ -14,7 +14,6 @@ export default function CollectionItem({ item, index }: { item: DataProp, index:
     const isWeb = Platform.OS === "web"
 
     const { setData } = useContext(ProviderDataContext)
-    console.log("Loading image", item.imageUrl)
     const image = !isWeb && useImage(item.imageUrl, e => {
         Toast.show({
             type: "error",
