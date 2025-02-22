@@ -41,7 +41,6 @@ export function useSubConfig<T>(presetName: string, path: Parameters<typeof _.ge
                 const toSet = _.set(copy, path, newValue)
                 curr.set(presetName, toSet)
 
-                console.log("Config is now", JSON.stringify(toSet, null, 2))
                 return curr
             })
         }
@@ -57,7 +56,7 @@ export function ConfigProvider({ children }: PropsWithChildren<{}>) {
         config,
         setConfig,
         savePreset: (preset_name) => {
-            console.log("Saving preset with name", preset_name, "and config", config?.get(preset_name))
+            console.log("Saving preset with name", preset_name, "and config", JSON.stringify(config?.get(preset_name), null, 2))
         }
     }}>
         {children}

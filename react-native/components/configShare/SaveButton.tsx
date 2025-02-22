@@ -5,6 +5,7 @@ import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { getApiUrl } from '../useFetch';
 import { ConfigContext } from './ConfigProvider';
+import { objectToArrayPresets } from '../apiTypes/list_presets';
 
 export default function SaveButton({ presetId}: { presetId: string}) {
     const { config } = useContext(ConfigContext)
@@ -17,11 +18,12 @@ export default function SaveButton({ presetId}: { presetId: string}) {
         className='p-3'
         disabled={isSaving}
         onPress={() => {
-            console.log("Saving preset with name", presetId, "and config", preset)
+            console.log("Saving preset with name", presetId, "and config", JSON.stringify(preset, null, 2))
             setIsSaving(true)
-            fetch(getApiUrl(`/presets?id=${presetId}`), {
+            const raw = objectToArrayPresets(preset!)
+            fetch(getApiUrl(`/preset?id=${presetId}`), {
                 method: "POST",
-                body: JSON.stringify(preset),
+                body: JSON.stringify(raw),
                 headers: {
                     'Content-Type': 'application/json'
                 }

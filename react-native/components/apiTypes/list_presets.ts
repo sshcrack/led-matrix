@@ -36,3 +36,9 @@ export function arrayToObjectPresets(preset: RawPreset): Preset {
         }, {} as { [key: string]: Scene })
     }
 }
+
+export function objectToArrayPresets(preset: Preset): RawPreset {
+    return {
+        scenes: Object.values(preset.scenes)
+    }
+}

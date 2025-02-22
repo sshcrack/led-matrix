@@ -104,7 +104,7 @@ export default function Screen() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <SafeAreaView className="flex-1">
         <ScrollView className='flex-1 gap-5 p-4 bg-secondary/30' contentContainerStyle={{
           alignItems: "center"
         }} refreshControl={
