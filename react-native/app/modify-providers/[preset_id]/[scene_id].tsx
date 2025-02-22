@@ -32,15 +32,13 @@ export default function ModifyPreset() {
     useEffect(() => {
         console.log("Setting up save config listener")
         return () => {
-            console.log("Saving config...")
-
             if (modDataRef.current)
                 setSubConfig(modDataRef.current)
         }
     }, [])
 
     return <SafeAreaProvider>
-        <SafeAreaView className="flex-1 w-full" edges={['top']}>
+        <SafeAreaView className="flex-1 w-full">
             <ScrollView className='flex-1 gap-5 p-4 bg-secondary/30 w-full' contentContainerStyle={{
                 alignItems: "center"
             }}>
