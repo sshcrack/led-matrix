@@ -1,11 +1,7 @@
 import { createContext, useCallback, useContext } from 'react';
-import { Scene } from '../apiTypes/list_presets';
-import { ReactSetState } from '~/lib/utils';
 
 type SceneContextType = {
     sceneId: string,
-    presetId: string,
-    setScene: ReactSetState<Scene>;
     updateProperty: (propertyName: string, value: any) => void;
 };
 

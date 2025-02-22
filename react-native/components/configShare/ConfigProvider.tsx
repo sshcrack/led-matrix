@@ -1,8 +1,7 @@
+import _ from "lodash"
 import { createContext, PropsWithChildren, useContext, useState } from 'react'
 import { ReactSetState } from '~/lib/utils'
-import { ListScenes } from '../apiTypes/list_scenes'
-import _ from "lodash"
-import { Preset } from '../apiTypes/list_presets'
+import { Preset, RawPreset } from '../apiTypes/list_presets'
 
 export type ConfigState = {
     config: Map<string, Preset>,
@@ -12,26 +11,43 @@ export type ConfigState = {
 
 export const ConfigContext = createContext<ConfigState>({} as ConfigState)
 
-export function useSubConfig(presetName: string, path: string) {
+export type SubConfigReturnType<T> = {
+    config: T,
+    setSubConfig: (value: React.SetStateAction<T | null>) => void
+}
+
+export function useSubConfig<T>(presetName: string, path: Parameters<typeof _.get>[1]) {
     const { config, setConfig } = useContext(ConfigContext)
 
     const preset = config.get(presetName)
     const subConfig = preset ? _.get(preset, path) : null
 
-    return {
-        config: subConfig,
-        setSubConfig: (value: any) => {
+    const toReturn: SubConfigReturnType<T> = {
+        config: subConfig as T,
+        setSubConfig: (valueOrFn: (T | null) | ((prev: T | null) => (T | null))) => {
             setConfig(e => {
                 const curr = new Map(e)
-                const copy: Preset = JSON.parse(JSON.stringify(curr.get(presetName)))
+                const currOriginal = curr.get(presetName);
+                if(!currOriginal) {
+                    console.error("No preset found with name", presetName)
+                    return curr
+                }
 
-                const toSet = _.set(copy, path, value)
+                const copy: Preset = JSON.parse(JSON.stringify(currOriginal))
+                const newValue = typeof valueOrFn === 'function'
+                    ? (valueOrFn as (prev: T) => T)(_.get(copy, path))
+                    : valueOrFn
+
+                const toSet = _.set(copy, path, newValue)
                 curr.set(presetName, toSet)
 
+                console.log("Config is now", JSON.stringify(toSet, null, 2))
                 return curr
             })
         }
     }
+
+    return toReturn
 }
 
 export function ConfigProvider({ children }: PropsWithChildren<{}>) {

@@ -7,9 +7,11 @@ import { RotateCcw } from '~/lib/icons/RotateCcw';
 import { titleCase } from '~/lib/utils';
 import { PluginPropertyProps } from '../property_list';
 import { usePropertyUpdate, useSceneContext } from '../SceneContext';
+import usePresetId from '../PresetIdProvider';
 
 export default function ProvidersProperty({ defaultVal, propertyName }: Omit<PluginPropertyProps<ProviderValue>, 'setValue'>) {
-    const { sceneId, presetId } = useSceneContext()
+    const { sceneId } = useSceneContext()
+    const presetId = usePresetId()
 
     const setValue = usePropertyUpdate(propertyName);
     return <View className='flex-row gap-2 w-full justify-between items-center'>

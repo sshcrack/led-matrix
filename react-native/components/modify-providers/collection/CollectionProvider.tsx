@@ -12,12 +12,29 @@ import { CollectionProvider as CollectionJson } from '../../apiTypes/list_scenes
 import { ProviderDataContext } from '../ProviderDataContext';
 import CollectionItem from './CollectionItem';
 import { useSubConfig } from '~/components/configShare/ConfigProvider';
+import { Text } from '~/components/ui/text';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu';
+import { FilePlus2 } from '~/lib/icons/FilePlus2';
+import { Paperclip } from '~/lib/icons/Paperclip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '~/components/ui/alert-dialog';
+import { Input } from '~/components/ui/input';
 
 export interface DataProp {
     id: number;
     imageUrl: string;
 }
 
+function isValidHttpUrl(s: string) {
+    let url;
+
+    try {
+        url = new URL(s);
+    } catch (_) {
+        return false;
+    }
+
+    return url.protocol === "http:" || url.protocol === "https:";
+}
 
 function formDataFromImagePicker(result: ImagePicker.ImagePickerSuccessResult) {
     const formData = new FormData();
@@ -35,6 +52,8 @@ function formDataFromImagePicker(result: ImagePicker.ImagePickerSuccessResult) {
 
 export default function CollectionProvider() {
     const [uploading, setUploading] = useState(false)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [url, setUrl] = useState("")
 
     const { data: untypedData, setData } = useContext(ProviderDataContext)
     const data = untypedData as CollectionJson
@@ -80,35 +99,96 @@ export default function CollectionProvider() {
     };
 
 
-    return <View className='w-full flex-1 flex-row flex-wrap p-10 gap-5'>
-        {args.map((e, i) => {
-            return <CollectionItem key={`${e.id}-${e.imageUrl}`} item={e} index={i} />
-        })}
-        <Button
-            onPress={() => {
-                pickImage().then((path) => {
-                    if (!path)
-                        return
+    return <>
 
-                    setData(e => {
-                        const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
-                        copy.arguments.push(`file://${path}`)
+        <AlertDialog open={isDialogOpen} onOpenChange={e => setIsDialogOpen(e)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Input URL to add</AlertDialogTitle>
+                </AlertDialogHeader>
+                <Input
+                    placeholder='Enter URL here'
+                    value={url}
+                    onChangeText={setUrl}
+                    aria-labelledby='inputLabel'
+                    aria-errormessage='inputError'
+                    keyboardType='url'
+                    className="w-72"
+                />
+                <AlertDialogFooter>
+                    <AlertDialogCancel onPress={() => setIsDialogOpen(false)}>
+                        <Text>Cancel</Text>
+                    </AlertDialogCancel>
+                    <AlertDialogAction onPress={() => {
+                        if (!url || !isValidHttpUrl(url)) {
+                            Toast.show({
+                                type: "error",
+                                text1: "Invalid URL",
+                                text2: "Please enter a valid URL"
+                            })
+                            return
+                        }
 
-                        return copy
-                    })
-                }).catch(e => {
-                    Toast.show({
-                        type: "error",
-                        text1: "Error uploading image",
-                        text2: e.message ?? JSON.stringify(e)
-                    })
-                })
-            }}
-            variant="outline"
-            size={null}
-            className='justify-center items-center text-slate-800 shadow p-3 border-2 border-dashed h-[128px] w-[128px]'
-        >
-            {uploading ? <Loader /> : <Plus className="text-foreground" />}
-        </Button>
-    </View>
+                        setData(e => {
+                            const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
+                            copy.arguments.push(url)
+
+                            return copy
+                        })
+
+                        setUrl("")
+                        setIsDialogOpen(false)
+                    }}>
+                        <Text>Add</Text>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <View className='w-full flex-1 flex-row flex-wrap p-10 gap-5'>
+            {args.map((e, i) => {
+                return <CollectionItem key={`${e.id}-${e.imageUrl}`} item={e} index={i} />
+            })}
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size={null}
+                        className='justify-center items-center text-slate-800 shadow p-3 border-2 border-dashed h-[128px] w-[128px]'
+                    >
+                        {uploading ? <Loader /> : <Plus className="text-foreground" />}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-36 native:w-48 p-3">
+                    <DropdownMenuItem onPress={() => {
+                        pickImage().then((path) => {
+                            if (!path)
+                                return
+
+                            setData(e => {
+                                const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
+                                copy.arguments.push(`file://${path}`)
+
+                                return copy
+                            })
+                        }).catch(e => {
+                            Toast.show({
+                                type: "error",
+                                text1: "Error uploading image",
+                                text2: e.message ?? JSON.stringify(e)
+                            })
+                        })
+                    }}>
+                        <FilePlus2 className="text-foreground" />
+                        <Text>File</Text>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onPress={() => setIsDialogOpen(true)}>
+                        <Paperclip className='text-foreground' />
+                        <Text>URL</Text>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </View>
+    </>
 }

@@ -42,3 +42,5 @@ expo-env.d.ts
 # @end expo-cli
 
 *.aab
+
+.env

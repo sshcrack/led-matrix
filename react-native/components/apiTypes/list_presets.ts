@@ -1,23 +1,38 @@
 export interface ListPresets {
-    [key: string]: Preset;
+    [key: string]: RawPreset;
 }
 
-export interface Preset {
+export interface RawPreset {
     scenes: Scene[];
 }
 
 
 export interface ImageArguments {
     begin: number;
-    end:   number;
+    end: number;
 }
 
 export interface Scene {
     arguments: SceneArguments;
-    type:      string;
+    type: string;
     uuid: string;
 }
 
 export interface SceneArguments {
     [key: string]: any;
+}
+
+export interface Preset {
+    scenes: {
+        [key: string]: Scene
+    }
+}
+
+export function arrayToObjectPresets(preset: RawPreset): Preset {
+    return {
+        scenes: preset.scenes.reduce((acc, scene) => {
+            acc[scene.uuid] = scene
+            return acc
+        }, {} as { [key: string]: Scene })
+    }
 }

@@ -92,26 +92,24 @@ handle_providers(const request_handle_t &req, const query_string_params_t &qp) {
 }
 
 
-const static std::filesystem::path upload_dir = Constants::root_dir / "uploads";
-
 void store_file_to_disk(
     string_view_t full_file,
     const string_view_t raw_content,
-    std::filesystem::path &upload_path) {
+    std::string &upload_filename) {
     auto ext = std::filesystem::path(full_file).extension();
     std::string hash;
     picosha2::hash256_hex_string(full_file, hash);
 
-    if (!filesystem::exists(upload_dir))
-        filesystem::create_directory(upload_dir);
+    if (!filesystem::exists(Constants::upload_dir))
+        filesystem::create_directory(Constants::upload_dir);
 
-    upload_path = upload_dir / (hash + ext.c_str());
-    spdlog::debug("Uploading to {}", upload_path.c_str());
+    upload_filename = hash + ext.c_str();
+    spdlog::debug("Uploading file as {}", upload_filename.c_str());
 
     std::ofstream dest_file;
     dest_file.exceptions(std::ofstream::failbit);
     dest_file.open(
-        upload_path,
+        Constants::upload_dir / upload_filename,
         std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
     dest_file.write(raw_content.data(), raw_content.size());
 }
@@ -121,19 +119,19 @@ std::optional<request_handling_status_t> handle_upload(const request_handle_t &r
     spdlog::debug("Handling upload");
     using namespace restinio::file_upload;
 
-    std::filesystem::path upload_path = "";
+    std::string upload_filename = "";
     const auto enumeration_result = enumerate_parts_with_files(
         *req,
-        [&upload_path](const part_description_t &part) {
+        [&upload_filename](const part_description_t &part) {
             if ("photo" == part.name) {
                 spdlog::debug("Storing photo with filename");
                 // We can handle the name only in 'filename' parameter.
                 if (part.filename) {
                     // NOTE: the validity of filename is not checked.
                     // This is just for simplification of the example.
-                    store_file_to_disk(*part.filename, part.body, upload_path);
+                    store_file_to_disk(*part.filename, part.body, upload_filename);
 
-                    spdlog::debug("Outer {}", upload_path.c_str());
+                    spdlog::debug("Outer {}", upload_filename.c_str());
                     // There is no need to handle other parts.
                     return handling_result_t::stop_enumeration;
                 }
@@ -151,8 +149,8 @@ std::optional<request_handling_status_t> handle_upload(const request_handle_t &r
         return request_accepted();
     }
 
-    spdlog::debug("Reply with path {}", upload_path.c_str());
-    reply_with_json(req, {{"path", std::string(upload_path.c_str())}});
+    spdlog::debug("Reply with path {}", upload_filename.c_str());
+    reply_with_json(req, {{"path", std::string(upload_filename.c_str())}});
     return request_accepted();
 }
 
