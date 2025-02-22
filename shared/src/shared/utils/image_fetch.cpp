@@ -4,6 +4,8 @@
 #include <curl/curl.h>
 #include <memory>
 
+#include "shared/utils/consts.h"
+
 namespace fs = std::filesystem;
 
 namespace utils {
@@ -21,7 +23,7 @@ namespace utils {
         }
 
         if (url_str.starts_with(FILE_PROTOCOL)) {
-            const auto local_file = url_str.substr(FILE_PROTOCOL.length());
+            const auto local_file = Constants::upload_dir / url_str.substr(FILE_PROTOCOL.length());
             try {
                 fs::copy_file(local_file, file_out);
                 return {};

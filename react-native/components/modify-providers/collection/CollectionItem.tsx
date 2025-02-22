@@ -1,13 +1,13 @@
 import { Canvas, Image, useImage } from '@shopify/react-native-skia';
 import { useContext } from 'react';
-import { Image as NativeImage, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { CollectionProvider } from '~/components/apiTypes/list_scenes';
 import { Button } from '~/components/ui/button';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '~/components/ui/context-menu';
 import { Text } from '~/components/ui/text';
 import { ProviderDataContext } from '../ProviderDataContext';
 import type { DataProp } from './CollectionProvider';
-import { CollectionProvider } from '~/components/apiTypes/list_scenes';
 
 
 export default function CollectionItem({ item, index }: { item: DataProp, index: number }) {
@@ -31,7 +31,7 @@ export default function CollectionItem({ item, index }: { item: DataProp, index:
 
     return (
         <ContextMenu>
-            <ContextMenuTrigger>
+            <ContextMenuTrigger asChild>
                 <View className='bg-black text-slate-800 shadow p-3 justify-center items-center h-[128px] w-[128px]'>
                     {isWeb ?
                         <img src={item.imageUrl} style={{

@@ -64,20 +64,20 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
-            name='modify-preset/[id]'
-            getId={({ params }) => `modify-preset-${params?.id}`}
+            name='modify-preset/[preset_id]'
+            getId={({ params }) => `modify-preset-${params?.preset_id}`}
             options={({ route }) => ({
               //@ts-ignore
-              title: `Modify ${route.params?.id}`,
-              headerRight: () => <SaveButton />,
+              title: `Modify ${route.params?.preset_id}`,
+              //@ts-ignore
+              headerRight: () => <SaveButton presetId={route.params?.preset_id}/>,
             })}
           />
           <Stack.Screen
             name='modify-providers/[preset_id]/[scene_id]'
             getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
             options={{
-              title: `Configure Providers of Scene`,
-              headerRight: () => <SaveButton />,
+              title: `Configure Providers of Scene`
             }}
           />
         </Stack>

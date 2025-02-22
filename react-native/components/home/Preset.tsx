@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Preset as ApiPreset } from '../apiTypes/list_presets';
+import { RawPreset as ApiPreset } from '../apiTypes/list_presets';
 import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
@@ -59,8 +59,8 @@ export default function Preset({ preset, name, isActive, setStatusRefresh }: Pre
 
             <View className='flex gap-2 flex-row w-full'>
                 <Link push asChild href={{
-                    pathname: '/modify-preset/[id]',
-                    params: { id: name },
+                    pathname: '/modify-preset/[preset_id]',
+                    params: { preset_id: name },
                 }}>
                     <Button className="flex-1">
                         <Text>Modify</Text>
