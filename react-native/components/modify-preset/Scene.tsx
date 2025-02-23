@@ -11,6 +11,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { DynamicPluginProperty } from './property_list';
 import { useSubConfig } from '../configShare/ConfigProvider';
 import usePresetId from './PresetIdProvider';
+import { Button } from '../ui/button';
+import { Trash2 } from '~/lib/icons/Trash2';
 
 export type SceneComponentProps = {
     sceneId: string,
@@ -23,6 +25,7 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
     const presetId = usePresetId()
 
     const { config } = useSubConfig<Scene>(presetId, ["scenes", sceneId])
+    const { setSubConfig } = useSubConfig<{[key: string]: Scene}>(presetId, ["scenes"])
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ rotate: `${rotation.value}deg` }],
     }));
@@ -57,8 +60,22 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
         rotation.value = withTiming(e ? 180 : 0, { easing: Easing.inOut(Easing.quad) });
     }} className='w-full gap-6'>
         <CollapsibleTrigger className='flex-row gap-2 items-center w-full'>
-            <Text className='text-center text-2xl font-semibold'>{titleCase(config.type)}</Text>
-            <Text>{format(duration)}</Text>
+            <View className="flex-row items-center gap-3">
+                <Button size="icon" variant="ghost" className='p-5' onPress={() => {
+                    setSubConfig(e => {
+                        if (!e)
+                            return e
+                        const clone = JSON.parse(JSON.stringify(e))
+                        delete clone[sceneId]
+
+                        return clone
+                    })
+                }}>
+                    <Trash2 className='text-red-500' />
+                </Button>
+                <Text className="text-xl">{titleCase(config.type)}</Text>
+            </View>
+            <Text className="self-center">{format(duration)}</Text>
             <View className='flex-row flex-1 justify-end pr-3 gap-5'>
                 <Text>{weight}</Text>
             </View>

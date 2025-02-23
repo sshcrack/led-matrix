@@ -12,17 +12,28 @@ export interface Property<T> {
 
 export type CollectionProvider = {
     type: "collection";
-    arguments: string[]
+    uuid: string,
+    arguments: {
+        images: string[]
+    }
 }
 
 export type PagesProvider = {
     type: "pages";
+    uuid: string,
     arguments: {
         begin: number,
         end: number
     }
 }
 
-export type ProviderValue = CollectionProvider | PagesProvider;
+export type ListProviders = ListScenes
+export type ProviderValue = CollectionProvider | PagesProvider | {
+    type: string,
+    uuid: string,
+    arguments: {
+        [key: string]: any
+    }
+};
 
 export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t"

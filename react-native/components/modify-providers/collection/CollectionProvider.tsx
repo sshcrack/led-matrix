@@ -63,7 +63,7 @@ export default function CollectionProvider() {
         if (!data)
             return null
 
-        return data.arguments.map((imageUrl, index) => ({
+        return data.arguments.images.map((imageUrl, index) => ({
             id: index,
             imageUrl: getImageUrl(apiUrl, imageUrl)
         }))
@@ -132,7 +132,7 @@ export default function CollectionProvider() {
 
                         setData(e => {
                             const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
-                            copy.arguments.push(url)
+                            copy.arguments.images.push(url)
 
                             return copy
                         })
@@ -170,7 +170,7 @@ export default function CollectionProvider() {
 
                             setData(e => {
                                 const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
-                                copy.arguments.push(`file://${path}`)
+                                copy.arguments.images.push(`file://${path}`)
 
                                 return copy
                             })

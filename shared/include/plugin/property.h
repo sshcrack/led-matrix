@@ -2,7 +2,7 @@
 
 #include <string>
 #include <utility>
-
+#include "shared/utils/utils.h"
 
 class PropertyBase {
 protected:
@@ -68,6 +68,8 @@ public:
             return "string";
         else if constexpr (std::is_same_v<T, int>)
             return "int";
+        else if constexpr (std::is_same_v<T, std::vector<std::string>>)
+            return "string[]";
         else if constexpr (std::is_same_v<T, double>)
             return "double";
         else if constexpr (std::is_same_v<T, bool>)

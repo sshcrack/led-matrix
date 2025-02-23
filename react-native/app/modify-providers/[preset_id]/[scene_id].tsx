@@ -1,5 +1,4 @@
 import { useLocalSearchParams } from 'expo-router';
-import { getPathWithConventionsCollapsed } from 'expo-router/build/fork/getPathFromState-forks';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';

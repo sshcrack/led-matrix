@@ -5,17 +5,18 @@
 #include <expected>
 #include <fmt/format.h>
 
-#include "shared/post.h"
 #include "plugin/property.h"
+#include "shared/post.h"
 
 using json = nlohmann::json;
 
 namespace ImageProviders {
     class General {
         std::vector<std::shared_ptr<PropertyBase> > properties;
+        std::string uuid;
 
     public:
-        explicit General(const json &arguments);
+        explicit General();
 
         virtual ~General(); // Changed from pure virtual to virtual
 
@@ -30,6 +31,7 @@ namespace ImageProviders {
             properties.push_back(property);
         }
 
+        virtual void register_properties() = 0;
         virtual void load_properties(const nlohmann::json &j);
 
         std::vector<std::shared_ptr<PropertyBase> > get_properties() {
@@ -44,7 +46,7 @@ namespace ImageProviders {
 
         [[nodiscard]] virtual string get_name() const = 0;
 
-        virtual json to_json() = 0;
+        [[nodiscard]] virtual json to_json() const;
 
         static std::unique_ptr<General, void (*)(General *)> from_json(const json &j);
     };

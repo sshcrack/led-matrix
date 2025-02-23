@@ -11,7 +11,7 @@ vector<int> generate_rand_pages(int page_begin, int page_end) {
     for (int i = page_begin; i < page_end; ++i)
         total_p.push_back(i + 1);
 
-    std::shuffle(total_p.begin(), total_p.end(), std::random_device());
+    std::ranges::shuffle(total_p, std::random_device());
 
     return total_p;
 }
@@ -19,7 +19,7 @@ vector<int> generate_rand_pages(int page_begin, int page_end) {
 
 void ImageProviders::Pages::flush() {
     curr_posts.clear();
-    total_pages = generate_rand_pages(page_begin, page_end);
+    total_pages = generate_rand_pages(pages_begin->get(), pages_end);
 }
 
 
@@ -47,56 +47,38 @@ ImageProviders::Pages::get_next_image() {
     }
 }
 
-ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
-    int p_begin = arguments.value("begin", 0);
-    int p_end = arguments.value("end", -1);
-
-    if (p_end == -1) {
-        auto pages = pixeljoint::ScrapedPost::get_pages();
-        if (!pages.has_value())
-            throw std::runtime_error("Could not get page size");
-
-        p_end = pages.value();
-    }
-
-
-    page_begin = p_begin;
-    page_end = p_end;
-
-    total_pages = generate_rand_pages(page_begin, page_end);
-}
-
-json ImageProviders::Pages::to_json() {
-    json args = json();
-    args["begin"] = page_begin;
-    args["end"] = page_end;
-
-    return args;
+ImageProviders::Pages::Pages() : General(), pages_end(-1) {
 }
 
 string ImageProviders::Pages::get_name() const {
     return "pages";
 }
 
-
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
-ImageProviders::PagesWrapper::create_default() {
-    json j = {
-        {"begin", 1},
-        {"end", -1}
-    };
-
-    return {
-        new Pages(j), [](General *p) {
-            delete p;
-        }
-    };
+void ImageProviders::Pages::register_properties() {
+    add_property(pages_begin);
+    add_property(pages_end_raw);
 }
 
+void ImageProviders::Pages::load_properties(const nlohmann::json &j) {
+    General::load_properties(j);
+
+
+    if (pages_end_raw->get() == -1) {
+        const auto pages = pixeljoint::ScrapedPost::get_pages();
+        if (!pages.has_value())
+            throw std::runtime_error("Could not get page size");
+
+        pages_end = pages.value();
+    }
+
+    total_pages = generate_rand_pages(pages_begin->get(), pages_end);
+}
+
+
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
-ImageProviders::PagesWrapper::from_json(const json &json) {
+ImageProviders::PagesWrapper::create() {
     return {
-        new Pages(json), [](General *p) {
+        new Pages(), [](General *p) {
             delete p;
         }
     };

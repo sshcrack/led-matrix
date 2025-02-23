@@ -7,21 +7,24 @@
 
 namespace Plugins {
     class ImageProviderWrapper {
-        string _cachedName;
+        std::shared_ptr<ImageProviders::General> default_general;
 
     public:
         virtual ~ImageProviderWrapper() = default;
 
-        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create_default() = 0;
-
-        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> from_json(
-            const nlohmann::json &json) = 0;
+        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create() = 0;
 
         virtual string get_name() {
-            if (_cachedName.empty())
-                _cachedName = create_default()->get_name();
+            return get_default()->get_name();
+        }
 
-            return _cachedName;
+        std::shared_ptr<ImageProviders::General> get_default() {
+            if (default_general == nullptr) {
+                default_general = create();
+                default_general->register_properties();
+            }
+
+            return default_general;
         }
     };
 
