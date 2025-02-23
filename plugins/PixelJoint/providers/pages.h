@@ -5,11 +5,13 @@
 #include "wrappers.h"
 
 namespace ImageProviders {
-    class Pages : public General {
-    private:
-        int page_end, page_begin;
+    class Pages final : public General {
         vector<std::unique_ptr<pixeljoint::ScrapedPost, void (*)(pixeljoint::ScrapedPost *)>> curr_posts;
         vector<int> total_pages;
+
+        int pages_end;
+        PropertyPointer<int> pages_begin = MAKE_PROPERTY("pages_begin", int, 0);
+        PropertyPointer<int> pages_end_raw = MAKE_PROPERTY("pages_end", int, -1);
 
     public:
         ~Pages() override = default;
@@ -18,17 +20,16 @@ namespace ImageProviders {
         std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
         get_next_image() override;
 
-        json to_json() override;
+        [[nodiscard]] string get_name() const override;
 
-        string get_name() const override;
+        explicit Pages();
 
-        explicit Pages(const json &arguments);
+        void register_properties() override;
+        void load_properties(const nlohmann::json &j) override;
     };
 
     class PagesWrapper : public Plugins::ImageProviderWrapper {
-        std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create_default() override;
-
         std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
-        from_json(const nlohmann::json &json) override;
+        create() override;
     };
 }

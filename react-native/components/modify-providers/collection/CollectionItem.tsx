@@ -49,7 +49,7 @@ export default function CollectionItem({ item, index }: { item: DataProp, index:
                         setData(e => {
                             const data = e as CollectionProvider
                             const copy: CollectionProvider = JSON.parse(JSON.stringify(data))
-                            copy.arguments.splice(index, 1)
+                            copy.arguments.images.splice(index, 1)
 
                             return copy
                         })

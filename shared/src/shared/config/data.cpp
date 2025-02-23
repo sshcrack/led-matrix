@@ -99,7 +99,10 @@ namespace ConfigData {
             info("No scenes in preset. Adding default...");
             auto pl = Plugins::PluginManager::instance();
             for (const auto &item: pl->get_scenes()) {
-                scenes.emplace_back(item->create());
+                auto scene = item->create();
+                scene->register_properties();
+
+                scenes.emplace_back();
             }
         }
 

@@ -50,12 +50,11 @@ bool Spotify::refresh() {
 }
 
 bool Spotify::initialize() {
-    auto spotify = config->get_spotify();
-    auto any_empty = spotify.access_token->empty() || spotify.refresh_token->empty() || spotify.expires_at == 0;
+    const auto [access_token, refresh_token, expires_at] = config->get_spotify();
+    const auto any_empty = access_token->empty() || refresh_token->empty() || expires_at == 0;
 
     if (!any_empty) {
-        debug("Curr time {}", GetTimeInMillis());
-        bool is_expired = GetTimeInMillis() > spotify.expires_at;
+        const bool is_expired = GetTimeInMillis() > expires_at;
         if (is_expired) {
             debug("Is expired. Refreshing...");
             return Spotify::refresh();
@@ -65,7 +64,7 @@ bool Spotify::initialize() {
         return true;
     }
 
-    auto curr = std::filesystem::current_path() / "plugins/SpotifyScenes/spotify/authorize.js";
+    const auto curr = std::filesystem::current_path() / "plugins/SpotifyScenes/spotify/authorize.js";
 
 
     printf("Path %s \n", curr.string().c_str());

@@ -4,10 +4,11 @@
 #include "wrappers.h"
 
 namespace ImageProviders {
-    class Collection : public General {
+    class Collection final : public General {
         vector<std::shared_ptr<Post> > images;
         vector<std::shared_ptr<Post> > already_shown;
 
+        PropertyPointer<std::vector<string>> images_raw = MAKE_PROPERTY("images", std::vector<string>, {});
     public:
         std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
         get_next_image() override;
@@ -16,18 +17,17 @@ namespace ImageProviders {
 
         void flush() override;
 
-        json to_json() override;
-
         [[nodiscard]] string get_name() const override;
 
-        explicit Collection(const json &arguments);
+        explicit Collection();
+
+        void register_properties() override;
+        void load_properties(const nlohmann::json &j) override;
     };
 
 
-    class CollectionWrapper : public Plugins::ImageProviderWrapper {
-        std::unique_ptr<General, void (*)(General *)> create_default() override;
-
+    class CollectionWrapper final : public Plugins::ImageProviderWrapper {
         std::unique_ptr<General, void (*)(General *)>
-        from_json(const nlohmann::json &json) override;
+        create() override;
     };
 }

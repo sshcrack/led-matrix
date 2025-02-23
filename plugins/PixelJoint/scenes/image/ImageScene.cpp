@@ -111,14 +111,14 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
 
     tmillis_t start_loading = GetTimeInMillis();
 
-    optional<expected<optional<ImageInfo>, string>> info_res_opt = nullopt;
+    optional<expected<optional<ImageInfo>, string> > info_res_opt = nullopt;
     try {
         info_res_opt = std::move(next_img->get());
         if (!info_res_opt.value().has_value()) {
             warn("Could not get next image. Trying again. Error was: {}", info_res_opt.value().error());
             return get_next_anim(matrix, recursiveness + 1);
         }
-    } catch (const std::bad_alloc& e) {
+    } catch (const std::bad_alloc &e) {
         error("Memory allocation failed: {}. Trying next image.", e.what());
         return get_next_anim(matrix, recursiveness + 1);
     }
@@ -170,14 +170,7 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
 
     auto post_opt = std::move(post_res.value());
     if (!post_opt.has_value()) {
-        category->flush();
-        post_res = category->get_next_image();
-        if (!post_res.has_value())
-            return unexpected(post_res.error());
-
-        post_opt = std::move(post_res.value());
-        if (!post_opt.has_value())
-            return std::nullopt;
+        return std::nullopt;
     }
 
     auto post = std::move(post_opt.value());
@@ -250,19 +243,7 @@ void ImageScene::load_properties(const nlohmann::json &j) {
 
     auto pl_providers = Plugins::PluginManager::instance()->get_image_providers();
     for (const auto &provider_json: arr) {
-        auto name = provider_json["type"].get<std::string>();
-
-        bool found = false;
-        for (const auto &image_provider_wrapper: pl_providers) {
-            if (name == image_provider_wrapper->get_name()) {
-                providers.push_back(image_provider_wrapper->from_json(provider_json["arguments"]));
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-            throw std::runtime_error("Could not find image provider '" + name + "'");
+        providers.push_back(ImageProviders::General::from_json(provider_json));
     }
 }
 

@@ -58,7 +58,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
 
         string id{qp["id"]};
         auto presets = config->get_presets();
-        if (presets.find(id) != presets.end()) {
+        if (presets.find(id) == presets.end()) {
             reply_with_error(req, "Invalid id");
             return request_accepted();
         }
@@ -179,6 +179,39 @@ request_handling_status_t handle_get(const request_handle_t &req) {
 
     if (target == "/list_scenes") {
         auto scenes = Plugins::PluginManager::instance()->get_scenes();
+        std::vector<json> j;
+
+        for (const auto &item: scenes) {
+            auto properties = item->get_default()->get_properties();
+            std::vector<json> properties_json;
+
+            for (const auto &item1: properties) {
+                json j1;
+                item1->dump_to_json(j1);
+
+                json j2;
+                j2["name"] = item1->getName();
+                j2["default_value"] = j1[item1->getName()];
+                j2["type_id"] = item1->get_type_id();
+
+                properties_json.push_back(j2);
+            }
+
+            json j1 = {
+                {"name", item->get_name()},
+                {"properties", properties_json}
+            };
+
+            j.push_back(j1);
+        }
+
+        reply_with_json(req, j);
+        return request_accepted();
+    }
+
+
+    if (target == "/list_providers") {
+        auto scenes = Plugins::PluginManager::instance()->get_image_providers();
         std::vector<json> j;
 
         for (const auto &item: scenes) {

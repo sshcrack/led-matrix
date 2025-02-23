@@ -7,7 +7,6 @@ using std::nullopt;
 std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
 ImageProviders::Collection::get_next_image() {
     if (images.empty()) {
-        spdlog::debug("Empty, returning already shown size {}...", already_shown.size());
         return nullopt;
     }
 
@@ -25,49 +24,39 @@ void ImageProviders::Collection::flush() {
 
     already_shown.clear();
     std::ranges::shuffle(images, std::random_device());
-    spdlog::trace("Collection was flushed. Images have now {}", images.size());
 }
 
-ImageProviders::Collection::Collection(const json &arguments) : General(arguments) {
-    vector<string> imgs = arguments.get<vector<string>>();
-    images.reserve(imgs.size());
+ImageProviders::Collection::Collection() : General() {
+}
 
-    for (const auto &item: imgs) {
-        images.push_back({new Post(item), [](Post *post) {
-            delete post;
-        }});
+void ImageProviders::Collection::register_properties() {
+    add_property(images_raw);
+}
+
+void ImageProviders::Collection::load_properties(const nlohmann::json &j) {
+    General::load_properties(j);
+    images.reserve(images_raw->get().size());
+
+    spdlog::trace("Adding a total of {} images to collection", images_raw->get().size());
+    for (const auto &item: images_raw->get()) {
+        images.push_back({
+            new Post(item), [](Post *post) {
+                delete post;
+            }
+        });
     }
 }
 
-json ImageProviders::Collection::to_json() {
-    vector<std::shared_ptr<Post>> total = images;
-    total.reserve(images.size() + already_shown.size());
-
-    total.insert(total.end(), already_shown.begin(), already_shown.end());
-
-    vector<string> stringified;
-    stringified.reserve(total.size());
-
-    for (const auto& item: total)
-        stringified.push_back(item->get_image_url());
-
-    return stringified;
-}
 
 string ImageProviders::Collection::get_name() const {
     return "collection";
 }
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
-ImageProviders::CollectionWrapper::create_default() {
-    return {new Collection(json::parse("[]")), [](General *scene) {
-        delete scene;
-    }};
-}
-
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
-ImageProviders::CollectionWrapper::from_json(const json &json) {
-    return {new Collection(json), [](General *p) {
-        delete p;
-    }};
+ImageProviders::CollectionWrapper::create() {
+    return {
+        new Collection(), [](General *p) {
+            delete p;
+        }
+    };
 }
