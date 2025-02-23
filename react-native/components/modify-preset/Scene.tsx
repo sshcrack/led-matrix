@@ -22,7 +22,7 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
     const rotation = useSharedValue(0);
     const presetId = usePresetId()
 
-    const { config, setSubConfig } = useSubConfig<Scene>(presetId, ["scenes", sceneId])
+    const { config } = useSubConfig<Scene>(presetId, ["scenes", sceneId])
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ rotate: `${rotation.value}deg` }],
     }));

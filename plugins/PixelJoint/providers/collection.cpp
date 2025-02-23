@@ -4,10 +4,10 @@
 
 using std::nullopt;
 
-optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
 ImageProviders::Collection::get_next_image() {
     if (images.empty()) {
-        spdlog::debug("Empty, returning...");
+        spdlog::debug("Empty, returning already shown size {}...", already_shown.size());
         return nullopt;
     }
 
@@ -48,7 +48,7 @@ json ImageProviders::Collection::to_json() {
     vector<string> stringified;
     stringified.reserve(total.size());
 
-    for (auto item: total)
+    for (const auto& item: total)
         stringified.push_back(item->get_image_url());
 
     return stringified;

@@ -10,4 +10,4 @@ export const titleCase = (s: string) =>
 export type ReactSetState<T> = React.Dispatch<React.SetStateAction<T>>
 
 
-export const getImageUrl = (url: string) => `${process.env.EXPO_PUBLIC_API_URL}/image?url=${encodeURIComponent(url)}`
+export const getImageUrl = (apiUrl: string, url: string) => apiUrl  + `/image?url=${encodeURIComponent(url)}`

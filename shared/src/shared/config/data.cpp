@@ -38,8 +38,6 @@ namespace ConfigData {
     }
 
     void to_json(json &j, std::shared_ptr<Preset> p) {
-        vector<json> image_json;
-
         vector<json> scenes_json;
         scenes_json.reserve(p->scenes.size());
         for (const auto &item: p->scenes) {
@@ -50,7 +48,6 @@ namespace ConfigData {
         }
 
         j = json{
-            {"images", image_json},
             {"scenes", scenes_json}
         };
     }

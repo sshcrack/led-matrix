@@ -13,6 +13,8 @@ import { setAndroidNavigationBar } from '~/lib/android-navigation-bar';
 import { NAV_THEME } from '~/lib/constants';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { ConfigProvider } from '~/components/configShare/ConfigProvider';
+import { ApiUrlProvider } from '~/components/apiUrl/ApiUrlProvider';
+import ResetApiUrl from '~/components/modify-preset/ResetApiUrl';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -54,36 +56,39 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
       <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-      <ConfigProvider>
-        <Stack>
-          <Stack.Screen
-            name='index'
-            options={{
-              title: 'LED Matrix Controller',
-              headerRight: () => <ThemeToggle />,
-            }}
-          />
-          <Stack.Screen
-            name='modify-preset/[preset_id]'
-            getId={({ params }) => `modify-preset-${params?.preset_id}`}
-            options={({ route }) => ({
-              //@ts-ignore
-              title: `Modify ${route.params?.preset_id}`,
-              //@ts-ignore
-              headerRight: () => <SaveButton presetId={route.params?.preset_id}/>,
-            })}
-          />
-          <Stack.Screen
-            name='modify-providers/[preset_id]/[scene_id]'
-            getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
-            options={{
-              title: `Configure Providers of Scene`
-            }}
-          />
-        </Stack>
-      </ConfigProvider>
-      <Toast />
+      <ApiUrlProvider>
+        <ConfigProvider>
+          <Stack>
+            <Stack.Screen
+              name='index'
+              options={{
+                title: 'LED Matrix Controller',
+                headerLeft: () => <ResetApiUrl />,
+                headerRight: () => <ThemeToggle />,
+              }}
+            />
+            <Stack.Screen
+              name='modify-preset/[preset_id]'
+              getId={({ params }) => `modify-preset-${params?.preset_id}`}
+              options={({ route }) => ({
+                //@ts-ignore
+                title: `Modify ${route.params?.preset_id}`,
+                //@ts-ignore
+                headerRight: () => <SaveButton presetId={route.params?.preset_id} />,
+              })}
+            />
+            <Stack.Screen
+              name='modify-providers/[preset_id]/[scene_id]'
+              getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
+              options={{
+                title: `Configure Providers of Scene`
+              }}
+            />
+          </Stack>
+        </ConfigProvider>
+      </ApiUrlProvider>
       <PortalHost />
+      <Toast />
     </ThemeProvider>
   );
 }

@@ -1,16 +1,19 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ListPresets } from '~/components/apiTypes/list_presets';
 import { Status } from '~/components/apiTypes/status';
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
+import AddPresetButton from '~/components/home/AddPresetButton';
 import Preset from '~/components/home/Preset';
 import { Button } from '~/components/ui/button';
 import { Label } from '~/components/ui/label';
 import { Switch } from '~/components/ui/switch';
 import { Text } from '~/components/ui/text';
-import useFetch, { getApiUrl } from '~/components/useFetch';
+import useFetch from '~/components/useFetch';
+import { Plus } from '~/lib/icons/Plus';
 
 
 export default function Screen() {
@@ -20,6 +23,7 @@ export default function Screen() {
   const [settingStatus, setSettingStatus] = useState(false);
   const [turnedOn, setTurnedOn] = useState<null | boolean>(null);
   const [manualRefresh, setManualRefresh] = useState(false)
+  const apiUrl = useApiUrl()
 
   const setRetry = () => {
     setTurnedOn(null)
@@ -33,7 +37,7 @@ export default function Screen() {
     if (!settingStatus)
       return
 
-    fetch(getApiUrl(`/set_enabled?enabled=${turnedOn ? "true" : "false"}`))
+    fetch(apiUrl + `/set_enabled?enabled=${turnedOn ? "true" : "false"}`)
       .catch(e => {
         Toast.show({
           type: "error",
@@ -52,7 +56,6 @@ export default function Screen() {
 
   const isLoading = presets.isLoading || status.isLoading;
   const error = presets.error ?? status.error;
-  const hasData = presets.data && status.data;
 
   useEffect(() => {
     if (!isLoading)
@@ -96,8 +99,10 @@ export default function Screen() {
             name={key}
             isActive={status.data?.current === key}
             setStatusRefresh={() => status.setRetry(Math.random())}
+            setPresetRefresh={() => presets.setRetry(Math.random())}
           />
         })}
+      <AddPresetButton presetNames={Object.keys(presets.data)} setRetry={() => presets.setRetry(Math.random())}/>
       </View>
     </>
   }

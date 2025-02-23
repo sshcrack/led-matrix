@@ -15,7 +15,8 @@ namespace ImageProviders {
         ~Pages() override = default;
         void flush() override;
 
-        optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>> get_next_image() override;
+        std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
+        get_next_image() override;
 
         json to_json() override;
 

@@ -91,6 +91,7 @@ Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std:
 expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
 ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     // NOLINT(*-no-recursion)
+
     if (recursiveness > 10) {
         return unexpected("Too many recursions");
     }
@@ -110,12 +111,19 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
 
     tmillis_t start_loading = GetTimeInMillis();
 
-    auto info_res = std::move(next_img->get());
-    if (!info_res.has_value()) {
-        warn("Could not get next image. Trying again. Error was: {}", info_res.error());
+    optional<expected<optional<ImageInfo>, string>> info_res_opt = nullopt;
+    try {
+        info_res_opt = std::move(next_img->get());
+        if (!info_res_opt.value().has_value()) {
+            warn("Could not get next image. Trying again. Error was: {}", info_res_opt.value().error());
+            return get_next_anim(matrix, recursiveness + 1);
+        }
+    } catch (const std::bad_alloc& e) {
+        error("Memory allocation failed: {}. Trying next image.", e.what());
         return get_next_anim(matrix, recursiveness + 1);
     }
 
+    auto info_res = std::move(info_res_opt.value());
     auto info_opt = std::move(info_res.value());
     if (!info_opt.has_value()) {
         // No images left, new category
@@ -133,7 +141,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     auto filename = raw_ptr->get_filename();
     auto image_url = raw_ptr->get_image_url();
 
-    auto file = GetFileInfo(std::move(frames), offscreen_canvas);
+    auto file = GetFileInfo(frames, offscreen_canvas);
     info("Loaded p_info for {} ({})", filename, image_url);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
@@ -142,10 +150,11 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     StreamReader reader(file->content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(new CurrAnimation(reader, end_time_ms, std::move(file)),
-                                                                 [](CurrAnimation *anim) {
-                                                                     delete anim;
-                                                                 });
+    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(
+        new CurrAnimation(reader, end_time_ms, std::move(file)),
+        [](CurrAnimation *anim) {
+            delete anim;
+        });
 
     return res;
 }
@@ -154,11 +163,22 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
 expected<optional<ImageInfo>, string>
 ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &category, const int width,
                            const int height, const atomic<bool> &is_exiting) {
-    auto post_opt = category->get_next_image();
-    if (!post_opt.has_value()) {
-        return unexpected("End of images for category");
+    auto post_res = category->get_next_image();
+    if (!post_res.has_value()) {
+        return unexpected(post_res.error());
     }
 
+    auto post_opt = std::move(post_res.value());
+    if (!post_opt.has_value()) {
+        category->flush();
+        post_res = category->get_next_image();
+        if (!post_res.has_value())
+            return unexpected(post_res.error());
+
+        post_opt = std::move(post_res.value());
+        if (!post_opt.has_value())
+            return std::nullopt;
+    }
 
     auto post = std::move(post_opt.value());
     const auto raw_post = get_pointer_raw(post);
@@ -181,8 +201,8 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
     };
 }
 
-std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(vector<Magick::Image> frames,
-                                                                       FrameCanvas *canvas) {
+std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vector<Magick::Image> &frames,
+                                                                       FrameCanvas *canvas) const {
     auto params = ImageParams();
     params.duration_ms = image_display_duration->get();
 
@@ -225,15 +245,15 @@ void ImageScene::load_properties(const nlohmann::json &j) {
         throw std::runtime_error("Providers of image scene " + this->get_name() + " must be an array");
 
     auto arr = json_providers->get();
-    if (arr.size() == 0)
+    if (arr.empty())
         throw std::runtime_error("No image providers given for image scene " + this->get_name());
 
     auto pl_providers = Plugins::PluginManager::instance()->get_image_providers();
-    for (const auto provider_json : arr) {
+    for (const auto &provider_json: arr) {
         auto name = provider_json["type"].get<std::string>();
 
         bool found = false;
-        for (const auto & image_provider_wrapper : pl_providers) {
+        for (const auto &image_provider_wrapper: pl_providers) {
             if (name == image_provider_wrapper->get_name()) {
                 providers.push_back(image_provider_wrapper->from_json(provider_json["arguments"]));
                 found = true;

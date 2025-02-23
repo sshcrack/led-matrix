@@ -53,6 +53,17 @@ namespace Config {
         this->mark_dirty();
     }
 
+    bool MainConfig::delete_preset(const string &id) {
+        unique_lock lock(this->data_mutex);
+
+        const auto it = this->data.presets.find(id);
+        if (it == this->data.presets.end())
+            return false;
+
+        this->data.presets.erase(it);
+        return true;
+    }
+
     void MainConfig::set_presets(const string &id, std::shared_ptr<ConfigData::Preset> preset) {
         unique_lock lock(this->data_mutex);
 
