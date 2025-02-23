@@ -33,6 +33,9 @@ namespace Config {
 
         void set_spotify(ConfigData::SpotifyData spotify);
         void set_curr(string id);
+
+        bool delete_preset(const string &id);
+
         void set_presets(const string& id, std::shared_ptr<ConfigData::Preset> preset);
 
         void set_plugin_config(const std::string& pluginId, const string& config);

@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import { ReactSetState, titleCase } from '~/lib/utils';
 import { ProviderValue } from '../apiTypes/list_scenes';
 import { Text } from '../ui/text';
+import AddProviderButton from './AddProviderButton';
 import CollectionProvider from './collection/CollectionProvider';
 import PagesProvider from './PagesProvider';
 import { ProviderDataProvider } from './ProviderDataContext';
@@ -11,7 +12,7 @@ const providers = {
     "pages": PagesProvider
 }
 
-export default function GeneralProvider({ data, setData }: { data: ProviderValue[], setData: ReactSetState<ProviderValue[] | null> }) {
+export default function GeneralProvider({ data, preset_id, scene_id, setData }: { data: ProviderValue[], preset_id: string, scene_id: string, setData: ReactSetState<ProviderValue[] | null> }) {
     return <View className="w-full flex-1">
         {data.map((provider, index) => {
             const Provider = providers[provider.type]
@@ -42,5 +43,6 @@ export default function GeneralProvider({ data, setData }: { data: ProviderValue
                 </View>
             </ProviderDataProvider>
         })}
+        <AddProviderButton sceneId={scene_id} presetId={preset_id}/>
     </View>
 }

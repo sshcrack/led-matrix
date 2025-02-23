@@ -1,10 +1,10 @@
 #include "server.h"
 #include "restinio/all.hpp"
 #include "shared/utils/shared.h"
-#include <filesystem>
 #include <nlohmann/json.hpp>
 #include "method_post.h"
 #include "method_get.h"
+#include "method_delete.h"
 #include "shared/plugin_loader/loader.h"
 
 using namespace std;
@@ -27,6 +27,8 @@ request_handling_status_t req_handler(const request_handle_t &req) {
 
     if (http_method_get() == req->header().method())
         return handle_get(req);
+    if (http_method_delete() == req->header().method())
+        return handle_delete(req);
 
     return request_rejected();
 }

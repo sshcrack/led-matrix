@@ -22,30 +22,29 @@ void ImageProviders::Pages::flush() {
     total_pages = generate_rand_pages(page_begin, page_end);
 }
 
-optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post>>>
+
+std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
 ImageProviders::Pages::get_next_image() {
-    while (!curr_posts.empty() || !total_pages.empty()) {
-        if (curr_posts.empty()) {
-            int next_page = total_pages[0];
-            total_pages.erase(total_pages.begin());
-
-            curr_posts = std::move(pixeljoint::ScrapedPost::get_posts(next_page));
-            if (curr_posts.empty()) {
-                spdlog::debug("Current posts are empty, returning");
-                return std::nullopt;
-            }
-        }
-
-        auto curr = curr_posts.erase(curr_posts.begin()).base();
-
-        auto link = curr->get()->fetch_link();
-        if (!link.has_value())
-            return std::nullopt;
-
-        return std::move(link.value());
+    // Load new page of posts if needed
+    while (curr_posts.empty() && !total_pages.empty()) {
+        int page = total_pages.front();
+        total_pages.erase(total_pages.begin());
+        curr_posts = pixeljoint::ScrapedPost::get_posts(page);
+    }
+    
+    // No more posts available
+    if (curr_posts.empty()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    // Get next post and fetch its link
+     const auto post = curr_posts.erase(curr_posts.begin());
+    
+    if (auto link = post->get()->fetch_link(); !link) {
+        return std::unexpected(link.error());
+    } else {
+        return std::move(link.value());
+    }
 }
 
 ImageProviders::Pages::Pages(const json &arguments) : General(arguments) {
@@ -82,17 +81,23 @@ string ImageProviders::Pages::get_name() const {
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::PagesWrapper::create_default() {
-    json j = {{"begin", 1},
-              {"end",   -1}};
+    json j = {
+        {"begin", 1},
+        {"end", -1}
+    };
 
-    return {new Pages(j), [](General *p) {
-        delete p;
-    }};
+    return {
+        new Pages(j), [](General *p) {
+            delete p;
+        }
+    };
 }
 
 std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
 ImageProviders::PagesWrapper::from_json(const json &json) {
-    return {new Pages(json), [](General *p) {
-        delete p;
-    }};
+    return {
+        new Pages(json), [](General *p) {
+            delete p;
+        }
+    };
 }

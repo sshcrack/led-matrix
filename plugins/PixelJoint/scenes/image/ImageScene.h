@@ -41,7 +41,8 @@ struct CurrAnimation {
 
     CurrAnimation(const rgb_matrix::StreamReader &reader,
                   const tmillis_t end_time_ms,
-                  std::unique_ptr<FileInfo, void(*)(FileInfo *)> file): reader(reader), file(std::move(file)), end_time_ms(end_time_ms) {
+                  std::unique_ptr<FileInfo, void(*)(FileInfo *)> file): reader(reader), file(std::move(file)),
+                                                                        end_time_ms(end_time_ms) {
     }
 
     ~CurrAnimation() {
@@ -56,6 +57,7 @@ struct ImageInfo {
 };
 
 const std::string PROVIDER_DEFAULT = R"(
+[
 {
   "type": "pages",
   "arguments": {
@@ -63,11 +65,11 @@ const std::string PROVIDER_DEFAULT = R"(
     "end": -1
   }
 }
-)";
+])";
 
 class ImageScene final : public Scenes::Scene {
     std::optional<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> > curr_animation;
-    std::vector<std::shared_ptr<ImageProviders::General>> providers;
+    std::vector<std::shared_ptr<ImageProviders::General> > providers;
 
     uint curr_category = 0;
     std::atomic<bool> is_exiting{false};
@@ -82,11 +84,15 @@ class ImageScene final : public Scenes::Scene {
     get_next_anim(RGBMatrix *matrix, int recursiveness);
 
     static expected<optional<ImageInfo>, string>
-    get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height, const atomic<bool> &is_exiting);
+    get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height,
+                   const atomic<bool> &is_exiting);
 
-    std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(vector<Magick::Image> frames, FrameCanvas *canvas);
+    std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(const vector<Magick::Image> &frames,
+                                                               FrameCanvas *canvas) const;
+
     PropertyPointer<tmillis_t> image_display_duration = MAKE_PROPERTY("display_duration", tmillis_t, 15000);
-    PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("providers", nlohmann::json, nlohmann::json::parse(PROVIDER_DEFAULT));
+    PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("providers", nlohmann::json,
+                                                                   nlohmann::json::parse(PROVIDER_DEFAULT));
 
 public:
     /// Return true if scene should continue rendering
@@ -104,7 +110,7 @@ public:
     ~ImageScene() override {
         spdlog::debug("Waiting for ImageScene to finish...");
         is_exiting = true;
-        if (next_img.has_value()) {
+        if (next_img.has_value() && next_img.value().valid()) {
             next_img.value().wait();
         }
     }

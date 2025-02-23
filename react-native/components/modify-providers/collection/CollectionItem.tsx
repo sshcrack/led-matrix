@@ -31,7 +31,7 @@ export default function CollectionItem({ item, index }: { item: DataProp, index:
 
     return (
         <ContextMenu>
-            <ContextMenuTrigger asChild>
+            <ContextMenuTrigger>
                 <View className='bg-black text-slate-800 shadow p-3 justify-center items-center h-[128px] w-[128px]'>
                     {isWeb ?
                         <img src={item.imageUrl} style={{

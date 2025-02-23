@@ -1,5 +1,7 @@
 #pragma once
 
+#include <expected>
+
 #include "shared/post.h"
 #include <string>
 #include <optional>
@@ -18,7 +20,7 @@ private:
 public:
     ScrapedPost(std::string_view thumbnail, std::string_view url);
 
-    std::optional<std::unique_ptr<Post>> fetch_link() const;
+    std::expected<std::unique_ptr<Post>, std::string> fetch_link() const;
     const std::string& get_post_url() const { return post_url; }
     const std::string& get_thumbnail() const { return thumbnail; }
 

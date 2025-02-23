@@ -9,7 +9,7 @@ namespace ImageProviders {
         vector<std::shared_ptr<Post> > already_shown;
 
     public:
-        optional<std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > >
+        std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
         get_next_image() override;
 
         ~Collection() override = default;
@@ -18,7 +18,7 @@ namespace ImageProviders {
 
         json to_json() override;
 
-        string get_name() const override;
+        [[nodiscard]] string get_name() const override;
 
         explicit Collection(const json &arguments);
     };

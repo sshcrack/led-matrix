@@ -3,21 +3,24 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { RawPreset as ApiPreset } from '../apiTypes/list_presets';
+import { useApiUrl } from '../apiUrl/ApiUrlProvider';
 import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
 import { Text } from '../ui/text';
-import { getApiUrl } from '../useFetch';
 
 export type PresetProps = {
     preset: ApiPreset,
     name: string,
     isActive?: boolean,
-    setStatusRefresh: () => void
+    setStatusRefresh: () => void,
+    setPresetRefresh: () => void
 }
 
-export default function Preset({ preset, name, isActive, setStatusRefresh }: PresetProps) {
+export default function Preset({ preset, name, isActive, setStatusRefresh, setPresetRefresh }: PresetProps) {
     const [isSettingActive, setIsSettingActive] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const apiUrl = useApiUrl()
 
     return <Card className={`w-[20rem] border-[3px] ${isActive ? "border-green-400" : "border-gray-100"}`}>
         <CardHeader>
@@ -39,7 +42,7 @@ export default function Preset({ preset, name, isActive, setStatusRefresh }: Pre
                         return
 
                     setIsSettingActive(true)
-                    fetch(getApiUrl(`/set_preset?id=${encodeURIComponent(name)}`))
+                    fetch(apiUrl + `/set_preset?id=${encodeURIComponent(name)}`)
                         .then(() => setStatusRefresh())
                         .catch(e => {
                             Toast.show({
@@ -67,8 +70,22 @@ export default function Preset({ preset, name, isActive, setStatusRefresh }: Pre
                     </Button>
                 </Link>
 
-                <Button variant="destructive">
-                    <Text>Delete</Text>
+                <Button disabled={deleting || isActive} variant="destructive" onPress={() => {
+                    setDeleting(true)
+                    fetch(apiUrl + `/preset?id=${encodeURIComponent(name)}`, {
+                        method: "DELETE"
+                    })
+                        .then(() => setPresetRefresh())
+                        .catch(e => {
+                            Toast.show({
+                                type: "error",
+                                text1: "Error deleting preset",
+                                text2: e.message
+                            })
+                        })
+                        .finally(() => setDeleting(false))
+                }}>
+                    {deleting ? <Loader /> : <Text>Delete</Text>}
                 </Button>
             </View>
         </CardContent>

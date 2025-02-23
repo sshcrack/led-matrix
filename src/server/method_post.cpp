@@ -16,6 +16,17 @@ request_handling_status_t handle_post(const request_handle_t &req) {
     const auto qp = parse_query(req->header().query());
 
     if (target == "/add_preset") {
+        if (!qp.has("id")) {
+            reply_with_error(req, "Id not given");
+            return request_accepted();
+        }
+        std::string id{qp["id"]};
+        if (id == "") {
+            reply_with_error(req, "Id empty");
+            return request_accepted();
+        }
+
+
         debug("Adding preset...");
         string str_body = req->body();
         json j;
@@ -30,12 +41,10 @@ request_handling_status_t handle_post(const request_handle_t &req) {
 
         try {
             const auto pr = j.get<std::shared_ptr<ConfigData::Preset> >();
-            std::string uuid = uuid::generate_uuid_v4();
 
-            config->set_presets(uuid, pr);
+            config->set_presets(id, pr);
             json return_j;
             return_j["success"] = "Preset has been added";
-            return_j["id"] = uuid;
 
             reply_with_json(req, return_j);
         } catch (exception &ex) {

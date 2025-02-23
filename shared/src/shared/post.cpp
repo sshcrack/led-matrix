@@ -30,6 +30,7 @@ optional<vector<Magick::Image> > Post::process_images(const int width, const int
         }
     }
 
+    spdlog::trace("Start loading");
     const tmillis_t start_loading = GetTimeInMillis();
     const filesystem::path file_path = Constants::post_dir / get_filename();
     const filesystem::path processed_img = to_processed_path(file_path);

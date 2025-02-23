@@ -58,7 +58,7 @@ request_handling_status_t handle_get(const request_handle_t &req) {
 
         string id{qp["id"]};
         auto presets = config->get_presets();
-        if (presets.find(id) == presets.end()) {
+        if (presets.find(id) != presets.end()) {
             reply_with_error(req, "Invalid id");
             return request_accepted();
         }

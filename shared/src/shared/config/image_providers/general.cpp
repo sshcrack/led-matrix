@@ -15,10 +15,10 @@ std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> Im
     if(!j.contains("type"))
         throw std::runtime_error(fmt::format("No image provider type given for '{}'", j.dump()));
 
-    string t = j["type"].get<string>();
+    const string t = j["type"].get<string>();
     const json& arguments = j.value("arguments", json::object());
 
-    auto pl = Plugins::PluginManager::instance();
+    const auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_image_providers()) {
         if(item->get_name() == t) {
             return item->from_json(arguments);

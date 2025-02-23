@@ -5,7 +5,6 @@ import Toast from 'react-native-toast-message';
 import { UploadImgResponse } from '~/components/apiTypes/pixeljoint/upload_img';
 import Loader from '~/components/Loader';
 import { Button } from '~/components/ui/button';
-import { getApiUrl } from '~/components/useFetch';
 import { Plus } from '~/lib/icons/Plus';
 import { getImageUrl } from '~/lib/utils';
 import { CollectionProvider as CollectionJson } from '../../apiTypes/list_scenes';
@@ -18,6 +17,7 @@ import { FilePlus2 } from '~/lib/icons/FilePlus2';
 import { Paperclip } from '~/lib/icons/Paperclip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '~/components/ui/alert-dialog';
 import { Input } from '~/components/ui/input';
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
 
 export interface DataProp {
     id: number;
@@ -54,6 +54,7 @@ export default function CollectionProvider() {
     const [uploading, setUploading] = useState(false)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [url, setUrl] = useState("")
+    const apiUrl = useApiUrl()
 
     const { data: untypedData, setData } = useContext(ProviderDataContext)
     const data = untypedData as CollectionJson
@@ -64,7 +65,7 @@ export default function CollectionProvider() {
 
         return data.arguments.map((imageUrl, index) => ({
             id: index,
-            imageUrl: getImageUrl(imageUrl)
+            imageUrl: getImageUrl(apiUrl, imageUrl)
         }))
     }, [data])
 
@@ -83,7 +84,7 @@ export default function CollectionProvider() {
         if (!result.canceled) {
             setUploading(true)
             // Upload the image to the API route.
-            const response = await fetch(getApiUrl("/pixeljoint/upload_img"), {
+            const response = await fetch(apiUrl + "/pixeljoint/upload_img", {
                 method: "POST",
                 body: formDataFromImagePicker(result),
                 headers: {
@@ -155,6 +156,7 @@ export default function CollectionProvider() {
                     <Button
                         variant="outline"
                         size={null}
+                        disabled={uploading}
                         className='justify-center items-center text-slate-800 shadow p-3 border-2 border-dashed h-[128px] w-[128px]'
                     >
                         {uploading ? <Loader /> : <Plus className="text-foreground" />}

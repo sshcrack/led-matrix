@@ -21,7 +21,6 @@ export default function ModifyPreset() {
     const [modifiedData, setModifiedData] = useState<ProviderValue[] | null>(config)
 
     useEffect(() => {
-        console.log("Setting modified data")
         setModifiedData(config)
     }, [config])
 
@@ -30,7 +29,6 @@ export default function ModifyPreset() {
     }, [modifiedData])
 
     useEffect(() => {
-        console.log("Setting up save config listener")
         return () => {
             if (modDataRef.current)
                 setSubConfig(modDataRef.current)
@@ -43,7 +41,7 @@ export default function ModifyPreset() {
                 alignItems: "center"
             }}>
                 {!modifiedData && <Loader />}
-                {modifiedData && <GeneralProvider data={modifiedData} setData={setModifiedData} />}
+                {modifiedData && <GeneralProvider preset_id={preset_id} scene_id={scene_id} data={modifiedData} setData={setModifiedData} />}
             </ScrollView>
         </SafeAreaView>
     </SafeAreaProvider >
