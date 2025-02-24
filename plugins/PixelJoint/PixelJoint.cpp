@@ -52,24 +52,21 @@ extern "C" [[maybe_unused]] void destroyPixelJoint(PixelJoint *c) {
 }
 
 
-std::optional<request_handling_status_t>
-handle_providers(const request_handle_t &req, const query_string_params_t &qp) {
+restinio::request_handling_status_t
+handle_providers(const restinio::request_handle_t &req, const restinio::query_string_params_t &qp) {
     if (!qp.has("preset_id")) {
-        reply_with_error(req, "No Preset Id given");
-        return request_accepted();
+        return Server::reply_with_error(req, "No Preset Id given");
     }
 
     if (!qp.has("scene_id")) {
-        reply_with_error(req, "No Scene Id given");
-        return request_accepted();
+        return Server::reply_with_error(req, "No Scene Id given");
     }
     const string preset_id{qp["preset_id"]};
     const string scene_id{qp["scene_id"]};
 
     const auto &presets = config->get_presets();
     if (!presets.contains(preset_id)) {
-        reply_with_error(req, "Preset with id not found");
-        return request_accepted();
+        return Server::reply_with_error(req, "Preset with id not found");
     }
 
     const auto &preset = presets.at(preset_id);
@@ -79,22 +76,19 @@ handle_providers(const request_handle_t &req, const query_string_params_t &qp) {
 
         auto scene_json = scene->to_json();
         if (!scene_json.contains("providers")) {
-            reply_with_error(req, "Invalid scene type or scene has no property for providers");
-            return request_accepted();
+            return Server::reply_with_error(req, "Invalid scene type or scene has no property for providers");
         }
 
-        reply_with_json(req, scene_json["providers"]);
-        return request_accepted();
+        return Server::reply_with_json(req, scene_json["providers"]);
     }
 
-    reply_with_error(req, "Scene not found");
-    return request_accepted();
+    return Server::reply_with_error(req, "Scene not found");
 }
 
 
 void store_file_to_disk(
-    string_view_t full_file,
-    const string_view_t raw_content,
+    restinio::string_view_t full_file,
+    const restinio::string_view_t raw_content,
     std::string &upload_filename) {
     auto ext = std::filesystem::path(full_file).extension();
     std::string hash;
@@ -115,11 +109,11 @@ void store_file_to_disk(
 }
 
 
-std::optional<request_handling_status_t> handle_upload(const request_handle_t &req) {
+restinio::request_handling_status_t handle_upload(const restinio::request_handle_t &req) {
     spdlog::debug("Handling upload");
     using namespace restinio::file_upload;
 
-    std::string upload_filename = "";
+    std::string upload_filename;
     const auto enumeration_result = enumerate_parts_with_files(
         *req,
         [&upload_filename](const part_description_t &part) {
@@ -145,29 +139,22 @@ std::optional<request_handling_status_t> handle_upload(const request_handle_t &r
 
     if (!enumeration_result || 1u != *enumeration_result) {
         spdlog::debug("Enumeration err");
-        reply_with_error(req, "No file uploaded. Can't find 'photo' part");
-        return request_accepted();
+        return Server::reply_with_error(req, "No file uploaded. Can't find 'photo' part");
     }
 
     spdlog::debug("Reply with path {}", upload_filename.c_str());
-    reply_with_json(req, {{"path", std::string(upload_filename.c_str())}});
-    return request_accepted();
+    return Server::reply_with_json(req, {{"path", std::string(upload_filename)}});
 }
 
 
 std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> router) {
-    auto target = router->header().path();
-    const auto qp = parse_query(router->header().query());
+    router->http_get("/pixeljoint/providers", [](auto req, auto qp) {
+        return handle_providers(req, qp);
+    });
 
-    if (http_method_get() == router->header().method()) {
-        if (target == "/pixeljoint/providers")
-            return handle_providers(router, qp);
-    }
+    router->http_post("/pixeljoint/upload_img", [](const auto& req, auto) {
+        return handle_upload(req);
+    });
 
-    if (http_method_post() == router->header().method()) {
-        if (target == "/pixeljoint/upload_img") {
-            return handle_upload(router);
-        }
-    }
-    return std::nullopt;
+    return std::move(router);
 }
