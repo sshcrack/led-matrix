@@ -73,12 +73,14 @@ int main(int argc, char *argv[]) {
 
     string host = "0.0.0.0";
 
+    auto router = Server::server_handler();
+    
     server_t server{
         restinio::own_io_context(),
         restinio::server_settings_t<>{}
-        .port(port)
-        .address(host)
-        .request_handler(Server::server_handler())
+            .port(port)
+            .address(host)
+            .request_handler(std::move(router))
     };
 
     thread control_thread{
