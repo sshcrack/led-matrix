@@ -28,7 +28,7 @@ export default function AddScene({ scenes }: { scenes: ListScenes[] }) {
     const { config, setSubConfig } = useSubConfig<{
         [key: string]: Scene
     }>(presetId, "scenes")
-    return <View className='w-full flex-row'>
+    return <View className='w-full flex-row pt-5'>
         <Select
             className='flex-1 h-full rounded-r-none'
             value={opt}
