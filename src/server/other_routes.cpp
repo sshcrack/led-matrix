@@ -12,7 +12,6 @@
 
 
 using json = nlohmann::json;
-using namespace ServerUtils;
 
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router) {
     router->http_get("/list", [](auto req, auto) {
@@ -48,21 +47,21 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             return reply_with_error(req, "No url given");
         }
 
-        string remote_url{qp["url"]};
+        const string remote_url{qp["url"]};
 
-        std::unique_ptr<Post, void(*)(Post *)> post = {new Post(remote_url), [](Post *p) { delete p; }};
-        filesystem::path file_path(Constants::post_dir / post->get_filename());
-        filesystem::path processing_path = to_processed_path(file_path);
+        const std::unique_ptr<Post, void(*)(Post *)> post = {new Post(remote_url), [](Post *p) { delete p; }};
+        const filesystem::path file_path(Constants::post_dir / post->get_filename());
+        const filesystem::path processing_path = to_processed_path(file_path);
         if (!exists(processing_path)) {
-            auto res = post->process_images(Constants::width, Constants::height);
+            const auto res = post->process_images(Constants::width, Constants::height);
 
             if (!res.has_value() || !exists(processing_path)) {
                 return reply_with_error(req, "Could not get file", restinio::status_internal_server_error());
             }
         }
 
-        string ext = file_path.extension();
-        string content_type = MimeTypes::getType("file" + ext);
+        const string ext = file_path.extension();
+        const string content_type = MimeTypes::getType("file" + ext);
 
         req->create_response(restinio::status_ok())
                 .append_header_date_field()
