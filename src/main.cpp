@@ -16,6 +16,7 @@ using namespace std;
 using json = nlohmann::json;
 using Plugins::PluginManager;
 
+using server_t = restinio::http_server_t<>;
 int usage(const char *progname) {
     fprintf(stderr, "usage: %s [options]\n", progname);
     rgb_matrix::PrintMatrixFlags(stderr);
@@ -77,7 +78,7 @@ int main(int argc, char *argv[]) {
         restinio::server_settings_t<>{}
         .port(port)
         .address(host)
-        .request_handler(req_handler)
+        .request_handler(Server::server_handler())
     };
 
     thread control_thread{

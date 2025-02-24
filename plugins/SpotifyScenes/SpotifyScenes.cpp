@@ -39,4 +39,9 @@ std::optional<string> SpotifyScenes::post_init() {
     return BasicPlugin::post_init();
 }
 
+std::unique_ptr<router_t> SpotifyScenes::
+register_routes(std::unique_ptr<router_t> router) {
+    return BasicPlugin::register_routes(router);
+}
+
 SpotifyScenes::SpotifyScenes() = default;

@@ -155,18 +155,18 @@ std::optional<request_handling_status_t> handle_upload(const request_handle_t &r
 }
 
 
-std::optional<request_handling_status_t> PixelJoint::handle_request(const request_handle_t &req) {
-    auto target = req->header().path();
-    const auto qp = parse_query(req->header().query());
+std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> router) {
+    auto target = router->header().path();
+    const auto qp = parse_query(router->header().query());
 
-    if (http_method_get() == req->header().method()) {
+    if (http_method_get() == router->header().method()) {
         if (target == "/pixeljoint/providers")
-            return handle_providers(req, qp);
+            return handle_providers(router, qp);
     }
 
-    if (http_method_post() == req->header().method()) {
+    if (http_method_post() == router->header().method()) {
         if (target == "/pixeljoint/upload_img") {
-            return handle_upload(req);
+            return handle_upload(router);
         }
     }
     return std::nullopt;

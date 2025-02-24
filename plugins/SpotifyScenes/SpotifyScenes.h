@@ -15,4 +15,6 @@ public:
     vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
 
     std::optional<string> post_init() override;
+
+    std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
 };

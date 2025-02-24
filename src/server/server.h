@@ -1,9 +1,10 @@
 #pragma once
 #include <restinio/core.hpp>
-#include <expected>
 
+namespace Server {
+    using router_t = restinio::router::express_router_t<>;
+    using namespace std;
 
-using server_t = restinio::http_server_t<>;
-using namespace std;
+    std::unique_ptr<router_t> server_handler();
 
-restinio::request_handling_status_t req_handler(const restinio::request_handle_t &req);
+}
