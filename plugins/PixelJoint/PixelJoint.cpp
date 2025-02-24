@@ -53,7 +53,7 @@ extern "C" [[maybe_unused]] void destroyPixelJoint(PixelJoint *c) {
 
 
 restinio::request_handling_status_t
-handle_providers(const restinio::request_handle_t &req, const restinio::query_string_params_t &qp) {
+handle_providers(const restinio::request_handle_t &req, auto qp) {
     if (!qp.has("preset_id")) {
         return Server::reply_with_error(req, "No Preset Id given");
     }

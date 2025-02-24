@@ -76,7 +76,7 @@ npm install
 3. Run the app:
 ```shell
 npm run dev:android        # Run Android
-npm run dev:ios    # Run on iOs
+npm run dev:ios           # Run on iOS
 ```
 
 ## Dependencies
@@ -94,6 +94,7 @@ The project requires the following libraries:
 - uuid_v4
 
 ### Installing Dependencies
+
 Vcpkg needs to be installed.
 
 ```shell
@@ -101,4 +102,20 @@ mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX="/usr/local" ..
 sudo cmake --install .
 ```
-````
+
+## Plugin Development
+
+### Creating a New Plugin
+
+1. Create a new directory in `plugins/` for your plugin
+2. Create the following basic structure:
+```
+plugins/
+└── YourPlugin/
+    ├── CMakeLists.txt
+    ├── YourPlugin.cpp
+    ├── YourPlugin.h
+    └── scenes/
+        ├── YourScene.cpp
+        └── YourScene.h
+```
