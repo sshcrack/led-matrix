@@ -4,8 +4,6 @@
 #include <cpr/cpr.h>
 #include <spdlog/spdlog.h>
 #include <cstdlib>
-#include <iostream>
-#include <variant>
 
 #include "shared/utils/shared.h"
 #include "shared/utils/utils.h"
@@ -18,7 +16,7 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *out
     return totalSize;
 }
 
-bool Spotify::refresh() {
+bool Spotify::refresh() const {
     debug("Refreshing spotify token...");
     auto spAuth = config->get_spotify();
 
@@ -60,22 +58,22 @@ bool Spotify::initialize() {
             return Spotify::refresh();
         }
 
-        //this->start_control_thread();
+        this->start_control_thread();
         return true;
     }
 
-    const auto curr = std::filesystem::current_path() / "plugins/SpotifyScenes/spotify/authorize.js";
 
+    cout << "Open the browser and go to the following url: ";
+    cout << "http://localhost:8080/spotify/login" << endl;
 
-    printf("Path %s \n", curr.string().c_str());
-    printf("Authorize at: http://10.6.0.23:8888/login \n");
+    cout << "Waiting for callback.";
+    while (!this->had_spotify_callback) {
+        cout << ".";
+        SleepMillis(100);
+    }
 
-
-    auto out = execute_process("node", {curr.string(), "8888"});
-    if (!out.has_value())
-        return false;
-
-    auto res = Spotify::save_resp_to_config(out.value());
+    cout << "\nDone. Saving to config..." << endl;
+    const auto res = save_resp_to_config(spotify_callback.value());
     if (!res)
         return false;
 
@@ -92,7 +90,7 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     parsed.at("access_token").get_to(access_token);
     parsed.at("expires_in").get_to(expires_in_seconds);
 
-    auto curr = config->get_spotify();
+    const auto curr = config->get_spotify();
     string refresh_token = curr.refresh_token.value();
 
     if (parsed.contains("refresh_token")) {
@@ -100,7 +98,7 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     }
 
     [[maybe_unused]] tmillis_t expires_in = GetTimeInMillis() + expires_in_seconds * 1000;
-    auto spotify_struct = ConfigData::SpotifyData(access_token, refresh_token, expires_in);
+    const auto spotify_struct = ConfigData::SpotifyData(access_token, refresh_token, expires_in);
 
     config->set_spotify(spotify_struct);
     return config->save();

@@ -27,13 +27,23 @@ private:
     void busy_wait(int seconds);
 
 public:
+    std::atomic<bool> had_spotify_callback = false;
+    std::optional<std::string> spotify_callback;
+
     explicit Spotify();
     ~Spotify();  // Add destructor declaration
 
     void start_control_thread();
     bool initialize();
-    bool refresh();
+    bool refresh() const;
     void terminate();
+    std::string get_client_id() {
+        return client_id;
+    }
+
+    std::string get_client_secret() {
+        return client_secret;
+    }
     std::optional<SpotifyState> get_currently_playing();
 
     bool has_changed(bool update_dirty);

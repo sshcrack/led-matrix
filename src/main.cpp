@@ -1,11 +1,12 @@
 #include "spdlog/spdlog.h"
 #include "shared/plugin_loader/loader.h"
 #include <nlohmann/json.hpp>
+#include <utility>
 
 
 #include <Magick++.h>
+#include <shared/utils/consts.h>
 
-#include "../plugins/WeatherOverview/Constants.h"
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
 #include "server/server.h"
@@ -73,14 +74,19 @@ int main(int argc, char *argv[]) {
 
     string host = "0.0.0.0";
 
-    auto router = Server::server_handler();
-    
     server_t server{
         restinio::own_io_context(),
-        restinio::server_settings_t<>{}
-            .port(port)
-            .address(host)
-            .request_handler(std::move(router))
+        [port, host](auto & settings) {
+            std::shared_ptr router = Server::server_handler();
+            
+            // Create request handler function that uses the router
+            auto handler = [router = std::move(router)]
+                (auto req) { return (*router)(std::move(req)); };
+                
+            settings.port(port);
+            settings.address(host);
+            settings.request_handler(std::move(handler));
+        }
     };
 
     thread control_thread{
