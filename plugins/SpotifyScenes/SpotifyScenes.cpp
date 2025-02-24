@@ -66,20 +66,20 @@ register_routes(std::unique_ptr<router_t> router) {
 
     router->http_get("/spotify/callback",
                      [this, redirect_uri](const restinio::request_handle_t &req, auto qp) {
-                         const auto code = qp.get("code");
-                         const auto state = qp.get("state");
+                         const auto code = std::string{qp.get_param("code").value_or("")};
+                         const auto state = std::string{qp.get_param("state").value_or("")};
 
-                         if (!state) {
+                         if (state.empty()) {
                              return req->create_response(restinio::status_bad_request())
                                      .set_body("State mismatch")
                                      .done();
                          }
 
-                         if (code) {
+                         if (!code.empty()) {
                              auto res = cpr::Post(cpr::Url{"https://accounts.spotify.com/api/token"},
                                                   cpr::Payload{
                                                       {"grant_type", "authorization_code"},
-                                                      {"code", code.value()},
+                                                      {"code", code},
                                                       {"redirect_uri", redirect_uri}
                                                   },
                                                   cpr::Header{
