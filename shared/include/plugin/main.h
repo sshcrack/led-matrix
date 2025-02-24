@@ -3,10 +3,11 @@
 #include <vector>
 #include <string>
 #include "wrappers.h"
-#include <restinio/request_handler.hpp>
+#include <restinio/all.hpp>
 
 using std::vector;
 using std::string;
+using router_t = restinio::router::express_router_t<>;
 
 namespace Plugins {
     class BasicPlugin {
@@ -60,9 +61,8 @@ namespace Plugins {
         }
 
         /// Returns true if the request has been handled by this plugin
-        virtual std::optional<restinio::request_handling_status_t>
-        handle_request(const restinio::request_handle_t &req) {
-            return std::nullopt;
+        virtual std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) {
+            return std::move(router);
         };
     };
 }

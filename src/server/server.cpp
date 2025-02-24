@@ -2,10 +2,12 @@
 #include "restinio/all.hpp"
 #include "shared/utils/shared.h"
 #include <nlohmann/json.hpp>
-#include "method_post.h"
-#include "method_get.h"
-#include "method_delete.h"
+
+#include "canvas_status.h"
 #include "shared/plugin_loader/loader.h"
+#include "other_routes.h"
+#include "preset_management.h"
+#include "scene_management.h"
 
 using namespace std;
 using namespace restinio;
@@ -13,22 +15,18 @@ using json = nlohmann::json;
 
 
 // Create request handler.
-request_handling_status_t req_handler(const request_handle_t &req) {
-    auto pl = Plugins::PluginManager::instance();
+std::unique_ptr<router_t> Server::server_handler() {
+    auto router = std::make_unique<router_t>();
+
+    router = add_preset_routes(std::move(router));
+    router = add_canvas_status_routes(std::move(router));
+    router = add_scene_routes(std::move(router));
+    router = add_other_routes(std::move(router));
+
+    const auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_plugins()) {
-        auto to_return = item->handle_request(req);
-        if (to_return.has_value()) {
-            return to_return.value();
-        }
+        router = item->register_routes(std::move(router));
     }
 
-    if (http_method_post() == req->header().method())
-        return handle_post(req);
-
-    if (http_method_get() == req->header().method())
-        return handle_get(req);
-    if (http_method_delete() == req->header().method())
-        return handle_delete(req);
-
-    return request_rejected();
+    return router;
 }
