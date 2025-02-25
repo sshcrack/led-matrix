@@ -25,12 +25,12 @@ optional<vector<Magick::Image> > Post::process_images(const int width, const int
                 exit(-1);
             }
         } catch (exception &ex) {
-            spdlog::error("Could not create directory at {} with exception: {}", Constants::post_dir.c_str(), ex.what());
+            spdlog::error("Could not create directory at {} with exception: {}", Constants::post_dir.c_str(),
+                          ex.what());
             exit(-1);
         }
     }
 
-    spdlog::trace("Start loading");
     const tmillis_t start_loading = GetTimeInMillis();
     const filesystem::path file_path = Constants::post_dir / get_filename();
     const filesystem::path processed_img = to_processed_path(file_path);
@@ -39,6 +39,7 @@ optional<vector<Magick::Image> > Post::process_images(const int width, const int
     if (!exists(processed_img)) {
         try_remove(file_path);
         const auto res = utils::download_image(get_image_url(), file_path);
+
         if (!res.has_value()) {
             spdlog::error("Could not download image: {}", res.error());
             try_remove(file_path);
@@ -48,18 +49,22 @@ optional<vector<Magick::Image> > Post::process_images(const int width, const int
     }
 
     constexpr bool contain_img = true;
-    auto res = LoadImageAndScale(file_path, width, height, true, true, contain_img);
+    auto res = LoadImageAndScale(
+        file_path,
+        width, height,
+        true, true,
+        contain_img,
+        utils::is_local_file_url(get_image_url())
+    );
+
+    try_remove(file_path);
+
     if (!res) {
         spdlog::error("Error loading image: {}", res.error());
-        try_remove(file_path);
-
         return nullopt;
     }
 
     vector<Magick::Image> frames = std::move(res.value());
-    try_remove(file_path);
-
-
     spdlog::debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
 
     return frames;

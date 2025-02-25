@@ -19,9 +19,8 @@ filesystem::path to_processed_path(const filesystem::path &path) {
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 std::expected<vector<Magick::Image>, string>
-LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
-                  bool contain_img) {
-
+LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, const bool fill_width, const bool fill_height,
+                  const bool contain_img, const bool store_resized_img) {
     const filesystem::path img_processed = to_processed_path(path);
 
     // Checking if first exists
@@ -45,6 +44,7 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
 
     vector<Magick::Image> frames;
     try {
+        spdlog::trace("Reading images from {}", path.c_str());
         readImages(&frames, path);
     } catch (std::exception &e) {
         return unexpected(e.what());
@@ -58,7 +58,7 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
     if (frames.size() > 1) {
         Magick::coalesceImages(&result, frames.begin(), frames.end());
     } else {
-        result.push_back(frames[0]);   // just a single still image.
+        result.push_back(frames[0]); // just a single still image.
     }
 
     const int img_width = result[0].columns();
@@ -73,8 +73,8 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
         const bool which_factor = contain_img ? width_fraction < height_fraction : width_fraction > height_fraction;
 
         const float factor = which_factor
-                             ? width_fraction
-                             : height_fraction;
+                                 ? width_fraction
+                                 : height_fraction;
         target_width = (int) roundf(factor * img_width);
         target_height = (int) roundf(factor * img_height);
     } else if (fill_height) {
@@ -105,10 +105,12 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
         img.crop(Magick::Geometry(canvas_width, canvas_height, offset_x, offset_y));
     }
 
-    try {
-        writeImages(result.begin(), result.end(), img_processed);
-    } catch (std::exception &e) {
-        return unexpected(e.what());
+    if (store_resized_img) {
+        try {
+            writeImages(result.begin(), result.end(), img_processed);
+        } catch (std::exception &e) {
+            return unexpected(e.what());
+        }
     }
 
 
@@ -141,24 +143,24 @@ bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_
                          const uint8_t *buffer, size_t size,
                          const int width, const int height,
                          uint8_t filterR, uint8_t filterG, uint8_t filterB) {
-    if (3 * width * height != (int) size)   // Sanity check
+    if (3 * width * height != (int) size) // Sanity check
         return false;
 
     int image_display_w = width;
     int image_display_h = height;
 
-    size_t skip_start_row = 0;   // Bytes to skip before each row
+    size_t skip_start_row = 0; // Bytes to skip before each row
     if (canvas_offset_x < 0) {
         skip_start_row = -canvas_offset_x * 3;
         image_display_w += canvas_offset_x;
-        if (image_display_w <= 0) return false;  // Done. outside canvas.
+        if (image_display_w <= 0) return false; // Done. outside canvas.
         canvas_offset_x = 0;
     }
     if (canvas_offset_y < 0) {
         // Skip buffer to the first row we'll be showing
         buffer += 3 * width * -canvas_offset_y;
         image_display_h += canvas_offset_y;
-        if (image_display_h <= 0) return false;  // Done. outside canvas.
+        if (image_display_h <= 0) return false; // Done. outside canvas.
         canvas_offset_y = 0;
     }
     const int w = std::min(c->width(), canvas_offset_x + image_display_w);
@@ -166,8 +168,8 @@ bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_
 
     // Bytes to skip for wider than canvas image at the end of a row
     const size_t skip_end_row = (canvas_offset_x + image_display_w > w)
-                                ? (canvas_offset_x + image_display_w - w) * 3
-                                : 0;
+                                    ? (canvas_offset_x + image_display_w - w) * 3
+                                    : 0;
 
     // Let's make this a combined skip per row and ajust where we start.
     const size_t next_row_skip = skip_start_row + skip_end_row;

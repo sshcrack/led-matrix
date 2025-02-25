@@ -17,12 +17,14 @@ namespace utils {
 
     static std::string FILE_PROTOCOL = "file://";
 
+
+
     std::expected<void, std::string> download_image(const std::string &url_str, const std::string &file_out) {
         if (file_out.length() >= FILENAME_MAX) {
             return std::unexpected("File name too long");
         }
 
-        if (url_str.starts_with(FILE_PROTOCOL)) {
+        if (is_local_file_url(url_str)) {
             const auto local_file = Constants::upload_dir / url_str.substr(FILE_PROTOCOL.length());
             try {
                 fs::copy_file(local_file, file_out);
@@ -88,5 +90,9 @@ namespace utils {
         }
 
         return doc;
+    }
+
+    bool is_local_file_url(const std::string &url) {
+        return url.starts_with(FILE_PROTOCOL);
     }
 } // namespace utils

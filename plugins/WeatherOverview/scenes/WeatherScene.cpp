@@ -59,16 +59,15 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
         }
 
         bool contain_img = true;
-        auto res = LoadImageAndScale(file_path, main_icon_size, main_icon_size, true, true, contain_img);
+        auto res = LoadImageAndScale(file_path, main_icon_size, main_icon_size, true, true, contain_img, true);
+
+        try_remove(file_path);
         if (!res) {
             spdlog::error("Error loading image: {}", res.error());
-            try_remove(file_path);
-
             return false;
         }
 
         vector<Magick::Image> frames = std::move(res.value());
-        try_remove(file_path);
         parser->unmark_changed();
 
         Images img;

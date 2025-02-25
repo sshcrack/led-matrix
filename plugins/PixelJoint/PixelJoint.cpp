@@ -53,17 +53,7 @@ extern "C" [[maybe_unused]] void destroyPixelJoint(PixelJoint *c) {
 
 
 restinio::request_handling_status_t
-handle_providers(const restinio::request_handle_t &req, auto qp) {
-    if (!qp.has("preset_id")) {
-        return Server::reply_with_error(req, "No Preset Id given");
-    }
-
-    if (!qp.has("scene_id")) {
-        return Server::reply_with_error(req, "No Scene Id given");
-    }
-    const string preset_id{qp["preset_id"]};
-    const string scene_id{qp["scene_id"]};
-
+handle_providers(const restinio::request_handle_t &req, const string &scene_id, const string &preset_id) {
     const auto &presets = config->get_presets();
     if (!presets.contains(preset_id)) {
         return Server::reply_with_error(req, "Preset with id not found");
@@ -149,7 +139,17 @@ restinio::request_handling_status_t handle_upload(const restinio::request_handle
 
 std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> router) {
     router->http_get("/pixeljoint/providers", [](auto req, auto qp) {
-        return handle_providers(req, qp);
+    if (!qp.has("preset_id")) {
+        return Server::reply_with_error(req, "No Preset Id given");
+    }
+
+    if (!qp.has("scene_id")) {
+        return Server::reply_with_error(req, "No Scene Id given");
+    }
+    const string preset_id{qp["preset_id"]};
+    const string scene_id{qp["scene_id"]};
+
+        return handle_providers(req, preset_id, scene_id);
     });
 
     router->http_post("/pixeljoint/upload_img", [](const auto& req, auto) {
