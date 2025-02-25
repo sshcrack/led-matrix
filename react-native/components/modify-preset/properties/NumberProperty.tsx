@@ -13,7 +13,7 @@ import { usePropertyUpdate } from '../SceneContext';
 export type NumberType = "float" | "int"
 
 export default function numberPropertyBuilder(min: number, max: number, number_type: NumberType = "int", millis: boolean = false) {
-    return function NumberProperty({ value, defaultVal, propertyName }: Omit<PluginPropertyProps<number>, 'setValue'>) {
+    return function NumberProperty({ value, defaultVal, propertyName }: PluginPropertyProps<number>) {
         const setValue = usePropertyUpdate(propertyName);
         const title = titleCase(propertyName)
 
