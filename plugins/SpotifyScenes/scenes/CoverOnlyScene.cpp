@@ -55,12 +55,12 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
 
     int max_x = matrix->width();
     int max_y = matrix->height();
-/*
-    if (GetTimeInMillis() % 10 == 0) {
-        trace("Progress: {} {} {} {} duration {} and prog {} ", top_prog, right_prog, bottom_prog, left_prog,
-              curr_state->get_track().get_duration(), curr_state->get_progress_ms());
-    }
-*/
+    /*
+        if (GetTimeInMillis() % 10 == 0) {
+            trace("Progress: {} {} {} {} duration {} and prog {} ", top_prog, right_prog, bottom_prog, left_prog,
+                  curr_state->get_track().get_duration(), curr_state->get_progress_ms());
+        }
+    */
     if (top_prog > 0.0f)
         DrawLine(offscreen_canvas,
                  0, 0,
@@ -118,7 +118,7 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
         return unexpected("Nothing currently playing");
     }
 
-    if (!temp.value().is_playing() && false)
+    if (!temp.value().is_playing())
         return unexpected("Media is paused, skipping");
 
     if (curr_state.has_value() && curr_state->get_track().get_id() == temp.value().get_track().get_id()) {
@@ -145,15 +145,16 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
     string out_file = "/tmp/spotify_cover." + track_id + ".jpg";
 
     if (!std::filesystem::exists(out_file)) {
-        utils::download_image(cover, out_file);
+        const auto res = utils::download_image(cover, out_file);
+        if (!res.has_value())
+            return unexpected(res.error());
     }
 
     int margin = 2;
     auto res = LoadImageAndScale(out_file, matrix->width() - margin * 2, matrix->height() - margin * 2, true, true,
                                  false);
+    try_remove(out_file);
     if (!res) {
-        try_remove(out_file);
-
         return unexpected(res.error());
     }
 
@@ -174,9 +175,9 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrix *matri
     }
 
     curr_info.emplace(std::move(
-            std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>(file_info, [](SpotifyFileInfo *info) {
-                delete info;
-            })));
+        std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>(file_info, [](SpotifyFileInfo *info) {
+            delete info;
+        })));
 
     curr_reader = std::nullopt;
     return {};
@@ -200,7 +201,9 @@ string CoverOnlyScene::get_name() const {
 }
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> CoverOnlySceneWrapper::create() {
-    return {new CoverOnlyScene(), [](Scenes::Scene *scene) {
-        delete scene;
-    }};
+    return {
+        new CoverOnlyScene(), [](Scenes::Scene *scene) {
+            delete scene;
+        }
+    };
 }

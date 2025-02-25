@@ -17,7 +17,7 @@ bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_
 
 std::expected<vector<Magick::Image>, string>
 LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
-                  bool contain_img);
+                  bool contain_img, bool store_resized_img = false);
 
 void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
                    bool do_center,

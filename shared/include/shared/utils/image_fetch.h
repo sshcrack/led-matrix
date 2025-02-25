@@ -14,6 +14,8 @@ namespace utils {
     };
 
     /// Downloads an image from a URL to a file (also supports file:/// protocol)
-    std::expected<void, std::string> download_image(const std::string& url_str, const std::string& out_file);
+    std::expected<void, std::string> download_image(const std::string& url_str, const std::string& file_out);
     std::optional<htmlDocPtr> fetch_page(const std::string& url_str, const std::string& base_url = "");
+
+    bool is_local_file_url(const std::string &url);
 }
