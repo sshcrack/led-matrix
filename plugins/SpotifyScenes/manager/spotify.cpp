@@ -67,9 +67,9 @@ bool Spotify::initialize() {
     cout << "http://localhost:8080/spotify/login" << endl;
 
     cout << "Waiting for callback.";
-    while (!this->had_spotify_callback) {
-        cout << ".";
-        SleepMillis(100);
+    while (!this->spotify_callback.has_value()) {
+        cout << "." << std::flush;
+        SleepMillis(1000);
     }
 
     cout << "\nDone. Saving to config..." << endl;
@@ -91,7 +91,7 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     parsed.at("expires_in").get_to(expires_in_seconds);
 
     const auto curr = config->get_spotify();
-    string refresh_token = curr.refresh_token.value();
+    string refresh_token = curr.refresh_token.value_or("");
 
     if (parsed.contains("refresh_token")) {
         parsed.at("refresh_token").get_to(refresh_token);

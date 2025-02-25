@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     config = new Config::MainConfig("config.json");
 
     for (const auto &item: pl->get_plugins()) {
-        const auto err = item->post_init();
+        const auto err = item->before_server_init();
         if (err.has_value()) {
             error(err.value());
             std::exit(-1);
@@ -102,6 +102,15 @@ int main(int argc, char *argv[]) {
             );
         }
     };
+
+
+    for (const auto &item: pl->get_plugins()) {
+        const auto err = item->after_server_init();
+        if (err.has_value()) {
+            error(err.value());
+            std::exit(-1);
+        }
+    }
 
     debug("Initializing hardware...");
     auto hardware_code = start_hardware_mainloop(matrix);

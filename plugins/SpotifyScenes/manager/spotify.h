@@ -27,7 +27,6 @@ private:
     void busy_wait(int seconds);
 
 public:
-    std::atomic<bool> had_spotify_callback = false;
     std::optional<std::string> spotify_callback;
 
     explicit Spotify();

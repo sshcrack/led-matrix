@@ -32,22 +32,22 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview
     return scenes;
 }
 
-std::optional<string> WeatherOverview::post_init() {
+std::optional<string> WeatherOverview::before_server_init() {
     auto conf = config->get_plugin_configs();
+
     if (!conf.contains("weatherLat")) {
-        std::cout << "throwing error" << std::endl << std::flush;
-        return "Config value 'pluginConfigs.weatherLat' is not set."
-                "Set it to the latitude of the city you want to display the weather for.";
+        spdlog::warn("Config value 'pluginConfigs.weatherLat' is not set."
+                    " Defaulting to berlin");
     }
 
     if (!conf.contains("weatherLon")) {
-        return
-                "Config value 'pluginConfigs.weatherLon' is not set."
-                "Set it to the longitude of the city you want to display the weather for.";
+        spdlog::warn(
+                    "Config value 'pluginConfigs.weatherLon' is not set."
+                    " Defaulting to berlin.");
     }
 
-    LOCATION_LAT = conf["weatherLat"];
-    LOCATION_LON = conf["weatherLon"];
+    LOCATION_LAT = conf.contains("weatherLat") ? conf["weatherLat"] : "52.5200";
+    LOCATION_LON = conf.contains("weatherLon") ? conf["weatherLon"] : "13.4050";
 
     const std::filesystem::path lib_path(get_plugin_location());
     const auto parent = lib_path.parent_path();
@@ -73,5 +73,5 @@ std::optional<string> WeatherOverview::post_init() {
     if (!bodyRes)
         return "Could not load body font at " + BODY_FONT_FILE;
 
-    return BasicPlugin::post_init();
+    return BasicPlugin::before_server_init();
 }

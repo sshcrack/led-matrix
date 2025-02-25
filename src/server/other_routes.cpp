@@ -42,7 +42,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         return restinio::request_accepted();
     });
 
-    router->http_get("/image", [](auto req, auto qp) {
+    router->http_get("/image", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("url")) {
             return reply_with_error(req, "No url given");
         }

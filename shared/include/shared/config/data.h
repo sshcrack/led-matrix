@@ -12,6 +12,8 @@ namespace ConfigData {
     struct Preset {
         vector<std::shared_ptr<Scenes::Scene> > scenes;
 
+
+        static std::shared_ptr<Preset> create_default();
         ~Preset() = default; // Add explicit destructor
     };
 

@@ -4,6 +4,7 @@
 #include "scenes/CoverOnlyScene.h"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
+#include <shared/server/server_utils.h>
 
 using namespace Scenes;
 
@@ -32,14 +33,14 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > Spotif
     return scenes;
 }
 
-std::optional<string> SpotifyScenes::post_init() {
+std::optional<string> SpotifyScenes::after_server_init() {
     spdlog::info("Initializing SpotifyScenes");
 
     spotify = new Spotify();
     spotify->initialize();
 
     config->save();
-    return BasicPlugin::post_init();
+    return BasicPlugin::after_server_init();
 }
 
 std::unique_ptr<router_t> SpotifyScenes::
@@ -47,7 +48,7 @@ register_routes(std::unique_ptr<router_t> router) {
     const string redirect_uri = "http://127.0.0.1:8080/spotify/callback";
 
     router->http_get("/spotify/login",
-                     [this, redirect_uri](const restinio::request_handle_t &req, auto params) {
+                     [this, redirect_uri](const restinio::request_handle_t &req, auto) {
                          const string state = generate_random_string(16);
                          const string scope = "user-read-playback-state user-read-currently-playing";
 
@@ -65,9 +66,10 @@ register_routes(std::unique_ptr<router_t> router) {
                      });
 
     router->http_get("/spotify/callback",
-                     [this, redirect_uri](const restinio::request_handle_t &req, auto qp) {
-                         const auto code = std::string{qp.get_param("code").value_or("")};
-                         const auto state = std::string{qp.get_param("state").value_or("")};
+                     [this, redirect_uri](const restinio::request_handle_t &req, auto) {
+                         const auto qp = restinio::parse_query(req->header().query());
+                         const auto code = !qp.has("code") ? "" : std::string{qp["code"]};
+                         const auto state = !qp.has("state") ? "" : std::string{qp["state"]};
 
                          if (state.empty()) {
                              return req->create_response(restinio::status_bad_request())
@@ -76,26 +78,22 @@ register_routes(std::unique_ptr<router_t> router) {
                          }
 
                          if (!code.empty()) {
+                             spdlog::debug("Using {} and {}", spotify->get_client_id(), spotify->get_client_secret());
                              auto res = cpr::Post(cpr::Url{"https://accounts.spotify.com/api/token"},
                                                   cpr::Payload{
                                                       {"grant_type", "authorization_code"},
                                                       {"code", code},
                                                       {"redirect_uri", redirect_uri}
                                                   },
-                                                  cpr::Header{
-                                                      {
-                                                          "Authorization",
-                                                          "Basic " + spotify->get_client_id() + ":" +
-                                                          spotify->get_client_secret()
-                                                      }
+                                                  cpr::Authentication{
+                                                      spotify->get_client_id(),
+                                                      spotify->get_client_secret(),
+                                                      cpr::AuthMode::BASIC
                                                   });
 
                              spotify->spotify_callback = res.text;
-                             spotify->had_spotify_callback = true;
 
-                             return req->create_response(restinio::status_ok())
-                                     .set_body("{\"success\": true}")
-                                     .done();
+                             return Server::reply_with_json(req, {{"success", true}});
                          }
 
                          return req->create_response(restinio::status_bad_request())

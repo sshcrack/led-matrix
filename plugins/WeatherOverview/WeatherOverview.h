@@ -12,5 +12,5 @@ public:
 
     vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() override;
     vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
-    std::optional<string> post_init() override;
+    std::optional<string> before_server_init() override;
 };

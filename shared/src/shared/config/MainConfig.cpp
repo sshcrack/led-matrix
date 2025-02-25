@@ -108,7 +108,7 @@ namespace Config {
             debug("Writing default config at '{}'...", filename);
             ofstream file;
             file.open(filename);
-            file << jsonDefault;
+            file << "{}";
             file.close();
         }
 
