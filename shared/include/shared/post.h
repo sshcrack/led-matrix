@@ -19,5 +19,5 @@ public:
 
     string get_image_url();
 
-    optional<vector<Magick::Image>> process_images(int width, int height);
+    optional<vector<Magick::Image>> process_images(int width, int height, bool store_processed_file = false);
 };

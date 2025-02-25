@@ -54,7 +54,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         const filesystem::path file_path(Constants::post_dir / post->get_filename());
         const filesystem::path processing_path = to_processed_path(file_path);
         if (!exists(processing_path)) {
-            const auto res = post->process_images(Constants::width, Constants::height);
+            const auto res = post->process_images(Constants::width, Constants::height, true);
 
             if (!res.has_value() || !exists(processing_path)) {
                 return reply_with_error(req, "Could not get file", restinio::status_internal_server_error());

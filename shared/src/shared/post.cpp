@@ -15,7 +15,7 @@
 
 using namespace std;
 
-optional<vector<Magick::Image> > Post::process_images(const int width, const int height) {
+optional<vector<Magick::Image> > Post::process_images(const int width, const int height, const bool store_processed_file) {
     spdlog::debug("Preprocessing img {}", img_url);
     if (!filesystem::exists(Constants::post_dir)) {
         try {
@@ -54,7 +54,7 @@ optional<vector<Magick::Image> > Post::process_images(const int width, const int
         width, height,
         true, true,
         contain_img,
-        utils::is_local_file_url(get_image_url())
+        store_processed_file || utils::is_local_file_url(get_image_url())
     );
 
     try_remove(file_path);
