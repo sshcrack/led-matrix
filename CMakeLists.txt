@@ -6,6 +6,11 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
 endif()
 
+
+if(SKIP_MS_WAIT)
+    add_definitions(-DSKIP_MS_WAIT)
+endif()
+
 # Add installation paths
 include(GNUInstallDirs)
 

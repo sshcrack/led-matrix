@@ -35,7 +35,7 @@ std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> Im
     const string t = j["type"].get<string>();
     const json& arguments = j.value("arguments", json::object());
 
-    const bool has_uuid = j["uuid"].is_string();
+    const bool has_uuid = j.contains("uuid") && j["uuid"].is_string();
 
     const auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_image_providers()) {

@@ -98,7 +98,9 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix) {
     if (time_already_spent > 100)
         return true;
 
+#ifndef SKIP_MS_WAIT
     SleepMillis(100 - time_already_spent);
+#endif
     return true;
 }
 
