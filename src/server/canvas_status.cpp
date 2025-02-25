@@ -18,7 +18,8 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
         return reply_with_json(req, {{"turned_off", turned_off.load()}});
     });
 
-    router->http_get("/set_enabled", [](auto req, auto qp) {
+    router->http_get("/set_enabled", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("enabled")) {
             return reply_with_error(req, "No enabled given");
         }

@@ -138,7 +138,8 @@ restinio::request_handling_status_t handle_upload(const restinio::request_handle
 
 
 std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> router) {
-    router->http_get("/pixeljoint/providers", [](auto req, auto qp) {
+    router->http_get("/pixeljoint/providers", [](auto req, auto) {
+    const auto qp = restinio::parse_query(req->header().query());
     if (!qp.has("preset_id")) {
         return Server::reply_with_error(req, "No Preset Id given");
     }

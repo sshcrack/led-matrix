@@ -52,7 +52,11 @@ namespace Plugins {
             return scenes;
         }
 
-        virtual std::optional<string> post_init() {
+        virtual std::optional<string> before_server_init() {
+            return std::nullopt;
+        };
+
+        virtual std::optional<string> after_server_init() {
             return std::nullopt;
         };
 

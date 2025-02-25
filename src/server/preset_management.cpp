@@ -8,7 +8,8 @@ using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router) {
     // GET routes
-    router->http_get("/set_preset", [](auto req, auto qp) {
+    router->http_get("/set_preset", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "No Id given");
         }
@@ -23,7 +24,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         return reply_success(req);
     });
 
-    router->http_get("/presets", [](auto req, auto qp) {
+    router->http_get("/presets", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         auto presets = config->get_presets();
         if (!qp.has("id")) {
             vector<string> keys;
@@ -48,7 +50,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
     });
 
     // POST routes
-    router->http_post("/add_preset", [](auto req, auto qp) {
+    router->http_post("/add_preset", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
         }
@@ -77,7 +80,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         }
     });
 
-    router->http_post("/preset", [](auto req, auto qp) {
+    router->http_post("/preset", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
         }
@@ -107,7 +111,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
     });
 
     // DELETE routes
-    router->http_delete("/preset", [](auto req, auto qp) {
+    router->http_delete("/preset", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
         }

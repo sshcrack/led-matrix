@@ -62,18 +62,31 @@ namespace ConfigData {
     }
 
     void from_json(const json &j, Root &p) {
-        j.at("curr").get_to(p.curr);
-        j.at("presets").get_to(p.presets);
-        j.at("spotify").get_to(p.spotify);
-        j.at("pluginConfigs").get_to(p.pluginConfigs);
+        p.curr = j.value("curr", "Default");
+        if (j.contains("presets")) {
+            j.at("presets").get_to(p.presets);
+        } else {
+            p.presets = {
+                {"Default", Preset::create_default()}
+            };
+        }
+
+        p.spotify = j.value("spotify", SpotifyData());
+        p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
     }
 
     void from_json(const json &j, SpotifyData &p) {
         string access, refresh;
         tmillis_t expires_at;
-        j.at("access_token").get_to(access);
-        j.at("refresh_token").get_to(refresh);
-        j.at("expires_at").get_to(expires_at);
+
+        if (j.contains("access_token"))
+            j.at("access_token").get_to(access);
+
+        if (j.contains("refresh_token"))
+            j.at("refresh_token").get_to(refresh);
+
+        if (j.contains("expires_at"))
+            j.at("expires_at").get_to(expires_at);
 
         if (!access.empty()) {
             p.access_token = access;
@@ -97,13 +110,7 @@ namespace ConfigData {
                 scenes.push_back(Scenes::Scene::from_json(item));
         } else {
             info("No scenes in preset. Adding default...");
-            auto pl = Plugins::PluginManager::instance();
-            for (const auto &item: pl->get_scenes()) {
-                auto scene = item->create();
-                scene->register_properties();
-
-                scenes.emplace_back();
-            }
+            p = Preset::create_default();
         }
 
 
@@ -127,6 +134,30 @@ namespace ConfigData {
 
     bool SpotifyData::has_auth() const {
         return !(this->access_token->empty() || this->refresh_token->empty() || this->expires_at == 0);
+    }
+
+    std::shared_ptr<Preset> Preset::create_default() {
+        vector<shared_ptr<Scenes::Scene> > scenes;
+        for (const auto &scene_wrapper: Plugins::PluginManager::instance()->get_scenes()) {
+            auto scene = scene_wrapper->create();
+            scene->register_properties();
+            scene->load_properties({
+                {"weight", 1},
+                {"duration", 1000}
+            });
+
+            scenes.push_back(std::move(scene));
+        }
+
+        auto preset = new Preset();
+        preset->scenes = scenes;
+
+        return {
+            preset,
+            [](Preset *p) {
+                delete p;
+            }
+        };
     }
 
     bool SpotifyData::is_expired() const {
