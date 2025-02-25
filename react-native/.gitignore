@@ -44,3 +44,4 @@ expo-env.d.ts
 *.aab
 
 .env
+build
