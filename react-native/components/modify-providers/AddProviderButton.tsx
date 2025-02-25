@@ -32,7 +32,7 @@ export default function AddProviderButton({ providers, presetId, sceneId }: { pr
             <SelectTrigger>
                 <SelectValue
                     className='text-foreground text-sm native:text-lg'
-                    placeholder='Select a scene'
+                    placeholder='Select a provider'
                 />
             </SelectTrigger>
             <SelectContent insets={contentInsets}>
@@ -93,7 +93,7 @@ export default function AddProviderButton({ providers, presetId, sceneId }: { pr
                 })
             }}
         >
-            <Text>Add new Scene</Text>
+            <Text>Add new Provider</Text>
         </Button>
     </View>
 }

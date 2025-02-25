@@ -36,10 +36,8 @@ function isValidHttpUrl(s: string) {
     return url.protocol === "http:" || url.protocol === "https:";
 }
 
-function formDataFromImagePicker(result: ImagePicker.ImagePickerSuccessResult) {
+function formDataFromImagePicker(asset: ImagePicker.ImagePickerAsset) {
     const formData = new FormData();
-
-    const asset = result.assets[0]
 
     // @ts-expect-error: special react native format for form data
     formData.append("photo", asset.file ?? {
@@ -73,35 +71,55 @@ export default function CollectionProvider() {
         return <Loader />
 
 
-    const pickImage = async () => {
+    const pickImage = async (multiple: boolean) => {
         // No permissions request is necessary for launching the image library
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [1, 1]
+            allowsEditing: !multiple,
+            aspect: multiple ? undefined : [1, 1],
+            allowsMultipleSelection: multiple
         });
 
         if (!result.canceled) {
             setUploading(true)
-            // Upload the image to the API route.
-            const response = await fetch(apiUrl + "/pixeljoint/upload_img", {
-                method: "POST",
-                body: formDataFromImagePicker(result),
-                headers: {
-                    Accept: "application/json",
-                },
-            }).finally(() => setUploading(false));
+            const allResponses = Promise.all(result.assets.map(async e => {
+                const res = await fetch(apiUrl + "/pixeljoint/upload_img", {
+                    method: "POST",
+                    body: formDataFromImagePicker(e),
+                    headers: {
+                        Accept: "application/json",
+                    },
+                })
 
-            const res: UploadImgResponse = await response.json();
-            return res.path
+                return (await res.json()) as UploadImgResponse
+            })).finally(() => setUploading(false))
+            return (await allResponses).map(e => e.path)
         }
 
         return null
     };
 
+    const pickImageWrapper = (multiple: boolean) => {
+        pickImage(multiple).then((paths) => {
+            if (!paths)
+                return
+
+            setData(e => {
+                const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
+                paths.forEach(path => copy.arguments.images.push(`file://${path}`))
+
+                return copy
+            })
+        }).catch(e => {
+            Toast.show({
+                type: "error",
+                text1: "Error uploading image",
+                text2: e.message ?? JSON.stringify(e)
+            })
+        })
+    }
 
     return <>
-
         <AlertDialog open={isDialogOpen} onOpenChange={e => setIsDialogOpen(e)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -163,27 +181,13 @@ export default function CollectionProvider() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-36 native:w-48 p-3">
-                    <DropdownMenuItem onPress={() => {
-                        pickImage().then((path) => {
-                            if (!path)
-                                return
-
-                            setData(e => {
-                                const copy = JSON.parse(JSON.stringify(e)) as CollectionJson
-                                copy.arguments.images.push(`file://${path}`)
-
-                                return copy
-                            })
-                        }).catch(e => {
-                            Toast.show({
-                                type: "error",
-                                text1: "Error uploading image",
-                                text2: e.message ?? JSON.stringify(e)
-                            })
-                        })
-                    }}>
+                    <DropdownMenuItem onPress={() => pickImageWrapper(false)}>
                         <FilePlus2 className="text-foreground" />
                         <Text>File</Text>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onPress={() => pickImageWrapper(true)}>
+                        <FilePlus2 className="text-foreground" />
+                        <Text>File (Multiple)</Text>
                     </DropdownMenuItem>
                     <DropdownMenuItem onPress={() => setIsDialogOpen(true)}>
                         <Paperclip className='text-foreground' />
