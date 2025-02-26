@@ -15,59 +15,62 @@
 
 using namespace std;
 
-optional<vector<Magick::Image> > Post::process_images(const int width, const int height, const bool store_processed_file) {
+optional<vector<Magick::Image>> Post::process_images(const int width, const int height, const bool store_processed_file) {
     spdlog::debug("Preprocessing img {}", img_url);
-    if (!filesystem::exists(Constants::post_dir)) {
-        try {
-            auto res = filesystem::create_directory(Constants::post_dir);
-            if (!res) {
+    
+    try {
+        if (!filesystem::exists(Constants::post_dir)) {
+            if (!filesystem::create_directory(Constants::post_dir)) {
                 spdlog::error("Could not create directory at {}.", Constants::post_dir.c_str());
-                exit(-1);
+                return nullopt;
             }
-        } catch (exception &ex) {
-            spdlog::error("Could not create directory at {} with exception: {}", Constants::post_dir.c_str(),
-                          ex.what());
-            exit(-1);
         }
-    }
 
-    const tmillis_t start_loading = GetTimeInMillis();
-    const filesystem::path file_path = Constants::post_dir / get_filename();
-    const filesystem::path processed_img = to_processed_path(file_path);
+        const tmillis_t start_loading = GetTimeInMillis();
+        const filesystem::path file_path = Constants::post_dir / get_filename();
+        const filesystem::path processed_img = to_processed_path(file_path);
 
-    // Downloading image first
-    if (!exists(processed_img)) {
-        try_remove(file_path);
-        const auto res = utils::download_image(get_image_url(), file_path);
+        // Early return if processed image exists
+        if (exists(processed_img)) {
+            auto res = LoadImageAndScale(processed_img, width, height, true, true, true, false);
+            if (res) {
+                return res.value();
+            }
+        }
 
-        if (!res.has_value()) {
-            spdlog::error("Could not download image: {}", res.error());
+        // Download image if needed
+        if (!exists(processed_img)) {
             try_remove(file_path);
+            const auto res = utils::download_image(get_image_url(), file_path);
+            if (!res) {
+                spdlog::error("Could not download image: {}", res.error());
+                return nullopt;
+            }
+        }
 
+        constexpr bool contain_img = true;
+        auto res = LoadImageAndScale(
+            file_path,
+            width, height,
+            true, true,
+            contain_img,
+            store_processed_file || utils::is_local_file_url(get_image_url())
+        );
+
+        try_remove(file_path);
+
+        if (!res) {
+            spdlog::error("Error loading image: {}", res.error());
             return nullopt;
         }
-    }
 
-    constexpr bool contain_img = true;
-    auto res = LoadImageAndScale(
-        file_path,
-        width, height,
-        true, true,
-        contain_img,
-        store_processed_file || utils::is_local_file_url(get_image_url())
-    );
+        spdlog::debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+        return res.value();
 
-    try_remove(file_path);
-
-    if (!res) {
-        spdlog::error("Error loading image: {}", res.error());
+    } catch (std::exception &e) {
+        spdlog::error("Exception in process_images: {}", e.what());
         return nullopt;
     }
-
-    vector<Magick::Image> frames = std::move(res.value());
-    spdlog::debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-
-    return frames;
 }
 
 Post::Post(const string &img_url, const bool maybe_fetch_type) {

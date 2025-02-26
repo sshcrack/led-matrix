@@ -26,6 +26,9 @@ int usage(const char *progname) {
 
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
+
+    SetMagickResourceLimit(Magick::MemoryResource, 256*1024*1024);  // Limit to 256MB
+    SetMagickResourceLimit(Magick::MapResource, 512*1024*1024);     // Limit to 512MB
     cfg::load_env_levels();
 
     RGBMatrix::Options matrix_options;

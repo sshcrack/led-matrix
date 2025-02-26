@@ -6,7 +6,7 @@ using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
 using Plugins::BasicPlugin;
 
-class WeatherOverview : public BasicPlugin {
+class WeatherOverview final : public BasicPlugin {
 public:
     using BasicPlugin::BasicPlugin;
 
