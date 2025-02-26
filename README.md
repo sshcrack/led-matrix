@@ -58,7 +58,7 @@ cmake --build build
 
 4. Install (optional):
 ```shell
-cmake --install build # Binaries are placed in the build folder
+cmake --install build
 ```
 
 ### Mobile App
@@ -100,7 +100,7 @@ Vcpkg needs to be installed.
 ```shell
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX="/usr/local" ..
-cmake --install . # Binaries are placed in the build folder
+sudo cmake --install .
 ```
 
 ## Plugin Development
