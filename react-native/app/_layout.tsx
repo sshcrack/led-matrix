@@ -63,7 +63,7 @@ export default function RootLayout() {
               name='index'
               options={{
                 title: 'LED Matrix Controller',
-                headerLeft: () => <ResetApiUrl />,
+                headerLeft: () => Platform.OS !== "web" && <ResetApiUrl />,
                 headerRight: () => <ThemeToggle />,
               }}
             />

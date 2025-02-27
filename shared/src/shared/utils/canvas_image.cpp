@@ -113,21 +113,26 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
 }
 
 
-void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
-                   bool do_center,
+void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
+                   const bool do_center,
                    rgb_matrix::FrameCanvas *scratch,
                    rgb_matrix::StreamWriter *output) {
     scratch->Clear();
     const int x_offset = do_center ? (scratch->width() - img.columns()) / 2 : 0;
     const int y_offset = do_center ? (scratch->height() - img.rows()) / 2 : 0;
+    
+    // Get direct access to pixel data
+    const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
+    
     for (size_t y = 0; y < img.rows(); ++y) {
+        const Magick::PixelPacket *row = pixels + (y * img.columns());
         for (size_t x = 0; x < img.columns(); ++x) {
-            const Magick::Color &c = img.pixelColor(x, y);
-            if (c.alphaQuantum() < 255) {
+            const auto &[blue, green, red, opacity] = row[x];
+            if (opacity != MaxRGB) {  // Check for non-transparent pixels
                 scratch->SetPixel(x + x_offset, y + y_offset,
-                                  ScaleQuantumToChar(c.redQuantum()),
-                                  ScaleQuantumToChar(c.greenQuantum()),
-                                  ScaleQuantumToChar(c.blueQuantum()));
+                                ScaleQuantumToChar(red),
+                                ScaleQuantumToChar(green),
+                                ScaleQuantumToChar(blue));
             }
         }
     }
