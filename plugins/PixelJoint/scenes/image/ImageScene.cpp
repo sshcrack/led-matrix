@@ -26,6 +26,8 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
     }
 
     uint32_t delay_us = 0;
+    offscreen_canvas->Clear();
+
     //TODO I think this isn't safe like at all
     if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(offscreen_canvas, &delay_us)) {
         reader->Rewind();
