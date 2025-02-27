@@ -27,6 +27,16 @@ file(GLOB_RECURSE SOURCES
 
 
 add_subdirectory(rpi-rgb-led-matrix)
+# Installation configuration
+include(GNUInstallDirs)
+
+install(TARGETS rpi-rgb-led-matrix
+        EXPORT rpi-rgb-led-matrixTargets
+        LIBRARY DESTINATION "."
+        ARCHIVE DESTINATION "."
+        RUNTIME DESTINATION "."
+)
+
 add_subdirectory(shared)
 
 # Adding plugins
