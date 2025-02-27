@@ -9,11 +9,53 @@
 #include "shared/utils/consts.h"
 #include "utils/canvas_consts.h"
 #include "shared/utils/canvas_image.h"
+#include <spdlog/spdlog.h>
 
 
 using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router) {
+    // Root redirect
+    router->http_get("/", [](auto req, auto) {
+        return req->create_response(restinio::status_see_other())
+            .append_header(restinio::http_field::location, "/web/index.html")
+            .done();
+    });
+
+    // Static file serving
+    router->http_get("/web/:path(.*)", [](auto req, auto params) {
+        auto exec_dir = get_exec_dir();
+        if (!exec_dir) {
+            return reply_with_error(req, "Could not determine executable directory");
+        }
+
+        const auto requested_path = params["path"];
+        const filesystem::path web_dir = filesystem::path(*exec_dir) / "web";
+        const filesystem::path file_path = web_dir / requested_path;
+
+        // Ensure the requested path is within the web directory
+        const auto canonical_web = filesystem::canonical(web_dir);
+        std::error_code ec;
+        const auto canonical_file = filesystem::canonical(file_path, ec);
+        
+        if (ec || !canonical_file.string().starts_with(canonical_web.string())) {
+            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+        }
+
+        if (!filesystem::exists(file_path)) {
+            return reply_with_error(req, "File not found", restinio::status_not_found());
+        }
+
+        const string content_type = MimeTypes::getType(file_path.string());
+        
+        spdlog::trace("Serving {}", file_path.c_str());
+        return req->create_response(restinio::status_ok())
+            .append_header_date_field()
+            .append_header(restinio::http_field::content_type, content_type)
+            .set_body(sendfile(file_path))
+            .done();
+    });
+
     router->http_get("/list", [](auto req, auto) {
         auto res = req->create_response(restinio::status_ok())
                 .append_header_date_field()

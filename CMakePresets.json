@@ -10,6 +10,16 @@
                 "CMAKE_MAKE_PROGRAM": "ninja",
                 "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/weather-overview/fonts"
             }
+        },
+        {
+            "name": "mock",
+            "binaryDir": "${sourceDir}/build",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "/home/hendrik/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "MOCK_RPI": true
+            }
         }
     ]
 }
