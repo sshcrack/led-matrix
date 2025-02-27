@@ -3,10 +3,6 @@ project(SharedTools VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 23)
 
-# Resources
-file(READ resources/default.json RESOURCE_DATA HEX)
-configure_file(resources/resources.h.in include/shared/resources.h @ONLY)
-
 option(USE_EMULATOR "Enable emulator support" OFF)
 if(USE_EMULATOR)
     add_definitions(-DUSE_EMULATOR)

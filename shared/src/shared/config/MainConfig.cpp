@@ -3,7 +3,6 @@
 #include "shared/utils/shared.h"
 #include <utility>
 #include <spdlog/spdlog.h>
-#include "shared/resources.h"
 
 
 using namespace spdlog;
