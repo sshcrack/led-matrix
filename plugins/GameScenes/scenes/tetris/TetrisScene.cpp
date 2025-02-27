@@ -25,7 +25,7 @@ namespace Scenes {
         offset_y = (matrix->height() - (20 * block_size)) / 2;
 
         bestMove = brain.getBestMove(grid);
-        bestRotation = (int) bestMove.back() - 48;
+        bestRotation = static_cast<int>(bestMove.back()) - 48;
         bestMove.pop_back();
     }
 
@@ -55,8 +55,8 @@ namespace Scenes {
             fixed = false;
         }
 
-        auto current_time = std::chrono::steady_clock::now();
-        auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
+        const auto current_time = std::chrono::steady_clock::now();
+        const auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
                 current_time - last_fall_time).count();
 
         if (time_since_last_fall >= fall_speed_ms->get() && !grid.isAnimating) {

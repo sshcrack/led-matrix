@@ -18,7 +18,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
     // Root redirect
     router->http_get("/", [](auto req, auto) {
         return req->create_response(restinio::status_see_other())
-            .append_header(restinio::http_field::location, "/web/index.html")
+            .append_header(restinio::http_field::location, "/web/")
             .done();
     });
 
@@ -31,7 +31,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
 
         const auto requested_path = params["path"];
         const filesystem::path web_dir = filesystem::path(*exec_dir) / "web";
-        const filesystem::path file_path = web_dir / requested_path;
+        filesystem::path file_path = web_dir / requested_path;
 
         // Ensure the requested path is within the web directory
         const auto canonical_web = filesystem::canonical(web_dir);
@@ -41,6 +41,10 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         if (ec || !canonical_file.string().starts_with(canonical_web.string())) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
+
+        // Serve index file if directory
+        if (filesystem::is_directory(file_path))
+            file_path = file_path / "index.html";
 
         if (!filesystem::exists(file_path)) {
             return reply_with_error(req, "File not found", restinio::status_not_found());
