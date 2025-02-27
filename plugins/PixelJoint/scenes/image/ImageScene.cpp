@@ -203,6 +203,9 @@ std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vec
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> file_info = {
         new FileInfo(),
         [](FileInfo *file) {
+            if (file->content_stream) {
+                dynamic_cast<rgb_matrix::MemStreamIO*>(file->content_stream)->Clear();
+            }
             delete file;
         }
     };
@@ -226,6 +229,14 @@ std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vec
     return file_info;
 }
 
+ImageScene::~ImageScene() {
+    spdlog::debug("Waiting for ImageScene to finish...");
+    is_exiting = true;
+    if (next_img.has_value() && next_img.value().valid()) {
+        next_img.value().wait();
+    }
+    curr_animation.reset();  // Ensure animation is cleaned up
+}
 
 string ImageScene::get_name() const {
     return "image_scene";
