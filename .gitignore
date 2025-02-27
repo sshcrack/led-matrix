@@ -8,3 +8,4 @@ vcpkg_installed
 run.sh
 images
 memory_profiler.sh
+heaptrack.sh
