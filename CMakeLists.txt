@@ -81,6 +81,28 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
+# Check for Node.js
+find_program(NODEJS node)
+if(NOT NODEJS)
+    message(FATAL_ERROR "Node.js not found! Please install Node.js.")
+endif()
+
+# Check for Yarn
+find_program(YARN yarn)
+if(NOT YARN)
+    message(FATAL_ERROR "Yarn not found! Please install Yarn.")
+endif()
+
+# Install React Native dependencies and build web version
+add_custom_target(react_native_build ALL
+    COMMAND ${YARN} install
+    COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+)
+
+# Make main target depend on react_native_build
+add_dependencies(${PROJECT_NAME} react_native_build)
+
 # Install target
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION "."
@@ -88,6 +110,11 @@ install(TARGETS ${PROJECT_NAME}
 
 # Create plugins and fonts directories
 install(DIRECTORY DESTINATION "plugins")
+
+# Install web files
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
+        DESTINATION web
+)
 
 # Add sync to RPI if enabled
 option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)

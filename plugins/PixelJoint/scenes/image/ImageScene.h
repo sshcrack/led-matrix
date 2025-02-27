@@ -107,13 +107,7 @@ public:
 
     using Scene::Scene;
 
-    ~ImageScene() override {
-        spdlog::debug("Waiting for ImageScene to finish...");
-        is_exiting = true;
-        if (next_img.has_value() && next_img.value().valid()) {
-            next_img.value().wait();
-        }
-    }
+    ~ImageScene() override;
 
     void load_properties(const nlohmann::json &j) override;
 };
