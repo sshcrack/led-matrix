@@ -28,7 +28,7 @@ export function ApiUrlProvider({ children }: React.PropsWithChildren<{}>) {
     const [inputVal, setInputVal] = useState("")
 
     useEffect(() => {
-        if(!apiUrl || Platform.OS === "web")
+        if(!apiUrl || (Platform.OS === "web" && !__DEV__))
             return
 
         AsyncStorage.setItem("apiUrl", apiUrl)
@@ -44,7 +44,7 @@ export function ApiUrlProvider({ children }: React.PropsWithChildren<{}>) {
     }, [apiUrl])
 
     useEffect(() => {
-        if(Platform.OS === "web") {
+        if(Platform.OS === "web" && !__DEV__) {
             setApiUrl(window.location.protocol + "//" + window.location.host)
             return;
         }

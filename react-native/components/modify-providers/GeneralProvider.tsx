@@ -50,9 +50,8 @@ export default function GeneralProvider({ data, preset_id, scene_id, setData }: 
                 }
             }}>
                 <View className='w-full flex-1'>
-                    <View className="flex-row">
-                        <Text className="text-xl">{titleCase(provider.type)}</Text>
-                        <Button size="icon" variant="ghost" className='p-5' onPress={() => {
+                    <View className="flex-row mb-5 items-center">
+                        <Button size="icon" variant="ghost" className='mr-5' onPress={() => {
                             setData(e => {
                                 if (!e)
                                     return e
@@ -65,6 +64,7 @@ export default function GeneralProvider({ data, preset_id, scene_id, setData }: 
                         }}>
                             <Trash2 className='text-red-500' />
                         </Button>
+                        <Text className="text-xl">{titleCase(provider.type)}</Text>
                     </View>
                     <Provider />
                 </View>
