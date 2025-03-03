@@ -48,8 +48,8 @@ namespace Scenes {
         explicit PingPongGameScene();
         ~PingPongGameScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
-        void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        bool render(RGBMatrixBase *matrix) override;
+        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 
         void register_properties() override;
         void load_properties(const nlohmann::json &j) override;

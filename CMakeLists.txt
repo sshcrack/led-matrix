@@ -6,6 +6,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
 endif()
 
+# Option to enable/disable emulator
+option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 
 if(SKIP_MS_WAIT)
     add_definitions(-DSKIP_MS_WAIT)
@@ -20,12 +22,11 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-
 file(GLOB_RECURSE SOURCES
         src/*.c*
 )
 
-
+# Pass ENABLE_EMULATOR option to the subproject
 add_subdirectory(rpi-rgb-led-matrix)
 # Installation configuration
 include(GNUInstallDirs)
@@ -42,7 +43,6 @@ add_subdirectory(shared)
 # Adding plugins
 add_subdirectory(plugins)
 
-
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
         ${SOURCES}
@@ -53,9 +53,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 # Main Target Compile
-
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-
 
 # Require SharedTools
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
@@ -104,14 +102,14 @@ if(NOT YARN)
 endif()
 
 # Install React Native dependencies and build web version
-add_custom_target(react_native_build ALL
-    COMMAND ${YARN} install
-    COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
-)
+# add_custom_target(react_native_build ALL
+#     COMMAND ${YARN} install
+#     COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+# )
 
 # Make main target depend on react_native_build
-add_dependencies(${PROJECT_NAME} react_native_build)
+# add_dependencies(${PROJECT_NAME} react_native_build)
 
 # Install target
 install(TARGETS ${PROJECT_NAME}

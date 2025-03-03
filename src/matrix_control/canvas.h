@@ -9,7 +9,7 @@
 
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
-using rgb_matrix::RGBMatrix;
+using rgb_matrix::RGBMatrixBase;
 using rgb_matrix::StreamReader;
 
-FrameCanvas *update_canvas(RGBMatrix *matrix, FrameCanvas *pCanvas);
+FrameCanvas *update_canvas(RGBMatrixBase * matrix, FrameCanvas *pCanvas);

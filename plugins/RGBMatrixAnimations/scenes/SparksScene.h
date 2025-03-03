@@ -19,7 +19,7 @@ namespace Scenes {
 
         [[nodiscard]] string get_name() const override;
 
-        void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
+        void after_render_stop(RGBMatrixBase *matrix) override;
     };
 
     class SparksSceneWrapper : public Plugins::SceneWrapper {

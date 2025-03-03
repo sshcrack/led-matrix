@@ -10,7 +10,7 @@
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }
 
 
-void WaveScene::drawMap(RGBMatrix *matrix, float *iMap) {
+void WaveScene::drawMap(RGBMatrixBase *matrix, float *iMap) {
     for (int y = 0; y < matrix->height(); y++) {
         for (int x = 0; x < matrix->width(); x++) {
             const int i = xyToIndex(matrix->width(), x, y);
@@ -22,7 +22,7 @@ void WaveScene::drawMap(RGBMatrix *matrix, float *iMap) {
     }
 }
 
-bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
     float *lastMap = map;
     map = new float[matrix->width() * matrix->height()];
 
@@ -74,7 +74,7 @@ bool Scenes::WaveScene::render(rgb_matrix::RGBMatrix *matrix) {
     return true;
 }
 
-void WaveScene::initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) {
+void WaveScene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(matrix, l_offscreen_canvas);
 
     std::srand(std::time(nullptr));

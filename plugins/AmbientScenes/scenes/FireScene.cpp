@@ -12,7 +12,7 @@ FireScene::FireScene() : Scene() {
     time = 0.0f;
 }
 
-void FireScene::initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) {
+void FireScene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(matrix, l_offscreen_canvas);
     width = matrix->width();
     height = matrix->height();
@@ -86,7 +86,7 @@ void FireScene::render_fire(rgb_matrix::Canvas *canvas) {
     }
 }
 
-bool FireScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool FireScene::render(RGBMatrixBase *matrix) {
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
     last_update = current_time;

@@ -31,9 +31,9 @@ class FireScene : public Scenes::Scene {
         explicit FireScene();
         ~FireScene() override = default;
 
-        bool render(RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
-        void initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) override;
+        void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas) override;
 
         [[nodiscard]] string get_name() const override;
 

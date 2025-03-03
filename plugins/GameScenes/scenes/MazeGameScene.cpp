@@ -5,7 +5,7 @@ namespace Scenes {
         rng = std::mt19937(std::random_device()());
     }
 
-    void MazeGameScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+    void MazeGameScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
         Scene::initialize(matrix, l_offscreen_canvas);
         // Calculate maze size to maintain odd dimensions
         int minSize = std::min(matrix->width(), matrix->height()) / 2;
@@ -51,7 +51,7 @@ namespace Scenes {
         }
     }
 
-    bool MazeGameScene::render(rgb_matrix::RGBMatrix *matrix) {
+    bool MazeGameScene::render(RGBMatrixBase *matrix) {
         auto now = std::chrono::steady_clock::now();
         float delta = std::chrono::duration<float>(now - last_update).count();
 
@@ -285,7 +285,7 @@ namespace Scenes {
         return "maze";
     }
 
-    void MazeGameScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
+    void MazeGameScene::after_render_stop(RGBMatrixBase *matrix) {
         if (solving_complete)
             initialize_maze();
     }

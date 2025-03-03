@@ -21,17 +21,17 @@ namespace Scenes {
 
     class CoverOnlyScene : public Scene {
     private:
-        bool DisplaySpotifySong(rgb_matrix::RGBMatrix *matrix);
+        bool DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix);
 
         std::optional<std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>> curr_info;
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
 
-        std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrix *matrix);
+        std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrixBase *matrix);
 
     public:
         ~CoverOnlyScene() override = default;
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
         [[nodiscard]] int get_weight() const override;
 

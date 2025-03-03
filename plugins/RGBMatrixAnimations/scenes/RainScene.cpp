@@ -25,7 +25,7 @@ RainScene::~RainScene() {
     delete[] lengths;
 }
 
-void RainScene::initialize(RGBMatrix *p_matrix, FrameCanvas *l_offscreen_canvas) {
+void RainScene::initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) {
     totalCols = p_matrix->width() / 1.4;
     ParticleScene::initialize(p_matrix, l_offscreen_canvas);
 }
@@ -115,7 +115,7 @@ void RainScene::createColorPalette() {
     totalColors = renderer->get()->getColourId(RGB_color(0, 255, 0)) - 1;
 }
 
-bool RainScene::render(RGBMatrix *matrix) {
+bool RainScene::render(RGBMatrixBase *matrix) {
     addNewParticles();
     removeOldParticles();
 

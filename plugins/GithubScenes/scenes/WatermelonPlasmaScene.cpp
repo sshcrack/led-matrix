@@ -5,7 +5,7 @@
 
 using namespace std;
 
-bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
     auto frameTime = frameTimer.tick();
     float t = frameTime.t;
 

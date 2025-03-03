@@ -34,7 +34,7 @@ std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> Scenes::Scene::from_json
     throw std::runtime_error(fmt::format("Invalid type '{}'", t));
 }
 
-void Scenes::Scene::initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas) {
+void Scenes::Scene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas) {
     if (initialized)
         return;
 
@@ -70,7 +70,7 @@ Scenes::Scene::Scene() {
     add_property(duration);
 }
 
-void Scenes::Scene::after_render_stop(RGBMatrix *matrix) {}
+void Scenes::Scene::after_render_stop(RGBMatrixBase *matrix) {}
 
 void Scenes::Scene::load_properties(const json &j) {
     for (const auto &item: properties) {

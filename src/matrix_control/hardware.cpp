@@ -12,7 +12,7 @@
 using namespace rgb_matrix;
 using namespace spdlog;
 
-void hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
+void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
     info("Press Ctrl+C to quit");
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
@@ -31,7 +31,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
     info("Finished, shutting down...");
 }
 
-int start_hardware_mainloop(rgb_matrix::RGBMatrix *matrix) {
+int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
 
     Constants::height = matrix->height();
     Constants::width = matrix->width();

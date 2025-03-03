@@ -6,7 +6,7 @@
 
 using namespace Scenes;
 
-bool PingPongGameScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool PingPongGameScene::render(RGBMatrixBase *matrix) {
     float ball_size_l = this->ball_size->get();
     float paddle_width_l = this->paddle_width->get();
     float paddle_height_l = this->paddle_height->get();
@@ -105,7 +105,7 @@ bool PingPongGameScene::render(rgb_matrix::RGBMatrix *matrix) {
     return true;
 }
 
-void PingPongGameScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+void PingPongGameScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(matrix, l_offscreen_canvas);
     last_update = std::chrono::steady_clock::now();
     accumulated_time = 0.0f;

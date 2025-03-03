@@ -69,11 +69,11 @@ namespace Scenes {
         explicit MazeGameScene();
         ~MazeGameScene() override = default;
 
-        void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
+        void after_render_stop(RGBMatrixBase *matrix) override;
 
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
-        void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 
         [[nodiscard]] string get_name() const override;
 

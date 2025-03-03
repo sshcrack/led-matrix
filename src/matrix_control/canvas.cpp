@@ -7,10 +7,10 @@
 using namespace std;
 using namespace spdlog;
 
-using rgb_matrix::RGBMatrix;
+using rgb_matrix::RGBMatrixBase;
 
 
-FrameCanvas *update_canvas(RGBMatrix *matrix, FrameCanvas *pCanvas) {
+FrameCanvas *update_canvas(RGBMatrixBase * matrix, FrameCanvas *pCanvas) {
     const auto preset = config->get_curr();
     auto scenes = preset->scenes;
 

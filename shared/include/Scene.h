@@ -11,6 +11,7 @@
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
+using rgb_matrix::RGBMatrixBase;
 using std::string;
 
 namespace Scenes {
@@ -56,14 +57,14 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
 
-        virtual void initialize(RGBMatrix *matrix, FrameCanvas *l_offscreen_canvas);
+        virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
 
-        virtual void after_render_stop(RGBMatrix *matrix);
+        virtual void after_render_stop(RGBMatrixBase *matrix);
 
         [[nodiscard]] bool is_initialized() const;
 
         /// Returns true if the scene should continue rendering, false if not
-        virtual bool render(RGBMatrix *matrix) = 0;
+        virtual bool render(RGBMatrixBase *matrix) = 0;
 
         static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
 

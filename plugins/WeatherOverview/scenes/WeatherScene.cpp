@@ -29,7 +29,7 @@ string Scenes::WeatherScene::get_name() const {
 
 bool should_render = true;
 
-bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
+bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
     auto data_res = parser->get_data();
     if (!data_res) {
         spdlog::warn("Could not get weather data_res: {}", data_res.error());
@@ -112,7 +112,7 @@ bool Scenes::WeatherScene::render(RGBMatrix *matrix) {
     return true;
 }
 
-void Scenes::WeatherScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
+void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix) {
     should_render = true;
     Scene::after_render_stop(matrix);
 }
