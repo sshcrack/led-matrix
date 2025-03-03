@@ -27,7 +27,7 @@ class MetaBlobScene : public Scenes::Scene {
         // Shader conversion helpers
         float rand_sin(int i) const;
 
-        Blob get_blob(rgb_matrix::RGBMatrix *matrix, int i, float time) const;
+        Blob get_blob(rgb_matrix::RGBMatrixBase *matrix, int i, float time) const;
 
         float calculate_field(float x, float y, const Blob &blob) const;
 
@@ -35,9 +35,9 @@ class MetaBlobScene : public Scenes::Scene {
         explicit MetaBlobScene();
         ~MetaBlobScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
-        void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 
         [[nodiscard]] std::string get_name() const override;
         void register_properties() override;

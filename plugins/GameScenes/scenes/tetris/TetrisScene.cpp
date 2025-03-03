@@ -16,7 +16,7 @@ namespace Scenes {
         last_fall_time = std::chrono::steady_clock::now();
     }
 
-    void TetrisScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+    void TetrisScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
         Scene::initialize(matrix, l_offscreen_canvas);
 
         // Calculate scaling and offsets
@@ -29,7 +29,7 @@ namespace Scenes {
         bestMove.pop_back();
     }
 
-    bool TetrisScene::render(rgb_matrix::RGBMatrix *matrix) {
+    bool TetrisScene::render(RGBMatrixBase *matrix) {
         if (gameOver) return false;
 
         if (!rotated) {
@@ -128,7 +128,7 @@ namespace Scenes {
         return "tetris";
     }
 
-    void TetrisScene::after_render_stop(rgb_matrix::RGBMatrix *matrix) {
+    void TetrisScene::after_render_stop(RGBMatrixBase *matrix) {
         if (gameOver) {
             // Reset game state
             grid = Grid();  // Create new grid

@@ -17,7 +17,7 @@ namespace AmbientScenes {
             gen(rd()) {
     }
 
-    void StarFieldScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+    void StarFieldScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
         Scene::initialize(matrix, l_offscreen_canvas);
         stars.resize(num_stars->get());
         dis = std::uniform_real_distribution<>(0.0, 1.0);
@@ -30,7 +30,7 @@ namespace AmbientScenes {
         }
     }
 
-    bool StarFieldScene::render(rgb_matrix::RGBMatrix *matrix) {
+    bool StarFieldScene::render(RGBMatrixBase *matrix) {
         offscreen_canvas->Clear();
 
         int center_x = matrix->width() / 2;

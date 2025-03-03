@@ -18,7 +18,10 @@
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "/home/hendrik/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_MAKE_PROGRAM": "ninja",
-                "MOCK_RPI": true
+                "ENABLE_EMULATOR": true
+            },
+            "environment": {
+                "PATH": "/home/hendrik/.local/share/mise/installs/bun/1.2.3/bin:/home/hendrik/.local/share/mise/installs/node/22.13.1/bin:/home/hendrik/.local/share/JetBrains/Toolbox/scripts:/usr/games:/home/hendrik/.local/bin:/home/hendrik/Android/Sdk/cmdline-tools/latest/bin:/home/hendrik/Android/Sdk/platform-tools:/home/hendrik/.local/share/JetBrains/Toolbox/scripts:/usr/games:/home/hendrik/.local/bin:/home/hendrik/Android/Sdk/cmdline-tools/latest/bin:/home/hendrik/Android/Sdk/platform-tools:/home/hendrik/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/home/hendrik/Documents/vcpkg:/usr/local/texlive/2023/bin/x86_64-linux:/home/hendrik/.fzf/bin:/home/hendrik/Android/Sdk/emulator:/home/hendrik/Android/Sdk/platform-tools:/home/hendrik/.config/Code/User/globalStorage/github.copilot-chat/debugCommand:/home/hendrik/Documents/vcpkg:/usr/local/texlive/2023/bin/x86_64-linux:/home/hendrik/Android/Sdk/emulator:/home/hendrik/Android/Sdk/platform-tools"
             }
         }
     ]

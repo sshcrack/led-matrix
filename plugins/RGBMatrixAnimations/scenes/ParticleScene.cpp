@@ -12,7 +12,7 @@ ParticleScene::ParticleScene()
       matrix(nullptr) {
 }
 
-void ParticleScene::initialize(RGBMatrix *p_matrix, FrameCanvas *l_offscreen_canvas) {
+void ParticleScene::initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) {
     Scene::initialize(p_matrix, l_offscreen_canvas);
 
     matrix = p_matrix;
@@ -32,7 +32,7 @@ void ParticleScene::initialize(RGBMatrix *p_matrix, FrameCanvas *l_offscreen_can
     initializeParticles();
 }
 
-bool ParticleScene::render(RGBMatrix *rgbMatrix) {
+bool ParticleScene::render(RGBMatrixBase *rgbMatrix) {
     animation->get()->runCycle();
 
     uint8_t MAX_FPS = 1000 / delay_ms->get();
@@ -68,6 +68,6 @@ void ParticleScene::register_properties() {
     add_property(delay_ms);
 }
 
-void ParticleScene::after_render_stop(RGBMatrix *m) {
+void ParticleScene::after_render_stop(RGBMatrixBase *m) {
     this->animation->get()->clearParticles();
 }

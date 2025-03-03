@@ -16,7 +16,7 @@ using namespace spdlog;
 using rgb_matrix::StreamReader;
 
 
-bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
+bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
     auto curr = &curr_animation.value();
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
@@ -67,7 +67,7 @@ bool ImageScene::DisplayAnimation(RGBMatrix *matrix) {
 }
 
 
-bool ImageScene::render(RGBMatrix *matrix) {
+bool ImageScene::render(RGBMatrixBase *matrix) {
     if (!this->curr_animation.has_value()) {
         // This is only called once on first render
         debug("Getting next animation");
@@ -92,7 +92,7 @@ Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std:
 }
 
 expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
-ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
+ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
     // NOLINT(*-no-recursion)
 
     if (recursiveness > 10) {
@@ -130,6 +130,7 @@ ImageScene::get_next_anim(RGBMatrix *matrix, int recursiveness) {
     auto info_opt = std::move(info_res.value());
     if (!info_opt.has_value()) {
         // No images left, new category
+        spdlog::debug("Flushing category");
         img_category->flush();
         this->curr_category++;
 
@@ -205,9 +206,6 @@ std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vec
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> file_info = {
         new FileInfo(),
         [](FileInfo *file) {
-            if (file->content_stream) {
-                dynamic_cast<rgb_matrix::MemStreamIO*>(file->content_stream)->Clear();
-            }
             delete file;
         }
     };

@@ -34,9 +34,9 @@ class StarFieldScene : public Scenes::Scene {
         ~StarFieldScene() override = default;
         void register_properties() override;
 
-        bool render(rgb_matrix::RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
-        void initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
 
         [[nodiscard]] std::string get_name() const override;
 

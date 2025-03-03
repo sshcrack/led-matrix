@@ -7,11 +7,11 @@
 namespace Scenes {
     class WeatherScene : public Scene {
     public:
-        bool render(RGBMatrix *matrix) override;
+        bool render(RGBMatrixBase *matrix) override;
 
         [[nodiscard]] string get_name() const override;
 
-        void after_render_stop(rgb_matrix::RGBMatrix *matrix) override;
+        void after_render_stop(RGBMatrixBase *matrix) override;
 
         void register_properties() override {}
 

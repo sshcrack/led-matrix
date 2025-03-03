@@ -6,7 +6,7 @@ namespace AmbientScenes {
         return std::sin(float(i) * 1.64f);
     }
 
-    MetaBlobScene::Blob MetaBlobScene::get_blob(rgb_matrix::RGBMatrix *matrix, int i, float time) const {
+    MetaBlobScene::Blob MetaBlobScene::get_blob(rgb_matrix::RGBMatrixBase *matrix, int i, float time) const {
         float x = 0.5f + 0.1f * rand_sin(i);
         float y = 0.5f + 0.1f * rand_sin(i + 42);
 
@@ -35,12 +35,12 @@ namespace AmbientScenes {
             : Scene(), time(0.0f) {
     }
 
-    void MetaBlobScene::initialize(rgb_matrix::RGBMatrix *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
+    void MetaBlobScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
         Scene::initialize(matrix, l_offscreen_canvas);
         blobs.reserve(num_blobs->get());
     }
 
-    bool MetaBlobScene::render(rgb_matrix::RGBMatrix *matrix) {
+    bool MetaBlobScene::render(RGBMatrixBase *matrix) {
         offscreen_canvas->Clear();
 
         // Update blob positions

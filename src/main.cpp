@@ -5,10 +5,13 @@
 
 
 #include <Magick++.h>
+#include <shared/interrupt.h>
 #include <shared/utils/consts.h>
 
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
+#include "matrix-factory.h"
+#include "../rpi-rgb-led-matrix/lib/framebuffer-internal.h"
 #include "server/server.h"
 #include "shared/utils/shared.h"
 
@@ -18,34 +21,34 @@ using json = nlohmann::json;
 using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<>;
+
 int usage(const char *progname) {
     fprintf(stderr, "usage: %s [options]\n", progname);
-    rgb_matrix::PrintMatrixFlags(stderr);
+    rgb_matrix::MatrixFactory::PrintMatrixFactoryFlags(stderr);
     return 1;
 }
 
 int main(int argc, char *argv[]) {
     Magick::InitializeMagick(*argv);
 
-    SetMagickResourceLimit(Magick::MemoryResource, 256*1024*1024);  // Limit to 256MB
-    SetMagickResourceLimit(Magick::MapResource, 512*1024*1024);     // Limit to 512MB
+    SetMagickResourceLimit(Magick::MemoryResource, 256 * 1024 * 1024); // Limit to 256MB
+    SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024); // Limit to 512MB
     cfg::load_env_levels();
 
-    RGBMatrix::Options matrix_options;
-    rgb_matrix::RuntimeOptions runtime_opt;
+    rgb_matrix::MatrixFactory::Options options;
 
     // Should be in hardware.cpp but this actually drops privileges, so I moved it here
 
     debug("Parsing rgb matrix from cmdline");
-    runtime_opt.drop_priv_user = getenv("SUDO_UID");
-    runtime_opt.drop_priv_group = getenv("SUDO_GID");
+    options.runtime_options.drop_priv_user = getenv("SUDO_UID");
+    options.runtime_options.drop_priv_group = getenv("SUDO_GID");
 
-    if (!ParseOptionsFromFlags(&argc, &argv,
-                                           &matrix_options, &runtime_opt)) {
+
+    if (!rgb_matrix::MatrixFactory::ParseOptionsFromFlags(&argc, &argv, &options)) {
         return usage(argv[0]);
     }
 
-    RGBMatrix *matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
+    rgb_matrix::RGBMatrixBase *matrix = rgb_matrix::MatrixFactory::CreateMatrix(options);
     if (matrix == nullptr)
         return usage(argv[0]);
 
@@ -79,13 +82,15 @@ int main(int argc, char *argv[]) {
 
     server_t server{
         restinio::own_io_context(),
-        [port, host](auto & settings) {
+        [port, host](auto &settings) {
             std::shared_ptr router = Server::server_handler();
-            
+
             // Create request handler function that uses the router
             auto handler = [router = std::move(router)]
-                (auto req) { return (*router)(std::move(req)); };
-                
+            (auto req) {
+                return (*router)(std::move(req));
+            };
+
             settings.port(port);
             settings.address(host);
             settings.request_handler(std::move(handler));
