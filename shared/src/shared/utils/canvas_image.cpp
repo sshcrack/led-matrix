@@ -19,7 +19,8 @@ filesystem::path to_processed_path(const filesystem::path &path) {
 // Load still image or animation.
 // Scale, so that it fits in "width" and "height" and store in "result".
 std::expected<vector<Magick::Image>, string>
-LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, const bool fill_width, const bool fill_height,
+LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, const bool fill_width,
+                  const bool fill_height,
                   const bool contain_img, const bool store_resized_img) {
     const filesystem::path img_processed = to_processed_path(path);
     vector<Magick::Image> result;
@@ -78,7 +79,6 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
             target_height = (int) roundf(width_fraction * img_height);
         }
 
-
         int offset_x = 0;
         int offset_y = 0;
 
@@ -88,10 +88,19 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
             offset_x = (target_width - canvas_width) / 2;
         }
 
+        // Determine the appropriate scaling filter based on image size
+        bool use_nearest_neighbor = img_width < canvas_width || img_height < canvas_height;
 
-        debug("Scaling to {}x{} and cropping to {}x{} with {},{} offset", target_width, target_height, canvas_width,
-              canvas_height, offset_x, offset_y);
+        debug("Scaling to {}x{} using {} and cropping to {}x{} with {},{} offset",
+              target_width, target_height,
+              use_nearest_neighbor ? "nearest neighbor" : "default filter",
+              canvas_width, canvas_height, offset_x, offset_y);
+
         for (auto &img: result) {
+            // Set filter type based on whether we're scaling up or down
+            if (use_nearest_neighbor) {
+                img.filterType(Magick::PointFilter); // Use nearest neighbor for upscaling
+            }
             img.scale(Magick::Geometry(target_width, target_height));
             img.crop(Magick::Geometry(canvas_width, canvas_height, offset_x, offset_y));
         }
@@ -112,7 +121,6 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
     }
 }
 
-
 void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
                    const bool do_center,
                    rgb_matrix::FrameCanvas *scratch,
@@ -120,19 +128,20 @@ void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
     scratch->Clear();
     const int x_offset = do_center ? (scratch->width() - img.columns()) / 2 : 0;
     const int y_offset = do_center ? (scratch->height() - img.rows()) / 2 : 0;
-    
+
     // Get direct access to pixel data
     const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
-    
+
     for (size_t y = 0; y < img.rows(); ++y) {
         const Magick::PixelPacket *row = pixels + (y * img.columns());
         for (size_t x = 0; x < img.columns(); ++x) {
             const auto &[blue, green, red, opacity] = row[x];
-            if (opacity != MaxRGB) {  // Check for non-transparent pixels
+            if (opacity != MaxRGB) {
+                // Check for non-transparent pixels
                 scratch->SetPixel(x + x_offset, y + y_offset,
-                                ScaleQuantumToChar(red),
-                                ScaleQuantumToChar(green),
-                                ScaleQuantumToChar(blue));
+                                  ScaleQuantumToChar(red),
+                                  ScaleQuantumToChar(green),
+                                  ScaleQuantumToChar(blue));
             }
         }
     }
@@ -153,14 +162,16 @@ bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_
     if (canvas_offset_x < 0) {
         skip_start_row = -canvas_offset_x * 3;
         image_display_w += canvas_offset_x;
-        if (image_display_w <= 0) return false; // Done. outside canvas.
+        if (image_display_w <= 0)
+            return false; // Done. outside canvas.
         canvas_offset_x = 0;
     }
     if (canvas_offset_y < 0) {
         // Skip buffer to the first row we'll be showing
         buffer += 3 * width * -canvas_offset_y;
         image_display_h += canvas_offset_y;
-        if (image_display_h <= 0) return false; // Done. outside canvas.
+        if (image_display_h <= 0)
+            return false; // Done. outside canvas.
         canvas_offset_y = 0;
     }
     const int w = std::min(c->width(), canvas_offset_x + image_display_w);
