@@ -102,14 +102,14 @@ if(NOT YARN)
 endif()
 
 # Install React Native dependencies and build web version
-# add_custom_target(react_native_build ALL
-#     COMMAND ${YARN} install
-#     COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
-#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
-# )
+add_custom_target(react_native_build ALL
+    COMMAND ${YARN} install
+    COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+)
 
 # Make main target depend on react_native_build
-# add_dependencies(${PROJECT_NAME} react_native_build)
+add_dependencies(${PROJECT_NAME} react_native_build)
 
 # Install target
 install(TARGETS ${PROJECT_NAME}

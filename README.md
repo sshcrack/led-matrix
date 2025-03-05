@@ -44,6 +44,7 @@ A mobile application for controlling the LED matrix remotely. Located in the `re
 ## Building
 
 ### Backend
+> Note: Building this project on the RPI can be slow, cross-compilation is advised: [Guide](https://github.com/abhiTronix/raspberry-pi-cross-compilers/discussions/123) 
 
 1. Install vcpkg following instructions at https://github.com/Microsoft/vcpkg
 2. Configure CMake:

@@ -61,7 +61,7 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
     }} className='w-full gap-6'>
         <CollapsibleTrigger className='flex-row gap-2 items-center w-full'>
             <View className="flex-row items-center gap-3">
-                <Button size="icon" variant="ghost" className='p-5' onPress={() => {
+                <Button size="icon" variant="ghost" className='mr-3' onPress={() => {
                     setSubConfig(e => {
                         if (!e)
                             return e

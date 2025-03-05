@@ -34,10 +34,20 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
                 json j1;
                 item1->dump_to_json(j1);
 
+                json min_max_j;
+                item1->min_max_to_json(min_max_j);
+
                 json j2;
                 j2["name"] = item1->getName();
                 j2["default_value"] = j1[item1->getName()];
                 j2["type_id"] = item1->get_type_id();
+                if (min_max_j.contains("min")) {
+                    j2["min"] = min_max_j["min"];
+                }
+
+                if (min_max_j.contains("max")) {
+                    j2["max"] = min_max_j["max"];
+                }
 
                 properties_json.push_back(j2);
             }
