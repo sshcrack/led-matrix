@@ -111,6 +111,7 @@
         "valarray": "cpp",
         "generator": "cpp",
         "print": "cpp",
-        "stdfloat": "cpp"
+        "stdfloat": "cpp",
+        "*.ipp": "cpp"
     },
 }

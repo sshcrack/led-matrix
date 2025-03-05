@@ -21,11 +21,12 @@ export function BooleanProperty({ value, defaultVal, propertyName }: PluginPrope
             >
                 <RotateCcw className='text-foreground' />
             </Button>
-            <Switch
-                checked={value}
-                onCheckedChange={(val) => setValue(val)}
-                className='flex-1'
-            />
+            <View className='flex-1 justify-center'>
+                <Switch
+                    checked={value}
+                    onCheckedChange={(val) => setValue(val)}
+                />
+            </View>
         </View>
     </View>
 }
