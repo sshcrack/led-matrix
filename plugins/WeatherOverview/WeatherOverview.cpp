@@ -61,17 +61,22 @@ std::optional<string> WeatherOverview::before_server_init() {
     spdlog::trace("Using fonts in {}", parent.c_str());
     const std::string HEADER_FONT_FILE = std::string(plugin_weather_dir) + "/7x13.bdf";
     const std::string BODY_FONT_FILE = std::string(plugin_weather_dir) + "/5x8.bdf";
+    const std::string SMALL_FONT_FILE = std::string(plugin_weather_dir) + "/4x6.bdf";
 
 
     spdlog::debug("Loading font...");
     const auto headerRes = HEADER_FONT.LoadFont(HEADER_FONT_FILE.c_str());
     const auto bodyRes = BODY_FONT.LoadFont(BODY_FONT_FILE.c_str());
+    const auto smallRes = SMALL_FONT.LoadFont(SMALL_FONT_FILE.c_str());
 
     if (!headerRes)
         return "Could not load header font at " + HEADER_FONT_FILE;
 
     if (!bodyRes)
         return "Could not load body font at " + BODY_FONT_FILE;
+
+    if(!smallRes)
+        return "Could not load small font at " + SMALL_FONT_FILE;
 
     return BasicPlugin::before_server_init();
 }

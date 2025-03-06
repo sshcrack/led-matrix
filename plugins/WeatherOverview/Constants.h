@@ -13,10 +13,13 @@ extern WeatherParser *parser;
 
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;
+extern rgb_matrix::Font SMALL_FONT;
 
 static std::string get_api_url() {
     return "https://api.open-meteo.com/v1/forecast?latitude=" + LOCATION_LAT + "&longitude=" + LOCATION_LON +
-           "&current=temperature_2m,is_day,rain,weather_code,cloud_cover&daily=weather_code&timezone=Europe%2FBerlin";
+           "&current=temperature_2m,is_day,rain,weather_code,cloud_cover,relative_humidity_2m,wind_speed_10m" +
+           "&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5" +
+           "&timezone=Europe%2FBerlin";
 }
 
 const static std::filesystem::path weather_dir = Constants::root_dir / "weather";
