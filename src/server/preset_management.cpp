@@ -100,6 +100,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         try {
             const auto pr = j.get<std::shared_ptr<ConfigData::Preset>>();
             config->set_presets(id, pr);
+            config->save();
             return reply_with_json(req, {
                 {"success", "Preset has been set"},
                 {"id", id}

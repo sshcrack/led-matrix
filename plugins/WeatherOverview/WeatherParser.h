@@ -40,7 +40,7 @@ private:
     bool changed = false;
 public:
     static std::expected<std::string, std::string> fetch_api();
-    bool has_changed();
+    bool has_changed() const;
     void unmark_changed();
 
     static std::expected<WeatherData, std::string> parse_weather_data(const std::string &str_data);
