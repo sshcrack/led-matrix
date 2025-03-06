@@ -23,7 +23,7 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_CXX_STANDARD 23)
 
 file(GLOB_RECURSE SOURCES
-        src/*.c*
+    src/*.c*
 )
 
 # Pass ENABLE_EMULATOR option to the subproject
@@ -32,10 +32,10 @@ add_subdirectory(rpi-rgb-led-matrix)
 include(GNUInstallDirs)
 
 install(TARGETS rpi-rgb-led-matrix
-        EXPORT rpi-rgb-led-matrixTargets
-        LIBRARY DESTINATION "."
-        ARCHIVE DESTINATION "."
-        RUNTIME DESTINATION "."
+    EXPORT rpi-rgb-led-matrixTargets
+    LIBRARY DESTINATION "."
+    ARCHIVE DESTINATION "."
+    RUNTIME DESTINATION "."
 )
 
 add_subdirectory(shared)
@@ -45,11 +45,11 @@ add_subdirectory(plugins)
 
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
-        ${SOURCES}
+    ${SOURCES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Main Target Compile
@@ -89,27 +89,30 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
-# Check for Node.js
-find_program(NODEJS node)
-if(NOT NODEJS)
-    message(FATAL_ERROR "Node.js not found! Please install Node.js.")
+if(NOT SKIP_WEB_BUILD)
+    # Check for Node.js
+    find_program(NODEJS node)
+    if(NOT NODEJS)
+        message(FATAL_ERROR "Node.js not found! Please install Node.js.")
+    endif()
+
+    # Check for Yarn
+    find_program(YARN yarn)
+    if(NOT YARN)
+        message(FATAL_ERROR "Yarn not found! Please install Yarn.")
+    endif()
+
+
+    # Install React Native dependencies and build web version
+    add_custom_target(react_native_build ALL
+        COMMAND ${YARN} install
+        COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+    )
+
+    # Make main target depend on react_native_build
+    add_dependencies(${PROJECT_NAME} react_native_build)
 endif()
-
-# Check for Yarn
-find_program(YARN yarn)
-if(NOT YARN)
-    message(FATAL_ERROR "Yarn not found! Please install Yarn.")
-endif()
-
-# Install React Native dependencies and build web version
-add_custom_target(react_native_build ALL
-    COMMAND ${YARN} install
-    COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
-)
-
-# Make main target depend on react_native_build
-add_dependencies(${PROJECT_NAME} react_native_build)
 
 # Install target
 install(TARGETS ${PROJECT_NAME}
@@ -121,7 +124,7 @@ install(DIRECTORY DESTINATION "plugins")
 
 # Install web files
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
-        DESTINATION web
+    DESTINATION web
 )
 
 # Add sync to RPI if enabled

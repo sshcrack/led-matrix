@@ -51,7 +51,6 @@ FrameCanvas *update_canvas(RGBMatrixBase * matrix, FrameCanvas *pCanvas) {
         }
 
 
-        info("Displaying scene {}", scene->get_name());
         const tmillis_t start_ms = GetTimeInMillis();
         const tmillis_t end_ms = start_ms + scene->get_duration();
 

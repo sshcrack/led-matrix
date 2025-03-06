@@ -3,6 +3,7 @@
 #include <expected>
 #include <string>
 #include <optional>
+#include <vector>
 #include "shared/utils/utils.h"
 
 struct RGB {
@@ -11,12 +12,23 @@ struct RGB {
     uint8_t b;
 };
 
+struct ForecastDay {
+    std::string day_name;
+    std::string icon_url;
+    std::string temperature_min;
+    std::string temperature_max;
+    int weatherCode;
+};
+
 struct WeatherData {
     RGB color{0, 0, 0};  // Default to black
     std::string icon_url{""};
     std::string description{"No data"};
     std::string temperature{"N/A"};
+    std::string humidity{"N/A"};
+    std::string wind_speed{"N/A"};
     int weatherCode{0};
+    std::vector<ForecastDay> forecast;
 };
 
 static long CACHE_INVALIDATION = 1000 * 60 * 15;
