@@ -1,6 +1,7 @@
 #include <iostream>
 #include "WeatherOverview.h"
 #include "scenes/WeatherScene.h"
+#include "scenes/WeatherVisualizerScene.h"
 #include "shared/utils/shared.h"
 #include <spdlog/spdlog.h>
 #include "Constants.h"
@@ -23,8 +24,17 @@ WeatherOverview::create_image_providers() {
 
 vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview::create_scenes() {
     auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> >();
+    
+    // Add the original weather scene
     scenes.push_back({
         new WeatherSceneWrapper(), [](SceneWrapper *scene) {
+            delete scene;
+        }
+    });
+    
+    // Add the new weather visualizer scene
+    scenes.push_back({
+        new WeatherVisualizerWrapper(), [](SceneWrapper *scene) {
             delete scene;
         }
     });

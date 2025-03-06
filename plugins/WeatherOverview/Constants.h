@@ -2,31 +2,37 @@
 
 #include <string>
 #include <shared/utils/consts.h>
+
 #include "WeatherParser.h"
 
-// To get longitude / latitude of a city
-// https://geocoding-api.open-meteo.com/v1/search?language=en&format=json&name=(Name of city)&count=(something)
 
+// Global weather API settings
 extern std::string LOCATION_LAT;
 extern std::string LOCATION_LON;
-extern WeatherParser *parser;
 
+// Shared parser instance
+extern WeatherParser* parser;
+
+// Fonts
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;
 extern rgb_matrix::Font SMALL_FONT;
 
-static std::string get_api_url() {
-    return "https://api.open-meteo.com/v1/forecast?latitude=" + LOCATION_LAT + "&longitude=" + LOCATION_LON +
-           "&current=temperature_2m,is_day,rain,weather_code,cloud_cover,relative_humidity_2m,wind_speed_10m" +
-           "&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5" +
-           "&timezone=Europe%2FBerlin";
+// Sky colors for different conditions
+namespace SkyColor {
+    constexpr int NIGHT_CLEAR = 0x102851;
+    constexpr int NIGHT_CLOUDS = 0x0A192E;
+    constexpr int DAY_CLEAR = 0x6D9EEB;
+    constexpr int DAY_CLOUDS = 0x6D8ED0;
 }
 
-const static std::filesystem::path weather_dir = Constants::root_dir / "weather";
-enum SkyColor {
-    DAY_CLEAR = 0x3aa1d5,
-    DAY_CLOUDS = 0x7c8c9a,
-    NIGHT_CLEAR = 0x262b49,
-    NIGHT_CLOUDS = 0x2d2e34
-};
+// Weather API URL helper
+static std::string get_api_url() {
+    return "https://api.open-meteo.com/v1/forecast?latitude=" + LOCATION_LAT + 
+           "&longitude=" + LOCATION_LON + 
+           "&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m" +
+           "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto";
+}
 
+// Weather icons are defined in the icons/weather_icons.h file
+const static std::filesystem::path weather_dir = Constants::root_dir / "weather";

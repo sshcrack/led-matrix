@@ -19,25 +19,25 @@ std::expected<std::string, std::string> WeatherParser::fetch_api() {
 
 RGB hex_to_rgb(int hex) {
     return RGB{
-            static_cast<uint8_t>((hex >> 16) & 0xFF),
-            static_cast<uint8_t>((hex >> 8) & 0xFF),
-            static_cast<uint8_t>(hex & 0xFF)
+        static_cast<uint8_t>((hex >> 16) & 0xFF),
+        static_cast<uint8_t>((hex >> 8) & 0xFF),
+        static_cast<uint8_t>(hex & 0xFF)
     };
 }
 
-std::string get_day_name(const std::string& date_str) {
+std::string get_day_name(const std::string &date_str) {
     std::tm tm = {};
     std::istringstream ss(date_str);
     ss >> std::get_time(&tm, "%Y-%m-%d");
-    
+
     if (ss.fail()) {
         return "Unknown";
     }
-    
+
     std::time_t time = std::mktime(&tm);
     char buffer[10];
     std::strftime(buffer, sizeof(buffer), "%a", std::localtime(&time));
-    return std::string(buffer);
+    return {buffer};
 }
 
 std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const std::string &str_data) {
@@ -57,9 +57,9 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         if (curr.is_null()) {
             return std::unexpected("Current weather data is null");
         }
-        
+
         spdlog::info("Current is " + curr.dump());
-        
+
         // Check if required fields exist in current
         if (!curr.contains("is_day") || !curr.contains("cloud_cover") || !curr.contains("weather_code")) {
             return std::unexpected("Missing required fields in current weather data");
@@ -79,19 +79,19 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         if (units.is_null() || !units.contains("temperature_2m")) {
             return std::unexpected("Missing temperature units");
         }
-        
+
         auto temp_unit = units["temperature_2m"].get<std::string>();
         auto daily_units = json.at("daily_units");
 
         spdlog::debug("Obtaining weather_code");
         int code = curr["weather_code"].get<int>();
-        
+
         // Check if weather code exists in icons
         if (!ICONS.contains(std::to_string(code))) {
             spdlog::warn("Unknown weather code: {}", code);
             return std::unexpected("Unknown weather code");
         }
-        
+
         auto icon_root = ICONS.at(std::to_string(code));
         if (icon_root.is_null()) {
             return std::unexpected("Weather code has no icon data");
@@ -99,7 +99,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
 
         spdlog::debug("Getting image / description from " + icon_root[night ? "night" : "day"].dump());
         auto icon_group = night ? icon_root["night"] : icon_root["day"];
-        
+
         std::string icon_url;
         std::string description;
         if (!icon_group.is_null()) {
@@ -114,34 +114,38 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
             return std::unexpected("Missing temperature data");
         }
         auto temperature = std::to_string(curr["temperature_2m"].get<int>()) + temp_unit;
-        
+
         // Get additional weather data
-        std::string humidity = curr.contains("relative_humidity_2m") ? 
-                              std::to_string(curr["relative_humidity_2m"].get<int>()) + "%" : "N/A";
-        
-        std::string wind_speed = curr.contains("wind_speed_10m") ? 
-                                std::to_string(curr["wind_speed_10m"].get<int>()) + 
-                                units.value("wind_speed_10m", "m/s") : "N/A";
+        std::string humidity = curr.contains("relative_humidity_2m")
+                                   ? std::to_string(curr["relative_humidity_2m"].get<int>()) + "%"
+                                   : "N/A";
+
+        std::string wind_speed = curr.contains("wind_speed_10m")
+                                     ? std::to_string(curr["wind_speed_10m"].get<int>()) +
+                                       units.value("wind_speed_10m", "m/s")
+                                     : "N/A";
 
         // Process forecast data
         auto daily = json.at("daily");
         std::vector<ForecastDay> forecast;
-        
+
         if (!daily.is_null() && daily.contains("time") && daily.contains("weather_code") &&
             daily.contains("temperature_2m_max") && daily.contains("temperature_2m_min")) {
-            
-            auto dates = daily["time"].get<std::vector<std::string>>();
-            auto codes = daily["weather_code"].get<std::vector<int>>();
-            auto max_temps = daily["temperature_2m_max"].get<std::vector<float>>();
-            auto min_temps = daily["temperature_2m_min"].get<std::vector<float>>();
-            
-            size_t forecast_days = std::min({dates.size(), codes.size(), max_temps.size(), min_temps.size(), size_t(4)});
-            
-            for (size_t i = 1; i < forecast_days; i++) { // Start from 1 to skip current day
+            auto dates = daily["time"].get<std::vector<std::string> >();
+            auto codes = daily["weather_code"].get<std::vector<int> >();
+            auto max_temps = daily["temperature_2m_max"].get<std::vector<float> >();
+            auto min_temps = daily["temperature_2m_min"].get<std::vector<float> >();
+
+            size_t forecast_days = std::min({
+                dates.size(), codes.size(), max_temps.size(), min_temps.size(), size_t(4)
+            });
+
+            for (size_t i = 1; i < forecast_days; i++) {
+                // Start from 1 to skip current day
                 ForecastDay day;
                 day.day_name = get_day_name(dates[i]);
                 day.weatherCode = codes[i];
-                
+
                 // Get icon URL based on weather code
                 if (ICONS.contains(std::to_string(codes[i]))) {
                     auto day_icon = ICONS.at(std::to_string(codes[i]))["day"];
@@ -149,10 +153,10 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
                         day.icon_url = day_icon.value("image", "");
                     }
                 }
-                
+
                 day.temperature_max = std::to_string(static_cast<int>(max_temps[i])) + temp_unit;
                 day.temperature_min = std::to_string(static_cast<int>(min_temps[i])) + temp_unit;
-                
+
                 forecast.push_back(day);
             }
         }
@@ -202,7 +206,7 @@ std::expected<WeatherData, std::string> WeatherParser::get_data() {
     return data.value();
 }
 
-bool WeatherParser::has_changed() {
+bool WeatherParser::has_changed() const {
     return changed;
 }
 

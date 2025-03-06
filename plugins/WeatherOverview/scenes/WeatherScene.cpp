@@ -1,7 +1,6 @@
 #include <spdlog/spdlog.h>
 #include "WeatherScene.h"
 #include "../Constants.h"
-#include "shared/utils/consts.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 
