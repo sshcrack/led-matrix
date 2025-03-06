@@ -388,18 +388,8 @@ void WeatherVisualizerScene::render_based_on_weather_code(Canvas *canvas) {
 }
 
 bool WeatherVisualizerScene::render(rgb_matrix::RGBMatrixBase *matrix) {
-    // Initialize if needed
-    if (!initialized) {
-        std::cout << "Activate" << std::flush;
-        initialized = true;
-        return false;
-    }
-
-    std::cout << "W " << matrix_width << " " << matrix_height << std::flush;
-
     uint64_t now = GetTimeInMillis();
-    return true;
-
+5
     // Check if it's time to update weather data
     if (now - last_update >= UPDATE_INTERVAL) {
         auto weather_result = weather_parser->get_data();
