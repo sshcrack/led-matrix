@@ -8,8 +8,17 @@
 #include <iomanip>
 #include <sstream>
 
-std::expected<std::string, std::string> WeatherParser::fetch_api() {
-    cpr::Response r = cpr::Get(cpr::Url{get_api_url()});
+// Helper function to construct the API URL with location parameters
+static std::string get_api_url(const std::string& lat, const std::string& lon) {
+    return "https://api.open-meteo.com/v1/forecast?latitude=" + lat + 
+           "&longitude=" + lon + 
+           "&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m" +
+           "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset" +
+           "&timezone=auto";
+}
+
+std::expected<std::string, std::string> WeatherParser::fetch_api(const std::string& lat, const std::string& lon) {
+    cpr::Response r = cpr::Get(cpr::Url{get_api_url(lat, lon)});
     if (r.status_code != 200) {
         return std::unexpected("Could not fetch api: " + r.text);
     }
@@ -124,6 +133,44 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
                                      ? std::to_string(curr["wind_speed_10m"].get<int>()) +
                                        units.value("wind_speed_10m", "m/s")
                                      : "N/A";
+        
+        // Get precipitation value
+        float precipitation = curr.contains("precipitation") 
+                                ? curr["precipitation"].get<float>() 
+                                : 0.0f;
+
+        // Format current time for last updated display
+        std::time_t now = std::time(nullptr);
+        std::tm* local_time = std::localtime(&now);
+        std::ostringstream time_str;
+        time_str << std::put_time(local_time, "%H:%M");
+        
+        // Get sunrise and sunset times for today
+        std::string sunrise = "N/A";
+        std::string sunset = "N/A";
+        
+        if (json.contains("daily") && 
+            json["daily"].contains("sunrise") && 
+            json["daily"].contains("sunset") &&
+            json["daily"]["sunrise"].is_array() && 
+            json["daily"]["sunset"].is_array() &&
+            !json["daily"]["sunrise"].empty() && 
+            !json["daily"]["sunset"].empty()) {
+            
+            // Parse the ISO datetime string to extract just the time
+            std::string sunrise_iso = json["daily"]["sunrise"][0].get<std::string>();
+            std::string sunset_iso = json["daily"]["sunset"][0].get<std::string>();
+            
+            // Extract time portion (assuming format like "2023-05-15T05:30")
+            size_t sunrise_t_pos = sunrise_iso.find('T');
+            size_t sunset_t_pos = sunset_iso.find('T');
+            
+            if (sunrise_t_pos != std::string::npos && sunset_t_pos != std::string::npos) {
+                // Extract just the time part (HH:MM)
+                sunrise = sunrise_iso.substr(sunrise_t_pos + 1, 5);
+                sunset = sunset_iso.substr(sunset_t_pos + 1, 5);
+            }
+        }
 
         // Process forecast data
         auto daily = json.at("daily");
@@ -135,9 +182,19 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
             auto codes = daily["weather_code"].get<std::vector<int> >();
             auto max_temps = daily["temperature_2m_max"].get<std::vector<float> >();
             auto min_temps = daily["temperature_2m_min"].get<std::vector<float> >();
+            
+            // Get precipitation probabilities if available
+            std::vector<float> precip_probs;
+            if (daily.contains("precipitation_probability_max")) {
+                precip_probs = daily["precipitation_probability_max"].get<std::vector<float> >();
+            } else {
+                // Fill with zeros if not available
+                precip_probs = std::vector<float>(dates.size(), 0.0f);
+            }
 
             size_t forecast_days = std::min({
-                dates.size(), codes.size(), max_temps.size(), min_temps.size(), size_t(4)
+                dates.size(), codes.size(), max_temps.size(), min_temps.size(), 
+                precip_probs.size(), size_t(4)
             });
 
             for (size_t i = 1; i < forecast_days; i++) {
@@ -145,6 +202,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
                 ForecastDay day;
                 day.day_name = get_day_name(dates[i]);
                 day.weatherCode = codes[i];
+                day.precipitation_chance = precip_probs[i];
 
                 // Get icon URL based on weather code
                 if (ICONS.contains(std::to_string(codes[i]))) {
@@ -171,6 +229,10 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         data.weatherCode = code;
         data.forecast = forecast;
         data.is_day = !night;
+        data.precipitation = precipitation;
+        data.last_updated_time = time_str.str();
+        data.sunrise = sunrise;
+        data.sunset = sunset;
 
         spdlog::disable_backtrace();
         spdlog::trace("Setting description to " + data.description);
@@ -184,13 +246,13 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
     }
 }
 
-std::expected<WeatherData, std::string> WeatherParser::get_data() {
+std::expected<WeatherData, std::string> WeatherParser::get_data(const std::string& lat, const std::string& lon) {
     auto curr = GetTimeInMillis();
     if (curr - last_fetch < CACHE_INVALIDATION) {
         return cached_data.value();
     }
 
-    auto api = fetch_api();
+    auto api = fetch_api(lat, lon);
     if (!api) {
         return std::unexpected(api.error());
     }

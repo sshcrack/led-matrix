@@ -34,7 +34,7 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
         if (exists(processed_img)) {
             auto res = LoadImageAndScale(processed_img, width, height, true, true, true, false);
             if (res) {
-                return res.value();
+                return std::move(res.value());
             }
         }
 
@@ -65,7 +65,7 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
         }
 
         spdlog::debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
-        return res.value();
+        return std::move(res.value());
 
     } catch (std::exception &e) {
         spdlog::error("Exception in process_images: {}", e.what());
