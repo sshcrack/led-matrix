@@ -1,22 +1,16 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
 #include <shared/utils/consts.h>
 
-#include "WeatherParser.h"
-
-
-// Global weather API settings
-extern std::string LOCATION_LAT;
-extern std::string LOCATION_LON;
-
-// Shared parser instance
-extern WeatherParser* parser;
+#include "led-matrix.h"
 
 // Fonts
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;
 extern rgb_matrix::Font SMALL_FONT;
+extern rgb_matrix::Font TINY_FONT;  // New tiny font for additional details
 
 // Sky colors for different conditions
 namespace SkyColor {
@@ -24,15 +18,20 @@ namespace SkyColor {
     constexpr int NIGHT_CLOUDS = 0x0A192E;
     constexpr int DAY_CLEAR = 0x6D9EEB;
     constexpr int DAY_CLOUDS = 0x6D8ED0;
+    
+    // Additional sky colors for different weather conditions
+    constexpr int SUNSET = 0xE65F5C;  // Sunset/sunrise color
+    constexpr int RAIN = 0x536878;    // Rainy day color
+    constexpr int FOG = 0x708090;     // Foggy day color
+    constexpr int SNOW = 0xB0E0E6;    // Snowy day color
 }
 
-// Weather API URL helper
-static std::string get_api_url() {
-    return "https://api.open-meteo.com/v1/forecast?latitude=" + LOCATION_LAT + 
-           "&longitude=" + LOCATION_LON + 
-           "&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m" +
-           "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto";
+// Animation constants
+namespace AnimationConstants {
+    constexpr int RAIN_DROP_MAX = 30;  // Maximum number of raindrops
+    constexpr int SNOW_FLAKE_MAX = 20; // Maximum number of snowflakes
+    constexpr int FRAME_RATE = 20;     // Frames per second for animations
+    constexpr int ANIMATION_INTERVAL = 1000 / FRAME_RATE; // milliseconds between frames
 }
 
-// Weather icons are defined in the icons/weather_icons.h file
 const static std::filesystem::path weather_dir = Constants::root_dir / "weather";

@@ -10,10 +10,8 @@
 
 using namespace std;
 
-bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_offset_y,
-                         const uint8_t *buffer, size_t size,
-                         int width, int height,
-                         uint8_t filterR, uint8_t filterG, uint8_t filterB);
+bool SetImageTransparent(rgb_matrix::FrameCanvas *c, int x_offset, int y_offset,
+                         const Magick::Image& img, uint8_t bgR, uint8_t bgG, uint8_t bgB);
 
 std::expected<vector<Magick::Image>, string>
 LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,

@@ -135,65 +135,43 @@ void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
     for (size_t y = 0; y < img.rows(); ++y) {
         const Magick::PixelPacket *row = pixels + (y * img.columns());
         for (size_t x = 0; x < img.columns(); ++x) {
-            const auto &[blue, green, red, opacity] = row[x];
-            if (opacity != MaxRGB) {
+            const auto &q = row[x];
+            if (q.opacity != MaxRGB) {
                 // Check for non-transparent pixels
                 scratch->SetPixel(x + x_offset, y + y_offset,
-                                  ScaleQuantumToChar(red),
-                                  ScaleQuantumToChar(green),
-                                  ScaleQuantumToChar(blue));
+                                  ScaleQuantumToChar(q.red),
+                                  ScaleQuantumToChar(q.green),
+                                  ScaleQuantumToChar(q.blue));
             }
         }
     }
     output->Stream(*scratch, delay_time_us);
 }
 
-bool SetImageTransparent(rgb_matrix::Canvas *c, int canvas_offset_x, int canvas_offset_y,
-                         const uint8_t *buffer, size_t size,
-                         const int width, const int height,
-                         uint8_t filterR, uint8_t filterG, uint8_t filterB) {
-    if (3 * width * height != (int) size) // Sanity check
-        return false;
+bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const int y_offset,
+                         const Magick::Image &img, uint8_t bgR, uint8_t bgG, uint8_t bgB) {
+    // Get direct access to pixel data
+    const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
 
-    int image_display_w = width;
-    int image_display_h = height;
 
-    size_t skip_start_row = 0; // Bytes to skip before each row
-    if (canvas_offset_x < 0) {
-        skip_start_row = -canvas_offset_x * 3;
-        image_display_w += canvas_offset_x;
-        if (image_display_w <= 0)
-            return false; // Done. outside canvas.
-        canvas_offset_x = 0;
-    }
-    if (canvas_offset_y < 0) {
-        // Skip buffer to the first row we'll be showing
-        buffer += 3 * width * -canvas_offset_y;
-        image_display_h += canvas_offset_y;
-        if (image_display_h <= 0)
-            return false; // Done. outside canvas.
-        canvas_offset_y = 0;
-    }
-    const int w = std::min(c->width(), canvas_offset_x + image_display_w);
-    const int h = std::min(c->height(), canvas_offset_y + image_display_h);
+    for (int y = 0; y < img.rows(); y++) {
+        const Magick::PixelPacket *row = pixels + (y * img.columns());
+        for (int x = 0; x < img.columns(); x++) {
+            const auto &q = row[x];
 
-    // Bytes to skip for wider than canvas image at the end of a row
-    const size_t skip_end_row = (canvas_offset_x + image_display_w > w)
-                                    ? (canvas_offset_x + image_display_w - w) * 3
-                                    : 0;
+            // In ImageMagick, opacity is inverted (0 = opaque, MaxRGB = transparent)
+            // Calculate alpha in the 0.0-1.0 range (0 = transparent, 1 = opaque)
+            const float alpha = 1.0f - (ScaleQuantumToChar(q.opacity) / 255.0f);
 
-    // Let's make this a combined skip per row and ajust where we start.
-    const size_t next_row_skip = skip_start_row + skip_end_row;
-    buffer += skip_start_row;
+            if (alpha > 0.0f) {
+                // Proper alpha compositing formula: new = (source × alpha) + (destination × (1 - alpha))
+                uint8_t new_r = ScaleQuantumToChar(q.red) * alpha + bgR * (1.0f - alpha);
+                uint8_t new_g = ScaleQuantumToChar(q.green) * alpha + bgG * (1.0f - alpha);
+                uint8_t new_b = ScaleQuantumToChar(q.blue) * alpha + bgB * (1.0f - alpha);
 
-    for (int y = canvas_offset_y; y < h; ++y) {
-        for (int x = canvas_offset_x; x < w; ++x) {
-            if (buffer[0] != filterR || buffer[1] != filterG || buffer[2] != filterB)
-                c->SetPixel(x, y, buffer[0], buffer[1], buffer[2]);
-
-            buffer += 3;
+                c->SetPixel(x + x_offset, y + y_offset, new_r, new_g, new_b);
+            }
         }
-        buffer += next_row_skip;
     }
     return true;
 }
