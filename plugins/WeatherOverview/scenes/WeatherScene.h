@@ -34,8 +34,6 @@ namespace Scenes {
         tmillis_t last_animation_time = 0;
         int animation_frame = 0;
 
-        int star_update_count = 0;
-
         vector<std::pair<int, int>> stars;
 
         // Color transition variables for smoother day/night changes
@@ -68,6 +66,7 @@ namespace Scenes {
         void renderCurrentWeather(const RGBMatrixBase *matrix, const WeatherData &data);
         void renderForecast(const RGBMatrixBase *matrix, const WeatherData &data) const;
         void renderSunriseSunset(const RGBMatrixBase *matrix, const WeatherData &data) const;
+        void renderClock(const RGBMatrixBase *matrix) const;
         void resetStars();
         
         // Animation methods
@@ -90,7 +89,7 @@ namespace Scenes {
         
         // Visual properties
         PropertyPointer<bool> enable_animations = MAKE_PROPERTY("enable_animations", bool, true);
-        PropertyPointer<bool> show_air_quality = MAKE_PROPERTY("show_air_quality", bool, true);
+        PropertyPointer<bool> enable_clock = MAKE_PROPERTY("enable_clock", bool, true);
         PropertyPointer<int> animation_intensity = MAKE_PROPERTY("animation_intensity", int, 5);
         PropertyPointer<bool> show_border = MAKE_PROPERTY("show_border", bool, true);
         PropertyPointer<bool> gradient_background = MAKE_PROPERTY("gradient_background", bool, true);
@@ -108,7 +107,7 @@ namespace Scenes {
             add_property(location_lat);
             add_property(location_lon);
             add_property(enable_animations);
-            add_property(show_air_quality);
+            add_property(enable_clock);
             add_property(animation_intensity);
             add_property(show_border);
             add_property(gradient_background);
@@ -119,6 +118,7 @@ namespace Scenes {
         using Scene::Scene;
 
         ~WeatherScene() override = default;
+
     };
 
     class WeatherSceneWrapper final : public Plugins::SceneWrapper {

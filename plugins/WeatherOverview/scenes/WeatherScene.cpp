@@ -411,6 +411,16 @@ void Scenes::WeatherScene::renderSunriseSunset(const RGBMatrixBase *matrix, cons
              {255, 180, 80}, sunset_text.c_str());
 }
 
+void Scenes::WeatherScene::renderClock(const RGBMatrixBase *matrix) const {
+    const time_t timestamp = time(NULL);
+    const tm datetime = *localtime(&timestamp);
+
+    char output[50];
+    strftime(output, 50, "%H:%M", &datetime);
+
+    rgb_matrix::DrawText(offscreen_canvas, BODY_FONT, 98, 11, {255, 255, 255}, output);
+}
+
 void Scenes::WeatherScene::resetStars() {
     this->stars.clear();
 
@@ -545,11 +555,6 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
         last_animation_time = current_time;
         should_update_display = true;
 
-        star_update_count++;
-        if (star_update_count % 60 == 0) {
-            resetStars();
-            star_update_count = 0;
-        }
         // Update animation state periodically
         if (has_precipitation) {
             updateParticles(data);
@@ -578,6 +583,9 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
             drawWeatherBorder(matrix, theme_color, 40);
         }
 
+        if (enable_clock->get())
+            renderClock(matrix);
+
         // Render all components
         renderCurrentWeather(matrix, data);
         renderSunriseSunset(matrix, data);
@@ -599,5 +607,6 @@ void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix) {
     scroll_position = 0;
     scroll_direction = 1;
     scroll_pause_counter = 0;
+    resetStars();
     Scene::after_render_stop(matrix);
 }
