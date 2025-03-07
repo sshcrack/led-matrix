@@ -170,6 +170,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         data.icon_url = icon_url;
         data.weatherCode = code;
         data.forecast = forecast;
+        data.is_day = !night;
 
         spdlog::disable_backtrace();
         spdlog::trace("Setting description to " + data.description);

@@ -22,12 +22,13 @@ struct ForecastDay {
 
 struct WeatherData {
     RGB color{0, 0, 0};  // Default to black
-    std::string icon_url{""};
+    std::string icon_url;
     std::string description{"No data"};
     std::string temperature{"N/A"};
     std::string humidity{"N/A"};
     std::string wind_speed{"N/A"};
     int weatherCode{0};
+    bool is_day;
     std::vector<ForecastDay> forecast;
 };
 

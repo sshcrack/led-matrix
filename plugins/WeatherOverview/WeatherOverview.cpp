@@ -34,7 +34,7 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview
     
     // Add the new weather visualizer scene
     scenes.push_back({
-        new WeatherVisualizerWrapper(), [](SceneWrapper *scene) {
+        new WeatherVisualizerSceneWrapper(), [](SceneWrapper *scene) {
             delete scene;
         }
     });
