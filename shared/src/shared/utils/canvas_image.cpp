@@ -149,7 +149,7 @@ void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
 }
 
 bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const int y_offset,
-                         const Magick::Image &img, uint8_t bgR, uint8_t bgG, uint8_t bgB) {
+                         const Magick::Image &img) {
     // Get direct access to pixel data
     const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
 
@@ -164,10 +164,13 @@ bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const i
             const float alpha = 1.0f - (ScaleQuantumToChar(q.opacity) / 255.0f);
 
             if (alpha > 0.0f) {
+                uint8_t r = 255, g, b;
+                c->GetPixel(x + x_offset, y + y_offset, &r, &g, &b);
+
                 // Proper alpha compositing formula: new = (source × alpha) + (destination × (1 - alpha))
-                uint8_t new_r = ScaleQuantumToChar(q.red) * alpha + bgR * (1.0f - alpha);
-                uint8_t new_g = ScaleQuantumToChar(q.green) * alpha + bgG * (1.0f - alpha);
-                uint8_t new_b = ScaleQuantumToChar(q.blue) * alpha + bgB * (1.0f - alpha);
+                const uint8_t new_r = ScaleQuantumToChar(q.red) * alpha + r * (1.0f - alpha);
+                const uint8_t new_g = ScaleQuantumToChar(q.green) * alpha + g * (1.0f - alpha);
+                const uint8_t new_b = ScaleQuantumToChar(q.blue) * alpha + b * (1.0f - alpha);
 
                 c->SetPixel(x + x_offset, y + y_offset, new_r, new_g, new_b);
             }

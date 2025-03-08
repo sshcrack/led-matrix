@@ -27,8 +27,6 @@ namespace Scenes {
         // Animation control
         int frame_counter = 0;
         int update_frequency = 3;
-        std::chrono::steady_clock::time_point last_update;
-        float target_frame_time = 1.0f / 30.0f;
         float delay_solution_found = 5.0f;
 
         int scale_factor;

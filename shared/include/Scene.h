@@ -22,17 +22,24 @@ namespace Scenes {
         bool initialized = false;
         int matrix_width;
         int matrix_height;
+        int target_fps = 60;
+        tmillis_t last_render_time = 0;
 
         PropertyPointer<int> weight = MAKE_PROPERTY_REQ("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
 
         std::string uuid;
-    public:
-        FrameCanvas *offscreen_canvas = nullptr;
 
-        Scene();
 
-        virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
+        void set_target_fps(int fps) {
+            target_fps = fps;
+        }
+
+        [[nodiscard]] int get_target_fps() const {
+            return target_fps;
+        }
+
+        virtual bool should_render_frame();
 
         void add_property(const std::shared_ptr<PropertyBase> &property) {
             std::string name = property->getName();
@@ -44,6 +51,13 @@ namespace Scenes {
 
             properties.push_back(property);
         }
+
+    public:
+        FrameCanvas *offscreen_canvas = nullptr;
+
+        Scene();
+
+        virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
 
         [[nodiscard]] std::string get_uuid() const {
             return this->uuid;

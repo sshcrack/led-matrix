@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
 
     debug("Starting mainloop_thread");
-    uint16_t port = 8080;
+    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
 
     string host = "0.0.0.0";
 

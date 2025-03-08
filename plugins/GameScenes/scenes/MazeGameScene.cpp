@@ -20,7 +20,6 @@ namespace Scenes {
         offset_y = (matrix->height() - (maze_size * scale_factor)) / 2;
 
         initialize_maze();
-        last_update = std::chrono::steady_clock::now();
     }
 
     void MazeGameScene::initialize_maze() {
@@ -52,10 +51,7 @@ namespace Scenes {
     }
 
     bool MazeGameScene::render(RGBMatrixBase *matrix) {
-        auto now = std::chrono::steady_clock::now();
-        float delta = std::chrono::duration<float>(now - last_update).count();
-
-        if (delta >= target_frame_time) {
+        if (should_render_frame()) {
             if (!generation_complete) {
                 generation_complete = hunt_and_kill_step();
             } else if (!solving_complete) {
@@ -66,11 +62,8 @@ namespace Scenes {
             offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
 
             if (solving_complete) {
-                if (delta >= delay_solution_found) {
-                    return false;
-                }
-            } else {
-                last_update = now;
+                SleepMillis(2000);
+                return false;
             }
         }
 

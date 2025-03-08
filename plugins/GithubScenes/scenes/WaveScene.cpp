@@ -23,6 +23,8 @@ void WaveScene::drawMap(RGBMatrixBase *matrix, float *iMap) {
 }
 
 bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
+    offscreen_canvas->Clear();
+
     float *lastMap = map;
     map = new float[matrix->width() * matrix->height()];
 
@@ -67,7 +69,9 @@ bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
 
     drawMap(matrix, map);
 
-    matrix->SwapOnVSync(offscreen_canvas);
+    if (should_render_frame())
+        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
+
     delete[] lastMap;
 
 

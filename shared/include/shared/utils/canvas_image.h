@@ -11,7 +11,7 @@
 using namespace std;
 
 bool SetImageTransparent(rgb_matrix::FrameCanvas *c, int x_offset, int y_offset,
-                         const Magick::Image& img, uint8_t bgR, uint8_t bgG, uint8_t bgB);
+                         const Magick::Image& img);
 
 std::expected<vector<Magick::Image>, string>
 LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,

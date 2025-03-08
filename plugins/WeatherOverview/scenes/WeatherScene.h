@@ -25,14 +25,11 @@ namespace Scenes {
         GRAYSCALE = 5   // Grayscale theme
     };
 
-    class WeatherScene : public Scene {
+    class WeatherScene final : public Scene {
     private:
-        int scroll_position = 0;
-        int scroll_direction = 1;
-        int scroll_pause_counter = 0;
         bool animation_active = false;
-        tmillis_t last_animation_time = 0;
         int animation_frame = 0;
+        int total_animation_frame_size = 180;
 
         vector<std::pair<int, int>> stars;
 
@@ -60,7 +57,7 @@ namespace Scenes {
         std::optional<Images> images;
         
         // Get theme color based on selected theme
-        RGB getThemeColor(ColorTheme theme, const WeatherData &data) const;
+        static RGB getThemeColor(ColorTheme theme, const WeatherData &data);
 
         // Rendering methods
         void renderCurrentWeather(const RGBMatrixBase *matrix, const WeatherData &data);
