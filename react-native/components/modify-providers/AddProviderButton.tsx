@@ -83,11 +83,8 @@ export default function AddProviderButton({ providers, presetId, sceneId }: { pr
                         uuid: id
                     })
 
-                    console.log("Adding", {
-                        type: provider.name,
-                        arguments: args,
-                        uuid: id
-                    })
+                    console.log("Adding", provider.name)
+                    console.log("Total is now", curr.length)
 
                     return curr
                 })

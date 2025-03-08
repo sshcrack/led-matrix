@@ -1,12 +1,14 @@
 import _ from "lodash"
 import { createContext, PropsWithChildren, useContext, useState } from 'react'
 import { ReactSetState } from '~/lib/utils'
-import { Preset } from '../apiTypes/list_presets'
+import { objectToArrayPresets, Preset } from '../apiTypes/list_presets'
+import Toast from 'react-native-toast-message'
+import { useApiUrl } from '../apiUrl/ApiUrlProvider'
 
 export type ConfigState = {
     config: Map<string, Preset>,
     setConfig: ReactSetState<Map<string, Preset>>,
-    savePreset: (preset_name: string) => void,
+    savePreset: (preset_name: string) => Promise<void>,
     update: number,
     setUpdate: ReactSetState<number>
 }
@@ -54,14 +56,26 @@ export function useSubConfig<T>(presetName: string, path: Parameters<typeof _.ge
 export function ConfigProvider({ children }: PropsWithChildren<{}>) {
     const [config, setConfig] = useState<Map<string, Preset>>(() => new Map())
     const [update, setUpdate] = useState(0)
+    const apiUrl = useApiUrl()
 
     return <ConfigContext.Provider value={{
         config,
         setConfig,
         update,
         setUpdate,
-        savePreset: (preset_name) => {
-            console.log("Saving preset with name", preset_name, "and config", JSON.stringify(config?.get(preset_name), null, 2))
+        savePreset: async (presetId) => {
+            const raw = objectToArrayPresets(config.get(presetId)!)
+            fetch(apiUrl + `/preset?id=${encodeURIComponent(presetId)}`, {
+                method: "POST",
+                body: JSON.stringify(raw),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(() => console.log("Successfully saved preset"))
+                .finally(() => {
+                    setUpdate(Math.random())
+                })
         }
     }}>
         {children}

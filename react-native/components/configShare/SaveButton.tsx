@@ -10,7 +10,7 @@ import { useApiUrl } from '../apiUrl/ApiUrlProvider';
 import Loader from '../Loader';
 
 export default function SaveButton({ presetId }: { presetId: string }) {
-    const { config, setUpdate } = useContext(ConfigContext)
+    const { config, setUpdate, savePreset } = useContext(ConfigContext)
     const preset = config.get(presetId)
     const [isSaving, setIsSaving] = useState(false)
     const showSaved = useSharedValue(0)
@@ -34,16 +34,8 @@ export default function SaveButton({ presetId }: { presetId: string }) {
         disabled={isSaving}
         onPress={() => {
             setIsSaving(true)
-            const raw = objectToArrayPresets(preset!)
-            fetch(apiUrl + `/preset?id=${encodeURIComponent(presetId)}`, {
-                method: "POST",
-                body: JSON.stringify(raw),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
+            savePreset(presetId)
                 .then(() => {
-                    console.log("Successfully saved preset")
                     showSaved.value = withSequence(ReduceMotion.Never, withTiming(1, {
                         duration: 0
                     }), withDelay(1000, withTiming(0, {
