@@ -6,14 +6,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Text } from '../ui/text';
 import usePresetId from './PresetIdProvider';
 import { NavigationAction } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
 export default function ExitConfirmation({ data }: { data: RawPreset | null }) {
     // Navigation
     const navigation = useNavigation();
     const presetId = usePresetId()
-    const { config } = useContext(ConfigContext)
+    const { config, savePreset } = useContext(ConfigContext)
 
     const [open, setOpen] = useState(false);
+    const [saving, setSaving] = useState(false)
 
     const ref = useRef<Preset | undefined>(undefined)
     const dataRef = useRef<Preset | undefined>(undefined)
@@ -56,14 +58,33 @@ export default function ExitConfirmation({ data }: { data: RawPreset | null }) {
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel onPress={() => setOpen(false)}>
-                    <Text>Cancel</Text>
-                </AlertDialogCancel>
-                <AlertDialogAction onPress={() => {
+                <AlertDialogCancel onPress={() => {
                     if (actionRef.current)
                         navigation.dispatch(actionRef.current)
                 }}>
-                    <Text>Continue</Text>
+                    <Text>Exit without saving</Text>
+                </AlertDialogCancel>
+                <AlertDialogAction onPress={() => {
+                    setSaving(true)
+                    savePreset(presetId)
+                        .then(() => {
+                            if (actionRef.current)
+                                navigation.dispatch(actionRef.current)
+                        })
+                        .catch(e => {
+                            Toast.show({
+                                type: "success",
+                                text1: "Error saving preset",
+                                text2: e.message ?? JSON.stringify(e)
+                            })
+                            setOpen(false)
+                        })
+                        .finally(() => {
+                            setSaving(false)
+
+                        })
+                }} disabled={saving}>
+                    <Text>Save</Text>
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>

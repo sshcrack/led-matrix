@@ -10,49 +10,58 @@ import useFetch from '../useFetch';
 import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Trash2 } from '~/lib/icons/Trash2';
+import { useSubConfig } from '../configShare/ConfigProvider';
 
 const providers = {
     "collection": CollectionProvider,
     "pages": PagesProvider
 }
 
-export default function GeneralProvider({ data, preset_id, scene_id, setData }: { data: ProviderValue[], preset_id: string, scene_id: string, setData: ReactSetState<ProviderValue[] | null> }) {
+export default function GeneralProvider({ preset_id, scene_id }: { preset_id: string, scene_id: string }) {
     const { data: providerData } = useFetch<ListProviders[]>(`/list_providers`)
+    const { config, setSubConfig } = useSubConfig<ProviderValue[] | null>(preset_id, ["scenes", scene_id, "arguments", "providers"])
+
     if (!providerData)
         return <Loader />
 
-    console.log("Data", data)
+
     return <View className="w-full flex-1">
-        {data.map((provider, index) => {
+        {config?.map((provider, index) => {
             const Provider = providers[provider.type as keyof typeof providers]
             if (!Provider)
                 return <Text key={index}>Unknown provider type: {provider.type}</Text>
 
             return <ProviderDataProvider key={index} data={provider} setData={x => {
                 if (typeof x === "function") {
-                    setData(e => {
+                    setSubConfig(e => {
                         if (!e)
                             return e
 
                         const copy = JSON.parse(JSON.stringify(e))
-                        copy[index] = x(copy[index])
+                        const res = x(copy[index]);
+                        if (!res)
+                            return e
 
+                        copy[index] = res
+
+                        console.log("Setting to", copy)
                         return copy
                     })
                 } else {
-                    if (!data)
+                    if (!config || !x)
                         return
 
-                    const copy = JSON.parse(JSON.stringify(data))
+                    const copy = JSON.parse(JSON.stringify(config))
                     copy[index] = x
 
-                    setData(copy)
+                    console.log("Setting to", copy)
+                    setSubConfig(copy)
                 }
             }}>
                 <View className='w-full flex-1'>
                     <View className="flex-row mb-5 items-center">
                         <Button size="icon" variant="ghost" className='mr-5' onPress={() => {
-                            setData(e => {
+                            setSubConfig(e => {
                                 if (!e)
                                     return e
 

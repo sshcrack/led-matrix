@@ -8,8 +8,8 @@ import { Input } from '../ui/input';
 export default function PagesProvider() {
     const { data: untypedData, setData } = useContext(ProviderDataContext);
     const data = untypedData as ApiPagesProvider | null;
-    const [pageBegin, setPageBegin] = useState(data?.arguments?.begin.toString() ?? "0");
-    const [pageEnd, setPageEnd] = useState(data?.arguments?.end.toString() ?? "-1");
+    const [pageBegin, setPageBegin] = useState(data?.arguments?.begin?.toString() ?? "0");
+    const [pageEnd, setPageEnd] = useState(data?.arguments?.end?.toString() ?? "-1");
 
     const onSave = () => {
         setData(e => {

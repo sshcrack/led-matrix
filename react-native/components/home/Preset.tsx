@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Share, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { RawPreset as ApiPreset } from '../apiTypes/list_presets';
 import { useApiUrl } from '../apiUrl/ApiUrlProvider';
@@ -8,6 +8,7 @@ import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
 import { Text } from '../ui/text';
+import { Download } from '~/lib/icons/Download';
 
 export type PresetProps = {
     preset: ApiPreset,
@@ -24,14 +25,22 @@ export default function Preset({ preset, name, isActive, setStatusRefresh, setPr
 
     return <Card className={`w-[20rem] border-[3px] ${isActive ? "border-green-400" : "border-gray-100"}`}>
         <CardHeader>
-            <Text
-                numberOfLines={1}
-                role='heading'
-                aria-level={3}
-                className='text-2xl text-card-foreground font-semibold leading-none tracking-tight truncate'
-            >
-                {name}
-            </Text>
+            <View className="flex-row justify-between align-center">
+                <Text
+                    numberOfLines={1}
+                    role='heading'
+                    aria-level={3}
+                    className='text-center text-2xl text-card-foreground font-semibold leading-none tracking-tight truncate'
+                >
+                    {name}
+                </Text>
+                <Pressable onPress={() => {
+                    const presetJson = JSON.stringify(preset)
+                    Share.share({
+                        message: presetJson
+                    })
+                }}><Download className="text-foreground"/></Pressable>
+            </View>
             <CardDescription>{preset.scenes.length} Scenes</CardDescription>
         </CardHeader>
         <CardContent className='gap-5'>

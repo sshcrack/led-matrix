@@ -6,6 +6,9 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, 
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Text } from '../ui/text';
+import { View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 export default function AddPresetButton({ presetNames, setRetry }: { presetNames: string[], setRetry: () => void }) {
     const apiUrl = useApiUrl()
@@ -33,39 +36,93 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                 <AlertDialogCancel>
                     <Text>Cancel</Text>
                 </AlertDialogCancel>
-                <Button onPress={() => {
-                    if (presetNames.includes(presetName)) {
-                        setErrorText("Preset already exists")
-                        return
-                    }
-
-                    setAdding(true)
-                    fetch(apiUrl + `/add_preset?id=${encodeURIComponent(presetName)}`, {
-                        method: "POST",
-                        body: JSON.stringify({ scenes: [] }),
-                        headers: {
-                            'Content-Type': 'application/json'
+                <View className="flex-row w-full">
+                    <Button className="flex-1 rounded-r-none" onPress={() => {
+                        if (presetNames.includes(presetName)) {
+                            setErrorText("Preset already exists")
+                            return
                         }
-                    })
-                        .then(async e => {
-                            if (!e.ok)
-                                throw new Error("Failed to add preset: " + (await e.json().catch(e => ({ error: "Unknown error" })))?.error)
+
+                        setAdding(true)
+                        fetch(apiUrl + `/add_preset?id=${encodeURIComponent(presetName)}`, {
+                            method: "POST",
+                            body: JSON.stringify({ scenes: [] }),
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
                         })
-                        .then(() => {
-                            presetNames.push(presetName)
-                            setPreset("")
-                            setOpen(false)
-                            setRetry()
+                            .then(async e => {
+                                if (!e.ok)
+                                    throw new Error("Failed to add preset: " + (await e.json().catch(e => ({ error: "Unknown error" })))?.error)
+                            })
+                            .then(() => {
+                                presetNames.push(presetName)
+                                setPreset("")
+                                setOpen(false)
+                                setRetry()
+                            })
+                            .catch(e => {
+                                setErrorText(`Error adding preset: ${e.message}`)
+                            })
+                            .finally(() => {
+                                setAdding(false)
+                            })
+                    }}>
+                        {adding ? <Loader /> : <Text>Add</Text>}
+                    </Button>
+                    <Button className="flex-1 rounded-l-none" variant="outline" onPress={() => {
+                        if (presetNames.includes(presetName)) {
+                            setErrorText("Preset already exists")
+                            return
+                        }
+
+                        setAdding(true)
+
+                        DocumentPicker.getDocumentAsync({
+                            multiple: false,
+                            type: "application/json"
                         })
-                        .catch(e => {
-                            setErrorText(`Error adding preset: ${e.message}`)
-                        })
-                        .finally(() => {
-                            setAdding(false)
-                        })
-                }}>
-                    {adding ? <Loader /> : <Text>Add</Text>}
-                </Button>
+                            .then(e => {
+                                if (e.canceled)
+                                    throw new Error("Cancelled")
+                                const asset = e.assets[0]
+                                if (asset.file)
+                                    return asset.file.text()
+
+                                return FileSystem.readAsStringAsync(asset.uri)
+                            })
+                            .then(e => {
+                                JSON.parse(e)
+
+                                return e
+                            })
+                            .then(e => fetch(apiUrl + `/add_preset?id=${encodeURIComponent(presetName)}`, {
+                                method: "POST",
+                                body: e,
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            }))
+                            .then(async e => {
+                                if (!e.ok)
+                                    throw new Error("Failed to add preset: " + (await e.json().catch(e => ({ error: "Unknown error" })))?.error)
+                            })
+                            .then(() => {
+                                presetNames.push(presetName)
+                                setPreset("")
+                                setOpen(false)
+                                setRetry()
+                            })
+                            .catch(e => {
+                                setErrorText(`Error adding preset: ${e.message}`)
+                            })
+                            .finally(() => {
+                                setAdding(false)
+                            })
+                    }}>
+                        {adding ? <Loader /> : <Text>Load from file</Text>}
+                    </Button>
+                </View>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
