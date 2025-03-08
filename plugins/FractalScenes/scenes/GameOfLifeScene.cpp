@@ -219,12 +219,6 @@ void GameOfLifeScene::load_properties(const json &j) {
     reset_simulation();
 }
 
-void GameOfLifeScene::after_render_stop(RGBMatrixBase *matrix) {
-    // Clear the screen when stopping
-    offscreen_canvas->Clear();
-    matrix->SwapOnVSync(offscreen_canvas);
-}
-
 std::unique_ptr<Scene, void (*)(Scene *)> GameOfLifeSceneWrapper::create() {
     return {
         new GameOfLifeScene(), [](Scene *scene) {

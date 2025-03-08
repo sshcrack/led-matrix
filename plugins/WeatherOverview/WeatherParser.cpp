@@ -184,12 +184,12 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
             auto min_temps = daily["temperature_2m_min"].get<std::vector<float> >();
             
             // Get precipitation probabilities if available
-            std::vector<float> precip_probs;
+            std::vector<int> precip_probs;
             if (daily.contains("precipitation_probability_max")) {
-                precip_probs = daily["precipitation_probability_max"].get<std::vector<float> >();
+                precip_probs = daily["precipitation_probability_max"].get<std::vector<int> >();
             } else {
                 // Fill with zeros if not available
-                precip_probs = std::vector<float>(dates.size(), 0.0f);
+                precip_probs = std::vector(dates.size(), 0);
             }
 
             size_t forecast_days = std::min({
@@ -202,7 +202,8 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
                 ForecastDay day;
                 day.day_name = get_day_name(dates[i]);
                 day.weatherCode = codes[i];
-                day.precipitation_chance = precip_probs[i];
+                // Percentage as float
+                day.precipitation_chance = precip_probs[i] / 100.0f;
 
                 // Get icon URL based on weather code
                 if (ICONS.contains(std::to_string(codes[i]))) {

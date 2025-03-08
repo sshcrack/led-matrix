@@ -23,8 +23,6 @@ namespace Scenes {
 
         string get_name() const override;
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
-
     protected:
         void register_properties() override;
 

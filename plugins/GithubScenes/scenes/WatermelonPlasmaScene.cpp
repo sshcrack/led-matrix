@@ -9,6 +9,7 @@ bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
     auto frameTime = frameTimer.tick();
     float t = frameTime.t;
 
+    offscreen_canvas->Clear();
     for (int y = 0; y < matrix->height(); y++) {
         for (int x = 0; x < matrix->width(); x++) {
             float xp =
@@ -31,7 +32,9 @@ bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
         }
     }
 
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+    if (should_render_frame())
+        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+
     return true;
 }
 

@@ -42,7 +42,7 @@ void Scenes::WeatherScene::renderCurrentWeather(const RGBMatrixBase *matrix, con
     // Draw the main weather icon
     if (images.has_value()) {
         SetImageTransparent(offscreen_canvas, 2, 12,
-                            images->currentIcon, data.color.r, data.color.g, data.color.b);
+                            images->currentIcon);
     }
 
     // Draw temperature in large font
@@ -53,34 +53,10 @@ void Scenes::WeatherScene::renderCurrentWeather(const RGBMatrixBase *matrix, con
 
     // Draw weather description with scroll effect if needed
     const std::string desc = data.description;
-    const int desc_width = BODY_FONT.CharacterWidth('A') * desc.length();
-    const int available_width = matrix->width() - temp_x;
-
     const int desc_y = temp_y + 14;
 
-    if (desc_width > available_width) {
-        // Handle text scrolling for long descriptions
-        const int start_pos = temp_x - scroll_position;
-        DrawText(offscreen_canvas, BODY_FONT, start_pos, desc_y,
-                 {220, 220, 255}, desc.c_str());
-
-        // Update scroll position for next frame
-        if (scroll_pause_counter > 0) {
-            scroll_pause_counter--;
-        } else {
-            scroll_position += scroll_direction;
-            if (scroll_position >= desc_width - available_width + 5) {
-                scroll_direction = -1;
-                scroll_pause_counter = SCROLL_PAUSE;
-            } else if (scroll_position <= 0) {
-                scroll_direction = 1;
-                scroll_pause_counter = SCROLL_PAUSE;
-            }
-        }
-    } else {
-        DrawText(offscreen_canvas, BODY_FONT, temp_x, desc_y,
-                 {220, 220, 255}, desc.c_str());
-    }
+    DrawText(offscreen_canvas, BODY_FONT, temp_x, desc_y,
+             {220, 220, 255}, desc.c_str());
 
     // Draw additional weather info
     constexpr int add_info_y = desc_y + 10;
@@ -115,7 +91,7 @@ void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const Wea
             // Draw forecast icon
             if (i < images->forecastIcons.size()) {
                 SetImageTransparent(offscreen_canvas, base_x + (forecast_width - FORECAST_ICON_SIZE) / 2 - 7, 79,
-                                    images->forecastIcons[i], data.color.r, data.color.g, data.color.b);
+                                    images->forecastIcons[i]);
             }
 
             // Draw min/max temperature
@@ -127,8 +103,8 @@ void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const Wea
             // Draw precipitation indicator if probability is significant
             if (day.precipitation_chance > 0.1f) {
                 // Position the indicator next to the temperature
-                const int indicator_x = base_x + forecast_width - 8;
-                const int indicator_y = 95;
+                const int indicator_x = base_x + 5;
+                const int indicator_y = 105;
 
                 // Draw the precipitation indicator
                 drawPrecipitationIndicator(matrix, day.precipitation_chance, indicator_x, indicator_y);
@@ -285,8 +261,8 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
             float x_variation = 1.0f + std::sin(x * 0.1f) * 0.05f;
 
             // Apply pulse animation
-            int pulse = (animation_frame < 30) ? animation_frame : 60 - animation_frame;
-            float pulse_factor = 1.0f + (pulse / 300.0f);
+            int pulse = (animation_frame < total_animation_frame_size / 2) ? animation_frame : total_animation_frame_size - animation_frame;
+            float pulse_factor = 1.0f + (pulse / (total_animation_frame_size * 5.0f));
 
             // Calculate final color
             uint8_t r = std::min(255.0f, base_color.r * gradient_factor * x_variation * pulse_factor);
@@ -309,7 +285,7 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
             const int y = std::get<1>(coords);
 
             // Make stars twinkle
-            const int brightness = 150 + (std::sin(animation_frame * 0.1f + i) + 1) * 50;
+            const int brightness = 150 + (std::sin(0.1f * animation_frame + i) + 1) * 50;
             offscreen_canvas->SetPixel(x, y, brightness, brightness, brightness);
         }
     }
@@ -346,22 +322,22 @@ void Scenes::WeatherScene::drawWeatherBorder(const RGBMatrixBase *matrix, const 
     }
 }
 
-void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matrix, float probability, int x,
-                                                      int y) const {
+void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matrix, const float probability, const int x,
+                                                      const int y) const {
     if (probability <= 0.05f) {
         return; // Don't show indicator for very low probability
     }
 
     // Draw a small droplet icon with size based on probability
-    const int max_size = 5;
-    int size = std::max(2, static_cast<int>(probability * max_size));
+    constexpr int max_size = 5;
+    const int size = std::max(2, static_cast<int>(probability * max_size));
 
     // Blue color with intensity based on probability
-    uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
+    const uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
 
     // Draw droplet shape
     for (int i = 0; i < size; i++) {
-        int width = std::max(1, i / 2);
+        const int width = std::max(1, i / 2);
         for (int j = -width; j <= width; j++) {
             offscreen_canvas->SetPixel(x + j, y + i,
                                        100, 150, intensity);
@@ -412,7 +388,7 @@ void Scenes::WeatherScene::renderSunriseSunset(const RGBMatrixBase *matrix, cons
 }
 
 void Scenes::WeatherScene::renderClock(const RGBMatrixBase *matrix) const {
-    const time_t timestamp = time(NULL);
+    const time_t timestamp = time(nullptr);
     const tm datetime = *localtime(&timestamp);
 
     char output[50];
@@ -428,11 +404,11 @@ void Scenes::WeatherScene::resetStars() {
         int x = rand() % (matrix_width + 1);
         int y = rand() % (matrix_height + 1);
 
-        stars.push_back(std::make_pair(x, y));
+        stars.emplace_back(x, y);
     }
 }
 
-RGB Scenes::WeatherScene::getThemeColor(ColorTheme theme, const WeatherData &data) const {
+RGB Scenes::WeatherScene::getThemeColor(const ColorTheme theme, const WeatherData &data) {
     switch (theme) {
         case ColorTheme::AUTO:
             return data.color; // Use the default color from weather data
@@ -549,21 +525,14 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
     }
 
     // Check if animation frame needs to be updated
-    tmillis_t current_time = GetTimeInMillis();
-    if (current_time - last_animation_time > ANIMATION_INTERVAL) {
-        animation_frame = (animation_frame + 1) % 60; // 60 frames for subtle animations
-        last_animation_time = current_time;
+    if (should_render_frame()) {
+        animation_frame = (animation_frame + 1) % total_animation_frame_size;
         should_update_display = true;
 
         // Update animation state periodically
         if (has_precipitation) {
             updateParticles(data);
         }
-    }
-
-    // Always update on scroll position changes
-    if (scroll_position > 0 || scroll_direction > 0) {
-        should_update_display = true;
     }
 
     // Update the display if needed
@@ -603,10 +572,6 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
 }
 
 void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix) {
-    // Reset scroll position when stopping render
-    scroll_position = 0;
-    scroll_direction = 1;
-    scroll_pause_counter = 0;
     resetStars();
     Scene::after_render_stop(matrix);
 }
