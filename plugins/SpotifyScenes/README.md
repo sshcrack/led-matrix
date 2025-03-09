@@ -33,7 +33,7 @@ SPOTIFY_CLIENT_SECRET=your_client_secret
 
 
 ## Notes
-
+- The [getsongbpm.com](https://getsongbpm.com/api) API for beat detection is optional but recommended.
 - The plugin requires an active internet connection
 - A premium Spotify account might be required for some features
 - The refresh token doesn't expire unless you revoke access
