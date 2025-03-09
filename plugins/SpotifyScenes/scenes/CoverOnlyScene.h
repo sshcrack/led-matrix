@@ -30,7 +30,6 @@ namespace Scenes {
         PropertyPointer<tmillis_t> cover_wait = MAKE_PROPERTY("cover_wait", tmillis_t, 1000);
         PropertyPointer<int> new_song_weight = MAKE_PROPERTY("weight_if_new_song", int, 100);
         PropertyPointer<float> zoom_factor = MAKE_PROPERTY("zoom_factor", float, 10.0f);
-        PropertyPointer<tmillis_t> fade_duration = MAKE_PROPERTY("fade_duration", tmillis_t, 1000);
 
         bool DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix);
 
@@ -39,19 +38,10 @@ namespace Scenes {
         std::optional<rgb_matrix::StreamReader> curr_reader;
         std::optional<std::pair<std::string, float>> curr_bpm;
 
-        // Store previous song info for cross-fading
-        std::optional<std::string> prev_track_id;
-        std::vector<Magick::Image> prev_frames;
-        bool is_fading = false;
-        tmillis_t fade_start_time = 0;
-
         std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrixBase *matrix);
         
-        // Performs cross-fade between previous and current song cover
-        bool perform_fade_transition(rgb_matrix::RGBMatrixBase *matrix);
-        
         // Beat detection simulation
-        std::chrono::time_point<std::chrono::steady_clock::now();
+        std::chrono::time_point<std::chrono::steady_clock> last_beat_time;
         std::deque<float> beat_intervals;
         float current_beat_intensity = 0.0f;
         float target_beat_intensity = 0.0f;
