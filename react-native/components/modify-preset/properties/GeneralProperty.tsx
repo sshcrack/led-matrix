@@ -11,6 +11,7 @@ type TypeMapping = {
     "bool": boolean,
     "int": number,
     "int16_t": number,
+    "uint8_t": number,
     "double": number,
     "float": number,
     "millis": number,
@@ -25,6 +26,7 @@ type PropertiesType = {
 
 const Properties: PropertiesType = {
     "int16_t": numberPropertyBuilder(-32768, 32767, "int"),
+    "uint8_t": numberPropertyBuilder(0, 255, "int"),
     "int": numberPropertyBuilder(-2147483648, 2147483647, "int"),
     "millis": numberPropertyBuilder(0, 4294967295, "int", true),
     // Float / Double

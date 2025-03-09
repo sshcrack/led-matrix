@@ -126,6 +126,8 @@ public:
             return "json";
         else if constexpr (std::is_same_v<T, int16_t>)
             return "int16_t";
+        else if constexpr (std::is_same_v<T, uint8_t>)
+            return "uint8_t";
         else
             return typeid(T).name();
     }

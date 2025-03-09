@@ -7,7 +7,7 @@ using Plugins::ImageProviderWrapper;
 using Plugins::BasicPlugin;
 
 namespace AmbientScenes {
-    class AmbientPlugin : public BasicPlugin {
+    class AmbientPlugin final : public BasicPlugin {
     public:
         AmbientPlugin();
 
