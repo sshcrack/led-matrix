@@ -14,7 +14,7 @@
 		96905EF65AED1B983A6B3ABC /* libPods-ledmatrix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-ledmatrix.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		3C7F29A86A7145B9B21DFB83 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901B92AA2B254987BD298A45 /* noop-file.swift */; };
+		43EBC2647AEE485DB7BDC8A4 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E0524FD19B4301B2AAF92B /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,8 +31,8 @@
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ledmatrix/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		901B92AA2B254987BD298A45 /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "ledmatrix/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
-		06E8D568D3014AF5AA6CB4C6 /* ledmatrix-Bridging-Header.h */ = {isa = PBXFileReference; name = "ledmatrix-Bridging-Header.h"; path = "ledmatrix/ledmatrix-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
+		C0E0524FD19B4301B2AAF92B /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "ledmatrix/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		B5B4AAB790CC4C338E3FA886 /* ledmatrix-Bridging-Header.h */ = {isa = PBXFileReference; name = "ledmatrix-Bridging-Header.h"; path = "ledmatrix/ledmatrix-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +57,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				901B92AA2B254987BD298A45 /* noop-file.swift */,
-				06E8D568D3014AF5AA6CB4C6 /* ledmatrix-Bridging-Header.h */,
+				C0E0524FD19B4301B2AAF92B /* noop-file.swift */,
+				B5B4AAB790CC4C338E3FA886 /* ledmatrix-Bridging-Header.h */,
 			);
 			name = ledmatrix;
 			sourceTree = "<group>";
@@ -198,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				10B29C388FE841A0AB410E1D /* ledmatrix-Bridging-Header.h in Resources */,
+				230D9E6DB11A44F6B98F39C5 /* ledmatrix-Bridging-Header.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,7 +274,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				3C7F29A86A7145B9B21DFB83 /* noop-file.swift in Sources */,
+				43EBC2647AEE485DB7BDC8A4 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

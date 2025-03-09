@@ -40,6 +40,7 @@ namespace Scenes {
         }
 
         virtual bool should_render_frame();
+        virtual void wait_until_next_frame();
 
         void add_property(const std::shared_ptr<PropertyBase> &property) {
             std::string name = property->getName();

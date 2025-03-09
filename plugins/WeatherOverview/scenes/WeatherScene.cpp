@@ -103,8 +103,8 @@ void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const Wea
             // Draw precipitation indicator if probability is significant
             if (day.precipitation_chance > 0.1f) {
                 // Position the indicator next to the temperature
-                const int indicator_x = base_x + 5;
-                const int indicator_y = 105;
+                const int indicator_x = base_x + forecast_width - 8;
+                const int indicator_y = 95;
 
                 // Draw the precipitation indicator
                 drawPrecipitationIndicator(matrix, day.precipitation_chance, indicator_x, indicator_y);
@@ -261,8 +261,8 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
             float x_variation = 1.0f + std::sin(x * 0.1f) * 0.05f;
 
             // Apply pulse animation
-            int pulse = (animation_frame < total_animation_frame_size / 2) ? animation_frame : total_animation_frame_size - animation_frame;
-            float pulse_factor = 1.0f + (pulse / (total_animation_frame_size * 5.0f));
+            int pulse = (animation_frame < 30) ? animation_frame : 60 - animation_frame;
+            float pulse_factor = 1.0f + (pulse / 300.0f);
 
             // Calculate final color
             uint8_t r = std::min(255.0f, base_color.r * gradient_factor * x_variation * pulse_factor);
@@ -322,22 +322,22 @@ void Scenes::WeatherScene::drawWeatherBorder(const RGBMatrixBase *matrix, const 
     }
 }
 
-void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matrix, const float probability, const int x,
-                                                      const int y) const {
+void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matrix, float probability, int x,
+                                                      int y) const {
     if (probability <= 0.05f) {
         return; // Don't show indicator for very low probability
     }
 
     // Draw a small droplet icon with size based on probability
-    constexpr int max_size = 5;
-    const int size = std::max(2, static_cast<int>(probability * max_size));
+    const int max_size = 5;
+    int size = std::max(2, static_cast<int>(probability * max_size));
 
     // Blue color with intensity based on probability
-    const uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
+    uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
 
     // Draw droplet shape
     for (int i = 0; i < size; i++) {
-        const int width = std::max(1, i / 2);
+        int width = std::max(1, i / 2);
         for (int j = -width; j <= width; j++) {
             offscreen_canvas->SetPixel(x + j, y + i,
                                        100, 150, intensity);
@@ -526,7 +526,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
 
     // Check if animation frame needs to be updated
     if (should_render_frame()) {
-        animation_frame = (animation_frame + 1) % total_animation_frame_size;
+        animation_frame = (animation_frame + 1) % get_target_fps(); // 60 frames for subtle animations
         should_update_display = true;
 
         // Update animation state periodically

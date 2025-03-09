@@ -9,7 +9,6 @@ private:
     const nlohmann::json state_json;
     SpotifyTrack track;
 
-
 public:
     explicit SpotifyState(nlohmann::json state_json);
 

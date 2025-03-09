@@ -8,24 +8,13 @@ This plugin displays current weather information and forecasts on your LED Matri
 - Displays weather forecasts
 - Customizable location settings
 
-## Configuration
-
-The plugin requires location coordinates to fetch accurate weather data:
-
-```json
-{
-  "pluginConfigs": {
-    "weatherLat": "52.5200",  // Latitude (default: Berlin)
-    "weatherLon": "13.4050"   // Longitude (default: Berlin)
-  }
-}
-```
 
 ## Font Configuration
 
 The plugin uses BDF fonts to display text:
 - Header font: 7x13.bdf 
 - Body font: 5x8.bdf
+- Small font: 4x6.bdf
 
 You can set a custom directory for fonts by using the environment variable:
 ```
