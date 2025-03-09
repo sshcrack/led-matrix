@@ -96,139 +96,7 @@ void CoverOnlyScene::update_beat_simulation() {
     current_beat_intensity = current_beat_intensity * 0.7f + target_beat_intensity * 0.3f;
 }
 
-bool CoverOnlyScene::perform_fade_transition(rgb_matrix::RGBMatrixBase *matrix) {
-    if (!prev_frames.empty() && curr_info) {
-        tmillis_t current_time = GetTimeInMillis();
-        tmillis_t elapsed = current_time - fade_start_time;
-        
-        // Calculate fade progress (0.0 to 1.0)
-        float fade_progress = std::min(1.0f, (float)elapsed / fade_duration->get());
-        
-        // Create a frame canvas for blending
-        rgb_matrix::FrameCanvas* canvas = matrix->CreateFrameCanvas();
-        
-        // First display the previous frame
-        auto& prev_img = prev_frames[0];
-        Magick::Image blend(Magick::Geometry(matrix->width(), matrix->height()), Magick::Color("black"));
-        
-        // Get current frame from the new song
-        uint32_t delay_us = 0;
-        if (!curr_reader) {
-            rgb_matrix::StreamReader temp(curr_info->get()->content_stream);
-            curr_reader.emplace(temp);
-        }
-        
-        // Get the first frame of the new cover
-        if (!curr_reader->GetNext(offscreen_canvas, &delay_us)) {
-            curr_reader->Rewind();
-            if (!curr_reader->GetNext(offscreen_canvas, &delay_us)) {
-                return false;
-            }
-        }
-        
-        // Create a temporary canvas to capture the current frame
-        rgb_matrix::FrameCanvas* temp_canvas = matrix->CreateFrameCanvas();
-        temp_canvas->CopyFrom(offscreen_canvas);
-        
-        // Draw the previous song frame with decreasing opacity
-        Magick::Image prev_blend = prev_img;
-        try {
-            prev_blend.opacity((unsigned)(fade_progress * 65535)); // 0 = opaque, 65535 = transparent
-        } catch (const std::exception &e) {
-            trace("Failed to set opacity: {}", e.what());
-        }
-        
-        StoreInCanvas(prev_blend, canvas);
-        
-        // Draw the new song frame with increasing opacity
-        for (int y = 0; y < matrix->height(); y++) {
-            for (int x = 0; x < matrix->width(); x++) {
-                uint8_t r1, g1, b1;
-                uint8_t r2, g2, b2;
-                
-                // Get color from previous frame
-                canvas->GetPixel(x, y, &r1, &g1, &b1);
-                
-                // Get color from new frame
-                temp_canvas->GetPixel(x, y, &r2, &g2, &b2);
-                
-                // Blend colors based on fade progress
-                uint8_t r = r1 * (1.0f - fade_progress) + r2 * fade_progress;
-                uint8_t g = g1 * (1.0f - fade_progress) + g2 * fade_progress;
-                uint8_t b = b1 * (1.0f - fade_progress) + b2 * fade_progress;
-                
-                canvas->SetPixel(x, y, r, g, b);
-            }
-        }
-        
-        // Apply the progress indicator on top of the blended image
-        auto progress_opt = curr_state->get_progress();
-        if (progress_opt.has_value()) {
-            float progress = progress_opt.value();
-            int max_x = matrix->width();
-            int max_y = matrix->height();
-            
-            // Draw progress indicators on the faded image (similar to DisplaySpotifySong)
-            int perimeter = 2 * max_x + 2 * max_y - 4;
-            int pixels_to_fill = static_cast<int>(perimeter * progress);
-            int pixels_filled = 0;
-            
-            // Draw the progress indicators
-            // Top edge (left to right)
-            for (int x = 0; x < max_x && pixels_filled < pixels_to_fill; x++) {
-                rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-                canvas->SetPixel(x, 0, color.r, color.g, color.b);
-                pixels_filled++;
-            }
-            
-            // Right edge (top to bottom)
-            for (int y = 1; y < max_y && pixels_filled < pixels_to_fill; y++) {
-                rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-                canvas->SetPixel(max_x - 1, y, color.r, color.g, color.b);
-                pixels_filled++;
-            }
-            
-            // Bottom edge (right to left)
-            for (int x = max_x - 2; x >= 0 && pixels_filled < pixels_to_fill; x--) {
-                rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-                canvas->SetPixel(x, max_y - 1, color.r, color.g, color.b);
-                pixels_filled++;
-            }
-            
-            // Left edge (bottom to top)
-            for (int y = max_y - 2; y >= 1 && pixels_filled < pixels_to_fill; y--) {
-                rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-                canvas->SetPixel(0, y, color.r, color.g, color.b);
-                pixels_filled++;
-            }
-        }
-        
-        // Display the blended canvas
-        canvas = matrix->SwapOnVSync(canvas);
-        
-        // If fade is complete, end the transition
-        if (fade_progress >= 1.0f) {
-            is_fading = false;
-            prev_frames.clear();
-            return true;
-        }
-        
-        // Wait a bit to create a smooth transition
-        SleepMillis(16); // ~60fps
-        return true;
-    }
-    
-    // If we don't have previous frames, end the transition
-    is_fading = false;
-    return false;
-}
-
 bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
-    // If we're in a fade transition, handle it
-    if (is_fading) {
-        return perform_fade_transition(matrix);
-    }
-
     if (!curr_reader) {
         rgb_matrix::StreamReader temp(curr_info->get()->content_stream);
         curr_reader.emplace(temp);
@@ -354,48 +222,6 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrixBase *m
     if (curr_state.has_value() && curr_state->get_track().get_id() == temp.value().get_track().get_id()) {
         curr_state.emplace(temp.value());
         return {};
-    }
-
-    // Store the previous track id and prepare for transition
-    if (curr_state.has_value()) {
-        auto prev_track_id_opt = curr_state->get_track().get_id();
-        if (prev_track_id_opt.has_value()) {
-            // Save the current cover for fading
-            prev_track_id = prev_track_id_opt;
-            
-            // Store the current frame for fading
-            if (!curr_info) {
-                // If we don't have a current frame, we can't fade
-                prev_frames.clear();
-            } else {
-                // Capture the current image for cross-fade
-                prev_frames.clear();
-                
-                // Create a snapshot of the current display
-                Magick::Image snapshot(Magick::Geometry(matrix->width(), matrix->height()), Magick::Color("black"));
-                
-                // If we have a valid reader and frame, use it
-                if (curr_reader) {
-                    uint32_t delay_us;
-                    rgb_matrix::FrameCanvas* temp_canvas = matrix->CreateFrameCanvas();
-                    if (curr_reader->GetNext(temp_canvas, &delay_us)) {
-                        // Convert the canvas to a Magick image
-                        for (int y = 0; y < matrix->height(); y++) {
-                            for (int x = 0; x < matrix->width(); x++) {
-                                uint8_t r, g, b;
-                                temp_canvas->GetPixel(x, y, &r, &g, &b);
-                                snapshot.pixelColor(x, y, Magick::ColorRGB(r/255.0, g/255.0, b/255.0));
-                            }
-                        }
-                        prev_frames.push_back(snapshot);
-                    }
-                }
-            }
-            
-            // Set fade start time to now
-            fade_start_time = GetTimeInMillis();
-            is_fading = true;
-        }
     }
 
     curr_state.emplace(temp.value());
@@ -541,5 +367,4 @@ void CoverOnlyScene::register_properties() {
     add_property(cover_wait);
     add_property(new_song_weight);
     add_property(zoom_factor);
-    add_property(fade_duration);
 }
