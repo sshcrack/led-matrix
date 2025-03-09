@@ -1,5 +1,6 @@
+#pragma once
+
 #include <atomic>
-#include <optional>
 #include <nlohmann/json.hpp>
 #include "shared/config/MainConfig.h"
 

@@ -279,7 +279,7 @@ void Spotify::start_control_thread() {
                 auto id_opt = state.get_track().get_id();
 
                 if (id_opt.has_value())
-                    spdlog::debug("Currently playing: {}", id_opt.value());
+                    spdlog::trace("Currently playing: {}", id_opt.value());
 
                 this->currently_playing.emplace(state);
 

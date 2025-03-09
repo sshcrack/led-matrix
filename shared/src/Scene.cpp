@@ -7,7 +7,7 @@
 
 using namespace spdlog;
 
-std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> Scenes::Scene::from_json(const nlohmann::json &j) {
+std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> Scenes::Scene::from_json(const nlohmann::json &j) {
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
 
@@ -50,7 +50,7 @@ bool Scenes::Scene::is_initialized() const {
 
 nlohmann::json Scenes::Scene::to_json() const {
     nlohmann::json j;
-    for (const auto& item: properties) {
+    for (const auto &item: properties) {
         item->dump_to_json(j);
     }
 
@@ -65,8 +65,7 @@ int Scenes::Scene::get_weight() const {
     return weight->get();
 }
 
-bool Scenes::Scene::should_render_frame()
-{
+bool Scenes::Scene::should_render_frame() {
     tmillis_t step = 1000 / target_fps;
     tmillis_t current_time = GetTimeInMillis();
 
@@ -78,13 +77,28 @@ bool Scenes::Scene::should_render_frame()
     return false;
 }
 
-Scenes::Scene::Scene()
-{
+void Scenes::Scene::wait_until_next_frame() {
+    tmillis_t step = 1000 / target_fps;
+    tmillis_t current_time = GetTimeInMillis();
+
+
+    if (last_render_time + step < current_time) {
+        last_render_time = current_time;
+        return;
+    }
+
+    SleepMillis(last_render_time + step - current_time);
+    last_render_time = current_time;
+
+}
+
+Scenes::Scene::Scene() {
     add_property(weight);
     add_property(duration);
 }
 
-void Scenes::Scene::after_render_stop(RGBMatrixBase *matrix) {}
+void Scenes::Scene::after_render_stop(RGBMatrixBase *matrix) {
+}
 
 void Scenes::Scene::load_properties(const json &j) {
     for (const auto &item: properties) {

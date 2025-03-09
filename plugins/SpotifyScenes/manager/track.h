@@ -7,7 +7,9 @@ const nlohmann::json track_json;
 
 public:
     explicit SpotifyTrack(nlohmann::json track_json);
-    std::optional<long> get_duration();
-    std::optional<std::string> get_id();
-    std::optional<std::string> get_cover();
+    std::optional<long> get_duration() const;
+    std::optional<std::string> get_id() const;
+    std::optional<std::string> get_cover() const;
+    std::optional<std::string> get_song_name() const;
+    std::optional<std::string> get_artist_name() const;
 };
