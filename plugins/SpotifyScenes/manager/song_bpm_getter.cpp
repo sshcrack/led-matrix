@@ -6,18 +6,16 @@
 #include <shared/utils/shared.h>
 #include <spdlog/spdlog.h>
 #include <cpr/cpr.h>
+#include <expected>
 #include <cpr/util.h>
 
 using cpr::util::urlEncode;
 
-float SongBpmApi::get_bpm(const std::string &song_name, const std::string &artist_name) {
+std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, const std::string &artist_name) {
     const auto api_key_entry = config->get_plugin_configs().find("song_bpm_api_key");
 
     if (api_key_entry == config->get_plugin_configs().end()) {
-        spdlog::error("No API key found for SongBPM API (must be defined in pluginConfigs.song_bpm_api_key)");
-
-        // Returning default BPM
-        return 120.0f;
+        return std::unexpected("No API key found for SongBPM API (must be defined in pluginConfigs.song_bpm_api_key)");
     }
 
     const auto str_url = "https://api.getsong.co/search/?type=both&limit=1&lookup=song:" + urlEncode(song_name) +
@@ -26,27 +24,25 @@ float SongBpmApi::get_bpm(const std::string &song_name, const std::string &artis
 
     auto response = cpr::Get(url);
     if (response.status_code != 200) {
-        spdlog::error("Could not fetch song BPM: {}", response.text);
-
         // Returning default BPM
-        goto return_default;
+        return std::unexpected("Could not fetch song BPM: " + response.text);
     }
 
     try {
         const json j = nlohmann::json::parse(response.text);
         if (!j.contains("search") || !j["search"].is_array())
-            goto return_default;
+            return unexpected("Couldn't find song (most probably)");
 
         const std::vector<json> &search = j["search"];
-        if (search.size() == 0 || !search[0].contains("tempo") || !search[0]["tempo"].is_number())
-            goto return_default;
+        if (search.empty() || !search[0].contains("tempo") || !(search[0]["tempo"].is_string()))
+            return unexpected("Invalid JSON returned: " + j.dump());
 
-        float s = search[0]["tempo"];
+        std::string s = search[0]["tempo"];
         spdlog::trace("Got BPM {}", s);
 
-        return search[0]["tempo"];
+        return std::stof(s);
     } catch (const std::exception &e) {
-        spdlog::error("Could not parse song BPM response: {}", e.what());
+        return unexpected("Could not parse song BPM response: " + string(e.what()));
     }
 
 return_default:

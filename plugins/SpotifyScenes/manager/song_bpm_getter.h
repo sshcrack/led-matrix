@@ -3,10 +3,12 @@
 //
 
 #pragma once
+#include <expected>
 #include <string>
 
 
 class SongBpmApi {
 public:
-    [[nodiscard]] static float get_bpm(const std::string &song_name, const std::string &artist_name);
+    [[nodiscard]] static std::expected<float, std::string> get_bpm(const std::string &song_name,
+                                                                   const std::string &artist_name);
 };

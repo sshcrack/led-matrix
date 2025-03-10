@@ -30,25 +30,28 @@ namespace Scenes {
         PropertyPointer<tmillis_t> cover_wait = MAKE_PROPERTY("cover_wait", tmillis_t, 1000);
         PropertyPointer<int> new_song_weight = MAKE_PROPERTY("weight_if_new_song", int, 100);
         PropertyPointer<float> zoom_factor = MAKE_PROPERTY("zoom_factor", float, 10.0f);
+        PropertyPointer<bool> sync_with_beat = MAKE_PROPERTY("sync_with_beat", bool, true);
+        PropertyPointer<float> beat_sync_slowdown_factor = MAKE_PROPERTY("beat_sync_slowdown_factor", float, 1.0f);
+        PropertyPointer<float> beat_sync_slowdown_threshold = MAKE_PROPERTY("beat_sync_slowdown_threshold", float, 110.0f);
 
         bool DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix);
 
         std::optional<std::unique_ptr<SpotifyFileInfo, void (*)(SpotifyFileInfo *)>> curr_info;
         std::optional<SpotifyState> curr_state;
         std::optional<rgb_matrix::StreamReader> curr_reader;
-        std::optional<std::pair<std::string, float>> curr_bpm;
+        float curr_bpm = 120.0f;
 
         std::expected<void, std::string> refresh_info(rgb_matrix::RGBMatrixBase *matrix);
-        
+
         // Beat detection simulation
         std::chrono::time_point<std::chrono::steady_clock> last_beat_time;
         std::deque<float> beat_intervals;
         float current_beat_intensity = 0.0f;
         float target_beat_intensity = 0.0f;
-        
+
         // Simulates a beat based on song progress and tempo
         void update_beat_simulation();
-        
+
         // Returns the current beat intensity (0.0 to 1.0)
         float get_beat_intensity() const { return current_beat_intensity; }
 
