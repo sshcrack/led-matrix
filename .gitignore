@@ -10,3 +10,4 @@ images
 memory_profiler.sh
 heaptrack.sh
 .env
+emulator_build
