@@ -54,14 +54,13 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
     try {
         spdlog::enable_backtrace(20);
         json = nlohmann::json::parse(str_data);
-        spdlog::info("Full JSON is " + str_data);
 
         // Check if required objects exist
         if (!json.contains("current") || !json.contains("current_units") || !json.contains("daily")) {
             return std::unexpected("Missing required fields in weather data");
         }
 
-        spdlog::debug("Getting current");
+        spdlog::trace("Getting current");
         auto curr = json.at("current");
         if (curr.is_null()) {
             return std::unexpected("Current weather data is null");

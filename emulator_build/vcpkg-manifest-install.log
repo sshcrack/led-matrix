@@ -1,0 +1,58 @@
+Detecting compiler hash for triplet x64-linux...
+Compiler found: /usr/bin/c++
+All requested packages are currently installed.
+Total install time: 324 us
+cpr provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(cpr CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE cpr::cpr)
+
+The package fmt provides CMake targets:
+
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt)
+
+    # Or use the header-only version
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt-header-only)
+
+graphicsmagick provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE unofficial::graphicsmagick::graphicsmagick)
+
+The package libxml2 is compatible with built-in CMake targets:
+
+    find_package(LibXml2 REQUIRED)
+    target_link_libraries(main PRIVATE LibXml2::LibXml2)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+restinio provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(restinio CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE restinio::restinio)
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+

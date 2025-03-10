@@ -207,7 +207,10 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
 bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
     auto temp = this->refresh_info(matrix);
     if (!temp) {
-        error("Could not get spotify cover image: '{}'", temp.error());
+        // Don't log the error if nothing is playing
+        if (temp.error() != "Nothing currently playing")
+            error("Could not get spotify cover image: '{}'", temp.error());
+
         return false;
     }
 

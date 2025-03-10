@@ -8,6 +8,8 @@ if(USE_EMULATOR)
     add_definitions(-DUSE_EMULATOR)
 endif()
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2/picosha2.h ${CMAKE_CURRENT_SOURCE_DIR}/include/shared/picosha2.h COPYONLY)
+
 add_library(${PROJECT_NAME} SHARED
         src/shared/config/data.cpp
         src/Scene.cpp

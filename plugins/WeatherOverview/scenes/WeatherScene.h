@@ -15,6 +15,17 @@ namespace Scenes {
         bool active;
     };
     
+    // Struct for shooting stars
+    struct ShootingStar {
+        float x;
+        float y;
+        float dx;
+        float dy;
+        float tail_length;
+        float brightness;
+        bool active;
+    };
+    
     // Color themes for the weather display
     enum class ColorTheme {
         AUTO = 0,       // Automatic based on weather/time
@@ -32,6 +43,10 @@ namespace Scenes {
         int total_animation_frame_size = 180;
 
         vector<std::pair<int, int>> stars;
+        
+        // Shooting stars
+        std::vector<ShootingStar> shooting_stars;
+        std::chrono::steady_clock::time_point last_shooting_star_time = std::chrono::steady_clock::now();
 
         // Color transition variables for smoother day/night changes
         RGB current_display_color{0, 0, 0};
@@ -72,6 +87,11 @@ namespace Scenes {
         void initializeParticles();
         void updateParticles(const WeatherData &data);
         
+        // Shooting star methods
+        void updateShootingStars();
+        void renderShootingStars();
+        void tryCreateShootingStar();
+        
         // Shared rendering utilities
         static RGB interpolateColor(const RGB &start, const RGB &end, float progress) ;
         void applyBackgroundEffects(const RGBMatrixBase *matrix, const RGB &base_color);
@@ -92,6 +112,9 @@ namespace Scenes {
         PropertyPointer<bool> gradient_background = MAKE_PROPERTY("gradient_background", bool, true);
         PropertyPointer<bool> show_sunrise_sunset = MAKE_PROPERTY("show_sunrise_sunset", bool, true);
         PropertyPointer<int> color_theme = MAKE_PROPERTY("color_theme", int, 0); // Default to AUTO
+        PropertyPointer<bool> reset_stars_on_exit = MAKE_PROPERTY("reset_stars_on_exit", bool, true);
+        PropertyPointer<int> shooting_star_chance = MAKE_PROPERTY("shooting_star_chance", int, 2); // Default 2%
+        PropertyPointer<int> shooting_star_frame_threshold = MAKE_PROPERTY_MINMAX("shooting_star_random_chance_frame_count", int, 0, 0, get_target_fps()); // Default 2%
 
     public:
         bool render(RGBMatrixBase *matrix) override;
@@ -110,6 +133,9 @@ namespace Scenes {
             add_property(gradient_background);
             add_property(show_sunrise_sunset);
             add_property(color_theme);
+            add_property(reset_stars_on_exit);
+            add_property(shooting_star_chance);
+            add_property(shooting_star_frame_threshold);
         }
 
         using Scene::Scene;

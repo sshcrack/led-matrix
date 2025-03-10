@@ -12,9 +12,7 @@
 using cpr::util::urlEncode;
 
 std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, const std::string &artist_name) {
-    const auto api_key_entry = config->get_plugin_configs().find("song_bpm_api_key");
-
-    if (api_key_entry == config->get_plugin_configs().end()) {
+    if (!config->get_plugin_configs().contains("song_bpm_api_key")) {
         return std::unexpected("No API key found for SongBPM API (must be defined in pluginConfigs.song_bpm_api_key)");
     }
 
@@ -31,7 +29,7 @@ std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, c
     try {
         const json j = nlohmann::json::parse(response.text);
         if (!j.contains("search") || !j["search"].is_array())
-            return unexpected("Couldn't find song (most probably)");
+            return unexpected("Couldn't find song (most probably):" + response.text);
 
         const std::vector<json> &search = j["search"];
         if (search.empty() || !search[0].contains("tempo") || !(search[0]["tempo"].is_string()))

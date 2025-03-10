@@ -11,7 +11,7 @@
 #include <shared/server/server_utils.h>
 #include <shared/utils/consts.h>
 
-#include "../../shared/PicoSHA2/picosha2.h"
+#include "shared/picosha2.h"
 
 using std::vector;
 using namespace ImageProviders;

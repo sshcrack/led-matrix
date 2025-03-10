@@ -1,0 +1,937 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "plugins/libSpotifyScenes.so"
+		}
+	],
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"install",
+			"target_link_libraries",
+			"include",
+			"set_target_properties",
+			"_find_package",
+			"find_package",
+			"set_property",
+			"find_dependency",
+			"target_compile_features"
+		],
+		"files" : 
+		[
+			"/home/hendrik/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"plugins/CMakeLists.txt",
+			"plugins/SpotifyScenes/CMakeLists.txt",
+			"emulator_build/vcpkg_installed/x64-linux/share/unofficial-graphicsmagick/unofficial-graphicsmagick-targets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/unofficial-graphicsmagick/unofficial-graphicsmagick-config.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/tiff/vcpkg-cmake-wrapper.cmake",
+			"/usr/share/cmake-3.25/Modules/CMakeFindDependencyMacro.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/freetype/freetype-targets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/freetype/freetype-config.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/freetype/vcpkg-cmake-wrapper.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/WebP/WebPTargets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/WebP/WebPConfig.cmake",
+			"/usr/share/cmake-3.25/Modules/FindPNG.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/png/vcpkg-cmake-wrapper.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/spdlog/spdlogConfigTargets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/spdlog/spdlogConfig.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/restinio/restinio-targets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/restinio/restinio-config.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/curl/CURLConfig.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/curl/vcpkg-cmake-wrapper.cmake",
+			"plugins/PixelJoint/CMakeLists.txt",
+			"emulator_build/vcpkg_installed/x64-linux/share/cpr/cprTargets.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/cpr/cprConfig.cmake",
+			"/usr/share/cmake-3.25/Modules/FindOpenSSL.cmake",
+			"emulator_build/vcpkg_installed/x64-linux/share/openssl/vcpkg-cmake-wrapper.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 28,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 639,
+				"parent" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 61,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 42,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 47,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 55,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 58,
+				"parent" : 0
+			},
+			{
+				"file" : 2,
+				"parent" : 7
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 4,
+				"parent" : 8
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 10,
+				"parent" : 8
+			},
+			{
+				"command" : 7,
+				"file" : 1,
+				"line" : 41,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 859,
+				"parent" : 11
+			},
+			{
+				"file" : 4,
+				"parent" : 12
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 11,
+				"parent" : 13
+			},
+			{
+				"file" : 3,
+				"parent" : 14
+			},
+			{
+				"command" : 5,
+				"file" : 3,
+				"line" : 60,
+				"parent" : 15
+			},
+			{
+				"command" : 9,
+				"file" : 4,
+				"line" : 7,
+				"parent" : 13
+			},
+			{
+				"command" : 7,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 17
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 813,
+				"parent" : 18
+			},
+			{
+				"file" : 5,
+				"parent" : 19
+			},
+			{
+				"command" : 8,
+				"file" : 5,
+				"line" : 116,
+				"parent" : 20
+			},
+			{
+				"command" : 9,
+				"file" : 4,
+				"line" : 8,
+				"parent" : 13
+			},
+			{
+				"command" : 7,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 22
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 813,
+				"parent" : 23
+			},
+			{
+				"file" : 9,
+				"parent" : 24
+			},
+			{
+				"command" : 6,
+				"file" : 9,
+				"line" : 6,
+				"parent" : 25
+			},
+			{
+				"file" : 8,
+				"parent" : 26
+			},
+			{
+				"command" : 4,
+				"file" : 8,
+				"line" : 1,
+				"parent" : 27
+			},
+			{
+				"file" : 7,
+				"parent" : 28
+			},
+			{
+				"command" : 5,
+				"file" : 7,
+				"line" : 69,
+				"parent" : 29
+			},
+			{
+				"command" : 5,
+				"file" : 7,
+				"line" : 61,
+				"parent" : 29
+			},
+			{
+				"command" : 8,
+				"file" : 9,
+				"line" : 74,
+				"parent" : 25
+			},
+			{
+				"command" : 8,
+				"file" : 9,
+				"line" : 75,
+				"parent" : 25
+			},
+			{
+				"command" : 9,
+				"file" : 4,
+				"line" : 9,
+				"parent" : 13
+			},
+			{
+				"command" : 7,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 34
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 859,
+				"parent" : 35
+			},
+			{
+				"file" : 11,
+				"parent" : 36
+			},
+			{
+				"command" : 4,
+				"file" : 11,
+				"line" : 36,
+				"parent" : 37
+			},
+			{
+				"file" : 10,
+				"parent" : 38
+			},
+			{
+				"command" : 5,
+				"file" : 10,
+				"line" : 76,
+				"parent" : 39
+			},
+			{
+				"command" : 9,
+				"file" : 4,
+				"line" : 6,
+				"parent" : 13
+			},
+			{
+				"command" : 7,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 41
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 813,
+				"parent" : 42
+			},
+			{
+				"file" : 13,
+				"parent" : 43
+			},
+			{
+				"command" : 6,
+				"file" : 13,
+				"line" : 3,
+				"parent" : 44
+			},
+			{
+				"file" : 12,
+				"parent" : 45
+			},
+			{
+				"command" : 8,
+				"file" : 12,
+				"line" : 122,
+				"parent" : 46
+			},
+			{
+				"command" : 7,
+				"file" : 1,
+				"line" : 46,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 859,
+				"parent" : 48
+			},
+			{
+				"file" : 15,
+				"parent" : 49
+			},
+			{
+				"command" : 4,
+				"file" : 15,
+				"line" : 42,
+				"parent" : 50
+			},
+			{
+				"file" : 14,
+				"parent" : 51
+			},
+			{
+				"command" : 5,
+				"file" : 14,
+				"line" : 60,
+				"parent" : 52
+			},
+			{
+				"command" : 7,
+				"file" : 1,
+				"line" : 50,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 859,
+				"parent" : 54
+			},
+			{
+				"file" : 17,
+				"parent" : 55
+			},
+			{
+				"command" : 4,
+				"file" : 17,
+				"line" : 59,
+				"parent" : 56
+			},
+			{
+				"file" : 16,
+				"parent" : 57
+			},
+			{
+				"command" : 5,
+				"file" : 16,
+				"line" : 60,
+				"parent" : 58
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 38,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 58,
+				"parent" : 0
+			},
+			{
+				"file" : 20,
+				"parent" : 61
+			},
+			{
+				"command" : 7,
+				"file" : 20,
+				"line" : 3,
+				"parent" : 62
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 813,
+				"parent" : 63
+			},
+			{
+				"file" : 19,
+				"parent" : 64
+			},
+			{
+				"command" : 6,
+				"file" : 19,
+				"line" : 11,
+				"parent" : 65
+			},
+			{
+				"file" : 18,
+				"parent" : 66
+			},
+			{
+				"command" : 5,
+				"file" : 18,
+				"line" : 88,
+				"parent" : 67
+			},
+			{
+				"command" : 7,
+				"file" : 20,
+				"line" : 10,
+				"parent" : 62
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 859,
+				"parent" : 69
+			},
+			{
+				"file" : 22,
+				"parent" : 70
+			},
+			{
+				"command" : 4,
+				"file" : 22,
+				"line" : 30,
+				"parent" : 71
+			},
+			{
+				"file" : 21,
+				"parent" : 72
+			},
+			{
+				"command" : 5,
+				"file" : 21,
+				"line" : 60,
+				"parent" : 73
+			},
+			{
+				"command" : 9,
+				"file" : 18,
+				"line" : 59,
+				"parent" : 67
+			},
+			{
+				"command" : 7,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 75
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 813,
+				"parent" : 76
+			},
+			{
+				"file" : 24,
+				"parent" : 77
+			},
+			{
+				"command" : 6,
+				"file" : 24,
+				"line" : 37,
+				"parent" : 78
+			},
+			{
+				"file" : 23,
+				"parent" : 79
+			},
+			{
+				"command" : 5,
+				"file" : 23,
+				"line" : 686,
+				"parent" : 80
+			},
+			{
+				"command" : 10,
+				"file" : 1,
+				"line" : 33,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-O2 -g -DNDEBUG -fPIC"
+				},
+				{
+					"fragment" : "-std=gnu++23"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 10,
+					"define" : "CURL_STATICLIB"
+				},
+				{
+					"backtrace" : 60,
+					"define" : "ENABLE_EMULATOR"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "SPDLOG_COMPILED_LIB"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "SPDLOG_FMT_EXTERNAL"
+				},
+				{
+					"define" : "SpotifyScenes_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 60,
+					"path" : "/home/hendrik/Documents/cpp/led-matrix/rpi-rgb-led-matrix/include"
+				},
+				{
+					"backtrace" : 6,
+					"path" : "/home/hendrik/Documents/cpp/led-matrix/shared/include"
+				},
+				{
+					"backtrace" : 4,
+					"isSystem" : true,
+					"path" : "/home/hendrik/Documents/cpp/led-matrix/emulator_build/vcpkg_installed/x64-linux/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					82,
+					5
+				],
+				"standard" : "23"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 60,
+			"id" : "rpi-rgb-led-matrix::@ae24d9c57a2385e7ca3d"
+		},
+		{
+			"backtrace" : 6,
+			"id" : "SharedTools::@b1f7512934231ee3f25d"
+		}
+	],
+	"id" : "SpotifyScenes::@e73236870873ac66af4c",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 3,
+				"path" : "plugins"
+			},
+			{
+				"backtrace" : 3,
+				"path" : "plugins"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/home/hendrik/Documents/cpp/led-matrix/emulator_build/install"
+		}
+	},
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,\"\\$$ORIGIN\"",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libgraphicsmagick.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libspdlog.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 6,
+				"fragment" : "shared/libSharedTools.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcurl.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libssl.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcrypto.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "-ldl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "-ldl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libssl.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcrypto.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "-ldl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "-ldl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libz.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 10,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcpr.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libtiff.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libjpeg.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 21,
+				"fragment" : "vcpkg_installed/x64-linux/lib/liblzma.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libbz2.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libpng16.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 30,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libfreetype.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 31,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libbz2.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 31,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libpng16.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 32,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libbrotlidec.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 33,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libbrotlicommon.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libwebpdemux.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libwebpmux.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libwebp.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 40,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libsharpyuv.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libwebpdecoder.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 47,
+				"fragment" : "-lm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 53,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libfmt.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 59,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libllhttp.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 60,
+				"fragment" : "rpi-rgb-led-matrix/librpi-rgb-led-matrix.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libz.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 68,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcurl.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libz.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 74,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libssl.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 81,
+				"fragment" : "vcpkg_installed/x64-linux/lib/libcrypto.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "-ldl",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "SpotifyScenes",
+	"nameOnDisk" : "libSpotifyScenes.so",
+	"paths" : 
+	{
+		"build" : "plugins",
+		"source" : "plugins"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/SpotifyScenes.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/manager/shared_spotify.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/manager/song_bpm_getter.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/manager/spotify.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/manager/state.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/manager/track.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "plugins/SpotifyScenes/scenes/CoverOnlyScene.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/SpotifyScenes.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/manager/shared_spotify.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/manager/song_bpm_getter.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/manager/spotify.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/manager/state.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/manager/track.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 2,
+			"path" : "plugins/SpotifyScenes/scenes/CoverOnlyScene.h",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "SHARED_LIBRARY"
+}
