@@ -83,9 +83,8 @@ void CoverOnlyScene::update_beat_simulation() {
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_beat_time).count();
 
     // If we have a BPM value, use it to simulate beats
-    if (curr_bpm && curr_bpm->second > 0) {
-        float bpm = curr_bpm->second;
-        float beat_interval_ms = 60000.0f / bpm;
+    if (curr_bpm > 0) {
+        float beat_interval_ms = 60000.0f / curr_bpm;
 
         // Calculate phase within the beat (0.0 to 1.0)
         float phase = (float) elapsed / beat_interval_ms;
@@ -143,9 +142,11 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
     border_color.g = std::min(255, (int) (border_color.g * (1.0f + beat_intensity * 0.5f)));
     border_color.b = std::min(255, (int) (border_color.b * (1.0f + beat_intensity * 0.5f)));
 
+/* I don't like the glowing border, disabled for now
     drawGlowingBorder(offscreen_canvas, border_margin, border_margin,
                       max_x - 2 * border_margin, max_y - 2 * border_margin,
                       border_color, pulse_intensity * border_intensity_prop->get());
+*/
 
     // Draw progress indicators with a continuous gradient around the entire perimeter
     // Calculate total perimeter length
@@ -263,9 +264,22 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrixBase *m
 
     rgb_matrix::StreamWriter out(file_info->content_stream);
 
+
+    auto bpm_res = SongBpmApi::get_bpm(track.get_song_name().value_or(""), track.get_artist_name().value_or(""));
+    if (!bpm_res.has_value())
+        spdlog::error("Couldn't get bpm {}", bpm_res.error());
+
+
+    curr_bpm = bpm_res.value_or(120);
+    auto slowed_down = curr_bpm > beat_sync_slowdown_threshold->get() ? curr_bpm / beat_sync_slowdown_factor->get() : curr_bpm;
+
+    // Fix: Calculate beat duration correctly (milliseconds per beat)
+    float beat_duration_ms = 60000.0f / slowed_down;
+    
     // Create a more interesting transition effect
     const int transition_steps = 50;
 
+    float single_img_duration_ms = beat_duration_ms / transition_steps;
 
     // Then, create a zoom-in effect
     for (int i = 0; i < transition_steps; i++) {
@@ -294,18 +308,15 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrixBase *m
         img.draw(Magick::DrawableCompositeImage(x, y, size, size, cover_copy));
 
         // Store the frame with a short delay
-        StoreInStream(img, zoom_wait->get() * 1000, true, offscreen_canvas, &out);
+        int64_t delay = sync_with_beat->get() ? single_img_duration_ms * 1000 : zoom_wait->get() * 1000;
+        StoreInStream(img, delay, true, offscreen_canvas, &out);
     }
 
-    // Then add the main cover frames
-    for (const auto &cover: frames) {
-        if (!wait_on_cover->get())
-            break;
-
+    if (wait_on_cover->get() && !sync_with_beat->get()) {
         Magick::Image img(Magick::Geometry(matrix->width(), matrix->height()), Magick::Color("black"));
 
         // Apply a subtle enhancement to the cover
-        Magick::Image enhanced_cover = cover;
+        Magick::Image enhanced_cover = frames[0];
 
         try {
             // Try to enhance the image with all three required parameters
@@ -315,7 +326,7 @@ expected<void, string> CoverOnlyScene::refresh_info(rgb_matrix::RGBMatrixBase *m
         } catch (const std::exception &e) {
             trace("Failed to modulate image: {}", e.what());
             // Just use the original cover if modulate fails
-            enhanced_cover = cover;
+            enhanced_cover = frames[0];
         }
 
         img.draw(Magick::DrawableCompositeImage(0, 0,
@@ -367,4 +378,7 @@ void CoverOnlyScene::register_properties() {
     add_property(cover_wait);
     add_property(new_song_weight);
     add_property(zoom_factor);
+    add_property(sync_with_beat);
+    add_property(beat_sync_slowdown_factor);
+    add_property(beat_sync_slowdown_threshold);
 }
