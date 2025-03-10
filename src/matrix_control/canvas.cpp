@@ -59,7 +59,8 @@ FrameCanvas *update_canvas(RGBMatrixBase * matrix, FrameCanvas *pCanvas) {
             const auto should_continue = scene->render(matrix);
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
-                debug("Exiting scene early.");
+                // I removed this log, this seems to spam if there is no scene to display
+                //debug("Exiting scene early.");
                 break;
             }
 

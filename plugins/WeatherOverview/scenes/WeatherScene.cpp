@@ -1,6 +1,7 @@
 #include <spdlog/spdlog.h>
 #include "WeatherScene.h"
 #include "../Constants.h"
+#include "shared/picosha2.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
 
@@ -25,6 +26,12 @@ const float GRADIENT_INTENSITY = 0.7f;
 const int BORDER_THICKNESS = 1;
 const int BORDER_PADDING = 2;
 
+// Constants for shooting stars
+const int MAX_SHOOTING_STARS = 3;
+const int MIN_MS_BETWEEN_STARS = 5 * 1000; // 5 seconds
+const float SHOOTING_STAR_SPEED_MIN = 1.5f;
+const float SHOOTING_STAR_SPEED_MAX = 3.0f;
+
 // Instead of a global should_render flag, track update state inside the scene
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWrapper::create() {
     return {
@@ -36,6 +43,16 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWr
 
 string Scenes::WeatherScene::get_name() const {
     return "weather";
+}
+
+static void pre_process_image(Magick::Image *img) {
+    const int w = img->columns() * 0.9f;
+    const int h = img->rows() * 0.9f;
+
+    const int x = (img->columns() - w) / 2;
+    const int y = (img->rows() - h) / 2;
+
+    img->crop(Magick::Geometry(w, h, x, y));
 }
 
 void Scenes::WeatherScene::renderCurrentWeather(const RGBMatrixBase *matrix, const WeatherData &data) {
@@ -288,6 +305,124 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
             const int brightness = 150 + (std::sin(0.1f * animation_frame + i) + 1) * 50;
             offscreen_canvas->SetPixel(x, y, brightness, brightness, brightness);
         }
+        
+        // Update and render shooting stars
+        if (enable_animations->get()) {
+            tryCreateShootingStar();
+            updateShootingStars();
+            renderShootingStars();
+        }
+    }
+}
+
+void Scenes::WeatherScene::tryCreateShootingStar() {
+    // Only try to create a shooting star if we're at night and not too many stars are active
+    if (data.is_day) {
+        return;
+    }
+    
+    // Count active shooting stars
+    int active_count = 0;
+    for (const auto& star : shooting_stars) {
+        if (star.active) active_count++;
+    }
+    
+    // Don't create more than the max number of shooting stars
+    if (active_count >= MAX_SHOOTING_STARS) {
+        return;
+    }
+    
+    // Only try to create a shooting star if enough frames have passed since the last one
+    const auto now = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_shooting_star_time).count();
+
+
+    if (elapsed < MIN_MS_BETWEEN_STARS || animation_frame % get_target_fps() <= shooting_star_frame_threshold->get()) {
+        return;
+    }
+    
+    // Random chance based on user setting (percentage chance per frame check)
+    const int chance = shooting_star_chance->get();
+    if (chance <= 0) return;
+    
+    if (rand() % 100 < chance) {
+        // Create a new shooting star
+        if (shooting_stars.size() < MAX_SHOOTING_STARS) {
+            shooting_stars.resize(shooting_stars.size() + 1);
+        }
+        
+        // Find an inactive shooting star slot
+        for (auto& star : shooting_stars) {
+            if (!star.active) {
+                // Determine direction (diagonal across the screen)
+                bool from_top = (rand() % 2 == 0);
+                bool from_left = (rand() % 2 == 0);
+
+                // Set starting position
+                if (from_top) {
+                    star.x = rand() % matrix_width;
+                    star.y = 0;
+                } else {
+                    star.x = from_left ? 0 : matrix_width - 1;
+                    star.y = rand() % (matrix_height / 2); // Start in top half
+                }
+
+                // Set direction and speed
+                float speed = SHOOTING_STAR_SPEED_MIN +
+                              (static_cast<float>(rand()) / RAND_MAX) *
+                              (SHOOTING_STAR_SPEED_MAX - SHOOTING_STAR_SPEED_MIN);
+
+                star.dx = from_left ? speed : -speed;
+                star.dy = speed;
+
+                // Set other properties
+                star.tail_length = 3.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
+                star.brightness = 150.0f + (static_cast<float>(rand()) / RAND_MAX) * 105.0f;
+                star.active = true;
+                
+                last_shooting_star_time = std::chrono::steady_clock::now();
+                break;
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::updateShootingStars() {
+    for (auto& star : shooting_stars) {
+        if (star.active) {
+            // Move the shooting star
+            star.x += star.dx;
+            star.y += star.dy;
+            
+            // Check if the shooting star has left the screen
+            if (star.x < -star.tail_length || star.x >= matrix_width + star.tail_length ||
+                star.y < -star.tail_length || star.y >= matrix_height + star.tail_length) {
+                star.active = false;
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderShootingStars() {
+    for (const auto& star : shooting_stars) {
+        if (star.active) {
+            // Draw the shooting star as a line with a gradient
+            for (float i = 0; i <= star.tail_length; i++) {
+                float tail_x = star.x - (star.dx * i / star.dy);
+                float tail_y = star.y - i;
+                
+                // Calculate brightness based on position in tail
+                float brightness_factor = 1.0f - (i / star.tail_length);
+                uint8_t b = static_cast<uint8_t>(star.brightness * brightness_factor);
+                
+                // Draw pixel if it's on screen
+                int px = static_cast<int>(tail_x);
+                int py = static_cast<int>(tail_y);
+                if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
+                    offscreen_canvas->SetPixel(px, py, b, b, b);
+                }
+            }
+        }
     }
 }
 
@@ -329,11 +464,11 @@ void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matri
     }
 
     // Draw a small droplet icon with size based on probability
-    const int max_size = 5;
-    int size = std::max(2, static_cast<int>(probability * max_size));
+    constexpr int max_size = 5;
+    const int size = std::max(2, static_cast<int>(probability * max_size));
 
     // Blue color with intensity based on probability
-    uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
+    const uint8_t intensity = std::min(255, static_cast<int>(150 + probability * 105));
 
     // Draw droplet shape
     for (int i = 0; i < size; i++) {
@@ -351,9 +486,9 @@ void Scenes::WeatherScene::renderSunriseSunset(const RGBMatrixBase *matrix, cons
     }
 
     // Draw sun icon for sunrise
-    const int icon_size = 5;
-    const int base_x = 10;
-    const int base_y = 55;
+    constexpr int icon_size = 5;
+    constexpr int base_x = 10;
+    constexpr int base_y = 55;
 
     // Draw sunrise icon (simple sun)
     for (int i = -1; i <= 1; i++) {
@@ -462,8 +597,11 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
             fs::create_directory(weather_dir);
         }
 
+        std::string hash;
+        picosha2::hash256_hex_string(data.icon_url, hash);
+
         // Download and process current weather icon
-        string file_path = weather_dir_path / ("weather_icon" + std::to_string(data.weatherCode) + ".png");
+        string file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
         fs::path processed_img = to_processed_path(file_path);
 
         if (!fs::exists(processed_img) && !data.icon_url.empty()) {
@@ -475,7 +613,13 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
         }
 
         bool contain_img = true;
-        auto res = LoadImageAndScale(file_path, MAIN_ICON_SIZE, MAIN_ICON_SIZE, true, true, contain_img, true);
+        auto res = LoadImageAndScale(
+            file_path,
+            MAIN_ICON_SIZE, MAIN_ICON_SIZE,
+            true, true,
+            contain_img, true,
+            pre_process_image
+        );
 
         Images img;
 
@@ -491,8 +635,11 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
         // Process forecast icons
         for (const auto &forecast_day: data.forecast) {
             if (!forecast_day.icon_url.empty()) {
-                string forecast_file = weather_dir_path / ("forecast_icon" +
-                                                           std::to_string(forecast_day.weatherCode) + ".png");
+                std::string forecast_hash;
+                picosha2::hash256_hex_string(forecast_day.icon_url, forecast_hash);
+
+
+                string forecast_file = weather_dir_path / ("forecast_icon" + forecast_hash + ".png");
                 fs::path forecast_processed = to_processed_path(forecast_file);
 
                 if (!fs::exists(forecast_processed)) {
@@ -504,8 +651,12 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
                     }
                 }
 
-                auto f_res = LoadImageAndScale(forecast_file, FORECAST_ICON_SIZE, FORECAST_ICON_SIZE,
-                                               true, true, contain_img, true);
+                auto f_res = LoadImageAndScale(forecast_file,
+                                               FORECAST_ICON_SIZE, FORECAST_ICON_SIZE,
+                                               true, true,
+                                               contain_img, true,
+                                               pre_process_image
+                );
 
                 if (f_res) {
                     img.forecastIcons.push_back(f_res.value().at(0));
@@ -572,6 +723,12 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
 }
 
 void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix) {
-    resetStars();
+    if (reset_stars_on_exit->get()) {
+        resetStars();
+        // Clear any active shooting stars
+        for (auto& star : shooting_stars) {
+            star.active = false;
+        }
+    }
     Scene::after_render_stop(matrix);
 }

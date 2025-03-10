@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <iostream>
 #include "spdlog/spdlog.h"
+#include <functional>
+#include <optional>
 
 using namespace spdlog;
 using namespace std;
@@ -21,7 +23,7 @@ filesystem::path to_processed_path(const filesystem::path &path) {
 std::expected<vector<Magick::Image>, string>
 LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, const bool fill_width,
                   const bool fill_height,
-                  const bool contain_img, const bool store_resized_img) {
+                  const bool contain_img, const bool store_resized_img, std::optional<std::function<void(Magick::Image*)>> pre_process) {
     const filesystem::path img_processed = to_processed_path(path);
     vector<Magick::Image> result;
 
@@ -101,6 +103,10 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
             if (use_nearest_neighbor) {
                 img.filterType(Magick::PointFilter); // Use nearest neighbor for upscaling
             }
+
+            if (pre_process.has_value())
+                pre_process.value()(&img);
+
             img.scale(Magick::Geometry(target_width, target_height));
             img.crop(Magick::Geometry(canvas_width, canvas_height, offset_x, offset_y));
         }
