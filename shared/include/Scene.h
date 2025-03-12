@@ -25,11 +25,21 @@ namespace Scenes {
         int target_fps = 60;
         tmillis_t last_render_time = 0;
 
-        PropertyPointer<int> weight = MAKE_PROPERTY_REQ("weight", int, 1);
+        // Pure virtual methods remain unchanged
+        virtual int get_default_weight() = 0;
+        virtual tmillis_t get_default_duration() = 0;
+
+        // Initialize with temporary values instead of calling virtual functions
+        PropertyPointer<int> weight = MAKE_PROPERTY("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
 
         std::string uuid;
 
+                /// This method is used to update the default of properties dynamically. It is called before a property has been registered.
+        virtual void update_default_properties() {
+            weight->set_value(get_default_weight());
+            duration->set_value(get_default_duration());
+        }
 
         void set_target_fps(int fps) {
             target_fps = fps;

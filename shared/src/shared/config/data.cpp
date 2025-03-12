@@ -140,11 +140,12 @@ namespace ConfigData {
         vector<shared_ptr<Scenes::Scene> > scenes;
         for (const auto &scene_wrapper: Plugins::PluginManager::instance()->get_scenes()) {
             auto scene = scene_wrapper->create();
+            
+            scene->update_default_properties();
             scene->register_properties();
-            scene->load_properties({
-                {"weight", 1},
-                {"duration", 1000}
-            });
+
+            // Pass no json to default initialize
+            scene->load_properties({});
 
             scenes.push_back(std::move(scene));
         }
