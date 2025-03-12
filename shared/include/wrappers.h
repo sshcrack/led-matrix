@@ -43,6 +43,7 @@ namespace Plugins {
         std::shared_ptr<Scenes::Scene> get_default() {
             if (default_scene == nullptr) {
                 default_scene = create();
+                default_scene->update_default_properties();
                 default_scene->register_properties();
             }
 

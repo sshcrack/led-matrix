@@ -21,6 +21,7 @@ std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> Scenes::Scene::from_jso
         if (item->get_name() == t) {
             auto scene = item->create();
 
+            scene->update_default_properties();
             scene->register_properties();
             scene->load_properties(arguments);
             if (has_uuid)
@@ -42,6 +43,9 @@ void Scenes::Scene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_c
     matrix_height = matrix->height();
     matrix_width = matrix->width();
     initialized = true;
+    
+    // Call update_default_properties() here after the scene is initialized
+    update_default_properties();
 }
 
 bool Scenes::Scene::is_initialized() const {

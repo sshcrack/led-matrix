@@ -43,6 +43,7 @@ std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> Im
             auto provider = item->create();
 
             spdlog::debug("Registering and loading");
+            provider->update_default_properties();
             provider->register_properties();
             provider->load_properties(arguments);
             if (has_uuid)

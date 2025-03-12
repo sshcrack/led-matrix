@@ -31,6 +31,7 @@ namespace ImageProviders {
             properties.push_back(property);
         }
 
+        virtual void update_default_properties() {}
         virtual void register_properties() = 0;
         virtual void load_properties(const nlohmann::json &j);
 

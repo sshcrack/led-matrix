@@ -63,6 +63,13 @@ public:
         return value;
     }
 
+    /// This method does not save the properties automatically to config. You'll have to call
+    /// the save function on the config object yourself!
+    void set_value(const T &new_default)
+    {
+        value = new_default;
+    }
+
     void load_from_json(const nlohmann::json &j) override
     {
         if (required)
