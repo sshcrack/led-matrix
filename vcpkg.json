@@ -6,6 +6,10 @@
     "nlohmann-json",
     "spdlog",
     "graphicsmagick",
-    "restinio"
-  ]
+    "restinio",
+    "sdl2"
+  ],
+  "_comment": "sdl2 is optional but I included it here for the emulator",
+  "name": "led-matrix",
+  "version": "1.0.0"
 }
