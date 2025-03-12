@@ -6,7 +6,7 @@
             "binaryDir": "${sourceDir}/build",
             "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/vcpkg-toolchain.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/PI.cmake",
                 "VCPKG_TARGET_TRIPLET": "arm64-rpi",
                 "CMAKE_MAKE_PROGRAM": "ninja",
@@ -19,7 +19,7 @@
             "binaryDir": "${sourceDir}/emulator_build",
             "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "/home/hendrik/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_MAKE_PROGRAM": "ninja",
                 "ENABLE_EMULATOR": true,
                 "SKIP_WEB_BUILD": true,
