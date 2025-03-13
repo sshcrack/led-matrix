@@ -78,6 +78,16 @@ namespace Scenes {
         void register_properties() override {}
 
         using Scene::Scene;
+
+
+        tmillis_t get_default_duration() override {
+            // Will exit once maze is solved
+            return 90000000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
     };
 
     class MazeGameSceneWrapper : public Plugins::SceneWrapper {

@@ -18,6 +18,14 @@ namespace Scenes {
         void register_properties() override {}
 
         using Scenes::Scene::Scene;
+
+        tmillis_t get_default_duration() override {
+            return 10000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
     };
 
     class WatermelonPlasmaSceneWrapper : public Plugins::SceneWrapper {

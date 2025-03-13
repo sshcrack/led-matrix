@@ -68,6 +68,13 @@ namespace Scenes {
             add_property(fall_speed_ms);
         }
 
+        tmillis_t get_default_duration() override {
+            return 60000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
         using Scene::Scene;
     };
 

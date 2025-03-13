@@ -58,6 +58,14 @@ public:
     [[nodiscard]] std::string get_name() const override;
     void register_properties() override;
 
+    tmillis_t get_default_duration() override {
+        return 20000;
+    }
+
+    int get_default_weight() override {
+        return 3;
+    }
+
     using Scene::Scene;
 };
 

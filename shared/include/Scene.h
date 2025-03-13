@@ -35,12 +35,6 @@ namespace Scenes {
 
         std::string uuid;
 
-                /// This method is used to update the default of properties dynamically. It is called before a property has been registered.
-        virtual void update_default_properties() {
-            weight->set_value(get_default_weight());
-            duration->set_value(get_default_duration());
-        }
-
         void set_target_fps(int fps) {
             target_fps = fps;
         }
@@ -72,6 +66,13 @@ namespace Scenes {
 
         [[nodiscard]] std::string get_uuid() const {
             return this->uuid;
+        }
+
+
+        /// This method is used to update the default of properties dynamically. It is called before a property has been registered.
+        virtual void update_default_properties() {
+            weight->set_value(get_default_weight());
+            duration->set_value(get_default_duration());
         }
 
         [[nodiscard]] virtual int get_weight() const;

@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.5.0)
+# Option to enable/disable emulator
+option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
+if(ENABLE_EMULATOR)
+    list(APPEND VCPKG_MANIFEST_FEATURES "emulator")
+endif()
+
 project(main VERSION 0.1.0)
 
 # Set default install prefix to build directory if not specified
@@ -6,8 +12,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
 endif()
 
-# Option to enable/disable emulator
-option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 
 if(SKIP_MS_WAIT)
     add_definitions(-DSKIP_MS_WAIT)

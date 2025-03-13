@@ -142,6 +142,14 @@ namespace Scenes {
 
         ~WeatherScene() override = default;
 
+
+        tmillis_t get_default_duration() override {
+            return 30000;
+        }
+
+        int get_default_weight() override {
+            return 6;
+        }
     };
 
     class WeatherSceneWrapper final : public Plugins::SceneWrapper {

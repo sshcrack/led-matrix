@@ -68,6 +68,15 @@ namespace Scenes {
         [[nodiscard]] string get_name() const override;
 
         void register_properties() override;
+
+
+        tmillis_t get_default_duration() override {
+            return 25000;
+        }
+
+        int get_default_weight() override {
+            return 3;
+        }
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {

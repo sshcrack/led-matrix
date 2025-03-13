@@ -23,6 +23,13 @@ namespace Scenes {
 
         string get_name() const override;
 
+        tmillis_t get_default_duration() override {
+            return 30000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
     protected:
         void register_properties() override;
 
