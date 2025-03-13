@@ -2,7 +2,6 @@
 #include "scenes/StarFieldScene.h"
 #include "scenes/MetaBlobScene.h"
 #include "scenes/ClockScene.h"
-#include "scenes/CyberpunkCityScene.h"
 
 using namespace Scenes;
 using namespace AmbientScenes;
@@ -30,11 +29,6 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > AmbientPlugin::
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new ClockSceneWrapper(),
                                                                              [](SceneWrapper *scene) {
                                                                                  delete (ClockSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new CyberpunkCitySceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (CyberpunkCitySceneWrapper *) scene;
                                                                              }));
 
     return scenes;

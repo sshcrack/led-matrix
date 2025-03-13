@@ -6,13 +6,14 @@
 #include <random>
 
 namespace AmbientScenes {
-class StarFieldScene : public Scenes::Scene {
+    class StarFieldScene : public Scenes::Scene {
     private:
         struct Star {
             float x, y, z;
             uint8_t brightness;
 
-            Star() : x(0), y(0), z(0), brightness(255) {}
+            Star() : x(0), y(0), z(0), brightness(255) {
+            }
 
             void respawn(float max_depth);
 
@@ -31,12 +32,22 @@ class StarFieldScene : public Scenes::Scene {
 
     public:
         explicit StarFieldScene();
+
         ~StarFieldScene() override = default;
+
         void register_properties() override;
 
         bool render(RGBMatrixBase *matrix) override;
 
         void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+
+        tmillis_t get_default_duration() override {
+            return 20000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
 
         [[nodiscard]] std::string get_name() const override;
 

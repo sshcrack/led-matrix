@@ -57,6 +57,14 @@ namespace Scenes {
         [[nodiscard]] string get_name() const override;
 
         using Scene::Scene;
+
+        tmillis_t get_default_duration() override {
+            return 15000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
     };
 
     class PingPongGameSceneWrapper : public Plugins::SceneWrapper {

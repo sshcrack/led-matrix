@@ -38,6 +38,7 @@ A mobile application for controlling the LED matrix remotely. Located in the `re
 
 - CMake 3.5 or higher
 - C++23 compatible compiler
+- `jinja2` Python package (can be installed by running `apt install python3-jinja2 -y`)
 - vcpkg package manager
 - React Native development environment (for the mobile app)
 
@@ -61,6 +62,18 @@ cmake --build build
 ```shell
 cmake --install build
 ```
+
+### Emulator Support
+
+To build with emulator support (using SDL2), use the provided CMake preset:
+
+```bash
+# Configure and build with emulator support using the preset
+cmake --preset=emulator
+cmake --build emulator_build
+```
+
+This will automatically enable the "emulator" feature in vcpkg and include SDL2 as a dependency.
 
 ### Mobile App
 

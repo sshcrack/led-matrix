@@ -25,6 +25,15 @@ namespace Scenes {
         [[nodiscard]] string get_name() const override;
 
         void register_properties() override {}
+
+
+        tmillis_t get_default_duration() override {
+            return 10000;
+        }
+
+        int get_default_weight() override {
+            return 1;
+        }
     };
 
 
