@@ -62,7 +62,7 @@ namespace Scenes {
         WeatherParser parser;
         
         // Reference to current weather data for animations
-        WeatherData data;
+        WeatherData data = {};
 
         struct Images {
             Magick::Image currentIcon;
