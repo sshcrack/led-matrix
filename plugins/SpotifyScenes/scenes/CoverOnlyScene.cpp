@@ -298,7 +298,7 @@ bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
         return true;
     }
 
-    if(curr_state->is_playing()) {
+    if(!curr_state->is_playing()) {
         SleepMillis(500);
         return true;
     }
