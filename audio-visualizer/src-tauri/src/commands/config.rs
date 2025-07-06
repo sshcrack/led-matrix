@@ -1,15 +1,17 @@
+use tauri::AppHandle;
+
 use crate::config::AudioVisualizerConfig;
 
 /// Save the application configuration to disk
 #[tauri::command]
-pub fn save_config(config: serde_json::Value) -> Result<(), String> {
+pub fn save_config(config: serde_json::Value, handle: AppHandle) -> Result<(), String> {
     println!("[DEBUG] save_config: Saving configuration to disk");
     let config_obj: AudioVisualizerConfig = serde_json::from_value(config).map_err(|e| {
         println!("[ERROR] save_config: Failed to parse config: {}", e);
         format!("Failed to parse config: {}", e)
     })?;
 
-    match config_obj.save() {
+    match config_obj.save(&handle) {
         Ok(_) => {
             println!("[DEBUG] save_config: Configuration saved successfully");
             Ok(())

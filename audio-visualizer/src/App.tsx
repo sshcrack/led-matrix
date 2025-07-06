@@ -1,6 +1,4 @@
-import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { enable as enableAutoStart, disable as disableAutoStart } from "@tauri-apps/plugin-autostart";
 import "./App.css";
 // Components
 import ConnectionControls from "./components/ConnectionControls";
@@ -63,26 +61,6 @@ function App() {
 
   // Use our custom hook to get audio data
   const bands = useAudioData(isRunning);
-
-  // Handle autostart settings when saving
-  useEffect(() => {
-    // This effect handles autostart settings when they change
-    const updateAutostart = async () => {
-      try {
-        if (config.autostart_enabled) {
-          await enableAutoStart();
-        } else {
-          await disableAutoStart();
-        }
-      } catch (error) {
-        console.error("Failed to update autostart settings:", error);
-      }
-    };
-
-    if (!hasUnsavedChanges) {
-      updateAutostart();
-    }
-  }, [config.autostart_enabled, hasUnsavedChanges]);
 
   const minimizeToTray = async () => {
     try {
