@@ -23,7 +23,7 @@ const ConnectionControls: React.FC<ConnectionControlsProps> = ({
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Connection Settings</h2>
-      
+
       <div className="flex flex-wrap gap-4 items-center">
         <div className="w-full sm:w-auto flex-1">
           <label htmlFor="hostname" className="block text-sm font-medium text-gray-700 mb-1">
@@ -37,7 +37,7 @@ const ConnectionControls: React.FC<ConnectionControlsProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        
+
         <div className="w-full sm:w-32">
           <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1">
             Port:
@@ -53,19 +53,18 @@ const ConnectionControls: React.FC<ConnectionControlsProps> = ({
           />
         </div>
       </div>
-      
+
       <div className="flex items-center gap-4">
         <button
-          onClick={isRunning ? onStop : onStart}
-          className={`px-4 py-2 rounded-md text-white font-medium transition-colors ${
-            isRunning 
-              ? 'bg-red-500 hover:bg-red-600' 
+          onClick={isRunning ? () => onStop() : () => onStart()}
+          className={`px-4 py-2 rounded-md text-white font-medium cursor-pointer transition-colors ${isRunning
+              ? 'bg-red-500 hover:bg-red-600'
               : 'bg-green-500 hover:bg-green-600'
-          }`}
+            }`}
         >
           {isRunning ? 'Stop' : 'Start'}
         </button>
-        
+
         <div className="text-sm">
           Status: <span className={isRunning ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
             {connectionStatus}

@@ -254,6 +254,7 @@ dependencies = [
  "cpal",
  "dirs 6.0.0",
  "futures",
+ "lazy_static",
  "rustfft",
  "serde",
  "serde_json",

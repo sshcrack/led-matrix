@@ -15,18 +15,18 @@ const AnalysisSettings: React.FC<AnalysisSettingsProps> = ({
     { value: 1, label: '1/3 Octave Bands' },
     { value: 2, label: 'Full Octave Bands' }
   ];
-  
+
   const scaleOptions = [
     { value: 'log', label: 'Logarithmic' },
     { value: 'linear', label: 'Linear' },
     { value: 'bark', label: 'Bark' },
     { value: 'mel', label: 'Mel' }
   ];
-  
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Analysis Settings</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label htmlFor="mode" className="block text-sm font-medium text-gray-700 mb-1">
@@ -45,7 +45,7 @@ const AnalysisSettings: React.FC<AnalysisSettingsProps> = ({
             ))}
           </select>
         </div>
-        
+
         <div>
           <label htmlFor="frequency-scale" className="block text-sm font-medium text-gray-700 mb-1">
             Frequency Scale:
@@ -64,7 +64,7 @@ const AnalysisSettings: React.FC<AnalysisSettingsProps> = ({
           </select>
         </div>
       </div>
-      
+
       <div className="space-y-3 mt-2">
         <div className="flex items-center">
           <input
@@ -78,7 +78,7 @@ const AnalysisSettings: React.FC<AnalysisSettingsProps> = ({
             Linear Amplitude (unchecked = Logarithmic dB)
           </label>
         </div>
-        
+
         <div className="flex items-center">
           <input
             id="interpolate-bands"
@@ -91,7 +91,7 @@ const AnalysisSettings: React.FC<AnalysisSettingsProps> = ({
             Interpolate missing bands (for logarithmic analyzer)
           </label>
         </div>
-        
+
         <div className="flex items-center">
           <input
             id="skip-non-processed"
