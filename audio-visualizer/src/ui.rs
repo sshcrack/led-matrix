@@ -7,6 +7,8 @@ use eframe::egui;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use tokio::time::Duration;
+use tray_icon::{Icon, menu::{Menu, MenuEvent, MenuItem}, TrayIcon, TrayIconBuilder};
+use std::thread;
 
 pub trait AudioVisualizerUI {
     fn setup_audio(&mut self);
@@ -23,6 +25,9 @@ pub struct AudioVisualizerApp {
     is_running: bool,
     connection_status: String,
     bands_display: Vec<f32>,
+    has_unsaved_changes: bool,
+    tray_icon: Option<TrayIcon>,
+    pub window_visible: bool,
 }
 
 impl AudioVisualizerApp {
@@ -30,6 +35,12 @@ impl AudioVisualizerApp {
         let config = AudioVisualizerConfig::load().unwrap_or_default();
         let audio_processor: Arc<Mutex<dyn AudioProcessorTrait + Send>> =
             Arc::new(Mutex::new(AudioProcessor::new(config.clone())));
+
+        // Check if app should start minimized
+        let window_visible = !config.start_minimized_to_tray;
+        
+        // Create tray icon
+        let tray_icon = Self::setup_tray_icon();
 
         let mut app = Self {
             config,
@@ -39,6 +50,9 @@ impl AudioVisualizerApp {
             is_running: false,
             connection_status: "Disconnected".to_string(),
             bands_display: vec![0.0; 64],
+            has_unsaved_changes: false,
+            tray_icon,
+            window_visible,
         };
 
         app.setup_audio();
@@ -49,6 +63,55 @@ impl AudioVisualizerApp {
         }
 
         app
+    }
+    
+    fn setup_tray_icon() -> Option<TrayIcon> {
+        // Create a simple tray icon
+        let icon_path = std::path::Path::new("assets/icon.ico");
+        if !icon_path.exists() {
+            return None;
+        }
+        
+        let icon_data = std::fs::read(icon_path).ok()?;
+        let icon = Icon::from_buffer(&icon_data).ok()?;
+        
+        // Create menu items
+        let mut menu = Menu::new();
+        let show_item = MenuItem::new("Show Window", true, None);
+        let quit_item = MenuItem::new("Quit", true, None);
+        
+        menu.append(&show_item).ok()?;
+        menu.append(&quit_item).ok()?;
+        
+        // Create tray icon
+        let tray_icon = TrayIconBuilder::new()
+            .with_menu(Box::new(menu))
+            .with_tooltip("Audio Visualizer")
+            .with_icon(icon)
+            .build()
+            .ok()?;
+            
+        // Handle menu events in a separate thread
+        let show_id = show_item.id();
+        let quit_id = quit_item.id();
+        
+        thread::spawn(move || {
+            let event_receiver = MenuEvent::receiver();
+            while let Ok(event) = event_receiver.recv() {
+                if event.id == show_id {
+                    // Request to show the window
+                    if let Some(ctx) = egui::Context::get_shared() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        ctx.request_repaint();
+                    }
+                } else if event.id == quit_id {
+                    // Exit the application
+                    std::process::exit(0);
+                }
+            }
+        });
+        
+        Some(tray_icon)
     }
 
     fn start_udp_sender(&self) {
@@ -75,6 +138,10 @@ impl AudioVisualizerApp {
                 }
             });
         }
+    }
+
+    pub fn toggle_window_visibility(&mut self) {
+        self.window_visible = !self.window_visible;
     }
 }
 
@@ -134,14 +201,33 @@ impl AudioVisualizerUI for AudioVisualizerApp {
         }
     }
 
-    fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update_ui(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Update bands display
         if let Ok(processor) = self.audio_processor.lock() {
             self.bands_display = processor.get_bands();
         }
 
+        // Handle window visibility
+        if !self.window_visible {
+            // If window should be hidden, hide it
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            // Still need to update the frame to keep running
+            ctx.request_repaint();
+            return;
+        }
+        
+        // If we're here, the window should be visible
+        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Audio Visualizer");
+            ui.horizontal(|ui| {
+                ui.heading("Audio Visualizer");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Minimize to Tray").clicked() {
+                        self.window_visible = false;
+                    }
+                });
+            });
             ui.separator();
 
             self.render_connection_controls(ui);
@@ -149,6 +235,9 @@ impl AudioVisualizerUI for AudioVisualizerApp {
             self.render_audio_settings(ui);
             ui.separator();
             self.render_analysis_settings(ui);
+            ui.separator();
+            self.render_startup_settings(ui);
+            ui.separator();
             self.render_save_button(ui);
             ui.separator();
             self.render_visualizer(ui);
@@ -163,9 +252,13 @@ impl AudioVisualizerApp {
     fn render_connection_controls(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Hostname:");
-            ui.text_edit_singleline(&mut self.config.hostname);
+            if ui.text_edit_singleline(&mut self.config.hostname).changed() {
+                self.has_unsaved_changes = true;
+            }
             ui.label("Port:");
-            ui.add(egui::DragValue::new(&mut self.config.port).range(1..=65535));
+            if ui.add(egui::DragValue::new(&mut self.config.port).range(1..=65535)).changed() {
+                self.has_unsaved_changes = true;
+            }
         });
 
         ui.horizontal(|ui| {
@@ -325,12 +418,54 @@ impl AudioVisualizerApp {
             }
             ui.label("(for logarithmic analyzer)");
         });
+
+        ui.horizontal(|ui| {
+            ui.label("Skip missing bands from output:");
+            if ui
+                .checkbox(&mut self.config.skip_non_processed, "Skip missing bands")
+                .changed()
+            {
+                self.update_processor_config();
+            }
+        });
+    }
+
+    fn render_startup_settings(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Startup Settings");
+        
+        ui.horizontal(|ui| {
+            if ui.checkbox(&mut self.config.start_minimized_to_tray, "Start minimized to tray").changed() {
+                self.has_unsaved_changes = true;
+            }
+            
+            ui.tooltip_text("When enabled, the application will start minimized to the system tray");
+        });
+        
+        ui.horizontal(|ui| {
+            if ui.checkbox(&mut self.config.autostart_enabled, "Start with system").changed() {
+                self.has_unsaved_changes = true;
+            }
+            
+            ui.tooltip_text("When enabled, the application will start automatically when you log in");
+        });
     }
 
     fn render_save_button(&mut self, ui: &mut egui::Ui) {
-        if ui.button("Save Settings").clicked() {
+        let button_text = "Save Settings";
+        let button = if self.has_unsaved_changes {
+            // Use a different color for the button when there are unsaved changes
+            egui::Button::new(button_text)
+                .fill(egui::Color32::from_rgb(100, 200, 100))
+        } else {
+            egui::Button::new(button_text)
+        };
+
+        if ui.add(button).clicked() {
             if let Err(e) = self.config.save() {
                 eprintln!("Failed to save config: {}", e);
+            } else {
+                // Reset the flag when successfully saved
+                self.has_unsaved_changes = false;
             }
         }
     }
@@ -371,6 +506,7 @@ impl AudioVisualizerApp {
     fn update_processor_config(&mut self) {
         if let Ok(mut processor) = self.audio_processor.lock() {
             processor.update_config(self.config.clone());
+            self.has_unsaved_changes = true;
         }
     }
 }
@@ -378,5 +514,14 @@ impl AudioVisualizerApp {
 impl eframe::App for AudioVisualizerApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.update_ui(ctx, frame);
+    }
+    
+    fn on_close_event(&mut self) -> bool {
+        // If we have a tray icon, just hide the window instead of closing the app
+        if self.tray_icon.is_some() {
+            self.window_visible = false;
+            return false; // Don't close the app
+        }
+        true // Close the app if no tray icon
     }
 }

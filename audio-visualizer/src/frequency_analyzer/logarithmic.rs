@@ -1,8 +1,9 @@
 use std::sync::atomic::Ordering;
 
-use crate::config::AudioVisualizerConfig;
 use super::FrequencyAnalyzer;
+use crate::config::AudioVisualizerConfig;
 
+#[derive(Default)]
 pub struct LogarithmicAnalyzer;
 
 impl FrequencyAnalyzer for LogarithmicAnalyzer {
@@ -14,9 +15,9 @@ impl FrequencyAnalyzer for LogarithmicAnalyzer {
         min_bin: usize,
         max_bin: usize,
     ) -> Vec<f32> {
-        let mut bands = vec![0.0; config.num_bands];
-        // Track which bands were directly calculated vs need interpolation
-        let mut calculated_bands = vec![false; config.num_bands];
+        let mut bands = Vec::with_capacity(config.num_bands);
+        let should_interpolate = config.interpolate_bands.load(Ordering::Relaxed);
+        let mut skipped = Vec::new();
 
         // Use logarithmic spacing for perceptually uniform frequency bands
         let log_min_freq = config.min_freq.ln();
@@ -41,7 +42,11 @@ impl FrequencyAnalyzer for LogarithmicAnalyzer {
 
             if end_bin <= start_bin {
                 // Mark this band for interpolation in the second pass
-                calculated_bands[i] = false;
+                skipped.push(i);
+                if should_interpolate || !config.skip_non_processed {
+                    // Use a small default value for skipped bands
+                    bands.push(0.0);
+                }
             } else {
                 let mut band_energy = 0.0;
                 for j in start_bin..end_bin {
@@ -50,21 +55,20 @@ impl FrequencyAnalyzer for LogarithmicAnalyzer {
 
                 // Average the energy across the band
                 band_energy /= (end_bin - start_bin) as f32;
-                bands[i] = band_energy;
-                calculated_bands[i] = true;
+                bands.push(band_energy);
             }
         }
 
         // Second pass: Interpolate missing bands if enabled
-        if config.interpolate_bands.load(Ordering::Relaxed) {
+        if should_interpolate {
             // Find valid bands for interpolation
             let mut prev_valid_idx = None;
             for i in 0..config.num_bands {
-                if !calculated_bands[i] {
+                if skipped.contains(&i) {
                     // Find the next valid band
                     let mut next_valid_idx = None;
                     for j in (i + 1)..config.num_bands {
-                        if calculated_bands[j] {
+                        if !skipped.contains(&j) {
                             next_valid_idx = Some(j);
                             break;
                         }
