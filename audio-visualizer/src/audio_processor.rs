@@ -1,4 +1,4 @@
-use crate::{frequency_analysis::get_analyzer, config::AudioVisualizerConfig};
+use crate::{frequency_analyzer, config::AudioVisualizerConfig};
 use rustfft::{Fft, FftPlanner};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -79,7 +79,7 @@ impl AudioProcessor {
         }
 
         let freq_scale = self.config.frequency_scale.read().unwrap().clone();
-        let analyzer = get_analyzer(self.config.mode, &freq_scale);
+        let analyzer = frequency_analyzer::get_analyzer(self.config.mode, &freq_scale);
         let bands = analyzer.compute_bands(
             &self.spectrum,
             &self.config,

@@ -1,6 +1,6 @@
 mod audio_processor;
 mod config;
-mod frequency_analysis;
+mod frequency_analyzer;
 mod network;
 mod ui;
 
