@@ -214,6 +214,5 @@ This audio visualizer can be used for:
 - Close other audio applications
 - Use release build for better performance
 
-## License
-
-MIT License - see LICENSE file for details.
+## Acknowledgements
+- A huge thanks to the [audioMotion-analyzer repository](https://github.com/hvianna/audioMotion-analyzer) for frequency band calculations and inspiration.
