@@ -13,7 +13,7 @@ const StartupSettings: React.FC<StartupSettingsProps> = ({
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Startup Settings</h2>
-      
+
       <div className="space-y-3">
         <div className="flex items-center">
           <input
@@ -27,7 +27,7 @@ const StartupSettings: React.FC<StartupSettingsProps> = ({
             Start minimized to tray
           </label>
         </div>
-        
+
         <div className="flex items-center">
           <input
             id="autostart"
@@ -41,11 +41,11 @@ const StartupSettings: React.FC<StartupSettingsProps> = ({
           </label>
         </div>
       </div>
-      
+
       <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm mt-2">
         <p>
-          <strong>Note:</strong> When "Start minimized to tray" is enabled, 
-          the application will start hidden in the system tray. 
+          <strong>Note:</strong> When "Start minimized to tray" is enabled,
+          the application will start hidden in the system tray.
           Click the tray icon to show the window.
         </p>
       </div>

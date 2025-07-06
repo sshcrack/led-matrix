@@ -24,6 +24,10 @@ pub struct AudioVisualizerConfig {
     // New settings for tray icon and autostart
     pub start_minimized_to_tray: bool, // true = start application hidden in system tray
     pub autostart_enabled: bool, // true = add application to autostart
+    
+    // Audio device selection
+    #[serde(default)]
+    pub selected_output_device: Option<String>,
 }
 
 mod rwlock_serde {
@@ -88,6 +92,7 @@ impl Default for AudioVisualizerConfig {
             skip_non_processed: true,
             start_minimized_to_tray: true, // Start minimized to tray by default
             autostart_enabled: true, // Enable autostart by default
+            selected_output_device: None,  // Default to system default output device
         }
     }
 }

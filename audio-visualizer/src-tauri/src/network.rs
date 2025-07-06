@@ -34,6 +34,26 @@ impl CompactAudioPacket {
             flags |= 1; // Set bit 0 when interpolated bands enabled and logarithmic scaling
         }
 
+        // Log packet creation occasionally
+        static mut COUNTER: u32 = 0;
+        let should_log = unsafe {
+            COUNTER += 1;
+            COUNTER % 300 == 0 // Log every 300th packet (roughly every 5 seconds at 60fps)
+        };
+        
+        if should_log {
+            println!("[DEBUG] CompactAudioPacket.new: Creating packet with {} bands, flags={}, interpolated_log={}", 
+                     num_bands, flags, interpolated_log);
+            
+            // Log a few band values as sample
+            if !bands.is_empty() {
+                println!("[DEBUG] CompactAudioPacket.new: Band samples - first: {}, middle: {}, last: {}", 
+                         bands[0], 
+                         bands[bands.len() / 2], 
+                         bands[bands.len() - 1]);
+            }
+        }
+
         // Convert f32 bands to u8 (0-255) for compactness
         let compact_bands: Vec<u8> = bands
             .iter()
@@ -122,9 +142,36 @@ impl UdpSender {
 
 impl NetworkSender for UdpSender {
     fn send_audio_data(&self, bands: Vec<f32>, target_addr: &str, interpolated_log: bool) -> Result<(), std::io::Error> {
+        // Only log occasionally to avoid flooding the console
+        static mut COUNTER: u32 = 0;
+        let should_log = unsafe {
+            COUNTER += 1;
+            COUNTER % 100 == 0 // Log every 100th packet (roughly every 1.6 seconds at 60fps)
+        };
+        
+        if should_log {
+            println!("[DEBUG] UdpSender.send_audio_data: Sending {} bands to {}, interpolated_log={}", 
+                     bands.len(), target_addr, interpolated_log);
+        }
+        
         let packet = CompactAudioPacket::new(bands, interpolated_log);
         let data = packet.to_bytes();
-        self.socket.send_to(&data, target_addr)?;
-        Ok(())
+        
+        if should_log {
+            println!("[DEBUG] UdpSender.send_audio_data: Packet size {} bytes", data.len());
+        }
+        
+        match self.socket.send_to(&data, target_addr) {
+            Ok(bytes_sent) => {
+                if should_log {
+                    println!("[DEBUG] UdpSender.send_audio_data: Sent {} bytes successfully", bytes_sent);
+                }
+                Ok(())
+            },
+            Err(e) => {
+                println!("[ERROR] UdpSender.send_audio_data: Failed to send: {}", e);
+                Err(e)
+            }
+        }
     }
 }

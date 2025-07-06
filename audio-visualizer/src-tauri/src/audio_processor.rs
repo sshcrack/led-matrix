@@ -3,7 +3,6 @@ use rustfft::{Fft, FftPlanner};
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-pub const SAMPLE_RATE: u32 = 44100;
 pub const BUFFER_SIZE: usize = 2048;
 pub const FFT_SIZE: usize = 1024;
 
@@ -20,10 +19,11 @@ pub struct AudioProcessor {
     spectrum: Vec<f32>,
     bands: Vec<f32>,
     config: AudioVisualizerConfig,
+    sample_rate: u32,
 }
 
 impl AudioProcessor {
-    pub fn new(config: AudioVisualizerConfig) -> Self {
+    pub fn new(config: AudioVisualizerConfig, sample_rate: u32) -> Self {
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft_forward(FFT_SIZE);
 
@@ -42,6 +42,7 @@ impl AudioProcessor {
             spectrum: vec![0.0; FFT_SIZE / 2],
             bands: vec![0.0; config.num_bands],
             config,
+            sample_rate
         }
     }
 
@@ -66,8 +67,7 @@ impl AudioProcessor {
     }
 
     fn compute_bands(&mut self) {
-        let sample_rate = SAMPLE_RATE as f32;
-        let freq_resolution = sample_rate / FFT_SIZE as f32;
+        let freq_resolution = self.sample_rate as f32 / FFT_SIZE as f32;
 
         let min_bin = (self.config.min_freq / freq_resolution) as usize;
         let max_bin =
@@ -120,6 +120,15 @@ impl AudioProcessor {
                 + processed_energy * (1.0 - self.config.smoothing);
         }
     }
+
+    // Add this new method to get the interpolated_log flag
+    pub fn get_interpolated_log(&self) -> bool {
+        let interpolated = self.config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed);
+        let frequency_scale = *self.config.frequency_scale.read().unwrap() == "log";
+        let result = interpolated && frequency_scale;
+
+        result
+    }
 }
 
 impl AudioProcessorTrait for AudioProcessor {
@@ -143,9 +152,23 @@ impl AudioProcessorTrait for AudioProcessor {
     }
 
     fn update_config(&mut self, config: AudioVisualizerConfig) {
+        println!("[DEBUG] AudioProcessor.update_config: Updating config");
+        println!("[DEBUG] AudioProcessor.update_config: Old num_bands={}, New num_bands={}", 
+                 self.config.num_bands, config.num_bands);
+        
         if config.num_bands != self.config.num_bands {
+            println!("[DEBUG] AudioProcessor.update_config: Resizing bands array");
             self.bands = vec![0.0; config.num_bands];
         }
+        
+        // Log important settings changes
+        println!("[DEBUG] AudioProcessor.update_config: Old frequency_scale={}, New frequency_scale={}", 
+                 *self.config.frequency_scale.read().unwrap(), *config.frequency_scale.read().unwrap());
+        println!("[DEBUG] AudioProcessor.update_config: Old interpolate_bands={}, New interpolate_bands={}", 
+                 self.config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed),
+                 config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed));
+        
         self.config = config;
+        println!("[DEBUG] AudioProcessor.update_config: Config updated successfully");
     }
 }

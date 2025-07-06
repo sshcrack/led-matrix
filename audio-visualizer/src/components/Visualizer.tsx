@@ -6,25 +6,25 @@ interface VisualizerProps {
 
 const Visualizer: React.FC<VisualizerProps> = ({ bands }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Draw the visualizer on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Calculate bar width based on the number of bands
     const barWidth = canvas.width / bands.length;
-    
+
     // Draw each band
     bands.forEach((amplitude, i) => {
       const barHeight = amplitude * canvas.height;
-      
+
       // Determine color based on amplitude (similar to original egui app)
       let color;
       if (amplitude > 0.8) {
@@ -34,7 +34,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ bands }) => {
       } else {
         color = '#22c55e'; // green-500
       }
-      
+
       // Draw the bar
       ctx.fillStyle = color;
       ctx.fillRect(
@@ -45,13 +45,13 @@ const Visualizer: React.FC<VisualizerProps> = ({ bands }) => {
       );
     });
   }, [bands]);
-  
+
   return (
     <div className="space-y-2">
       <h2 className="text-xl font-semibold">Audio Spectrum</h2>
-      
+
       <div className="border border-gray-300 rounded-md bg-black p-2 h-48">
-        <canvas 
+        <canvas
           ref={canvasRef}
           width={800}
           height={180}
