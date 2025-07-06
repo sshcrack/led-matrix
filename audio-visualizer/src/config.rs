@@ -19,6 +19,11 @@ pub struct AudioVisualizerConfig {
 
     #[serde(with = "atomic_bool_serde")]
     pub interpolate_bands: Arc<AtomicBool>, // Whether to interpolate frequency bands that cannot be directly calculated
+    pub skip_non_processed: bool, // true = skip bands that haven't been processed and omit them from the output
+    
+    // New settings for tray icon and autostart
+    pub start_minimized_to_tray: bool, // true = start application hidden in system tray
+    pub autostart_enabled: bool, // true = add application to autostart
 }
 
 mod rwlock_serde {
@@ -80,6 +85,9 @@ impl Default for AudioVisualizerConfig {
             linear_amplitude: false, // Use logarithmic (dB) amplitude by default
             frequency_scale: Arc::new(RwLock::new("log".to_string())), // Logarithmic frequency scale by default
             interpolate_bands: Arc::new(AtomicBool::new(true)), // Enable band interpolation by default
+            skip_non_processed: true,
+            start_minimized_to_tray: true, // Start minimized to tray by default
+            autostart_enabled: true, // Enable autostart by default
         }
     }
 }
@@ -105,6 +113,52 @@ impl AudioVisualizerConfig {
 
         let content = toml::to_string_pretty(self)?;
         std::fs::write(config_file, content)?;
+        
+        // Update autostart settings
+        self.update_autostart()?;
+        
+        Ok(())
+    }
+    
+    fn update_autostart(&self) -> Result<()> {
+        // Get the path to the autostart directory
+        let home_dir = dirs::home_dir().expect("Could not find home directory");
+        let autostart_dir = home_dir.join(".config/autostart");
+        
+        // Create the autostart directory if it doesn't exist
+        std::fs::create_dir_all(&autostart_dir)?;
+        
+        // Path to the desktop file
+        let desktop_file = autostart_dir.join("audio-visualizer.desktop");
+        
+        if self.autostart_enabled {
+            // Get the path to the executable
+            let exe_path = std::env::current_exe()?;
+            let exe_path_str = exe_path.to_str().unwrap();
+            
+            // Create the desktop file content
+            let mut args = String::new();
+            if self.start_minimized_to_tray {
+                args = " --minimized".to_string();
+            }
+            
+            let desktop_content = format!(
+                "[Desktop Entry]\n\
+                 Type=Application\n\
+                 Name=Audio Visualizer\n\
+                 Exec={}{}\n\
+                 Terminal=false\n\
+                 X-GNOME-Autostart-enabled=true\n",
+                exe_path_str, args
+            );
+            
+            // Write the desktop file
+            std::fs::write(desktop_file, desktop_content)?;
+        } else if desktop_file.exists() {
+            // Remove the desktop file if autostart is disabled
+            std::fs::remove_file(desktop_file)?;
+        }
+        
         Ok(())
     }
 }
