@@ -158,126 +158,56 @@ impl FrequencyAnalyzer for BarkAnalyzer {
         min_bin: usize,
         max_bin: usize,
     ) -> Vec<f32> {
-        // Standard Bark critical band edge frequencies in Hz
-        // These are the upper limits of each band from bark 1 to 24
-        let bark_band_edges: [f32; 25] = [
-            0.0, 100.0, 200.0, 300.0, 400.0, 510.0, 630.0, 770.0, 920.0, 1080.0, 
-            1270.0, 1480.0, 1720.0, 2000.0, 2320.0, 2700.0, 3150.0, 3700.0, 4400.0, 
-            5300.0, 6400.0, 7700.0, 9500.0, 12000.0, 15500.0
-        ];
-        
-        // Standard Bark critical band centers in Hz
-        let bark_band_centers: [f32; 24] = [
-            50.0, 150.0, 250.0, 350.0, 450.0, 570.0, 700.0, 840.0, 1000.0, 1170.0,
-            1370.0, 1600.0, 1850.0, 2150.0, 2500.0, 2900.0, 3400.0, 4000.0, 4800.0,
-            5800.0, 7000.0, 8500.0, 10500.0, 13500.0
-        ];
-        
-        // Determine the number of output bands based on config
         let mut bands = vec![0.0; config.num_bands];
+
+        // Implementation based on audio_analyzer.js
+        // Bark scale formula: bark = (26.81 * freq) / (1960 + freq) - 0.53
         
-        // Check if we have sufficient bands for full Bark scale representation
-        let use_mapping = config.num_bands < 24;
+        // Function to convert frequency to bark scale (from audio_analyzer.js)
+        let hz_to_bark = |freq: f32| -> f32 {
+            (26.81 * freq) / (1960.0 + freq) - 0.53
+        };
         
-        if use_mapping {
-            // Using mapping approach (for fewer output bands)
-            // Convert min/max freq to Bark scale for interpolation
-            let hz_to_bark = |freq: f32| -> f32 {
-                13.0 * (0.00076 * freq).atan() + 3.5 * ((freq / 7500.0).powi(2)).atan()
-            };
+        // Function to convert bark scale back to frequency (from audio_analyzer.js)
+        let bark_to_hz = |bark: f32| -> f32 {
+            1960.0 / (26.81 / (bark + 0.53) - 1.0)
+        };
+        
+        // Calculate the min and max bark values
+        let min_bark = hz_to_bark(config.min_freq);
+        let max_bark = hz_to_bark(config.max_freq);
+        
+        // Calculate the bark scale width for each band
+        let bark_width = (max_bark - min_bark) / config.num_bands as f32;
+        
+        // Compute each band
+        for i in 0..config.num_bands {
+            // Calculate the bark range for this band
+            let bark_start = min_bark + bark_width * i as f32;
+            let bark_end = min_bark + bark_width * (i + 1) as f32;
             
-            let min_bark = hz_to_bark(config.min_freq);
-            let max_bark = hz_to_bark(config.max_freq);
+            // Convert bark values back to frequencies
+            let freq_start = bark_to_hz(bark_start);
+            let freq_end = bark_to_hz(bark_end);
             
-            for i in 0..config.num_bands {
-                let band_ratio = i as f32 / (config.num_bands - 1) as f32;
-                let target_bark = min_bark + band_ratio * (max_bark - min_bark);
-                
-                // Find the corresponding frequency for this Bark value
-                // Using more accurate inverse transform
-                let target_freq = if target_bark < 1.0 {
-                    target_bark * 100.0 // Linear approximation for very low barks
-                } else {
-                    // Find nearest bark band
-                    let bark_index = target_bark as usize;
-                    if bark_index < 24 {
-                        // Interpolate between band centers
-                        let bark_frac = target_bark - bark_index as f32;
-                        let freq1 = bark_band_centers[bark_index.min(23)];
-                        let freq2 = bark_band_centers[(bark_index + 1).min(23)];
-                        freq1 + bark_frac * (freq2 - freq1)
-                    } else {
-                        // Beyond the defined range, use exponential approximation
-                        let z = target_bark;
-                        600.0 * (z / 6.0).sinh()
-                    }
-                };
-                
-                // Calculate critical bandwidth at this frequency (in Hz)
-                // Using formula: bandwidth = 25 + 75 * (1 + 1.4 * (freq/1000)^2)^0.69
-                let critical_bandwidth = 25.0 + 75.0 * (1.0 + 1.4 * (target_freq / 1000.0).powi(2)).powf(0.69);
-                
-                // Convert to bin indices
-                let target_bin = (target_freq / freq_resolution) as usize;
-                let half_bandwidth_bins = (critical_bandwidth / (2.0 * freq_resolution)) as usize;
-                
-                let start_bin = if target_bin > half_bandwidth_bins {
-                    (target_bin - half_bandwidth_bins).max(min_bin)
-                } else {
-                    min_bin
-                };
-                
-                let end_bin = (target_bin + half_bandwidth_bins).min(max_bin);
-                
-                if end_bin <= start_bin {
-                    continue;
-                }
-                
-                // Calculate band energy
-                let mut band_energy = 0.0;
-                for j in start_bin..end_bin {
-                    band_energy += spectrum[j];
-                }
-                
-                band_energy /= (end_bin - start_bin) as f32;
-                bands[i] = band_energy;
+            // Calculate the bin range for this band
+            let bin_start = ((freq_start / freq_resolution) as usize).max(min_bin);
+            let bin_end = ((freq_end / freq_resolution) as usize).min(max_bin);
+            
+            // Skip if we don't have a valid bin range
+            if bin_end <= bin_start {
+                continue;
             }
-        } else {
-            // Direct mapping to critical bands when we have enough output bands
-            // We'll map each critical band directly to an output band
-            let num_critical_bands = bark_band_centers.len().min(config.num_bands);
             
-            for i in 0..num_critical_bands {
-                let center_freq = bark_band_centers[i];
-                let lower_edge = if i == 0 { 0.0 } else { bark_band_edges[i] };
-                let upper_edge = bark_band_edges[i+1];
-                
-                // Skip bands outside of our frequency range
-                if upper_edge < config.min_freq || lower_edge > config.max_freq {
-                    continue;
-                }
-                
-                // Convert to bin indices
-                let start_bin = (lower_edge / freq_resolution) as usize;
-                let end_bin = (upper_edge / freq_resolution) as usize;
-                
-                // Ensure we're within the valid range
-                let start_bin = start_bin.max(min_bin);
-                let end_bin = end_bin.min(max_bin);
-                
-                if end_bin <= start_bin {
-                    continue;
-                }
-                
-                // Calculate band energy
-                let mut band_energy = 0.0;
-                for j in start_bin..end_bin {
-                    band_energy += spectrum[j];
-                }
-                
-                band_energy /= (end_bin - start_bin) as f32;
-                bands[i] = band_energy;
+            // Calculate the energy for this band
+            let mut band_energy = 0.0;
+            for j in bin_start..bin_end {
+                band_energy += spectrum[j];
             }
+            
+            // Normalize by the number of bins
+            band_energy /= (bin_end - bin_start) as f32;
+            bands[i] = band_energy;
         }
 
         bands
