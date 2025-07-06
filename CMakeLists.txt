@@ -6,6 +6,7 @@ if(ENABLE_EMULATOR)
 endif()
 
 project(main VERSION 0.1.0)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Set default install prefix to build directory if not specified
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -90,6 +91,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
+
+if(NOT ENABLE_EMULATOR)
+    find_package(WiringPi)
+    if(WiringPi_FOUND)
+        include_directories(${WiringPi_INCLUDE_DIR})
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${WiringPi_LIBRARIES})
+    endif()
+endif()
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
