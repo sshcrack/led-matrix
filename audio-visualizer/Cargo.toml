@@ -1,0 +1,23 @@
+[package]
+name = "audio-visualizer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Audio processing
+cpal = "0.15"
+rustfft = "6.0"
+# GUI
+eframe = "0.28"
+egui = "0.28"
+# Networking
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Configuration storage
+dirs = "5.0"
+toml = "0.8"
+# Async runtime
+futures = "0.3"
+# Error handling
+anyhow = "1.0"
