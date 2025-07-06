@@ -48,38 +48,13 @@ pub fn get_audio_devices() -> Vec<AudioDeviceInfo> {
 /// Get the most recent audio data from the processor
 #[tauri::command]
 pub async fn get_audio_data(state: State<'_, Mutex<AppState>>) -> Result<Vec<f32>, String> {
-    // Only log occasionally to avoid flooding the console
-    static mut COUNTER: u32 = 0;
-    let should_log = unsafe {
-        COUNTER += 1;
-        COUNTER % 300 == 0 // Log every 300th call
-    };
-
-    if should_log {
-        println!("[DEBUG] get_audio_data: Retrieving audio data");
-    }
 
     let s = state.lock().await;
     if let Some(processor) = &s.audio_processor {
         let p = processor.lock().await;
         let bands = p.get_bands();
 
-        if should_log && !bands.is_empty() {
-            println!("[DEBUG] get_audio_data: Retrieved {} bands", bands.len());
-            // Log a few band values as sample
-            println!(
-                "[DEBUG] get_audio_data: Band samples - first: {}, middle: {}, last: {}",
-                bands[0],
-                bands[bands.len() / 2],
-                bands[bands.len() - 1]
-            );
-        }
-
         return Ok(bands);
-    }
-
-    if should_log {
-        println!("[DEBUG] get_audio_data: No audio processor, returning empty bands");
     }
 
     Ok(vec![0.0; 64]) // Default empty bands
