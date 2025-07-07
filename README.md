@@ -4,8 +4,8 @@
 
 A powerful C++ application that transforms RGB LED matrices into dynamic displays with stunning visual effects, real-time data visualization, and remote control capabilities.
 
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/led-matrix-controller?style=for-the-badge)](https://github.com/yourusername/led-matrix-controller/stargazers)
-[![License](https://img.shields.io/github/license/yourusername/led-matrix-controller?style=for-the-badge)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/sshcrack/led-matrix-controller?style=for-the-badge)](https://github.com/sshcrack/led-matrix-controller/stargazers)
+[![License](https://img.shields.io/github/license/sshcrack/led-matrix-controller?style=for-the-badge)](LICENSE)
 [![C++](https://img.shields.io/badge/C%2B%2B-23-blue?style=for-the-badge&logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
 [![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi-red?style=for-the-badge&logo=raspberrypi)](https://www.raspberrypi.org/)
 
