@@ -145,7 +145,8 @@ namespace ConfigData {
             scene->register_properties();
 
             // Pass no json to default initialize
-            scene->load_properties({});
+            spdlog::debug("Creating default scene: {}", scene->get_name());
+            scene->load_properties(nlohmann::json::object());
 
             scenes.push_back(std::move(scene));
         }
