@@ -7,7 +7,7 @@
 #include "utils/canvas_consts.h"
 
 #include <csignal>
-#ifndef ENABLE_EMULATOR
+#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
 #include <wiringPi.h>
 #endif
 #include <chrono>
@@ -27,7 +27,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
     while (!interrupt_received) {
-#ifndef ENABLE_EMULATOR
+#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
         // Check motion sensor
         int sensor_state = digitalRead(MOTION_SENSOR_PIN);
         unsigned long current_time = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -58,7 +58,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
             matrix->Clear();
             SleepMillis(1000);
 
-#ifndef ENABLE_EMULATOR
+#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
             // Check the sensor while turned off
             if (digitalRead(MOTION_SENSOR_PIN) == HIGH) {
                 debug("Motion detected, turning on canvas");
@@ -86,7 +86,7 @@ int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
     signal(SIGINT, InterruptHandler);
     
     // Initialize GPIO for motion sensor
-#ifndef ENABLE_EMULATOR
+#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
     wiringPiSetup();
     pinMode(MOTION_SENSOR_PIN, INPUT);
 #endif
