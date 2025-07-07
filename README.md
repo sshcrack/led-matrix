@@ -120,7 +120,7 @@ Configure your setup using command-line flags or the configuration file - the sy
 
 > **💡 Pro Tip:** Building on Raspberry Pi can be slow. Consider [cross-compilation](https://github.com/abhiTronix/raspberry-pi-cross-compilers/discussions/123) for faster development cycles.
 
-1. **Install vcpkg** following the [official guide](https://github.com/Microsoft/vcpkg)
+1. **Install vcpkg** following the [official guide](https://learn.microsoft.com/vcpkg/get_started/get-started)
 
 2. **Configure the build system:**
    ```bash
