@@ -31,7 +31,7 @@ Our extensive plugin system provides a diverse range of visual experiences:
 
 #### 🎵 **Audio & Music**
 - **Spotify Integration** - Display album art with beat-synchronized effects
-- **Audio Spectrum** - Real-time frequency visualization
+- [**Audio Spectrum**](https://github.com/sshcrack/led-matrix/tree/master/plugins/AudioVisualizer) - Real-time frequency visualization (Setup required)
 - **Beat-synced animations** with BPM detection
 
 #### 🌦️ **Real-World Data**
