@@ -409,8 +409,7 @@ We welcome contributions! Whether it's a bug fix, new feature, or awesome plugin
 - **Unit tests** for critical functionality
 
 ## 📄 **License**
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+See the [LICENSE](LICENSE) file for details.
 
 ### 🙏 **Acknowledgments**
 
