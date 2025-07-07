@@ -109,7 +109,7 @@ Configure your setup using command-line flags or the configuration file - the sy
 - **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
 
 ### 📱 **For Mobile App Development**
-- **Node.js 18+** and npm/yarn
+- **Node.js 18+** and pnpm
 - **React Native CLI** and development environment
 - **Android Studio** (for Android development)
 - **Xcode** (for iOS development on macOS)
@@ -163,13 +163,14 @@ Get the mobile app running in minutes:
 
 2. **Install dependencies:**
    ```bash
-   npm install
+   [npm install
    ```
 
 3. **Launch the app:**
    ```bash
-   npm run dev:android        # For Android
-   npm run dev:ios            # For iOS
+   [npm run dev:android        # For Android
+   [npm run dev:ios            # For iOS
+   pnpm run dev:web            # For web
    ```
 
 ## 🎯 **Usage Guide**
