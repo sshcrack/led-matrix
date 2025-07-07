@@ -204,7 +204,7 @@ sudo ./led-matrix-controller [options]
 --led-slowdown-gpio=1             # Timing adjustment for Pi models
 ```
 
-> **📖 For comprehensive configuration options**, including troubleshooting flickering displays, timing adjustments, and advanced setups, see the [rpi-rgb-led-matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix).
+> **📖 For comprehensive configuration options**, including troubleshooting flickering displays, timing adjustments, and advanced setups, see the [rpi-rgb-led-matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#types-of-displays).
 
 ### 🗂️ **Configuration Management**
 
