@@ -48,4 +48,4 @@ The client uses a compact binary packet format:
 
 ## Installation
 
-The plugin is automatically built and installed with the main LED Matrix application.
+The plugin is automatically built and installed with the main LED Matrix application. Just download the client from the releases tab (TODO for now build from source) and set the correct hostname and port (by default 8888). After that your audio visualizer is ready to go!
