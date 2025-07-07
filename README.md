@@ -163,13 +163,13 @@ Get the mobile app running in minutes:
 
 2. **Install dependencies:**
    ```bash
-   [npm install
+   npm install
    ```
 
 3. **Launch the app:**
    ```bash
-   [npm run dev:android        # For Android
-   [npm run dev:ios            # For iOS
+   npm run dev:android        # For Android
+   npm run dev:ios            # For iOS
    npm run dev:web            # For web
    ```
 
