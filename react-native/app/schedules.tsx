@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { ScrollView, View, Alert, Platform } from 'react-native';
+import { ScrollView, View, Alert, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
@@ -8,11 +8,17 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
+import { StatusIndicator } from '~/components/ui/status-indicator';
 import { Switch } from '~/components/ui/switch';
 import { Text } from '~/components/ui/text';
 import useFetch from '~/components/useFetch';
 import { ListPresets } from '~/components/apiTypes/list_presets';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
+import { Calendar } from '~/lib/icons/Calendar';
+import { Clock } from '~/lib/icons/Clock';
+import { Trash2 } from '~/lib/icons/Trash2';
+import { Plus } from '~/lib/icons/Plus';
+import { Settings } from '~/lib/icons/Settings';
 
 interface Schedule {
   id: string;
@@ -32,13 +38,13 @@ interface SchedulingStatus {
 }
 
 const DAYS_OF_WEEK = [
-  { value: 0, label: 'Sunday' },
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' }
+  { value: 0, label: 'Sun' },
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' }
 ];
 
 export default function ScheduleScreen() {
@@ -52,101 +58,127 @@ export default function ScheduleScreen() {
     preset_id: '',
     start_hour: 9,
     start_minute: 0,
-    end_hour: 22,
+    end_hour: 17,
     end_minute: 0,
-    days_of_week: [1, 2, 3, 4, 5], // Monday to Friday
+    days_of_week: [],
     enabled: true
   });
 
-  const [isCreating, setIsCreating] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const toggleScheduling = async () => {
+  const { width } = Dimensions.get('window');
+  const isWeb = width > 768;
+
+  const toggleScheduling = async (enabled: boolean) => {
     try {
-      const newEnabled = !schedulingStatus.data?.enabled;
-      await fetch(`${apiUrl}/set_scheduling_enabled?enabled=${newEnabled}`);
-      schedulingStatus.setRetry(Math.random());
-      Toast.show({
-        type: 'success',
-        text1: `Scheduling ${newEnabled ? 'enabled' : 'disabled'}`
+      const response = await fetch(`${apiUrl}/scheduling_status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
       });
-    } catch (error) {
+      
+      if (!response.ok) throw new Error('Failed to update scheduling status');
+      
+      schedulingStatus.setRetry(Math.random());
+    } catch (error: any) {
       Toast.show({
         type: 'error',
-        text1: 'Failed to toggle scheduling',
-        text2: error instanceof Error ? error.message : 'Unknown error'
+        text1: 'Error',
+        text2: error.message || 'Failed to update scheduling status'
       });
     }
   };
 
-  const createSchedule = async () => {
-    if (!newSchedule.name || !newSchedule.preset_id) {
+  const addSchedule = async () => {
+    if (!newSchedule.name || !newSchedule.preset_id || newSchedule.days_of_week?.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'Please fill in all required fields'
+        text1: 'Validation Error',
+        text2: 'Please fill in all fields and select at least one day'
       });
       return;
     }
 
-    setIsCreating(true);
+    setLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/schedule`, {
+      const response = await fetch(`${apiUrl}/schedules`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newSchedule)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newSchedule,
+          id: Date.now().toString()
+        })
       });
 
-      if (response.ok) {
-        setNewSchedule({
-          name: '',
-          preset_id: '',
-          start_hour: 9,
-          start_minute: 0,
-          end_hour: 22,
-          end_minute: 0,
-          days_of_week: [1, 2, 3, 4, 5],
-          enabled: true
-        });
-        schedules.setRetry(Math.random());
-        Toast.show({
-          type: 'success',
-          text1: 'Schedule created successfully'
-        });
-      } else {
-        throw new Error('Failed to create schedule');
-      }
-    } catch (error) {
+      if (!response.ok) throw new Error('Failed to create schedule');
+
+      setNewSchedule({
+        name: '',
+        preset_id: '',
+        start_hour: 9,
+        start_minute: 0,
+        end_hour: 17,
+        end_minute: 0,
+        days_of_week: [],
+        enabled: true
+      });
+      setShowAddForm(false);
+      schedules.setRetry(Math.random());
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Schedule created successfully'
+      });
+    } catch (error: any) {
       Toast.show({
         type: 'error',
-        text1: 'Failed to create schedule',
-        text2: error instanceof Error ? error.message : 'Unknown error'
+        text1: 'Error',
+        text2: error.message || 'Failed to create schedule'
       });
     } finally {
-      setIsCreating(false);
+      setLoading(false);
     }
   };
 
-  const deleteSchedule = async (scheduleId: string) => {
+  const deleteSchedule = async (id: string) => {
+    if (Platform.OS === 'web') {
+      if (!confirm('Are you sure you want to delete this schedule?')) return;
+    } else {
+      Alert.alert(
+        'Delete Schedule',
+        'Are you sure you want to delete this schedule?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => performDelete(id) }
+        ]
+      );
+      return;
+    }
+    
+    await performDelete(id);
+  };
+
+  const performDelete = async (id: string) => {
     try {
-      const response = await fetch(`${apiUrl}/schedule?id=${scheduleId}`, {
+      const response = await fetch(`${apiUrl}/schedules/${id}`, {
         method: 'DELETE'
       });
 
-      if (response.ok) {
-        schedules.setRetry(Math.random());
-        Toast.show({
-          type: 'success',
-          text1: 'Schedule deleted successfully'
-        });
-      } else {
-        throw new Error('Failed to delete schedule');
-      }
-    } catch (error) {
+      if (!response.ok) throw new Error('Failed to delete schedule');
+
+      schedules.setRetry(Math.random());
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Schedule deleted successfully'
+      });
+    } catch (error: any) {
       Toast.show({
         type: 'error',
-        text1: 'Failed to delete schedule',
-        text2: error instanceof Error ? error.message : 'Unknown error'
+        text1: 'Error',
+        text2: error.message || 'Failed to delete schedule'
       });
     }
   };
@@ -159,208 +191,270 @@ export default function ScheduleScreen() {
     return days.map(day => DAYS_OF_WEEK[day].label).join(', ');
   };
 
-  const toggleDay = (day: number) => {
-    const currentDays = newSchedule.days_of_week || [];
-    const newDays = currentDays.includes(day)
-      ? currentDays.filter(d => d !== day)
-      : [...currentDays, day].sort();
-    setNewSchedule({ ...newSchedule, days_of_week: newDays });
-  };
+  const SchedulingStatusCard = () => (
+    <Card className="animate-fade-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+      <CardHeader>
+        <CardTitle className="flex-row items-center gap-3">
+          <View className="p-2 bg-info/10 rounded-full">
+            <Settings className="text-info" width={20} height={20} />
+          </View>
+          <Text className="text-xl font-bold">Scheduling System</Text>
+        </CardTitle>
+        <CardDescription>
+          Control automatic preset scheduling
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <View className="flex-row items-center justify-between p-4 bg-secondary/30 rounded-xl">
+          <View className="flex-row items-center gap-3">
+            <StatusIndicator 
+              status={schedulingStatus.data?.enabled ? 'active' : 'inactive'} 
+              size="md"
+            />
+            <View>
+              <Text className="text-lg font-semibold">
+                {schedulingStatus.data?.enabled ? 'Active' : 'Inactive'}
+              </Text>
+              <Text className="text-sm text-muted-foreground">
+                Scheduling is {schedulingStatus.data?.enabled ? 'enabled' : 'disabled'}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            checked={schedulingStatus.data?.enabled || false}
+            onCheckedChange={toggleScheduling}
+          />
+        </View>
+        {schedulingStatus.data?.enabled && schedulingStatus.data?.active_preset && (
+          <View className="mt-3 p-3 bg-success/10 rounded-lg">
+            <Text className="text-sm font-medium text-success">
+              Active preset: {schedulingStatus.data.active_preset}
+            </Text>
+          </View>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const ScheduleCard = ({ schedule }: { schedule: Schedule }) => (
+    <Card className="animate-scale-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+      <CardHeader className="pb-3">
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1">
+            <CardTitle className="text-lg">{schedule.name}</CardTitle>
+            <CardDescription className="mt-1">
+              Preset: {schedule.preset_id}
+            </CardDescription>
+          </View>
+          <StatusIndicator 
+            status={schedule.enabled ? 'active' : 'inactive'} 
+            size="sm"
+          />
+        </View>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <View className="gap-3">
+          <View className="flex-row items-center gap-2">
+            <Clock className="text-muted-foreground" width={16} height={16} />
+            <Text className="text-sm">
+              {formatTime(schedule.start_hour, schedule.start_minute)} - {formatTime(schedule.end_hour, schedule.end_minute)}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Calendar className="text-muted-foreground" width={16} height={16} />
+            <Text className="text-sm">
+              {formatDays(schedule.days_of_week)}
+            </Text>
+          </View>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onPress={() => deleteSchedule(schedule.id)}
+            className="mt-2"
+          >
+            <View className="flex-row items-center gap-2">
+              <Trash2 className="text-destructive-foreground" width={14} height={14} />
+              <Text>Delete</Text>
+            </View>
+          </Button>
+        </View>
+      </CardContent>
+    </Card>
+  );
+
+  const AddScheduleForm = () => (
+    <Card className="animate-fade-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+      <CardHeader>
+        <CardTitle className="flex-row items-center gap-3">
+          <View className="p-2 bg-success/10 rounded-full">
+            <Plus className="text-success" width={20} height={20} />
+          </View>
+          <Text className="text-xl font-bold">Add New Schedule</Text>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="gap-4">
+        <View>
+          <Label>Schedule Name</Label>
+          <Input
+            value={newSchedule.name}
+            onChangeText={(text) => setNewSchedule({...newSchedule, name: text})}
+            placeholder="Enter schedule name"
+          />
+        </View>
+
+        <View>
+          <Label>Preset</Label>
+          <Select
+            value={newSchedule.preset_id}
+            onValueChange={(value) => setNewSchedule({...newSchedule, preset_id: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select preset" />
+            </SelectTrigger>
+            <SelectContent>
+              {presets.data && Object.keys(presets.data).map((presetId) => (
+                <SelectItem key={presetId} value={presetId}>
+                  {presetId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </View>
+
+        <View className="flex-row gap-4">
+          <View className="flex-1">
+            <Label>Start Time</Label>
+            <View className="flex-row gap-2">
+              <Input
+                value={newSchedule.start_hour?.toString()}
+                onChangeText={(text) => setNewSchedule({...newSchedule, start_hour: parseInt(text) || 0})}
+                placeholder="Hour"
+                className="flex-1"
+                keyboardType="numeric"
+              />
+              <Input
+                value={newSchedule.start_minute?.toString()}
+                onChangeText={(text) => setNewSchedule({...newSchedule, start_minute: parseInt(text) || 0})}
+                placeholder="Min"
+                className="flex-1"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+          <View className="flex-1">
+            <Label>End Time</Label>
+            <View className="flex-row gap-2">
+              <Input
+                value={newSchedule.end_hour?.toString()}
+                onChangeText={(text) => setNewSchedule({...newSchedule, end_hour: parseInt(text) || 0})}
+                placeholder="Hour"
+                className="flex-1"
+                keyboardType="numeric"
+              />
+              <Input
+                value={newSchedule.end_minute?.toString()}
+                onChangeText={(text) => setNewSchedule({...newSchedule, end_minute: parseInt(text) || 0})}
+                placeholder="Min"
+                className="flex-1"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+        </View>
+
+        <View>
+          <Label>Days of Week</Label>
+          <View className="flex-row flex-wrap gap-2 mt-2">
+            {DAYS_OF_WEEK.map((day) => (
+              <Button
+                key={day.value}
+                variant={newSchedule.days_of_week?.includes(day.value) ? "default" : "outline"}
+                size="sm"
+                onPress={() => {
+                  const currentDays = newSchedule.days_of_week || [];
+                  const newDays = currentDays.includes(day.value)
+                    ? currentDays.filter(d => d !== day.value)
+                    : [...currentDays, day.value];
+                  setNewSchedule({...newSchedule, days_of_week: newDays});
+                }}
+              >
+                <Text>{day.label}</Text>
+              </Button>
+            ))}
+          </View>
+        </View>
+
+        <View className="flex-row gap-2">
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onPress={() => setShowAddForm(false)}
+          >
+            <Text>Cancel</Text>
+          </Button>
+          <Button 
+            className="flex-1"
+            onPress={addSchedule}
+            disabled={loading}
+          >
+            <Text>{loading ? 'Adding...' : 'Add Schedule'}</Text>
+          </Button>
+        </View>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView className="flex-1 p-4">
-        {/* Scheduling Status */}
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Scheduling Control</CardTitle>
-            <CardDescription>
-              Enable or disable automatic preset scheduling
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <View className="flex-row items-center justify-between">
-              <Text>Scheduling Enabled</Text>
-              <Switch
-                checked={schedulingStatus.data?.enabled || false}
-                onCheckedChange={toggleScheduling}
-              />
-            </View>
-            {schedulingStatus.data?.active_preset && schedulingStatus.data.active_preset !== 'none' && (
-              <Text className="mt-2 text-sm text-muted-foreground">
-                Active preset: {schedulingStatus.data.active_preset}
-              </Text>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Create New Schedule */}
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Create New Schedule</CardTitle>
-            <CardDescription>
-              Set up automatic preset switching based on time and day
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <View>
-              <Label>Schedule Name</Label>
-              <Input
-                value={newSchedule.name}
-                onChangeText={(text) => setNewSchedule({ ...newSchedule, name: text })}
-                placeholder="e.g., Work Hours"
-              />
-            </View>
-
-            <View>
-              <Label>Preset</Label>
-              <Select
-                value={newSchedule.preset_id ? { value: newSchedule.preset_id, label: newSchedule.preset_id } : undefined}
-                onValueChange={(option) => setNewSchedule({ ...newSchedule, preset_id: option?.value || '' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a preset" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(presets.data || {}).map((presetId) => (
-                    <SelectItem key={presetId} value={presetId} label={presetId}>
-                      {presetId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </View>
-
-            <View className="flex-row space-x-4">
-              <View className="flex-1">
-                <Label>Start Time</Label>
-                <View className="flex-row space-x-2">
-                  <Input
-                    className="flex-1"
-                    value={newSchedule.start_hour?.toString()}
-                    onChangeText={(text) => setNewSchedule({ ...newSchedule, start_hour: parseInt(text) || 0 })}
-                    placeholder="Hour"
-                    keyboardType="numeric"
-                  />
-                  <Input
-                    className="flex-1"
-                    value={newSchedule.start_minute?.toString()}
-                    onChangeText={(text) => setNewSchedule({ ...newSchedule, start_minute: parseInt(text) || 0 })}
-                    placeholder="Minute"
-                    keyboardType="numeric"
-                  />
-                </View>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          padding: 20,
+          gap: 20
+        }}
+      >
+        <View className={`w-full ${isWeb ? 'max-w-4xl mx-auto' : ''}`}>
+          <SchedulingStatusCard />
+          
+          {!showAddForm && (
+            <Button 
+              onPress={() => setShowAddForm(true)}
+              className="mb-4"
+            >
+              <View className="flex-row items-center gap-2">
+                <Plus className="text-primary-foreground" width={20} height={20} />
+                <Text>Add New Schedule</Text>
               </View>
+            </Button>
+          )}
 
-              <View className="flex-1">
-                <Label>End Time</Label>
-                <View className="flex-row space-x-2">
-                  <Input
-                    className="flex-1"
-                    value={newSchedule.end_hour?.toString()}
-                    onChangeText={(text) => setNewSchedule({ ...newSchedule, end_hour: parseInt(text) || 0 })}
-                    placeholder="Hour"
-                    keyboardType="numeric"
-                  />
-                  <Input
-                    className="flex-1"
-                    value={newSchedule.end_minute?.toString()}
-                    onChangeText={(text) => setNewSchedule({ ...newSchedule, end_minute: parseInt(text) || 0 })}
-                    placeholder="Minute"
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
-            </View>
+          {showAddForm && <AddScheduleForm />}
 
-            <View>
-              <Label>Days of Week</Label>
-              <View className="flex-row flex-wrap mt-2">
-                {DAYS_OF_WEEK.map((day) => (
-                  <Button
-                    key={day.value}
-                    variant={newSchedule.days_of_week?.includes(day.value) ? 'default' : 'outline'}
-                    size="sm"
-                    className="m-1"
-                    onPress={() => toggleDay(day.value)}
-                  >
-                    <Text>{day.label.slice(0, 3)}</Text>
-                  </Button>
+          <View className="gap-4">
+            <Text className="text-2xl font-bold">Active Schedules</Text>
+            {schedules.data && Object.keys(schedules.data).length > 0 ? (
+              <View className={`gap-4 ${isWeb ? 'grid grid-cols-1 md:grid-cols-2' : ''}`}>
+                {Object.values(schedules.data).map((schedule) => (
+                  <ScheduleCard key={schedule.id} schedule={schedule} />
                 ))}
               </View>
-            </View>
-
-            <Button onPress={createSchedule} disabled={isCreating}>
-              <Text>{isCreating ? 'Creating...' : 'Create Schedule'}</Text>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Existing Schedules */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Existing Schedules</CardTitle>
-            <CardDescription>
-              Manage your current schedules
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {schedules.data && Object.keys(schedules.data).length > 0 ? (
-              Object.entries(schedules.data).map(([id, schedule]) => (
-                <Card key={id} className="mb-3">
-                  <CardContent className="p-4">
-                    <View className="flex-row justify-between items-start mb-2">
-                      <Text className="font-medium">{schedule.name}</Text>
-                      <View className="flex-row items-center space-x-2">
-                        <Switch
-                          checked={schedule.enabled}
-                          onCheckedChange={() => {
-                            // TODO: Implement toggle schedule enabled
-                          }}
-                        />
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onPress={() => {
-                            if (Platform.OS === 'web') {
-                              if (confirm('Are you sure you want to delete this schedule?')) {
-                                deleteSchedule(id);
-                              }
-                            } else {
-                              Alert.alert(
-                                'Delete Schedule',
-                                'Are you sure you want to delete this schedule?',
-                                [
-                                  { text: 'Cancel', style: 'cancel' },
-                                  { text: 'Delete', style: 'destructive', onPress: () => deleteSchedule(id) }
-                                ]
-                              );
-                            }
-                          }}
-                        >
-                          <Text>Delete</Text>
-                        </Button>
-                      </View>
-                    </View>
-                    <Text className="text-sm text-muted-foreground">
-                      Preset: {schedule.preset_id}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      Time: {formatTime(schedule.start_hour, schedule.start_minute)} - {formatTime(schedule.end_hour, schedule.end_minute)}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      Days: {formatDays(schedule.days_of_week)}
-                    </Text>
-                  </CardContent>
-                </Card>
-              ))
             ) : (
-              <Text className="text-center text-muted-foreground py-8">
-                No schedules created yet
-              </Text>
+              <Card className="border-dashed border-muted-foreground/50">
+                <CardContent className="py-8">
+                  <View className="items-center gap-3">
+                    <Calendar className="text-muted-foreground" width={48} height={48} />
+                    <Text className="text-lg font-semibold text-muted-foreground">
+                      No schedules found
+                    </Text>
+                    <Text className="text-sm text-muted-foreground text-center">
+                      Create your first schedule to automatically switch presets
+                    </Text>
+                  </View>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

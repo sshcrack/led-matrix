@@ -62,8 +62,33 @@ export default function RootLayout() {
             <Stack.Screen
               name='index'
               options={{
-                title: 'LED Matrix Controller',
+                title: 'LED Matrix',
+                headerLargeTitle: true,
+                headerStyle: {
+                  backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                },
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 28,
+                  color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                },
                 headerLeft: () => (Platform.OS !== "web" || __DEV__) && <ResetApiUrl />,
+                headerRight: () => <ThemeToggle />,
+              }}
+            />
+            <Stack.Screen
+              name='schedules'
+              options={{
+                title: 'Schedules',
+                headerLargeTitle: false,
+                headerStyle: {
+                  backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                },
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 20,
+                  color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                },
                 headerRight: () => <ThemeToggle />,
               }}
             />
@@ -72,7 +97,15 @@ export default function RootLayout() {
               getId={({ params }) => `modify-preset-${params?.preset_id}`}
               options={({ route }) => ({
                 //@ts-ignore
-                title: `Modify ${route.params?.preset_id}`,
+                title: `Edit ${route.params?.preset_id}`,
+                headerStyle: {
+                  backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                },
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                  color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                },
                 //@ts-ignore
                 headerRight: () => <SaveButton presetId={route.params?.preset_id} />,
               })}
@@ -81,7 +114,15 @@ export default function RootLayout() {
               name='modify-providers/[preset_id]/[scene_id]'
               getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
               options={{
-                title: `Configure Providers of Scene`
+                title: `Configure Scene`,
+                headerStyle: {
+                  backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                },
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                  color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                },
               }}
             />
           </Stack>
