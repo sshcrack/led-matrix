@@ -17,9 +17,10 @@ using json = nlohmann::json;
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router) {
     // Root redirect
     router->http_get("/", [](auto req, auto) {
-        return req->create_response(restinio::status_see_other())
-            .append_header(restinio::http_field::location, "/web/")
-            .done();
+        auto response = req->create_response(restinio::status_see_other())
+            .append_header(restinio::http_field::location, "/web/");
+        Server::add_cors_headers(response);
+        return response.done();
     });
 
     // Static file serving
@@ -53,39 +54,27 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         const string content_type = MimeTypes::getType(file_path.string());
         
         spdlog::trace("Serving {}", file_path.c_str());
-        return req->create_response(restinio::status_ok())
+        auto response = req->create_response(restinio::status_ok())
             .append_header_date_field()
-            .append_header(restinio::http_field::content_type, content_type)
-            .set_body(sendfile(file_path))
-            .done();
+            .append_header(restinio::http_field::content_type, content_type);
+        Server::add_cors_headers(response);
+        return response.set_body(sendfile(file_path)).done();
     });
 
     router->http_get("/list", [](auto req, auto) {
-        auto res = req->create_response(restinio::status_ok())
-                .append_header_date_field()
-                .append_header(restinio::http_field::content_type, "application/json; charset=utf8");
-        res.append_body("[");
+        json file_list = json::array();
 
         auto iterator = filesystem::directory_iterator(Constants::post_dir);
-        bool is_first = true;
         for (const auto &entry: iterator) {
             string file_name = entry.path().filename().string();
             if (!file_name.ends_with(".p.gif"))
                 continue;
 
             replace(file_name, ".p.gif", ".gif");
-            string to_send = fmt::format("\"{}\"", file_name);
-            if (!is_first) {
-                to_send.insert(0, ",");
-            } else {
-                is_first = false;
-            }
-
-            res.append_body(to_send);
+            file_list.push_back(file_name);
         }
 
-        res.append_body("]").done();
-        return restinio::request_accepted();
+        return reply_with_json(req, file_list);
     });
 
     router->http_get("/image", [](auto req, auto) {
@@ -110,11 +99,11 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         const string ext = file_path.extension();
         const string content_type = MimeTypes::getType("file" + ext);
 
-        req->create_response(restinio::status_ok())
+        auto response = req->create_response(restinio::status_ok())
                 .append_header_date_field()
-                .append_header(restinio::http_field::content_type, content_type)
-                .set_body(sendfile(processing_path))
-                .done();
+                .append_header(restinio::http_field::content_type, content_type);
+        Server::add_cors_headers(response);
+        response.set_body(sendfile(processing_path)).done();
 
         return restinio::request_accepted();
     });

@@ -8,6 +8,8 @@
 #include "other_routes.h"
 #include "preset_management.h"
 #include "scene_management.h"
+#include "shared/server/server_utils.h"
+#include <spdlog/spdlog.h>
 #include "schedule_management.h"
 
 using namespace std;
@@ -18,6 +20,14 @@ using json = nlohmann::json;
 // Create request handler.
 std::unique_ptr<router_t> Server::server_handler() {
     auto router = std::make_unique<router_t>();
+
+#ifdef ENABLE_CORS
+    // Handle CORS preflight requests for all routes
+    router->add_handler(http_method_options(), R"(.*)", [](auto req, auto) {
+        return Server::handle_cors_preflight(req);
+    });
+    spdlog::debug("Allowing CORS requests");
+#endif
 
     router = add_preset_routes(std::move(router));
     router = add_canvas_status_routes(std::move(router));
