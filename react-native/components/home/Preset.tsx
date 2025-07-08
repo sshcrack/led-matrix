@@ -7,8 +7,11 @@ import { useApiUrl } from '../apiUrl/ApiUrlProvider';
 import Loader from '../Loader';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
+import { StatusIndicator } from '../ui/status-indicator';
 import { Text } from '../ui/text';
 import { Download } from '~/lib/icons/Download';
+import { Pen } from '~/lib/icons/Pen';
+import { Trash2 } from '~/lib/icons/Trash2';
 
 export type PresetProps = {
     preset: ApiPreset,
@@ -21,82 +24,137 @@ export type PresetProps = {
 export default function Preset({ preset, name, isActive, setStatusRefresh, setPresetRefresh }: PresetProps) {
     const [isSettingActive, setIsSettingActive] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const apiUrl = useApiUrl()
+    const apiUrl = useApiUrl();
 
-    return <Card className={`w-[20rem] border-[3px] ${isActive ? "border-green-400" : "border-gray-100"}`}>
-        <CardHeader>
-            <View className="flex-row justify-between align-center">
-                <Text
-                    numberOfLines={1}
-                    role='heading'
-                    aria-level={3}
-                    className='text-center text-2xl text-card-foreground font-semibold leading-none tracking-tight truncate'
+    const handleSetActive = async () => {
+        if (isSettingActive) return;
+
+        setIsSettingActive(true);
+        try {
+            await fetch(apiUrl + `/set_active?preset_id=${name}`);
+            setStatusRefresh();
+        } catch (e: any) {
+            Toast.show({
+                type: "error",
+                text1: "Error activating preset",
+                text2: e.message
+            });
+        } finally {
+            setIsSettingActive(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        setDeleting(true);
+        try {
+            await fetch(apiUrl + `/preset?id=${encodeURIComponent(name)}`, {
+                method: "DELETE"
+            });
+            setPresetRefresh();
+        } catch (e: any) {
+            Toast.show({
+                type: "error",
+                text1: "Error deleting preset",
+                text2: e.message
+            });
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleShare = () => {
+        const presetJson = JSON.stringify(preset, null, 2);
+        Share.share({
+            message: presetJson,
+            title: `LED Matrix Preset: ${name}`
+        });
+    };
+
+    return (
+        <Card className={`w-80 min-h-48 animate-scale-in shadow-lg transition-all duration-200 ${isActive
+                ? 'border-2 border-primary bg-primary/5 shadow-primary/20'
+                : 'border border-border hover:shadow-xl hover:scale-[1.02]'
+            }`}>
+            <CardHeader className="pb-3">
+                <View className="flex-row items-start justify-between">
+                    <View className="flex-1">
+                        <View className="flex-row items-center gap-2 mb-1">
+                            <StatusIndicator
+                                status={isActive ? 'active' : 'inactive'}
+                                size="sm"
+                            />
+                            <Text
+                                numberOfLines={1}
+                                role='heading'
+                                aria-level={3}
+                                className='text-lg font-bold text-card-foreground truncate'
+                            >
+                                {name}
+                            </Text>
+                        </View>
+                        <CardDescription className="text-sm">
+                            {preset.scenes.length} scene{preset.scenes.length !== 1 ? 's' : ''}
+                        </CardDescription>
+                    </View>
+                    <Pressable
+                        onPress={handleShare}
+                        className="p-2 hover:bg-secondary/50 rounded-full transition-colors"
+                    >
+                        <Download className="text-muted-foreground" width={16} height={16} />
+                    </Pressable>
+                </View>
+            </CardHeader>
+
+            <CardContent className="pt-0 gap-3">
+                <Button
+                    disabled={isActive || isSettingActive}
+                    onPress={handleSetActive}
+                    className={`w-full ${isActive ? 'bg-success' : ''}`}
+                    variant={isActive ? "default" : "outline"}
                 >
-                    {name}
-                </Text>
-                <Pressable onPress={() => {
-                    const presetJson = JSON.stringify(preset)
-                    Share.share({
-                        message: presetJson
-                    })
-                }}><Download className="text-foreground"/></Pressable>
-            </View>
-            <CardDescription>{preset.scenes.length} Scenes</CardDescription>
-        </CardHeader>
-        <CardContent className='gap-5'>
-            <Button
-                disabled={isActive || isSettingActive}
-                onPress={() => {
-                    if (isSettingActive)
-                        return
-
-                    setIsSettingActive(true)
-                    fetch(apiUrl + `/set_preset?id=${encodeURIComponent(name)}`)
-                        .then(() => setStatusRefresh())
-                        .catch(e => {
-                            Toast.show({
-                                type: "error",
-                                text1: "Error setting status",
-                                text2: e.message
-                            })
-                        })
-                        .finally(() => setIsSettingActive(false))
-                }}
-                variant="outline"
-                className='flex gap-2 items-center justify-center flex-row'
-            >
-                {isSettingActive && <Loader />}
-                <Text>{isSettingActive ? "Setting active..." : "Set Active"}</Text>
-            </Button>
-
-            <View className='flex gap-2 flex-row w-full'>
-                <Link push asChild href={{
-                    pathname: '/modify-preset/[preset_id]',
-                    params: { preset_id: name },
-                }}>
-                    <Button className="flex-1">
-                        <Text>Modify</Text>
-                    </Button>
-                </Link>
-
-                <Button disabled={deleting || isActive} variant="destructive" onPress={() => {
-                    setDeleting(true)
-                    fetch(apiUrl + `/preset?id=${encodeURIComponent(name)}`, {
-                        method: "DELETE"
-                    })
-                        .then(() => setPresetRefresh())
-                        .catch(e => {
-                            Toast.show({
-                                type: "error",
-                                text1: "Error deleting preset",
-                                text2: e.message
-                            })
-                        })
-                        .finally(() => setDeleting(false))
-                }}>
-                    {deleting ? <Loader /> : <Text>Delete</Text>}
+                    {isSettingActive ? (
+                        <View className="flex-row items-center gap-2">
+                            <Loader className="w-4 h-4" />
+                            <Text>Activating...</Text>
+                        </View>
+                    ) : (
+                        <Text>{isActive ? "Active" : "Activate"}</Text>
+                    )}
                 </Button>
-            </View>
-        </CardContent>
-    </Card>
+
+                <View className="flex-row gap-2">
+                    <Link href={{
+                        pathname: '/modify-preset/[preset_id]',
+                        params: { preset_id: name },
+                    }} asChild>
+                        <Button variant="outline" className="flex-1">
+                            <View className="flex-row items-center gap-2">
+                                <Pen className="text-foreground" width={16} height={16} />
+                                <Text>Edit</Text>
+                            </View>
+                        </Button>
+                    </Link>
+
+                    <Button
+                        variant="destructive"
+                        onPress={handleDelete}
+                        disabled={deleting || isActive}
+                        className="flex-1"
+                    >
+                        {deleting ? (
+                            <View className="flex-row items-center gap-2">
+                                <Loader className="w-4 h-4" />
+                                <Text>Deleting...</Text>
+                            </View>
+                        ) : (
+                            <View className="flex-row items-center gap-2">
+                                <Trash2 className="text-destructive-foreground" width={16} height={16} />
+                                <Text>Delete</Text>
+                            </View>
+                        )}
+                    </Button>
+                </View>
+            </CardContent>
+        </Card>
+    );
 }
