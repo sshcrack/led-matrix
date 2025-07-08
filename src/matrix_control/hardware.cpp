@@ -26,7 +26,22 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
     info("Press Ctrl+C to quit");
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
+    string last_scheduled_preset = "";
+    
     while (!interrupt_received) {
+        // Check for active scheduled preset
+        if (config->is_scheduling_enabled()) {
+            auto active_preset = config->get_active_scheduled_preset();
+            if (active_preset.has_value() && active_preset.value() != last_scheduled_preset) {
+                debug("Switching to scheduled preset: {}", active_preset.value());
+                config->set_curr(active_preset.value());
+                last_scheduled_preset = active_preset.value();
+            } else if (!active_preset.has_value() && !last_scheduled_preset.empty()) {
+                debug("No active schedule, clearing scheduled preset");
+                last_scheduled_preset = "";
+            }
+        }
+
 #if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
         // Check motion sensor
         int sensor_state = digitalRead(MOTION_SENSOR_PIN);
