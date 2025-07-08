@@ -39,15 +39,6 @@ namespace Config {
         void set_presets(const string& id, std::shared_ptr<ConfigData::Preset> preset);
 
         void set_plugin_config(const std::string& pluginId, const string& config);
-        
-        // Schedule management methods
-        map<string, ConfigData::Schedule> get_schedules();
-        void set_schedule(const string& id, const ConfigData::Schedule& schedule);
-        bool delete_schedule(const string& id);
-        bool is_scheduling_enabled();
-        void set_scheduling_enabled(bool enabled);
-        optional<string> get_active_scheduled_preset();
-        
         bool save();
         string get_filename() const;
 
