@@ -14,6 +14,7 @@
 #include "../rpi-rgb-led-matrix/lib/framebuffer-internal.h"
 #include "server/server.h"
 #include "shared/utils/shared.h"
+#include "shared/server/server_utils.h"
 
 using namespace spdlog;
 using namespace std;
@@ -80,14 +81,24 @@ int main(int argc, char *argv[]) {
 
     string host = "0.0.0.0";
 
+#ifdef ENABLE_CORS
+    debug("Allowing CORS request to be made to this server");
+#endif
+
     server_t server{
         restinio::own_io_context(),
         [port, host](auto &settings) {
             std::shared_ptr router = Server::server_handler();
 
-            // Create request handler function that uses the router
+            // Create request handler function that handles OPTIONS first, then delegates to router
             auto handler = [router = std::move(router)]
             (auto req) {
+#ifdef ENABLE_CORS
+                // Handle CORS preflight requests for all routes
+                if (req->header().method() == restinio::http_method_options()) {
+                    return Server::handle_cors_preflight(req);
+                }
+#endif
                 return (*router)(std::move(req));
             };
 
