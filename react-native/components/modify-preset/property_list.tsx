@@ -1,13 +1,13 @@
 import { useCallback } from 'react';
-import { ReactSetState } from '~/lib/utils';
 import { Scene } from '../apiTypes/list_presets';
 import { TypeId } from '../apiTypes/list_scenes';
+import { useSubConfig } from '../configShare/ConfigProvider';
 import { Text } from '../ui/text';
+import usePresetId from './PresetIdProvider';
+import { ColorProperty } from './properties/ColorProperty';
 import GeneralProperty from './properties/GeneralProperty';
 import ProvidersProperty from './properties/ProvidersProperty';
 import { SceneContext } from './SceneContext';
-import { useSubConfig } from '../configShare/ConfigProvider';
-import usePresetId from './PresetIdProvider';
 
 
 export type DynamicPluginPropertyProps<T> = {
@@ -28,7 +28,8 @@ export type PluginPropertyProps<T> = {
 
 export const propertyComponents = {
     "general": GeneralProperty,
-    "providers": ProvidersProperty
+    "providers": ProvidersProperty,
+    "color": ColorProperty
 }
 
 type ComponentKeys = keyof typeof propertyComponents;

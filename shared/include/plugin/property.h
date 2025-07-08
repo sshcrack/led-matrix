@@ -3,6 +3,8 @@
 #include <string>
 #include <utility>
 #include <optional>
+
+#include "color.h"
 #include "shared/utils/utils.h"
 
 class PropertyBase
@@ -135,6 +137,8 @@ public:
             return "int16_t";
         else if constexpr (std::is_same_v<T, uint8_t>)
             return "uint8_t";
+        else if constexpr (std::is_same_v<T, Color>)
+            return "color";
         else
             return typeid(T).name();
     }
