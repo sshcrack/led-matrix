@@ -1,4 +1,4 @@
-use crate::{frequency_analyzer, config::AudioVisualizerConfig};
+use crate::{config::AudioVisualizerConfig, frequency_analyzer};
 use rustfft::{Fft, FftPlanner};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -42,7 +42,7 @@ impl AudioProcessor {
             spectrum: vec![0.0; FFT_SIZE / 2],
             bands: vec![0.0; config.num_bands],
             config,
-            sample_rate
+            sample_rate,
         }
     }
 
@@ -123,7 +123,10 @@ impl AudioProcessor {
 
     // Add this new method to get the interpolated_log flag
     pub fn get_interpolated_log(&self) -> bool {
-        let interpolated = self.config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed);
+        let interpolated = self
+            .config
+            .interpolate_bands
+            .load(std::sync::atomic::Ordering::Relaxed);
         let frequency_scale = *self.config.frequency_scale.read().unwrap() == "log";
         let result = interpolated && frequency_scale;
 
@@ -153,21 +156,26 @@ impl AudioProcessorTrait for AudioProcessor {
 
     fn update_config(&mut self, config: AudioVisualizerConfig) {
         println!("[DEBUG] AudioProcessor.update_config: Updating config");
-        println!("[DEBUG] AudioProcessor.update_config: Old num_bands={}, New num_bands={}", 
-                 self.config.num_bands, config.num_bands);
-        
+        println!(
+            "[DEBUG] AudioProcessor.update_config: Old num_bands={}, New num_bands={}",
+            self.config.num_bands, config.num_bands
+        );
+
         if config.num_bands != self.config.num_bands {
             println!("[DEBUG] AudioProcessor.update_config: Resizing bands array");
             self.bands = vec![0.0; config.num_bands];
         }
-        
+
         // Log important settings changes
-        println!("[DEBUG] AudioProcessor.update_config: Old frequency_scale={}, New frequency_scale={}", 
-                 *self.config.frequency_scale.read().unwrap(), *config.frequency_scale.read().unwrap());
+        println!(
+            "[DEBUG] AudioProcessor.update_config: Old frequency_scale={}, New frequency_scale={}",
+            *self.config.frequency_scale.read().unwrap(),
+            *config.frequency_scale.read().unwrap()
+        );
         println!("[DEBUG] AudioProcessor.update_config: Old interpolate_bands={}, New interpolate_bands={}", 
                  self.config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed),
                  config.interpolate_bands.load(std::sync::atomic::Ordering::Relaxed));
-        
+
         self.config = config;
         println!("[DEBUG] AudioProcessor.update_config: Config updated successfully");
     }
