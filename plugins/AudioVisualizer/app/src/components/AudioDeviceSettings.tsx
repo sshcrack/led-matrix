@@ -23,23 +23,28 @@ const AudioDeviceSettings: React.FC<AudioDeviceSettingsProps> = ({
     const [loading, setLoading] = useState(true);
 
     // Load available audio devices
-    useEffect(() => {
-        const loadDevices = async () => {
-            try {
-                setLoading(true);
-                console.log("[DEBUG] AudioDeviceSettings: Loading audio output devices");
-                const availableDevices = await invoke<AudioDeviceInfo[]>('get_audio_devices');
-                console.log("[DEBUG] AudioDeviceSettings: Devices loaded", availableDevices);
-                setDevices(availableDevices);
-            } catch (error) {
-                console.error("Failed to load audio devices:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const loadDevices = async () => {
+        try {
+            setLoading(true);
+            console.log("[DEBUG] AudioDeviceSettings: Loading audio output devices");
+            const availableDevices = await invoke<AudioDeviceInfo[]>('get_audio_devices');
+            console.log("[DEBUG] AudioDeviceSettings: Devices loaded", availableDevices);
+            setDevices(availableDevices);
+        } catch (error) {
+            console.error("Failed to load audio devices:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         loadDevices();
     }, []);
+
+    // Handle refresh devices
+    const handleRefreshDevices = () => {
+        loadDevices();
+    };
 
     // Handle output device change
     const handleOutputDeviceChange = async (deviceId: string) => {
@@ -61,12 +66,37 @@ const AudioDeviceSettings: React.FC<AudioDeviceSettingsProps> = ({
 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Audio Device Settings</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Audio Device Settings</h2>
+                <button
+                    onClick={handleRefreshDevices}
+                    disabled={loading}
+                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {loading ? 'Refreshing...' : 'Refresh Devices'}
+                </button>
+            </div>
 
             {loading ? (
                 <div className="text-gray-500">Loading audio devices...</div>
             ) : (
                 <>
+                    {/* Important notice about stopping/starting */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <p className="text-sm text-yellow-800">
+                                    <strong>Note:</strong> After changing devices or refreshing the device list, you need to press <strong>Stop</strong> and then <strong>Start</strong> at the top to apply the new device selection.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Output Device Selection */}
                     <div>
                         <label htmlFor="output-device" className="block text-sm font-medium text-gray-700 mb-1">
