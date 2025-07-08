@@ -31,7 +31,7 @@ pub fn get_audio_devices() -> Vec<AudioDeviceInfo> {
 
                 devices.push(AudioDeviceInfo {
                     id,
-                    name: format!("{} (Output)", device_name),
+                    name: device_name,
                     is_default,
                 });
             }
@@ -48,7 +48,6 @@ pub fn get_audio_devices() -> Vec<AudioDeviceInfo> {
 /// Get the most recent audio data from the processor
 #[tauri::command]
 pub async fn get_audio_data(state: State<'_, Mutex<AppState>>) -> Result<Vec<f32>, String> {
-
     let s = state.lock().await;
     if let Some(processor) = &s.audio_processor {
         let p = processor.lock().await;
