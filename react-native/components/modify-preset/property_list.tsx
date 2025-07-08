@@ -28,8 +28,7 @@ export type PluginPropertyProps<T> = {
 
 export const propertyComponents = {
     "general": GeneralProperty,
-    "providers": ProvidersProperty,
-    "color": ColorProperty
+    "providers": ProvidersProperty
 }
 
 type ComponentKeys = keyof typeof propertyComponents;

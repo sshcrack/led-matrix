@@ -6,6 +6,7 @@ import { PluginPropertyProps } from '../property_list'
 import numberPropertyBuilder from './NumberProperty'
 import { BooleanProperty } from './BooleanProperty'
 import { StringProperty } from './StringProperty'
+import { ColorProperty } from './ColorProperty'
 
 type TypeMapping = {
     "bool": boolean,
@@ -15,7 +16,8 @@ type TypeMapping = {
     "double": number,
     "float": number,
     "millis": number,
-    "string": string
+    "string": string,
+    "color": string
 }
 
 type PluginPropertyComponent<T> = (({ value, defaultVal, propertyName }: PluginPropertyProps<T>) => React.JSX.Element)
@@ -33,7 +35,8 @@ const Properties: PropertiesType = {
     "double": numberPropertyBuilder(-3.4028235e38, 3.4028235e38, "float"),
     "float": numberPropertyBuilder(-3.4028235e38, 3.4028235e38, "float"),
     "bool": BooleanProperty,
-    "string": StringProperty
+    "string": StringProperty,
+    "color": ColorProperty
 }
 
 export default function GeneralProperty(props: PluginPropertyProps<any>) {
