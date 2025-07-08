@@ -39,6 +39,9 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AudioVi
 AudioVisualizer::AudioVisualizer() : server_running(false), udp_socket(-1), last_timestamp(0), interpolated_log(false)
 {
     spdlog::info("AudioVisualizer plugin initialized");
+
+    current_audio_data.resize(64);
+    std::fill(current_audio_data.begin(), current_audio_data.end(), 0);
 }
 
 AudioVisualizer::~AudioVisualizer()
