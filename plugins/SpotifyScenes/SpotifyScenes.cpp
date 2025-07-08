@@ -60,9 +60,10 @@ register_routes(std::unique_ptr<router_t> router) {
                                  << "&redirect_uri=" << redirect_uri
                                  << "&state=" << state;
 
-                         return req->create_response(restinio::status_temporary_redirect())
-                                 .append_header(restinio::http_field::location, auth_url.str())
-                                 .done();
+                         auto response = req->create_response(restinio::status_temporary_redirect())
+                                 .append_header(restinio::http_field::location, auth_url.str());
+                         Server::add_cors_headers(response);
+                         return response.done();
                      });
 
     router->http_get("/spotify/callback",
@@ -72,9 +73,10 @@ register_routes(std::unique_ptr<router_t> router) {
                          const auto state = !qp.has("state") ? "" : std::string{qp["state"]};
 
                          if (state.empty()) {
-                             return req->create_response(restinio::status_bad_request())
-                                     .set_body("State mismatch")
-                                     .done();
+                             auto response = req->create_response(restinio::status_bad_request())
+                                     .set_body("State mismatch");
+                             Server::add_cors_headers(response);
+                             return response.done();
                          }
 
                          if (!code.empty()) {
@@ -96,9 +98,10 @@ register_routes(std::unique_ptr<router_t> router) {
                              return Server::reply_with_json(req, {{"success", true}});
                          }
 
-                         return req->create_response(restinio::status_bad_request())
-                                 .set_body("Missing code parameter")
-                                 .done();
+                         auto response = req->create_response(restinio::status_bad_request())
+                                 .set_body("Missing code parameter");
+                         Server::add_cors_headers(response);
+                         return response.done();
                      });
 
     return std::move(router);

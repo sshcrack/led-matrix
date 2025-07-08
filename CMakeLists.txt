@@ -5,6 +5,9 @@ if(ENABLE_EMULATOR)
     list(APPEND VCPKG_MANIFEST_FEATURES "emulator")
 endif()
 
+# Option to enable/disable CORS headers
+option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
+
 project(main VERSION 0.1.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
@@ -59,6 +62,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+
+# Add CORS support if enabled
+if(ENABLE_CORS)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
+endif()
 
 # Require SharedTools
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
