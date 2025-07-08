@@ -3,18 +3,18 @@ cmake_minimum_required(VERSION 3.5.0)
 set(CMAKE_CXX_STANDARD 23)
 
 file(GLOB PLUGIN_SOURCES
-        */*.c*
+    */*.c*
 )
 
-foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
+foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
     get_filename_component(P_DIR ${PLUGIN_SOURCE} DIRECTORY)
     get_filename_component(P_DIR_NAME ${P_DIR} NAME)
 
     get_filename_component(LIB_NAME ${PLUGIN_SOURCE} NAME_WE)
 
-    if (NOT P_DIR_NAME STREQUAL LIB_NAME)
+    if(NOT P_DIR_NAME STREQUAL LIB_NAME)
         continue()
-    endif ()
+    endif()
 
     if(LIB_NAME STREQUAL "ExampleScenes")
         continue()
@@ -22,17 +22,17 @@ foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     message(STATUS "Adding plugin: ${LIB_NAME}")
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
-    
+
     # Read .build_ignore file if it exists
     set(IGNORE_PATTERNS "")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore")
         file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore" IGNORE_PATTERNS)
     endif()
-    
+
     # Collect all source and header files
     file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)
     file(GLOB_RECURSE PLUGIN_HEADERS_ALL ${LIB_NAME}/*.h*)
-    
+
     # Filter out ignored directories
     if(IGNORE_PATTERNS)
         foreach(IGNORE_PATTERN ${IGNORE_PATTERNS})
@@ -79,7 +79,7 @@ foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     # Install plugin
     install(TARGETS ${LIB_NAME}
-            LIBRARY DESTINATION "plugins"
+        LIBRARY DESTINATION "plugins"
     )
 
-endforeach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
+endforeach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
