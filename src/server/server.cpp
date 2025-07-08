@@ -8,6 +8,7 @@
 #include "other_routes.h"
 #include "preset_management.h"
 #include "scene_management.h"
+#include "schedule_management.h"
 
 using namespace std;
 using namespace restinio;
@@ -21,6 +22,7 @@ std::unique_ptr<router_t> Server::server_handler() {
     router = add_preset_routes(std::move(router));
     router = add_canvas_status_routes(std::move(router));
     router = add_scene_routes(std::move(router));
+    router = add_schedule_routes(std::move(router));
     router = add_other_routes(std::move(router));
 
     const auto pl = Plugins::PluginManager::instance();
