@@ -22,8 +22,28 @@ foreach (PLUGIN_SOURCE ${PLUGIN_SOURCES})
 
     message(STATUS "Adding plugin: ${LIB_NAME}")
     set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
+    
+    # Read .build_ignore file if it exists
+    set(IGNORE_PATTERNS "")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore")
+        file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore" IGNORE_PATTERNS)
+    endif()
+    
+    # Collect all source and header files
     file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)
     file(GLOB_RECURSE PLUGIN_HEADERS_ALL ${LIB_NAME}/*.h*)
+    
+    # Filter out ignored directories
+    if(IGNORE_PATTERNS)
+        foreach(IGNORE_PATTERN ${IGNORE_PATTERNS})
+            # Remove leading/trailing whitespace
+            string(STRIP "${IGNORE_PATTERN}" IGNORE_PATTERN)
+            if(NOT "${IGNORE_PATTERN}" STREQUAL "")
+                list(FILTER PLUGIN_SOURCES_ALL EXCLUDE REGEX ".*/${IGNORE_PATTERN}/.*")
+                list(FILTER PLUGIN_HEADERS_ALL EXCLUDE REGEX ".*/${IGNORE_PATTERN}/.*")
+            endif()
+        endforeach()
+    endif()
 
     add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${PLUGIN_HEADERS_ALL} ${RGB_SRC_FILES})
 
