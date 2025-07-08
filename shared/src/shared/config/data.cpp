@@ -3,8 +3,6 @@
 #include <nlohmann/json.hpp>
 #include <random>
 #include <spdlog/spdlog.h>
-#include <chrono>
-#include <ctime>
 
 using namespace std;
 using namespace spdlog;
@@ -59,9 +57,7 @@ namespace ConfigData {
             {"presets", p.presets},
             {"curr", p.curr},
             {"spotify", p.spotify},
-            {"pluginConfigs", p.pluginConfigs},
-            {"schedules", p.schedules},
-            {"scheduling_enabled", p.scheduling_enabled}
+            {"pluginConfigs", p.pluginConfigs}
         };
     }
 
@@ -77,20 +73,6 @@ namespace ConfigData {
 
         p.spotify = j.value("spotify", SpotifyData());
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
-        p.schedules = j.value("schedules", std::map<string, Schedule>());
-        p.scheduling_enabled = j.value("scheduling_enabled", false);
-    }
-
-    void from_json(const json &j, Schedule &p) {
-        j.at("id").get_to(p.id);
-        j.at("name").get_to(p.name);
-        j.at("preset_id").get_to(p.preset_id);
-        j.at("start_hour").get_to(p.start_hour);
-        j.at("start_minute").get_to(p.start_minute);
-        j.at("end_hour").get_to(p.end_hour);
-        j.at("end_minute").get_to(p.end_minute);
-        j.at("days_of_week").get_to(p.days_of_week);
-        p.enabled = j.value("enabled", true);
     }
 
     void from_json(const json &j, SpotifyData &p) {
@@ -182,50 +164,5 @@ namespace ConfigData {
 
     bool SpotifyData::is_expired() const {
         return GetTimeInMillis() > this->expires_at;
-    }
-
-    bool Schedule::is_active_now() const {
-        if (!enabled) return false;
-        
-        auto now = std::chrono::system_clock::now();
-        auto time_t = std::chrono::system_clock::to_time_t(now);
-        auto* tm = std::localtime(&time_t);
-        
-        return is_active_at_time(tm->tm_hour, tm->tm_min, tm->tm_wday);
-    }
-    
-    bool Schedule::is_active_at_time(int hour, int minute, int day_of_week) const {
-        if (!enabled) return false;
-        
-        // Check if today is in the scheduled days
-        if (std::find(days_of_week.begin(), days_of_week.end(), day_of_week) == days_of_week.end()) {
-            return false;
-        }
-        
-        // Convert times to minutes for easier comparison
-        int current_minutes = hour * 60 + minute;
-        int start_minutes = start_hour * 60 + start_minute;
-        int end_minutes = end_hour * 60 + end_minute;
-        
-        // Handle schedules that cross midnight
-        if (start_minutes > end_minutes) {
-            return current_minutes >= start_minutes || current_minutes <= end_minutes;
-        } else {
-            return current_minutes >= start_minutes && current_minutes <= end_minutes;
-        }
-    }
-
-    void to_json(json &j, const Schedule &p) {
-        j = json{
-            {"id", p.id},
-            {"name", p.name},
-            {"preset_id", p.preset_id},
-            {"start_hour", p.start_hour},
-            {"start_minute", p.start_minute},
-            {"end_hour", p.end_hour},
-            {"end_minute", p.end_minute},
-            {"days_of_week", p.days_of_week},
-            {"enabled", p.enabled}
-        };
     }
 }

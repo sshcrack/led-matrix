@@ -18,7 +18,6 @@ A powerful C++ application that transforms RGB LED matrices into dynamic display
 - **React Native mobile app** for on-the-go management
 - **Plugin architecture** for unlimited extensibility
 - **Preset management** for quick scene switching
-- **Advanced scheduling** - Automatically switch presets based on time and day
 - **Real-time configuration** without restarts
 
 ### 🎨 **Rich Scene Collection**
@@ -61,21 +60,6 @@ Our extensive plugin system provides a diverse range of visual experiences:
 - **Configurable logging** with spdlog integration
 - **Persistent configuration** with JSON-based settings
 
-### ⏰ **Smart Scheduling System**
-Take automation to the next level with intelligent preset scheduling:
-- **Time-based switching** - Automatically change presets based on time of day
-- **Day-of-week scheduling** - Different configurations for weekdays vs weekends
-- **Multiple schedules** - Create unlimited schedules for different scenarios
-- **Cross-midnight support** - Schedules that span midnight work seamlessly
-- **Mobile management** - Create and edit schedules from your phone
-- **Real-time activation** - Schedule changes take effect immediately
-
-**Example Use Cases:**
-- **Office hours**: Bright, professional displays during work hours (9 AM - 5 PM, weekdays)
-- **Evening ambiance**: Warm, relaxing scenes after sunset (6 PM - 11 PM, daily)
-- **Weekend fun**: Colorful, dynamic animations on Saturday and Sunday
-- **Night mode**: Dim clock display during sleeping hours (11 PM - 7 AM)
-
 ## 🔌 Components
 
 ### 🖥️ **C++ Backend**
@@ -91,7 +75,6 @@ A sleek mobile companion for remote control:
 - **Intuitive scene selection** with live previews
 - **Real-time matrix control** from anywhere on your network
 - **Preset management** for quick configuration switching
-- **Schedule management** - Create and manage time-based automation
 - **Image upload functionality** for custom displays
 - **Cross-platform support** (iOS & Android)
 
@@ -282,34 +265,6 @@ The REST API provides powerful remote control capabilities at `http://<device-ip
 |--------|----------|-------------|
 | `GET` | `/set_enabled?enabled=<true\|false>` | Enable/disable display |
 | `GET` | `/list_presets` | Detailed preset information |
-
-### ⏰ **Schedule Management**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/schedules` | List all schedules |
-| `GET` | `/schedule?id=<schedule_id>` | Get specific schedule details |
-| `POST` | `/schedule?id=<schedule_id>` | Create/update schedule |
-| `DELETE` | `/schedule?id=<schedule_id>` | Delete schedule |
-| `GET` | `/scheduling_status` | Get scheduling status and active preset |
-| `GET` | `/set_scheduling_enabled?enabled=<true\|false>` | Enable/disable scheduling |
-
-#### **Schedule JSON Format**
-```json
-{
-  "id": "work-hours",
-  "name": "Work Hours Display",
-  "preset_id": "office-preset",
-  "start_hour": 9,
-  "start_minute": 0,
-  "end_hour": 17,
-  "end_minute": 30,
-  "days_of_week": [1, 2, 3, 4, 5],
-  "enabled": true
-}
-```
-
-**Days of Week**: `0` = Sunday, `1` = Monday, ..., `6` = Saturday
 
 > **🌟 Pro Tip:** The API also serves static files from `/web/` for custom web interfaces!
 

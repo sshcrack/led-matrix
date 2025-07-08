@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { Link } from 'expo-router';
 import { ListPresets } from '~/components/apiTypes/list_presets';
 import { Status } from '~/components/apiTypes/status';
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
@@ -104,12 +103,6 @@ export default function Screen() {
           />
         })}
       <AddPresetButton presetNames={Object.keys(presets.data)} setRetry={() => presets.setRetry(Math.random())}/>
-      
-      <Link href="/schedules" asChild>
-        <Button variant="outline" className="mt-4">
-          <Text>⏰ Manage Schedules</Text>
-        </Button>
-      </Link>
       </View>
     </>
   }
