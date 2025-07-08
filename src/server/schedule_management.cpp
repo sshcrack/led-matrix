@@ -69,6 +69,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         json j;
         try {
             j = json::parse(str_body);
+            j["id"] = id;
         } catch (exception &ex) {
             warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
@@ -88,7 +89,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
             }
             
             // Validate days of week
-            for (int day : schedule.days_of_week) {
+            for (const int day : schedule.days_of_week) {
                 if (day < 0 || day > 6) {
                     return reply_with_error(req, "Invalid day of week");
                 }
@@ -96,7 +97,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
             
             // Check if preset exists
             const auto presets = config->get_presets();
-            if (presets.find(schedule.preset_id) == presets.end()) {
+            if (!presets.contains(schedule.preset_id)) {
                 return reply_with_error(req, "Preset not found");
             }
             
