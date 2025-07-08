@@ -316,7 +316,11 @@ pub async fn update_config(
             config.selected_output_device
         );
         if let Some(device_id) = &config.selected_output_device {
-            state.selected_output_device_id = Some(device_id.clone());
+            if device_id.is_empty() {
+                state.selected_output_device_id = None;
+            } else {
+                state.selected_output_device_id = Some(device_id.clone());
+            }
         } else {
             state.selected_output_device_id = None;
         }
