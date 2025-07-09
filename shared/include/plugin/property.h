@@ -83,15 +83,18 @@ public:
             value = j.value(name, value);
         }
 
-        // Validate against min/max constraints
-        if (min_value.has_value() && value < min_value.value())
+        // Validate against min/max constraints (only for comparable types)
+        if constexpr (std::is_arithmetic_v<T> || std::is_same_v<T, std::string>)
         {
-            value = min_value.value();
-        }
+            if (min_value.has_value() && value < min_value.value())
+            {
+                value = min_value.value();
+            }
 
-        if (max_value.has_value() && value > max_value.value())
-        {
-            value = max_value.value();
+            if (max_value.has_value() && value > max_value.value())
+            {
+                value = max_value.value();
+            }
         }
 
         registered = true;
