@@ -18,7 +18,8 @@ namespace Scenes {
         PropertyPointer<int> gap_width = MAKE_PROPERTY_MINMAX("gap_width", int, 1, 0, 5);
         PropertyPointer<bool> mirror_display = MAKE_PROPERTY("mirror_display", bool, true);
         PropertyPointer<bool> rainbow_colors = MAKE_PROPERTY("rainbow_colors", bool, true);
-        PropertyPointer<Color> base_color = MAKE_PROPERTY("base_color", Color, 0x00FF00); // Default green
+        //TODO: This may cause a memory leak
+        PropertyPointer<Color> base_color = MAKE_PROPERTY("base_color", Color, Color(0x00FF00)); // Default green
         PropertyPointer<bool> falling_dots = MAKE_PROPERTY("falling_dots", bool, true);
         PropertyPointer<float> dot_fall_speed = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.15f, 0.01f, 1.0f);
         PropertyPointer<int> display_mode = MAKE_PROPERTY_MINMAX("display_mode", int, 0, 0, 2); // 0=normal, 1=center-out, 2=edges-to-center
@@ -27,7 +28,7 @@ namespace Scenes {
         
         // Helper methods
         void initialize_if_needed(int num_bands);
-        uint32_t get_bar_color(int band_index, float intensity, int num_bands);
+        uint32_t get_bar_color(int band_index, float intensity, int num_bands) const;
         
     public:
         AudioSpectrumScene();

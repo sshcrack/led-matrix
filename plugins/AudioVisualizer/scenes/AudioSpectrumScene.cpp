@@ -92,19 +92,19 @@ void AudioSpectrumScene::initialize_if_needed(int num_bands) {
     }
 }
 
-uint32_t AudioSpectrumScene::get_bar_color(int band_index, float intensity, int num_bands) {
+uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float intensity, const int num_bands) const {
     if (rainbow_colors->get()) {
         // Generate rainbow color based on band index
-        float hue = static_cast<float>(band_index) / num_bands * 360.0f;
+        const float hue = static_cast<float>(band_index) / num_bands * 360.0f;
         uint8_t r, g, b;
         hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
         return (r << 16) | (g << 8) | b;
     } else {
         // Use base color with intensity
-        uint32_t color = base_color->get();
-        uint8_t r = ((color >> 16) & 0xFF) * intensity;
-        uint8_t g = ((color >> 8) & 0xFF) * intensity;
-        uint8_t b = (color & 0xFF) * intensity;
+        const Color color = base_color->get();
+        const uint8_t r = color.r() * intensity;
+        const uint8_t g = color.g() * intensity;
+        const uint8_t b = color.b() * intensity;
         return (r << 16) | (g << 8) | b;
     }
 }
