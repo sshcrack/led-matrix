@@ -5,7 +5,7 @@ use crate::state::AppState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::Device;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
 use tokio::time::Duration;
 
@@ -37,6 +37,7 @@ fn setup_udp_sender_thread(
     port: u16,
     processor: Arc<Mutex<AudioProcessor>>,
     output_device_id: Option<String>,
+    app_handle: AppHandle,
 ) {
     let sender_clone = sender.try_clone().unwrap();
     let target_addr = format!("{}:{}", hostname, port);
@@ -61,7 +62,18 @@ fn setup_udp_sender_thread(
 
             match sender_clone.send_audio_data(bands, &target_addr, interpolated_log) {
                 Ok(_) => {}
-                Err(e) => println!("[ERROR] UDP sender thread: Failed to send data: {}", e),
+                Err(e) => {
+                    let error_message = format!("UDP connection lost: {}", e);
+                    println!("[ERROR] UDP sender thread: {}", error_message);
+                    
+                    // Emit error event to frontend
+                    if let Err(emit_err) = app_handle.emit("udp-error", &error_message) {
+                        println!("[ERROR] Failed to emit UDP error event: {}", emit_err);
+                    }
+                    
+                    // Break the loop to stop the thread
+                    break;
+                }
             }
         }
     });
@@ -153,6 +165,7 @@ pub async fn start_visualization(
     hostname: String,
     port: u16,
     config: AudioVisualizerConfig,
+    app_handle: AppHandle,
 ) -> Result<String, String> {
     println!(
         "[DEBUG] start_visualization: Starting with host={}, port={}",
@@ -244,6 +257,7 @@ pub async fn start_visualization(
                 port,
                 processor,
                 state.selected_output_device_id.clone(),
+                app_handle.clone(),
             );
 
             // Log the output device being used for visualization
