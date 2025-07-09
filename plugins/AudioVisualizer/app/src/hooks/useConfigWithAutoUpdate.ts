@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { AudioVisualizerConfig } from '../App';
 import useDebounce from './useDebounce';
 
@@ -80,6 +81,33 @@ export function useConfigWithAutoUpdate(
             console.error("Failed to stop visualization:", error);
         }
     };
+
+    // Listen for UDP errors
+    useEffect(() => {
+        const setupErrorListener = async () => {
+            const unlisten = await listen<string>('udp-error', (event) => {
+                console.error('UDP Error received:', event.payload);
+                setConnectionStatus(`Error: ${event.payload}`);
+                setIsRunning(false);
+            });
+            
+            return unlisten;
+        };
+
+        let unlistenFn: (() => void) | null = null;
+        
+        setupErrorListener().then((unlisten) => {
+            unlistenFn = unlisten;
+        }).catch((error) => {
+            console.error('Failed to setup UDP error listener:', error);
+        });
+
+        return () => {
+            if (unlistenFn) {
+                unlistenFn();
+            }
+        };
+    }, []);
 
     // Load config on first mount
     useEffect(() => {
