@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '~/components/ui/dialog';
 import { RotateCcw } from '~/lib/icons/RotateCcw';
 import { titleCase } from '~/lib/utils';
 import { PluginPropertyProps } from '../property_list';
@@ -8,24 +9,55 @@ import { usePropertyUpdate } from '../SceneContext';
 import ColorPicker, { Panel1, Swatches, Preview, OpacitySlider, HueSlider } from 'reanimated-color-picker';
 import { useState } from 'react';
 
-export function ColorProperty({ value, defaultVal, propertyName }: PluginPropertyProps<string>) {
+export function ColorProperty({ value, defaultVal, propertyName }: PluginPropertyProps<string | number>) {
     const setValue = usePropertyUpdate(propertyName);
     const title = titleCase(propertyName);
     const [showPicker, setShowPicker] = useState(false);
+    const [tempColor, setTempColor] = useState<string>('');
 
     // Ensure the color value is a valid hex format
-    const normalizeColor = (color: string): string => {
-        if (!color) return '#000000';
-        if (color.startsWith('#')) return color;
-        return `#${color}`;
+    const normalizeColor = (color: string | number): string => {
+        // Handle null or undefined
+        if (color === null || color === undefined) return '#000000';
+
+        // Convert number to string if needed
+        const colorStr = typeof color === 'number' ? color.toString(16).padStart(6, '0') : String(color);
+
+        // Handle hex format
+        if (colorStr.startsWith('#')) return colorStr;
+        return `#${colorStr}`;
     };
 
     const displayColor = normalizeColor(value);
 
-    const onSelectColor = ({ hex }: { hex: string }) => {
-        // Remove the # prefix when saving to match the expected format
-        setValue(hex.replace('#', ''));
+    const onColorChange = ({ hex }: { hex: string }) => {
+        setTempColor(hex);
+    };
+
+    const onConfirmColor = () => {
+        if (tempColor) {
+            // Remove the # prefix when saving to match the expected format
+            const hexWithoutPrefix = tempColor.replace('#', '');
+            
+            // If the defaultVal is a number, convert hex to number before saving
+            if (typeof defaultVal === 'number') {
+                setValue(parseInt(hexWithoutPrefix, 16));
+            } else {
+                setValue(hexWithoutPrefix);
+            }
+        }
         setShowPicker(false);
+        setTempColor('');
+    };
+
+    const onCancelColor = () => {
+        setShowPicker(false);
+        setTempColor('');
+    };
+
+    const onOpenPicker = () => {
+        setTempColor(displayColor);
+        setShowPicker(true);
     };
 
     return (
@@ -43,10 +75,10 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                     <Button
                         variant="outline"
                         className='flex-1'
-                        onPress={() => setShowPicker(true)}
+                        onPress={onOpenPicker}
                     >
                         <View className='flex-row items-center gap-2'>
-                            <View 
+                            <View
                                 className='w-6 h-6 rounded border border-border'
                                 style={{ backgroundColor: displayColor }}
                             />
@@ -55,32 +87,57 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                     </Button>
                 </View>
             </View>
-            
-            {showPicker && (
-                <View className='absolute top-0 left-0 right-0 bottom-0 bg-black/50 justify-center items-center z-50'>
-                    <View className='bg-card p-4 rounded-lg m-4 max-w-sm w-full'>
+
+            <Dialog open={showPicker} onOpenChange={setShowPicker}>
+                <DialogContent className='max-w-sm'>
+                    <DialogHeader>
+                        <DialogTitle>
+                            <Text className='text-lg font-semibold'>Choose Color</Text>
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <View className='py-4'>
                         <ColorPicker
-                            value={displayColor}
-                            onComplete={onSelectColor}
-                            onChange={() => {}}
+                            value={tempColor || displayColor}
+                            onComplete={() => {}} // Don't close on complete
+                            onChange={onColorChange} // Update temp color
                         >
-                            <Preview />
-                            <Panel1 />
-                            <HueSlider />
-                            <OpacitySlider />
-                            <Swatches />
+                            <View className='mb-4'>
+                                <Preview />
+                            </View>
+                            <View className='mb-4'>
+                                <Panel1 />
+                            </View>
+                            <View className='mb-3'>
+                                <HueSlider />
+                            </View>
+                            <View className='mb-4'>
+                                <OpacitySlider />
+                            </View>
+                            <View>
+                                <Swatches />
+                            </View>
                         </ColorPicker>
-                        <View className='flex-row gap-2 mt-4 justify-end'>
+                    </View>
+
+                    <DialogFooter>
+                        <View className='flex-row gap-2 justify-end'>
                             <Button
                                 variant="outline"
-                                onPress={() => setShowPicker(false)}
+                                onPress={onCancelColor}
                             >
                                 <Text>Cancel</Text>
                             </Button>
+                            <Button
+                                variant="default"
+                                onPress={onConfirmColor}
+                            >
+                                <Text>Confirm</Text>
+                            </Button>
                         </View>
-                    </View>
-                </View>
-            )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </View>
     );
 }
