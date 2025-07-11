@@ -54,6 +54,7 @@ export default function RootLayout() {
     return null;
   }
 
+  const dynamicColor = isDarkColorScheme ? 'rgb(226 232 240)' : 'rgb(15 23 42)'
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
       <GestureHandlerRootView>
@@ -67,13 +68,14 @@ export default function RootLayout() {
                   title: 'LED Matrix',
                   headerLargeTitle: true,
                   headerStyle: {
-                    backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
                   },
                   headerTitleStyle: {
                     fontWeight: 'bold',
                     fontSize: 28,
-                    color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                    color: dynamicColor,
                   },
+                  headerTintColor: dynamicColor,
                   headerLeft: () => (Platform.OS !== "web" || __DEV__) && <ResetApiUrl />,
                   headerRight: () => <ThemeToggle />,
                 }}
@@ -84,13 +86,14 @@ export default function RootLayout() {
                   title: 'Schedules',
                   headerLargeTitle: false,
                   headerStyle: {
-                    backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
                   },
                   headerTitleStyle: {
                     fontWeight: 'bold',
                     fontSize: 20,
-                    color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                    color: dynamicColor,
                   },
+                  headerTintColor: dynamicColor,
                   headerRight: () => <ThemeToggle />,
                 }}
               />
@@ -101,13 +104,14 @@ export default function RootLayout() {
                   //@ts-ignore
                   title: `Edit ${route.params?.preset_id}`,
                   headerStyle: {
-                    backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
                   },
                   headerTitleStyle: {
                     fontWeight: 'bold',
                     fontSize: 18,
-                    color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                    color: dynamicColor,
                   },
+                  headerTintColor: dynamicColor,
                   //@ts-ignore
                   headerRight: () => <SaveButton presetId={route.params?.preset_id} />,
                 })}
@@ -118,13 +122,14 @@ export default function RootLayout() {
                 options={{
                   title: `Configure Scene`,
                   headerStyle: {
-                    backgroundColor: isDarkColorScheme ? 'hsl(2, 6%, 23%)' : 'hsl(248, 250%, 252%)',
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
                   },
                   headerTitleStyle: {
                     fontWeight: 'bold',
                     fontSize: 18,
-                    color: isDarkColorScheme ? 'hsl(226, 232%, 240%)' : 'hsl(15, 23%, 42%)',
+                    color: dynamicColor,
                   },
+                  headerTintColor: dynamicColor,
                 }}
               />
             </Stack>

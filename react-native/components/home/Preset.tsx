@@ -31,7 +31,7 @@ export default function Preset({ preset, name, isActive, setStatusRefresh, setPr
 
         setIsSettingActive(true);
         try {
-            await fetch(apiUrl + `/set_active?preset_id=${name}`);
+            await fetch(apiUrl + `/set_active?id=${name}`);
             setStatusRefresh();
         } catch (e: any) {
             Toast.show({

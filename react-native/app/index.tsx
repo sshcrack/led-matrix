@@ -1,9 +1,9 @@
+import { Link } from 'expo-router';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, View, Dimensions } from 'react-native';
+import { Dimensions, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { Link } from 'expo-router';
 import { ListPresets } from '~/components/apiTypes/list_presets';
 import { Status } from '~/components/apiTypes/status';
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
@@ -11,15 +11,13 @@ import AddPresetButton from '~/components/home/AddPresetButton';
 import Preset from '~/components/home/Preset';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { Label } from '~/components/ui/label';
-import { Switch } from '~/components/ui/switch';
 import { StatusIndicator } from '~/components/ui/status-indicator';
+import { Switch } from '~/components/ui/switch';
 import { Text } from '~/components/ui/text';
 import useFetch from '~/components/useFetch';
-import { Plus } from '~/lib/icons/Plus';
-import { Power } from '~/lib/icons/Power';
 import { Activity } from '~/lib/icons/Activity';
 import { Calendar } from '~/lib/icons/Calendar';
+import { Power } from '~/lib/icons/Power';
 import { Settings } from '~/lib/icons/Settings';
 
 export default function Screen() {
@@ -70,7 +68,7 @@ export default function Screen() {
   const isWeb = width > 768;
 
   const StatusCard = () => (
-    <Card className="w-full animate-fade-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+    <Card className="w-full shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
       <CardHeader className="pb-4">
         <CardTitle className="flex flex-row items-center gap-3">
           <View className="p-2 bg-primary/10 rounded-full">
@@ -113,7 +111,7 @@ export default function Screen() {
   );
 
   const QuickActionsCard = () => (
-    <Card className="w-full animate-fade-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+    <Card className="w-full shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
       <CardHeader className="pb-4">
         <CardTitle className="flex flex-row items-center gap-3">
           <View className="p-2 bg-info/10 rounded-full">
@@ -126,14 +124,14 @@ export default function Screen() {
         <View className={`flex flex-row gap-3 ${isWeb ? 'justify-start' : 'justify-between'}`}>
           <Link href="/schedules" asChild>
             <Button variant="outline" className="flex-1 max-w-48 h-16">
-              <View className="flex items-center gap-2">
+              <View className="flex flex-row items-center gap-2">
                 <Calendar className="text-foreground" width={20} height={20} />
                 <Text className="text-sm font-medium">Schedules</Text>
               </View>
             </Button>
           </Link>
           <Button variant="outline" className="flex-1 max-w-48 h-16" onPress={setRetry}>
-            <View className="flex items-center gap-2">
+            <View className="flex flex-row items-center gap-2">
               <Settings className="text-foreground" width={20} height={20} />
               <Text className="text-sm font-medium">Refresh</Text>
             </View>
@@ -150,20 +148,22 @@ export default function Screen() {
     const activePreset = status.data?.current;
 
     return (
-      <Card className="w-full animate-fade-in shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
+      <Card className="w-full shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
         <CardHeader className="pb-4">
-          <CardTitle className="flex flex-row items-center justify-between">
+          <View className='w-full flex flex-row items-center justify-between'>
             <View className="flex flex-row items-center gap-3">
               <View className="p-2 bg-success/10 rounded-full">
                 <Settings className="text-success" width={20} height={20} />
               </View>
               <Text className="text-xl font-bold">Presets</Text>
             </View>
-            <Text className="text-sm text-muted-foreground">
-              {presetEntries.length} available
-            </Text>
-          </CardTitle>
-          <CardDescription className="text-base">
+            <View className='flex flex-col items-end'>
+              <Text className="text-sm text-muted-foreground">
+                {presetEntries.length} available
+              </Text>
+            </View>
+          </View>
+          <CardDescription className="text-base pt-10">
             Select and manage your LED matrix presets
           </CardDescription>
         </CardHeader>
@@ -190,7 +190,7 @@ export default function Screen() {
   };
 
   const ErrorCard = () => (
-    <Card className="w-full animate-fade-in shadow-lg border-destructive/20 bg-destructive/5">
+    <Card className="w-full shadow-lg border-destructive/20 bg-destructive/5">
       <CardContent className="pt-6">
         <View className="flex items-center gap-4">
           <View className="p-3 bg-destructive/10 rounded-full">
@@ -222,10 +222,11 @@ export default function Screen() {
           }}
           refreshControl={
             <RefreshControl
+              // Colors / TintColor can not be set as variable (this should be the same as the --primary css color)
               refreshing={isLoading && manualRefresh}
               onRefresh={setRetry}
-              colors={['hsl(var(--primary))']}
-              tintColor="hsl(var(--primary))"
+              colors={['rgb(99, 102, 241)']}
+              tintColor="rgb(99, 102, 241)"
             />
           }
         >
