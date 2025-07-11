@@ -12,7 +12,7 @@ using json = nlohmann::json;
 
 namespace ImageProviders {
     class General {
-        std::vector<std::shared_ptr<PropertyBase> > properties;
+        std::vector<std::shared_ptr<Plugins::PropertyBase> > properties;
         std::string uuid;
 
     public:
@@ -20,7 +20,7 @@ namespace ImageProviders {
 
         virtual ~General(); // Changed from pure virtual to virtual
 
-        void add_property(const std::shared_ptr<PropertyBase> &property) {
+        void add_property(const std::shared_ptr<Plugins::PropertyBase> &property) {
             std::string name = property->getName();
             for (const auto &item: properties) {
                 if (item->getName() == name) {
@@ -35,7 +35,7 @@ namespace ImageProviders {
         virtual void register_properties() = 0;
         virtual void load_properties(const nlohmann::json &j);
 
-        std::vector<std::shared_ptr<PropertyBase> > get_properties() {
+        std::vector<std::shared_ptr<Plugins::PropertyBase> > get_properties() {
             return properties;
         }
 

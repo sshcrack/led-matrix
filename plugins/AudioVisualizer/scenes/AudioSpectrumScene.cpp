@@ -101,7 +101,7 @@ uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float int
         return (r << 16) | (g << 8) | b;
     } else {
         // Use base color with intensity
-        const Color color = base_color->get();
+        const Plugins::Color color = base_color->get();
         const uint8_t r = color.r() * intensity;
         const uint8_t g = color.g() * intensity;
         const uint8_t b = color.b() * intensity;
