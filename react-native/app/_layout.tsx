@@ -99,7 +99,7 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name='modify-preset/[preset_id]'
-                getId={({ params }) => `modify-preset-${params?.preset_id}`}
+                dangerouslySingular={(name, params) => `modify-preset-${params?.preset_id}`}
                 options={({ route }) => ({
                   //@ts-ignore
                   title: `Edit ${route.params?.preset_id}`,
@@ -118,7 +118,7 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name='modify-providers/[preset_id]/[scene_id]'
-                getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
+                dangerouslySingular={(name, params) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
                 options={{
                   title: `Configure Scene`,
                   headerStyle: {
