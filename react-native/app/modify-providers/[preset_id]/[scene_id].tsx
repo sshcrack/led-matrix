@@ -12,7 +12,7 @@ export default function ModifyPreset() {
         return <Text>Error: Invalid ID</Text>
 
     return <SafeAreaProvider>
-        <SafeAreaView className="flex-1 w-full">
+        <SafeAreaView className="flex-1 w-full bg-background">
             <ScrollView className='flex-1 gap-5 p-4 bg-secondary/30 w-full' contentContainerStyle={{
                 alignItems: "center"
             }}>

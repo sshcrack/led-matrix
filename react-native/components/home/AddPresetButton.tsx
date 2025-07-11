@@ -107,7 +107,7 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
     return (
         <AlertDialog open={open} onOpenChange={setOpen}>
             <AlertDialogTrigger asChild>
-                <Card className="w-80 min-h-48 border-2 border-dashed border-primary/40 bg-card hover:bg-primary/5 hover:border-primary/60 transition-all duration-200 animate-scale-in shadow-lg">
+                <Card className="w-80 min-h-48 web:h-full border-2 border-dashed border-primary/40 bg-card hover:bg-primary/5 hover:border-primary/60 transition-all duration-200 animate-scale-in shadow-lg">
                     <CardContent className="flex-1 items-center justify-center p-6">
                         <View className="items-center gap-3">
                             <View className="p-4 bg-primary/10 rounded-full border border-primary/20">
@@ -132,14 +132,14 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                     <AlertDialogTitle className="text-2xl">Add New Preset</AlertDialogTitle>
                 </AlertDialogHeader>
                 <View className="gap-4 py-4">
-                    <Input 
-                        value={presetName} 
+                    <Input
+                        value={presetName}
                         onChangeText={(text) => {
                             setPreset(text);
                             setErrorText(null);
-                        }} 
-                        className='w-full' 
-                        placeholder='Enter preset name' 
+                        }}
+                        className='w-full'
+                        placeholder='Enter preset name'
                     />
                     {errorText && (
                         <Text className='text-destructive text-sm'>{errorText}</Text>
@@ -150,8 +150,8 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                         <AlertDialogCancel className="flex-1">
                             <Text>Cancel</Text>
                         </AlertDialogCancel>
-                        <Button 
-                            className="flex-1" 
+                        <Button
+                            className="flex-1"
                             onPress={handleAddPreset}
                             disabled={adding || !presetName.trim()}
                         >
@@ -164,9 +164,9 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                                 <Text>Create</Text>
                             </View>
                         </Button>
-                        <Button 
-                            variant="outline" 
-                            className="flex-1" 
+                        <Button
+                            variant="outline"
+                            className="flex-1"
                             onPress={handleLoadFromFile}
                             disabled={adding || !presetName.trim()}
                         >

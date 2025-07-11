@@ -38,7 +38,7 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
         if (tempColor) {
             // Remove the # prefix when saving to match the expected format
             const hexWithoutPrefix = tempColor.replace('#', '');
-            
+
             // If the defaultVal is a number, convert hex to number before saving
             if (typeof defaultVal === 'number') {
                 setValue(parseInt(hexWithoutPrefix, 16));
@@ -56,6 +56,7 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
     };
 
     const onOpenPicker = () => {
+        console.log('Opening color picker with value:', displayColor);
         setTempColor(displayColor);
         setShowPicker(true);
     };
@@ -75,7 +76,7 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                     <Button
                         variant="outline"
                         className='flex-1'
-                        onPress={onOpenPicker}
+                        onPress={() => onOpenPicker()}
                     >
                         <View className='flex-row items-center gap-2'>
                             <View
@@ -95,11 +96,11 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                             <Text className='text-lg font-semibold'>Choose Color</Text>
                         </DialogTitle>
                     </DialogHeader>
-                    
+
                     <View className='py-4'>
                         <ColorPicker
                             value={tempColor || displayColor}
-                            onComplete={() => {}} // Don't close on complete
+                            onComplete={() => { }} // Don't close on complete
                             onChange={onColorChange} // Update temp color
                         >
                             <View className='mb-4'>

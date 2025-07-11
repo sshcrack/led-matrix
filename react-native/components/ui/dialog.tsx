@@ -54,7 +54,7 @@ interface DialogPortalProps {
 
 const DialogPortal = ({ children }: DialogPortalProps) => {
   const { open, onOpenChange } = useDialogContext();
-  
+
   return (
     <Modal
       visible={open}

@@ -23,5 +23,5 @@ eas build -p android --profile preview --local # (Or similar)
 ```
 And you get an error for prebuild stuff, run
 ```bash
-yarn expo prebuild
+pnpm expo prebuild
 ```

@@ -1,7 +1,7 @@
 {
   "name": "led-matrix",
   "main": "index.js",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "dev": "expo start -c",
     "dev:web": "expo start -c --web",
@@ -13,9 +13,10 @@
     "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
   },
   "dependencies": {
+    "@expo/config-plugins": "~9.0.17",
     "@lukeed/ms": "^2.0.2",
     "@react-native-async-storage/async-storage": "1.23.1",
-    "@react-navigation/native": "^7.1.14",
+    "@react-navigation/native": "^7.0.14",
     "@rn-primitives/alert-dialog": "^1.2.0",
     "@rn-primitives/avatar": "~1.1.0",
     "@rn-primitives/collapsible": "^1.2.0",
