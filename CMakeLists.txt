@@ -117,16 +117,16 @@ if(NOT SKIP_WEB_BUILD)
         message(FATAL_ERROR "Node.js not found! Please install Node.js.")
     endif()
 
-    # Check for Yarn
-    find_program(YARN yarn)
-    if(NOT YARN)
-        message(FATAL_ERROR "Yarn not found! Please install Yarn.")
+    # Check for pnpm
+    find_program(PNPM pnpm)
+    if(NOT PNPM)
+        message(FATAL_ERROR "pnpm not found! Please install pnpm.")
     endif()
 
 
     # Install React Native dependencies and build web version
     add_custom_target(react_native_build ALL
-        COMMAND ${YARN} install
+        COMMAND ${PNPM} install
         COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
     )
