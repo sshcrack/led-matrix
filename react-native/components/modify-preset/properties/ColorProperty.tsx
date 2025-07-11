@@ -8,23 +8,46 @@ import { usePropertyUpdate } from '../SceneContext';
 import ColorPicker, { Panel1, Swatches, Preview, OpacitySlider, HueSlider } from 'reanimated-color-picker';
 import { useState } from 'react';
 
-export function ColorProperty({ value, defaultVal, propertyName }: PluginPropertyProps<string>) {
+export function ColorProperty({ value, defaultVal, propertyName }: PluginPropertyProps<string | number>) {
     const setValue = usePropertyUpdate(propertyName);
     const title = titleCase(propertyName);
     const [showPicker, setShowPicker] = useState(false);
 
-    // Ensure the color value is a valid hex format
-    const normalizeColor = (color: string): string => {
-        if (!color) return '#000000';
-        if (color.startsWith('#')) return color;
-        return `#${color}`;
+    // Convert number to hex string or ensure string is in hex format
+    const normalizeColor = (color: string | number): string => {
+        if (color === null || color === undefined) return '#000000';
+        console.log(`Normalizing color: ${color} ${typeof color}`);
+        
+        if (typeof color === 'number') {
+            // Convert number to hex (e.g., 16777215 -> #ffffff)
+            return `#${color.toString(16).padStart(6, '0')}`;
+        }
+        
+        if (typeof color === 'string') {
+            if (color.startsWith('#')) return color;
+            // Try to parse as number first
+            const numColor = parseInt(color, 10);
+            if (!isNaN(numColor)) {
+                return `#${numColor.toString(16).padStart(6, '0')}`;
+            }
+            // Treat as hex string
+            return `#${color}`;
+        }
+        
+        return '#000000';
+    };
+
+    // Convert hex string to number
+    const hexToNumber = (hex: string): number => {
+        return parseInt(hex.replace('#', ''), 16);
     };
 
     const displayColor = normalizeColor(value);
 
     const onSelectColor = ({ hex }: { hex: string }) => {
-        // Remove the # prefix when saving to match the expected format
-        setValue(hex.replace('#', ''));
+        // Convert hex to number and save the number value
+        const numberValue = hexToNumber(hex);
+        setValue(numberValue);
         setShowPicker(false);
     };
 

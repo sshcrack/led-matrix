@@ -17,7 +17,7 @@ type TypeMapping = {
     "float": number,
     "millis": number,
     "string": string,
-    "color": string
+    "color": string | number
 }
 
 type PluginPropertyComponent<T> = (({ value, defaultVal, propertyName }: PluginPropertyProps<T>) => React.JSX.Element)

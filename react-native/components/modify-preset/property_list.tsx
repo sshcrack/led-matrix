@@ -4,7 +4,6 @@ import { TypeId } from '../apiTypes/list_scenes';
 import { useSubConfig } from '../configShare/ConfigProvider';
 import { Text } from '../ui/text';
 import usePresetId from './PresetIdProvider';
-import { ColorProperty } from './properties/ColorProperty';
 import GeneralProperty from './properties/GeneralProperty';
 import ProvidersProperty from './properties/ProvidersProperty';
 import { SceneContext } from './SceneContext';
