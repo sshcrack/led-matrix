@@ -69,7 +69,7 @@ export function ApiUrlProvider({ children }: React.PropsWithChildren<{}>) {
         {
             apiUrl ? children : (
                 <SafeAreaProvider >
-                    <SafeAreaView className="flex-1 gap-5 justify-center items-center">
+                    <SafeAreaView className="flex-1 gap-5 justify-center items-center bg-background">
                         <Text className='text-xl'>Set API URL of the LED matrix</Text>
                         <View className='w-3/4 flex-row'>
                             <Input
