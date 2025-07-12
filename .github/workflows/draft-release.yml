@@ -172,14 +172,11 @@ jobs:
         working-directory: react-native
         run: pnpm install
 
-      - name: Install eas-cli
-        run: npm install -g eas-cli
-
       - name: Build React Native APK
         working-directory: react-native
         run: |
           pnpm install
-          pnpm exec eas-cli build -p android --profile preview --local
+          pnpx eas-cli build -p android --profile preview --local
           APK=$(ls build-*.apk | head -n1)
           cp "$APK" "../app-v${{ needs.prepare.outputs.version }}.apk"
 
