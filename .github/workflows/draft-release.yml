@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "22"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -55,6 +55,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.25.0"
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
 
@@ -90,18 +92,17 @@ jobs:
       - name: Build Emulator
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'emulator'
-          buildPreset: 'emulator'
-          packagePreset: 'emulator'
+          configurePreset: "emulator"
+          buildPreset: "emulator"
+          packagePreset: "emulator"
           configurePresetAdditionalArgs: '["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
-
 
       - name: Build led-matrix for arm64 RPI
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'cross-compile'
-          buildPreset: 'cross-compile'
-          packagePreset: 'cross-compile'
+          configurePreset: "cross-compile"
+          buildPreset: "cross-compile"
+          packagePreset: "cross-compile"
           configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
       - name: Build React Native APK
