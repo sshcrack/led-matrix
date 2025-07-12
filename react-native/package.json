@@ -70,9 +70,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
+    "@react-native-community/cli": "latest",
     "@types/react": "~19.0.14",
-    "typescript": "^5.8.3",
-"@react-native-community/cli": "latest"
+    "babel-plugin-module-resolver": "^5.0.2",
+    "typescript": "^5.8.3"
   },
   "private": true,
   "expo": {
