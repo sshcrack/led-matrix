@@ -1,0 +1,13 @@
+diff --git a/dist/css-to-rn/parseDeclaration.js b/dist/css-to-rn/parseDeclaration.js
+index 59ea66e459dbf6922bcd80a6ac014408ca13c2af..e47773a3eb31545d4c5ba17439f018c2677ea3a2 100644
+--- a/dist/css-to-rn/parseDeclaration.js
++++ b/dist/css-to-rn/parseDeclaration.js
+@@ -917,7 +917,7 @@ function parseDeclaration(declaration, options) {
+         case "text-align":
+             return addStyleProp(declaration.property, parseTextAlign(declaration.value, parseOptions));
+         case "box-shadow": {
+-            parseBoxShadow(declaration.value, parseOptions);
++            return parseBoxShadow(declaration.value, parseOptions);
+         }
+         case "aspect-ratio": {
+             return addStyleProp(declaration.property, parseAspectRatio(declaration.value));

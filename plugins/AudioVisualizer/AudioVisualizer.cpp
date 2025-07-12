@@ -4,7 +4,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 using namespace Scenes;
 
@@ -95,6 +98,23 @@ void AudioVisualizer::start_udp_server(int port)
         return;
     }
 
+    // Set socket to non-blocking mode
+    int flags = fcntl(udp_socket, F_GETFL, 0);
+    if (flags < 0)
+    {
+        spdlog::error("Failed to get socket flags: {}", strerror(errno));
+        close(udp_socket);
+        udp_socket = -1;
+        return;
+    }
+    if (fcntl(udp_socket, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        spdlog::error("Failed to set socket to non-blocking: {}", strerror(errno));
+        close(udp_socket);
+        udp_socket = -1;
+        return;
+    }
+
     // Bind socket
     if (bind(udp_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
@@ -147,11 +167,17 @@ void AudioVisualizer::udp_server_loop()
 
         if (n < 0)
         {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                // No data available, sleep briefly to avoid busy waiting
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+            else
             {
                 spdlog::error("UDP recvfrom error: {}", strerror(errno));
+                break;
             }
-            continue;
         }
 
         // Process received packet
