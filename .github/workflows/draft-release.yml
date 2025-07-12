@@ -103,14 +103,14 @@ jobs:
         id: cache-toolchain
         uses: actions/cache@v4
         with:
-          path: ~/cross-compile
+          path: ${{ runner.temp }}/cross-compile
           key: cross-compile-toolchain-v0.0.1-beta
 
       - name: Download and extract cross-compile toolchain
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/cross-compile
-          cd ~/cross-compile
+          mkdir -p ${{ runner.temp }}/cross-compile
+          cd ${{ runner.temp }}/cross-compile
           wget -O cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
           tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
@@ -125,7 +125,7 @@ jobs:
 
           set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 
-          set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ENV{HOME}/cross-compile/PI.cmake)
+          set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE ${{ runner.temp }}/cross-compile/PI.cmake)
           EOF
 
       - name: Build led-matrix for arm64 RPI
@@ -134,7 +134,7 @@ jobs:
           configurePreset: "cross-compile"
           buildPreset: "cross-compile"
           packagePreset: "cross-compile"
-          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
+          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=${{ runner.temp }}/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
       - name: Upload led-matrix artifacts
         uses: actions/upload-artifact@v4
