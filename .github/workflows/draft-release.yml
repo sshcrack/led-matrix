@@ -1,0 +1,122 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: RelWithDebInfo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install eas-cli
+        run: pnpm install -g eas-cli
+
+      - name: Extract version from CMakeLists.txt
+        id: version
+        run: |
+          VERSION=$(grep -Po 'project\([^ ]+ VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag or release exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.version.outputs.VERSION }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists!" >&2
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists!" >&2
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.25.0'
+
+      - name: Set up Ninja
+        uses: llvm/actions/setup-ninja@v1
+
+      - name: Build emulator
+        run: |
+          cmake --preset=emulator
+          cmake --build --preset=emulator
+          cmake --install --preset=emulator
+
+      - name: Archive emulator install directory
+        run: |
+          tar -czf emulator-v${{ steps.version.outputs.VERSION }}.tar.gz -C emulator_build/install .
+
+      - name: Build led-matrix (arm64 cross-compile)
+        run: |
+          cmake --preset=cross-compile
+          cmake --build --preset=cross-compile
+          cmake --install --preset=cross-compile
+
+      - name: Archive led-matrix install directory
+        run: |
+          tar -czf led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz -C build/install .
+
+      - name: Build React Native APK
+        working-directory: react-native
+        run: |
+          pnpm install
+          pnpm exec eas-cli build -p android --profile preview --local
+          APK=$(ls build-*.apk | head -n1)
+          cp "$APK" "../app-v${{ steps.version.outputs.VERSION }}.apk"
+
+      - name: Create draft release
+        id: create_release
+        run: |
+          TAG="v${{ steps.version.outputs.VERSION }}"
+          # Get previous tag (if any)
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "$TAG" | head -n1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG="[Changelog](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
+          else
+            CHANGELOG="Initial release."
+          fi
+          gh release create "$TAG" \
+            --draft \
+            --title "$TAG" \
+            --notes "$CHANGELOG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload emulator artifact to release
+        run: |
+          gh release upload "v${{ steps.version.outputs.VERSION }}" emulator-v${{ steps.version.outputs.VERSION }}.tar.gz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload led-matrix artifact to release
+        run: |
+          gh release upload "v${{ steps.version.outputs.VERSION }}" led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload React Native APK to release
+        run: |
+          gh release upload "v${{ steps.version.outputs.VERSION }}" app-v${{ steps.version.outputs.VERSION }}.apk
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

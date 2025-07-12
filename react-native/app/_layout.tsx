@@ -15,6 +15,7 @@ import { useColorScheme } from '~/lib/useColorScheme';
 import { ConfigProvider } from '~/components/configShare/ConfigProvider';
 import { ApiUrlProvider } from '~/components/apiUrl/ApiUrlProvider';
 import ResetApiUrl from '~/components/modify-preset/ResetApiUrl';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -53,42 +54,90 @@ export default function RootLayout() {
     return null;
   }
 
+  const dynamicColor = isDarkColorScheme ? 'rgb(226 232 240)' : 'rgb(15 23 42)'
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-      <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-      <ApiUrlProvider>
-        <ConfigProvider>
-          <Stack>
-            <Stack.Screen
-              name='index'
-              options={{
-                title: 'LED Matrix Controller',
-                headerLeft: () => (Platform.OS !== "web" || __DEV__) && <ResetApiUrl />,
-                headerRight: () => <ThemeToggle />,
-              }}
-            />
-            <Stack.Screen
-              name='modify-preset/[preset_id]'
-              getId={({ params }) => `modify-preset-${params?.preset_id}`}
-              options={({ route }) => ({
-                //@ts-ignore
-                title: `Modify ${route.params?.preset_id}`,
-                //@ts-ignore
-                headerRight: () => <SaveButton presetId={route.params?.preset_id} />,
-              })}
-            />
-            <Stack.Screen
-              name='modify-providers/[preset_id]/[scene_id]'
-              getId={({ params }) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
-              options={{
-                title: `Configure Providers of Scene`
-              }}
-            />
-          </Stack>
-        </ConfigProvider>
-      </ApiUrlProvider>
-      <PortalHost />
-      <Toast />
+      <GestureHandlerRootView>
+        <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+        <ApiUrlProvider>
+          <ConfigProvider>
+            <Stack>
+              <Stack.Screen
+                name='index'
+                options={{
+                  title: 'LED Matrix',
+                  headerLargeTitle: true,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 28,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                  headerLeft: () => (Platform.OS !== "web" || __DEV__) && <ResetApiUrl />,
+                  headerRight: () => <ThemeToggle />,
+                }}
+              />
+              <Stack.Screen
+                name='schedules'
+                options={{
+                  title: 'Schedules',
+                  headerLargeTitle: false,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 20,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                  headerRight: () => <ThemeToggle />,
+                }}
+              />
+              <Stack.Screen
+                name='modify-preset/[preset_id]'
+                dangerouslySingular={(name, params) => `modify-preset-${params?.preset_id}`}
+                options={({ route }) => ({
+                  //@ts-ignore
+                  title: `Edit ${route.params?.preset_id}`,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 18,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                  //@ts-ignore
+                  headerRight: () => <SaveButton presetId={route.params?.preset_id} />,
+                })}
+              />
+              <Stack.Screen
+                name='modify-providers/[preset_id]/[scene_id]'
+                dangerouslySingular={(name, params) => `modify-providers-${params?.preset_id}-${params?.scene_id}`}
+                options={{
+                  title: `Configure Scene`,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 18,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                }}
+              />
+            </Stack>
+          </ConfigProvider>
+        </ApiUrlProvider>
+        <PortalHost />
+        <Toast />
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }

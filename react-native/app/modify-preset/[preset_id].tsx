@@ -81,7 +81,7 @@ export default function ModifyPreset() {
     const isLoading = isLoadingPreset || isLoadingProperty
     const preset = useMemo(() => config.get(preset_id), [config, preset_id])
     return <SafeAreaProvider>
-        <SafeAreaView className="flex-1">
+        <SafeAreaView className="flex-1 bg-background">
             <ScrollView className='flex-1 gap-5 m-5' contentContainerStyle={{
                 alignItems: "center",
                 paddingBottom: 100  // Added more bottom padding

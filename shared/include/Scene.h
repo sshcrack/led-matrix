@@ -16,7 +16,7 @@ using std::string;
 
 namespace Scenes {
     class Scene {
-        std::vector<std::shared_ptr<PropertyBase>> properties;
+        std::vector<std::shared_ptr<Plugins::PropertyBase>> properties;
 
     protected:
         bool initialized = false;
@@ -46,7 +46,7 @@ namespace Scenes {
         virtual bool should_render_frame();
         virtual void wait_until_next_frame();
 
-        void add_property(const std::shared_ptr<PropertyBase> &property) {
+        void add_property(const std::shared_ptr<Plugins::PropertyBase> &property) {
             std::string name = property->getName();
             for (const auto &item: properties) {
                 if (item->getName() == name) {
@@ -98,7 +98,7 @@ namespace Scenes {
 
         virtual void load_properties(const nlohmann::json &j);
 
-        std::vector<std::shared_ptr<PropertyBase>> get_properties() {
+        std::vector<std::shared_ptr<Plugins::PropertyBase>> get_properties() {
             return properties;
         }
     };

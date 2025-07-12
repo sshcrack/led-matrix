@@ -2,17 +2,17 @@ import { format } from '@lukeed/ms';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { ListPresets, RawPreset, Scene } from '~/components/apiTypes/list_presets';
+import { Scene } from '~/components/apiTypes/list_presets';
 import { Text } from '~/components/ui/text';
 import { ChevronDown } from '~/lib/icons/ChevronDown';
-import { ReactSetState, titleCase } from '~/lib/utils';
-import { Property } from '../apiTypes/list_scenes';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { DynamicPluginProperty } from './property_list';
-import { useSubConfig } from '../configShare/ConfigProvider';
-import usePresetId from './PresetIdProvider';
-import { Button } from '../ui/button';
 import { Trash2 } from '~/lib/icons/Trash2';
+import { titleCase } from '~/lib/utils';
+import { Property } from '../apiTypes/list_scenes';
+import { useSubConfig } from '../configShare/ConfigProvider';
+import { Button } from '../ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import usePresetId from './PresetIdProvider';
+import { DynamicPluginProperty } from './property_list';
 
 export type SceneComponentProps = {
     sceneId: string,
