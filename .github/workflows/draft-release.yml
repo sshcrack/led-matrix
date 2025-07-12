@@ -15,6 +15,11 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Install required system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
