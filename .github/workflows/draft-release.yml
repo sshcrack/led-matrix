@@ -53,6 +53,35 @@ jobs:
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
 
+      - name: Cache cross-compile toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/cross-compile
+          key: cross-compile-toolchain-v0.0.1-beta
+
+      - name: Download and extract cross-compile toolchain
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/cross-compile
+          cd ~/cross-compile
+          wget -O cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
+          tar -xJf cross-compile.tar.xz
+          rm cross-compile.tar.xz
+
+      - name: Create vcpkg triplet for arm64-rpi
+        run: |
+          mkdir -p $VCPKG_ROOT/triplets/community
+          cat > $VCPKG_ROOT/triplets/community/arm64-rpi.cmake << 'EOF'
+          set(VCPKG_TARGET_ARCHITECTURE arm64)
+          set(VCPKG_CRT_LINKAGE dynamic)
+          set(VCPKG_LIBRARY_LINKAGE static)
+
+          set(VCPKG_CMAKE_SYSTEM_NAME Linux)
+
+          set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ENV{HOME}/cross-compile/PI.cmake)
+          EOF
+
       - name: Build Emulator
         uses: lukka/run-cmake@v10
         with:
@@ -67,6 +96,7 @@ jobs:
           configurePreset: 'cross-compile'
           buildPreset: 'cross-compile'
           packagePreset: 'cross-compile'
+          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile"]'
 
       - name: Build React Native APK
         working-directory: react-native
