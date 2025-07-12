@@ -8,7 +8,7 @@ endif()
 # Option to enable/disable CORS headers
 option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
 
-project(main VERSION 0.1.0)
+project(main VERSION 1.1.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Set default install prefix to build directory if not specified
