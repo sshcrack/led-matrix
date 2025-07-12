@@ -65,8 +65,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: 'react-native/pnpm-lock.yaml'
+          cache: "pnpm"
+          cache-dependency-path: "react-native/pnpm-lock.yaml"
 
       - name: Install dependencies
         working-directory: react-native
@@ -84,13 +84,12 @@ jobs:
           configurePreset: "emulator"
           buildPreset: "emulator"
           packagePreset: "emulator"
-          configurePresetAdditionalArgs: '["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
       - name: Upload emulator artifact
         uses: actions/upload-artifact@v4
         with:
           name: emulator-build
-          path: emulator_build/emulator-v${{ needs.prepare.outputs.version }}.tar.gz
+          path: emulator_build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
 
   # Build LED matrix for Raspberry Pi
   build-led-matrix:
@@ -120,8 +119,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: 'react-native/pnpm-lock.yaml'
+          cache: "pnpm"
+          cache-dependency-path: "react-native/pnpm-lock.yaml"
 
       - name: Install dependencies
         working-directory: react-native
@@ -164,19 +163,20 @@ jobs:
 
       - name: Build led-matrix for arm64 RPI
         uses: lukka/run-cmake@v10
+        env:
+          CROSS_COMPILE_ROOT: ${{ runner.temp }}/cross-compile
         with:
           configurePreset: "cross-compile"
           buildPreset: "cross-compile"
           packagePreset: "cross-compile"
-          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=${{ runner.temp }}/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
       - name: Upload led-matrix artifacts
         uses: actions/upload-artifact@v4
         with:
           name: led-matrix-build
           path: |
-            build/led-matrix-v${{ needs.prepare.outputs.version }}.tar.gz
-            build/led-matrix-v${{ needs.prepare.outputs.version }}.deb
+            build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+            build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.deb
 
   # Build React Native APK
   build-react-native:
@@ -199,8 +199,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: 'react-native/pnpm-lock.yaml'
+          cache: "pnpm"
+          cache-dependency-path: "react-native/pnpm-lock.yaml"
 
       - name: Install dependencies
         working-directory: react-native
@@ -259,14 +259,16 @@ jobs:
       - name: Upload all artifacts to release
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
-          
+          mv artifacts/emulator-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz artifacts/emulator-build/emulator-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+
+
           # Upload emulator
-          gh release upload "$TAG" artifacts/emulator-build/emulator-v${{ needs.prepare.outputs.version }}.tar.gz
-          
+          gh release upload "$TAG" artifacts/emulator-build/emulator-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+
           # Upload led-matrix artifacts
-          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-v${{ needs.prepare.outputs.version }}.tar.gz
-          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-v${{ needs.prepare.outputs.version }}.deb
-          
+          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.deb
+
           # Upload React Native APK
           gh release upload "$TAG" artifacts/react-native-apk/app-v${{ needs.prepare.outputs.version }}.apk
         env:
