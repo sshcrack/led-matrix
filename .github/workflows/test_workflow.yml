@@ -26,4 +26,4 @@ jobs:
 
       - name: Build Emulator
         run: |
-            vcpkg install gperf
+            vcpkg install gperf --classic
