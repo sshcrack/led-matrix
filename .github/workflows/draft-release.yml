@@ -4,41 +4,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  draft-release:
+  # Job to extract version and do initial validation
+  prepare:
     runs-on: ubuntu-latest
-    env:
-      BUILD_TYPE: RelWithDebInfo
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
-
-      - name: Install required system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-          cache-dependency-path: 'react-native/pnpm-lock.yaml'
-
-      - name: Install dependencies
-        working-directory: react-native
-        run: pnpm install
-
-      - name: Install eas-cli
-        run: npm install -g eas-cli
 
       - name: Extract version from CMakeLists.txt
         id: version
@@ -60,6 +36,62 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build emulator on Ubuntu
+  build-emulator:
+    runs-on: ubuntu-latest
+    needs: prepare
+    env:
+      BUILD_TYPE: RelWithDebInfo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install required system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev
+
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.25.0"
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
+
+      - name: Build Emulator
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: "emulator"
+          buildPreset: "emulator"
+          packagePreset: "emulator"
+          configurePresetAdditionalArgs: '["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
+
+      - name: Upload emulator artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-build
+          path: emulator_build/emulator-v${{ needs.prepare.outputs.version }}.tar.gz
+
+  # Build LED matrix for Raspberry Pi
+  build-led-matrix:
+    runs-on: ubuntu-latest
+    needs: prepare
+    env:
+      BUILD_TYPE: RelWithDebInfo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install required system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
 
       - uses: lukka/get-cmake@latest
         with:
@@ -96,14 +128,6 @@ jobs:
           set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE $ENV{HOME}/cross-compile/PI.cmake)
           EOF
 
-      - name: Build Emulator
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: "emulator"
-          buildPreset: "emulator"
-          packagePreset: "emulator"
-          configurePresetAdditionalArgs: '["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
-
       - name: Build led-matrix for arm64 RPI
         uses: lukka/run-cmake@v10
         with:
@@ -112,18 +136,79 @@ jobs:
           packagePreset: "cross-compile"
           configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
+      - name: Upload led-matrix artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: led-matrix-build
+          path: |
+            build/led-matrix-v${{ needs.prepare.outputs.version }}.tar.gz
+            build/led-matrix-v${{ needs.prepare.outputs.version }}.deb
+
+  # Build React Native APK
+  build-react-native:
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: 'react-native/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        working-directory: react-native
+        run: pnpm install
+
+      - name: Install eas-cli
+        run: npm install -g eas-cli
+
       - name: Build React Native APK
         working-directory: react-native
         run: |
           pnpm install
           pnpm exec eas-cli build -p android --profile preview --local
           APK=$(ls build-*.apk | head -n1)
-          cp "$APK" "../app-v${{ steps.version.outputs.VERSION }}.apk"
+          cp "$APK" "../app-v${{ needs.prepare.outputs.version }}.apk"
+
+      - name: Upload React Native APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-apk
+          path: app-v${{ needs.prepare.outputs.version }}.apk
+
+  # Create release and upload all artifacts
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [prepare, build-emulator, build-led-matrix, build-react-native]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create draft release
         id: create_release
         run: |
-          TAG="v${{ steps.version.outputs.VERSION }}"
+          TAG="v${{ needs.prepare.outputs.version }}"
           # Get previous tag (if any)
           PREV_TAG=$(git tag --sort=-creatordate | grep -v "$TAG" | head -n1 || true)
           if [ -n "$PREV_TAG" ]; then
@@ -138,21 +223,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload emulator artifact to release
+      - name: Upload all artifacts to release
         run: |
-          gh release upload "v${{ steps.version.outputs.VERSION }}" emulator_build/emulator-v${{ steps.version.outputs.VERSION }}.tar.gz
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload led-matrix artifacts to release
-        run: |
-          gh release upload "v${{ steps.version.outputs.VERSION }}" build/led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz
-          gh release upload "v${{ steps.version.outputs.VERSION }}" build/led-matrix-v${{ steps.version.outputs.VERSION }}.deb
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload React Native APK to release
-        run: |
-          gh release upload "v${{ steps.version.outputs.VERSION }}" app-v${{ steps.version.outputs.VERSION }}.apk
+          TAG="v${{ needs.prepare.outputs.version }}"
+          
+          # Upload emulator
+          gh release upload "$TAG" artifacts/emulator-build/emulator-v${{ needs.prepare.outputs.version }}.tar.gz
+          
+          # Upload led-matrix artifacts
+          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-v${{ needs.prepare.outputs.version }}.tar.gz
+          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-v${{ needs.prepare.outputs.version }}.deb
+          
+          # Upload React Native APK
+          gh release upload "$TAG" artifacts/react-native-apk/app-v${{ needs.prepare.outputs.version }}.apk
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
