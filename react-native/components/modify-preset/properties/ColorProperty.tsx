@@ -100,8 +100,8 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                     <View className='py-4'>
                         <ColorPicker
                             value={tempColor || displayColor}
-                            onComplete={() => { }} // Don't close on complete
-                            onChange={onColorChange} // Update temp color
+                            onCompleteJS={() => { }} // Don't close on complete
+                            onChangeJS={onColorChange} // Update temp color
                         >
                             <View className='mb-4'>
                                 <Preview />

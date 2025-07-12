@@ -13,6 +13,7 @@
     "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
   },
   "dependencies": {
+    "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
     "@expo/config-plugins": "^10.1.2",
     "@lukeed/ms": "^2.0.2",
     "@react-native-async-storage/async-storage": "^2.1.2",
@@ -70,7 +71,8 @@
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@types/react": "~19.0.14",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+"@react-native-community/cli": "latest"
   },
   "private": true,
   "expo": {
