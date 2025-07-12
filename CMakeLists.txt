@@ -125,13 +125,20 @@ if(NOT SKIP_WEB_BUILD)
 
 
     # Install React Native dependencies and build web version
-    add_custom_target(react_native_build ALL
+    add_custom_target(react_native_install ALL
         COMMAND ${PNPM} install
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+        COMMENT "Installing React Native dependencies"
+    )
+
+    add_custom_target(react_native_build ALL
         COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+        COMMENT "Building React Native web version"
     )
 
     # Make main target depend on react_native_build
+    add_dependencies(${PROJECT_NAME} react_native_install)
     add_dependencies(${PROJECT_NAME} react_native_build)
 endif()
 
