@@ -20,8 +20,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
       - name: Install eas-cli
-        run: npm install -g eas-cli
+        run: pnpm install -g eas-cli
 
       - name: Extract version from CMakeLists.txt
         id: version
@@ -75,7 +80,8 @@ jobs:
       - name: Build React Native APK
         working-directory: react-native
         run: |
-          npx eas-cli build -p android --profile preview --local
+          pnpm install
+          pnpm exec eas-cli build -p android --profile preview --local
           APK=$(ls build-*.apk | head -n1)
           cp "$APK" "../app-v${{ steps.version.outputs.VERSION }}.apk"
 
