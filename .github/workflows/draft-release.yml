@@ -212,6 +212,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           pnpm install
+          pnpx expo prebuild -p android
           pnpx eas-cli build -p android --profile preview --local
           APK=$(ls build-*.apk | head -n1)
           cp "$APK" "../app-v${{ needs.prepare.outputs.version }}.apk"
