@@ -1,5 +1,5 @@
 {
-    "version": 3,
+    "version": 6,
     "configurePresets": [
         {
             "name": "cross-compile",
@@ -25,6 +25,35 @@
                 "ENABLE_CORS": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "cross-compile",
+            "configurePreset": "cross-compile"
+        },
+        {
+            "name": "emulator",
+            "configurePreset": "emulator"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name": "emulator",
+            "configurePreset": "emulator",
+            "generators": [
+                "TGZ"
+            ],
+            "packageName": "emulator-v$cache{CMAKE_PROJECT_VERSION}"
+        },
+        {
+            "name": "cross-compile",
+            "configurePreset": "cross-compile",
+            "generators": [
+                "TGZ",
+                "DEB"
+            ],
+            "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
         }
     ]
 }

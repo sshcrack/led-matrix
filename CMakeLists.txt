@@ -154,3 +154,19 @@ if(SYNC_TO_RPI)
     install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
 endif()
 
+# -------------------
+# CPack configuration
+# -------------------
+include(InstallRequiredSystemLibraries)
+set(CPACK_PACKAGE_NAME "led-matrix")
+set(CPACK_PACKAGE_VENDOR "sshcrack")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
+set(CPACK_GENERATOR "TGZ")
+include(CPack)
+
