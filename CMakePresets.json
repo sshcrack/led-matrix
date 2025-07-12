@@ -23,7 +23,6 @@
                 "CMAKE_MAKE_PROGRAM": "ninja",
                 "ENABLE_EMULATOR": true,
                 "ENABLE_CORS": true,
-                "SKIP_WEB_BUILD": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
