@@ -1,0 +1,29 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: RelWithDebInfo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install required system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
+
+      - uses: lukka/get-cmake@latest
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
+
+      - name: Build Emulator
+        run: |
+            vcpkg install gperf

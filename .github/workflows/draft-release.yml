@@ -31,7 +31,7 @@ jobs:
           version: 8
 
       - name: Install eas-cli
-        run: pnpm install -g eas-cli
+        run: npm install -g eas-cli
 
       - name: Extract version from CMakeLists.txt
         id: version
@@ -93,6 +93,7 @@ jobs:
           configurePreset: 'emulator'
           buildPreset: 'emulator'
           packagePreset: 'emulator'
+          configurePresetAdditionalArgs: '["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
 
       - name: Build led-matrix for arm64 RPI
@@ -101,7 +102,7 @@ jobs:
           configurePreset: 'cross-compile'
           buildPreset: 'cross-compile'
           packagePreset: 'cross-compile'
-          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile"]'
+          configurePresetAdditionalArgs: '["-DCROSS_COMPILE_ROOT=$HOME/cross-compile", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]'
 
       - name: Build React Native APK
         working-directory: react-native
