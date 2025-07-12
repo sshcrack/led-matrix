@@ -55,7 +55,7 @@ jobs:
           cmake-version: '3.25.0'
 
       - name: Set up Ninja
-        uses: llvm/actions/setup-ninja@v1
+        uses: ashutoshvarma/setup-ninja@master
 
       - name: Build emulator
         run: |
