@@ -56,23 +56,17 @@ jobs:
       - name: Build Emulator
         uses: lukka/run-cmake@v10
         with:
-          buildPresetAdditionalArgs: "[`--target`, `install`]"
           configurePreset: 'emulator'
-
-      - name: Archive emulator install directory
-        run: |
-          tar -czf emulator-v${{ steps.version.outputs.VERSION }}.tar.gz -C emulator_build/install .
+          buildPreset: 'emulator'
+          packagePreset: 'emulator'
 
 
       - name: Build led-matrix for arm64 RPI
         uses: lukka/run-cmake@v10
         with:
-          buildPresetAdditionalArgs: "[`--target`, `install`]"
           configurePreset: 'cross-compile'
-
-      - name: Archive led-matrix install directory
-        run: |
-          tar -czf led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz -C build/install .
+          buildPreset: 'cross-compile'
+          packagePreset: 'cross-compile'
 
       - name: Build React Native APK
         working-directory: react-native
@@ -102,13 +96,14 @@ jobs:
 
       - name: Upload emulator artifact to release
         run: |
-          gh release upload "v${{ steps.version.outputs.VERSION }}" emulator-v${{ steps.version.outputs.VERSION }}.tar.gz
+          gh release upload "v${{ steps.version.outputs.VERSION }}" emulator_build/emulator-v${{ steps.version.outputs.VERSION }}.tar.gz
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload led-matrix artifact to release
+      - name: Upload led-matrix artifacts to release
         run: |
-          gh release upload "v${{ steps.version.outputs.VERSION }}" led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz
+          gh release upload "v${{ steps.version.outputs.VERSION }}" build/led-matrix-v${{ steps.version.outputs.VERSION }}.tar.gz
+          gh release upload "v${{ steps.version.outputs.VERSION }}" build/led-matrix-v${{ steps.version.outputs.VERSION }}.deb
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
