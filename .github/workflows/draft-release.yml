@@ -66,7 +66,7 @@ jobs:
           mkdir -p ~/cross-compile
           cd ~/cross-compile
           wget -O cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
-          tar -xJf cross-compile.tar.xz
+          tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
 
       - name: Create vcpkg triplet for arm64-rpi
