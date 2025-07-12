@@ -1,4 +1,4 @@
-name: Draft Release
+name: Test gperf build
 
 on:
   workflow_dispatch:
