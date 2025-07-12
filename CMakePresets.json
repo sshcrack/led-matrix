@@ -44,7 +44,7 @@
             "generators": [
                 "TGZ"
             ],
-            "packageName": "emulator-v$cache{CMAKE_PROJECT_VERSION}"
+            "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
         },
         {
             "name": "cross-compile",
