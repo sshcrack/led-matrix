@@ -49,29 +49,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v2
+      - uses: lukka/get-cmake@latest
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
+
+      - name: Build Emulator
+        uses: lukka/run-cmake@v10
         with:
-          cmake-version: '3.25.0'
-
-      - name: Set up Ninja
-        uses: ashutoshvarma/setup-ninja@master
-
-      - name: Build emulator
-        run: |
-          cmake --preset=emulator
-          cmake --build --preset=emulator
-          cmake --install --preset=emulator
+          configurePreset: 'emulator'
 
       - name: Archive emulator install directory
         run: |
           tar -czf emulator-v${{ steps.version.outputs.VERSION }}.tar.gz -C emulator_build/install .
 
-      - name: Build led-matrix (arm64 cross-compile)
-        run: |
-          cmake --preset=cross-compile
-          cmake --build --preset=cross-compile
-          cmake --install --preset=cross-compile
+
+      - name: Build led-matrix for arm64 RPI
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'cross-compile'
 
       - name: Archive led-matrix install directory
         run: |
