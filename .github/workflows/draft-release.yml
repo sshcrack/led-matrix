@@ -3,6 +3,14 @@ name: Draft Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: read
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VCPKG_FEATURE_FLAGS: dependencygraph
+
 jobs:
   # Job to extract version and do initial validation
   prepare:
@@ -75,8 +83,13 @@ jobs:
       - uses: lukka/get-cmake@latest
         with:
           cmakeVersion: "~3.25.0"
+
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '0ca64b4e1c70fa6d9f53b369b8f3f0843797c20c'
+        env:
+          VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
       - name: Build Emulator
         uses: lukka/run-cmake@v10
@@ -129,8 +142,13 @@ jobs:
       - uses: lukka/get-cmake@latest
         with:
           cmakeVersion: "~3.25.0"
+
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '0ca64b4e1c70fa6d9f53b369b8f3f0843797c20c'
+        env:
+          VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
       - name: Cache cross-compile toolchain
         id: cache-toolchain
