@@ -107,18 +107,18 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
-      - name: Update certificates
-        run: |
-            sudo apt-get update
-            sudo apt-get install --reinstall ca-certificates
-            sudo update-ca-certificates
-            cert-sync /etc/ssl/certs/ca-certificates.crt
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
           version: 1.0
 
+      - name: Update certificates
+        run: |
+            sudo apt-get update
+            sudo apt-get install --reinstall ca-certificates
+            sudo update-ca-certificates
+            cert-sync /etc/ssl/certs/ca-certificates.crt
       - uses: lukka/get-cmake@latest
         with:
           cmakeVersion: "~3.25.0"
