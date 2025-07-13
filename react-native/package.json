@@ -13,7 +13,6 @@
     "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
   },
   "dependencies": {
-    "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
     "@expo/config-plugins": "^10.1.2",
     "@lukeed/ms": "^2.0.2",
     "@react-native-async-storage/async-storage": "^2.1.2",
@@ -52,7 +51,7 @@
     "nativewind": "^4.1.23",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-native": "^0.79.5",
+    "react-native": "^0.80.1",
     "react-native-flexible-grid": "^0.2.4",
     "react-native-gesture-handler": "^2.24.0",
     "react-native-reanimated": "^3.17.5",
