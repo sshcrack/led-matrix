@@ -227,6 +227,11 @@ jobs:
         working-directory: react-native
         run: pnpm install
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
         with:
