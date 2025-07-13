@@ -88,6 +88,10 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
+          version: 1.0
       - name: Add NuGet sources
         shell: bash
         env:
@@ -111,11 +115,6 @@ jobs:
         with:
           name: web-build
           path: react-native/dist/
-
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
-          version: 1.0
 
       - uses: lukka/get-cmake@latest
         with:
@@ -153,6 +152,11 @@ jobs:
           submodules: true
 
 
+      - name: Install required system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
+
       - name: Add NuGet sources
         shell: bash
         env:
@@ -176,11 +180,6 @@ jobs:
         with:
           name: web-build
           path: react-native/dist/
-
-      - name: Install required system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
 
       - uses: lukka/get-cmake@latest
         with:
