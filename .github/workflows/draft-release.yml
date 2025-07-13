@@ -92,6 +92,14 @@ jobs:
         with:
           packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
           version: 1.0
+
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.25.0"
+
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
+
       - name: Add NuGet sources
         shell: bash
         env:
@@ -115,13 +123,6 @@ jobs:
         with:
           name: web-build
           path: react-native/dist/
-
-      - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: "~3.25.0"
-
-      - name: Setup anew (or from cache) vcpkg (and does not build any package)
-        uses: lukka/run-vcpkg@v11
 
       - name: Build Emulator
         uses: lukka/run-cmake@v10
@@ -151,11 +152,17 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
+          version: 1.0
 
-      - name: Install required system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.25.0"
+
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
 
       - name: Add NuGet sources
         shell: bash
@@ -180,13 +187,6 @@ jobs:
         with:
           name: web-build
           path: react-native/dist/
-
-      - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: "~3.25.0"
-
-      - name: Setup anew (or from cache) vcpkg (and does not build any package)
-        uses: lukka/run-vcpkg@v11
 
       - name: Cache cross-compile toolchain
         id: cache-toolchain
