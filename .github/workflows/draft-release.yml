@@ -21,7 +21,7 @@ env:
 jobs:
   # Job to extract version and do initial validation
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
     steps:
@@ -81,7 +81,7 @@ jobs:
 
   # Build matrix for emulator and LED matrix
   build-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare
     strategy:
       fail-fast: true
@@ -201,7 +201,7 @@ jobs:
 
   # Build React Native APK
   build-react-native:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare
     steps:
       - name: Checkout repository
@@ -250,7 +250,7 @@ jobs:
 
   # Create release and upload all artifacts
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [prepare, build-matrix, build-react-native]
     steps:
       - name: Checkout repository
