@@ -182,6 +182,7 @@ jobs:
           buildPreset: ${{ matrix.build-type.preset }}
           packagePreset: ${{ matrix.build-type.preset }}
         env:
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
           SKIP_WEB_BUILD: "ON"
           CROSS_COMPILE_ROOT: ${{ matrix.build-type.requires-toolchain && runner.temp }}/cross-compile
 
