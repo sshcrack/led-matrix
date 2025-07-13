@@ -107,6 +107,12 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
+      - name: Update certificates
+        run: |
+            sudo apt-get update
+            sudo apt-get install --reinstall ca-certificates
+            sudo update-ca-certificates
+
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
