@@ -232,16 +232,21 @@ jobs:
         working-directory: react-native
         run: pnpm install
 
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: pnpm
+          token: ${{ secrets.EXPO_TOKEN }}
+
       - name: Build React Native APK
         working-directory: react-native
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          pnpm install
           pnpx expo prebuild -p android
-          pnpx eas-cli build -p android --profile preview --local
-          APK=$(ls build-*.apk | head -n1)
-          cp "$APK" "../app-v${{ needs.prepare.outputs.version }}.apk"
+          eas build -p android --local --non-interactive --output ../app-v${{ needs.prepare.outputs.version }}.apk
 
       - name: Upload React Native APK
         uses: actions/upload-artifact@v4
