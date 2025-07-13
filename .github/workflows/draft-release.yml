@@ -9,7 +9,10 @@ permissions:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VCPKG_FEATURE_FLAGS: dependencygraph
+  USERNAME: sshcrack
+  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+  FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
 
 jobs:
   # Job to extract version and do initial validation
@@ -85,13 +88,23 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Cache vcpkg dependencies
-        uses: actions/cache@v4
-        with:
-          path: build/vcpkg_installed
-          key: vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg-configuration.json') }}-${{ runner.os }}
-          restore-keys: |
-            vcpkg-
+      - name: Add NuGet sources
+        shell: bash
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          USERNAME: sshcrack
+          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+        run: |
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            sources add \
+            -Source "${{ env.FEED_URL }}" \
+            -StorePasswordInClearText \
+            -Name GitHubPackages \
+            -UserName "${{ env.USERNAME }}" \
+            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
+            -Source "${{ env.FEED_URL }}"
 
       - name: Download web build artifact
         uses: actions/download-artifact@v4
@@ -99,10 +112,10 @@ jobs:
           name: web-build
           path: react-native/dist/
 
-      - name: Install required system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
+          version: 1.0
 
       - uses: lukka/get-cmake@latest
         with:
@@ -110,10 +123,6 @@ jobs:
 
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '0ca64b4e1c70fa6d9f53b369b8f3f0843797c20c'
-        env:
-          VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
       - name: Build Emulator
         uses: lukka/run-cmake@v10
@@ -143,13 +152,24 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: Cache vcpkg dependencies
-        uses: actions/cache@v4
-        with:
-          path: build/vcpkg_installed
-          key: vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('vcpkg-configuration.json') }}-${{ runner.os }}
-          restore-keys: |
-            vcpkg-
+
+      - name: Add NuGet sources
+        shell: bash
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          USERNAME: sshcrack
+          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+        run: |
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            sources add \
+            -Source "${{ env.FEED_URL }}" \
+            -StorePasswordInClearText \
+            -Name GitHubPackages \
+            -UserName "${{ env.USERNAME }}" \
+            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
+            -Source "${{ env.FEED_URL }}"
 
       - name: Download web build artifact
         uses: actions/download-artifact@v4
@@ -168,10 +188,6 @@ jobs:
 
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '0ca64b4e1c70fa6d9f53b369b8f3f0843797c20c'
-        env:
-          VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
       - name: Cache cross-compile toolchain
         id: cache-toolchain
@@ -247,7 +263,6 @@ jobs:
       - name: Install dependencies
         working-directory: react-native
         run: pnpm install
-
 
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
