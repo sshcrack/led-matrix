@@ -186,7 +186,7 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.build-type.preset }}
-          configurePresetAdditionalArgs: "['-SKIP_WEB_BUILD=ON']"
+          configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
           buildPreset: ${{ matrix.build-type.preset }}
           packagePreset: ${{ matrix.build-type.preset }}
         env:
