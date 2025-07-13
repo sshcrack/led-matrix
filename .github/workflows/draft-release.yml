@@ -186,11 +186,11 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.build-type.preset }}
+          configurePresetAdditionalArgs: "['-SKIP_WEB_BUILD=ON']"
           buildPreset: ${{ matrix.build-type.preset }}
           packagePreset: ${{ matrix.build-type.preset }}
         env:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
-          SKIP_WEB_BUILD: "ON"
           CROSS_COMPILE_ROOT: ${{ matrix.build-type.requires-toolchain && runner.temp }}/cross-compile
 
       - name: Upload ${{ matrix.build-type.name }} artifacts
