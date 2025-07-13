@@ -186,7 +186,6 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.build-type.preset }}
-          configurePresetAdditionalArgs: "['-DVCPKG_INSTALL_OPTIONS=--debug']"
           buildPreset: ${{ matrix.build-type.preset }}
           packagePreset: ${{ matrix.build-type.preset }}
         env:
