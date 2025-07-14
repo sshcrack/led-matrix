@@ -77,6 +77,15 @@ if(ENABLE_DESKTOP)
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
     )
+    
+    # Install GLFW3 DLL on Windows
+    if(WIN32)
+        # For multi-config generators, check the current config directory
+        install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/glfw3.dll"
+            DESTINATION "."
+            OPTIONAL
+        )
+    endif()
 endif()
 
 # Main Target Compile
