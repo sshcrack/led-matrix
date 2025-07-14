@@ -82,10 +82,10 @@ namespace Scenes {
         void resetStars();
         
         // Animation methods
-        void updateAnimationState(const RGBMatrixBase *matrix, const WeatherData &data);
+        void updateAnimationState(const WeatherData &data);
         void renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data);
         void initializeParticles();
-        void updateParticles(const RGBMatrixBase *matrix, const WeatherData &data);
+        void updateParticles(const WeatherData &data);
         
         // Shooting star methods
         void updateShootingStars();
