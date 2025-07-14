@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.5.0)
+
+option(BUILD_DESKTOP_APP "Build desktop application" OFF)
+
+
 # Option to enable/disable emulator
 option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 if(ENABLE_EMULATOR)
