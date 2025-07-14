@@ -1,20 +1,26 @@
 register_plugin(WeatherOverview
-        matrix/WeatherOverview.cpp
-        matrix/WeatherParser.cpp
-        matrix/Constants.cpp
-        matrix/scenes/WeatherScene.cpp
+    matrix/WeatherOverview.cpp
+    matrix/WeatherOverview.h
+    matrix/WeatherParser.cpp
+    matrix/WeatherParser.h
+    matrix/Constants.cpp
+    matrix/Constants.h
+    matrix/scenes/WeatherScene.cpp
+    matrix/scenes/WeatherScene.h
 )
 
-# HTTP Requests
+if(NOT ENABLE_DESKTOP)
+    # HTTP Requests
 
-find_package(cpr CONFIG REQUIRED)
-target_link_libraries(WeatherOverview PRIVATE cpr::cpr)
+    find_package(cpr CONFIG REQUIRED)
+    target_link_libraries(WeatherOverview PRIVATE cpr::cpr)
 
 
-# Install fonts to fonts directory
-install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/7x13.bdf"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/5x8.bdf"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/4x6.bdf"
-    DESTINATION "plugins/weather-overview/fonts"
-)
+    # Install fonts to fonts directory
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/7x13.bdf"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/5x8.bdf"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../rpi-rgb-led-matrix/fonts/4x6.bdf"
+        DESTINATION "plugins/weather-overview/fonts"
+    )
+endif()
