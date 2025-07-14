@@ -7,7 +7,7 @@ else
     echo "Environment file '.env' not found. You can create one if you want"
 fi
 
-cmake --preset emulator
+cmake --preset emulator -DSKIP_WEB_BUILD=ON
 cmake --build emulator_build --target install
 if [ $? -ne 0 ]; then
     echo "Build failed. Please check the output for errors."

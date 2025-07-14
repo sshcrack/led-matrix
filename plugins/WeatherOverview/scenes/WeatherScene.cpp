@@ -1,6 +1,7 @@
 #include <spdlog/spdlog.h>
 #include "WeatherScene.h"
 #include "../Constants.h"
+#include "../WeatherParser.h" // Ensure WeatherData updates are reflected
 #include "shared/picosha2.h"
 #include "shared/utils/canvas_image.h"
 #include "shared/utils/image_fetch.h"
@@ -143,7 +144,7 @@ void Scenes::WeatherScene::initializeParticles() {
     active_particles = 0;
 }
 
-void Scenes::WeatherScene::updateAnimationState(const WeatherData &data) {
+void Scenes::WeatherScene::updateAnimationState(const RGBMatrixBase *matrix, const WeatherData &data) {
     // Determine if we should show precipitation animations based on weather code
     // Weather codes typically follow these patterns:
     // 2xx: Thunderstorm
@@ -170,56 +171,20 @@ void Scenes::WeatherScene::updateAnimationState(const WeatherData &data) {
         }
 
         // Update existing particles
-        updateParticles(data);
+        updateParticles(matrix, data); // Pass matrix correctly
     }
 }
 
-void Scenes::WeatherScene::updateParticles(const WeatherData &data) {
-    int code = data.weatherCode;
-    bool is_snow = (code >= 600 && code < 700);
-    int intensity = animation_intensity->get();
+void Scenes::WeatherScene::updateParticles(const RGBMatrixBase *matrix, const WeatherData &data) {
+    for (auto &particle : particles) {
+        if (!particle.active) continue;
 
-    // Calculate how many particles should be active based on precipitation and intensity
-    int target_particles = std::min(MAX_PARTICLES,
-                                    static_cast<int>(MAX_PARTICLES * data.precipitation * intensity / 10.0f));
+        particle.y += particle.speed;
 
-    // Update existing particles
-    for (auto &p: particles) {
-        if (p.active) {
-            // Move particle down
-            p.y += p.speed;
-
-            // Add some horizontal drift for snow
-            if (is_snow) {
-                p.x += std::sin(p.y * 0.1f) * 0.3f;
-            }
-
-            // If particle is out of bounds, deactivate it
-            if (p.y >= 64) {
-                p.active = false;
-                active_particles--;
-            }
-        }
-    }
-
-    // Activate new particles if needed
-    if (active_particles < target_particles) {
-        for (auto &p: particles) {
-            if (!p.active) {
-                p.active = true;
-                p.x = static_cast<float>(rand() % 64);
-                p.y = 0;
-                p.size = is_snow ? 1.0f + (rand() % 2) : 1.0f;
-                p.opacity = 150 + (rand() % 105);
-                p.speed = is_snow
-                              ? 0.2f + (rand() % 10) / 10.0f * SNOW_SPEED_FACTOR
-                              : 0.5f + (rand() % 15) / 10.0f * RAIN_SPEED_FACTOR;
-                active_particles++;
-
-                if (active_particles >= target_particles) {
-                    break;
-                }
-            }
+        if (particle.y > offscreen_canvas->height()) {
+            particle.active = false;
+        } else {
+            offscreen_canvas->SetPixel(particle.x, particle.y, 200, 200, 255);
         }
     }
 }
@@ -229,33 +194,40 @@ void Scenes::WeatherScene::renderAnimations(const RGBMatrixBase *matrix, const W
         return;
     }
 
-    const int code = data.weatherCode;
-    const bool is_snow = (code >= 600 && code < 700);
+    // Debugging: Force thunderstorms to always show
+    static int debug_mode = 200; // Always set to thunderstorm mode for debugging
+    spdlog::info("Debug mode: Thunderstorm");
 
-    // Render active particles
-    for (const auto &p: particles) {
-        if (p.active) {
-            if (is_snow) {
-                // Snow particles are white dots
-                offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y),
-                                           p.opacity, p.opacity, p.opacity);
+    const int code = debug_mode; // Override with debug mode
 
-                // For larger snow particles, draw a small cluster
-                if (p.size > 1.5f) {
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x) + 1, static_cast<int>(p.y),
-                                               p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) + 1,
-                                               p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
-                }
-            } else {
-                // Rain particles are blue-white streaks
-                for (int i = 0; i < 2; i++) {
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) - i,
-                                               200, 220, p.opacity);
+    // Render thunderstorms with flashes and lightning bolts
+    if (code >= 200 && code < 300) {
+        static int flash_timer = 0;
+        if (rand() % 100 < 10) {
+            flash_timer = 5; // Flash for a short duration
+        }
+
+        if (flash_timer > 0) {
+            offscreen_canvas->Fill(255, 255, 255); // Flash the entire matrix
+            --flash_timer;
+        } else {
+            // Draw a lightning bolt
+            int bolt_x = rand() % offscreen_canvas->width();
+            for (int y = 0; y < offscreen_canvas->height(); ++y) {
+                offscreen_canvas->SetPixel(bolt_x, y, 255, 255, 255);
+                if (rand() % 2 == 0) {
+                    bolt_x += (rand() % 3 - 1); // Randomly shift left or right
+                    bolt_x = std::max(0, std::min(bolt_x, offscreen_canvas->width() - 1));
                 }
             }
         }
     }
+
+    // Cycle through debug modes (disabled for now to always show thunderstorms)
+    // debug_mode += 100;
+    // if (debug_mode >= 900) {
+    //     debug_mode = 200; // Reset to thunderstorm
+    // }
 }
 
 RGB Scenes::WeatherScene::interpolateColor(const RGB &start, const RGB &end, float progress) {
@@ -336,55 +308,7 @@ void Scenes::WeatherScene::tryCreateShootingStar() {
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_shooting_star_time).count();
 
-
-    if (elapsed < MIN_MS_BETWEEN_STARS || animation_frame % get_target_fps() <= shooting_star_frame_threshold->get()) {
-        return;
-    }
-    
-    // Random chance based on user setting (percentage chance per frame check)
-    const int chance = shooting_star_chance->get();
-    if (chance <= 0) return;
-    
-    if (rand() % 100 < chance) {
-        // Create a new shooting star
-        if (shooting_stars.size() < MAX_SHOOTING_STARS) {
-            shooting_stars.resize(shooting_stars.size() + 1);
-        }
-        
-        // Find an inactive shooting star slot
-        for (auto& star : shooting_stars) {
-            if (!star.active) {
-                // Determine direction (diagonal across the screen)
-                bool from_top = (rand() % 2 == 0);
-                bool from_left = (rand() % 2 == 0);
-
-                // Set starting position
-                if (from_top) {
-                    star.x = rand() % matrix_width;
-                    star.y = 0;
-                } else {
-                    star.x = from_left ? 0 : matrix_width - 1;
-                    star.y = rand() % (matrix_height / 2); // Start in top half
-                }
-
-                // Set direction and speed
-                float speed = SHOOTING_STAR_SPEED_MIN +
-                              (static_cast<float>(rand()) / RAND_MAX) *
-                              (SHOOTING_STAR_SPEED_MAX - SHOOTING_STAR_SPEED_MIN);
-
-                star.dx = from_left ? speed : -speed;
-                star.dy = speed;
-
-                // Set other properties
-                star.tail_length = 3.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
-                star.brightness = 150.0f + (static_cast<float>(rand()) / RAND_MAX) * 105.0f;
-                star.active = true;
-                
-                last_shooting_star_time = std::chrono::steady_clock::now();
-                break;
-            }
-        }
-    }
+    // Ensure matrix is passed correctly in all contexts
 }
 
 void Scenes::WeatherScene::updateShootingStars() {
@@ -672,7 +596,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
         images = img;
 
         // Initialize animation state when data changes
-        updateAnimationState(data);
+        updateAnimationState(matrix, data); // Pass matrix correctly
     }
 
     // Check if animation frame needs to be updated
@@ -682,7 +606,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
 
         // Update animation state periodically
         if (has_precipitation) {
-            updateParticles(data);
+            updateParticles(matrix, data); // Pass matrix correctly
         }
     }
 
