@@ -1,10 +1,10 @@
-#include "shared/utils/image_fetch.h"
+#include "shared/matrix/utils/image_fetch.h"
 #include "cpr/cpr.h"
 #include "spdlog/spdlog.h"
 #include "curl/curl.h"
 #include <memory>
 
-#include "shared/utils/consts.h"
+#include "shared/matrix/utils/consts.h"
 
 namespace fs = std::filesystem;
 

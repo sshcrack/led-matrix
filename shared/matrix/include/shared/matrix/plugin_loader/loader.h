@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "plugin/main.h"
+#include "shared/matrix/plugin/main.h"
 #include "shared/config/image_providers/general.h"
 
 namespace Plugins {

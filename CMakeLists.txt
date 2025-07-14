@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.5.0)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
 
+if(ENABLE_DESKTOP)
+    list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
+else()
+    list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
+endif()
 
 # Option to enable/disable emulator
 option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
@@ -29,33 +34,28 @@ if(SKIP_MS_WAIT)
     add_definitions(-DSKIP_MS_WAIT)
 endif()
 
-# Add installation paths
-include(GNUInstallDirs)
-
 # Set RPATH settings
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-# Installation configuration
-include(GNUInstallDirs)
+add_subdirectory(shared)
 if(ENABLE_DESKTOP)
     file(GLOB_RECURSE SOURCES
-            src_desktop/*.c*
+        src_desktop/*.c*
     )
 else()
     file(GLOB_RECURSE SOURCES
-            src_matrix/*.c*
+        src_matrix/*.c*
     )
-    add_subdirectory(shared)
     add_subdirectory(rpi-rgb-led-matrix)
 
     install(TARGETS rpi-rgb-led-matrix
-            EXPORT rpi-rgb-led-matrixTargets
-            LIBRARY DESTINATION "."
-            ARCHIVE DESTINATION "."
-            RUNTIME DESTINATION "."
+        EXPORT rpi-rgb-led-matrixTargets
+        LIBRARY DESTINATION "."
+        ARCHIVE DESTINATION "."
+        RUNTIME DESTINATION "."
     )
 endif()
 
@@ -69,6 +69,15 @@ add_subdirectory(plugins)
 add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
+if(ENABLE_DESKTOP)
+    find_package(hello-imgui CONFIG REQUIRED)
+
+    target_link_libraries(main PRIVATE hello-imgui::hello_imgui)
+    install(
+        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
+        DESTINATION assets
+    )
+endif()
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
@@ -78,14 +87,15 @@ if(ENABLE_CORS)
     target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
 endif()
 
-# Require SharedTools
+target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 if(ENABLE_DESKTOP)
     target_include_directories(${PROJECT_NAME} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop
     )
+    target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
 else()
     target_include_directories(${PROJECT_NAME} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsMatrix)
@@ -165,16 +175,16 @@ endif()
 
 # Install target
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION "."
+    DESTINATION "."
 )
 
 # Create plugins and fonts directories
 install(DIRECTORY DESTINATION "plugins")
 
-if (NOT ENABLE_DESKTOP)
+if(NOT ENABLE_DESKTOP)
     # Install web files
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
-            DESTINATION web
+        DESTINATION web
     )
 
     # Add sync to RPI if enabled

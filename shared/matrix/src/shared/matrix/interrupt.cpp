@@ -1,5 +1,5 @@
 #include <atomic>
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 
 std::atomic interrupt_received = false;
 

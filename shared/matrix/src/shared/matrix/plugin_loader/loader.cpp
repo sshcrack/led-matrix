@@ -3,10 +3,10 @@
 #include <set>
 #include "spdlog/spdlog.h"
 
-#include "shared/plugin_loader/loader.h"
-#include "lib_name.h"
-#include "lib_glob.h"
-#include "plugin/main.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/common/plugin_loader/lib_name.h"
+#include "shared/common/plugin_loader/lib_glob.h"
+#include "shared/matrix/plugin/main.h"
 
 using namespace spdlog;
 using Plugins::BasicPlugin;
@@ -82,9 +82,17 @@ void PluginManager::initialize() {
     if (!exec_dir)
         throw std::runtime_error("Could not get executable directory");
 
-    const char *plugin_dir = getenv("PLUGIN_DIR");
-    const std::string libGlob(plugin_dir == nullptr ? "plugins/*.so" : std::string(plugin_dir) + "/*.so");
-    std::vector<std::string> filenames = Plugins::lib_glob(exec_dir.value() + "/" + libGlob);
+    const char *plugin_dir_env = getenv("PLUGIN_DIR");
+    const std::string plugin_dir(plugin_dir_env == nullptr ? "plugins" : std::string(plugin_dir_env));
+    std::vector<std::string> filenames;
+
+    for (const auto & entry : fs::directory_iterator(plugin_dir)) {
+        if (entry.is_regular_file()) {
+            if(entry.path().extension() == ".so" || entry.path().extension() == ".dll") {
+                filenames.push_back(entry.path().string());
+            }
+        }
+    }
 
     std::set<std::string> libNames;
     for (const std::string &p_name: filenames) {

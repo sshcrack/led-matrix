@@ -1,5 +1,5 @@
-#include "shared/utils/utils.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/utils/shared.h"
 #include <iostream>
 #include <expected>
 #include <thread>

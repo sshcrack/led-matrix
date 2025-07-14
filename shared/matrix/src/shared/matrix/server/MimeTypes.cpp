@@ -2,7 +2,7 @@
 /// Just redid some stuff to newer cpp standards
 
 #include "spdlog/spdlog.h"
-#include "shared/server/MimeTypes.h"
+#include "shared/matrix/server/MimeTypes.h"
 #include <algorithm>
 #include <cctype>
 

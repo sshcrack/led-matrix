@@ -72,7 +72,7 @@ handle_providers(const restinio::request_handle_t &req, const string &scene_id, 
         return Server::reply_with_json(req, scene_json["providers"]);
     }
 
-    return Server::reply_with_error(req, "Scene not found");
+    return Server::reply_with_error(req, "shared/matrix/Scene.h not found");
 }
 
 

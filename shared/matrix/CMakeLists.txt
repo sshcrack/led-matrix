@@ -13,10 +13,10 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/utils/image_fetch.cpp
         src/shared/matrix/utils/FrameTimer.cpp
         src/shared/matrix/utils/canvas_image.cpp
-        src/shared/matrix/plugin_loader/lib_glob.cpp
-        src/shared/matrix/plugin_loader/lib_glob.h
-        src/shared/matrix/plugin_loader/lib_name.cpp
-        src/shared/matrix/plugin_loader/lib_name.h
+        ../common/src/shared/common/plugin_loader/lib_glob.cpp
+        ../common/include/shared/common/plugin_loader/lib_glob.h
+        ../common/src/shared/common/plugin_loader/lib_name.cpp
+        ../common/include/shared/common/plugin_loader/lib_name.h
         src/shared/matrix/plugin_loader/loader.cpp
         src/shared/matrix/config/MainConfig.cpp
         src/shared/matrix/config/image_providers/general.cpp
@@ -42,7 +42,7 @@ endif()
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             # where external projects will look for the library's public headers
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
+    )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
 

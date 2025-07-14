@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Scene.h"
+#include "shared/matrix/Scene.h.h"
 #include "wrappers.h"
 #include "shared/utils/FrameTimer.h"
-#include "plugin/color.h"
+#include "shared/matrix/plugin/color.h"
 #include "../AudioVisualizer.h"
 
 namespace Scenes {
