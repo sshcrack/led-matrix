@@ -1,4 +1,12 @@
 
+register_plugin(PixelJoint
+        matrix/PixelJoint.cpp
+        matrix/scenes/image/ImageScene.cpp
+        matrix/providers/collection.cpp
+        matrix/providers/pages.cpp
+        matrix/scraper/scraped_post.cpp
+)
+
 # Curl
 find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})

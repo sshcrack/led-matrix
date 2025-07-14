@@ -2,5 +2,5 @@
 	path = rpi-rgb-led-matrix
 	url = https://github.com/sshcrack/rpi-rgb-led-matrix.git
 [submodule "shared/PicoSHA2"]
-	path = shared/PicoSHA2
+	path = shared_matrix/PicoSHA2
 	url = https://github.com/okdshin/PicoSHA2
