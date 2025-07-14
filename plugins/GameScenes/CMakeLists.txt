@@ -1,0 +1,11 @@
+register_plugin(GameScenes
+        matrix/GameScenes.cpp
+        matrix/scenes/PingPongGameScene.cpp
+        matrix/scenes/MazeGameScene.cpp
+        matrix/scenes/tetris/TetrisScene.cpp
+        matrix/scenes/tetris/utils/brain.cpp
+        matrix/scenes/tetris/utils/grid.cpp
+        matrix/scenes/tetris/utils/neuralNetwork.cpp
+        matrix/scenes/tetris/utils/piece.cpp
+        matrix/scenes/tetris/utils/population.cpp
+)

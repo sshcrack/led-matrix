@@ -25,6 +25,17 @@
                 "ENABLE_CORS": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
+        },
+        {
+            "name": "desktop",
+            "binaryDir": "${sourceDir}/desktop_build",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "ENABLE_DESKTOP": true
+            }
         }
     ],
     "buildPresets": [
@@ -35,6 +46,10 @@
         {
             "name": "emulator",
             "configurePreset": "emulator"
+        },
+        {
+            "name": "desktop",
+            "configurePreset": "desktop"
         }
     ],
     "packagePresets": [
@@ -54,6 +69,11 @@
                 "DEB"
             ],
             "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
+        },
+        {
+            "name": "desktop",
+            "configurePreset": "desktop",
+            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
         }
     ]
 }
