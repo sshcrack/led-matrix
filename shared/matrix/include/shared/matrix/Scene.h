@@ -5,7 +5,7 @@
 #include "fmt/format.h"
 #include "led-matrix.h"
 #include "content-streamer.h"
-#include "plugin/property.h"
+#include "shared/matrix/plugin/property.h"
 #include <vector>
 #include "shared/utils/PropertyMacros.h"
 

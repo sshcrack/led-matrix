@@ -1,5 +1,5 @@
-#include "shared/post.h"
-#include "shared/utils/image_fetch.h"
+#include "shared/matrix/post.h"
+#include "shared/matrix/utils/image_fetch.h"
 #include <vector>
 #include <iostream>
 #include <optional>
@@ -7,9 +7,9 @@
 #include <shared/server/MimeTypes.h>
 #include "cpr/cpr.h"
 
-#include "shared/utils/canvas_image.h"
-#include "shared/utils/utils.h"
-#include "shared/utils/consts.h"
+#include "shared/matrix/utils/canvas_image.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/utils/consts.h"
 #include "spdlog/spdlog.h"
 #include "picosha2.h"
 

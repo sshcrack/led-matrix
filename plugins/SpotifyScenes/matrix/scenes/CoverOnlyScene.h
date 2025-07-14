@@ -6,7 +6,7 @@
 #include <future>
 #include <shared_mutex>
 
-#include "Scene.h"
+#include "shared/matrix/Scene.h.h"
 #include "shared/utils/utils.h"
 #include "wrappers.h"
 #include "nlohmann/json.hpp"

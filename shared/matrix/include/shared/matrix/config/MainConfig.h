@@ -4,7 +4,7 @@
 #include "nlohmann/json.hpp"
 #include <fstream>
 #include "data.h"
-#include "plugin/main.h"
+#include "shared/matrix/plugin/main.h"
 
 using namespace std;
 using json = nlohmann::json;

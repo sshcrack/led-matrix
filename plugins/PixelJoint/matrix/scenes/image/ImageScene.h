@@ -7,8 +7,8 @@
 #include "shared/config/MainConfig.h"
 #include "spdlog/spdlog.h"
 
-#include "Scene.h"
-#include "plugin/main.h"
+#include "shared/matrix/Scene.h.h"
+#include "shared/matrix/plugin/main.h"
 #include "shared/utils/utils.h"
 #include "shared/config/data.h"
 

@@ -1,9 +1,9 @@
-#include "Scene.h"
+#include "shared/matrix/Scene.h.h"
 
-#include <shared/utils/uuid.h>
+#include <shared/matrix/utils/uuid.h>
 #include "spdlog/spdlog.h"
-#include "shared/plugin_loader/loader.h"
-#include "plugin/property.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/plugin/property.h"
 
 using namespace spdlog;
 

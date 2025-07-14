@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Scene.h"
-#include "plugin/main.h"
+#include "shared/matrix/Scene.h.h"
+#include "shared/matrix/plugin/main.h"
 #include <vector>
 #include <ctime>
 

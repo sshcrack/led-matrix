@@ -1,4 +1,4 @@
-#include "shared/utils/canvas_image.h"
+#include "shared/matrix/utils/canvas_image.h"
 #include "led-matrix.h"
 #include "content-streamer.h"
 #include "Magick++.h"

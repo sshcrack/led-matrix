@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugin/main.h"
+#include "shared/matrix/plugin/main.h"
 #include <thread>
 #include <atomic>
 #include <mutex>
