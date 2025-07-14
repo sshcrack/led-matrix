@@ -1,6 +1,10 @@
 register_plugin(AmbientScenes
         matrix/AmbientScenes.cpp
+        matrix/AmbientScenes.h
         matrix/scenes/ClockScene.cpp
+        matrix/scenes/ClockScene.h
         matrix/scenes/MetaBlobScene.cpp
+        matrix/scenes/MetaBlobScene.h
         matrix/scenes/StarFieldScene.cpp
+        matrix/scenes/StarFieldScene.h
 )

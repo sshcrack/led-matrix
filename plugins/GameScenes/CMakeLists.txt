@@ -1,11 +1,21 @@
 register_plugin(GameScenes
         matrix/GameScenes.cpp
+        matrix/GameScenes.h
         matrix/scenes/PingPongGameScene.cpp
+        matrix/scenes/PingPongGameScene.h
         matrix/scenes/MazeGameScene.cpp
+        matrix/scenes/MazeGameScene.h
         matrix/scenes/tetris/TetrisScene.cpp
+        matrix/scenes/tetris/TetrisScene.h
+
         matrix/scenes/tetris/utils/brain.cpp
+        matrix/scenes/tetris/utils/brain.hpp
         matrix/scenes/tetris/utils/grid.cpp
+        matrix/scenes/tetris/utils/grid.hpp
         matrix/scenes/tetris/utils/neuralNetwork.cpp
+        matrix/scenes/tetris/utils/neuralNetwork.hpp
         matrix/scenes/tetris/utils/piece.cpp
+        matrix/scenes/tetris/utils/piece.hpp
         matrix/scenes/tetris/utils/population.cpp
+        matrix/scenes/tetris/utils/population.hpp
 )

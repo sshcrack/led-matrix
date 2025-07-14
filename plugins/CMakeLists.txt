@@ -37,18 +37,22 @@ function(register_plugin PLUGIN_NAME SOURCES)
     # Determine which sources to use based on build target
     message(STATUS "Adding plugin: ${PLUGIN_NAME}")
     if(ENABLE_DESKTOP)
-        add_library(${PLUGIN_NAME} SHARED ${MATRIX_SOURCES})
-    else()
+        if(DESKTOP_SOURCES STREQUAL "")
+            message(STATUS "No Sources for ${PLUGIN_NAME}. Skipping desktop build.")
+            return()
+        endif()
+
         add_library(${PLUGIN_NAME} SHARED ${DESKTOP_SOURCES})
+    else()
+        add_library(${PLUGIN_NAME} SHARED ${MATRIX_SOURCES})
     endif()
 
 
     target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_23)
 
     find_package(spdlog CONFIG REQUIRED)
-    target_link_libraries(${PLUGIN_NAME} PRIVATE
-        spdlog::spdlog
-    )
+    target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsCommon)
+    target_link_libraries(${PLUGIN_NAME} PRIVATE spdlog::spdlog)
     if(NOT ENABLE_DESKTOP)
         find_package(restinio REQUIRED)
         find_package(unofficial-graphicsmagick CONFIG REQUIRED)
@@ -59,6 +63,8 @@ function(register_plugin PLUGIN_NAME SOURCES)
         )
         target_include_directories(${PLUGIN_NAME} PRIVATE ${RGB_HEADER_DIR})
         target_link_libraries(${PLUGIN_NAME} PRIVATE rpi-rgb-led-matrix)
+    else()
+        target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
     endif()
 
     install(TARGETS ${PLUGIN_NAME}
