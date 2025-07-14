@@ -3,11 +3,6 @@ project(SharedTools VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 23)
 
-option(USE_EMULATOR "Enable emulator support" OFF)
-if(USE_EMULATOR)
-    add_definitions(-DUSE_EMULATOR)
-endif()
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PicoSHA2/picosha2.h ${CMAKE_CURRENT_SOURCE_DIR}/include/shared/picosha2.h COPYONLY)
 
 add_library(${PROJECT_NAME} SHARED
