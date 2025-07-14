@@ -3,4 +3,7 @@ register_plugin(AudioVisualizer
         matrix/AudioVisualizer.h
         matrix/scenes/AudioSpectrumScene.cpp
         matrix/scenes/AudioSpectrumScene.h
+        DESKTOP
+        desktop/AudioVisualizerDesktop.cpp
+        desktop/AudioVisualizerDesktop.h
 )

@@ -1,20 +1,9 @@
 #include "shared/common/plugin_loader/lib_name.h"
 #include <filesystem>
 
-std::pair<std::string, std::string> Plugins::get_lib_name(std::string &path) {
+std::string Plugins::get_lib_name(std::string &path) {
     // hue, https://stackoverflow.com/a/4318543/4765406
     std::filesystem::path p(path);
 
-    std::string bn = p.filename().string();
-
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream ts(bn);
-    while (std::getline(ts, token, '.')) {
-        tokens.push_back(token);
-    }
-
-    std::string libname(tokens[0].substr(3));
-    // in a REAL project this would be aliased with using
-    return {libname, (char) (std::toupper(libname[0])) + libname.substr(1)};
+    return p.stem().string();
 }

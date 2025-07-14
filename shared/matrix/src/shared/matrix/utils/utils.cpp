@@ -9,10 +9,6 @@
 
 using namespace spdlog;
 
-tmillis_t GetTimeInMillis() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
-}
 
 void SleepMillis(tmillis_t milli_seconds) {
     if (milli_seconds <= 0) return;
@@ -25,39 +21,6 @@ void SleepMillis(tmillis_t milli_seconds) {
             break;
         }
     }
-}
-
-bool try_remove(const filesystem::path &file_path) {
-    if (!filesystem::exists(file_path))
-        return true;
-
-    try {
-        debug("Removing {}", file_path.string());
-        return filesystem::remove(file_path);
-    } catch (exception &ex) {
-        warn("Could not delete file {}", file_path.string());
-        return false;
-    }
-}
-
-bool is_valid_filename(const string &filename) {
-    regex file_regex("^[\\w\\-. ]+$");
-    std::smatch sm;
-    regex_match(filename, sm, file_regex);
-
-    if (sm.empty())
-        return false;
-
-    return true;
-}
-
-
-bool replace(std::string &str, const std::string &from, const std::string &to) {
-    size_t start_pos = str.find(from);
-    if (start_pos == std::string::npos)
-        return false;
-    str.replace(start_pos, from.length(), to);
-    return true;
 }
 
 std::expected<std::string, std::string> execute_process(const string &cmd, const vector<std::string> &args) {
@@ -111,44 +74,7 @@ void floatPixelSet(rgb_matrix::FrameCanvas *canvas, int x, int y, float r, float
     canvas->SetPixel(x, y, rByte, gByte, bByte);
 }
 
-std::string stringify_url(const string &url) {
-    std::hash<std::string> hasher;
-    size_t hashed_url = hasher(url);
-    return std::to_string(hashed_url);
-}
 
-int get_random_number_inclusive(int start, int end) {
-    // Use a random_device to seed the generator
-    std::random_device rd;
-
-    // Use a Mersenne Twister engine for random number generation
-    std::mt19937 engine(rd());
-
-    // Use a uniform distribution for the range
-    std::uniform_int_distribution<> dist(start, end);
-
-    // Generate and return the random number
-    return dist(engine);
-}
-
-std::optional<std::string> get_exec_dir() {
-    std::array<char, PATH_MAX> result{};  // Zero-initialized array
-    ssize_t count = readlink("/proc/self/exe", result.data(), result.size() - 1);
-    
-    if (count == -1) {
-        return std::nullopt;
-    }
-    
-    // Ensure null termination
-    result[count] = '\0';
-    
-    try {
-        std::filesystem::path full_path(result.data());
-        return full_path.parent_path().string();
-    } catch (const std::filesystem::filesystem_error& e) {
-        return std::nullopt;
-    }
-}
 
 std::vector<uint8_t> magick_to_rgb(const Magick::Image &img) {
     std::vector<uint8_t> buffer;

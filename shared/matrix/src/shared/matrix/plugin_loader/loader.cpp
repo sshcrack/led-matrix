@@ -112,8 +112,8 @@ void PluginManager::initialize() {
 
         std::string pl_copy = pl_name;
         std::pair<std::string, std::string> delibbed = Plugins::get_lib_name(pl_copy);
-        std::string cn = "create" + delibbed.second;
-        std::string dn = "destroy" + delibbed.second;
+        std::string cn = "create" + delibbed;
+        std::string dn = "destroy" + delibbed;
 
         // Clear any existing errors before dlsym
         dlerror();

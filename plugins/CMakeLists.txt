@@ -68,7 +68,9 @@ function(register_plugin PLUGIN_NAME SOURCES)
     endif()
 
     install(TARGETS ${PLUGIN_NAME}
-        LIBRARY DESTINATION "plugins"
+        RUNTIME DESTINATION plugins  # For DLLs and executables (Windows)
+        LIBRARY DESTINATION plugins  # For shared libraries (.so/.dylib)
+        ARCHIVE DESTINATION plugins  # For static libraries (.lib/.a)
     )
 endfunction()
 
