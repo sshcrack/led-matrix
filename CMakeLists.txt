@@ -78,12 +78,13 @@ if(ENABLE_DESKTOP)
         DESTINATION assets
     )
     
-    # Install GLFW3 DLL on Windows
+    # Install required DLLs on Windows automatically
     if(WIN32)
-        # For multi-config generators, check the current config directory
-        install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/glfw3.dll"
-            DESTINATION "."
-            OPTIONAL
+        # Install all DLLs from the build output directory
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/"
+            DESTINATION "bin"
+            FILES_MATCHING PATTERN "*.dll"
+            PATTERN "*.pdb" EXCLUDE
         )
     endif()
 endif()
@@ -98,9 +99,7 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 if(ENABLE_DESKTOP)
-    target_include_directories(${PROJECT_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop
-    )
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop )
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
 else()
     target_include_directories(${PROJECT_NAME} PRIVATE
@@ -182,9 +181,14 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     add_dependencies(${PROJECT_NAME} react_native_build)
 endif()
 
+set(INSTALL_DESTINATION ".")
+if(ENABLE_DESKTOP)
+    set(INSTALL_DESTINATION "bin")
+endif()
+
 # Install target
 install(TARGETS ${PROJECT_NAME}
-    DESTINATION "."
+    DESTINATION ${INSTALL_DESTINATION}
 )
 
 # Create plugins and fonts directories
