@@ -23,8 +23,12 @@
       "description": "Add desktop support",
       "dependencies": [
         {
-          "name": "hello-imgui",
-          "features": ["opengl3-binding", "glfw-binding"]
+          "name": "glfw3",
+          "version>=": "3.4"
+        },
+        {
+          "name": "glew",
+          "version>=": "2.2.0#3"
         }
       ]
     }

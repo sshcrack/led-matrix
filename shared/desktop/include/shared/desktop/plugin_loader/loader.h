@@ -7,6 +7,7 @@ namespace Plugins {
     struct PluginInfo {
         void* handle;
         std::string destroyFnName;
+        std::string name;
 
         DesktopPlugin* plugin;
     };
@@ -33,6 +34,6 @@ namespace Plugins {
         void delete_references();
         void destroy_plugins();
 
-        std::vector<Plugins::DesktopPlugin*> get_plugins();
+        std::vector<std::pair<std::string, DesktopPlugin *>> get_plugins();
     };
 }

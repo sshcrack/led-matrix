@@ -4,6 +4,7 @@ option(ENABLE_DESKTOP "Build desktop application" OFF)
 
 if(ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/imgui.cmake)
 else()
     list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
 endif()
@@ -70,9 +71,11 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 if(ENABLE_DESKTOP)
-    find_package(hello-imgui CONFIG REQUIRED)
+    find_package(glfw3 CONFIG REQUIRED)
+    find_package(glew CONFIG REQUIRED)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glfw GLEW::GLEW imgui::imgui)
+
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets

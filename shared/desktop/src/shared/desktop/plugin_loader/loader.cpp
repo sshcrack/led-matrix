@@ -54,10 +54,10 @@ void PluginManager::delete_references() {
 }
 
 
-std::vector<DesktopPlugin *> PluginManager::get_plugins() {
-    std::vector<DesktopPlugin *> plugins;
+std::vector<std::pair<std::string, DesktopPlugin *>> PluginManager::get_plugins() {
+    std::vector<std::pair<std::string, DesktopPlugin *>> plugins;
     for (const auto &item: loaded_plugins) {
-        plugins.emplace_back(item.plugin);
+        plugins.emplace_back(std::make_pair(item.name, item.plugin));
     }
 
     return plugins;
@@ -127,9 +127,9 @@ void PluginManager::initialize() {
 #endif
 
         std::string pl_copy = pl_name;
-        std::string delibbed = Plugins::get_lib_name(pl_copy);
-        std::string cn = "create" + delibbed;
-        std::string dn = "destroy" + delibbed;
+        std::string libName = get_lib_name(pl_copy);
+        std::string cn = "create" + libName;
+        std::string dn = "destroy" + libName;
 
         // Get create function
         DesktopPlugin *(*create)() = nullptr;
@@ -200,6 +200,7 @@ void PluginManager::initialize() {
             PluginInfo info = {
                     .handle = dlhandle,
                     .destroyFnName = dn,
+                    .name =  libName,
                     .plugin = p,
             };
             loaded_plugins.emplace_back(info);
