@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 
 typedef int64_t tmillis_t;
 tmillis_t GetTimeInMillis();

@@ -2,6 +2,8 @@
 // Created by Hendrik on 14.07.2025.
 //
 #include <iostream>
+#include <shared/common/utils/utils.h>
+
 #include "hello_imgui/hello_imgui.h"
 #include "shared/desktop/plugin_loader/loader.h"
 
@@ -14,6 +16,7 @@ int main(int argc, char *argv[])
     cout << "Hello, ImGui!" << endl;
     cout << "Loaded " << instance->get_plugins().size() << " plugins." << endl;
 
+    HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets/");
     auto guiFunction = []() {
         ImGui::Text("Hello, ");                    // Display a simple label
         HelloImGui::ImageFromAsset("world.jpg");   // Display a static image

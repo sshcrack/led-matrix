@@ -13,10 +13,6 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/utils/image_fetch.cpp
         src/shared/matrix/utils/FrameTimer.cpp
         src/shared/matrix/utils/canvas_image.cpp
-        ../common/src/shared/common/plugin_loader/lib_glob.cpp
-        ../common/include/shared/common/plugin_loader/lib_glob.h
-        ../common/src/shared/common/plugin_loader/lib_name.cpp
-        ../common/include/shared/common/plugin_loader/lib_name.h
         src/shared/matrix/plugin_loader/loader.cpp
         src/shared/matrix/config/MainConfig.cpp
         src/shared/matrix/config/image_providers/general.cpp
