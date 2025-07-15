@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <hello_imgui/hello_imgui.h>
+#include "imgui_stdlib.h"
 #include "imgui_impl_glfw.h"
 #include "toolbar.h"
 #include <thread>
