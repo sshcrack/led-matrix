@@ -12,6 +12,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
 
+find_package(hello-imgui CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui)
 target_include_directories(${PROJECT_NAME}
         PRIVATE
