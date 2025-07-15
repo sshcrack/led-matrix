@@ -42,6 +42,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(shared)
 if(ENABLE_DESKTOP)
+    add_subdirectory(thirdparty/traypp EXCLUDE_FROM_ALL)
     file(GLOB_RECURSE SOURCES
         src_desktop/*.c*
     )
@@ -71,7 +72,7 @@ add_executable(${PROJECT_NAME}
 )
 if(ENABLE_DESKTOP)
     find_package(hello-imgui CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray)
 
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
