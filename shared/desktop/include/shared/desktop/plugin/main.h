@@ -33,3 +33,10 @@ namespace Plugins {
         }
     };
 }
+
+
+#ifdef _WIN32
+#define PLUGIN_EXPORT __declspec(dllexport)
+#else
+#define PLUGIN_EXPORT
+#endif
