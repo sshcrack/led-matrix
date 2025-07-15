@@ -3,6 +3,7 @@
         "*.scss": "scss",
         "iostream": "cpp",
         "xstring": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "fstream": "cpp"
     }
 }
