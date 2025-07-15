@@ -7,8 +7,11 @@
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_impl_glfw.h"
 #include "toolbar.h"
+#include <thread>
 
 #include "shared/desktop/plugin_loader/loader.h"
+
+static bool showWindowClicked = false;
 
 int main(int argc, char *argv[])
 {
@@ -31,16 +34,27 @@ int main(int argc, char *argv[])
         if (ImGui::Button("Minimize to Toolbar"))
         {
             auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
-            minimizeToToolbar(window);
+            minimizeToTray(window);
+        }
+
+        if (showWindowClicked)
+        {
+            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+            restoreFromTray(window);
+            showWindowClicked = false;
         }
     };
 
-    Tray::Tray tray("My Tray", "icon.ico");
-    tray.addEntry(Tray::Button("Exit", [&]
-                         { tray.exit(); }));
+    std::thread trayThread([]() { //
 
-    tray.run();
+        Tray::Tray tray("LED Matrix Controller", "icon.ico");
+        tray.addEntry(Tray::Button("Show Window", [&] { showWindowClicked = true; }));
+
+        tray.run(); //
+});
 
     HelloImGui::Run(guiFunction, "LED Matrix Controller", true, true);
+    trayThread.join();
+
     return 0;
 }
