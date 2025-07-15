@@ -1,4 +1,5 @@
 #pragma once
 #include "imgui_impl_glfw.h"
 
-void minimizeToToolbar(GLFWwindow* window);
+void minimizeToTray(GLFWwindow* window);
+void restoreFromTray(GLFWwindow* window);
