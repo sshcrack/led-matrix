@@ -1,45 +1,39 @@
-#include "GL/glew.h"
-#include <GLFW/glfw3.h>
-
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
 #include <iostream>
 #include <fmt/format.h>
 #include <shared/common/utils/utils.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <hello_imgui/hello_imgui.h>
+#include "imgui_impl_glfw.h"
+#include "toolbar.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
 
-using std::cout;
-using std::endl;
-
-
-static void glfw_error_callback(int error, const char* description)
+int main(int argc, char *argv[])
 {
-    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-}
-
-#include "initialization.h"
-#include "render_loop.h"
-#include "cleanup.h"
-
-int main(int argc, char *argv[]) {
-    const char* glsl_version = nullptr;
-    initializeGLFW(glsl_version);
-
-    float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
-    GLFWwindow* window = createWindow(main_scale);
-
-    setupImGui(window, glsl_version, main_scale);
+    HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets");
 
     auto instance = Plugins::PluginManager::instance();
     instance->initialize();
 
-    renderLoop(window, instance, ImGui::GetIO().Fonts->Fonts[0]);
+    auto guiFunction = [instance]()
+    {
+        const auto ctx = ImGui::GetCurrentContext();
+        for (const auto &[name, plugin] : instance->get_plugins())
+        {
+            if (ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                plugin->render(ctx);
+            }
+        }
 
-    cleanup(window);
+        if (ImGui::Button("Minimize to Toolbar"))
+        {
+            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+            minimizeToToolbar(window);
+        }
+    };
+
+    HelloImGui::Run(guiFunction, "LED Matrix Controller", true, true);
     return 0;
 }

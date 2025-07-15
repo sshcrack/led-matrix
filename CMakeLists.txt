@@ -4,7 +4,6 @@ option(ENABLE_DESKTOP "Build desktop application" OFF)
 
 if(ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
-    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/imgui.cmake)
 else()
     list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
 endif()
@@ -50,7 +49,7 @@ else()
     file(GLOB_RECURSE SOURCES
         src_matrix/*.c*
     )
-    add_subdirectory(rpi-rgb-led-matrix)
+    add_subdirectory(thirdparty/rpi-rgb-led-matrix)
 
     install(TARGETS rpi-rgb-led-matrix
         EXPORT rpi-rgb-led-matrixTargets
@@ -71,16 +70,14 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 if(ENABLE_DESKTOP)
-    find_package(glfw3 CONFIG REQUIRED)
-    find_package(glew CONFIG REQUIRED)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE glfw GLEW::GLEW imgui::imgui)
+    find_package(hello-imgui CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui)
 
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
     )
-    
+
     # Install required DLLs on Windows automatically
     if(WIN32)
         # Install all DLLs from the build output directory
