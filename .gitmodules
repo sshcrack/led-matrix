@@ -7,3 +7,6 @@
 [submodule "thirdparty/traypp"]
 	path = thirdparty/traypp
 	url = https://github.com/sshcrack/traypp.git
+[submodule "thirdparty/hello_imgui"]
+	path = thirdparty/hello_imgui
+	url = https://github.com/pthom/hello_imgui

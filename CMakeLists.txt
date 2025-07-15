@@ -2,9 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
 
-if(ENABLE_DESKTOP)
-    list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
-else()
+if(NOT ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
 endif()
 
@@ -40,11 +38,15 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_subdirectory(shared)
 if(ENABLE_DESKTOP)
     file(GLOB_RECURSE SOURCES
         src_desktop/*.c*
     )
+    set(HELLOIMGUI_HAS_OPENGL3 ON)
+    set(HELLOIMGUI_USE_GLFW3 ON)
+    add_subdirectory(thirdparty/hello_imgui)
+    message(STATUS "Using hello_imgui from: ${HELLOIMGUI_BASEPATH}")
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${HELLOIMGUI_BASEPATH}/hello_imgui_cmake)
 else()
     file(GLOB_RECURSE SOURCES
         src_matrix/*.c*
@@ -62,6 +64,7 @@ endif()
 
 
 
+add_subdirectory(shared)
 # Adding plugins
 add_subdirectory(plugins)
 
@@ -71,7 +74,6 @@ add_executable(${PROJECT_NAME}
 )
 if(ENABLE_DESKTOP)
     add_subdirectory(thirdparty/traypp)
-    find_package(hello-imgui CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray)
 
     install(
