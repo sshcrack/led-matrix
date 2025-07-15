@@ -12,6 +12,7 @@
 #include "shared/desktop/plugin_loader/loader.h"
 
 static bool showWindowClicked = false;
+static bool shouldExit = false;
 
 int main(int argc, char *argv[])
 {
@@ -22,6 +23,9 @@ int main(int argc, char *argv[])
 
     auto guiFunction = [instance]()
     {
+        static std::string hostname;
+        ImGui::InputTextWithHint("Hostname", "LED Matrix Hostname", &hostname);
+
         const auto ctx = ImGui::GetCurrentContext();
         for (const auto &[name, plugin] : instance->get_plugins())
         {
@@ -43,17 +47,23 @@ int main(int argc, char *argv[])
             restoreFromTray(window);
             showWindowClicked = false;
         }
+
+        if(shouldExit) {
+            HelloImGui::GetRunnerParams()->appShallExit = true;
+            shouldExit = false;
+        }
     };
 
-    std::thread trayThread([]() { //
+    Tray::Tray tray("LED Matrix Controller", "icon.ico");
+    tray.addEntry(Tray::Button("Show Window", [&] { showWindowClicked = true; }));
+    tray.addEntry(Tray::Button("Exit", [&] { shouldExit = true; }));
 
-        Tray::Tray tray("LED Matrix Controller", "icon.ico");
-        tray.addEntry(Tray::Button("Show Window", [&] { showWindowClicked = true; }));
+    std::thread trayThread([&tray]() {
+        tray.run();
+    });
 
-        tray.run(); //
-});
-
-    HelloImGui::Run(guiFunction, "LED Matrix Controller", true, true);
+    HelloImGui::Run(guiFunction, "LED Matrix Controller", false, true);
+    tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     trayThread.join();
 
     return 0;

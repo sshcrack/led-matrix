@@ -18,15 +18,6 @@
     "emulator": {
         "description": "Add emulator support",
         "dependencies": ["sdl2"]
-      },
-    "desktop": {
-      "description": "Add desktop support",
-      "dependencies": [
-        {
-          "name": "hello-imgui",
-          "features": ["opengl3-binding", "glfw-binding"]
-        }
-      ]
     }
   },
   "name": "led-matrix",
