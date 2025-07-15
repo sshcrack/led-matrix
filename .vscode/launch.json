@@ -7,7 +7,7 @@
         "program": "${workspaceFolder}/desktop_build/install/bin/main",
         "args": [],
         "stopAtEntry": false,
-        "cwd": "${fileDirname}",
+        "cwd": "${workspaceFolder}/desktop_build/install/bin",
         "environment": [],
         "externalConsole": false,
         "MIMode": "gdb",
