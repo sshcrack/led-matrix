@@ -12,3 +12,4 @@ heaptrack.sh
 .env
 emulator_build
 desktop_build
+__pycache__
