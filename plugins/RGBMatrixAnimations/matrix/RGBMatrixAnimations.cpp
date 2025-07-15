@@ -4,11 +4,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] RGBMatrixAnimations *createRGBMatrixAnimations() {
+extern "C" PLUGIN_EXPORT RGBMatrixAnimations *createRGBMatrixAnimations() {
     return new RGBMatrixAnimations();
 }
 
-extern "C" [[maybe_unused]] void destroyRGBMatrixAnimations(RGBMatrixAnimations *c) {
+extern "C" PLUGIN_EXPORT void destroyRGBMatrixAnimations(RGBMatrixAnimations *c) {
     delete c;
 }
 

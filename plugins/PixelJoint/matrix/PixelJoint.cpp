@@ -43,11 +43,11 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > PixelJ
 
 PixelJoint::PixelJoint() = default;
 
-extern "C" [[maybe_unused]] PixelJoint *createPixelJoint() {
+extern "C" PLUGIN_EXPORT PixelJoint *createPixelJoint() {
     return new PixelJoint();
 }
 
-extern "C" [[maybe_unused]] void destroyPixelJoint(PixelJoint *c) {
+extern "C" PLUGIN_EXPORT void destroyPixelJoint(PixelJoint *c) {
     delete c;
 }
 

@@ -10,10 +10,10 @@ namespace Scenes {
         FrameTimer frameTimer;
         PropertyPointer<float> pulseSpeed = MAKE_PROPERTY("speed", float, 1.0f);
         PropertyPointer<int> colorMode = MAKE_PROPERTY("color_mode", int, 0);
-        
+
     public:
         ColorPulseScene() {}
-            
+
         ~ColorPulseScene() override = default;
         bool render(RGBMatrixBase *matrix) override;
         string get_name() const override;

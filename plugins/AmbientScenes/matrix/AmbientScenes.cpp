@@ -6,11 +6,11 @@
 using namespace Scenes;
 using namespace AmbientScenes;
 
-extern "C" [[maybe_unused]] AmbientPlugin *createAmbientScenes() {
+extern "C" PLUGIN_EXPORT AmbientPlugin *createAmbientScenes() {
     return new AmbientPlugin();
 }
 
-extern "C" [[maybe_unused]] void destroyAmbientScenes(AmbientPlugin *c) {
+extern "C" PLUGIN_EXPORT void destroyAmbientScenes(AmbientPlugin *c) {
     delete c;
 }
 

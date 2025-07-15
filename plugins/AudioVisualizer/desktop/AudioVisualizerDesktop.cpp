@@ -3,12 +3,12 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-extern "C" [[maybe_unused]] PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer()
+extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer()
 {
     return new AudioVisualizerDesktop();
 }
 
-extern "C" [[maybe_unused]] PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c)
+extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c)
 {
     delete c;
 }

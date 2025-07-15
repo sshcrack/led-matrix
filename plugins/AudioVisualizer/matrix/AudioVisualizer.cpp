@@ -11,12 +11,12 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] AudioVisualizer *createAudioVisualizer()
+extern "C" PLUGIN_EXPORT AudioVisualizer *createAudioVisualizer()
 {
     return new AudioVisualizer();
 }
 
-extern "C" [[maybe_unused]] void destroyAudioVisualizer(AudioVisualizer *c)
+extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizer *c)
 {
     delete c;
 }

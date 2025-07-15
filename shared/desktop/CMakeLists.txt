@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(SharedToolsDesktop VERSION 0.1.0)
+project(SharedToolsDesktop)
 
 set(CMAKE_CXX_STANDARD 23)
 add_library(${PROJECT_NAME} STATIC src/shared/desktop/plugin_loader/loader.cpp)

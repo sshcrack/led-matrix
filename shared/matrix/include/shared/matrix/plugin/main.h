@@ -4,6 +4,7 @@
 #include <string>
 #include "restinio/all.hpp"
 #include <shared/matrix/wrappers.h>
+#include "shared/common/plugin_macros.h"
 
 using std::vector;
 using std::string;

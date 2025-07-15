@@ -7,11 +7,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] WeatherOverview *createWeatherOverview() {
+extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview() {
     return new WeatherOverview();
 }
 
-extern "C" [[maybe_unused]] void destroyWeatherOverview(WeatherOverview *c) {
+extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c) {
     delete c;
 }
 

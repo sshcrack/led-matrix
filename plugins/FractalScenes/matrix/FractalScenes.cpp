@@ -7,11 +7,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] FractalScenes *createFractalScenes() {
+extern "C" PLUGIN_EXPORT FractalScenes *createFractalScenes() {
     return new FractalScenes();
 }
 
-extern "C" [[maybe_unused]] void destroyFractalScenes(FractalScenes *c) {
+extern "C" PLUGIN_EXPORT void destroyFractalScenes(FractalScenes *c) {
     delete c;
 }
 

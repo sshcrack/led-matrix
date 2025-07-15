@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(SharedToolsCommon VERSION 0.1.0)
+project(SharedToolsCommon)
 
 set(CMAKE_CXX_STANDARD 23)
 

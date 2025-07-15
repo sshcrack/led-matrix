@@ -8,11 +8,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] SpotifyScenes *createSpotifyScenes() {
+extern "C" PLUGIN_EXPORT SpotifyScenes *createSpotifyScenes() {
     return new SpotifyScenes();
 }
 
-extern "C" [[maybe_unused]] void destroySpotifyScenes(SpotifyScenes *c) {
+extern "C" PLUGIN_EXPORT void destroySpotifyScenes(SpotifyScenes *c) {
     delete spotify; // The destructor will handle termination
     delete c;
 }

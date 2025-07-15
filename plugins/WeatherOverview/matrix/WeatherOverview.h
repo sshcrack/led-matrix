@@ -14,3 +14,6 @@ public:
     vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
     std::optional<string> before_server_init() override;
 };
+
+extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview();
+extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c);

@@ -4,6 +4,7 @@
 #include <string>
 #include <imgui.h>
 #include <nlohmann/json.hpp>
+#include "shared/common/plugin_macros.h"
 
 using std::vector;
 using std::string;
@@ -27,10 +28,3 @@ namespace Plugins {
         virtual void saveConfig(nlohmann::json& config) const = 0;
     };
 }
-
-
-#ifdef _WIN32
-#define PLUGIN_EXPORT __declspec(dllexport)
-#else
-#define PLUGIN_EXPORT
-#endif
