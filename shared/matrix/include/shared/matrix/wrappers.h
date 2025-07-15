@@ -1,9 +1,8 @@
 #pragma once
 
 #include "nlohmann/json.hpp"
-#include "shared/matrix/Scene.h.h"
-#include "shared/config/image_providers/general.h"
-#include "shared/utils/utils.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/config/image_providers/general.h"
 
 namespace Plugins {
     class ImageProviderWrapper {

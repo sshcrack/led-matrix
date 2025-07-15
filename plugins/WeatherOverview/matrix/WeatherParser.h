@@ -4,7 +4,7 @@
 #include <string>
 #include <optional>
 #include <vector>
-#include "shared/utils/utils.h"
+#include "shared/matrix/utils/utils.h"
 
 struct RGB {
     uint8_t r;

@@ -7,11 +7,11 @@
 #include "restinio/uri_helpers.hpp"
 #include "restinio/helpers/file_upload.hpp"
 #include "restinio/helpers/multipart_body.hpp"
-#include "shared/utils/shared.h"
-#include "shared/server/server_utils.h"
-#include "shared/utils/consts.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/consts.h"
 
-#include "shared/picosha2.h"
+#include "picosha2.h"
 
 using std::vector;
 using namespace ImageProviders;

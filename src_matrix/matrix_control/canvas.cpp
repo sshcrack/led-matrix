@@ -1,7 +1,7 @@
 #include "canvas.h"
-#include "shared/utils/utils.h"
-#include "shared/utils/shared.h"
-#include "shared/interrupt.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/interrupt.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;

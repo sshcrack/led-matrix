@@ -2,8 +2,8 @@
 
 #include "led-matrix.h"
 #include "canvas.h"
-#include "shared/interrupt.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/interrupt.h"
+#include "shared/matrix/utils/shared.h"
 #include "utils/canvas_consts.h"
 
 #include <csignal>

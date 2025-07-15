@@ -1,5 +1,7 @@
-#include "shared/matrix/Scene.h.h"
+#include "shared/matrix/Scene.h"
 
+#include <shared/common/utils/utils.h>
+#include <shared/matrix/utils/utils.h>
 #include <shared/matrix/utils/uuid.h>
 #include "spdlog/spdlog.h"
 #include "shared/matrix/plugin_loader/loader.h"

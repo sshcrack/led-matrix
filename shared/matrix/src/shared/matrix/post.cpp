@@ -1,10 +1,10 @@
 #include "shared/matrix/post.h"
 #include "shared/matrix/utils/image_fetch.h"
 #include <vector>
-#include <iostream>
 #include <optional>
+#include <shared/matrix/server/MimeTypes.h>
+
 #include "Magick++.h"
-#include <shared/server/MimeTypes.h>
 #include "cpr/cpr.h"
 
 #include "shared/matrix/utils/canvas_image.h"

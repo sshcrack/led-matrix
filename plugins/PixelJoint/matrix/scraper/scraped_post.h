@@ -2,7 +2,7 @@
 
 #include <expected>
 
-#include "shared/post.h"
+#include "shared/matrix/post.h"
 #include <string>
 #include <optional>
 #include <vector>

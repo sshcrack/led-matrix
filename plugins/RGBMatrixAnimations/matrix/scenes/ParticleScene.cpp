@@ -1,5 +1,5 @@
 #include "ParticleScene.h"
-#include "shared/interrupt.h"
+#include "shared/matrix/interrupt.h"
 #include "spdlog/spdlog.h"
 
 using namespace Scenes;

@@ -2,8 +2,8 @@
 #include "Magick++.h"
 #include "spdlog/spdlog.h"
 #include "../manager/shared_spotify.h"
-#include "shared/utils/canvas_image.h"
-#include "shared/utils/image_fetch.h"
+#include "shared/matrix/utils/canvas_image.h"
+#include "shared/matrix/utils/image_fetch.h"
 #include "led-matrix.h"
 #include <cmath>
 #include <chrono>

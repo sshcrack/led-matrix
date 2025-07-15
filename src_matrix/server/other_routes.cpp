@@ -1,14 +1,14 @@
 #include "other_routes.h"
-#include "shared/utils/shared.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
 #include "nlohmann/json.hpp"
-#include "shared/plugin_loader/loader.h"
-#include "shared/post.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/post.h"
 #include <filesystem>
-#include "shared/server/MimeTypes.h"
-#include "shared/utils/consts.h"
+#include "shared/matrix/server/MimeTypes.h"
+#include "shared/matrix/utils/consts.h"
 #include "utils/canvas_consts.h"
-#include "shared/utils/canvas_image.h"
+#include "shared/matrix/utils/canvas_image.h"
 #include <spdlog/spdlog.h>
 
 

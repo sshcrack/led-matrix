@@ -2,7 +2,7 @@
 
 #include "./track.h"
 #include "nlohmann/json.hpp"
-#include "shared/utils/utils.h"
+#include "shared/matrix/utils/utils.h"
 
 struct SpotifyState {
 private:

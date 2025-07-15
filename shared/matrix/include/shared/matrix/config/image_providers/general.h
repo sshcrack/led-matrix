@@ -6,7 +6,7 @@
 #include "fmt/format.h"
 
 #include "shared/matrix/plugin/property.h"
-#include "shared/post.h"
+#include "shared/matrix/post.h"
 
 using json = nlohmann::json;
 

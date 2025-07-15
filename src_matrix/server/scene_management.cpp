@@ -1,8 +1,8 @@
 #include "scene_management.h"
-#include "shared/utils/shared.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
 #include "nlohmann/json.hpp"
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/plugin_loader/loader.h"
 
 using json = nlohmann::json;
 

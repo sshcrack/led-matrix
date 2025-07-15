@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "shared/matrix/Scene.h.h"
+#include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
 
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ParticleScene.h"
-#include "wrappers.h"
-#include "shared/utils/FrameTimer.h"
+#include "shared/matrix/wrappers.h"
+#include "shared/matrix/utils/FrameTimer.h"
 #include "../anim/gravityparticles.h"
 #include <led-matrix.h>
 

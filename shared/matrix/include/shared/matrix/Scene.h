@@ -1,19 +1,20 @@
 #pragma once
 
-#include "shared/utils/utils.h"
 #include "nlohmann/json.hpp"
 #include "fmt/format.h"
 #include "led-matrix.h"
-#include "content-streamer.h"
-#include "shared/matrix/plugin/property.h"
 #include <vector>
-#include "shared/utils/PropertyMacros.h"
+#include <shared/matrix/plugin/property.h>
+#include <shared/common/utils/utils.h>
+#include <shared/matrix/plugin/PropertyMacros.h>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::RGBMatrixBase;
 using std::string;
 
+template <typename T>
+using Property = Plugins::Property<T>;
 namespace Scenes {
     class Scene {
         std::vector<std::shared_ptr<Plugins::PropertyBase>> properties;

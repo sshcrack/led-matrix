@@ -1,20 +1,20 @@
 #include "spdlog/spdlog.h"
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include <nlohmann/json.hpp>
 #include <utility>
 
 
 #include <Magick++.h>
-#include <shared/interrupt.h>
-#include <shared/utils/consts.h>
+#include <shared/matrix/interrupt.h>
+#include <shared/matrix/utils/consts.h>
 
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
 #include "matrix-factory.h"
 #include "../rpi-rgb-led-matrix/lib/framebuffer-internal.h"
 #include "server/server.h"
-#include "shared/utils/shared.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
 
 using namespace spdlog;
 using namespace std;

@@ -1,10 +1,10 @@
 #include "SpotifyScenes.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include "manager/shared_spotify.h"
 #include "scenes/CoverOnlyScene.h"
 #include "spdlog/spdlog.h"
 #include "cpr/cpr.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/server/server_utils.h"
 
 using namespace Scenes;
 

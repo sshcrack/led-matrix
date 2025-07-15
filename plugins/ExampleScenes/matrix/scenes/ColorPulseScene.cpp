@@ -3,14 +3,14 @@
 
 using namespace Scenes;
 
-bool ColorPulseScene::render(rgb_matrix::RGBMatrix *matrix) {
+bool ColorPulseScene::render(RGBMatrixBase *matrix) {
     auto frameTime = frameTimer.tick();
-    float t = frameTime.t * pulseSpeed.get();
+    float t = frameTime.t * pulseSpeed->get();
     
     uint8_t r = 0, g = 0, b = 0;
     float pulse = (std::sin(t) + 1.0f) / 2.0f;
     
-    switch(colorMode.get()) {
+    switch(colorMode->get()) {
         case 0: // Red pulse
             r = static_cast<uint8_t>(pulse * 255);
             break;
@@ -36,9 +36,18 @@ string ColorPulseScene::get_name() const {
 }
 
 void ColorPulseScene::register_properties() {
-    register_property(&pulseSpeed);
-    register_property(&colorMode);
+    add_property(pulseSpeed);
+    add_property(colorMode);
 }
+
+tmillis_t ColorPulseScene::get_default_duration() {
+    return 10000; // 10 seconds
+}
+
+int ColorPulseScene::get_default_weight() {
+    return 10; // Default weight for this scene
+}
+
 
 std::unique_ptr<Scene, void (*)(Scene *)> ColorPulseSceneWrapper::create() {
     return {new ColorPulseScene(), [](Scene *scene) {

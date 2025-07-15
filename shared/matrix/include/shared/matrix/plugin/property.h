@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "color.h"
-#include "shared/utils/utils.h"
+#include "shared/matrix/utils/utils.h"
 
 namespace Plugins {
     class PropertyBase

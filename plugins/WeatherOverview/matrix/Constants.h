@@ -2,7 +2,7 @@
 
 #include <string>
 #include <filesystem>
-#include "shared/utils/consts.h"
+#include "shared/matrix/utils/consts.h"
 
 #include "led-matrix.h"
 

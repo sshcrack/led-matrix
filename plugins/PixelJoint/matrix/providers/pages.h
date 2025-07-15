@@ -1,8 +1,8 @@
 #pragma once
 
-#include "shared/config/image_providers/general.h"
+#include "shared/matrix/config/image_providers/general.h"
 #include "../scraper/scraped_post.h"
-#include "wrappers.h"
+#include "shared/matrix/wrappers.h"
 
 namespace ImageProviders {
     class Pages final : public General {

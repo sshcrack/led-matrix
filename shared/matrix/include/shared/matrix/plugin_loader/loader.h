@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "shared/matrix/plugin/main.h"
-#include "shared/config/image_providers/general.h"
+#include "shared/matrix/config/image_providers/general.h"
 
 namespace Plugins {
     struct PluginInfo {

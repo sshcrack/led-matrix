@@ -1,14 +1,14 @@
 #include "ImageScene.h"
 #include "spdlog/spdlog.h"
-#include "shared/utils/utils.h"
-#include "shared/utils/shared.h"
-#include "shared/interrupt.h"
-#include "shared/utils/canvas_image.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/interrupt.h"
+#include "shared/matrix/utils/canvas_image.h"
 #include <vector>
 
 #include "Magick++.h"
 #include <future>
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/plugin_loader/loader.h"
 
 using namespace std;
 using namespace spdlog;
