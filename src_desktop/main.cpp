@@ -17,12 +17,17 @@ int main(int argc, char *argv[])
     cout << "Loaded " << instance->get_plugins().size() << " plugins." << endl;
 
     HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets/");
-    auto guiFunction = []() {
+    auto guiFunction = [instance]() {
         ImGui::Text("Hello, ");                    // Display a simple label
         HelloImGui::ImageFromAsset("world.jpg");   // Display a static image
         if (ImGui::Button("Bye!"))                 // Display a button
             // and immediately handle its action if it is clicked!
             HelloImGui::GetRunnerParams()->appShallExit = true;
+
+        const auto ctx = ImGui::GetCurrentContext();
+        for (const auto plugin : instance->get_plugins()) {
+            plugin->render(ctx);
+        }
      };
     HelloImGui::Run(guiFunction, "LED Matrix Controller", true);
     return 0;

@@ -72,7 +72,7 @@ add_executable(${PROJECT_NAME}
 if(ENABLE_DESKTOP)
     find_package(hello-imgui CONFIG REQUIRED)
 
-    target_link_libraries(main PRIVATE hello-imgui::hello_imgui)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui)
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
