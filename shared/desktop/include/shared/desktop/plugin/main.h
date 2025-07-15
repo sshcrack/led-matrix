@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 
 using std::vector;
 using std::string;
@@ -21,6 +22,9 @@ namespace Plugins {
         virtual ~DesktopPlugin() = default;
 
         virtual void render(ImGuiContext* ctx) = 0;
+
+        virtual void loadConfig(const nlohmann::json& config) = 0;
+        virtual void saveConfig(nlohmann::json& config) const = 0;
     };
 }
 
