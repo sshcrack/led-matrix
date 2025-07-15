@@ -7,11 +7,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] GameScenes *createGameScenes() {
+extern "C" PLUGIN_EXPORT GameScenes *createGameScenes() {
     return new GameScenes();
 }
 
-extern "C" [[maybe_unused]] void destroyGameScenes(GameScenes *c) {
+extern "C" PLUGIN_EXPORT void destroyGameScenes(GameScenes *c) {
     delete c;
 }
 

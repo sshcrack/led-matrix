@@ -16,7 +16,7 @@ ENDMACRO()
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Define a function to register plugins
-function(register_plugin PLUGIN_NAME SOURCES)
+function(register_plugin PLUGIN_NAME)
     # Parse arguments to separate regular sources from desktop-specific sources
     set(MATRIX_SOURCES "")
     set(DESKTOP_SOURCES "")
@@ -35,7 +35,7 @@ function(register_plugin PLUGIN_NAME SOURCES)
     endforeach()
 
     # Determine which sources to use based on build target
-    message(STATUS "Adding plugin: ${PLUGIN_NAME}")
+    project(${PLUGIN_NAME})
     if(ENABLE_DESKTOP)
         if(DESKTOP_SOURCES STREQUAL "")
             message(STATUS "No Sources for ${PLUGIN_NAME}. Skipping desktop build.")
@@ -82,9 +82,6 @@ function(register_plugin PLUGIN_NAME SOURCES)
         ARCHIVE DESTINATION plugins # For static libraries (.lib/.a)
     )
 endfunction()
-
-# Export the register_plugin function to be available in subdirectories
-export(PACKAGE register_plugin)
 
 foreach(P_DIR ${SUBDIRS})
     get_filename_component(P_DIR_NAME ${P_DIR} NAME)

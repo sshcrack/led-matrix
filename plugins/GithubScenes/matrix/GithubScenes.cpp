@@ -4,11 +4,11 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] GithubScenes *createGithubScenes() {
+extern "C" PLUGIN_EXPORT GithubScenes *createGithubScenes() {
     return new GithubScenes();
 }
 
-extern "C" [[maybe_unused]] void destroyGithubScenes(GithubScenes *c) {
+extern "C" PLUGIN_EXPORT void destroyGithubScenes(GithubScenes *c) {
     delete c;
 }
 
