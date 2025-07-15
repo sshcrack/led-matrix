@@ -9,7 +9,6 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/PI.cmake",
                 "VCPKG_TARGET_TRIPLET": "arm64-rpi",
-                "CMAKE_MAKE_PROGRAM": "ninja",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/weather-overview/fonts"
             }
@@ -20,7 +19,6 @@
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_MAKE_PROGRAM": "ninja",
                 "ENABLE_EMULATOR": true,
                 "ENABLE_CORS": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
@@ -28,8 +26,8 @@
         },
         {
             "name": "desktop",
-            "architecture": "x64",
             "binaryDir": "${sourceDir}/desktop_build",
+            "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",

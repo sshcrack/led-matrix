@@ -40,7 +40,7 @@ void PluginManager::destroy_plugins() {
         );
 #else
         // Linux version using dlsym
-    destroy = (void (*)(BasicPlugin *)) dlsym(item.handle, item.destroyFnName.c_str());
+    destroy = (void (*)(DesktopPlugin *)) dlsym(item.handle, item.destroyFnName.c_str());
 #endif
 
         if (destroy) {
@@ -145,7 +145,7 @@ void PluginManager::initialize() {
         }
 #else
         dlerror(); // Clear any existing errors before dlsym
-        create = (BasicPlugin *(*)())(dlsym(dlhandle, cn.c_str()));
+        create = (DesktopPlugin *(*)())(dlsym(dlhandle, cn.c_str()));
         const char *dlsym_error = dlerror();
 
         if (dlsym_error != nullptr) {
