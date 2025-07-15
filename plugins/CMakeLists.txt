@@ -65,6 +65,10 @@ function(register_plugin PLUGIN_NAME SOURCES)
         target_link_libraries(${PLUGIN_NAME} PRIVATE rpi-rgb-led-matrix)
     else()
         target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
+        find_package(nlohmann_json 3.2.0 REQUIRED)
+        find_package(hello-imgui CONFIG REQUIRED)
+
+        target_link_libraries(${PLUGIN_NAME} PRIVATE hello-imgui::hello_imgui)
     endif()
 
     if(${PLUGIN_NAME} STREQUAL "ExampleScenes")
