@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "CMake: Emulator Build & Install",
+            "command": "cmake --build --preset emulator --target install"
+        },
+        {
+            "type": "shell",
+            "label": "CMake: Emulator Configure",
+            "command": "cmake --preset emulator",
+        },
+        {
+            "type": "shell",
+            "label": "CMake: Emulator Configure (no web rebuild)",
+            "command": "cmake --preset emulator-no-web"
+        },
+        {
+            "type": "shell",
+            "label": "CMake: Desktop Configure",
+            "command": "cmake --preset desktop-linux",
+            "windows": {
+                "command": "cmake --preset desktop-windows"
+            }
+        },
+        {
+            "type": "shell",
+            "label": "CMake: Desktop Build & Install",
+            "command": "cmake --build --preset desktop --target install",
+        }
+    ]
+}
