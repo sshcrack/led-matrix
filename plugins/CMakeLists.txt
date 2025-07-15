@@ -66,9 +66,10 @@ function(register_plugin PLUGIN_NAME SOURCES)
     else()
         target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
         find_package(nlohmann_json 3.2.0 REQUIRED)
-        find_package(hello-imgui CONFIG REQUIRED)
-
-        target_link_libraries(${PLUGIN_NAME} PRIVATE hello-imgui::hello_imgui)
+        find_package(glfw3 CONFIG REQUIRED)
+        find_package(glew CONFIG REQUIRED)
+        message(STATUS "ImGui source dir: ${imgui_SOURCE_DIR}")
+        target_link_libraries(${PLUGIN_NAME} PRIVATE glfw GLEW::GLEW imgui::imgui)
     endif()
 
     if(${PLUGIN_NAME} STREQUAL "ExampleScenes")

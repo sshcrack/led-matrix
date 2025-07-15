@@ -2,11 +2,11 @@
 #include "shared/desktop/plugin/main.h"
 
 
-class AudioVisualizerDesktop : public Plugins::DesktopPlugin {
-
+class AudioVisualizerDesktop final : public Plugins::DesktopPlugin {
 public:
     AudioVisualizerDesktop();
+
     ~AudioVisualizerDesktop() override;
 
-    void render(ImGuiContext* ctx) override;
+    void render(ImGuiContext *ctx) override;
 };

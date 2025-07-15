@@ -18,8 +18,4 @@ AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 void AudioVisualizerDesktop::render(ImGuiContext* ctx) {
     ImGui::SetCurrentContext(ctx);
 
-    ImGui::Begin("AudioVisualizer");
-    ImGui::Text("Audio Visualizer Plugin for Desktop");
-    ImGui::Text("This is a placeholder for the audio visualizer functionality.");
-    ImGui::End();
 }
