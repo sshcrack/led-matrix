@@ -8,7 +8,8 @@
 #include <iostream>
 #include <fmt/format.h>
 #include <shared/common/utils/utils.h>
-
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 #include "shared/desktop/plugin_loader/loader.h"
 
@@ -50,8 +51,21 @@ int main(int argc, char *argv[]) {
 #endif
 
 
+    // Load shared configuration
+    nlohmann::json sharedConfig;
+    std::ifstream configFile("desktop_config.json");
+    if (configFile.is_open()) {
+        configFile >> sharedConfig;
+    }
+
     auto instance = Plugins::PluginManager::instance();
     instance->initialize();
+
+    // Pass configuration to each plugin
+    for (const auto& [name, plugin] : instance->get_plugins()) {
+        nlohmann::json pluginConfig = sharedConfig.value(name, nlohmann::json::object());
+        plugin->loadConfig(pluginConfig);
+    }
 
 
     // Create window with graphics context
@@ -85,11 +99,11 @@ int main(int argc, char *argv[]) {
     style.FontSizeBase = 20.0f;
     io.Fonts->AddFontDefault();
 
-    std::string font_path = get_exec_dir().value_or("/") + "/../assets/fonts/DroidSans.ttf";
+    const std::string font_path = get_exec_dir().value_or("/") + "/../assets/fonts/DroidSans.ttf";
     ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str());
     IM_ASSERT(font != nullptr);
 
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    constexpr auto clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
@@ -126,6 +140,13 @@ int main(int argc, char *argv[]) {
 
         glfwSwapBuffers(window);
     }
+
+    // Save updated configuration on exit
+    for (const auto& [name, plugin] : instance->get_plugins()) {
+        plugin->saveConfig(sharedConfig);
+    }
+    std::ofstream outFile("desktop_config.json");
+    outFile << sharedConfig.dump(4);
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
