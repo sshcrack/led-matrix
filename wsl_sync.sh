@@ -10,12 +10,12 @@ if [ -z "$SOURCE_DIR" ] || [ -z "$DEST_DIR" ]; then
     exit 1
 fi
 
-# Check if fd is available
-if ! command -v fd >/dev/null 2>&1; then
-    echo "Error: fd is not installed. Install it with:"
-    echo "  cargo install fd-find"
+# Check if ripgrep is available
+if ! command -v rg >/dev/null 2>&1; then
+    echo "Error: ripgrep (rg) is not installed. Install it with:"
+    echo "  cargo install ripgrep"
     echo "  # or"
-    echo "  sudo apt install fd-find"
+    echo "  sudo apt install ripgrep"
     exit 1
 fi
 
@@ -25,20 +25,28 @@ DEST_DIR=$(realpath "$DEST_DIR")
 
 echo "Watching: $SOURCE_DIR"
 echo "Syncing to: $DEST_DIR"
-echo "Using fd for .gitignore support"
+echo "Using ripgrep for .gitignore support"
 echo "Press Ctrl+C to stop..."
 
-# Function to sync using fd for file discovery
+# Function to check if file should be ignored using ripgrep
+is_ignored_rg() {
+    local file_path="$1"
+    cd "$SOURCE_DIR"
+    
+    # Use ripgrep to check if file would be found (not ignored)
+    rg --files | grep -Fqx "${file_path#$SOURCE_DIR/}"
+    # Return opposite (0 if ignored, 1 if not ignored)
+    return $((!$?))
+}
+
+# Function to sync using ripgrep for file discovery
 sync_directories() {
     echo "Syncing changes..."
     cd "$SOURCE_DIR"
     
-    # Create temporary file list using fd
+    # Create temporary file list using ripgrep
     TEMP_FILE=$(mktemp)
-    fd --type f --hidden . > "$TEMP_FILE"
-    
-    # Convert absolute paths to relative paths
-    sed -i "s|^$SOURCE_DIR/||" "$TEMP_FILE"
+    rg --files --hidden > "$TEMP_FILE"
     
     # Sync using the file list
     rsync -av \
@@ -51,8 +59,40 @@ sync_directories() {
     echo "Sync completed at $(date)"
 }
 
+# Function to sync directories and handle deletions properly
+sync_with_delete() {
+    echo "Performing full sync with deletions..."
+    cd "$SOURCE_DIR"
+    
+    # Get all files that should be synced
+    TEMP_INCLUDE=$(mktemp)
+    rg --files --hidden > "$TEMP_INCLUDE"
+    
+    # First sync: copy/update files
+    rsync -av \
+        --files-from="$TEMP_INCLUDE" \
+        "$SOURCE_DIR/" "$DEST_DIR/"
+    
+    # Second pass: remove files in destination that shouldn't be there
+    if [ -d "$DEST_DIR" ]; then
+        find "$DEST_DIR" -type f | while read -r dest_file; do
+            rel_path="${dest_file#$DEST_DIR/}"
+            if ! grep -Fqx "$rel_path" "$TEMP_INCLUDE"; then
+                echo "Removing deleted/ignored file: $rel_path"
+                rm -f "$dest_file"
+            fi
+        done
+        
+        # Remove empty directories
+        find "$DEST_DIR" -type d -empty -delete 2>/dev/null || true
+    fi
+    
+    rm "$TEMP_INCLUDE"
+    echo "Full sync completed at $(date)"
+}
+
 # Initial sync
-sync_directories
+sync_with_delete
 
 # Watch for changes and sync
 inotifywait -m -r -e modify,create,delete,move "$SOURCE_DIR" \
@@ -61,13 +101,13 @@ inotifywait -m -r -e modify,create,delete,move "$SOURCE_DIR" \
     --exclude '\.tmp$' \
     --exclude '~$' |
 while read path action file; do
-    # Check if the file should be ignored using fd
+    # Check if the file should be ignored
     full_path="$path$file"
     rel_path="${full_path#$SOURCE_DIR/}"
     
     cd "$SOURCE_DIR"
-    if ! fd --type f --hidden . | grep -Fq "$full_path"; then
-        echo "Ignoring $file (matches .gitignore)"
+    if ! rg --files --hidden | grep -Fqx "$rel_path" 2>/dev/null; then
+        echo "Ignoring $file (matches .gitignore or is not a regular file)"
         continue
     fi
     
