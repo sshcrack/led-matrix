@@ -27,7 +27,10 @@
         {
             "type": "shell",
             "label": "CMake: Desktop Build & Install",
-            "command": "cmake --build --preset desktop --target install",
+            "command": "cmake --build --preset desktop-linux --target install",
+            "windows": {
+                "command": "cmake --build --preset desktop-windows --target install"
+            }
         }
     ]
 }

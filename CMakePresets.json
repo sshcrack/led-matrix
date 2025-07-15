@@ -86,8 +86,20 @@
             "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
         },
         {
-            "name": "desktop",
-            "configurePreset": "desktop",
+            "name": "desktop-linux",
+            "configurePreset": "desktop-linux",
+            "generators": [
+                "TGZ",
+                "DEB"
+            ],
+            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
+        },
+        {
+            "name": "desktop-windows",
+            "configurePreset": "desktop-windows",
+            "generators": [
+                "ZIP"
+            ],
             "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
         }
     ]
