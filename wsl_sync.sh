@@ -44,7 +44,7 @@ sync_directories() {
     echo "Syncing changes..."
     cd "$SOURCE_DIR"
     
-    # Create temporary file list using ripgrep
+    # Create temporary file list using ripgrep (excludes .git automatically)
     TEMP_FILE=$(mktemp)
     rg --files --hidden > "$TEMP_FILE"
     
@@ -64,7 +64,7 @@ sync_with_delete() {
     echo "Performing full sync with deletions..."
     cd "$SOURCE_DIR"
     
-    # Get all files that should be synced
+    # Get all files that should be synced (excludes .git automatically)
     TEMP_INCLUDE=$(mktemp)
     rg --files --hidden > "$TEMP_INCLUDE"
     
