@@ -1,16 +1,18 @@
 #pragma once
 
+#include <content-streamer.h>
+
 #include "led-matrix.h"
 #include <optional>
 #include <utility>
 #include <future>
-#include "shared/config/MainConfig.h"
+#include "shared/matrix/config/MainConfig.h"
 #include "spdlog/spdlog.h"
 
-#include "shared/matrix/Scene.h.h"
+#include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include "shared/utils/utils.h"
-#include "shared/config/data.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/config/data.h"
 
 
 static const tmillis_t distant_future = (1LL << 40); // that is a while.

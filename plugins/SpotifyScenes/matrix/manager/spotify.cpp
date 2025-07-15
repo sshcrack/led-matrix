@@ -5,8 +5,8 @@
 #include "spdlog/spdlog.h"
 #include <cstdlib>
 
-#include "shared/utils/shared.h"
-#include "shared/utils/utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/utils/utils.h"
 
 using namespace spdlog;
 

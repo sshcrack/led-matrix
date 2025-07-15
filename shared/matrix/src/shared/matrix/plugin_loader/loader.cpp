@@ -1,14 +1,15 @@
 #include <dlfcn.h>
 
 #include <set>
+#include <filesystem>
 #include "spdlog/spdlog.h"
 
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/common/plugin_loader/lib_name.h"
-#include "shared/common/plugin_loader/lib_glob.h"
 #include "shared/matrix/plugin/main.h"
 
 using namespace spdlog;
+namespace fs = std::filesystem;
 using Plugins::BasicPlugin;
 using Plugins::ImageProviderWrapper;
 using Plugins::PluginManager;
@@ -111,9 +112,10 @@ void PluginManager::initialize() {
         }
 
         std::string pl_copy = pl_name;
-        std::pair<std::string, std::string> delibbed = Plugins::get_lib_name(pl_copy);
-        std::string cn = "create" + delibbed;
-        std::string dn = "destroy" + delibbed;
+        std::string libName = Plugins::get_lib_name(pl_copy);
+
+        std::string cn = "create" + libName;
+        std::string dn = "destroy" + libName;
 
         // Clear any existing errors before dlsym
         dlerror();

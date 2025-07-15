@@ -1,5 +1,5 @@
-#include "shared/config/data.h"
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/config/data.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "nlohmann/json.hpp"
 #include <random>
 #include "spdlog/spdlog.h"

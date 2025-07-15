@@ -3,7 +3,7 @@
 //
 
 #include "song_bpm_getter.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 #include "cpr/cpr.h"
 #include <expected>

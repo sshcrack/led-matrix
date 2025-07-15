@@ -1,14 +1,11 @@
-#include "shared/config/image_providers/general.h"
-#include "shared/plugin_loader/loader.h"
 #include "spdlog/spdlog.h"
 #include <stdexcept>
-#include <shared/utils/uuid.h>
+#include <shared/matrix/config/image_providers/general.h>
+#include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/utils/uuid.h>
 
-#include "fmt/core.h"
 
-
-ImageProviders::General::General() {
-}
+ImageProviders::General::General() = default;
 
 ImageProviders::General::~General() = default;
 
@@ -32,7 +29,7 @@ std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> Im
     if(!j.contains("type"))
         throw std::runtime_error(fmt::format("No image provider type given for '{}'", j.dump()));
 
-    const string t = j["type"].get<string>();
+    const std::string t = j["type"].get<std::string>();
     const json& arguments = j.value("arguments", json::object());
 
     const bool has_uuid = j.contains("uuid") && j["uuid"].is_string();

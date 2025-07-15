@@ -1,6 +1,6 @@
 #include "FractalScenes.h"
-#include "shared/utils/shared.h"
-#include "spdlog/spdlog.h"
+#include "shared/matrix/utils/shared.h"
+#include <spdlog/spdlog.h>
 #include "scenes/JuliaSetScene.h"
 #include "scenes/WavePatternScene.h"
 #include "scenes/GameOfLifeScene.h"

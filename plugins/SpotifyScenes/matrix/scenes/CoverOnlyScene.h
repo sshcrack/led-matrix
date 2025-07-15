@@ -2,17 +2,18 @@
 
 #include <optional>
 #include <chrono>
+#include <content-streamer.h>
 #include <deque>
 #include <future>
 #include <shared_mutex>
 
-#include "shared/matrix/Scene.h.h"
-#include "shared/utils/utils.h"
-#include "wrappers.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/utils/utils.h"
+#include "shared/matrix/wrappers.h"
 #include "nlohmann/json.hpp"
 
 #include "../manager/state.h"
-#include "shared/utils/PropertyMacros.h"
+#include "shared/matrix/plugin/PropertyMacros.h"
 
 namespace Scenes {
     class CoverOnlyScene final : public Scene {

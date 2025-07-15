@@ -2,7 +2,7 @@
 #include "spdlog/spdlog.h"
 #include <cmath>
 #include <algorithm>
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/plugin_loader/loader.h"
 
 using namespace Scenes;
 

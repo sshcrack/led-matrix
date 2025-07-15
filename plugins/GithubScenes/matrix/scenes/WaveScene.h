@@ -1,8 +1,8 @@
 #pragma once
 
-#include "shared/matrix/Scene.h.h"
-#include "wrappers.h"
-#include "shared/utils/FrameTimer.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/wrappers.h"
+#include "shared/matrix/utils/FrameTimer.h"
 
 using namespace Scenes;
 

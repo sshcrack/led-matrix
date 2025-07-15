@@ -4,7 +4,7 @@
 
 #include "WaveScene.h"
 #include <cmath>
-#include "shared/utils/utils.h"
+#include "shared/matrix/utils/utils.h"
 
 
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }

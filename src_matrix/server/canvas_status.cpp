@@ -1,6 +1,6 @@
 #include "canvas_status.h"
-#include "shared/utils/shared.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
 
 

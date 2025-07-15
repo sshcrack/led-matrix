@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include "nlohmann/json.hpp"
-#include "shared/config/MainConfig.h"
+#include "shared/matrix/config/MainConfig.h"
 
 extern std::atomic<bool>  skip_image;
 extern std::atomic<bool>  turned_off;

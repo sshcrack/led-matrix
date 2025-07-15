@@ -1,5 +1,5 @@
 #include "scraped_post.h"
-#include "shared/utils/image_fetch.h"
+#include "shared/matrix/utils/image_fetch.h"
 #include "libxml/xpath.h"
 #include "spdlog/spdlog.h"
 

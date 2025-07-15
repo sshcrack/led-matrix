@@ -1,14 +1,14 @@
 #include "server.h"
 #include "restinio/all.hpp"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include <nlohmann/json.hpp>
 
 #include "canvas_status.h"
-#include "shared/plugin_loader/loader.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "other_routes.h"
 #include "preset_management.h"
 #include "scene_management.h"
-#include "shared/server/server_utils.h"
+#include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
 

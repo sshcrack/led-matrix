@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <string>
-#include "wrappers.h"
 #include "restinio/all.hpp"
+#include <shared/matrix/wrappers.h>
 
 using std::vector;
 using std::string;

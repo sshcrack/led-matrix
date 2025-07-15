@@ -1,7 +1,7 @@
 #include <iostream>
 #include "WeatherOverview.h"
 #include "scenes/WeatherScene.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 #include "Constants.h"
 

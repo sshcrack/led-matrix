@@ -1,7 +1,9 @@
 #pragma once
 
-#include "shared/config/image_providers/general.h"
-#include "shared/matrix/Scene.h.h"
+#include <shared/common/utils/utils.h>
+#include <shared/matrix/Scene.h>
+
+#include "image_providers/general.h"
 #include "nlohmann/json.hpp"
 
 using namespace std;

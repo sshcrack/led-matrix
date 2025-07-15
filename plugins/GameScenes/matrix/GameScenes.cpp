@@ -1,5 +1,5 @@
 #include "GameScenes.h"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 #include "scenes/PingPongGameScene.h"
 #include "scenes/tetris/TetrisScene.h"

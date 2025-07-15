@@ -1,6 +1,6 @@
 #include "shared/matrix/server/server_utils.h"
 #include "restinio/all.hpp"
-#include "shared/utils/shared.h"
+#include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 #include <filesystem>
 #include "nlohmann/json.hpp"

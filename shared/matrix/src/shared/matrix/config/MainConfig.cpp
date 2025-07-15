@@ -1,10 +1,10 @@
-#include "shared/config/MainConfig.h"
 #include <mutex>
-#include "shared/utils/shared.h"
 #include <utility>
 #include "spdlog/spdlog.h"
 #include <vector>
 #include <algorithm>
+#include <shared/matrix/config/MainConfig.h>
+#include <shared/matrix/utils/shared.h>
 
 
 using namespace spdlog;

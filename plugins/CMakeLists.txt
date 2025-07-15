@@ -67,10 +67,14 @@ function(register_plugin PLUGIN_NAME SOURCES)
         target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
     endif()
 
+    if(${PLUGIN_NAME} STREQUAL "ExampleScenes")
+        return()
+    endif()
+
     install(TARGETS ${PLUGIN_NAME}
-        RUNTIME DESTINATION plugins  # For DLLs and executables (Windows)
-        LIBRARY DESTINATION plugins  # For shared libraries (.so/.dylib)
-        ARCHIVE DESTINATION plugins  # For static libraries (.lib/.a)
+            RUNTIME DESTINATION plugins  # For DLLs and executables (Windows)
+            LIBRARY DESTINATION plugins  # For shared libraries (.so/.dylib)
+            ARCHIVE DESTINATION plugins  # For static libraries (.lib/.a)
     )
 endfunction()
 

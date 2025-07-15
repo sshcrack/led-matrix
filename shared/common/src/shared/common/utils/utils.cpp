@@ -10,7 +10,6 @@
 constexpr size_t PATH_BUF_SIZE = MAX_PATH;
 #elif defined(__linux__)
 #include <unistd.h>
-    #include <limits.h>
     constexpr size_t PATH_BUF_SIZE = PATH_MAX;
 #endif
 
