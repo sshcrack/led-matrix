@@ -12,10 +12,11 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #endif
 
+#include <spdlog/spdlog.h>
 #include <GLFW/glfw3native.h>
 void minimizeToTray(GLFWwindow *window)
 {
-//REVIEW this was AI generated, check if it works
+// REVIEW this was AI generated, check if it works
 #if defined(_WIN32)
     HWND hwnd = glfwGetWin32Window(window);
     // Remove from taskbar: remove WS_EX_APPWINDOW, add WS_EX_TOOLWINDOW
@@ -25,7 +26,7 @@ void minimizeToTray(GLFWwindow *window)
     SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
     ShowWindow(hwnd, SW_HIDE); // Hide and show to update style
     ShowWindow(hwnd, SW_SHOW);
-    std::cout << "Window hidden from taskbar (Windows)." << std::endl;
+    spdlog::debug("Window hidden from taskbar (Windows).");
 #elif defined(__linux__)
     Display *display = glfwGetX11Display();
     Window xwindow = glfwGetX11Window(window);
@@ -45,20 +46,20 @@ void minimizeToTray(GLFWwindow *window)
     e.xclient.data.l[4] = 0;
     XSendEvent(display, DefaultRootWindow(display), False, SubstructureRedirectMask | SubstructureNotifyMask, &e);
     XFlush(display);
-    std::cout << "Window hidden from taskbar (Linux/X11)." << std::endl;
+    spdlog::debug("Window hidden from taskbar (Linux/X11).");
 
 #endif
     // Fallback: just hide the window
     if (glfwGetWindowAttrib(window, GLFW_VISIBLE) != 0)
     {
         glfwHideWindow(window);
-        std::cout << "Window hidden (removed from taskbar)." << std::endl;
+        spdlog::debug("Window hidden (removed from taskbar).");
     }
 }
 
 void restoreFromTray(GLFWwindow *window)
 {
-//REVIEW this was AI generated, check if it works
+// REVIEW this was AI generated, check if it works
 #if defined(_WIN32)
     HWND hwnd = glfwGetWin32Window(window);
     // Restore to taskbar: add WS_EX_APPWINDOW, remove WS_EX_TOOLWINDOW
@@ -68,7 +69,7 @@ void restoreFromTray(GLFWwindow *window)
     SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
     ShowWindow(hwnd, SW_HIDE); // Hide and show to update style
     ShowWindow(hwnd, SW_SHOW);
-    std::cout << "Window restored to taskbar (Windows)." << std::endl;
+    spdlog::debug("Window restored to taskbar (Windows).");
 #elif defined(__linux__)
     Display *display = glfwGetX11Display();
     Window xwindow = glfwGetX11Window(window);
@@ -88,12 +89,13 @@ void restoreFromTray(GLFWwindow *window)
     e.xclient.data.l[4] = 0;
     XSendEvent(display, DefaultRootWindow(display), False, SubstructureRedirectMask | SubstructureNotifyMask, &e);
     XFlush(display);
-    std::cout << "Window restored to taskbar (Linux/X11)." << std::endl;
+
+    spdlog::debug("Window restored to taskbar (Linux/X11).");
 #endif
     if (glfwGetWindowAttrib(window, GLFW_VISIBLE) == 0)
     {
         glfwShowWindow(window);
         glfwFocusWindow(window); // Bring to front
-        std::cout << "Window shown (restored to taskbar)." << std::endl;
+        spdlog::debug("Window shown (restored to taskbar).");
     }
 }
