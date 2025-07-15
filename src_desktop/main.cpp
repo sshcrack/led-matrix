@@ -6,6 +6,7 @@
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_impl_glfw.h"
 #include "toolbar.h"
+#include <tray.hpp>
 
 #include "shared/desktop/plugin_loader/loader.h"
 
