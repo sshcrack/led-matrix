@@ -1,3 +1,4 @@
+#include <tray.hpp>
 #include <iostream>
 #include <fmt/format.h>
 #include <shared/common/utils/utils.h>
@@ -6,7 +7,6 @@
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_impl_glfw.h"
 #include "toolbar.h"
-#include <tray.hpp>
 
 #include "shared/desktop/plugin_loader/loader.h"
 
@@ -34,6 +34,12 @@ int main(int argc, char *argv[])
             minimizeToToolbar(window);
         }
     };
+
+    Tray::Tray tray("My Tray", "icon.ico");
+    tray.addEntry(Tray::Button("Exit", [&]
+                         { tray.exit(); }));
+
+    tray.run();
 
     HelloImGui::Run(guiFunction, "LED Matrix Controller", true, true);
     return 0;
