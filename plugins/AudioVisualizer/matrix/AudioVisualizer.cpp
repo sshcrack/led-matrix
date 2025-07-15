@@ -11,7 +11,7 @@
 
 using namespace Scenes;
 
-extern "C" [[maybe_unused]] [[maybe_unused]] AudioVisualizer *createAudioVisualizer()
+extern "C" [[maybe_unused]] AudioVisualizer *createAudioVisualizer()
 {
     return new AudioVisualizer();
 }

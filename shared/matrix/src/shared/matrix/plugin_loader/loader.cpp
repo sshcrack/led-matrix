@@ -84,7 +84,7 @@ void PluginManager::initialize() {
         throw std::runtime_error("Could not get executable directory");
 
     const char *plugin_dir_env = getenv("PLUGIN_DIR");
-    const std::string plugin_dir(plugin_dir_env == nullptr ? "plugins" : std::string(plugin_dir_env));
+    const std::string plugin_dir(plugin_dir_env == nullptr ? get_exec_dir().value_or(".") + "/plugins" : std::string(plugin_dir_env));
     std::vector<std::string> filenames;
 
     for (const auto & entry : fs::directory_iterator(plugin_dir)) {

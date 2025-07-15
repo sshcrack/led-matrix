@@ -19,6 +19,7 @@
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_MAKE_PROGRAM": "ninja",
                 "ENABLE_EMULATOR": true,
                 "ENABLE_CORS": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
@@ -26,13 +27,26 @@
         },
         {
             "name": "desktop",
+            "hidden": true,
             "binaryDir": "${sourceDir}/desktop_build",
-            "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "ENABLE_DESKTOP": true
             }
+        },
+        {
+            "name": "desktop-linux",
+            "inherits": "desktop",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            }
+        },
+        {
+            "name": "desktop-windows",
+            "inherits": "desktop",
+            "architecture": "x64"
         }
     ],
     "buildPresets": [
@@ -45,8 +59,12 @@
             "configurePreset": "emulator"
         },
         {
-            "name": "desktop",
-            "configurePreset": "desktop"
+            "name": "desktop-linux",
+            "configurePreset": "desktop-linux"
+        },
+        {
+            "name": "desktop-windows",
+            "configurePreset": "desktop-windows"
         }
     ],
     "packagePresets": [
