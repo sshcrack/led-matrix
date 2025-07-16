@@ -80,13 +80,14 @@ void PluginManager::initialize() {
         return;
 
     auto exec_dir = get_exec_dir();
-    if (!exec_dir)
-        throw std::runtime_error("Could not get executable directory");
+    auto raw_plugin = getenv("PLUGIN_DIR");
 
-    const char *plugin_dir_env = getenv("PLUGIN_DIR");
-    const std::string plugin_dir(plugin_dir_env == nullptr ? get_exec_dir().value_or(".") + "/plugins" : std::string(plugin_dir_env));
+    std::filesystem::path plugin_dir = exec_dir / "plugins";
+    if(raw_plugin != nullptr) {
+        plugin_dir = std::filesystem::path(raw_plugin);
+    }
+
     std::vector<std::string> filenames;
-
     for (const auto & entry : fs::directory_iterator(plugin_dir)) {
         if (entry.is_regular_file()) {
             if(entry.path().extension() == ".so" || entry.path().extension() == ".dll") {

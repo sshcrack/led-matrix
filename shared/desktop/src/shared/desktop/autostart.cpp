@@ -1,4 +1,4 @@
-#include "autostart.h"
+#include "shared/desktop/autostart.h"
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
@@ -60,6 +60,8 @@ std::expected<void, std::string> enable(const std::string& exePath, const std::s
         return std::unexpected("Failed to save shortcut file: " + std::system_category().message(hr));
     }
     CoUninitialize();
+
+    return {};
 }
 
 std::expected<void, std::string> disable(const std::string& appName) {
@@ -69,6 +71,7 @@ std::expected<void, std::string> disable(const std::string& appName) {
     if (!result)
         return std::unexpected("Failed to remove shortcut file: " + ec.message())
 
+    return {};
 }
 
 
@@ -103,6 +106,8 @@ std::expected<void, std::string> enable(const std::string& exePath, const std::s
     ofs << "X-GNOME-Autostart-enabled=true\n";
     ofs << "Name=" << appName << "\n";
     ofs.close();
+
+    return {};
 }
 
 std::expected<void, std::string> disable(const std::string& appName) {
@@ -111,10 +116,8 @@ std::expected<void, std::string> disable(const std::string& appName) {
     bool result = std::filesystem::remove(desktopFile, ec);
     if (!result)
         return std::unexpected("Failed to remove autostart file: " + desktopFile + ": " + ec.message());
-}
 
-std::string getLastError() {
-    return lastError;
+    return {};
 }
 
 bool isEnabled(const std::string& appName) {

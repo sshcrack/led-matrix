@@ -1,4 +1,4 @@
-#include "config.h"
+#include "shared/desktop/config.h"
 #include <spdlog/spdlog.h>
 #include <shared/common/utils/utils.h>
 #include <iostream>
@@ -29,10 +29,9 @@ const std::string &Config::General::getHostname() const
     return hostname;
 }
 
-void Config::General::setHostname(const std::string &hostname)
+void Config::General::setHostnameAndPort(const std::string &hostname)
 {
     this->hostname = hostname;
-    spdlog::info("Hostname set to {}", hostname);
 }
 
 void Config::from_json(const json &j, General &p)
@@ -41,26 +40,26 @@ void Config::from_json(const json &j, General &p)
     {
         std::string hostname;
         j.at("hostname").get_to(hostname);
-        p.setHostname(hostname);
+        p.setHostnameAndPort(hostname);
     }
 }
 
 void Config::to_json(json &j, const General &p)
 {
     j = {
-        {"hostname", p.getHostname()}
-    };
+        {"hostname", p.getHostname()}};
 }
 
-Config::ConfigManager::ConfigManager(const std::string &filePath)
+Config::ConfigManager::ConfigManager(const std::filesystem::path &filePath)
 {
+    configFilePath = filePath;
     std::ifstream configFile(filePath);
     if (configFile.is_open())
     {
         try
         {
             nlohmann::json configJson = json::parse(configFile);
-            spdlog::info("Configuration loaded from {}", filePath);
+            spdlog::info("Configuration loaded from {}", filePath.string());
             generalConfig = configJson.value("general", json::object());
 
             if (configJson.contains("pluginSettings"))
@@ -78,31 +77,44 @@ Config::ConfigManager::ConfigManager(const std::string &filePath)
     }
     else
     {
-        spdlog::warn("Configuration file not found, using default settings.");
+        spdlog::warn("Configuration file at {} not found, using default settings.", filePath.string());
     }
 }
 
 Config::ConfigManager::~ConfigManager()
 {
     saveConfig(configFilePath);
-    spdlog::info("Configuration saved to {}", configFilePath);
 }
 
-void Config::ConfigManager::saveConfig(const std::string &filePath) const
+void Config::ConfigManager::saveConfig(const std::filesystem::path &filePath) const
 {
     json configJson;
     configJson["general"] = this->generalConfig;
     configJson["pluginSettings"] = pluginSettings;
 
+    spdlog::info("Dump file: {}", configJson.dump(4));
     std::ofstream configFile(filePath);
     if (configFile.is_open())
     {
         configFile << configJson.dump(4); // Pretty print with 4 spaces
-        spdlog::info("Configuration saved to {}", filePath);
+        spdlog::info("Configuration saved to {}", filePath.string());
         configFile.close();
     }
     else
     {
-        spdlog::error("Failed to open configuration file for writing: {}", filePath);
+        spdlog::error("Failed to open configuration file for writing: {}", filePath.string());
     }
+}
+
+Config::ConfigManager *_instance = nullptr;
+
+Config::ConfigManager *Config::ConfigManager::instance()
+{
+    if (_instance == nullptr)
+    {
+        std::filesystem::path configFilePath = get_exec_dir() / "config.json";
+        _instance = new Config::ConfigManager(configFilePath);
+    }
+
+    return _instance;
 }

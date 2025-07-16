@@ -74,10 +74,6 @@ void PluginManager::initialize() {
     if (initialized)
         return;
 
-    auto exec_dir = get_exec_dir();
-    if (!exec_dir)
-        throw std::runtime_error("Could not get executable directory");
-
     const std::string plugin_dir = "../plugins";
     std::vector<std::string> filenames;
 

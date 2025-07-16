@@ -10,11 +10,10 @@
 #include "toolbar.h"
 #include <thread>
 #include <spdlog/spdlog.h>
-#include "autostart.h"
 #include "shared/desktop/config.h"
+#include "filters.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
-
 
 static bool showWindowClicked = false;
 static bool shouldExit = false;
@@ -23,18 +22,18 @@ static bool hasStartedMinimized = false;
 using namespace Config;
 int main(int argc, char *argv[])
 {
-    HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets");
+    HelloImGui::SetAssetsFolder(get_exec_dir() / ".." / "assets");
 
-    auto instance = Plugins::PluginManager::instance();
-    instance->initialize();
+    auto pl = Plugins::PluginManager::instance();
+        auto cfg = ConfigManager::instance();
+    pl->initialize();
 
-    auto guiFunction = [instance]()
+    auto guiFunction = [pl, cfg]()
     {
-        auto instance = ConfigManager::instance();
         bool autostart;
         if (ImGui::Checkbox("Autostart", &autostart))
         {
-            instance.getGeneralConfig().setAutostartEnabled(autostart);
+            cfg->getGeneralConfig().setAutostartEnabled(autostart);
         }
 
         ImGui::SameLine();
@@ -47,18 +46,28 @@ int main(int argc, char *argv[])
 
         ImGui::SeparatorText("General Device Settings");
 
-        ImGui::Text("Hostname", "");
+        ImGui::Text("LED Matrix (required)", "");
         ImGui::SameLine();
 
-        static std::string hostname;
-        if(ImGui::InputTextWithHint("", "LED Matrix Hostname", &hostname)) {
-            Config::General config;
-            config.setHostname(hostname);
+        General &generalCfg = cfg->getGeneralConfig();
+        static std::string hostname = generalCfg.getHostname();
+        if (ImGui::InputTextWithHint("", "hostname:port", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostPortFilter))
+        {
+            generalCfg.setHostnameAndPort(hostname);
+        }
+
+        if (hostname.empty())
+        {
+            ImVec2 min = ImGui::GetItemRectMin();
+            ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
         }
 
         ImGui::SeparatorText("Plugin Settings");
         const auto ctx = ImGui::GetCurrentContext();
-        for (const auto &[name, plugin] : instance->get_plugins())
+        for (const auto &[name, plugin] : pl->get_plugins())
         {
             if (ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
@@ -104,6 +113,9 @@ int main(int argc, char *argv[])
     HelloImGui::Run(runnerParams);
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     trayThread.join();
+
+    pl->destroy_plugins();
+    delete cfg;
 
     return 0;
 }

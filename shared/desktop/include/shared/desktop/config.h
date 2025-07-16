@@ -2,7 +2,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include <shared/common/utils/utils.h>
-#include <autostart.h>
+#include "autostart.h"
 
 using json = nlohmann::json;
 static const char *APP_NAME = "LED_Matrix_Controller";
@@ -20,7 +20,7 @@ namespace Config
         void setAutostartEnabled(bool enabled);
 
         const std::string &getHostname() const;
-        void setHostname(const std::string &hostname);
+        void setHostnameAndPort(const std::string &hostname);
     };
 
     void to_json(json &j, const General &p);
@@ -30,32 +30,28 @@ namespace Config
     {
         private:
             General generalConfig;
-            json pluginSettings;
-            const std::string configFilePath;
+            json pluginSettings = json::object();
+            std::filesystem::path configFilePath;
 
         public:
-            static ConfigManager &instance()
-            {
-                static ConfigManager instance(get_exec_file().parent_path() / "config.json");
-                return instance;
-            }
+            static ConfigManager *instance();
 
-            ConfigManager(const std::string &filePath);
+            ConfigManager(const std::filesystem::path &filePath);
             ~ConfigManager();
 
             General &getGeneralConfig() {
                 return generalConfig;
             }
 
-            const json &getPluginSettings() const {
-                return pluginSettings;
+            const json &getPluginSetting(const std::string pluginName) const {
+                return pluginSettings[pluginName];
             }
 
-            void setPluginSetting(const std::string name, const json &settings) {
-                pluginSettings[name] = settings;
+            void setPluginSetting(const std::string pluginName, const json &settings) {
+                pluginSettings[pluginName] = settings;
             }
 
-            void saveConfig(const std::string &filePath) const;
+            void saveConfig(const std::filesystem::path &filePath) const;
 
     };
 }
