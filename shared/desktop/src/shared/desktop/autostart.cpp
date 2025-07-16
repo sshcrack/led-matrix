@@ -14,8 +14,6 @@
 
 namespace Autostart {
 #ifdef _WIN32
-static std::string lastError;
-
 std::wstring s2ws(const std::string& str) {
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), NULL, 0);
     std::wstring wstrTo(size_needed, 0);
@@ -33,55 +31,46 @@ std::string getStartupFolder() {
     return "";
 }
 
-bool enable(const std::string& exePath, const std::string& appName) {
+std::expected<void, std::string> enable(const std::string& exePath, const std::string& appName) {
     std::string shortcutPath = getStartupFolder() + "\\" + appName + ".lnk";
     Microsoft::WRL::ComPtr<IShellLink> pShellLink;
     HRESULT hr = S_OK;
     if (FAILED(CoInitialize(NULL))) {
-        lastError = "Failed to initialize COM library: " + std::system_category().message(GetLastError());
-        return false;
+        return std::unexpected("Failed to initialize COM library: " + std::system_category().message(GetLastError()));
     }
     hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pShellLink));
     if (FAILED(hr)) {
-        lastError = "Failed to create ShellLink instance: " + std::system_category().message(hr);
         CoUninitialize();
-        return false;
+        return std::unexpected("Failed to create ShellLink instance: " + std::system_category().message(hr));
     }
+    // Add --start-minimized flag to the command line
+    std::string exeWithArgs = exePath + " --start-minimized";
     pShellLink->SetPath(s2ws(exePath).c_str());
+    pShellLink->SetArguments(s2ws("--start-minimized").c_str());
     pShellLink->SetDescription(s2ws(appName).c_str());
     Microsoft::WRL::ComPtr<IPersistFile> pPersistFile;
     hr = pShellLink.As(&pPersistFile);
     if (FAILED(hr)) {
-        lastError = "Failed to get IPersistFile interface: " + std::system_category().message(hr);
         CoUninitialize();
-        return false;
+        return std::unexpected("Failed to get IPersistFile interface: " + std::system_category().message(hr));
     }
     hr = pPersistFile->Save(s2ws(shortcutPath).c_str(), TRUE);
     if (FAILED(hr)) {
-        lastError = "Failed to save shortcut file: " + std::system_category().message(hr);
         CoUninitialize();
-        return false;
+        return std::unexpected("Failed to save shortcut file: " + std::system_category().message(hr));
     }
     CoUninitialize();
-    lastError.clear();
-    return true;
 }
 
-bool disable(const std::string& appName) {
+std::expected<void, std::string> disable(const std::string& appName) {
     std::string shortcutPath = getStartupFolder() + "\\" + appName + ".lnk";
     std::error_code ec;
     bool result = std::filesystem::remove(shortcutPath, ec);
-    if (!result) {
-        lastError = "Failed to remove shortcut file: " + ec.message();
-    } else {
-        lastError.clear();
-    }
-    return result;
+    if (!result)
+        return std::unexpected("Failed to remove shortcut file: " + ec.message())
+
 }
 
-std::string getLastError() {
-    return lastError;
-}
 
 bool isEnabled(const std::string& appName) {
     std::string shortcutPath = getStartupFolder() + "\\" + appName + ".lnk";
@@ -99,35 +88,29 @@ std::string getAutostartPath(const std::string& appName) {
     return dir + appName + ".desktop";
 }
 
-bool enable(const std::string& exePath, const std::string& appName) {
+std::expected<void, std::string> enable(const std::string& exePath, const std::string& appName) {
     std::string desktopFile = getAutostartPath(appName);
     std::ofstream ofs(desktopFile);
     if (!ofs) {
-        lastError = "Failed to open autostart file for writing: " + desktopFile + ": " + std::system_category().message(errno);
-        return false;
+        return std::unexpected("Failed to open autostart file for writing: " + desktopFile + ": " + std::system_category().message(errno));
     }
     ofs << "[Desktop Entry]\n";
     ofs << "Type=Application\n";
-    ofs << "Exec=" << exePath << "\n";
+    // Add --start-minimized flag to the Exec line
+    ofs << "Exec=" << exePath << " --start-minimized\n";
     ofs << "Hidden=false\n";
     ofs << "NoDisplay=false\n";
     ofs << "X-GNOME-Autostart-enabled=true\n";
     ofs << "Name=" << appName << "\n";
     ofs.close();
-    lastError.clear();
-    return true;
 }
 
-bool disable(const std::string& appName) {
+std::expected<void, std::string> disable(const std::string& appName) {
     std::string desktopFile = getAutostartPath(appName);
     std::error_code ec;
     bool result = std::filesystem::remove(desktopFile, ec);
-    if (!result) {
-        lastError = "Failed to remove autostart file: " + desktopFile + ": " + ec.message();
-    } else {
-        lastError.clear();
-    }
-    return result;
+    if (!result)
+        return std::unexpected("Failed to remove autostart file: " + desktopFile + ": " + ec.message());
 }
 
 std::string getLastError() {

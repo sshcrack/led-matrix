@@ -11,16 +11,16 @@
 #include <thread>
 #include <spdlog/spdlog.h>
 #include "autostart.h"
+#include "shared/desktop/config.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
 
-static const char *APP_NAME = "LED_Matrix_Controller";
 
 static bool showWindowClicked = false;
 static bool shouldExit = false;
 static bool hasStartedMinimized = false;
 
-static bool autostart = Autostart::isEnabled(APP_NAME);
+using namespace Config;
 int main(int argc, char *argv[])
 {
     HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets");
@@ -30,20 +30,11 @@ int main(int argc, char *argv[])
 
     auto guiFunction = [instance]()
     {
+        auto instance = ConfigManager::instance();
+        bool autostart;
         if (ImGui::Checkbox("Autostart", &autostart))
         {
-            spdlog::info("Enabling autostart for {}", APP_NAME);
-            auto exec_file_res = get_exec_file();
-            bool res = autostart ? Autostart::enable(exec_file_res.string(), APP_NAME) : Autostart::disable(APP_NAME);
-            if (res)
-            {
-                spdlog::info("Set autostart for {} to {}", APP_NAME, autostart);
-            }
-            else
-            {
-                std::string reason = Autostart::getLastError(); // Assumes such a function exists
-                spdlog::error("Failed to set autostart to {} for {}: {}", autostart, APP_NAME, reason);
-            }
+            instance.getGeneralConfig().setAutostartEnabled(autostart);
         }
 
         ImGui::SameLine();
@@ -56,10 +47,14 @@ int main(int argc, char *argv[])
 
         ImGui::SeparatorText("General Device Settings");
 
-        static std::string hostname;
         ImGui::Text("Hostname", "");
         ImGui::SameLine();
-        ImGui::InputTextWithHint("", "LED Matrix Hostname", &hostname);
+
+        static std::string hostname;
+        if(ImGui::InputTextWithHint("", "LED Matrix Hostname", &hostname)) {
+            Config::General config;
+            config.setHostname(hostname);
+        }
 
         ImGui::SeparatorText("Plugin Settings");
         const auto ctx = ImGui::GetCurrentContext();
