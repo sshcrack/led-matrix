@@ -4,25 +4,51 @@
 #include <shared/common/utils/utils.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <GLFW/glfw3.h>
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
 #include "imgui_impl_glfw.h"
-#include "toolbar.h"
 #include <thread>
 #include <spdlog/spdlog.h>
 #include "shared/desktop/config.h"
 #include "filters.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
+#include "single_instance_manager.h"
 
-static bool showWindowClicked = false;
 static bool shouldExit = false;
-static bool hasStartedMinimized = false;
+static const char *DISPLAY_APP_NAME = "LED Matrix Controller";
 
+static void window_iconify_callback(GLFWwindow *window, int iconified)
+{
+    if (iconified)
+    {
+        spdlog::info("Window iconified.");
+        HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;
+    }
+    else
+    {
+        spdlog::info("Window restored.");
+        HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
+    }
+}
+
+static bool showMainWindow = false;
 using namespace Config;
 int main(int argc, char *argv[])
 {
     HelloImGui::SetAssetsFolder(get_exec_dir() / ".." / "assets");
+
+    // Single instance manager
+    SingleInstanceManager* instanceManager = nullptr;
+    try {
+        instanceManager = new SingleInstanceManager("LedMatrixController", [](){
+            showMainWindow = true;
+        });
+    } catch (const std::exception& e) {
+        // Already running, exit
+        return 0;
+    }
 
     auto pl = Plugins::PluginManager::instance();
     auto cfg = ConfigManager::instance();
@@ -35,26 +61,25 @@ int main(int argc, char *argv[])
 
     auto guiFunction = [pl, cfg]()
     {
-        bool autostart;
-        if (ImGui::Checkbox("Autostart", &autostart))
+        if (shouldExit)
         {
-            cfg->getGeneralConfig().setAutostartEnabled(autostart);
+            HelloImGui::GetRunnerParams()->appShallExit = true;
+            shouldExit = false;
         }
 
-        ImGui::SameLine();
-
-        if (ImGui::Button("Minimize to Toolbar"))
+        if (showMainWindow)
         {
-            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
-            minimizeToTray(window);
+            spdlog::info("Showing main window.");
+            showMainWindow = false;
+            HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
         }
 
+        General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
 
         ImGui::Text("LED Matrix (required)", "");
         ImGui::SameLine();
 
-        General &generalCfg = cfg->getGeneralConfig();
         static std::string hostname = generalCfg.getHostname();
         if (ImGui::InputTextWithHint("", "hostname:port", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostPortFilter))
         {
@@ -71,56 +96,103 @@ int main(int argc, char *argv[])
         }
 
         ImGui::SeparatorText("Plugin Settings");
-        const auto ctx = ImGui::GetCurrentContext();
-        for (const auto &[name, plugin] : pl->get_plugins())
+        auto plugins = pl->get_plugins();
+        if (plugins.empty())
         {
-            if (ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            ImGui::Text("No plugins loaded.");
+            return;
+        }
+
+        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
+        {
+            ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+            for (const auto currPair : plugins)
             {
-                plugin->render(ctx);
+                std::string currName = currPair.first;
+                if (ImGui::Selectable(currName.c_str(), selected.first == currName))
+                    selected = currPair;
             }
+
+            ImGui::EndChild();
         }
 
-        if (showWindowClicked)
-        {
-            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
-            restoreFromTray(window);
-            showWindowClicked = false;
-        }
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
 
-        if (shouldExit)
-        {
-            HelloImGui::GetRunnerParams()->appShallExit = true;
-            shouldExit = false;
-        }
+        selected.second->render(ImGui::GetCurrentContext());
+
+        ImGui::EndChild();
+        ImGui::EndGroup();
+
     };
 
-    Tray::Tray tray("LED Matrix Controller", "icon.ico");
-    tray.addEntry(Tray::Button("Show Window", [&]
-                               { showWindowClicked = true; }));
-    tray.addEntry(Tray::Button("Exit", [&]
-                               { shouldExit = true; }));
+    Tray::Tray tray(DISPLAY_APP_NAME, "icon.ico");
+    tray.addEntry(
+        Tray::Button(
+            "Show Window",
+            [&]
+            {
+                showMainWindow = true;
+            }));
+    tray.addEntry(
+        Tray::Button(
+            "Exit",
+            [&]
+            {
+                shouldExit = true;
+            }));
 
-    std::thread trayThread([&tray]()
-                           { tray.run(); });
+    std::thread trayThread(
+        [&tray]()
+        {
+            tray.run();
+        });
 
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = guiFunction;
-    runnerParams.appWindowParams.windowTitle = "LED Matrix Controller";
-    runnerParams.appWindowParams.restorePreviousGeometry = true;
-    runnerParams.callbacks.EnqueuePostInit([]()
-                                           { minimizeToTray((GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow); });
+    runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;
+    runnerParams.imGuiWindowParams.showMenuBar = true;
 
+    runnerParams.callbacks.ShowAppMenuItems = [&]()
+    {
+        General &generalCfg = cfg->getGeneralConfig();
+        bool autostartEnabled = generalCfg.isAutostartEnabled();
+        if (ImGui::MenuItem("Start with System", NULL, autostartEnabled))
+        {
+            generalCfg.setAutostartEnabled(!autostartEnabled);
+        }
+
+        if (ImGui::MenuItem("Save Config", NULL, false))
+        {
+            cfg->saveConfig();
+        }
+    };
+
+    runnerParams.callbacks.PostInit = [&]()
+    {
+        GLFWwindow *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+        glfwSetWindowIconifyCallback(window, window_iconify_callback);
+    };
+
+    runnerParams.appWindowParams.restorePreviousGeometry = true;
     if (argc > 1 && std::string(argv[1]) == "--start-minimized")
     {
         runnerParams.appWindowParams.hidden = true;
     }
 
+    // Add polling for DBus messages (Linux only)
+#ifndef _WIN32
+    runnerParams.callbacks.PreNewFrame = [&]() {
+        if (instanceManager) instanceManager->poll();
+    };
+#endif
+
     HelloImGui::Run(runnerParams);
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     trayThread.join();
-
     delete cfg;
     pl->destroy_plugins();
-
+    delete instanceManager;
     return 0;
 }

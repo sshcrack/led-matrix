@@ -4,24 +4,47 @@
 #include <nlohmann/json.hpp>
 #include <memory>
 
+enum ConnectionStatus
+{
+    Disconnected,
+    Connected,
+    Error
+};
 
-class AudioVisualizerDesktop final : public Plugins::DesktopPlugin {
+std::string to_string(ConnectionStatus status)
+{
+    switch (status)
+    {
+    case Disconnected:
+        return "Disconnected";
+    case Connected:
+        return "Connected";
+    case Error:
+        return "Error";
+    default:
+        return "Unknown";
+    }
+}
+
+class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
+{
 public:
     AudioVisualizerDesktop();
 
     ~AudioVisualizerDesktop() override;
 
     void render(ImGuiContext *ctx) override;
-    void loadConfig(const nlohmann::json& config) override {
-        pluginConfig = config;
+    void loadConfig(std::optional<const nlohmann::json> config) override
+    {
+        if (config.has_value())
+            cfg = config.value();
     };
-    void saveConfig(nlohmann::json& config) const override {
-        config = pluginConfig;
+    void saveConfig(nlohmann::json &config) const override
+    {
+        config = cfg;
     };
 
 private:
-    AudioVisualizerConfig pluginConfig;
-
-    bool autostart = false;
-    bool minimizeToToolbar = false;
+    AudioVisualizerConfig cfg;
+    ConnectionStatus status = ConnectionStatus::Disconnected;
 };

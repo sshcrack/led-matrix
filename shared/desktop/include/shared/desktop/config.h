@@ -15,7 +15,6 @@ namespace Config
         bool autostart = Autostart::isEnabled(APP_NAME);
 
     public:
-
         bool isAutostartEnabled() const;
         void setAutostartEnabled(bool enabled);
 
@@ -28,30 +27,35 @@ namespace Config
 
     class ConfigManager
     {
-        private:
-            General generalConfig;
-            json pluginSettings = json::object();
-            std::filesystem::path configFilePath;
+    private:
+        General generalConfig;
+        json pluginSettings = json::object();
+        std::filesystem::path configFilePath;
 
-        public:
-            static ConfigManager *instance();
+    public:
+        static ConfigManager *instance();
 
-            ConfigManager(const std::filesystem::path &filePath);
-            ~ConfigManager();
+        ConfigManager(const std::filesystem::path &filePath);
+        ~ConfigManager();
 
-            General &getGeneralConfig() {
-                return generalConfig;
-            }
+        General &getGeneralConfig()
+        {
+            return generalConfig;
+        }
 
-            const json &getPluginSetting(const std::string pluginName) const {
-                return pluginSettings[pluginName];
-            }
+        std::optional<const nlohmann::json> getPluginSetting(const std::string pluginName) const
+        {
+            if (!pluginSettings.contains(pluginName))
+                return std::nullopt;
 
-            void setPluginSetting(const std::string pluginName, const json &settings) {
-                pluginSettings[pluginName] = settings;
-            }
+            return pluginSettings.at(pluginName);
+        }
 
-            void saveConfig(const std::filesystem::path &filePath);
+        void setPluginSetting(const std::string pluginName, const json &settings)
+        {
+            pluginSettings[pluginName] = settings;
+        }
 
+        void saveConfig();
     };
 }

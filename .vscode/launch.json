@@ -8,7 +8,12 @@
         "args": [],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}/desktop_build/install/bin",
-        "environment": [],
+        "environment": [
+          {
+            "name": "SPDLOG_LEVEL",
+            "value": "trace"
+          },
+        ],
         "externalConsole": false,
         "MIMode": "gdb",
         "preLaunchTask": "CMake: Desktop Build & Install",
