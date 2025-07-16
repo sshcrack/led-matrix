@@ -26,12 +26,9 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
     // Static file serving
     router->http_get("/web/:path(.*)", [](auto req, auto params) {
         auto exec_dir = get_exec_dir();
-        if (!exec_dir) {
-            return reply_with_error(req, "Could not determine executable directory");
-        }
 
         const auto requested_path = params["path"];
-        const filesystem::path web_dir = filesystem::path(*exec_dir) / "web";
+        const filesystem::path web_dir = exec_dir / "web";
         filesystem::path file_path = web_dir / requested_path;
 
         // Ensure the requested path is within the web directory

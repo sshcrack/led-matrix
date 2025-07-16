@@ -99,8 +99,8 @@ std::filesystem::path get_exec_file() {
     return std::filesystem::path(buffer);
 }
 
-std::optional<std::string> get_exec_dir() {
+std::filesystem::path get_exec_dir() {
     auto v = get_exec_file();
 
-    return v.parent_path().string();
+    return v.parent_path();
 }
