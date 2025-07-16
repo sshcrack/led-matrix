@@ -18,12 +18,14 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c)
 AudioVisualizerDesktop::AudioVisualizerDesktop()
 {
     Pa_Initialize();
+    implotContext = ImPlot::CreateContext();
     recorder = new AudioRecorder::Recorder();
 }
 
 AudioVisualizerDesktop::~AudioVisualizerDesktop()
 {
     Pa_Terminate();
+    ImPlot::DestroyContext();
     delete recorder;
 }
 
@@ -49,10 +51,25 @@ int PortFilter(ImGuiInputTextCallbackData *data)
 void AudioVisualizerDesktop::render(ImGuiContext *ctx)
 {
     ImGui::SetCurrentContext(ctx);
+    ImPlot::SetCurrentContext(implotContext);
+
     addConnectionSettings();
     addAudioSettings();
     addAnalysisSettings();
     addDeviceSettings();
+    // Process audio if connected
+    if (status == ConnectionStatus::Connected && audioProcessor && analyzer)
+    {
+        // Get real audio samples from recorder
+        std::vector<float> samples = recorder->getLatestSamples(1024);
+        audioProcessor->processAudio(samples);
+
+        // Compute bands using analyzer
+        float freqResolution = static_cast<float>(recorder->getSampleRate()) / AudioProcessor::FFT_SIZE;
+        size_t minBin = static_cast<size_t>(cfg.minFreq / freqResolution);
+        size_t maxBin = std::min(static_cast<size_t>(cfg.maxFreq / freqResolution), audioProcessor->getBands().size() - 1);
+        latestBands = analyzer->computeBands(audioProcessor->getBands(), cfg, freqResolution, minBin, maxBin);
+    }
     addSpectrumSettings();
 }
 
@@ -79,6 +96,36 @@ void AudioVisualizerDesktop::addConnectionSettings()
     std::string buttonText = status == ConnectionStatus::Connected ? "Disconnect" : "Connect";
     if (ImGui::Button(buttonText.c_str()))
     {
+        if (status == ConnectionStatus::Connected)
+        {
+            recorder->stopRecording();
+            status = ConnectionStatus::Disconnected;
+        }
+        else
+        {
+            // Find device index
+            auto devices = recorder->listDevices();
+            int deviceIndex = -1;
+            for (const auto &device : devices)
+            {
+                if (device.name == cfg.deviceName)
+                {
+                    deviceIndex = device.index;
+                    break;
+                }
+            }
+            if (deviceIndex != -1 && recorder->startRecording(deviceIndex))
+            {
+                status = ConnectionStatus::Connected;
+                // Setup audio processor and analyzer
+                audioProcessor = std::make_unique<AudioProcessor>(cfg, static_cast<uint32_t>(recorder->getSampleRate()));
+                analyzer = getAnalyzer(cfg.analysisMode, cfg.frequencyScale);
+            }
+            else
+            {
+                status = ConnectionStatus::Error;
+            }
+        }
     }
 }
 
@@ -198,4 +245,19 @@ void AudioVisualizerDesktop::addDeviceSettings()
 void AudioVisualizerDesktop::addSpectrumSettings()
 {
     ImGui::SeparatorText("Audio Spectrum");
+    if (!latestBands.empty())
+    {
+        if (ImPlot::BeginPlot("Spectrum"))
+        {
+            std::vector<float> x(latestBands.size());
+            for (size_t i = 0; i < x.size(); ++i)
+                x[i] = static_cast<float>(i);
+            ImPlot::PlotLine("Bands", x.data(), latestBands.data(), static_cast<int>(latestBands.size()));
+            ImPlot::EndPlot();
+        }
+    }
+    else
+    {
+        ImGui::Text("No spectrum data available.");
+    }
 }

@@ -1,6 +1,10 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <atomic>
+#include <mutex>
+#include <deque>
+#include <portaudio.h>
 
 namespace AudioRecorder {
 class Recorder {
@@ -25,9 +29,25 @@ public:
     // Is currently recording
     bool isRecording() const;
 
+    // Get the latest audio samples
+    std::vector<float> getLatestSamples(size_t numSamples);
+
+    // Get the current sample rate
+    double getSampleRate() const;
+
 private:
-    bool recording;
+    std::atomic<bool> recording;
     int currentDeviceIndex;
-    // ... PortAudio stream and other members ...
+    void* stream; // PaStream* stream, but forward-declare as void* to avoid portaudio dependency in header
+    std::deque<float> audioBuffer;
+    std::mutex bufferMutex;
+    double sampleRate;
+    static constexpr size_t MAX_BUFFER_SIZE = 8192; // Maximum buffer size to prevent memory issues
+    
+    static int audioCallback(const void* inputBuffer, void* outputBuffer,
+                           unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo* timeInfo,
+                           PaStreamCallbackFlags statusFlags,
+                           void* userData);
 };
 }

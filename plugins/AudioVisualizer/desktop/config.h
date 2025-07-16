@@ -19,10 +19,10 @@ enum FrequencyScale
 };
 
 // Make sure these are in the same order as the enum values
-std::vector<std::string> analysisModes = {"Discrete Frequencies", "1/3 Octave Bands", "Full Octave Bands"};
-std::vector<std::string> frequencyScales = {"Linear", "Logarithmic", "Bark", "Mel"};
+static std::vector<std::string> analysisModes = {"Discrete Frequencies", "1/3 Octave Bands", "Full Octave Bands"};
+static std::vector<std::string> frequencyScales = {"Linear", "Logarithmic", "Bark", "Mel"};
 
-AnalysisMode to_analysis_mode(const std::string &str)
+static AnalysisMode to_analysis_mode(const std::string &str)
 {
     if (str == "Discrete Frequencies")
         return DiscreteFrequencies;
@@ -33,7 +33,7 @@ AnalysisMode to_analysis_mode(const std::string &str)
     throw std::invalid_argument("Unknown AnalysisMode: " + str);
 }
 
-FrequencyScale to_frequency_scale(const std::string &str)
+static FrequencyScale to_frequency_scale(const std::string &str)
 {
     if (str == "Linear")
         return Linear;
@@ -45,15 +45,6 @@ FrequencyScale to_frequency_scale(const std::string &str)
         return Mel;
     throw std::invalid_argument("Unknown FrequencyScale: " + str);
 }
-
-NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
-                                            {OneThirdOctaveBands, "1/3 Octave Bands"},
-                                            {FullOctave, "Full Octave Bands"}})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(FrequencyScale, {{Linear, "Linear"},
-                                              {Logarithmic, "Logarithmic"},
-                                              {Bark, "Bark"},
-                                              {Mel, "Mel"}})
 
 class AudioVisualizerConfig
 {
@@ -82,7 +73,18 @@ public:
                               analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic), skipMissingBandsFromOutput(true) {}
 };
 
-void from_json(const json &j, AudioVisualizerConfig &config)
+
+NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
+                                            {OneThirdOctaveBands, "1/3 Octave Bands"},
+                                            {FullOctave, "Full Octave Bands"}})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(FrequencyScale, {{Linear, "Linear"},
+                                              {Logarithmic, "Logarithmic"},
+                                              {Bark, "Bark"},
+                                              {Mel, "Mel"}})
+
+
+static void from_json(const json &j, AudioVisualizerConfig &config)
 {
     AudioVisualizerConfig defaults;
     config.port = j.value("port", defaults.port);
@@ -99,7 +101,7 @@ void from_json(const json &j, AudioVisualizerConfig &config)
     config.deviceName = j.value("deviceName", defaults.deviceName);
 }
 
-void to_json(json &j, const AudioVisualizerConfig &config)
+static void to_json(json &j, const AudioVisualizerConfig &config)
 {
     j = json{
         {"port", config.port},
