@@ -1,6 +1,7 @@
 #pragma once
 #include "shared/desktop/plugin/main.h"
 #include "config.h"
+#include "record.h"
 #include <nlohmann/json.hpp>
 #include <memory>
 
@@ -45,6 +46,14 @@ public:
     };
 
 private:
+    AudioRecorder::Recorder *recorder;
     AudioVisualizerConfig cfg;
     ConnectionStatus status = ConnectionStatus::Disconnected;
+
+protected:
+    void addConnectionSettings();
+    void addAnalysisSettings();
+    void addAudioSettings();
+    void addDeviceSettings();
+    void addSpectrumSettings();
 };
