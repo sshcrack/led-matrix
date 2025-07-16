@@ -25,8 +25,13 @@ int main(int argc, char *argv[])
     HelloImGui::SetAssetsFolder(get_exec_dir() / ".." / "assets");
 
     auto pl = Plugins::PluginManager::instance();
-        auto cfg = ConfigManager::instance();
+    auto cfg = ConfigManager::instance();
     pl->initialize();
+
+    for (auto const plugin : pl->get_plugins())
+    {
+        plugin.second->loadConfig(cfg->getPluginSetting(plugin.first));
+    }
 
     auto guiFunction = [pl, cfg]()
     {
@@ -114,8 +119,8 @@ int main(int argc, char *argv[])
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     trayThread.join();
 
-    pl->destroy_plugins();
     delete cfg;
+    pl->destroy_plugins();
 
     return 0;
 }

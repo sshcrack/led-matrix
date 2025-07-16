@@ -1,4 +1,5 @@
 #include "shared/desktop/config.h"
+#include "shared/desktop/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 #include <shared/common/utils/utils.h>
 #include <iostream>
@@ -86,13 +87,19 @@ Config::ConfigManager::~ConfigManager()
     saveConfig(configFilePath);
 }
 
-void Config::ConfigManager::saveConfig(const std::filesystem::path &filePath) const
+void Config::ConfigManager::saveConfig(const std::filesystem::path &filePath)
 {
+    for(auto plugin : Plugins::PluginManager::instance()->get_plugins()) {
+        json j;
+        plugin.second->saveConfig(j);
+
+        pluginSettings[plugin.first] = j;
+    };
+
     json configJson;
     configJson["general"] = this->generalConfig;
     configJson["pluginSettings"] = pluginSettings;
 
-    spdlog::info("Dump file: {}", configJson.dump(4));
     std::ofstream configFile(filePath);
     if (configFile.is_open())
     {

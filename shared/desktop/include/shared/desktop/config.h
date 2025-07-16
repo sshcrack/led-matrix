@@ -51,7 +51,7 @@ namespace Config
                 pluginSettings[pluginName] = settings;
             }
 
-            void saveConfig(const std::filesystem::path &filePath) const;
+            void saveConfig(const std::filesystem::path &filePath);
 
     };
 }
