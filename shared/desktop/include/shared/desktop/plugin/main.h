@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include <nlohmann/json.hpp>
 #include "shared/common/plugin_macros.h"
+#include "shared/desktop/config.h"
 
 using std::vector;
 using std::string;
