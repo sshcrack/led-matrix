@@ -134,6 +134,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/include
+    )
 endif()
 
 # spdlog

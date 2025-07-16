@@ -16,16 +16,17 @@
       ]
     },
     "emulator": {
-        "description": "Add emulator support",
+        "description": "Dependencies needed for the emulator application.",
         "dependencies": ["sdl2"]
       },
     "desktop": {
-      "description": "Add desktop support",
+      "description": "Dependencies needed for the desktop application. The portaudio dependency is only needed for the AudioVisualizer plugin.",
       "dependencies": [
         {
           "name": "hello-imgui",
           "features": ["opengl3-binding", "glfw-binding"]
-        }
+        },
+        "portaudio"
       ]
     }
   },

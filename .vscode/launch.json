@@ -55,7 +55,7 @@
         ],
         "externalConsole": false,
         "MIMode": "gdb",
-        "preLaunchTask": "CMake: Emulator Build & Install (no web rebuild)",
+        "preLaunchTask": "CMake: Emulator Build & Install",
         "setupCommands": [
             {
                 "description": "Enable pretty-printing for gdb",

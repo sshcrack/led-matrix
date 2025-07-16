@@ -22,24 +22,29 @@ enum FrequencyScale
 std::vector<std::string> analysisModes = {"Discrete Frequencies", "1/3 Octave Bands", "Full Octave Bands"};
 std::vector<std::string> frequencyScales = {"Linear", "Logarithmic", "Bark", "Mel"};
 
-
 AnalysisMode to_analysis_mode(const std::string &str)
 {
-    if (str == "Discrete Frequencies") return DiscreteFrequencies;
-    if (str == "1/3 Octave Bands") return OneThirdOctaveBands;
-    if (str == "Full Octave Bands") return FullOctave;
+    if (str == "Discrete Frequencies")
+        return DiscreteFrequencies;
+    if (str == "1/3 Octave Bands")
+        return OneThirdOctaveBands;
+    if (str == "Full Octave Bands")
+        return FullOctave;
     throw std::invalid_argument("Unknown AnalysisMode: " + str);
 }
 
 FrequencyScale to_frequency_scale(const std::string &str)
 {
-    if (str == "Linear") return Linear;
-    if (str == "Logarithmic") return Logarithmic;
-    if (str == "Bark") return Bark;
-    if (str == "Mel") return Mel;
+    if (str == "Linear")
+        return Linear;
+    if (str == "Logarithmic")
+        return Logarithmic;
+    if (str == "Bark")
+        return Bark;
+    if (str == "Mel")
+        return Mel;
     throw std::invalid_argument("Unknown FrequencyScale: " + str);
 }
-
 
 NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
                                             {OneThirdOctaveBands, "1/3 Octave Bands"},
@@ -70,23 +75,28 @@ public:
     bool interpolateMissingBands;
     bool skipMissingBandsFromOutput;
 
+    // ----- Audio Device Settings -----
+    std::string deviceName;
+
     AudioVisualizerConfig() : port(8888), numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
                               analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic), skipMissingBandsFromOutput(true) {}
 };
 
 void from_json(const json &j, AudioVisualizerConfig &config)
 {
-    j.at("port").get_to(config.port);
-    j.at("numBands").get_to(config.numBands);
-    j.at("gain").get_to(config.gain);
-    j.at("smoothing").get_to(config.smoothing);
-    j.at("minFreq").get_to(config.minFreq);
-    j.at("maxFreq").get_to(config.maxFreq);
-    j.at("analysisMode").get_to(config.analysisMode);
-    j.at("frequencyScale").get_to(config.frequencyScale);
-    j.at("linearAmplitudeScaling").get_to(config.linearAmplitudeScaling);
-    j.at("interpolateMissingBands").get_to(config.interpolateMissingBands);
-    j.at("skipMissingBandsFromOutput").get_to(config.skipMissingBandsFromOutput);
+    AudioVisualizerConfig defaults;
+    config.port = j.value("port", defaults.port);
+    config.numBands = j.value("numBands", defaults.numBands);
+    config.gain = j.value("gain", defaults.gain);
+    config.smoothing = j.value("smoothing", defaults.smoothing);
+    config.minFreq = j.value("minFreq", defaults.minFreq);
+    config.maxFreq = j.value("maxFreq", defaults.maxFreq);
+    config.analysisMode = j.value("analysisMode", defaults.analysisMode);
+    config.frequencyScale = j.value("frequencyScale", defaults.frequencyScale);
+    config.linearAmplitudeScaling = j.value("linearAmplitudeScaling", defaults.linearAmplitudeScaling);
+    config.interpolateMissingBands = j.value("interpolateMissingBands", defaults.interpolateMissingBands);
+    config.skipMissingBandsFromOutput = j.value("skipMissingBandsFromOutput", defaults.skipMissingBandsFromOutput);
+    config.deviceName = j.value("deviceName", defaults.deviceName);
 }
 
 void to_json(json &j, const AudioVisualizerConfig &config)
@@ -102,5 +112,6 @@ void to_json(json &j, const AudioVisualizerConfig &config)
         {"frequencyScale", config.frequencyScale},
         {"linearAmplitudeScaling", config.linearAmplitudeScaling},
         {"interpolateMissingBands", config.interpolateMissingBands},
-        {"skipMissingBandsFromOutput", config.skipMissingBandsFromOutput}};
+        {"skipMissingBandsFromOutput", config.skipMissingBandsFromOutput},
+        {"deviceName", config.deviceName}};
 }
