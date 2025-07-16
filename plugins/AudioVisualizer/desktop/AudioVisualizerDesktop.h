@@ -2,8 +2,13 @@
 #include "shared/desktop/plugin/main.h"
 #include "config.h"
 #include "record.h"
+#include "audio_processor.h"
+#include "frequency_analyzer/factory.h"
+#include "frequency_analyzer/FrequencyAnalyzer.h"
 #include <nlohmann/json.hpp>
 #include <memory>
+#include <vector>
+#include "../../../thirdparty/implot/implot.h"
 
 enum ConnectionStatus
 {
@@ -32,6 +37,7 @@ class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
 public:
     AudioVisualizerDesktop();
 
+
     ~AudioVisualizerDesktop() override;
 
     void render(ImGuiContext *ctx) override;
@@ -47,8 +53,14 @@ public:
 
 private:
     AudioRecorder::Recorder *recorder;
+    ImPlotContext *implotContext = nullptr;
+
     AudioVisualizerConfig cfg;
     ConnectionStatus status = ConnectionStatus::Disconnected;
+    
+    std::unique_ptr<AudioProcessor> audioProcessor;
+    std::unique_ptr<FrequencyAnalyzer> analyzer;
+    std::vector<float> latestBands;
 
 protected:
     void addConnectionSettings();

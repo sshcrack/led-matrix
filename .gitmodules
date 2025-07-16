@@ -7,3 +7,6 @@
 [submodule "thirdparty/traypp"]
 	path = thirdparty/traypp
 	url = https://github.com/sshcrack/traypp.git
+[submodule "thirdparty/implot"]
+	path = thirdparty/implot
+	url = https://github.com/epezent/implot

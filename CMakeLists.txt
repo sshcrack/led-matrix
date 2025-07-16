@@ -81,8 +81,13 @@ if(ENABLE_DESKTOP)
 
 
     add_subdirectory(thirdparty/traypp)
+    add_subdirectory(thirdparty)
+
     find_package(hello-imgui CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray implot)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
+    )
 
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
