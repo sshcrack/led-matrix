@@ -84,12 +84,13 @@ Config::ConfigManager::ConfigManager(const std::filesystem::path &filePath)
 
 Config::ConfigManager::~ConfigManager()
 {
-    saveConfig(configFilePath);
+    saveConfig();
 }
 
-void Config::ConfigManager::saveConfig(const std::filesystem::path &filePath)
+void Config::ConfigManager::saveConfig()
 {
-    for(auto plugin : Plugins::PluginManager::instance()->get_plugins()) {
+    for (auto plugin : Plugins::PluginManager::instance()->get_plugins())
+    {
         json j;
         plugin.second->saveConfig(j);
 
@@ -100,17 +101,16 @@ void Config::ConfigManager::saveConfig(const std::filesystem::path &filePath)
     configJson["general"] = this->generalConfig;
     configJson["pluginSettings"] = pluginSettings;
 
-    std::ofstream configFile(filePath);
-    if (configFile.is_open())
+    std::ofstream configFile(configFilePath);
+    if (!configFile.is_open())
     {
-        configFile << configJson.dump(4); // Pretty print with 4 spaces
-        spdlog::info("Configuration saved to {}", filePath.string());
-        configFile.close();
+        spdlog::error("Failed to open configuration file for writing: {}", configFilePath.string());
+        return;
     }
-    else
-    {
-        spdlog::error("Failed to open configuration file for writing: {}", filePath.string());
-    }
+
+    configFile << configJson.dump(4); // Pretty print with 4 spaces
+    spdlog::info("Configuration saved to {}", configFilePath.string());
+    configFile.close();
 }
 
 Config::ConfigManager *_instance = nullptr;

@@ -25,7 +25,7 @@ namespace Plugins {
 
         virtual void render(ImGuiContext* ctx) = 0;
 
-        virtual void loadConfig(const nlohmann::json& config) = 0;
+        virtual void loadConfig(std::optional<const nlohmann::json> config)  = 0;
         virtual void saveConfig(nlohmann::json& config) const = 0;
     };
 }

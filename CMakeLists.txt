@@ -70,6 +70,16 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 if(ENABLE_DESKTOP)
+    find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
+
+    pkg_check_modules(DBUS REQUIRED dbus-1) # This calls pkgconfig with appropriate arguments
+    # Use results of pkg_check_modules() call.
+    include_directories(${DBUS_INCLUDE_DIRS})
+    link_directories(${DBUS_LIBRARY_DIRS})
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${DBUS_LIBRARIES})
+
+
     add_subdirectory(thirdparty/traypp)
     find_package(hello-imgui CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray)
