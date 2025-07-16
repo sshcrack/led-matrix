@@ -11,7 +11,6 @@
 #include "spdlog/cfg/env.h"
 #include "matrix_control/hardware.h"
 #include "matrix-factory.h"
-#include "framebuffer-internal.h"
 #include "server/server.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
