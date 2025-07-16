@@ -9,13 +9,18 @@
 #include "imgui_impl_glfw.h"
 #include "toolbar.h"
 #include <thread>
+#include <spdlog/spdlog.h>
+#include "autostart.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
+
+static const char *APP_NAME = "LED_Matrix_Controller";
 
 static bool showWindowClicked = false;
 static bool shouldExit = false;
 static bool hasStartedMinimized = false;
 
+static bool autostart = Autostart::isEnabled(APP_NAME);
 int main(int argc, char *argv[])
 {
     HelloImGui::SetAssetsFolder(get_exec_dir().value_or(".") + "/../assets");
@@ -25,8 +30,23 @@ int main(int argc, char *argv[])
 
     auto guiFunction = [instance]()
     {
-        // static std::string hostname;
-        // ImGui::InputTextWithHint("Hostname", "LED Matrix Hostname", &hostname);
+        if (ImGui::Checkbox("Autostart", &autostart))
+        {
+            spdlog::info("Enabling autostart for {}", APP_NAME);
+            auto exec_file_res = get_exec_file();
+            bool res = autostart ? Autostart::enable(exec_file_res.string(), APP_NAME) : Autostart::disable(APP_NAME);
+            if (res)
+            {
+                spdlog::info("Set autostart for {} to {}", APP_NAME, autostart);
+            }
+            else
+            {
+                std::string reason = Autostart::getLastError(); // Assumes such a function exists
+                spdlog::error("Failed to set autostart to {} for {}: {}", autostart, APP_NAME, reason);
+            }
+        }
+
+        ImGui::SameLine();
 
         if (ImGui::Button("Minimize to Toolbar"))
         {
@@ -34,16 +54,14 @@ int main(int argc, char *argv[])
             minimizeToTray(window);
         }
 
-        static bool autostart = false;
-        if (ImGui::Checkbox("Autostart", &autostart))
-        {
-        }
+        ImGui::SeparatorText("General Device Settings");
 
-        static bool startMinimized = false;
-        if (ImGui::Checkbox("Start minimized", &startMinimized))
-        {
-        }
+        static std::string hostname;
+        ImGui::Text("Hostname", "");
+        ImGui::SameLine();
+        ImGui::InputTextWithHint("", "LED Matrix Hostname", &hostname);
 
+        ImGui::SeparatorText("Plugin Settings");
         const auto ctx = ImGui::GetCurrentContext();
         for (const auto &[name, plugin] : instance->get_plugins())
         {

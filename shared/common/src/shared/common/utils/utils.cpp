@@ -78,9 +78,8 @@ int get_random_number_inclusive(int start, int end) {
     return dist(engine);
 }
 
-
-std::optional<std::string> get_exec_dir() {
-    char buffer[PATH_BUF_SIZE];
+std::filesystem::path get_exec_file() {
+        char buffer[PATH_BUF_SIZE];
 
 #if defined(_WIN32)
     DWORD len = GetModuleFileNameA(NULL, buffer, sizeof(buffer));
@@ -97,5 +96,11 @@ std::optional<std::string> get_exec_dir() {
     #error Unsupported platform
 #endif
 
-    return std::filesystem::path(buffer).parent_path().string();
+    return std::filesystem::path(buffer);
+}
+
+std::optional<std::string> get_exec_dir() {
+    auto v = get_exec_file();
+
+    return v.parent_path().string();
 }
