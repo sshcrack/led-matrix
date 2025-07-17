@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.5.0)
 project(SharedToolsDesktop)
 
 set(CMAKE_CXX_STANDARD 23)
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
         src/shared/desktop/plugin_loader/loader.cpp
         src/shared/desktop/config.cpp
         src/shared/desktop/autostart.cpp
 )
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
