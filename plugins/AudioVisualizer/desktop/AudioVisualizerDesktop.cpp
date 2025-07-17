@@ -247,7 +247,7 @@ void AudioVisualizerDesktop::addSpectrumSettings()
     ImGui::SeparatorText("Audio Spectrum");
     if (!latestBands.empty())
     {
-        ImPlot::SetNextAxisToFit(ImAxis_X1);
+        ImPlot::SetNextAxesLimits(ImAxis_X1, 0.0, cfg.numBands, ImPlotCond_Always);
         ImPlot::SetNextAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Always);
         if (ImPlot::BeginPlot("Spectrum", ImVec2(-1,0), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock | ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations))
         {
