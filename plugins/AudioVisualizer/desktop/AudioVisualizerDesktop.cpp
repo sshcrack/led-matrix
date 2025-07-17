@@ -247,11 +247,14 @@ void AudioVisualizerDesktop::addSpectrumSettings()
     ImGui::SeparatorText("Audio Spectrum");
     if (!latestBands.empty())
     {
+        ImPlot::SetNextAxisToFit(ImAxis_X1);
+        ImPlot::SetNextAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Always);
         if (ImPlot::BeginPlot("Spectrum", ImVec2(-1,0), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock | ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations))
         {
             std::vector<float> x(latestBands.size());
             for (size_t i = 0; i < x.size(); ++i)
                 x[i] = static_cast<float>(i);
+
             ImPlot::PlotBars("Bands", x.data(), latestBands.data(), static_cast<int>(latestBands.size()), 1);
             ImPlot::EndPlot();
         }
