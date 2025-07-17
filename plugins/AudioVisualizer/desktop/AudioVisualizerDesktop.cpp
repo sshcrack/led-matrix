@@ -247,8 +247,8 @@ void AudioVisualizerDesktop::addSpectrumSettings()
     ImGui::SeparatorText("Audio Spectrum");
     if (!latestBands.empty())
     {
-        ImPlot::SetNextAxesLimits(ImAxis_X1, 0.0, cfg.numBands, ImPlotCond_Always);
-        ImPlot::SetNextAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Always);
+        ImPlot::SetNextAxisLimits(ImAxis_X1, 0.0, cfg.numBands, ImPlotCond_Once);
+        ImPlot::SetNextAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Once);
         if (ImPlot::BeginPlot("Spectrum", ImVec2(-1,0), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock | ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations))
         {
             std::vector<float> x(latestBands.size());
