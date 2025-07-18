@@ -39,4 +39,19 @@ if(ENABLE_DESKTOP)
         target_link_libraries(AudioVisualizer PRIVATE implot)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
+
+
+        if(WIN32)
+                #TODO this is probably not the best way to install all libraries in the bin directory
+                get_target_property(PORTAUDIO_DLL portaudio IMPORTED_LOCATION_RELEASE)
+                if(PORTAUDIO_DLL)
+                        install(FILES "${PORTAUDIO_DLL}" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+                endif()
+
+
+                get_target_property(FFTW_DLL FFTW3::fftw3f IMPORTED_LOCATION_RELEASE)
+                if(FFTW_DLL)
+                        install(FILES "${FFTW_DLL}" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+                endif()
+        endif()
 endif()

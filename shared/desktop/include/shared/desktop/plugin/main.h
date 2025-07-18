@@ -9,15 +9,16 @@
 
 using std::vector;
 using std::string;
+namespace fs = std::filesystem;
 
 namespace Plugins {
     class DesktopPlugin {
         //virtual vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper *)> > create_some_provider() = 0;
 
     public:
-        std::string _plugin_location;
+        fs::path _plugin_location;
 
-        [[nodiscard]] std::string get_plugin_location() const {
+        [[nodiscard]] fs::path get_plugin_location() const {
             return _plugin_location;
         }
 

@@ -113,7 +113,8 @@ void PluginManager::initialize() {
         }
 
         std::string pl_copy = pl_name;
-        std::string libName = Plugins::get_lib_name(pl_copy);
+        auto plPath = std::filesystem::path(pl_copy);
+        std::string libName = Plugins::get_lib_name(plPath);
 
         std::string cn = "create" + libName;
         std::string dn = "destroy" + libName;
