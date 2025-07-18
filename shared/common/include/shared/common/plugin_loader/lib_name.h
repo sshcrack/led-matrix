@@ -6,8 +6,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 namespace Plugins {
-    std::string get_lib_name(std::string &path);
+    std::string get_lib_name(std::filesystem::path &path);
 }
 
