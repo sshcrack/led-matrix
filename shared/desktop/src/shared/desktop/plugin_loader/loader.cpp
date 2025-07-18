@@ -212,7 +212,6 @@ void PluginManager::initialize() {
     }
 
     info("Loaded a total of {} plugins.", loaded_plugins.size());
-    info("Loading providers to register...");
 
     initialized = true;
 }

@@ -2,18 +2,6 @@ cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_CXX_STANDARD 23)
 
-macro(SUBDIRLIST result curdir)
-    file(GLOB children RELATIVE ${curdir} ${curdir}/*)
-    set(dirlist "")
-    foreach(child ${children})
-        if(IS_DIRECTORY ${curdir}/${child})
-            list(APPEND dirlist ${child})
-        endif()
-    endforeach()
-    set(${result} ${dirlist})
-endmacro()
-
-SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Define a function to register plugins
 function(register_plugin PLUGIN_NAME)
@@ -81,6 +69,7 @@ function(register_plugin PLUGIN_NAME)
     )
 endfunction()
 
+subdirlist(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 foreach(P_DIR ${SUBDIRS})
     get_filename_component(P_DIR_NAME ${P_DIR} NAME)
     add_subdirectory(${P_DIR_NAME})

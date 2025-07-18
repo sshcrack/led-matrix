@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <iostream>
 
+#define M_PI 3.14159265358979323846264f
+
 AudioProcessor::AudioProcessor(AudioVisualizerConfig &config, uint32_t sampleRate)
     : fftInput_(new fftwf_complex[FFT_SIZE]),
       fftOutput_(new fftwf_complex[FFT_SIZE]),

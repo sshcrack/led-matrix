@@ -37,7 +37,7 @@ static bool showMainWindow = false;
 using namespace Config;
 int main(int argc, char *argv[])
 {
-    HelloImGui::SetAssetsFolder(get_exec_dir() / ".." / "assets");
+    HelloImGui::SetAssetsFolder((get_exec_dir() / ".." / "assets").string());
 
     // Single instance manager
     SingleInstanceManager* instanceManager = nullptr;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         ImGui::SameLine();
 
         static std::string hostname = generalCfg.getHostname();
-        if (ImGui::InputTextWithHint("", "hostname:port", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostPortFilter))
+        if (ImGui::InputTextWithHint("##HostnamePort", "hostname:port", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostPortFilter))
         {
             generalCfg.setHostnameAndPort(hostname);
         }
