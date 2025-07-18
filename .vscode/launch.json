@@ -1,73 +1,69 @@
 {
-    "configurations": [
-      {
-        "name": "Desktop (gdb)",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/desktop_build/install/bin/main",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}/desktop_build/install/bin",
-        "environment": [
-          {
-            "name": "SPDLOG_LEVEL",
-            "value": "trace"
-          },
-        ],
-        "externalConsole": false,
-        "MIMode": "gdb",
-        "preLaunchTask": "CMake: Desktop Build & Install",
-        "setupCommands": [
-            {
-                "description": "Enable pretty-printing for gdb",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Set Disassembly Flavor to Intel",
-                "text": "-gdb-set disassembly-flavor intel",
-                "ignoreFailures": true
-            }
-        ]
+  "configurations": [
+    {
+      "name": "Desktop (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/desktop_build/install/bin/main",
+      "windows": {
+        "program": "${workspaceFolder}/desktop_build/install/bin/main.exe"
       },
-      {
-        "name": "Emulator (gdb)",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/emulator_build/install/main",
-        "args": ["--led-chain", "2", "--led-parallel", "2", "--led-rows", "64", "--led-cols", "64", "--led-emulator", "--led-emulator-scale=4"],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}/emulator_build/install",
-        "envFile": "${workspaceFolder}/.env",
-        "environment": [
-          {
-            "name": "CROSS_COMPILE_ROOT",
-            "value": "/home/hendrik/Documents/cpp/rpi-cross-compile"
-          },
-          {
-            "name": "VCPKG_ROOT",
-            "value": "/home/hendrik/Documents/vcpkg"
-          },
-          {
-            "name": "VCPKG_BINARY_SOURCES",
-            "value": "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,read"
-          }
-        ],
-        "externalConsole": false,
-        "MIMode": "gdb",
-        "preLaunchTask": "CMake: Emulator Build & Install",
-        "setupCommands": [
-            {
-                "description": "Enable pretty-printing for gdb",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Set Disassembly Flavor to Intel",
-                "text": "-gdb-set disassembly-flavor intel",
-                "ignoreFailures": true
-            }
-        ]
-      }
-    ]
-  }
+      "args": [],
+      "cwd": "${workspaceFolder}/desktop_build/install/bin",
+      "env": {
+        "SPDLOG_LEVEL": "trace"
+      },
+      "preLaunchTask": "CMake: Desktop Build & Install"
+    },
+    {
+      "name": "Emulator (gdb)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/emulator_build/install/main",
+      "args": [
+        "--led-chain",
+        "2",
+        "--led-parallel",
+        "2",
+        "--led-rows",
+        "64",
+        "--led-cols",
+        "64",
+        "--led-emulator",
+        "--led-emulator-scale=4"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/emulator_build/install",
+      "envFile": "${workspaceFolder}/.env",
+      "environment": [
+        {
+          "name": "CROSS_COMPILE_ROOT",
+          "value": "/home/hendrik/Documents/cpp/rpi-cross-compile"
+        },
+        {
+          "name": "VCPKG_ROOT",
+          "value": "/home/hendrik/Documents/vcpkg"
+        },
+        {
+          "name": "VCPKG_BINARY_SOURCES",
+          "value": "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,read"
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "preLaunchTask": "CMake: Emulator Build & Install",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set Disassembly Flavor to Intel",
+          "text": "-gdb-set disassembly-flavor intel",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

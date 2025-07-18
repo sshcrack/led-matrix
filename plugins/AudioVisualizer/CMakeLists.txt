@@ -33,12 +33,9 @@ register_plugin(AudioVisualizer
 if(ENABLE_DESKTOP)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
         find_package(FFTW3f CONFIG REQUIRED)
+        find_package(portaudio CONFIG REQUIRED)
 
-        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0) # This calls pkgconfig with appropriate arguments
-        # Use results of pkg_check_modules() call.
-        include_directories(${PORTAUDIO_INCLUDE_DIRS})
-
-        target_link_libraries(AudioVisualizer PRIVATE ${PORTAUDIO_LIBRARIES})
+        target_link_libraries(AudioVisualizer PRIVATE portaudio)
         target_link_libraries(AudioVisualizer PRIVATE implot)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)

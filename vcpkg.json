@@ -25,7 +25,14 @@
         {
           "name": "hello-imgui",
           "features": ["opengl3-binding", "glfw-binding"]
-        },
+        }
+      ]
+    },
+
+
+    "audio-visualizer-desktop": {
+      "description": "AudioVisualizer plugin for desktop applications.",
+      "dependencies": [
         "portaudio",
         "fftw3"
       ]

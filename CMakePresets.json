@@ -45,8 +45,8 @@
         },
         {
             "name": "desktop-windows",
-            "inherits": "desktop",
-            "architecture": "x64"
+            "architecture": "x64",
+            "inherits": "desktop"
         }
     ],
     "buildPresets": [

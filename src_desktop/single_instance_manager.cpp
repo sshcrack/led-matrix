@@ -69,7 +69,7 @@ void SingleInstanceManager::createHiddenWindow() {
     SetWindowLongPtrA((HWND)_window, GWLP_USERDATA, (LONG_PTR)this);
 }
 
-long CALLBACK SingleInstanceManager::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+long long CALLBACK SingleInstanceManager::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == WM_USER + 1) {
         auto* self = reinterpret_cast<SingleInstanceManager*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));
         if (self && self->_focusCallback) self->_focusCallback();

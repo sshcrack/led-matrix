@@ -21,6 +21,29 @@ endif()
 # Option to enable/disable CORS headers
 option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
 
+
+include(cmake/subdirlist.cmake)
+include(cmake/vcpkg_features.cmake)
+
+subdirlist(PLUGIN_DIRS ${CMAKE_SOURCE_DIR}/plugins/)
+foreach(PLUGIN_NAME ${PLUGIN_DIRS})
+    # Convert plugin name to kebab-case
+    to_kebab_case(${PLUGIN_NAME} PLUGIN_NAME_KABAB)
+    if(ENABLE_DESKTOP)
+        set(FEATURE_NAME "${PLUGIN_NAME_KABAB}-desktop")
+        check_vcpkg_feature_exists("${FEATURE_NAME}" FEATURE_EXISTS)
+        if(FEATURE_EXISTS)
+            list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
+        endif()
+    else()
+        set(FEATURE_NAME "${PLUGIN_NAME_KABAB}-matrix")
+        check_vcpkg_feature_exists("${FEATURE_NAME}" FEATURE_EXISTS)
+        if(FEATURE_EXISTS)
+            list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
+        endif()
+    endif()
+endforeach()
+
 project(main VERSION 1.1.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
@@ -70,15 +93,16 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 if(ENABLE_DESKTOP)
-    find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
+    if(NOT WIN32)
+        find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
 
-    pkg_check_modules(DBUS REQUIRED dbus-1) # This calls pkgconfig with appropriate arguments
-    # Use results of pkg_check_modules() call.
-    include_directories(${DBUS_INCLUDE_DIRS})
-    link_directories(${DBUS_LIBRARY_DIRS})
+        pkg_check_modules(DBUS REQUIRED dbus-1) # This calls pkgconfig with appropriate arguments
+        # Use results of pkg_check_modules() call.
+        include_directories(${DBUS_INCLUDE_DIRS})
+        link_directories(${DBUS_LIBRARY_DIRS})
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${DBUS_LIBRARIES})
-
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${DBUS_LIBRARIES})
+    endif()
 
     add_subdirectory(thirdparty/traypp)
     add_subdirectory(thirdparty)
@@ -115,7 +139,7 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 if(ENABLE_DESKTOP)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop )
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop)
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
 else()
     target_include_directories(${PROJECT_NAME} PRIVATE
