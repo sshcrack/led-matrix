@@ -225,11 +225,11 @@ void AudioVisualizerDesktop::addDeviceSettings()
     {
         for (const auto &device : devices)
         {
-            std::string deviceName = device.name;
-            if (ImGui::Selectable(deviceName.c_str()))
-                cfg.deviceName = deviceName;
+            std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
+            if (ImGui::Selectable(deviceNameWithId.c_str()))
+                cfg.deviceName = device.name;
 
-            if (cfg.deviceName == deviceName)
+            if (cfg.deviceName == device.name)
                 ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
