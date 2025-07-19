@@ -86,16 +86,16 @@ namespace AudioRecorder
         double rate = info->defaultSampleRate;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = 1;
+        inputParams.channelCount = info->maxOutputChannels;
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
 
-        spdlog::info("Trying to open device {}: {} at {} Hz", deviceIndex, info->name, rate);
+        spdlog::info("Trying to open device {}: {} at {} Hz with {} channels", deviceIndex, info->name, rate, inputParams.channelCount);
         PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, rate);
         if (formatResult != paFormatIsSupported)
             {
-            spdlog::error("No supported sample rate for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
+            spdlog::error("Format isn't supported for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
             return false;
         }
 
@@ -104,7 +104,7 @@ namespace AudioRecorder
 #ifdef _WIN32
 #ifdef PA_USE_WASAPI
         // WASAPI loopback for output device
-        inputParams.hostApiSpecificStreamInfo = PaWasapi_GetLoopbackStreamInfo();
+        //inputParams.hostApiSpecificStreamInfo = PaWasapi_GetLoopbackStreamInfo();
 #endif
 #endif
 

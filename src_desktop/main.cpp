@@ -192,7 +192,9 @@ int main(int argc, char *argv[])
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     spdlog::info("Joining tray thread...");
+#ifndef _WIN32
     trayThread.join();
+#endif
     delete cfg;
     pl->destroy_plugins();
     delete instanceManager;

@@ -38,6 +38,7 @@ if(ENABLE_DESKTOP)
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0) # This calls pkgconfig with appropriate arguments
 
         if(WIN32)
+                target_compile_definitions(AudioVisualizer PRIVATE PA_USE_WASAPI)
                 target_link_libraries(AudioVisualizer PRIVATE portaudio)
         else()
                 target_link_libraries(AudioVisualizer PRIVATE portaudio_static)
