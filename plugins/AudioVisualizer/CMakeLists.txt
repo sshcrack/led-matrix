@@ -37,7 +37,11 @@ if(ENABLE_DESKTOP)
 
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0) # This calls pkgconfig with appropriate arguments
 
-        target_link_libraries(AudioVisualizer PRIVATE portaudio_static)
+        if(WIN32)
+                target_link_libraries(AudioVisualizer PRIVATE portaudio)
+        else()
+                target_link_libraries(AudioVisualizer PRIVATE portaudio_static)
+        endif()
         target_link_libraries(AudioVisualizer PRIVATE implot)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
