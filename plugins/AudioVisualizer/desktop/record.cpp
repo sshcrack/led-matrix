@@ -33,7 +33,7 @@ namespace AudioRecorder
         for (int i = 0; i < numDevices; ++i)
         {
             const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
-            if (info && info->maxInputChannels > 0)
+            if (info && info->maxOutputChannels > 0)
             {
                 devices.push_back({i, info->name});
             }
@@ -72,15 +72,18 @@ namespace AudioRecorder
 
     bool Recorder::startRecording(int deviceIndex)
     {
-        if (recording)
+        if (recording) {
+            spdlog::warn("Already recording. Aborting...");
             return false;
+        }
         const PaDeviceInfo *info = Pa_GetDeviceInfo(deviceIndex);
-        if (!info)
+        if (!info) {
+            spdlog::warn("Couldn't get device info for index {}. Aborting...", deviceIndex);
             return false;
+        }
 
         // Find a supported sample rate
-        double sampleRates[] = {44100, 48000, 96000, 22050, 16000};
-        double chosenRate = 0;
+        double rate = info->defaultSampleRate;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
         inputParams.channelCount = 1;
@@ -88,23 +91,15 @@ namespace AudioRecorder
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
 
-        for (double rate : sampleRates)
-        {
-            PaError formatSupported = Pa_IsFormatSupported(&inputParams, nullptr, rate);
-            if (formatSupported == paFormatIsSupported)
+        spdlog::info("Trying to open device {}: {} at {} Hz", deviceIndex, info->name, rate);
+        PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, rate);
+        if (formatResult != paFormatIsSupported)
             {
-                chosenRate = rate;
-                break;
-            }
-        }
-
-        if (chosenRate == 0)
-        {
-            spdlog::error("No supported sample rate for device {}", deviceIndex);
+            spdlog::error("No supported sample rate for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
             return false;
         }
 
-        sampleRate = chosenRate;
+        sampleRate = rate;
 
 #ifdef _WIN32
 #ifdef PA_USE_WASAPI
@@ -116,7 +111,7 @@ namespace AudioRecorder
         PaError err = Pa_OpenStream(reinterpret_cast<PaStream **>(&stream),
                                     &inputParams,
                                     nullptr,
-                                    chosenRate,
+                                    rate,
                                     paFramesPerBufferUnspecified,
                                     paNoFlag,
                                     audioCallback,

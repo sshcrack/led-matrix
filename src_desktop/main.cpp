@@ -189,7 +189,9 @@ int main(int argc, char *argv[])
 #endif
 
     HelloImGui::Run(runnerParams);
+    spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
+    spdlog::info("Joining tray thread...");
     trayThread.join();
     delete cfg;
     pl->destroy_plugins();
