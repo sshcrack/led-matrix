@@ -1,6 +1,7 @@
 #include "single_instance_manager.h"
 #include <stdexcept>
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -84,7 +85,10 @@ void SingleInstanceManager::setupDbus() {
     DBusError err;
     dbus_error_init(&err);
     DBusConnection* conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
-    if (!conn) throw std::runtime_error("Failed to connect to DBus");
+    if (!conn) {
+        spdlog::warn("Failed to connect to DBus");
+        return;
+    }
     std::string busName = "org." + _appId + ".SingleInstance";
     int ret = dbus_bus_request_name(conn, busName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE, &err);
     if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
