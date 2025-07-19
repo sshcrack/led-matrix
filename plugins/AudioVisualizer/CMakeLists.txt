@@ -35,10 +35,14 @@ if(ENABLE_DESKTOP)
         find_package(FFTW3f CONFIG REQUIRED)
         find_package(portaudio CONFIG REQUIRED)
 
+        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0) # This calls pkgconfig with appropriate arguments
+
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
         target_link_libraries(AudioVisualizer PRIVATE implot)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
+
+
 
 
         if(WIN32)
