@@ -1,18 +1,42 @@
 {
   "dependencies": [
-    "cpr",
     "fmt",
-    "libxml2",
     "nlohmann-json",
     "spdlog",
-    "graphicsmagick",
-    "restinio"
+    "picosha2"
   ],
   "features": {
-      "emulator": {
-        "description": "Add emulator support",
+    "matrix": {
+      "description": "Add matrix support",
+      "dependencies": [
+        "graphicsmagick",
+        "restinio",
+        "libxml2",
+        "cpr"
+      ]
+    },
+    "emulator": {
+        "description": "Dependencies needed for the emulator application.",
         "dependencies": ["sdl2"]
-      }
+      },
+    "desktop": {
+      "description": "Dependencies needed for the desktop application. The portaudio/fftw3 dependency is only needed for the AudioVisualizer plugin.",
+      "dependencies": [
+        {
+          "name": "hello-imgui",
+          "features": ["opengl3-binding", "glfw-binding"]
+        }
+      ]
+    },
+
+
+    "audio-visualizer-desktop": {
+      "description": "AudioVisualizer plugin for desktop applications.",
+      "dependencies": [
+        "portaudio",
+        "fftw3"
+      ]
+    }
   },
   "name": "led-matrix",
   "version": "1.0.0"

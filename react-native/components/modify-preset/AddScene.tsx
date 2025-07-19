@@ -66,7 +66,7 @@ export default function AddScene({ scenes }: { scenes: ListScenes[] }) {
                     Toast.show({
                         type: "error",
                         text1: "Error adding scene",
-                        text2: "Scene not found"
+                        text2: "shared/matrix/Scene.h not found"
                     })
                     return
                 }

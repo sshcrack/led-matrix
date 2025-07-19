@@ -9,7 +9,6 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/PI.cmake",
                 "VCPKG_TARGET_TRIPLET": "arm64-rpi",
-                "CMAKE_MAKE_PROGRAM": "ninja",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/weather-overview/fonts"
             }
@@ -25,6 +24,29 @@
                 "ENABLE_CORS": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
+        },
+        {
+            "name": "desktop",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/desktop_build",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "ENABLE_DESKTOP": true
+            }
+        },
+        {
+            "name": "desktop-linux",
+            "inherits": "desktop",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            }
+        },
+        {
+            "name": "desktop-windows",
+            "architecture": "x64",
+            "inherits": "desktop"
         }
     ],
     "buildPresets": [
@@ -35,6 +57,14 @@
         {
             "name": "emulator",
             "configurePreset": "emulator"
+        },
+        {
+            "name": "desktop-linux",
+            "configurePreset": "desktop-linux"
+        },
+        {
+            "name": "desktop-windows",
+            "configurePreset": "desktop-windows"
         }
     ],
     "packagePresets": [
@@ -54,6 +84,23 @@
                 "DEB"
             ],
             "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
+        },
+        {
+            "name": "desktop-linux",
+            "configurePreset": "desktop-linux",
+            "generators": [
+                "TGZ",
+                "DEB"
+            ],
+            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
+        },
+        {
+            "name": "desktop-windows",
+            "configurePreset": "desktop-windows",
+            "generators": [
+                "ZIP"
+            ],
+            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
         }
     ]
 }

@@ -1,12 +1,48 @@
 cmake_minimum_required(VERSION 3.5.0)
+
+option(ENABLE_DESKTOP "Build desktop application" OFF)
+
+if(ENABLE_DESKTOP)
+    list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
+else()
+    list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
+endif()
+
 # Option to enable/disable emulator
 option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 if(ENABLE_EMULATOR)
     list(APPEND VCPKG_MANIFEST_FEATURES "emulator")
 endif()
 
+if(ENABLE_EMULATOR AND ENABLE_DESKTOP)
+    message(FATAL_ERROR "Cannot enable both ENABLE_EMULATOR and ENABLE_DESKTOP at the same time. Please choose one.")
+endif()
+
 # Option to enable/disable CORS headers
 option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
+
+
+include(cmake/subdirlist.cmake)
+include(cmake/vcpkg_features.cmake)
+
+subdirlist(PLUGIN_DIRS ${CMAKE_SOURCE_DIR}/plugins/)
+foreach(PLUGIN_NAME ${PLUGIN_DIRS})
+    # Convert plugin name to kebab-case
+    to_kebab_case(${PLUGIN_NAME} PLUGIN_NAME_KABAB)
+    if(ENABLE_DESKTOP)
+        set(FEATURE_NAME "${PLUGIN_NAME_KABAB}-desktop")
+        check_vcpkg_feature_exists("${FEATURE_NAME}" FEATURE_EXISTS)
+        if(FEATURE_EXISTS)
+            list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
+        endif()
+    else()
+        set(FEATURE_NAME "${PLUGIN_NAME_KABAB}-matrix")
+        check_vcpkg_feature_exists("${FEATURE_NAME}" FEATURE_EXISTS)
+        if(FEATURE_EXISTS)
+            list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
+        endif()
+    endif()
+endforeach()
 
 project(main VERSION 1.1.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
@@ -21,32 +57,33 @@ if(SKIP_MS_WAIT)
     add_definitions(-DSKIP_MS_WAIT)
 endif()
 
-# Add installation paths
-include(GNUInstallDirs)
-
 # Set RPATH settings
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-file(GLOB_RECURSE SOURCES
-    src/*.c*
-)
-
-# Pass ENABLE_EMULATOR option to the subproject
-add_subdirectory(rpi-rgb-led-matrix)
-# Installation configuration
-include(GNUInstallDirs)
-
-install(TARGETS rpi-rgb-led-matrix
-    EXPORT rpi-rgb-led-matrixTargets
-    LIBRARY DESTINATION "."
-    ARCHIVE DESTINATION "."
-    RUNTIME DESTINATION "."
-)
-
 add_subdirectory(shared)
+if(ENABLE_DESKTOP)
+    file(GLOB_RECURSE SOURCES
+        src_desktop/*.c*
+    )
+else()
+    file(GLOB_RECURSE SOURCES
+        src_matrix/*.c*
+    )
+    add_subdirectory(thirdparty/rpi-rgb-led-matrix)
+
+    install(TARGETS rpi-rgb-led-matrix
+        EXPORT rpi-rgb-led-matrixTargets
+        LIBRARY DESTINATION "."
+        ARCHIVE DESTINATION "."
+        RUNTIME DESTINATION "."
+    )
+endif()
+
+
+
 
 # Adding plugins
 add_subdirectory(plugins)
@@ -55,10 +92,42 @@ add_subdirectory(plugins)
 add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
+if(ENABLE_DESKTOP)
+    if(NOT WIN32)
+        find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+        pkg_check_modules(DBUS REQUIRED dbus-1) # This calls pkgconfig with appropriate arguments
+        # Use results of pkg_check_modules() call.
+        include_directories(${DBUS_INCLUDE_DIRS})
+        link_directories(${DBUS_LIBRARY_DIRS})
+
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${DBUS_LIBRARIES})
+    endif()
+
+    add_subdirectory(thirdparty/traypp)
+    add_subdirectory(thirdparty)
+
+    find_package(hello-imgui CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray implot)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
+    )
+
+    install(
+        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
+        DESTINATION assets
+    )
+
+    # Install required DLLs on Windows automatically
+    if(WIN32)
+        # Install all DLLs from the build output directory
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/"
+            DESTINATION "bin"
+            FILES_MATCHING PATTERN "*.dll"
+            PATTERN "*.pdb" EXCLUDE
+        )
+    endif()
+endif()
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
@@ -68,23 +137,40 @@ if(ENABLE_CORS)
     target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
 endif()
 
-# Require SharedTools
-target_link_libraries(${PROJECT_NAME} PRIVATE SharedTools)
-target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
+target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
+if(ENABLE_DESKTOP)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
+else()
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
 
-# ImageMagick
+    target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsMatrix)
+    # HTTP Server
+    find_package(restinio REQUIRED)
 
-find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+    target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
+
+    # ImageMagick
+
+    find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+
+    # HTTP Requests
+
+    find_package(cpr CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/include
+    )
+endif()
 
 # spdlog
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
-
-# HTTP Server
-find_package(restinio REQUIRED)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 
 # JSON
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -94,13 +180,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 # Link plugins as well
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
 
-# HTTP Requests
-
-find_package(cpr CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 
-if(NOT ENABLE_EMULATOR)
+if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
     find_package(WiringPi)
     if(WiringPi_FOUND)
         include_directories(${WiringPi_INCLUDE_DIR})
@@ -110,7 +192,7 @@ endif()
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
-if(NOT SKIP_WEB_BUILD)
+if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     # Check for Node.js
     find_program(NODEJS node)
     if(NOT NODEJS)
@@ -142,38 +224,65 @@ if(NOT SKIP_WEB_BUILD)
     add_dependencies(${PROJECT_NAME} react_native_build)
 endif()
 
+set(INSTALL_DESTINATION ".")
+if(ENABLE_DESKTOP)
+    set(INSTALL_DESTINATION "bin")
+endif()
+
 # Install target
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION "."
+    DESTINATION ${INSTALL_DESTINATION}
 )
 
 # Create plugins and fonts directories
 install(DIRECTORY DESTINATION "plugins")
 
-# Install web files
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
-    DESTINATION web
-)
+if(NOT ENABLE_DESKTOP)
+    # Install web files
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
+        DESTINATION web
+    )
 
-# Add sync to RPI if enabled
-option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)
-if(SYNC_TO_RPI)
-    install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
+    # Add sync to RPI if enabled
+    option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)
+    if(SYNC_TO_RPI)
+        install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
+    endif()
 endif()
 
-# -------------------
-# CPack configuration
-# -------------------
-include(InstallRequiredSystemLibraries)
-set(CPACK_PACKAGE_NAME "led-matrix")
-set(CPACK_PACKAGE_VENDOR "sshcrack")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project")
-set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
-set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
-set(CPACK_GENERATOR "TGZ")
-include(CPack)
+if(ENABLE_DESKTOP)
+
+    # -------------------
+    # CPack configuration
+    # -------------------
+    include(InstallRequiredSystemLibraries)
+    set(CPACK_PACKAGE_NAME "led-matrix-desktop")
+    set(CPACK_PACKAGE_VENDOR "sshcrack")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project Desktop Application (used to control led-matrix)")
+    set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+    set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+    set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+    set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+    set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
+    set(CPACK_GENERATOR "TGZ ZIP DEB")
+    include(CPack)
+else()
+
+    # -------------------
+    # CPack configuration
+    # -------------------
+    include(InstallRequiredSystemLibraries)
+    set(CPACK_PACKAGE_NAME "led-matrix")
+    set(CPACK_PACKAGE_VENDOR "sshcrack")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project")
+    set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+    set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+    set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+    set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+    set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
+    set(CPACK_GENERATOR "TGZ")
+    include(CPack)
+endif()
 
