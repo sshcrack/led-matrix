@@ -13,3 +13,4 @@ heaptrack.sh
 emulator_build
 desktop_build
 __pycache__
+LED_Matrix_Controller.ini
