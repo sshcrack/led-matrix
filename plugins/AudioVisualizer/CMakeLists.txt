@@ -9,8 +9,8 @@ register_plugin(AudioVisualizer
         desktop/AudioVisualizerDesktop.h
         desktop/record.cpp
         desktop/record.h
-        desktop/audio_processor.h
-        desktop/audio_processor.cpp
+        desktop/AudioProcessor.h
+        desktop/AudioProcessor.cpp
         desktop/frequency_analyzer/BarkAnalyzer.h
         desktop/frequency_analyzer/BarkAnalyzer.cpp
         desktop/frequency_analyzer/factory.h
