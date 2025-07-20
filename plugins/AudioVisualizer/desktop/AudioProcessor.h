@@ -22,6 +22,8 @@ public:
     std::expected<void, std::string> startProcessingThread(int deviceIdx);
     void stopProcessingThread() {
         threadRunning = false;
+        processingThread.join();
+        recorder->stopRecording();
     }
 
     std::vector<float> getLatestBands() {

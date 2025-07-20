@@ -65,7 +65,7 @@ void Config::General::setAutostartEnabled(bool enabled)
     }
     else
     {
-        std::unique_lock<std::shared_mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         autostart = enabled;
         spdlog::info("Autostart set to {}", enabled);
     }
@@ -73,19 +73,19 @@ void Config::General::setAutostartEnabled(bool enabled)
 
 const std::string &Config::General::getHostname() const
 {
-    std::shared_lock<std::shared_mutex> lock(mutex_);
+    std::shared_lock lock(mutex_);
     return hostname;
 }
 
 std::string Config::General::getHostnameCopy() const
 {
-    std::shared_lock<std::shared_mutex> lock(mutex_);
+    std::shared_lock lock(mutex_);
     return hostname;
 }
 
 void Config::General::setHostnameAndPort(const std::string &hostname)
 {
-    std::unique_lock<std::shared_mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     this->hostname = hostname;
 }
 

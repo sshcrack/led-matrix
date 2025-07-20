@@ -54,7 +54,7 @@ int main(const int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    for (const auto [plName, plugin] : pl->get_plugins())
+    for (const auto& [plName, plugin] : pl->get_plugins())
     {
         plugin->loadConfig(cfg->getPluginSetting(plName));
     }
@@ -77,19 +77,17 @@ int main(const int argc, char *argv[])
         General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
 
-        ImGui::Text("LED Matrix (required)", "");
-        ImGui::SameLine();
-
         static std::string hostname = generalCfg.getHostname();
-        if (ImGui::InputTextWithHint("##HostnamePort", "hostname:port", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostPortFilter))
+        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter))
         {
+            std::cout << "Hostname changed to: " << hostname << std::endl;
             generalCfg.setHostnameAndPort(hostname);
         }
 
         if (hostname.empty())
         {
-            ImVec2 min = ImGui::GetItemRectMin();
-            ImVec2 max = ImGui::GetItemRectMax();
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
             draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
@@ -106,7 +104,7 @@ int main(const int argc, char *argv[])
         static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
         {
             ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-            for (const auto currPair : plugins)
+            for (const auto& currPair : plugins)
             {
                 std::string currName = currPair.first;
                 if (ImGui::Selectable(currName.c_str(), selected.first == currName))
@@ -127,7 +125,8 @@ int main(const int argc, char *argv[])
 
     };
 
-    Tray::Tray tray(DISPLAY_APP_NAME, "icon.ico");
+    const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
+    Tray::Tray tray(DISPLAY_APP_NAME, trayIco);
     tray.addEntry(
         Tray::Button(
             "Show Window",
@@ -162,12 +161,12 @@ int main(const int argc, char *argv[])
     {
         General &generalCfg = cfg->getGeneralConfig();
         bool autostartEnabled = generalCfg.isAutostartEnabled();
-        if (ImGui::MenuItem("Start with System", NULL, autostartEnabled))
+        if (ImGui::MenuItem("Start with System", nullptr, autostartEnabled))
         {
             generalCfg.setAutostartEnabled(!autostartEnabled);
         }
 
-        if (ImGui::MenuItem("Save Config", NULL, false))
+        if (ImGui::MenuItem("Save Config", nullptr, false))
         {
             cfg->saveConfig();
         }
@@ -175,7 +174,7 @@ int main(const int argc, char *argv[])
 
     runnerParams.callbacks.PostInit = [&]()
     {
-        GLFWwindow *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+        auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
     };
 

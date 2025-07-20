@@ -41,6 +41,7 @@ private:
     std::unique_ptr<AudioProcessor> audioProcessor;
     std::vector<float> latestBands;
     std::string lastError;
+    bool initialConnect = true;
 
 protected:
     void addConnectionSettings();
