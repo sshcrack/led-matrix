@@ -33,7 +33,6 @@
     "audio-visualizer-desktop": {
       "description": "AudioVisualizer plugin for desktop applications.",
       "dependencies": [
-        "portaudio",
         "fftw3"
       ]
     }

@@ -31,19 +31,36 @@ register_plugin(AudioVisualizer
 )
 
 if(ENABLE_DESKTOP)
-        find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
-        find_package(FFTW3f CONFIG REQUIRED)
-        find_package(portaudio CONFIG REQUIRED)
+        # Setting up PortAudio
 
-        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0) # This calls pkgconfig with appropriate arguments
+        # Make lib static
+        set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
+
+
+        set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
 
         if(WIN32)
-                target_compile_definitions(AudioVisualizer PRIVATE PA_USE_WASAPI)
-                target_link_libraries(AudioVisualizer PRIVATE portaudio)
-        else()
-                target_link_libraries(AudioVisualizer PRIVATE portaudio_static)
+                set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
+                set(PA_USE_ASIO ON CACHE BOOL "" FORCE)
+                set(PA_USE_DS ON CACHE BOOL "" FORCE)
+                set(PA_USE_WDMKS ON CACHE BOOL "" FORCE)
+                set(PA_USE_WMME ON CACHE BOOL "" FORCE)
         endif()
+
+
+        add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_SOURCE_DIR}/thirdparty/portaudio/build)
+
+        target_link_libraries(AudioVisualizer PRIVATE portaudio)
+
+
+
+        
         target_link_libraries(AudioVisualizer PRIVATE implot)
+
+        find_package(FFTW3f CONFIG REQUIRED)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
 

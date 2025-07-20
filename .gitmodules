@@ -10,3 +10,6 @@
 [submodule "thirdparty/implot"]
 	path = thirdparty/implot
 	url = https://github.com/epezent/implot
+[submodule "thirdparty/portaudio"]
+	path = thirdparty/portaudio
+	url = https://github.com/PortAudio/portaudio

@@ -1,11 +1,13 @@
 #include "record.h"
 #ifdef _WIN32
+
 #include <windows.h>
 #include <portaudio.h>
 #include <iostream>
 #ifdef PA_USE_WASAPI
 #include <pa_win_wasapi.h>
 #endif
+
 #else
 #include <portaudio.h>
 #include <iostream>
@@ -33,7 +35,11 @@ namespace AudioRecorder
         for (int i = 0; i < numDevices; ++i)
         {
             const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
-            if (info && info->maxOutputChannels > 0)
+            if (!info)
+                continue;
+            bool hasInput = (info->maxInputChannels > 0);
+            int isLoop = PaWasapi_IsLoopback(i);
+            if (isLoop == 1)
             {
                 devices.push_back({i, info->name});
             }
@@ -72,12 +78,14 @@ namespace AudioRecorder
 
     bool Recorder::startRecording(int deviceIndex)
     {
-        if (recording) {
+        if (recording)
+        {
             spdlog::warn("Already recording. Aborting...");
             return false;
         }
         const PaDeviceInfo *info = Pa_GetDeviceInfo(deviceIndex);
-        if (!info) {
+        if (!info)
+        {
             spdlog::warn("Couldn't get device info for index {}. Aborting...", deviceIndex);
             return false;
         }
@@ -86,7 +94,7 @@ namespace AudioRecorder
         double rate = info->defaultSampleRate;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = info->maxOutputChannels;
+        inputParams.channelCount = info->maxInputChannels;
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
@@ -94,7 +102,7 @@ namespace AudioRecorder
         spdlog::info("Trying to open device {}: {} at {} Hz with {} channels", deviceIndex, info->name, rate, inputParams.channelCount);
         PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, rate);
         if (formatResult != paFormatIsSupported)
-            {
+        {
             spdlog::error("Format isn't supported for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
             return false;
         }
