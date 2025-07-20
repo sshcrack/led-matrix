@@ -80,20 +80,22 @@ void PluginManager::initialize()
 
     for (const auto &entry : fs::directory_iterator(plugin_dir))
     {
-        if (entry.is_regular_file())
-        {
-            if (entry.path().extension() == ".so" || entry.path().extension() == ".dll")
-            {
-                fs::path absolute = fs::absolute(entry.path());
-                libPaths.push_back(absolute);
-            }
-        }
+        if (!entry.is_directory())
+            continue;
+        fs::path plugin_dir_path = entry.path();
+#ifdef _WIN32
+        fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".dll");
+#else
+        fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".so");
+#endif
+
+        if (!fs::is_regular_file(plugin_path))
+            continue;
+
+        fs::path absolute = fs::absolute(plugin_path);
+        libPaths.push_back(absolute);
     }
 
-#ifdef _WIN32
-    std::wstring exe_dir = fs::absolute(get_exec_dir()).wstring();
-    SetDllDirectoryW(exe_dir.c_str());
-#endif
     // Loading libs to memory
     for (const fs::path &plPath : libPaths)
     {

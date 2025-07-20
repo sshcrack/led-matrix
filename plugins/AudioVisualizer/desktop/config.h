@@ -70,9 +70,9 @@ public:
     std::string deviceName;
 
     AudioVisualizerConfig() : port(8888), numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
-                              analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic), skipMissingBandsFromOutput(true) {}
+                              analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic),
+                              skipMissingBandsFromOutput(true), linearAmplitudeScaling(false), interpolateMissingBands(false) {}
 };
-
 
 NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
                                             {OneThirdOctaveBands, "1/3 Octave Bands"},
@@ -82,7 +82,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(FrequencyScale, {{Linear, "Linear"},
                                               {Logarithmic, "Logarithmic"},
                                               {Bark, "Bark"},
                                               {Mel, "Mel"}})
-
 
 static void from_json(const json &j, AudioVisualizerConfig &config)
 {

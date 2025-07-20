@@ -33,9 +33,9 @@ register_plugin(AudioVisualizer
 if(ENABLE_DESKTOP)
         # Setting up PortAudio
 
-        # Make lib static
-        set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-        set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        # Make lib shared
+        set(PA_BUILD_SHARED ON CACHE BOOL "" FORCE)
+        set(PA_BUILD_STATIC OFF CACHE BOOL "" FORCE)
 
 
         set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -44,10 +44,6 @@ if(ENABLE_DESKTOP)
 
         if(WIN32)
                 set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
-                set(PA_USE_ASIO ON CACHE BOOL "" FORCE)
-                set(PA_USE_DS ON CACHE BOOL "" FORCE)
-                set(PA_USE_WDMKS ON CACHE BOOL "" FORCE)
-                set(PA_USE_WMME ON CACHE BOOL "" FORCE)
         endif()
 
 
@@ -63,21 +59,4 @@ if(ENABLE_DESKTOP)
         find_package(FFTW3f CONFIG REQUIRED)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
-
-
-
-
-        if(WIN32)
-                #TODO this is probably not the best way to install all libraries in the bin directory
-                get_target_property(PORTAUDIO_DLL portaudio IMPORTED_LOCATION_RELEASE)
-                if(PORTAUDIO_DLL)
-                        install(FILES "${PORTAUDIO_DLL}" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-                endif()
-
-
-                get_target_property(FFTW_DLL FFTW3::fftw3f IMPORTED_LOCATION_RELEASE)
-                if(FFTW_DLL)
-                        install(FILES "${FFTW_DLL}" DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
-                endif()
-        endif()
 endif()
