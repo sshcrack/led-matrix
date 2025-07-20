@@ -8,7 +8,6 @@
 
 #endif
 
-#include <iostream>
 #include <spdlog/spdlog.h>
 
 namespace AudioRecorder
@@ -16,7 +15,7 @@ namespace AudioRecorder
     Recorder::Recorder() : recording(false), currentDeviceIndex(-1), stream(nullptr), sampleRate(44100.0)
     {
         Pa_Initialize();
-        audioChannel = new Channel<std::vector<float>>();
+        audioChannel = std::make_shared<Channel<std::vector<float>>>();
     }
 
     Recorder::~Recorder()
@@ -25,7 +24,6 @@ namespace AudioRecorder
             stopRecording();
         Pa_Terminate();
         audioChannel->close();
-        delete audioChannel;
     }
 
     std::vector<Recorder::DeviceInfo> Recorder::listDevices()
@@ -179,7 +177,7 @@ namespace AudioRecorder
         return sampleRate;
     }
 
-    Channel<std::vector<float>> *Recorder::getChannel() const {
+    std::shared_ptr<Channel<std::vector<float>>> Recorder::getChannel() const {
         return audioChannel;
     }
 }

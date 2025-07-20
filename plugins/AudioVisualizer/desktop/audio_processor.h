@@ -12,6 +12,8 @@ class AudioProcessor {
 public:
 
     AudioProcessor(AudioVisualizerConfig& config);
+    ~AudioProcessor();
+
     [[nodiscard]] std::vector<float> getBands();
     [[nodiscard]] bool getInterpolatedLog() const;
 
@@ -37,7 +39,7 @@ private:
     void threadFunction();
 
     std::vector<float> computeFFT(const std::vector<float> samples);
-    void applyAmplitudeProcessing(std::vector<float> &bands) const;
+    void applyAmplitudeProcessing(std::vector<float> &bands, const std::vector<float> &prevBands) const;
 
     std::unique_ptr<fftwf_complex[]> fftInput_;
     std::unique_ptr<fftwf_complex[]> fftOutput_;

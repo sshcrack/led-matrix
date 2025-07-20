@@ -17,13 +17,11 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c)
 
 AudioVisualizerDesktop::AudioVisualizerDesktop()
 {
-    Pa_Initialize();
     implotContext = ImPlot::CreateContext();
 }
 
 AudioVisualizerDesktop::~AudioVisualizerDesktop()
 {
-    Pa_Terminate();
 }
 
 int PortFilter(ImGuiInputTextCallbackData *data)
@@ -73,7 +71,7 @@ void AudioVisualizerDesktop::beforeExit() {
 
 void AudioVisualizerDesktop::addConnectionSettings()
 {
-    bool isProcessingRunning = audioProcessor->isThreadRunning();
+    const bool isProcessingRunning = audioProcessor->isThreadRunning();
     ImGui::SeparatorText("Connection Settings");
 
     static std::string port = std::to_string(cfg.port);
