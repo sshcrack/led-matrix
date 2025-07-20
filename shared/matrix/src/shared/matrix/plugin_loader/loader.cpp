@@ -87,18 +87,18 @@ void PluginManager::initialize() {
         plugin_dir = std::filesystem::path(raw_plugin);
     }
 
-    std::vector<std::string> filenames;
-    for (const auto & entry : fs::directory_iterator(plugin_dir)) {
-        if (entry.is_regular_file()) {
-            if(entry.path().extension() == ".so" || entry.path().extension() == ".dll") {
-                filenames.push_back(entry.path().string());
-            }
-        }
-    }
+    std::vector<std::string> libNames;
+    for (const auto &entry : fs::directory_iterator(plugin_dir))
+    {
+        if (!entry.is_directory())
+            continue;
+        fs::path plugin_dir_path = entry.path();
+        fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".so");
+        if (!fs::is_regular_file(plugin_path))
+            continue;
 
-    std::set<std::string> libNames;
-    for (const std::string &p_name: filenames) {
-        libNames.insert(p_name);
+        fs::path absolute = fs::absolute(plugin_path);
+        libPaths.push_back(absolute.string());
     }
 
     // Loading libs to memory

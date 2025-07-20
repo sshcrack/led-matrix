@@ -62,10 +62,15 @@ function(register_plugin PLUGIN_NAME)
         return()
     endif()
 
+    install(
+        FILES $<TARGET_RUNTIME_DLLS:${PLUGIN_NAME}>
+        DESTINATION plugins/${PLUGIN_NAME}
+    )
+
     install(TARGETS ${PLUGIN_NAME}
-        RUNTIME DESTINATION plugins # For DLLs and executables (Windows)
-        LIBRARY DESTINATION plugins # For shared libraries (.so/.dylib)
-        ARCHIVE DESTINATION plugins # For static libraries (.lib/.a)
+        RUNTIME DESTINATION plugins/${PLUGIN_NAME} # For DLLs and executables (Windows)
+        LIBRARY DESTINATION plugins/${PLUGIN_NAME} # For shared libraries (.so/.dylib)
+        ARCHIVE DESTINATION plugins/${PLUGIN_NAME} # For static libraries (.lib/.a)
     )
 endfunction()
 

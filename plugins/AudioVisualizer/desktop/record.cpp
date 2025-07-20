@@ -1,17 +1,14 @@
 #include "record.h"
 #ifdef _WIN32
-
 #include <windows.h>
-#include <portaudio.h>
-#include <iostream>
+
 #ifdef PA_USE_WASAPI
 #include <pa_win_wasapi.h>
 #endif
 
-#else
-#include <portaudio.h>
-#include <iostream>
 #endif
+
+#include <iostream>
 #include <spdlog/spdlog.h>
 
 namespace AudioRecorder
@@ -32,14 +29,19 @@ namespace AudioRecorder
     {
         std::vector<DeviceInfo> devices;
         int numDevices = Pa_GetDeviceCount();
+#ifdef _WIN32
+        int hostApi = Pa_HostApiTypeIdToHostApiIndex(paWASAPI);
+#else
+        int hostApi = Pa_GetDefaultHostApi();
+#endif
+
         for (int i = 0; i < numDevices; ++i)
         {
             const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
             if (!info)
                 continue;
-            bool hasInput = (info->maxInputChannels > 0);
-            int isLoop = PaWasapi_IsLoopback(i);
-            if (isLoop == 1)
+            bool isValid = info->maxInputChannels > 0;
+            if (isValid && info->hostApi == hostApi)
             {
                 devices.push_back({i, info->name});
             }
@@ -109,14 +111,7 @@ namespace AudioRecorder
 
         sampleRate = rate;
 
-#ifdef _WIN32
-#ifdef PA_USE_WASAPI
-        // WASAPI loopback for output device
-        //inputParams.hostApiSpecificStreamInfo = PaWasapi_GetLoopbackStreamInfo();
-#endif
-#endif
-
-        PaError err = Pa_OpenStream(reinterpret_cast<PaStream **>(&stream),
+        PaError err = Pa_OpenStream(&stream,
                                     &inputParams,
                                     nullptr,
                                     rate,
@@ -131,11 +126,11 @@ namespace AudioRecorder
             return false;
         }
 
-        err = Pa_StartStream(reinterpret_cast<PaStream *>(stream));
+        err = Pa_StartStream(stream);
         if (err != paNoError)
         {
             spdlog::error("Failed to start stream: {}", Pa_GetErrorText(err));
-            Pa_CloseStream(reinterpret_cast<PaStream *>(stream));
+            Pa_CloseStream(stream);
             stream = nullptr;
             return false;
         }
@@ -152,8 +147,8 @@ namespace AudioRecorder
             return;
         if (stream)
         {
-            Pa_StopStream(reinterpret_cast<PaStream *>(stream));
-            Pa_CloseStream(reinterpret_cast<PaStream *>(stream));
+            Pa_StopStream(stream);
+            Pa_CloseStream(stream);
             stream = nullptr;
         }
         spdlog::info("Recording stopped");
