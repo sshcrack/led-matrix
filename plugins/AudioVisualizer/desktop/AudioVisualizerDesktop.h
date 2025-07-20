@@ -47,5 +47,5 @@ protected:
     void addAnalysisSettings();
     void addAudioSettings();
     void addDeviceSettings();
-    void addSpectrumSettings();
+    void addVisualizer();
 };
