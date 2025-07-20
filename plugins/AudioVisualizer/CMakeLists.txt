@@ -11,6 +11,8 @@ register_plugin(AudioVisualizer
         desktop/record.h
         desktop/AudioProcessor.h
         desktop/AudioProcessor.cpp
+        desktop/NetworkSender.cpp
+        desktop/NetworkSender.h
         desktop/frequency_analyzer/BarkAnalyzer.h
         desktop/frequency_analyzer/BarkAnalyzer.cpp
         desktop/frequency_analyzer/factory.h
@@ -34,8 +36,8 @@ if(ENABLE_DESKTOP)
         # Setting up PortAudio
 
         # Make lib shared
-        set(PA_BUILD_SHARED ON CACHE BOOL "" FORCE)
-        set(PA_BUILD_STATIC OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
 
 
         set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

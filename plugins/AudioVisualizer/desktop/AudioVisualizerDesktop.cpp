@@ -70,7 +70,9 @@ void AudioVisualizerDesktop::addConnectionSettings() {
 
     const std::string buttonText = isProcessingRunning ? "Disconnect" : "Connect";
 
-    if (ImGui::Button(buttonText.c_str())) {
+    if (ImGui::Button(buttonText.c_str()) || initialConnect) {
+        initialConnect = false;
+
         if (isProcessingRunning) {
             audioProcessor->stopProcessingThread();
         } else {
@@ -198,6 +200,7 @@ void AudioVisualizerDesktop::addDeviceSettings() {
             if (cfg.deviceName == device.name)
                 ImGui::SetItemDefaultFocus();
         }
+        ImGui::SetItemTooltip("You'll need to reconnect to apply the new device.");
         ImGui::EndCombo();
     }
 
@@ -218,7 +221,7 @@ void AudioVisualizerDesktop::addVisualizer() {
 
     ImGui::Checkbox("Live Preview (may cause stutters on the LED Matrix)", &showPreview);
 
-    if (!latestBands.empty() || !showPreview)
+    if (latestBands.empty() || !showPreview)
         return;
 
 

@@ -102,7 +102,7 @@ void PluginManager::initialize()
         void *dlhandle = nullptr;
 
 #ifdef _WIN32
-
+        SetDllDirectoryW(plPath.parent_path().c_str());
         // Windows implementation
         HMODULE handle = LoadLibraryW(plPath.wstring().c_str());
         if (handle == nullptr)

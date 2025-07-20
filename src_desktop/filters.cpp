@@ -1,7 +1,7 @@
 #include "filters.h"
 
 // Allow letters, digits, '.', '-', ':' only
-int HostPortFilter(ImGuiInputTextCallbackData* data) {
+int HostnameFilter(ImGuiInputTextCallbackData* data) {
     if (data->EventChar < 32 || data->EventChar >= 127)
         return 1; // Disallow non-printable
 
@@ -9,7 +9,7 @@ int HostPortFilter(ImGuiInputTextCallbackData* data) {
     if ((c >= 'a' && c <= 'z') ||
         (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9') ||
-        c == '.' || c == '-' || c == ':') {
+        c == '.' || c == '-') {
         return 0; // Allow
     }
 

@@ -70,6 +70,9 @@ if(ENABLE_DESKTOP)
     file(GLOB_RECURSE SOURCES
         src_desktop/*.c*
     )
+    if(WIN32)
+        list(APPEND SOURCES src_desktop/app_icon.rc)
+    endif()
 else()
     file(GLOB_RECURSE SOURCES
         src_matrix/*.c*
