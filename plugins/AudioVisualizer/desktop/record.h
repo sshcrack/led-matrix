@@ -3,8 +3,12 @@
 #include <string>
 #include <atomic>
 #include <mutex>
-#include <deque>
 #include <portaudio.h>
+
+#include "channel.h"
+
+static constexpr size_t BUFFER_SIZE = 2048;
+static constexpr size_t FFT_SIZE = 1024;
 
 namespace AudioRecorder
 {
@@ -21,7 +25,7 @@ namespace AudioRecorder
         ~Recorder();
 
         // List all output devices
-        std::vector<DeviceInfo> listDevices();
+        static std::vector<DeviceInfo> listDevices();
 
         // Start recording from selected device
         bool startRecording(int deviceIndex);
@@ -32,18 +36,19 @@ namespace AudioRecorder
         // Is currently recording
         bool isRecording() const;
 
-        // Get the latest audio samples
-        std::vector<float> getLatestSamples(size_t numSamples);
-
         // Get the current sample rate
         double getSampleRate() const;
+
+        Channel<std::vector<float>> *getChannel() const;
 
     private:
         std::atomic<bool> recording;
         int currentDeviceIndex;
         PaStream *stream;
+
         std::deque<float> audioBuffer;
-        std::mutex bufferMutex;
+        Channel<std::vector<float>> *audioChannel;
+
         double sampleRate;
         static constexpr size_t MAX_BUFFER_SIZE = 8192; // Maximum buffer size to prevent memory issues
 
@@ -52,5 +57,8 @@ namespace AudioRecorder
                                  const PaStreamCallbackTimeInfo *timeInfo,
                                  PaStreamCallbackFlags statusFlags,
                                  void *userData);
+
+        // Get the latest audio samples
+        std::vector<float> getLatestSamples(size_t numSamples);
     };
 }

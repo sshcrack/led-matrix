@@ -3,7 +3,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "imgui_stdlib.h"
-#include <portaudio.h>
+#include <spdlog/spdlog.h>
 
 extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer()
 {
@@ -19,14 +19,12 @@ AudioVisualizerDesktop::AudioVisualizerDesktop()
 {
     Pa_Initialize();
     implotContext = ImPlot::CreateContext();
-    recorder = new AudioRecorder::Recorder();
 }
 
 AudioVisualizerDesktop::~AudioVisualizerDesktop()
 {
     Pa_Terminate();
     ImPlot::DestroyContext();
-    delete recorder;
 }
 
 int PortFilter(ImGuiInputTextCallbackData *data)
@@ -57,24 +55,21 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx)
     addAudioSettings();
     addAnalysisSettings();
     addDeviceSettings();
-    // Process audio if connected
-    if (status == ConnectionStatus::Connected && audioProcessor && analyzer)
-    {
-        // Get real audio samples from recorder
-        std::vector<float> samples = recorder->getLatestSamples(1024);
-        audioProcessor->processAudio(samples);
 
-        // Compute bands using analyzer
-        float freqResolution = static_cast<float>(recorder->getSampleRate()) / AudioProcessor::FFT_SIZE;
-        size_t minBin = static_cast<size_t>(cfg.minFreq / freqResolution);
-        size_t maxBin = std::min(static_cast<size_t>(cfg.maxFreq / freqResolution), audioProcessor->getBands().size() - 1);
-        latestBands = analyzer->computeBands(audioProcessor->getBands(), cfg, freqResolution, minBin, maxBin);
+    if (audioProcessor)
+    {
+        latestBands = audioProcessor->getLatestBands();
     }
+
     addSpectrumSettings();
 }
 
 void AudioVisualizerDesktop::addConnectionSettings()
 {
+    ConnectionStatus status = audioProcessor ? ConnectionStatus::Connected : ConnectionStatus::Disconnected;
+    if (lastError != "")
+        status = ConnectionStatus::Error;
+
     ImGui::SeparatorText("Connection Settings");
 
     static std::string port = std::to_string(cfg.port);
@@ -90,21 +85,20 @@ void AudioVisualizerDesktop::addConnectionSettings()
         }
     }
 
-    std::string currStatus = to_string(status);
-    ImGui::Text("Status: %s", currStatus.c_str());
+    const std::string currStatus = to_string(status);
+    const std::string buttonText = status == ConnectionStatus::Connected ? "Disconnect" : "Connect";
 
-    std::string buttonText = status == ConnectionStatus::Connected ? "Disconnect" : "Connect";
     if (ImGui::Button(buttonText.c_str()))
     {
         if (status == ConnectionStatus::Connected)
         {
-            recorder->stopRecording();
-            status = ConnectionStatus::Disconnected;
+            audioProcessor->stopProcessingThread();
         }
         else
         {
+            lastError = "";
             // Find device index
-            auto devices = recorder->listDevices();
+            auto devices = audioProcessor->listDevices();
             int deviceIndex = -1;
             for (const auto &device : devices)
             {
@@ -114,19 +108,21 @@ void AudioVisualizerDesktop::addConnectionSettings()
                     break;
                 }
             }
-            if (deviceIndex != -1 && recorder->startRecording(deviceIndex))
+
+            auto res = audioProcessor->startProcessingThread(deviceIndex);
+            if (!res.has_value())
             {
-                status = ConnectionStatus::Connected;
-                // Setup audio processor and analyzer
-                audioProcessor = std::make_unique<AudioProcessor>(cfg, static_cast<uint32_t>(recorder->getSampleRate()));
-                analyzer = getAnalyzer(cfg.analysisMode, cfg.frequencyScale);
-            }
-            else
-            {
-                status = ConnectionStatus::Error;
+                spdlog::error("Couldn't start audio processing thread: {}", res.error());
+                lastError = res.error();
+                return;
             }
         }
     }
+
+    if (lastError != "")
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
+    else
+        ImGui::Text("Status: %s", currStatus.c_str());
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings()
@@ -215,7 +211,7 @@ void AudioVisualizerDesktop::addAudioSettings()
 void AudioVisualizerDesktop::addDeviceSettings()
 {
     ImGui::SeparatorText("Audio Device Settings");
-    static auto devices = recorder->listDevices();
+    static auto devices = audioProcessor->listDevices();
     if (cfg.deviceName.empty() && !devices.empty())
     {
         cfg.deviceName = devices[0].name; // Default to first device
@@ -238,7 +234,7 @@ void AudioVisualizerDesktop::addDeviceSettings()
     ImGui::SameLine();
     if (ImGui::Button("Refresh Devices"))
     {
-        devices = recorder->listDevices();
+        devices = audioProcessor->listDevices();
     }
 }
 

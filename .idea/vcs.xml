@@ -2,6 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/rpi-rgb-led-matrix" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/implot" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/portaudio" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/rpi-rgb-led-matrix" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/traypp" vcs="Git" />
   </component>
 </project>

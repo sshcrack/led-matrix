@@ -1,32 +1,58 @@
 #pragma once
 #include <vector>
-#include <deque>
 #include <fftw3.h>
 #include <memory>
-#include "config.h" // Placeholder for config struct/class
+#include <thread>
+#include <expected>
+#include "config.h"
+#include "frequency_analyzer/factory.h"
+#include "record.h"
 
 class AudioProcessor {
 public:
-    static constexpr size_t BUFFER_SIZE = 2048;
-    static constexpr size_t FFT_SIZE = 1024;
 
     AudioProcessor(AudioVisualizerConfig& config, uint32_t sampleRate);
-    void processAudio(const std::vector<float>& samples);
-    std::vector<float> getBands() const;
-    bool getInterpolatedLog() const;
+    [[nodiscard]] std::vector<float> getBands();
+    [[nodiscard]] bool getInterpolatedLog() const;
 
+    std::expected<void, std::string> startProcessingThread(int deviceIdx);
+    void stopProcessingThread() {
+        threadRunning = false;
+    }
+
+    std::vector<float> getLatestBands() {
+        std::lock_guard lock(bandsMutex);
+        return currentBands_;
+    }
+
+    [[nodiscard]] bool isThreadRunning() const { return threadRunning; }
+
+
+    std::vector<AudioRecorder::Recorder::DeviceInfo> listDevices() {
+        return recorder->listDevices();
+    }
 private:
-    void computeFFT();
-    void computeBands();
-    void applyAmplitudeProcessing(const std::vector<float>& bands);
+    void threadFunction();
+
+    std::vector<float> computeFFT(const std::vector<float>& samples);
+    std::vector<float> computeBands(const std::vector<float>& spectrum) const;
+    void applyAmplitudeProcessing(std::vector<float> &bands) const;
 
     std::unique_ptr<fftwf_complex[]> fftInput_;
     std::unique_ptr<fftwf_complex[]> fftOutput_;
     fftwf_plan fftPlan_;
     std::vector<float> window_;
-    std::deque<float> buffer_;
-    std::vector<float> spectrum_;
-    std::vector<float> bands_;
     AudioVisualizerConfig &config_;
     uint32_t sampleRate_;
+
+    std::mutex bandsMutex;
+    std::vector<float> currentBands_;
+
+
+    std::unique_ptr<FrequencyAnalyzer> analyzer;
+    std::unique_ptr<AudioRecorder::Recorder> recorder;
+
+
+    bool threadRunning = false;
+    std::thread processingThread;
 };

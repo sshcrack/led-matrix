@@ -16,6 +16,7 @@ namespace AudioRecorder
     Recorder::Recorder() : recording(false), currentDeviceIndex(-1), stream(nullptr), sampleRate(44100.0)
     {
         Pa_Initialize();
+        audioChannel = new Channel<std::vector<float>>();
     }
 
     Recorder::~Recorder()
@@ -23,12 +24,14 @@ namespace AudioRecorder
         if (recording)
             stopRecording();
         Pa_Terminate();
+        audioChannel->close();
+        delete audioChannel;
     }
 
     std::vector<Recorder::DeviceInfo> Recorder::listDevices()
     {
         std::vector<DeviceInfo> devices;
-        int numDevices = Pa_GetDeviceCount();
+        const int numDevices = Pa_GetDeviceCount();
 #ifdef _WIN32
         int hostApi = Pa_HostApiTypeIdToHostApiIndex(paWASAPI);
 #else
@@ -50,18 +53,15 @@ namespace AudioRecorder
     }
 
     int Recorder::audioCallback(const void *inputBuffer, void *outputBuffer,
-                                unsigned long framesPerBuffer,
+                                const unsigned long framesPerBuffer,
                                 const PaStreamCallbackTimeInfo *timeInfo,
                                 PaStreamCallbackFlags statusFlags,
                                 void *userData)
     {
-        Recorder *recorder = static_cast<Recorder *>(userData);
-        const float *input = static_cast<const float *>(inputBuffer);
+        const auto recorder = static_cast<Recorder *>(userData);
 
-        if (input)
+        if (const auto input = static_cast<const float *>(inputBuffer))
         {
-            std::lock_guard<std::mutex> lock(recorder->bufferMutex);
-
             // Add new samples to buffer
             for (unsigned long i = 0; i < framesPerBuffer; ++i)
             {
@@ -75,6 +75,13 @@ namespace AudioRecorder
             }
         }
 
+        if (recorder->audioBuffer.size() >= FFT_SIZE) {
+            const std::vector newAudioBuffer(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
+            recorder->audioBuffer.erase(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
+
+            recorder->audioChannel->send(newAudioBuffer);
+        }
+
         return paContinue;
     }
 
@@ -85,6 +92,9 @@ namespace AudioRecorder
             spdlog::warn("Already recording. Aborting...");
             return false;
         }
+
+        this->audioBuffer.clear();
+
         const PaDeviceInfo *info = Pa_GetDeviceInfo(deviceIndex);
         if (!info)
         {
@@ -155,9 +165,7 @@ namespace AudioRecorder
         recording = false;
         currentDeviceIndex = -1;
 
-        // Clear audio buffer
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        audioBuffer.clear();
+        // We are not clearing up here as there might be issues because audio data is still processed, instead clearing it in startRecording
     }
 
     bool Recorder::isRecording() const
@@ -165,30 +173,13 @@ namespace AudioRecorder
         return recording;
     }
 
-    std::vector<float> Recorder::getLatestSamples(size_t numSamples)
-    {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        std::vector<float> samples;
-
-        if (audioBuffer.size() >= numSamples)
-        {
-            samples.reserve(numSamples);
-            auto it = audioBuffer.end() - numSamples;
-            samples.insert(samples.end(), it, audioBuffer.end());
-        }
-        else
-        {
-            // Return all available samples, padded with zeros if needed
-            samples.reserve(numSamples);
-            samples.insert(samples.end(), audioBuffer.begin(), audioBuffer.end());
-            samples.resize(numSamples, 0.0f);
-        }
-
-        return samples;
-    }
 
     double Recorder::getSampleRate() const
     {
         return sampleRate;
+    }
+
+    Channel<std::vector<float>> *Recorder::getChannel() const {
+        return audioChannel;
     }
 }
