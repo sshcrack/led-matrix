@@ -36,8 +36,7 @@ public:
 private:
     void threadFunction();
 
-    std::vector<float> computeFFT(const std::vector<float>& samples);
-    std::vector<float> computeBands(const std::vector<float>& spectrum) const;
+    std::vector<float> computeFFT(const std::vector<float> samples);
     void applyAmplitudeProcessing(std::vector<float> &bands) const;
 
     std::unique_ptr<fftwf_complex[]> fftInput_;

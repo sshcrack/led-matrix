@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
         instanceManager = new SingleInstanceManager("LedMatrixController", [](){
             showMainWindow = true;
         });
-    } catch ([[maybe_unused]] const std::exception& e) {
+    } catch (const std::exception& e) {
         // Already running, exit
         return 0;
     }
@@ -154,9 +154,9 @@ int main(int argc, char *argv[])
     runnerParams.callbacks.BeforeExit = [&]()
     {
         spdlog::info("Exiting application...");
-        delete cfg;
-        pl->destroy_plugins();
-
+        for (auto && plugin : pl->get_plugins()) {
+            plugin.second->beforeExit();
+        }
     };
     runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;
     runnerParams.imGuiWindowParams.showMenuBar = true;
@@ -202,6 +202,8 @@ int main(int argc, char *argv[])
 #ifndef _WIN32
     trayThread.join();
 #endif
+    delete cfg;
+    pl->destroy_plugins();
     delete instanceManager;
     return 0;
 }
