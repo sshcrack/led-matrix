@@ -52,15 +52,13 @@ public:
     };
 
 private:
-    AudioRecorder::Recorder *recorder;
     ImPlotContext *implotContext = nullptr;
 
     AudioVisualizerConfig cfg;
-    ConnectionStatus status = ConnectionStatus::Disconnected;
-    
+
     std::unique_ptr<AudioProcessor> audioProcessor;
-    std::unique_ptr<FrequencyAnalyzer> analyzer;
     std::vector<float> latestBands;
+    std::string lastError;
 
 protected:
     void addConnectionSettings();
