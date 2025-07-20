@@ -4,6 +4,8 @@
 #include <memory>
 #include <thread>
 #include <expected>
+#include <mutex>
+#include <string>
 #include "config.h"
 #include "frequency_analyzer/factory.h"
 #include "record.h"
@@ -35,6 +37,11 @@ public:
     }
 
     void updateAnalyzer();
+    std::string getLatestError() {
+        std::lock_guard lock(errorMutex);
+        return lastError;
+    }
+
 private:
     void threadFunction();
 
@@ -58,4 +65,7 @@ private:
 
     bool threadRunning = false;
     std::thread processingThread;
+
+    std::string lastError; // Store the last error message
+    std::mutex errorMutex; // Mutex for thread-safe access to lastError
 };

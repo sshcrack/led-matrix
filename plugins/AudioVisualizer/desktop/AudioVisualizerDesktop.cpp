@@ -94,10 +94,16 @@ void AudioVisualizerDesktop::addConnectionSettings() {
         }
     }
 
-    if (!lastError.empty())
+    if (!lastError.empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
-    else
+    } else {
         ImGui::Text("Status: %s", isProcessingRunning ? "Processing" : "Idle");
+    }
+
+    const std::string latestError = audioProcessor->getLatestError();
+    if (!audioProcessor->getLatestError().empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "AudioProcessor Error: %s", latestError.c_str());
+    }
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings() {

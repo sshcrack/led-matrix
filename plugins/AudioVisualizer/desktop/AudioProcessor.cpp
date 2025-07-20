@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <expected>
 #include <iostream>
+#include <shared/desktop/config.h>
+#include <spdlog/spdlog.h>
+#include "NetworkSender.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264f
@@ -26,7 +29,8 @@ AudioProcessor::AudioProcessor(AudioVisualizerConfig &config)
     recorder = std::make_unique<AudioRecorder::Recorder>();
 }
 
-AudioProcessor::~AudioProcessor() {
+AudioProcessor::~AudioProcessor()
+{
     stopProcessingThread();
     processingThread.join();
 }
@@ -67,7 +71,7 @@ void AudioProcessor::applyAmplitudeProcessing(std::vector<float> &bands, const s
 {
     for (size_t i = 0; i < bands.size(); ++i)
     {
-        if(i >= prevBands.size())
+        if (i >= prevBands.size())
             continue; // Skip if index is out of bounds
 
         float bandEnergy = bands[i];
@@ -124,6 +128,9 @@ void AudioProcessor::updateAnalyzer()
 void AudioProcessor::threadFunction()
 {
     const auto channel = recorder->getChannel();
+    UdpSender udpSender;
+    int consecutiveErrors = 0;
+
     while (threadRunning)
     {
         const auto samples = channel->try_receive();
@@ -152,6 +159,36 @@ void AudioProcessor::threadFunction()
             applyAmplitudeProcessing(bands, currentBands_);
 
             currentBands_ = bands;
+
+            // Send data if hostname and port are valid
+            if (!config_.hostname.empty() && config_.port > 0)
+            {
+                try
+                {
+                    udpSender.sendAudioData(currentBands_, config_.hostname, config_.port, getInterpolatedLog());
+                    if (consecutiveErrors > 0)
+                    {
+                        spdlog::info("Successfully sent audio data after {} consecutive errors", consecutiveErrors);
+
+                        consecutiveErrors = 0; // Reset error count on success
+                        {
+                            std::lock_guard errorLock(errorMutex);
+                            lastError.clear();
+                        }
+                    }
+                }
+                catch (const std::exception &e)
+                {
+                    consecutiveErrors++;
+                    if (consecutiveErrors <= 3)
+                    {
+                        spdlog::error("Failed to send audio data: {}", e.what());
+
+                        std::lock_guard errorLock(errorMutex);
+                        lastError = e.what();
+                    }
+                }
+            }
         }
     }
 
