@@ -138,6 +138,7 @@ fn setup_audio_stream(
 
     let processor_clone = processor.clone();
 
+    println!("[DEBUG] Setting up audio stream with config: {:?}", config);
     let stream = device
         .build_input_stream(
             &config.config(),

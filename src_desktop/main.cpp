@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 #include <shared/common/utils/utils.h>
 #include <nlohmann/json.hpp>
-#include <fstream>
 #include <GLFW/glfw3.h>
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
@@ -17,9 +16,9 @@
 #include "single_instance_manager.h"
 
 static bool shouldExit = false;
-static const char *DISPLAY_APP_NAME = "LED Matrix Controller";
+static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 
-static void window_iconify_callback(GLFWwindow *window, int iconified)
+static void window_iconify_callback(GLFWwindow *window, const int iconified)
 {
     if (iconified)
     {
@@ -35,17 +34,18 @@ static void window_iconify_callback(GLFWwindow *window, int iconified)
 
 static bool showMainWindow = false;
 using namespace Config;
-int main(int argc, char *argv[])
+
+int main(const int argc, char *argv[])
 {
     HelloImGui::SetAssetsFolder((get_exec_dir() / ".." / "assets").string());
 
     // Single instance manager
     SingleInstanceManager* instanceManager = nullptr;
     try {
-        instanceManager = new SingleInstanceManager("LedMatrixController", [](){
+        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
             showMainWindow = true;
         });
-    } catch (const std::exception& e) {
+    } catch ([[maybe_unused]] const std::exception& e) {
         // Already running, exit
         return 0;
     }
@@ -54,9 +54,9 @@ int main(int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    for (auto const plugin : pl->get_plugins())
+    for (const auto [plName, plugin] : pl->get_plugins())
     {
-        plugin.second->loadConfig(cfg->getPluginSetting(plugin.first));
+        plugin->loadConfig(cfg->getPluginSetting(plName));
     }
 
     auto guiFunction = [pl, cfg]()
@@ -143,25 +143,22 @@ int main(int argc, char *argv[])
                 shouldExit = true;
             }));
 
-    std::thread trayThread(
-        [&tray]()
-        {
-            tray.run();
-        });
-
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = guiFunction;
-    runnerParams.callbacks.BeforeExit = [&]()
-    {
+    runnerParams.callbacks.PreNewFrame = [&] {
+        tray.pump();
+    };
+
+    runnerParams.callbacks.BeforeExit = [&] {
         spdlog::info("Exiting application...");
-        for (auto && plugin : pl->get_plugins()) {
-            plugin.second->beforeExit();
+        for (auto &[_1, pl] : pl->get_plugins()) {
+            pl->beforeExit();
         }
     };
     runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;
     runnerParams.imGuiWindowParams.showMenuBar = true;
 
-    runnerParams.callbacks.ShowAppMenuItems = [&]()
+    runnerParams.callbacks.ShowAppMenuItems = [&]
     {
         General &generalCfg = cfg->getGeneralConfig();
         bool autostartEnabled = generalCfg.isAutostartEnabled();
@@ -198,6 +195,7 @@ int main(int argc, char *argv[])
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
+
     spdlog::info("Joining tray thread...");
 #ifndef _WIN32
     trayThread.join();
@@ -205,5 +203,7 @@ int main(int argc, char *argv[])
     delete cfg;
     pl->destroy_plugins();
     delete instanceManager;
+
+    spdlog::info("Exited cleanly.");
     return 0;
 }

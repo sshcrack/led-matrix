@@ -23,6 +23,15 @@ public:
         return value;
     }
 
+
+    std::optional<T> try_receive() {
+        std::unique_lock lock(mutex_);
+        if (queue_.empty()) return std::nullopt;
+        T value = std::move(queue_.front());
+        queue_.pop();
+        return value;
+    }
+
     void close() {
         std::unique_lock lock(mutex_);
         closed_ = true;

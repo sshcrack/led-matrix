@@ -39,7 +39,7 @@ namespace AudioRecorder
         // Get the current sample rate
         double getSampleRate() const;
 
-        Channel<std::vector<float>> *getChannel() const;
+        std::shared_ptr<Channel<std::vector<float>>> getChannel() const;
 
     private:
         std::atomic<bool> recording;
@@ -47,7 +47,7 @@ namespace AudioRecorder
         PaStream *stream;
 
         std::deque<float> audioBuffer;
-        Channel<std::vector<float>> *audioChannel;
+        std::shared_ptr<Channel<std::vector<float>>> audioChannel;
 
         double sampleRate;
         static constexpr size_t MAX_BUFFER_SIZE = 2048; // Maximum buffer size to prevent memory issues

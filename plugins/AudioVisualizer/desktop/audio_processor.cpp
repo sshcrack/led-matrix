@@ -26,6 +26,11 @@ AudioProcessor::AudioProcessor(AudioVisualizerConfig &config)
     recorder = std::make_unique<AudioRecorder::Recorder>();
 }
 
+AudioProcessor::~AudioProcessor() {
+    stopProcessingThread();
+    processingThread.join();
+}
+
 std::vector<float> AudioProcessor::computeFFT(const std::vector<float> samples)
 {
     if (samples.size() < FFT_SIZE)
@@ -58,31 +63,39 @@ std::vector<float> AudioProcessor::computeFFT(const std::vector<float> samples)
     return spectrum;
 }
 
-void AudioProcessor::applyAmplitudeProcessing(std::vector<float> &bands) const
+void AudioProcessor::applyAmplitudeProcessing(std::vector<float> &bands, const std::vector<float> &prevBands) const
 {
     for (size_t i = 0; i < bands.size(); ++i)
     {
+        if(i >= prevBands.size())
+            continue; // Skip if index is out of bounds
+
         float bandEnergy = bands[i];
+
+        // Apply gain
         bandEnergy *= config_.gain;
         float processed = 0.0f;
 
+        // Apply amplitude scaling based on linear_amplitude setting
         if (config_.linearAmplitudeScaling)
         {
+            // Linear amplitude: just normalize to 0-1 range
             processed = std::min(bandEnergy, 1.0f);
         }
         else
         {
+            // Logarithmic amplitude: convert to dB scale
             if (bandEnergy > 0.0f)
             {
-                float db = 20.0f * std::log10(bandEnergy + 1e-10f);
+                // Convert to dB scale: 20 * log10(amplitude)
+                // Add a small offset to avoid log(0) and normalize to 0-1 range
+                const float db = 20.0f * std::log10(bandEnergy + 1e-10f);
                 processed = std::max(0.0f, std::min((db + 60.0f) / 60.0f, 1.0f));
             }
-            else
-            {
-                processed = 0.0f;
-            }
         }
-        bands[i] = bands[i] * config_.smoothing + processed * (1.0f - config_.smoothing);
+
+        // Apply smoothing
+        bands[i] = prevBands[i] * config_.smoothing + processed * (1.0f - config_.smoothing);
     }
 }
 
@@ -113,7 +126,7 @@ void AudioProcessor::threadFunction()
     const auto channel = recorder->getChannel();
     while (threadRunning)
     {
-        const auto samples = channel->receive();
+        const auto samples = channel->try_receive();
         if (!samples.has_value())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Sleep if no samples available
@@ -135,9 +148,9 @@ void AudioProcessor::threadFunction()
             std::lock_guard lock1(analyzerMutex);
             auto bands = analyzer->computeBands(spectrum, config_, freqResolution, minBin, maxBin);
 
-            applyAmplitudeProcessing(bands);
-
             std::lock_guard lock(bandsMutex);
+            applyAmplitudeProcessing(bands, currentBands_);
+
             currentBands_ = bands;
         }
     }
