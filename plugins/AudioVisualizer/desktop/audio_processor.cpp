@@ -8,18 +8,20 @@
 #define M_PI 3.14159265358979323846264f
 #endif
 
-AudioProcessor::AudioProcessor(AudioVisualizerConfig &config, uint32_t sampleRate)
+AudioProcessor::AudioProcessor(AudioVisualizerConfig &config)
     : fftInput_(new fftwf_complex[FFT_SIZE]),
       fftOutput_(new fftwf_complex[FFT_SIZE]),
       window_(FFT_SIZE),
-      config_(config),
-      sampleRate_(sampleRate) {
+      config_(config) {
     // Create Hann window
     for (size_t i = 0; i < FFT_SIZE; ++i) {
         const float angle = 2.0f * M_PI * i / (FFT_SIZE - 1);
         window_[i] = 0.5f * (1.0f - std::cos(angle));
     }
     fftPlan_ = fftwf_plan_dft_1d(FFT_SIZE, fftInput_.get(), fftOutput_.get(), FFTW_FORWARD, FFTW_MEASURE);
+
+    analyzer = getAnalyzer(config.analysisMode, config.frequencyScale);
+    recorder = std::make_unique<AudioRecorder::Recorder>();
 }
 
 std::vector<float> AudioProcessor::computeFFT(const std::vector<float> &samples) {
@@ -51,7 +53,7 @@ std::vector<float> AudioProcessor::computeFFT(const std::vector<float> &samples)
 }
 
 std::vector<float> AudioProcessor::computeBands(const std::vector<float> &spectrum) const {
-    const float freqResolution = static_cast<float>(sampleRate_) / FFT_SIZE;
+    const float freqResolution = static_cast<float>(recorder->getSampleRate()) / FFT_SIZE;
     const size_t minBin = static_cast<size_t>(config_.minFreq / freqResolution);
     const size_t maxBin = std::min(static_cast<size_t>(config_.maxFreq / freqResolution), spectrum.size() - 1);
     if (maxBin <= minBin)
@@ -69,6 +71,7 @@ std::vector<float> AudioProcessor::computeBands(const std::vector<float> &spectr
         }
         bands[band] = sum / binsPerBand;
     }
+
     applyAmplitudeProcessing(bands);
 
     return bands;
@@ -108,6 +111,11 @@ bool AudioProcessor::getInterpolatedLog() const {
     return interpolated && frequencyScaleLog;
 }
 
+void AudioProcessor::updateAnalyzer() {
+    std::lock_guard lock(analyzerMutex);
+    analyzer = getAnalyzer(config_.analysisMode, config_.frequencyScale);
+}
+
 void AudioProcessor::threadFunction() {
     const auto channel = recorder->getChannel();
     while (threadRunning) {
@@ -134,7 +142,9 @@ void AudioProcessor::threadFunction() {
             const size_t minBin = static_cast<size_t>(config_.minFreq / freqResolution);
             const size_t maxBin = std::min(static_cast<size_t>(config_.maxFreq / freqResolution), spectrum.size() - 1);
 
+            std::lock_guard lock1(analyzerMutex);
             const auto bands = analyzer->computeBands(spectrum, config_, freqResolution, minBin, maxBin);
+
             std::lock_guard lock(bandsMutex);
             currentBands_ = bands;
         }

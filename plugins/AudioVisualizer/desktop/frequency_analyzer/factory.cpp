@@ -1,6 +1,12 @@
 #include "factory.h"
+#include "LogarithmicAnalyzer.h"
+#include "LinearAnalyzer.h"
+#include "BarkAnalyzer.h"
+#include "MelAnalyzer.h"
+#include "ThirdOctaveAnalyzer.h"
+#include "FullOctaveAnalyzer.h"
 
-std::unique_ptr<FrequencyAnalyzer> getAnalyzer(AnalysisMode mode, FrequencyScale frequencyScale) {
+std::unique_ptr<FrequencyAnalyzer> getAnalyzer(const AnalysisMode mode, const FrequencyScale frequencyScale) {
     switch (mode) {
         case OneThirdOctaveBands:
             return std::make_unique<ThirdOctaveAnalyzer>();

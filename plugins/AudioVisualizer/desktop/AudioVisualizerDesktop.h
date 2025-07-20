@@ -10,27 +10,6 @@
 #include <vector>
 #include "../../../thirdparty/implot/implot.h"
 
-enum ConnectionStatus
-{
-    Disconnected,
-    Connected,
-    Error
-};
-
-std::string to_string(ConnectionStatus status)
-{
-    switch (status)
-    {
-    case Disconnected:
-        return "Disconnected";
-    case Connected:
-        return "Connected";
-    case Error:
-        return "Error";
-    default:
-        return "Unknown";
-    }
-}
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
 {

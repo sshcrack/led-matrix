@@ -11,7 +11,7 @@
 class AudioProcessor {
 public:
 
-    AudioProcessor(AudioVisualizerConfig& config, uint32_t sampleRate);
+    AudioProcessor(AudioVisualizerConfig& config);
     [[nodiscard]] std::vector<float> getBands();
     [[nodiscard]] bool getInterpolatedLog() const;
 
@@ -28,9 +28,11 @@ public:
     [[nodiscard]] bool isThreadRunning() const { return threadRunning; }
 
 
-    std::vector<AudioRecorder::Recorder::DeviceInfo> listDevices() {
+    std::vector<AudioRecorder::Recorder::DeviceInfo> listDevices() const {
         return recorder->listDevices();
     }
+
+    void updateAnalyzer();
 private:
     void threadFunction();
 
@@ -43,12 +45,12 @@ private:
     fftwf_plan fftPlan_;
     std::vector<float> window_;
     AudioVisualizerConfig &config_;
-    uint32_t sampleRate_;
 
     std::mutex bandsMutex;
     std::vector<float> currentBands_;
 
 
+    std::mutex analyzerMutex;
     std::unique_ptr<FrequencyAnalyzer> analyzer;
     std::unique_ptr<AudioRecorder::Recorder> recorder;
 

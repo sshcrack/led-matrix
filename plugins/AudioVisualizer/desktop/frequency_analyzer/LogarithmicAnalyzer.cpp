@@ -2,64 +2,70 @@
 #include <cmath>
 #include <atomic>
 
-std::vector<float> LogarithmicAnalyzer::computeBands(
-    const std::vector<float>& spectrum,
-    const AudioVisualizerConfig& config,
-    float freqResolution,
-    size_t minBin,
-    size_t maxBin
-) const {
+auto LogarithmicAnalyzer::computeBands(
+    const std::vector<float> &spectrum,
+    const AudioVisualizerConfig &config,
+    const float freqResolution,
+    const size_t minBin,
+    const size_t maxBin
+) const -> std::vector<float> {
     std::vector<float> bands;
     bands.reserve(config.numBands);
     // For simplicity, skip atomic interpolate_bands, use config.interpolateBands
-    bool shouldInterpolate = config.interpolateMissingBands;
+    const bool shouldInterpolate = config.interpolateMissingBands;
     std::vector<size_t> skipped;
 
-    float logMinFreq = std::log(config.minFreq);
-    float logMaxFreq = std::log(config.maxFreq);
-    float logFreqRange = logMaxFreq - logMinFreq;
+    const float logMinFreq = std::log(config.minFreq);
+    const float logMaxFreq = std::log(config.maxFreq);
+    const float logFreqRange = logMaxFreq - logMinFreq;
 
     for (size_t i = 0; i < config.numBands; ++i) {
-        float bandStartRatio = static_cast<float>(i) / config.numBands;
-        float bandEndRatio = static_cast<float>(i + 1) / config.numBands;
-        float bandStartLogFreq = logMinFreq + bandStartRatio * logFreqRange;
-        float bandEndLogFreq = logMinFreq + bandEndRatio * logFreqRange;
-        float bandStartFreq = std::exp(bandStartLogFreq);
-        float bandEndFreq = std::exp(bandEndLogFreq);
-        size_t startBin = std::max(static_cast<size_t>(bandStartFreq / freqResolution), minBin);
-        size_t endBin = std::min(static_cast<size_t>(bandEndFreq / freqResolution), maxBin);
+        const float bandStartRatio = static_cast<float>(i) / config.numBands;
+        const float bandEndRatio = static_cast<float>(i + 1) / config.numBands;
+        const float bandStartLogFreq = logMinFreq + bandStartRatio * logFreqRange;
+        const float bandEndLogFreq = logMinFreq + bandEndRatio * logFreqRange;
+        const float bandStartFreq = std::exp(bandStartLogFreq);
+        const float bandEndFreq = std::exp(bandEndLogFreq);
+
+
+        const size_t startBin = std::max(static_cast<size_t>(bandStartFreq / freqResolution), minBin);
+        const size_t endBin = std::min(static_cast<size_t>(bandEndFreq / freqResolution), maxBin);
         if (endBin <= startBin) {
             skipped.push_back(i);
             if (shouldInterpolate || !config.skipMissingBandsFromOutput) {
                 bands.push_back(0.0f);
             }
-        } else {
-            float bandEnergy = 0.0f;
-            for (size_t j = startBin; j < endBin; ++j) {
-                bandEnergy += spectrum[j];
-            }
-            bandEnergy /= (endBin - startBin);
-            bands.push_back(bandEnergy);
+            continue;
         }
+
+        float bandEnergy = 0.0f;
+        for (size_t j = startBin; j < endBin; ++j) {
+            bandEnergy += spectrum[j];
+        }
+        bandEnergy /= (endBin - startBin);
+        bands.push_back(bandEnergy);
     }
+
     // Interpolation pass
     if (shouldInterpolate) {
         size_t prevValidIdx = -1;
         for (size_t i = 0; i < config.numBands; ++i) {
-            if (std::find(skipped.begin(), skipped.end(), i) != skipped.end()) {
+            if (std::ranges::find(skipped, i) != skipped.end()) {
                 size_t nextValidIdx = -1;
                 for (size_t j = i + 1; j < config.numBands; ++j) {
-                    if (std::find(skipped.begin(), skipped.end(), j) == skipped.end()) {
+                    if (std::ranges::find(skipped, j) == skipped.end()) {
                         nextValidIdx = j;
                         break;
                     }
                 }
-                if (prevValidIdx != (size_t)-1 && nextValidIdx != (size_t)-1) {
-                    float ratio = float(i - prevValidIdx) / float(nextValidIdx - prevValidIdx);
+
+                size_t invalidIdx = -1;
+                if (prevValidIdx != invalidIdx && nextValidIdx != invalidIdx) {
+                    const float ratio = static_cast<float>(i - prevValidIdx) / static_cast<float>(nextValidIdx - prevValidIdx);
                     bands[i] = bands[prevValidIdx] * (1.0f - ratio) + bands[nextValidIdx] * ratio;
-                } else if (prevValidIdx != (size_t)-1) {
+                } else if (prevValidIdx != invalidIdx) {
                     bands[i] = bands[prevValidIdx] * 0.9f;
-                } else if (nextValidIdx != (size_t)-1) {
+                } else if (nextValidIdx != invalidIdx) {
                     bands[i] = bands[nextValidIdx] * 0.9f;
                 } else {
                     bands[i] = 0.1f;
