@@ -2,7 +2,7 @@
 #include "shared/desktop/plugin/main.h"
 #include "config.h"
 #include "record.h"
-#include "audio_processor.h"
+#include "AudioProcessor.h"
 #include "frequency_analyzer/factory.h"
 #include "frequency_analyzer/FrequencyAnalyzer.h"
 #include <nlohmann/json.hpp>

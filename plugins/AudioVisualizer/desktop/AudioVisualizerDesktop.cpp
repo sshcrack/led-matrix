@@ -20,9 +20,7 @@ AudioVisualizerDesktop::AudioVisualizerDesktop()
     implotContext = ImPlot::CreateContext();
 }
 
-AudioVisualizerDesktop::~AudioVisualizerDesktop()
-{
-}
+AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 int PortFilter(ImGuiInputTextCallbackData *data)
 {
