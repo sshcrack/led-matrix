@@ -57,7 +57,7 @@ if(ENABLE_DESKTOP)
 
 
 
-        
+
         target_link_libraries(AudioVisualizer PRIVATE implot)
 
         find_package(FFTW3f CONFIG REQUIRED)
