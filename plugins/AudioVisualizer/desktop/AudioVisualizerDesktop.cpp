@@ -48,6 +48,9 @@ int PortFilter(ImGuiInputTextCallbackData *data)
 
 void AudioVisualizerDesktop::render(ImGuiContext *ctx)
 {
+    if (audioProcessor == nullptr)
+        audioProcessor = std::make_unique<AudioProcessor>(cfg);
+
     ImGui::SetCurrentContext(ctx);
     ImPlot::SetCurrentContext(implotContext);
 
@@ -66,10 +69,7 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx)
 
 void AudioVisualizerDesktop::addConnectionSettings()
 {
-    ConnectionStatus status = audioProcessor ? ConnectionStatus::Connected : ConnectionStatus::Disconnected;
-    if (lastError != "")
-        status = ConnectionStatus::Error;
-
+    bool isProcessingRunning = audioProcessor->isThreadRunning();
     ImGui::SeparatorText("Connection Settings");
 
     static std::string port = std::to_string(cfg.port);
@@ -85,12 +85,11 @@ void AudioVisualizerDesktop::addConnectionSettings()
         }
     }
 
-    const std::string currStatus = to_string(status);
-    const std::string buttonText = status == ConnectionStatus::Connected ? "Disconnect" : "Connect";
+    const std::string buttonText = isProcessingRunning ? "Disconnect" : "Connect";
 
     if (ImGui::Button(buttonText.c_str()))
     {
-        if (status == ConnectionStatus::Connected)
+        if (isProcessingRunning)
         {
             audioProcessor->stopProcessingThread();
         }
@@ -122,7 +121,7 @@ void AudioVisualizerDesktop::addConnectionSettings()
     if (lastError != "")
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
     else
-        ImGui::Text("Status: %s", currStatus.c_str());
+        ImGui::Text("Status: %s", isProcessingRunning ? "Processing" : "Idle");
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings()
@@ -130,7 +129,7 @@ void AudioVisualizerDesktop::addAnalysisSettings()
 
     ImGui::SeparatorText("Analysis Settings");
 
-    static int selectedModeIdx = static_cast<int>(cfg.analysisMode);
+    static int selectedModeIdx = cfg.analysisMode;
     std::string modePreview = analysisModes[selectedModeIdx];
     if (ImGui::BeginCombo("Mode", modePreview.c_str()))
     {
@@ -141,6 +140,7 @@ void AudioVisualizerDesktop::addAnalysisSettings()
             {
                 cfg.analysisMode = static_cast<AnalysisMode>(n);
                 selectedModeIdx = n;
+                audioProcessor->updateAnalyzer();
             }
 
             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -161,6 +161,7 @@ void AudioVisualizerDesktop::addAnalysisSettings()
             {
                 cfg.frequencyScale = static_cast<FrequencyScale>(n);
                 selectedFreqIdx = n;
+                audioProcessor->updateAnalyzer();
             }
 
             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
