@@ -50,15 +50,12 @@ namespace AudioRecorder
         Channel<std::vector<float>> *audioChannel;
 
         double sampleRate;
-        static constexpr size_t MAX_BUFFER_SIZE = 8192; // Maximum buffer size to prevent memory issues
+        static constexpr size_t MAX_BUFFER_SIZE = 2048; // Maximum buffer size to prevent memory issues
 
         static int audioCallback(const void *inputBuffer, void *outputBuffer,
                                  unsigned long framesPerBuffer,
                                  const PaStreamCallbackTimeInfo *timeInfo,
                                  PaStreamCallbackFlags statusFlags,
                                  void *userData);
-
-        // Get the latest audio samples
-        std::vector<float> getLatestSamples(size_t numSamples);
     };
 }

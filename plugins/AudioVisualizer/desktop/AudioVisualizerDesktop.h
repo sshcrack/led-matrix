@@ -30,6 +30,9 @@ public:
         config = cfg;
     };
 
+
+    void beforeExit() override;
+
 private:
     ImPlotContext *implotContext = nullptr;
 

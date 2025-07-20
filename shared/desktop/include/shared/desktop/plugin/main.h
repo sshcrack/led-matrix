@@ -28,5 +28,7 @@ namespace Plugins {
 
         virtual void loadConfig(std::optional<const nlohmann::json> config)  = 0;
         virtual void saveConfig(nlohmann::json& config) const = 0;
+
+        virtual void beforeExit() {}
     };
 }

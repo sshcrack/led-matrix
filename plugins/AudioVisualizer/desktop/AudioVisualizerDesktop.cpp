@@ -24,7 +24,6 @@ AudioVisualizerDesktop::AudioVisualizerDesktop()
 AudioVisualizerDesktop::~AudioVisualizerDesktop()
 {
     Pa_Terminate();
-    ImPlot::DestroyContext();
 }
 
 int PortFilter(ImGuiInputTextCallbackData *data)
@@ -65,6 +64,11 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx)
     }
 
     addSpectrumSettings();
+}
+
+void AudioVisualizerDesktop::beforeExit() {
+    DesktopPlugin::beforeExit();
+    ImPlot::DestroyContext();
 }
 
 void AudioVisualizerDesktop::addConnectionSettings()
