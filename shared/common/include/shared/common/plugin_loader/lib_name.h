@@ -9,6 +9,6 @@
 #include <filesystem>
 
 namespace Plugins {
-    std::string get_lib_name(std::filesystem::path &path);
+    std::string get_lib_name(const std::filesystem::path &path);
 }
 

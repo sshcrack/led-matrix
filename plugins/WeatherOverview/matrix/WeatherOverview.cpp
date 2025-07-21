@@ -39,7 +39,7 @@ std::optional<string> WeatherOverview::before_server_init() {
     const std::filesystem::path lib_path(get_plugin_location());
     const auto parent = lib_path.parent_path();
 
-    auto plugin_weather_dir = parent / "weather-overview/fonts";
+    auto plugin_weather_dir = parent / "fonts";
     if (std::getenv("WEATHER_FONT_DIRECTORY") != nullptr) {
         const std::string env_var = std::getenv("WEATHER_FONT_DIRECTORY");;
         plugin_weather_dir = env_var;

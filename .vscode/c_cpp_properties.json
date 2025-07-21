@@ -15,11 +15,15 @@
                 "/usr/include/gdk-pixbuf-2.0",
                 "/usr/include/atk-1.0"
             ],
+            "compileCommands": [
+                "${workspaceFolder}/emulator_build/compile_commands.json"
+            ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c23",
             "cppStandard": "c++23",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
         },
         {
             "name": "Win32",

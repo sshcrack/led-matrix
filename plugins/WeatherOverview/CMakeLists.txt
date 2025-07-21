@@ -21,6 +21,6 @@ if(NOT ENABLE_DESKTOP)
         "${CMAKE_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/fonts/7x13.bdf"
         "${CMAKE_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/fonts/5x8.bdf"
         "${CMAKE_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/fonts/4x6.bdf"
-        DESTINATION "plugins/weather-overview/fonts"
+        DESTINATION "plugins/WeatherOverview/fonts"
     )
 endif()

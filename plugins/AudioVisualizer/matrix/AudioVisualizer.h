@@ -12,7 +12,6 @@ using Plugins::BasicPlugin;
 
 class AudioVisualizer : public BasicPlugin {
 private:
-    std::atomic<bool> server_running;
     std::mutex audio_data_mutex;
     std::vector<uint8_t> current_audio_data;
     uint32_t last_timestamp;
@@ -20,7 +19,6 @@ private:
 
 public:
     AudioVisualizer();
-    ~AudioVisualizer() override;
 
     vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> create_scenes() override;
     vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>> create_image_providers() override;

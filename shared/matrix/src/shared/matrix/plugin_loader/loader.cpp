@@ -51,7 +51,7 @@ std::vector<BasicPlugin *> PluginManager::get_plugins() {
 
 std::vector<std::shared_ptr<SceneWrapper>> &PluginManager::get_scenes() {
     if (all_scenes.size() == 0) {
-        for (const auto &item: get_plugins()) {
+        for (auto &item: get_plugins()) {
             auto pl_scenes = item->get_scenes();
             all_scenes.insert(all_scenes.end(),
                               pl_scenes.begin(),
@@ -82,38 +82,35 @@ void PluginManager::initialize() {
     auto exec_dir = get_exec_dir();
     auto raw_plugin = getenv("PLUGIN_DIR");
 
-    std::filesystem::path plugin_dir = exec_dir / "plugins";
+    fs::path plugin_dir = exec_dir / "plugins";
     if(raw_plugin != nullptr) {
         plugin_dir = std::filesystem::path(raw_plugin);
     }
 
-    std::vector<std::string> libNames;
+    std::vector<fs::path> libPaths;
     for (const auto &entry : fs::directory_iterator(plugin_dir))
     {
         if (!entry.is_directory())
             continue;
         fs::path plugin_dir_path = entry.path();
-        fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".so");
+        fs::path plugin_path = plugin_dir_path / (std::string("lib") += plugin_dir_path.filename() += ".so");
         if (!fs::is_regular_file(plugin_path))
             continue;
 
-        fs::path absolute = fs::absolute(plugin_path);
-        libPaths.push_back(absolute.string());
+        libPaths.push_back(fs::absolute(plugin_path));
     }
 
     // Loading libs to memory
-    for (const std::string &pl_name: libNames) {
+    for (const fs::path &plPath: libPaths) {
         // Clear any existing errors
         dlerror();
 
-        void *dlhandle = dlopen(pl_name.c_str(), RTLD_LAZY);
+        void *dlhandle = dlopen(plPath.c_str(), RTLD_LAZY);
         if (dlhandle == nullptr) {
-            error("Failed to load plugin '{}': {}", pl_name, dlerror());
+            error("Failed to load plugin '{}': {}", plPath.string(), dlerror());
             continue; // Skip this plugin and try the next one
         }
 
-        std::string pl_copy = pl_name;
-        auto plPath = std::filesystem::path(pl_copy);
         std::string libName = Plugins::get_lib_name(plPath);
 
         std::string cn = "create" + libName;
@@ -126,7 +123,7 @@ void PluginManager::initialize() {
         const char *dlsym_error = dlerror();
 
         if (dlsym_error != nullptr) {
-            error("Symbol lookup error in plugin '{}': {}", pl_name, dlsym_error);
+            error("Symbol lookup error in plugin '{}': {}", plPath.string(), dlsym_error);
             error("Expected symbol '{}' not found", cn);
             dlclose(dlhandle);
             continue; // Skip this plugin and try the next one
@@ -136,7 +133,7 @@ void PluginManager::initialize() {
         dlerror();
         void *destroy_sym = dlsym(dlhandle, dn.c_str());
         if (dlerror() != nullptr || destroy_sym == nullptr) {
-            error("Destroy function '{}' not found in plugin '{}'", dn, pl_name);
+            error("Destroy function '{}' not found in plugin '{}'", dn, plPath.string());
             dlclose(dlhandle);
             continue;
         }
@@ -147,7 +144,7 @@ void PluginManager::initialize() {
             dladdr((void *) create, &dl_info);
 
             p->_plugin_location = dl_info.dli_fname;
-            info("Successfully loaded plugin {}", pl_name);
+            info("Successfully loaded plugin {}", plPath.string());
 
             PluginInfo info = {
                 .handle = dlhandle,
@@ -156,7 +153,7 @@ void PluginManager::initialize() {
             };
             loaded_plugins.emplace_back(info);
         } catch (const std::exception &e) {
-            error("Failed to initialize plugin '{}': {}", pl_name, e.what());
+            error("Failed to initialize plugin '{}': {}", plPath.string(), e.what());
             dlclose(dlhandle);
         }
     }
