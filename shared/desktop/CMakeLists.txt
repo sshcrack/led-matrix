@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME} STATIC
         src/shared/desktop/plugin_loader/loader.cpp
         src/shared/desktop/config.cpp
         src/shared/desktop/autostart.cpp
+        src/shared/desktop/utils.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
