@@ -14,7 +14,7 @@
         {
             "type": "shell",
             "label": "CMake: Emulator Configure (no web rebuild)",
-            "command": "cmake --preset emulator-no-web"
+            "command": "cmake --preset emulator -DSKIP_WEB_BUILD=ON"
         },
         {
             "type": "shell",
