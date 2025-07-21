@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.5.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
+option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
 
 if(ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
@@ -146,6 +147,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 if(ENABLE_DESKTOP)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop)
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
+
+    if(DESKTOP_DEBUG_CONSOLE)
+        add_definitions(-DUSE_DESKTOP_CONSOLE)
+    else()
+        set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif()
 else()
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
@@ -260,7 +267,7 @@ if(ENABLE_DESKTOP)
     # -------------------
     # CPack configuration
     # -------------------
-    include(InstallRequiredSystemLibraries)
+    #include(InstallRequiredSystemLibraries)
     set(CPACK_PACKAGE_NAME "led-matrix-desktop")
     set(CPACK_PACKAGE_VENDOR "sshcrack")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project Desktop Application (used to control led-matrix)")
@@ -270,9 +277,35 @@ if(ENABLE_DESKTOP)
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
     set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
     set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
-    set(CPACK_GENERATOR "TGZ ZIP DEB")
+
+    if(WIN32)
+    set(CPACK_GENERATOR "ZIP;NSIS64")
+        set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
+        set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+        set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
+        #set(CPACK_NSIS_MUI_HEADERIMAGE "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_header.bmp")
+        #set(CPACK_NSIS_MUI_WELCOMEFINISHPAGE_BITMAP "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_welcome.bmp")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/main.exe")
+        set(CPACK_NSIS_HELP_LINK "https://github.com/sshcrack/led-matrix")
+        set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/sshcrack/led-matrix")
+        set(CPACK_NSIS_CONTACT "hendrik@sshcrack.me")
+        set(CPACK_NSIS_ALLOW_ROOT_INSTALL ON)
+        set(CPACK_NSIS_ENABLE_MODERN_UI ON)
+        set(CPACK_NSIS_ENABLE_CUSTOM_INSTALL_DIRECTORY ON)
+        set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "SetOutPath $INSTDIR")
+        # Ensure per-user install mode for NSIS
+        set(CPACK_NSIS_ENABLE_PER_USER_INSTALL_MODE ON)
+        set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA")
+        # Create shortcuts on Desktop and Start Menu
+        set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
+        set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
+        set(CPACK_NSIS_SHORTCUT_NAME "LED Matrix Controller")
+    else()
+    set(CPACK_GENERATOR "DEB;TGZ")
+    endif()
     include(CPack)
 else()
+    set(CPACK_GENERATOR "TGZ")
 
     # -------------------
     # CPack configuration

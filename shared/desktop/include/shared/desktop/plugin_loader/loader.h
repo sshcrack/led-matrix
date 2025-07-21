@@ -3,16 +3,19 @@
 #include <vector>
 #include "shared/desktop/plugin/main.h"
 
-namespace Plugins {
-    struct PluginInfo {
-        void* handle;
+namespace Plugins
+{
+    struct PluginInfo
+    {
+        void *handle;
         std::string destroyFnName;
         std::string name;
 
-        DesktopPlugin* plugin;
+        DesktopPlugin *plugin;
     };
 
-    class PluginManager {
+    class PluginManager
+    {
     protected:
         static PluginManager *instance_;
 
@@ -25,7 +28,6 @@ namespace Plugins {
         explicit PluginManager();
 
     public:
-
         PluginManager(PluginManager &other) = delete;
         void operator=(const PluginManager &) = delete;
 

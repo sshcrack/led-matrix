@@ -47,6 +47,15 @@
             "name": "desktop-windows",
             "architecture": "x64",
             "inherits": "desktop"
+        },
+        {
+            "name": "desktop-windows-debug",
+            "binaryDir": "${sourceDir}/desktop_build_debug",
+            "architecture": "x64",
+            "cacheVariables": {
+                "DESKTOP_DEBUG_CONSOLE": true
+            },
+            "inherits": "desktop"
         }
     ],
     "buildPresets": [
@@ -92,15 +101,16 @@
                 "TGZ",
                 "DEB"
             ],
-            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
+            "packageName": "deskto"
         },
         {
             "name": "desktop-windows",
             "configurePreset": "desktop-windows",
             "generators": [
-                "ZIP"
+                "ZIP",
+                "NSIS64"
             ],
-            "packageName": "desktop-v$cache{CMAKE_PROJECT_VERSION}"
+            "packageName": "desktop"
         }
     ]
 }

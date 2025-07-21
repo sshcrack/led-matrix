@@ -256,11 +256,9 @@ void AudioVisualizerDesktop::addVisualizer() {
         }
 
         // Render default bars
-        ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 255, 255, 255)); // White
         for (int idx: defaultIndices) {
             ImPlot::PlotBars("Default", &x[idx], &latestBands[idx], 1, 1);
         }
-        ImPlot::PopStyleColor();
 
         // Render yellow bars
         ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 255, 0, 255)); // Yellow
