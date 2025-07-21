@@ -10,7 +10,7 @@
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/PI.cmake",
                 "VCPKG_TARGET_TRIPLET": "arm64-rpi",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/weather-overview/fonts"
+                "WEATHER_FONT_DIRECTORY": "/home/pi/ledmat/run/plugins/WeatherOverview/fonts"
             }
         },
         {

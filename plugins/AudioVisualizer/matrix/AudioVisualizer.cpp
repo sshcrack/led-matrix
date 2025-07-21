@@ -35,17 +35,12 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AudioVi
     return scenes;
 }
 
-AudioVisualizer::AudioVisualizer() : server_running(false), udp_socket(-1), last_timestamp(0), interpolated_log(false)
+AudioVisualizer::AudioVisualizer() : last_timestamp(0), interpolated_log(false)
 {
     spdlog::info("AudioVisualizer plugin initialized");
 
     current_audio_data.resize(64);
     std::fill(current_audio_data.begin(), current_audio_data.end(), 0);
-}
-
-AudioVisualizer::~AudioVisualizer()
-{
-    stop_udp_server();
 }
 
 std::optional<string> AudioVisualizer::before_server_init()
@@ -86,6 +81,9 @@ bool AudioVisualizer::on_udp_packet(const uint8_t magicPacket, const uint8_t ver
     // - Flags (1 byte)
     // - Timestamp (4 bytes)
     // - Bands data (num_bands bytes)
+    if(magicPacket != 0x01)
+        return false; // Not destined for this plugin
+
     if (version != 0x01)
         return false; // Invalid version
 
@@ -103,7 +101,7 @@ bool AudioVisualizer::on_udp_packet(const uint8_t magicPacket, const uint8_t ver
         (static_cast<uint32_t>(data[5]) << 24);
 
     // Check if packet size matches expected size
-    if (n != 6 + num_bands)
+    if (size != 6 + num_bands)
     {
         // Invalid packet size
         return false;

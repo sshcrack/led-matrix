@@ -1,9 +1,9 @@
 #include "udp.h"
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <spdlog/spdlog.h>
+#include <shared/matrix/plugin_loader/loader.h>
 
 void UdpServer::server_loop()
 {
@@ -12,7 +12,7 @@ void UdpServer::server_loop()
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
 
-    auto plugins = PluginManager::instance()->get_plugins();
+    auto plugins = Plugins::PluginManager::instance()->get_plugins();
     while (server_running)
     {
         ssize_t n = recvfrom(udp_socket, buffer, buffer_size, 0,
@@ -45,7 +45,7 @@ void UdpServer::server_loop()
         }
 
         const uint8_t *data = reinterpret_cast<const uint8_t *>(buffer);
-        const uint8_t magicPacket = data[1] != 0x01;
+        const uint8_t magicPacket = data[1];
         const uint8_t version = data[2];
 
         // Check magic number and version
@@ -66,7 +66,7 @@ void UdpServer::server_loop()
     }
 }
 
-UdpServer::UdpServer(int port)
+UdpServer::UdpServer(int port) : server_running(true)
 {
     // Create UDP socket
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -120,13 +120,16 @@ UdpServer::UdpServer(int port)
 
     // Start server thread
     server_running = true;
-    udp_server_thread = std::thread(&UdpServer::udp_server_loop, this);
+    udp_server_thread = std::thread(&UdpServer::server_loop, this);
     spdlog::info("UDP server started on port {}", port);
 }
 
 UdpServer::~UdpServer()
 {
 
+    server_running = false;
+
+    spdlog::info("Stopping UDP server...");
     if (udp_server_thread.joinable())
     {
         udp_server_thread.join();
