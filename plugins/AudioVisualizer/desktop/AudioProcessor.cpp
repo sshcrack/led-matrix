@@ -110,7 +110,6 @@ void AudioProcessor::updateAnalyzer() {
 
 void AudioProcessor::threadFunction() {
     const auto channel = recorder->getChannel();
-    UdpSender udpSender;
     int consecutiveErrors = 0;
 
     std::string hostname;
@@ -150,7 +149,7 @@ void AudioProcessor::threadFunction() {
 
             // Send data if hostname and port are valid
             if (!hostname.empty() && config_.port > 0) {
-                const auto res = udpSender.sendAudioData(currentBands_, hostname, config_.port, getInterpolatedLog());
+                const auto res = udpSender.sendPacket(currentBands_, hostname, config_.port);
                 if (res.has_value()) {
                     if (consecutiveErrors > 0) {
                         spdlog::info("Successfully sent audio data after {} consecutive errors", consecutiveErrors);

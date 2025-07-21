@@ -11,17 +11,14 @@ using std::string;
 using std::vector;
 namespace fs = std::filesystem;
 
-namespace Plugins
-{
-    class DesktopPlugin
-    {
+namespace Plugins {
+    class DesktopPlugin {
         // virtual vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper *)> > create_some_provider() = 0;
 
     public:
         fs::path _plugin_location;
 
-        [[nodiscard]] fs::path get_plugin_location() const
-        {
+        [[nodiscard]] fs::path get_plugin_location() const {
             return _plugin_location;
         }
 
@@ -30,12 +27,15 @@ namespace Plugins
         virtual void render(ImGuiContext *ctx) = 0;
 
         virtual void loadConfig(std::optional<const nlohmann::json> config) = 0;
+
         virtual void saveConfig(nlohmann::json &config) const = 0;
 
-        virtual void beforeExit() {}
+        virtual void beforeExit() {
+        }
 
-        [[nodiscard]] virtual std::vector<std::string> getAssociatedScenes() const {
-            return {};
+        // Return a vector of uint8_t if the plugin handles the scene and should send a packet
+        [[nodiscard]] virtual std::optional<std::vector<uint8_t> > onNextPacket(const std::string sceneName) {
+            return std::nullopt;
         }
     };
 }
