@@ -33,5 +33,9 @@ namespace Plugins
         virtual void saveConfig(nlohmann::json &config) const = 0;
 
         virtual void beforeExit() {}
+
+        [[nodiscard]] virtual std::vector<std::string> getAssociatedScenes() const {
+            return {};
+        }
     };
 }
