@@ -3,7 +3,6 @@
 #include <nlohmann/json.hpp>
 #include <utility>
 
-
 #include <Magick++.h>
 #include <shared/matrix/interrupt.h>
 #include <shared/matrix/utils/consts.h>
@@ -15,6 +14,12 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 
+#include <restinio/all.hpp>
+#include <restinio/websocket/websocket.hpp>
+
+namespace rws = restinio::websocket::basic;
+using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;
+
 using namespace spdlog;
 using namespace std;
 using json = nlohmann::json;
@@ -22,17 +27,19 @@ using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<>;
 
-int usage(const char *progname) {
+int usage(const char *progname)
+{
     fprintf(stderr, "usage: %s [options]\n", progname);
     rgb_matrix::MatrixFactory::PrintMatrixFactoryFlags(stderr);
     return 1;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     Magick::InitializeMagick(*argv);
 
     SetMagickResourceLimit(Magick::MemoryResource, 256 * 1024 * 1024); // Limit to 256MB
-    SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024); // Limit to 512MB
+    SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024);    // Limit to 512MB
     cfg::load_env_levels();
 
     rgb_matrix::MatrixFactory::Options options;
@@ -43,8 +50,8 @@ int main(int argc, char *argv[]) {
     options.runtime_options.drop_priv_user = getenv("SUDO_UID");
     options.runtime_options.drop_priv_group = getenv("SUDO_GID");
 
-
-    if (!rgb_matrix::MatrixFactory::ParseOptionsFromFlags(&argc, &argv, &options)) {
+    if (!rgb_matrix::MatrixFactory::ParseOptionsFromFlags(&argc, &argv, &options))
+    {
         return usage(argv[0]);
     }
 
@@ -52,7 +59,8 @@ int main(int argc, char *argv[]) {
     if (matrix == nullptr)
         return usage(argv[0]);
 
-    if (!filesystem::exists(Constants::root_dir)) {
+    if (!filesystem::exists(Constants::root_dir))
+    {
         filesystem::create_directory(Constants::root_dir);
     }
 
@@ -60,20 +68,20 @@ int main(int argc, char *argv[]) {
     const auto pl = PluginManager::instance();
     pl->initialize();
 
-
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
 
-    for (const auto &item: pl->get_plugins()) {
+    for (const auto &item : pl->get_plugins())
+    {
         const auto err = item->before_server_init();
-        if (err.has_value()) {
+        if (err.has_value())
+        {
             error(err.value());
             std::exit(-1);
         }
     }
 
     info("Loaded {} Scenes and {} Image Types", pl->get_scenes().size(), pl->get_image_providers().size());
-
 
     debug("Starting mainloop_thread");
     uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
@@ -86,15 +94,18 @@ int main(int argc, char *argv[]) {
 
     server_t server{
         restinio::own_io_context(),
-        [port, host](auto &settings) {
-            std::shared_ptr router = Server::server_handler();
+        [port, host](auto &settings)
+        {
+            ws_registry_t registry;
+            std::shared_ptr router = Server::server_handler(registry);
 
             // Create request handler function that handles OPTIONS first, then delegates to router
-            auto handler = [router = std::move(router)]
-            (auto req) {
+            auto handler = [router = std::move(router)](auto req)
+            {
 #ifdef ENABLE_CORS
                 // Handle CORS preflight requests for all routes
-                if (req->header().method() == restinio::http_method_options()) {
+                if (req->header().method() == restinio::http_method_options())
+                {
                     return Server::handle_cors_preflight(req);
                 }
 #endif
@@ -104,27 +115,32 @@ int main(int argc, char *argv[]) {
             settings.port(port);
             settings.address(host);
             settings.request_handler(std::move(handler));
-        }
-    };
+            settings.read_next_http_message_timelimit(10s);
+            settings.write_http_response_timelimit(1s);
+            settings.handle_request_timeout(1s);
+            settings.cleanup_func([&registry]
+                                  { registry.clear(); });
+        }};
 
     thread control_thread{
-        [&server, &port, &host] {
+        [&server, &port, &host]
+        {
             // Use restinio::run to launch RESTinio's server.
             // This run() will return only if server stopped from
             // some other thread.
             info("Listening on http://{}:{}/", host, port);
             run(on_thread_pool(
-                    2, // Count of worker threads for RESTinio.
-                    restinio::skip_break_signal_handling(), // Don't react to Ctrl+C.
-                    server) // Server to be run.
+                2,                                      // Count of worker threads for RESTinio.
+                restinio::skip_break_signal_handling(), // Don't react to Ctrl+C.
+                server)                                 // Server to be run.
             );
-        }
-    };
+        }};
 
-
-    for (const auto &item: pl->get_plugins()) {
+    for (const auto &item : pl->get_plugins())
+    {
         const auto err = item->after_server_init();
-        if (err.has_value()) {
+        if (err.has_value())
+        {
             error(err.value());
             std::exit(-1);
         }
@@ -133,7 +149,8 @@ int main(int argc, char *argv[]) {
     debug("Initializing hardware...");
     auto hardware_code = start_hardware_mainloop(matrix);
 
-    if (hardware_code != 0) {
+    if (hardware_code != 0)
+    {
         error("Could not initialize hardware_code.");
         initiate_shutdown(server);
 
@@ -147,8 +164,10 @@ int main(int argc, char *argv[]) {
 
     initiate_shutdown(server);
 
-    for (const auto plugin: pl->get_plugins()) {
-        if (auto err = plugin->pre_exit(); err.has_value()) {
+    for (const auto plugin : pl->get_plugins())
+    {
+        if (auto err = plugin->pre_exit(); err.has_value())
+        {
             error(err.value());
         }
     }
@@ -163,7 +182,6 @@ int main(int argc, char *argv[]) {
 
     debug("Deleting config...");
     delete config;
-
 
     debug("Terminating plugin loader...");
     pl->destroy_plugins();
