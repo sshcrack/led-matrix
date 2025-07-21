@@ -33,6 +33,11 @@ public:
 
     void beforeExit() override;
 
+    [[nodiscard]] std::vector<std::string> getAssociatedScenes() const override
+    {
+        return {"audio_spectrum"};
+    }
+
 private:
     ImPlotContext *implotContext = nullptr;
 

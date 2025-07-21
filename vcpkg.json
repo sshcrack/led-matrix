@@ -25,7 +25,8 @@
         {
           "name": "hello-imgui",
           "features": ["opengl3-binding", "glfw-binding"]
-        }
+        },
+        "ixwebsocket"
       ]
     },
 
