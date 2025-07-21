@@ -9,12 +9,20 @@
 #include "imgui_impl_glfw.h"
 #include <thread>
 #include <spdlog/spdlog.h>
-#include "shared/desktop/config.h"
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <shared/desktop/config.h>
+#include <shared/desktop/utils.h>
 #include "filters.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
 #include "single_instance_manager.h"
+#include <filesystem>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
+namespace fs = std::filesystem;
 static bool shouldExit = false;
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 
@@ -35,17 +43,43 @@ static void window_iconify_callback(GLFWwindow *window, const int iconified)
 static bool showMainWindow = false;
 using namespace Config;
 
+#if defined(_WIN32) && !defined(USE_DESKTOP_CONSOLE)
+int inner_main(const int argc, char *argv[])
+#else
 int main(const int argc, char *argv[])
+#endif
 {
+    fs::path logDir = get_data_dir() / "logs";
+    if (!fs::exists(logDir))
+        fs::create_directories(logDir);
+
+    // Create a file rotating logger with 5 MB size max and 3 rotated files
+    auto max_size = 1048576 * 5;
+    auto max_files = 3;
+
+
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_level(spdlog::level::warn);
+    console_sink->set_pattern("[multi_sink_example] [%^%l%$] %v");
+
+    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>((logDir / "app.log").string(), max_size, max_files);
+    file_sink->set_level(spdlog::level::trace);
+
+    spdlog::logger logger("multi_sink", {console_sink, file_sink});
+    auto sharedLogger = std::make_shared<spdlog::logger>(logger);
+
+    spdlog::set_default_logger(sharedLogger);
     HelloImGui::SetAssetsFolder((get_exec_dir() / ".." / "assets").string());
 
     // Single instance manager
-    SingleInstanceManager* instanceManager = nullptr;
-    try {
-        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
-            showMainWindow = true;
-        });
-    } catch ([[maybe_unused]] const std::exception& e) {
+    SingleInstanceManager *instanceManager = nullptr;
+    try
+    {
+        instanceManager = new SingleInstanceManager("LedMatrixController", []
+                                                    { showMainWindow = true; });
+    }
+    catch ([[maybe_unused]] const std::exception &e)
+    {
         // Already running, exit
         return 0;
     }
@@ -54,7 +88,7 @@ int main(const int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    for (const auto& [plName, plugin] : pl->get_plugins())
+    for (const auto &[plName, plugin] : pl->get_plugins())
     {
         plugin->loadConfig(cfg->getPluginSetting(plName));
     }
@@ -104,7 +138,7 @@ int main(const int argc, char *argv[])
         static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
         {
             ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-            for (const auto& currPair : plugins)
+            for (const auto &currPair : plugins)
             {
                 std::string currName = currPair.first;
                 if (ImGui::Selectable(currName.c_str(), selected.first == currName))
@@ -122,7 +156,6 @@ int main(const int argc, char *argv[])
 
         ImGui::EndChild();
         ImGui::EndGroup();
-
     };
 
     const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
@@ -144,13 +177,16 @@ int main(const int argc, char *argv[])
 
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = guiFunction;
-    runnerParams.callbacks.PreNewFrame = [&] {
+    runnerParams.callbacks.PreNewFrame = [&]
+    {
         tray.pump();
     };
 
-    runnerParams.callbacks.BeforeExit = [&] {
+    runnerParams.callbacks.BeforeExit = [&]
+    {
         spdlog::info("Exiting application...");
-        for (auto &[_1, pl] : pl->get_plugins()) {
+        for (auto &[_1, pl] : pl->get_plugins())
+        {
             pl->beforeExit();
         }
     };
@@ -174,7 +210,7 @@ int main(const int argc, char *argv[])
 
     runnerParams.callbacks.PostInit = [&]()
     {
-        auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+        auto *window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
     };
 
@@ -186,8 +222,10 @@ int main(const int argc, char *argv[])
 
     // Add polling for DBus messages (Linux only)
 #ifndef _WIN32
-    runnerParams.callbacks.PreNewFrame = [&]() {
-        if (instanceManager) instanceManager->poll();
+    runnerParams.callbacks.PreNewFrame = [&]()
+    {
+        if (instanceManager)
+            instanceManager->poll();
     };
 #endif
 
@@ -206,3 +244,34 @@ int main(const int argc, char *argv[])
     spdlog::info("Exited cleanly.");
     return 0;
 }
+
+#if defined(_WIN32) && !defined(USE_DESKTOP_CONSOLE)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+{
+    int argc = 0;
+    LPWSTR *argv_w = CommandLineToArgvW(pCmdLine, &argc);
+    if (!argv_w)
+        return -1;
+
+    // Convert wide strings to UTF-8
+    char **argv = new char *[argc];
+    for (int i = 0; i < argc; ++i)
+    {
+        const int len = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, nullptr, 0, nullptr, nullptr);
+        argv[i] = new char[len];
+        WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, argv[i], len, nullptr, nullptr);
+    }
+
+    const int result = inner_main(argc, argv); // Call your real main
+
+    // Cleanup
+    for (int i = 0; i < argc; ++i)
+    {
+        delete[] argv[i];
+    }
+    delete[] argv;
+    LocalFree(argv_w);
+
+    return result;
+}
+#endif

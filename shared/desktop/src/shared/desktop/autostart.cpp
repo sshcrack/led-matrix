@@ -45,7 +45,7 @@ namespace Autostart
         {
             return std::unexpected("Failed to initialize COM library: " + std::system_category().message(GetLastError()));
         }
-        hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void**)&pShellLink);
+        hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void **)&pShellLink);
         if (FAILED(hr))
         {
             CoUninitialize();

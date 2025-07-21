@@ -2,6 +2,7 @@
 #include "shared/desktop/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 #include <shared/common/utils/utils.h>
+#include "shared/desktop/utils.h"
 #include <iostream>
 #include <fstream>
 #include <mutex>
@@ -188,8 +189,8 @@ Config::ConfigManager *Config::ConfigManager::instance()
 
     std::call_once(onceFlag, []()
                    {
-        std::filesystem::path configFilePath = get_exec_dir() / "config.json";
-        _instance = new Config::ConfigManager(configFilePath); });
+        fs::path dataDir = get_data_dir();
+        _instance = new Config::ConfigManager(dataDir / "config.json"); });
 
     return _instance;
 }
