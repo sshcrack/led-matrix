@@ -6,7 +6,5 @@
 #include <string>
 #include <shared/common/utils/utils.h>
 
-namespace fs = std::filesystem;
-
 bool isWritableExistingFile(const std::filesystem::path &path);
-fs::path get_data_dir();
+std::filesystem::path get_data_dir();
