@@ -45,12 +45,14 @@ namespace Autostart
         {
             return std::unexpected("Failed to initialize COM library: " + std::system_category().message(GetLastError()));
         }
+
         hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void **)&pShellLink);
         if (FAILED(hr))
         {
             CoUninitialize();
             return std::unexpected("Failed to create ShellLink instance: " + std::system_category().message(hr));
         }
+
         // Add --start-minimized flag to the command line
         std::string exeWithArgs = exePath + " --start-minimized";
         pShellLink->SetPath(s2ws(exePath).c_str());

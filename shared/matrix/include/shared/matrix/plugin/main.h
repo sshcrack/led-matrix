@@ -69,5 +69,10 @@ namespace Plugins {
         virtual std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) {
             return std::move(router);
         };
+
+        /// Return true if the request has been handled by this plugin
+        virtual bool on_udp_packet(const uint8_t magicPacket, const uint8_t version, const uint8_t *data, const size_t size) {
+            return false;
+        };
     };
 }
