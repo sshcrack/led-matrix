@@ -1,5 +1,6 @@
 #include "shared/desktop/utils.h"
 
+namespace fs = std::filesystem;
 bool isWritableExistingFile(const std::filesystem::path &path)
 {
     if (!std::filesystem::exists(path))
