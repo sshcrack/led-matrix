@@ -295,7 +295,7 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "SetOutPath $INSTDIR")
         # Ensure per-user install mode for NSIS
         # set(CPACK_NSIS_ENABLE_PER_USER_INSTALL_MODE ON)
-         #set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA")
+        #set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA")
         # Create shortcuts on Desktop and Start Menu
         set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
         set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
