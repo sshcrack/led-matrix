@@ -55,6 +55,13 @@ void AudioVisualizerDesktop::beforeExit() {
     ImPlot::DestroyContext();
 }
 
+std::optional<std::vector<uint8_t>> AudioVisualizerDesktop::onNextPacket(const std::string sceneName) {
+    if (sceneName != "audio_spectrum")
+        return std::nullopt;
+
+    return {};
+}
+
 void AudioVisualizerDesktop::addConnectionSettings() {
     const bool isProcessingRunning = audioProcessor->isThreadRunning();
     ImGui::SeparatorText("Connection Settings");
