@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
                                   { registry.clear(); });
         }};
 
-    thread server_thread{
+    thread control_thread{
         [&server, &port, &host]
         {
             // Use restinio::run to launch RESTinio's server.
