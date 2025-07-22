@@ -41,9 +41,9 @@ UdpSender::~UdpSender() {
 #endif
 }
 
-std::expected<void, std::string> UdpSender::sendPacket(const UdpPacket &packet, const std::string &targetAddr,
+std::expected<void, std::string> UdpSender::sendPacket(std::unique_ptr<UdpPacket, void(*)(UdpPacket *)> packet, const std::string &targetAddr,
                                                        const uint16_t port) const {
-    const std::vector<uint8_t> data = packet.toBytes();
+    const std::vector<uint8_t> data = packet->toBytes();
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;

@@ -156,22 +156,22 @@ void AudioVisualizerDesktop::addAudioSettings()
     static uint16_t numBandsMin = 1;
     static uint16_t numBandsMax = 256;
 
-    ImGui::SliderScalar("Number of Bands", ImGuiDataType_U16, &cfg.numBands, &numBandsMin, &numBandsMax, "%d");
+    ImGui::DragScalar("Number of Bands", ImGuiDataType_U16, &cfg.numBands, 1, &numBandsMin, &numBandsMax, "%d");
 
     static double gainMin = 0.1;
     static double gainMax = 10.0;
-    ImGui::SliderScalar("Gain", ImGuiDataType_Double, &cfg.gain, &gainMin, &gainMax, "%.1f");
+    ImGui::DragScalar("Gain", ImGuiDataType_Double, &cfg.gain, 1, &gainMin, &gainMax, "%.1f");
 
     static double smoothingMin = 0.0;
     static double smoothingMax = 1.0;
-    ImGui::SliderScalar("Smoothing", ImGuiDataType_Double, &cfg.smoothing, &smoothingMin, &smoothingMax, "%.2f");
+    ImGui::DragScalar("Smoothing", ImGuiDataType_Double, &cfg.smoothing, 1, &smoothingMin, &smoothingMax, "%.2f");
 
     static double minFreqMin = 20.0;
     static double minFreqMax = 1000.0;
     static double maxFreqMax = 22000.0;
 
-    ImGui::SliderScalar("Min Frequency", ImGuiDataType_Double, &cfg.minFreq, &minFreqMin, &minFreqMax, "%.1f Hz");
-    ImGui::SliderScalar("Max Frequency", ImGuiDataType_Double, &cfg.maxFreq, &cfg.minFreq, &maxFreqMax, "%.1f Hz");
+    ImGui::DragScalar("Min Frequency", ImGuiDataType_Double, &cfg.minFreq, 1, &minFreqMin, &minFreqMax, "%.1f Hz");
+    ImGui::DragScalar("Max Frequency", ImGuiDataType_Double, &cfg.maxFreq, 1,  &cfg.minFreq, &maxFreqMax, "%.1f Hz");
 }
 
 void AudioVisualizerDesktop::addDeviceSettings()
@@ -311,23 +311,21 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizer
         if (deviceIndex == -1)
         {
             std::unique_lock lock(lastErrorMutex);
-            lastError = "Device not found: " + cfg.deviceName + ". Please select another device in the settings.";
+            lastError = "Device not found: '" + cfg.deviceName + "'. Please select another device in the settings.";
             return std::nullopt;
         }
 
+        lastError.clear();
         recorder->startRecording(deviceIndex);
     }
 
     auto samplesOpt = recorder->getLastSamples();
-    if (!samplesOpt.has_value()) {
+    if (!samplesOpt.has_value())
         return std::nullopt;
-    }
 
     auto bands = audioProcessor->computeBands(samplesOpt.value(), recorder->getSampleRate());
-    if (bands.empty()) {
-        spdlog::warn("No bands computed from audio samples. Check your audio device and settings.");
+    if (bands.empty())
         return std::nullopt;
-    }
 
     if (showPreview)
     {
@@ -336,7 +334,6 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizer
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    spdlog::info("Sending {} bands with interpolatedLog={}", bands.size(), interpolatedLog);
     return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog),
                                                              [](UdpPacket *packet)
                                                              {
