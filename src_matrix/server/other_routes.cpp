@@ -55,7 +55,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             .append_header_date_field()
             .append_header(restinio::http_field::content_type, content_type);
         Server::add_cors_headers(response);
-        return response.set_body(sendfile(file_path)).done();
+        return response.set_body(restinio::sendfile(file_path)).done();
     });
 
     router->http_get("/list", [](auto req, auto) {
@@ -100,7 +100,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                 .append_header_date_field()
                 .append_header(restinio::http_field::content_type, content_type);
         Server::add_cors_headers(response);
-        response.set_body(sendfile(processing_path)).done();
+        response.set_body(restinio::sendfile(processing_path)).done();
 
         return restinio::request_accepted();
     });

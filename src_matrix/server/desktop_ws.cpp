@@ -9,9 +9,6 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
   router->http_get("/desktopWebsocket", [&registry](auto req, auto)
                    {
 
-                    if(true)
-        return restinio::request_accepted();
-
                   spdlog::info("WebSocket connection request received.");
             if( restinio::http_connection_header_t::upgrade == req->header().connection() )
       {
