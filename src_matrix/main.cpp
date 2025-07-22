@@ -89,7 +89,6 @@ int main(int argc, char *argv[])
     debug("Allowing CORS request to be made to this server");
 #endif
 
-
     server_t server{
         restinio::own_io_context(),
         [port, host](auto &settings)
@@ -115,7 +114,7 @@ int main(int argc, char *argv[])
             settings.read_next_http_message_timelimit(10s);
             settings.write_http_response_timelimit(1s);
             settings.handle_request_timeout(1s);
-            settings.cleanup_func([&registry]
+            settings.cleanup_func([]
                                   { registry.clear(); });
         }};
 

@@ -20,7 +20,7 @@
 #include "single_instance_manager.h"
 #include <filesystem>
 #ifdef _WIN32
-#include <windows.h>
+#include <windows->h>
 #endif
 #include "spdlog/cfg/env.h"
 
@@ -94,8 +94,9 @@ int main(const int argc, char *argv[])
         plugin->loadConfig(cfg->getPluginSetting(plName));
     }
 
+    static WebsocketClient* ws = new WebsocketClient();
     auto guiFunction = [pl, cfg] {
-        static WebsocketClient ws;
+        static bool initialConnect = true;
         if (shouldExit)
         {
             HelloImGui::GetRunnerParams()->appShallExit = true;
@@ -117,7 +118,7 @@ int main(const int argc, char *argv[])
         {
             std::cout << "Hostname changed to: " << hostname << std::endl;
             generalCfg.setHostname(hostname);
-            ws.stop();
+            ws->stop();
         }
 
         bool somethingInvalid = false;
@@ -151,25 +152,31 @@ int main(const int argc, char *argv[])
         if (somethingInvalid)
         {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
+        } else if (initialConnect) {
+            ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
+            ws->start();
+            initialConnect = false;
         }
 
-        auto state = ws.getReadyState();
+        auto state = ws->getReadyState();
         if (state != ix::ReadyState::Open)
         {
-            const std::string stateStr = ws.getReadyStateString();
+            const std::string stateStr = ws->getReadyStateString();
             std::string statusText = "WebSocket is currently: " + stateStr;
 
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), statusText.c_str());
             if (ImGui::Button("Connect", ImVec2(0, 0)))
             {
-                ws.setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
-                ws.start();
+                ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
+                ws->start();
 
                 spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
             }
 
             return;
         }
+
+        ImGui::Text(("Active Scene: " + ws->getActiveScene()).c_str());
 
         ImGui::SeparatorText("Plugin Settings");
         auto plugins = pl->get_plugins();
@@ -276,6 +283,7 @@ int main(const int argc, char *argv[])
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
+    delete ws;
 
     delete cfg;
     pl->destroy_plugins();

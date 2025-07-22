@@ -1,4 +1,5 @@
 #include "canvas.h"
+#include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 
 #include <server/common.h>
@@ -67,12 +68,21 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas)
         const tmillis_t start_ms = GetTimeInMillis();
         const tmillis_t end_ms = start_ms + scene->get_duration();
 
-        for (const auto ws_handle: registry | views::values) {
-            restinio::websocket::basic::message_t message;
-            message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
-            message.set_payload(scene->get_name());
+        {
+            std::unique_lock lock(currSceneMutex);
+            currScene = scene->get_name();
+        }
 
-            ws_handle->send_message(message);
+        {
+            std::unique_lock lock(registryMutex);
+            for (const auto ws_handle : registry | views::values)
+            {
+                restinio::websocket::basic::message_t message;
+                message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
+                message.set_payload(scene->get_name());
+
+                ws_handle->send_message(message);
+            }
         }
 
         scene->offscreen_canvas = pCanvas;
