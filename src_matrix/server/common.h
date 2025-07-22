@@ -14,3 +14,5 @@ using traits_t =
 // Alias for container with stored websocket handles.
 using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;
 }
+
+static Server::ws_registry_t registry;

@@ -1,4 +1,8 @@
 #include "canvas.h"
+#include <restinio/websocket/websocket.hpp>
+
+#include <server/common.h>
+
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
@@ -62,6 +66,14 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas)
         cantFindScene = 0;
         const tmillis_t start_ms = GetTimeInMillis();
         const tmillis_t end_ms = start_ms + scene->get_duration();
+
+        for (const auto ws_handle: registry | views::values) {
+            restinio::websocket::basic::message_t message;
+            message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
+            message.set_payload(scene->get_name());
+
+            ws_handle->send_message(message);
+        }
 
         scene->offscreen_canvas = pCanvas;
         while (GetTimeInMillis() < end_ms)

@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
         restinio::own_io_context(),
         [port, host](auto &settings)
         {
-            Server::ws_registry_t registry;
             std::shared_ptr router = Server::server_handler(registry);
 
             // Create request handler function that handles OPTIONS first, then delegates to router
