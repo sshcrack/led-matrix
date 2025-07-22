@@ -72,6 +72,19 @@ void Config::General::setAutostartEnabled(bool enabled)
     }
 }
 
+const uint16_t &Config::General::getPort() const
+{
+    std::shared_lock lock(mutex_);
+    return port;
+}
+void Config::General::setPort(uint16_t newPort)
+{
+    std::unique_lock lock(mutex_);
+    port = newPort;
+
+    spdlog::info("Port set to {}", port);
+}
+
 const std::string &Config::General::getHostname() const
 {
     std::shared_lock lock(mutex_);
@@ -84,7 +97,7 @@ std::string Config::General::getHostnameCopy() const
     return hostname;
 }
 
-void Config::General::setHostnameAndPort(const std::string &hostname)
+void Config::General::setHostname(const std::string &hostname)
 {
     std::unique_lock lock(mutex_);
     this->hostname = hostname;
@@ -96,14 +109,22 @@ void Config::from_json(const json &j, General &p)
     {
         std::string hostname;
         j.at("hostname").get_to(hostname);
-        p.setHostnameAndPort(hostname);
+        p.setHostname(hostname);
+    }
+
+    if (j.contains("port"))
+    {
+        uint16_t port;
+        j.at("port").get_to(port);
+        p.setPort(port);
     }
 }
 
 void Config::to_json(json &j, const General &p)
 {
     j = {
-        {"hostname", p.getHostname()}};
+        {"hostname", p.getHostname()},
+        {"port", p.getPort()}};
 }
 
 Config::ConfigManager::ConfigManager(const std::filesystem::path &filePath)

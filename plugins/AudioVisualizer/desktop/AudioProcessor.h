@@ -10,64 +10,32 @@
 #include "frequency_analyzer/factory.h"
 #include "record.h"
 
-class AudioProcessor {
+class AudioProcessor
+{
 public:
-
-    AudioProcessor(AudioVisualizerConfig& config);
-    ~AudioProcessor();
+    AudioProcessor(AudioVisualizerConfig &config);
 
     [[nodiscard]] std::vector<float> getBands();
     [[nodiscard]] bool getInterpolatedLog() const;
 
-    std::expected<void, std::string> startProcessingThread(int deviceIdx);
-    void stopProcessingThread() {
-        threadRunning = false;
-        processingThread.join();
-        recorder->stopRecording();
-    }
-
-    std::vector<float> getLatestBands() {
-        std::lock_guard lock(bandsMutex);
-        return currentBands_;
-    }
-
-    [[nodiscard]] bool isThreadRunning() const { return threadRunning; }
-
-
-    std::vector<AudioRecorder::Recorder::DeviceInfo> listDevices() const {
-        return recorder->listDevices();
-    }
 
     void updateAnalyzer();
-    std::string getLatestError() {
-        std::lock_guard lock(errorMutex);
-        return lastError;
-    }
 
+    std::vector<float> computeBands(const std::vector<float> &rawSamples, double sampleRate);
 private:
-    void threadFunction();
-
     std::vector<float> computeFFT(const std::vector<float> samples);
     void applyAmplitudeProcessing(std::vector<float> &bands, const std::vector<float> &prevBands) const;
 
     std::unique_ptr<fftwf_complex[]> fftInput_;
     std::unique_ptr<fftwf_complex[]> fftOutput_;
     fftwf_plan fftPlan_;
+
     std::vector<float> window_;
     AudioVisualizerConfig &config_;
 
     std::mutex bandsMutex;
     std::vector<float> currentBands_;
 
-
     std::mutex analyzerMutex;
     std::unique_ptr<FrequencyAnalyzer> analyzer;
-    std::unique_ptr<AudioRecorder::Recorder> recorder;
-
-
-    bool threadRunning = false;
-    std::thread processingThread;
-
-    std::string lastError; // Store the last error message
-    std::mutex errorMutex; // Mutex for thread-safe access to lastError
 };

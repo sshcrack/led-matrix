@@ -1,4 +1,5 @@
 #include "shared/desktop/utils.h"
+#include <fstream>
 
 namespace fs = std::filesystem;
 bool isWritableExistingFile(const std::filesystem::path &path)
@@ -13,17 +14,18 @@ bool isWritableExistingFile(const std::filesystem::path &path)
 fs::path get_data_dir()
 {
     fs::path configPath;
-    fs::path exeDir = get_exec_dir();
+    const fs::path exeDir = get_exec_dir();
 
-    fs::path portableFile = exeDir / "portable.txt";
+    const fs::path portableFile = exeDir / "portable.txt";
     bool isPortable = fs::exists(portableFile);
 
+    auto localDataDir = exeDir.parent_path() / "data";
     if (isPortable)
-        return exeDir.parent_path() / "data";
+        return localDataDir;
 
-    fs::path localConfig = exeDir / "config.json";
-    if (isWritableExistingFile(localConfig))
-        return localConfig.string();
+    const fs::path dataConfigJson = localDataDir / "config.json";
+    if (isWritableExistingFile(dataConfigJson))
+        return localDataDir;
 
 #ifdef _WIN32
     char *appData = nullptr;
@@ -37,7 +39,7 @@ fs::path get_data_dir()
         fs::create_directories(configRootPath);
 
     free(appData);
-    return configRootPath / "config.json";
+    return configRootPath;
 #else
     const char *home = getenv("HOME");
     if (!home)
@@ -47,6 +49,6 @@ fs::path get_data_dir()
     if (!fs::exists(configRootPath))
         fs::create_directories(configRootPath);
 
-    return configRootPath / "config.json";
+    return configRootPath;
 #endif
 }

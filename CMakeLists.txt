@@ -119,6 +119,9 @@ if(ENABLE_DESKTOP)
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
     )
 
+    find_package(ixwebsocket CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ixwebsocket::ixwebsocket)
+
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
@@ -279,7 +282,7 @@ if(ENABLE_DESKTOP)
     set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
 
     if(WIN32)
-    set(CPACK_GENERATOR "ZIP;NSIS64")
+        set(CPACK_GENERATOR "ZIP;NSIS64")
         set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
         set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
@@ -301,7 +304,7 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
         set(CPACK_NSIS_SHORTCUT_NAME "LED Matrix Controller")
     else()
-    set(CPACK_GENERATOR "DEB;TGZ")
+        set(CPACK_GENERATOR "DEB;TGZ")
     endif()
     include(CPack)
 else()

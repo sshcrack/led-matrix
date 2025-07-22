@@ -49,8 +49,6 @@ static FrequencyScale to_frequency_scale(const std::string &str)
 class AudioVisualizerConfig
 {
 public:
-    int port;
-
     // ---- Audio Settings ---
 
     int numBands;
@@ -69,7 +67,7 @@ public:
     // ----- Audio Device Settings -----
     std::string deviceName;
 
-    AudioVisualizerConfig() : port(8888), numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
+    AudioVisualizerConfig() : numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
                               analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic),
                               skipMissingBandsFromOutput(true), linearAmplitudeScaling(false), interpolateMissingBands(false) {}
 };
@@ -86,7 +84,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(FrequencyScale, {{Linear, "Linear"},
 static void from_json(const json &j, AudioVisualizerConfig &config)
 {
     AudioVisualizerConfig defaults;
-    config.port = j.value("port", defaults.port);
     config.numBands = j.value("numBands", defaults.numBands);
     config.gain = j.value("gain", defaults.gain);
     config.smoothing = j.value("smoothing", defaults.smoothing);
@@ -103,7 +100,6 @@ static void from_json(const json &j, AudioVisualizerConfig &config)
 static void to_json(json &j, const AudioVisualizerConfig &config)
 {
     j = json{
-        {"port", config.port},
         {"numBands", config.numBands},
         {"gain", config.gain},
         {"smoothing", config.smoothing},

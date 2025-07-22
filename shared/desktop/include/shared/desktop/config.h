@@ -20,6 +20,8 @@ namespace Config
     {
     protected:
         std::string hostname;
+        uint16_t port = 8080; // Default port
+
         bool autostart = Autostart::isEnabled(APP_NAME);
         mutable std::shared_mutex mutex_;
 
@@ -33,9 +35,12 @@ namespace Config
         bool isAutostartEnabled() const;
         void setAutostartEnabled(bool enabled);
 
+        const uint16_t &getPort() const;
+        void setPort(uint16_t newPort);
+
         const std::string &getHostname() const;
         std::string getHostnameCopy() const; // Thread-safe copy method
-        void setHostnameAndPort(const std::string &hostname);
+        void setHostname(const std::string &hostname);
     };
 
     void to_json(json &j, const General &p);

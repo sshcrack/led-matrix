@@ -13,6 +13,7 @@
 #include "server/server.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
+#include "udp.h"
 
 #include <restinio/all.hpp>
 #include <restinio/websocket/websocket.hpp>
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
                                   { registry.clear(); });
         }};
 
-    thread control_thread{
+    thread server_thread{
         [&server, &port, &host]
         {
             // Use restinio::run to launch RESTinio's server.
@@ -146,6 +147,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    debug("Starting UDP server on port {}", port);
+    UdpServer *udpServer = new UdpServer(port);
+
     debug("Initializing hardware...");
     auto hardware_code = start_hardware_mainloop(matrix);
 
@@ -163,6 +167,8 @@ int main(int argc, char *argv[])
     info("Hardware thread stopped. Stopping http server");
 
     initiate_shutdown(server);
+
+    delete udpServer;
 
     for (const auto plugin : pl->get_plugins())
     {

@@ -1,43 +1,47 @@
 #include "AudioVisualizerDesktop.h"
-#include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include "imgui_stdlib.h"
 #include <spdlog/spdlog.h>
+#include "udpBandsPacket.h"
 
-extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer() {
+extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer()
+{
     return new AudioVisualizerDesktop();
 }
 
-extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c) {
+extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c)
+{
     delete c;
 }
 
-AudioVisualizerDesktop::AudioVisualizerDesktop() {
+AudioVisualizerDesktop::AudioVisualizerDesktop()
+{
     implotContext = ImPlot::CreateContext();
 }
 
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
-int PortFilter(ImGuiInputTextCallbackData *data) {
+int PortFilter(ImGuiInputTextCallbackData *data)
+{
     if (data->EventChar < 32 || data->EventChar >= 127)
         return 1; // Disallow non-printable
 
-    if (data->BufTextLen > 5) {
+    if (data->BufTextLen > 5)
+    {
         return 1; // Limit to 5 characters
     }
 
     char c = static_cast<char>(data->EventChar);
-    if (c >= '0' && c <= '9') {
+    if (c >= '0' && c <= '9')
+    {
         return 0; // Allow
     }
 
     return 1; // Block everything else
 }
 
-void AudioVisualizerDesktop::render(ImGuiContext *ctx) {
-    if (audioProcessor == nullptr)
-        audioProcessor = std::make_unique<AudioProcessor>(cfg);
+void AudioVisualizerDesktop::render(ImGuiContext *ctx)
+{
 
     ImGui::SetCurrentContext(ctx);
     ImPlot::SetCurrentContext(implotContext);
@@ -50,80 +54,52 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx) {
     addVisualizer();
 }
 
-void AudioVisualizerDesktop::beforeExit() {
+void AudioVisualizerDesktop::loadConfig(std::optional<const nlohmann::json> config)
+{
+    if (config.has_value())
+        cfg = config.value();
+
+    if (audioProcessor == nullptr)
+        audioProcessor = std::make_unique<AudioProcessor>(cfg);
+
+    if (recorder == nullptr)
+        recorder = std::make_unique<AudioRecorder::Recorder>();
+}
+
+void AudioVisualizerDesktop::beforeExit()
+{
     DesktopPlugin::beforeExit();
     ImPlot::DestroyContext();
 }
 
-std::optional<std::vector<uint8_t>> AudioVisualizerDesktop::onNextPacket(const std::string sceneName) {
-    if (sceneName != "audio_spectrum")
-        return std::nullopt;
+void AudioVisualizerDesktop::addConnectionSettings()
+{
+    const bool isProcessingRunning = recorder->isRecording();
 
-    return {};
-}
-
-void AudioVisualizerDesktop::addConnectionSettings() {
-    const bool isProcessingRunning = audioProcessor->isThreadRunning();
-    ImGui::SeparatorText("Connection Settings");
-
-    static std::string port = std::to_string(cfg.port);
-    if (ImGui::InputText("Port", &port, ImGuiInputTextFlags_CallbackCharFilter, PortFilter)) {
-        try {
-            cfg.port = std::stoi(port);
-        } catch (const std::exception &e) {
-            spdlog::error("Invalid port number: {}", e.what());
-        }
-    }
-
-    const std::string buttonText = isProcessingRunning ? "Disconnect" : "Connect";
-
-    if (ImGui::Button(buttonText.c_str()) || initialConnect) {
-        initialConnect = false;
-
-        if (isProcessingRunning) {
-            audioProcessor->stopProcessingThread();
-        } else {
-            lastError = "";
-            // Find device index
-            auto devices = audioProcessor->listDevices();
-            int deviceIndex = -1;
-            for (const auto &device: devices) {
-                if (device.name == cfg.deviceName) {
-                    deviceIndex = device.index;
-                    break;
-                }
-            }
-
-            auto res = audioProcessor->startProcessingThread(deviceIndex);
-            if (!res.has_value()) {
-                spdlog::error("Couldn't start audio processing thread: {}", res.error());
-                lastError = res.error();
-                return;
-            }
-        }
-    }
-
-    if (!lastError.empty()) {
+    std::shared_lock lock(lastErrorMutex);
+    if (!lastError.empty())
+    {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
-    } else {
+    }
+    else
+    {
         ImGui::Text("Status: %s", isProcessingRunning ? "Processing" : "Idle");
     }
-
-    const std::string latestError = audioProcessor->getLatestError();
-    if (!audioProcessor->getLatestError().empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "AudioProcessor Error: %s", latestError.c_str());
-    }
 }
 
-void AudioVisualizerDesktop::addAnalysisSettings() {
+void AudioVisualizerDesktop::addAnalysisSettings()
+{
     ImGui::SeparatorText("Analysis Settings");
 
     static int selectedModeIdx = cfg.analysisMode;
     const std::string &modePreview = analysisModes[selectedModeIdx];
-    if (ImGui::BeginCombo("Mode", modePreview.c_str())) {
-        for (int n = 0; n < analysisModes.size(); n++) {
+    if (ImGui::BeginCombo("Mode", modePreview.c_str()))
+    {
+        for (int n = 0; n < analysisModes.size(); n++)
+        {
             const bool is_selected = (selectedModeIdx == n);
-            if (ImGui::Selectable(analysisModes[n].c_str(), is_selected)) {
+            if (ImGui::Selectable(analysisModes[n].c_str(), is_selected))
+            {
                 cfg.analysisMode = static_cast<AnalysisMode>(n);
                 selectedModeIdx = n;
                 audioProcessor->updateAnalyzer();
@@ -138,10 +114,13 @@ void AudioVisualizerDesktop::addAnalysisSettings() {
 
     static int selectedFreqIdx = cfg.frequencyScale;
     const std::string &frequencyPreview = frequencyScales[selectedFreqIdx];
-    if (ImGui::BeginCombo("Frequency Scale", frequencyPreview.c_str())) {
-        for (int n = 0; n < frequencyScales.size(); n++) {
+    if (ImGui::BeginCombo("Frequency Scale", frequencyPreview.c_str()))
+    {
+        for (int n = 0; n < frequencyScales.size(); n++)
+        {
             const bool is_selected = (selectedFreqIdx == n);
-            if (ImGui::Selectable(frequencyScales[n].c_str(), is_selected)) {
+            if (ImGui::Selectable(frequencyScales[n].c_str(), is_selected))
+            {
                 cfg.frequencyScale = static_cast<FrequencyScale>(n);
                 selectedFreqIdx = n;
                 audioProcessor->updateAnalyzer();
@@ -167,7 +146,8 @@ void AudioVisualizerDesktop::addAnalysisSettings() {
         cfg.skipMissingBandsFromOutput = skipMissingBandsFromOutput;
 }
 
-void AudioVisualizerDesktop::addAudioSettings() {
+void AudioVisualizerDesktop::addAudioSettings()
+{
     ImGui::SeparatorText("Audio Settings");
 
     static uint16_t numBandsMin = 1;
@@ -191,18 +171,26 @@ void AudioVisualizerDesktop::addAudioSettings() {
     ImGui::SliderScalar("Max Frequency", ImGuiDataType_Double, &cfg.maxFreq, &cfg.minFreq, &maxFreqMax, "%.1f Hz");
 }
 
-void AudioVisualizerDesktop::addDeviceSettings() {
+void AudioVisualizerDesktop::addDeviceSettings()
+{
     ImGui::SeparatorText("Audio Device Settings");
-    static auto devices = audioProcessor->listDevices();
-    if (cfg.deviceName.empty() && !devices.empty()) {
+    static auto devices = AudioRecorder::Recorder::listDevices();
+    if (cfg.deviceName.empty() && !devices.empty())
+    {
         cfg.deviceName = devices[0].name; // Default to first device
     }
 
-    if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
-        for (const auto &device: devices) {
+    if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str()))
+    {
+        for (const auto &device : devices)
+        {
             std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
             if (ImGui::Selectable(deviceNameWithId.c_str()))
+            {
                 cfg.deviceName = device.name;
+                recorder->stopRecording();
+                recorder->startRecording(device.index);
+            }
 
             if (cfg.deviceName == device.name)
                 ImGui::SetItemDefaultFocus();
@@ -212,35 +200,32 @@ void AudioVisualizerDesktop::addDeviceSettings() {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Refresh Devices")) {
-        devices = audioProcessor->listDevices();
+    if (ImGui::Button("Refresh Devices"))
+    {
+        devices = AudioRecorder::Recorder::listDevices();
     }
 }
 
-void AudioVisualizerDesktop::addVisualizer() {
+static bool showPreview = false;
+void AudioVisualizerDesktop::addVisualizer()
+{
     ImGui::SeparatorText("Audio Spectrum");
-
-    static bool showPreview = false;
-
-    if (audioProcessor && showPreview) {
-        latestBands = audioProcessor->getLatestBands();
-    }
-
     ImGui::Checkbox("Live Preview (may cause stutters on the LED Matrix)", &showPreview);
 
     if (latestBands.empty() || !showPreview)
         return;
 
-
     if (ImPlot::BeginPlot("Spectrum", ImVec2(-1, 0),
                           ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock |
-                          ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations)) {
+                              ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations))
+    {
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, cfg.numBands);
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 1.0);
 
         // Cache x-axis data to avoid recomputation
         static std::vector<float> x;
-        if (x.size() != latestBands.size()) {
+        if (x.size() != latestBands.size())
+        {
             x.resize(latestBands.size());
             for (size_t i = 0; i < x.size(); ++i)
                 x[i] = static_cast<float>(i);
@@ -252,35 +237,94 @@ void AudioVisualizerDesktop::addVisualizer() {
         yellowIndices.clear();
         redIndices.clear();
 
-        for (size_t i = 0; i < latestBands.size(); ++i) {
-            if (latestBands[i] < 0.5f) {
+        for (size_t i = 0; i < latestBands.size(); ++i)
+        {
+            if (latestBands[i] < 0.5f)
+            {
                 defaultIndices.push_back(i);
-            } else if (latestBands[i] < 0.8f) {
+            }
+            else if (latestBands[i] < 0.8f)
+            {
                 yellowIndices.push_back(i);
-            } else {
+            }
+            else
+            {
                 redIndices.push_back(i);
             }
         }
 
         // Render default bars
-        for (int idx: defaultIndices) {
+        for (const int idx : defaultIndices)
+        {
             ImPlot::PlotBars("Default", &x[idx], &latestBands[idx], 1, 1);
         }
 
         // Render yellow bars
         ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 255, 0, 255)); // Yellow
-        for (int idx: yellowIndices) {
+        for (const int idx : yellowIndices)
+        {
             ImPlot::PlotBars("Yellow", &x[idx], &latestBands[idx], 1, 1);
         }
         ImPlot::PopStyleColor();
 
         // Render red bars
         ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 0, 0, 255)); // Red
-        for (int idx: redIndices) {
+        for (const int idx : redIndices)
+        {
             ImPlot::PlotBars("Red", &x[idx], &latestBands[idx], 1, 1);
         }
         ImPlot::PopStyleColor();
 
         ImPlot::EndPlot();
     }
+}
+
+std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizerDesktop::onNextPacket(const std::string sceneName)
+{
+    if (sceneName != "audio_spectrum")
+        return std::nullopt;
+
+    if (!recorder->isRecording())
+    {
+        auto devices = AudioRecorder::Recorder::listDevices();
+        int deviceIndex = -1;
+        for (const auto &device : devices)
+        {
+            if (device.name == cfg.deviceName)
+            {
+                deviceIndex = device.index;
+                break;
+            }
+        }
+
+        if (deviceIndex == -1)
+        {
+            std::unique_lock lock(lastErrorMutex);
+            lastError = "Device not found: " + cfg.deviceName + ". Please select another device in the settings.";
+            return std::nullopt;
+        }
+
+        recorder->startRecording(deviceIndex);
+    }
+
+    auto samplesOpt = recorder->getLastSamples();
+    if (!samplesOpt.has_value())
+        return std::nullopt;
+
+    auto bands = audioProcessor->computeBands(samplesOpt.value(), recorder->getSampleRate());
+    if (bands.empty())
+        return std::nullopt;
+
+    if (showPreview)
+    {
+        std::unique_lock lock(latestBandsMutex);
+        latestBands = bands;
+    }
+
+    bool interpolatedLog = audioProcessor->getInterpolatedLog();
+    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog),
+                                                             [](UdpPacket *packet)
+                                                             {
+                                                                 delete (CompactAudioPacket *)packet;
+                                                             });
 }

@@ -9,10 +9,10 @@ register_plugin(AudioVisualizer
         desktop/AudioVisualizerDesktop.h
         desktop/record.cpp
         desktop/record.h
+        desktop/udpBandsPacket.cpp
+        desktop/udpBandsPacket.h
         desktop/AudioProcessor.h
         desktop/AudioProcessor.cpp
-        desktop/NetworkSender.cpp
-        desktop/NetworkSender.h
         desktop/frequency_analyzer/BarkAnalyzer.h
         desktop/frequency_analyzer/BarkAnalyzer.cpp
         desktop/frequency_analyzer/factory.h

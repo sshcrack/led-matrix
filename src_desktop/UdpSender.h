@@ -9,6 +9,7 @@
 #include <expected>
 #include <cstdint>
 #include <shared/common/udp/packet.h>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
@@ -20,8 +21,8 @@
 #include <unistd.h>
 #endif
 
-
-class UdpSender final {
+class UdpSender final
+{
 #if defined(_WIN32)
     SOCKET socket;
 #else
@@ -32,7 +33,6 @@ public:
     UdpSender();
 
     ~UdpSender();
-
-    std::expected<void, std::string> sendPacket(const UdpPacket& packet, const std::string &targetAddr,
+    std::expected<void, std::string> sendPacket(const UdpPacket &packet, const std::string &targetAddr,
                                                 uint16_t port) const;
 };
