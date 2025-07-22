@@ -5,7 +5,6 @@
 #include <string>
 
 namespace Server {
-    using namespace restinio;
     using json = nlohmann::json;
 
     // Helper function to add CORS headers if enabled
@@ -20,14 +19,14 @@ namespace Server {
         return response_builder;
     }
 
-    restinio::request_handling_status_t reply_with_json(const request_handle_t &req, const json &j,
-                                                        http_status_line_t status = status_ok());
+    restinio::request_handling_status_t reply_with_json(const restinio::request_handle_t &req, const json &j,
+                                                        restinio::http_status_line_t status = restinio::status_ok());
 
-    request_handling_status_t reply_with_error(const request_handle_t &req, std::string msg,
-                                               http_status_line_t status = status_bad_request());
+    restinio::request_handling_status_t reply_with_error(const restinio::request_handle_t &req, std::string msg,
+                                               restinio::http_status_line_t status = restinio::status_bad_request());
 
-    restinio::request_handling_status_t reply_success(const request_handle_t &req);
+    restinio::request_handling_status_t reply_success(const restinio::request_handle_t &req);
 
     // Handle CORS preflight requests
-    restinio::request_handling_status_t handle_cors_preflight(const request_handle_t &req);
+    restinio::request_handling_status_t handle_cors_preflight(const restinio::request_handle_t &req);
 }

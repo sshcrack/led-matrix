@@ -4,7 +4,6 @@
 #include <utility>
 
 #include <Magick++.h>
-#include <shared/matrix/interrupt.h>
 #include <shared/matrix/utils/consts.h>
 
 #include "spdlog/cfg/env.h"
@@ -14,19 +13,16 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "udp.h"
+#include "server/common.h"
 
-#include <restinio/all.hpp>
 #include <restinio/websocket/websocket.hpp>
-
-namespace rws = restinio::websocket::basic;
-using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;
 
 using namespace spdlog;
 using namespace std;
 using json = nlohmann::json;
 using Plugins::PluginManager;
 
-using server_t = restinio::http_server_t<>;
+using server_t = restinio::http_server_t<Server::traits_t>;
 
 int usage(const char *progname)
 {
@@ -93,11 +89,12 @@ int main(int argc, char *argv[])
     debug("Allowing CORS request to be made to this server");
 #endif
 
+
     server_t server{
         restinio::own_io_context(),
         [port, host](auto &settings)
         {
-            ws_registry_t registry;
+            Server::ws_registry_t registry;
             std::shared_ptr router = Server::server_handler(registry);
 
             // Create request handler function that handles OPTIONS first, then delegates to router
@@ -115,7 +112,7 @@ int main(int argc, char *argv[])
 
             settings.port(port);
             settings.address(host);
-            settings.request_handler(std::move(handler));
+            settings.request_handler(Server::server_handler(registry));
             settings.read_next_http_message_timelimit(10s);
             settings.write_http_response_timelimit(1s);
             settings.handle_request_timeout(1s);
