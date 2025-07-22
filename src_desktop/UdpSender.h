@@ -4,6 +4,7 @@
 
 #pragma once
 #define NOMINMAX
+#include <complex.h>
 #include <vector>
 #include <string>
 #include <expected>
@@ -33,6 +34,6 @@ public:
     UdpSender();
 
     ~UdpSender();
-    [[nodiscard]] std::expected<void, std::string> sendPacket(const UdpPacket &packet, const std::string &targetAddr,
-                                                uint16_t port) const;
+    [[nodiscard]] std::expected<void, std::string> sendPacket(std::unique_ptr<UdpPacket, void(*)(UdpPacket *)> packet, const std::string &targetAddr,
+                                                              uint16_t port) const;
 };

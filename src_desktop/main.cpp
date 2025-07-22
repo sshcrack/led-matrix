@@ -28,15 +28,11 @@ namespace fs = std::filesystem;
 static bool shouldExit = false;
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 
-static void window_iconify_callback(GLFWwindow *window, const int iconified)
-{
-    if (iconified)
-    {
+static void window_iconify_callback(GLFWwindow *window, const int iconified) {
+    if (iconified) {
         spdlog::info("Window iconified.");
         HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;
-    }
-    else
-    {
+    } else {
         spdlog::info("Window restored.");
         HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
     }
@@ -63,7 +59,8 @@ int main(const int argc, char *argv[])
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_pattern("[%^%l%$] %v");
 
-    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>((logDir / "app.log").string(), max_size, max_files);
+    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        (logDir / "app.log").string(), max_size, max_files);
     file_sink->set_level(spdlog::level::trace);
 
     spdlog::logger logger("multi_sink", {console_sink, file_sink});
@@ -74,13 +71,9 @@ int main(const int argc, char *argv[])
 
     // Single instance manager
     SingleInstanceManager *instanceManager = nullptr;
-    try
-    {
-        instanceManager = new SingleInstanceManager("LedMatrixController", []
-                                                    { showMainWindow = true; });
-    }
-    catch ([[maybe_unused]] const std::exception &e)
-    {
+    try {
+        instanceManager = new SingleInstanceManager("LedMatrixController", [] { showMainWindow = true; });
+    } catch ([[maybe_unused]] const std::exception &e) {
         // Already running, exit
         return 0;
     }
@@ -89,22 +82,19 @@ int main(const int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    for (const auto &[plName, plugin] : pl->get_plugins())
-    {
+    for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->loadConfig(cfg->getPluginSetting(plName));
     }
 
-    static WebsocketClient* ws = new WebsocketClient();
+    static auto *ws = new WebsocketClient();
     auto guiFunction = [pl, cfg] {
         static bool initialConnect = true;
-        if (shouldExit)
-        {
+        if (shouldExit) {
             HelloImGui::GetRunnerParams()->appShallExit = true;
             shouldExit = false;
         }
 
-        if (showMainWindow)
-        {
+        if (showMainWindow) {
             spdlog::info("Showing main window.");
             showMainWindow = false;
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
@@ -114,16 +104,15 @@ int main(const int argc, char *argv[])
         ImGui::SeparatorText("General Device Settings");
 
         static std::string hostname = generalCfg.getHostname();
-        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter))
-        {
+        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname,
+                                     ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter)) {
             std::cout << "Hostname changed to: " << hostname << std::endl;
             generalCfg.setHostname(hostname);
             ws->stop();
         }
 
         bool somethingInvalid = false;
-        if (hostname.empty())
-        {
+        if (hostname.empty()) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
@@ -133,14 +122,12 @@ int main(const int argc, char *argv[])
         }
 
         static int port = generalCfg.getPort();
-        if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None))
-        {
+        if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None)) {
             std::cout << "Port changed to: " << port << std::endl;
             generalCfg.setPort(port);
         }
 
-        if (port < 1 || port > 65535)
-        {
+        if (port < 1 || port > 65535) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
@@ -149,8 +136,7 @@ int main(const int argc, char *argv[])
             somethingInvalid = true;
         }
 
-        if (somethingInvalid)
-        {
+        if (somethingInvalid) {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
         } else if (initialConnect) {
             ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
@@ -159,14 +145,12 @@ int main(const int argc, char *argv[])
         }
 
         auto state = ws->getReadyState();
-        if (state != ix::ReadyState::Open)
-        {
+        if (state != ix::ReadyState::Open) {
             const std::string stateStr = ws->getReadyStateString();
             std::string statusText = "WebSocket is currently: " + stateStr;
 
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), statusText.c_str());
-            if (ImGui::Button("Connect", ImVec2(0, 0)))
-            {
+            if (ImGui::Button("Connect", ImVec2(0, 0))) {
                 ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
                 ws->start();
 
@@ -177,20 +161,22 @@ int main(const int argc, char *argv[])
         }
 
         ImGui::Text(("Active Scene: " + ws->getActiveScene()).c_str());
+        auto last = ws->getLastError();
+        if (!last.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last Error: %s", last.c_str());
+        }
 
         ImGui::SeparatorText("Plugin Settings");
         auto plugins = pl->get_plugins();
-        if (plugins.empty())
-        {
+        if (plugins.empty()) {
             ImGui::Text("No plugins loaded.");
             return;
         }
 
-        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
-        {
-            ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-            for (const auto &currPair : plugins)
-            {
+        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0]; {
+            ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0),
+                              ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+            for (const auto &currPair: plugins) {
                 std::string currName = currPair.first;
                 if (ImGui::Selectable(currName.c_str(), selected.first == currName))
                     selected = currPair;
@@ -201,7 +187,8 @@ int main(const int argc, char *argv[])
 
         ImGui::SameLine();
         ImGui::BeginGroup();
-        ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+        ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+        // Leave room for 1 line below us
 
         selected.second->render(ImGui::GetCurrentContext());
 
@@ -214,60 +201,54 @@ int main(const int argc, char *argv[])
     tray.addEntry(
         Tray::Button(
             "Show Window",
-            [&]
-            {
+            [&] {
                 showMainWindow = true;
             }));
     tray.addEntry(
         Tray::Button(
             "Exit",
-            [&]
-            {
+            [&] {
                 shouldExit = true;
             }));
 
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = guiFunction;
-    runnerParams.callbacks.PreNewFrame = [&]
-    {
+    runnerParams.callbacks.PreNewFrame = [&] {
         tray.pump();
     };
 
-    runnerParams.callbacks.BeforeExit = [&]
-    {
+    runnerParams.callbacks.BeforeExit = [&] {
         spdlog::info("Exiting application...");
-        for (auto &[_1, pl] : pl->get_plugins())
-        {
+        for (auto &[_1, pl]: pl->get_plugins()) {
             pl->beforeExit();
         }
     };
     runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;
     runnerParams.imGuiWindowParams.showMenuBar = true;
+    runnerParams.iniFilename = (get_data_dir() / "config.ini").string();
+    runnerParams.iniFolderType = HelloImGui::IniFolderType::AbsolutePath;
 
-    runnerParams.callbacks.ShowAppMenuItems = [&]
-    {
+    runnerParams.callbacks.ShowAppMenuItems = [&] {
         General &generalCfg = cfg->getGeneralConfig();
         bool autostartEnabled = generalCfg.isAutostartEnabled();
-        if (ImGui::MenuItem("Start with System", nullptr, autostartEnabled))
-        {
+        if (ImGui::MenuItem("Start with System", nullptr, autostartEnabled)) {
             generalCfg.setAutostartEnabled(!autostartEnabled);
         }
 
-        if (ImGui::MenuItem("Save Config", nullptr, false))
-        {
+        if (ImGui::MenuItem("Save Config", nullptr, false)) {
             cfg->saveConfig();
         }
     };
 
-    runnerParams.callbacks.PostInit = [&]()
-    {
-        auto *window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+    runnerParams.callbacks.PostInit = [&]() {
+        auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
     };
 
+    spdlog::info("Arg 1 is : {}", argc > 1 ? argv[1] : "No arguments");
     runnerParams.appWindowParams.restorePreviousGeometry = true;
-    if (argc > 1 && std::string(argv[1]) == "--start-minimized")
-    {
+    if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
+        spdlog::info("Starting minimized.");
         runnerParams.appWindowParams.hidden = true;
     }
 
@@ -294,18 +275,28 @@ int main(const int argc, char *argv[])
 }
 
 #if defined(_WIN32) && !defined(USE_DESKTOP_CONSOLE)
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
-{
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+    // Get the full command line including program name
+    LPWSTR fullCmdLine = GetCommandLineW();
+
     int argc = 0;
-    LPWSTR *argv_w = CommandLineToArgvW(pCmdLine, &argc);
+    LPWSTR *argv_w = CommandLineToArgvW(fullCmdLine, &argc);
     if (!argv_w)
         return -1;
 
     // Convert wide strings to UTF-8
     char **argv = new char *[argc];
-    for (int i = 0; i < argc; ++i)
-    {
+    for (int i = 0; i < argc; ++i) {
         const int len = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, nullptr, 0, nullptr, nullptr);
+        if (len <= 0) {
+            // Handle conversion error - cleanup and return
+            for (int j = 0; j < i; ++j) {
+                delete[] argv[j];
+            }
+            delete[] argv;
+            LocalFree(argv_w);
+            return -1;
+        }
         argv[i] = new char[len];
         WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, argv[i], len, nullptr, nullptr);
     }
@@ -313,8 +304,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     const int result = inner_main(argc, argv); // Call your real main
 
     // Cleanup
-    for (int i = 0; i < argc; ++i)
-    {
+    for (int i = 0; i < argc; ++i) {
         delete[] argv[i];
     }
     delete[] argv;

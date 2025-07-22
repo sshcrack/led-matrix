@@ -8,11 +8,9 @@ WebsocketClient::WebsocketClient() : udpSender()
     ix::initNetSystem();
     webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr &msg)
                                    {
-        spdlog::info("WebSocket message received: {}", (int) msg->type);
         if (msg->type == ix::WebSocketMessageType::Message)
         {
             std::unique_lock<std::mutex> lock(activeSceneMutex);
-            spdlog::info("WebSocket message: {}", msg->str);
             activeScene = msg->str;
         } });
 
@@ -36,14 +34,51 @@ void WebsocketClient::threadLoop()
 {
     using clock = std::chrono::high_resolution_clock;
     auto plugins = Plugins::PluginManager::instance()->get_plugins();
+    auto configManager = Config::ConfigManager::instance();
+
+    auto generalConfig = configManager->getGeneralConfig();
+    std::string hostname = generalConfig.getHostname();
+    uint16_t port = generalConfig.getPort();
+    auto lastUpdated = clock::now();
 
     while (serverRunning)
     {
         auto frame_start = clock::now();
         std::string scene = getActiveScene();
-        for (auto &[name, pl] : plugins)
+
+        if (lastUpdated + std::chrono::seconds(1) < frame_start)
+        {
+            lastUpdated = frame_start;
+
+            generalConfig = configManager->getGeneralConfig();
+            hostname = generalConfig.getHostname();
+            port = generalConfig.getPort();
+        }
+
+        for (auto &pl: plugins | std::views::values)
         {
             auto packet = pl->onNextPacket(scene);
+            if (!packet.has_value())
+                continue;
+
+            auto res = this->udpSender.sendPacket(std::move(packet.value()), hostname, port);
+            static int consecutiveError = 0;
+            if (!res.has_value())
+            {
+                std::unique_lock<std::mutex> lock(lastErrorMutex);
+                lastError = res.error();
+                consecutiveError++;
+
+                if (consecutiveError < 3)
+                spdlog::error("Failed to send packet: {}", lastError);
+            }
+            else
+            {
+                std::unique_lock<std::mutex> lock(lastErrorMutex);
+                lastError.clear(); // Clear error on successful send
+
+                consecutiveError = 0;
+            }
         }
 
         auto frame_end = clock::now();
