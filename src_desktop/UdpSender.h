@@ -33,6 +33,6 @@ public:
     UdpSender();
 
     ~UdpSender();
-    std::expected<void, std::string> sendPacket(const UdpPacket &packet, const std::string &targetAddr,
+    [[nodiscard]] std::expected<void, std::string> sendPacket(const UdpPacket &packet, const std::string &targetAddr,
                                                 uint16_t port) const;
 };

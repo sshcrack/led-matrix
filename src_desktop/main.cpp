@@ -1,3 +1,4 @@
+#include "WebsocketClient.h"
 #include <tray.hpp>
 #include <iostream>
 #include <fmt/format.h>
@@ -7,8 +8,6 @@
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
 #include "imgui_impl_glfw.h"
-#include "WebsocketClient.h"
-#include <thread>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -19,10 +18,11 @@
 #include "shared/desktop/plugin_loader/loader.h"
 #include "single_instance_manager.h"
 #include <filesystem>
-#ifdef _WIN32
-#include <windows->h>
-#endif
 #include "spdlog/cfg/env.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace fs = std::filesystem;
 static bool shouldExit = false;
