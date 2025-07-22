@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include "shared/common/plugin_macros.h"
 #include "shared/desktop/config.h"
+#include "shared/common/udp/packet.h"
 
 using std::string;
 using std::vector;
@@ -34,7 +35,7 @@ namespace Plugins {
         }
 
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet
-        [[nodiscard]] virtual std::optional<std::vector<uint8_t> > onNextPacket(const std::string sceneName) {
+        [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> onNextPacket(const std::string sceneName) {
             return std::nullopt;
         }
     };

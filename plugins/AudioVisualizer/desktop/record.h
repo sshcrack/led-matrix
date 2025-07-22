@@ -3,9 +3,9 @@
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <optional>
+#include <deque>
 #include <portaudio.h>
-
-#include "channel.h"
 
 static constexpr size_t BUFFER_SIZE = 2048;
 static constexpr size_t FFT_SIZE = 1024;
@@ -39,15 +39,15 @@ namespace AudioRecorder
         // Get the current sample rate
         double getSampleRate() const;
 
-        std::shared_ptr<Channel<std::vector<float>>> getChannel() const;
+        std::optional<std::vector<float>> getLastSamples();
 
     private:
         std::atomic<bool> recording;
         int currentDeviceIndex;
         PaStream *stream;
 
+        std::mutex audioBufferMutex;
         std::deque<float> audioBuffer;
-        std::shared_ptr<Channel<std::vector<float>>> audioChannel;
 
         double sampleRate;
         static constexpr size_t MAX_BUFFER_SIZE = 2048; // Maximum buffer size to prevent memory issues

@@ -7,6 +7,7 @@
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
 #include "imgui_impl_glfw.h"
+#include "WebsocketClient.h"
 #include <thread>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -21,6 +22,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include "spdlog/cfg/env.h"
 
 namespace fs = std::filesystem;
 static bool shouldExit = false;
@@ -57,10 +59,9 @@ int main(const int argc, char *argv[])
     auto max_size = 1048576 * 5;
     auto max_files = 3;
 
-
+    spdlog::cfg::load_env_levels();
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_level(spdlog::level::warn);
-    console_sink->set_pattern("[multi_sink_example] [%^%l%$] %v");
+    console_sink->set_pattern("[%^%l%$] %v");
 
     auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>((logDir / "app.log").string(), max_size, max_files);
     file_sink->set_level(spdlog::level::trace);
@@ -93,8 +94,8 @@ int main(const int argc, char *argv[])
         plugin->loadConfig(cfg->getPluginSetting(plName));
     }
 
-    auto guiFunction = [pl, cfg]()
-    {
+    auto guiFunction = [pl, cfg] {
+        static WebsocketClient ws;
         if (shouldExit)
         {
             HelloImGui::GetRunnerParams()->appShallExit = true;
@@ -115,9 +116,11 @@ int main(const int argc, char *argv[])
         if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname, ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter))
         {
             std::cout << "Hostname changed to: " << hostname << std::endl;
-            generalCfg.setHostnameAndPort(hostname);
+            generalCfg.setHostname(hostname);
+            ws.stop();
         }
 
+        bool somethingInvalid = false;
         if (hostname.empty())
         {
             const ImVec2 min = ImGui::GetItemRectMin();
@@ -125,6 +128,47 @@ int main(const int argc, char *argv[])
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
             draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            somethingInvalid = true;
+        }
+
+        static int port = generalCfg.getPort();
+        if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None))
+        {
+            std::cout << "Port changed to: " << port << std::endl;
+            generalCfg.setPort(port);
+        }
+
+        if (port < 1 || port > 65535)
+        {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            somethingInvalid = true;
+        }
+
+        if (somethingInvalid)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
+        }
+
+        auto state = ws.getReadyState();
+        if (state != ix::ReadyState::Open)
+        {
+            const std::string stateStr = ws.getReadyStateString();
+            std::string statusText = "WebSocket is currently: " + stateStr;
+
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), statusText.c_str());
+            if (ImGui::Button("Connect", ImVec2(0, 0)))
+            {
+                ws.setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
+                ws.start();
+
+                spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
+            }
+
+            return;
         }
 
         ImGui::SeparatorText("Plugin Settings");
@@ -233,10 +277,6 @@ int main(const int argc, char *argv[])
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
 
-    spdlog::info("Joining tray thread...");
-#ifndef _WIN32
-    trayThread.join();
-#endif
     delete cfg;
     pl->destroy_plugins();
     delete instanceManager;

@@ -1,4 +1,5 @@
 #include "record.h"
+
 #ifdef _WIN32
 #include <windows.h>
 
@@ -15,15 +16,14 @@ namespace AudioRecorder
     Recorder::Recorder() : recording(false), currentDeviceIndex(-1), stream(nullptr), sampleRate(44100.0)
     {
         Pa_Initialize();
-        audioChannel = std::make_shared<Channel<std::vector<float>>>();
     }
 
     Recorder::~Recorder()
     {
         if (recording)
             stopRecording();
+
         Pa_Terminate();
-        audioChannel->close();
     }
 
     std::vector<Recorder::DeviceInfo> Recorder::listDevices()
@@ -57,6 +57,7 @@ namespace AudioRecorder
                                 void *userData)
     {
         const auto recorder = static_cast<Recorder *>(userData);
+        std::unique_lock<std::mutex> lock(recorder->audioBufferMutex);
 
         if (const auto input = static_cast<const float *>(inputBuffer))
         {
@@ -74,11 +75,10 @@ namespace AudioRecorder
         }
 
         // Process audio buffer in chunks to avoid lag
-        while (recorder->audioBuffer.size() >= FFT_SIZE) {
+        while (recorder->audioBuffer.size() >= FFT_SIZE)
+        {
             const std::vector newAudioBuffer(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
             recorder->audioBuffer.erase(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
-
-            recorder->audioChannel->send(newAudioBuffer);
         }
 
         return paContinue;
@@ -172,13 +172,21 @@ namespace AudioRecorder
         return recording;
     }
 
-
     double Recorder::getSampleRate() const
     {
         return sampleRate;
     }
 
-    std::shared_ptr<Channel<std::vector<float>>> Recorder::getChannel() const {
-        return audioChannel;
+    std::optional<std::vector<float>> Recorder::getLastSamples()
+    {
+        std::unique_lock<std::mutex> lock(audioBufferMutex);
+        if (audioBuffer.size() < FFT_SIZE)
+            return std::nullopt;
+
+
+        std::vector<float> samples(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
+        audioBuffer.erase(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
+
+        return samples;
     }
 }

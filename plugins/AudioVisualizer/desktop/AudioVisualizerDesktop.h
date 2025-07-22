@@ -10,29 +10,22 @@
 #include <vector>
 #include "../../../thirdparty/implot/implot.h"
 
-
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
 {
 public:
     AudioVisualizerDesktop();
 
-
     ~AudioVisualizerDesktop() override;
 
     void render(ImGuiContext *ctx) override;
-    void loadConfig(std::optional<const nlohmann::json> config) override
-    {
-        if (config.has_value())
-            cfg = config.value();
-    };
+    void loadConfig(std::optional<const nlohmann::json> config) override;
     void saveConfig(nlohmann::json &config) const override
     {
         config = cfg;
     };
 
-
     void beforeExit() override;
-    std::optional<std::vector<uint8_t>> onNextPacket(std::string sceneName) override;
+    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> onNextPacket(std::string sceneName) override;
 
 private:
     ImPlotContext *implotContext = nullptr;
@@ -40,9 +33,13 @@ private:
     AudioVisualizerConfig cfg;
 
     std::unique_ptr<AudioProcessor> audioProcessor;
+    std::unique_ptr<AudioRecorder::Recorder> recorder;
+
+    std::mutex latestBandsMutex;
     std::vector<float> latestBands;
+
+    std::shared_mutex lastErrorMutex;
     std::string lastError;
-    bool initialConnect = true;
 
 protected:
     void addConnectionSettings();
