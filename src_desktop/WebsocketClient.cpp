@@ -8,9 +8,11 @@ WebsocketClient::WebsocketClient() : udpSender()
     ix::initNetSystem();
     webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr &msg)
                                    {
+        spdlog::info("WebSocket message received: {}", (int) msg->type);
         if (msg->type == ix::WebSocketMessageType::Message)
         {
             std::unique_lock<std::mutex> lock(activeSceneMutex);
+            spdlog::info("WebSocket message: {}", msg->str);
             activeScene = msg->str;
         } });
 
@@ -38,9 +40,10 @@ void WebsocketClient::threadLoop()
     while (serverRunning)
     {
         auto frame_start = clock::now();
+        std::string scene = getActiveScene();
         for (auto &[name, pl] : plugins)
         {
-            auto packet = pl->onNextPacket("network_sender");
+            auto packet = pl->onNextPacket(scene);
         }
 
         auto frame_end = clock::now();

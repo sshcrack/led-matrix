@@ -86,7 +86,7 @@ void PluginManager::initialize()
 #ifdef _WIN32
         fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".dll");
 #else
-        fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".so");
+        fs::path plugin_path = plugin_dir_path / (std::string("lib") +=  plugin_dir_path.filename() += ".so");
 #endif
 
         if (!fs::is_regular_file(plugin_path))

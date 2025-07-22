@@ -1,6 +1,7 @@
 #pragma once
 #include <restinio/all.hpp>
 #include <restinio/websocket/websocket.hpp>
+#include <mutex>
 
 namespace Server {
 namespace rws = restinio::websocket::basic;
@@ -15,4 +16,8 @@ using traits_t =
 using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;
 }
 
-static Server::ws_registry_t registry;
+extern std::mutex currSceneMutex;
+extern std::string currScene;
+
+extern std::mutex registryMutex;
+extern Server::ws_registry_t registry;

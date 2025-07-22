@@ -45,13 +45,16 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx)
 
     ImGui::SetCurrentContext(ctx);
     ImPlot::SetCurrentContext(implotContext);
-
+#ifndef _WIN32
+    ImGui::Text("This plugin isn't supported for linux. Loopback recording is not available in this OS.");
+#else
     addConnectionSettings();
     addAudioSettings();
     addAnalysisSettings();
     addDeviceSettings();
 
     addVisualizer();
+#endif
 }
 
 void AudioVisualizerDesktop::loadConfig(std::optional<const nlohmann::json> config)
@@ -207,13 +210,17 @@ void AudioVisualizerDesktop::addDeviceSettings()
 }
 
 static bool showPreview = false;
-void AudioVisualizerDesktop::addVisualizer()
-{
+void AudioVisualizerDesktop::addVisualizer() {
     ImGui::SeparatorText("Audio Spectrum");
     ImGui::Checkbox("Live Preview (may cause stutters on the LED Matrix)", &showPreview);
 
-    if (latestBands.empty() || !showPreview)
+    if (!showPreview)
         return;
+
+    if (latestBands.empty()) {
+        ImGui::Text("Waiting for audio data...");
+        return;
+    }
 
     if (ImPlot::BeginPlot("Spectrum", ImVec2(-1, 0),
                           ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock |
@@ -281,7 +288,11 @@ void AudioVisualizerDesktop::addVisualizer()
 
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizerDesktop::onNextPacket(const std::string sceneName)
 {
+#ifdef _WIN32
     if (sceneName != "audio_spectrum")
+#else
+    if constexpr (true)
+#endif
         return std::nullopt;
 
     if (!recorder->isRecording())
@@ -308,12 +319,15 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizer
     }
 
     auto samplesOpt = recorder->getLastSamples();
-    if (!samplesOpt.has_value())
+    if (!samplesOpt.has_value()) {
         return std::nullopt;
+    }
 
     auto bands = audioProcessor->computeBands(samplesOpt.value(), recorder->getSampleRate());
-    if (bands.empty())
+    if (bands.empty()) {
+        spdlog::warn("No bands computed from audio samples. Check your audio device and settings.");
         return std::nullopt;
+    }
 
     if (showPreview)
     {
@@ -322,6 +336,7 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizer
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
+    spdlog::info("Sending {} bands with interpolatedLog={}", bands.size(), interpolatedLog);
     return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog),
                                                              [](UdpPacket *packet)
                                                              {

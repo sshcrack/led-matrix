@@ -59,6 +59,7 @@ namespace AudioRecorder
         const auto recorder = static_cast<Recorder *>(userData);
         std::unique_lock<std::mutex> lock(recorder->audioBufferMutex);
 
+        spdlog::trace("Audio callback called with {} frames", framesPerBuffer);
         if (const auto input = static_cast<const float *>(inputBuffer))
         {
             // Add new samples to buffer
