@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
             // some other thread.
             info("Listening on http://{}:{}/", host, port);
             run(on_thread_pool(
-                2,                                      // Count of worker threads for RESTinio.
+                1,                                      // Count of worker threads for RESTinio.
                 restinio::skip_break_signal_handling(), // Don't react to Ctrl+C.
                 server)                                 // Server to be run.
             );
