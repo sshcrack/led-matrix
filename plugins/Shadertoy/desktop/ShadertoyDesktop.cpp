@@ -52,27 +52,25 @@ void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
     const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height));
     std::unique_lock lock(currDataMutex);
     currData = data;
-
-    /*
+/*
     if (!ImGui::Begin("Canvas", nullptr)) {
         ImGui::End();
         return;
     }
 
     const auto reservedHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-    ImVec2 size(0, 0);
     if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false)) {
-        size = ImGui::GetContentRegionAvail();
+        ImVec2 size(width, height);
+
         const auto base = ImGui::GetCursorScreenPos();
         std::optional<ImVec4> mouse = std::nullopt;
-        ImGui::InvisibleButton("CanvasArea", size,
-                               ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
         ctx.render(base, size, mouse);
         ImGui::EndChild();
     }
 
-    ImGui::End();*/
+    ImGui::End();
+*/
 }
 
 void ShadertoyDesktop::on_websocket_message(const std::string message)
