@@ -178,7 +178,7 @@ void Config::ConfigManager::saveConfig()
         for (auto plugin : Plugins::PluginManager::instance()->get_plugins())
         {
             json j;
-            plugin.second->saveConfig(j);
+            plugin.second->save_config(j);
             pluginSettingsCopy[plugin.first] = j;
         }
     }

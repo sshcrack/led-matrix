@@ -13,7 +13,25 @@ WebsocketClient::WebsocketClient() : udpSender()
         {
             std::unique_lock<std::mutex> lock(activeSceneMutex);
             spdlog::info("WebSocket message: {}", msg->str);
-            activeScene = msg->str;
+
+            const std::string &m = msg->str;
+            if (m.starts_with("active:")) {
+                activeScene = m.substr(7);
+            }
+
+            if (m.starts_with("msg:")) {
+                const int pluginNameEnd = m.find(':', 4);
+
+                const std::string pluginName = m.substr(4, pluginNameEnd -4);
+                const std::string message = m.substr(m.find(':', pluginNameEnd) +1);
+
+                for (const auto & [_p, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
+                    if (plugin->get_plugin_name() != pluginName)
+                        continue;
+
+                    plugin->on_websocket_message(message);
+                }
+            }
         } });
 
     senderThread = std::thread(&WebsocketClient::threadLoop, this);
@@ -43,7 +61,7 @@ void WebsocketClient::threadLoop()
         std::string scene = getActiveScene();
         for (auto &[name, pl] : plugins)
         {
-            auto packet = pl->onNextPacket(scene);
+            auto packet = pl->compute_next_packet(scene);
         }
 
         auto frame_end = clock::now();

@@ -2,13 +2,18 @@ cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_CXX_STANDARD 23)
 
-
 # Define a function to register plugins
 function(register_plugin PLUGIN_NAME)
     # Parse arguments to separate regular sources from desktop-specific sources
     set(MATRIX_SOURCES "")
     set(DESKTOP_SOURCES "")
     set(IN_DESKTOP_SECTION FALSE)
+
+    string(FIND "${PLUGIN_NAME}" ":" COLON_INDEX)
+
+    if(NOT COLON_INDEX EQUAL -1)
+        message(FATAL_ERROR "PLUGIN_NAME must not contain a colon (:), but was: '${PLUGIN_NAME}'")
+    endif()
 
     foreach(ARG ${ARGN})
         if(ARG STREQUAL "DESKTOP")
@@ -37,6 +42,7 @@ function(register_plugin PLUGIN_NAME)
 
 
     target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_23)
+    target_compile_definitions(${PLUGIN_NAME} PRIVATE PLUGIN_NAME="${PLUGIN_NAME}")
 
     find_package(spdlog CONFIG REQUIRED)
     target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsCommon)

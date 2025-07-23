@@ -13,7 +13,7 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "udp.h"
-#include "server/common.h"
+#include "shared/matrix/server/common.h"
 
 #include <restinio/websocket/websocket.hpp>
 

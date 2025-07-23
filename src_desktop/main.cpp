@@ -91,7 +91,7 @@ int main(const int argc, char *argv[])
 
     for (const auto &[plName, plugin] : pl->get_plugins())
     {
-        plugin->loadConfig(cfg->getPluginSetting(plName));
+        plugin->load_config(cfg->getPluginSetting(plName));
     }
 
     static WebsocketClient* ws = new WebsocketClient();
@@ -238,7 +238,7 @@ int main(const int argc, char *argv[])
         spdlog::info("Exiting application...");
         for (auto &[_1, pl] : pl->get_plugins())
         {
-            pl->beforeExit();
+            pl->before_exit();
         }
     };
     runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;

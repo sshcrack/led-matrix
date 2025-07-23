@@ -18,14 +18,18 @@ public:
     ~AudioVisualizerDesktop() override;
 
     void render(ImGuiContext *ctx) override;
-    void loadConfig(std::optional<const nlohmann::json> config) override;
-    void saveConfig(nlohmann::json &config) const override
+    void load_config(std::optional<const nlohmann::json> config) override;
+    void save_config(nlohmann::json &config) const override
     {
         config = cfg;
     };
 
-    void beforeExit() override;
-    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> onNextPacket(std::string sceneName) override;
+    void before_exit() override;
+    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(std::string sceneName) override;
+
+    std::string get_plugin_name() const override {
+        return PLUGIN_NAME;
+    }
 
 private:
     ImPlotContext *implotContext = nullptr;

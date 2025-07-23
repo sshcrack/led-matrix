@@ -36,7 +36,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
 
         restinio::websocket::basic::message_t message;
         message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
-        message.set_payload(currScene);
+        message.set_payload("active:" + currScene);
 
         wsh->send_message(message);
 

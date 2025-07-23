@@ -19,6 +19,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/interrupt.cpp
         src/shared/matrix/server/server_utils.cpp
         src/shared/matrix/server/MimeTypes.cpp
+        src/shared/matrix/server/common.cpp
 )
 
 # Main Target Compile

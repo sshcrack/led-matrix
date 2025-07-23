@@ -57,7 +57,7 @@ void AudioVisualizerDesktop::render(ImGuiContext *ctx)
 #endif
 }
 
-void AudioVisualizerDesktop::loadConfig(std::optional<const nlohmann::json> config)
+void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> config)
 {
     if (config.has_value())
         cfg = config.value();
@@ -69,9 +69,9 @@ void AudioVisualizerDesktop::loadConfig(std::optional<const nlohmann::json> conf
         recorder = std::make_unique<AudioRecorder::Recorder>();
 }
 
-void AudioVisualizerDesktop::beforeExit()
+void AudioVisualizerDesktop::before_exit()
 {
-    DesktopPlugin::beforeExit();
+    DesktopPlugin::before_exit();
     ImPlot::DestroyContext();
 }
 
@@ -286,7 +286,7 @@ void AudioVisualizerDesktop::addVisualizer() {
     }
 }
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizerDesktop::onNextPacket(const std::string sceneName)
+std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizerDesktop::compute_next_packet(const std::string sceneName)
 {
 #ifdef _WIN32
     if (sceneName != "audio_spectrum")
