@@ -13,3 +13,6 @@
 [submodule "plugins/AudioVisualizer/thirdparty/portaudio"]
 	path = plugins/AudioVisualizer/thirdparty/portaudio
 	url = https://github.com/PortAudio/portaudio
+[submodule "plugins/Shadertoy/thirdparty/shadertoy-headless"]
+	path = plugins/Shadertoy/thirdparty/shadertoy-headless
+	url = https://github.com/sshcrack/shadertoy-headless

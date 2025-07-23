@@ -7,6 +7,7 @@ add_library(${PROJECT_NAME} STATIC
         src/shared/desktop/config.cpp
         src/shared/desktop/autostart.cpp
         src/shared/desktop/utils.cpp
+        src/shared/desktop/glfw.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

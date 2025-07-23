@@ -18,6 +18,8 @@
 #include "shared/desktop/plugin_loader/loader.h"
 #include "single_instance_manager.h"
 #include <filesystem>
+#include <shared/desktop/glfw.h>
+
 #include "spdlog/cfg/env.h"
 
 #ifdef _WIN32
@@ -82,12 +84,11 @@ int main(const int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    for (const auto &[plName, plugin] : pl->get_plugins())
-    {
+    for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->load_config(cfg->getPluginSetting(plName));
     }
 
-    static auto *ws = new WebsocketClient();
+    static WebsocketClient *ws;
     auto guiFunction = [pl, cfg] {
         static bool initialConnect = true;
         if (shouldExit) {
@@ -220,8 +221,7 @@ int main(const int argc, char *argv[])
 
     runnerParams.callbacks.BeforeExit = [&] {
         spdlog::info("Exiting application...");
-        for (auto &[_1, pl] : pl->get_plugins())
-        {
+        for (auto &[_1, pl]: pl->get_plugins()) {
             pl->before_exit();
         }
     };
@@ -242,9 +242,20 @@ int main(const int argc, char *argv[])
         }
     };
 
+    runnerParams.fpsIdling.enableIdling = false;
+    runnerParams.emscripten_fps = 60;
     runnerParams.callbacks.PostInit = [&]() {
         auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+        setMainGLFWWindow(window);
+
+        spdlog::info("Window is {} nullptr", window == nullptr ? "a" : "not a");
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
+
+        for (auto &[name, plugin]: pl->get_plugins()) {
+            plugin->post_init();
+        }
+        // Only now create the WebsocketClient, so the UDP thread starts after the window is set
+        ws = new WebsocketClient();
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;
@@ -255,8 +266,7 @@ int main(const int argc, char *argv[])
 
     // Add polling for DBus messages (Linux only)
 #ifndef _WIN32
-    runnerParams.callbacks.PreNewFrame = [&]()
-    {
+    runnerParams.callbacks.PreNewFrame = [&]() {
         if (instanceManager)
             instanceManager->poll();
     };

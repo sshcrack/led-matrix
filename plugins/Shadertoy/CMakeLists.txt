@@ -9,3 +9,11 @@ register_plugin(Shadertoy
         desktop/CanvasPacket.cpp
         desktop/CanvasPacket.h
 )
+
+if (ENABLE_DESKTOP)
+    find_package(GLEW REQUIRED)
+    add_subdirectory(thirdparty/shadertoy-headless)
+
+    target_link_libraries(Shadertoy PRIVATE shadertoy-headless)
+    target_link_libraries(Shadertoy PRIVATE GLEW::GLEW)
+endif ()
