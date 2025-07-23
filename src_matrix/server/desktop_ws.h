@@ -1,5 +1,5 @@
 #pragma once
-#include "common.h"
+#include "shared/matrix/server/common.h"
 
 namespace Server
 {

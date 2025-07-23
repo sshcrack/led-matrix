@@ -4,7 +4,7 @@
 #include "canvas.h"
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
-#include "utils/canvas_consts.h"
+#include "shared/matrix/canvas_consts.h"
 
 #include <csignal>
 #if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
@@ -17,8 +17,8 @@ using namespace rgb_matrix;
 using namespace spdlog;
 
 // Motion sensor constants
-const int MOTION_SENSOR_PIN = 14;
-const unsigned long MOTION_TIMEOUT_MS = 300000; // 5 minutes in milliseconds
+constexpr int MOTION_SENSOR_PIN = 14;
+constexpr unsigned long MOTION_TIMEOUT_MS = 300000; // 5 minutes in milliseconds
 unsigned long last_motion_time = 0;
 bool motion_detected = false;
 

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstring>
 
-CompactAudioPacket::CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog) : UdpPacket(0x01, 0x01)
+CompactAudioPacket::CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog) : UdpPacket(0x01)
 {
 
     numBands = static_cast<uint8_t>(std::min(bands.size(), static_cast<size_t>(255)));

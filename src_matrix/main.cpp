@@ -15,6 +15,7 @@
 #include "udp.h"
 #include "shared/matrix/server/common.h"
 
+#include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 
 using namespace spdlog;
@@ -93,29 +94,32 @@ int main(int argc, char *argv[])
         restinio::own_io_context(),
         [port, host](auto &settings)
         {
-            std::shared_ptr router = Server::server_handler(registry);
+            std::unique_lock lock(Server::registryMutex);
+            /*
 
-            // Create request handler function that handles OPTIONS first, then delegates to router
-            auto handler = [router = std::move(router)](auto req)
-            {
-#ifdef ENABLE_CORS
-                // Handle CORS preflight requests for all routes
-                if (req->header().method() == restinio::http_method_options())
-                {
-                    return Server::handle_cors_preflight(req);
-                }
-#endif
-                return (*router)(std::move(req));
-            };
+                        // Create request handler function that handles OPTIONS first, then delegates to router
+                        auto handler = [router = std::move(router)](auto req)
+                        {
+            #ifdef ENABLE_CORS
+                            // Handle CORS preflight requests for all routes
+                            if (req->header().method() == restinio::http_method_options())
+                            {
+                                return Server::handle_cors_preflight(req);
+                            }
+            #endif
+                            return (*router)(std::move(req));
+                        };*/
 
             settings.port(port);
             settings.address(host);
-            settings.request_handler(Server::server_handler(registry));
+            settings.request_handler(Server::server_handler(Server::registry));
             settings.read_next_http_message_timelimit(10s);
             settings.write_http_response_timelimit(1s);
             settings.handle_request_timeout(1s);
             settings.cleanup_func([]
-                                  { registry.clear(); });
+                                  { 
+            std::unique_lock lock(Server::registryMutex);
+            Server::registry.clear(); });
         }};
 
     thread control_thread{

@@ -1,7 +1,7 @@
 #pragma once
 #include <shared/common/udp/packet.h>
 
-struct CompactAudioPacket : UdpPacket
+struct CompactAudioPacket final : UdpPacket
 {
 public:
     CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog);
