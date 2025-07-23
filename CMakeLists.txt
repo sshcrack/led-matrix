@@ -284,8 +284,10 @@ if(ENABLE_DESKTOP)
     if(WIN32)
         set(CPACK_GENERATOR "ZIP;NSIS64")
         set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
+        set(CPACK_NSIS_PACKAGE_NAME "LED Matrix Controller")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
         set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
+        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
         #set(CPACK_NSIS_MUI_HEADERIMAGE "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_header.bmp")
         #set(CPACK_NSIS_MUI_WELCOMEFINISHPAGE_BITMAP "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_welcome.bmp")
         set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/main.exe")
@@ -295,14 +297,23 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_ALLOW_ROOT_INSTALL ON)
         set(CPACK_NSIS_ENABLE_MODERN_UI ON)
         set(CPACK_NSIS_ENABLE_CUSTOM_INSTALL_DIRECTORY ON)
-        set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "SetOutPath $INSTDIR")
-        # Ensure per-user install mode for NSIS
-        # set(CPACK_NSIS_ENABLE_PER_USER_INSTALL_MODE ON)
-        #set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA")
-        # Create shortcuts on Desktop and Start Menu
-        set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
-        set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
-        set(CPACK_NSIS_SHORTCUT_NAME "LED Matrix Controller")
+
+        # Remove the old shortcut settings that don't work properly
+        # set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
+        # set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
+        # set(CPACK_NSIS_SHORTCUT_NAME "LED Matrix Controller")
+
+        # Properly create shortcuts with working NSIS commands
+        set(CPACK_NSIS_CREATE_ICONS_EXTRA "
+            CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" 0
+            CreateShortCut \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" 0
+        ")
+
+        # Remove shortcuts during uninstall
+        set(CPACK_NSIS_DELETE_ICONS_EXTRA "
+            Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\"
+            Delete \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\"
+        ")
     else()
         set(CPACK_GENERATOR "DEB;TGZ")
     endif()

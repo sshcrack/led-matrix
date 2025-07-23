@@ -7,17 +7,19 @@
 #include <cstring>
 #include <shared/desktop/plugin_loader/loader.h>
 
-UdpSender::UdpSender()
-{
+#ifdef _WIN32
+#pragma comment(lib, "bcrypt.lib")
+#include <ws2tcpip.h>
+#endif
+
+UdpSender::UdpSender() {
 #if defined(_WIN32)
     WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-    {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         throw std::runtime_error("WSAStartup failed");
     }
     socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (socket == INVALID_SOCKET)
-    {
+    if (socket == INVALID_SOCKET) {
         WSACleanup();
         throw std::runtime_error("Failed to create socket");
     }
@@ -30,9 +32,7 @@ UdpSender::UdpSender()
 #endif
 }
 
-UdpSender::~UdpSender()
-{
-
+UdpSender::~UdpSender() {
 #if defined(_WIN32)
     closesocket(socket);
     WSACleanup();
@@ -41,10 +41,9 @@ UdpSender::~UdpSender()
 #endif
 }
 
-std::expected<void, std::string> UdpSender::sendPacket(const UdpPacket &packet, const std::string &targetAddr,
-                                                       const uint16_t port) const
-{
-    const std::vector<uint8_t> data = packet.toBytes();
+std::expected<void, std::string> UdpSender::sendPacket(std::unique_ptr<UdpPacket, void(*)(UdpPacket *)> packet, const std::string &targetAddr,
+                                                       const uint16_t port) const {
+    const std::vector<uint8_t> data = packet->toBytes();
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -55,8 +54,7 @@ std::expected<void, std::string> UdpSender::sendPacket(const UdpPacket &packet, 
     const std::wstring wTargetAddr(targetAddr.begin(), targetAddr.end());
     const PCWSTR pcwStrTarget = wTargetAddr.c_str();
 
-    if (InetPtonW(AF_INET, pcwStrTarget, &addr.sin_addr) != 1)
-    {
+    if (InetPtonW(AF_INET, pcwStrTarget, &addr.sin_addr) != 1) {
         return std::unexpected("Invalid address: " + targetAddr);
     }
 #else
@@ -65,13 +63,17 @@ std::expected<void, std::string> UdpSender::sendPacket(const UdpPacket &packet, 
         return std::unexpected("Invalid address: " + targetAddr);
     }
 #endif
+#ifdef _WIN32
+    auto toSend = reinterpret_cast<const char *>(data.data());
+#else
+    auto toSend = data.data();
+#endif
 
-    int result = sendto(socket, data.data(), data.size(), 0,
+    int result = sendto(socket, toSend, data.size(), 0,
                         reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
 
 #if defined(_WIN32)
-    if (result == SOCKET_ERROR)
-    {
+    if (result == SOCKET_ERROR) {
         return std::unexpected("Failed to send data with code: " + std::to_string(WSAGetLastError()));
     }
 #else

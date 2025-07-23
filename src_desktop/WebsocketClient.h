@@ -57,6 +57,12 @@ public:
         webSocket.close();
     }
 
+    std::string getLastError()
+    {
+        std::unique_lock<std::mutex> lock(lastErrorMutex);
+        return lastError;
+    }
+
 private:
     ix::WebSocket webSocket;
     UdpSender udpSender;
@@ -65,6 +71,9 @@ private:
 
     std::mutex activeSceneMutex;
     std::string activeScene = "";
+
+    std::mutex lastErrorMutex;
+    std::string lastError = "";
 
     void threadLoop();
 
