@@ -2,8 +2,10 @@
 
 #include <vector>
 #include <string>
-#include "restinio/all.hpp"
 #include <shared/matrix/wrappers.h>
+#include <shared/matrix/server/common.h>
+// ReSharper disable once CppUnusedIncludeDirective
+// This is included so the plugins don't have to include it every time
 #include "shared/common/plugin_macros.h"
 
 using std::vector;
@@ -68,11 +70,28 @@ namespace Plugins {
         /// Returns true if the request has been handled by this plugin
         virtual std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) {
             return std::move(router);
-        };
+        }
 
         /// Return true if the request has been handled by this plugin
         virtual bool on_udp_packet(const uint8_t magicPacket, const uint8_t version, const uint8_t *data, const size_t size) {
             return false;
-        };
+        }
+
+        virtual std::string get_plugin_name() const = 0;
+        virtual void send_msg_to_desktop(const std::string &msg) {
+            namespace rb = restinio::websocket::basic;
+
+            std::shared_lock lock(Server::registryMutex);
+            rb::message_t message;
+            message.set_final_flag(rb::final_frame_flag_t::final_frame);
+            message.set_opcode(rb::opcode_t::text_frame);
+
+            message.set_payload("msg:" + get_plugin_name() + ":" + msg);
+
+
+            for (const auto &val: Server::registry | std::views::values) {
+                val->send_message(message);
+            }
+        }
     };
 }

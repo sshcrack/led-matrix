@@ -17,6 +17,7 @@ public:
     std::optional<string> after_server_init() override;
 
     std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
+    std::string get_plugin_name() const override { return PLUGIN_NAME; }
 
 private:
     static string generate_random_string(size_t length);

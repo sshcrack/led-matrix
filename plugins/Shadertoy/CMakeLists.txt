@@ -1,0 +1,9 @@
+register_plugin(Shadertoy
+        matrix/Shadertoy.cpp
+        matrix/Shadertoy.h
+        matrix/scenes/ShadertoyScene.cpp
+        matrix/scenes/ShadertoyScene.h
+        DESKTOP
+        desktop/ShadertoyDesktop.cpp
+        desktop/ShadertoyDesktop.h
+)
