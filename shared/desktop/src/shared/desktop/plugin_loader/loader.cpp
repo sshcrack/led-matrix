@@ -62,13 +62,6 @@ std::vector<std::pair<std::string, DesktopPlugin *>> PluginManager::get_plugins(
 
     return plugins;
 }
-// Platform-specific includes
-#ifdef _WIN32
-#include <windows.h>
-#include <libloaderapi.h>
-#else
-#include <dlfcn.h>
-#endif
 
 void PluginManager::initialize()
 {

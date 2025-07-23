@@ -75,13 +75,6 @@ namespace AudioRecorder
             }
         }
 
-        // Process audio buffer in chunks to avoid lag
-        while (recorder->audioBuffer.size() >= FFT_SIZE)
-        {
-            const std::vector newAudioBuffer(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
-            recorder->audioBuffer.erase(recorder->audioBuffer.begin(), recorder->audioBuffer.begin() + FFT_SIZE);
-        }
-
         return paContinue;
     }
 
