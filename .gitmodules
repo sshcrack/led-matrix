@@ -7,9 +7,9 @@
 [submodule "thirdparty/traypp"]
 	path = thirdparty/traypp
 	url = https://github.com/sshcrack/traypp.git
-[submodule "thirdparty/implot"]
-	path = thirdparty/implot
+[submodule "plugins/AudioVisualizer/implot"]
+	path = plugins/AudioVisualizer/implot
 	url = https://github.com/epezent/implot
-[submodule "thirdparty/portaudio"]
-	path = thirdparty/portaudio
+[submodule "plugins/AudioVisualizer/portaudio"]
+	path = plugins/AudioVisualizer/portaudio
 	url = https://github.com/PortAudio/portaudio
