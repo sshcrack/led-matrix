@@ -34,6 +34,11 @@ namespace Plugins {
         virtual void before_exit() {
         }
 
+        /// You can here add a function that will be called once after everything is inited(ImGui, Platform and Renderer Backend)
+        virtual void post_init() {}
+        /// Called before the UDP mainloop of sending packets starts.
+        virtual void udp_init() {}
+
         virtual void on_websocket_message(const std::string message) {}
 
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet

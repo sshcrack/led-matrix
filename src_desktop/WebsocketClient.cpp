@@ -59,6 +59,10 @@ void WebsocketClient::threadLoop()
     uint16_t port = generalConfig.getPort();
     auto lastUpdated = clock::now();
 
+    for (const auto &plugin: plugins | std::views::values) {
+        plugin->udp_init();
+    }
+
     while (serverRunning)
     {
         auto frame_start = clock::now();

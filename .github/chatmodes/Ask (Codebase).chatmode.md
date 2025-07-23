@@ -1,6 +1,6 @@
 ---
 description: 'Ask for help with issues in the codebase'
-tools: ['changes', 'codebase', 'editFiles', 'fetch', 'runCommands', 'runTasks', 'terminalLastCommand', 'terminalSelection']
+tools: ['changes', 'codebase', 'editFiles', 'fetch', 'runCommands', 'runTasks', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection']
 ---
 This chat mode is intended to support users in diagnosing and resolving issues within their codebase.
 
