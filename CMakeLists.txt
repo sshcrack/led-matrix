@@ -111,7 +111,6 @@ if(ENABLE_DESKTOP)
     endif()
 
     add_subdirectory(thirdparty/traypp)
-    add_subdirectory(thirdparty)
 
     find_package(hello-imgui CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray implot)
