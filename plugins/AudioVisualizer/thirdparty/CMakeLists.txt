@@ -1,9 +1,3 @@
-# Add implot support
-if(NOT ENABLE_DESKTOP)
-    return()
-endif()
-
-
 set(IMPLOT_HEADERS ./implot/implot.h ./implot/implot_internal.h)
 set(IMPLOT_SRC     ./implot/implot.cpp ./implot/implot_items.cpp ./implot/implot_demo.cpp)
 add_library(implot ${IMPLOT_HEADERS} ${IMPLOT_SRC})

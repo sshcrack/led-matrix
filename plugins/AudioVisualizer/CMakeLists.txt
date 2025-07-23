@@ -49,16 +49,16 @@ if(ENABLE_DESKTOP)
         endif()
 
 
-        add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_SOURCE_DIR}/thirdparty/portaudio/build)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/build)
 
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
 
 
 
-
+        add_subdirectory(thirdparty)
         target_link_libraries(AudioVisualizer PRIVATE implot)
 
         find_package(FFTW3f CONFIG REQUIRED)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
-        target_include_directories(AudioVisualizer PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty)
+        target_include_directories(AudioVisualizer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
 endif()
