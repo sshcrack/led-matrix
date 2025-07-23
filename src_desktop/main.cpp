@@ -247,7 +247,6 @@ int main(const int argc, char *argv[])
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
     };
 
-    spdlog::info("Arg 1 is : {}", argc > 1 ? argv[1] : "No arguments");
     runnerParams.appWindowParams.restorePreviousGeometry = true;
     if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
         spdlog::info("Starting minimized.");

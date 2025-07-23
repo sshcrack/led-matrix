@@ -7,7 +7,7 @@
 #include <filesystem>
 #include "shared/matrix/server/MimeTypes.h"
 #include "shared/matrix/utils/consts.h"
-#include "utils/canvas_consts.h"
+#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include <spdlog/spdlog.h>
 

@@ -1,6 +1,8 @@
 #pragma once
+#include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 #include <shared_mutex>
+#include "shared/matrix/Scene.h"
 
 namespace Server {
     namespace rws = restinio::websocket::basic;
@@ -18,7 +20,7 @@ namespace Server {
     extern ws_registry_t registry;
 
     extern std::shared_mutex currSceneMutex;
-    extern std::string currScene;
+    extern std::shared_ptr<Scenes::Scene> currScene;
 }
 
 

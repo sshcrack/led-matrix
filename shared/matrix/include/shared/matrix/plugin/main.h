@@ -67,13 +67,19 @@ namespace Plugins {
             return std::nullopt;
         }
 
+        /// Return with a string value to send an initial message to the desktop client
+        virtual std::optional<std::vector<std::string>> on_websocket_open() {
+            // Default implementation does nothing
+            return std::nullopt;
+        }
+
         /// Returns true if the request has been handled by this plugin
         virtual std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) {
             return std::move(router);
         }
 
         /// Return true if the request has been handled by this plugin
-        virtual bool on_udp_packet(const uint8_t magicPacket, const uint8_t version, const uint8_t *data, const size_t size) {
+        virtual bool on_udp_packet(const uint8_t pluginId, const uint8_t *data, const size_t size) {
             return false;
         }
 

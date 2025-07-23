@@ -32,7 +32,7 @@ public:
 
     uint32_t get_last_timestamp();
 
-    bool on_udp_packet(const uint8_t magicPacket, const uint8_t version, const uint8_t *data,
+    bool on_udp_packet(const uint8_t pluginId, const uint8_t *data,
                        const size_t size) override;
 
     std::string get_plugin_name() const override { return PLUGIN_NAME; }

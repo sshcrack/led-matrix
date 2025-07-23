@@ -54,16 +54,21 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             cantFindScene++;
 
             SleepMillis(300);
+            Server::currScene = nullptr;
             continue;
         }
 
         cantFindScene = 0;
         const tmillis_t start_ms = GetTimeInMillis();
-        const tmillis_t end_ms = start_ms + scene->get_duration(); {
+        const tmillis_t end_ms = start_ms + scene->get_duration();
+        {
             std::unique_lock lock(Server::currSceneMutex);
-            Server::currScene = scene->get_name();
-        } {
+            Server::currScene = scene;
+        }
+
+        {
             std::shared_lock lock(Server::registryMutex);
+            spdlog::info("Updating scene: {}", scene->get_name());
             for (const auto ws_handle: Server::registry | views::values) {
                 restinio::websocket::basic::message_t message;
                 message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);

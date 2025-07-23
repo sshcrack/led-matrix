@@ -11,7 +11,6 @@ WebsocketClient::WebsocketClient() : udpSender()
         if (msg->type == ix::WebSocketMessageType::Message)
         {
             std::unique_lock<std::mutex> lock(activeSceneMutex);
-            spdlog::info("WebSocket message: {}", msg->str);
 
             const std::string &m = msg->str;
             if (m.starts_with("active:")) {

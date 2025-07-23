@@ -73,7 +73,7 @@ uint32_t AudioVisualizer::get_last_timestamp()
     return last_timestamp;
 }
 
-bool AudioVisualizer::on_udp_packet(const uint8_t magicPacket, const uint8_t version, const uint8_t *data, const size_t size)
+bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data, const size_t size)
 {
     // Process received packet
     // Check packet format based on the Rust code (previous implementation):
@@ -81,11 +81,8 @@ bool AudioVisualizer::on_udp_packet(const uint8_t magicPacket, const uint8_t ver
     // - Flags (1 byte)
     // - Timestamp (4 bytes)
     // - Bands data (num_bands bytes)
-    if(magicPacket != 0x01)
+    if(pluginId != 0x01)
         return false; // Not destined for this plugin
-
-    if (version != 0x01)
-        return false; // Invalid version
 
     if (size < 6)
         return false;

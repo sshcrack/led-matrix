@@ -21,6 +21,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #endif
+#include <memory>
 
 class UdpSender final
 {

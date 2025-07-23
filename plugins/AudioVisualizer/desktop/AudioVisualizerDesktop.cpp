@@ -290,10 +290,11 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> AudioVisualizer
 {
 #ifdef _WIN32
     if (sceneName != "audio_spectrum")
+        return std::nullopt;
 #else
     if constexpr (true)
-#endif
         return std::nullopt;
+#endif
 
     if (!recorder->isRecording())
     {

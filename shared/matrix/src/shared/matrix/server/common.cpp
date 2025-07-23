@@ -6,5 +6,5 @@ namespace Server {
     ws_registry_t registry;
 
     std::shared_mutex currSceneMutex;
-    std::string currScene;
+    std::shared_ptr<Scenes::Scene> currScene;
 }
