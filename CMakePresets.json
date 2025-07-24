@@ -74,6 +74,10 @@
         {
             "name": "desktop-windows",
             "configurePreset": "desktop-windows"
+        },
+        {
+            "name": "desktop-windows-debug",
+            "configurePreset": "desktop-windows-debug"
         }
     ],
     "packagePresets": [
@@ -111,6 +115,11 @@
                 "NSIS64"
             ],
             "packageName": "desktop"
+        },
+        {
+            "name": "desktop-windows-debug",
+            "inherits": "desktop-windows",
+            "configurePreset": "desktop-windows-debug"
         }
     ]
 }
