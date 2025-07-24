@@ -13,6 +13,8 @@ Config::General::General(const General &other)
     std::shared_lock<std::shared_mutex> lock(other.mutex_);
     hostname = other.hostname;
     autostart = other.autostart;
+    port = other.port;
+    fpsLimit = other.fpsLimit;
 }
 
 Config::General &Config::General::operator=(const General &other)
@@ -25,6 +27,8 @@ Config::General &Config::General::operator=(const General &other)
 
         hostname = other.hostname;
         autostart = other.autostart;
+        port = other.port;
+        fpsLimit = other.fpsLimit;
     }
     return *this;
 }
@@ -34,6 +38,8 @@ Config::General::General(General &&other) noexcept
     std::unique_lock<std::shared_mutex> lock(other.mutex_);
     hostname = std::move(other.hostname);
     autostart = other.autostart;
+    port = other.port;
+    fpsLimit = other.fpsLimit;
 }
 
 Config::General &Config::General::operator=(General &&other) noexcept
@@ -46,6 +52,8 @@ Config::General &Config::General::operator=(General &&other) noexcept
 
         hostname = std::move(other.hostname);
         autostart = other.autostart;
+        port = other.port;
+        fpsLimit = other.fpsLimit;
     }
     return *this;
 }
@@ -103,6 +111,18 @@ void Config::General::setHostname(const std::string &hostname)
     this->hostname = hostname;
 }
 
+int Config::General::getFpsLimit() const
+{
+    std::shared_lock lock(mutex_);
+    return fpsLimit;
+}
+
+void Config::General::setFpsLimit(int newFpsLimit)
+{
+    std::unique_lock lock(mutex_);
+    fpsLimit = newFpsLimit;
+}
+
 void Config::from_json(const json &j, General &p)
 {
     if (j.contains("hostname"))
@@ -118,13 +138,21 @@ void Config::from_json(const json &j, General &p)
         j.at("port").get_to(port);
         p.setPort(port);
     }
+    if (j.contains("fpsLimit"))
+    {
+        int fpsLimit;
+        j.at("fpsLimit").get_to(fpsLimit);
+        p.setFpsLimit(fpsLimit);
+    }
 }
 
 void Config::to_json(json &j, const General &p)
 {
     j = {
         {"hostname", p.getHostname()},
-        {"port", p.getPort()}};
+        {"port", p.getPort()},
+        {"fpsLimit", p.getFpsLimit()}
+    };
 }
 
 Config::ConfigManager::ConfigManager(const std::filesystem::path &filePath)
