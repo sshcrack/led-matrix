@@ -182,7 +182,7 @@ jobs:
           path: react-native/dist/
 
       - name: Cache cross-compile toolchain
-        if: matrix.build-type.requires-toolchain
+        if: matrix.requires-toolchain
         id: cache-toolchain
         uses: actions/cache@v4
         with:
@@ -190,7 +190,7 @@ jobs:
           key: cross-compile-toolchain-v0.0.1-beta
 
       - name: Download and extract cross-compile toolchain
-        if: matrix.build-type.requires-toolchain && steps.cache-toolchain.outputs.cache-hit != 'true'
+        if: matrix.requires-toolchain && steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           mkdir -p ${{ runner.temp }}/cross-compile
           cd ${{ runner.temp }}/cross-compile
@@ -199,7 +199,7 @@ jobs:
           rm cross-compile.tar.xz
 
       - name: Create vcpkg triplet for arm64-rpi
-        if: matrix.build-type.requires-toolchain
+        if: matrix.requires-toolchain
         run: |
           mkdir -p $VCPKG_ROOT/triplets/community
           cat > $VCPKG_ROOT/triplets/community/arm64-rpi.cmake << 'EOF'
@@ -212,22 +212,22 @@ jobs:
           set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE ${{ runner.temp }}/cross-compile/PI.cmake)
           EOF
 
-      - name: Build ${{ matrix.build-type.name }}
+      - name: Build ${{ matrix.name }}
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: ${{ matrix.build-type.preset }}
+          configurePreset: ${{ matrix.preset }}
           configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
-          buildPreset: ${{ matrix.build-type.preset }}
-          packagePreset: ${{ matrix.build-type.preset }}
+          buildPreset: ${{ matrix.preset }}
+          packagePreset: ${{ matrix.preset }}
         env:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
-          CROSS_COMPILE_ROOT: ${{ matrix.build-type.requires-toolchain && runner.temp }}/cross-compile
+          CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
 
-      - name: Upload ${{ matrix.build-type.name }} artifacts
+      - name: Upload ${{ matrix.name }} artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.build-type.artifact-name }}
-          path: ${{ matrix.build-type.artifact-path }}
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
 
   # Build React Native APK
   build-react-native:
