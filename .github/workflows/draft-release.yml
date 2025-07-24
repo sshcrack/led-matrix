@@ -79,26 +79,34 @@ jobs:
           name: web-build
           path: react-native/dist/
 
-  # Build matrix for emulator and LED matrix
-  build-matrix:
-    runs-on: ubuntu-latest
+  # Build matrix for led-matrix and desktop app
+  build:
+    runs-on: ${{ matrix.os }}
     needs: prepare
     strategy:
       fail-fast: true
       matrix:
-        build-type:
-          - name: "emulator"
-            preset: "emulator"
-            artifact-name: "emulator-build"
-            artifact-path: "emulator_build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz"
-            requires-toolchain: false
+        include:
           - name: "led-matrix"
+            os: ubuntu-latest
             preset: "cross-compile"
             artifact-name: "led-matrix-build"
             artifact-path: |
               build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
               build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.deb
             requires-toolchain: true
+          - name: "desktop-linux"
+            os: ubuntu-latest
+            preset: "desktop-linux"
+            artifact-name: "desktop-linux-build"
+            artifact-path: build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+            requires-toolchain: false
+          - name: "desktop-windows"
+            os: windows-latest
+            preset: "desktop-windows"
+            artifact-name: "desktop-windows-build"
+            artifact-path: desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
+            requires-toolchain: false
     env:
       BUILD_TYPE: RelWithDebInfo
     steps:
@@ -256,7 +264,7 @@ jobs:
   # Create release and upload all artifacts
   create-release:
     runs-on: ubuntu-latest
-    needs: [prepare, build-matrix, build-react-native]
+    needs: [prepare, build, build-react-native]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
