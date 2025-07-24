@@ -9,27 +9,36 @@
 
 #include "CanvasPacket.h"
 
-extern "C" PLUGIN_EXPORT ShadertoyDesktop *createShadertoy()
-{
+extern "C" PLUGIN_EXPORT ShadertoyDesktop *createShadertoy() {
     return new ShadertoyDesktop();
 }
 
-extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
-{
+extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c) {
     delete c;
 }
 
-void ShadertoyDesktop::after_swap()
-{
+static bool currCompileError = false;
 
-    if (hasUrlChanged)
-    {
+void ShadertoyDesktop::after_swap() {
+    if (currCompileError) {
+        spdlog::debug("Switching to fallback url");
+        ShaderToy::PipelineEditor::get().loadFromShaderToy("https://www.shadertoy.com/view/Mly3WV");
+        currCompileError = false;
+    }
+
+    if (hasUrlChanged) {
         spdlog::info("Loading shader {}...", url);
         ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
         hasUrlChanged = false;
     }
 
-    ShaderToy::PipelineEditor::get().update(ctx);
+    auto res = ShaderToy::PipelineEditor::get().update(ctx);
+    if (!res.has_value()) {
+        spdlog::error("Failed to update shader: {}", res.error().what());
+        currCompileError = true;
+        return;
+    }
+
     ctx.tick(60);
 
     const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height));
@@ -38,39 +47,31 @@ void ShadertoyDesktop::after_swap()
     currData = data;
 }
 
-void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
-{
+void ShadertoyDesktop::render(ImGuiContext *imGuiCtx) {
     ImGui::SetCurrentContext(imGuiCtx);
 
-    if (!initError.empty())
-    {
+    if (!initError.empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", initError.c_str());
         return;
     }
 
-    if (url.empty())
-    {
+    if (url.empty()) {
         ImGui::Text("Currently no URL is set (or no shadertoy scene is active).");
-    }
-    else
-    {
+    } else {
         ImGui::TextLinkOpenURL(("Current URL: " + url).c_str(), url.c_str());
     }
     ImGui::Text("Canvas Size: %dx%d", width, height);
 
 
     ImGui::Checkbox("Enable Preview", &enablePreview);
-    if (enablePreview)
-    {
-        if (!ImGui::Begin("Canvas", nullptr))
-        {
+    if (enablePreview) {
+        if (!ImGui::Begin("Canvas", nullptr)) {
             ImGui::End();
             return;
         }
 
         const auto reservedHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-        if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false))
-        {
+        if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false)) {
             ImVec2 size(width, height);
 
             const auto base = ImGui::GetCursorScreenPos();
@@ -85,10 +86,8 @@ void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
     }
 }
 
-void ShadertoyDesktop::on_websocket_message(const std::string message)
-{
-    if (message.starts_with("size:"))
-    {
+void ShadertoyDesktop::on_websocket_message(const std::string message) {
+    if (message.starts_with("size:")) {
         std::string sizeStr = message.substr(5);
         const auto xPos = sizeStr.find('x');
 
@@ -96,8 +95,7 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
         height = std::stoi(sizeStr.substr(xPos + 1));
     }
 
-    if (message.starts_with("url:"))
-    {
+    if (message.starts_with("url:")) {
         std::string newUrl = message.substr(4);
         bool urlChanged = newUrl != url;
 
@@ -106,31 +104,25 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
     }
 }
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDesktop::compute_next_packet(
-    const std::string sceneName)
-{
-    if (sceneName != "shadertoy" || width == 0 || height == 0 || !initError.empty())
-    {
+std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > ShadertoyDesktop::compute_next_packet(
+    const std::string sceneName) {
+    if (sceneName != "shadertoy" || width == 0 || height == 0 || !initError.empty()) {
         return std::nullopt; // Not for this scene
     }
 
     std::shared_lock lock(currDataMutex);
     return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CanvasPacket(currData),
-                                                             [](UdpPacket *packet)
-                                                             {
+                                                             [](UdpPacket *packet) {
                                                                  delete dynamic_cast<CanvasPacket *>(packet);
                                                              });
 }
 
-void ShadertoyDesktop::post_init()
-{
+void ShadertoyDesktop::post_init() {
     auto init = glewInit();
-    if (init != GLEW_OK)
-    {
+    if (init != GLEW_OK) {
         initError = "Failed to initialize glew: " + std::string(
-                                                        reinterpret_cast<const char *>(glewGetErrorString(init)));
+                        reinterpret_cast<const char *>(glewGetErrorString(init)));
         spdlog::error(initError);
-    }
-    else
+    } else
         spdlog::info("Glew initialized successfully");
 }
