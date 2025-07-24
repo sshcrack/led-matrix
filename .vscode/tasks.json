@@ -21,7 +21,7 @@
             "label": "CMake: Desktop Configure",
             "command": "cmake --preset desktop-linux",
             "windows": {
-                "command": "cmake --preset desktop-windows"
+                "command": "cmake --preset desktop-windows-debug"
             }
         },
         {
@@ -29,7 +29,7 @@
             "label": "CMake: Desktop Build & Install",
             "command": "cmake --build --preset desktop-linux --target install",
             "windows": {
-                "command": "cmake --build --preset desktop-windows --target install"
+                "command": "cmake --build --preset desktop-windows-debug --target install"
             }
         }
     ]
