@@ -32,13 +32,12 @@ WebsocketClient::WebsocketClient() : udpSender()
             }
         } });
 
-    senderThread = std::thread(&WebsocketClient::threadLoop, this);
 }
 
 WebsocketClient::~WebsocketClient()
 {
     ix::initNetSystem();
-    serverRunning = false;
+    senderRunning = false;
     if (senderThread.joinable())
     {
         senderThread.join();
@@ -63,7 +62,7 @@ void WebsocketClient::threadLoop()
         plugin->udp_init();
     }
 
-    while (serverRunning)
+    while (senderRunning)
     {
         auto frame_start = clock::now();
         std::string scene = getActiveScene();

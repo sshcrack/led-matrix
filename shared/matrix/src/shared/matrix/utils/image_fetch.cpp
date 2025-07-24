@@ -61,7 +61,7 @@ namespace utils {
         return {};
     }
 
-    std::optional<htmlDocPtr> fetch_page(const std::string &url_str, const std::string &base_url) {
+    std::expected<htmlDocPtr, std::string> fetch_page(const std::string &url_str, const std::string &base_url) {
         cpr::Session session;
         session.SetUrl(cpr::Url{base_url + url_str});
         session.SetHeader({
@@ -72,8 +72,8 @@ namespace utils {
         auto response = session.Get();
 
         if (response.status_code != 200) {
-            spdlog::error("HTTP request failed with status code: {}", response.status_code);
-            return std::nullopt;
+            spdlog::error(" {}", response.status_code);
+            return std::unexpected("HTTP request failed with status code: " + std::to_string(response.status_code));
         }
 
         htmlDocPtr doc = htmlReadMemory(
@@ -85,8 +85,7 @@ namespace utils {
         );
 
         if (!doc) {
-            spdlog::error("Failed to parse HTML document");
-            return std::nullopt;
+            return std::unexpected("Failed to parse HTML document");
         }
 
         return doc;

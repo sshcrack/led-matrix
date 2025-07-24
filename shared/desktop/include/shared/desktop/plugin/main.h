@@ -35,6 +35,8 @@ namespace Plugins {
         }
 
         /// You can here add a function that will be called once after everything is inited(ImGui, Platform and Renderer Backend)
+        virtual void pre_new_frame() {}
+        virtual void after_swap() {}
         virtual void post_init() {}
         /// Called before the UDP mainloop of sending packets starts.
         virtual void udp_init() {}

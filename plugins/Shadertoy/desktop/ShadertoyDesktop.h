@@ -21,6 +21,7 @@ public:
     }
 
     void post_init() override;
+    void after_swap() override;
 
 private:
     int width, height;
