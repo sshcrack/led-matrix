@@ -17,15 +17,7 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c) {
     delete c;
 }
 
-static bool currCompileError = false;
-
 void ShadertoyDesktop::after_swap() {
-    if (currCompileError) {
-        spdlog::debug("Switching to fallback url");
-        ShaderToy::PipelineEditor::get().loadFromShaderToy("https://www.shadertoy.com/view/Mly3WV");
-        currCompileError = false;
-    }
-
     if (hasUrlChanged) {
         spdlog::info("Loading shader {}...", url);
         ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
@@ -35,7 +27,10 @@ void ShadertoyDesktop::after_swap() {
     auto res = ShaderToy::PipelineEditor::get().update(ctx);
     if (!res.has_value()) {
         spdlog::error("Failed to update shader: {}", res.error().what());
-        currCompileError = true;
+
+        spdlog::debug("Switching to fallback url");
+        url = "https://www.shadertoy.com/view/Mly3WV";
+        hasUrlChanged = true;
         return;
     }
 
@@ -61,6 +56,8 @@ void ShadertoyDesktop::render(ImGuiContext *imGuiCtx) {
         ImGui::TextLinkOpenURL(("Current URL: " + url).c_str(), url.c_str());
     }
     ImGui::Text("Canvas Size: %dx%d", width, height);
+    if (hasUrlChanged)
+        ImGui::Text("Compiling shader...");
 
 
     ImGui::Checkbox("Enable Preview", &enablePreview);
