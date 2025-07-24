@@ -268,12 +268,23 @@ int main(const int argc, char *argv[])
         }
     };
 
+    static auto lastFrameTime = std::chrono::steady_clock::now();
     runnerParams.callbacks.AfterSwap = [&]
     {
         for(const auto& [name, plugin] : pl->get_plugins())
         {
             plugin->after_swap();
         }
+        // Frame limiting to ensure steady 60 FPS
+        using namespace std::chrono;
+        auto now = steady_clock::now();
+        constexpr double targetFrameTimeMs = 1000.0 / 60.0;
+        auto frameDuration = duration_cast<milliseconds>(now - lastFrameTime).count();
+        if (frameDuration < targetFrameTimeMs)
+        {
+            std::this_thread::sleep_for(milliseconds(static_cast<int>(targetFrameTimeMs - frameDuration)));
+        }
+        lastFrameTime = steady_clock::now();
     };
 
     runnerParams.callbacks.BeforeExit = [&]
@@ -304,8 +315,7 @@ int main(const int argc, char *argv[])
         }
     };
 
-    runnerParams.fpsIdling.enableIdling = true;
-    runnerParams.fpsIdling.fpsIdle = 60.0f; // Default FPS when idling
+    runnerParams.fpsIdling.enableIdling = false;
     runnerParams.callbacks.PostInit = [&]()
     {
         auto *window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
