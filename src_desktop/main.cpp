@@ -101,6 +101,11 @@ int main(const int argc, char *argv[])
     static WebsocketClient *ws;
     auto guiFunction = [pl, cfg]
     {
+        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden)
+        {
+            // We are just returning here, because waiting is handled in the AfterSwap method.
+            return;
+        }
         static bool initialConnect = true;
         if (shouldExit)
         {
@@ -152,6 +157,22 @@ int main(const int argc, char *argv[])
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
             draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            somethingInvalid = true;
+        }
+
+        static int fpsLimit = generalCfg.getFpsLimit();
+        if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5))
+        {
+            if (fpsLimit < 1) fpsLimit = 1;
+            if (fpsLimit > 360) fpsLimit = 360;
+            generalCfg.setFpsLimit(fpsLimit);
+        }
+        if (fpsLimit < 1 || fpsLimit > 360)
+        {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
             somethingInvalid = true;
         }
 
@@ -269,17 +290,33 @@ int main(const int argc, char *argv[])
     };
 
     static auto lastFrameTime = std::chrono::steady_clock::now();
+    static int frameCount = 0;
+    static double frameTimeSum = 0.0;
+    static auto lastFpsLogTime = std::chrono::steady_clock::now();
     runnerParams.callbacks.AfterSwap = [&]
     {
         for(const auto& [name, plugin] : pl->get_plugins())
         {
             plugin->after_swap();
         }
-        // Frame limiting to ensure steady 60 FPS
+        // Frame limiting to ensure steady FPS
         using namespace std::chrono;
         auto now = steady_clock::now();
-        constexpr double targetFrameTimeMs = 1000.0 / 60.0;
+        int fpsLimit = cfg->getGeneralConfig().getFpsLimit();
+        double targetFrameTimeMs = 1000.0 / (fpsLimit > 0 ? fpsLimit : 60);
         auto frameDuration = duration_cast<milliseconds>(now - lastFrameTime).count();
+        frameTimeSum += frameDuration;
+        frameCount++;
+        // Log average FPS every 5 seconds
+        auto timeSinceLastLog = duration_cast<seconds>(now - lastFpsLogTime).count();
+        if (timeSinceLastLog >= 5 && frameCount > 0)
+        {
+            double avgFps = 1000.0 * frameCount / frameTimeSum;
+            spdlog::info("[AfterSwap] Average FPS: {:.2f} ({} frames, {:.2f} ms avg)", avgFps, frameCount, frameTimeSum / frameCount);
+            frameCount = 0;
+            frameTimeSum = 0.0;
+            lastFpsLogTime = now;
+        }
         if (frameDuration < targetFrameTimeMs)
         {
             std::this_thread::sleep_for(milliseconds(static_cast<int>(targetFrameTimeMs - frameDuration)));

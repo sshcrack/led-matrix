@@ -21,6 +21,7 @@ namespace Config
     protected:
         std::string hostname;
         uint16_t port = 8080; // Default port
+        int fpsLimit = 60; // Default FPS limit
 
         bool autostart = Autostart::isEnabled(APP_NAME);
         mutable std::shared_mutex mutex_;
@@ -41,6 +42,9 @@ namespace Config
         const std::string &getHostname() const;
         std::string getHostnameCopy() const; // Thread-safe copy method
         void setHostname(const std::string &hostname);
+
+        int getFpsLimit() const;
+        void setFpsLimit(int newFpsLimit);
     };
 
     void to_json(json &j, const General &p);
