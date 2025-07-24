@@ -47,7 +47,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 1.1.0)
+project(main VERSION 2.0.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Set default install prefix to build directory if not specified
