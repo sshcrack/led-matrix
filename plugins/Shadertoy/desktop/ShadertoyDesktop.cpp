@@ -19,6 +19,25 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
     delete c;
 }
 
+void ShadertoyDesktop::after_swap()
+{
+
+    if (hasUrlChanged)
+    {
+        spdlog::info("Loading shader {}...", url);
+        ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
+        hasUrlChanged = false;
+    }
+
+    ShaderToy::PipelineEditor::get().update(ctx);
+    ctx.tick(60);
+
+    const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height));
+
+    std::unique_lock lock(currDataMutex);
+    currData = data;
+}
+
 void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
 {
     ImGui::SetCurrentContext(imGuiCtx);
@@ -39,38 +58,31 @@ void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
     }
     ImGui::Text("Canvas Size: %dx%d", width, height);
 
-    if (hasUrlChanged)
+
+    ImGui::Checkbox("Enable Preview", &enablePreview);
+    if (enablePreview)
     {
-        spdlog::info("Loading shader {}...", url);
-        ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
-        hasUrlChanged = false;
-    }
+        if (!ImGui::Begin("Canvas", nullptr))
+        {
+            ImGui::End();
+            return;
+        }
 
-    ShaderToy::PipelineEditor::get().update(ctx);
-    ctx.tick(60);
+        const auto reservedHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+        if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false))
+        {
+            ImVec2 size(width, height);
 
-    const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height));
-    std::unique_lock lock(currDataMutex);
-    currData = data;
-/*
-    if (!ImGui::Begin("Canvas", nullptr)) {
+            const auto base = ImGui::GetCursorScreenPos();
+            std::optional<ImVec4> mouse = std::nullopt;
+
+            // TODO rendering twice may cause issues for lighting and stuff
+            ctx.render(base, size, mouse);
+            ImGui::EndChild();
+        }
+
         ImGui::End();
-        return;
     }
-
-    const auto reservedHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
-    if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false)) {
-        ImVec2 size(width, height);
-
-        const auto base = ImGui::GetCursorScreenPos();
-        std::optional<ImVec4> mouse = std::nullopt;
-
-        ctx.render(base, size, mouse);
-        ImGui::EndChild();
-    }
-
-    ImGui::End();
-*/
 }
 
 void ShadertoyDesktop::on_websocket_message(const std::string message)
@@ -86,8 +98,11 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
 
     if (message.starts_with("url:"))
     {
-        url = message.substr(4);
-        hasUrlChanged = true;
+        std::string newUrl = message.substr(4);
+        bool urlChanged = newUrl != url;
+
+        url = newUrl;
+        hasUrlChanged = urlChanged;
     }
 }
 

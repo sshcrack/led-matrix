@@ -11,8 +11,8 @@ namespace pixeljoint {
 
     std::expected<std::unique_ptr<Post>, std::string> ScrapedPost::fetch_link() const {
         const auto doc_opt = utils::fetch_page(post_url, BASE_URL);
-        if (!doc_opt)
-            return std::unexpected("Could not fetch page " + post_url);
+        if (!doc_opt.has_value())
+            return std::unexpected("Could not fetch page " + post_url + ": " + doc_opt.error());
 
 
         const auto doc = doc_opt.value();
@@ -50,8 +50,8 @@ namespace pixeljoint {
 
     std::optional<int> ScrapedPost::get_pages() {
         const auto doc_opt = utils::fetch_page(SEARCH_URL, BASE_URL);
-        if (!doc_opt) {
-            spdlog::error("Failed to fetch search page");
+        if (!doc_opt.has_value()) {
+            spdlog::error("Failed to fetch search page: {}", doc_opt.error());
             return std::nullopt;
         }
 
@@ -103,8 +103,8 @@ namespace pixeljoint {
 
         const std::string url = SEARCH_URL + std::string("&pg=") + std::to_string(page);
         const auto doc_opt = utils::fetch_page(url, BASE_URL);
-        if (!doc_opt) {
-            spdlog::error("Failed to fetch page {}", page);
+        if (!doc_opt.has_value()) {
+            spdlog::error("Failed to fetch page {}: {}", page, doc_opt.error());
             return posts;
         }
 

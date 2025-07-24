@@ -3,6 +3,8 @@ register_plugin(Shadertoy
         matrix/ShadertoyPlugin.h
         matrix/scenes/ShadertoyScene.cpp
         matrix/scenes/ShadertoyScene.h
+        matrix/scraper/Scraper.cpp
+        matrix/scraper/Scraper.h
         DESKTOP
         desktop/ShadertoyDesktop.cpp
         desktop/ShadertoyDesktop.h
@@ -16,4 +18,7 @@ if (ENABLE_DESKTOP)
 
     target_link_libraries(Shadertoy PRIVATE shadertoy-headless)
     target_link_libraries(Shadertoy PRIVATE GLEW::GLEW)
+else()
+    find_package(cpr CONFIG REQUIRED)
+    target_link_libraries(Shadertoy PRIVATE cpr::cpr)
 endif ()

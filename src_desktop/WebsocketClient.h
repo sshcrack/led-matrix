@@ -27,16 +27,16 @@ public:
     {
         switch (webSocket.getReadyState())
         {
-            case ix::ReadyState::Connecting:
-                return "Connecting";
-            case ix::ReadyState::Open:
-                return "Open";
-            case ix::ReadyState::Closing:
-                return "Closing";
-            case ix::ReadyState::Closed:
-                return "Closed";
-            default:
-                return "Unknown";
+        case ix::ReadyState::Connecting:
+            return "Connecting";
+        case ix::ReadyState::Open:
+            return "Open";
+        case ix::ReadyState::Closing:
+            return "Closing";
+        case ix::ReadyState::Closed:
+            return "Closed";
+        default:
+            return "Unknown";
         };
     }
 
@@ -50,11 +50,24 @@ public:
     {
         spdlog::info("Starting WebSocket client");
         webSocket.start();
+
+        if(!senderRunning) {
+            senderRunning = true;
+            senderThread = std::thread(&WebsocketClient::threadLoop, this);
+        }
     }
 
-    void stop() {
+    void stop()
+    {
         spdlog::info("Stopping WebSocket client");
-        webSocket.close();
+        webSocket.stop();
+        if(senderRunning) {
+            senderRunning = false;
+            if (senderThread.joinable())
+            {
+                senderThread.join();
+            }
+        }
     }
 
     std::string getLastError()
@@ -63,8 +76,9 @@ public:
         return lastError;
     }
 
-private:
     ix::WebSocket webSocket;
+
+private:
     UdpSender udpSender;
 
     std::thread senderThread;
@@ -77,5 +91,5 @@ private:
 
     void threadLoop();
 
-    bool serverRunning = true;
+    bool senderRunning = false;
 };
