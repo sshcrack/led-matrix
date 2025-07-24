@@ -161,11 +161,12 @@ int main(const int argc, char *argv[])
         }
 
         static int fpsLimit = generalCfg.getFpsLimit();
-        if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5))
+        if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5, ImGuiInputFlags_None))
         {
             if (fpsLimit < 1) fpsLimit = 1;
             if (fpsLimit > 360) fpsLimit = 360;
             generalCfg.setFpsLimit(fpsLimit);
+            HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
         }
         if (fpsLimit < 1 || fpsLimit > 360)
         {
@@ -299,29 +300,6 @@ int main(const int argc, char *argv[])
         {
             plugin->after_swap();
         }
-        // Frame limiting to ensure steady FPS
-        using namespace std::chrono;
-        auto now = steady_clock::now();
-        int fpsLimit = cfg->getGeneralConfig().getFpsLimit();
-        double targetFrameTimeMs = 1000.0 / (fpsLimit > 0 ? fpsLimit : 60);
-        auto frameDuration = duration_cast<milliseconds>(now - lastFrameTime).count();
-        frameTimeSum += frameDuration;
-        frameCount++;
-        // Log average FPS every 5 seconds
-        auto timeSinceLastLog = duration_cast<seconds>(now - lastFpsLogTime).count();
-        if (timeSinceLastLog >= 5 && frameCount > 0)
-        {
-            double avgFps = 1000.0 * frameCount / frameTimeSum;
-            spdlog::info("[AfterSwap] Average FPS: {:.2f} ({} frames, {:.2f} ms avg)", avgFps, frameCount, frameTimeSum / frameCount);
-            frameCount = 0;
-            frameTimeSum = 0.0;
-            lastFpsLogTime = now;
-        }
-        if (frameDuration < targetFrameTimeMs)
-        {
-            std::this_thread::sleep_for(milliseconds(static_cast<int>(targetFrameTimeMs - frameDuration)));
-        }
-        lastFrameTime = steady_clock::now();
     };
 
     runnerParams.callbacks.BeforeExit = [&]
@@ -352,7 +330,10 @@ int main(const int argc, char *argv[])
         }
     };
 
-    runnerParams.fpsIdling.enableIdling = false;
+    runnerParams.fpsIdling.enableIdling = true;
+    runnerParams.fpsIdling.fpsIdle = cfg->getGeneralConfig().getFpsLimit();
+    runnerParams.fpsIdling.timeActiveAfterLastEvent = 0.0f;
+
     runnerParams.callbacks.PostInit = [&]()
     {
         auto *window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
