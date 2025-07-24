@@ -117,11 +117,13 @@ jobs:
           submodules: true
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
+        if: runner.os != 'Windows'
         with:
           packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete
           version: 1.0
 
       - name: Update certificates
+        if: runner.os != 'Windows'
         run: |
             sudo apt-get update
             sudo apt-get install --reinstall ca-certificates
@@ -136,6 +138,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
 
       - name: Add NuGet sources
+        if: runner.os != 'Windows'
         shell: bash
         env:
           VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
@@ -151,6 +154,25 @@ jobs:
             -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
           mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
             setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
+            -Source "${{ env.FEED_URL }}"
+
+      - name: Add NuGet sources
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
+          USERNAME: sshcrack
+          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+        run: |
+          .$(${{ env.VCPKG_EXE }} fetch nuget) `
+            sources add `
+            -Source "${{ env.FEED_URL }}" `
+            -StorePasswordInClearText `
+            -Name GitHubPackages `
+            -UserName "${{ env.USERNAME }}" `
+            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
+          .$(${{ env.VCPKG_EXE }} fetch nuget) `
+            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" `
             -Source "${{ env.FEED_URL }}"
 
       - name: Download web build artifact
