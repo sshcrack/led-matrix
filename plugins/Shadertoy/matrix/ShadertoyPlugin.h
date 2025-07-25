@@ -20,6 +20,7 @@ public:
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
 
     std::optional<std::vector<std::string>> on_websocket_open() override;
+    void on_websocket_message(const std::string &message) override;
 
     std::vector<uint8_t> get_data() {
         std::lock_guard<std::mutex> lock(dataMutex);

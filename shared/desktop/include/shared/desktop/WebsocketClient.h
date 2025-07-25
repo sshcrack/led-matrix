@@ -1,6 +1,6 @@
 #pragma once
 #include <ixwebsocket/IXWebSocket.h>
-#include "UdpSender.h"
+#include "shared/desktop/UdpSender.h"
 #include <string>
 #include <thread>
 #include <mutex>
@@ -11,6 +11,10 @@ class WebsocketClient
 public:
     WebsocketClient();
     ~WebsocketClient();
+
+    static WebsocketClient *instance();
+
+    static void setInstance(WebsocketClient *instance);
 
     ix::ReadyState getReadyState() const
     {
@@ -51,7 +55,8 @@ public:
         spdlog::info("Starting WebSocket client");
         webSocket.start();
 
-        if(!senderRunning) {
+        if (!senderRunning)
+        {
             senderRunning = true;
             senderThread = std::thread(&WebsocketClient::threadLoop, this);
         }
@@ -61,7 +66,8 @@ public:
     {
         spdlog::info("Stopping WebSocket client");
         webSocket.stop();
-        if(senderRunning) {
+        if (senderRunning)
+        {
             senderRunning = false;
             if (senderThread.joinable())
             {
@@ -93,3 +99,5 @@ private:
 
     bool senderRunning = false;
 };
+
+extern WebsocketClient *websocketClientInstance;

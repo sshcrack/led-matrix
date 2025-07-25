@@ -1,4 +1,4 @@
-#include "WebsocketClient.h"
+#include "shared/desktop/WebsocketClient.h"
 #include <tray.hpp>
 #include <iostream>
 #include <fmt/format.h>
@@ -357,8 +357,10 @@ int main(const int argc, char *argv[])
         {
             plugin->post_init();
         }
+
         // Only now create the WebsocketClient, so the UDP thread starts after the window is set
         ws = new WebsocketClient();
+        WebsocketClient::setInstance(ws);
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;
@@ -371,6 +373,7 @@ int main(const int argc, char *argv[])
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
+    WebsocketClient::setInstance(nullptr);
     delete ws;
 
     delete cfg;

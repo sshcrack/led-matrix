@@ -43,7 +43,6 @@ bool ShadertoyPlugin::on_udp_packet(const uint8_t pluginId, const uint8_t *packe
     if (pluginId != 0x02)
         return false; // Not destined for this plugin
 
-
     int neededPacketSize = Constants::height * Constants::width * 3; // 3 bytes per pixel (RGB)
     static int consecutiveErrors = 0;
     if (size < neededPacketSize)
@@ -80,4 +79,10 @@ std::optional<std::vector<std::string>> ShadertoyPlugin::on_websocket_open()
 
     std::vector v = {sizeMsg};
     return v;
+}
+
+void ShadertoyPlugin::on_websocket_message(const std::string &message)
+{
+    if (message == "next_shader")
+        Scenes::switchToNextRandomShader = true;
 }

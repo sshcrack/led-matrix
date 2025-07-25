@@ -2,10 +2,10 @@
 // Created by hendrik on 7/21/25.
 //
 
-#include "UdpSender.h"
+#include "shared/desktop/UdpSender.h"
 
 #include <cstring>
-#include <shared/desktop/plugin_loader/loader.h>
+#include "shared/desktop/plugin_loader/loader.h"
 
 #ifdef _WIN32
 #pragma comment(lib, "bcrypt.lib")

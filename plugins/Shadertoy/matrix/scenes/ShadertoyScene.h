@@ -5,6 +5,8 @@
 #include "../ShadertoyPlugin.h"
 
 namespace Scenes {
+    extern bool switchToNextRandomShader;
+
     class ShadertoyScene : public Scene {
         // Make lastUrlSent a static member variable, declared here
         static std::string lastUrlSent;
