@@ -1,18 +1,60 @@
 {
   "dependencies": [
-    "cpr",
     "fmt",
-    "libxml2",
     "nlohmann-json",
     "spdlog",
-    "graphicsmagick",
-    "restinio"
+    "picosha2"
   ],
   "features": {
-      "emulator": {
-        "description": "Add emulator support",
-        "dependencies": ["sdl2"]
-      }
+    "matrix": {
+      "description": "Add matrix support",
+      "dependencies": [
+        "graphicsmagick",
+        "restinio",
+        "libxml2",
+        "cpr"
+      ]
+    },
+    "emulator": {
+      "description": "Dependencies needed for the emulator application.",
+      "dependencies": [
+        "sdl2"
+      ]
+    },
+    "desktop": {
+      "description": "Dependencies needed for the desktop application. The portaudio/fftw3 dependency is only needed for the AudioVisualizer plugin.",
+      "dependencies": [
+        {
+          "name": "hello-imgui",
+          "features": [
+            "opengl3-binding",
+            "glfw-binding"
+          ]
+        },
+        "ixwebsocket"
+      ]
+    },
+    "audio-visualizer-desktop": {
+      "description": "AudioVisualizer plugin for desktop applications.",
+      "dependencies": [
+        "fftw3"
+      ]
+    },
+    "shadertoy-desktop": {
+      "description": "Dependencies needed by shadertoy-headless",
+      "dependencies": [
+        "glfw3",
+        "fmt",
+        "glew",
+        "cpp-httplib",
+        "ms-gsl",
+        "magic-enum",
+        "cpp-base64",
+        "nlohmann-json",
+        "stb",
+        "openssl"
+      ]
+    }
   },
   "name": "led-matrix",
   "version": "1.0.0"
