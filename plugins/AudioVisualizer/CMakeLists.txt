@@ -49,7 +49,7 @@ if(ENABLE_DESKTOP)
         endif()
 
 
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/build)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/build EXCLUDE_FROM_ALL)
 
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
 

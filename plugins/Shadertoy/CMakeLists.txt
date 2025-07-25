@@ -14,7 +14,7 @@ register_plugin(Shadertoy
 
 if (ENABLE_DESKTOP)
     find_package(GLEW REQUIRED)
-    add_subdirectory(thirdparty/shadertoy-headless)
+    add_subdirectory(thirdparty/shadertoy-headless ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/shadertoy-headless/build EXCLUDE_FROM_ALL)
 
     target_link_libraries(Shadertoy PRIVATE shadertoy-headless)
     target_link_libraries(Shadertoy PRIVATE GLEW::GLEW)

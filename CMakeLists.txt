@@ -137,6 +137,11 @@ if(ENABLE_DESKTOP)
     endif()
 endif()
 
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+    DESTINATION .
+)
+
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 

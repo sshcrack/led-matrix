@@ -81,7 +81,9 @@ int main(const int argc, char *argv[])
     try
     {
         instanceManager = new SingleInstanceManager("LedMatrixController", []
-                                                    { showMainWindow = true; });
+                                                    {
+                                                        spdlog::info("Focus request received, showing main window.");
+                                                        showMainWindow = true; });
     }
     catch ([[maybe_unused]] const std::exception &e)
     {
@@ -101,11 +103,6 @@ int main(const int argc, char *argv[])
     static WebsocketClient *ws;
     auto guiFunction = [pl, cfg]
     {
-        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden)
-        {
-            // We are just returning here, because waiting is handled in the AfterSwap method.
-            return;
-        }
         static bool initialConnect = true;
         if (shouldExit)
         {
@@ -118,6 +115,18 @@ int main(const int argc, char *argv[])
             spdlog::info("Showing main window.");
             showMainWindow = false;
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
+            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+
+            // Restore the window if it was minimized or hidden
+            glfwRestoreWindow(window);
+            glfwShowWindow(window);
+            glfwFocusWindow(window);
+        }
+
+        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden)
+        {
+            // We are just returning here, because waiting is handled in the AfterSwap method.
+            return;
         }
 
         General &generalCfg = cfg->getGeneralConfig();
@@ -163,8 +172,10 @@ int main(const int argc, char *argv[])
         static int fpsLimit = generalCfg.getFpsLimit();
         if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5, ImGuiInputFlags_None))
         {
-            if (fpsLimit < 1) fpsLimit = 1;
-            if (fpsLimit > 360) fpsLimit = 360;
+            if (fpsLimit < 1)
+                fpsLimit = 1;
+            if (fpsLimit > 360)
+                fpsLimit = 360;
             generalCfg.setFpsLimit(fpsLimit);
             HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
         }
@@ -284,7 +295,7 @@ int main(const int argc, char *argv[])
             instanceManager->poll();
 #endif
 
-        for(const auto& [name, plugin] : pl->get_plugins())
+        for (const auto &[name, plugin] : pl->get_plugins())
         {
             plugin->pre_new_frame();
         }
@@ -296,7 +307,7 @@ int main(const int argc, char *argv[])
     static auto lastFpsLogTime = std::chrono::steady_clock::now();
     runnerParams.callbacks.AfterSwap = [&]
     {
-        for(const auto& [name, plugin] : pl->get_plugins())
+        for (const auto &[name, plugin] : pl->get_plugins())
         {
             plugin->after_swap();
         }
@@ -339,7 +350,6 @@ int main(const int argc, char *argv[])
         auto *window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         setMainGLFWWindow(window);
         glfwSwapInterval(0);
-
 
         glfwSetWindowIconifyCallback(window, window_iconify_callback);
 
