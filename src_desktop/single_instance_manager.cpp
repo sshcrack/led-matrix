@@ -94,6 +94,7 @@ void SingleInstanceManager::setupDbus() {
     if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
         // Already running, send focus request
         sendFocusRequest();
+        spdlog::warn("Another instance is already running, cannot become primary.");
         throw std::runtime_error("Another instance is already running.");
     }
     _dbusConn = conn;

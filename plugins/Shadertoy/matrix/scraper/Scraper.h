@@ -26,7 +26,7 @@ public:
     void prefetchShadersAsync(int minPage, int maxPage);
 
 private:
-    Scraper() = default;
+    Scraper();
     ~Scraper() {
         if (fetchFuture.valid()) {
             spdlog::info("Scraper: Waiting for fetch future to complete in destructor...");
@@ -37,6 +37,8 @@ private:
     std::expected<std::string, std::string> returnShaderFromVector();
     void fetchShaders(int minPage, int maxPage);
     void fetchShadersSync(int minPage, int maxPage);
+    void fetchShadersApi(int currPage, const char* api_key);
+    void fetchShadersScrape(int currPage);
 
     std::vector<std::string> shaderIds;
     std::vector<int> alreadyScrapedPages;

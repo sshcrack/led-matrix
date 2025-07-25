@@ -7,11 +7,17 @@
 #include <sstream>
 
 const std::string SHADERTOY_BASE_URL = "https://www.shadertoy.com/";
-//TODO use API https://www.shadertoy.com/api/v1/shaders/query/string?sort=love&key=APP_KEY&from=0&num=25
 
 Scraper& Scraper::instance() {
     static Scraper instance;
     return instance;
+}
+
+Scraper::Scraper() {
+    const char* api_key = std::getenv("SHADERTOY_API_KEY");
+    if (!api_key || std::string(api_key).empty()) {
+        spdlog::warn("SHADERTOY_API_KEY is not set. Falling back to HTML scraping. It is recommended to set the API key for more reliable operation.");
+    }
 }
 
 std::expected<std::string, std::string> Scraper::scrapeNextShader(int minPage, int maxPage)
@@ -131,6 +137,57 @@ void Scraper::fetchShadersSync(int minPage, int maxPage)
         currPage = availablePages[distrib(gen)];
         alreadyScrapedPages.push_back(currPage);
     }
+
+    const char* api_key = std::getenv("SHADERTOY_API_KEY");
+    if (api_key && std::string(api_key).length() > 0) {
+        fetchShadersApi(currPage, api_key);
+    } else {
+        fetchShadersScrape(currPage);
+    }
+}
+
+void Scraper::fetchShadersApi(int currPage, const char* api_key)
+{
+    std::string api_url = "https://www.shadertoy.com/api/v1/shaders/query/string?sort=love&key=" + std::string(api_key) + "&from=" + std::to_string(currPage * 12) + "&num=12";
+    cpr::Session session;
+    session.SetUrl(cpr::Url{api_url});
+    session.SetHeader({{"User-Agent", utils::DEFAULT_USER_AGENT},
+                       {"Accept", "application/json"}});
+    auto response = session.Get();
+    if (response.status_code != 200) {
+        fetchError = "API request failed with status code: " + std::to_string(response.status_code);
+        return;
+    }
+    std::string text = response.text;
+    if (text.empty()) {
+        fetchError = "Received empty response from Shadertoy API";
+        return;
+    }
+    nlohmann::json jsonData;
+    try {
+        jsonData = nlohmann::json::parse(text, nullptr, false);
+    } catch (std::exception &e) {
+        fetchError = "Failed to parse API JSON data: " + std::string(e.what());
+        return;
+    }
+    if (jsonData.is_discarded() || !jsonData.contains("Results") || !jsonData["Results"].is_array() || jsonData["Results"].empty()) {
+        fetchError = "Invalid or empty shader data from API";
+        return;
+    }
+    std::vector<std::string> newShaderIds;
+    for (const auto &shaderId : jsonData["Results"]) {
+        if (!shaderId.is_string()) continue;
+        newShaderIds.push_back(shaderId.get<std::string>());
+    }
+    {
+        std::scoped_lock lock(mtx);
+        shaderIds.insert(shaderIds.end(), newShaderIds.begin(), newShaderIds.end());
+        fetchError.clear();
+    }
+}
+
+void Scraper::fetchShadersScrape(int currPage)
+{
     std::string path = "results?query=&sort=love&from=" + std::to_string(currPage * 12) + "&num=12";
     cpr::Session session;
     session.SetUrl(cpr::Url{SHADERTOY_BASE_URL + path});
