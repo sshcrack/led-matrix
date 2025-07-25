@@ -7,6 +7,7 @@
 #include <sstream>
 
 const std::string SHADERTOY_BASE_URL = "https://www.shadertoy.com/";
+//TODO use API https://www.shadertoy.com/api/v1/shaders/query/string?sort=love&key=APP_KEY&from=0&num=25
 
 Scraper& Scraper::instance() {
     static Scraper instance;
