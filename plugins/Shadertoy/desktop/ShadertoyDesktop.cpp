@@ -19,8 +19,12 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
     delete c;
 }
 
+static bool currShaderHasError = false;
 void ShadertoyDesktop::after_swap()
 {
+    if (currShaderHasError)
+        return;
+
     if (hasUrlChanged)
     {
         spdlog::info("Loading shader {}...", url);
@@ -29,9 +33,8 @@ void ShadertoyDesktop::after_swap()
         {
             spdlog::error("Failed to load from shadertoy: {}", res.error().what());
 
-            spdlog::debug("Switching to fallback url");
-            url = "https://www.shadertoy.com/view/Mly3WV";
-            hasUrlChanged = true;
+            send_websocket_message("next_shader");
+            currShaderHasError = true;
             return;
         }
         hasUrlChanged = false;
@@ -42,9 +45,8 @@ void ShadertoyDesktop::after_swap()
     {
         spdlog::error("Failed to update shader: {}", res.error().what());
 
-        spdlog::debug("Switching to fallback url");
-        url = "https://www.shadertoy.com/view/Mly3WV";
-        hasUrlChanged = true;
+        send_websocket_message("next_shader");
+        currShaderHasError = true;
         return;
     }
 
@@ -77,6 +79,9 @@ void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
     ImGui::Text("Canvas Size: %dx%d", width, height);
     if (hasUrlChanged)
         ImGui::Text("Compiling shader...");
+
+    if (ImGui::Button("Next Shader"))
+        send_websocket_message("next_shader");
 
     ImGui::Checkbox("Enable Preview", &enablePreview);
     if (enablePreview)
@@ -122,6 +127,7 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
 
         url = newUrl;
         hasUrlChanged = urlChanged;
+        currShaderHasError = false;
     }
 }
 

@@ -18,6 +18,22 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                         *req,
                         rws::activation_t::immediate,
                         [ &registry ](auto wsh, auto m) {
+                            if(rws::opcode_t::text_frame == m->opcode()) {
+                                std::string mStr = m->payload();
+                                if (mStr.starts_with("msg:")) {
+                                    const int pluginNameEnd = mStr.find(':', 4);
+
+                                    const std::string pluginName = mStr.substr(4, pluginNameEnd -4);
+                                    const std::string message = mStr.substr(mStr.find(':', pluginNameEnd) +1);
+
+                                    for (const auto & plugin : Plugins::PluginManager::instance()->get_plugins()) {
+                                        if (plugin->get_plugin_name() != pluginName)
+                                            continue;
+
+                                        plugin->on_websocket_message(message);
+                                    }
+                            }
+                            }
                             if (rws::opcode_t::ping_frame == m->opcode()) {
                                 auto resp = *m;
                                 resp.set_opcode(rws::opcode_t::pong_frame);

@@ -1,7 +1,19 @@
-#include "WebsocketClient.h"
+#include "shared/desktop/WebsocketClient.h"
 #include <spdlog/spdlog.h>
-#include <shared/desktop/plugin_loader/loader.h>
+#include "shared/desktop/plugin_loader/loader.h"
 #include <ixwebsocket/IXNetSystem.h>
+
+WebsocketClient *websocketClientInstance = nullptr;
+
+void WebsocketClient::setInstance(WebsocketClient *instance)
+{
+    websocketClientInstance = instance;
+}
+
+WebsocketClient *WebsocketClient::instance()
+{
+    return websocketClientInstance;
+}
 
 WebsocketClient::WebsocketClient() : udpSender()
 {
@@ -31,7 +43,6 @@ WebsocketClient::WebsocketClient() : udpSender()
                 }
             }
         } });
-
 }
 
 WebsocketClient::~WebsocketClient()
@@ -58,7 +69,8 @@ void WebsocketClient::threadLoop()
     uint16_t port = generalConfig.getPort();
     auto lastUpdated = clock::now();
 
-    for (const auto &plugin: plugins | std::views::values) {
+    for (const auto &plugin : plugins | std::views::values)
+    {
         plugin->udp_init();
     }
 
@@ -76,7 +88,7 @@ void WebsocketClient::threadLoop()
             port = generalConfig.getPort();
         }
 
-        for (auto &pl: plugins | std::views::values)
+        for (auto &pl : plugins | std::views::values)
         {
             auto packet = pl->compute_next_packet(scene);
             if (!packet.has_value())
@@ -91,7 +103,7 @@ void WebsocketClient::threadLoop()
                 consecutiveError++;
 
                 if (consecutiveError < 3)
-                spdlog::error("Failed to send packet: {}", lastError);
+                    spdlog::error("Failed to send packet: {}", lastError);
             }
             else
             {

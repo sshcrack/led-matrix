@@ -4,7 +4,6 @@
 
 #pragma once
 #define NOMINMAX
-#include <complex.h>
 #include <vector>
 #include <string>
 #include <expected>

@@ -5,6 +5,7 @@
 #include <future>
 
 #include "shared/matrix/plugin_loader/loader.h"
+bool Scenes::switchToNextRandomShader = true;
 
 using namespace Scenes;
 std::string Scenes::ShadertoyScene::lastUrlSent = "";
@@ -60,7 +61,6 @@ void ShadertoyScene::prefetch_random_shader()
     }
 }
 
-static bool switchToNextRandomShader = true;
 void Scenes::ShadertoyScene::after_render_stop(RGBMatrixBase *matrix)
 {
     switchToNextRandomShader = true;

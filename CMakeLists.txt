@@ -118,9 +118,6 @@ if(ENABLE_DESKTOP)
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
     )
 
-    find_package(ixwebsocket CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ixwebsocket::ixwebsocket)
-
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
