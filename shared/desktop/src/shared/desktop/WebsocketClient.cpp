@@ -30,7 +30,7 @@ WebsocketClient::WebsocketClient() : udpSender()
             }
 
             if (m.starts_with("msg:")) {
-                const int pluginNameEnd = m.find(':', 4);
+                const auto pluginNameEnd = m.find(':', 4);
 
                 const std::string pluginName = m.substr(4, pluginNameEnd -4);
                 const std::string message = m.substr(m.find(':', pluginNameEnd) +1);

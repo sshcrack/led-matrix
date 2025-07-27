@@ -8,6 +8,7 @@
 #include "shared/common/plugin_macros.h"
 #include "shared/desktop/config.h"
 #include "shared/common/udp/packet.h"
+#include "shared/desktop/macro.h"
 
 using std::string;
 using std::vector;
@@ -15,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace Plugins
 {
-    class DesktopPlugin
+    class SHARED_DESKTOP_API DesktopPlugin
     {
     public:
         fs::path _plugin_location;

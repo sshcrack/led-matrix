@@ -19,10 +19,11 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
     delete c;
 }
 
+static bool isActive = false;
 static bool currShaderHasError = false;
 void ShadertoyDesktop::after_swap()
 {
-    if (currShaderHasError)
+    if (currShaderHasError || !isActive)
         return;
 
     if (hasUrlChanged)
@@ -136,9 +137,11 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDeskto
 {
     if (sceneName != "shadertoy" || width == 0 || height == 0 || !initError.empty())
     {
+        isActive = false;
         return std::nullopt; // Not for this scene
     }
 
+    isActive = true;
     std::shared_lock lock(currDataMutex);
     return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CanvasPacket(currData),
                                                              [](UdpPacket *packet)

@@ -4,6 +4,7 @@
 #include <shared_mutex>
 #include <nlohmann/json.hpp>
 #include <shared/common/utils/utils.h>
+#include "shared/desktop/macro.h"
 #include "autostart.h"
 
 using json = nlohmann::json;
@@ -16,7 +17,7 @@ namespace Config
      * All methods in this class are thread-safe and can be called from multiple threads.
      * Uses a shared_mutex to allow concurrent reads while ensuring exclusive writes.
      */
-    class General
+    class SHARED_DESKTOP_API General
     {
     protected:
         std::string hostname;
@@ -47,8 +48,8 @@ namespace Config
         void setFpsLimit(int newFpsLimit);
     };
 
-    void to_json(json &j, const General &p);
-    void from_json(const json &j, General &p);
+    SHARED_DESKTOP_API void to_json(json &j, const General &p);
+    SHARED_DESKTOP_API void from_json(const json &j, General &p);
 
     /**
      * @brief Thread-safe configuration manager with singleton pattern
@@ -57,7 +58,7 @@ namespace Config
      * access to general settings and plugin-specific settings. Uses a shared_mutex
      * to allow concurrent reads while ensuring exclusive writes.
      */
-    class ConfigManager
+    class SHARED_DESKTOP_API ConfigManager
     {
     private:
         General generalConfig;

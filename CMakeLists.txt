@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
+set(VCPKG_APPLOCAL_DEPS ON)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
@@ -150,6 +151,7 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 if(ENABLE_DESKTOP)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsDesktop)
 
     if(DESKTOP_DEBUG_CONSOLE)
@@ -264,6 +266,13 @@ if(NOT ENABLE_DESKTOP)
     if(SYNC_TO_RPI)
         install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
     endif()
+else()
+    install(TARGETS SharedToolsCommon SharedToolsDesktop
+        RUNTIME DESTINATION bin # .dll (Windows)
+        ARCHIVE DESTINATION lib # .lib (Windows static or import lib)
+        LIBRARY DESTINATION lib # .so/.dylib (Unix)
+    )
+
 endif()
 
 if(ENABLE_DESKTOP)

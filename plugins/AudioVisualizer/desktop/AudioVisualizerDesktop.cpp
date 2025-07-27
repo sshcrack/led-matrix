@@ -227,20 +227,20 @@ void AudioVisualizerDesktop::addVisualizer() {
         }
 
         // Render default bars
-        for (const int idx: defaultIndices) {
+        for (const auto idx: defaultIndices) {
             ImPlot::PlotBars("Default", &x[idx], &latestBands[idx], 1, 1);
         }
 
         // Render yellow bars
         ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 255, 0, 255)); // Yellow
-        for (const int idx: yellowIndices) {
+        for (const auto idx: yellowIndices) {
             ImPlot::PlotBars("Yellow", &x[idx], &latestBands[idx], 1, 1);
         }
         ImPlot::PopStyleColor();
 
         // Render red bars
         ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 0, 0, 255)); // Red
-        for (const int idx: redIndices) {
+        for (const auto idx: redIndices) {
             ImPlot::PlotBars("Red", &x[idx], &latestBands[idx], 1, 1);
         }
         ImPlot::PopStyleColor();

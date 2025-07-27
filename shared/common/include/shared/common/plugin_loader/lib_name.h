@@ -1,14 +1,11 @@
 #pragma once
 
 
-#include <cctype>
-#include <sstream>
 #include <string>
-#include <utility>
-#include <vector>
 #include <filesystem>
+#include "shared/common/utils/macro.h"
 
 namespace Plugins {
-    std::string get_lib_name(const std::filesystem::path &path);
+    SHARED_COMMON_API std::string get_lib_name(const std::filesystem::path &path);
 }
 

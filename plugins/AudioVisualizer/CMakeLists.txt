@@ -49,7 +49,7 @@ if(ENABLE_DESKTOP)
         endif()
 
 
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/build EXCLUDE_FROM_ALL)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio EXCLUDE_FROM_ALL)
 
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
 
@@ -60,5 +60,21 @@ if(ENABLE_DESKTOP)
 
         find_package(FFTW3f CONFIG REQUIRED)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)
+        if(WIN32)
+                # Look for FFTW3 DLL in vcpkg bin directory
+                set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
+                file(GLOB FFTW3_DLLS "${VCPKG_BIN_DIR}/fftw3*.dll")
+
+                if(FFTW3_DLLS)
+                        install(FILES ${FFTW3_DLLS}
+                                DESTINATION plugins/AudioVisualizer
+                                COMPONENT AudioVisualizer
+                        )
+                else()
+                        message(WARNING "No FFTW3 DLLs found in ${VCPKG_BIN_DIR}. The plugin might not load")
+                endif()
+        endif()
+
+
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
 endif()
