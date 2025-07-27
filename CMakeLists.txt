@@ -308,6 +308,33 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_ENABLE_MODERN_UI ON)
         set(CPACK_NSIS_ENABLE_CUSTOM_INSTALL_DIRECTORY ON)
 
+        # Visual C++ Redistributable configuration
+        set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+            ; Check if Visual C++ Redistributable is installed
+            ReadRegStr $0 HKLM \\\"SOFTWARE\\\\Microsoft\\\\VisualStudio\\\\14.0\\\\VC\\\\Runtimes\\\\x64\\\" \\\"Version\\\"
+            StrCmp $0 \\\"\\\" 0 vcredist_installed
+            
+            ; If not installed, download and install VC++ Redistributable
+            DetailPrint \\\"Downloading Visual C++ Redistributable...\\\"
+            NSISdl::download \\\"https://aka.ms/vs/17/release/vc_redist.x64.exe\\\" \\\"$TEMP\\\\vc_redist.x64.exe\\\"
+            Pop $R0
+            StrCmp $R0 \\\"success\\\" download_ok
+            MessageBox MB_OK \\\"Failed to download Visual C++ Redistributable. Please install it manually.\\\"
+            Goto vcredist_end
+            
+            download_ok:
+            DetailPrint \\\"Installing Visual C++ Redistributable...\\\"
+            ExecWait \\\"$TEMP\\\\vc_redist.x64.exe /quiet /norestart\\\" $1
+            Delete \\\"$TEMP\\\\vc_redist.x64.exe\\\"
+            IntCmp $1 0 vcredist_installed
+            MessageBox MB_OK \\\"Visual C++ Redistributable installation may have failed. Exit code: $1\\\"
+            
+            vcredist_installed:
+            DetailPrint \\\"Visual C++ Redistributable is available.\\\"
+            
+            vcredist_end:
+        ")
+
         # Remove the old shortcut settings that don't work properly
         # set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
         # set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
@@ -324,6 +351,11 @@ if(ENABLE_DESKTOP)
             Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\"
             Delete \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\"
         ")
+
+        # Add option to launch application after installation
+        set(CPACK_NSIS_MUI_FINISHPAGE_RUN "$INSTDIR\\\\bin\\\\main.exe")
+        set(CPACK_NSIS_MUI_FINISHPAGE_RUN_TEXT "Launch LED Matrix Controller")
+        set(CPACK_NSIS_MUI_FINISHPAGE_RUN_CHECKED "1")
     else()
         set(CPACK_GENERATOR "DEB;TGZ")
     endif()

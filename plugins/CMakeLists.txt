@@ -72,6 +72,7 @@ function(register_plugin PLUGIN_NAME)
         RUNTIME DESTINATION plugins/${PLUGIN_NAME} # For DLLs and executables (Windows)
         LIBRARY DESTINATION plugins/${PLUGIN_NAME} # For shared libraries (.so/.dylib)
         ARCHIVE DESTINATION plugins/${PLUGIN_NAME} # For static libraries (.lib/.a)
+        COMPONENT ${PLUGIN_NAME}
     )
 endfunction()
 
