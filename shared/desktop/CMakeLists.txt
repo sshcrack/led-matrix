@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/UdpSender.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
@@ -20,8 +21,11 @@ find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
 find_package(ixwebsocket CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ixwebsocket::ixwebsocket)
+target_link_libraries(${PROJECT_NAME} PUBLIC ixwebsocket::ixwebsocket)
 
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC bcrypt)
+endif()
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(hello-imgui CONFIG REQUIRED)

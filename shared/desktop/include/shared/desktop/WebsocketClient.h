@@ -1,4 +1,5 @@
 #pragma once
+#include "shared/desktop/macro.h"
 #include <ixwebsocket/IXWebSocket.h>
 #include "shared/desktop/UdpSender.h"
 #include <string>
@@ -6,7 +7,7 @@
 #include <mutex>
 #include <spdlog/spdlog.h>
 
-class WebsocketClient
+class SHARED_DESKTOP_API WebsocketClient
 {
 public:
     WebsocketClient();
@@ -100,4 +101,4 @@ private:
     bool senderRunning = false;
 };
 
-extern WebsocketClient *websocketClientInstance;
+SHARED_DESKTOP_API extern WebsocketClient *websocketClientInstance;

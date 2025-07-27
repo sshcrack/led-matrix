@@ -1,10 +1,25 @@
 #include "factory.h"
+
+#if defined(_MSC_VER)
+#  pragma warning(push)
+#  pragma warning(disable : 4244)
+#elif defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wconversion"
+#endif
+
 #include "LogarithmicAnalyzer.h"
 #include "LinearAnalyzer.h"
 #include "BarkAnalyzer.h"
 #include "MelAnalyzer.h"
 #include "ThirdOctaveAnalyzer.h"
 #include "FullOctaveAnalyzer.h"
+
+#if defined(_MSC_VER)
+#  pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
 
 std::unique_ptr<FrequencyAnalyzer> getAnalyzer(const AnalysisMode mode, const FrequencyScale frequencyScale) {
     switch (mode) {

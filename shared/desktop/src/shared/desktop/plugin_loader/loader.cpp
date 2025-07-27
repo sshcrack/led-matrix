@@ -1,11 +1,3 @@
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <libloaderapi.h>
-#else
-#include <dlfcn.h>
-#endif
-
 #include <iostream>
 #include <set>
 #include "spdlog/spdlog.h"
@@ -15,6 +7,13 @@
 #include "shared/common/plugin_loader/lib_name.h"
 #include "shared/desktop/plugin/main.h"
 #include "shared/common/utils/utils.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#include <libloaderapi.h>
+#else
+#include <dlfcn.h>
+#endif
 
 using namespace spdlog;
 namespace fs = std::filesystem;
@@ -80,7 +79,7 @@ void PluginManager::initialize()
 #ifdef _WIN32
         fs::path plugin_path = plugin_dir_path / (plugin_dir_path.filename() += ".dll");
 #else
-        fs::path plugin_path = plugin_dir_path / (std::string("lib") +=  plugin_dir_path.filename() += ".so");
+        fs::path plugin_path = plugin_dir_path / (std::string("lib") += plugin_dir_path.filename() += ".so");
 #endif
 
         if (!fs::is_regular_file(plugin_path))
@@ -91,14 +90,27 @@ void PluginManager::initialize()
     }
 
     // Loading libs to memory
+#ifdef _WIN32
+    auto dllDirCookie = AddDllDirectory(get_exec_dir().wstring().c_str());
+    if (dllDirCookie == 0)
+    {
+        error("Failed to add plugin directory '{}': {}. Trying anyways to load the plugin...", get_exec_dir().string(), GetLastError());
+    }
+#endif
+
     for (const fs::path &plPath : libPaths)
     {
         void *dlhandle = nullptr;
 
 #ifdef _WIN32
-        SetDllDirectoryW(plPath.parent_path().c_str());
+        auto plDirCookie = AddDllDirectory(plPath.parent_path().wstring().c_str());
+        if (plDirCookie == 0)
+        {
+            error("Failed to add plugin directory '{}': {}. Trying anyways to load the plugin...", plPath.parent_path().string(), GetLastError());
+        }
+
         // Windows implementation
-        HMODULE handle = LoadLibraryW(plPath.wstring().c_str());
+        HMODULE handle = LoadLibraryExW(plPath.wstring().c_str(), nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (handle == nullptr)
         {
             DWORD error_code = GetLastError();
@@ -115,6 +127,10 @@ void PluginManager::initialize()
             error("Failed to load plugin '{}': {}", plPath.string(), error_msg);
             continue;
         }
+
+        if (plDirCookie != 0)
+            RemoveDllDirectory(plDirCookie);
+
         dlhandle = (void *)handle;
 #else
         // Linux implementation
@@ -225,6 +241,11 @@ void PluginManager::initialize()
 #endif
         }
     }
+
+#ifdef _WIN32
+    if (dllDirCookie != 0)
+        RemoveDllDirectory(dllDirCookie);
+#endif
 
     info("Loaded a total of {} plugins.", loaded_plugins.size());
 

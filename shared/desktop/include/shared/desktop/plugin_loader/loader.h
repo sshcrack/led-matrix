@@ -2,10 +2,11 @@
 
 #include <vector>
 #include "shared/desktop/plugin/main.h"
+#include "shared/desktop/macro.h"
 
 namespace Plugins
 {
-    struct PluginInfo
+    struct SHARED_DESKTOP_API PluginInfo
     {
         void *handle;
         std::string destroyFnName;
@@ -14,7 +15,7 @@ namespace Plugins
         DesktopPlugin *plugin;
     };
 
-    class PluginManager
+    class SHARED_DESKTOP_API PluginManager
     {
     protected:
         static PluginManager *instance_;

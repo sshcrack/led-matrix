@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "shared/desktop/macro.h"
 #define NOMINMAX
 #include <vector>
 #include <string>
@@ -22,7 +23,7 @@
 #endif
 #include <memory>
 
-class UdpSender final
+class SHARED_DESKTOP_API UdpSender final
 {
 #if defined(_WIN32)
     SOCKET socket;
