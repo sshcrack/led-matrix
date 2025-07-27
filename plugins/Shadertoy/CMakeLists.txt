@@ -42,6 +42,28 @@ if (ENABLE_DESKTOP)
         else()
             message(WARNING "No Brotli DLLs found in ${VCPKG_BIN_DIR}. The plugin might not load")
         endif()
+
+        file(GLOB LIBSSL_DIRS "${VCPKG_BIN_DIR}/libssl*.dll")
+
+        if(LIBSSL_DIRS)
+                install(FILES ${LIBSSL_DIRS}
+                        DESTINATION plugins/Shadertoy
+                        COMPONENT Shadertoy
+                )
+        else()
+            message(WARNING "No LibSSL DLLs found in ${VCPKG_BIN_DIR}. The plugin might not load")
+        endif()
+
+        file(GLOB LIBCRYPTO_DIRS "${VCPKG_BIN_DIR}/libcrypto*.dll")
+
+        if(LIBCRYPTO_DIRS)
+                install(FILES ${LIBCRYPTO_DIRS}
+                        DESTINATION plugins/Shadertoy
+                        COMPONENT Shadertoy
+                )
+        else()
+            message(WARNING "No LibCrypto DLLs found in ${VCPKG_BIN_DIR}. The plugin might not load")
+        endif()
     endif()
 else()
     find_package(cpr CONFIG REQUIRED)
