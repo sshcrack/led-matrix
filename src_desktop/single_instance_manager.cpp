@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <string>
 #include <thread>
 #else
