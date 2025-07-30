@@ -11,3 +11,7 @@ memory_profiler.sh
 heaptrack.sh
 .env
 emulator_build
+desktop_build
+__pycache__
+LED_Matrix_Controller.ini
+desktop_build*

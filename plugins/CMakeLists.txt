@@ -2,84 +2,82 @@ cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_CXX_STANDARD 23)
 
-file(GLOB PLUGIN_SOURCES
-    */*.c*
-)
+# Define a function to register plugins
+function(register_plugin PLUGIN_NAME)
+    # Parse arguments to separate regular sources from desktop-specific sources
+    set(MATRIX_SOURCES "")
+    set(DESKTOP_SOURCES "")
+    set(IN_DESKTOP_SECTION FALSE)
 
-foreach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
-    get_filename_component(P_DIR ${PLUGIN_SOURCE} DIRECTORY)
-    get_filename_component(P_DIR_NAME ${P_DIR} NAME)
+    string(FIND "${PLUGIN_NAME}" ":" COLON_INDEX)
 
-    get_filename_component(LIB_NAME ${PLUGIN_SOURCE} NAME_WE)
-
-    if(NOT P_DIR_NAME STREQUAL LIB_NAME)
-        continue()
+    if(NOT COLON_INDEX EQUAL -1)
+        message(FATAL_ERROR "PLUGIN_NAME must not contain a colon (:), but was: '${PLUGIN_NAME}'")
     endif()
 
-    if(LIB_NAME STREQUAL "ExampleScenes")
-        continue()
-    endif()
-
-    message(STATUS "Adding plugin: ${LIB_NAME}")
-    set(LIB_NAMES ${LIB_NAMES} ${LIB_NAME})
-
-    # Read .build_ignore file if it exists
-    set(IGNORE_PATTERNS "")
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore")
-        file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/${LIB_NAME}/.build_ignore" IGNORE_PATTERNS)
-    endif()
-
-    # Collect all source and header files
-    file(GLOB_RECURSE PLUGIN_SOURCES_ALL ${LIB_NAME}/*.c*)
-    file(GLOB_RECURSE PLUGIN_HEADERS_ALL ${LIB_NAME}/*.h*)
-
-    # Filter out ignored directories
-    if(IGNORE_PATTERNS)
-        foreach(IGNORE_PATTERN ${IGNORE_PATTERNS})
-            # Remove leading/trailing whitespace
-            string(STRIP "${IGNORE_PATTERN}" IGNORE_PATTERN)
-            if(NOT "${IGNORE_PATTERN}" STREQUAL "")
-                list(FILTER PLUGIN_SOURCES_ALL EXCLUDE REGEX ".*/${IGNORE_PATTERN}/.*")
-                list(FILTER PLUGIN_HEADERS_ALL EXCLUDE REGEX ".*/${IGNORE_PATTERN}/.*")
+    foreach(ARG ${ARGN})
+        if(ARG STREQUAL "DESKTOP")
+            set(IN_DESKTOP_SECTION TRUE)
+        else()
+            if(IN_DESKTOP_SECTION)
+                list(APPEND DESKTOP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${ARG})
+            else()
+                list(APPEND MATRIX_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${ARG})
             endif()
-        endforeach()
+        endif()
+    endforeach()
+
+    # Determine which sources to use based on build target
+    project(${PLUGIN_NAME})
+    if(ENABLE_DESKTOP)
+        if(DESKTOP_SOURCES STREQUAL "")
+            message(STATUS "No Sources for ${PLUGIN_NAME}. Skipping desktop build.")
+            return()
+        endif()
+
+        add_library(${PLUGIN_NAME} SHARED ${DESKTOP_SOURCES})
+    else()
+        add_library(${PLUGIN_NAME} SHARED ${MATRIX_SOURCES} ${RGB_SRC_FILES})
     endif()
 
-    add_library(${LIB_NAME} SHARED ${PLUGIN_SOURCES_ALL} ${PLUGIN_HEADERS_ALL} ${RGB_SRC_FILES})
 
-    target_include_directories(${LIB_NAME} PRIVATE ${RGB_HEADER_DIR})
+    target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_23)
+    target_compile_definitions(${PLUGIN_NAME} PRIVATE PLUGIN_NAME="${PLUGIN_NAME}")
 
-    # Compiler target
-    target_compile_features(${LIB_NAME} PRIVATE cxx_std_23)
-
-
-    # Default dependencies
-
-    target_link_libraries(${LIB_NAME} PRIVATE rpi-rgb-led-matrix)
-
-    # ImageMagick
-    find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-    target_link_libraries(${LIB_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
-
-
-    # spdlog
     find_package(spdlog CONFIG REQUIRED)
-    target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
+    target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsCommon)
+    target_link_libraries(${PLUGIN_NAME} PRIVATE spdlog::spdlog)
+    if(ENABLE_DESKTOP)
+        target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
+        find_package(nlohmann_json 3.2.0 REQUIRED)
+        find_package(hello-imgui CONFIG REQUIRED)
+        target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui nlohmann_json::nlohmann_json)
+    else()
+        find_package(restinio REQUIRED)
+        find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+        target_link_libraries(${PLUGIN_NAME} PRIVATE
+            SharedToolsMatrix
+            restinio::restinio
+            unofficial::graphicsmagick::graphicsmagick
+        )
+        target_include_directories(${PLUGIN_NAME} PRIVATE ${RGB_HEADER_DIR})
+        target_link_libraries(${PLUGIN_NAME} PRIVATE rpi-rgb-led-matrix)
+    endif()
 
-    # HTTP Server
-    find_package(restinio REQUIRED)
+    if(${PLUGIN_NAME} STREQUAL "ExampleScenes")
+        return()
+    endif()
 
-    target_link_libraries(${LIB_NAME} PRIVATE restinio::restinio)
-
-    # Require SharedTools
-    target_link_libraries(${LIB_NAME} PRIVATE SharedTools)
-
-    # Custom configuration
-    include("${P_DIR}/CMakeLists.txt" OPTIONAL)
-
-    # Install plugin
-    install(TARGETS ${LIB_NAME}
-        LIBRARY DESTINATION "plugins"
+    install(TARGETS ${PLUGIN_NAME}
+        RUNTIME DESTINATION plugins/${PLUGIN_NAME} # For DLLs and executables (Windows)
+        LIBRARY DESTINATION plugins/${PLUGIN_NAME} # For shared libraries (.so/.dylib)
+        ARCHIVE DESTINATION plugins/${PLUGIN_NAME} # For static libraries (.lib/.a)
+        COMPONENT ${PLUGIN_NAME}
     )
+endfunction()
 
-endforeach(PLUGIN_SOURCE ${PLUGIN_SOURCES})
+subdirlist(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
+foreach(P_DIR ${SUBDIRS})
+    get_filename_component(P_DIR_NAME ${P_DIR} NAME)
+    add_subdirectory(${P_DIR_NAME})
+endforeach()

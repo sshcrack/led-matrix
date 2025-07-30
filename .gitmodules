@@ -1,6 +1,18 @@
-[submodule "rpi-rgb-led-matrix"]
-	path = rpi-rgb-led-matrix
-	url = https://github.com/sshcrack/rpi-rgb-led-matrix.git
 [submodule "shared/PicoSHA2"]
-	path = shared/PicoSHA2
+	path = shared_matrix/PicoSHA2
 	url = https://github.com/okdshin/PicoSHA2
+[submodule "thirdparty/rpi-rgb-led-matrix"]
+	path = thirdparty/rpi-rgb-led-matrix
+	url = https://github.com/sshcrack/rpi-rgb-led-matrix.git
+[submodule "thirdparty/traypp"]
+	path = thirdparty/traypp
+	url = https://github.com/sshcrack/traypp.git
+[submodule "plugins/AudioVisualizer/thirdparty/implot"]
+	path = plugins/AudioVisualizer/thirdparty/implot
+	url = https://github.com/epezent/implot
+[submodule "plugins/AudioVisualizer/thirdparty/portaudio"]
+	path = plugins/AudioVisualizer/thirdparty/portaudio
+	url = https://github.com/PortAudio/portaudio
+[submodule "plugins/Shadertoy/thirdparty/shadertoy-headless"]
+	path = plugins/Shadertoy/thirdparty/shadertoy-headless
+	url = https://github.com/sshcrack/shadertoy-headless
