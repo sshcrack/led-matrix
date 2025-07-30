@@ -105,7 +105,9 @@ jobs:
             os: windows-latest
             preset: "desktop-windows"
             artifact-name: "desktop-windows-build"
-            artifact-path: desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
+            artifact-path: |
+              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
+              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.exe
             requires-toolchain: false
     env:
       BUILD_TYPE: RelWithDebInfo
@@ -218,7 +220,7 @@ jobs:
           configurePreset: ${{ matrix.preset }}
           configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
           buildPreset: ${{ matrix.preset }}
-          packagePreset: ${{ matrix.preset }}
+          buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && "['--target', 'package', '--config', 'RelWithDebInfo']" || "['--target', 'package']" }}
         env:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
           CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
