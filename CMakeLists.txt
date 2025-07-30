@@ -266,6 +266,12 @@ if(NOT ENABLE_DESKTOP)
     if(SYNC_TO_RPI)
         install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sync.sh)")
     endif()
+
+    install(TARGETS SharedToolsCommon SharedToolsMatrix
+        RUNTIME DESTINATION . # .dll (Windows)
+        ARCHIVE DESTINATION . # .lib (Windows static or import lib)
+        LIBRARY DESTINATION . # .so/.dylib (Unix)
+    )
 else()
     install(TARGETS SharedToolsCommon SharedToolsDesktop
         RUNTIME DESTINATION bin # .dll (Windows)
