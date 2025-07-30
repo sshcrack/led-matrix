@@ -220,7 +220,7 @@ jobs:
           configurePreset: ${{ matrix.preset }}
           configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
           buildPreset: ${{ matrix.preset }}
-          buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && "['--target', 'package', '--config', 'RelWithDebInfo']" || "['--target', 'package']" }}
+          buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '[''--target'', ''package'', ''--config'', ''RelWithDebInfo'']' || '[''--target'', ''package'']' }}
         env:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
           CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
