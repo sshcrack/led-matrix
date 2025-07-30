@@ -339,6 +339,10 @@ int main(const int argc, char *argv[])
         {
             cfg->saveConfig();
         }
+
+        if(ImGui::MenuItem("Hide to tray")) {
+            runnerParams.appWindowParams.hidden = true;
+        }
     };
 
     runnerParams.fpsIdling.enableIdling = true;
