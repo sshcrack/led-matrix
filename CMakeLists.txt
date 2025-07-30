@@ -269,8 +269,8 @@ if(NOT ENABLE_DESKTOP)
 else()
     install(TARGETS SharedToolsCommon SharedToolsDesktop
         RUNTIME DESTINATION bin # .dll (Windows)
-        ARCHIVE DESTINATION lib # .lib (Windows static or import lib)
-        LIBRARY DESTINATION lib # .so/.dylib (Unix)
+        ARCHIVE DESTINATION bin # .lib (Windows static or import lib)
+        LIBRARY DESTINATION bin # .so/.dylib (Unix)
     )
 
 endif()
