@@ -61,7 +61,7 @@ export default function AddProviderButton({ providers, presetId, sceneId }: { pr
                     Toast.show({
                         type: "error",
                         text1: "Error adding providers",
-                        text2: "Scene not found"
+                        text2: "shared/matrix/Scene.h not found"
                     })
                     return
                 }
