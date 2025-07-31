@@ -18,6 +18,9 @@ namespace UpdateChecker
 
         // Call this to start checking for updates (typically on app startup)
         void checkForUpdatesAsync();
+        
+        // Call this for manual update checks (shows "up to date" message if no updates)
+        void checkForUpdatesManual();
 
         // Set whether to show update notifications
         void setUpdateNotificationsEnabled(bool enabled);
