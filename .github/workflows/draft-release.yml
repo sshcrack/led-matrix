@@ -93,7 +93,6 @@ jobs:
             artifact-name: "led-matrix-build"
             artifact-path: |
               build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
-              build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.deb
             requires-toolchain: true
           - name: "desktop-linux"
             os: ubuntu-latest
@@ -322,15 +321,16 @@ jobs:
       - name: Upload all artifacts to release
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
-          mv artifacts/emulator-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz artifacts/emulator-build/emulator-${{ needs.prepare.outputs.version }}-Linux.tar.gz
 
-
-          # Upload emulator
-          gh release upload "$TAG" artifacts/emulator-build/emulator-${{ needs.prepare.outputs.version }}-Linux.tar.gz
-
-          # Upload led-matrix artifacts
+          # Upload led-matrix (cross-compile)
           gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
-          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.deb
+
+          # Upload desktop-linux
+          gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+
+          # Upload desktop-windows
+          gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
+          gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.exe
 
           # Upload React Native APK
           gh release upload "$TAG" artifacts/react-native-apk/app-v${{ needs.prepare.outputs.version }}.apk

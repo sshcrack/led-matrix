@@ -70,8 +70,35 @@ cd "$TMP_DIR"
 print_info "⬇️  Downloading LED Matrix binary for arm64..."
 (curl -# -L -o led-matrix-arm64.tar.xz "$ASSET_URL") & spin
 
-print_info "📦 Extracting to /opt/led-matrix (requires sudo)..."
-(sudo mkdir -p /opt/led-matrix && sudo tar -xJf led-matrix-arm64.tar.xz -C /opt/led-matrix --strip-components=1) & spin
+# Check if already installed
+if [[ -f "/opt/led-matrix/main" ]]; then
+  print_info "Detected existing installation at /opt/led-matrix."
+  print_info "All files except for the configuration file (config.json) will be deleted and replaced with the latest version."
+  read -p "Do you want to continue with the update? (y/N): " CONFIRM_UPDATE
+  if [[ ! "$CONFIRM_UPDATE" =~ ^[Yy]$ ]]; then
+    print_info "Update cancelled by user. Exiting."
+    exit 0
+  fi
+  print_info "Updating to latest version..."
+  # Backup config.json if it exists
+  if [[ -f "/opt/led-matrix/config.json" ]]; then
+    sudo cp /opt/led-matrix/config.json "$TMP_DIR/config.json.bak"
+  fi
+  # Remove everything except config.json
+  sudo find /opt/led-matrix -mindepth 1 -not -name 'config.json' -exec rm -rf {} +
+  # Extract new files
+  print_info "Extracting update..."
+  (sudo tar -xJf led-matrix-arm64.tar.xz -C /opt/led-matrix --strip-components=1) & spin
+  # Restore config.json if it was backed up
+  if [[ -f "$TMP_DIR/config.json.bak" ]]; then
+    sudo mv "$TMP_DIR/config.json.bak" /opt/led-matrix/config.json
+  fi
+  print_success "Update complete!"
+else
+  print_info "No existing installation found. Installing fresh..."
+  print_info "📦 Extracting to /opt/led-matrix (requires sudo)..."
+  (sudo mkdir -p /opt/led-matrix && sudo tar -xJf led-matrix-arm64.tar.xz -C /opt/led-matrix --strip-components=1) & spin
+fi
 
 echo -e "${CYAN}${BOLD}"
 echo "----------------------------------------------"
