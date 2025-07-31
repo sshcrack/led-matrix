@@ -11,10 +11,12 @@ namespace UpdateChecker
     {
         UpdateChecker checker;
         bool showUpdateDialog = false;
+        bool showUpToDateDialog = false;
         bool isCheckingForUpdates = false;
         bool updateNotificationsEnabled = true;
         bool showDownloadProgress = false;
         bool downloadInProgress = false;
+        bool isManualCheck = false;
         std::string downloadError;
         ReleaseInfo currentRelease;
 
@@ -99,6 +101,30 @@ namespace UpdateChecker
                 ImGui::EndPopup();
             }
         }
+        
+        // Render "up to date" dialog if needed
+        if (pImpl->showUpToDateDialog) {
+            ImGui::OpenPopup("Software Up to Date");
+            
+            if (ImGui::BeginPopupModal("Software Up to Date", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+                ImGui::Text("✅ You're running the latest version!");
+                ImGui::Separator();
+                
+                ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
+                ImGui::Text("No updates are available at this time.");
+                
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::TextDisabled("Check back later or enable automatic notifications in the menu");
+                
+                if (ImGui::Button("OK", ImVec2(120, 0))) {
+                    pImpl->showUpToDateDialog = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                
+                ImGui::EndPopup();
+            }
+        }
     }
 
     void UpdateManager::checkForUpdatesAsync()
@@ -109,7 +135,25 @@ namespace UpdateChecker
         }
 
         pImpl->isCheckingForUpdates = true;
-        spdlog::info("Starting update check...");
+        pImpl->isManualCheck = false;
+        spdlog::info("Starting automatic update check...");
+
+        pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
+                                       {
+        pImpl->isCheckingForUpdates = false;
+        handleUpdateCheckResult(hasUpdate, release); });
+    }
+
+    void UpdateManager::checkForUpdatesManual()
+    {
+        if (pImpl->isCheckingForUpdates)
+        {
+            return;
+        }
+
+        pImpl->isCheckingForUpdates = true;
+        pImpl->isManualCheck = true;
+        spdlog::info("Starting manual update check...");
 
         pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
                                        {
@@ -151,7 +195,7 @@ namespace UpdateChecker
 
     void UpdateManager::handleUpdateCheckResult(bool hasUpdate, const ReleaseInfo &release)
     {
-        if (hasUpdate && pImpl->updateNotificationsEnabled)
+        if (hasUpdate && (pImpl->updateNotificationsEnabled || pImpl->isManualCheck))
         {
             spdlog::info("Update available: {} -> {}",
                          UpdateChecker::getCurrentVersion().toString(),
@@ -169,7 +213,14 @@ namespace UpdateChecker
         else
         {
             spdlog::info("No updates available");
+            // Show "up to date" dialog for manual checks
+            if (pImpl->isManualCheck) {
+                pImpl->showUpToDateDialog = true;
+            }
         }
+        
+        // Reset manual check flag
+        pImpl->isManualCheck = false;
     }
 
     void UpdateManager::handleUpdateAction(UpdateAction action, const ReleaseInfo &release)

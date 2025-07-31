@@ -349,7 +349,7 @@ int main(const int argc, char *argv[])
 
         if (ImGui::MenuItem("Check for Updates", nullptr, false))
         {
-            updateManager.checkForUpdatesAsync();
+            updateManager.checkForUpdatesManual();
         }
 
         bool updateNotificationsEnabled = updateManager.isUpdateNotificationsEnabled();
