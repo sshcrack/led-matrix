@@ -10,8 +10,8 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/glfw.cpp
         src/shared/desktop/WebsocketClient.cpp
         src/shared/desktop/UdpSender.cpp
-        src/UpdateChecker.cpp
-        src/UpdateManager.cpp
+        src/shared/desktop/UpdateChecker.cpp
+        src/shared/desktop/UpdateManager.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
