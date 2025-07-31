@@ -62,4 +62,14 @@ if(WIN32)
         else()
                 message(FATAL_ERROR "No CPR DLLs found in ${VCPKG_BIN_DIR}.")
         endif()
+
+                file(GLOB LIBCURL_DLLS "${VCPKG_BIN_DIR}/libcurl.dll")
+
+        if(LIBCURL_DLLS)
+                install(FILES ${LIBCURL_DLLS}
+                        DESTINATION bin
+                )
+        else()
+                message(FATAL_ERROR "No libcurl DLLs found in ${VCPKG_BIN_DIR}.")
+        endif()
 endif()
