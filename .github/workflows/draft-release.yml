@@ -235,7 +235,6 @@ jobs:
   build-react-native:
     runs-on: ubuntu-latest
     needs: prepare
-    if: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
