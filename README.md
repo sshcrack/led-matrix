@@ -133,7 +133,35 @@ Configure your setup using command-line flags or the configuration file - the sy
 
 ## 🚀 **Quick Start Guide**
 
-### 🏗️ **Backend Setup**
+### 🚀 **Automatic Installation (Recommended)**
+
+The easiest way to install and configure the LED Matrix Controller is with the provided install script. This script will:
+- Download the latest release for your platform
+- Guide you through hardware configuration (matrix size, chain, parallel, etc.)
+- Optionally set up Spotify integration
+- Install the binary to `/opt/led-matrix`
+- Set up a systemd service for automatic startup
+
+**To get started, simply run:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/install_led_matrix.sh | bash
+```
+
+Or, if you have already cloned the repository:
+
+```bash
+chmod +x install_led_matrix.sh
+./install_led_matrix.sh
+```
+
+The script will ask you for your matrix configuration and any optional features. After installation, the service will start automatically.
+
+---
+
+### 🖥️ **Manual Build & Development**
+
+If you want to build from source or develop locally, follow these steps:
 
 > **💡 Pro Tip:** Building on Raspberry Pi can be slow. Consider [cross-compilation](https://github.com/abhiTronix/raspberry-pi-cross-compilers/discussions/123) for faster development cycles.
 
@@ -194,10 +222,10 @@ Get the mobile app running in minutes:
 
 ### 🚀 **Running the Application**
 
-Start your LED matrix display with a simple command:
+Download the built binary from GitHub releases (`led-matrix-arm64.tar.gz` for RPI 3 64-bit) and extract it at `/opt/led-matrix`
 
 ```bash
-sudo ./led-matrix-controller [options]
+sudo ./main [options]
 ```
 
 > **🔑 Note:** `sudo` is required for GPIO access on Raspberry Pi.
@@ -238,7 +266,7 @@ Fine-tune logging for development and debugging:
 
 ```bash
 # Set log level via environment variable
-SPDLOG_LEVEL=debug ./led-matrix-controller
+SPDLOG_LEVEL=debug ./main
 
 # Available levels: trace, debug, info, warn, error, critical, off
 ```
@@ -333,10 +361,10 @@ The REST API provides powerful remote control capabilities at `http://<device-ip
 --led-show-refresh
 
 # Detailed timing information
-SPDLOG_LEVEL=debug ./led-matrix-controller
+SPDLOG_LEVEL=debug ./main
 
 # Test basic functionality
-./led-matrix-controller --led-rows=32 --led-cols=64 -D0
+./main --led-rows=32 --led-cols=64 -D0
 ```
 
 > **📚 For hardware-specific issues**, timing problems, or panel compatibility, consult the comprehensive [rpi-rgb-led-matrix troubleshooting guide](https://github.com/hzeller/rpi-rgb-led-matrix#troubleshooting).
