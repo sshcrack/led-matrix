@@ -12,7 +12,7 @@
 namespace UpdateChecker
 {
 
-    struct Version
+    struct SHARED_DESKTOP_API Version
     {
         int major = 0;
         int minor = 0;
@@ -32,7 +32,7 @@ namespace UpdateChecker
         std::string toString() const;
     };
 
-    struct ReleaseInfo
+    struct SHARED_DESKTOP_API ReleaseInfo
     {
         std::string tagName;
         std::string name;
@@ -42,14 +42,14 @@ namespace UpdateChecker
         bool isPrerelease = false;
     };
 
-    enum class UpdateAction
+    enum class SHARED_DESKTOP_API UpdateAction
     {
         UpdateNow,
         RemindLater,
         Skip
     };
 
-    struct UpdatePreferences
+    struct SHARED_DESKTOP_API UpdatePreferences
     {
         std::string skippedVersion;
         int64_t lastRemindTime = 0;
@@ -62,7 +62,7 @@ namespace UpdateChecker
         bool shouldSkipVersion(const std::string &version) const;
     };
 
-    class UpdateChecker
+    class SHARED_DESKTOP_API UpdateChecker
     {
     public:
         UpdateChecker();
