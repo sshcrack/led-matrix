@@ -98,7 +98,7 @@ jobs:
             os: ubuntu-latest
             preset: "desktop-linux"
             artifact-name: "desktop-linux-build"
-            artifact-path: build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+            artifact-path: desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
             requires-toolchain: false
           - name: "desktop-windows"
             os: windows-latest
