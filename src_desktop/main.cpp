@@ -13,6 +13,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <shared/desktop/config.h>
 #include <shared/desktop/utils.h>
+#include <shared/desktop/UpdateManager.h>
 #include "filters.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
@@ -101,6 +102,7 @@ int main(const int argc, char *argv[])
     }
 
     static WebsocketClient *ws;
+    static UpdateChecker::UpdateManager updateManager;
     auto guiFunction = [pl, cfg]
     {
         static bool initialConnect = true;
@@ -265,6 +267,9 @@ int main(const int argc, char *argv[])
 
         ImGui::EndChild();
         ImGui::EndGroup();
+
+        // Render update dialogs
+        updateManager.render();
     };
 
     const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
@@ -340,7 +345,53 @@ int main(const int argc, char *argv[])
             cfg->saveConfig();
         }
 
-        if(ImGui::MenuItem("Hide to tray")) {
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Check for Updates", nullptr, false))
+        {
+            updateManager.checkForUpdatesAsync();
+        }
+
+        bool updateNotificationsEnabled = updateManager.isUpdateNotificationsEnabled();
+        if (ImGui::MenuItem("Update Notifications", nullptr, updateNotificationsEnabled))
+        {
+            updateManager.setUpdateNotificationsEnabled(!updateNotificationsEnabled);
+        }
+
+        if (ImGui::BeginMenu("Update Settings"))
+        {
+            auto &prefs = updateManager.getUpdatePreferences();
+
+            if (!prefs.skippedVersion.empty())
+            {
+                ImGui::Text("Skipped version: %s", prefs.skippedVersion.c_str());
+                if (ImGui::MenuItem("Clear skipped version"))
+                {
+                    prefs.skippedVersion = "";
+                    prefs.save();
+                }
+                ImGui::Separator();
+            }
+
+            int remindDays = prefs.remindIntervalDays;
+            if (ImGui::SliderInt("Remind interval (days)", &remindDays, 1, 30))
+            {
+                prefs.remindIntervalDays = remindDays;
+                prefs.save();
+            }
+
+            if (ImGui::MenuItem("Reset all preferences"))
+            {
+                updateManager.resetUpdatePreferences();
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Hide to tray"))
+        {
             runnerParams.appWindowParams.hidden = true;
         }
     };
@@ -365,6 +416,9 @@ int main(const int argc, char *argv[])
         // Only now create the WebsocketClient, so the UDP thread starts after the window is set
         ws = new WebsocketClient();
         WebsocketClient::setInstance(ws);
+
+        // Check for updates on startup
+        updateManager.checkForUpdatesAsync();
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;

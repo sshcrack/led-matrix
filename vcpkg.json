@@ -31,7 +31,8 @@
             "glfw-binding"
           ]
         },
-        "ixwebsocket"
+        "ixwebsocket",
+        "cpr"
       ]
     },
     "audio-visualizer-desktop": {
