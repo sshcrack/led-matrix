@@ -7,7 +7,7 @@
 namespace UpdateChecker
 {
 
-    class UpdateManager
+    class SHARED_DESKTOP_API UpdateManager
     {
     public:
         UpdateManager();
