@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include "shared/desktop/macro.h"
 
 #ifdef _WIN32
 #include <windows.h>
