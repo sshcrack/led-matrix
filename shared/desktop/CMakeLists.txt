@@ -10,6 +10,8 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/glfw.cpp
         src/shared/desktop/WebsocketClient.cpp
         src/shared/desktop/UdpSender.cpp
+        src/UpdateChecker.cpp
+        src/UpdateManager.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
@@ -22,6 +24,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
 find_package(ixwebsocket CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ixwebsocket::ixwebsocket)
+
+find_package(cpr CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PUBLIC bcrypt)
