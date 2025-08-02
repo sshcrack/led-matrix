@@ -137,6 +137,8 @@ jobs:
 
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
       - name: Add NuGet sources (Linux)
         if: runner.os != 'Windows'
