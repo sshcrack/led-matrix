@@ -5,6 +5,8 @@
 #include <shared/desktop/config.h>
 #include <chrono>
 
+#include "hello_imgui/hello_imgui.h"
+
 namespace UpdateChecker
 {
 
@@ -24,6 +26,10 @@ namespace UpdateChecker
         // Dialog state
         bool userWantsUpdate = false;
         bool userDismissed = false;
+
+        // Download progress tracking
+        std::atomic<size_t> downloadedBytes{0};
+        std::atomic<size_t> totalBytes{0};
     };
 
     UpdateManager::UpdateManager() : pImpl(std::make_unique<Impl>())
@@ -56,22 +62,13 @@ namespace UpdateChecker
                     ImGui::Text("Downloading and installing update...");
                     ImGui::Text("Please wait, this may take a few moments.");
 
-                    // Show spinner
-                    static float progress = 0.0f;
-                    static int progressDir = 1;
-                    progress += progressDir * 0.02f;
-                    if (progress >= 1.0f)
-                    {
-                        progress = 1.0f;
-                        progressDir *= -1;
+                    float progress = 0.0f;
+                    size_t total = pImpl->totalBytes.load();
+                    size_t downloaded = pImpl->downloadedBytes.load();
+                    if (total > 0) {
+                        progress = static_cast<float>(downloaded) / static_cast<float>(total);
                     }
-                    if (progress <= 0.0f)
-                    {
-                        progress = 0.0f;
-                        progressDir *= -1;
-                    }
-
-                    ImGui::ProgressBar(progress, ImVec2(300.0f, 0.0f));
+                    ImGui::ProgressBar(progress, ImVec2(300.0f, 0.0f), total > 0 ? (std::to_string(downloaded / 1024) + " KB / " + std::to_string(total / 1024) + " KB").c_str() : "Calculating...");
                     ImGui::Text("The application will close when the installer starts.");
                 }
                 else
@@ -196,6 +193,10 @@ namespace UpdateChecker
         return pImpl->checker.getPreferences();
     }
 
+    bool UpdateManager::shallAppExit() const {
+        return pImpl->checker.shallAppExit();
+    }
+
     void UpdateManager::handleUpdateCheckResult(bool hasUpdate, const ReleaseInfo &release)
     {
         if (hasUpdate && (pImpl->updateNotificationsEnabled || pImpl->isManualCheck))
@@ -238,14 +239,21 @@ namespace UpdateChecker
             pImpl->showDownloadProgress = true;
             pImpl->downloadInProgress = true;
             pImpl->downloadError.clear();
+            pImpl->downloadedBytes = 0;
+            pImpl->totalBytes = 0;
 
-            pImpl->checker.downloadAndInstallUpdate(release, [this](bool success, const std::string &error)
-                                                    {
+            pImpl->checker.downloadAndInstallUpdate(release, [this](bool success, const std::string &error) {
                 pImpl->downloadInProgress = false;
                 if (!success) {
                     pImpl->downloadError = error;
                     spdlog::error("Update download/install failed: {}", error);
-                } });
+                }
+            },
+            // Progress callback
+            [this](size_t downloaded, size_t total) {
+                pImpl->downloadedBytes = downloaded;
+                pImpl->totalBytes = total;
+            });
             break;
 
         case UpdateAction::RemindLater:

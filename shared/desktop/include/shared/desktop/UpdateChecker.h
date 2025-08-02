@@ -82,13 +82,19 @@ namespace UpdateChecker
         UpdatePreferences &getPreferences();
 
         // Download and install update (Windows only)
-        void downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback);
+        void downloadAndInstallUpdate(
+            const ReleaseInfo &release,
+            std::function<void(bool success, const std::string &error)> callback,
+            std::function<void(size_t downloaded, size_t total)> progressCallback = nullptr
+        );
 
         // Open browser to releases page (Linux)
         void openReleasesPage(const ReleaseInfo &release);
 
+        bool shallAppExit() const { return appShallExit; }
     private:
         struct Impl;
+        bool appShallExit = false;
         std::unique_ptr<Impl> pImpl;
 
         // Internal methods
