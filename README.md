@@ -15,6 +15,21 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 
 </div>
 
+## 📋 Table of Contents
+
+- [✨ Features](#-features)
+- [🔌 Components](#-components)
+- [🛠️ Hardware Support](#️-hardware-support)
+- [📋 Prerequisites](#-prerequisites)
+- [🚀 Quick Start Guide](#-quick-start-guide)
+- [🖥️ Desktop App](#️-desktop-app)
+- [🎯 Usage Guide](#-usage-guide)
+- [🌐 API Reference](#-api-reference)
+- [🔧 Troubleshooting](#-troubleshooting)
+- [🔌 Plugin Development](#-plugin-development)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
 ## ✨ Features
 
 ### 🎮 **Comprehensive Control System**
@@ -204,39 +219,113 @@ The script will ask you for your matrix configuration and any optional features.
 
 ---
 
+## 🖥️ **Desktop App**
+
+Experience the LED Matrix Controller right on your computer! Our desktop application provides a full-featured interface for developing, testing, and controlling your LED matrix displays without needing physical hardware.
+
+### 📥 **Installation**
+
+#### **Windows**
+1. Go to the [Releases page](https://github.com/sshcrack/led-matrix/releases)
+2. Download the latest `led-matrix-desktop-*-win64.exe` file
+3. Run the installer and follow the setup wizard
+
+#### **Linux**
+1. Go to the [Releases page](https://github.com/sshcrack/led-matrix/releases)
+2. Download the latest `led-matrix-desktop-*-Linux.tar.gz` file
+3. Extract and run:
+   ```bash
+   tar -xzf led-matrix-desktop-*-Linux.tar.gz
+   cd led-matrix-desktop-*
+   ./led-matrix-desktop
+   ```
+
+### 🎮 **Features**
+- **Matrix Emulator**: See your effects rendered in real-time without hardware
+- **Plugin Testing**: Develop and test plugins locally
+- **Remote Control**: Connect to and control physical matrices over the network
+- **Live Preview**: See changes instantly as you modify settings
+- **Cross-Platform**: Available for Windows and Linux
+
+### 🔧 **Usage**
+The desktop app automatically starts with emulation mode enabled. You can:
+- Use all the same plugins and effects as the hardware version
+- Connect to remote matrices via the network settings
+- Develop new plugins with instant visual feedback
+- Export configurations to transfer to your Raspberry Pi
+
+Perfect for development, demonstrations, and testing new scenes before deploying to hardware!
+
+---
+
 ### 🖥️ **Manual Build & Development**
 
 If you want to build from source or develop locally, follow these steps:
 
 > **💡 Pro Tip:** Building on Raspberry Pi can be slow. Consider [cross-compilation](https://github.com/abhiTronix/raspberry-pi-cross-compilers/discussions/123) for faster development cycles.
 
-1. **Install vcpkg** following the [official guide](https://learn.microsoft.com/vcpkg/get_started/get-started)
-
-2. **Configure the build system:**
+#### **Prerequisites**
+1. **Install vcpkg** following the [official guide](https://learn.microsoft.com/vcpkg/get_started/get_started)
+2. **Set environment variable:**
    ```bash
-   cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[path_to_vcpkg]/scripts/buildsystems/vcpkg.cmake
+   export VCPKG_ROOT=/path/to/your/vcpkg
    ```
 
-3. **Build the application:**
-   ```bash
-   cmake --build build
-   ```
+#### **Building with CMake Presets (Recommended)**
 
-4. **Install (optional):**
-   ```bash
-   cmake --install build
-   ```
+This project uses CMake presets for easy configuration. Available presets:
 
-### 🖥️ **Development with Emulator**
+- **`cross-compile`** - Build for Raspberry Pi (ARM64)
+- **`emulator`** - Build with SDL2 emulator for development
+- **`desktop-linux`** - Build desktop app for Linux
+- **`desktop-windows`** - Build desktop app for Windows
+
+**For Raspberry Pi:**
+```bash
+# Configure and build for Raspberry Pi
+cmake --preset=cross-compile
+cmake --build build --target package
+```
+
+**For Development/Emulator:**
+```bash
+# Configure and build emulator version
+cmake --preset=emulator
+cmake --build emulator_build
+```
+
+**For Desktop App:**
+```bash
+# Linux desktop app
+cmake --preset=desktop-linux
+cmake --build desktop_build
+
+# Windows desktop app (on Windows)
+cmake --preset=desktop-windows
+cmake --build desktop_build
+```
+
+#### **Manual Configuration (Advanced)**
+
+If you need custom configuration, you can still use manual cmake commands:
+
+```bash
+# Basic configuration
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+
+# Build
+cmake --build build
+
+# Install (optional)
+cmake --install build
+```
+
+#### **Running the Emulator**
 
 Test your scenes without physical hardware using our SDL2-based emulator:
 
 ```bash
-# One-command setup and build
-cmake --preset=emulator
-cmake --build emulator_build
-
-# Run with emulation
+# Run with emulation (after building with emulator preset)
 ./emulator_build/main [options]
 ```
 
