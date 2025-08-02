@@ -17,7 +17,7 @@ public:
 
     ~AudioVisualizerDesktop() override;
 
-    void render(ImGuiContext *ctx) override;
+    void render() override;
     void load_config(std::optional<const nlohmann::json> config) override;
     void save_config(nlohmann::json &config) const override
     {
@@ -25,6 +25,7 @@ public:
     };
 
     void before_exit() override;
+    void post_init() override;
     std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(std::string sceneName) override;
 
     std::string get_plugin_name() const override {

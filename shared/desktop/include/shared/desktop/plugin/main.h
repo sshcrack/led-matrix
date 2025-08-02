@@ -28,7 +28,7 @@ namespace Plugins
 
         virtual ~DesktopPlugin() = default;
 
-        virtual void render(ImGuiContext *ctx) = 0;
+        virtual void render() = 0;
 
         virtual void load_config(std::optional<const nlohmann::json> config) {}
         virtual void save_config(nlohmann::json &config) const {}
@@ -40,7 +40,7 @@ namespace Plugins
 
         /// You can here add a function that will be called once after everything is inited(ImGui, Platform and Renderer Backend)
         virtual void pre_new_frame() {}
-        virtual void after_swap() {}
+        virtual void after_swap(ImGuiContext *imGuiContext) {}
         virtual void post_init() {}
         /// Called before the UDP mainloop of sending packets starts.
         virtual void udp_init() {}
@@ -61,6 +61,11 @@ namespace Plugins
         [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(const std::string sceneName)
         {
             return std::nullopt;
+        }
+
+        virtual void initialize_imgui(ImGuiContext * im_gui_context, ImGuiMemAllocFunc* alloc_fn, ImGuiMemFreeFunc* free_fn, void** user_data) {
+            ImGui::SetCurrentContext(im_gui_context);
+            ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
         }
     };
 }

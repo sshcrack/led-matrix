@@ -48,8 +48,16 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 2.0.0)
+project(main VERSION 1.9.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
+
+# Define version macros for compile-time access
+add_compile_definitions(
+    PROJECT_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    PROJECT_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    PROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    PROJECT_VERSION_STRING="${PROJECT_VERSION}"
+)
 
 # Set default install prefix to build directory if not specified
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -72,6 +80,7 @@ if(ENABLE_DESKTOP)
     file(GLOB_RECURSE SOURCES
         src_desktop/*.c*
     )
+
     if(WIN32)
         list(APPEND SOURCES src_desktop/app_icon.rc)
     endif()
