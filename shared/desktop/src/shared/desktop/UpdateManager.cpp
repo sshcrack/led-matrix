@@ -1,3 +1,4 @@
+#pragma execution_character_set("utf-8")
 #include "shared/desktop/UpdateManager.h"
 #include <imgui.h>
 #include <spdlog/spdlog.h>
@@ -33,8 +34,10 @@ namespace UpdateChecker
 
     UpdateManager::~UpdateManager() = default;
 
-    void UpdateManager::render()
+    void UpdateManager::render(ImGuiContext *ctx)
     {
+        ImGui::SetCurrentContext(ctx);
+
         // Render the update dialog if needed
         if (pImpl->showUpdateDialog)
         {
@@ -279,7 +282,7 @@ namespace UpdateChecker
         {
             const auto &release = pImpl->currentRelease;
 
-            ImGui::Text("🚀 A new version of LED Matrix Controller is available!");
+            ImGui::Text((const char*)u8"🚀 A new version of LED Matrix Controller is available!");
             ImGui::Separator();
 
             ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());

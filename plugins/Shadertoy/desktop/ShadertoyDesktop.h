@@ -21,7 +21,7 @@ public:
     }
 
     void post_init() override;
-    void after_swap() override;
+    void after_swap(ImGuiContext *imCtx) override;
 
 private:
     int width, height;
