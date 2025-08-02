@@ -16,6 +16,3 @@
 [submodule "plugins/Shadertoy/thirdparty/shadertoy-headless"]
 	path = plugins/Shadertoy/thirdparty/shadertoy-headless
 	url = https://github.com/sshcrack/shadertoy-headless
-[submodule "thirdparty/hello_imgui"]
-	path = thirdparty/hello_imgui
-	url = https://github.com/pthom/hello_imgui
