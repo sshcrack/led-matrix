@@ -237,7 +237,7 @@ Experience the LED Matrix Controller right on your computer! Our desktop applica
    ```bash
    tar -xzf led-matrix-desktop-*-Linux.tar.gz
    cd led-matrix-desktop-*
-   ./led-matrix-desktop
+   ./bin/main
    ```
 
 ### 🎮 **Features**
