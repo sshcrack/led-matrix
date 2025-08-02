@@ -260,6 +260,8 @@ int main(const int argc, char *argv[])
         ImGui::EndGroup();
 
         updateManager.render(ImGui::GetCurrentContext());
+        if (updateManager.shallAppExit())
+            HelloImGui::GetRunnerParams()->appShallExit = true;
     };
 
     const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");

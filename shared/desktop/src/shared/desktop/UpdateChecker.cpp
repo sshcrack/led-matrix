@@ -281,7 +281,7 @@ namespace UpdateChecker
     }
 
 #ifdef _WIN32
-    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback)
+    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback, std::function<void(size_t downloaded, size_t total)> progressCallback)
     {
         if (release.downloadUrl.empty())
         {
@@ -289,48 +289,92 @@ namespace UpdateChecker
             return;
         }
 
-        std::thread([this, release, callback]()
+        std::thread([this, release, callback, progressCallback]()
                     {
         try {
             // Create temp directory
             std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "led-matrix-update";
             std::filesystem::create_directories(tempDir);
-            
             std::filesystem::path installerPath = tempDir / ("led-matrix-installer-" + release.tagName + ".exe");
-            
+
             spdlog::info("Downloading installer from: {}", release.downloadUrl);
             spdlog::info("Saving to: {}", installerPath.string());
-            
-            // Download the installer
-            HRESULT hr = URLDownloadToFileA(nullptr, release.downloadUrl.c_str(), 
-                                          installerPath.string().c_str(), 0, nullptr);
-            
-            if (SUCCEEDED(hr)) {
-                spdlog::info("Download completed successfully");
-                
-                // Execute the installer
-                SHELLEXECUTEINFOA sei = {};
-                sei.cbSize = sizeof(SHELLEXECUTEINFOA);
-                sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-                sei.lpVerb = "runas"; // Run as administrator
-                sei.lpFile = installerPath.string().c_str();
-                sei.nShow = SW_NORMAL;
-                
-                if (ShellExecuteExA(&sei)) {
-                    spdlog::info("Installer launched successfully");
-                    
-                    // Schedule application exit
-                    HelloImGui::GetRunnerParams()->appShallExit = true;
-                    
-                    callback(true, "");
-                } else {
-                    DWORD error = GetLastError();
-                    std::string errorMsg = "Failed to launch installer. Error code: " + std::to_string(error);
-                    spdlog::error(errorMsg);
-                    callback(false, errorMsg);
+
+            cpr::Session session;
+            session.SetUrl(cpr::Url{release.downloadUrl});
+            session.SetHeader({{"User-Agent", "led-matrix-desktop/" + getCurrentVersion().toString()}});
+            int64_t totalBytes = session.GetDownloadFileLength();
+            if (totalBytes <= 0) {
+                std::string errorMsg = "Failed to get file size from server.";
+                spdlog::error(errorMsg);
+                callback(false, errorMsg);
+                return;
+            }
+
+            std::ofstream file(installerPath, std::ios::binary);
+            if (!file) {
+                std::string errorMsg = "Failed to open file for writing: " + installerPath.string();
+                spdlog::error(errorMsg);
+                callback(false, errorMsg);
+                return;
+            }
+
+            struct FileWriter {
+                std::ofstream* file{};
+                int64_t downloaded = 0;
+                int64_t total = 0;
+                const std::function<void(size_t, size_t)>* progressCb{};
+            };
+            FileWriter writer{&file, 0, totalBytes, &progressCallback};
+
+            auto write_data = [](const std::string_view& data, const intptr_t userdata) -> bool {
+                auto* fw = reinterpret_cast<FileWriter*>(userdata);
+                fw->file->write(data.data(), data.size());
+                fw->downloaded += data.size();
+                if (fw->progressCb && *(fw->progressCb)) {
+                    (*(fw->progressCb))(static_cast<size_t>(fw->downloaded), static_cast<size_t>(fw->total));
                 }
+                return true;
+            };
+
+            cpr::WriteCallback cb{write_data, reinterpret_cast<intptr_t>(&writer)};
+            cpr::Response result = session.Download(cb);
+
+            if (progressCallback) {
+                progressCallback(static_cast<size_t>(writer.downloaded), static_cast<size_t>(writer.total));
+            }
+
+            if (result.error) {
+                std::string errorMsg = "Download failed: " + result.error.message;
+                spdlog::error(errorMsg);
+                callback(false, errorMsg);
+                return;
+            }
+            if (result.status_code != 200) {
+                std::string errorMsg = "Download failed: HTTP " + std::to_string(result.status_code);
+                spdlog::error(errorMsg);
+                callback(false, errorMsg);
+                return;
+            }
+
+            spdlog::info("Download completed successfully");
+            writer.file->close();
+
+            // Execute the installer
+            SHELLEXECUTEINFOA sei = {};
+            sei.cbSize = sizeof(SHELLEXECUTEINFOA);
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.lpVerb = "runas"; // Run as administrator
+            sei.lpFile = installerPath.string().c_str();
+            sei.nShow = SW_NORMAL;
+
+            if (ShellExecuteExA(&sei)) {
+                spdlog::info("Installer launched successfully");
+                appShallExit = true;
+                callback(true, "");
             } else {
-                std::string errorMsg = "Failed to download installer. HRESULT: " + std::to_string(hr);
+                DWORD error = GetLastError();
+                std::string errorMsg = "Failed to launch installer. Error code: " + std::to_string(error);
                 spdlog::error(errorMsg);
                 callback(false, errorMsg);
             }
@@ -338,7 +382,8 @@ namespace UpdateChecker
             std::string errorMsg = "Exception during update: " + std::string(e.what());
             spdlog::error(errorMsg);
             callback(false, errorMsg);
-        } })
+        }
+        })
             .detach();
     }
 #else

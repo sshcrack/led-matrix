@@ -34,6 +34,7 @@ namespace UpdateChecker
 
         // Get update preferences for advanced configuration
         UpdatePreferences &getUpdatePreferences();
+        bool shallAppExit() const;
 
     private:
         struct Impl;
