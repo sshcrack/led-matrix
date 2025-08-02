@@ -28,7 +28,7 @@ namespace Plugins
 
         virtual ~DesktopPlugin() = default;
 
-        virtual void render(ImGuiContext *ctx) = 0;
+        virtual void render() = 0;
 
         virtual void load_config(std::optional<const nlohmann::json> config) {}
         virtual void save_config(nlohmann::json &config) const {}
@@ -61,6 +61,11 @@ namespace Plugins
         [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(const std::string sceneName)
         {
             return std::nullopt;
+        }
+
+        virtual void initialize_imgui(ImGuiContext * im_gui_context, ImGuiMemAllocFunc* alloc_fn, ImGuiMemFreeFunc* free_fn, void** user_data) {
+            ImGui::SetCurrentContext(im_gui_context);
+            ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
         }
     };
 }

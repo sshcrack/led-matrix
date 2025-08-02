@@ -254,7 +254,7 @@ int main(const int argc, char *argv[])
         ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
         // Leave room for 1 line below us
 
-        selected.second->render(ImGui::GetCurrentContext());
+        selected.second->render();
 
         ImGui::EndChild();
         ImGui::EndGroup();
@@ -389,6 +389,15 @@ int main(const int argc, char *argv[])
         }
     };
     runnerParams.callbacks.PostInit = [&]() {
+        ImGuiMemAllocFunc* alloc_fn = nullptr;
+        ImGuiMemFreeFunc* free_fn = nullptr;
+        void** user_data = nullptr;
+
+        ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
+        for(auto &[name, plugin]: pl->get_plugins()) {
+            plugin->initialize_imgui(ImGui::GetCurrentContext(), alloc_fn, free_fn, user_data);
+        }
+
         auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         setMainGLFWWindow(window);
         glfwSwapInterval(0);
