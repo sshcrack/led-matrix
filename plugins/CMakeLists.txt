@@ -51,6 +51,7 @@ function(register_plugin PLUGIN_NAME)
         target_link_libraries(${PLUGIN_NAME} PRIVATE SharedToolsDesktop)
         find_package(nlohmann_json 3.2.0 REQUIRED)
         find_package(hello-imgui CONFIG REQUIRED)
+
         target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui nlohmann_json::nlohmann_json)
     else()
         find_package(restinio REQUIRED)

@@ -4,12 +4,13 @@
       "name": "Desktop (LLDB)",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/desktop_build_debug/install/bin/main",
+      "program": "${workspaceFolder}/desktop_build/install/bin/main",
       "windows": {
-        "program": "${workspaceFolder}/desktop_build_debug/install/bin/main.exe"
+        "program": "${workspaceFolder}/desktop_build_debug/install/bin/main.exe",
+        "cwd": "${workspaceFolder}/desktop_build_debug/install/bin",
       },
       "args": [],
-      "cwd": "${workspaceFolder}/desktop_build_debug/install/bin",
+      "cwd": "${workspaceFolder}/desktop_build/install/bin",
       "env": {
         "SPDLOG_LEVEL": "trace"
       },

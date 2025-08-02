@@ -9,6 +9,10 @@
     <mapping directory="$PROJECT_DIR$/plugins/Shadertoy/thirdparty/shadertoy-headless/shadertoy/thirdparty/hello_imgui/external/imgui" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/plugins/Shadertoy/thirdparty/shadertoy-headless/shadertoy/thirdparty/hello_imgui/hello_imgui_cmake/ios-cmake" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/plugins/Shadertoy/thirdparty/shadertoy-headless/shadertoy/thirdparty/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/hello_imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/hello_imgui/_example_integration" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/hello_imgui/external/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/thirdparty/hello_imgui/hello_imgui_cmake/ios-cmake" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/thirdparty/rpi-rgb-led-matrix" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/thirdparty/traypp" vcs="Git" />
   </component>
