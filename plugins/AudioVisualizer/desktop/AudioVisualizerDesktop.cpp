@@ -12,10 +12,7 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c) 
     delete c;
 }
 
-AudioVisualizerDesktop::AudioVisualizerDesktop() {
-    implotContext = ImPlot::CreateContext();
-}
-
+AudioVisualizerDesktop::AudioVisualizerDesktop() = default;
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 int PortFilter(ImGuiInputTextCallbackData *data) {
@@ -34,8 +31,7 @@ int PortFilter(ImGuiInputTextCallbackData *data) {
     return 1; // Block everything else
 }
 
-void AudioVisualizerDesktop::render(ImGuiContext *ctx) {
-    ImGui::SetCurrentContext(ctx);
+void AudioVisualizerDesktop::render() {
     ImPlot::SetCurrentContext(implotContext);
 #ifndef _WIN32
     ImGui::Text("This plugin isn't supported for linux. Loopback recording is not available in this OS.");
@@ -64,6 +60,10 @@ void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> con
 
 void AudioVisualizerDesktop::before_exit() {
     ImPlot::DestroyContext();
+}
+
+void AudioVisualizerDesktop::post_init() {
+    implotContext = ImPlot::CreateContext();
 }
 
 void AudioVisualizerDesktop::addConnectionSettings() {

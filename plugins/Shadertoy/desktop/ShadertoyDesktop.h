@@ -11,7 +11,7 @@ class ShadertoyDesktop final : public Plugins::DesktopPlugin
 public:
     ShadertoyDesktop() = default;
 
-    void render(ImGuiContext *ctx) override;
+    void render() override;
     void on_websocket_message(std::string message) override;
 
     ShaderToy::ShaderToyContext ctx;

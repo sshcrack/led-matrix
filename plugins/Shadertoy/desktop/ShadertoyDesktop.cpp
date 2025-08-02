@@ -59,10 +59,8 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
     currData = data;
 }
 
-void ShadertoyDesktop::render(ImGuiContext *imGuiCtx)
+void ShadertoyDesktop::render()
 {
-    ImGui::SetCurrentContext(imGuiCtx);
-
     if (!initError.empty())
     {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", initError.c_str());
