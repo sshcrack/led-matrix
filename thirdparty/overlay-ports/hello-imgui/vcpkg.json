@@ -82,6 +82,28 @@
         }
       ]
     },
+    "freetype": {
+      "description": "Build font atlases using FreeType instead of stb_truetype",
+      "dependencies": [
+        {
+          "name": "imgui",
+          "features": [
+            "freetype"
+          ]
+        }
+      ]
+    },
+    "freetype-svg": {
+      "description": "Add support to render OpenType SVG fonts",
+      "dependencies": [
+        {
+          "name": "imgui",
+          "features": [
+            "freetype-svg"
+          ]
+        }
+      ]
+    },
     "opengl3-binding": {
       "description": "Use OpenGL3/ES2 renderer backend (default)",
       "dependencies": [
