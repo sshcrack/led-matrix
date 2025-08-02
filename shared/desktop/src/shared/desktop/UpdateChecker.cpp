@@ -257,7 +257,7 @@ namespace UpdateChecker
         // Find Windows installer asset
         if (releaseJson.contains("assets") && releaseJson["assets"].is_array())
         {
-            info.downloadUrl = findWindowsAsset(releaseJson["assets"], info.tagName);
+            info.downloadUrl = findWindowsAsset(releaseJson["assets"], info.tagName.substr(1));
         }
 #endif
 

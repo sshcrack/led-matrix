@@ -24,15 +24,10 @@
     "desktop": {
       "description": "Dependencies needed for the desktop application. The portaudio/fftw3 dependency is only needed for the AudioVisualizer plugin.",
       "dependencies": [
-        {
-          "name": "hello-imgui",
-          "features": [
-            "opengl3-binding",
-            "glfw-binding"
-          ]
-        },
         "ixwebsocket",
-        "cpr"
+        "cpr",
+        "freetype",
+        "plutosvg"
       ]
     },
     "audio-visualizer-desktop": {

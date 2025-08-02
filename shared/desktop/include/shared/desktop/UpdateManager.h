@@ -1,4 +1,7 @@
 #pragma once
+#pragma execution_character_set("utf-8")
+
+#include <imgui_internal.h>
 
 #include "UpdateChecker.h"
 #include <memory>
@@ -14,7 +17,7 @@ namespace UpdateChecker
         ~UpdateManager();
 
         // Call this in the main GUI loop to render update dialogs
-        void render();
+        void render(ImGuiContext *ctx);
 
         // Call this to start checking for updates (typically on app startup)
         void checkForUpdatesAsync();

@@ -48,7 +48,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 2.0.0)
+project(main VERSION 1.9.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Define version macros for compile-time access
@@ -80,6 +80,16 @@ if(ENABLE_DESKTOP)
     file(GLOB_RECURSE SOURCES
         src_desktop/*.c*
     )
+
+    set(HELLOIMGUI_HAS_OPENGL3 ON)
+    set(HELLOIMGUI_USE_GLFW3 ON)
+    # set(HELLOIMGUI_FETCH_FORBIDDEN OFF)
+
+
+    add_subdirectory(thirdparty/hello_imgui)
+    message(STATUS "Using hello_imgui from: ${HELLOIMGUI_BASEPATH}")
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${HELLOIMGUI_BASEPATH}/hello_imgui_cmake)
+
     if(WIN32)
         list(APPEND SOURCES src_desktop/app_icon.rc)
     endif()
@@ -121,7 +131,6 @@ if(ENABLE_DESKTOP)
 
     add_subdirectory(thirdparty/traypp)
 
-    find_package(hello-imgui CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray implot)
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include

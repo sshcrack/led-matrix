@@ -21,7 +21,7 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
 
 static bool isActive = false;
 static bool currShaderHasError = false;
-void ShadertoyDesktop::after_swap()
+void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 {
     if (currShaderHasError || !isActive)
         return;
@@ -53,7 +53,7 @@ void ShadertoyDesktop::after_swap()
 
     ctx.tick(60);
 
-    const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height));
+    const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height), imCtx);
 
     std::unique_lock lock(currDataMutex);
     currData = data;
