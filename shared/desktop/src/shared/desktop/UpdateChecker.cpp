@@ -387,7 +387,7 @@ namespace UpdateChecker
             .detach();
     }
 #else
-    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback)
+    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback, std::function<void(size_t downloaded, size_t total)> progressCallback)
     {
         // On Linux, just open the releases page
         openReleasesPage(release);
