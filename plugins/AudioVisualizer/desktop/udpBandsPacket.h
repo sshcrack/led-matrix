@@ -4,7 +4,7 @@
 struct CompactAudioPacket final : UdpPacket
 {
 public:
-    CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog);
+    CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog, bool beatDetected = false);
     std::vector<uint8_t> toData() const override;
 private:
     uint32_t timestamp;

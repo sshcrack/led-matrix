@@ -299,12 +299,18 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     }
     
     // Perform beat detection on the processed bands
-    if (detect_beat(bands)) {
-        spdlog::info("Beat detected in desktop AudioVisualizer");
+    bool beat_detected_now = detect_beat(bands);
+    
+    // Check and clear beat flag
+    bool send_beat_flag = false;
+    {
+        std::lock_guard<std::mutex> lock(beat_mutex);
+        send_beat_flag = beat_detected;
+        beat_detected = false; // Clear flag after reading
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog),
+    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog, send_beat_flag),
                                                              [](UdpPacket *packet)
                                                              {
                                                                  delete (CompactAudioPacket *)packet;

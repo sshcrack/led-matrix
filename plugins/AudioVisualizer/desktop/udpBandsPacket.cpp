@@ -3,14 +3,16 @@
 #include <algorithm>
 #include <cstring>
 
-CompactAudioPacket::CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog) : UdpPacket(0x01)
+CompactAudioPacket::CompactAudioPacket(const std::vector<float> &bands, bool interpolatedLog, bool beatDetected) : UdpPacket(0x01)
 {
 
     numBands = static_cast<uint8_t>(std::min(bands.size(), static_cast<size_t>(255)));
     timestamp = static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count());
 
     // Set flags based on configuration
-    flags = interpolatedLog ? 1 : 0;
+    // Bit 0: interpolatedLog
+    // Bit 1: beatDetected
+    flags = (interpolatedLog ? 1 : 0) | (beatDetected ? 2 : 0);
 
     // Convert float bands to uint8_t (0-255) for compactness
     this->bands.reserve(numBands);
