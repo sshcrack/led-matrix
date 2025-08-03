@@ -79,23 +79,17 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
         }
 
-        if(scene->offscreen_canvas != nullptr) {
-            std::cout << "Scene not null, using offscreen canvas." << std::endl;
+        if(scene->offscreen_canvas != nullptr)
             scene->offscreen_canvas = pCanvas;
-        } else {
-            std::cout << "Scene is null, using matrix canvas for scene " << scene->get_name() << std::endl;
-        }
 
         Constants::isRenderingSceneInitially = true;
         while (GetTimeInMillis() < end_ms) {
-            //const auto should_continue = scene->render(matrix);
+            const auto should_continue = scene->render(matrix);
             Constants::isRenderingSceneInitially = false;
 
-            bool should_continue = true;
-            if(scene->offscreen_canvas != nullptr && should_continue&& false) {
+            if(scene->offscreen_canvas != nullptr && should_continue) {
                 scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
             }
-            matrix->SetPixel(0, 0, 255, 0, 0);
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
                 // I removed this log, this seems to spam if there is no scene to display
