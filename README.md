@@ -1,5 +1,8 @@
 # 🌈 LED Matrix Controller
 
+> [!TIP]
+> This project is still in beta, suggestions, feature requests and bug reports are welcome! 
+
 <div align="center">
 
 Transform your space with a **powerful C++ application** that turns RGB LED matrices into stunning digital canvases. Create mesmerizing visual effects, display real-time data, and control everything remotely with our comprehensive plugin ecosystem.
