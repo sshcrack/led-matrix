@@ -79,19 +79,6 @@ int Scenes::Scene::get_weight() const
     return weight->get();
 }
 
-bool Scenes::Scene::should_render_frame()
-{
-    tmillis_t step = 1000 / target_fps;
-    tmillis_t current_time = GetTimeInMillis();
-
-    if (current_time - last_render_time > step)
-    {
-        last_render_time = current_time;
-        return true;
-    }
-
-    return false;
-}
 
 void Scenes::Scene::wait_until_next_frame()
 {

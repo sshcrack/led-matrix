@@ -37,12 +37,7 @@ bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
         }
     }
 
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedValue"
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
-#pragma clang diagnostic pop
-
+// Skip for first frame
 #ifndef SKIP_MS_WAIT
     const tmillis_t anim_delay_ms = delay_us / 1000;
     const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
@@ -63,6 +58,7 @@ bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
         to_wait -= 250;
     }
 #endif
+
     return true;
 }
 

@@ -5,6 +5,7 @@
 #include <shared/matrix/server/common.h>
 
 #include "shared/matrix/utils/utils.h"
+#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
 #include <spdlog/spdlog.h>
@@ -78,21 +79,34 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
         }
 
-        scene->offscreen_canvas = pCanvas;
+        if(scene->offscreen_canvas != nullptr) {
+            std::cout << "Scene not null, using offscreen canvas." << std::endl;
+            scene->offscreen_canvas = pCanvas;
+        } else {
+            std::cout << "Scene is null, using matrix canvas for scene " << scene->get_name() << std::endl;
+        }
+
+        Constants::isRenderingSceneInitially = true;
         while (GetTimeInMillis() < end_ms) {
-            const auto should_continue = scene->render(matrix);
+            //const auto should_continue = scene->render(matrix);
+            Constants::isRenderingSceneInitially = false;
+
+            bool should_continue = true;
+            if(scene->offscreen_canvas != nullptr && should_continue&& false) {
+                scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
+            }
+            matrix->SetPixel(0, 0, 255, 0, 0);
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
                 // I removed this log, this seems to spam if there is no scene to display
                 // debug("Exiting scene early.");
                 break;
             }
-
-            // SleepMillis(10);
         }
 
         scene->after_render_stop(matrix);
-        pCanvas = scene->offscreen_canvas;
+        if(scene->offscreen_canvas != nullptr)
+            pCanvas = scene->offscreen_canvas;
     }
 
     return pCanvas;
