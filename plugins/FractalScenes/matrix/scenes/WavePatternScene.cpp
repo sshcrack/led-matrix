@@ -96,7 +96,7 @@ bool WavePatternScene::render(RGBMatrixBase *matrix) {
         }
     }
     
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
+    wait_until_next_frame();
     return true;
 }
 

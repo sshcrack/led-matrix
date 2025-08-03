@@ -62,9 +62,12 @@ bool Spotify::initialize() {
         return true;
     }
 
+    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
 
+    cout << "------------------------- SPOTIFY -----------------------------" << endl;
     cout << "Open the browser and go to the following url: ";
-    cout << "http://localhost:8080/spotify/login" << endl;
+    cout << "http://localhost:" << std::to_string(port) << "/spotify/login" << endl;
+    cout << "---------------------------------------------------------------" << endl;
 
     cout << "Waiting for callback.";
     while (!this->spotify_callback.has_value()) {

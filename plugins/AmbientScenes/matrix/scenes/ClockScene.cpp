@@ -92,9 +92,7 @@ bool ClockScene::render(rgb_matrix::RGBMatrixBase *matrix) {
         }
         draw_date(matrix, y_position);
     }
-    
-    // Swap and display
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+
     return true;
 }
 

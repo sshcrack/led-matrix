@@ -217,15 +217,8 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
         pixels_filled++;
     }
 
-    // Display the canvas
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
 
-    // Wait for the remaining time
-    const tmillis_t delay_ms = delay_us / 1000;
-    const tmillis_t elapsed_ms = GetTimeInMillis() - start_wait_ms;
-    const tmillis_t wait_ms = delay_ms - std::min(elapsed_ms, delay_ms);
-
-    SleepMillis(wait_ms);
+    wait_until_next_frame();
 
     return true;
 }

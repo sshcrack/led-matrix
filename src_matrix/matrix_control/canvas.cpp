@@ -5,6 +5,7 @@
 #include <shared/matrix/server/common.h>
 
 #include "shared/matrix/utils/utils.h"
+#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
 #include <spdlog/spdlog.h>
@@ -81,15 +82,25 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
         }
 
-        scene->offscreen_canvas = pCanvas;
+        if(scene->offscreen_canvas != nullptr)
+            scene->offscreen_canvas = pCanvas;
+
+        Constants::isRenderingSceneInitially = true;
         while (GetTimeInMillis() < end_ms) {
             const auto should_continue = scene->render(matrix);
+            Constants::isRenderingSceneInitially = false;
+
+            if(scene->offscreen_canvas != nullptr && should_continue) {
+                scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
+            }
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
                 // I removed this log, this seems to spam if there is no scene to display
                 // debug("Exiting scene early.");
                 break;
             }
+<<<<<<< HEAD
+=======
 
             // Check for beat detection from any plugin and trigger post-processing
             if (global_post_processor) {
@@ -120,10 +131,12 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
 
             // SleepMillis(10);
+>>>>>>> origin/copilot/fix-e8beabcc-bb3f-4da7-9a64-afd1bca7016e
         }
 
         scene->after_render_stop(matrix);
-        pCanvas = scene->offscreen_canvas;
+        if(scene->offscreen_canvas != nullptr)
+            pCanvas = scene->offscreen_canvas;
     }
 
     return pCanvas;
