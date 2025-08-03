@@ -120,5 +120,9 @@ namespace Plugins
                 val->send_message(message);
             }
         }
+
+        /// Beat detection interface - plugins can override to provide beat detection
+        virtual bool is_beat_detected() { return false; }
+        virtual void clear_beat_flag() { /* Default does nothing */ }
     };
 }

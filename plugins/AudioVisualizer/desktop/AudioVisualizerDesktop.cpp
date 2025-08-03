@@ -12,7 +12,9 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c) 
     delete c;
 }
 
-AudioVisualizerDesktop::AudioVisualizerDesktop() = default;
+AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false) {
+    last_beat_time = std::chrono::steady_clock::now();
+}
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 int PortFilter(ImGuiInputTextCallbackData *data) {
@@ -295,6 +297,11 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
         std::unique_lock lock(latestBandsMutex);
         latestBands = bands;
     }
+    
+    // Perform beat detection on the processed bands
+    if (detect_beat(bands)) {
+        spdlog::info("Beat detected in desktop AudioVisualizer");
+    }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
     return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog),
@@ -303,4 +310,65 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
                                                                  delete (CompactAudioPacket *)packet;
                                                              });
 #endif
+}
+
+bool AudioVisualizerDesktop::detect_beat(const std::vector<float>& audio_data) {
+    if (audio_data.empty()) {
+        return false;
+    }
+    
+    // Calculate current energy
+    float current_energy = calculate_energy(audio_data);
+    
+    // Add to energy history
+    energy_history.push_back(current_energy);
+    if (energy_history.size() > 43) { // Same as matrix version
+        energy_history.pop_front();
+    }
+    
+    // Need sufficient history to detect beats
+    if (energy_history.size() < 20) {
+        return false;
+    }
+    
+    // Calculate average energy over history
+    float avg_energy = 0.0f;
+    for (float energy : energy_history) {
+        avg_energy += energy;
+    }
+    avg_energy /= energy_history.size();
+    
+    // Check for beat: current energy significantly higher than average
+    bool is_beat = current_energy > (avg_energy * 1.5f); // Same threshold as matrix version
+    
+    // Apply minimum time constraint between beats
+    auto now = std::chrono::steady_clock::now();
+    auto time_since_last_beat = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_beat_time).count();
+    
+    if (is_beat && time_since_last_beat >= 0.3f) { // 300ms minimum between beats
+        last_beat_time = now;
+        {
+            std::lock_guard<std::mutex> lock(beat_mutex);
+            beat_detected = true;
+        }
+        spdlog::debug("Beat detected! Energy: {:.2f}, Avg: {:.2f}, Ratio: {:.2f}", 
+                     current_energy, avg_energy, current_energy / avg_energy);
+        return true;
+    }
+    
+    return false;
+}
+
+float AudioVisualizerDesktop::calculate_energy(const std::vector<float>& audio_data) {
+    float total_energy = 0.0f;
+    
+    // Focus on lower frequency bands for beat detection (typically where bass is)
+    int focus_bands = std::min(static_cast<int>(audio_data.size()), 16);
+    
+    for (int i = 0; i < focus_bands; i++) {
+        float normalized = audio_data[i];
+        total_energy += normalized * normalized; // Square for energy
+    }
+    
+    return total_energy / focus_bands;
 }
