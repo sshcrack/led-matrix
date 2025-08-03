@@ -105,6 +105,8 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
 
     // Extract bit 0 of flags which indicates if interpolated_log is enabled
     bool is_interpolated_log = (flags & 0x01) != 0;
+    // Extract bit 1 of flags which indicates if beat was detected
+    bool is_beat_detected = (flags & 0x02) != 0;
 
     // Update audio data
     {
@@ -113,8 +115,9 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
         last_timestamp = timestamp;
         interpolated_log = is_interpolated_log;
         
-        // Perform beat detection on new audio data
-        if (detect_beat(current_audio_data)) {
+        // Set beat detection flag from desktop application
+        if (is_beat_detected) {
+            beat_detected = true;
             send_beat_message();
         }
     }
@@ -134,6 +137,9 @@ void AudioVisualizer::clear_beat_flag()
     beat_detected = false;
 }
 
+// Beat detection is now performed on the desktop side
+// These methods are no longer used but kept for reference
+/*
 bool AudioVisualizer::detect_beat(const std::vector<uint8_t>& audio_data)
 {
     if (audio_data.empty()) {
@@ -193,6 +199,7 @@ float AudioVisualizer::calculate_energy(const std::vector<uint8_t>& audio_data)
     
     return total_energy / focus_bands;
 }
+*/
 
 void AudioVisualizer::send_beat_message()
 {

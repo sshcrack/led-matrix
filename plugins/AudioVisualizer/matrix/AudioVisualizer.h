@@ -57,8 +57,8 @@ public:
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
 
 private:
-    // Internal beat detection method
-    bool detect_beat(const std::vector<uint8_t>& audio_data);
-    float calculate_energy(const std::vector<uint8_t>& audio_data);
+    // Beat detection is now done on desktop side, these are no longer used
+    // bool detect_beat(const std::vector<uint8_t>& audio_data);
+    // float calculate_energy(const std::vector<uint8_t>& audio_data);
     void send_beat_message();
 };
