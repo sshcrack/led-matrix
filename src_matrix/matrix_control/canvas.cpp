@@ -90,17 +90,12 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             const auto should_continue = scene->render(matrix);
             Constants::isRenderingSceneInitially = false;
 
-            if(scene->offscreen_canvas != nullptr && should_continue) {
-                scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
-            }
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
                 // I removed this log, this seems to spam if there is no scene to display
                 // debug("Exiting scene early.");
                 break;
             }
-<<<<<<< HEAD
-=======
 
             // Check for beat detection from any plugin and trigger post-processing
             if (global_post_processor) {
@@ -130,8 +125,10 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
             }
 
+            if(scene->offscreen_canvas != nullptr && should_continue) {
+                scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
+            }
             // SleepMillis(10);
->>>>>>> origin/copilot/fix-e8beabcc-bb3f-4da7-9a64-afd1bca7016e
         }
 
         scene->after_render_stop(matrix);
