@@ -59,6 +59,8 @@ bool PostProcessor::is_effect_expired(const PostProcessEffect& effect) {
 }
 
 void PostProcessor::apply_flash_effect(FrameCanvas* canvas, const PostProcessEffect& effect) {
+    if (!canvas) return;
+    
     float progress = get_effect_progress(effect);
     
     // Create a flash that peaks quickly and fades out
@@ -82,6 +84,9 @@ void PostProcessor::apply_flash_effect(FrameCanvas* canvas, const PostProcessEff
             uint8_t r, g, b;
             canvas->GetPixel(x, y, &r, &g, &b);
             
+            // Skip completely black pixels to preserve intentional darkness
+            if (r == 0 && g == 0 && b == 0) continue;
+            
             // Brighten the pixel based on flash intensity
             int new_r = std::min(255, static_cast<int>(r + flash_intensity * (255 - r) * 0.8f));
             int new_g = std::min(255, static_cast<int>(g + flash_intensity * (255 - g) * 0.8f));
@@ -93,6 +98,8 @@ void PostProcessor::apply_flash_effect(FrameCanvas* canvas, const PostProcessEff
 }
 
 void PostProcessor::apply_rotate_effect(FrameCanvas* canvas, const PostProcessEffect& effect) {
+    if (!canvas) return;
+    
     float progress = get_effect_progress(effect);
     
     // Rotate up to 360 degrees over the duration
@@ -103,6 +110,9 @@ void PostProcessor::apply_rotate_effect(FrameCanvas* canvas, const PostProcessEf
     int height = canvas->height();
     int center_x = width / 2;
     int center_y = height / 2;
+    
+    // Only apply rotation if the canvas is not empty and rotation is significant
+    if (std::abs(rotation_degrees) < 1.0f) return;
     
     // Create a temporary canvas for rotation
     std::vector<std::vector<rgb_matrix::Color>> temp_canvas(height, std::vector<rgb_matrix::Color>(width));
@@ -119,7 +129,7 @@ void PostProcessor::apply_rotate_effect(FrameCanvas* canvas, const PostProcessEf
     // Clear canvas for rotated image
     canvas->Clear();
     
-    // Apply rotation
+    // Apply rotation with improved sampling
     float cos_angle = std::cos(rotation_radians);
     float sin_angle = std::sin(rotation_radians);
     
@@ -129,9 +139,9 @@ void PostProcessor::apply_rotate_effect(FrameCanvas* canvas, const PostProcessEf
             int rel_x = x - center_x;
             int rel_y = y - center_y;
             
-            // Rotate
-            int src_x = static_cast<int>(rel_x * cos_angle - rel_y * sin_angle + center_x);
-            int src_y = static_cast<int>(rel_x * sin_angle + rel_y * cos_angle + center_y);
+            // Rotate (inverse transformation)
+            int src_x = static_cast<int>(rel_x * cos_angle + rel_y * sin_angle + center_x);
+            int src_y = static_cast<int>(-rel_x * sin_angle + rel_y * cos_angle + center_y);
             
             // Check bounds and copy pixel
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
