@@ -124,7 +124,6 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
             loading_anim_frame++;
             waiting_for_shader = true;
 
-            offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
             return true;
         }
         else
@@ -183,6 +182,5 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
         }
     }
 
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
     return true;
 }

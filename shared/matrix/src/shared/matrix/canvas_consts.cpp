@@ -3,4 +3,5 @@
 namespace Constants {
     std::atomic<int> width;
     std::atomic<int> height;
+    bool isRenderingSceneInitially;
 }
