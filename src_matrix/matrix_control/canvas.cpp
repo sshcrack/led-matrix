@@ -14,6 +14,9 @@ using namespace spdlog;
 
 using rgb_matrix::RGBMatrixBase;
 
+// Global post-processor instance
+PostProcessor* global_post_processor = nullptr;
+
 FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
     const auto preset = config->get_curr();
     auto scenes = preset->scenes;
@@ -86,6 +89,22 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 // I removed this log, this seems to spam if there is no scene to display
                 // debug("Exiting scene early.");
                 break;
+            }
+
+            // Check for beat detection from any plugin and trigger post-processing
+            if (global_post_processor) {
+                auto plugins = Plugins::PluginManager::instance()->get_plugins();
+                for (auto &plugin : plugins) {
+                    if (plugin->is_beat_detected()) {
+                        // Add flash effect for beats (user can configure this later)
+                        global_post_processor->add_effect(PostProcessType::Flash, 0.4f, 0.8f);
+                        plugin->clear_beat_flag();
+                        break; // Only process one beat per frame
+                    }
+                }
+                
+                // Apply post-processing effects to the canvas
+                global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
             }
 
             // SleepMillis(10);
