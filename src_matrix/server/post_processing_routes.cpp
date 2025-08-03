@@ -38,7 +38,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
                 }
             }
             
-            global_post_processor->add_effect(PostProcessType::Flash, duration, intensity);
+            global_post_processor->add_effect("flash", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -79,7 +79,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
                 }
             }
             
-            global_post_processor->add_effect(PostProcessType::Rotate, duration, intensity);
+            global_post_processor->add_effect("rotate", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -115,9 +115,54 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
         
         if (global_post_processor) {
             response["has_active_effects"] = global_post_processor->has_active_effects();
+            response["registered_effects"] = global_post_processor->get_registered_effects();
         }
         
         return reply_json(req, response);
+    });
+
+    // Generic endpoint to trigger any registered effect
+    router->http_get("/post_processing/effect/:effect_name", [](auto req, auto) {
+        if (global_post_processor) {
+            std::string effect_name = req->route_params()["effect_name"];
+            auto query_params = parse_query_parameters(req->header().query());
+            
+            float duration = 1.0f;
+            float intensity = 1.0f;
+            
+            if (query_params.find("duration") != query_params.end()) {
+                try {
+                    duration = std::stof(query_params["duration"]);
+                    duration = std::clamp(duration, 0.1f, 10.0f);
+                } catch (...) {
+                    // Invalid duration, use default
+                }
+            }
+            
+            if (query_params.find("intensity") != query_params.end()) {
+                try {
+                    intensity = std::stof(query_params["intensity"]);
+                    intensity = std::clamp(intensity, 0.0f, 2.0f);
+                } catch (...) {
+                    // Invalid intensity, use default
+                }
+            }
+            
+            if (global_post_processor->add_effect(effect_name, duration, intensity)) {
+                json response;
+                response["status"] = "success";
+                response["message"] = "Effect '" + effect_name + "' triggered";
+                response["effect_name"] = effect_name;
+                response["duration"] = duration;
+                response["intensity"] = intensity;
+                
+                return reply_json(req, response);
+            } else {
+                return reply_with_error(req, "Unknown effect: " + effect_name, restinio::status_bad_request());
+            }
+        } else {
+            return reply_with_error(req, "Post-processor not available", restinio::status_service_unavailable());
+        }
     });
 
     // Configure beat response settings

@@ -122,7 +122,9 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 }
                 
                 // Apply post-processing effects to the canvas
-                global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
+                if(scene->offscreen_canvas != nullptr) {
+                    global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
+                }
             }
 
             if(scene->offscreen_canvas != nullptr && should_continue) {
