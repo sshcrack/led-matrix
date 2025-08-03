@@ -99,6 +99,18 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                         // Add flash effect for beats (user can configure this later)
                         global_post_processor->add_effect(PostProcessType::Flash, 0.4f, 0.8f);
                         plugin->clear_beat_flag();
+                        
+                        // Send WebSocket notification for beat detection
+                        {
+                            std::shared_lock lock(Server::registryMutex);
+                            for (const auto ws_handle: Server::registry | std::views::values) {
+                                restinio::websocket::basic::message_t message;
+                                message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
+                                message.set_payload("beat_detected");
+                                ws_handle->send_message(message);
+                            }
+                        }
+                        
                         break; // Only process one beat per frame
                     }
                 }

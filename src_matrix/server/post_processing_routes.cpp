@@ -120,5 +120,26 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
         return reply_json(req, response);
     });
 
+    // Configure beat response settings
+    router->http_get("/post_processing/config", [](auto req, auto) {
+        auto query_params = parse_query_parameters(req->header().query());
+        
+        json response;
+        response["status"] = "success";
+        
+        // For now, return current hardcoded settings
+        // In future, these could be configurable via config file
+        response["settings"] = {
+            {"beat_flash_enabled", true},
+            {"beat_flash_duration", 0.4f},
+            {"beat_flash_intensity", 0.8f},
+            {"beat_rotate_enabled", false},
+            {"beat_rotate_duration", 1.0f},
+            {"beat_rotate_intensity", 1.0f}
+        };
+        
+        return reply_json(req, response);
+    });
+
     return router;
 }

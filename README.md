@@ -96,7 +96,10 @@ Physics-based particle systems:
 #### 🎵 **AudioVisualizer Plugin**
 [Real-time audio analysis](https://github.com/sshcrack/led-matrix/tree/master/plugins/AudioVisualizer):
 - **Frequency Spectrum** - Live audio visualization (setup required)
-- **Beat Detection** - Rhythm-responsive animations
+- **Beat Detection** - Intelligent rhythm detection with visual effects
+- **Post-Processing Effects** - Flash and rotate effects triggered by beats
+- **Cross-Platform Support** - Works on Windows and Linux
+- **REST API Control** - Manual effect triggering and configuration
 - **Multi-source Audio** - Various input methods supported
 
 #### 🛠️ **ExampleScenes Plugin**
@@ -455,6 +458,30 @@ The REST API provides powerful remote control capabilities at `http://<device-ip
 | `DELETE` | `/schedule?id=<schedule_id>` | Delete schedule |
 | `GET` | `/scheduling_status` | Get scheduling status and active preset |
 | `GET` | `/set_scheduling_enabled?enabled=<true\|false>` | Enable/disable scheduling |
+
+### 🎨 **Post-Processing Effects**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/post_processing/flash?duration=<seconds>&intensity=<0-1>` | Trigger flash effect |
+| `GET` | `/post_processing/rotate?duration=<seconds>&intensity=<0-2>` | Trigger rotation effect |
+| `GET` | `/post_processing/clear` | Clear all active effects |
+| `GET` | `/post_processing/status` | Get post-processing system status |
+| `GET` | `/post_processing/config` | Get beat detection configuration |
+
+#### **Post-Processing Examples**
+```bash
+# Quick flash effect
+curl "http://matrix-ip:8080/post_processing/flash?duration=0.3&intensity=1.0"
+
+# Slow rotation (720 degrees over 3 seconds)
+curl "http://matrix-ip:8080/post_processing/rotate?duration=3.0&intensity=2.0"
+
+# Clear all effects
+curl "http://matrix-ip:8080/post_processing/clear"
+```
+
+**Beat Detection**: When using the AudioVisualizer plugin, beats are automatically detected from audio input and trigger flash effects. WebSocket clients receive `beat_detected` messages in real-time.
 
 #### **Schedule JSON Format**
 ```json
