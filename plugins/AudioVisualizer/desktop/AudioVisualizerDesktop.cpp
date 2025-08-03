@@ -249,6 +249,12 @@ void AudioVisualizerDesktop::addVisualizer() {
     }
 }
 
+void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn,
+    ImGuiMemFreeFunc*free_fn, void **user_data) {
+    ImGui::SetCurrentContext(im_gui_context);
+    ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
+}
+
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
 #ifndef _WIN32

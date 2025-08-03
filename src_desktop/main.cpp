@@ -110,15 +110,6 @@ int main(const int argc, char *argv[])
     auto cfg = ConfigManager::instance();
     pl->initialize();
 
-    ImGuiMemAllocFunc alloc_fn = nullptr;
-    ImGuiMemFreeFunc free_fn = nullptr;
-    void* user_data = nullptr;
-
-    ImGui::GetAllocatorFunctions(&alloc_fn, &free_fn, &user_data);
-    for(auto &[name, plugin]: pl->get_plugins()) {
-        plugin->initialize_imgui(ImGui::GetCurrentContext(), &alloc_fn, &free_fn, &user_data);
-    }
-
     for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->load_config(cfg->getPluginSetting(plName));
     }
@@ -398,6 +389,16 @@ int main(const int argc, char *argv[])
         }
     };
     runnerParams.callbacks.PostInit = [&]() {
+        ImGuiMemAllocFunc alloc_fn = nullptr;
+        ImGuiMemFreeFunc free_fn = nullptr;
+        void* user_data = nullptr;
+
+        ImGui::GetAllocatorFunctions(&alloc_fn, &free_fn, &user_data);
+        auto context = ImGui::GetCurrentContext();
+        for(auto &[name, plugin]: pl->get_plugins()) {
+            plugin->initialize_imgui(context, &alloc_fn, &free_fn, &user_data);
+        }
+
         auto *window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
         setMainGLFWWindow(window);
         glfwSwapInterval(0);
