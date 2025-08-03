@@ -8,6 +8,9 @@
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <vector>
+#include <deque>
+#include <chrono>
+#include <mutex>
 #include "../../../thirdparty/implot/implot.h"
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
@@ -45,6 +48,12 @@ private:
 
     std::shared_mutex lastErrorMutex;
     std::string lastError;
+    
+    // Beat detection for desktop
+    std::deque<float> energy_history;
+    std::chrono::steady_clock::time_point last_beat_time;
+    bool beat_detected;
+    std::mutex beat_mutex;
 
 protected:
     void addConnectionSettings();
@@ -52,4 +61,8 @@ protected:
     void addAudioSettings();
     void addDeviceSettings();
     void addVisualizer();
+    
+    // Beat detection methods
+    bool detect_beat(const std::vector<float>& audio_data);
+    float calculate_energy(const std::vector<float>& audio_data);
 };
