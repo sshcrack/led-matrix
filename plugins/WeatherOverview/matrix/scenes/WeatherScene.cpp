@@ -584,14 +584,12 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
     }
 
     data = data_res.value(); // Store data for animations
-    bool should_update_display = false;
 
     // Get the appropriate color based on theme setting
     RGB theme_color = getThemeColor(static_cast<ColorTheme>(color_theme->get()), data);
 
     // Check if we need to reload images
     if (parser.has_changed() || !images.has_value()) {
-        should_update_display = true;
         const auto weather_dir_path = fs::path(weather_dir);
         if (!exists(weather_dir_path)) {
             fs::create_directory(weather_dir);
@@ -675,50 +673,42 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
         updateAnimationState(data);
     }
 
-    // Check if animation frame needs to be updated
-    if (should_render_frame()) {
-        animation_frame = (animation_frame + 1) % get_target_fps(); // 60 frames for subtle animations
-        should_update_display = true;
+    animation_frame = (animation_frame + 1) % get_target_fps(); // 60 frames for subtle animations
 
-        // Update animation state periodically
-        if (has_precipitation) {
-            updateParticles(data);
-        }
+    // Update animation state periodically
+    if (has_precipitation) {
+        updateParticles(data);
     }
 
-    // Update the display if needed
-    if (should_update_display) {
-        offscreen_canvas->Clear();
+    offscreen_canvas->Clear();
 
-        // Apply beautiful background with gradient if enabled
-        if (gradient_background->get()) {
-            applyBackgroundEffects(matrix, theme_color);
-        } else {
-            // Simple background fill
-            offscreen_canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
-        }
-
-        // Draw a subtle border if enabled
-        if (show_border->get()) {
-            drawWeatherBorder(matrix, theme_color, 40);
-        }
-
-        if (enable_clock->get())
-            renderClock(matrix);
-
-        // Render all components
-        renderCurrentWeather(matrix, data);
-        renderSunriseSunset(matrix, data);
-        renderForecast(matrix, data);
-
-        // Render weather animations (rain, snow, etc.)
-        if (enable_animations->get()) {
-            renderAnimations(matrix, data);
-        }
-
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+    // Apply beautiful background with gradient if enabled
+    if (gradient_background->get()) {
+        applyBackgroundEffects(matrix, theme_color);
+    } else {
+        // Simple background fill
+        offscreen_canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
     }
 
+    // Draw a subtle border if enabled
+    if (show_border->get()) {
+        drawWeatherBorder(matrix, theme_color, 40);
+    }
+
+    if (enable_clock->get())
+        renderClock(matrix);
+
+    // Render all components
+    renderCurrentWeather(matrix, data);
+    renderSunriseSunset(matrix, data);
+    renderForecast(matrix, data);
+
+    // Render weather animations (rain, snow, etc.)
+    if (enable_animations->get()) {
+        renderAnimations(matrix, data);
+    }
+
+    wait_until_next_frame();
     return true; // Always return true to keep the scene running
 }
 

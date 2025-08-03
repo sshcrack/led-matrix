@@ -61,7 +61,6 @@ bool GameOfLifeScene::render(RGBMatrixBase *matrix) {
         }
     }
     
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
     return true;
 }
 

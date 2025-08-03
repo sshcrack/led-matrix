@@ -16,7 +16,7 @@ Scraper& Scraper::instance() {
 Scraper::Scraper() {
     const char* api_key = std::getenv("SHADERTOY_API_KEY");
     if (!api_key || std::string(api_key).empty()) {
-        spdlog::warn("SHADERTOY_API_KEY is not set. Falling back to HTML scraping. It is recommended to set the API key for more reliable operation.");
+        spdlog::warn("SHADERTOY_API_KEY is not set. Falling back to HTML scraping. Setting the API Key generates less results but improves reliability.");
     }
 }
 

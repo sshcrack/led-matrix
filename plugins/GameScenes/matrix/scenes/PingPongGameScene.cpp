@@ -102,11 +102,13 @@ bool PingPongGameScene::render(RGBMatrixBase *matrix) {
             matrix->SetPixel(int(ball_x) + x, int(ball_y) + y, 255, 255, 255);
         }
     }
+
+    wait_until_next_frame();
     return true;
 }
 
 void PingPongGameScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, l_offscreen_canvas);
+    Scene::initialize(matrix, nullptr);
     last_update = std::chrono::steady_clock::now();
     accumulated_time = 0.0f;
 

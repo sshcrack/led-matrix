@@ -69,12 +69,8 @@ bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
 
     drawMap(matrix, map);
 
-    if (should_render_frame())
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
-
     delete[] lastMap;
-
-
+    wait_until_next_frame();
     return true;
 }
 

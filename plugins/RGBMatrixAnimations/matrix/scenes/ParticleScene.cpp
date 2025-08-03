@@ -13,7 +13,7 @@ ParticleScene::ParticleScene()
 }
 
 void ParticleScene::initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(p_matrix, l_offscreen_canvas);
+    Scene::initialize(p_matrix, nullptr);
 
     matrix = p_matrix;
 
