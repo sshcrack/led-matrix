@@ -1,0 +1,238 @@
+# filepath: .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: "led-matrix"
+            os: ubuntu-latest
+            preset: "cross-compile"
+            artifact-name: "led-matrix-build"
+            artifact-path: |
+              build/led-matrix-*-Linux.tar.gz
+            requires-toolchain: true
+          - name: "desktop-linux"
+            os: ubuntu-latest
+            preset: "desktop-linux"
+            artifact-name: "desktop-linux-build"
+            artifact-path: desktop_build/led-matrix-desktop-*-Linux.tar.gz
+            requires-toolchain: false
+          - name: "desktop-windows"
+            os: windows-latest
+            preset: "desktop-windows"
+            artifact-name: "desktop-windows-build"
+            artifact-path: |
+              desktop_build/led-matrix-desktop-*-win64.zip
+              desktop_build/led-matrix-desktop-*-win64.exe
+            requires-toolchain: false
+    env:
+      BUILD_TYPE: RelWithDebInfo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        if: runner.os != 'Windows'
+        with:
+          packages: python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
+          version: 1.0
+
+      - name: Update certificates
+        if: runner.os != 'Windows'
+        run: |
+            sudo apt-get update
+            sudo apt-get install --reinstall ca-certificates
+            sudo update-ca-certificates
+            sudo cert-sync /etc/ssl/certs/ca-certificates.crt
+            cert-sync --user /etc/ssl/certs/ca-certificates.crt
+
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.25.0"
+
+      - name: Setup anew (or from cache) vcpkg (and does not build any package)
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
+
+      - name: Add NuGet sources (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          USERNAME: sshcrack
+          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+        run: |
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            sources add \
+            -Source "${{ env.FEED_URL }}" \
+            -StorePasswordInClearText \
+            -Name GitHubPackages \
+            -UserName "${{ env.USERNAME }}" \
+            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
+          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
+            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
+            -Source "${{ env.FEED_URL }}"
+
+      - name: Add NuGet sources (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
+          USERNAME: sshcrack
+          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
+        run: |
+          .$(${{ env.VCPKG_EXE }} fetch nuget) `
+            sources add `
+            -Source "${{ env.FEED_URL }}" `
+            -StorePasswordInClearText `
+            -Name GitHubPackages `
+            -UserName "${{ env.USERNAME }}" `
+            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
+          .$(${{ env.VCPKG_EXE }} fetch nuget) `
+            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" `
+            -Source "${{ env.FEED_URL }}"
+
+      - name: Cache cross-compile toolchain
+        if: matrix.requires-toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cross-compile
+          key: cross-compile-toolchain-v0.0.1-beta
+
+      - name: Download and extract cross-compile toolchain
+        if: matrix.requires-toolchain && steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ${{ runner.temp }}/cross-compile
+          cd ${{ runner.temp }}/cross-compile
+          wget -O cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
+          tar -xvf cross-compile.tar.xz
+          rm cross-compile.tar.xz
+
+      - name: Create vcpkg triplet for arm64-rpi
+        if: matrix.requires-toolchain
+        run: |
+          mkdir -p $VCPKG_ROOT/triplets/community
+          cat > $VCPKG_ROOT/triplets/community/arm64-rpi.cmake << 'EOF'
+          set(VCPKG_TARGET_ARCHITECTURE arm64)
+          set(VCPKG_CRT_LINKAGE dynamic)
+          set(VCPKG_LIBRARY_LINKAGE static)
+
+          set(VCPKG_CMAKE_SYSTEM_NAME Linux)
+
+          set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE ${{ runner.temp }}/cross-compile/PI.cmake)
+          EOF
+
+      # React Native web build only for led-matrix build
+      - name: Install pnpm
+        if: matrix.name == 'led-matrix'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        if: matrix.name == 'led-matrix'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: "react-native/pnpm-lock.yaml"
+
+      - name: Install React Native dependencies
+        if: matrix.name == 'led-matrix'
+        working-directory: react-native
+        run: pnpm install
+
+      - name: Build React Native web version
+        if: matrix.name == 'led-matrix'
+        working-directory: react-native
+        run: pnpm exec expo export --platform web
+
+      - name: Build ${{ matrix.name }}
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.preset }}
+          configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
+          buildPreset: ${{ matrix.preset }}
+          buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '[''--target'', ''package'', ''--config'', ''RelWithDebInfo'']' || '[''--target'', ''package'']' }}
+        env:
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
+          CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
+
+  build-react-native:
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    # Only run if files in react-native/ changed
+    if: ${{ contains(join(github.event.head_commit.modified, ','), 'react-native/') || contains(join(github.event.head_commit.added, ','), 'react-native/') || contains(join(github.event.head_commit.removed, ','), 'react-native/') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: "react-native/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        working-directory: react-native
+        run: pnpm install
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name:  Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: pnpm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build React Native APK
+        working-directory: react-native
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          pnpx expo prebuild -p android
+          eas build -p android --local --non-interactive --output ../app-latest.apk
+
+      - name: Upload React Native APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-apk
+          path: app-latest.apk
