@@ -12,8 +12,7 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c) 
     delete c;
 }
 
-AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false) {
-    last_beat_time = std::chrono::steady_clock::now();
+AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false), beatDetector(std::make_unique<BeatDetector>()) {
 }
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
@@ -42,6 +41,7 @@ void AudioVisualizerDesktop::render() {
     addAudioSettings();
     addAnalysisSettings();
     addDeviceSettings();
+    addBeatDetectionSettings();
 
     addVisualizer();
 #endif
@@ -58,6 +58,11 @@ void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> con
     if (recorder == nullptr)
         recorder = std::make_unique<AudioRecorder::Recorder>();
 #endif
+
+    // Configure beat detector with loaded config
+    if (beatDetector) {
+        beatDetector->configure(cfg.beatDetection);
+    }
 }
 
 void AudioVisualizerDesktop::before_exit() {
@@ -184,6 +189,99 @@ void AudioVisualizerDesktop::addDeviceSettings() {
     }
 }
 
+void AudioVisualizerDesktop::addBeatDetectionSettings() {
+    ImGui::SeparatorText("Beat Detection Settings");
+    
+    // Algorithm selection
+    const char* algorithmNames[] = {"Energy", "Spectral Flux", "High Frequency Content", "Complex Domain"};
+    int currentAlgorithm = static_cast<int>(cfg.beatDetection.algorithm);
+    if (ImGui::Combo("Algorithm", &currentAlgorithm, algorithmNames, IM_ARRAYSIZE(algorithmNames))) {
+        cfg.beatDetection.algorithm = static_cast<BeatDetectionAlgorithm>(currentAlgorithm);
+        if (beatDetector) {
+            beatDetector->configure(cfg.beatDetection);
+        }
+    }
+    ImGui::SetItemTooltip("Choose the beat detection algorithm:\n"
+                         "- Energy: Simple energy-based detection (fastest)\n"
+                         "- Spectral Flux: Detects changes in frequency content\n"
+                         "- High Frequency Content: Focuses on high-frequency changes\n"
+                         "- Complex Domain: Combines multiple features (most accurate)");
+    
+    // Energy threshold (for Energy and Complex Domain algorithms)
+    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::Energy || 
+        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
+        if (ImGui::SliderFloat("Energy Threshold", &cfg.beatDetection.energyThreshold, 1.0f, 3.0f, "%.1f")) {
+            if (beatDetector) {
+                beatDetector->configure(cfg.beatDetection);
+            }
+        }
+        ImGui::SetItemTooltip("How much higher than average energy must be for a beat (higher = fewer beats)");
+    }
+    
+    // Spectral flux threshold (for Spectral Flux and Complex Domain algorithms)
+    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::SpectralFlux || 
+        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
+        if (ImGui::SliderFloat("Spectral Flux Threshold", &cfg.beatDetection.spectralFluxThreshold, 0.001f, 0.1f, "%.3f")) {
+            if (beatDetector) {
+                beatDetector->configure(cfg.beatDetection);
+            }
+        }
+        ImGui::SetItemTooltip("Threshold for spectral change detection (higher = fewer beats)");
+    }
+    
+    // HFC threshold (for HFC and Complex Domain algorithms)
+    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::HighFrequencyContent || 
+        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
+        if (ImGui::SliderFloat("HFC Threshold", &cfg.beatDetection.hfcThreshold, 0.1f, 2.0f, "%.1f")) {
+            if (beatDetector) {
+                beatDetector->configure(cfg.beatDetection);
+            }
+        }
+        ImGui::SetItemTooltip("High frequency content threshold (higher = fewer beats)");
+    }
+    
+    // Minimum time between beats
+    if (ImGui::SliderFloat("Min Time Between Beats", &cfg.beatDetection.minTimeBetweenBeats, 0.1f, 1.0f, "%.1f s")) {
+        if (beatDetector) {
+            beatDetector->configure(cfg.beatDetection);
+        }
+    }
+    ImGui::SetItemTooltip("Minimum time between detected beats in seconds");
+    
+    // Focus bands (number of low-frequency bands to analyze)
+    if (ImGui::SliderInt("Focus Bands", &cfg.beatDetection.focusBands, 4, 32)) {
+        if (beatDetector) {
+            beatDetector->configure(cfg.beatDetection);
+        }
+    }
+    ImGui::SetItemTooltip("Number of low-frequency bands to focus on for beat detection");
+    
+    // History size
+    if (ImGui::SliderInt("History Size", &cfg.beatDetection.historySize, 20, 100)) {
+        if (beatDetector) {
+            beatDetector->configure(cfg.beatDetection);
+        }
+    }
+    ImGui::SetItemTooltip("Number of frames to keep in history for averaging");
+    
+    // Reset button
+    if (ImGui::Button("Reset to Defaults")) {
+        cfg.beatDetection = BeatDetectionConfig{};
+        if (beatDetector) {
+            beatDetector->configure(cfg.beatDetection);
+        }
+    }
+    ImGui::SameLine();
+    
+    // Reset history button
+    if (ImGui::Button("Reset History")) {
+        if (beatDetector) {
+            beatDetector->reset();
+        }
+    }
+    ImGui::SetItemTooltip("Clear detection history (useful when switching songs)");
+}
+
 static bool showPreview = false;
 
 void AudioVisualizerDesktop::addVisualizer() {
@@ -305,7 +403,14 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     }
     
     // Perform beat detection on the processed bands
-    bool beat_detected_now = detect_beat(bands);
+    bool beat_detected_now = false;
+    if (beatDetector) {
+        beat_detected_now = beatDetector->detect_beat(bands);
+        if (beat_detected_now) {
+            std::lock_guard<std::mutex> lock(beat_mutex);
+            beat_detected = true;
+        }
+    }
     
     // Check and clear beat flag
     bool send_beat_flag = false;
@@ -322,65 +427,4 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
                                                                  delete (CompactAudioPacket *)packet;
                                                              });
 #endif
-}
-
-bool AudioVisualizerDesktop::detect_beat(const std::vector<float>& audio_data) {
-    if (audio_data.empty()) {
-        return false;
-    }
-    
-    // Calculate current energy
-    float current_energy = calculate_energy(audio_data);
-    
-    // Add to energy history
-    energy_history.push_back(current_energy);
-    if (energy_history.size() > 43) { // Same as matrix version
-        energy_history.pop_front();
-    }
-    
-    // Need sufficient history to detect beats
-    if (energy_history.size() < 20) {
-        return false;
-    }
-    
-    // Calculate average energy over history
-    float avg_energy = 0.0f;
-    for (float energy : energy_history) {
-        avg_energy += energy;
-    }
-    avg_energy /= energy_history.size();
-    
-    // Check for beat: current energy significantly higher than average
-    bool is_beat = current_energy > (avg_energy * 1.5f); // Same threshold as matrix version
-    
-    // Apply minimum time constraint between beats
-    auto now = std::chrono::steady_clock::now();
-    auto time_since_last_beat = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_beat_time).count();
-    
-    if (is_beat && time_since_last_beat >= 0.3f) { // 300ms minimum between beats
-        last_beat_time = now;
-        {
-            std::lock_guard<std::mutex> lock(beat_mutex);
-            beat_detected = true;
-        }
-        spdlog::debug("Beat detected! Energy: {:.2f}, Avg: {:.2f}, Ratio: {:.2f}", 
-                     current_energy, avg_energy, current_energy / avg_energy);
-        return true;
-    }
-    
-    return false;
-}
-
-float AudioVisualizerDesktop::calculate_energy(const std::vector<float>& audio_data) {
-    float total_energy = 0.0f;
-    
-    // Focus on lower frequency bands for beat detection (typically where bass is)
-    int focus_bands = std::min(static_cast<int>(audio_data.size()), 16);
-    
-    for (int i = 0; i < focus_bands; i++) {
-        float normalized = audio_data[i];
-        total_energy += normalized * normalized; // Square for energy
-    }
-    
-    return total_energy / focus_bands;
 }
