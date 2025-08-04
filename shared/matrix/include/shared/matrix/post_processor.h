@@ -13,14 +13,14 @@ using rgb_matrix::RGBMatrixBase;
 class PostProcessor {
 private:
     std::vector<PostProcessEffect> active_effects;
-    std::unordered_map<std::string, std::unique_ptr<PostProcessingEffect>> registered_effects;
+    std::unordered_map<std::string, std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> registered_effects;
 
 public:
     PostProcessor() = default;
     ~PostProcessor() = default;
     
     // Register a new post-processing effect type
-    void register_effect(std::unique_ptr<PostProcessingEffect> effect);
+    void register_effect(std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)> effect);
     
     // Add a new post-processing effect by name
     bool add_effect(const std::string& effect_name, float duration = 0.5f, float intensity = 1.0f);

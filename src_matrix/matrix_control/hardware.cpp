@@ -5,7 +5,6 @@
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/canvas_consts.h"
-#include "shared/matrix/post_processor.h"
 
 #include <csignal>
 #if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
@@ -28,12 +27,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
 
     FrameCanvas *offscreen_canvas = matrix->CreateFrameCanvas();
     string last_scheduled_preset = "";
-    
-    // Initialize global post-processor
-    if (!Constants::global_post_processor) {
-        Constants::global_post_processor = new PostProcessor();
-        spdlog::info("Post-processor initialized");
-    }
     
     while (!interrupt_received) {
         // Check for active scheduled preset
