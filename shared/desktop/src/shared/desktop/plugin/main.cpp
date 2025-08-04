@@ -2,7 +2,7 @@
 #include "shared/desktop/WebsocketClient.h"
 #include <spdlog/spdlog.h>
 
-Plugins::DesktopPlugin::send_websocket_message(const std::string &message)
+void Plugins::DesktopPlugin::send_websocket_message(const std::string &message)
 {
     if (WebsocketClient::instance() == nullptr)
     {
