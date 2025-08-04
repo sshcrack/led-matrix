@@ -2,10 +2,10 @@
 #include <algorithm>
 #include "spdlog/spdlog.h"
 
-void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect> effect) {
+void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)> effect) {
     if (effect) {
         std::string name = effect->get_name();
-        registered_effects[name] = std::move(effect);
+        registered_effects.emplace(std::move(name), std::move(effect));
         spdlog::debug("Registered post-processing effect: {}", name);
     }
 }
