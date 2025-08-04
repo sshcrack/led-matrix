@@ -7,6 +7,7 @@
 // ReSharper disable once CppUnusedIncludeDirective
 // This is included so the plugins don't have to include it every time
 #include "shared/common/plugin_macros.h"
+#include "shared/matrix/post_processing_effect.h"
 
 using std::string;
 using std::vector;
@@ -24,7 +25,11 @@ namespace Plugins
 
         virtual vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() = 0;
 
+        
     public:
+        virtual vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> create_effects() {
+            return {};
+        }
         std::string _plugin_location;
 
         [[nodiscard]] std::string get_plugin_location() const

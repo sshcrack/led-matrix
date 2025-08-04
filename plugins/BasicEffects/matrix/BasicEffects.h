@@ -1,7 +1,6 @@
 #pragma once
 
 #include "shared/matrix/plugin/main.h"
-#include "shared/matrix/post_processing_effect.h"
 
 namespace Plugins {
     class BasicEffects : public BasicPlugin {
@@ -12,8 +11,9 @@ namespace Plugins {
         vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
         vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() override;
         
-        std::optional<string> before_server_init() override;
         std::string get_plugin_name() const override;
+
+        vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> create_effects() override;
     };
 }
 
