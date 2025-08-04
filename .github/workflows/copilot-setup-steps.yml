@@ -51,6 +51,7 @@ jobs:
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
         with:
+          vcpkgDirectory: '${{ github.workspace }}/../vcpkg'
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
       - name: Add NuGet sources (Linux)
