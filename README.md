@@ -535,49 +535,64 @@ SPDLOG_LEVEL=debug ./main
 
 ## 🔌 **Plugin Development**
 
-Extend the matrix with your own custom scenes and effects!
+Extend the matrix with your own custom scenes and effects! Create powerful plugins that add new visual experiences, integrate external APIs, and provide custom functionality.
 
-### 🏗️ **Creating Your First Plugin**
+### 📖 **Comprehensive Documentation**
 
-1. **Set up the plugin structure:**
-   ```
-   plugins/
-   └── MyAwesomePlugin/
-       ├── CMakeLists.txt
-       ├── MyAwesomePlugin.cpp
-       ├── MyAwesomePlugin.h
-       └── scenes/
-           ├── MyScene.cpp
-           └── MyScene.h
-   ```
+For detailed plugin development, check out our **[Complete Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**!
 
-2. **Implement the plugin interface:**
-   ```cpp
-   class MyAwesomePlugin : public BasicPlugin {
-   public:
-       MyAwesomePlugin();
-       
-       vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> 
-           create_scenes() override;
-           
-       vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>> 
-           create_image_providers() override;
-   };
-   ```
+This comprehensive guide covers:
+- 🏗️ **Plugin Architecture** - Understanding the modular system
+- 🚀 **Quick Start** - Get your first plugin running in minutes
+- 📚 **Core APIs** - Detailed documentation of shared libraries
+- 🎨 **Scene Development** - Create stunning visual effects
+- ⚙️ **Properties System** - Automatic serialization and validation
+- 🖼️ **Image Providers** - Custom image sources and processing
+- 🎭 **Post-Processing Effects** - Screen-wide effects and transformations
+- 🌐 **REST API Integration** - Custom endpoints and remote control
+- 💬 **Desktop Communication** - WebSocket messaging and data streaming
+- 🔧 **Advanced Features** - Resource loading, lifecycle hooks, and more
+- 📦 **Building and Testing** - CMake configuration and emulator testing
+- 🎯 **Best Practices** - Performance, error handling, and code organization
 
-### 🎨 **Scene Development**
+### 🏗️ **Quick Plugin Template**
+
+```cpp
+class MyAwesomePlugin : public Plugins::BasicPlugin {
+public:
+    std::string get_plugin_name() const override {
+        return "MyAwesomePlugin";
+    }
+
+protected:
+    std::vector<std::unique_ptr<Plugins::SceneWrapper, void (*)(Plugins::SceneWrapper *)>> 
+        create_scenes() override;
+    
+    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)>> 
+        create_image_providers() override;
+};
+
+// Export plugin
+CREATE_PLUGIN(MyAwesomePlugin)
+```
+
+### 🎨 **Scene Development Example**
 
 Create engaging visual experiences with our scene framework:
 
 ```cpp
 class MyScene : public Scenes::Scene {
 private:
+    FrameTimer frameTimer;
     // Configurable properties - automatically exposed in API
-    Property<float> speed{"speed", 1.0f};
-    Property<int> color{"color", 0xFF0000};
+    PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 1.0f);
+    PropertyPointer<Plugins::Color> color = MAKE_PROPERTY("color", Plugins::Color, Plugins::Color(0xFF0000));
     
 public:
-    bool render(RGBMatrixBase *matrix) override {
+    bool render(rgb_matrix::RGBMatrixBase *matrix) override {
+        auto frameTime = frameTimer.tick();
+        float t = frameTime.t * speed->get();
+        
         // Your rendering logic here
         return true; // Continue rendering
     }
@@ -587,26 +602,38 @@ public:
         add_property(color);
     }
     
-    string get_name() const override { return "my_scene"; }
+    std::string get_name() const override { return "my_scene"; }
+    tmillis_t get_default_duration() override { return 15000; }
+    int get_default_weight() override { return 10; }
 };
 ```
 
 ### ⚙️ **Advanced Plugin Features**
 
-- **Property system** - Automatic API exposure and persistence
+- **Property system** - Automatic API exposure and persistence with validation
 - **Image providers** - Custom image sources and processing
-- **Hot-reloading** - Test changes without restarting
-- **Inter-plugin communication** - Share data between plugins
-- **Custom API endpoints** - Extend the REST API
+- **Post-processing effects** - Screen-wide effects like flash and rotation
+- **REST API endpoints** - Extend the API with custom routes
+- **WebSocket communication** - Real-time messaging with desktop clients
+- **Resource loading** - Access plugin-specific assets and fonts
+- **Lifecycle hooks** - Initialize and cleanup resources properly
 
-### 📚 **Plugin Examples**
+### 📚 **Study These Plugin Examples**
 
-Study the included plugins for inspiration:
-- **`ExampleScenes/`** - Simple starting template
-- **`FractalScenes/`** - Mathematical visualizations
-- **`SpotifyScenes/`** - External API integration
-- **`GameScenes/`** - Interactive content
-- **`WeatherOverview/`** - Real-world data visualization
+- **`ExampleScenes/`** - Simple starting template and basic patterns
+- **`AudioVisualizer/`** - Real-time audio analysis and visualization
+- **`WeatherOverview/`** - External API integration and animated displays
+- **`GameScenes/`** - Interactive content and game logic (Tetris, Pong, Maze)
+- **`FractalScenes/`** - Mathematical visualizations and complex algorithms
+- **`SpotifyScenes/`** - OAuth integration and music visualization
+- **`AmbientScenes/`** - Atmospheric effects and procedural generation
+
+### 🚀 **Get Started**
+
+1. **Read the [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**
+2. **Study existing plugins** for patterns and inspiration
+3. **Use the emulator** for development and testing
+4. **Share your creations** with the community!
 
 ## 🤝 **Contributing**
 

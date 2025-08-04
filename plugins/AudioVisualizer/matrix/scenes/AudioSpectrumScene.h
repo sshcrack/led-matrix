@@ -22,13 +22,25 @@ namespace Scenes {
         PropertyPointer<Plugins::Color> base_color = MAKE_PROPERTY("base_color", Plugins::Color, Plugins::Color(0x00FF00)); // Default green
         PropertyPointer<bool> falling_dots = MAKE_PROPERTY("falling_dots", bool, true);
         PropertyPointer<float> dot_fall_speed = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.15f, 0.01f, 1.0f);
-        PropertyPointer<int> display_mode = MAKE_PROPERTY_MINMAX("display_mode", int, 0, 0, 2); // 0=normal, 1=center-out, 2=edges-to-center
+        PropertyPointer<int> display_mode = MAKE_PROPERTY_MINMAX("display_mode", int, 0, 0, 4); // 0=normal, 1=center-out, 2=edges-to-center, 3=circle, 4=spiral
+        PropertyPointer<bool> gradient_mode = MAKE_PROPERTY("gradient_mode", bool, false);
+        PropertyPointer<Plugins::Color> gradient_color1 = MAKE_PROPERTY("gradient_color1", Plugins::Color, Plugins::Color(0xFF0000)); // Red
+        PropertyPointer<Plugins::Color> gradient_color2 = MAKE_PROPERTY("gradient_color2", Plugins::Color, Plugins::Color(0x0000FF)); // Blue
+        PropertyPointer<bool> smooth_gradient = MAKE_PROPERTY("smooth_gradient", bool, true);
+        PropertyPointer<float> circle_radius = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.8f, 0.3f, 1.0f);
+        PropertyPointer<bool> rotate_visualization = MAKE_PROPERTY("rotate_visualization", bool, false);
+        PropertyPointer<float> rotation_speed = MAKE_PROPERTY_MINMAX("rotation_speed", float, 1.0f, 0.1f, 5.0f);
         
         std::vector<float> peak_positions;
+        float rotation_angle = 0.0f;
         
         // Helper methods
         void initialize_if_needed(int num_bands);
         uint32_t get_bar_color(int band_index, float intensity, int num_bands) const;
+        uint32_t get_gradient_color(float position, float intensity) const;
+        void render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<float> &audio_data);
+        void render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<float> &audio_data);
+        std::pair<int, int> polar_to_cartesian(float radius, float angle, int center_x, int center_y) const;
         
     public:
         AudioSpectrumScene();

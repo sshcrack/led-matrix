@@ -225,37 +225,55 @@ void Scenes::WeatherScene::updateParticles(const WeatherData &data) {
 }
 
 void Scenes::WeatherScene::renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data) {
-    if (!has_precipitation || !enable_animations->get()) {
+    if (!enable_animations->get()) {
         return;
     }
 
-    const int code = data.weatherCode;
-    const bool is_snow = (code >= 600 && code < 700);
+    // Render enhanced particle effects if enabled
+    if (enable_enhanced_particles->get()) {
+        renderEnhancedParticles(matrix, data);
+    } else {
+        // Original particle rendering
+        if (!has_precipitation) {
+            return;
+        }
 
-    // Render active particles
-    for (const auto &p: particles) {
-        if (p.active) {
-            if (is_snow) {
-                // Snow particles are white dots
-                offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y),
-                                           p.opacity, p.opacity, p.opacity);
+        const int code = data.weatherCode;
+        const bool is_snow = (code >= 600 && code < 700);
 
-                // For larger snow particles, draw a small cluster
-                if (p.size > 1.5f) {
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x) + 1, static_cast<int>(p.y),
-                                               p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) + 1,
-                                               p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
-                }
-            } else {
-                // Rain particles are blue-white streaks
-                for (int i = 0; i < 2; i++) {
-                    offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) - i,
-                                               200, 220, p.opacity);
+        // Render active particles
+        for (const auto &p: particles) {
+            if (p.active) {
+                if (is_snow) {
+                    // Snow particles are white dots
+                    offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y),
+                                               p.opacity, p.opacity, p.opacity);
+
+                    // For larger snow particles, draw a small cluster
+                    if (p.size > 1.5f) {
+                        offscreen_canvas->SetPixel(static_cast<int>(p.x) + 1, static_cast<int>(p.y),
+                                                   p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
+                        offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) + 1,
+                                                   p.opacity * 0.7f, p.opacity * 0.7f, p.opacity * 0.7f);
+                    }
+                } else {
+                    // Rain particles are blue-white streaks
+                    for (int i = 0; i < 2; i++) {
+                        offscreen_canvas->SetPixel(static_cast<int>(p.x), static_cast<int>(p.y) - i,
+                                                   200, 220, p.opacity);
+                    }
                 }
             }
         }
     }
+    
+    // Add new beautiful weather effects
+    renderClouds(matrix, data);
+    renderLightning(matrix);
+    renderSunRays(matrix, data);
+    renderFogMist(matrix, data);
+    renderRainbowEffect(matrix, data);
+    renderAurora(matrix);
 }
 
 RGB Scenes::WeatherScene::interpolateColor(const RGB &start, const RGB &end, float progress) {
@@ -721,4 +739,388 @@ void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix) {
         }
     }
     Scene::after_render_stop(matrix);
+}
+
+// Enhanced Animation Methods
+
+void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data) {
+    const int code = data.weatherCode;
+    const bool is_snow = (code >= 600 && code < 700);
+    const bool is_rain = (code >= 200 && code < 600);
+
+    has_precipitation = is_snow || is_rain;
+
+    if (!has_precipitation || !enable_animations->get()) {
+        active_particles = 0;
+        for (auto &p: particles) {
+            p.active = false;
+        }
+        return;
+    }
+
+    int target_particles = std::min(MAX_PARTICLES, particle_density->get() * 5);
+    float speed_mult = animation_speed_multiplier->get();
+
+    // Update existing particles with enhanced physics
+    for (auto &p: particles) {
+        if (p.active) {
+            // Wind effect - create swaying motion
+            p.wind_factor += 0.1f;
+            float wind_offset = sin(p.wind_factor) * 0.3f;
+            
+            p.x += wind_offset;
+            p.y += p.speed * speed_mult;
+            p.life_time += 0.016f; // Assuming 60 FPS
+            
+            // Snow rotation
+            if (is_snow) {
+                p.rotation += 0.05f;
+            }
+            
+            // Fade effect for older particles
+            if (p.life_time > 2.0f) {
+                p.opacity *= 0.98f;
+            }
+            
+            // Remove particles that are off screen or too faded
+            if (p.y > matrix_height || p.x < -5 || p.x > matrix_width + 5 || p.opacity < 10) {
+                p.active = false;
+                active_particles--;
+            }
+        }
+    }
+
+    // Activate new particles with enhanced properties
+    if (active_particles < target_particles) {
+        for (auto &p: particles) {
+            if (!p.active) {
+                p.active = true;
+                p.x = static_cast<float>(rand() % (matrix_width + 10) - 5);
+                p.y = -5;
+                p.life_time = 0;
+                p.wind_factor = static_cast<float>(rand() % 360) * 0.0174f; // Random starting phase
+                p.rotation = 0;
+                
+                if (is_snow) {
+                    p.size = 1.0f + (rand() % 3);
+                    p.speed = 0.1f + (rand() % 8) / 10.0f;
+                    p.opacity = 180 + (rand() % 75);
+                    // Varied snow colors for more realism
+                    p.r = 240 + (rand() % 15);
+                    p.g = 240 + (rand() % 15);
+                    p.b = 250 + (rand() % 5);
+                } else if (is_rain) {
+                    p.size = 1.0f;
+                    p.speed = 0.8f + (rand() % 20) / 10.0f;
+                    p.opacity = 150 + (rand() % 105);
+                    // Rain colors with slight blue tint
+                    p.r = 150 + (rand() % 50);
+                    p.g = 180 + (rand() % 50);
+                    p.b = 200 + (rand() % 55);
+                }
+                
+                active_particles++;
+                if (active_particles >= target_particles) {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, const WeatherData &data) {
+    if (!has_precipitation || !enable_animations->get()) {
+        return;
+    }
+
+    const int code = data.weatherCode;
+    const bool is_snow = (code >= 600 && code < 700);
+
+    // Render active particles with enhanced visuals
+    for (const auto &p: particles) {
+        if (p.active) {
+            int px = static_cast<int>(p.x);
+            int py = static_cast<int>(p.y);
+            
+            if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
+                if (is_snow) {
+                    // Enhanced snow rendering with rotation and clustering
+                    uint8_t alpha = static_cast<uint8_t>(p.opacity);
+                    offscreen_canvas->SetPixel(px, py, 
+                                             std::min(255, (int)(p.r * alpha / 255)),
+                                             std::min(255, (int)(p.g * alpha / 255)),
+                                             std::min(255, (int)(p.b * alpha / 255)));
+
+                    // For larger snow particles, draw a cluster with rotation
+                    if (p.size > 1.5f) {
+                        float cos_r = cos(p.rotation);
+                        float sin_r = sin(p.rotation);
+                        
+                        // Draw rotated snowflake pattern
+                        for (int i = -1; i <= 1; i++) {
+                            for (int j = -1; j <= 1; j++) {
+                                if (i == 0 && j == 0) continue;
+                                
+                                int rx = px + static_cast<int>(i * cos_r - j * sin_r);
+                                int ry = py + static_cast<int>(i * sin_r + j * cos_r);
+                                
+                                if (rx >= 0 && rx < matrix_width && ry >= 0 && ry < matrix_height) {
+                                    uint8_t sub_alpha = static_cast<uint8_t>(alpha * 0.6f);
+                                    offscreen_canvas->SetPixel(rx, ry,
+                                                             std::min(255, (int)(p.r * sub_alpha / 255)),
+                                                             std::min(255, (int)(p.g * sub_alpha / 255)),
+                                                             std::min(255, (int)(p.b * sub_alpha / 255)));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Enhanced rain rendering with streaks and splash effects
+                    uint8_t alpha = static_cast<uint8_t>(p.opacity);
+                    
+                    // Draw rain streak
+                    for (int i = 0; i < 3; i++) {
+                        int ry = py - i;
+                        if (ry >= 0 && ry < matrix_height) {
+                            float streak_alpha = alpha * (1.0f - i * 0.3f);
+                            offscreen_canvas->SetPixel(px, ry,
+                                                     std::min(255, (int)(p.r * streak_alpha / 255)),
+                                                     std::min(255, (int)(p.g * streak_alpha / 255)),
+                                                     std::min(255, (int)(p.b * streak_alpha / 255)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const WeatherData &data) {
+    if (!enable_animations->get()) return;
+    
+    // Initialize cloud layers if empty
+    if (cloud_layers.empty()) {
+        for (int i = 0; i < 3; i++) {
+            cloud_layers.push_back({static_cast<float>(rand() % matrix_width), 
+                                   static_cast<float>(10 + rand() % 20)});
+        }
+    }
+    
+    // Update cloud animation
+    cloud_phase += 0.02f * animation_speed_multiplier->get();
+    
+    // Render moving clouds for cloudy weather
+    int code = data.weatherCode;
+    if (code >= 800 && code < 900) { // Cloudy conditions
+        for (size_t i = 0; i < cloud_layers.size(); i++) {
+            auto& cloud = cloud_layers[i];
+            
+            // Move clouds slowly across screen
+            cloud.first += 0.1f * animation_speed_multiplier->get();
+            if (cloud.first > matrix_width + 20) {
+                cloud.first = -20;
+                cloud.second = 10 + rand() % 20;
+            }
+            
+            // Draw soft cloud shape
+            float cloud_intensity = 0.3f + 0.2f * sin(cloud_phase + i);
+            int cloud_width = 15 + i * 3;
+            int cloud_height = 6 + i;
+            
+            for (int x = 0; x < cloud_width; x++) {
+                for (int y = 0; y < cloud_height; y++) {
+                    int px = static_cast<int>(cloud.first) + x - cloud_width/2;
+                    int py = static_cast<int>(cloud.second) + y - cloud_height/2;
+                    
+                    if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
+                        // Distance from cloud center for soft edges
+                        float dist = sqrt(pow(x - cloud_width/2.0f, 2) + pow(y - cloud_height/2.0f, 2));
+                        float edge_factor = std::max(0.0f, 1.0f - dist / (cloud_width/2.0f));
+                        
+                        uint8_t cloud_color = static_cast<uint8_t>(100 * cloud_intensity * edge_factor);
+                        offscreen_canvas->SetPixel(px, py, cloud_color, cloud_color, cloud_color + 20);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix) {
+    if (!enable_lightning->get() || !enable_animations->get()) return;
+    
+    // Trigger lightning for thunderstorm conditions
+    if (lightning_timer > 0) {
+        lightning_timer--;
+        
+        if (lightning_active && lightning_timer > 180) {
+            // Bright flash
+            for (int y = 0; y < matrix_height; y++) {
+                for (int x = 0; x < matrix_width; x++) {
+                    offscreen_canvas->SetPixel(x, y, 255, 255, 200);
+                }
+            }
+        } else if (lightning_active && lightning_timer > 170) {
+            // Draw lightning bolt
+            for (const auto& point : lightning_points) {
+                if (point.first >= 0 && point.first < matrix_width && 
+                    point.second >= 0 && point.second < matrix_height) {
+                    offscreen_canvas->SetPixel(point.first, point.second, 200, 200, 255);
+                }
+            }
+        }
+        
+        if (lightning_timer <= 0) {
+            lightning_active = false;
+        }
+    }
+    
+    // Randomly trigger new lightning
+    if (!lightning_active && (rand() % 1800) == 0) { // About every 30 seconds at 60fps
+        lightning_active = true;
+        lightning_timer = 200;
+        
+        // Generate lightning bolt path
+        lightning_points.clear();
+        int x = rand() % matrix_width;
+        int y = 0;
+        
+        while (y < matrix_height) {
+            lightning_points.push_back({x, y});
+            y += 1 + rand() % 3;
+            x += (rand() % 3) - 1; // -1, 0, or 1
+            x = std::max(0, std::min(matrix_width - 1, x));
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const WeatherData &data) {
+    if (!enable_sun_rays->get() || !enable_animations->get() || !data.is_day) return;
+    
+    // Update sun ray rotation
+    sun_ray_rotation += 0.01f * animation_speed_multiplier->get();
+    if (sun_ray_rotation > 2 * M_PI) sun_ray_rotation -= 2 * M_PI;
+    
+    // Draw rotating sun rays for clear/sunny weather
+    int code = data.weatherCode;
+    if (code == 800) { // Clear sky
+        int center_x = matrix_width / 2;
+        int center_y = matrix_height / 4;
+        
+        for (int ray = 0; ray < 8; ray++) {
+            float angle = sun_ray_rotation + ray * M_PI / 4;
+            
+            for (int len = 10; len < 25; len++) {
+                int x = center_x + static_cast<int>(cos(angle) * len);
+                int y = center_y + static_cast<int>(sin(angle) * len);
+                
+                if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                    uint8_t intensity = static_cast<uint8_t>(100 * (1.0f - (len - 10) / 15.0f));
+                    offscreen_canvas->SetPixel(x, y, 255, 200, intensity);
+                }
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const WeatherData &data) {
+    if (!enable_animations->get()) return;
+    
+    int code = data.weatherCode;
+    if (code >= 700 && code < 800) { // Fog/mist conditions
+        // Initialize fog grid if empty
+        if (fog_grid.empty()) {
+            fog_grid.resize(matrix_width);
+            for (auto& col : fog_grid) {
+                col.resize(matrix_height);
+                for (auto& cell : col) {
+                    cell = static_cast<float>(rand() % 100) / 100.0f;
+                }
+            }
+        }
+        
+        // Update fog animation
+        float fog_time = animation_frame * 0.05f * animation_speed_multiplier->get();
+        
+        for (int x = 0; x < matrix_width; x++) {
+            for (int y = 0; y < matrix_height; y++) {
+                // Create rolling fog effect
+                float fog_density = fog_grid[x][y];
+                fog_density += 0.1f * sin(fog_time + x * 0.1f + y * 0.2f);
+                fog_density = std::max(0.0f, std::min(1.0f, fog_density));
+                
+                uint8_t fog_color = static_cast<uint8_t>(50 + fog_density * 100);
+                offscreen_canvas->SetPixel(x, y, fog_color, fog_color, fog_color + 20);
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, const WeatherData &data) {
+    if (!enable_rainbow->get() || !enable_animations->get()) return;
+    
+    // Show rainbow after rain
+    int code = data.weatherCode;
+    if ((code >= 500 && code < 600) && data.is_day) { // Light rain during day
+        float rainbow_time = animation_frame * 0.02f;
+        
+        // Draw subtle rainbow arc
+        int center_x = matrix_width / 2;
+        int center_y = matrix_height;
+        int radius = matrix_height * 0.8f;
+        
+        for (float angle = M_PI * 0.2f; angle < M_PI * 0.8f; angle += 0.1f) {
+            int x = center_x + static_cast<int>(cos(angle) * radius);
+            int y = center_y - static_cast<int>(sin(angle) * radius);
+            
+            if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                // Calculate rainbow color based on angle
+                float hue = (angle - M_PI * 0.2f) / (M_PI * 0.6f) * 360.0f;
+                float intensity = 0.3f + 0.2f * sin(rainbow_time);
+                
+                uint8_t r, g, b;
+                // Simple HSV to RGB conversion for rainbow
+                float c = intensity;
+                float x_val = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
+                float m = 0;
+                
+                if (hue < 60) { r = c * 255; g = x_val * 255; b = 0; }
+                else if (hue < 120) { r = x_val * 255; g = c * 255; b = 0; }
+                else if (hue < 180) { r = 0; g = c * 255; b = x_val * 255; }
+                else if (hue < 240) { r = 0; g = x_val * 255; b = c * 255; }
+                else if (hue < 300) { r = x_val * 255; g = 0; b = c * 255; }
+                else { r = c * 255; g = 0; b = x_val * 255; }
+                
+                offscreen_canvas->SetPixel(x, y, r, g, b);
+            }
+        }
+    }
+}
+
+void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix) {
+    if (!enable_aurora->get() || !enable_animations->get()) return;
+    
+    // Render aurora effect for very cold temperatures or at night
+    if (!data.is_day && data.temperature.find("-") != std::string::npos) {
+        float aurora_time = animation_frame * 0.03f * animation_speed_multiplier->get();
+        
+        for (int x = 0; x < matrix_width; x++) {
+            for (int y = 0; y < matrix_height / 2; y++) {
+                // Create flowing aurora waves
+                float wave1 = sin(aurora_time + x * 0.2f + y * 0.1f);
+                float wave2 = sin(aurora_time * 1.3f + x * 0.15f);
+                float intensity = (wave1 + wave2) * 0.3f + 0.4f;
+                intensity *= (1.0f - static_cast<float>(y) / matrix_height);
+                
+                if (intensity > 0.2f) {
+                    // Green-blue aurora colors
+                    uint8_t r = static_cast<uint8_t>(intensity * 50);
+                    uint8_t g = static_cast<uint8_t>(intensity * 200);
+                    uint8_t b = static_cast<uint8_t>(intensity * 150);
+                    
+                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                }
+            }
+        }
+    }
 }

@@ -1,5 +1,7 @@
 #include "ExampleScenes.h"
 #include "scenes/ColorPulseScene.h"
+#include "scenes/PropertyDemoScene.h"
+#include "scenes/RenderingDemoScene.h"
 
 extern "C" PLUGIN_EXPORT ExampleScenes *createExampleScenes() {
     return new ExampleScenes();
@@ -20,6 +22,8 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> Example
     };
 
     scenes.push_back({new Scenes::ColorPulseSceneWrapper(), deleteScene});
+    scenes.push_back({new Scenes::PropertyDemoSceneWrapper(), deleteScene});
+    scenes.push_back({new Scenes::RenderingDemoSceneWrapper(), deleteScene});
     return scenes;
 }
 

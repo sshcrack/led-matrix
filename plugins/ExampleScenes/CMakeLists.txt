@@ -3,4 +3,8 @@ register_plugin(ExampleScenes
         matrix/ExampleScenes.h
         matrix/scenes/ColorPulseScene.cpp
         matrix/scenes/ColorPulseScene.h
+        matrix/scenes/PropertyDemoScene.cpp
+        matrix/scenes/PropertyDemoScene.h
+        matrix/scenes/RenderingDemoScene.cpp
+        matrix/scenes/RenderingDemoScene.h
 )
