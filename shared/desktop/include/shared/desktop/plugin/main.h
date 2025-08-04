@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include "shared/desktop/WebsocketClient.h"
 #include <string>
 #include <imgui.h>
 #include <nlohmann/json.hpp>
@@ -46,16 +45,7 @@ namespace Plugins
         virtual void udp_init() {}
 
         virtual void on_websocket_message(const std::string message) {}
-        void send_websocket_message(const std::string &message)
-        {
-            if (WebsocketClient::instance() == nullptr)
-            {
-                spdlog::warn("WebsocketClient instance is null, cannot send message: {}", message);
-                return;
-            }
-
-            WebsocketClient::instance()->webSocket.send("msg:" + get_plugin_name() + ":" + message);
-        }
+        void send_websocket_message(const std::string &message);
 
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet
         [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(const std::string sceneName)
