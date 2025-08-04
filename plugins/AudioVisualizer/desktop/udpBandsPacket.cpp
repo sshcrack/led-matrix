@@ -12,7 +12,7 @@ CompactAudioPacket::CompactAudioPacket(const std::vector<float> &bands, bool int
     // Set flags based on configuration
     // Bit 0: interpolatedLog
     // Bit 1: beatDetected
-    flags = (interpolatedLog ? 1 : 0) | (beatDetected ? 2 : 0);
+    flags = (interpolatedLog ? 0x01 : 0) | (beatDetected ? 0x02 : 0);
 
     // Convert float bands to uint8_t (0-255) for compactness
     this->bands.reserve(numBands);
