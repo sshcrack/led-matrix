@@ -64,19 +64,15 @@ int main(int argc, char *argv[])
         filesystem::create_directory(Constants::root_dir);
     }
 
+    Constants::global_post_processor = new PostProcessor();
+    spdlog::info("Post-processor initialized");
+
     debug("Loading plugins...");
     const auto pl = PluginManager::instance();
     pl->initialize();
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
-
-    // Initialize global post-processor
-    if (!Constants::global_post_processor)
-    {
-        Constants::global_post_processor = new PostProcessor();
-        spdlog::info("Post-processor initialized");
-    }
 
     for (const auto &item : pl->get_plugins())
     {
@@ -195,12 +191,14 @@ int main(int argc, char *argv[])
     info("Saving config...");
     config->save();
 
+    delete Constants::global_post_processor;
+
     debug("Joining control thread...");
     control_thread.join();
 
     pl->delete_references();
 
-    debug("Deleting config...");
+    debug("Destroying config instance...");
     delete config;
 
     debug("Terminating plugin loader...");
