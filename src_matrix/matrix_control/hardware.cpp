@@ -87,6 +87,13 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
         }
     }
 
+    // Cleanup post-processor
+    if (Constants::global_post_processor) {
+        delete Constants::global_post_processor;
+        Constants::global_post_processor = nullptr;
+        spdlog::info("Post-processor cleaned up");
+    }
+
     // Finished. Shut down the RGB matrix.
     delete matrix;
     info("Finished, shutting down...");

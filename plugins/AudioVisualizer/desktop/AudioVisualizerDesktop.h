@@ -3,11 +3,15 @@
 #include "config.h"
 #include "record.h"
 #include "AudioProcessor.h"
+#include "BeatDetector.h"
 #include "frequency_analyzer/factory.h"
 #include "frequency_analyzer/FrequencyAnalyzer.h"
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <vector>
+#include <deque>
+#include <chrono>
+#include <mutex>
 #include "../../../thirdparty/implot/implot.h"
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
@@ -46,6 +50,11 @@ private:
 
     std::shared_mutex lastErrorMutex;
     std::string lastError;
+    
+    // Beat detection
+    std::unique_ptr<BeatDetector> beatDetector;
+    bool beat_detected;
+    std::mutex beat_mutex;
 
 protected:
     void addConnectionSettings();
@@ -53,4 +62,5 @@ protected:
     void addAudioSettings();
     void addDeviceSettings();
     void addVisualizer();
+    void addBeatDetectionSettings();
 };

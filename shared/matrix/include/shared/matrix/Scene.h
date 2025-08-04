@@ -44,7 +44,6 @@ namespace Scenes {
             return target_fps;
         }
 
-        virtual bool should_render_frame();
         virtual void wait_until_next_frame();
 
         void add_property(const std::shared_ptr<Plugins::PropertyBase> &property) {
@@ -59,6 +58,7 @@ namespace Scenes {
         }
 
     public:
+        /// If this variable is set to a nullptr, this plugin will need to render directly onto the matrix and the offscreen_canvas will not get swapped with the matrix.
         FrameCanvas *offscreen_canvas = nullptr;
 
         Scene();
@@ -84,6 +84,7 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
 
+        /// Set l_offscreen_canvas to nullptr if you are directly rendering onto the matrix.
         virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
 
         virtual void after_render_stop(RGBMatrixBase *matrix);

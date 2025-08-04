@@ -1,5 +1,6 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/post_processor.h"
 #include <nlohmann/json.hpp>
 #include <utility>
 
@@ -17,6 +18,7 @@
 
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
+#include <shared/matrix/canvas_consts.h>
 
 using namespace spdlog;
 using namespace std;
@@ -69,6 +71,13 @@ int main(int argc, char *argv[])
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
 
+    // Initialize global post-processor
+    if (!Constants::global_post_processor)
+    {
+        Constants::global_post_processor = new PostProcessor();
+        spdlog::info("Post-processor initialized");
+    }
+
     for (const auto &item : pl->get_plugins())
     {
         const auto err = item->before_server_init();
@@ -76,6 +85,12 @@ int main(int argc, char *argv[])
         {
             error(err.value());
             std::exit(-1);
+        }
+
+        auto effects = item->create_effects();
+        for (auto& effect : effects)
+        {
+            Constants::global_post_processor->register_effect(std::move(effect));
         }
     }
 

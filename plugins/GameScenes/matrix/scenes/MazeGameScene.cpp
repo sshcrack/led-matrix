@@ -51,20 +51,19 @@ namespace Scenes {
     }
 
     bool MazeGameScene::render(RGBMatrixBase *matrix) {
-        if (should_render_frame()) {
-            if (!generation_complete) {
-                generation_complete = hunt_and_kill_step();
-            } else if (!solving_complete) {
-                solving_complete = solve_step();
-            }
+        wait_until_next_frame();
+        if (!generation_complete) {
+            generation_complete = hunt_and_kill_step();
+        } else if (!solving_complete) {
+            solving_complete = solve_step();
+        }
 
-            draw_maze();
+        draw_maze();
+
+        if (solving_complete) {
             offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
-
-            if (solving_complete) {
-                SleepMillis(2000);
-                return false;
-            }
+            SleepMillis(2000);
+            return false;
         }
 
         return true;

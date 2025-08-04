@@ -115,7 +115,6 @@ namespace AmbientScenes {
         }
 
         time += 1.0f / 60.0f;
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
         return true;
     }
 
