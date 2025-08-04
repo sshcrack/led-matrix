@@ -51,12 +51,13 @@ jobs:
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
         with:
+          vcpkgDirectory: '${{ github.workspace }}/../vcpkg'
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
       - name: Add NuGet sources (Linux)
         shell: bash
         env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          VCPKG_EXE: ${{ github.workspace }}/../vcpkg/vcpkg
           USERNAME: sshcrack
           FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
         run: |
