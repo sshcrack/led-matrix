@@ -9,7 +9,7 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 
 **✨ Perfect for makers, developers, and digital artists ✨**
 
-> **🎯 Recommended:** 128x128 matrix (four 64x64 panels) + Raspberry Pi 4 for optimal results!
+> **🎯 Recommended:** 128x128 matrix + Raspberry Pi 4 for optimal results!
 
 [![GitHub stars](https://img.shields.io/github/stars/sshcrack/led-matrix?style=for-the-badge)](https://github.com/sshcrack/led-matrix/stargazers)
 [![License](https://img.shields.io/github/license/sshcrack/led-matrix?style=for-the-badge)](LICENSE)
