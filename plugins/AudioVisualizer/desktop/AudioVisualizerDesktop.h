@@ -35,6 +35,7 @@ public:
         return PLUGIN_NAME;
     }
 
+    void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn, ImGuiMemFreeFunc*free_fn, void **user_data) override;
 private:
     ImPlotContext *implotContext = nullptr;
 

@@ -48,7 +48,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 1.9.0)
+project(main VERSION 1.9.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Define version macros for compile-time access
