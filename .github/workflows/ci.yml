@@ -183,10 +183,9 @@ jobs:
           CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
 
   build-react-native:
-    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{{ github.event_name == 'push' || github.event_name == 'pull_request' }} && {{{ contains(join(github.event.head_commit.modified, ','), 'react-native/') || contains(join(github.event.head_commit.added, ','), 'react-native/') || contains(join(github.event.head_commit.removed, ','), 'react-native/') }}}}
     runs-on: ubuntu-latest
     # Only run if files in react-native/ changed
-    if: ${{ contains(join(github.event.head_commit.modified, ','), 'react-native/') || contains(join(github.event.head_commit.added, ','), 'react-native/') || contains(join(github.event.head_commit.removed, ','), 'react-native/') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
