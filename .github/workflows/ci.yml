@@ -1,7 +1,7 @@
+# filepath: .github/workflows/ci.yml
 name: CI
 
 on:
-  workflow_dispatch:
   push:
     branches: [master]
   pull_request:
@@ -183,7 +183,7 @@ jobs:
           CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
 
   build-react-native:
-    if: ${{{ github.event_name == 'push' || github.event_name == 'pull_request' }} && {{{ contains(join(github.event.head_commit.modified, ','), 'react-native/') || contains(join(github.event.head_commit.added, ','), 'react-native/') || contains(join(github.event.head_commit.removed, ','), 'react-native/') }}}}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && (contains(join(github.event.head_commit.modified, ','), 'react-native/') || contains(join(github.event.head_commit.added, ','), 'react-native/') || contains(join(github.event.head_commit.removed, ','), 'react-native/')) }}
     runs-on: ubuntu-latest
     # Only run if files in react-native/ changed
     steps:
@@ -215,7 +215,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup EAS
+      - name:  Setup EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
