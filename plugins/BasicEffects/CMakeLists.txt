@@ -1,4 +1,4 @@
 register_plugin(BasicEffects
-    BasicEffects.cpp
-    BasicEffects.h
+    matrix/BasicEffects.cpp
+    matrix/BasicEffects.h
 )
