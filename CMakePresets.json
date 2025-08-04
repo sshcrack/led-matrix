@@ -55,6 +55,9 @@
             "cacheVariables": {
                 "DESKTOP_DEBUG_CONSOLE": true
             },
+            "environment": {
+                "TRIPLET": "x64-windows"
+            },
             "inherits": "desktop"
         }
     ],

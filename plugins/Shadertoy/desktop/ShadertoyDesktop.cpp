@@ -59,6 +59,12 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
     currData = data;
 }
 
+void ShadertoyDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn,
+    ImGuiMemFreeFunc*free_fn, void **user_data) {
+    ImGui::SetCurrentContext(im_gui_context);
+    ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
+}
+
 void ShadertoyDesktop::render()
 {
     if (!initError.empty())
