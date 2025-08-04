@@ -3,6 +3,7 @@
 #include "config.h"
 #include "record.h"
 #include "AudioProcessor.h"
+#include "BeatDetector.h"
 #include "frequency_analyzer/factory.h"
 #include "frequency_analyzer/FrequencyAnalyzer.h"
 #include <nlohmann/json.hpp>
@@ -50,9 +51,8 @@ private:
     std::shared_mutex lastErrorMutex;
     std::string lastError;
     
-    // Beat detection for desktop
-    std::deque<float> energy_history;
-    std::chrono::steady_clock::time_point last_beat_time;
+    // Beat detection
+    std::unique_ptr<BeatDetector> beatDetector;
     bool beat_detected;
     std::mutex beat_mutex;
 
@@ -62,8 +62,5 @@ protected:
     void addAudioSettings();
     void addDeviceSettings();
     void addVisualizer();
-    
-    // Beat detection methods
-    bool detect_beat(const std::vector<float>& audio_data);
-    float calculate_energy(const std::vector<float>& audio_data);
+    void addBeatDetectionSettings();
 };
