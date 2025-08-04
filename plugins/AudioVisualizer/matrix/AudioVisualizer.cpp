@@ -4,6 +4,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <shared/matrix/canvas_consts.h>
 
 using namespace Scenes;
 
@@ -39,6 +40,7 @@ AudioVisualizer::AudioVisualizer() : last_timestamp(0), interpolated_log(false)
 {
     current_audio_data.resize(64);
     std::ranges::fill(current_audio_data, 0);
+    last_beat_time = std::chrono::steady_clock::now();
 }
 
 std::optional<string> AudioVisualizer::before_server_init()
@@ -57,12 +59,6 @@ std::vector<uint8_t> AudioVisualizer::get_audio_data()
 {
     std::lock_guard<std::mutex> lock(audio_data_mutex);
     return current_audio_data;
-}
-
-bool AudioVisualizer::get_interpolated_log_state()
-{
-    std::lock_guard<std::mutex> lock(audio_data_mutex);
-    return interpolated_log;
 }
 
 uint32_t AudioVisualizer::get_last_timestamp()
@@ -104,6 +100,8 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
 
     // Extract bit 0 of flags which indicates if interpolated_log is enabled
     bool is_interpolated_log = (flags & 0x01) != 0;
+    // Extract bit 1 of flags which indicates if beat was detected
+    bool is_beat_detected = (flags & 0x02) != 0;
 
     // Update audio data
     {
@@ -111,6 +109,11 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
         current_audio_data.assign(data + 6, data + 6 + num_bands);
         last_timestamp = timestamp;
         interpolated_log = is_interpolated_log;
+        
+        // Set beat detection flag from desktop application
+        if (is_beat_detected) {
+            Constants::global_post_processor->add_effect("flash", 0.4f, 0.8f);
+        }
     }
 
     return true;

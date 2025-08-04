@@ -5,6 +5,7 @@
 #include <thread>
 #include <regex>
 #include "spdlog/spdlog.h"
+#include "shared/matrix/canvas_consts.h"
 #include <random>
 
 using namespace spdlog;
@@ -30,6 +31,11 @@ void SleepMillis(tmillis_t milli_seconds)
         if (skip_image || exit_canvas_update)
         {
             skip_image.store(false);
+            break;
+        }
+
+        if(Constants::isRenderingSceneInitially)
+        {
             break;
         }
     }

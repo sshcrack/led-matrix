@@ -32,9 +32,7 @@ bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
         }
     }
 
-    if (should_render_frame())
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
-
+    wait_until_next_frame();
     return true;
 }
 

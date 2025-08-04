@@ -7,6 +7,8 @@ register_plugin(AudioVisualizer
         desktop/config.h
         desktop/AudioVisualizerDesktop.cpp
         desktop/AudioVisualizerDesktop.h
+        desktop/BeatDetector.cpp
+        desktop/BeatDetector.h
         desktop/record.cpp
         desktop/record.h
         desktop/udpBandsPacket.cpp

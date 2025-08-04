@@ -3,6 +3,8 @@
 #include "shared/matrix/plugin/main.h"
 #include <mutex>
 #include <vector>
+#include <deque>
+#include <chrono>
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
@@ -13,7 +15,10 @@ class AudioVisualizer : public BasicPlugin {
     std::vector<uint8_t> current_audio_data;
     uint32_t last_timestamp;
     bool interpolated_log;
-
+    
+    // Beat detection members
+    std::deque<float> energy_history;
+    std::chrono::steady_clock::time_point last_beat_time;
 public:
     AudioVisualizer();
 
@@ -28,12 +33,10 @@ public:
     // Method to get audio data for scenes
     std::vector<uint8_t> get_audio_data();
 
-    bool get_interpolated_log_state();
-
     uint32_t get_last_timestamp();
 
-    bool on_udp_packet(const uint8_t pluginId, const uint8_t *data,
-                       const size_t size) override;
+    bool on_udp_packet(uint8_t pluginId, const uint8_t *data,
+                       size_t size) override;
 
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
 };

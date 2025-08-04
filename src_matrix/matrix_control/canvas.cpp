@@ -5,14 +5,17 @@
 #include <shared/matrix/server/common.h>
 
 #include "shared/matrix/utils/utils.h"
+#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
 using namespace spdlog;
 
 using rgb_matrix::RGBMatrixBase;
+
 
 FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
     const auto preset = config->get_curr();
@@ -78,9 +81,14 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
         }
 
-        scene->offscreen_canvas = pCanvas;
+        if(scene->offscreen_canvas != nullptr)
+            scene->offscreen_canvas = pCanvas;
+
+        Constants::isRenderingSceneInitially = true;
         while (GetTimeInMillis() < end_ms) {
             const auto should_continue = scene->render(matrix);
+            Constants::isRenderingSceneInitially = false;
+
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
                 // I removed this log, this seems to spam if there is no scene to display
@@ -88,11 +96,20 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 break;
             }
 
+            // Check for beat detection from any plugin and trigger post-processing
+            if (Constants::global_post_processor && scene->offscreen_canvas != nullptr) {
+                Constants::global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
+            }
+
+            if(scene->offscreen_canvas != nullptr && should_continue) {
+                scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
+            }
             // SleepMillis(10);
         }
 
         scene->after_render_stop(matrix);
-        pCanvas = scene->offscreen_canvas;
+        if(scene->offscreen_canvas != nullptr)
+            pCanvas = scene->offscreen_canvas;
     }
 
     return pCanvas;

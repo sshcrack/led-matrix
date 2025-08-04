@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/data.cpp
         src/shared/matrix/Scene.cpp
         src/shared/matrix/post.cpp
+        src/shared/matrix/post_processor.cpp
         src/shared/matrix/utils/utils.cpp
         src/shared/matrix/utils/shared.cpp
         src/shared/matrix/utils/image_fetch.cpp
