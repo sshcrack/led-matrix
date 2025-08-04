@@ -127,7 +127,7 @@ static void to_json(json &j, const BeatDetectionConfig &config)
         {"spectralFluxThreshold", config.spectralFluxThreshold},
         {"hfcThreshold", config.hfcThreshold}};
 }
-{
+
 static void from_json(const json &j, AudioVisualizerConfig &config)
 {
     AudioVisualizerConfig defaults;
