@@ -57,7 +57,7 @@ jobs:
       - name: Add NuGet sources (Linux)
         shell: bash
         env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          VCPKG_EXE: ${{ github.workspace }}/../vcpkg/vcpkg
           USERNAME: sshcrack
           FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
         run: |
