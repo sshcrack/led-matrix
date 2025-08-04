@@ -1,13 +1,11 @@
 #include "BasicEffects.h"
 #include "spdlog/spdlog.h"
+#include "shared/matrix/canvas_consts.h"
 #include <cmath>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-// Forward declaration of global post processor
-extern class PostProcessor* global_post_processor;
 
 using namespace Plugins;
 
@@ -33,9 +31,10 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> BasicEffects::cr
 
 std::optional<string> BasicEffects::before_server_init() {
     // Register our effects with the global post processor
-    if (global_post_processor) {
-        global_post_processor->register_effect(std::make_unique<FlashEffect>());
-        global_post_processor->register_effect(std::make_unique<RotateEffect>());
+    if (Constants::global_post_processor) {
+        Constants::global_post_processor->register_effect(std::make_unique<FlashEffect>());
+        Constants::global_post_processor->register_effect(std::make_unique<RotateEffect>());
+
         spdlog::info("Registered basic post-processing effects: flash, rotate");
     } else {
         spdlog::error("Global post processor not available - cannot register effects");

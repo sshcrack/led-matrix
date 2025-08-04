@@ -14,6 +14,5 @@ using rgb_matrix::RGBMatrixBase;
 using rgb_matrix::StreamReader;
 
 // Global post-processor instance
-extern PostProcessor* global_post_processor;
 
 FrameCanvas *update_canvas(RGBMatrixBase * matrix, FrameCanvas *pCanvas);

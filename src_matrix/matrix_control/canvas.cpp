@@ -8,6 +8,7 @@
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -15,8 +16,6 @@ using namespace spdlog;
 
 using rgb_matrix::RGBMatrixBase;
 
-// Global post-processor instance
-PostProcessor* global_post_processor = nullptr;
 
 FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
     const auto preset = config->get_curr();
@@ -98,33 +97,8 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             }
 
             // Check for beat detection from any plugin and trigger post-processing
-            if (global_post_processor) {
-                auto plugins = Plugins::PluginManager::instance()->get_plugins();
-                for (auto &plugin : plugins) {
-                    if (plugin->is_beat_detected()) {
-                        // Add flash effect for beats (user can configure this later)
-                        global_post_processor->add_effect(PostProcessType::Flash, 0.4f, 0.8f);
-                        plugin->clear_beat_flag();
-                        
-                        // Send WebSocket notification for beat detection
-                        {
-                            std::shared_lock lock(Server::registryMutex);
-                            for (const auto ws_handle: Server::registry | std::views::values) {
-                                restinio::websocket::basic::message_t message;
-                                message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
-                                message.set_payload("beat_detected");
-                                ws_handle->send_message(message);
-                            }
-                        }
-                        
-                        break; // Only process one beat per frame
-                    }
-                }
-                
-                // Apply post-processing effects to the canvas
-                if(scene->offscreen_canvas != nullptr) {
-                    global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
-                }
+            if (Constants::global_post_processor && scene->offscreen_canvas != nullptr) {
+                Constants::global_post_processor->process_canvas(matrix, scene->offscreen_canvas);
             }
 
             if(scene->offscreen_canvas != nullptr && should_continue) {

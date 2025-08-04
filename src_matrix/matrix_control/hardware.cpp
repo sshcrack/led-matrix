@@ -30,8 +30,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
     string last_scheduled_preset = "";
     
     // Initialize global post-processor
-    if (!global_post_processor) {
-        global_post_processor = new PostProcessor();
+    if (!Constants::global_post_processor) {
+        Constants::global_post_processor = new PostProcessor();
         spdlog::info("Post-processor initialized");
     }
     
@@ -95,9 +95,9 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
     }
 
     // Cleanup post-processor
-    if (global_post_processor) {
-        delete global_post_processor;
-        global_post_processor = nullptr;
+    if (Constants::global_post_processor) {
+        delete Constants::global_post_processor;
+        Constants::global_post_processor = nullptr;
         spdlog::info("Post-processor cleaned up");
     }
 

@@ -119,11 +119,6 @@
     },
     "debug.onTaskErrors": "abort",
     "lldb.verboseLogging": true,
-    "cmake.configureArgs": [
-        "-DVCPKG_TARGET_TRIPLET=",
-        "-DVCPKG_APPLOCAL_DEPS=ON",
-        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON"
-    ],
     "vcpkg.general.enable": true,
     "vcpkg.target.hostTriplet": "x64-linux",
     "vcpkg.target.defaultTriplet": "",
