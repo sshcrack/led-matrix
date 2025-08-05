@@ -72,9 +72,9 @@ void RenderingDemoScene::renderPixelManipulation() {
             pattern = (pattern + 1.0f) / 2.0f; // Normalize to 0-1
             
             // Mix colors based on pattern
-            uint8_t r = static_cast<uint8_t>(c1.r() * pattern + c2.r() * (1.0f - pattern));
-            uint8_t g = static_cast<uint8_t>(c1.g() * pattern + c2.g() * (1.0f - pattern));
-            uint8_t b = static_cast<uint8_t>(c1.b() * pattern + c2.b() * (1.0f - pattern));
+            uint8_t r = static_cast<uint8_t>(c1.r * pattern + c2.r * (1.0f - pattern));
+            uint8_t g = static_cast<uint8_t>(c1.g * pattern + c2.g * (1.0f - pattern));
+            uint8_t b = static_cast<uint8_t>(c1.b * pattern + c2.b * (1.0f - pattern));
             
             setPixelSafe(x, y, r, g, b);
         }
@@ -91,7 +91,7 @@ void RenderingDemoScene::renderGeometricPatterns() {
     
     // Rotating circle
     float radius = 10 + 5 * sin(time);
-    drawCircle(center_x, center_y, static_cast<int>(radius), c1.r(), c1.g(), c1.b());
+    drawCircle(center_x, center_y, static_cast<int>(radius), c1.r, c1.g, c1.b);
     
     // Rotating lines
     for (int i = 0; i < 6; i++) {
@@ -99,7 +99,7 @@ void RenderingDemoScene::renderGeometricPatterns() {
         int x1 = center_x + static_cast<int>(cos(angle) * 15);
         int y1 = center_y + static_cast<int>(sin(angle) * 15);
         
-        drawLine(center_x, center_y, x1, y1, c2.r(), c2.g(), c2.b());
+        drawLine(center_x, center_y, x1, y1, c2.r, c2.g, c2.b);
     }
     
     // Corner squares
@@ -110,7 +110,7 @@ void RenderingDemoScene::renderGeometricPatterns() {
         
         for (int dx = 0; dx < square_size; dx++) {
             for (int dy = 0; dy < square_size; dy++) {
-                setPixelSafe(x + dx, y + dy, c1.r(), c1.g(), c1.b());
+                setPixelSafe(x + dx, y + dy, c1.r, c1.g, c1.b);
             }
         }
     }
@@ -120,8 +120,8 @@ void RenderingDemoScene::renderColorInterpolation() {
     // Demonstrate smooth color transitions
     auto c1 = color1->get();
     auto c2 = color2->get();
-    rgb_matrix::Color color1_rgb = {c1.r(), c1.g(), c1.b()};
-    rgb_matrix::Color color2_rgb = {c2.r(), c2.g(), c2.b()};
+    rgb_matrix::Color color1_rgb = {c1.r, c1.g, c1.b};
+    rgb_matrix::Color color2_rgb = {c2.r, c2.g, c2.b};
     
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {

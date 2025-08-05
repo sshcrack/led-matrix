@@ -4,8 +4,11 @@
 #include <utility>
 #include <optional>
 
-#include "color.h"
+#include "graphics.h"
 #include "shared/matrix/utils/utils.h"
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 namespace Plugins {
     class PropertyBase
@@ -152,7 +155,7 @@ namespace Plugins {
                 return "int16_t";
             else if constexpr (std::is_same_v<T, uint8_t>)
                 return "uint8_t";
-            else if constexpr (std::is_same_v<T, Color>)
+            else if constexpr (std::is_same_v<T, rgb_matrix::Color>)
                 return "color";
             else
                 return typeid(T).name();
@@ -178,4 +181,21 @@ namespace Plugins {
             return max_value;
         }
     };
+}
+
+// Define JSON serialization for rgb_matrix::Color in the nlohmann namespace for better ADL
+namespace nlohmann {
+  template <>
+  struct adl_serializer<rgb_matrix::Color> {
+    static void to_json(json& j, const rgb_matrix::Color& c) {
+      j = (static_cast<uint32_t>(c.r) << 16) | (static_cast<uint32_t>(c.g) << 8) | static_cast<uint32_t>(c.b);
+    }
+
+    static void from_json(const json& j, rgb_matrix::Color& c) {
+      const uint32_t color = j.get<uint32_t>();
+      c.r = (color >> 16) & 0xFF;
+      c.g = (color >> 8) & 0xFF;
+      c.b = color & 0xFF;
+    }
+  };
 }

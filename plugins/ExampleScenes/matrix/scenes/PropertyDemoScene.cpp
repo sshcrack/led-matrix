@@ -29,9 +29,9 @@ bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 
                 if (draw_pixel) {
                     // Interpolate between primary and secondary colors
-                    uint8_t r = static_cast<uint8_t>(primary.r() * pulse + secondary.r() * (1.0f - pulse));
-                    uint8_t g = static_cast<uint8_t>(primary.g() * pulse + secondary.g() * (1.0f - pulse));
-                    uint8_t b = static_cast<uint8_t>(primary.b() * pulse + secondary.b() * (1.0f - pulse));
+                    uint8_t r = static_cast<uint8_t>(primary.r * pulse + secondary.r * (1.0f - pulse));
+                    uint8_t g = static_cast<uint8_t>(primary.g * pulse + secondary.g * (1.0f - pulse));
+                    uint8_t b = static_cast<uint8_t>(primary.b * pulse + secondary.b * (1.0f - pulse));
                     
                     offscreen_canvas->SetPixel(x, y, r, g, b);
                 }
@@ -45,14 +45,14 @@ bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
         for (int i = 0; i < border_size; i++) {
             // Top and bottom borders
             for (int x = 0; x < width; x++) {
-                offscreen_canvas->SetPixel(x, i, border_color.r(), border_color.g(), border_color.b());
-                offscreen_canvas->SetPixel(x, height - 1 - i, border_color.r(), border_color.g(), border_color.b());
+                offscreen_canvas->SetPixel(x, i, border_color.r, border_color.g, border_color.b);
+                offscreen_canvas->SetPixel(x, height - 1 - i, border_color.r, border_color.g, border_color.b);
             }
             
             // Left and right borders
             for (int y = 0; y < height; y++) {
-                offscreen_canvas->SetPixel(i, y, border_color.r(), border_color.g(), border_color.b());
-                offscreen_canvas->SetPixel(width - 1 - i, y, border_color.r(), border_color.g(), border_color.b());
+                offscreen_canvas->SetPixel(i, y, border_color.r, border_color.g, border_color.b);
+                offscreen_canvas->SetPixel(width - 1 - i, y, border_color.r, border_color.g, border_color.b);
             }
         }
     } else {
@@ -63,9 +63,9 @@ bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
             float intensity = static_cast<float>(y) / height;
             
             for (int x = 0; x < width; x++) {
-                uint8_t r = static_cast<uint8_t>(base_color.r() * intensity);
-                uint8_t g = static_cast<uint8_t>(base_color.g() * intensity);
-                uint8_t b = static_cast<uint8_t>(base_color.b() * intensity);
+                uint8_t r = static_cast<uint8_t>(base_color.r * intensity);
+                uint8_t g = static_cast<uint8_t>(base_color.g * intensity);
+                uint8_t b = static_cast<uint8_t>(base_color.b * intensity);
                 
                 offscreen_canvas->SetPixel(x, y, r, g, b);
             }
