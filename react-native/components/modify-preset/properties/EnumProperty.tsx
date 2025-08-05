@@ -24,14 +24,14 @@ interface EnumPropertyData {
 }
 
 // The value for enum properties will be a string (the enum value name)
-export function EnumProperty({ value, defaultVal, propertyName, ...props }: PluginPropertyProps<string>) {
+export function EnumProperty({ value, defaultVal, propertyName, additional, ...props }: PluginPropertyProps<string>) {
     const setValue = usePropertyUpdate(propertyName);
     const title = titleCase(propertyName);
     
     // The enum metadata should be available in the property data
     // For now, we'll assume it's passed via a custom prop or context
     // In practice, this data would come from the backend API
-    const enumData = (props as any).enumData as EnumPropertyData | undefined;
+    const enumData = additional as EnumPropertyData | undefined;
     
     if (!enumData) {
         return (

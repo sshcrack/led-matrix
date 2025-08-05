@@ -13,9 +13,12 @@ import { usePropertyUpdate } from '../SceneContext';
 export type NumberType = "float" | "int"
 
 export default function numberPropertyBuilder(min: number, max: number, number_type: NumberType = "int", millis: boolean = false) {
-    return function NumberProperty({ value, defaultVal, propertyName }: PluginPropertyProps<number>) {
+    return function NumberProperty({ value, defaultVal, propertyName, additional }: PluginPropertyProps<number>) {
         const setValue = usePropertyUpdate(propertyName);
         const title = titleCase(propertyName)
+
+        const minPropVal = additional?.min ?? min;
+        const maxPropVal = additional?.max ?? max;
 
         const valueStr = useMemo(() => {
             let numVal = value
@@ -54,9 +57,9 @@ export default function numberPropertyBuilder(min: number, max: number, number_t
 
                         if (isNaN(int))
                             int = number_type === "float" ? parseFloat(modifiedVal) : parseInt(modifiedVal)
-                        const toSet = isNaN(int) ? defaultVal : Math.max(min, int)
+                        const toSet = isNaN(int) ? defaultVal : Math.max(minPropVal, int)
 
-                        setValue(Math.min(toSet, max))
+                        setValue(Math.min(toSet, maxPropVal))
                     }}
                     value={modifiedVal}
                     onChangeText={(text) => setModifiedVal(text)}

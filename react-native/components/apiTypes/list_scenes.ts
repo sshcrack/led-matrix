@@ -6,6 +6,7 @@ export interface ListScenes {
 export interface Property<T> {
     default_value: T;
     name: string;
+    additional?: any;
     type_id: TypeId
 }
 
