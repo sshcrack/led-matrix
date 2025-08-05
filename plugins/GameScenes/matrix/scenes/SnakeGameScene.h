@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
+#include "graphics.h"
 #include <vector>
 #include <random>
 #include <deque>
@@ -42,6 +43,7 @@ namespace Scenes {
         int win_animation_frame;
         float food_pulse_phase;
         int game_over_flash_timer;
+        int frame_counter = 0;
         
         // AI state
         std::vector<std::vector<int>> distance_map;
@@ -83,8 +85,8 @@ namespace Scenes {
         void renderUI();
         
         // Utility methods
-        RGB getSnakeColor(int segment_index) const;
-        RGB getFoodColor() const;
+        rgb_matrix::Color getSnakeColor(int segment_index) const;
+        rgb_matrix::Color getFoodColor() const;
         Position getNextPosition(const Position& pos, Direction dir) const;
         
     public:
