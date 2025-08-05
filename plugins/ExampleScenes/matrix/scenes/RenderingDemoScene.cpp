@@ -4,11 +4,6 @@
 
 using namespace Scenes;
 
-struct RGB {
-    uint8_t r, g, b;
-    RGB(uint8_t r = 0, uint8_t g = 0, uint8_t b = 0) : r(r), g(g), b(b) {}
-};
-
 RenderingDemoScene::RenderingDemoScene() : rng(std::random_device{}()) {
     set_target_fps(60); // Smooth animations
 }
@@ -125,8 +120,8 @@ void RenderingDemoScene::renderColorInterpolation() {
     // Demonstrate smooth color transitions
     auto c1 = color1->get();
     auto c2 = color2->get();
-    RGB color1_rgb = {c1.r(), c1.g(), c1.b()};
-    RGB color2_rgb = {c2.r(), c2.g(), c2.b()};
+    rgb_matrix::Color color1_rgb = {c1.r(), c1.g(), c1.b()};
+    rgb_matrix::Color color2_rgb = {c2.r(), c2.g(), c2.b()};
     
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {
@@ -144,7 +139,7 @@ void RenderingDemoScene::renderColorInterpolation() {
                 t = (static_cast<int>(t1 * 4) + static_cast<int>(t2 * 4)) % 2;
             }
             
-            RGB result = interpolateColors(color1_rgb, color2_rgb, t);
+            rgb_matrix::Color result = interpolateColors(color1_rgb, color2_rgb, t);
             setPixelSafe(x, y, result.r, result.g, result.b);
         }
     }
@@ -258,7 +253,7 @@ void RenderingDemoScene::drawLine(int x0, int y0, int x1, int y1, uint8_t r, uin
     }
 }
 
-RGB RenderingDemoScene::interpolateColors(const RGB& c1, const RGB& c2, float t) {
+rgb_matrix::Color RenderingDemoScene::interpolateColors(const rgb_matrix::Color& c1, const rgb_matrix::Color& c2, float t) {
     t = std::max(0.0f, std::min(1.0f, t));
     return {
         static_cast<uint8_t>(c1.r * (1.0f - t) + c2.r * t),

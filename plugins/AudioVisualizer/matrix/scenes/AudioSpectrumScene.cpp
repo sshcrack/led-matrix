@@ -301,7 +301,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     return true;
 }
 
-void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<float> &audio_data) {
+void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data) {
     const int width = matrix->width();
     const int height = matrix->height();
     const int center_x = width / 2;
@@ -367,7 +367,7 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *
     }
 }
 
-void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<float> &audio_data) {
+void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data) {
     const int width = matrix->width();
     const int height = matrix->height();
     const int center_x = width / 2;

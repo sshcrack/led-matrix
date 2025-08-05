@@ -55,6 +55,7 @@ void SnakeGameScene::initializeGame() {
 
 bool SnakeGameScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     auto frame = frameTimer.tick();
+    frame_counter++;
     
     // Clear canvas
     offscreen_canvas->Clear();
@@ -65,7 +66,7 @@ bool SnakeGameScene::render(rgb_matrix::RGBMatrixBase *matrix) {
         renderWin();
     } else {
         // Update game at target framerate
-        if (frame.frame % static_cast<int>(get_target_fps() * game_speed) == 0) {
+        if (frame_counter % static_cast<int>(get_target_fps() * game_speed) == 0) {
             updateGame();
         }
         renderGame();
@@ -304,7 +305,7 @@ void SnakeGameScene::renderGame() {
 void SnakeGameScene::renderSnake() {
     for (size_t i = 0; i < snake.size(); i++) {
         const Position& segment = snake[i];
-        RGB color = getSnakeColor(i);
+        rgb_matrix::Color color = getSnakeColor(i);
         
         if (segment.x >= 0 && segment.x < matrix_width && segment.y >= 0 && segment.y < matrix_height) {
             offscreen_canvas->SetPixel(segment.x, segment.y, color.r, color.g, color.b);
@@ -313,7 +314,7 @@ void SnakeGameScene::renderSnake() {
 }
 
 void SnakeGameScene::renderFood() {
-    RGB color = getFoodColor();
+    rgb_matrix::Color color = getFoodColor();
     
     if (food.x >= 0 && food.x < matrix_width && food.y >= 0 && food.y < matrix_height) {
         offscreen_canvas->SetPixel(food.x, food.y, color.r, color.g, color.b);
@@ -390,10 +391,12 @@ void SnakeGameScene::renderWin() {
     }
 }
 
-RGB SnakeGameScene::getSnakeColor(int segment_index) const {
+rgb_matrix::Color SnakeGameScene::getSnakeColor(int segment_index) const {
     if (rainbow_snake->get()) {
         // Rainbow snake - each segment has different color
-        float hue = fmod(segment_index * 30.0f + frameTimer.get_total_time() * 50.0f, 360.0f);
+        // Use frame_counter as a simple time source for animation
+        float time_factor = frame_counter * 0.016f; // Approximate 60fps
+        float hue = fmod(segment_index * 30.0f + time_factor * 50.0f, 360.0f);
         
         // Simple HSV to RGB conversion
         float c = 0.9f;
@@ -418,7 +421,7 @@ RGB SnakeGameScene::getSnakeColor(int segment_index) const {
     }
 }
 
-RGB SnakeGameScene::getFoodColor() const {
+rgb_matrix::Color SnakeGameScene::getFoodColor() const {
     if (animated_food->get()) {
         // Pulsating food
         float pulse = (sin(food_pulse_phase) + 1.0f) / 2.0f;

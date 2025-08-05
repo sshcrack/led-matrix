@@ -4,6 +4,7 @@
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
 #include "shared/matrix/plugin/color.h"
+#include "graphics.h"
 #include <random>
 
 namespace Scenes {
@@ -33,13 +34,13 @@ namespace Scenes {
         void setPixelSafe(int x, int y, uint8_t r, uint8_t g, uint8_t b);
         void drawCircle(int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b);
         void drawLine(int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b);
-        RGB interpolateColors(const RGB& c1, const RGB& c2, float t);
+        rgb_matrix::Color interpolateColors(const rgb_matrix::Color& c1, const rgb_matrix::Color& c2, float t);
         void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
         
         struct Particle {
             float x, y, vx, vy;
             float life, max_life;
-            RGB color;
+            rgb_matrix::Color color;
         };
         std::vector<Particle> particles;
         
