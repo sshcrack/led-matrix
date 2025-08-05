@@ -131,7 +131,7 @@ namespace Plugins {
 
         virtual void dump_to_json(nlohmann::json &j) const = 0;
 
-        virtual void min_max_to_json(nlohmann::json &j) const = 0;
+        virtual void add_additional_data(nlohmann::json &j) const = 0;
 
         [[nodiscard]] virtual std::string get_type_id() const = 0;
 
@@ -243,7 +243,7 @@ namespace Plugins {
             registered = true;
         }
 
-        void min_max_to_json(nlohmann::json &j) const override
+        void add_additional_data(nlohmann::json &j) const override
         {
             if constexpr (std::is_base_of_v<EnumBase, T>) {
                 // For enum types, add enum metadata instead of min/max
