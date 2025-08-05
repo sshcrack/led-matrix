@@ -5,6 +5,23 @@
 #include "shared/matrix/utils/FrameTimer.h"
 
 namespace Scenes {
+    // Demo enums to showcase the enum property system
+    enum class AnimationMode {
+        STATIC = 0,      // No animation  
+        FADE = 1,        // Fade in/out effect
+        PULSE = 2,       // Pulsing effect
+        RAINBOW = 3,     // Color cycling
+        BOUNCE = 4       // Bouncing animation
+    };
+    
+    enum class DisplayPattern {
+        SOLID,           // Solid color fill
+        STRIPES,         // Horizontal stripes
+        CHECKERBOARD,    // Checkerboard pattern
+        GRADIENT,        // Gradient effect
+        SPIRAL           // Spiral pattern
+    };
+
     class PropertyDemoScene : public Scene {
     private:
         FrameTimer frameTimer;
@@ -19,6 +36,10 @@ namespace Scenes {
         
         // Required property example
         PropertyPointer<std::string> required_demo = MAKE_PROPERTY_REQ("required_setting", std::string, "must_be_set");
+        
+        // NEW: Enum property examples
+        PropertyPointer<Plugins::EnumProperty<AnimationMode>> animation_mode = MAKE_ENUM_PROPERTY("animation_mode", AnimationMode, AnimationMode::FADE);
+        PropertyPointer<Plugins::EnumProperty<DisplayPattern>> display_pattern = MAKE_ENUM_PROPERTY("display_pattern", DisplayPattern, DisplayPattern::SOLID);
         
         // Animation state
         float animation_time = 0.0f;
