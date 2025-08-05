@@ -142,7 +142,7 @@ namespace Scenes {
         PropertyPointer<bool> show_border = MAKE_PROPERTY("show_border", bool, true);
         PropertyPointer<bool> gradient_background = MAKE_PROPERTY("gradient_background", bool, true);
         PropertyPointer<bool> show_sunrise_sunset = MAKE_PROPERTY("show_sunrise_sunset", bool, true);
-        PropertyPointer<int> color_theme = MAKE_PROPERTY("color_theme", int, 0); // Default to AUTO
+        PropertyPointer<Plugins::EnumProperty<ColorTheme>> color_theme = MAKE_ENUM_PROPERTY("color_theme", ColorTheme, ColorTheme::AUTO);
         PropertyPointer<bool> reset_stars_on_exit = MAKE_PROPERTY("reset_stars_on_exit", bool, true);
         PropertyPointer<int> shooting_star_chance = MAKE_PROPERTY("shooting_star_chance", int, 2); // Default 2%
         PropertyPointer<int> shooting_star_frame_threshold = MAKE_PROPERTY_MINMAX("shooting_star_random_chance_frame_count", int, 0, 0, get_target_fps());

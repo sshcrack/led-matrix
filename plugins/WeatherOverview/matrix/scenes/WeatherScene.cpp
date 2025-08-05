@@ -604,7 +604,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix) {
     data = data_res.value(); // Store data for animations
 
     // Get the appropriate color based on theme setting
-    RGB theme_color = getThemeColor(static_cast<ColorTheme>(color_theme->get()), data);
+    RGB theme_color = getThemeColor(color_theme->get().get(), data);
 
     // Check if we need to reload images
     if (parser.has_changed() || !images.has_value()) {

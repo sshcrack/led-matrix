@@ -6,6 +6,15 @@
 #include "../AudioVisualizer.h"
 
 namespace Scenes {
+    // Enum for different audio spectrum visualization modes
+    enum class DisplayMode {
+        NORMAL = 0,         // Standard spectrum bars from bottom
+        CENTER_OUT = 1,     // Bars emanate from center outward
+        EDGES_TO_CENTER = 2,// Bars move from edges to center
+        CIRCLE = 3,         // Circular spectrum visualization
+        SPIRAL = 4          // Spiral pattern visualization
+    };
+
     class AudioSpectrumScene : public Scene {
     private:
         FrameTimer frameTimer;
@@ -21,7 +30,7 @@ namespace Scenes {
         PropertyPointer<rgb_matrix::Color> base_color = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(0x00, 0xFF, 0x00)); // Default green
         PropertyPointer<bool> falling_dots = MAKE_PROPERTY("falling_dots", bool, true);
         PropertyPointer<float> dot_fall_speed = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.15f, 0.01f, 1.0f);
-        PropertyPointer<int> display_mode = MAKE_PROPERTY_MINMAX("display_mode", int, 0, 0, 4); // 0=normal, 1=center-out, 2=edges-to-center, 3=circle, 4=spiral
+        PropertyPointer<Plugins::EnumProperty<DisplayMode>> display_mode = MAKE_ENUM_PROPERTY("display_mode", DisplayMode, DisplayMode::NORMAL);
         PropertyPointer<bool> gradient_mode = MAKE_PROPERTY("gradient_mode", bool, false);
         PropertyPointer<rgb_matrix::Color> gradient_color1 = MAKE_PROPERTY("gradient_color1", rgb_matrix::Color, rgb_matrix::Color(0xFF, 0x00, 0x00)); // Red
         PropertyPointer<rgb_matrix::Color> gradient_color2 = MAKE_PROPERTY("gradient_color2", rgb_matrix::Color, rgb_matrix::Color(0x00, 0x00, 0xFF)); // Blue
