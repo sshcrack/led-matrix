@@ -320,31 +320,8 @@ bool MyScene::render(rgb_matrix::RGBMatrixBase *matrix) {
 ```
 
 ## 🖼️ Image Providers
-
-Image providers supply custom images and textures to the system.
-
-### Basic Image Provider
-
-```cpp
-class MyImageProvider : public Plugins::ImageProvider {
-public:
-    std::string get_name() const override {
-        return "my_provider";
-    }
-    
-    std::optional<std::string> get_image_path() override {
-        // Return path to image file
-        return "/path/to/my/image.png";
-    }
-    
-    // Optional: Generate images programmatically
-    std::optional<cv::Mat> get_image() override {
-        cv::Mat image(128, 128, CV_8UC3);
-        // Generate your image...
-        return image;
-    }
-};
-```
+Image Providers used (for now) in the ImageScene, where the user can specify if they want images to be displayed from for example a collection of pictures or from PixelJoint. By registering ImageProviders, you are able to add a new source of images to the led matrix.
+A example for a image provider can be found [here](https://github.com/sshcrack/led-matrix/blob/master/plugins/PixelJoint/matrix/providers/collection.cpp). If you want to add a image provider yourself, you'll also need to edit the react-native app to support that provider.
 
 ## 🎭 Post-Processing Effects
 
