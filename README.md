@@ -168,17 +168,9 @@ Located in the `react-native/` directory with modern TypeScript and native perfo
 
 - **Raspberry Pi 4** (3B+ minimum) for optimal performance
 - **RGB LED matrix panels** with HUB75 interface:
-  - **Ideal**: Four 64x64 panels for 128x128 total resolution
-  - **Alternative**: 32x32, 64x32, or custom sizes supported
+  - **Ideal**: Four 64x64 panels for 128x128 total resolution (multiple 32x32 should also work)
 - **Quality power supply** (5V with sufficient amperage - matrices are power-hungry!)
-- **[Adafruit RGB Matrix Bonnet](https://www.adafruit.com/product/3211)** or [Electrodragon RGB Panel Driver](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-for-raspberry-pi-v2/) for reliable performance
-
-### ⚡ **Matrix Configurations**
-The application intelligently supports various setups:
-- **Single panels**: 32x32, 64x32, 64x64, or custom dimensions
-- **Chained displays**: Multiple panels connected horizontally
-- **Parallel chains**: Up to 3 chains on Pi 3/4, 6 on Compute Module
-- **Mixed configurations**: Different panel sizes and arrangements
+- **[Active-3 Adapter from Electrodragon](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-raspberry-pi/)**, for alternatives [see here](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/adapter/README.md). 
 
 Configure your setup using command-line flags or the configuration file - the system adapts automatically!
 
@@ -222,12 +214,12 @@ chmod +x install_led_matrix.sh
 ```
 
 The script will ask you for your matrix configuration and any optional features. After installation, the service will start automatically.
+You can now access the LED Matrix control at http://<led_matrix_ip>:8080/
 
 ---
 
 ## 🖥️ **Desktop App**
-
-Experience the LED Matrix Controller right on your computer! Our desktop application provides a full-featured interface for developing, testing, and controlling your LED matrix displays without needing physical hardware.
+The Desktop App is used for compute intensive applications, like the AudioVisualizer or the Shadertoy.
 
 ### 📥 **Installation**
 
@@ -246,23 +238,9 @@ Experience the LED Matrix Controller right on your computer! Our desktop applica
    ./bin/main
    ```
 
-### 🎮 **Features**
-- **Matrix Emulator**: See your effects rendered in real-time without hardware
-- **Plugin Testing**: Develop and test plugins locally
-- **Remote Control**: Connect to and control physical matrices over the network
-- **Live Preview**: See changes instantly as you modify settings
-- **Cross-Platform**: Available for Windows and Linux
-
 ### 🔧 **Usage**
-The desktop app automatically starts with emulation mode enabled. You can:
-- Use all the same plugins and effects as the hardware version
-- Connect to remote matrices via the network settings
-- Develop new plugins with instant visual feedback
-- Export configurations to transfer to your Raspberry Pi
+Start the Desktop App, enter your LED Matrix IP address, click "Connect" and you are ready to go!
 
-Perfect for development, demonstrations, and testing new scenes before deploying to hardware!
-
----
 
 ### 🖥️ **Manual Build & Development**
 
@@ -289,50 +267,34 @@ This project uses CMake presets for easy configuration. Available presets:
 **For Raspberry Pi:**
 ```bash
 # Configure and build for Raspberry Pi
-cmake --preset=cross-compile
-cmake --build build --target package
+cmake --preset cross-compile
+cmake --build build --target install
 ```
 
 **For Development/Emulator:**
 ```bash
 # Configure and build emulator version
-cmake --preset=emulator
-cmake --build emulator_build
+cmake --preset emulator
+cmake --build --preset emulator
 ```
 
 **For Desktop App:**
 ```bash
 # Linux desktop app
-cmake --preset=desktop-linux
-cmake --build desktop_build
+cmake --preset desktop-linux
+cmake --build --preset desktop-linux
 
 # Windows desktop app (on Windows)
 cmake --preset=desktop-windows
-cmake --build desktop_build
+cmake --build --preset desktop-windows
 ```
-
-#### **Manual Configuration (Advanced)**
-
-If you need custom configuration, you can still use manual cmake commands:
-
-```bash
-# Basic configuration
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
-
-# Build
-cmake --build build
-
-# Install (optional)
-cmake --install build
-```
-
 #### **Running the Emulator**
 
 Test your scenes without physical hardware using our SDL2-based emulator:
 
 ```bash
 # Run with emulation (after building with emulator preset)
-./emulator_build/main [options]
+./run_emulator.sh
 ```
 
 Perfect for development, testing, and demonstrations!
@@ -416,6 +378,7 @@ All logs output to console with timestamps and color coding for easy reading.
 ## 🌐 **API Reference**
 
 The REST API provides powerful remote control capabilities at `http://<device-ip>:8080/`.
+By default, the main index page will redirect you to the web controller (located at `/web`)
 
 ### 📊 **Core Endpoints**
 
@@ -503,8 +466,6 @@ curl "http://matrix-ip:8080/post_processing/clear"
 
 **Days of Week**: `0` = Sunday, `1` = Monday, ..., `6` = Saturday
 
-> **🌟 Pro Tip:** The API also serves static files from `/web/` for custom web interfaces!
-
 ## 🔧 **Troubleshooting**
 
 ### 🚨 **Common Issues & Solutions**
@@ -518,18 +479,6 @@ curl "http://matrix-ip:8080/post_processing/clear"
 | **Panels not lighting up** | Verify `--led-panel-type` setting (try `FM6126A` or `FM6127`) |
 | **Colors look wrong** | Adjust `--led-multiplexing` settings (try values 0-17) |
 
-### 🔍 **Advanced Debugging**
-
-```bash
-# Show refresh rate for performance monitoring
---led-show-refresh
-
-# Detailed timing information
-SPDLOG_LEVEL=debug ./main
-
-# Test basic functionality
-./main --led-rows=32 --led-cols=64 -D0
-```
 
 > **📚 For hardware-specific issues**, timing problems, or panel compatibility, consult the comprehensive [rpi-rgb-led-matrix troubleshooting guide](https://github.com/hzeller/rpi-rgb-led-matrix#troubleshooting).
 
@@ -554,59 +503,6 @@ This comprehensive guide covers:
 - 🔧 **Advanced Features** - Resource loading, lifecycle hooks, and more
 - 📦 **Building and Testing** - CMake configuration and emulator testing
 - 🎯 **Best Practices** - Performance, error handling, and code organization
-
-### 🏗️ **Quick Plugin Template**
-
-```cpp
-class MyAwesomePlugin : public Plugins::BasicPlugin {
-public:
-    std::string get_plugin_name() const override {
-        return "MyAwesomePlugin";
-    }
-
-protected:
-    std::vector<std::unique_ptr<Plugins::SceneWrapper, void (*)(Plugins::SceneWrapper *)>> 
-        create_scenes() override;
-    
-    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)>> 
-        create_image_providers() override;
-};
-
-// Export plugin
-CREATE_PLUGIN(MyAwesomePlugin)
-```
-
-### 🎨 **Scene Development Example**
-
-Create engaging visual experiences with our scene framework:
-
-```cpp
-class MyScene : public Scenes::Scene {
-private:
-    FrameTimer frameTimer;
-    // Configurable properties - automatically exposed in API
-    PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 1.0f);
-    PropertyPointer<Plugins::Color> color = MAKE_PROPERTY("color", Plugins::Color, Plugins::Color(0xFF0000));
-    
-public:
-    bool render(rgb_matrix::RGBMatrixBase *matrix) override {
-        auto frameTime = frameTimer.tick();
-        float t = frameTime.t * speed->get();
-        
-        // Your rendering logic here
-        return true; // Continue rendering
-    }
-    
-    void register_properties() override {
-        add_property(speed);
-        add_property(color);
-    }
-    
-    std::string get_name() const override { return "my_scene"; }
-    tmillis_t get_default_duration() override { return 15000; }
-    int get_default_weight() override { return 10; }
-};
-```
 
 ### ⚙️ **Advanced Plugin Features**
 
@@ -671,7 +567,6 @@ We welcome contributions! Whether it's a bug fix, new feature, or awesome plugin
 - **Clear variable names** and comprehensive comments
 - **Error handling** with `std::expected` where possible
 - **Thread safety** for multi-threaded operations
-- **Unit tests** for critical functionality
 
 ## 📄 **License**
 See the [LICENSE](LICENSE) file for details.
@@ -689,6 +584,6 @@ See the [LICENSE](LICENSE) file for details.
 
 **🌟 Star this repo if you found it helpful! 🌟**
 
-Made with ❤️ for the LED matrix community
+Made with ❤️ by sshcrack for the LED matrix community
 
 </div>
