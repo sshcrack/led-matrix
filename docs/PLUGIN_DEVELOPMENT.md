@@ -583,13 +583,14 @@ target_link_libraries(AdvancedPlugin external_lib)
 
 ### Study These Plugins
 
-1. **ExampleScenes** - Simple template and basic patterns
-2. **AudioVisualizer** - Real-time data processing and visualization
-3. **WeatherOverview** - External API integration and data display
-4. **GameScenes** - Interactive content and game logic
-5. **FractalScenes** - Mathematical visualizations and complex algorithms
-6. **SpotifyScenes** - OAuth integration and music visualization
-7. **AmbientScenes** - Atmospheric effects and procedural generation
+1. **[ExampleScenes](../plugins/ExampleScenes)** - Simple template and basic patterns
+2. **[AudioVisualizer](../plugins/AudioVisualizer)** - Real-time data processing and visualization
+3. **[WeatherOverview](../plugins/WeatherOverview)** - External API integration and data display
+4. **[GameScenes](../plugins/GameScenes)** - Interactive content and game logic
+5. **[FractalScenes](../plugins/FractalScenes)** - Mathematical visualizations and complex algorithms
+6. **[SpotifyScenes](../plugins/SpotifyScenes)** - OAuth integration and music visualization
+7. **[AmbientScenes](../plugins/AmbientScenes)** - Atmospheric effects and procedural generation
+8. **[Shadertoy](../plugins/Shadertoy)** - Matrix & Desktop communication, pixel data streaming and custom UDP packet sending
 
 ### Quick Examples
 
