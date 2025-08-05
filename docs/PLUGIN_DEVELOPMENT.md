@@ -34,7 +34,6 @@ The LED Matrix system uses a modular plugin architecture that supports both **ma
 |------|-------------|----------|
 | **Matrix Plugins** | Run on the Raspberry Pi controlling the LED matrix | Matrix |
 | **Desktop Plugins** | Run on the desktop application for development/control | Desktop |
-| **Shared Plugins** | Can run on both platforms with different implementations | Both |
 
 ## 🚀 Quick Start
 
@@ -72,7 +71,8 @@ Create your main plugin class inheriting from `BasicPlugin`:
 class MyAwesomePlugin : public Plugins::BasicPlugin {
 public:
     std::string get_plugin_name() const override {
-        return "MyAwesomePlugin";
+        // This macror is automatically set by CMake
+        return PLUGIN_NAME;
     }
 
 protected:
@@ -90,10 +90,12 @@ CREATE_PLUGIN(MyAwesomePlugin)
 ### 3. CMakeLists.txt
 
 ```cmake
-add_plugin_common(
-    TARGET MyAwesomePlugin
-    SOURCES matrix/MyAwesomePlugin.cpp
-            matrix/scenes/MyScene.cpp
+register_plugin(
+    MyAwesomePlugin
+    matrix/MyAwesomePlugin.cpp
+    matrix/scenes/MyScene.cpp
+    DESKTOP
+# Desktop source files here
 )
 ```
 
@@ -153,6 +155,7 @@ Scenes are the core visual components that render animations and effects on the 
 // MyScene.h
 #pragma once
 #include "shared/matrix/Scene.h"
+#include "graphics.h"
 #include "shared/matrix/utils/FrameTimer.h"
 
 namespace Scenes {
@@ -162,7 +165,7 @@ namespace Scenes {
         
         // Configurable properties
         PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 1.0f);
-        PropertyPointer<Plugins::Color> color = MAKE_PROPERTY("color", Plugins::Color, Plugins::Color(0xFF0000));
+        PropertyPointer<rgb_matrix::Color> color = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
         PropertyPointer<bool> rainbow_mode = MAKE_PROPERTY("rainbow_mode", bool, false);
         
     public:
@@ -270,7 +273,7 @@ PropertyPointer<bool> enabled = MAKE_PROPERTY("enabled", bool, true);
 PropertyPointer<std::string> text = MAKE_PROPERTY("text", std::string, "Hello");
 
 // Color properties
-PropertyPointer<Plugins::Color> color = MAKE_PROPERTY("color", Plugins::Color, Plugins::Color(0xFF0000));
+PropertyPointer<rgb_matrix::Color> color = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
 
 // Properties with constraints
 PropertyPointer<int> brightness = MAKE_PROPERTY_MINMAX("brightness", int, 50, 0, 100);
@@ -511,55 +514,50 @@ public:
 
 ```cmake
 # Basic plugin
-add_plugin_common(
-    TARGET MyPlugin
-    SOURCES matrix/MyPlugin.cpp
-            matrix/scenes/Scene1.cpp
-            matrix/scenes/Scene2.cpp
+register_plugin(
+    MyPlugin
+    matrix/MyPlugin.cpp
+    matrix/scenes/Scene1.cpp
+    matrix/scenes/Scene2.cpp
 )
 
-# Plugin with external dependencies
-add_plugin_common(
-    TARGET AdvancedPlugin
-    SOURCES matrix/AdvancedPlugin.cpp
-            matrix/scenes/AdvancedScene.cpp
-    LINK_LIBRARIES external_lib
-    INCLUDE_DIRECTORIES external/include
+# Plugin with external dependencies and desktop sources (after the DESKTOP keyword)
+register_plugin(
+    AdvancedPlugin
+    matrix/AdvancedPlugin.cpp
+    matrix/scenes/AdvancedScene.cpp
+    DESKTOP
+    desktop/MyPlugin.cpp
+    desktop/scenes/DesktopScene.cpp
+    
 )
-
-# Desktop-specific plugin
-if(ENABLE_DESKTOP)
-    add_plugin_desktop(
-        TARGET MyPlugin
-        SOURCES desktop/MyPlugin.cpp
-                desktop/scenes/DesktopScene.cpp
-    )
-endif()
+target_link_libraries(AdvancedPlugin external_lib)
 ```
 
 ### Testing Your Plugin
 
 1. **Build with emulator preset**:
    ```bash
-   cmake --preset=emulator
-   cmake --build emulator_build
+   cmake --preset emulator
+   cmake --preset emulator --build
    ```
 
 2. **Run emulator**:
    ```bash
-   ./emulator_build/main --plugin-path ./emulator_build/plugins
+   ./run_emulator.sh
    ```
 
 3. **Test REST API**:
    ```bash
    curl http://localhost:8080/list_scenes
    curl http://localhost:8080/my_plugin/status
+   # You can also visit http://localhost:8080 in your web browser
    ```
 
 ## 🎯 Best Practices
 
 ### Performance
-- Use `FrameTimer` for consistent animations
+- Use `FrameTimer` for consistent animations (you can also use `wait_until_next_frame()` for rendering at a constant 60fps)
 - Minimize memory allocations in render loops
 - Cache expensive calculations
 - Use efficient pixel access patterns
