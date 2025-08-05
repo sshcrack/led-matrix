@@ -118,3 +118,18 @@ jobs:
       - name: Install React Native dependencies
         working-directory: react-native
         run: pnpm install
+
+      - name: Build React Native web version
+        working-directory: react-native
+        run: pnpm exec expo export --platform web
+
+      - name: Configure emulator
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: emulator
+          configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
+
+      - name: Configure desktop-linux
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: desktop-linux
