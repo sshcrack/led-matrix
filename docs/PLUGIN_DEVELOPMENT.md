@@ -82,9 +82,21 @@ protected:
     std::vector<std::unique_ptr<Plugins::ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)>> 
         create_image_providers() override;
 };
+```
 
-// Export plugin
-CREATE_PLUGIN(MyAwesomePlugin)
+```cpp
+// MyAwesomePlugin.cpp
+
+#include "MyAwesomePlugin.h"
+
+// These functions are extremely important! The function names (after `create` and `destroy`) MUST match your plugin name
+extern "C" PLUGIN_EXPORT AwesomePlugin *createAwesomePlugin() {
+    return new AmbientPlugin();
+}
+
+extern "C" PLUGIN_EXPORT void destroyAwesomePlugin(AwesomePlugin *c) {
+    delete c;
+}
 ```
 
 ### 3. CMakeLists.txt
