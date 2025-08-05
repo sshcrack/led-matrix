@@ -3,7 +3,6 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
-#include "shared/matrix/plugin/color.h"
 
 namespace Scenes {
     class PropertyDemoScene : public Scene {
@@ -15,8 +14,8 @@ namespace Scenes {
         PropertyPointer<float> float_demo = MAKE_PROPERTY_MINMAX("float_value", float, 1.5f, 0.1f, 5.0f);
         PropertyPointer<bool> boolean_demo = MAKE_PROPERTY("enable_feature", bool, true);
         PropertyPointer<std::string> string_demo = MAKE_PROPERTY("text_message", std::string, "Hello LED Matrix!");
-        PropertyPointer<Plugins::Color> color_demo = MAKE_PROPERTY("primary_color", Plugins::Color, Plugins::Color(0x00FF00));
-        PropertyPointer<Plugins::Color> secondary_color = MAKE_PROPERTY("secondary_color", Plugins::Color, Plugins::Color(0xFF0000));
+        PropertyPointer<rgb_matrix::Color> color_demo = MAKE_PROPERTY("primary_color", rgb_matrix::Color, rgb_matrix::Color(0x00, 0xFF, 0x00));
+        PropertyPointer<rgb_matrix::Color> secondary_color = MAKE_PROPERTY("secondary_color", rgb_matrix::Color, rgb_matrix::Color(0xFF, 0x00, 0x00));
         
         // Required property example
         PropertyPointer<std::string> required_demo = MAKE_PROPERTY_REQ("required_setting", std::string, "must_be_set");

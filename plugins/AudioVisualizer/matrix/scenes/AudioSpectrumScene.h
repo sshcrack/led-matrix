@@ -3,7 +3,6 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
-#include "shared/matrix/plugin/color.h"
 #include "../AudioVisualizer.h"
 
 namespace Scenes {
@@ -19,13 +18,13 @@ namespace Scenes {
         PropertyPointer<bool> mirror_display = MAKE_PROPERTY("mirror_display", bool, true);
         PropertyPointer<bool> rainbow_colors = MAKE_PROPERTY("rainbow_colors", bool, true);
         //TODO: This may cause a memory leak
-        PropertyPointer<Plugins::Color> base_color = MAKE_PROPERTY("base_color", Plugins::Color, Plugins::Color(0x00FF00)); // Default green
+        PropertyPointer<rgb_matrix::Color> base_color = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(0x00, 0xFF, 0x00)); // Default green
         PropertyPointer<bool> falling_dots = MAKE_PROPERTY("falling_dots", bool, true);
         PropertyPointer<float> dot_fall_speed = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.15f, 0.01f, 1.0f);
         PropertyPointer<int> display_mode = MAKE_PROPERTY_MINMAX("display_mode", int, 0, 0, 4); // 0=normal, 1=center-out, 2=edges-to-center, 3=circle, 4=spiral
         PropertyPointer<bool> gradient_mode = MAKE_PROPERTY("gradient_mode", bool, false);
-        PropertyPointer<Plugins::Color> gradient_color1 = MAKE_PROPERTY("gradient_color1", Plugins::Color, Plugins::Color(0xFF0000)); // Red
-        PropertyPointer<Plugins::Color> gradient_color2 = MAKE_PROPERTY("gradient_color2", Plugins::Color, Plugins::Color(0x0000FF)); // Blue
+        PropertyPointer<rgb_matrix::Color> gradient_color1 = MAKE_PROPERTY("gradient_color1", rgb_matrix::Color, rgb_matrix::Color(0xFF, 0x00, 0x00)); // Red
+        PropertyPointer<rgb_matrix::Color> gradient_color2 = MAKE_PROPERTY("gradient_color2", rgb_matrix::Color, rgb_matrix::Color(0x00, 0x00, 0xFF)); // Blue
         PropertyPointer<bool> smooth_gradient = MAKE_PROPERTY("smooth_gradient", bool, true);
         PropertyPointer<float> circle_radius = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.8f, 0.3f, 1.0f);
         PropertyPointer<bool> rotate_visualization = MAKE_PROPERTY("rotate_visualization", bool, false);

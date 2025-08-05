@@ -112,10 +112,10 @@ uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float int
         return (r << 16) | (g << 8) | b;
     } else {
         // Use base color with intensity
-        const Plugins::Color color = base_color->get();
-        const uint8_t r = color.r() * intensity;
-        const uint8_t g = color.g() * intensity;
-        const uint8_t b = color.b() * intensity;
+        const rgb_matrix::Color color = base_color->get();
+        const uint8_t r = color.r * intensity;
+        const uint8_t g = color.g * intensity;
+        const uint8_t b = color.b * intensity;
         return (r << 16) | (g << 8) | b;
     }
 }
@@ -128,19 +128,19 @@ uint32_t AudioSpectrumScene::get_gradient_color(float position, float intensity)
     
     if (smooth_gradient->get()) {
         // Smooth interpolation between colors
-        r = static_cast<uint8_t>((color1.r() * (1.0f - position) + color2.r() * position) * intensity);
-        g = static_cast<uint8_t>((color1.g() * (1.0f - position) + color2.g() * position) * intensity);
-        b = static_cast<uint8_t>((color1.b() * (1.0f - position) + color2.b() * position) * intensity);
+        r = static_cast<uint8_t>((color1.r * (1.0f - position) + color2.r * position) * intensity);
+        g = static_cast<uint8_t>((color1.g * (1.0f - position) + color2.g * position) * intensity);
+        b = static_cast<uint8_t>((color1.b * (1.0f - position) + color2.b * position) * intensity);
     } else {
         // Hard transition at midpoint
         if (position < 0.5f) {
-            r = color1.r() * intensity;
-            g = color1.g() * intensity;
-            b = color1.b() * intensity;
+            r = color1.r * intensity;
+            g = color1.g * intensity;
+            b = color1.b * intensity;
         } else {
-            r = color2.r() * intensity;
-            g = color2.g() * intensity;
-            b = color2.b() * intensity;
+            r = color2.r * intensity;
+            g = color2.g * intensity;
+            b = color2.b * intensity;
         }
     }
     

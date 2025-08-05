@@ -3,7 +3,6 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
-#include "shared/matrix/plugin/color.h"
 #include "graphics.h"
 #include <random>
 
@@ -16,8 +15,8 @@ namespace Scenes {
         // Demonstration properties
         PropertyPointer<int> demo_mode = MAKE_PROPERTY_MINMAX("demo_mode", int, 0, 0, 4);
         PropertyPointer<float> animation_speed = MAKE_PROPERTY_MINMAX("animation_speed", float, 1.0f, 0.1f, 3.0f);
-        PropertyPointer<Plugins::Color> color1 = MAKE_PROPERTY("color1", Plugins::Color, Plugins::Color(0xFF0000));
-        PropertyPointer<Plugins::Color> color2 = MAKE_PROPERTY("color2", Plugins::Color, Plugins::Color(0x0000FF));
+        PropertyPointer<rgb_matrix::Color> color1 = MAKE_PROPERTY("color1", rgb_matrix::Color, rgb_matrix::Color(0xFF, 0x00, 0x00));
+        PropertyPointer<rgb_matrix::Color> color2 = MAKE_PROPERTY("color2", rgb_matrix::Color, rgb_matrix::Color(0x00, 0x00, 0xFF));
         PropertyPointer<bool> smooth_animation = MAKE_PROPERTY("smooth_animation", bool, true);
         
         // Animation state
