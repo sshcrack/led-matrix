@@ -33,3 +33,7 @@ The desktop application is built using ImGui and is used to do heavy lifting, su
 
 ## React-Native Application
 The React-Native application is used to control the matrix from a mobile device. It communicates with the matrix controller via a REST-Interface (you'll need to update the README.md file if you add new endpoints or modify them). This application uses tailwindcss for styling and is designed to be responsive and good looking on both web and mobile devices.
+
+
+## Github Copilot Agent
+If you are the GitHub copilot agent, the project has already been configured using CMake and the appropriate presets. You'll just need to build the project using CMake and the specific preset.
