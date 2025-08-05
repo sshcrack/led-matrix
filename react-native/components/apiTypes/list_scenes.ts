@@ -36,4 +36,4 @@ export type ProviderValue = CollectionProvider | PagesProvider | {
     }
 };
 
-export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t"
+export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t" | "enum"

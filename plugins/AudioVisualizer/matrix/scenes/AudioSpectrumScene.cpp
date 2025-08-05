@@ -183,11 +183,11 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     }
 
     // Handle special visualization modes
-    int mode = display_mode->get();
-    if (mode == 3) { // Circle mode
+    DisplayMode mode = display_mode->get().get();
+    if (mode == DisplayMode::CIRCLE) {
         render_circle_visualization(matrix, audio_data);
         return true;
-    } else if (mode == 4) { // Spiral mode
+    } else if (mode == DisplayMode::SPIRAL) {
         render_spiral_visualization(matrix, audio_data);
         return true;
     }
@@ -216,8 +216,8 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
         int x;
         
         // Calculate x position based on display mode
-        switch(display_mode->get()) {
-            case 1: // Center out
+        switch(display_mode->get().get()) {
+            case DisplayMode::CENTER_OUT:
                 {
                     int half_width = width / 2;
                     int half_bands = num_bands / 2;
@@ -231,7 +231,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 }
                 break;
                 
-            case 2: // Edges to center
+            case DisplayMode::EDGES_TO_CENTER:
                 {
                     int half_bands = num_bands / 2;
                     if (i < half_bands) {
@@ -244,7 +244,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 }
                 break;
                 
-            case 0: // Normal (left to right)
+            case DisplayMode::NORMAL: // Normal (left to right)
             default:
                 x = i * total_width_per_band;
                 break;
@@ -271,7 +271,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 offscreen_canvas->SetPixel(x + w, height - 1 - y, r, g, b);
 
                 // Mirror if enabled, but only in normal mode
-                if (mirror_display->get() && display_mode->get() == 0) {
+                if (mirror_display->get() && display_mode->get().get() == DisplayMode::NORMAL) {
                     offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
                 }
             }
@@ -291,7 +291,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 offscreen_canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
 
                 // Mirror if enabled, but only in normal mode
-                if (mirror_display->get() && display_mode->get() == 0) {
+                if (mirror_display->get() && display_mode->get().get() == DisplayMode::NORMAL) {
                     offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - peak_y, r, g, b);
                 }
             }
