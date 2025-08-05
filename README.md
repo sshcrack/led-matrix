@@ -78,8 +78,7 @@ Real-world data with style:
 
 #### 💻 **GithubScenes Plugin**
 Visualize your development activity:
-- **Commit Activity** - Show your coding contributions
-- **Repository Stats** - Visual representation of your GitHub presence
+- **Various Scenes** - That I got from github
 
 #### 🎭 **Shadertoy Plugin**
 GPU-powered visual effects:
