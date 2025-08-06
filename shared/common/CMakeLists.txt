@@ -9,6 +9,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/udp/packet.cpp
         src/shared/common/marketplace/client.cpp
         src/shared/common/marketplace/client_impl.cpp
+        src/shared/common/marketplace/types.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
