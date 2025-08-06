@@ -11,8 +11,10 @@
 #include "matrix_control/hardware.h"
 #include "matrix-factory.h"
 #include "server/server.h"
+#include "server/update_routes.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/update/UpdateManager.h"
 #include "udp.h"
 #include "shared/matrix/server/common.h"
 
@@ -26,6 +28,9 @@ using json = nlohmann::json;
 using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<Server::traits_t>;
+
+// Global UpdateManager instance
+Update::UpdateManager* global_update_manager = nullptr;
 
 int usage(const char *progname)
 {
@@ -73,6 +78,19 @@ int main(int argc, char *argv[])
 
     debug("Loading config...");
     config = new Config::MainConfig("config.json");
+
+    debug("Initializing UpdateManager...");
+    // Get current version from CMakeLists.txt or set default
+    string current_version = config->get_current_version();
+    if (current_version.empty()) {
+        current_version = "1.0.0"; // Default version
+        config->set_current_version(current_version);
+        config->save();
+    }
+    
+    global_update_manager = new Update::UpdateManager(config, current_version);
+    global_update_manager->start();
+    info("UpdateManager initialized and started");
 
     for (const auto &item : pl->get_plugins())
     {
@@ -190,6 +208,13 @@ int main(int argc, char *argv[])
 
     info("Saving config...");
     config->save();
+
+    debug("Stopping UpdateManager...");
+    if (global_update_manager) {
+        global_update_manager->stop();
+        delete global_update_manager;
+        global_update_manager = nullptr;
+    }
 
     delete Constants::global_post_processor;
 

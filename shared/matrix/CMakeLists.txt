@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/plugin_loader/loader.cpp
         src/shared/matrix/config/MainConfig.cpp
         src/shared/matrix/config/image_providers/general.cpp
+        src/shared/matrix/update/UpdateManager.cpp
         src/shared/matrix/interrupt.cpp
         src/shared/matrix/server/server_utils.cpp
         src/shared/matrix/server/MimeTypes.cpp
@@ -74,6 +75,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
 # ImageMagick
 find_package(unofficial-graphicsmagick CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+
+# HTTP Client
+find_package(cpr CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 include(GNUInstallDirs)
 

@@ -44,6 +44,17 @@ namespace ConfigData {
         [[nodiscard]] bool is_active_at_time(int hour, int minute, int day_of_week) const;
     };
 
+    struct UpdateSettings {
+        bool auto_update_enabled = true;
+        int check_interval_hours = 24;  // Check for updates every 24 hours by default
+        string current_version = "";
+        tmillis_t last_check_time = 0;
+        tmillis_t last_update_time = 0;
+        bool update_available = false;
+        string latest_version = "";
+        string update_download_url = "";
+    };
+
     struct Root {
         map<string, std::shared_ptr<Preset>> presets;
         map<string, string> pluginConfigs;
@@ -51,9 +62,12 @@ namespace ConfigData {
         map<string, Schedule> schedules;
         bool scheduling_enabled;
         string curr;
+        UpdateSettings update_settings;
 
         ~Root() = default;
     };
+
+    void to_json(json &j, const UpdateSettings &p);
 
     void to_json(json &j, const Schedule &p);
 
@@ -66,6 +80,8 @@ namespace ConfigData {
     void to_json(json &j, const ImageProviders::General *&p);
 
     void to_json(json &j, const Scenes::Scene *&p);
+
+    void from_json(const json &j, UpdateSettings &p);
 
     void from_json(const json &j, Schedule &p);
 
