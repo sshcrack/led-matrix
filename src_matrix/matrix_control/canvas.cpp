@@ -33,6 +33,8 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
         vector<std::pair<int, std::shared_ptr<Scenes::Scene> > > weighted_scenes;
         for (const auto &item: scenes) {
             auto weight = item->get_weight();
+            if(weight <= 0)
+                continue;
 
             weighted_scenes.emplace_back(weight, item);
             total_weight += weight;
