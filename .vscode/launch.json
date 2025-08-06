@@ -34,7 +34,7 @@
         "--led-emulator-scale=4"
       ],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}/emulator_build/install",
+      "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "environment": [
         {
