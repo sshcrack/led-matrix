@@ -17,6 +17,7 @@ import { Text } from '~/components/ui/text';
 import useFetch from '~/components/useFetch';
 import { Activity } from '~/lib/icons/Activity';
 import { Calendar } from '~/lib/icons/Calendar';
+import { Download } from '~/lib/icons/Download';
 import { Power } from '~/lib/icons/Power';
 import { Settings } from '~/lib/icons/Settings';
 
@@ -127,6 +128,14 @@ export default function Screen() {
               <View className="flex flex-row items-center gap-2">
                 <Calendar className="text-foreground" width={20} height={20} />
                 <Text className="text-sm font-medium">Schedules</Text>
+              </View>
+            </Button>
+          </Link>
+          <Link href="/updates" asChild>
+            <Button variant="outline" className="flex-1 max-w-48 h-16">
+              <View className="flex flex-row items-center gap-2">
+                <Download className="text-foreground" width={20} height={20} />
+                <Text className="text-sm font-medium">Updates</Text>
               </View>
             </Button>
           </Link>
