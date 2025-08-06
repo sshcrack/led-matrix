@@ -746,8 +746,17 @@ void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix)
 void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
 {
     const int code = data.weatherCode;
-    const bool is_snow = (code >= 600 && code < 700);
-    const bool is_rain = (code >= 200 && code < 600);
+    // Snow codes
+    bool is_snow =
+        (code >= 70 && code <= 79) ||
+        (code >= 85 && code <= 88) ||
+        (code == 93 || code == 94);
+
+    // Rain codes
+    bool is_rain =
+        (code >= 50 && code <= 69) ||
+        (code >= 80 && code <= 84) ||
+        (code == 91 || code == 92);
 
     has_precipitation = is_snow || is_rain;
 
@@ -938,8 +947,11 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
 
     // Render moving clouds for cloudy weather
     int code = data.weatherCode;
-    if (code >= 800 && code < 900)
-    { // Cloudy conditions
+    bool is_cloudy =
+        (code >= 0 && code <= 3) || // Cloud development
+        (code >= 80 && code <= 84); // Showery precipitation, mixed clouds
+    if (is_cloudy)
+    {
         for (size_t i = 0; i < cloud_layers.size(); i++)
         {
             auto &cloud = cloud_layers[i];
@@ -987,9 +999,14 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
     if (!enable_lightning->get() || !enable_animations->get())
         return;
 
-    // Only render lightning for thunderstorm weather codes (200-299 WMO codes)
+    // Only render lightning for thunderstorm weather codes (WMO codes: 17, 29, 95-99)
     int weather_code = data.weatherCode;
-    if (weather_code < 200 || weather_code >= 300)
+    bool is_thunderstorm =
+        weather_code == 17 ||
+        weather_code == 29 ||
+        (weather_code >= 95 && weather_code <= 99);
+
+    if (!is_thunderstorm)
     {
         lightning_active = false;
         lightning_timer = 0;
@@ -1115,8 +1132,13 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
         return;
 
     int code = data.weatherCode;
-    if (code >= 700 && code < 800)
-    { // Fog/mist conditions
+    bool is_fog =
+        code == 10 ||
+        (code >= 11 && code <= 12) ||
+        (code >= 40 && code <= 49);
+
+    if (is_fog)
+    {
         // Initialize fog grid if empty
         if (fog_grid.empty())
         {
