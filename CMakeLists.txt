@@ -176,8 +176,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsMatrix)
     # HTTP Server
     find_package(restinio REQUIRED)
+    find_package(magic_enum CONFIG REQUIRED)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
+    target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio magic_enum::magic_enum)
 
     # ImageMagick
 

@@ -14,12 +14,14 @@ export type DynamicPluginPropertyProps<T> = {
     typeId: TypeId,
     value: T,
     defaultVal: T,
+    additional: any,
     sceneId: string
 }
 
 
 export type PluginPropertyProps<T> = {
     propertyName: string,
+    additional?: any,
     typeId: TypeId,
     value: T,
     defaultVal: T

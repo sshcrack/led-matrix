@@ -98,6 +98,7 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
                         propertyName={propertyName}
                         typeId={property.type_id}
                         defaultVal={property.default_value}
+                        additional={property.additional ?? null}
                         value={value}
                         sceneId={config.uuid}
                     />

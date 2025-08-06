@@ -11,8 +11,13 @@ namespace Scenes {
         float y;
         float speed;
         float size;
+        // Opacity between 0f and 255f
         float opacity;
         bool active;
+        float wind_factor;      // For swaying motion
+        float life_time;        // For fade effects
+        float rotation;         // For snow rotation
+        uint8_t r, g, b;       // Individual colors for variety
     };
     
     // Struct for shooting stars
@@ -52,6 +57,21 @@ namespace Scenes {
         RGB current_display_color{0, 0, 0};
         RGB target_color{0, 0, 0};
         float transition_progress = 0.0f;
+        
+        // Enhanced cloud animation state
+        float cloud_phase = 0.0f;
+        std::vector<std::pair<float, float>> cloud_layers;
+        
+        // Lightning animation state
+        int lightning_timer = 0;
+        bool lightning_active = false;
+        std::vector<std::pair<int, int>> lightning_points;
+        
+        // Sun ray animation
+        float sun_ray_rotation = 0.0f;
+        
+        // Fog/mist effect state
+        std::vector<std::vector<float>> fog_grid;
 
         // Animation system particles
         std::vector<Particle> particles;
@@ -81,11 +101,22 @@ namespace Scenes {
         void renderClock(const RGBMatrixBase *matrix) const;
         void resetStars();
         
-        // Animation methods
+        // Enhanced animation methods
         void updateAnimationState(const WeatherData &data);
         void renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data);
         void initializeParticles();
-        void updateParticles(const WeatherData &data);
+
+        // New sophisticated animation methods
+        void renderClouds(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderLightning(const RGBMatrixBase *matrix);
+        void renderSunRays(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderFogMist(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderRainbowEffect(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderAurora(const RGBMatrixBase *matrix);
+        
+        // Enhanced particle effects
+        void updateEnhancedParticles(const WeatherData &data);
+        void renderEnhancedParticles(const RGBMatrixBase *matrix, const WeatherData &data);
         
         // Shooting star methods
         void updateShootingStars();
@@ -111,10 +142,18 @@ namespace Scenes {
         PropertyPointer<bool> show_border = MAKE_PROPERTY("show_border", bool, true);
         PropertyPointer<bool> gradient_background = MAKE_PROPERTY("gradient_background", bool, true);
         PropertyPointer<bool> show_sunrise_sunset = MAKE_PROPERTY("show_sunrise_sunset", bool, true);
-        PropertyPointer<int> color_theme = MAKE_PROPERTY("color_theme", int, 0); // Default to AUTO
+        PropertyPointer<Plugins::EnumProperty<ColorTheme>> color_theme = MAKE_ENUM_PROPERTY("color_theme", ColorTheme, ColorTheme::AUTO);
         PropertyPointer<bool> reset_stars_on_exit = MAKE_PROPERTY("reset_stars_on_exit", bool, true);
         PropertyPointer<int> shooting_star_chance = MAKE_PROPERTY("shooting_star_chance", int, 2); // Default 2%
-        PropertyPointer<int> shooting_star_frame_threshold = MAKE_PROPERTY_MINMAX("shooting_star_random_chance_frame_count", int, 0, 0, get_target_fps()); // Default 2%
+        PropertyPointer<int> shooting_star_frame_threshold = MAKE_PROPERTY_MINMAX("shooting_star_random_chance_frame_count", int, 0, 0, get_target_fps());
+        
+        // New enhanced animation properties
+        PropertyPointer<bool> enable_lightning = MAKE_PROPERTY("enable_lightning", bool, true);
+        PropertyPointer<bool> enable_sun_rays = MAKE_PROPERTY("enable_sun_rays", bool, true);
+        PropertyPointer<bool> enable_aurora = MAKE_PROPERTY("enable_aurora", bool, false);
+        PropertyPointer<bool> enable_rainbow = MAKE_PROPERTY("enable_rainbow", bool, true);
+        PropertyPointer<float> animation_speed_multiplier = MAKE_PROPERTY_MINMAX("animation_speed_multiplier", float, 1.0f, 0.1f, 3.0f);
+        PropertyPointer<int> particle_density = MAKE_PROPERTY_MINMAX("particle_density", int, 5, 1, 10);
 
     public:
         bool render(RGBMatrixBase *matrix) override;
@@ -136,6 +175,12 @@ namespace Scenes {
             add_property(reset_stars_on_exit);
             add_property(shooting_star_chance);
             add_property(shooting_star_frame_threshold);
+            add_property(enable_lightning);
+            add_property(enable_sun_rays);
+            add_property(enable_aurora);
+            add_property(enable_rainbow);
+            add_property(animation_speed_multiplier);
+            add_property(particle_density);
         }
 
         using Scene::Scene;

@@ -56,10 +56,13 @@ function(register_plugin PLUGIN_NAME)
     else()
         find_package(restinio REQUIRED)
         find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+        find_package(magic_enum CONFIG REQUIRED)
+
         target_link_libraries(${PLUGIN_NAME} PRIVATE
             SharedToolsMatrix
             restinio::restinio
             unofficial::graphicsmagick::graphicsmagick
+            magic_enum::magic_enum
         )
         target_include_directories(${PLUGIN_NAME} PRIVATE ${RGB_HEADER_DIR})
         target_link_libraries(${PLUGIN_NAME} PRIVATE rpi-rgb-led-matrix)

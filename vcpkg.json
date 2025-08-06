@@ -12,7 +12,8 @@
         "graphicsmagick",
         "restinio",
         "libxml2",
-        "cpr"
+        "cpr",
+        "magic-enum"
       ]
     },
     "emulator": {

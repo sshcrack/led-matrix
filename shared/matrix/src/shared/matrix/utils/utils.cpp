@@ -98,6 +98,19 @@ void floatPixelSet(rgb_matrix::FrameCanvas *canvas, int x, int y, float r, float
     canvas->SetPixel(x, y, rByte, gByte, bByte);
 }
 
+void SetPixelAlpha(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float alpha)
+{
+    uint8_t rC, gC, bC;
+    if (canvas->GetPixel(x, y, &rC, &gC, &bC))
+    {
+        // Blend the new color with the existing pixel color based on alpha
+        r = static_cast<uint8_t>(r * alpha + rC * (1.0f - alpha));
+        g = static_cast<uint8_t>(g * alpha + gC * (1.0f - alpha));
+        b = static_cast<uint8_t>(b * alpha + bC * (1.0f - alpha));
+    }
+
+    canvas->SetPixel(x, y, r, g, b);
+}
 std::vector<uint8_t> magick_to_rgb(const Magick::Image &img)
 {
     std::vector<uint8_t> buffer;
