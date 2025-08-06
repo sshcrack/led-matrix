@@ -6,6 +6,7 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/property.h"
+#include "shared/matrix/FallbackScene.h"
 
 using namespace spdlog;
 
@@ -20,7 +21,7 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_js
     const auto pl = Plugins::PluginManager::instance();
     for (const auto &item : pl->get_scenes())
     {
-        if(item->get_name() != t)
+        if (item->get_name() != t)
             continue;
 
         auto scene = item->create();
@@ -36,7 +37,21 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_js
         return scene;
     }
 
-    throw std::runtime_error(fmt::format("Invalid type '{}'", t));
+    spdlog::warn("Unknown scene type '{}', returning FallbackScene", t);
+    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> unknown_scene = {
+        new Scenes::FallbackScene(t), [](Scenes::Scene *scene)
+        {
+            delete scene;
+        }};
+
+    ((FallbackScene*) unknown_scene.get())->arguments = arguments;
+    if (j.contains("uuid"))
+        unknown_scene->uuid = j["uuid"].get<string>();
+
+    if (unknown_scene->uuid.empty())
+        unknown_scene->uuid = uuid::generate_uuid_v4();
+
+    return unknown_scene;
 }
 
 void Scenes::Scene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas)
@@ -78,7 +93,6 @@ int Scenes::Scene::get_weight() const
 {
     return weight->get();
 }
-
 
 void Scenes::Scene::wait_until_next_frame()
 {
