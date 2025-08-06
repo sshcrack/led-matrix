@@ -330,23 +330,30 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *
         float angle = i * angle_step + rotation_angle;
         float band_value = audio_data[i] / 255.0f;
         
-        // Draw radial line from center outward
+        // Draw expanding radial line from center outward
         float line_length = band_value * max_radius;
         int steps = static_cast<int>(line_length);
         
         for (int step = 0; step < steps; step++) {
             float radius = static_cast<float>(step);
-            auto [x, y] = polar_to_cartesian(radius, angle, center_x, center_y);
+            // Calculate line width that expands outward to reduce empty space
+            float width_factor = 1.0f + (radius / max_radius) * 2.0f; // Expands from 1 to 3 pixels wide
+            int line_width = static_cast<int>(width_factor);
             
-            if (x >= 0 && x < width && y >= 0 && y < height) {
-                float intensity = 1.0f - (radius / max_radius) * 0.5f; // Fade towards outside
-                uint32_t color = get_bar_color(i, intensity, num_bands);
+            for (int w = -line_width/2; w <= line_width/2; w++) {
+                float offset_angle = angle + (w * 0.05f); // Small angular offset for width
+                auto [x, y] = polar_to_cartesian(radius, offset_angle, center_x, center_y);
                 
-                uint8_t r = (color >> 16) & 0xFF;
-                uint8_t g = (color >> 8) & 0xFF;
-                uint8_t b = color & 0xFF;
-                
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    float intensity = 1.0f - (radius / max_radius) * 0.3f; // Less fade for better visibility
+                    uint32_t color = get_bar_color(i, intensity, num_bands);
+                    
+                    uint8_t r = (color >> 16) & 0xFF;
+                    uint8_t g = (color >> 8) & 0xFF;
+                    uint8_t b = color & 0xFF;
+                    
+                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                }
             }
         }
         

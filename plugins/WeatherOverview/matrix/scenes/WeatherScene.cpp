@@ -845,11 +845,11 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
             if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
                 if (is_snow) {
                     // Enhanced snow rendering with rotation and clustering
-                    uint8_t alpha = static_cast<uint8_t>(p.opacity);
+                    float alpha = p.opacity / 255.0f; // Convert to float for proper blending
                     offscreen_canvas->SetPixel(px, py, 
-                                             std::min(255, (int)(p.r * alpha / 255)),
-                                             std::min(255, (int)(p.g * alpha / 255)),
-                                             std::min(255, (int)(p.b * alpha / 255)));
+                                             static_cast<uint8_t>(std::min(255.0f, p.r * alpha)),
+                                             static_cast<uint8_t>(std::min(255.0f, p.g * alpha)),
+                                             static_cast<uint8_t>(std::min(255.0f, p.b * alpha)));
 
                     // For larger snow particles, draw a cluster with rotation
                     if (p.size > 1.5f) {
@@ -865,18 +865,18 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
                                 int ry = py + static_cast<int>(i * sin_r + j * cos_r);
                                 
                                 if (rx >= 0 && rx < matrix_width && ry >= 0 && ry < matrix_height) {
-                                    uint8_t sub_alpha = static_cast<uint8_t>(alpha * 0.6f);
+                                    float sub_alpha = alpha * 0.6f;
                                     offscreen_canvas->SetPixel(rx, ry,
-                                                             std::min(255, (int)(p.r * sub_alpha / 255)),
-                                                             std::min(255, (int)(p.g * sub_alpha / 255)),
-                                                             std::min(255, (int)(p.b * sub_alpha / 255)));
+                                                             static_cast<uint8_t>(std::min(255.0f, p.r * sub_alpha)),
+                                                             static_cast<uint8_t>(std::min(255.0f, p.g * sub_alpha)),
+                                                             static_cast<uint8_t>(std::min(255.0f, p.b * sub_alpha)));
                                 }
                             }
                         }
                     }
                 } else {
                     // Enhanced rain rendering with streaks and splash effects
-                    uint8_t alpha = static_cast<uint8_t>(p.opacity);
+                    float alpha = p.opacity / 255.0f; // Convert to float for proper blending
                     
                     // Draw rain streak
                     for (int i = 0; i < 3; i++) {
@@ -884,9 +884,9 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
                         if (ry >= 0 && ry < matrix_height) {
                             float streak_alpha = alpha * (1.0f - i * 0.3f);
                             offscreen_canvas->SetPixel(px, ry,
-                                                     std::min(255, (int)(p.r * streak_alpha / 255)),
-                                                     std::min(255, (int)(p.g * streak_alpha / 255)),
-                                                     std::min(255, (int)(p.b * streak_alpha / 255)));
+                                                     static_cast<uint8_t>(std::min(255.0f, p.r * streak_alpha)),
+                                                     static_cast<uint8_t>(std::min(255.0f, p.g * streak_alpha)),
+                                                     static_cast<uint8_t>(std::min(255.0f, p.b * streak_alpha)));
                         }
                     }
                 }
@@ -922,10 +922,10 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
                 cloud.second = 10 + rand() % 20;
             }
             
-            // Draw soft cloud shape
-            float cloud_intensity = 0.3f + 0.2f * sin(cloud_phase + i);
-            int cloud_width = 15 + i * 3;
-            int cloud_height = 6 + i;
+            // Draw soft cloud shape with subtle transparency
+            float cloud_intensity = 0.15f + 0.1f * sin(cloud_phase + i); // More subtle intensity
+            int cloud_width = 12 + i * 2; // Smaller clouds
+            int cloud_height = 4 + i;
             
             for (int x = 0; x < cloud_width; x++) {
                 for (int y = 0; y < cloud_height; y++) {
@@ -937,8 +937,20 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
                         float dist = sqrt(pow(x - cloud_width/2.0f, 2) + pow(y - cloud_height/2.0f, 2));
                         float edge_factor = std::max(0.0f, 1.0f - dist / (cloud_width/2.0f));
                         
-                        uint8_t cloud_color = static_cast<uint8_t>(100 * cloud_intensity * edge_factor);
-                        offscreen_canvas->SetPixel(px, py, cloud_color, cloud_color, cloud_color + 20);
+                        // Get existing pixel color to blend with cloud
+                        uint8_t existing_r, existing_g, existing_b;
+                        offscreen_canvas->GetPixel(px, py, &existing_r, &existing_g, &existing_b);
+                        
+                        // Subtle cloud color blending
+                        uint8_t cloud_alpha = static_cast<uint8_t>(60 * cloud_intensity * edge_factor);
+                        uint8_t cloud_gray = 180 + static_cast<uint8_t>(30 * edge_factor);
+                        
+                        // Blend cloud with existing pixel (clouds are behind)
+                        uint8_t final_r = existing_r + ((cloud_gray - existing_r) * cloud_alpha / 255);
+                        uint8_t final_g = existing_g + ((cloud_gray - existing_g) * cloud_alpha / 255);
+                        uint8_t final_b = existing_b + ((cloud_gray + 20 - existing_b) * cloud_alpha / 255);
+                        
+                        offscreen_canvas->SetPixel(px, py, final_r, final_g, final_b);
                     }
                 }
             }
@@ -948,6 +960,14 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
 
 void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix) {
     if (!enable_lightning->get() || !enable_animations->get()) return;
+    
+    // Only render lightning for thunderstorm weather codes (200-299 WMO codes)
+    int weather_code = data.weatherCode;
+    if (weather_code < 200 || weather_code >= 300) {
+        lightning_active = false;
+        lightning_timer = 0;
+        return;
+    }
     
     // Trigger lightning for thunderstorm conditions
     if (lightning_timer > 0) {
@@ -975,8 +995,8 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix) {
         }
     }
     
-    // Randomly trigger new lightning
-    if (!lightning_active && (rand() % 1800) == 0) { // About every 30 seconds at 60fps
+    // Randomly trigger new lightning only for thunderstorm codes (200-299)
+    if (!lightning_active && (weather_code >= 200 && weather_code < 300) && (rand() % 1800) == 0) { // About every 30 seconds at 60fps
         lightning_active = true;
         lightning_timer = 200;
         
@@ -1007,16 +1027,40 @@ void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const Weat
         int center_x = matrix_width / 2;
         int center_y = matrix_height / 4;
         
-        for (int ray = 0; ray < 8; ray++) {
-            float angle = sun_ray_rotation + ray * M_PI / 4;
+        for (int ray = 0; ray < 12; ray++) { // More rays for better effect
+            float angle = sun_ray_rotation + ray * M_PI / 6;
             
-            for (int len = 10; len < 25; len++) {
-                int x = center_x + static_cast<int>(cos(angle) * len);
-                int y = center_y + static_cast<int>(sin(angle) * len);
+            for (int len = 8; len < 35; len++) { // Longer rays
+                // Calculate ray width that expands outward
+                float distance_factor = static_cast<float>(len - 8) / 27.0f;
+                int ray_width = 1 + static_cast<int>(distance_factor * 3); // 1 to 4 pixels wide
                 
-                if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
-                    uint8_t intensity = static_cast<uint8_t>(100 * (1.0f - (len - 10) / 15.0f));
-                    offscreen_canvas->SetPixel(x, y, 255, 200, intensity);
+                for (int w = -ray_width/2; w <= ray_width/2; w++) {
+                    float spread_angle = angle + (w * 0.02f); // Small angular spread for width
+                    int x = center_x + static_cast<int>(cos(spread_angle) * len);
+                    int y = center_y + static_cast<int>(sin(spread_angle) * len);
+                    
+                    if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                        // Get existing pixel to blend with (background effect)
+                        uint8_t existing_r, existing_g, existing_b;
+                        offscreen_canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
+                        
+                        // Calculate ray intensity - fades out and gets more subtle
+                        float base_intensity = 1.0f - distance_factor;
+                        float width_intensity = 1.0f - abs(w) / static_cast<float>(ray_width/2 + 1);
+                        float final_intensity = base_intensity * width_intensity * 0.3f; // Very subtle
+                        
+                        // Blend warm sun colors with existing pixel
+                        uint8_t sun_r = 255;
+                        uint8_t sun_g = 220;
+                        uint8_t sun_b = 100 + static_cast<uint8_t>(50 * distance_factor);
+                        
+                        uint8_t final_r = existing_r + static_cast<uint8_t>((sun_r - existing_r) * final_intensity);
+                        uint8_t final_g = existing_g + static_cast<uint8_t>((sun_g - existing_g) * final_intensity);
+                        uint8_t final_b = existing_b + static_cast<uint8_t>((sun_b - existing_b) * final_intensity);
+                        
+                        offscreen_canvas->SetPixel(x, y, final_r, final_g, final_b);
+                    }
                 }
             }
         }
@@ -1049,8 +1093,23 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
                 fog_density += 0.1f * sin(fog_time + x * 0.1f + y * 0.2f);
                 fog_density = std::max(0.0f, std::min(1.0f, fog_density));
                 
-                uint8_t fog_color = static_cast<uint8_t>(50 + fog_density * 100);
-                offscreen_canvas->SetPixel(x, y, fog_color, fog_color, fog_color + 20);
+                // Only render subtle fog if density is significant enough and make it blend
+                if (fog_density > 0.3f) {
+                    // Get existing pixel color to blend with
+                    uint8_t existing_r, existing_g, existing_b;
+                    offscreen_canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
+                    
+                    // Create subtle fog overlay that doesn't overpower text
+                    float fog_alpha = (fog_density - 0.3f) * 0.2f; // Very subtle transparency
+                    uint8_t fog_gray = 160 + static_cast<uint8_t>(30 * fog_density);
+                    
+                    // Blend fog with existing pixel (subtle overlay)
+                    uint8_t final_r = existing_r + static_cast<uint8_t>((fog_gray - existing_r) * fog_alpha);
+                    uint8_t final_g = existing_g + static_cast<uint8_t>((fog_gray - existing_g) * fog_alpha);
+                    uint8_t final_b = existing_b + static_cast<uint8_t>((fog_gray + 10 - existing_b) * fog_alpha);
+                    
+                    offscreen_canvas->SetPixel(x, y, final_r, final_g, final_b);
+                }
             }
         }
     }
@@ -1062,36 +1121,54 @@ void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, cons
     // Show rainbow after rain
     int code = data.weatherCode;
     if ((code >= 500 && code < 600) && data.is_day) { // Light rain during day
-        float rainbow_time = animation_frame * 0.02f;
+        float rainbow_time = animation_frame * 0.008f; // Slower animation
         
-        // Draw subtle rainbow arc
+        // Draw multiple rainbow bands for realistic effect
         int center_x = matrix_width / 2;
-        int center_y = matrix_height;
-        int radius = matrix_height * 0.8f;
+        int center_y = matrix_height + 10; // Position rainbow lower for better arc
         
-        for (float angle = M_PI * 0.2f; angle < M_PI * 0.8f; angle += 0.1f) {
-            int x = center_x + static_cast<int>(cos(angle) * radius);
-            int y = center_y - static_cast<int>(sin(angle) * radius);
+        // Draw 5 rainbow bands with different radii
+        for (int band = 0; band < 5; band++) {
+            int radius = matrix_height * 0.6f + band * 2; // Multiple arcs
             
-            if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
-                // Calculate rainbow color based on angle
-                float hue = (angle - M_PI * 0.2f) / (M_PI * 0.6f) * 360.0f;
-                float intensity = 0.3f + 0.2f * sin(rainbow_time);
+            for (float angle = M_PI * 0.15f; angle < M_PI * 0.85f; angle += 0.02f) { // Denser points
+                int x = center_x + static_cast<int>(cos(angle) * radius);
+                int y = center_y - static_cast<int>(sin(angle) * radius);
                 
-                uint8_t r, g, b;
-                // Simple HSV to RGB conversion for rainbow
-                float c = intensity;
-                float x_val = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
-                float m = 0;
-                
-                if (hue < 60) { r = c * 255; g = x_val * 255; b = 0; }
-                else if (hue < 120) { r = x_val * 255; g = c * 255; b = 0; }
-                else if (hue < 180) { r = 0; g = c * 255; b = x_val * 255; }
-                else if (hue < 240) { r = 0; g = x_val * 255; b = c * 255; }
-                else if (hue < 300) { r = x_val * 255; g = 0; b = c * 255; }
-                else { r = c * 255; g = 0; b = x_val * 255; }
-                
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                    // Get existing pixel to blend with (background effect)
+                    uint8_t existing_r, existing_g, existing_b;
+                    offscreen_canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
+                    
+                    // Calculate rainbow color based on angle with shifting animation
+                    float hue = (angle - M_PI * 0.15f) / (M_PI * 0.7f) * 360.0f;
+                    hue += rainbow_time * 30.0f; // Slow color shifting
+                    hue = fmod(hue, 360.0f);
+                    
+                    // Subtle intensity that varies per band
+                    float band_intensity = 0.15f + 0.05f * sin(rainbow_time + band);
+                    float edge_fade = 1.0f - (band / 5.0f) * 0.3f; // Outer bands are fainter
+                    float intensity = band_intensity * edge_fade;
+                    
+                    uint8_t r, g, b;
+                    // Simple HSV to RGB conversion for rainbow
+                    float c = intensity;
+                    float x_val = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
+                    
+                    if (hue < 60) { r = c * 255; g = x_val * 255; b = 0; }
+                    else if (hue < 120) { r = x_val * 255; g = c * 255; b = 0; }
+                    else if (hue < 180) { r = 0; g = c * 255; b = x_val * 255; }
+                    else if (hue < 240) { r = 0; g = x_val * 255; b = c * 255; }
+                    else if (hue < 300) { r = x_val * 255; g = 0; b = c * 255; }
+                    else { r = c * 255; g = 0; b = x_val * 255; }
+                    
+                    // Blend rainbow with existing pixel (subtle background effect)
+                    uint8_t final_r = existing_r + static_cast<uint8_t>((r - existing_r) * intensity);
+                    uint8_t final_g = existing_g + static_cast<uint8_t>((g - existing_g) * intensity);
+                    uint8_t final_b = existing_b + static_cast<uint8_t>((b - existing_b) * intensity);
+                    
+                    offscreen_canvas->SetPixel(x, y, final_r, final_g, final_b);
+                }
             }
         }
     }
@@ -1102,23 +1179,43 @@ void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix) {
     
     // Render aurora effect for very cold temperatures or at night
     if (!data.is_day && data.temperature.find("-") != std::string::npos) {
-        float aurora_time = animation_frame * 0.03f * animation_speed_multiplier->get();
+        // Use a continuous time variable to avoid animation resets
+        static float aurora_continuous_time = 0.0f;
+        aurora_continuous_time += 0.02f * animation_speed_multiplier->get();
         
         for (int x = 0; x < matrix_width; x++) {
-            for (int y = 0; y < matrix_height / 2; y++) {
-                // Create flowing aurora waves
-                float wave1 = sin(aurora_time + x * 0.2f + y * 0.1f);
-                float wave2 = sin(aurora_time * 1.3f + x * 0.15f);
-                float intensity = (wave1 + wave2) * 0.3f + 0.4f;
-                intensity *= (1.0f - static_cast<float>(y) / matrix_height);
+            for (int y = 0; y < matrix_height; y++) { // Span whole matrix
+                // Create flowing aurora waves with more complexity
+                float wave1 = sin(aurora_continuous_time + x * 0.15f + y * 0.08f);
+                float wave2 = sin(aurora_continuous_time * 1.2f + x * 0.12f - y * 0.05f);
+                float wave3 = sin(aurora_continuous_time * 0.8f + x * 0.18f + y * 0.1f);
                 
-                if (intensity > 0.2f) {
-                    // Green-blue aurora colors
-                    uint8_t r = static_cast<uint8_t>(intensity * 50);
-                    uint8_t g = static_cast<uint8_t>(intensity * 200);
-                    uint8_t b = static_cast<uint8_t>(intensity * 150);
+                float base_intensity = (wave1 + wave2 + wave3) / 3.0f * 0.2f + 0.25f;
+                
+                // Create vertical gradient that's stronger at top but spans whole screen
+                float vertical_fade = 1.0f - (static_cast<float>(y) / matrix_height) * 0.6f;
+                float intensity = base_intensity * vertical_fade;
+                
+                if (intensity > 0.1f) {
+                    // Get existing pixel to blend with (background effect)
+                    uint8_t existing_r, existing_g, existing_b;
+                    offscreen_canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
                     
-                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                    // Subtle transparency for aurora
+                    float alpha = (intensity - 0.1f) * 0.3f; // Very subtle alpha
+                    
+                    // Green-blue aurora colors with variations
+                    float color_shift = sin(aurora_continuous_time * 0.5f + x * 0.1f) * 0.3f;
+                    uint8_t r = static_cast<uint8_t>((intensity + color_shift * 0.5f) * 80);
+                    uint8_t g = static_cast<uint8_t>(intensity * 180 + color_shift * 40);
+                    uint8_t b = static_cast<uint8_t>(intensity * 120 - color_shift * 30);
+                    
+                    // Blend aurora with existing pixel (subtle background effect)
+                    uint8_t final_r = existing_r + static_cast<uint8_t>((r - existing_r) * alpha);
+                    uint8_t final_g = existing_g + static_cast<uint8_t>((g - existing_g) * alpha);
+                    uint8_t final_b = existing_b + static_cast<uint8_t>((b - existing_b) * alpha);
+                    
+                    offscreen_canvas->SetPixel(x, y, final_r, final_g, final_b);
                 }
             }
         }

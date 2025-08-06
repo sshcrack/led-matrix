@@ -54,7 +54,6 @@ namespace Scenes {
         PropertyPointer<float> base_speed = MAKE_PROPERTY_MINMAX("base_speed", float, 0.2f, 0.05f, 1.0f);
         PropertyPointer<bool> rainbow_snake = MAKE_PROPERTY("rainbow_snake", bool, true);
         PropertyPointer<bool> enable_wrap = MAKE_PROPERTY("enable_wrap", bool, false);
-        PropertyPointer<int> target_score = MAKE_PROPERTY_MINMAX("target_score", int, 20, 5, 50);
         PropertyPointer<bool> show_score = MAKE_PROPERTY("show_score", bool, true);
         PropertyPointer<bool> animated_food = MAKE_PROPERTY("animated_food", bool, true);
         

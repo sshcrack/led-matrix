@@ -65,13 +65,15 @@ bool SnakeGameScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     } else if (game_won) {
         renderWin();
     } else {
-        // Update game at target framerate
+        // Update game at target framerate with proper timing
         if (frame_counter % static_cast<int>(get_target_fps() * game_speed) == 0) {
             updateGame();
         }
         renderGame();
     }
     
+    // Use proper frame timing instead of custom timing
+    wait_until_next_frame();
     return true;
 }
 
@@ -91,8 +93,10 @@ void SnakeGameScene::updateGame() {
     food_pulse_phase += 0.2f;
     if (food_pulse_phase > 2 * M_PI) food_pulse_phase = 0;
     
-    // Check win condition
-    if (score >= target_score->get()) {
+    // Check win condition - game ends when snake fills most of the matrix or reaches maximum reasonable size
+    int max_possible_size = matrix_width * matrix_height - 1; // Leave room for food
+    int reasonable_max_size = std::min(max_possible_size, matrix_width * matrix_height * 3 / 4); // 75% of matrix
+    if (static_cast<int>(snake.size()) >= reasonable_max_size) {
         game_won = true;
         win_animation_frame = 0;
     }
@@ -322,14 +326,16 @@ void SnakeGameScene::renderFood() {
 }
 
 void SnakeGameScene::renderScore() {
-    // Simple score display in corner
+    if (!show_score->get()) return;
+    
+    // Simple score display in corner - using green colors instead of blue
     int display_score = std::min(score, 99); // Limit to 2 digits
     
-    // Draw score as small pixels
+    // Draw score as small green pixels instead of blue
     for (int i = 0; i < display_score && i < 10; i++) {
         int x = i % 5;
         int y = i / 5;
-        offscreen_canvas->SetPixel(matrix_width - 5 + x, y, 100, 100, 255);
+        offscreen_canvas->SetPixel(matrix_width - 5 + x, y, 100, 255, 100); // Green instead of blue
     }
 }
 
@@ -441,7 +447,6 @@ void SnakeGameScene::register_properties() {
     add_property(base_speed);
     add_property(rainbow_snake);
     add_property(enable_wrap);
-    add_property(target_score);
     add_property(show_score);
     add_property(animated_food);
 }
