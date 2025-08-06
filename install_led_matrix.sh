@@ -151,6 +151,86 @@ else
   print_info "Spotify Plugin will not be enabled."
 fi
 
+echo -e "${CYAN}${BOLD}"
+echo "----------------------------------------------"
+echo "       🔄  Automatic Updates Configuration"
+echo "----------------------------------------------"
+echo -e "${RESET}"
+echo -e "${BOLD}The LED Matrix Controller can automatically check for and install updates.${RESET}"
+echo -e "This keeps your system up-to-date with the latest features and security fixes."
+echo
+read -p "Do you want to enable automatic updates? (Y/n): " ENABLE_AUTO_UPDATES
+ENABLE_AUTO_UPDATES=${ENABLE_AUTO_UPDATES:-Y}
+
+UPDATE_SETTINGS=""
+if [[ "$ENABLE_AUTO_UPDATES" =~ ^[Yy]$ ]]; then
+  print_success "Automatic updates will be enabled! 🔄"
+  echo
+  echo -e "${YELLOW}You can configure how often to check for updates:${RESET}"
+  echo "1. Every 6 hours (recommended for development)"
+  echo "2. Every 12 hours"
+  echo "3. Every 24 hours (recommended for production)"
+  echo "4. Every 48 hours"
+  echo "5. Every week (168 hours)"
+  echo
+  read -p "Select update check frequency [1-5] (default: 3): " UPDATE_FREQUENCY
+  UPDATE_FREQUENCY=${UPDATE_FREQUENCY:-3}
+  
+  case $UPDATE_FREQUENCY in
+    1) CHECK_INTERVAL=6; FREQ_DESC="6 hours";;
+    2) CHECK_INTERVAL=12; FREQ_DESC="12 hours";;
+    3) CHECK_INTERVAL=24; FREQ_DESC="24 hours";;
+    4) CHECK_INTERVAL=48; FREQ_DESC="48 hours";;
+    5) CHECK_INTERVAL=168; FREQ_DESC="1 week";;
+    *) CHECK_INTERVAL=24; FREQ_DESC="24 hours (default)";;
+  esac
+  
+  print_success "Updates will be checked every $FREQ_DESC"
+  
+  # Create initial config with update settings
+  UPDATE_SETTINGS=$(cat <<EOF
+{
+  "update_settings": {
+    "auto_update_enabled": true,
+    "check_interval_hours": $CHECK_INTERVAL,
+    "current_version": "1.0.0",
+    "last_check_time": 0,
+    "last_update_time": 0,
+    "update_available": false,
+    "latest_version": "",
+    "update_download_url": ""
+  }
+}
+EOF
+  )
+else
+  print_info "Automatic updates will be disabled. You can enable them later from the web interface."
+  UPDATE_SETTINGS=$(cat <<EOF
+{
+  "update_settings": {
+    "auto_update_enabled": false,
+    "check_interval_hours": 24,
+    "current_version": "1.0.0",
+    "last_check_time": 0,
+    "last_update_time": 0,
+    "update_available": false,
+    "latest_version": "",
+    "update_download_url": ""
+  }
+}
+EOF
+  )
+fi
+
+print_info "📝 Creating initial configuration..."
+# Create config.json with update settings if it doesn't exist
+if [[ ! -f "/opt/led-matrix/config.json" ]]; then
+  (echo "$UPDATE_SETTINGS" | sudo tee /opt/led-matrix/config.json > /dev/null) & spin
+  print_success "Configuration file created with update settings"
+else
+  print_info "Configuration file already exists, keeping existing settings"
+fi
+
 SERVICE_FILE="/etc/systemd/system/led-matrix.service"
 print_info "🛠️  Setting up systemd service..."
 (sudo bash -c "cat > $SERVICE_FILE" <<EOF
@@ -178,5 +258,15 @@ print_success "Installation complete! 🎉"
 echo
 print_info "You can check the service status with:"
 echo -e "${BOLD}  sudo systemctl status led-matrix.service${RESET}"
+echo
+print_info "Access the web interface at:"
+echo -e "${BOLD}  http://$(hostname -I | awk '{print $1}'):8080${RESET}"
+echo
+if [[ "$ENABLE_AUTO_UPDATES" =~ ^[Yy]$ ]]; then
+  print_info "Automatic updates are enabled and will check every $FREQ_DESC"
+  print_info "You can manage update settings from the web interface at /updates"
+else
+  print_info "Automatic updates are disabled. Enable them from the web interface if needed."
+fi
 echo
 print_success "Enjoy your LED Matrix Controller! 🌈"

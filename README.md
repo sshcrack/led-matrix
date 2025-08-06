@@ -41,6 +41,7 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 - **11+ specialized plugins** for unlimited visual variety
 - **Preset management** for quick scene switching
 - **Advanced scheduling** - Automatically switch presets based on time and day
+- **Automatic updates** - Keep your system up-to-date with the latest features and security fixes
 - **Real-time configuration** without restarts
 
 ### 🎨 **Rich Plugin Ecosystem**
@@ -464,6 +465,64 @@ curl "http://matrix-ip:8080/post_processing/clear"
 ```
 
 **Days of Week**: `0` = Sunday, `1` = Monday, ..., `6` = Saturday
+
+### 🔄 **Automatic Updates**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/update/status` | Get current update status and configuration |
+| `POST` | `/api/update/check` | Manually check for available updates |
+| `POST` | `/api/update/install` | Install available update (optional: `?version=<version>`) |
+| `POST` | `/api/update/config` | Update auto-update configuration |
+| `GET` | `/api/update/releases?per_page=<count>` | Get recent GitHub releases |
+
+#### **Update Status Response**
+```json
+{
+  "auto_update_enabled": true,
+  "check_interval_hours": 24,
+  "current_version": "1.0.0",
+  "latest_version": "1.10.0",
+  "update_available": true,
+  "status": 0,
+  "error_message": ""
+}
+```
+
+**Status Values**: `0`=Idle, `1`=Checking, `2`=Downloading, `3`=Installing, `4`=Error, `5`=Success
+
+#### **Update Configuration**
+```json
+{
+  "auto_update_enabled": true,
+  "check_interval_hours": 12
+}
+```
+
+#### **Update Examples**
+```bash
+# Check update status
+curl "http://matrix-ip:8080/api/update/status"
+
+# Manually check for updates
+curl -X POST "http://matrix-ip:8080/api/update/check"
+
+# Install latest update
+curl -X POST "http://matrix-ip:8080/api/update/install"
+
+# Install specific version
+curl -X POST "http://matrix-ip:8080/api/update/install?version=1.10.0"
+
+# Configure auto-updates
+curl -X POST "http://matrix-ip:8080/api/update/config" \
+  -H "Content-Type: application/json" \
+  -d '{"auto_update_enabled": true, "check_interval_hours": 12}'
+
+# Get recent releases
+curl "http://matrix-ip:8080/api/update/releases?per_page=3"
+```
+
+**Auto-Update**: When enabled, the system automatically checks for updates at the configured interval (default: 24 hours) and installs them if available. The service restarts automatically after installation. Updates can be managed via the web interface at `/updates`.
 
 ## 🔧 **Troubleshooting**
 
