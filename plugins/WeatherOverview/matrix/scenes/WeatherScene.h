@@ -11,6 +11,7 @@ namespace Scenes {
         float y;
         float speed;
         float size;
+        // Opacity between 0f and 255f
         float opacity;
         bool active;
         float wind_factor;      // For swaying motion
@@ -104,8 +105,7 @@ namespace Scenes {
         void updateAnimationState(const WeatherData &data);
         void renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data);
         void initializeParticles();
-        void updateParticles(const WeatherData &data);
-        
+
         // New sophisticated animation methods
         void renderClouds(const RGBMatrixBase *matrix, const WeatherData &data);
         void renderLightning(const RGBMatrixBase *matrix);
@@ -152,7 +152,6 @@ namespace Scenes {
         PropertyPointer<bool> enable_sun_rays = MAKE_PROPERTY("enable_sun_rays", bool, true);
         PropertyPointer<bool> enable_aurora = MAKE_PROPERTY("enable_aurora", bool, false);
         PropertyPointer<bool> enable_rainbow = MAKE_PROPERTY("enable_rainbow", bool, true);
-        PropertyPointer<bool> enable_enhanced_particles = MAKE_PROPERTY("enable_enhanced_particles", bool, true);
         PropertyPointer<float> animation_speed_multiplier = MAKE_PROPERTY_MINMAX("animation_speed_multiplier", float, 1.0f, 0.1f, 3.0f);
         PropertyPointer<int> particle_density = MAKE_PROPERTY_MINMAX("particle_density", int, 5, 1, 10);
 
@@ -180,7 +179,6 @@ namespace Scenes {
             add_property(enable_sun_rays);
             add_property(enable_aurora);
             add_property(enable_rainbow);
-            add_property(enable_enhanced_particles);
             add_property(animation_speed_multiplier);
             add_property(particle_density);
         }

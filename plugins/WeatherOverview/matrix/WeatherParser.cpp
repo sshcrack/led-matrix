@@ -234,6 +234,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         data.sunrise = sunrise;
         data.sunset = sunset;
 
+        data.weatherCode = 200;
         spdlog::disable_backtrace();
         spdlog::trace("Setting description to " + data.description);
         spdlog::trace("Code is " + std::to_string(code));
