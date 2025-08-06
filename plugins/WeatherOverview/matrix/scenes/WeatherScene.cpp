@@ -200,7 +200,6 @@ void Scenes::WeatherScene::renderAnimations(const RGBMatrixBase *matrix, const W
     renderLightning(matrix);
     renderSunRays(matrix, data);
     renderFogMist(matrix, data);
-    renderRainbowEffect(matrix, data);
     renderAurora(matrix);
 }
 
@@ -294,7 +293,7 @@ void Scenes::WeatherScene::tryCreateShootingStar()
     const auto now = std::chrono::steady_clock::now();
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_shooting_star_time).count();
 
-    if (elapsed < MIN_MS_BETWEEN_STARS || animation_frame % get_target_fps() <= shooting_star_frame_threshold->get())
+    if (elapsed < MIN_MS_BETWEEN_STARS || animation_frame <= shooting_star_frame_threshold->get())
     {
         return;
     }
@@ -394,7 +393,7 @@ void Scenes::WeatherScene::renderShootingStars()
                 int py = static_cast<int>(tail_y);
                 if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height)
                 {
-                    offscreen_canvas->SetPixel(px, py, b, b, b);
+                    SetPixelAlpha(offscreen_canvas, px, py, 255, 255, 255, ((float)b / 255.0f));
                 }
             }
         }
@@ -682,7 +681,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
         updateAnimationState(data);
     }
 
-    animation_frame = (animation_frame + 1) % get_target_fps(); // 60 frames for subtle animations
+    animation_frame = (animation_frame + 1) % get_target_fps();
 
     updateEnhancedParticles(data);
     offscreen_canvas->Clear();
@@ -698,6 +697,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
         offscreen_canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
     }
 
+    renderRainbowEffect(matrix, data);
     // Draw a subtle border if enabled
     if (show_border->get())
     {
@@ -1152,41 +1152,81 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
 
     if (is_fog)
     {
-        // Initialize fog grid if empty
-        if (fog_grid.empty())
-        {
-            fog_grid.resize(matrix_width);
-            for (auto &col : fog_grid)
-            {
-                col.resize(matrix_height);
-                for (auto &cell : col)
-                {
-                    cell = static_cast<float>(rand() % 100) / 100.0f;
+        // --- Enhanced fog patch system (stable, no flicker) ---
+        struct FogPatch {
+            float x, y; // Center position
+            float vx, vy; // Velocity
+            float radius; // Size
+            float density; // Opacity
+            float phase; // For organic movement
+        };
+        static std::vector<FogPatch> fog_patches;
+        static bool fog_initialized = false;
+        static int last_matrix_width = 0, last_matrix_height = 0;
+        const int NUM_PATCHES = 7 + rand() % 3; // 7-9 patches for variety
+
+        // Reinitialize if matrix size changes or not initialized
+        if (!fog_initialized || last_matrix_width != matrix_width || last_matrix_height != matrix_height) {
+            fog_patches.clear();
+            for (int i = 0; i < NUM_PATCHES; ++i) {
+                float r = 18.0f + rand() % 22; // 18-40 px radius
+                float d = 0.25f + (rand() % 60) / 200.0f; // 0.25-0.55 density
+                float x = rand() % matrix_width;
+                float y = rand() % matrix_height;
+                float vx = 0.08f + (rand() % 10) / 100.0f * ((rand() % 2) ? 1 : -1);
+                float vy = 0.03f * ((rand() % 2) ? 1 : -1);
+                float phase = rand() % 1000 / 100.0f;
+                fog_patches.push_back({x, y, vx, vy, r, d, phase});
+            }
+            fog_initialized = true;
+            last_matrix_width = matrix_width;
+            last_matrix_height = matrix_height;
+        }
+
+        // Animate fog patches (smooth, stable)
+        static float fog_time = 0.0f;
+
+        fog_time += 0.05f * animation_speed_multiplier->get();
+        for (auto &patch : fog_patches) {
+            patch.x += patch.vx * (0.7f + 0.3f * sin(fog_time + patch.phase));
+            patch.y += patch.vy * (0.7f + 0.3f * cos(fog_time + patch.phase * 1.2f));
+            patch.phase += 0.01f + 0.01f * animation_speed_multiplier->get();
+            // Wrap around edges for seamless movement
+            if (patch.x < -patch.radius) patch.x = matrix_width + patch.radius;
+            if (patch.x > matrix_width + patch.radius) patch.x = -patch.radius;
+            if (patch.y < -patch.radius) patch.y = matrix_height + patch.radius;
+            if (patch.y > matrix_height + patch.radius) patch.y = -patch.radius;
+        }
+
+        // Render fog patches (no per-pixel randomization)
+        for (const auto &patch : fog_patches) {
+            float edge_fade = 0.7f + 0.3f * sin(fog_time + patch.phase * 0.8f);
+            for (int dx = -patch.radius; dx <= patch.radius; ++dx) {
+                for (int dy = -patch.radius; dy <= patch.radius; ++dy) {
+                    int x = static_cast<int>(patch.x + dx);
+                    int y = static_cast<int>(patch.y + dy);
+                    if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                        float dist = sqrtf(dx * dx + dy * dy);
+                        if (dist <= patch.radius) {
+                            // Soft edge fade
+                            float local_alpha = patch.density * (1.0f - dist / patch.radius) * edge_fade;
+                            // Only use smooth, time-based organic movement for alpha
+                            local_alpha *= 0.95f + 0.05f * sin(fog_time + patch.phase);
+                            // Blend with background, don't overpower text
+                            if (local_alpha > 0.05f) {
+                                uint8_t fog_gray = 160 + static_cast<uint8_t>(30 * patch.density);
+                                SetPixelAlpha(offscreen_canvas, x, y, fog_gray, fog_gray, fog_gray + 10, std::min(local_alpha, 0.35f));
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        // Update fog animation
-        float fog_time = animation_frame * 0.05f * animation_speed_multiplier->get();
-
-        for (int x = 0; x < matrix_width; x++)
-        {
-            for (int y = 0; y < matrix_height; y++)
-            {
-                // Create rolling fog effect
-                float fog_density = fog_grid[x][y];
-                fog_density += 0.1f * sin(fog_time + x * 0.1f + y * 0.2f);
-                fog_density = std::max(0.0f, std::min(1.0f, fog_density));
-
-                // Only render subtle fog if density is significant enough and make it blend
-                if (fog_density > 0.3f)
-                {
-                    // Create subtle fog overlay that doesn't overpower text
-                    float fog_alpha = (fog_density - 0.3f) * 0.2f; // Very subtle transparency
-                    uint8_t fog_gray = 160 + static_cast<uint8_t>(30 * fog_density);
-
-                    SetPixelAlpha(offscreen_canvas, x, y, fog_gray, fog_gray, fog_gray + 10, fog_alpha);
-                }
+        // Optionally, add a subtle overall gradient for depth
+        for (int y = 0; y < matrix_height; ++y) {
+            float grad_alpha = 0.08f * (1.0f - y / (float)matrix_height);
+            for (int x = 0; x < matrix_width; ++x) {
+                SetPixelAlpha(offscreen_canvas, x, y, 180, 180, 190, grad_alpha);
             }
         }
     }
@@ -1197,85 +1237,71 @@ void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, cons
     if (!enable_rainbow->get() || !enable_animations->get())
         return;
 
-    // Show rainbow after rain
     int code = data.weatherCode;
     bool is_rain =
         (code >= 50 && code <= 69) ||
         (code >= 80 && code <= 84) ||
         (code == 91 || code == 92);
     if (is_rain && data.is_day)
-    {                                                  // Rain during day
-        float rainbow_time = animation_frame * 0.008f; // Slower animation
+    {
+        static float rainbow_time = 0.0f;
+        rainbow_time += 0.008f;
 
-        // Draw multiple rainbow bands for realistic effect
         int center_x = matrix_width / 2;
-        int center_y = matrix_height + 10; // Position rainbow lower for better arc
+        int center_y = matrix_height + 10;
+        int num_bands = 5;
+        float base_radius = matrix_height * 0.6f;
+        float band_width = 2.0f;
 
-        // Draw 5 rainbow bands with different radii
-        for (int band = 0; band < 5; band++)
+        for (int band = 0; band < num_bands; band++)
         {
-            int radius = matrix_height * 0.6f + band * 2; // Multiple arcs
+            float radius = base_radius + band * band_width;
+            float thickness = 2.0f; // Make rainbow thicker
+            float edge_fade = 1.0f - (band / (float)num_bands) * 0.3f;
+            float band_intensity = 0.85f + 0.10f * sin(rainbow_time + band); // More opacity
+            float intensity = band_intensity * edge_fade;
 
-            for (float angle = M_PI * 0.15f; angle < M_PI * 0.85f; angle += 0.02f)
-            { // Denser points
-                int x = center_x + static_cast<int>(cos(angle) * radius);
-                int y = center_y - static_cast<int>(sin(angle) * radius);
-
-                if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height)
+            // Loop over x positions for continuous arc
+            for (int x = 0; x < matrix_width; x++)
+            {
+                float dx = x - center_x;
+                float inside = radius * radius - dx * dx;
+                if (inside < 0) continue; // Not on the arc
+                float y_arc = center_y - sqrtf(inside);
+                for (float t = -thickness / 2.0f; t <= thickness / 2.0f; t += 0.5f)
                 {
-                    // Calculate rainbow color based on angle with shifting animation
-                    float hue = (angle - M_PI * 0.15f) / (M_PI * 0.7f) * 360.0f;
-                    hue += rainbow_time * 30.0f; // Slow color shifting
-                    hue = fmod(hue, 360.0f);
-
-                    // Subtle intensity that varies per band
-                    float band_intensity = 0.15f + 0.05f * sin(rainbow_time + band);
-                    float edge_fade = 1.0f - (band / 5.0f) * 0.3f; // Outer bands are fainter
-                    float intensity = band_intensity * edge_fade;
-
-                    uint8_t r, g, b;
-                    // Simple HSV to RGB conversion for rainbow
-                    float c = intensity;
-                    float x_val = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
-
-                    if (hue < 60)
+                    int y = static_cast<int>(y_arc + t);
+                    if (y >= 0 && y < matrix_height)
                     {
-                        r = c * 255;
-                        g = x_val * 255;
-                        b = 0;
+                        // Calculate hue based on x position for smooth gradient
+                        float hue = ((float)x / matrix_width) * 360.0f;
+                        hue += rainbow_time * 30.0f;
+                        hue = fmod(hue, 360.0f);
+                        float s = 1.0f;
+                        float v = intensity;
+                        float c = v * s;
+                        float h_prime = hue / 60.0f;
+                        float x_val = c * (1 - fabs(fmod(h_prime, 2) - 1));
+                        float m = v - c;
+                        float r_f, g_f, b_f;
+                        if (h_prime >= 0 && h_prime < 1) {
+                            r_f = c; g_f = x_val; b_f = 0;
+                        } else if (h_prime >= 1 && h_prime < 2) {
+                            r_f = x_val; g_f = c; b_f = 0;
+                        } else if (h_prime >= 2 && h_prime < 3) {
+                            r_f = 0; g_f = c; b_f = x_val;
+                        } else if (h_prime >= 3 && h_prime < 4) {
+                            r_f = 0; g_f = x_val; b_f = c;
+                        } else if (h_prime >= 4 && h_prime < 5) {
+                            r_f = x_val; g_f = 0; b_f = c;
+                        } else {
+                            r_f = c; g_f = 0; b_f = x_val;
+                        }
+                        uint8_t r = static_cast<uint8_t>(std::min(255.0f, (r_f + m) * 255.0f));
+                        uint8_t g = static_cast<uint8_t>(std::min(255.0f, (g_f + m) * 255.0f));
+                        uint8_t b = static_cast<uint8_t>(std::min(255.0f, (b_f + m) * 255.0f));
+                        offscreen_canvas->SetPixel(x, y, r, g, b);
                     }
-                    else if (hue < 120)
-                    {
-                        r = x_val * 255;
-                        g = c * 255;
-                        b = 0;
-                    }
-                    else if (hue < 180)
-                    {
-                        r = 0;
-                        g = c * 255;
-                        b = x_val * 255;
-                    }
-                    else if (hue < 240)
-                    {
-                        r = 0;
-                        g = x_val * 255;
-                        b = c * 255;
-                    }
-                    else if (hue < 300)
-                    {
-                        r = x_val * 255;
-                        g = 0;
-                        b = c * 255;
-                    }
-                    else
-                    {
-                        r = c * 255;
-                        g = 0;
-                        b = x_val * 255;
-                    }
-
-                    SetPixelAlpha(offscreen_canvas, x, y, r, g, b, intensity);
                 }
             }
         }
@@ -1312,7 +1338,7 @@ void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix)
                 if (intensity > 0.1f)
                 {
                     // Subtle transparency for aurora
-                    float alpha = (intensity - 0.1f) * 0.3f; // Very subtle alpha
+                    float alpha = (intensity - 0.1f) * 0.8f; // Very subtle alpha
 
                     // Green-blue aurora colors with variations
                     float color_shift = sin(aurora_continuous_time * 0.5f + x * 0.1f) * 0.3f;
