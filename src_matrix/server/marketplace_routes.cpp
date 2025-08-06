@@ -2,6 +2,7 @@
 #include "shared/common/marketplace/client.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <memory>
@@ -250,6 +251,62 @@ std::unique_ptr<router_t> add_marketplace_routes(std::unique_ptr<router_t> route
                 
         } catch (const std::exception& e) {
             spdlog::error("Error disabling plugin: {}", e.what());
+            return Server::reply_with_error(req, "Internal server error", status_internal_server_error());
+        }
+    });
+    
+    // POST /marketplace/load - Load a plugin dynamically
+    router->http_post("/marketplace/load", [](const auto& req, auto) {
+        try {
+            auto body = req->body();
+            json request_data = json::parse(body);
+            
+            if (!request_data.contains("plugin_path")) {
+                return Server::reply_with_error(req, "Missing plugin_path");
+            }
+            
+            std::string plugin_path = request_data["plugin_path"];
+            bool success = Plugins::PluginManager::instance()->load_plugin(plugin_path);
+            
+            if (success) {
+                json response_json;
+                response_json["message"] = "Plugin loaded successfully";
+                response_json["plugin_path"] = plugin_path;
+                return Server::reply_with_json(req, response_json);
+            } else {
+                return Server::reply_with_error(req, "Failed to load plugin", status_internal_server_error());
+            }
+                
+        } catch (const std::exception& e) {
+            spdlog::error("Error loading plugin: {}", e.what());
+            return Server::reply_with_error(req, "Internal server error", status_internal_server_error());
+        }
+    });
+    
+    // POST /marketplace/unload - Unload a plugin dynamically
+    router->http_post("/marketplace/unload", [](const auto& req, auto) {
+        try {
+            auto body = req->body();
+            json request_data = json::parse(body);
+            
+            if (!request_data.contains("plugin_id")) {
+                return Server::reply_with_error(req, "Missing plugin_id");
+            }
+            
+            std::string plugin_id = request_data["plugin_id"];
+            bool success = Plugins::PluginManager::instance()->unload_plugin(plugin_id);
+            
+            if (success) {
+                json response_json;
+                response_json["message"] = "Plugin unloaded successfully";
+                response_json["plugin_id"] = plugin_id;
+                return Server::reply_with_json(req, response_json);
+            } else {
+                return Server::reply_with_error(req, "Failed to unload plugin or plugin not found", status_not_found());
+            }
+                
+        } catch (const std::exception& e) {
+            spdlog::error("Error unloading plugin: {}", e.what());
             return Server::reply_with_error(req, "Internal server error", status_internal_server_error());
         }
     });

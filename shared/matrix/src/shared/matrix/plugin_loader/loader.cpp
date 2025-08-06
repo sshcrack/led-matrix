@@ -21,13 +21,22 @@ void PluginManager::destroy_plugins() {
     info("Destroying plugins...");
     std::flush(std::cout);
 
-
     for (const auto &item: loaded_plugins) {
         void (*destroy)(BasicPlugin *);
         destroy = (void (*)(BasicPlugin *)) dlsym(item.handle, item.destroyFnName.c_str());
 
-        destroy(item.plugin);
+        if (destroy) {
+            destroy(item.plugin);
+        } else {
+            error("Failed to find destroy function {} for plugin", item.destroyFnName);
+        }
+        
+        if (dlclose(item.handle) != 0) {
+            error("Failed to close plugin handle: {}", dlerror());
+        }
     }
+    
+    loaded_plugins.clear();
 }
 
 void PluginManager::delete_references() {
@@ -172,4 +181,145 @@ PluginManager *PluginManager::instance() {
     }
 
     return instance_;
+}
+
+bool PluginManager::load_plugin(const std::string& plugin_path) {
+    info("Loading plugin from: {}", plugin_path);
+    
+    // Check if plugin is already loaded
+    std::string plugin_id = Plugins::get_lib_name(fs::path(plugin_path));
+    for (const auto& item : loaded_plugins) {
+        if (item.plugin->get_plugin_name() == plugin_id) {
+            warn("Plugin {} is already loaded", plugin_id);
+            return true;
+        }
+    }
+    
+    // Clear any existing errors
+    dlerror();
+
+    void *dlhandle = dlopen(plugin_path.c_str(), RTLD_LAZY);
+    if (dlhandle == nullptr) {
+        error("Failed to load plugin '{}': {}", plugin_path, dlerror());
+        return false;
+    }
+
+    std::string libName = Plugins::get_lib_name(fs::path(plugin_path));
+    std::string cn = "create" + libName;
+    std::string dn = "destroy" + libName;
+
+    // Clear any existing errors before dlsym
+    dlerror();
+
+    BasicPlugin *(*create)() = (BasicPlugin *(*)()) (dlsym(dlhandle, cn.c_str()));
+    const char *dlsym_error = dlerror();
+
+    if (dlsym_error != nullptr) {
+        error("Symbol lookup error in plugin '{}': {}", plugin_path, dlsym_error);
+        error("Expected symbol '{}' not found", cn);
+        dlclose(dlhandle);
+        return false;
+    }
+
+    // Verify destroy function exists before creating plugin
+    dlerror();
+    void *destroy_sym = dlsym(dlhandle, dn.c_str());
+    if (dlerror() != nullptr || destroy_sym == nullptr) {
+        error("Destroy function '{}' not found in plugin '{}'", dn, plugin_path);
+        dlclose(dlhandle);
+        return false;
+    }
+
+    try {
+        BasicPlugin *p = create();
+        Dl_info dl_info;
+        dladdr((void *) create, &dl_info);
+
+        p->_plugin_location = dl_info.dli_fname;
+        info("Successfully loaded plugin {}", plugin_path);
+
+        PluginInfo info = {
+            .handle = dlhandle,
+            .destroyFnName = dn,
+            .plugin = p,
+        };
+        loaded_plugins.emplace_back(info);
+        
+        // Refresh scenes cache to include new plugin
+        refresh_scenes_cache();
+        
+        return true;
+    } catch (const std::exception &e) {
+        error("Failed to initialize plugin '{}': {}", plugin_path, e.what());
+        dlclose(dlhandle);
+        return false;
+    }
+}
+
+bool PluginManager::unload_plugin(const std::string& plugin_id) {
+    info("Unloading plugin: {}", plugin_id);
+    
+    auto it = std::find_if(loaded_plugins.begin(), loaded_plugins.end(),
+                          [&plugin_id](const PluginInfo& item) {
+                              return item.plugin->get_plugin_name() == plugin_id;
+                          });
+    
+    if (it == loaded_plugins.end()) {
+        warn("Plugin {} not found for unloading", plugin_id);
+        return false;
+    }
+    
+    try {
+        // Call destroy function
+        void (*destroy)(BasicPlugin *);
+        destroy = (void (*)(BasicPlugin *)) dlsym(it->handle, it->destroyFnName.c_str());
+        
+        if (destroy) {
+            destroy(it->plugin);
+        } else {
+            error("Failed to find destroy function {} for plugin {}", it->destroyFnName, plugin_id);
+        }
+        
+        // Close library handle
+        if (dlclose(it->handle) != 0) {
+            error("Failed to close plugin handle for {}: {}", plugin_id, dlerror());
+        }
+        
+        // Remove from loaded plugins list
+        loaded_plugins.erase(it);
+        
+        // Refresh scenes cache to remove plugin scenes
+        refresh_scenes_cache();
+        
+        info("Successfully unloaded plugin: {}", plugin_id);
+        return true;
+    } catch (const std::exception& e) {
+        error("Exception while unloading plugin {}: {}", plugin_id, e.what());
+        return false;
+    }
+}
+
+void PluginManager::refresh_scenes_cache() {
+    info("Refreshing scenes cache");
+    all_scenes.clear();
+    
+    for (auto &item: get_plugins()) {
+        try {
+            auto pl_scenes = item->get_scenes();
+            all_scenes.insert(all_scenes.end(),
+                              pl_scenes.begin(),
+                              pl_scenes.end());
+        } catch (const std::exception& e) {
+            error("Error getting scenes from plugin {}: {}", item->get_plugin_name(), e.what());
+        }
+    }
+    
+    info("Refreshed scenes cache with {} scenes", all_scenes.size());
+}
+
+bool PluginManager::is_plugin_loaded(const std::string& plugin_id) const {
+    return std::any_of(loaded_plugins.begin(), loaded_plugins.end(),
+                      [&plugin_id](const PluginInfo& item) {
+                          return item.plugin->get_plugin_name() == plugin_id;
+                      });
 }

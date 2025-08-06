@@ -42,5 +42,11 @@ namespace Plugins {
 
         std::vector<std::shared_ptr<SceneWrapper>> &get_scenes();
         std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
+        
+        // Dynamic plugin management for marketplace
+        bool load_plugin(const std::string& plugin_path);
+        bool unload_plugin(const std::string& plugin_id);
+        void refresh_scenes_cache();
+        bool is_plugin_loaded(const std::string& plugin_id) const;
     };
 }
