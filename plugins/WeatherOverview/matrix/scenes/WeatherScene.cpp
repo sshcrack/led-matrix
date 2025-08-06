@@ -684,12 +684,7 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
 
     animation_frame = (animation_frame + 1) % get_target_fps(); // 60 frames for subtle animations
 
-    // Update animation state periodically
-    if (has_precipitation)
-    {
-        updateEnhancedParticles(data);
-    }
-
+    updateEnhancedParticles(data);
     offscreen_canvas->Clear();
 
     // Apply beautiful background with gradient if enabled
@@ -860,7 +855,11 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
     }
 
     const int code = data.weatherCode;
-    const bool is_snow = (code >= 600 && code < 700);
+    // Snow codes
+    bool is_snow =
+        (code >= 70 && code <= 79) ||
+        (code >= 85 && code <= 88) ||
+        (code == 93 || code == 94);
 
     // Render active particles with enhanced visuals
     for (const auto &p : particles)
@@ -964,29 +963,43 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
                 cloud.second = 10 + rand() % 20;
             }
 
-            // Draw soft cloud shape with subtle transparency
-            float cloud_intensity = 0.15f + 0.1f * sin(cloud_phase + i); // More subtle intensity
-            int cloud_width = 12 + i * 2;                                // Smaller clouds
-            int cloud_height = 4 + i;
+            // Beautiful cloud rendering: multiple overlapping ellipses
+            float cloud_intensity = 0.18f + 0.12f * sin(cloud_phase + i); // More subtle intensity
+            int cloud_width = 16 + i * 6; // Larger, more varied clouds
+            int cloud_height = 7 + i * 3;
+            int num_ellipses = 4 + i; // More ellipses for bigger clouds
 
-            for (int x = 0; x < cloud_width; x++)
+            for (int e = 0; e < num_ellipses; ++e)
             {
-                for (int y = 0; y < cloud_height; y++)
+                // Stable ellipse position and size for organic look
+                float ellipse_x = cloud.first + (e - num_ellipses / 2.0f) * (cloud_width / (num_ellipses + 1)) + sin(cloud_phase * 0.7f + e) * 2.0f;
+                float ellipse_y = cloud.second + sin(cloud_phase * 0.9f + e * 1.3f) * 1.5f + e;
+                // Use deterministic size based on layer and ellipse index
+                float ellipse_w = cloud_width * (0.8f + 0.1f * e / (float)num_ellipses);
+                float ellipse_h = cloud_height * (0.8f + 0.1f * e / (float)num_ellipses);
+
+                for (int x = 0; x < static_cast<int>(ellipse_w); x++)
                 {
-                    int px = static_cast<int>(cloud.first) + x - cloud_width / 2;
-                    int py = static_cast<int>(cloud.second) + y - cloud_height / 2;
-
-                    if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height)
+                    for (int y = 0; y < static_cast<int>(ellipse_h); y++)
                     {
-                        // Distance from cloud center for soft edges
-                        float dist = sqrt(pow(x - cloud_width / 2.0f, 2) + pow(y - cloud_height / 2.0f, 2));
-                        float edge_factor = std::max(0.0f, 1.0f - dist / (cloud_width / 2.0f));
+                        int px = static_cast<int>(ellipse_x) + x - ellipse_w / 2;
+                        int py = static_cast<int>(ellipse_y) + y - ellipse_h / 2;
 
-                        // Subtle cloud color blending
-                        uint8_t cloud_alpha = static_cast<uint8_t>(60 * cloud_intensity * edge_factor);
-                        uint8_t cloud_gray = 180 + static_cast<uint8_t>(30 * edge_factor);
+                        if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height)
+                        {
+                            // Ellipse equation for soft edges
+                            float dx = (x - ellipse_w / 2.0f) / (ellipse_w / 2.0f);
+                            float dy = (y - ellipse_h / 2.0f) / (ellipse_h / 2.0f);
+                            float dist = dx * dx + dy * dy;
+                            float edge_factor = std::max(0.0f, 1.0f - dist);
 
-                        SetPixelAlpha(offscreen_canvas, px, py, cloud_gray, cloud_gray, cloud_gray + 20, cloud_alpha);
+                            // Subtle color variation for depth
+                            uint8_t base_gray = 185 + static_cast<uint8_t>(25 * edge_factor) + static_cast<uint8_t>(8 * i);
+                            uint8_t blue_tint = base_gray + 22 + static_cast<uint8_t>(5 * sin(cloud_phase + e));
+                            float alpha = cloud_intensity * edge_factor * (0.7f + 0.3f * (1.0f - i / (float)cloud_layers.size()));
+
+                            SetPixelAlpha(offscreen_canvas, px, py, base_gray, base_gray, blue_tint, alpha);
+                        }
                     }
                 }
             }
@@ -1049,7 +1062,7 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
     }
 
     // Randomly trigger new lightning only for thunderstorm codes (200-299)
-    if (!lightning_active && (weather_code >= 200 && weather_code < 300) && (rand() % 1800) == 0)
+    if (!lightning_active && (rand() % 1800) == 0)
     { // About every 30 seconds at 60fps
         lightning_active = true;
         lightning_timer = 200;
@@ -1081,8 +1094,8 @@ void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const Weat
 
     // Draw rotating sun rays for clear/sunny weather
     int code = data.weatherCode;
-    if (code == 800)
-    { // Clear sky
+    if (code == 0 || code == 1 || code == 2 || code == 3)
+    { // Clear sky or cloud development
         int center_x = matrix_width / 2;
         int center_y = matrix_height / 4;
 
@@ -1186,8 +1199,12 @@ void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, cons
 
     // Show rainbow after rain
     int code = data.weatherCode;
-    if ((code >= 500 && code < 600) && data.is_day)
-    {                                                  // Light rain during day
+    bool is_rain =
+        (code >= 50 && code <= 69) ||
+        (code >= 80 && code <= 84) ||
+        (code == 91 || code == 92);
+    if (is_rain && data.is_day)
+    {                                                  // Rain during day
         float rainbow_time = animation_frame * 0.008f; // Slower animation
 
         // Draw multiple rainbow bands for realistic effect
