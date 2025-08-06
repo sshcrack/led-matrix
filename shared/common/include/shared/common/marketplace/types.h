@@ -12,30 +12,22 @@ namespace Marketplace {
     struct SceneInfo {
         std::string name;
         std::string description;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(SceneInfo, name, description)
     };
 
     struct BinaryInfo {
         std::string url;
         std::string sha512;
         size_t size;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(BinaryInfo, url, sha512, size)
     };
 
     struct ReleaseInfo {
         std::optional<BinaryInfo> matrix;
         std::optional<BinaryInfo> desktop;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(ReleaseInfo, matrix, desktop)
     };
 
     struct CompatibilityInfo {
         std::optional<std::string> matrix_version;
         std::optional<std::string> desktop_version;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(CompatibilityInfo, matrix_version, desktop_version)
     };
 
     struct PluginInfo {
@@ -50,17 +42,11 @@ namespace Marketplace {
         std::unordered_map<std::string, ReleaseInfo> releases;
         std::optional<CompatibilityInfo> compatibility;
         std::vector<std::string> dependencies;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(PluginInfo, id, name, description, version, 
-                                                   author, tags, image, scenes, releases, 
-                                                   compatibility, dependencies)
     };
 
     struct MarketplaceIndex {
         std::string version;
         std::vector<PluginInfo> plugins;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(MarketplaceIndex, version, plugins)
     };
 
     enum class InstallationStatus {
@@ -77,8 +63,6 @@ namespace Marketplace {
         std::string version;
         std::string install_path;
         bool enabled;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(InstalledPlugin, id, version, install_path, enabled)
     };
 
     struct InstallationProgress {
@@ -86,9 +70,32 @@ namespace Marketplace {
         InstallationStatus status;
         double progress; // 0.0 to 1.0
         std::optional<std::string> error_message;
-        
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(InstallationProgress, plugin_id, status, progress, error_message)
     };
+
+    // JSON serialization functions
+    void to_json(nlohmann::json& j, const SceneInfo& s);
+    void from_json(const nlohmann::json& j, SceneInfo& s);
+    
+    void to_json(nlohmann::json& j, const BinaryInfo& b);
+    void from_json(const nlohmann::json& j, BinaryInfo& b);
+    
+    void to_json(nlohmann::json& j, const ReleaseInfo& r);
+    void from_json(const nlohmann::json& j, ReleaseInfo& r);
+    
+    void to_json(nlohmann::json& j, const CompatibilityInfo& c);
+    void from_json(const nlohmann::json& j, CompatibilityInfo& c);
+    
+    void to_json(nlohmann::json& j, const PluginInfo& p);
+    void from_json(const nlohmann::json& j, PluginInfo& p);
+    
+    void to_json(nlohmann::json& j, const MarketplaceIndex& m);
+    void from_json(const nlohmann::json& j, MarketplaceIndex& m);
+    
+    void to_json(nlohmann::json& j, const InstalledPlugin& p);
+    void from_json(const nlohmann::json& j, InstalledPlugin& p);
+    
+    void to_json(nlohmann::json& j, const InstallationProgress& p);
+    void from_json(const nlohmann::json& j, InstallationProgress& p);
 
 } // namespace Marketplace
 } // namespace Plugins

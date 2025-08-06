@@ -459,7 +459,7 @@ namespace Marketplace {
                     
                     if (it == installed_plugins_.end()) {
                         const std::string error_msg = "Plugin not found: " + plugin_id;
-                        warn(error);
+                        warn(error_msg);
                         if (completion_cb) completion_cb(false, error_msg);
                         return false;
                     }

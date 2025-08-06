@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "plugins": [
+    {
+      "id": "example-scenes",
+      "name": "Example Scenes",
+      "description": "Basic example scenes for LED matrix demonstrations",
+      "version": "1.0.0",
+      "author": "LED Matrix Team",
+      "tags": ["examples", "basic", "demo"],
+      "image": "https://raw.githubusercontent.com/led-matrix-plugins/marketplace/main/images/example-scenes.png",
+      "scenes": [
+        {
+          "name": "Color Pulse",
+          "description": "Smooth color pulsing effect"
+        },
+        {
+          "name": "Property Demo",
+          "description": "Demonstrates the property system"
+        },
+        {
+          "name": "Rendering Demo",
+          "description": "Shows rendering capabilities"
+        }
+      ],
+      "releases": {
+        "1.0.0": {
+          "matrix": {
+            "url": "https://github.com/led-matrix-plugins/marketplace/releases/download/v1.0.0/ExampleScenes-matrix.so",
+            "sha512": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size": 65536
+          }
+        }
+      },
+      "compatibility": {
+        "matrix_version": ">=1.0.0"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "fractal-scenes",
+      "name": "Fractal Scenes",
+      "description": "Beautiful fractal visualizations for your LED matrix",
+      "version": "1.2.0",
+      "author": "Fractal Collective",
+      "tags": ["fractals", "math", "visualization", "art"],
+      "image": "https://raw.githubusercontent.com/led-matrix-plugins/marketplace/main/images/fractal-scenes.png",
+      "scenes": [
+        {
+          "name": "Mandelbrot Set",
+          "description": "Classic Mandelbrot fractal with zooming"
+        },
+        {
+          "name": "Julia Set",
+          "description": "Dynamic Julia set animations"
+        },
+        {
+          "name": "Sierpinski Triangle",
+          "description": "Recursive triangle patterns"
+        }
+      ],
+      "releases": {
+        "1.2.0": {
+          "matrix": {
+            "url": "https://github.com/led-matrix-plugins/marketplace/releases/download/v1.2.0/FractalScenes-matrix.so",
+            "sha512": "f4ca8c6c6f8ea8e8c4b4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4f4ca8c6c6f8ea8e8c4b4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4",
+            "size": 98304
+          },
+          "desktop": {
+            "url": "https://github.com/led-matrix-plugins/marketplace/releases/download/v1.2.0/FractalScenes-desktop.dll",
+            "sha512": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890",
+            "size": 131072
+          }
+        }
+      },
+      "compatibility": {
+        "matrix_version": ">=1.0.0",
+        "desktop_version": ">=1.0.0"
+      },
+      "dependencies": []
+    }
+  ]
+}
