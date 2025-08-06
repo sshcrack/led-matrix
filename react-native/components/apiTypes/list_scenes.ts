@@ -6,6 +6,7 @@ export interface ListScenes {
 export interface Property<T> {
     default_value: T;
     name: string;
+    additional?: any;
     type_id: TypeId
 }
 
@@ -36,4 +37,4 @@ export type ProviderValue = CollectionProvider | PagesProvider | {
     }
 };
 
-export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t"
+export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t" | "enum"
