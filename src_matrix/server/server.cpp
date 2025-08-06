@@ -13,6 +13,7 @@
 #include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
+#include "marketplace_routes.h"
 
 using namespace std;
 using namespace restinio;
@@ -29,6 +30,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_scene_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
     router = add_post_processing_routes(std::move(router));
+    router = add_marketplace_routes(std::move(router));
     router = add_other_routes(std::move(router));
     router = add_desktop_routes(std::move(router), registry);
 

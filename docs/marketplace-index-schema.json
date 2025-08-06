@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LED Matrix Plugin Marketplace Index",
+  "description": "Schema for the plugin marketplace index.json file",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Version of the marketplace index format",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "plugins": {
+      "type": "array",
+      "description": "List of available plugins",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique plugin identifier",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable plugin name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Plugin description"
+          },
+          "version": {
+            "type": "string",
+            "description": "Current plugin version",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "author": {
+            "type": "string",
+            "description": "Plugin author"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Plugin tags for categorization",
+            "items": {
+              "type": "string"
+            }
+          },
+          "image": {
+            "type": "string",
+            "description": "Preview image URL",
+            "format": "uri"
+          },
+          "scenes": {
+            "type": "array",
+            "description": "List of scenes provided by this plugin",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Scene name"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Scene description"
+                }
+              },
+              "required": ["name", "description"]
+            }
+          },
+          "releases": {
+            "type": "object",
+            "description": "Plugin releases by version",
+            "patternProperties": {
+              "^\\d+\\.\\d+\\.\\d+$": {
+                "type": "object",
+                "properties": {
+                  "matrix": {
+                    "type": "object",
+                    "description": "Matrix plugin binary",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Download URL for matrix plugin"
+                      },
+                      "sha512": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{128}$",
+                        "description": "SHA512 hash of the binary"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "File size in bytes"
+                      }
+                    },
+                    "required": ["url", "sha512", "size"]
+                  },
+                  "desktop": {
+                    "type": "object",
+                    "description": "Desktop plugin binary",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Download URL for desktop plugin"
+                      },
+                      "sha512": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{128}$",
+                        "description": "SHA512 hash of the binary"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "File size in bytes"
+                      }
+                    },
+                    "required": ["url", "sha512", "size"]
+                  }
+                }
+              }
+            }
+          },
+          "compatibility": {
+            "type": "object",
+            "description": "Compatibility requirements",
+            "properties": {
+              "matrix_version": {
+                "type": "string",
+                "description": "Required matrix version (semver range)"
+              },
+              "desktop_version": {
+                "type": "string",
+                "description": "Required desktop version (semver range)"
+              }
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "description": "Plugin dependencies",
+            "items": {
+              "type": "string",
+              "description": "Dependency plugin ID"
+            }
+          }
+        },
+        "required": ["id", "name", "description", "version", "author", "tags", "releases"]
+      }
+    }
+  },
+  "required": ["version", "plugins"]
+}

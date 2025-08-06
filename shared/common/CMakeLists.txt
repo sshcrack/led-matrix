@@ -7,11 +7,17 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/plugin_loader/lib_name.cpp
         src/shared/common/utils/utils.cpp
         src/shared/common/udp/packet.cpp
+        src/shared/common/marketplace/client.cpp
+        src/shared/common/marketplace/client_impl.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(cpr CONFIG REQUIRED)
+find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog nlohmann_json::nlohmann_json cpr::cpr)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PICOSHA2_INCLUDE_DIRS})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_COMMON_EXPORTS)
 
