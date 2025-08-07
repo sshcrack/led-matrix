@@ -402,23 +402,7 @@ namespace Update {
         if (uname(&system_info) == 0) {
             string machine = system_info.machine;
             
-            // Check for ARM64 architecture
-            if (machine != "aarch64" && machine != "arm64") {
-                return false;
-            }
-            
-            // Check if it's a Raspberry Pi by looking for device tree info
-            filesystem::path dt_model_path = "/proc/device-tree/model";
-            if (filesystem::exists(dt_model_path)) {
-                ifstream dt_model_file(dt_model_path);
-                string model_info;
-                getline(dt_model_file, model_info);
-                
-                // Check if it contains "Raspberry Pi"
-                if (model_info.find("Raspberry Pi") != string::npos) {
-                    return true;
-                }
-            }
+            return machine == "aarch64" || machine == "arm64";
         }
         return false;
 #else
