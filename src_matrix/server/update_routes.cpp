@@ -5,6 +5,8 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
+#include <future>
+#include <chrono>
 
 using json = nlohmann::json;
 using namespace spdlog;
@@ -67,19 +69,52 @@ namespace Server {
                 const auto qp = restinio::parse_query(req->header().query());
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
                 
-                // Start installation in background thread to avoid blocking
-                std::thread([update_manager, version]() {
+                // Create a shared promise to track completion
+                auto completion_promise = std::make_shared<std::promise<bool>>();
+                auto completion_future = completion_promise->get_future();
+                
+                // Set up pre-restart callback to signal completion
+                update_manager->set_pre_restart_callback([completion_promise]() {
+                    completion_promise->set_value(true);
+                });
+                
+                // Start installation in background thread
+                std::thread([update_manager, version, completion_promise]() {
                     bool success = update_manager->manual_download_and_install(version);
-                    if (success) {
-                        info("Update installation completed successfully");
-                    } else {
-                        error("Update installation failed: {}", update_manager->get_error_message());
+                    if (!success) {
+                        // If installation failed, signal completion with false
+                        try {
+                            completion_promise->set_value(false);
+                        } catch (const std::future_error&) {
+                            // Promise already set by pre-restart callback
+                        }
                     }
                 }).detach();
                 
+                // Wait for completion or timeout (30 seconds for download + install)
+                auto wait_status = completion_future.wait_for(std::chrono::seconds(30));
+                
                 json response;
-                response["message"] = "Update installation started";
-                response["status"] = "started";
+                if (wait_status == std::future_status::ready) {
+                    bool success = completion_future.get();
+                    if (success) {
+                        response["message"] = "Update installation completed successfully";
+                        response["status"] = "success";
+                        info("Update installation API call completed successfully");
+                    } else {
+                        response["message"] = "Update installation failed: " + update_manager->get_error_message();
+                        response["status"] = "error";
+                        error("Update installation API call failed");
+                    }
+                } else {
+                    // Timeout - installation is still running
+                    response["message"] = "Update installation started (may restart service)";
+                    response["status"] = "started";
+                    warn("Update installation API call timed out - installation may still be running");
+                }
+                
+                // Clear the callback
+                update_manager->set_pre_restart_callback(nullptr);
                 
                 return reply_with_json(req, response);
             } catch (const std::exception& ex) {
