@@ -33,6 +33,7 @@ The desktop application is built using ImGui and is used to do heavy lifting, su
 
 ## React-Native Application
 The React-Native application is used to control the matrix from a mobile device. It communicates with the matrix controller via a REST-Interface (you'll need to update the README.md file if you add new endpoints or modify them). This application uses tailwindcss for styling and is designed to be responsive and good looking on both web and mobile devices.
+Build it in the subdirectory `react_native/` using the command `./node_modules/.bin/expo export --platform web`.
 
 
 ## Github Copilot Agent
