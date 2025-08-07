@@ -6,6 +6,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ListPresets } from '~/components/apiTypes/list_presets';
 import { Status } from '~/components/apiTypes/status';
+import { UpdateStatus } from '~/components/apiTypes/update';
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
 import AddPresetButton from '~/components/home/AddPresetButton';
 import Preset from '~/components/home/Preset';
@@ -14,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { StatusIndicator } from '~/components/ui/status-indicator';
 import { Switch } from '~/components/ui/switch';
 import { Text } from '~/components/ui/text';
+import { Badge } from '~/components/ui/badge';
 import useFetch from '~/components/useFetch';
 import { Activity } from '~/lib/icons/Activity';
 import { Calendar } from '~/lib/icons/Calendar';
@@ -24,6 +26,7 @@ import { Settings } from '~/lib/icons/Settings';
 export default function Screen() {
   const presets = useFetch<ListPresets>(`/list_presets`);
   const status = useFetch<Status>(`/status`);
+  const updateStatus = useFetch<UpdateStatus>(`/api/update/status`);
 
   const [settingStatus, setSettingStatus] = useState(false);
   const [turnedOn, setTurnedOn] = useState<null | boolean>(null);
@@ -36,6 +39,7 @@ export default function Screen() {
     setManualRefresh(true);
     presets.setRetry(Math.random());
     status.setRetry(Math.random());
+    updateStatus.setRetry(Math.random());
   };
 
   React.useEffect(() => {
@@ -58,8 +62,8 @@ export default function Screen() {
     }
   }, [status.data]);
 
-  const isLoading = presets.isLoading || status.isLoading;
-  const error = presets.error ?? status.error;
+  const isLoading = presets.isLoading || status.isLoading || updateStatus.isLoading;
+  const error = presets.error ?? status.error ?? updateStatus.error;
 
   useEffect(() => {
     if (!isLoading) setManualRefresh(false);
@@ -134,8 +138,20 @@ export default function Screen() {
           <Link href="/updates" asChild>
             <Button variant="outline" className="flex-1 max-w-48 h-16">
               <View className="flex flex-row items-center gap-2">
-                <Download className="text-foreground" width={20} height={20} />
-                <Text className="text-sm font-medium">Updates</Text>
+                <View className="relative">
+                  <Download className="text-foreground" width={20} height={20} />
+                  {updateStatus.data?.update_available && (
+                    <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                  )}
+                </View>
+                <View className="flex flex-col items-start">
+                  <Text className="text-sm font-medium">Updates</Text>
+                  {updateStatus.data?.update_available && (
+                    <Badge variant="destructive" className="text-xs px-1 py-0 h-4">
+                      New
+                    </Badge>
+                  )}
+                </View>
               </View>
             </Button>
           </Link>
