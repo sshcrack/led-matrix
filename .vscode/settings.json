@@ -4,5 +4,9 @@
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "/home/sshcrack/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
-    "git.ignoreSubmodules": true
+    "git.ignoreSubmodules": true,
+    "files.associations": {
+        "*.scss": "scss",
+        "optional": "cpp"
+    }
 }
