@@ -82,9 +82,7 @@ int main(int argc, char *argv[])
     config = new Config::MainConfig("config.json");
 
     debug("Initializing UpdateManager...");
-    // Use CMake version definitions
-    Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
-    Constants::global_update_manager = new Update::UpdateManager(config, current_version);
+    Constants::global_update_manager = new Update::UpdateManager(config);
     Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
 

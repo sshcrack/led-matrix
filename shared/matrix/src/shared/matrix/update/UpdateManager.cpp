@@ -21,24 +21,16 @@ using namespace std;
 namespace Update {
     
     UpdateManager::UpdateManager(Config::MainConfig* config, 
-                               const Common::Version& current_version,
                                const string& repo_owner,
                                const string& repo_name)
         : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
-          config_(config), current_version_(current_version),
-          repo_owner_(repo_owner), repo_name_(repo_name) {
+          config_(config), repo_owner_(repo_owner), repo_name_(repo_name) {
         
         // Check if the platform supports updates
         if (!is_platform_supported()) {
             status_ = UpdateStatus::DISABLED;
             warn("Update system disabled - not running on supported platform");
             return;
-        }
-        
-        // Use CMake version if current_version is empty
-        if (current_version_.major == 0 && current_version_.minor == 0 && current_version_.patch == 0) {
-            current_version_ = Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
-            config_->set_current_version(current_version_.toString());
         }
     }
 
@@ -99,7 +91,8 @@ namespace Update {
                         }
                     } else {
                         config_->set_update_available(false);
-                        config_->set_latest_version(current_version_.toString());
+                        Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+                        config_->set_latest_version(current_version.toString());
                         debug("No updates available");
                     }
                     
@@ -152,7 +145,8 @@ namespace Update {
             
             Common::Version latest_version = Common::Version::fromString(latest_version_str);
             
-            if (compare_versions(current_version_, latest_version)) {
+            Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+            if (compare_versions(current_version, latest_version)) {
                 // Find the led-matrix Linux tar.gz asset
                 string download_url = "";
                 bool found_asset = false;
@@ -261,7 +255,6 @@ namespace Update {
             // Update the current version in config
             auto update_settings = config_->get_update_settings();
             string new_version = config_->get_latest_version();
-            update_settings.current_version = new_version;
             update_settings.last_update_time = GetTimeInMillis();
             update_settings.update_available = false;
             config_->set_update_settings(update_settings);
@@ -387,13 +380,10 @@ namespace Update {
     }
 
     Common::Version UpdateManager::get_current_version() const {
-        return current_version_;
+        return Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
     }
 
-    void UpdateManager::set_current_version(const Common::Version& version) {
-        current_version_ = version;
-        config_->set_current_version(version.toString());
-    }
+
 
     bool UpdateManager::is_platform_supported() {
 #ifdef ENABLE_UPDATE_TESTING
@@ -438,7 +428,8 @@ namespace Update {
     }
 
     string UpdateManager::get_user_agent() {
-        return "led-matrix/" + current_version_.toString() + " (https://github.com/sshcrack/led-matrix)";
+        Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+        return "led-matrix/" + current_version.toString() + " (https://github.com/sshcrack/led-matrix)";
     }
 
     bool UpdateManager::is_updates_supported() const {
