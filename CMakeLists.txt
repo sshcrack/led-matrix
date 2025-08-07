@@ -22,9 +22,6 @@ if(ENABLE_EMULATOR AND ENABLE_DESKTOP)
     message(FATAL_ERROR "Cannot enable both ENABLE_EMULATOR and ENABLE_DESKTOP at the same time. Please choose one.")
 endif()
 
-# Option to enable/disable CORS headers
-option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
-
 # Option to enable update mechanism testing (bypasses platform restrictions)
 option(ENABLE_UPDATE_TESTING "Enable update mechanism testing on any platform" OFF)
 
@@ -154,11 +151,6 @@ install(FILES
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-
-# Add CORS support if enabled
-if(ENABLE_CORS)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
-endif()
 
 # Add update testing flag if enabled
 if(ENABLE_UPDATE_TESTING)

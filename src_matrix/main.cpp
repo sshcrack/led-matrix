@@ -1,6 +1,8 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/post_processor.h"
+#include "shared/matrix/interrupt.h"
+#include "shared/matrix/utils/shared.h"
 #include <nlohmann/json.hpp>
 #include <utility>
 
@@ -50,7 +52,16 @@ int main(int argc, char *argv[])
 
     // Should be in hardware.cpp but this actually drops privileges, so I moved it here
 
-    debug("Parsing rgb matrix from cmdline");
+
+    bool is_debugging = false;
+    for (int i = 0; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--debugger") == 0)
+            is_debugging = true;
+    }
+
+
+    debug("Parsing rgb matrix options from command line...");
     options.runtime_options.drop_priv_user = getenv("SUDO_UID");
     options.runtime_options.drop_priv_group = getenv("SUDO_GID");
 
@@ -93,7 +104,7 @@ int main(int argc, char *argv[])
         }
 
         auto effects = item->create_effects();
-        for (auto& effect : effects)
+        for (auto &effect : effects)
         {
             Constants::global_post_processor->register_effect(std::move(effect));
         }
@@ -105,34 +116,24 @@ int main(int argc, char *argv[])
     uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
 
     string host = "0.0.0.0";
-
-#ifdef ENABLE_CORS
-    debug("Allowing CORS request to be made to this server");
-#endif
-
     server_t server{
         restinio::own_io_context(),
-        [port, host](auto &settings)
+        [port, host, is_debugging](auto &settings)
         {
             std::unique_lock lock(Server::registryMutex);
-            /*
+            auto router = Server::server_handler(Server::registry);
+            if (is_debugging)
+                router->http_get("/exit_debug", [](auto req, auto)
+                                 {
+                                     interrupt_received = true;
+                                     exit_canvas_update = true;
 
-                        // Create request handler function that handles OPTIONS first, then delegates to router
-                        auto handler = [router = std::move(router)](auto req)
-                        {
-            #ifdef ENABLE_CORS
-                            // Handle CORS preflight requests for all routes
-                            if (req->header().method() == restinio::http_method_options())
-                            {
-                                return Server::handle_cors_preflight(req);
-                            }
-            #endif
-                            return (*router)(std::move(req));
-                        };*/
+                                     return req->create_response().set_body("Sent interrupt.").done();
+                                 });
 
             settings.port(port);
             settings.address(host);
-            settings.request_handler(Server::server_handler(Server::registry));
+            settings.request_handler(std::move(router));
             settings.read_next_http_message_timelimit(10s);
             settings.write_http_response_timelimit(1s);
             settings.handle_request_timeout(1s);
@@ -201,7 +202,8 @@ int main(int argc, char *argv[])
     config->save();
 
     debug("Stopping UpdateManager...");
-    if (Constants::global_update_manager) {
+    if (Constants::global_update_manager)
+    {
         Constants::global_update_manager->stop();
         delete Constants::global_update_manager;
         Constants::global_update_manager = nullptr;

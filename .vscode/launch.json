@@ -31,7 +31,8 @@
         "--led-cols",
         "64",
         "--led-emulator",
-        "--led-emulator-scale=4"
+        "--led-emulator-scale=4",
+        "--debugger"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -66,7 +67,7 @@
       ]
     },
     {
-      "name": "(gdb) Launch",
+      "name": "Emulator (gdb)",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/emulator_build/install/main",
@@ -80,7 +81,8 @@
         "--led-cols",
         "64",
         "--led-emulator",
-        "--led-emulator-scale=4"
+        "--led-emulator-scale=4",
+        "--debugger"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
