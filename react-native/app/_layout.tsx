@@ -98,6 +98,23 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name='marketplace'
+                options={{
+                  title: 'Plugin Marketplace',
+                  headerLargeTitle: false,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 20,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                  headerRight: () => <ThemeToggle />,
+                }}
+              />
+              <Stack.Screen
                 name='modify-preset/[preset_id]'
                 dangerouslySingular={(name, params) => `modify-preset-${params?.preset_id}`}
                 options={({ route }) => ({

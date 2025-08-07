@@ -19,6 +19,7 @@ import { Activity } from '~/lib/icons/Activity';
 import { Calendar } from '~/lib/icons/Calendar';
 import { Power } from '~/lib/icons/Power';
 import { Settings } from '~/lib/icons/Settings';
+import { ShoppingBag } from '~/lib/icons/ShoppingBag';
 
 export default function Screen() {
   const presets = useFetch<ListPresets>(`/list_presets`);
@@ -127,6 +128,14 @@ export default function Screen() {
               <View className="flex flex-row items-center gap-2">
                 <Calendar className="text-foreground" width={20} height={20} />
                 <Text className="text-sm font-medium">Schedules</Text>
+              </View>
+            </Button>
+          </Link>
+          <Link href="/marketplace" asChild>
+            <Button variant="outline" className="flex-1 max-w-48 h-16">
+              <View className="flex flex-row items-center gap-2">
+                <ShoppingBag className="text-foreground" width={20} height={20} />
+                <Text className="text-sm font-medium">Marketplace</Text>
               </View>
             </Button>
           </Link>
