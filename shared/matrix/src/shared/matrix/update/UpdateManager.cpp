@@ -260,15 +260,22 @@ namespace Update {
             config_->set_update_settings(update_settings);
             config_->save();
             
+            status_.store(UpdateStatus::SUCCESS);
+            info("Update installed successfully");
+            
+            // Call pre-restart callback to allow sending success response
+            if (pre_restart_callback_) {
+                pre_restart_callback_();
+                // Give a small delay to ensure response is sent
+                this_thread::sleep_for(chrono::milliseconds(500));
+            }
+            
             // Restart the service
             info("Restarting led-matrix service...");
             int restart_result = system("sudo systemctl restart led-matrix.service");
             if (restart_result != 0) {
                 warn("Failed to restart led-matrix service, manual restart may be required");
             }
-            
-            status_.store(UpdateStatus::SUCCESS);
-            info("Update installed successfully");
             
             // Clean up downloaded file
             filesystem::remove(filename);
@@ -353,6 +360,10 @@ namespace Update {
 
     void UpdateManager::set_status_callback(function<void(UpdateStatus, const string&)> callback) {
         status_callback_ = callback;
+    }
+
+    void UpdateManager::set_pre_restart_callback(function<void()> callback) {
+        pre_restart_callback_ = callback;
     }
 
     void UpdateManager::set_auto_update_enabled(bool enabled) {

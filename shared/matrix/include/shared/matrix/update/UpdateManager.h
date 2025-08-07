@@ -45,6 +45,9 @@ namespace Update {
         // Callback function for when update is available/installed
         std::function<void(UpdateStatus, const std::string&)> status_callback_;
         
+        // Callback function for when update installation completes but before restart
+        std::function<void()> pre_restart_callback_;
+        
         void update_loop();
         std::optional<UpdateInfo> check_for_updates();
         bool download_update(const std::string& url, const std::string& filename);
@@ -75,6 +78,7 @@ namespace Update {
         UpdateStatus get_status() const;
         std::string get_error_message() const;
         void set_status_callback(std::function<void(UpdateStatus, const std::string&)> callback);
+        void set_pre_restart_callback(std::function<void()> callback);
         
         // Configuration methods
         void set_auto_update_enabled(bool enabled);
