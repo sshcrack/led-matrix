@@ -246,17 +246,6 @@ namespace Config {
         this->mark_dirty();
     }
 
-    string MainConfig::get_current_version() {
-        shared_lock lock(this->data_mutex);
-        return this->data.update_settings.current_version;
-    }
-
-    void MainConfig::set_current_version(const string& version) {
-        unique_lock lock(this->data_mutex);
-        this->data.update_settings.current_version = version;
-        this->mark_dirty();
-    }
-
     tmillis_t MainConfig::get_last_check_time() {
         shared_lock lock(this->data_mutex);
         return this->data.update_settings.last_check_time;

@@ -47,7 +47,6 @@ namespace ConfigData {
     struct UpdateSettings {
         bool auto_update_enabled = true;
         int check_interval_hours = 24;  // Check for updates every 24 hours by default
-        string current_version = "";
         tmillis_t last_check_time = 0;
         tmillis_t last_update_time = 0;
         bool update_available = false;

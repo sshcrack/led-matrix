@@ -91,7 +91,7 @@ namespace Update {
                         }
                     } else {
                         config_->set_update_available(false);
-                        Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+                        Common::Version current_version = Common::Version::getCurrentVersion();
                         config_->set_latest_version(current_version.toString());
                         debug("No updates available");
                     }
@@ -379,9 +379,23 @@ namespace Update {
         return Common::Version::fromString(config_->get_latest_version());
     }
 
-    Common::Version UpdateManager::get_current_version() const {
-        return Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+    tmillis_t UpdateManager::get_last_check_time() const {
+        return config_->get_last_check_time();
     }
+
+    void UpdateManager::set_last_check_time(tmillis_t time) {
+        config_->set_last_check_time(time);
+    }
+
+    std::string UpdateManager::get_update_download_url() const {
+        return config_->get_update_download_url();
+    }
+
+    void UpdateManager::set_update_download_url(const std::string& url) {
+        config_->set_update_download_url(url);
+    }
+
+
 
 
 
@@ -412,7 +426,7 @@ namespace Update {
     }
 
     string UpdateManager::get_user_agent() {
-        Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+        Common::Version current_version = Common::Version::getCurrentVersion();
         return "led-matrix/" + current_version.toString() + " (https://github.com/sshcrack/led-matrix)";
     }
 

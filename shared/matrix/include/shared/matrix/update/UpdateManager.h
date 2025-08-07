@@ -85,7 +85,12 @@ namespace Update {
         // Update information
         bool is_update_available() const;
         Common::Version get_latest_version() const;
-        Common::Version get_current_version() const;
         bool is_updates_supported() const;
+        
+        // Update state management
+        tmillis_t get_last_check_time() const;
+        void set_last_check_time(tmillis_t time);
+        std::string get_update_download_url() const;
+        void set_update_download_url(const std::string& url);
     };
 }
