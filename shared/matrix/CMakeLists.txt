@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/utils/image_fetch.cpp
         src/shared/matrix/utils/FrameTimer.cpp
         src/shared/matrix/utils/canvas_image.cpp
+        src/shared/matrix/utils/consts.cpp
         src/shared/matrix/plugin_loader/loader.cpp
         src/shared/matrix/config/MainConfig.cpp
         src/shared/matrix/config/image_providers/general.cpp

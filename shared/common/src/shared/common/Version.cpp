@@ -17,6 +17,11 @@ namespace Common {
         return version;
     }
 
+    const Version& Version::getCurrentVersion() {
+        static Version currentVersion(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+        return currentVersion;
+    }
+
     bool Version::operator>(const Version &other) const {
         if (major != other.major)
             return major > other.major;
@@ -31,6 +36,10 @@ namespace Common {
 
     bool Version::operator<(const Version &other) const {
         return !(*this > other) && !(*this == other);
+    }
+
+    bool Version::isCompatibleWith(const Version &other) const {
+        return major == other.major && minor == other.minor;
     }
 
     std::string Version::toString() const {

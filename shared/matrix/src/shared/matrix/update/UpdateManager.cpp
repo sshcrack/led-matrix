@@ -145,7 +145,7 @@ namespace Update {
             
             Common::Version latest_version = Common::Version::fromString(latest_version_str);
             
-            Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+            const Common::Version& current_version = Common::Version::getCurrentVersion();
             if (compare_versions(current_version, latest_version)) {
                 // Find the led-matrix Linux tar.gz asset
                 string download_url = "";
