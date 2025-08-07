@@ -1,6 +1,7 @@
 #include "update_routes.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/common/Version.h"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
@@ -22,7 +23,7 @@ namespace Server {
                 json response;
                 response["auto_update_enabled"] = update_manager->is_auto_update_enabled();
                 response["check_interval_hours"] = update_manager->get_check_interval_hours();
-                response["current_version"] = update_manager->get_current_version().toString();
+                response["current_version"] = Common::Version::getCurrentVersion().toString();
                 response["latest_version"] = update_manager->get_latest_version().toString();
                 response["update_available"] = update_manager->is_update_available();
                 response["status"] = static_cast<int>(update_manager->get_status());

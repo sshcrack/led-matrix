@@ -69,7 +69,6 @@ namespace ConfigData {
     void from_json(const json &j, UpdateSettings &p) {
         p.auto_update_enabled = j.value("auto_update_enabled", true);
         p.check_interval_hours = j.value("check_interval_hours", 24);
-        p.current_version = j.value("current_version", "");
         p.last_check_time = j.value("last_check_time", 0);
         p.last_update_time = j.value("last_update_time", 0);
         p.update_available = j.value("update_available", false);
@@ -232,7 +231,6 @@ namespace ConfigData {
         j = json{
             {"auto_update_enabled", p.auto_update_enabled},
             {"check_interval_hours", p.check_interval_hours},
-            {"current_version", p.current_version},
             {"last_check_time", p.last_check_time},
             {"last_update_time", p.last_update_time},
             {"update_available", p.update_available},

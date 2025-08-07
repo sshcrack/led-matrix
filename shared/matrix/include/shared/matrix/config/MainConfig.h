@@ -55,8 +55,6 @@ namespace Config {
         void set_auto_update_enabled(bool enabled);
         int get_update_check_interval_hours();
         void set_update_check_interval_hours(int hours);
-        string get_current_version();
-        void set_current_version(const string& version);
         tmillis_t get_last_check_time();
         void set_last_check_time(tmillis_t time);
         bool is_update_available();
