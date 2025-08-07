@@ -169,7 +169,7 @@ namespace UpdateChecker
                 auto releaseJson = nlohmann::json::parse(response.text);
                 ReleaseInfo release = parseReleaseInfo(releaseJson);
                 
-                Version currentVersion = getCurrentVersion();
+                Common::Version currentVersion = getCurrentVersion();
                 bool hasUpdate = release.version > currentVersion;
                 
                 // Check preferences to see if we should notify about this update
