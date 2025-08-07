@@ -4,7 +4,7 @@ export interface UpdateStatus {
     current_version: string;
     latest_version: string;
     update_available: boolean;
-    status: number; // UpdateStatus enum: 0=IDLE, 1=CHECKING, 2=DOWNLOADING, 3=INSTALLING, 4=ERROR, 5=SUCCESS
+    status: number; // UpdateStatus enum: 0=IDLE, 1=CHECKING, 2=DOWNLOADING, 3=INSTALLING, 4=ERROR, 5=SUCCESS, 6=DISABLED
     error_message: string;
 }
 
@@ -44,5 +44,6 @@ export const UpdateStatusNames = {
     2: 'Downloading update',
     3: 'Installing update',
     4: 'Error',
-    5: 'Success'
+    5: 'Success',
+    6: 'Updates Disabled'
 } as const;
