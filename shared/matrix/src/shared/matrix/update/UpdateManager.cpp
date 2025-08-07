@@ -20,11 +20,9 @@ using namespace std;
 
 namespace Update {
     
-    UpdateManager::UpdateManager(Config::MainConfig* config, 
-                               const string& repo_owner,
-                               const string& repo_name)
+    UpdateManager::UpdateManager(Config::MainConfig* config)
         : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
-          config_(config), repo_owner_(repo_owner), repo_name_(repo_name) {
+          config_(config), repo_owner_("sshcrack"), repo_name_("led-matrix") {
         
         // Check if the platform supports updates
         if (!is_platform_supported()) {
@@ -72,9 +70,9 @@ namespace Update {
                     auto update_info = check_for_updates();
                     
                     if (update_info.has_value()) {
-                        config_->set_update_available(true);
-                        config_->set_latest_version(update_info->version.toString());
-                        config_->set_update_download_url(update_info->download_url);
+                        set_update_available(true);
+                        set_latest_version_string(update_info->version.toString());
+                        set_update_download_url(update_info->download_url);
                         
                         if (status_callback_) {
                             status_callback_(UpdateStatus::SUCCESS, 
@@ -90,13 +88,13 @@ namespace Update {
                             }
                         }
                     } else {
-                        config_->set_update_available(false);
+                        set_update_available(false);
                         Common::Version current_version = Common::Version::getCurrentVersion();
-                        config_->set_latest_version(current_version.toString());
+                        set_latest_version_string(current_version.toString());
                         debug("No updates available");
                     }
                     
-                    config_->set_last_check_time(GetTimeInMillis());
+                    set_last_check_time(GetTimeInMillis());
                     config_->save();
                 }
                 
@@ -254,7 +252,7 @@ namespace Update {
             
             // Update the current version in config
             auto update_settings = config_->get_update_settings();
-            string new_version = config_->get_latest_version();
+            string new_version = get_latest_version_string();
             update_settings.last_update_time = GetTimeInMillis();
             update_settings.update_available = false;
             config_->set_update_settings(update_settings);
@@ -387,7 +385,7 @@ namespace Update {
     }
 
     Common::Version UpdateManager::get_latest_version() const {
-        return Common::Version::fromString(config_->get_latest_version());
+        return Common::Version::fromString(get_latest_version_string());
     }
 
     tmillis_t UpdateManager::get_last_check_time() const {
@@ -404,6 +402,18 @@ namespace Update {
 
     void UpdateManager::set_update_download_url(const std::string& url) {
         config_->set_update_download_url(url);
+    }
+
+    void UpdateManager::set_update_available(bool available) {
+        config_->set_update_available(available);
+    }
+
+    std::string UpdateManager::get_latest_version_string() const {
+        return config_->get_latest_version();
+    }
+
+    void UpdateManager::set_latest_version_string(const std::string& version) {
+        config_->set_latest_version(version);
     }
 
 

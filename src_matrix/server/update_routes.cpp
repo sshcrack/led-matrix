@@ -65,6 +65,16 @@ namespace Server {
         // POST /api/update/install - Install available update
         router->http_post("/api/update/install", [update_manager](auto req, auto) {
             try {
+                // Check if another installation is already in progress
+                auto current_status = update_manager->get_status();
+                if (current_status == Update::UpdateStatus::DOWNLOADING || 
+                    current_status == Update::UpdateStatus::INSTALLING) {
+                    json response;
+                    response["message"] = "Update installation already in progress";
+                    response["status"] = "already_running";
+                    return reply_with_json(req, response);
+                }
+                
                 // Parse query parameters
                 const auto qp = restinio::parse_query(req->header().query());
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
