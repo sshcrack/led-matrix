@@ -60,9 +60,7 @@ namespace Update {
         std::string get_user_agent();
         
     public:
-        explicit UpdateManager(Config::MainConfig* config, 
-                             const std::string& repo_owner = "sshcrack",
-                             const std::string& repo_name = "led-matrix");
+        explicit UpdateManager(Config::MainConfig* config);
         
         ~UpdateManager();
         
@@ -88,7 +86,10 @@ namespace Update {
         
         // Update information
         bool is_update_available() const;
+        void set_update_available(bool available);
         Common::Version get_latest_version() const;
+        std::string get_latest_version_string() const;
+        void set_latest_version_string(const std::string& version);
         bool is_updates_supported() const;
         
         // Update state management
