@@ -7,11 +7,12 @@
 #include <optional>
 #include <functional>
 #include "shared/matrix/config/MainConfig.h"
+#include "shared/common/Version.h"
 #include "nlohmann/json.hpp"
 
 namespace Update {
     struct UpdateInfo {
-        std::string version;
+        Common::Version version;
         std::string download_url;
         std::string body;
         bool is_prerelease;
@@ -23,7 +24,8 @@ namespace Update {
         DOWNLOADING,
         INSTALLING,
         ERROR,
-        SUCCESS
+        SUCCESS,
+        DISABLED
     };
 
     class UpdateManager {
@@ -37,7 +39,7 @@ namespace Update {
         std::thread update_thread_;
         Config::MainConfig* config_;
         
-        std::string current_version_;
+        Common::Version current_version_;
         std::string repo_owner_;
         std::string repo_name_;
         
@@ -51,11 +53,13 @@ namespace Update {
         bool should_check_for_updates();
         void set_error(const std::string& error);
         std::string get_github_api_url();
-        bool compare_versions(const std::string& current, const std::string& latest);
+        bool compare_versions(const Common::Version& current, const Common::Version& latest);
+        bool is_platform_supported();
+        std::string get_user_agent();
         
     public:
         explicit UpdateManager(Config::MainConfig* config, 
-                             const std::string& current_version = "",
+                             const Common::Version& current_version = Common::Version(),
                              const std::string& repo_owner = "sshcrack",
                              const std::string& repo_name = "led-matrix");
         
@@ -82,8 +86,9 @@ namespace Update {
         
         // Update information
         bool is_update_available() const;
-        std::string get_latest_version() const;
-        std::string get_current_version() const;
-        void set_current_version(const std::string& version);
+        Common::Version get_latest_version() const;
+        Common::Version get_current_version() const;
+        void set_current_version(const Common::Version& version);
+        bool is_updates_supported() const;
     };
 }

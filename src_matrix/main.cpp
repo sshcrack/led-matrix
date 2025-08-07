@@ -29,8 +29,10 @@ using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<Server::traits_t>;
 
-// Global UpdateManager instance
-Update::UpdateManager* global_update_manager = nullptr;
+#include "shared/matrix/utils/consts.h"
+
+// Define the global UpdateManager instance
+Update::UpdateManager* Constants::global_update_manager = nullptr;
 
 int usage(const char *progname)
 {
@@ -80,16 +82,10 @@ int main(int argc, char *argv[])
     config = new Config::MainConfig("config.json");
 
     debug("Initializing UpdateManager...");
-    // Get current version from CMakeLists.txt or set default
-    string current_version = config->get_current_version();
-    if (current_version.empty()) {
-        current_version = "1.0.0"; // Default version
-        config->set_current_version(current_version);
-        config->save();
-    }
-    
-    global_update_manager = new Update::UpdateManager(config, current_version);
-    global_update_manager->start();
+    // Use CMake version definitions
+    Common::Version current_version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+    Constants::global_update_manager = new Update::UpdateManager(config, current_version);
+    Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
 
     for (const auto &item : pl->get_plugins())
@@ -210,10 +206,10 @@ int main(int argc, char *argv[])
     config->save();
 
     debug("Stopping UpdateManager...");
-    if (global_update_manager) {
-        global_update_manager->stop();
-        delete global_update_manager;
-        global_update_manager = nullptr;
+    if (Constants::global_update_manager) {
+        Constants::global_update_manager->stop();
+        delete Constants::global_update_manager;
+        Constants::global_update_manager = nullptr;
     }
 
     delete Constants::global_post_processor;
