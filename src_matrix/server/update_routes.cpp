@@ -22,8 +22,8 @@ namespace Server {
                 json response;
                 response["auto_update_enabled"] = update_manager->is_auto_update_enabled();
                 response["check_interval_hours"] = update_manager->get_check_interval_hours();
-                response["current_version"] = update_manager->get_current_version();
-                response["latest_version"] = update_manager->get_latest_version();
+                response["current_version"] = update_manager->get_current_version().toString();
+                response["latest_version"] = update_manager->get_latest_version().toString();
                 response["update_available"] = update_manager->is_update_available();
                 response["status"] = static_cast<int>(update_manager->get_status());
                 response["error_message"] = update_manager->get_error_message();
@@ -43,7 +43,7 @@ namespace Server {
                 json response;
                 if (update_info.has_value()) {
                     response["update_available"] = true;
-                    response["version"] = update_info->version;
+                    response["version"] = update_info->version.toString();
                     response["download_url"] = update_info->download_url;
                     response["body"] = update_info->body;
                     response["is_prerelease"] = update_info->is_prerelease;
