@@ -15,27 +15,30 @@ namespace MatrixVersionChecker
 
     MatrixVersionChecker::~MatrixVersionChecker() = default;
 
-    Common::Version MatrixVersionChecker::getDesktopVersion()
+    const Common::Version& MatrixVersionChecker::getDesktopVersion()
     {
-        // Use compile-time definitions from CMakeLists.txt
-        return Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+        return Common::Version::getCurrentVersion();
     }
 
     VersionCompatibility MatrixVersionChecker::compareVersions(
         const Common::Version& desktopVersion,
         const Common::Version& matrixVersion)
     {
-        if (desktopVersion > matrixVersion)
+        // Check if major.minor versions are compatible
+        if (desktopVersion.isCompatibleWith(matrixVersion))
         {
-            return VersionCompatibility::DesktopNewer;
+            return VersionCompatibility::Compatible;
         }
-        else if (matrixVersion > desktopVersion)
+        
+        // Compare major and minor versions to determine who needs to update
+        if (desktopVersion.major > matrixVersion.major || 
+            (desktopVersion.major == matrixVersion.major && desktopVersion.minor > matrixVersion.minor))
         {
-            return VersionCompatibility::MatrixNewer;
+            return VersionCompatibility::DesktopNewer; // Matrix needs update
         }
         else
         {
-            return VersionCompatibility::Compatible;
+            return VersionCompatibility::MatrixNewer;  // Desktop needs update
         }
     }
 

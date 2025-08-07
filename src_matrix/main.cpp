@@ -31,9 +31,6 @@ using server_t = restinio::http_server_t<Server::traits_t>;
 
 #include "shared/matrix/utils/consts.h"
 
-// Define the global UpdateManager instance
-Update::UpdateManager* Constants::global_update_manager = nullptr;
-
 int usage(const char *progname)
 {
     fprintf(stderr, "usage: %s [options]\n", progname);

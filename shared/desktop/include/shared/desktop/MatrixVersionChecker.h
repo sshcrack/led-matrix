@@ -10,9 +10,9 @@ namespace MatrixVersionChecker
 {
     enum class SHARED_DESKTOP_API VersionCompatibility
     {
-        Compatible,           // Desktop and matrix versions are compatible
-        DesktopNewer,        // Desktop is newer than matrix - needs update prompt
-        MatrixNewer,         // Matrix is newer than desktop - unusual but allowed
+        Compatible,           // Desktop and matrix versions are compatible (major.minor match)
+        DesktopNewer,        // Desktop is newer than matrix - matrix needs update
+        MatrixNewer,         // Matrix is newer than desktop - desktop needs update
         NetworkError,        // Could not reach matrix
         ParseError          // Could not parse version response
     };
@@ -38,7 +38,7 @@ namespace MatrixVersionChecker
         );
 
         // Get current desktop version
-        static Common::Version getDesktopVersion();
+        static const Common::Version& getDesktopVersion();
 
         // Check if versions are compatible
         static VersionCompatibility compareVersions(

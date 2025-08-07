@@ -15,10 +15,16 @@ namespace Common {
         // Parse version from string like "v1.2.3" or "1.2.3"
         static Version fromString(const std::string &versionStr);
 
+        // Get current version from CMake constants (cached)
+        static const Version& getCurrentVersion();
+
         // Compare versions
         bool operator>(const Version &other) const;
         bool operator==(const Version &other) const;
         bool operator<(const Version &other) const;
+
+        // Compare only major and minor versions (ignoring patch)
+        bool isCompatibleWith(const Version &other) const;
 
         std::string toString() const;
     };
