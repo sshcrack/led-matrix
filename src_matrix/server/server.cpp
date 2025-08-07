@@ -20,8 +20,7 @@ using namespace restinio;
 
 using json = nlohmann::json;
 
-// External reference to global UpdateManager
-extern Update::UpdateManager* global_update_manager;
+#include "shared/matrix/utils/consts.h"
 
 
 // Create request handler.
@@ -33,7 +32,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_scene_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
     router = add_post_processing_routes(std::move(router));
-    router = add_update_routes(std::move(router), global_update_manager);
+    router = add_update_routes(std::move(router), Constants::global_update_manager);
     router = add_other_routes(std::move(router));
     router = add_desktop_routes(std::move(router), registry);
 

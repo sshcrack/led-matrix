@@ -25,6 +25,9 @@ endif()
 # Option to enable/disable CORS headers
 option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
 
+# Option to enable update mechanism testing (bypasses platform restrictions)
+option(ENABLE_UPDATE_TESTING "Enable update mechanism testing on any platform" OFF)
+
 
 include(cmake/subdirlist.cmake)
 include(cmake/vcpkg_features.cmake)
@@ -155,6 +158,16 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 # Add CORS support if enabled
 if(ENABLE_CORS)
     target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
+endif()
+
+# Add update testing flag if enabled
+if(ENABLE_UPDATE_TESTING)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_UPDATE_TESTING)
+endif()
+
+# Add emulator flag if enabled
+if(ENABLE_EMULATOR)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_EMULATOR)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)

@@ -1,5 +1,6 @@
 #include "shared/matrix/update/UpdateManager.h"
 #include "shared/matrix/utils/shared.h"
+#include "shared/common/Version.h"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
 #include <filesystem>
@@ -10,26 +11,34 @@
 #include <algorithm>
 #include <regex>
 
+#ifdef __linux__
+#include <sys/utsname.h>
+#endif
+
 using namespace spdlog;
 using namespace std;
 
 namespace Update {
     
     UpdateManager::UpdateManager(Config::MainConfig* config, 
-                               const string& current_version,
+                               const Common::Version& current_version,
                                const string& repo_owner,
                                const string& repo_name)
         : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
           config_(config), current_version_(current_version),
           repo_owner_(repo_owner), repo_name_(repo_name) {
         
-        if (current_version_.empty()) {
-            // Try to extract version from CMakeLists.txt or set a default
-            current_version_ = config_->get_current_version();
-            if (current_version_.empty()) {
-                current_version_ = "0.0.0";
-                config_->set_current_version(current_version_);
-            }
+        // Check if the platform supports updates
+        if (!is_platform_supported()) {
+            status_ = UpdateStatus::DISABLED;
+            warn("Update system disabled - not running on supported platform");
+            return;
+        }
+        
+        // Use CMake version if current_version is empty
+        if (current_version_.major == 0 && current_version_.minor == 0 && current_version_.patch == 0) {
+            current_version_ = Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+            config_->set_current_version(current_version_.toString());
         }
     }
 
@@ -72,17 +81,17 @@ namespace Update {
                     
                     if (update_info.has_value()) {
                         config_->set_update_available(true);
-                        config_->set_latest_version(update_info->version);
+                        config_->set_latest_version(update_info->version.toString());
                         config_->set_update_download_url(update_info->download_url);
                         
                         if (status_callback_) {
                             status_callback_(UpdateStatus::SUCCESS, 
-                                           "Update available: " + update_info->version);
+                                           "Update available: " + update_info->version.toString());
                         }
                         
                         // If auto-update is enabled, download and install
                         if (is_auto_update_enabled()) {
-                            if (manual_download_and_install(update_info->version)) {
+                            if (manual_download_and_install(update_info->version.toString())) {
                                 info("Auto-update completed successfully");
                             } else {
                                 error("Auto-update failed");
@@ -90,7 +99,7 @@ namespace Update {
                         }
                     } else {
                         config_->set_update_available(false);
-                        config_->set_latest_version(current_version_);
+                        config_->set_latest_version(current_version_.toString());
                         debug("No updates available");
                     }
                     
@@ -122,7 +131,10 @@ namespace Update {
             string api_url = get_github_api_url();
             debug("Checking for updates at: {}", api_url);
             
-            auto response = cpr::Get(cpr::Url{api_url});
+            auto response = cpr::Get(
+                cpr::Url{api_url},
+                cpr::Header{{"User-Agent", get_user_agent()}}
+            );
             
             if (response.status_code != 200) {
                 set_error("GitHub API request failed with status: " + to_string(response.status_code));
@@ -131,12 +143,14 @@ namespace Update {
             }
             
             auto json_response = nlohmann::json::parse(response.text);
-            string latest_version = json_response["tag_name"];
+            string latest_version_str = json_response["tag_name"];
             
             // Remove 'v' prefix if present
-            if (latest_version.starts_with("v")) {
-                latest_version = latest_version.substr(1);
+            if (latest_version_str.starts_with("v")) {
+                latest_version_str = latest_version_str.substr(1);
             }
+            
+            Common::Version latest_version = Common::Version::fromString(latest_version_str);
             
             if (compare_versions(current_version_, latest_version)) {
                 // Find the led-matrix Linux tar.gz asset
@@ -296,32 +310,8 @@ namespace Update {
         return "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases/latest";
     }
 
-    bool UpdateManager::compare_versions(const string& current, const string& latest) {
-        // Simple version comparison - assumes semantic versioning (x.y.z)
-        auto parse_version = [](const string& version) {
-            vector<int> parts;
-            stringstream ss(version);
-            string part;
-            while (getline(ss, part, '.')) {
-                try {
-                    parts.push_back(stoi(part));
-                } catch (...) {
-                    parts.push_back(0);
-                }
-            }
-            while (parts.size() < 3) parts.push_back(0);
-            return parts;
-        };
-        
-        auto current_parts = parse_version(current);
-        auto latest_parts = parse_version(latest);
-        
-        for (size_t i = 0; i < 3; ++i) {
-            if (latest_parts[i] > current_parts[i]) return true;
-            if (latest_parts[i] < current_parts[i]) return false;
-        }
-        
-        return false; // Versions are equal
+    bool UpdateManager::compare_versions(const Common::Version& current, const Common::Version& latest) {
+        return latest > current;
     }
 
     optional<UpdateInfo> UpdateManager::manual_check_for_updates() {
@@ -392,16 +382,66 @@ namespace Update {
         return config_->is_update_available();
     }
 
-    string UpdateManager::get_latest_version() const {
-        return config_->get_latest_version();
+    Common::Version UpdateManager::get_latest_version() const {
+        return Common::Version::fromString(config_->get_latest_version());
     }
 
-    string UpdateManager::get_current_version() const {
+    Common::Version UpdateManager::get_current_version() const {
         return current_version_;
     }
 
-    void UpdateManager::set_current_version(const string& version) {
+    void UpdateManager::set_current_version(const Common::Version& version) {
         current_version_ = version;
-        config_->set_current_version(version);
+        config_->set_current_version(version.toString());
+    }
+
+    bool UpdateManager::is_platform_supported() {
+#ifdef ENABLE_UPDATE_TESTING
+        // Allow updates for testing purposes
+        return true;
+#endif
+
+#ifdef ENABLE_EMULATOR
+        // Disable updates when running in emulator mode
+        return false;
+#endif
+
+#ifdef __linux__
+        // Check if running on ARM64 and Raspberry Pi
+        struct utsname system_info;
+        if (uname(&system_info) == 0) {
+            string machine = system_info.machine;
+            
+            // Check for ARM64 architecture
+            if (machine != "aarch64" && machine != "arm64") {
+                return false;
+            }
+            
+            // Check if it's a Raspberry Pi by looking for device tree info
+            filesystem::path dt_model_path = "/proc/device-tree/model";
+            if (filesystem::exists(dt_model_path)) {
+                ifstream dt_model_file(dt_model_path);
+                string model_info;
+                getline(dt_model_file, model_info);
+                
+                // Check if it contains "Raspberry Pi"
+                if (model_info.find("Raspberry Pi") != string::npos) {
+                    return true;
+                }
+            }
+        }
+        return false;
+#else
+        // Only support Linux for automatic updates
+        return false;
+#endif
+    }
+
+    string UpdateManager::get_user_agent() {
+        return "led-matrix/" + current_version_.toString() + " (https://github.com/sshcrack/led-matrix)";
+    }
+
+    bool UpdateManager::is_updates_supported() const {
+        return status_ != UpdateStatus::DISABLED;
     }
 }
