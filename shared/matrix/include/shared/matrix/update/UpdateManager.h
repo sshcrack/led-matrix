@@ -39,7 +39,6 @@ namespace Update {
         std::thread update_thread_;
         Config::MainConfig* config_;
         
-        Common::Version current_version_;
         std::string repo_owner_;
         std::string repo_name_;
         
@@ -59,7 +58,6 @@ namespace Update {
         
     public:
         explicit UpdateManager(Config::MainConfig* config, 
-                             const Common::Version& current_version = Common::Version(),
                              const std::string& repo_owner = "sshcrack",
                              const std::string& repo_name = "led-matrix");
         
@@ -88,7 +86,6 @@ namespace Update {
         bool is_update_available() const;
         Common::Version get_latest_version() const;
         Common::Version get_current_version() const;
-        void set_current_version(const Common::Version& version);
         bool is_updates_supported() const;
     };
 }
