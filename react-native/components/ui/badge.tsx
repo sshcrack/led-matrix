@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { TextClassContext } from '~/components/ui/text';
 import { cn } from '~/lib/utils';
 
@@ -41,10 +41,13 @@ const badgeTextVariants = cva('text-xs font-semibold web:whitespace-nowrap', {
 type BadgeProps = React.ComponentPropsWithoutRef<typeof View> &
   VariantProps<typeof badgeVariants>;
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, children, variant, ...props }: BadgeProps) {
+  const textClass = badgeTextVariants({ variant });
   return (
-    <TextClassContext.Provider value={badgeTextVariants({ variant })}>
-      <View className={cn(badgeVariants({ variant }), className)} {...props} />
+    <TextClassContext.Provider value={textClass}>
+      <View className={cn(badgeVariants({ variant }), className)} {...props}>
+        <Text className={textClass}>{children}</Text>
+      </View>
     </TextClassContext.Provider>
   );
 }
