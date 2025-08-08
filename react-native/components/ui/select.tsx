@@ -1,7 +1,6 @@
 import * as SelectPrimitive from '@rn-primitives/select';
 import * as React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Check } from '~/lib/icons/Check';
 import { ChevronDown } from '~/lib/icons/ChevronDown';
 import { ChevronUp } from '~/lib/icons/ChevronUp';
@@ -138,7 +137,7 @@ const SelectItem = React.forwardRef<SelectPrimitive.ItemRef, SelectPrimitive.Ite
           <Check size={16} strokeWidth={3} className='text-popover-foreground' />
         </SelectPrimitive.ItemIndicator>
       </View>
-      <SelectPrimitive.ItemText className='text-sm native:text-lg text-popover-foreground native:text-base web:group-focus:text-accent-foreground' />
+      <SelectPrimitive.ItemText className='text-sm native:text-lg text-popover-foreground web:group-focus:text-accent-foreground' />
     </SelectPrimitive.Item>
   )
 );

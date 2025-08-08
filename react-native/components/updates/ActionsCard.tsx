@@ -17,13 +17,13 @@ interface ActionsCardProps {
   onInstallUpdate: () => void;
 }
 
-export function ActionsCard({ 
-  updateStatus, 
-  isCheckingForUpdates, 
-  isUpdating, 
+export function ActionsCard({
+  updateStatus,
+  isCheckingForUpdates,
+  isUpdating,
   installProgress,
-  onCheckForUpdates, 
-  onInstallUpdate 
+  onCheckForUpdates,
+  onInstallUpdate
 }: ActionsCardProps) {
   const { width } = Dimensions.get('window');
   const isWeb = width > 768;
@@ -45,17 +45,17 @@ export function ActionsCard({
       </CardHeader>
       <CardContent className="pt-0">
         {/* Show installation progress when updating */}
-        {isUpdating && installProgress && (
+        {(isUpdating && installProgress) ? (
           <View className="mb-4 p-3 bg-info/10 rounded-lg">
             <Text className="text-sm text-info font-medium">
               {installProgress}
             </Text>
           </View>
-        )}
-        
+        ) : null}
+
         <View className={`flex flex-row gap-3 ${isWeb ? 'justify-start' : 'justify-between'}`}>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="flex-1 max-w-48 h-16"
             onPress={onCheckForUpdates}
             disabled={isCheckingForUpdates}
@@ -67,9 +67,9 @@ export function ActionsCard({
               </Text>
             </View>
           </Button>
-          
-          {updateStatus?.update_available && (
-            <Button 
+
+          {updateStatus?.update_available ? (
+            <Button
               className="flex-1 max-w-48 h-16"
               onPress={onInstallUpdate}
               disabled={isUpdating}
@@ -81,7 +81,7 @@ export function ActionsCard({
                 </Text>
               </View>
             </Button>
-          )}
+          ) : null}
         </View>
       </CardContent>
     </Card>

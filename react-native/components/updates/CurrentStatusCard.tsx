@@ -54,7 +54,7 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
-        {updateStatus && (
+        {updateStatus ? (
           <>
             {/* Current Version */}
             <View className="flex flex-row items-center justify-between p-4 bg-secondary/30 rounded-xl">
@@ -77,11 +77,11 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
                   <Text className="text-lg font-semibold">
                     {UpdateStatusNames[updateStatus.status as keyof typeof UpdateStatusNames]}
                   </Text>
-                  {updateStatus.error_message && (
+                  {updateStatus.error_message ? (
                     <Text className="text-sm text-destructive">
                       {updateStatus.error_message}
                     </Text>
-                  )}
+                  ) : null}
                 </View>
               </View>
               <Badge variant={getStatusColor(updateStatus.status)}>
@@ -90,7 +90,7 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
             </View>
 
             {/* Auto Update Setting */}
-            {updateStatus.status !== 6 && ( // Don't show auto-update toggle if disabled
+            {updateStatus.status !== 6 ? ( // Don't show auto-update toggle if disabled
               <View className="flex flex-row items-center justify-between p-4 bg-secondary/30 rounded-xl">
                 <View>
                   <Text className="text-lg font-semibold">Automatic Updates</Text>
@@ -104,10 +104,10 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
                   nativeID='auto-update-enabled'
                 />
               </View>
-            )}
-            
+            ) : null}
+
             {/* Manual Update Required Notice */}
-            {updateStatus.status === 6 && (
+            {updateStatus.status === 6 ? (
               <View className="flex flex-row items-center justify-center p-4 bg-yellow-500/20 rounded-xl">
                 <View className="flex flex-row items-center gap-3">
                   <AlertCircle className="text-yellow-600" width={20} height={20} />
@@ -116,9 +116,9 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
                   </Text>
                 </View>
               </View>
-            )}
+            ) : null}
           </>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
