@@ -11,22 +11,26 @@
 using json = nlohmann::json;
 using namespace spdlog;
 
-namespace Server {
-    
-    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, Update::UpdateManager* update_manager) {
-        if (!update_manager) {
+namespace Server
+{
+
+    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, Update::UpdateManager *update_manager)
+    {
+        if (!update_manager)
+        {
             error("UpdateManager is null, update routes will not be functional");
             return router;
         }
-        
+
         // GET /api/update/status - Get current update status and configuration
-        router->http_get("/api/update/status", [update_manager](auto req, auto) {
+        router->http_get("/api/update/status", [update_manager](auto req, auto)
+                         {
             try {
                 json response;
                 response["auto_update_enabled"] = update_manager->is_auto_update_enabled();
                 response["check_interval_hours"] = update_manager->get_check_interval_hours();
                 response["current_version"] = Common::Version::getCurrentVersion().toString();
-                response["latest_version"] = update_manager->get_latest_version().toString();
+                response["latest_version"] = update_manager->get_latest_version().value_or(Common::Version(0, 0, 0)).toString();
                 response["update_available"] = update_manager->is_update_available();
                 response["status"] = static_cast<int>(update_manager->get_status());
                 response["error_message"] = update_manager->get_error_message();
@@ -35,11 +39,11 @@ namespace Server {
             } catch (const std::exception& ex) {
                 error("Error getting update status: {}", ex.what());
                 return reply_with_error(req, "Internal server error", restinio::status_internal_server_error());
-            }
-        });
-        
+            } });
+
         // POST /api/update/check - Manually check for updates
-        router->http_post("/api/update/check", [update_manager](auto req, auto) {
+        router->http_post("/api/update/check", [update_manager](auto req, auto)
+                          {
             try {
                 auto update_info = update_manager->manual_check_for_updates();
                 
@@ -59,11 +63,11 @@ namespace Server {
             } catch (const std::exception& ex) {
                 error("Error checking for updates: {}", ex.what());
                 return reply_with_error(req, "Failed to check for updates", restinio::status_internal_server_error());
-            }
-        });
-        
+            } });
+
         // POST /api/update/install - Install available update
-        router->http_post("/api/update/install", [update_manager](auto req, auto) {
+        router->http_post("/api/update/install", [update_manager](auto req, auto)
+                          {
             try {
                 // Check if another installation is already in progress
                 auto current_status = update_manager->get_status();
@@ -80,21 +84,37 @@ namespace Server {
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
                 
                 // Create a shared promise to track completion
-                auto completion_promise = std::make_shared<std::promise<bool>>();
+                auto completion_promise = std::make_shared<std::promise<std::expected<void, std::string>>>();
                 auto completion_future = completion_promise->get_future();
                 
                 // Set up pre-restart callback to signal completion
                 update_manager->set_pre_restart_callback([completion_promise]() {
-                    completion_promise->set_value(true);
+                    completion_promise->set_value({});
                 });
-                
+
+                auto parsed_version = Common::Version::fromString(version);
+                if(parsed_version.isInvalid())
+                    return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
+
                 // Start installation in background thread
-                std::thread([update_manager, version, completion_promise]() {
-                    bool success = update_manager->manual_download_and_install(version);
-                    if (!success) {
+                std::thread([update_manager, parsed_version, completion_promise]() {
+                    auto update = update_manager->get_update_info(parsed_version);
+                    if(!update) {
+                        spdlog::error("Failed to get update info: {}", update.error());
+                        try {
+                            completion_promise->set_value(std::unexpected(update.error()));
+                        } catch (const std::future_error&) {
+                            // Promise already set by pre-restart callback
+                        }
+
+                        return;
+                    }
+
+                    auto res = update_manager->manual_download_and_install(update.value());
+                    if (!res) {
                         // If installation failed, signal completion with false
                         try {
-                            completion_promise->set_value(false);
+                            completion_promise->set_value(res);
                         } catch (const std::future_error&) {
                             // Promise already set by pre-restart callback
                         }
@@ -102,17 +122,17 @@ namespace Server {
                 }).detach();
                 
                 // Wait for completion or timeout (30 seconds for download + install)
-                auto wait_status = completion_future.wait_for(std::chrono::seconds(30));
+                auto wait_status = completion_future.wait_for(std::chrono::seconds(60));
                 
                 json response;
                 if (wait_status == std::future_status::ready) {
-                    bool success = completion_future.get();
-                    if (success) {
+                    std::expected<void, std::string> res = completion_future.get();
+                    if (res) {
                         response["message"] = "Update installation completed successfully";
                         response["status"] = "success";
                         info("Update installation API call completed successfully");
                     } else {
-                        response["message"] = "Update installation failed: " + update_manager->get_error_message();
+                        response["message"] = res.error();
                         response["status"] = "error";
                         error("Update installation API call failed");
                     }
@@ -130,11 +150,11 @@ namespace Server {
             } catch (const std::exception& ex) {
                 error("Error starting update installation: {}", ex.what());
                 return reply_with_error(req, "Failed to start update installation", restinio::status_internal_server_error());
-            }
-        });
-        
+            } });
+
         // POST /api/update/config - Update configuration
-        router->http_post("/api/update/config", [update_manager](auto req, auto) {
+        router->http_post("/api/update/config", [update_manager](auto req, auto)
+                          {
             try {
                 auto body_str = req->body();
                 if (body_str.empty()) {
@@ -169,11 +189,11 @@ namespace Server {
             } catch (const std::exception& ex) {
                 error("Error updating configuration: {}", ex.what());
                 return reply_with_error(req, "Failed to update configuration", restinio::status_internal_server_error());
-            }
-        });
-        
+            } });
+
         // GET /api/update/releases - Get recent releases from GitHub
-        router->http_get("/api/update/releases", [](auto req, auto) {
+        router->http_get("/api/update/releases", [](auto req, auto)
+                         {
             try {
                 const auto qp = restinio::parse_query(req->header().query());
                 int per_page = qp.has("per_page") ? std::stoi(std::string{qp["per_page"]}) : 5;
@@ -220,9 +240,8 @@ namespace Server {
             } catch (const std::exception& ex) {
                 error("Error fetching releases: {}", ex.what());
                 return reply_with_error(req, "Failed to fetch releases", restinio::status_internal_server_error());
-            }
-        });
-        
+            } });
+
         return router;
     }
 }

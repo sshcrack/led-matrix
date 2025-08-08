@@ -22,9 +22,14 @@ namespace Common {
         bool operator>(const Version &other) const;
         bool operator==(const Version &other) const;
         bool operator<(const Version &other) const;
+        bool operator<=(const Version &other) const;
 
         // Compare only major and minor versions (ignoring patch)
         bool isCompatibleWith(const Version &other) const;
+
+        bool isInvalid() const {
+            return major == 0 && minor == 0 && patch == 0;
+        }
 
         std::string toString() const;
     };

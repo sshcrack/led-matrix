@@ -20,403 +20,366 @@
 using namespace spdlog;
 using namespace std;
 
-namespace Update {
-    
-    UpdateManager::UpdateManager(Config::MainConfig* config)
+namespace Update
+{
+
+    UpdateManager::UpdateManager(Config::MainConfig *config)
         : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
-          config_(config), repo_owner_("sshcrack"), repo_name_("led-matrix") {
-        
+          config_(config), repo_owner_("sshcrack"), repo_name_("led-matrix")
+    {
+
         // Check if the platform supports updates
-        if (!is_platform_supported()) {
-            status_ = UpdateStatus::DISABLED;
+        if (!is_platform_supported())
+        {
             warn("Update system disabled - not running on supported platform");
             return;
         }
     }
 
-    UpdateManager::~UpdateManager() {
+    UpdateManager::~UpdateManager()
+    {
         stop();
     }
 
-    void UpdateManager::start() {
-        if (running_.load()) {
+    void UpdateManager::start()
+    {
+        if (running_.load())
+        {
             return;
         }
-        
+
         should_stop_.store(false);
         running_.store(true);
         update_thread_ = thread(&UpdateManager::update_loop, this);
-        
+
         info("UpdateManager started");
     }
 
-    void UpdateManager::stop() {
-        if (!running_.load()) {
+    void UpdateManager::stop()
+    {
+        if (!running_.load())
+        {
             return;
         }
-        
+
         should_stop_.store(true);
-        if (update_thread_.joinable()) {
+        if (update_thread_.joinable())
+        {
             update_thread_.join();
         }
 
         running_.store(false);
         info("UpdateManager stopped");
         // Launch update script if pending
-        if (pending_update_.load() && !pending_update_filename_.empty()) {
-        #if ENABLE_UPDATE_TESTING
-            info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_)
-            return;
-        #endif
+        if (pending_update_.load() && !pending_update_filename_.empty())
+        {
+#if ENABLE_UPDATE_TESTING
+            info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_) return;
+#endif
 
             std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
             string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
             int result = system(command.c_str());
-            if (result != 0) {
-                set_error("Failed to launch update script");
-                status_.store(UpdateStatus::ERROR);
+            if (result != 0)
+            {
+                spdlog::error("Failed to launch update script: {}", command);
                 return;
             }
             info("Update script launched. The process must exit now.");
         }
     }
 
-    void UpdateManager::update_loop() {
-        while (!should_stop_.load()) {
-            try {
-                if (should_check_for_updates()) {
-                    auto update_info = check_for_updates();
-                    
-                    if (update_info.has_value()) {
-                        set_update_available(true);
-                        set_latest_version_string(update_info->version.toString());
-                        set_update_download_url(update_info->download_url);
-                        
-                        if (status_callback_) {
-                            status_callback_(UpdateStatus::SUCCESS, 
-                                           "Update available: " + update_info->version.toString());
-                        }
-                        
-                        // If auto-update is enabled, download and install
-                        if (is_auto_update_enabled()) {
-                            if (manual_download_and_install(update_info->version.toString())) {
-                                info("Auto-update completed successfully");
-                            } else {
-                                error("Auto-update failed");
-                            }
-                        }
-                    } else {
-                        set_update_available(false);
-                        Common::Version current_version = Common::Version::getCurrentVersion();
-                        set_latest_version_string(current_version.toString());
-                        debug("No updates available");
-                    }
-                    
-                    set_last_check_time(GetTimeInMillis());
-                    config_->save();
-                }
-                
-                // Sleep for 1 hour between checks
-                for (int i = 0; i < 3600 && !should_stop_.load(); ++i) {
+    void UpdateManager::update_loop()
+    {
+        info("Getting latest version information...");
+        auto latest_info = get_update_info();
+        if (latest_info.has_value())
+        {
+            latest_version_ = latest_info->version;
+            info("Latest version: {}", latest_version_.toString());
+        }
+        else
+        {
+            info("No updates available or error fetching update info: {}", latest_info.error());
+        }
+
+        while (!should_stop_.load())
+        {
+            if (!should_check_for_updates())
+            {
+                // Sleep for half an hour between checks
+                for (int i = 0; i < 1800 && !should_stop_.load(); ++i)
+                {
                     this_thread::sleep_for(chrono::seconds(1));
                 }
-                
-            } catch (const exception& ex) {
-                set_error("Update loop error: " + string(ex.what()));
-                error("Update loop error: {}", ex.what());
-                
-                // Sleep for 5 minutes on error before retrying
-                for (int i = 0; i < 300 && !should_stop_.load(); ++i) {
-                    this_thread::sleep_for(chrono::seconds(1));
-                }
+                continue;
             }
+
+            status_.store(UpdateStatus::CHECKING);
+            auto latest_info_opt = get_update_info();
+            if (!latest_info_opt.has_value())
+            {
+                status_.store(UpdateStatus::IDLE);
+                spdlog::warn("Failed to get update info: {}", latest_info_opt.error());
+                continue;
+            }
+
+            auto latest_info = latest_info_opt.value();
+            latest_version_ = latest_info.version;
+            if(latest_version_ <= Common::Version::getCurrentVersion())
+                continue;
+
+            auto res = manual_download_and_install(latest_info);
+            if (res.has_value())
+            {
+                info("Auto-update completed successfully");
+            }
+            else
+            {
+                error("Auto-update failed: {}", res.error());
+            }
+
+            set_last_check_time(GetTimeInMillis());
+            config_->save();
         }
     }
 
-    optional<UpdateInfo> UpdateManager::check_for_updates() {
-        status_.store(UpdateStatus::CHECKING);
-        
-        try {
-            string api_url = get_github_api_url();
+    // Unified get_update_info method with optional<string> version
+    expected<UpdateInfo, string> UpdateManager::get_update_info(const std::optional<Common::Version> &version)
+    {
+        try
+        {
+            string api_url = get_github_api_url(version);
             debug("Checking for updates at: {}", api_url);
-            
+
             auto response = cpr::Get(
                 cpr::Url{api_url},
-                cpr::Header{{"User-Agent", get_user_agent()}}
-            );
-            
-            if (response.status_code != 200) {
-                set_error("GitHub API request failed with status: " + to_string(response.status_code));
-                status_.store(UpdateStatus::ERROR);
-                return nullopt;
-            }
-            
+                cpr::Header{{"User-Agent", get_user_agent()}});
+
+            if (response.status_code != 200)
+                return std::unexpected("GitHub API request failed with status: " + to_string(response.status_code));
+
             auto json_response = nlohmann::json::parse(response.text);
             string latest_version_str = json_response["tag_name"];
-            
+
             // Remove 'v' prefix if present
-            if (latest_version_str.starts_with("v")) {
+            if (latest_version_str.starts_with("v"))
+            {
                 latest_version_str = latest_version_str.substr(1);
             }
-            
+
             Common::Version latest_version = Common::Version::fromString(latest_version_str);
-            
-            const Common::Version& current_version = Common::Version::getCurrentVersion();
-            if (compare_versions(current_version, latest_version)) {
-                // Find the led-matrix arm64 tar.gz asset
-                string download_url = "";
-                bool found_asset = false;
-                
-                if (json_response.contains("assets")) {
-                    for (const auto& asset : json_response["assets"]) {
-                        string asset_name = asset["name"];
-                        if (asset_name.find("led-matrix") != string::npos && 
-                            asset_name.find("arm64") != string::npos &&
-                            asset_name.ends_with(".tar.gz")) {
-                            download_url = asset["browser_download_url"];
-                            found_asset = true;
-                            break;
-                        }
+
+            // Find the led-matrix arm64 tar.gz asset
+            string download_url = "";
+            bool found_asset = false;
+
+            if (json_response.contains("assets"))
+            {
+                for (const auto &asset : json_response["assets"])
+                {
+                    string asset_name = asset["name"];
+                    if (asset_name.find("led-matrix") != string::npos &&
+                        asset_name.find("arm64") != string::npos &&
+                        asset_name.ends_with(".tar.gz"))
+                    {
+                        download_url = asset["browser_download_url"];
+                        found_asset = true;
+                        break;
                     }
                 }
-                
-                if (!found_asset) {
-                    set_error("Could not find led-matrix Linux asset in release");
-                    status_.store(UpdateStatus::ERROR);
-                    return nullopt;
-                }
-                
-                UpdateInfo info;
-                info.version = latest_version;
-                info.download_url = download_url;
-                info.body = json_response.value("body", "");
-                info.is_prerelease = json_response.value("prerelease", false);
-                
-                status_.store(UpdateStatus::IDLE);
-                return info;
             }
-            
-            status_.store(UpdateStatus::IDLE);
-            return nullopt;
-            
-        } catch (const exception& ex) {
-            set_error("Error checking for updates: " + string(ex.what()));
-            status_.store(UpdateStatus::ERROR);
-            return nullopt;
+
+            if (!found_asset)
+                return std::unexpected("Could not find led-matrix arm64 asset in release");
+
+            UpdateInfo info;
+            info.version = version.value_or(latest_version);
+            info.download_url = download_url;
+            info.body = json_response.value("body", "");
+            info.is_prerelease = json_response.value("prerelease", false);
+
+            return info;
+        }
+        catch (const exception &ex)
+        {
+            return std::unexpected("Error checking for updates: " + string(ex.what()));
         }
     }
 
-    bool UpdateManager::download_update(const string& url, const string& filename) {
-        status_.store(UpdateStatus::DOWNLOADING);
-        
-        try {
+    std::expected<void, std::string> UpdateManager::download_update(const string &url, const string &filename)
+    {
+        try
+        {
+            status_.store(UpdateStatus::DOWNLOADING);
             info("Downloading update from: {}", url);
-            
+
             ofstream file(filename, ios::binary);
-            if (!file) {
-                set_error("Could not create file: " + filename);
-                status_.store(UpdateStatus::ERROR);
-                return false;
-            }
-            
-            auto response = cpr::Get(cpr::Url{url});
-            
-            if (response.status_code != 200) {
-                set_error("Download failed with status: " + to_string(response.status_code));
-                status_.store(UpdateStatus::ERROR);
-                return false;
-            }
-            
-            file.write(response.text.c_str(), response.text.size());
-            file.close();
-            
+            if (!file)
+                return std::unexpected("Could not create file: " + filename);
+
+            auto response = cpr::Download(file, cpr::Url{url});
+            if (response.status_code != 200)
+                return std::unexpected("Download failed with status: " + to_string(response.status_code));
+
             info("Download completed: {}", filename);
-            return true;
-            
-        } catch (const exception& ex) {
-            set_error("Error downloading update: " + string(ex.what()));
-            status_.store(UpdateStatus::ERROR);
-            return false;
+            return {};
+        }
+        catch (const exception &ex)
+        {
+            return std::unexpected("Error downloading update: " + string(ex.what()));
         }
     }
 
-    bool UpdateManager::install_update(const string& filename) {
-        status_.store(UpdateStatus::INSTALLING);
-        try {
+    std::expected<void, std::string> UpdateManager::install_update(const UpdateInfo &update, const string &filename)
+    {
+        try
+        {
+            status_.store(UpdateStatus::INSTALLING);
             info("Installing update from: {}", filename);
-            
+
             // Step 1: Ensure the archive file exists
-            if (!filesystem::exists(filename)) {
-                set_error("Update archive not found: " + filename);
-                status_.store(UpdateStatus::ERROR);
-                return false;
-            }
-            
+            if (!filesystem::exists(filename))
+                return std::unexpected("Update archive not found at " + filename);
+
             // Step 2: Call pre-restart callback to allow sending response
             info("Preparing to start update process...");
-            if (pre_restart_callback_) {
+            if (pre_restart_callback_)
+            {
                 pre_restart_callback_();
                 // Give a small delay to ensure response is sent
                 this_thread::sleep_for(chrono::milliseconds(500));
             }
-            
-            // Step 3: Update the configuration with new version info before restart
-            auto update_settings = config_->get_update_settings();
-            string new_version = get_latest_version_string();
-            update_settings.last_update_time = GetTimeInMillis();
-            update_settings.update_available = false;
-            config_->set_update_settings(update_settings);
-            config_->save();
 
-            // Step 4: Prepare to launch the update script in stop()
+            // Step 3: Prepare to launch the update script in stop()
             info("Preparing to launch update script in stop() and exit process...");
             pending_update_filename_ = filename;
             pending_update_.store(true);
             exit_canvas_update = true;
             interrupt_received = true;
 
-            return true;
-        } catch (const exception& ex) {
-            set_error("Error installing update: " + string(ex.what()));
-            status_.store(UpdateStatus::ERROR);
-            return false;
+            return {};
+        }
+        catch (const exception &ex)
+        {
+            return std::unexpected("Error installing update: " + string(ex.what()));
         }
     }
 
-    bool UpdateManager::should_check_for_updates() {
-        if (!is_auto_update_enabled()) {
+    bool UpdateManager::should_check_for_updates()
+    {
+        if (!is_auto_update_enabled())
             return false;
-        }
-        
+
         tmillis_t now = GetTimeInMillis();
         tmillis_t last_check = config_->get_last_check_time();
         tmillis_t interval_ms = static_cast<tmillis_t>(get_check_interval_hours()) * 60 * 60 * 1000;
-        
+
         return (now - last_check) >= interval_ms;
     }
 
-    void UpdateManager::set_error(const string& error) {
-        lock_guard<mutex> lock(error_mutex_);
-        error_message_ = error;
+    string UpdateManager::get_github_api_url(const std::optional<Common::Version> &version)
+    {
+        std::string base_url = "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases/";
+        if (version.has_value())
+            return base_url + "v" + version.value().toString();
+
+        return base_url + "latest";
     }
 
-    string UpdateManager::get_github_api_url() {
-        return "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases/latest";
+    expected<UpdateInfo, string> UpdateManager::manual_check_for_updates()
+    {
+        return get_update_info();
     }
 
-    bool UpdateManager::compare_versions(const Common::Version& current, const Common::Version& latest) {
-        return latest > current;
-    }
-
-    optional<UpdateInfo> UpdateManager::manual_check_for_updates() {
-        return check_for_updates();
-    }
-
-    bool UpdateManager::manual_download_and_install(const string& version) {
-        try {
+    std::expected<void, std::string> UpdateManager::manual_download_and_install(const UpdateInfo &update_info)
+    {
+        try
+        {
             string filename = "/tmp/led-matrix-update.tar.gz";
-            string download_url = config_->get_update_download_url();
-            
-            if (download_url.empty()) {
-                // If no URL stored, check for updates first
-                auto update_info = check_for_updates();
-                if (!update_info.has_value()) {
-                    set_error("No update available");
-                    return false;
-                }
-                download_url = update_info->download_url;
+
+            auto download_res = download_update(update_info.download_url, filename);
+            if (!download_res.has_value())
+            {
+                status_.store(UpdateStatus::ERROR);
+                error("Download failed: {}", download_res.error());
+
+                std::unique_lock lock(error_mutex_);
+                error_message_ = download_res.error();
+                return download_res;
             }
-            
-            if (!download_update(download_url, filename)) {
-                return false;
+
+            auto install_res = install_update(update_info, filename);
+            if (!install_res.has_value())
+            {
+                status_.store(UpdateStatus::IDLE);
+                error("Installation failed: {}", install_res.error());
+
+                std::unique_lock lock(error_mutex_);
+                error_message_ = install_res.error();
+                return install_res;
             }
-            
-            if (!install_update(filename)) {
-                return false;
-            }
-            
-            return true;
-            
-        } catch (const exception& ex) {
-            set_error("Manual update failed: " + string(ex.what()));
-            return false;
+
+            return {};
+        }
+        catch (const exception &ex)
+        {
+            return std::unexpected("Manual update failed: " + string(ex.what()));
         }
     }
 
-    UpdateStatus UpdateManager::get_status() const {
+    UpdateStatus UpdateManager::get_status() const
+    {
         return status_.load();
     }
 
-    string UpdateManager::get_error_message() const {
-        lock_guard<mutex> lock(const_cast<mutex&>(error_mutex_));
-        return error_message_;
-    }
-
-    void UpdateManager::set_status_callback(function<void(UpdateStatus, const string&)> callback) {
-        status_callback_ = callback;
-    }
-
-    void UpdateManager::set_pre_restart_callback(function<void()> callback) {
+    void UpdateManager::set_pre_restart_callback(function<void()> callback)
+    {
         pre_restart_callback_ = callback;
     }
 
-    void UpdateManager::set_auto_update_enabled(bool enabled) {
+    void UpdateManager::set_auto_update_enabled(bool enabled)
+    {
         config_->set_auto_update_enabled(enabled);
     }
 
-    void UpdateManager::set_check_interval_hours(int hours) {
+    void UpdateManager::set_check_interval_hours(int hours)
+    {
         config_->set_update_check_interval_hours(hours);
     }
 
-    bool UpdateManager::is_auto_update_enabled() const {
+    bool UpdateManager::is_auto_update_enabled() const
+    {
         return config_->is_auto_update_enabled();
     }
 
-    int UpdateManager::get_check_interval_hours() const {
+    int UpdateManager::get_check_interval_hours() const
+    {
         return config_->get_update_check_interval_hours();
     }
 
-    bool UpdateManager::is_update_available() const {
-        return config_->is_update_available();
+    bool UpdateManager::is_update_available() const
+    {
+        return Common::Version::getCurrentVersion() < latest_version_;
     }
 
-    Common::Version UpdateManager::get_latest_version() const {
-        return Common::Version::fromString(get_latest_version_string());
-    }
-
-    tmillis_t UpdateManager::get_last_check_time() const {
+    tmillis_t UpdateManager::get_last_check_time() const
+    {
         return config_->get_last_check_time();
     }
 
-    void UpdateManager::set_last_check_time(tmillis_t time) {
+    void UpdateManager::set_last_check_time(tmillis_t time)
+    {
         config_->set_last_check_time(time);
     }
 
-    std::string UpdateManager::get_update_download_url() const {
-        return config_->get_update_download_url();
+    std::optional<Common::Version> UpdateManager::get_latest_version() const
+    {
+        return latest_version_;
     }
 
-    void UpdateManager::set_update_download_url(const std::string& url) {
-        config_->set_update_download_url(url);
-    }
-
-    void UpdateManager::set_update_available(bool available) {
-        config_->set_update_available(available);
-    }
-
-    std::string UpdateManager::get_latest_version_string() const {
-        return config_->get_latest_version();
-    }
-
-    void UpdateManager::set_latest_version_string(const std::string& version) {
-        config_->set_latest_version(version);
-    }
-
-
-
-
-
-    bool UpdateManager::is_platform_supported() {
+    bool UpdateManager::is_platform_supported()
+    {
 #ifdef ENABLE_UPDATE_TESTING
         // Allow updates for testing purposes
         return true;
@@ -428,14 +391,15 @@ namespace Update {
 #endif
 
 #ifdef __linux__
-        if(get_exec_dir() == std::filesystem::path("/opt/led-matrix/"))
+        if (get_exec_dir() == std::filesystem::path("/opt/led-matrix/"))
             return false;
 
         // Check if running on ARM64 and Raspberry Pi
         struct utsname system_info;
-        if (uname(&system_info) == 0) {
+        if (uname(&system_info) == 0)
+        {
             string machine = system_info.machine;
-            
+
             return machine == "aarch64" || machine == "arm64";
         }
 #endif
@@ -444,70 +408,67 @@ namespace Update {
         return false;
     }
 
-    string UpdateManager::get_user_agent() {
+    string UpdateManager::get_user_agent()
+    {
         Common::Version current_version = Common::Version::getCurrentVersion();
         return "led-matrix/" + current_version.toString() + " (https://github.com/sshcrack/led-matrix)";
     }
 
-    bool UpdateManager::is_updates_supported() const {
-        return status_ != UpdateStatus::DISABLED;
+    bool UpdateManager::is_updates_supported() const
+    {
+        return is_platform_supported() && !repo_owner_.empty() && !repo_name_.empty();
     }
 
-    bool UpdateManager::check_and_handle_update_completion() {
+    bool UpdateManager::check_and_handle_update_completion()
+    {
         string success_flag = "/opt/led-matrix/.update_success";
         string error_flag = "/opt/led-matrix/.update_error";
-        
+
         // Check for update success flag
-        if (filesystem::exists(success_flag)) {
+        if (filesystem::exists(success_flag))
+        {
             info("Update completion detected - update was successful");
-            
+
             // Read the timestamp from the flag file
             ifstream flag_file(success_flag);
             string timestamp;
-            if (flag_file.good()) {
+            if (flag_file.good())
+            {
                 getline(flag_file, timestamp);
                 flag_file.close();
             }
-            
+
             // Remove the flag file
             filesystem::remove(success_flag);
-            
-            // Update the status and trigger callback if set
-            status_.store(UpdateStatus::SUCCESS);
-            if (status_callback_) {
-                status_callback_(UpdateStatus::SUCCESS, "Update completed successfully at " + timestamp);
-            }
-            
+
             info("Update success notification sent to frontend");
             return true;
         }
-        
+
         // Check for update error flag
-        if (filesystem::exists(error_flag)) {
+        if (filesystem::exists(error_flag))
+        {
             warn("Update completion detected - update failed");
-            
+
             // Read the error message from the flag file
             ifstream flag_file(error_flag);
             string error_msg;
-            if (flag_file.good()) {
+            if (flag_file.good())
+            {
                 getline(flag_file, error_msg);
                 flag_file.close();
             }
-            
+
             // Remove the flag file
             filesystem::remove(error_flag);
-            
+
             // Update the status and trigger callback if set
-            set_error("Update failed: " + error_msg);
-            status_.store(UpdateStatus::ERROR);
-            if (status_callback_) {
-                status_callback_(UpdateStatus::ERROR, error_msg);
-            }
-            
+            spdlog::warn("Update failed: {}", error_msg);
+
             warn("Update error notification sent to frontend");
             return true;
         }
-        
+
         return false;
     }
 }

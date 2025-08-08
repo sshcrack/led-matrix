@@ -57,15 +57,8 @@ namespace Config {
         void set_update_check_interval_hours(int hours);
         tmillis_t get_last_check_time();
         void set_last_check_time(tmillis_t time);
-        bool is_update_available();
-        void set_update_available(bool available);
-        string get_latest_version();
-        void set_latest_version(const string& version);
-        string get_update_download_url();
-        void set_update_download_url(const string& url);
         
         bool save();
         string get_filename() const;
-
     };
 }

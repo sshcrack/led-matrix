@@ -37,6 +37,9 @@ namespace Common {
     bool Version::operator<(const Version &other) const {
         return !(*this > other) && !(*this == other);
     }
+    bool Version::operator<=(const Version &other) const {
+        return (*this < other) || (*this == other);
+    }
 
     bool Version::isCompatibleWith(const Version &other) const {
         return major == other.major && minor == other.minor;
