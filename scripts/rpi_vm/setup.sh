@@ -76,7 +76,7 @@ echo "Project configured and built successfully."
 # Copying the built project to the VM
 
 echo "Overwriting led-matrix files with the built project..."
-scp -P 2222 -o StrictHostKeyChecking=no -r "$proj_dir/build/cross-compile/install/"* root@localhost:/opt/led-matrix/
+scp -P 2222 -o StrictHostKeyChecking=no -r "$proj_dir/build/install/"* root@localhost:/opt/led-matrix/
 echo "Files copied to the Raspberry Pi VM."
 
 echo "Adding user 'pi' and configuring SSH..."
