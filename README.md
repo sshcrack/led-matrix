@@ -203,12 +203,13 @@ The easiest way to install and configure the LED Matrix Controller is with the p
 **To get started, simply run:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/install_led_matrix.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
 ```
 
 Or, if you have already cloned the repository:
 
 ```bash
+cd scripts
 chmod +x install_led_matrix.sh
 ./install_led_matrix.sh
 ```
