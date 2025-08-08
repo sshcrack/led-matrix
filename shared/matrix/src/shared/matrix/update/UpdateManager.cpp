@@ -228,29 +228,50 @@ namespace Update {
         try {
             info("Installing update from: {}", filename);
             
-            // Create a backup of config.json if it exists
+            // Step 1: Ensure the archive file exists
+            if (!filesystem::exists(filename)) {
+                set_error("Update archive not found: " + filename);
+                status_.store(UpdateStatus::ERROR);
+                return false;
+            }
+            
+            // Step 2: Stop the service
+            info("Stopping led-matrix service...");
+            int stop_result = system("sudo systemctl stop led-matrix.service");
+            if (stop_result != 0) {
+                warn("Failed to stop led-matrix service, continuing with update...");
+            }
+            
+            // Step 3: Create a backup of config.json if it exists
             string config_backup = "/tmp/config.json.bak";
             if (filesystem::exists("/opt/led-matrix/config.json")) {
+                info("Backing up configuration file...");
                 filesystem::copy_file("/opt/led-matrix/config.json", config_backup);
             }
             
-            // Extract the update to /opt/led-matrix
+            // Step 4: Extract the archive to the directory
+            info("Extracting update archive...");
             string extract_cmd = "sudo tar -xzf " + filename + " -C /opt/led-matrix --strip-components=1";
             int result = system(extract_cmd.c_str());
             
             if (result != 0) {
                 set_error("Failed to extract update archive");
                 status_.store(UpdateStatus::ERROR);
+                
+                // Try to restart the service even if extraction failed
+                info("Restarting led-matrix service after extraction failure...");
+                system("sudo systemctl start led-matrix.service");
                 return false;
             }
             
-            // Restore config.json if it was backed up
+            // Step 5: Restore config.json if it was backed up
             if (filesystem::exists(config_backup)) {
+                info("Restoring configuration file...");
                 filesystem::copy_file(config_backup, "/opt/led-matrix/config.json");
                 filesystem::remove(config_backup);
             }
             
-            // Update the current version in config
+            // Step 6: Update the configuration with new version info
             auto update_settings = config_->get_update_settings();
             string new_version = get_latest_version_string();
             update_settings.last_update_time = GetTimeInMillis();
@@ -258,31 +279,36 @@ namespace Update {
             config_->set_update_settings(update_settings);
             config_->save();
             
+            // Step 7: Call pre-restart callback to allow sending success response
+            info("Update installed successfully, preparing to restart service...");
             status_.store(UpdateStatus::SUCCESS);
-            info("Update installed successfully");
             
-            // Call pre-restart callback to allow sending success response
             if (pre_restart_callback_) {
                 pre_restart_callback_();
                 // Give a small delay to ensure response is sent
                 this_thread::sleep_for(chrono::milliseconds(500));
             }
             
-            // Restart the service
-            info("Restarting led-matrix service...");
-            int restart_result = system("sudo systemctl restart led-matrix.service");
+            // Step 8: Start the service once again
+            info("Starting led-matrix service...");
+            int restart_result = system("sudo systemctl start led-matrix.service");
             if (restart_result != 0) {
-                warn("Failed to restart led-matrix service, manual restart may be required");
+                warn("Failed to start led-matrix service, manual restart may be required");
             }
             
-            // Clean up downloaded file
+            // Step 9: Clean up downloaded file
             filesystem::remove(filename);
             
+            info("Update installation completed successfully");
             return true;
             
         } catch (const exception& ex) {
             set_error("Error installing update: " + string(ex.what()));
             status_.store(UpdateStatus::ERROR);
+            
+            // Try to restart the service even if an error occurred
+            info("Attempting to restart led-matrix service after error...");
+            system("sudo systemctl start led-matrix.service");
             return false;
         }
     }
