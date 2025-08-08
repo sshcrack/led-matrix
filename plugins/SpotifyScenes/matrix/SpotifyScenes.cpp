@@ -38,7 +38,7 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > Spotif
 
 std::optional<string> SpotifyScenes::after_server_init() {
     if(is_disabled)
-        return;
+        return std::nullopt;
 
     spdlog::info("Initializing SpotifyScenes");
 
@@ -46,13 +46,13 @@ std::optional<string> SpotifyScenes::after_server_init() {
     spotify->initialize();
 
     config->save();
-    return BasicPlugin::after_server_init();
+    return std::nullopt;
 }
 
 std::unique_ptr<router_t> SpotifyScenes::
 register_routes(std::unique_ptr<router_t> router) {
     if(is_disabled)
-        return;
+        return std::move(router);
 
     const string redirect_uri = "http://127.0.0.1:8080/spotify/callback";
 
