@@ -6,16 +6,42 @@ import Toast from 'react-native-toast-message';
 import { UpdateStatus, UpdateConfig, UpdateInfo, Release } from '~/components/apiTypes/update';
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
 import useFetch from '~/components/useFetch';
+import { useUpdateInstallation } from '~/components/hooks/useUpdateInstallation';
 import { CurrentStatusCard, ActionsCard, ReleasesCard, ErrorCard } from '~/components/updates';
 
 export default function UpdatesScreen() {
   const updateStatus = useFetch<UpdateStatus>('/api/update/status');
   const releases = useFetch<Release[]>('/api/update/releases?per_page=5');
   
-  const [isUpdating, setIsUpdating] = useState(false);
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [manualRefresh, setManualRefresh] = useState(false);
   const apiUrl = useApiUrl();
+
+  // Use the new polling-based update installation hook
+  const updateInstallation = useUpdateInstallation({
+    onStatusUpdate: (status) => {
+      // Update the status data when we get new information during installation
+      updateStatus.setData(status);
+    },
+    onSuccess: (version) => {
+      Toast.show({
+        type: 'success',
+        text1: 'Update Successful!',
+        text2: `Successfully updated to version ${version}`
+      });
+      // Refresh all data
+      setRetry();
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Update Failed',
+        text2: error
+      });
+      // Refresh status to get current state
+      setRetry();
+    }
+  });
 
   const setRetry = () => {
     setManualRefresh(true);
@@ -73,42 +99,15 @@ export default function UpdatesScreen() {
         {
           text: 'Install',
           style: 'destructive',
-          onPress: async () => {
-            setIsUpdating(true);
-            try {
-              const url = version 
-                ? `/api/update/install?version=${encodeURIComponent(version)}`
-                : '/api/update/install';
-              
-              const response = await fetch(apiUrl + url, {
-                method: 'POST'
-              });
-              
-              if (response.ok) {
-                Toast.show({
-                  type: 'success',
-                  text1: 'Update Started',
-                  text2: 'The system will restart when installation is complete'
-                });
-              } else {
-                const errorText = await response.text();
-                Toast.show({
-                  type: 'error',
-                  text1: 'Installation Failed',
-                  text2: errorText || 'Unknown error occurred'
-                });
-              }
-            } catch (error: any) {
-              Toast.show({
-                type: 'error',
-                text1: 'Installation Failed',
-                text2: error.message
-              });
-            } finally {
-              setIsUpdating(false);
-              // Refresh status after a short delay
-              setTimeout(setRetry, 1000);
-            }
+          onPress: () => {
+            // Use the new polling-based installation
+            updateInstallation.startInstallation(version);
+            
+            Toast.show({
+              type: 'info',
+              text1: 'Update Started',
+              text2: 'Monitoring installation progress...'
+            });
           }
         }
       ]
@@ -186,14 +185,15 @@ export default function UpdatesScreen() {
                 <ActionsCard 
                   updateStatus={updateStatus.data}
                   isCheckingForUpdates={isCheckingForUpdates}
-                  isUpdating={isUpdating}
+                  isUpdating={updateInstallation.isInstalling}
+                  installProgress={updateInstallation.installProgress}
                   onCheckForUpdates={handleCheckForUpdates}
                   onInstallUpdate={() => handleInstallUpdate()}
                 />
                 <ReleasesCard 
                   releases={releases.data}
                   updateStatus={updateStatus.data}
-                  isUpdating={isUpdating}
+                  isUpdating={updateInstallation.isInstalling}
                   onInstallUpdate={handleInstallUpdate}
                 />
               </>

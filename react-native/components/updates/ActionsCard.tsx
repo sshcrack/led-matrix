@@ -12,6 +12,7 @@ interface ActionsCardProps {
   updateStatus: UpdateStatus | null;
   isCheckingForUpdates: boolean;
   isUpdating: boolean;
+  installProgress?: string;
   onCheckForUpdates: () => void;
   onInstallUpdate: () => void;
 }
@@ -20,6 +21,7 @@ export function ActionsCard({
   updateStatus, 
   isCheckingForUpdates, 
   isUpdating, 
+  installProgress,
   onCheckForUpdates, 
   onInstallUpdate 
 }: ActionsCardProps) {
@@ -42,6 +44,15 @@ export function ActionsCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
+        {/* Show installation progress when updating */}
+        {isUpdating && installProgress && (
+          <View className="mb-4 p-3 bg-info/10 rounded-lg">
+            <Text className="text-sm text-info font-medium">
+              {installProgress}
+            </Text>
+          </View>
+        )}
+        
         <View className={`flex flex-row gap-3 ${isWeb ? 'justify-start' : 'justify-between'}`}>
           <Button 
             variant="outline" 
