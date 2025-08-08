@@ -10,6 +10,15 @@ RED='\033[1;31m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
+# Ensure user 'pi' exists before setting SUDO_UID and SUDO_GID
+if ! id -u pi >/dev/null 2>&1; then
+  echo -e "${RED}${BOLD}❌ Error:${RESET} User 'pi' does not exist. Please create the user 'pi' before running this script."
+  exit 1
+fi
+# Set SUDO_UID and SUDO_GID to those of user 'pi'
+PI_UID=$(id -u pi)
+PI_GID=$(id -g pi)
+
 # Spinner function
 spin() {
   local pid=$!
@@ -91,9 +100,9 @@ echo
 echo -e "${YELLOW}If you are using a Raspberry Pi 3 Model B, it is recommended to set --led-slowdown-gpio to 3.${RESET}"
 read -p "Set --led-slowdown-gpio? (Recommended for RPi 3 Model B) [3, leave blank to skip]: " LED_SLOWDOWN_GPIO
 
-MATRIX_OPTS="--led-rows=${LED_ROWS} --led-cols=${LED_COLS} --led-chain=${LED_CHAIN} --led-parallel=${LED_PARALLEL}"
+MATRIX_OPTS="--led-rows ${LED_ROWS} --led-cols ${LED_COLS} --led-chain ${LED_CHAIN} --led-parallel ${LED_PARALLEL}"
 if [[ -n "$LED_SLOWDOWN_GPIO" ]]; then
-  MATRIX_OPTS="$MATRIX_OPTS --led-slowdown-gpio=${LED_SLOWDOWN_GPIO}"
+  MATRIX_OPTS="$MATRIX_OPTS --led-slowdown-gpio ${LED_SLOWDOWN_GPIO}"
 fi
 
 echo
@@ -254,6 +263,8 @@ WorkingDirectory=/opt/led-matrix
 ExecStart=/opt/led-matrix/main $MATRIX_OPTS
 Restart=on-failure
 User=root
+Environment=SUDO_UID=$PI_UID
+Environment=SUDO_GID=$PI_GID
 $SPOTIFY_ENV
 
 [Install]
