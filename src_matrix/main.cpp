@@ -93,6 +93,10 @@ int main(int argc, char *argv[])
     Constants::global_update_manager = new Update::UpdateManager(config);
     Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
+    
+    // Check for completed updates from previous session
+    debug("Checking for completed updates...");
+    Constants::global_update_manager->check_and_handle_update_completion();
 
     for (const auto &item : pl->get_plugins())
     {

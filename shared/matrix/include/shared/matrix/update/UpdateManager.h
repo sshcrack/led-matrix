@@ -97,5 +97,8 @@ namespace Update {
         void set_last_check_time(tmillis_t time);
         std::string get_update_download_url() const;
         void set_update_download_url(const std::string& url);
+        
+        // Update completion checking
+        bool check_and_handle_update_completion();
     };
 }
