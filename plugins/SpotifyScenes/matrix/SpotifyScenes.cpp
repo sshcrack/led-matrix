@@ -23,6 +23,9 @@ SpotifyScenes::create_image_providers() {
 }
 
 vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > SpotifyScenes::create_scenes() {
+    if(is_disabled)
+        return {};
+    
     auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> >();
     scenes.push_back({
         new CoverOnlySceneWrapper(), [](SceneWrapper *scene) {
@@ -34,6 +37,9 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > Spotif
 }
 
 std::optional<string> SpotifyScenes::after_server_init() {
+    if(is_disabled)
+        return;
+
     spdlog::info("Initializing SpotifyScenes");
 
     spotify = new Spotify();
@@ -45,6 +51,9 @@ std::optional<string> SpotifyScenes::after_server_init() {
 
 std::unique_ptr<router_t> SpotifyScenes::
 register_routes(std::unique_ptr<router_t> router) {
+    if(is_disabled)
+        return;
+
     const string redirect_uri = "http://127.0.0.1:8080/spotify/callback";
 
     router->http_get("/spotify/login",
@@ -119,4 +128,11 @@ string SpotifyScenes::generate_random_string(size_t length) {
     return result;
 }
 
-SpotifyScenes::SpotifyScenes() = default;
+SpotifyScenes::SpotifyScenes() {
+    auto id = std::getenv("SPOTIFY_CLIENT_ID");
+    auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
+
+    is_disabled = !id || !secret;
+    if (is_disabled)
+        spdlog::error("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
+};

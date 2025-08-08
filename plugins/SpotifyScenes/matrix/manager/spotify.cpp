@@ -117,8 +117,7 @@ Spotify::Spotify() {
         client_id = id;
         client_secret = secret;
     } else {
-        error("No spotify client id or secret found in env");
-        throw runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in env");
+        throw std::runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
     }
 }
 

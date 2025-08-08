@@ -21,4 +21,5 @@ public:
 
 private:
     static string generate_random_string(size_t length);
+    bool is_disabled = false;
 };
