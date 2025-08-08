@@ -141,9 +141,9 @@ if [[ "$ENABLE_AUTO_UPDATES" =~ ^[Yy]$ ]]; then
   print_success "Automatic updates will be enabled! 🔄"
   echo
   echo -e "${YELLOW}You can configure how often to check for updates:${RESET}"
-  echo "1. Every 6 hours (recommended for development)"
+  echo "1. Every 6 hours (recommended if you want to stay on the bleeding edge)"
   echo "2. Every 12 hours"
-  echo "3. Every 24 hours (recommended for production)"
+  echo "3. Every 24 hours (stable, recommended for production)"
   echo "4. Every 48 hours"
   echo "5. Every week (168 hours)"
   echo
