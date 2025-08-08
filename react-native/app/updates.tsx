@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Dimensions, RefreshControl, ScrollView, View, Alert } from 'react-native';
+import { Dimensions, RefreshControl, ScrollView, View, ToastAndroid, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { UpdateStatus, UpdateConfig, UpdateInfo, Release } from '~/components/apiTypes/update';
@@ -8,6 +8,16 @@ import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider';
 import useFetch from '~/components/useFetch';
 import { useUpdateInstallation } from '~/components/hooks/useUpdateInstallation';
 import { CurrentStatusCard, ActionsCard, ReleasesCard, ErrorCard } from '~/components/updates';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog';
 
 export default function UpdatesScreen() {
   const updateStatus = useFetch<UpdateStatus>('/api/update/status');
@@ -15,6 +25,7 @@ export default function UpdatesScreen() {
 
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [manualRefresh, setManualRefresh] = useState(false);
+  const [pendingUpdateVersion, setPendingUpdateVersion] = useState<string | undefined>(undefined);
   const apiUrl = useApiUrl();
 
   // Use the new polling-based update installation hook
@@ -90,28 +101,18 @@ export default function UpdatesScreen() {
     }
   };
 
-  const handleInstallUpdate = async (version?: string) => {
-    Alert.alert(
-      'Install Update',
-      `Are you sure you want to install ${version ? `version ${version}` : 'the latest update'}? The system will restart automatically.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Install',
-          style: 'destructive',
-          onPress: () => {
-            // Use the new polling-based installation
-            updateInstallation.startInstallation(version);
+  const handleInstallUpdate = (version?: string) => {
+    setPendingUpdateVersion(version || undefined);
+  };
 
-            Toast.show({
-              type: 'info',
-              text1: 'Update Started',
-              text2: 'Monitoring installation progress...'
-            });
-          }
-        }
-      ]
-    );
+  const confirmInstallUpdate = () => {
+    updateInstallation.startInstallation(pendingUpdateVersion);
+    Toast.show({
+      type: 'info',
+      text1: 'Update Started',
+      text2: 'Monitoring installation progress...'
+    });
+    setPendingUpdateVersion(undefined);
   };
 
   const handleConfigChange = async (config: Partial<UpdateConfig>) => {
@@ -200,6 +201,24 @@ export default function UpdatesScreen() {
             )}
           </View>
         </ScrollView>
+        <AlertDialog open={pendingUpdateVersion !== undefined} onOpenChange={open => !open && setPendingUpdateVersion(undefined)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Install Update</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to install {pendingUpdateVersion ? `version ${pendingUpdateVersion}` : 'the latest update'}? The system will restart automatically.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onPress={() => setPendingUpdateVersion(undefined)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onPress={confirmInstallUpdate}>
+                Install
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SafeAreaView>
     </SafeAreaProvider>
   );
