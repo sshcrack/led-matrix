@@ -70,7 +70,6 @@ namespace ConfigData {
         p.auto_update_enabled = j.value("auto_update_enabled", true);
         p.check_interval_hours = j.value("check_interval_hours", 24);
         p.last_check_time = j.value("last_check_time", 0);
-        p.last_update_time = j.value("last_update_time", 0);
         p.update_available = j.value("update_available", false);
         p.latest_version = j.value("latest_version", "");
         p.update_download_url = j.value("update_download_url", "");
@@ -232,7 +231,6 @@ namespace ConfigData {
             {"auto_update_enabled", p.auto_update_enabled},
             {"check_interval_hours", p.check_interval_hours},
             {"last_check_time", p.last_check_time},
-            {"last_update_time", p.last_update_time},
             {"update_available", p.update_available},
             {"latest_version", p.latest_version},
             {"update_download_url", p.update_download_url}

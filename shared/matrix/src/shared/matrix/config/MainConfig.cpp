@@ -256,37 +256,4 @@ namespace Config {
         this->data.update_settings.last_check_time = time;
         this->mark_dirty();
     }
-
-    bool MainConfig::is_update_available() {
-        shared_lock lock(this->data_mutex);
-        return this->data.update_settings.update_available;
-    }
-
-    void MainConfig::set_update_available(bool available) {
-        unique_lock lock(this->data_mutex);
-        this->data.update_settings.update_available = available;
-        this->mark_dirty();
-    }
-
-    string MainConfig::get_latest_version() {
-        shared_lock lock(this->data_mutex);
-        return this->data.update_settings.latest_version;
-    }
-
-    void MainConfig::set_latest_version(const string& version) {
-        unique_lock lock(this->data_mutex);
-        this->data.update_settings.latest_version = version;
-        this->mark_dirty();
-    }
-
-    string MainConfig::get_update_download_url() {
-        shared_lock lock(this->data_mutex);
-        return this->data.update_settings.update_download_url;
-    }
-
-    void MainConfig::set_update_download_url(const string& url) {
-        unique_lock lock(this->data_mutex);
-        this->data.update_settings.update_download_url = url;
-        this->mark_dirty();
-    }
 }
