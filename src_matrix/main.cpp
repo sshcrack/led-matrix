@@ -205,14 +205,6 @@ int main(int argc, char *argv[])
     info("Saving config...");
     config->save();
 
-    debug("Stopping UpdateManager...");
-    if (Constants::global_update_manager)
-    {
-        Constants::global_update_manager->stop();
-        delete Constants::global_update_manager;
-        Constants::global_update_manager = nullptr;
-    }
-
     delete Constants::global_post_processor;
 
     debug("Joining control thread...");
@@ -225,6 +217,15 @@ int main(int argc, char *argv[])
 
     debug("Terminating plugin loader...");
     pl->destroy_plugins();
+
+    debug("Stopping UpdateManager...");
+    if (Constants::global_update_manager)
+    {
+        Constants::global_update_manager->stop();
+        delete Constants::global_update_manager;
+        Constants::global_update_manager = nullptr;
+    }
+
 
     return 0;
 }

@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <regex>
+#include <atomic>
 
 #ifdef __linux__
 #include <sys/utsname.h>
@@ -17,6 +18,9 @@
 
 using namespace spdlog;
 using namespace std;
+
+extern bool exit_canvas_update;
+extern bool interrupt_received;
 
 namespace Update {
     
@@ -54,13 +58,23 @@ namespace Update {
         }
         
         should_stop_.store(true);
-        
         if (update_thread_.joinable()) {
             update_thread_.join();
         }
-        
         running_.store(false);
         info("UpdateManager stopped");
+        // Launch update script if pending
+        if (pending_update_.load() && !pending_update_filename_.empty()) {
+            std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
+            string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
+            int result = system(command.c_str());
+            if (result != 0) {
+                set_error("Failed to launch update script");
+                status_.store(UpdateStatus::ERROR);
+                return;
+            }
+            info("Update script launched. The process must exit now.");
+        }
     }
 
     void UpdateManager::update_loop() {
@@ -224,7 +238,6 @@ namespace Update {
 
     bool UpdateManager::install_update(const string& filename) {
         status_.store(UpdateStatus::INSTALLING);
-        
         try {
             info("Installing update from: {}", filename);
             
@@ -250,23 +263,18 @@ namespace Update {
             update_settings.update_available = false;
             config_->set_update_settings(update_settings);
             config_->save();
-            
-            // Step 4: Launch the update script and exit
-            info("Launching update script and exiting process...");
-            string script_path = "/opt/led-matrix/update_service.sh";
-            string command = "sudo " + script_path + " " + filename + " &";
-            
-            int result = system(command.c_str());
-            if (result != 0) {
-                set_error("Failed to launch update script");
-                status_.store(UpdateStatus::ERROR);
-                return false;
-            }
-            
-            // The process will exit here - the script will handle the rest
-            info("Update script launched, exiting process...");
-            std::exit(0);
-            
+
+            // Step 4: Prepare to launch the update script in stop()
+            info("Preparing to launch update script in stop() and exit process...");
+            pending_update_filename_ = filename;
+            pending_update_.store(true);
+            exit_canvas_update = true;
+            interrupt_received = true;
+            // Set status to SUCCESS so frontend sees a successful update (not error)
+            status_.store(UpdateStatus::SUCCESS);
+            stop();
+            // stop() will launch the script and exit
+            return true;
         } catch (const exception& ex) {
             set_error("Error installing update: " + string(ex.what()));
             status_.store(UpdateStatus::ERROR);
@@ -419,6 +427,9 @@ namespace Update {
 #endif
 
 #ifdef __linux__
+        if(get_exec_dir() == std::filesystem::path("/opt/led-matrix/"))
+            return false;
+
         // Check if running on ARM64 and Raspberry Pi
         struct utsname system_info;
         if (uname(&system_info) == 0) {
@@ -426,11 +437,10 @@ namespace Update {
             
             return machine == "aarch64" || machine == "arm64";
         }
-        return false;
-#else
-        // Only support Linux for automatic updates
-        return false;
 #endif
+
+        // Only support Linux and arm64 for automatic updates
+        return false;
     }
 
     string UpdateManager::get_user_agent() {
