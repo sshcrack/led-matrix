@@ -1,5 +1,6 @@
 #include "shared/matrix/update/UpdateManager.h"
 #include "shared/matrix/utils/shared.h"
+#include "shared/matrix/interrupt.h"
 #include "shared/common/Version.h"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
@@ -18,9 +19,6 @@
 
 using namespace spdlog;
 using namespace std;
-
-extern bool exit_canvas_update;
-extern bool interrupt_received;
 
 namespace Update {
     
