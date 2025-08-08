@@ -152,7 +152,7 @@ install(FILES
 # Install update script for matrix builds (not for desktop)
 if(NOT ENABLE_DESKTOP)
     install(FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/update_service.sh
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
         DESTINATION .
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     )
