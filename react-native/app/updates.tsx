@@ -12,7 +12,7 @@ import { CurrentStatusCard, ActionsCard, ReleasesCard, ErrorCard } from '~/compo
 export default function UpdatesScreen() {
   const updateStatus = useFetch<UpdateStatus>('/api/update/status');
   const releases = useFetch<Release[]>('/api/update/releases?per_page=5');
-  
+
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [manualRefresh, setManualRefresh] = useState(false);
   const apiUrl = useApiUrl();
@@ -62,7 +62,7 @@ export default function UpdatesScreen() {
         method: 'POST'
       });
       const result: UpdateInfo = await response.json();
-      
+
       if (result.update_available) {
         Toast.show({
           type: 'success',
@@ -76,7 +76,7 @@ export default function UpdatesScreen() {
           text2: 'You are running the latest version'
         });
       }
-      
+
       // Refresh status
       setRetry();
     } catch (error: any) {
@@ -102,7 +102,7 @@ export default function UpdatesScreen() {
           onPress: () => {
             // Use the new polling-based installation
             updateInstallation.startInstallation(version);
-            
+
             Toast.show({
               type: 'info',
               text1: 'Update Started',
@@ -178,11 +178,11 @@ export default function UpdatesScreen() {
               <ErrorCard error={error} onRetry={setRetry} />
             ) : (
               <>
-                <CurrentStatusCard 
-                  updateStatus={updateStatus.data} 
+                <CurrentStatusCard
+                  updateStatus={updateStatus.data}
                   onConfigChange={handleConfigChange}
                 />
-                <ActionsCard 
+                <ActionsCard
                   updateStatus={updateStatus.data}
                   isCheckingForUpdates={isCheckingForUpdates}
                   isUpdating={updateInstallation.isInstalling}
@@ -190,7 +190,7 @@ export default function UpdatesScreen() {
                   onCheckForUpdates={handleCheckForUpdates}
                   onInstallUpdate={() => handleInstallUpdate()}
                 />
-                <ReleasesCard 
+                <ReleasesCard
                   releases={releases.data}
                   updateStatus={updateStatus.data}
                   isUpdating={updateInstallation.isInstalling}

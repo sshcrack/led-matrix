@@ -140,17 +140,17 @@ export default function Screen() {
               <View className="flex flex-row items-center gap-2">
                 <View className="relative">
                   <Download className="text-foreground" width={20} height={20} />
-                  {updateStatus.data?.update_available && (
+                  {updateStatus.data?.update_available ? (
                     <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
-                  )}
+                  ) : null}
                 </View>
                 <View className="flex flex-col items-start">
                   <Text className="text-sm font-medium">Updates</Text>
-                  {updateStatus.data?.update_available && (
+                  {updateStatus.data?.update_available ? (
                     <Badge variant="destructive" className="text-xs px-1 py-0 h-4">
                       New
                     </Badge>
-                  )}
+                  ) : null}
                 </View>
               </View>
             </Button>
