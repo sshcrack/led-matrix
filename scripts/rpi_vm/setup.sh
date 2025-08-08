@@ -55,8 +55,8 @@ proj_dir="$script_dir/../.."
 scp -P 2222 -o StrictHostKeyChecking=no $script_dir/../install_led_matrix.sh root@localhost:/root/install_script.sh
 
 echo "Running install script..."
-ssh -p 2222 root@localhost "bash /root/install_script.sh"
-ssh -p 2222 root@localhost << 'EOF'
+ssh -t -o StrictHostKeyChecking=no -p 2222 root@localhost "bash /root/install_script.sh"
+ssh -o StrictHostKeyChecking=no -p 2222 root@localhost << 'EOF'
     rm /root/install_script.sh
     systemctl stop led-matrix.service
 EOF
@@ -76,11 +76,11 @@ echo "Project configured and built successfully."
 # Copying the built project to the VM
 
 echo "Overwriting led-matrix files with the built project..."
-scp -P 2222 -r "$proj_dir/build/cross-compile/install/"* root@localhost:/opt/led-matrix/
+scp -P 2222 -o StrictHostKeyChecking=no -r "$proj_dir/build/cross-compile/install/"* root@localhost:/opt/led-matrix/
 echo "Files copied to the Raspberry Pi VM."
 
 echo "Adding user 'pi' and configuring SSH..."
-ssh root@localhost -p 2222 << 'EOF'
+ssh -o StrictHostKeyChecking=no root@localhost -p 2222 << 'EOF'
 # Add user pi
 useradd -m -s /bin/bash pi
 echo "pi:raspberry" | chpasswd

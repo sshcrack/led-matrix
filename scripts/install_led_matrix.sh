@@ -65,40 +65,7 @@ if [[ -z "$ASSET_URL" ]]; then
   exit 1
 fi
 
-TMP_DIR=$(mktemp -d)
-cd "$TMP_DIR"
-print_info "⬇️  Downloading LED Matrix binary for arm64..."
-curl -# -L -o led-matrix-arm64.tar.gz "$ASSET_URL"
-
-# Check if already installed
-if [[ -f "/opt/led-matrix/main" ]]; then
-  print_info "Detected existing installation at /opt/led-matrix."
-  print_info "All files except for the configuration file (config.json) will be deleted and replaced with the latest version."
-  read -p "Do you want to continue with the update? (y/N): " CONFIRM_UPDATE
-  if [[ ! "$CONFIRM_UPDATE" =~ ^[Yy]$ ]]; then
-    print_info "Update cancelled by user. Exiting."
-    exit 0
-  fi
-  print_info "Updating to latest version..."
-  # Backup config.json if it exists
-  if [[ -f "/opt/led-matrix/config.json" ]]; then
-    sudo cp /opt/led-matrix/config.json "$TMP_DIR/config.json.bak"
-  fi
-  # Remove everything except config.json
-  sudo find /opt/led-matrix -mindepth 1 -not -name 'config.json' -exec rm -rf {} +
-  # Extract new files
-  print_info "Extracting update..."
-  (sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
-  # Restore config.json if it was backed up
-  if [[ -f "$TMP_DIR/config.json.bak" ]]; then
-    sudo mv "$TMP_DIR/config.json.bak" /opt/led-matrix/config.json
-  fi
-  print_success "Update complete!"
-else
-  print_info "No existing installation found. Installing fresh..."
-  print_info "📦 Extracting to /opt/led-matrix (requires sudo)..."
-  (sudo mkdir -p /opt/led-matrix && sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
-fi
+# Prompt for all parameters before downloading and extracting
 
 echo -e "${CYAN}${BOLD}"
 echo "----------------------------------------------"
@@ -127,6 +94,13 @@ read -p "Set --led-slowdown-gpio? (Recommended for RPi 3 Model B) [3, leave blan
 MATRIX_OPTS="--led-rows=${LED_ROWS} --led-cols=${LED_COLS} --led-chain=${LED_CHAIN} --led-parallel=${LED_PARALLEL}"
 if [[ -n "$LED_SLOWDOWN_GPIO" ]]; then
   MATRIX_OPTS="$MATRIX_OPTS --led-slowdown-gpio=${LED_SLOWDOWN_GPIO}"
+fi
+
+echo
+echo -e "${YELLOW}You can add any additional custom parameters for the matrix controller below.${RESET}"
+read -p "Enter any extra parameters (leave blank to skip): " CUSTOM_MATRIX_OPTS
+if [[ -n "$CUSTOM_MATRIX_OPTS" ]]; then
+  MATRIX_OPTS="$MATRIX_OPTS $CUSTOM_MATRIX_OPTS"
 fi
 
 print_success "Matrix configuration: $MATRIX_OPTS"
@@ -220,6 +194,42 @@ else
 }
 EOF
   )
+fi
+
+# Now perform the download and extraction after all prompts
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+print_info "⬇️  Downloading LED Matrix binary for arm64..."
+curl -# -L -o led-matrix-arm64.tar.gz "$ASSET_URL"
+
+# Check if already installed
+if [[ -f "/opt/led-matrix/main" ]]; then
+  print_info "Detected existing installation at /opt/led-matrix."
+  print_info "All files except for the configuration file (config.json) will be deleted and replaced with the latest version."
+  read -p "Do you want to continue with the update? (y/N): " CONFIRM_UPDATE
+  if [[ ! "$CONFIRM_UPDATE" =~ ^[Yy]$ ]]; then
+    print_info "Update cancelled by user. Exiting."
+    exit 0
+  fi
+  print_info "Updating to latest version..."
+  # Backup config.json if it exists
+  if [[ -f "/opt/led-matrix/config.json" ]]; then
+    sudo cp /opt/led-matrix/config.json "$TMP_DIR/config.json.bak"
+  fi
+  # Remove everything except config.json
+  sudo find /opt/led-matrix -mindepth 1 -not -name 'config.json' -exec rm -rf {} +
+  # Extract new files
+  print_info "Extracting update..."
+  (sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
+  # Restore config.json if it was backed up
+  if [[ -f "$TMP_DIR/config.json.bak" ]]; then
+    sudo mv "$TMP_DIR/config.json.bak" /opt/led-matrix/config.json
+  fi
+  print_success "Update complete!"
+else
+  print_info "No existing installation found. Installing fresh..."
+  print_info "📦 Extracting to /opt/led-matrix (requires sudo)..."
+  (sudo mkdir -p /opt/led-matrix && sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
 fi
 
 print_info "📝 Creating initial configuration..."
