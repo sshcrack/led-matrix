@@ -149,6 +149,15 @@ install(FILES
     DESTINATION .
 )
 
+# Install update script for matrix builds (not for desktop)
+if(NOT ENABLE_DESKTOP)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/update_service.sh
+        DESTINATION .
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+endif()
+
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 

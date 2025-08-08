@@ -235,43 +235,15 @@ namespace Update {
                 return false;
             }
             
-            // Step 2: Stop the service
-            info("Stopping led-matrix service...");
-            int stop_result = system("sudo systemctl stop led-matrix.service");
-            if (stop_result != 0) {
-                warn("Failed to stop led-matrix service, continuing with update...");
+            // Step 2: Call pre-restart callback to allow sending response
+            info("Preparing to start update process...");
+            if (pre_restart_callback_) {
+                pre_restart_callback_();
+                // Give a small delay to ensure response is sent
+                this_thread::sleep_for(chrono::milliseconds(500));
             }
             
-            // Step 3: Create a backup of config.json if it exists
-            string config_backup = "/tmp/config.json.bak";
-            if (filesystem::exists("/opt/led-matrix/config.json")) {
-                info("Backing up configuration file...");
-                filesystem::copy_file("/opt/led-matrix/config.json", config_backup);
-            }
-            
-            // Step 4: Extract the archive to the directory
-            info("Extracting update archive...");
-            string extract_cmd = "sudo tar -xzf " + filename + " -C /opt/led-matrix --strip-components=1";
-            int result = system(extract_cmd.c_str());
-            
-            if (result != 0) {
-                set_error("Failed to extract update archive");
-                status_.store(UpdateStatus::ERROR);
-                
-                // Try to restart the service even if extraction failed
-                info("Restarting led-matrix service after extraction failure...");
-                system("sudo systemctl start led-matrix.service");
-                return false;
-            }
-            
-            // Step 5: Restore config.json if it was backed up
-            if (filesystem::exists(config_backup)) {
-                info("Restoring configuration file...");
-                filesystem::copy_file(config_backup, "/opt/led-matrix/config.json");
-                filesystem::remove(config_backup);
-            }
-            
-            // Step 6: Update the configuration with new version info
+            // Step 3: Update the configuration with new version info before restart
             auto update_settings = config_->get_update_settings();
             string new_version = get_latest_version_string();
             update_settings.last_update_time = GetTimeInMillis();
@@ -279,36 +251,25 @@ namespace Update {
             config_->set_update_settings(update_settings);
             config_->save();
             
-            // Step 7: Call pre-restart callback to allow sending success response
-            info("Update installed successfully, preparing to restart service...");
-            status_.store(UpdateStatus::SUCCESS);
+            // Step 4: Launch the update script and exit
+            info("Launching update script and exiting process...");
+            string script_path = "/opt/led-matrix/update_service.sh";
+            string command = "sudo " + script_path + " " + filename + " &";
             
-            if (pre_restart_callback_) {
-                pre_restart_callback_();
-                // Give a small delay to ensure response is sent
-                this_thread::sleep_for(chrono::milliseconds(500));
+            int result = system(command.c_str());
+            if (result != 0) {
+                set_error("Failed to launch update script");
+                status_.store(UpdateStatus::ERROR);
+                return false;
             }
             
-            // Step 8: Start the service once again
-            info("Starting led-matrix service...");
-            int restart_result = system("sudo systemctl start led-matrix.service");
-            if (restart_result != 0) {
-                warn("Failed to start led-matrix service, manual restart may be required");
-            }
-            
-            // Step 9: Clean up downloaded file
-            filesystem::remove(filename);
-            
-            info("Update installation completed successfully");
-            return true;
+            // The process will exit here - the script will handle the rest
+            info("Update script launched, exiting process...");
+            std::exit(0);
             
         } catch (const exception& ex) {
             set_error("Error installing update: " + string(ex.what()));
             status_.store(UpdateStatus::ERROR);
-            
-            // Try to restart the service even if an error occurred
-            info("Attempting to restart led-matrix service after error...");
-            system("sudo systemctl start led-matrix.service");
             return false;
         }
     }
@@ -479,5 +440,63 @@ namespace Update {
 
     bool UpdateManager::is_updates_supported() const {
         return status_ != UpdateStatus::DISABLED;
+    }
+
+    bool UpdateManager::check_and_handle_update_completion() {
+        string success_flag = "/opt/led-matrix/.update_success";
+        string error_flag = "/opt/led-matrix/.update_error";
+        
+        // Check for update success flag
+        if (filesystem::exists(success_flag)) {
+            info("Update completion detected - update was successful");
+            
+            // Read the timestamp from the flag file
+            ifstream flag_file(success_flag);
+            string timestamp;
+            if (flag_file.good()) {
+                getline(flag_file, timestamp);
+                flag_file.close();
+            }
+            
+            // Remove the flag file
+            filesystem::remove(success_flag);
+            
+            // Update the status and trigger callback if set
+            status_.store(UpdateStatus::SUCCESS);
+            if (status_callback_) {
+                status_callback_(UpdateStatus::SUCCESS, "Update completed successfully at " + timestamp);
+            }
+            
+            info("Update success notification sent to frontend");
+            return true;
+        }
+        
+        // Check for update error flag
+        if (filesystem::exists(error_flag)) {
+            warn("Update completion detected - update failed");
+            
+            // Read the error message from the flag file
+            ifstream flag_file(error_flag);
+            string error_msg;
+            if (flag_file.good()) {
+                getline(flag_file, error_msg);
+                flag_file.close();
+            }
+            
+            // Remove the flag file
+            filesystem::remove(error_flag);
+            
+            // Update the status and trigger callback if set
+            set_error("Update failed: " + error_msg);
+            status_.store(UpdateStatus::ERROR);
+            if (status_callback_) {
+                status_callback_(UpdateStatus::ERROR, error_msg);
+            }
+            
+            warn("Update error notification sent to frontend");
+            return true;
+        }
+        
+        return false;
     }
 }
