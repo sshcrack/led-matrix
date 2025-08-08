@@ -92,7 +92,7 @@ jobs:
             preset: "cross-compile"
             artifact-name: "led-matrix-build"
             artifact-path: |
-              build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+              build/led-matrix-${{ needs.prepare.outputs.version }}-arm64.tar.gz
             requires-toolchain: true
           - name: "desktop-linux"
             os: ubuntu-latest
@@ -325,7 +325,7 @@ jobs:
           TAG="v${{ needs.prepare.outputs.version }}"
 
           # Upload led-matrix (cross-compile)
-          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+          gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-arm64.tar.gz
 
           # Upload desktop-linux
           gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz

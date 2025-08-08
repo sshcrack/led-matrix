@@ -58,17 +58,17 @@ fi
 REPO="sshcrack/led-matrix"
 API_URL="https://api.github.com/repos/$REPO/releases/latest"
 print_info "Fetching latest release info from GitHub... 🚀"
-ASSET_URL=$(curl -s "$API_URL" | grep "browser_download_url" | grep "led-matrix-arm64.tar.xz" | cut -d '"' -f 4 | head -n 1)
+ASSET_URL=$(curl -s "$API_URL" | grep "browser_download_url" | grep -E 'led-matrix-[0-9]+\.[0-9]+\.[0-9]+-arm64\.tar\.gz' | cut -d '"' -f 4 | head -n 1)
 
 if [[ -z "$ASSET_URL" ]]; then
-  print_error "Could not find led-matrix-arm64.tar.xz in the latest release."
+  print_error "Could not find led-matrix-x.y.z-arm64.tar.gz in the latest release."
   exit 1
 fi
 
 TMP_DIR=$(mktemp -d)
 cd "$TMP_DIR"
 print_info "⬇️  Downloading LED Matrix binary for arm64..."
-(curl -# -L -o led-matrix-arm64.tar.xz "$ASSET_URL") & spin
+curl -# -L -o led-matrix-arm64.tar.gz "$ASSET_URL"
 
 # Check if already installed
 if [[ -f "/opt/led-matrix/main" ]]; then
@@ -88,7 +88,7 @@ if [[ -f "/opt/led-matrix/main" ]]; then
   sudo find /opt/led-matrix -mindepth 1 -not -name 'config.json' -exec rm -rf {} +
   # Extract new files
   print_info "Extracting update..."
-  (sudo tar -xJf led-matrix-arm64.tar.xz -C /opt/led-matrix --strip-components=1) & spin
+  (sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
   # Restore config.json if it was backed up
   if [[ -f "$TMP_DIR/config.json.bak" ]]; then
     sudo mv "$TMP_DIR/config.json.bak" /opt/led-matrix/config.json
@@ -97,7 +97,7 @@ if [[ -f "/opt/led-matrix/main" ]]; then
 else
   print_info "No existing installation found. Installing fresh..."
   print_info "📦 Extracting to /opt/led-matrix (requires sudo)..."
-  (sudo mkdir -p /opt/led-matrix && sudo tar -xJf led-matrix-arm64.tar.xz -C /opt/led-matrix --strip-components=1) & spin
+  (sudo mkdir -p /opt/led-matrix && sudo tar -xzf led-matrix-arm64.tar.gz -C /opt/led-matrix --strip-components=1) & spin
 fi
 
 echo -e "${CYAN}${BOLD}"
