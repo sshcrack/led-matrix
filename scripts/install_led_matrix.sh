@@ -56,6 +56,25 @@ print_info() {
 
 print_header
 
+# Check for existing installation and offer full reinstall
+if [[ -d "/opt/led-matrix" ]]; then
+  print_info "Detected existing installation at /opt/led-matrix."
+  echo -e "${RED}${BOLD}WARNING:${RESET} This will DELETE ALL DATA including config.json."
+  read -p "Type DELETE to confirm full removal and reinstall: " REINSTALL_CONFIRM
+  if [[ "$REINSTALL_CONFIRM" == "DELETE" ]]; then
+    print_info "Stopping and disabling led-matrix.service..."
+    sudo systemctl stop led-matrix.service 2>/dev/null || true
+    sudo systemctl disable led-matrix.service 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/led-matrix.service
+    print_info "Removing /opt/led-matrix..."
+    sudo rm -rf /opt/led-matrix
+    print_success "Previous installation removed. Proceeding with fresh install."
+  else
+    print_info "Reinstall cancelled by user. Exiting."
+    exit 0
+  fi
+fi
+
 # Check architecture
 ARCH=$(uname -m)
 if [[ "$ARCH" != "aarch64" && "$ARCH" != "arm64" ]]; then

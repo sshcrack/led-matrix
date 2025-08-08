@@ -59,10 +59,16 @@ namespace Update {
         if (update_thread_.joinable()) {
             update_thread_.join();
         }
+
         running_.store(false);
         info("UpdateManager stopped");
         // Launch update script if pending
         if (pending_update_.load() && !pending_update_filename_.empty()) {
+        #if ENABLE_UPDATE_TESTING
+            info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_)
+            return;
+        #endif
+
             std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
             string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
             int result = system(command.c_str());
@@ -157,7 +163,7 @@ namespace Update {
             
             const Common::Version& current_version = Common::Version::getCurrentVersion();
             if (compare_versions(current_version, latest_version)) {
-                // Find the led-matrix Linux tar.gz asset
+                // Find the led-matrix arm64 tar.gz asset
                 string download_url = "";
                 bool found_asset = false;
                 
@@ -165,7 +171,7 @@ namespace Update {
                     for (const auto& asset : json_response["assets"]) {
                         string asset_name = asset["name"];
                         if (asset_name.find("led-matrix") != string::npos && 
-                            asset_name.find("Linux") != string::npos &&
+                            asset_name.find("arm64") != string::npos &&
                             asset_name.ends_with(".tar.gz")) {
                             download_url = asset["browser_download_url"];
                             found_asset = true;
@@ -268,10 +274,7 @@ namespace Update {
             pending_update_.store(true);
             exit_canvas_update = true;
             interrupt_received = true;
-            // Set status to SUCCESS so frontend sees a successful update (not error)
-            status_.store(UpdateStatus::SUCCESS);
-            stop();
-            // stop() will launch the script and exit
+
             return true;
         } catch (const exception& ex) {
             set_error("Error installing update: " + string(ex.what()));
