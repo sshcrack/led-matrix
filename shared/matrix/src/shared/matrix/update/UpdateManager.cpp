@@ -120,11 +120,19 @@ namespace Update
             if (!latest_info_opt.has_value())
             {
                 status_.store(UpdateStatus::IDLE);
-                spdlog::warn("Failed to get update info: {}", latest_info_opt.error());
+                spdlog::warn("Failed to get update info: {}. Sleeping for 5 minutes...", latest_info_opt.error());
+                for (int i = 0; i < 5 * 60 && !should_stop_.load(); ++i)
+                {
+                    this_thread::sleep_for(chrono::seconds(1));
+                }
+
                 continue;
             }
 
             auto latest_info = latest_info_opt.value();
+            config_->set_last_check_time(GetTimeInMillis());
+            config_->save();
+
             latest_version_ = latest_info.version;
             if(latest_version_ <= Common::Version::getCurrentVersion())
                 continue;
