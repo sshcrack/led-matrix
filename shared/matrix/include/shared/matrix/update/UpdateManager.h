@@ -35,18 +35,15 @@ namespace Update {
         std::atomic<UpdateStatus> status_;
         std::string error_message_;
         std::mutex error_mutex_;
-        
         std::thread update_thread_;
         Config::MainConfig* config_;
-        
         std::string repo_owner_;
         std::string repo_name_;
-        
-        // Callback function for when update is available/installed
         std::function<void(UpdateStatus, const std::string&)> status_callback_;
-        
-        // Callback function for when update installation completes but before restart
         std::function<void()> pre_restart_callback_;
+        // Added for deferred update script launch
+        std::atomic<bool> pending_update_{false};
+        std::string pending_update_filename_;
         
         void update_loop();
         std::optional<UpdateInfo> check_for_updates();
