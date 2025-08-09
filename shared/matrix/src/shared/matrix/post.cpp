@@ -16,7 +16,7 @@
 using namespace std;
 
 optional<vector<Magick::Image>> Post::process_images(const int width, const int height, const bool store_processed_file) {
-    spdlog::debug("Preprocessing img {}", img_url);
+    spdlog::trace("Preprocessing img {}", img_url);
     
     try {
         if (!filesystem::exists(Constants::post_dir)) {
@@ -64,7 +64,7 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
             return nullopt;
         }
 
-        spdlog::debug("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
+        spdlog::trace("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
         return std::move(res.value());
 
     } catch (std::exception &e) {

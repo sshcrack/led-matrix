@@ -3,7 +3,7 @@
 
 #include <string>
 #include <filesystem>
-#include "shared/common/utils/macro.h"
+#include "shared/common/macro.h"
 
 namespace Plugins {
     SHARED_COMMON_API std::string get_lib_name(const std::filesystem::path &path);

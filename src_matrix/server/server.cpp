@@ -10,6 +10,7 @@
 #include "preset_management.h"
 #include "scene_management.h"
 #include "post_processing_routes.h"
+#include "update_routes.h"
 #include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
@@ -18,6 +19,8 @@ using namespace std;
 using namespace restinio;
 
 using json = nlohmann::json;
+
+#include "shared/matrix/utils/consts.h"
 
 
 // Create request handler.
@@ -29,6 +32,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_scene_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
     router = add_post_processing_routes(std::move(router));
+    router = add_update_routes(std::move(router), Constants::global_update_manager);
     router = add_other_routes(std::move(router));
     router = add_desktop_routes(std::move(router), registry);
 

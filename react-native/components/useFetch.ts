@@ -29,5 +29,5 @@ export default function useFetch<T>(path_name: string, timeout: number = 15000) 
             .finally(() => setLoading(false));
     }, [retry])
 
-    return { data, error, isLoading, setRetry }
+    return { data, error, isLoading, setRetry, setData }
 }

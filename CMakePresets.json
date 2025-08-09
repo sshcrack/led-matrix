@@ -21,7 +21,7 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_MAKE_PROGRAM": "ninja",
                 "ENABLE_EMULATOR": true,
-                "ENABLE_CORS": true,
+                "ENABLE_UPDATE_TESTING": true,
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         },

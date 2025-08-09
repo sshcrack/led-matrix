@@ -7,6 +7,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/plugin_loader/lib_name.cpp
         src/shared/common/utils/utils.cpp
         src/shared/common/udp/packet.cpp
+        src/shared/common/Version.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 

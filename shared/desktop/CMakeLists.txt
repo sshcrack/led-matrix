@@ -12,6 +12,8 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/UdpSender.cpp
         src/shared/desktop/UpdateChecker.cpp
         src/shared/desktop/UpdateManager.cpp
+        src/shared/desktop/MatrixVersionChecker.cpp
+        src/shared/desktop/MatrixVersionManager.cpp
         src/shared/desktop/plugin/main.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)

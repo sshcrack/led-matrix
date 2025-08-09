@@ -15,6 +15,7 @@
 #include <shared/desktop/config.h>
 #include <shared/desktop/utils.h>
 #include <shared/desktop/UpdateManager.h>
+#include <shared/desktop/MatrixVersionManager.h>
 #include "filters.h"
 
 #include "shared/desktop/plugin_loader/loader.h"
@@ -116,6 +117,7 @@ int main(const int argc, char *argv[])
 
     static WebsocketClient *ws;
     static UpdateChecker::UpdateManager updateManager;
+    static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
     auto guiFunction = [pl, cfg] {
         static bool initialConnect = true;
         if (shouldExit) {
@@ -198,6 +200,10 @@ int main(const int argc, char *argv[])
         } else if (initialConnect) {
             ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
             ws->start();
+            
+            // Check matrix version when connecting
+            matrixVersionManager.checkMatrixVersionAsync(hostname, port);
+            
             initialConnect = false;
         }
 
@@ -211,6 +217,9 @@ int main(const int argc, char *argv[])
                 ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
                 ws->start();
                 ws->webSocket.enableAutomaticReconnection();
+
+                // Check matrix version when manually connecting
+                matrixVersionManager.checkMatrixVersionAsync(hostname, port);
 
                 spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
             }
@@ -260,6 +269,7 @@ int main(const int argc, char *argv[])
         ImGui::EndGroup();
 
         updateManager.render(ImGui::GetCurrentContext());
+        matrixVersionManager.render(ImGui::GetCurrentContext());
         if (updateManager.shallAppExit())
             HelloImGui::GetRunnerParams()->appShallExit = true;
     };
@@ -320,6 +330,50 @@ int main(const int argc, char *argv[])
 
         if (ImGui::MenuItem("Save Config", nullptr, false)) {
             cfg->saveConfig();
+        }
+
+        ImGui::Separator();
+
+        // Matrix version compatibility info
+        auto matrixVersionInfo = matrixVersionManager.getLastCheckResult();
+        std::string matrixVersionText = "Matrix Version: ";
+        ImVec4 matrixVersionColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); // Default gray
+
+        switch (matrixVersionInfo.compatibility)
+        {
+        case MatrixVersionChecker::VersionCompatibility::Compatible:
+            matrixVersionText += matrixVersionInfo.version.toString() + " ✓";
+            matrixVersionColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+            break;
+        case MatrixVersionChecker::VersionCompatibility::MatrixNewer:
+            matrixVersionText += matrixVersionInfo.version.toString() + " (newer)";
+            matrixVersionColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f); // Blue
+            break;
+        case MatrixVersionChecker::VersionCompatibility::DesktopNewer:
+            matrixVersionText += matrixVersionInfo.version.toString() + " (needs update)";
+            matrixVersionColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+            break;
+        case MatrixVersionChecker::VersionCompatibility::NetworkError:
+            matrixVersionText += "Connection Error";
+            matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
+            break;
+        case MatrixVersionChecker::VersionCompatibility::ParseError:
+            matrixVersionText += "Parse Error";
+            matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
+            break;
+        }
+
+        // Use colored text for the menu item (read-only)
+        ImGui::TextColored(matrixVersionColor, "%s", matrixVersionText.c_str());
+
+        if (matrixVersionInfo.compatibility == MatrixVersionChecker::VersionCompatibility::DesktopNewer)
+        {
+            if (ImGui::MenuItem("Show Matrix Update Dialog"))
+            {
+                matrixVersionManager.clearDialogs();
+                General &generalCfg = cfg->getGeneralConfig();
+                matrixVersionManager.checkMatrixVersionAsync(generalCfg.getHostname(), generalCfg.getPort());
+            }
         }
 
         ImGui::Separator();

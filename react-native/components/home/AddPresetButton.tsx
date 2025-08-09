@@ -141,9 +141,9 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                         className='w-full'
                         placeholder='Enter preset name'
                     />
-                    {errorText && (
+                    {errorText ? (
                         <Text className='text-destructive text-sm'>{errorText}</Text>
-                    )}
+                    ) : null}
                 </View>
                 <AlertDialogFooter>
                     <View className="flex-row gap-2 w-full">

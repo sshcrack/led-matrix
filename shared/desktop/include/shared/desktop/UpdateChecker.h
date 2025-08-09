@@ -5,6 +5,7 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include "shared/desktop/macro.h"
+#include "shared/common/Version.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -12,34 +13,13 @@
 
 namespace UpdateChecker
 {
-
-    struct SHARED_DESKTOP_API Version
-    {
-        int major = 0;
-        int minor = 0;
-        int patch = 0;
-
-        Version() = default;
-        Version(int maj, int min, int pat) : major(maj), minor(min), patch(pat) {}
-
-        // Parse version from string like "v1.2.3" or "1.2.3"
-        static Version fromString(const std::string &versionStr);
-
-        // Compare versions
-        bool operator>(const Version &other) const;
-        bool operator==(const Version &other) const;
-        bool operator<(const Version &other) const;
-
-        std::string toString() const;
-    };
-
     struct SHARED_DESKTOP_API ReleaseInfo
     {
         std::string tagName;
         std::string name;
         std::string htmlUrl;
         std::string downloadUrl; // For Windows installer
-        Version version;
+        Common::Version version;
         bool isPrerelease = false;
     };
 
@@ -76,7 +56,7 @@ namespace UpdateChecker
         void showUpdateDialog(const ReleaseInfo &release, std::function<void(UpdateAction)> callback);
 
         // Get current application version
-        static Version getCurrentVersion();
+        static Common::Version getCurrentVersion();
 
         // Get and set update preferences
         UpdatePreferences &getPreferences();

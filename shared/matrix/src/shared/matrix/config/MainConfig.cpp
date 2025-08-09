@@ -212,4 +212,48 @@ namespace Config {
         // Return the preset_id of the highest priority (shortest duration) schedule
         return active_schedules[0].second.preset_id;
     }
+
+    ConfigData::UpdateSettings MainConfig::get_update_settings() {
+        shared_lock lock(this->data_mutex);
+        return this->data.update_settings;
+    }
+
+    void MainConfig::set_update_settings(const ConfigData::UpdateSettings& settings) {
+        unique_lock lock(this->data_mutex);
+        this->data.update_settings = settings;
+        this->mark_dirty();
+    }
+
+    bool MainConfig::is_auto_update_enabled() {
+        shared_lock lock(this->data_mutex);
+        return this->data.update_settings.auto_update_enabled;
+    }
+
+    void MainConfig::set_auto_update_enabled(bool enabled) {
+        unique_lock lock(this->data_mutex);
+        this->data.update_settings.auto_update_enabled = enabled;
+        this->mark_dirty();
+    }
+
+    int MainConfig::get_update_check_interval_hours() {
+        shared_lock lock(this->data_mutex);
+        return this->data.update_settings.check_interval_hours;
+    }
+
+    void MainConfig::set_update_check_interval_hours(int hours) {
+        unique_lock lock(this->data_mutex);
+        this->data.update_settings.check_interval_hours = hours;
+        this->mark_dirty();
+    }
+
+    tmillis_t MainConfig::get_last_check_time() {
+        shared_lock lock(this->data_mutex);
+        return this->data.update_settings.last_check_time;
+    }
+
+    void MainConfig::set_last_check_time(tmillis_t time) {
+        unique_lock lock(this->data_mutex);
+        this->data.update_settings.last_check_time = time;
+        this->mark_dirty();
+    }
 }
