@@ -222,13 +222,23 @@ jobs:
           packager: pnpm
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build React Native APK
+      - name: Build React Native AAB
         working-directory: react-native
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           pnpx expo prebuild -p android
-          eas build -p android --local --non-interactive --output ../app-latest.apk
+          eas build -p android --local --non-interactive --output ../app-latest.aab
+
+      - name: Install bundletool
+        run: |
+          mkdir -p ${{ runner.temp }}/bundletool
+          curl -L -o ${{ runner.temp }}/bundletool/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+
+      - name: Convert AAB to APK
+        run: |
+          java -jar ${{ runner.temp }}/bundletool/bundletool.jar build-apks --bundle=app-latest.aab --output=${{ runner.temp }}/app.apks --mode=universal
+          unzip -p ${{ runner.temp }}/app.apks universal.apk > app-latest.apk
 
       - name: Upload React Native APK
         uses: actions/upload-artifact@v4
