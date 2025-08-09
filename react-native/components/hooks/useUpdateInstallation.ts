@@ -16,7 +16,7 @@ export function useUpdateInstallation({
   const [isInstalling, setIsInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState<string>('');
   const apiUrl = useApiUrl();
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<number | null>(null);
   const expectedVersionRef = useRef<string>('');
 
   const stopPolling = useCallback(() => {
@@ -88,7 +88,7 @@ export function useUpdateInstallation({
     } catch (error) {
       // Handle network errors gracefully - service might be restarting
       if (error instanceof Error) {
-        if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
+        if (error.name === 'AbortError' || error.message.includes('Failed to fetch') || error.message.includes("Error when attempting")) {
           setInstallProgress('Service restarting... Please wait');
           return false; // Continue polling - service is likely restarting
         }

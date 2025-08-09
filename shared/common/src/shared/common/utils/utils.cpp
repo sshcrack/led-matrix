@@ -28,7 +28,7 @@ bool try_remove(const filesystem::path &file_path) {
         return true;
 
     try {
-        debug("Removing {}", file_path.string());
+        trace("Removing {}", file_path.string());
         return filesystem::remove(file_path);
     } catch (std::exception &ex) {
         warn("Could not delete file {}: {}", file_path.string(), ex.what());

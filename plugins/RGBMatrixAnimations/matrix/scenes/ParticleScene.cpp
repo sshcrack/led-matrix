@@ -44,7 +44,7 @@ bool ParticleScene::render(RGBMatrixBase *rgbMatrix) {
     uint64_t now = micros();
 
     if (now - lastFpsLog >= 1000000) {
-        spdlog::debug("FPS: {:.2f}", (float) frameCount * 1000000.0f / (now - lastFpsLog));
+        spdlog::trace("FPS: {:.2f}", (float) frameCount * 1000000.0f / (now - lastFpsLog));
         frameCount = 0;
         lastFpsLog = now;
     }

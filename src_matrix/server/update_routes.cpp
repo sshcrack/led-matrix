@@ -225,7 +225,7 @@ namespace Server
                     for (const auto& asset : release["assets"]) {
                         std::string asset_name = asset["name"];
                         if (asset_name.find("led-matrix") != std::string::npos && 
-                            asset_name.find("Linux") != std::string::npos &&
+                            asset_name.find("arm64") != std::string::npos &&
                             asset_name.ends_with(".tar.gz")) {
                             simplified["download_url"] = asset["browser_download_url"];
                             simplified["download_size"] = asset["size"];

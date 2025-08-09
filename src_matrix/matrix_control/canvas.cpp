@@ -73,7 +73,7 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
 
         {
             std::shared_lock lock(Server::registryMutex);
-            spdlog::info("Updating scene: {}", scene->get_name());
+            spdlog::debug("Now displaying scene: {}", scene->get_name());
             for (const auto ws_handle: Server::registry | views::values) {
                 restinio::websocket::basic::message_t message;
                 message.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
