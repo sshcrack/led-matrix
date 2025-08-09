@@ -96,8 +96,7 @@
             "name": "cross-compile",
             "configurePreset": "cross-compile",
             "generators": [
-                "TGZ",
-                "DEB"
+                "TGZ"
             ],
             "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
         },
