@@ -13,9 +13,11 @@ import { UpdateStatus, UpdateStatusNames } from '~/components/apiTypes/update';
 interface CurrentStatusCardProps {
   updateStatus: UpdateStatus | null;
   onConfigChange: (config: { auto_update_enabled: boolean }) => void;
+  isUpdating: boolean;
+  installProgress?: string;
 }
 
-export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatusCardProps) {
+export function CurrentStatusCard({ updateStatus, onConfigChange, isUpdating, installProgress }: CurrentStatusCardProps) {
   const getStatusColor = (status: number) => {
     switch (status) {
       case 0: return 'default'; // IDLE
@@ -74,9 +76,16 @@ export function CurrentStatusCard({ updateStatus, onConfigChange }: CurrentStatu
               <View className="flex flex-row items-center gap-3">
                 {getStatusIcon(updateStatus.status)}
                 <View>
-                  <Text className="text-lg font-semibold">
+                  {(isUpdating && installProgress) ? (
+                    <View className="mb-4 p-3 bg-info/10 rounded-lg">
+                      <Text className="text-sm text-info font-medium">
+                        {installProgress}
+                      </Text>
+                    </View>
+                  ) : <Text className="text-lg font-semibold">
                     {UpdateStatusNames[updateStatus.status as keyof typeof UpdateStatusNames]}
                   </Text>
+                  }
                   {updateStatus.error_message ? (
                     <Text className="text-sm text-destructive">
                       {updateStatus.error_message}

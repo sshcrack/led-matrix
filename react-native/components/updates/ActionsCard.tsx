@@ -44,21 +44,12 @@ export function ActionsCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        {/* Show installation progress when updating */}
-        {(isUpdating && installProgress) ? (
-          <View className="mb-4 p-3 bg-info/10 rounded-lg">
-            <Text className="text-sm text-info font-medium">
-              {installProgress}
-            </Text>
-          </View>
-        ) : null}
-
         <View className={`flex flex-row gap-3 ${isWeb ? 'justify-start' : 'justify-between'}`}>
           <Button
             variant="outline"
             className="flex-1 max-w-48 h-16"
             onPress={onCheckForUpdates}
-            disabled={isCheckingForUpdates}
+            disabled={isCheckingForUpdates || isUpdating}
           >
             <View className="flex flex-row items-center gap-2">
               <RefreshCw className="text-foreground" width={20} height={20} />

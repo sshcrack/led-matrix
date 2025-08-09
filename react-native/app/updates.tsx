@@ -182,6 +182,8 @@ export default function UpdatesScreen() {
                 <CurrentStatusCard
                   updateStatus={updateStatus.data}
                   onConfigChange={handleConfigChange}
+                  isUpdating={updateInstallation.isInstalling}
+                  installProgress={updateInstallation.installProgress}
                 />
                 <ActionsCard
                   updateStatus={updateStatus.data}

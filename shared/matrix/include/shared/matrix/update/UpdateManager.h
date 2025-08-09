@@ -28,7 +28,8 @@ namespace Update
         DOWNLOADING,
         INSTALLING,
         ERROR,
-        SUCCESS
+        SUCCESS,
+        DISABLED // Auto-update is disabled
     };
 
     class UpdateManager
