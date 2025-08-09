@@ -16,3 +16,6 @@
 [submodule "plugins/Shadertoy/thirdparty/shadertoy-headless"]
 	path = plugins/Shadertoy/thirdparty/shadertoy-headless
 	url = https://github.com/sshcrack/shadertoy-headless
+[submodule "scripts/rpi_vm/pi-ci-larger"]
+	path = scripts/rpi_vm/pi-ci-larger
+	url = https://github.com/sshcrack/pi-ci-larger

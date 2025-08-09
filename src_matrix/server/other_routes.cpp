@@ -11,25 +11,29 @@
 #include "shared/matrix/utils/canvas_image.h"
 #include <spdlog/spdlog.h>
 
-
 using json = nlohmann::json;
 
-std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router) {
+std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router)
+{
     // Root redirect
-    router->http_get("/", [](auto req, auto) {
+    router->http_get("/", [](auto req, auto)
+                     {
         auto response = req->create_response(restinio::status_see_other())
             .append_header(restinio::http_field::location, "/web/");
         Server::add_cors_headers(response);
-        return response.done();
-    });
+        return response.done(); });
 
     // Static file serving
-    router->http_get("/web/:path(.*)", [](auto req, auto params) {
+    router->http_get("/web/:path(.*)", [](auto req, auto params)
+                     {
         auto exec_dir = get_exec_dir();
 
         const auto requested_path = params["path"];
         const filesystem::path web_dir = exec_dir / "web";
         filesystem::path file_path = web_dir / requested_path;
+        if(!filesystem::exists(file_path))
+            file_path = web_dir / "index.html"; // Fallback to index.html if not found
+
 
         // Ensure the requested path is within the web directory
         const auto canonical_web = filesystem::canonical(web_dir);
@@ -55,10 +59,10 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             .append_header_date_field()
             .append_header(restinio::http_field::content_type, content_type);
         Server::add_cors_headers(response);
-        return response.set_body(restinio::sendfile(file_path)).done();
-    });
+        return response.set_body(restinio::sendfile(file_path)).done(); });
 
-    router->http_get("/list", [](auto req, auto) {
+    router->http_get("/list", [](auto req, auto)
+                     {
         json file_list = json::array();
 
         auto iterator = filesystem::directory_iterator(Constants::post_dir);
@@ -71,10 +75,10 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             file_list.push_back(file_name);
         }
 
-        return reply_with_json(req, file_list);
-    });
+        return reply_with_json(req, file_list); });
 
-    router->http_get("/image", [](auto req, auto) {
+    router->http_get("/image", [](auto req, auto)
+                     {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("url")) {
             return reply_with_error(req, "No url given");
@@ -102,8 +106,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         response.set_body(restinio::sendfile(processing_path)).done();
 
-        return restinio::request_accepted();
-    });
+        return restinio::request_accepted(); });
 
     return std::move(router);
 }

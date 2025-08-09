@@ -76,7 +76,7 @@ export default function RootLayout() {
                     color: dynamicColor,
                   },
                   headerTintColor: dynamicColor,
-                  headerLeft: () => (Platform.OS !== "web" || __DEV__) && <ResetApiUrl />,
+                  headerLeft: () => (Platform.OS !== "web" || __DEV__) ? <ResetApiUrl /> : null,
                   headerRight: () => <ThemeToggle />,
                 }}
               />
@@ -84,6 +84,23 @@ export default function RootLayout() {
                 name='schedules'
                 options={{
                   title: 'Schedules',
+                  headerLargeTitle: false,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 20,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                  headerRight: () => <ThemeToggle />,
+                }}
+              />
+              <Stack.Screen
+                name='updates'
+                options={{
+                  title: 'Updates',
                   headerLargeTitle: false,
                   headerStyle: {
                     backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',

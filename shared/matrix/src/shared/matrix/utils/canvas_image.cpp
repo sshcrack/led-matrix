@@ -93,7 +93,7 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
         // Determine the appropriate scaling filter based on image size
         bool use_nearest_neighbor = img_width < canvas_width || img_height < canvas_height;
 
-        debug("Scaling to {}x{} using {} and cropping to {}x{} with {},{} offset",
+        trace("Scaling to {}x{} using {} and cropping to {}x{} with {},{} offset",
               target_width, target_height,
               use_nearest_neighbor ? "nearest neighbor" : "default filter",
               canvas_width, canvas_height, offset_x, offset_y);

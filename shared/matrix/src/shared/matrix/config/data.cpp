@@ -61,8 +61,18 @@ namespace ConfigData {
             {"spotify", p.spotify},
             {"pluginConfigs", p.pluginConfigs},
             {"schedules", p.schedules},
-            {"scheduling_enabled", p.scheduling_enabled}
+            {"scheduling_enabled", p.scheduling_enabled},
+            {"update_settings", p.update_settings}
         };
+    }
+
+    void from_json(const json &j, UpdateSettings &p) {
+        p.auto_update_enabled = j.value("auto_update_enabled", true);
+        p.check_interval_hours = j.value("check_interval_hours", 24);
+        p.last_check_time = j.value("last_check_time", 0);
+        p.update_available = j.value("update_available", false);
+        p.latest_version = j.value("latest_version", "");
+        p.update_download_url = j.value("update_download_url", "");
     }
 
     void from_json(const json &j, Root &p) {
@@ -79,6 +89,7 @@ namespace ConfigData {
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
         p.schedules = j.value("schedules", std::map<string, Schedule>());
         p.scheduling_enabled = j.value("scheduling_enabled", false);
+        p.update_settings = j.value("update_settings", UpdateSettings());
     }
 
     void from_json(const json &j, Schedule &p) {
@@ -213,6 +224,17 @@ namespace ConfigData {
         } else {
             return current_minutes >= start_minutes && current_minutes <= end_minutes;
         }
+    }
+
+    void to_json(json &j, const UpdateSettings &p) {
+        j = json{
+            {"auto_update_enabled", p.auto_update_enabled},
+            {"check_interval_hours", p.check_interval_hours},
+            {"last_check_time", p.last_check_time},
+            {"update_available", p.update_available},
+            {"latest_version", p.latest_version},
+            {"update_download_url", p.update_download_url}
+        };
     }
 
     void to_json(json &j, const Schedule &p) {

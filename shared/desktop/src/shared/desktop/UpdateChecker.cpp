@@ -1,4 +1,5 @@
 #include "shared/desktop/UpdateChecker.h"
+#include "shared/common/Version.h"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <regex>
@@ -106,46 +107,7 @@ namespace UpdateChecker
         return !skippedVersion.empty() && skippedVersion == version;
     }
 
-    // Version implementation
-    Version Version::fromString(const std::string &versionStr)
-    {
-        Version version;
-        std::regex versionRegex(R"(v?(\d+)\.(\d+)\.(\d+))");
-        std::smatch matches;
-
-        if (std::regex_search(versionStr, matches, versionRegex))
-        {
-            version.major = std::stoi(matches[1].str());
-            version.minor = std::stoi(matches[2].str());
-            version.patch = std::stoi(matches[3].str());
-        }
-
-        return version;
-    }
-
-    bool Version::operator>(const Version &other) const
-    {
-        if (major != other.major)
-            return major > other.major;
-        if (minor != other.minor)
-            return minor > other.minor;
-        return patch > other.patch;
-    }
-
-    bool Version::operator==(const Version &other) const
-    {
-        return major == other.major && minor == other.minor && patch == other.patch;
-    }
-
-    bool Version::operator<(const Version &other) const
-    {
-        return !(*this > other) && !(*this == other);
-    }
-
-    std::string Version::toString() const
-    {
-        return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
-    }
+    // Version implementation removed (now in common library)
 
     // UpdateChecker implementation
     struct UpdateChecker::Impl
@@ -171,10 +133,10 @@ namespace UpdateChecker
 
     UpdateChecker::~UpdateChecker() = default;
 
-    Version UpdateChecker::getCurrentVersion()
+    Common::Version UpdateChecker::getCurrentVersion()
     {
         // Use compile-time definitions from CMakeLists.txt
-        return Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
+        return Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
     }
 
     UpdatePreferences &UpdateChecker::getPreferences()
@@ -207,7 +169,7 @@ namespace UpdateChecker
                 auto releaseJson = nlohmann::json::parse(response.text);
                 ReleaseInfo release = parseReleaseInfo(releaseJson);
                 
-                Version currentVersion = getCurrentVersion();
+                Common::Version currentVersion = getCurrentVersion();
                 bool hasUpdate = release.version > currentVersion;
                 
                 // Check preferences to see if we should notify about this update
@@ -251,7 +213,7 @@ namespace UpdateChecker
         info.name = releaseJson.value("name", "");
         info.htmlUrl = releaseJson.value("html_url", "");
         info.isPrerelease = releaseJson.value("prerelease", false);
-        info.version = Version::fromString(info.tagName);
+        info.version = Common::Version::fromString(info.tagName);
 
 #ifdef _WIN32
         // Find Windows installer asset

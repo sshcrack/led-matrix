@@ -1,5 +1,5 @@
 #pragma once
-#include "shared/common/utils/macro.h"
+#include "shared/common/macro.h"
 #include <cstdint>
 #include <filesystem>
 #include <optional>

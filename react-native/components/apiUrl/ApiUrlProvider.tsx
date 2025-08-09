@@ -95,12 +95,12 @@ export function ApiUrlProvider({ children }: React.PropsWithChildren<{}>) {
                                     })
                                     .finally(() => setCheckingStatus(false))
                             }}>
-                                {!checkingStatus && <Text>Set</Text>}
-                                {checkingStatus && (
+                                {!checkingStatus ? <Text>Set</Text> : null}
+                                {checkingStatus ? (
                                     <View className='flex-row gap-2'>
                                         <Loader />
                                     </View>
-                                )}
+                                ) : null}
                             </Button>
                         </View>
                     </SafeAreaView>

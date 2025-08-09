@@ -48,8 +48,17 @@ namespace Config {
         void set_scheduling_enabled(bool enabled);
         optional<string> get_active_scheduled_preset();
         
+        // Update management methods
+        ConfigData::UpdateSettings get_update_settings();
+        void set_update_settings(const ConfigData::UpdateSettings& settings);
+        bool is_auto_update_enabled();
+        void set_auto_update_enabled(bool enabled);
+        int get_update_check_interval_hours();
+        void set_update_check_interval_hours(int hours);
+        tmillis_t get_last_check_time();
+        void set_last_check_time(tmillis_t time);
+        
         bool save();
         string get_filename() const;
-
     };
 }

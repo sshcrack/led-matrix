@@ -22,9 +22,12 @@ if(ENABLE_EMULATOR AND ENABLE_DESKTOP)
     message(FATAL_ERROR "Cannot enable both ENABLE_EMULATOR and ENABLE_DESKTOP at the same time. Please choose one.")
 endif()
 
-# Option to enable/disable CORS headers
-option(ENABLE_CORS "Enable CORS headers for cross-origin requests" OFF)
+# Option to enable update mechanism testing (bypasses platform restrictions)
+option(ENABLE_UPDATE_TESTING "Enable update mechanism testing on any platform" OFF)
 
+if(ENABLE_UPDATE_TESTING)
+    message(STATUS "Update testing enabled. This will bypass platform checks and always run the update script.")
+endif()
 
 include(cmake/subdirlist.cmake)
 include(cmake/vcpkg_features.cmake)
@@ -58,6 +61,12 @@ add_compile_definitions(
     PROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH}
     PROJECT_VERSION_STRING="${PROJECT_VERSION}"
 )
+
+
+# Add update testing flag if enabled
+if(ENABLE_UPDATE_TESTING)
+    add_compile_definitions(ENABLE_UPDATE_TESTING=1)
+endif()
 
 # Set default install prefix to build directory if not specified
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -149,12 +158,21 @@ install(FILES
     DESTINATION .
 )
 
+# Install update script for matrix builds (not for desktop)
+if(NOT ENABLE_DESKTOP)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
+        DESTINATION .
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+endif()
+
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
-# Add CORS support if enabled
-if(ENABLE_CORS)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_CORS)
+# Add emulator flag if enabled
+if(ENABLE_EMULATOR)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_EMULATOR)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)

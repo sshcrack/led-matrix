@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
-#include "shared/common/utils/macro.h"
+#include "shared/common/macro.h"
 
 struct SHARED_COMMON_API UdpPacket {
     virtual ~UdpPacket() = default;
