@@ -95,5 +95,10 @@
         ]
       }
     }
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "react-native-css-interop": "patches/react-native-css-interop.patch"
+    }
   }
 }
