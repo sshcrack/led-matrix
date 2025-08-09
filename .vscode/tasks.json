@@ -13,8 +13,8 @@
         },
         {
             "type": "shell",
-            "label": "CMake: Emulator Configure (no web rebuild)",
-            "command": "cmake --preset emulator -DSKIP_WEB_BUILD=ON"
+            "label": "CMake: Emulator Configure (no web rebuild, update testing)",
+            "command": "cmake --preset emulator -DSKIP_WEB_BUILD=ON -DENABLE_UPDATE_TESTING=ON"
         },
         {
             "type": "shell",

@@ -73,9 +73,15 @@ namespace Update
         // Launch update script if pending
         if (pending_update_.load() && !pending_update_filename_.empty())
         {
-#if ENABLE_UPDATE_TESTING
-            info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_) return;
-#endif
+            #ifdef ENABLE_UPDATE_TESTING
+                // For testing, just set the success flag
+                filesystem::path success_flag = get_exec_dir() / ".update_test_success";
+                try_remove(success_flag);
+                ofstream(success_flag).close();
+                info("Update test success flag created at {}", success_flag.string());
+                info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_) return;
+                return;
+            #endif
 
             std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
             string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
@@ -134,8 +140,10 @@ namespace Update
             config_->save();
 
             latest_version_ = latest_info.version;
-            if(latest_version_ <= Common::Version::getCurrentVersion())
+            if(latest_version_ <= Common::Version::getCurrentVersion()) {
+                status_.store(UpdateStatus::IDLE);
                 continue;
+            }
 
             auto res = manual_download_and_install(latest_info);
             if (res.has_value())
@@ -288,16 +296,28 @@ namespace Update
 
     string UpdateManager::get_github_api_url(const std::optional<Common::Version> &version)
     {
-        std::string base_url = "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases/";
+        std::string base_url = "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases";
         if (version.has_value())
-            return base_url + "v" + version.value().toString();
+            return base_url + "/tags/v" + version.value().toString();
 
-        return base_url + "latest";
+        return base_url + "/latest";
     }
 
     expected<UpdateInfo, string> UpdateManager::manual_check_for_updates()
     {
-        return get_update_info();
+        auto latest_opt = get_update_info();
+        if (!latest_opt.has_value())
+        {
+            return std::unexpected(latest_opt.error());
+        }
+
+        auto latest_info = latest_opt.value();
+        if (latest_info.version <= Common::Version::getCurrentVersion())
+        {
+            return std::unexpected("No updates available");
+        }
+
+        return latest_info;
     }
 
     std::expected<void, std::string> UpdateManager::manual_download_and_install(const UpdateInfo &update_info)
@@ -313,7 +333,7 @@ namespace Update
                 error("Download failed: {}", download_res.error());
 
                 std::unique_lock lock(error_mutex_);
-                error_message_ = download_res.error();
+                error_message_ = "Download failed:" + download_res.error();
                 return download_res;
             }
 
@@ -324,7 +344,7 @@ namespace Update
                 error("Installation failed: {}", install_res.error());
 
                 std::unique_lock lock(error_mutex_);
-                error_message_ = install_res.error();
+                error_message_ = "Installation failed: " + install_res.error();
                 return install_res;
             }
 
@@ -399,7 +419,7 @@ namespace Update
 #endif
 
 #ifdef __linux__
-        if (get_exec_dir() == std::filesystem::path("/opt/led-matrix/"))
+        if (get_exec_dir() != std::filesystem::path("/opt/led-matrix/"))
             return false;
 
         // Check if running on ARM64 and Raspberry Pi
@@ -429,8 +449,13 @@ namespace Update
 
     bool UpdateManager::check_and_handle_update_completion()
     {
-        string success_flag = "/opt/led-matrix/.update_success";
-        string error_flag = "/opt/led-matrix/.update_error";
+
+        #ifdef ENABLE_UPDATE_TESTING
+            filesystem::path success_flag = get_exec_dir() / ".update_test_success";
+        #else
+            filesystem::path success_flag = "/opt/led-matrix/.update_success";
+        #endif
+        filesystem::path error_flag = "/opt/led-matrix/.update_error";
 
         // Check for update success flag
         if (filesystem::exists(success_flag))
@@ -449,7 +474,8 @@ namespace Update
             // Remove the flag file
             filesystem::remove(success_flag);
 
-            info("Update success notification sent to frontend");
+            status_.store(UpdateStatus::SUCCESS);
+            info("Update completed successfully at {}", timestamp);
             return true;
         }
 
@@ -472,8 +498,10 @@ namespace Update
 
             // Update the status and trigger callback if set
             spdlog::warn("Update failed: {}", error_msg);
+            status_.store(UpdateStatus::ERROR);
 
-            warn("Update error notification sent to frontend");
+            std::unique_lock lock(error_mutex_);
+            error_message_ = "Update failed: " + error_msg;
             return true;
         }
 

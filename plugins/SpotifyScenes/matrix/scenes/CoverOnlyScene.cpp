@@ -226,7 +226,7 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
 bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
     auto temp = spotify->get_currently_playing();
     if (!temp.has_value()) {
-        spdlog::debug("Nothing currently playing, exiting");
+        spdlog::debug("Tried to render CoverOnlyScene, but no current track");
         return false;
     }
 

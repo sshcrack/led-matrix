@@ -163,7 +163,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 # Add update testing flag if enabled
 if(ENABLE_UPDATE_TESTING)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_UPDATE_TESTING)
+    add_compile_definitions(ENABLE_UPDATE_TESTING=1)
 endif()
 
 # Add emulator flag if enabled
