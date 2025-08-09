@@ -3,6 +3,7 @@
   "main": "index.js",
   "version": "1.1.0",
   "scripts": {
+    "eas-build-pre-install": "npm i -g pnpm@10",
     "dev": "expo start -c",
     "dev:web": "expo start -c --web",
     "dev:android": "expo start -c --android",
