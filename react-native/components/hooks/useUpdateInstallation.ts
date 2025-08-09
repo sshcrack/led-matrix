@@ -31,20 +31,20 @@ export function useUpdateInstallation({
       // Create timeout signal manually for better compatibility
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(`${apiUrl}/api/update/status`, {
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       const status: UpdateStatus = await response.json();
       onStatusUpdate?.(status);
-      
+
       // Check if update completed successfully by comparing versions
       if (status.current_version === expectedVersion) {
         setInstallProgress('Update completed successfully');
@@ -53,7 +53,7 @@ export function useUpdateInstallation({
         stopPolling();
         return true;
       }
-      
+
       // Check status codes
       switch (status.status) {
         case 1: // CHECKING
@@ -79,11 +79,14 @@ export function useUpdateInstallation({
           stopPolling();
           return true;
         case 0: // IDLE
-        default:
           setInstallProgress('Waiting for update to start...');
           break;
+
+        default:
+          setInstallProgress('Unknown status');
+          break;
       }
-      
+
       return false; // Continue polling
     } catch (error) {
       // Handle network errors gracefully - service might be restarting
@@ -93,7 +96,7 @@ export function useUpdateInstallation({
           return false; // Continue polling - service is likely restarting
         }
       }
-      
+
       // Other errors should stop polling
       const errorMsg = error instanceof Error ? error.message : 'Network error';
       setInstallProgress(`Connection error: ${errorMsg}`);
@@ -108,39 +111,39 @@ export function useUpdateInstallation({
     if (isInstalling) {
       return;
     }
-    
+
     setIsInstalling(true);
     setInstallProgress('Starting update installation...');
-    
+
     try {
       // Get current status to determine expected version
       const statusResponse = await fetch(`${apiUrl}/api/update/status`);
       const currentStatus: UpdateStatus = await statusResponse.json();
-      
+
       const targetVersion = version || currentStatus.latest_version;
       expectedVersionRef.current = targetVersion;
-      
+
       // Start the installation
-      const url = version 
+      const url = version
         ? `/api/update/install?version=${encodeURIComponent(version)}`
         : '/api/update/install';
-      
+
       // Create timeout signal manually for better compatibility
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
+
       const response = await fetch(`${apiUrl}${url}`, {
         method: 'POST',
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       // Handle the initial response
       if (response.ok) {
         const result: UpdateInstallResponse = await response.json();
         setInstallProgress(result.message);
-        
+
         if (result.status === 'already_running') {
           setIsInstalling(false);
           onError?.('Update already in progress');
@@ -150,14 +153,14 @@ export function useUpdateInstallation({
         const errorText = await response.text().catch(() => 'Unknown error');
         throw new Error(errorText);
       }
-      
+
     } catch (error) {
       // Even if the initial request fails, we should start polling
       // because the update might have started successfully but the response was lost
       const errorMsg = error instanceof Error ? error.message : 'Failed to start update';
       setInstallProgress(`Started update (${errorMsg}) - polling for status...`);
     }
-    
+
     // Start polling regardless of initial request result
     setInstallProgress('Monitoring update progress...');
     pollIntervalRef.current = setInterval(async () => {
@@ -166,7 +169,7 @@ export function useUpdateInstallation({
         stopPolling();
       }
     }, 3000); // Poll every 3 seconds
-    
+
     // Safety timeout - stop polling after 10 minutes
     setTimeout(() => {
       if (pollIntervalRef.current) {
@@ -176,7 +179,7 @@ export function useUpdateInstallation({
         onError?.('Update monitoring timeout');
       }
     }, 600000); // 10 minutes
-    
+
   }, [isInstalling, apiUrl, pollUpdateStatus, stopPolling, onError]);
 
   const cancelInstallation = useCallback(() => {

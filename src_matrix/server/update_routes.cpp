@@ -76,77 +76,36 @@ namespace Server
                     json response;
                     response["message"] = "Update installation already in progress";
                     response["status"] = "already_running";
-                    return reply_with_json(req, response);
+                    return reply_with_json(req, response, restinio::status_conflict());
                 }
                 
                 // Parse query parameters
                 const auto qp = restinio::parse_query(req->header().query());
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
                 
-                // Create a shared promise to track completion
-                auto completion_promise = std::make_shared<std::promise<std::expected<void, std::string>>>();
-                auto completion_future = completion_promise->get_future();
-                
-                // Set up pre-restart callback to signal completion
-                update_manager->set_pre_restart_callback([completion_promise]() {
-                    completion_promise->set_value({});
-                });
-
                 auto parsed_version = Common::Version::fromString(version);
                 if(parsed_version.isInvalid())
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
                 // Start installation in background thread
-                std::thread([update_manager, parsed_version, completion_promise]() {
+                std::thread([update_manager, parsed_version]() {
                     auto update = update_manager->get_update_info(parsed_version);
                     if(!update) {
                         spdlog::error("Failed to get update info: {}", update.error());
-                        try {
-                            completion_promise->set_value(std::unexpected(update.error()));
-                        } catch (const std::future_error&) {
-                            // Promise already set by pre-restart callback
-                        }
-
                         return;
                     }
-
                     auto res = update_manager->manual_download_and_install(update.value());
                     if (!res) {
-                        // If installation failed, signal completion with false
-                        try {
-                            completion_promise->set_value(res);
-                        } catch (const std::future_error&) {
-                            // Promise already set by pre-restart callback
-                        }
+                        spdlog::error("Update installation failed: {}", res.error());
                     }
                 }).detach();
                 
-                // Wait for completion or timeout (30 seconds for download + install)
-                auto wait_status = completion_future.wait_for(std::chrono::seconds(60));
-                
+                // Immediately reply with 202 Accepted (do not wait for completion)
                 json response;
-                if (wait_status == std::future_status::ready) {
-                    std::expected<void, std::string> res = completion_future.get();
-                    if (res) {
-                        response["message"] = "Update installation completed successfully";
-                        response["status"] = "success";
-                        info("Update installation API call completed successfully");
-                    } else {
-                        response["message"] = res.error();
-                        response["status"] = "error";
-                        error("Update installation API call failed");
-                    }
-                } else {
-                    // Timeout - installation is still running
-                    response["message"] = "Update installation started (may restart service)";
-                    response["status"] = "started";
-                    warn("Update installation API call timed out - installation may still be running");
-                }
-                
-                // Clear the callback
-                update_manager->set_pre_restart_callback(nullptr);
-                
-                return reply_with_json(req, response);
+                response["message"] = "Update installation started (may restart service)";
+                response["status"] = "started";
+                warn("Update installation API call returned immediately - installation running in background");
+                return reply_with_json(req, response, restinio::status_accepted());
             } catch (const std::exception& ex) {
                 error("Error starting update installation: {}", ex.what());
                 return reply_with_error(req, "Failed to start update installation", restinio::status_internal_server_error());

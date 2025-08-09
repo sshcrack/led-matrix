@@ -25,6 +25,9 @@ endif()
 # Option to enable update mechanism testing (bypasses platform restrictions)
 option(ENABLE_UPDATE_TESTING "Enable update mechanism testing on any platform" OFF)
 
+if(ENABLE_UPDATE_TESTING)
+    message(STATUS "Update testing enabled. This will bypass platform checks and always run the update script.")
+endif()
 
 include(cmake/subdirlist.cmake)
 include(cmake/vcpkg_features.cmake)
@@ -58,6 +61,12 @@ add_compile_definitions(
     PROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH}
     PROJECT_VERSION_STRING="${PROJECT_VERSION}"
 )
+
+
+# Add update testing flag if enabled
+if(ENABLE_UPDATE_TESTING)
+    add_compile_definitions(ENABLE_UPDATE_TESTING=1)
+endif()
 
 # Set default install prefix to build directory if not specified
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -160,11 +169,6 @@ endif()
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-
-# Add update testing flag if enabled
-if(ENABLE_UPDATE_TESTING)
-    add_compile_definitions(ENABLE_UPDATE_TESTING=1)
-endif()
 
 # Add emulator flag if enabled
 if(ENABLE_EMULATOR)

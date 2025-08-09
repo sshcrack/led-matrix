@@ -29,9 +29,10 @@ namespace Update
     {
 
         // Check if the platform supports updates
-        if (!is_platform_supported())
+        if (!is_updates_supported())
         {
             warn("Update system disabled - not running on supported platform");
+            status_.store(UpdateStatus::DISABLED);
             return;
         }
     }
@@ -79,7 +80,7 @@ namespace Update
                 try_remove(success_flag);
                 ofstream(success_flag).close();
                 info("Update test success flag created at {}", success_flag.string());
-                info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_) return;
+                info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_);
                 return;
             #endif
 
@@ -121,11 +122,9 @@ namespace Update
                 continue;
             }
 
-            status_.store(UpdateStatus::CHECKING);
             auto latest_info_opt = get_update_info();
             if (!latest_info_opt.has_value())
             {
-                status_.store(UpdateStatus::IDLE);
                 spdlog::warn("Failed to get update info: {}. Sleeping for 5 minutes...", latest_info_opt.error());
                 for (int i = 0; i < 5 * 60 && !should_stop_.load(); ++i)
                 {
@@ -140,10 +139,8 @@ namespace Update
             config_->save();
 
             latest_version_ = latest_info.version;
-            if(latest_version_ <= Common::Version::getCurrentVersion()) {
-                status_.store(UpdateStatus::IDLE);
+            if(latest_version_ <= Common::Version::getCurrentVersion())
                 continue;
-            }
 
             auto res = manual_download_and_install(latest_info);
             if (res.has_value())
@@ -340,7 +337,7 @@ namespace Update
             auto install_res = install_update(update_info, filename);
             if (!install_res.has_value())
             {
-                status_.store(UpdateStatus::IDLE);
+                status_.store(UpdateStatus::ERROR);
                 error("Installation failed: {}", install_res.error());
 
                 std::unique_lock lock(error_mutex_);
