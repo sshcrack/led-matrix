@@ -137,6 +137,15 @@ namespace Config {
         this->mark_dirty();
     }
 
+    bool MainConfig::is_turned_off() {
+        return this->data.turned_off;
+    }
+
+    void MainConfig::set_turned_off(bool turned_off) {
+        this->data.turned_off.store(turned_off);
+        this->mark_dirty();
+    }
+
     map<string, ConfigData::Schedule> MainConfig::get_schedules() {
         shared_lock lock(this->data_mutex);
         return this->data.schedules;
