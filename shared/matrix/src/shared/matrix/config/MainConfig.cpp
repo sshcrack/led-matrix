@@ -118,7 +118,7 @@ namespace Config {
 
         f.close();
 
-        this->data = temp.get<ConfigData::Root>();
+        this->data = std::move(temp.get<ConfigData::Root>());
         this->dirty = false;
     }
 

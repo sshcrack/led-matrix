@@ -9,17 +9,18 @@
 using namespace std;
 using json = nlohmann::json;
 
-
-namespace ConfigData {
-    struct Preset {
-        vector<std::shared_ptr<Scenes::Scene> > scenes;
-
+namespace ConfigData
+{
+    struct Preset
+    {
+        vector<std::shared_ptr<Scenes::Scene>> scenes;
 
         static std::shared_ptr<Preset> create_default();
         ~Preset() = default; // Add explicit destructor
     };
 
-    struct SpotifyData {
+    struct SpotifyData
+    {
         optional<string> access_token;
         optional<string> refresh_token;
         tmillis_t expires_at;
@@ -29,31 +30,34 @@ namespace ConfigData {
         [[nodiscard]] bool has_auth() const;
     };
 
-    struct Schedule {
+    struct Schedule
+    {
         string id;
         string name;
         string preset_id;
-        int start_hour;     // 0-23
-        int start_minute;   // 0-59
-        int end_hour;       // 0-23
-        int end_minute;     // 0-59
+        int start_hour;           // 0-23
+        int start_minute;         // 0-59
+        int end_hour;             // 0-23
+        int end_minute;           // 0-59
         vector<int> days_of_week; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
         bool enabled;
-        
+
         [[nodiscard]] bool is_active_now() const;
         [[nodiscard]] bool is_active_at_time(int hour, int minute, int day_of_week) const;
     };
 
-    struct UpdateSettings {
+    struct UpdateSettings
+    {
         bool auto_update_enabled = true;
-        int check_interval_hours = 24;  // Check for updates every 24 hours by default
+        int check_interval_hours = 24; // Check for updates every 24 hours by default
         tmillis_t last_check_time = 0;
         bool update_available = false;
         string latest_version = "";
         string update_download_url = "";
     };
 
-    struct Root {
+    struct Root
+    {
         map<string, std::shared_ptr<Preset>> presets;
         map<string, string> pluginConfigs;
         SpotifyData spotify;
@@ -62,6 +66,33 @@ namespace ConfigData {
         std::atomic<bool> turned_off;
         string curr;
         UpdateSettings update_settings;
+
+        // Custom move assignment operator to handle atomic<bool>
+        Root &operator=(Root &&other) noexcept
+        {
+            if (this != &other)
+            {
+                presets = std::move(other.presets);
+                pluginConfigs = std::move(other.pluginConfigs);
+                spotify = std::move(other.spotify);
+                schedules = std::move(other.schedules);
+                scheduling_enabled = other.scheduling_enabled;
+                turned_off.store(other.turned_off.load());
+                curr = std::move(other.curr);
+                update_settings = std::move(other.update_settings);
+            }
+            return *this;
+        }
+
+        // Delete copy constructor and copy assignment operator
+        Root(const Root &) = delete;
+        Root &operator=(const Root &) = delete;
+
+        // Default move constructor
+        Root(Root &&) = default;
+
+        // Default constructor
+        Root() = default;
 
         ~Root() = default;
     };
