@@ -52,6 +52,12 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 endforeach()
 
 project(main VERSION 1.11.0)
+include(cmake/update_package_version.cmake)
+
+add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json" TARGET_NAME "update_package_version")
+add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/app.json" TARGET_NAME "update_app_version")
+
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 # Define version macros for compile-time access

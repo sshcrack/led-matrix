@@ -72,8 +72,8 @@ export default function Preset({ preset, name, isActive, setStatusRefresh, setPr
 
     return (
         <Card className={`w-80 min-h-48 animate-scale-in shadow-lg transition-all duration-200 ${isActive
-                ? 'border-2 border-primary bg-primary/5 shadow-primary/20'
-                : 'border border-border hover:shadow-xl hover:scale-[1.02]'
+            ? 'border-2 border-primary bg-primary/5 shadow-primary/20'
+            : 'border border-border hover:shadow-xl hover:scale-[1.02]'
             }`}>
             <CardHeader className="pb-3">
                 <View className="flex-row items-start justify-between">
