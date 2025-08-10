@@ -265,12 +265,41 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # Install Android SDK build-tools for apksigner
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK build-tools
+        run: |
+          echo "y" | sdkmanager --install "build-tools;34.0.0" "platform-tools"
+          echo "$ANDROID_HOME/build-tools/34.0.0" >> $GITHUB_PATH
+
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           packager: pnpm
           token: ${{ secrets.EXPO_TOKEN }}
+
+      # Cache bundletool to avoid downloading it every time
+      - name: Cache bundletool
+        id: cache-bundletool
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/bundletool
+          key: bundletool-1.18.1
+
+      - name: Install bundletool
+        if: steps.cache-bundletool.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ${{ runner.temp }}/bundletool
+          curl -L -o ${{ runner.temp }}/bundletool/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+
+      # Decode release keystore from GitHub Secrets
+      - name: Decode release keystore
+        run: |
+          mkdir -p ${{ runner.temp }}/keystore
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ runner.temp }}/keystore/release.keystore
 
       - name: Build React Native AAB
         working-directory: react-native
@@ -280,15 +309,41 @@ jobs:
           pnpx expo prebuild -p android
           eas build -p android --local --non-interactive --output ../app-v${{ needs.prepare.outputs.version }}.aab
 
-      - name: Install bundletool
+      - name: Convert AAB to APK with release signing
         run: |
-          mkdir -p ${{ runner.temp }}/bundletool
-          curl -L -o ${{ runner.temp }}/bundletool/bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          # Convert AAB to APKS (signed with release key)
+          java -jar ${{ runner.temp }}/bundletool/bundletool.jar build-apks \
+            --bundle=app-v${{ needs.prepare.outputs.version }}.aab \
+            --output=${{ runner.temp }}/app.apks \
+            --mode=universal \
+            --ks=${{ runner.temp }}/keystore/release.keystore \
+            --ks-pass=pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --ks-key-alias="${{ secrets.KEY_ALIAS }}" \
+            --key-pass=pass:"${{ secrets.KEY_PASSWORD }}"
 
-      - name: Convert AAB to APK
-        run: |
-          java -jar ${{ runner.temp }}/bundletool/bundletool.jar build-apks --bundle=app-v${{ needs.prepare.outputs.version }}.aab --output=${{ runner.temp }}/app.apks --mode=universal
+          # Extract the universal APK
           unzip -p ${{ runner.temp }}/app.apks universal.apk > app-v${{ needs.prepare.outputs.version }}.apk
+
+          # Verify the APK is properly signed
+          echo "Verifying APK signature..."
+          java -jar ${{ runner.temp }}/bundletool/bundletool.jar verify --bundle=app-v${{ needs.prepare.outputs.version }}.aab
+
+          # Show APK info and verify signing
+          echo "APK file size: $(du -h app-v${{ needs.prepare.outputs.version }}.apk | cut -f1)"
+          
+          # Verify APK signature with apksigner (now guaranteed to be available)
+          echo "Verifying APK signature with apksigner..."
+          apksigner verify --verbose app-v${{ needs.prepare.outputs.version }}.apk
+          
+          # Show detailed certificate information
+          echo "APK certificate information:"
+          apksigner verify --print-certs app-v${{ needs.prepare.outputs.version }}.apk
+
+      # Clean up sensitive keystore file
+      - name: Clean up keystore
+        if: always()
+        run: |
+          rm -f ${{ runner.temp }}/keystore/release.keystore
 
       - name: Upload React Native APK
         uses: actions/upload-artifact@v4
