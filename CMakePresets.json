@@ -76,6 +76,7 @@
         },
         {
             "name": "desktop-windows",
+            "configuration": "RelWithDebInfo",
             "configurePreset": "desktop-windows"
         },
         {
