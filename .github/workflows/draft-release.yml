@@ -324,13 +324,7 @@ jobs:
           # Extract the universal APK
           unzip -p ${{ runner.temp }}/app.apks universal.apk > app-v${{ needs.prepare.outputs.version }}.apk
 
-          # Verify the APK is properly signed
-          echo "Verifying APK signature..."
-          java -jar ${{ runner.temp }}/bundletool/bundletool.jar verify --bundle=app-v${{ needs.prepare.outputs.version }}.aab
-
-          # Show APK info and verify signing
-          echo "APK file size: $(du -h app-v${{ needs.prepare.outputs.version }}.apk | cut -f1)"
-          
+        
           # Verify APK signature with apksigner (now guaranteed to be available)
           echo "Verifying APK signature with apksigner..."
           apksigner verify --verbose app-v${{ needs.prepare.outputs.version }}.apk
