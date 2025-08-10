@@ -200,10 +200,10 @@ int main(const int argc, char *argv[])
         } else if (initialConnect) {
             ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
             ws->start();
-            
+
             // Check matrix version when connecting
             matrixVersionManager.checkMatrixVersionAsync(hostname, port);
-            
+
             initialConnect = false;
         }
 

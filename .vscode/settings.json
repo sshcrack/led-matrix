@@ -96,6 +96,9 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "xstring": "cpp",
+        "filesystem": "cpp",
+        "xlocinfo": "cpp"
     }
 }

@@ -107,7 +107,7 @@
                 "TGZ",
                 "DEB"
             ],
-            "packageName": "deskto"
+            "packageName": "desktop"
         },
         {
             "name": "desktop-windows",
