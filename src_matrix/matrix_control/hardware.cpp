@@ -42,6 +42,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
             }
         }
 
+        bool turned_off = config->is_turned_off();
+
 #if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
         // Check motion sensor
         int sensor_state = digitalRead(MOTION_SENSOR_PIN);
@@ -55,7 +57,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix) {
             if (turned_off) {
                 // Turn on the canvas if it was off
                 debug("Motion detected, turning on canvas");
-                turned_off = false;
+                config->set_turned_off(false);
             }
         } else if (!turned_off && (current_time - last_motion_time > MOTION_TIMEOUT_MS)) {
             // No motion for 5 minutes, turn off the canvas

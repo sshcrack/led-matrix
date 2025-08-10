@@ -59,6 +59,7 @@ namespace ConfigData {
         SpotifyData spotify;
         map<string, Schedule> schedules;
         bool scheduling_enabled;
+        std::atomic<bool> turned_off;
         string curr;
         UpdateSettings update_settings;
 

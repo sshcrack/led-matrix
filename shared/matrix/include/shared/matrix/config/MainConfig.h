@@ -40,6 +40,9 @@ namespace Config {
 
         void set_plugin_config(const std::string& pluginId, const string& config);
         
+        bool is_turned_off();
+        void set_turned_off(bool turned_off);
+
         // Schedule management methods
         map<string, ConfigData::Schedule> get_schedules();
         void set_schedule(const string& id, const ConfigData::Schedule& schedule);

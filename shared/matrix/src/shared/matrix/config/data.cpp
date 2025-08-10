@@ -62,7 +62,8 @@ namespace ConfigData {
             {"pluginConfigs", p.pluginConfigs},
             {"schedules", p.schedules},
             {"scheduling_enabled", p.scheduling_enabled},
-            {"update_settings", p.update_settings}
+            {"update_settings", p.update_settings},
+            {"turned_off", p.turned_off.load()}
         };
     }
 
@@ -85,6 +86,7 @@ namespace ConfigData {
             };
         }
 
+        p.turned_off = j.value("turned_off", false);
         p.spotify = j.value("spotify", SpotifyData());
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
         p.schedules = j.value("schedules", std::map<string, Schedule>());
