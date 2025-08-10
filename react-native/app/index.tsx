@@ -1,7 +1,7 @@
 import { Link } from 'expo-router';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Dimensions, RefreshControl, ScrollView, View } from 'react-native';
+import { Dimensions, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ListPresets } from '~/components/apiTypes/list_presets';
@@ -13,6 +13,8 @@ import StatusCard from '~/components/home/StatusCard';
 import QuickActionsCard from '~/components/home/QuickActionsCard';
 import PresetsSection from '~/components/home/PresetsSection';
 import ErrorCard from '~/components/home/ErrorCard';
+import pkg from "~/package.json"
+import VersionWarning from "../components/VersionWarning";
 
 export default function Screen() {
   const presets = useFetch<ListPresets>(`/list_presets`);
@@ -60,8 +62,29 @@ export default function Screen() {
     if (!isLoading) setManualRefresh(false);
   }, [isLoading]);
 
-  const { width } = Dimensions.get('window');
-  const isWeb = width > 768;
+  const isWeb = Platform.OS === "web";
+
+  // Version warning logic
+  let showVersionWarning = false;
+  let warningType: 'major' | 'minor' | null = null;
+  let matrixVersion = updateStatus.data?.current_version;
+  let appVersion = pkg.version;
+  if (!isWeb && matrixVersion && appVersion) {
+    const parse = (v: string) => v.split('.').map(e => parseInt(e));
+    const [mMaj, mMin] = parse(matrixVersion);
+    const [aMaj, aMin] = parse(appVersion);
+    if (mMaj > aMaj) {
+      showVersionWarning = true;
+      warningType = 'major';
+    } else if (mMaj === aMaj && mMin > aMin) {
+      showVersionWarning = true;
+      warningType = 'minor';
+    }
+  }
+
+  console.log("App version:", appVersion);
+  console.log("Matrix version:", matrixVersion);
+  console.log("Show version warning:", showVersionWarning, "Type:", warningType);
 
 
   return (
@@ -85,6 +108,9 @@ export default function Screen() {
           }
         >
           <View className={`w-full max-w-4xl gap-6 ${isWeb ? 'items-stretch' : 'items-center'}`}>
+            {showVersionWarning && warningType && matrixVersion && appVersion && (
+              <VersionWarning matrixVersion={matrixVersion} appVersion={appVersion} type={warningType} />
+            )}
             {error ? (
               <ErrorCard error={error} setRetry={setRetry} />
             ) : (
