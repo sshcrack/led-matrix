@@ -1,7 +1,7 @@
 {
   "name": "led-matrix",
   "main": "index.js",
-  "version": "1.1.0",
+  "version": "1.11.0",
   "scripts": {
     "dev": "expo start -c",
     "dev:web": "expo start -c --web",
