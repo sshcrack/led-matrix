@@ -2,6 +2,7 @@
 
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
+#include <atomic>
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
@@ -84,12 +85,22 @@ namespace ConfigData
             return *this;
         }
 
+        // Custom move constructor to handle atomic<bool>
+        Root(Root &&other) noexcept
+            : presets(std::move(other.presets)),
+              pluginConfigs(std::move(other.pluginConfigs)),
+              spotify(std::move(other.spotify)),
+              schedules(std::move(other.schedules)),
+              scheduling_enabled(other.scheduling_enabled),
+              turned_off(other.turned_off.load()),
+              curr(std::move(other.curr)),
+              update_settings(std::move(other.update_settings))
+        {
+        }
+
         // Delete copy constructor and copy assignment operator
         Root(const Root &) = delete;
         Root &operator=(const Root &) = delete;
-
-        // Default move constructor
-        Root(Root &&) = default;
 
         // Default constructor
         Root() = default;
