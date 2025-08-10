@@ -51,7 +51,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 1.11.1)
+project(main VERSION 1.11.2)
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json" TARGET_NAME "update_package_version")
@@ -335,11 +335,10 @@ if(ENABLE_DESKTOP)
         set(CPACK_GENERATOR "ZIP;NSIS64")
         set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
         set(CPACK_NSIS_PACKAGE_NAME "LED Matrix Controller")
+        set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
         set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
         set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
-        #set(CPACK_NSIS_MUI_HEADERIMAGE "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_header.bmp")
-        #set(CPACK_NSIS_MUI_WELCOMEFINISHPAGE_BITMAP "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/nsis_welcome.bmp")
         set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/main.exe")
         set(CPACK_NSIS_HELP_LINK "https://github.com/sshcrack/led-matrix")
         set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/sshcrack/led-matrix")
@@ -353,7 +352,7 @@ if(ENABLE_DESKTOP)
             ; Check if Visual C++ Redistributable is installed
             ReadRegStr $0 HKLM \\\"SOFTWARE\\\\Microsoft\\\\VisualStudio\\\\14.0\\\\VC\\\\Runtimes\\\\x64\\\" \\\"Version\\\"
             StrCmp $0 \\\"\\\" 0 vcredist_installed
-            
+
             ; If not installed, download and install VC++ Redistributable
             DetailPrint \\\"Downloading Visual C++ Redistributable...\\\"
             NSISdl::download \\\"https://aka.ms/vs/17/release/vc_redist.x64.exe\\\" \\\"$TEMP\\\\vc_redist.x64.exe\\\"
@@ -361,17 +360,17 @@ if(ENABLE_DESKTOP)
             StrCmp $R0 \\\"success\\\" download_ok
             MessageBox MB_OK \\\"Failed to download Visual C++ Redistributable. Please install it manually.\\\"
             Goto vcredist_end
-            
+
             download_ok:
             DetailPrint \\\"Installing Visual C++ Redistributable...\\\"
             ExecWait \\\"$TEMP\\\\vc_redist.x64.exe /quiet /norestart\\\" $1
             Delete \\\"$TEMP\\\\vc_redist.x64.exe\\\"
             IntCmp $1 0 vcredist_installed
             MessageBox MB_OK \\\"Visual C++ Redistributable installation may have failed. Exit code: $1\\\"
-            
+
             vcredist_installed:
             DetailPrint \\\"Visual C++ Redistributable is available.\\\"
-            
+
             vcredist_end:
         ")
 

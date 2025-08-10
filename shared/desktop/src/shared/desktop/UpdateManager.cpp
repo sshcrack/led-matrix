@@ -290,7 +290,7 @@ namespace UpdateChecker
         {
             const auto &release = pImpl->currentRelease;
 
-            ImGui::Text((const char*)u8"🚀 A new version of LED Matrix Controller is available!");
+            ImGui::Text("🚀 A new version of LED Matrix Controller is available!");
             ImGui::Separator();
 
             ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
@@ -309,7 +309,7 @@ namespace UpdateChecker
             ImGui::TextWrapped("Click 'Update Now' to automatically download and install the latest version. "
                                "The application will close during the update process.");
 
-            if (ImGui::Button("🔄 Update Now", ImVec2(120, 0)))
+            if (ImGui::Button("🔄️ Update Now", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::UpdateNow, release);
                 pImpl->showUpdateDialog = false;
