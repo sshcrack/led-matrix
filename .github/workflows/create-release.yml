@@ -1,4 +1,4 @@
-name: Draft Release
+name: Release new version
 
 on:
   workflow_dispatch:
@@ -361,19 +361,24 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create draft release
+      - name: Create release
         id: create_release
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
           # Get previous tag (if any)
           PREV_TAG=$(git tag --sort=-creatordate | grep -v "$TAG" | head -n1 || true)
           if [ -n "$PREV_TAG" ]; then
-            CHANGELOG="[Changelog](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
+            # Fetch merged PRs between previous and current tag, with author
+            PRS=$(gh pr list --state merged --search "merged:>=$(git log -1 --format=%aI $PREV_TAG)" --json number,title,author,mergedAt,mergeCommit --jq '.[] | select(.mergeCommit != null) | "- #\(.number) (\(.title)) - (@\(.author.login))"')
+            if [ -n "$PRS" ]; then
+              CHANGELOG="# Whats changed\n$PRS\n\n[**Full Changelog**](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
+            else
+              CHANGELOG="No PRs merged.\n[**Full Changelog**](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
+            fi
           else
             CHANGELOG="Initial release."
           fi
           gh release create "$TAG" \
-            --draft \
             --title "$TAG" \
             --notes "$CHANGELOG"
         env:
