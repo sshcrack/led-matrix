@@ -32,6 +32,32 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 
+
+## 🎬 Demonstration
+
+Below are some example scenes and effects from the included plugins:
+
+<div align="center">
+
+| AmbientScenes: Clock | AmbientScenes: Starfield | AudioVisualizer: Beat Spectrum | FractalScenes: Game of Life | FractalScenes: Julia Set |
+|:-------------------:|:-----------------------:|:----------------------------:|:--------------------------:|:------------------------:|
+| ![](plugins/AmbientScenes/img/clock.gif) | ![](plugins/AmbientScenes/img/starfield.gif) | ![](plugins/AudioVisualizer/img/beat_spectrum_normal.gif) | ![](plugins/FractalScenes/img/game_of_life.gif) | ![](plugins/FractalScenes/img/julia_set.gif) |
+
+| FractalScenes: Wave | GameScenes: Maze | GameScenes: Ping Pong | GameScenes: Snake | GameScenes: Tetris |
+|:------------------:|:---------------:|:---------------------:|:----------------:|:-----------------:|
+| ![](plugins/FractalScenes/img/wave.gif) | ![](plugins/GameScenes/img/maze.gif) | ![](plugins/GameScenes/img/ping_pong.gif) | ![](plugins/GameScenes/img/snake.gif) | ![](plugins/GameScenes/img/tetris.gif) |
+
+| GithubScenes: Watermelon Plasma | GithubScenes: Wave | RGBMatrixAnimations: Rain | RGBMatrixAnimations: Sparks | Shadertoy |
+|:------------------------------:|:------------------:|:------------------------:|:--------------------------:|:---------:|
+| ![](plugins/GithubScenes/img/watermelon_plasma.gif) | ![](plugins/GithubScenes/img/wave.gif) | ![](plugins/RGBMatrixAnimations/img/rain.gif) | ![](plugins/RGBMatrixAnimations/img/sparks.gif) | ![](plugins/Shadertoy/img/shadertoy.gif) |
+
+| SpotifyScenes: Cover Only | WeatherOverview: Night Clear |
+|:------------------------:|:---------------------------:|
+| ![](plugins/SpotifyScenes/img/cover_only.gif) | ![](plugins/WeatherOverview/img/night-clear.gif) |
+
+</div>
+
+---
 ## ✨ Features
 
 ### 🎮 **Comprehensive Control System**
