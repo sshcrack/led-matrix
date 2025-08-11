@@ -82,10 +82,6 @@ export default function Screen() {
     }
   }
 
-  console.log("App version:", appVersion);
-  console.log("Matrix version:", matrixVersion);
-  console.log("Show version warning:", showVersionWarning, "Type:", warningType);
-
 
   return (
     <SafeAreaProvider>
