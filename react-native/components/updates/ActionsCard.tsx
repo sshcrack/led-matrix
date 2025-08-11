@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Dimensions, View } from 'react-native';
+import { Dimensions, Platform, View } from 'react-native';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { Button } from '~/components/ui/button';
@@ -25,8 +25,7 @@ export function ActionsCard({
   onCheckForUpdates,
   onInstallUpdate
 }: ActionsCardProps) {
-  const { width } = Dimensions.get('window');
-  const isWeb = width > 768;
+  const isWeb = Platform.OS === "web";
 
   // Don't show actions if updates are disabled
   if (updateStatus?.status === 6) {
