@@ -70,6 +70,7 @@ bool JuliaSetScene::render(RGBMatrixBase *matrix) {
         }
     }
     
+    wait_until_next_frame();
     return true;
 }
 

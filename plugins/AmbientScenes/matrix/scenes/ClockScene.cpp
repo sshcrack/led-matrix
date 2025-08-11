@@ -45,7 +45,8 @@ bool ClockScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     }
 
     // Clear the canvas
-    offscreen_canvas->Fill(bg_color_r->get(), bg_color_g->get(), bg_color_b->get());
+    auto bg = bg_color->get();
+    offscreen_canvas->Fill(bg.r, bg.g, bg.b);
     
     // Calculate center and radius for analog clock
     int center_x = matrix->width() / 2;
@@ -115,10 +116,14 @@ void ClockScene::draw_analog_clock(rgb_matrix::RGBMatrixBase *matrix, int center
     int second_x = center_x + static_cast<int>(sin(second_angle) * radius * 0.8);
     int second_y = center_y - static_cast<int>(cos(second_angle) * radius * 0.8);
     
+    auto h_color = hour_color->get();
+    auto m_color = minute_color->get();
+    auto s_color = second_color->get();
+
     // Draw hour hand (thicker)
     if (use_antialiasing->get()) {
         draw_antialiased_line(matrix, center_x, center_y, hour_x, hour_y,
-                             hour_color_r->get(), hour_color_g->get(), hour_color_b->get(), 
+                             h_color.r, h_color.g, h_color.b, 
                              use_glow_effect->get());
         
         // Make hour hand thicker by drawing additional pixels
@@ -127,32 +132,32 @@ void ClockScene::draw_analog_clock(rgb_matrix::RGBMatrixBase *matrix, int center
         
         draw_antialiased_line(matrix, center_x + perpendicular_dx, center_y + perpendicular_dy, 
                              hour_x + perpendicular_dx, hour_y + perpendicular_dy,
-                             hour_color_r->get(), hour_color_g->get(), hour_color_b->get(), 
+                             h_color.r, h_color.g, h_color.b, 
                              false);
     } else {
         draw_clock_hand(matrix, center_x, center_y, hour_angle, radius * 0.5, 
-                       hour_color_r->get(), hour_color_g->get(), hour_color_b->get(), 2);
+                       h_color.r, h_color.g, h_color.b, 2);
     }
     
     // Draw minute hand
     if (use_antialiasing->get()) {
         draw_antialiased_line(matrix, center_x, center_y, minute_x, minute_y,
-                             minute_color_r->get(), minute_color_g->get(), minute_color_b->get(), 
+                             m_color.r, m_color.g, m_color.b, 
                              use_glow_effect->get());
     } else {
         draw_clock_hand(matrix, center_x, center_y, minute_angle, radius * 0.7, 
-                        minute_color_r->get(), minute_color_g->get(), minute_color_b->get(), 1);
+                        m_color.r, m_color.g, m_color.b, 1);
     }
     
     // Draw second hand (if enabled)
     if (show_seconds->get()) {
         if (use_antialiasing->get()) {
             draw_antialiased_line(matrix, center_x, center_y, second_x, second_y,
-                                 second_color_r->get(), second_color_g->get(), second_color_b->get(), 
+                                 s_color.r, s_color.g, s_color.b, 
                                  use_glow_effect->get());
         } else {
             draw_clock_hand(matrix, center_x, center_y, second_angle, radius * 0.8, 
-                           second_color_r->get(), second_color_g->get(), second_color_b->get(), 1);
+                           s_color.r, s_color.g, s_color.b, 1);
         }
     }
     
@@ -221,10 +226,11 @@ void ClockScene::draw_digital_clock(rgb_matrix::RGBMatrixBase *matrix, int y_pos
     int x_start = (matrix->width() - 24) / 2;  // Adjust as needed for digit spacing
     
     // Draw hour digits
+    auto h_color = hour_color->get();
     draw_small_digit(matrix, hour / 10, x_start, y_position, 
-                    hour_color_r->get(), hour_color_g->get(), hour_color_b->get());
+                    h_color.r, h_color.g, h_color.b);
     draw_small_digit(matrix, hour % 10, x_start + 5, y_position, 
-                    hour_color_r->get(), hour_color_g->get(), hour_color_b->get());
+                    h_color.r, h_color.g, h_color.b);
     
     // Draw colon (blinking)
     if (second % 2 == 0 || !show_seconds->get()) {
@@ -232,11 +238,12 @@ void ClockScene::draw_digital_clock(rgb_matrix::RGBMatrixBase *matrix, int y_pos
         offscreen_canvas->SetPixel(x_start + 9, y_position + 3, 255, 255, 255);
     }
     
+    auto m_color = minute_color->get();
     // Draw minute digits
     draw_small_digit(matrix, minute / 10, x_start + 11, y_position, 
-                    minute_color_r->get(), minute_color_g->get(), minute_color_b->get());
+                    m_color.r, m_color.g, m_color.b);
     draw_small_digit(matrix, minute % 10, x_start + 16, y_position, 
-                    minute_color_r->get(), minute_color_g->get(), minute_color_b->get());
+                    m_color.r, m_color.g, m_color.b);
     
     // Draw AM/PM indicator
     if (is_pm) {
@@ -352,10 +359,10 @@ void ClockScene::draw_small_digit(rgb_matrix::RGBMatrixBase *matrix, int digit, 
 }
 
 void ClockScene::draw_clock_face(rgb_matrix::RGBMatrixBase *matrix, int center_x, int center_y, int radius) {
-    uint8_t style = clock_style->get();
+    auto style = clock_style->get().get();
     
     // Draw based on selected style
-    if (style == 0) { // Classic style
+    if (style == ClockStyle::CLASSIC) { // Classic style
         // Draw hour markers
         for (int i = 0; i < 12; i++) {
             float angle = i * M_PI / 6.0f;
@@ -370,7 +377,7 @@ void ClockScene::draw_clock_face(rgb_matrix::RGBMatrixBase *matrix, int center_x
             draw_antialiased_line(matrix, outer_x, outer_y, inner_x, inner_y, 200, 200, 200, false);
         }
     } 
-    else if (style == 1) { // Minimal style
+    else if (style == ClockStyle::MINIMAL) { // Minimal style
         // Just draw dots at hour positions
         for (int i = 0; i < 12; i++) {
             float angle = i * M_PI / 6.0f;
@@ -390,7 +397,7 @@ void ClockScene::draw_clock_face(rgb_matrix::RGBMatrixBase *matrix, int center_x
             }
         }
     }
-    else if (style == 2) { // Elegant style
+    else if (style == ClockStyle::ELEGANT) { // Elegant style
         // Draw a circle outline
         int segments = 60;
         for (int i = 0; i < segments; i++) {
@@ -433,18 +440,10 @@ void ClockScene::register_properties() {
     add_property(show_analog);
     add_property(show_seconds);
     add_property(show_date);
-    add_property(hour_color_r);
-    add_property(hour_color_g);
-    add_property(hour_color_b);
-    add_property(minute_color_r);
-    add_property(minute_color_g);
-    add_property(minute_color_b);
-    add_property(second_color_r);
-    add_property(second_color_g);
-    add_property(second_color_b);
-    add_property(bg_color_r);
-    add_property(bg_color_g);
-    add_property(bg_color_b);
+    add_property(hour_color);
+    add_property(minute_color);
+    add_property(second_color);
+    add_property(bg_color);
     add_property(smooth_motion);
     add_property(clock_style);
     add_property(use_antialiasing);

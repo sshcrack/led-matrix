@@ -1,0 +1,59 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+	"name": "C++",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/wxw-matt/devcontainer-features/apt:0": {
+			"packages": [
+				"python3-jinja2",
+				"pkg-config",
+				"autoconf",
+				"automake",
+				"libtool",
+				"python3",
+				"linux-libc-dev",
+				"curl",
+				"libltdl-dev",
+				"libx11-dev",
+				"libxft-dev",
+				"libxext-dev",
+				"libwayland-dev",
+				"libxkbcommon-dev",
+				"libegl1-mesa-dev",
+				"libibus-1.0-dev",
+				"libxrandr-dev",
+				"libxrandr2",
+				"wayland-protocols",
+				"extra-cmake-modules",
+				"xorg-dev",
+				"libxinerma-dev",
+				"libxcursor-dev",
+				"libxi-dev",
+				"libxext-dev",
+				"libgtk-3-dev",
+				"libayatan-appindicator3-dev"
+			]
+		},
+		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {}
+	},
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [8080]
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "gcc -v",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
