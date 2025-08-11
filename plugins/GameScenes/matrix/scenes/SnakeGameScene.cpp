@@ -9,7 +9,6 @@ using namespace Scenes;
 SnakeGameScene::SnakeGameScene() 
     : rng(std::random_device{}())
 {
-    set_target_fps(15); // Snake games work well at 15 FPS
 }
 
 std::unique_ptr<Scene, void (*)(Scene *)> SnakeGameSceneWrapper::create() {

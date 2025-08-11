@@ -51,7 +51,7 @@ namespace Scenes {
         
         // Game properties
         PropertyPointer<bool> ai_enabled = MAKE_PROPERTY("ai_enabled", bool, true);
-        PropertyPointer<float> base_speed = MAKE_PROPERTY_MINMAX("base_speed", float, 0.2f, 0.05f, 1.0f);
+        PropertyPointer<float> base_speed = MAKE_PROPERTY_MINMAX("base_speed", float, 0.2f, 0.05f, 100.0f);
         PropertyPointer<bool> rainbow_snake = MAKE_PROPERTY("rainbow_snake", bool, true);
         PropertyPointer<bool> enable_wrap = MAKE_PROPERTY("enable_wrap", bool, false);
         PropertyPointer<bool> show_score = MAKE_PROPERTY("show_score", bool, true);

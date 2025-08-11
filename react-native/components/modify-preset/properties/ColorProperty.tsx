@@ -115,9 +115,6 @@ export function ColorProperty({ value, defaultVal, propertyName }: PluginPropert
                             <View className='mb-4'>
                                 <OpacitySlider />
                             </View>
-                            <View>
-                                <Swatches />
-                            </View>
                         </ColorPicker>
                     </View>
 

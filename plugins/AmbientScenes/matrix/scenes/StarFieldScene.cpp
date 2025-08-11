@@ -79,6 +79,7 @@ namespace AmbientScenes {
             }
         }
 
+        wait_until_next_frame();
         return true;
     }
 

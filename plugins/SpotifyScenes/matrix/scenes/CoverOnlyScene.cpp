@@ -296,6 +296,7 @@ bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
         return true;
     }
 
+    wait_until_next_frame();
     return DisplaySpotifySong(matrix);
 }
 

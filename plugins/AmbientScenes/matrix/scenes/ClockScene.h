@@ -6,26 +6,24 @@
 #include <ctime>
 
 namespace AmbientScenes {
+    enum class ClockStyle {
+        CLASSIC,
+        MINIMAL,
+        ELEGANT
+    };
+
 class ClockScene : public Scenes::Scene {
 private:
     PropertyPointer<bool> show_digital = MAKE_PROPERTY("show_digital", bool, true);
     PropertyPointer<bool> show_analog = MAKE_PROPERTY("show_analog", bool, true);
     PropertyPointer<bool> show_seconds = MAKE_PROPERTY("show_seconds", bool, true);
     PropertyPointer<bool> show_date = MAKE_PROPERTY("show_date", bool, false);
-    PropertyPointer<uint8_t> hour_color_r = MAKE_PROPERTY("hour_color_r", uint8_t, 255);
-    PropertyPointer<uint8_t> hour_color_g = MAKE_PROPERTY("hour_color_g", uint8_t, 0);
-    PropertyPointer<uint8_t> hour_color_b = MAKE_PROPERTY("hour_color_b", uint8_t, 0);
-    PropertyPointer<uint8_t> minute_color_r = MAKE_PROPERTY("minute_color_r", uint8_t, 0);
-    PropertyPointer<uint8_t> minute_color_g = MAKE_PROPERTY("minute_color_g", uint8_t, 255);
-    PropertyPointer<uint8_t> minute_color_b = MAKE_PROPERTY("minute_color_b", uint8_t, 0);
-    PropertyPointer<uint8_t> second_color_r = MAKE_PROPERTY("second_color_r", uint8_t, 0);
-    PropertyPointer<uint8_t> second_color_g = MAKE_PROPERTY("second_color_g", uint8_t, 0);
-    PropertyPointer<uint8_t> second_color_b = MAKE_PROPERTY("second_color_b", uint8_t, 255);
-    PropertyPointer<uint8_t> bg_color_r = MAKE_PROPERTY("bg_color_r", uint8_t, 0);
-    PropertyPointer<uint8_t> bg_color_g = MAKE_PROPERTY("bg_color_g", uint8_t, 0);
-    PropertyPointer<uint8_t> bg_color_b = MAKE_PROPERTY("bg_color_b", uint8_t, 10);
+    PropertyPointer<rgb_matrix::Color> hour_color = MAKE_PROPERTY("hour_color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
+    PropertyPointer<rgb_matrix::Color> minute_color = MAKE_PROPERTY("minute_color", rgb_matrix::Color, rgb_matrix::Color(0, 255, 0));
+    PropertyPointer<rgb_matrix::Color> second_color = MAKE_PROPERTY("second_color", rgb_matrix::Color, rgb_matrix::Color(0, 0, 255));
+    PropertyPointer<rgb_matrix::Color> bg_color = MAKE_PROPERTY("bg_color", rgb_matrix::Color, rgb_matrix::Color(0, 0, 10));
     PropertyPointer<bool> smooth_motion = MAKE_PROPERTY("smooth_motion", bool, true);
-    PropertyPointer<uint8_t> clock_style = MAKE_PROPERTY("clock_style", uint8_t, 0); // 0=classic, 1=minimal, 2=elegant
+    PropertyPointer<Plugins::EnumProperty<ClockStyle>> clock_style = MAKE_ENUM_PROPERTY("clock_style", ClockStyle, ClockStyle::CLASSIC);
     PropertyPointer<bool> use_glow_effect = MAKE_PROPERTY("use_glow_effect", bool, true);
     PropertyPointer<bool> use_antialiasing = MAKE_PROPERTY("use_antialiasing", bool, true);
 
