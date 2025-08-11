@@ -21,18 +21,20 @@ type SceneWrapperProps = {
 }
 
 function SceneWrapper({ data, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
+    const entries = useMemo(() => {
+        if(!data || !data.scenes)
+            return []
+        const e = Object.entries(data.scenes)
+        e.sort(([_a, a], [_b, b]) => b.arguments.weight - a.arguments.weight)
+
+        return e
+    }, [data?.scenes])
+
     if (isLoading)
         return <Text>Loading...</Text>
 
     if (error || !data || errorProperties || !listScenes)
         return <Text>Error: {error?.message ?? errorProperties?.message ?? "Unknown Error"}</Text>
-
-    const entries = useMemo(() => {
-        const e = Object.entries(data.scenes)
-        e.sort(([_a, a], [_b, b]) => b.arguments.weight - a.arguments.weight)
-
-        return e
-    }, [data.scenes])
 
 
     return <>
