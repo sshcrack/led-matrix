@@ -1,7 +1,7 @@
 {
   "name": "led-matrix",
   "main": "index.js",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "scripts": {
     "eas-build-pre-install": "npm i -g pnpm@10",
     "dev": "expo start -c",

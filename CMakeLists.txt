@@ -51,7 +51,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 1.11.2)
+project(main VERSION 1.11.3)
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json" TARGET_NAME "update_package_version")
