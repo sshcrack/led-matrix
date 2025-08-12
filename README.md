@@ -56,6 +56,7 @@ Below are some example scenes and effects from the included plugins:
 |:------------------------:|:---------------------------:|
 | ![](plugins/SpotifyScenes/img/cover_only.gif) | ![](plugins/WeatherOverview/img/night-clear.gif) |
 
+
 </div>
 
 ---
@@ -63,21 +64,21 @@ Below are some example scenes and effects from the included plugins:
 
 ### 🎮 **Comprehensive Control System**
 - **REST API server** for seamless remote control
-- **React Native mobile app** for on-the-go management  
+- **React Native mobile app** and **a website** for on-the-go management  
 - **11+ specialized plugins** for unlimited visual variety
 - **Preset management** for quick scene switching
 - **Advanced scheduling** - Automatically switch presets based on time and day
 - **Automatic updates** - Keep your system up-to-date with the latest features and security fixes
 - **Real-time configuration** without restarts
+![Website Showcase](./docs/web-showcase.gif)
 
 ### 🎨 **Rich Plugin Ecosystem**
 Our modular plugin architecture delivers an incredible variety of visual experiences across 11+ specialized plugins:
 
 #### 🌟 **AmbientScenes Plugin**
 Create mesmerizing atmospheric effects:
-- **Starfield** - Journey through a 3D cosmic environment with customizable stars and twinkling
+- **Starfield** - Simulates twinkling stars
 - **Metablob** - Organic fluid animations with flowing, morphing colors
-- **Fire** - Realistic flame simulations with dynamic flickering
 - **Clock** - Elegant digital timepieces with customizable styles
 
 #### 🎵 **SpotifyScenes Plugin**
@@ -86,6 +87,7 @@ Music comes alive on your matrix:
 - **Beat-synchronized Effects** - Visual rhythms that pulse with your music
 - **Now Playing Info** - Track, artist, and playback status visualization
 - **OAuth Integration** - Seamless Spotify account connection
+_[Setup required](./plugins/SpotifyScenes/README.md)_
 
 #### 🎮 **GameScenes Plugin**
 Interactive entertainment with AI-powered gameplay:
@@ -96,7 +98,7 @@ Interactive entertainment with AI-powered gameplay:
 #### 🧮 **FractalScenes Plugin**
 Mathematical beauty in motion:
 - **Julia Set** - Animated fractal visualizations with evolving parameters
-- **Complex Mathematical Patterns** - Stunning algorithmic art
+- **Conways Game of Life**
 
 #### 🌦️ **WeatherOverview Plugin**
 Real-world data with style:
@@ -104,17 +106,16 @@ Real-world data with style:
 - **Weather Animations** - Visual rain, snow, sunshine effects
 
 #### 💻 **GithubScenes Plugin**
-Visualize your development activity:
-- **Various Scenes** - That I got from github
+These include scenes, I've found on github:
+Watermelonplasma and Wave effects by [Knifa](https://github.com/Knifa/matryx-gl)
 
 #### 🎭 **Shadertoy Plugin**
 GPU-powered visual effects:
-- **Shader-based Animations** - Complex mathematical visualizations
+- **Shader-based Animations** - Renders random (or selected) shaders from shadertoy
 - **Real-time Rendering** - Smooth, performance-optimized effects
 
 #### 🎨 **PixelJoint Plugin**
-Pixel art and creative displays:
-- **Artistic Visualizations** - Pixel-perfect animations and art
+Scrapes the PixelJoint website and displays pixel art
 
 #### 🎆 **RGBMatrixAnimations Plugin**
 Physics-based particle systems:
@@ -127,7 +128,6 @@ Physics-based particle systems:
 - **Frequency Spectrum** - Live audio visualization (setup required)
 - **Beat Detection** - Intelligent rhythm detection with visual effects
 - **Post-Processing Effects** - Flash and rotate effects triggered by beats
-- **Cross-Platform Support** - Works on Windows and Linux
 - **REST API Control** - Manual effect triggering and configuration
 - **Multi-source Audio** - Various input methods supported
 
@@ -140,6 +140,7 @@ Development foundation:
 - **Remote Image Loading** - Display images from URLs with artistic processing
 - **Multiple Format Support** - Handle various image types and sizes
 - **Dynamic Content** - Real-time image updates and transformations
+_(contained within the PixelJoint Scene)_
 
 ### 🔧 **Advanced Features**
 - **Hardware abstraction** supporting various matrix configurations
@@ -168,7 +169,7 @@ Take automation to the next level with intelligent preset scheduling:
 ### 🖥️ **C++ Backend**
 The heart of the system - a high-performance application that orchestrates everything:
 - **Scene rendering engine** with smooth animations at 60+ FPS
-- **Plugin management** with hot-loadable modules
+- **Plugin management** with many loadable plugins
 - **Hardware interface** supporting multiple matrix configurations
 - **RESTful API server** for external control and integration
 - **Configuration persistence** and real-time updates
@@ -180,7 +181,7 @@ A sleek mobile companion for remote control:
 - **Preset management** for quick configuration switching
 - **Schedule management** - Create and manage time-based automation
 - **Image upload functionality** for custom displays
-- **Cross-platform support** (iOS & Android)
+- Only android for now, I don't have a MacBook unfortunately
 
 Located in the `react-native/` directory with modern TypeScript and native performance.
 
@@ -201,19 +202,6 @@ Located in the `react-native/` directory with modern TypeScript and native perfo
 Configure your setup using command-line flags or the configuration file - the system adapts automatically!
 
 ## 📋 **Prerequisites**
-
-### 🔧 **System Requirements**
-- **CMake 3.5+** for build system management
-- **C++23 compatible compiler** (GCC 12+ or Clang 15+)
-- **vcpkg package manager** for dependency management
-- **Python 3** with `jinja2` package (`apt install python3-jinja2 -y`)
-- **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
-
-### 📱 **For Mobile App Development**
-- **Node.js 18+** and npm
-- **React Native CLI** and development environment
-- **Android Studio** (for Android development)
-- **Xcode** (for iOS development on macOS)
 
 ## 🚀 **Quick Start Guide**
 
@@ -273,14 +261,22 @@ Start the Desktop App, enter your LED Matrix IP address, click "Connect" and you
 
 If you want to build from source or develop locally, follow these steps:
 
-> **💡 Pro Tip:** Building on Raspberry Pi can be slow. Consider [cross-compilation](https://github.com/abhiTronix/raspberry-pi-cross-compilers/discussions/123) for faster development cycles.
+> **💡 Pro Tip:** You can also use our [devcontainer](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/sshcrack/led-matrix) which has all dependencies installed already!
 
-#### **Prerequisites**
-1. **Install vcpkg** following the [official guide](https://learn.microsoft.com/vcpkg/get_started/get_started)
-2. **Set environment variable:**
-   ```bash
-   export VCPKG_ROOT=/path/to/your/vcpkg
-   ```
+
+#### 🔧 **System Requirements**
+- **CMake 3.5+** for build system management
+- **C++23 compatible compiler** (GCC 12+ or Clang 15+)
+- **vcpkg package manager** for dependency management
+- **Python 3** with `jinja2` package (`apt install python3-jinja2 -y`)
+- **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
+
+#### 📱 **For Mobile App Development**
+- **Node.js 18+** and npm
+- **React Native CLI** and development environment
+- **Android Studio** (for Android development)
+- **Xcode** (for iOS development on macOS)
+
 
 #### **Building with CMake Presets (Recommended)**
 
@@ -321,7 +317,7 @@ Test your scenes without physical hardware using our SDL2-based emulator:
 
 ```bash
 # Run with emulation (after building with emulator preset)
-./run_emulator.sh
+./scripts/run_emulator.sh
 ```
 
 Perfect for development, testing, and demonstrations!
@@ -337,19 +333,19 @@ Get the mobile app running in minutes:
 
 2. **Install dependencies:**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Launch the app:**
    ```bash
-   npm run dev:android        # For Android
-   npm run dev:ios            # For iOS
-   npm run dev:web            # For web
+   pnpm run dev:android        # For Android
+   pnpm run dev:ios            # For iOS
+   pnpm run dev:web            # For web
    ```
 
 ## 🎯 **Usage Guide**
 
-### 🚀 **Running the Application**
+### 🐌 **Manual Installation**
 
 Download the built binary from GitHub releases (`led-matrix-arm64.tar.gz` for RPI 3 64-bit) and extract it at `/opt/led-matrix`
 
@@ -403,6 +399,7 @@ SPDLOG_LEVEL=debug ./main
 All logs output to console with timestamps and color coding for easy reading.
 
 ## 🌐 **API Reference**
+_May be out of date_
 
 The REST API provides powerful remote control capabilities at `http://<device-ip>:8080/`.
 By default, the main index page will redirect you to the web controller (located at `/web`)
@@ -557,11 +554,11 @@ curl "http://matrix-ip:8080/api/update/releases?per_page=3"
 
 | Problem | Solution |
 |---------|----------|
-| **Matrix flickering** | Check power supply amperage - LEDs need significant current |
+| **Matrix flickering** | Check power supply amperage - LEDs need significant current. Flickering can also be caused because the RPi has not enough performance |
 | **Permission errors** | Run with `sudo` for GPIO access |
-| **Slow performance** | Try overclocking Pi or reduce `--led-pwm-bits` |
+| **Slow performance** | Try upgrading your Pi to a newer model or reduce `--led-pwm-bits` |
 | **Can't connect to API** | Check firewall and ensure port 8080 is open |
-| **Panels not lighting up** | Verify `--led-panel-type` setting (try `FM6126A` or `FM6127`) |
+| **Panels not lighting up** | Verify `--led-panel-type` setting |
 | **Colors look wrong** | Adjust `--led-multiplexing` settings (try values 0-17) |
 
 
@@ -640,11 +637,12 @@ We welcome contributions! Whether it's a bug fix, new feature, or awesome plugin
 
 ### 💡 **Contribution Ideas**
 
-- **New scene plugins** - Weather, stocks, social media, games
+- **New scene plugins** - Stocks, social media, ...
 - **Performance optimizations** - Faster rendering, lower memory usage
 - **Hardware support** - New matrix types, different GPIO mappings
 - **Mobile app features** - Better UI, offline mode, advanced controls
 - **Documentation** - Tutorials, examples, troubleshooting guides
+- **Assembly Guide** - 3D printable models, wiring
 
 ### 📋 **Code Standards**
 
@@ -661,6 +659,7 @@ See the [LICENSE](LICENSE) file for details.
 - **[rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)** by Henner Zeller - The foundation that makes this all possible
 - **[RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations)** by Footleg - Particle system animations
 - **[Fluent Emoji by Microsoft](https://github.com/microsoft/fluentui-emoji)** - For the crystal ball emoji used as icon for the desktop app
+- **[matrix-gl](https://github.com/Knifa/matryx-gl)** and **[RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations)** for awesome animations
 - **Open source community** - For the countless libraries and tools that power this project
 
 ---
