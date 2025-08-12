@@ -9,13 +9,3 @@ RUN apt-get update && \
     chmod +x /tmp/cmake-install.sh && \
     /tmp/cmake-install.sh --skip-license --prefix=/usr/local && \
     rm /tmp/cmake-install.sh
-
-# Download and extract cross-compile toolchain
-ENV CROSS_COMPILE_ROOT=/opt/cross-compile
-RUN mkdir -p ${CROSS_COMPILE_ROOT} && \
-    curl -L -o ${CROSS_COMPILE_ROOT}/cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz" && \
-    tar -xvf ${CROSS_COMPILE_ROOT}/cross-compile.tar.xz -C ${CROSS_COMPILE_ROOT} && \
-    rm ${CROSS_COMPILE_ROOT}/cross-compile.tar.xz
-
-# Set environment variable for cross-compile toolchain
-ENV PATH="${CROSS_COMPILE_ROOT}:$PATH"
