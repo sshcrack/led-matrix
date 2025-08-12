@@ -21,6 +21,7 @@
 		"BUILD_TYPE": "RelWithDebInfo",
 		"CROSS_COMPILE_ROOT": "/opt/cross-compile"
 	},
+	"updateContentCommand": "git submodule update --init --recursive",
 	"customizations": {
 		"vscode": {
 			"extensions": [
