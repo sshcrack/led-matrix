@@ -22,6 +22,7 @@
 		"CROSS_COMPILE_ROOT": "/opt/cross-compile"
 	},
 	"updateContentCommand": "git submodule update --init --recursive",
+	"postCreateCommand": "cd /workspaces/led-matrix/react-native && pnpm i",
 	"customizations": {
 		"vscode": {
 			"extensions": [
