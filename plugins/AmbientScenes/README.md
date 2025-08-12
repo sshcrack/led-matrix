@@ -5,7 +5,7 @@ This plugin adds ambient visual effects and animations to your LED Matrix.
 ## Included Scenes
 
 ### Starfield
-A 3D starfield simulation that creates the impression of flying through space.
+Various twinkling stars in a 3D space, creating a starfield effect.
 
 #### Properties:
 - **num_stars**: Number of stars in the field
@@ -22,12 +22,6 @@ An organic-looking fluid animation based on metaballs/metablobs.
 - **speed**: Animation speed
 - **move_range**: How far blobs move from their center position
 - **color_speed**: Speed of color cycling
-
-### Fire
-A realistic fire animation effect.
-
-#### Properties:
-- **frames_per_second**: Controls the speed of the animation
 
 ## Installation
 If this plugin is not deleted from the plugins directory, install is automatic!
