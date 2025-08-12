@@ -19,10 +19,10 @@
 
 	"containerEnv": {
 		"BUILD_TYPE": "RelWithDebInfo",
-		"CROSS_COMPILE_ROOT": "/opt/cross-compile"
+		"CROSS_COMPILE_ROOT": "/opt/cross-compile",
+		"VCPKG_BINARY_SOURCES": "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
 	},
 	"updateContentCommand": "git submodule update --init --recursive",
-	"postCreateCommand": "cd /workspaces/led-matrix/react-native && pnpm i",
 	"customizations": {
 		"vscode": {
 			"extensions": [
