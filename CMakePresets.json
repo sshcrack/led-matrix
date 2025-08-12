@@ -61,14 +61,10 @@
         {
             "name": "desktop-windows-debug",
             "binaryDir": "${sourceDir}/desktop_build_debug",
-            "architecture": "x64",
             "cacheVariables": {
                 "DESKTOP_DEBUG_CONSOLE": true
             },
-            "environment": {
-                "TRIPLET": "x64-windows"
-            },
-            "inherits": "desktop"
+            "inherits": "desktop-windows"
         }
     ],
     "buildPresets": [

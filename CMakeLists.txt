@@ -51,7 +51,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
     endif()
 endforeach()
 
-project(main VERSION 1.11.4)
+project(main VERSION 1.11.5)
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json" TARGET_NAME "update_package_version")
@@ -286,6 +286,20 @@ install(TARGETS ${PROJECT_NAME}
     DESTINATION ${INSTALL_DESTINATION}
 )
 
+# Install vcpkg package licenses
+# Find all copyright files during configure step
+file(GLOB_RECURSE COPYRIGHT_FILES
+    "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/share/*/copyright")
+
+# Only set up install rules for directories that actually contain copyright files
+foreach(COPYRIGHT_FILE ${COPYRIGHT_FILES})
+    get_filename_component(PACKAGE_DIR "${COPYRIGHT_FILE}" DIRECTORY)
+    get_filename_component(PACKAGE_NAME "${PACKAGE_DIR}" NAME)
+
+    install(FILES "${COPYRIGHT_FILE}"
+        DESTINATION "licenses/${PACKAGE_NAME}")
+endforeach()
+
 # Create plugins and fonts directories
 install(DIRECTORY DESTINATION "plugins")
 
@@ -314,6 +328,8 @@ else()
     )
 
 endif()
+
+
 
 if(ENABLE_DESKTOP)
 

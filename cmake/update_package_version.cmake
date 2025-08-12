@@ -28,7 +28,7 @@ function(update_package_json_version PACKAGE_JSON_PATH PROJECT_VERSION)
 
     # Check if the replacement was successful
     if("${UPDATED_CONTENT}" STREQUAL "${PACKAGE_JSON_CONTENT}")
-        message(WARNING "No version field found or version was already ${PROJECT_VERSION} in ${PACKAGE_JSON_PATH}")
+        message(STATUS "No version field found or version was already ${PROJECT_VERSION} in ${PACKAGE_JSON_PATH}")
     else()
         # Write the updated content back to the file
         file(WRITE "${PACKAGE_JSON_PATH}" "${UPDATED_CONTENT}")
