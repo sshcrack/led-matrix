@@ -20,13 +20,17 @@ Welcome to the LED Matrix Plugin Development Guide! This comprehensive documenta
 
 ## 🏗️ Plugin Architecture
 
-The LED Matrix system uses a modular plugin architecture that supports both **matrix** (Raspberry Pi) and **desktop** applications. Each plugin can provide:
-
+The LED Matrix system uses a modular plugin architecture that supports both **matrix** (Raspberry Pi) and **desktop** applications. These matrix plugin can provide
 - **Scenes**: Visual effects and animations
 - **Image Providers**: Custom image sources and processing
 - **Post-Processing Effects**: Screen-wide effects like flash and rotation
 - **REST API Routes**: Custom endpoints for remote control
 - **WebSocket Handlers**: Real-time communication with desktop clients
+
+The desktop plugin on the other hand can provide:
+**UDP Packets**: these are sent to the matrix, processed and displayed
+**Options**: Used for desktop specific options like audio devices
+**Websocket Handlers**: Communication with the led matrix server
 
 ### Plugin Types
 
@@ -395,7 +399,7 @@ std::unique_ptr<router_t> MyAwesomePlugin::register_routes(std::unique_ptr<route
             return resp.done();
         });
     
-    return router;
+    return std::move(router);
 }
 ```
 
@@ -479,9 +483,7 @@ class LifecyclePlugin : public Plugins::BasicPlugin {
 public:
     std::optional<std::string> before_server_init() override {
         // Initialize before server starts
-        setup_external_connections();
-        return std::nullopt; // Return error message if initialization fails
-    }
+        
     
     std::optional<std::string> after_server_init() override {
         // Called after server is ready
@@ -546,7 +548,7 @@ target_link_libraries(AdvancedPlugin external_lib)
 ## 🎯 Best Practices
 
 ### Performance
-- Use `FrameTimer` for consistent animations (you can also use `wait_until_next_frame()` for rendering at a constant 60fps)
+- Use `FrameTimer` for consistent animations (you can also use `wait_until_next_frame()` for rendering at a constant 60fps and use `set_target_fps` for modifying the FPS)
 - Minimize memory allocations in render loops
 - Cache expensive calculations
 - Use efficient pixel access patterns
