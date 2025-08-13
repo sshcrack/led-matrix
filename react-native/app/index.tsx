@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Dimensions, Platform, RefreshControl, ScrollView, View } from 'react-native';
@@ -81,6 +81,12 @@ export default function Screen() {
       warningType = 'minor';
     }
   }
+
+  useFocusEffect(
+    React.useCallback(() => {
+      presets.setRetry(Math.random());
+    }, [])
+  );
 
 
   return (

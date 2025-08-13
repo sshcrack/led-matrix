@@ -20,7 +20,7 @@ type SceneWrapperProps = {
     errorProperties: Error | null
 }
 
-function SceneWrapper({ data, listScenes: listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
+function SceneWrapper({ data, listScenes, error, errorProperties, isLoading }: SceneWrapperProps) {
     const entries = useMemo(() => {
         if(!data || !data.scenes)
             return []
