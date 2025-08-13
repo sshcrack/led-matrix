@@ -137,11 +137,6 @@ int main(const int argc, char *argv[])
             glfwFocusWindow(window);
         }
 
-        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden) {
-            // We are just returning here, because waiting is handled in the AfterSwap method.
-            return;
-        }
-
         General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
 
@@ -205,6 +200,12 @@ int main(const int argc, char *argv[])
             matrixVersionManager.checkMatrixVersionAsync(hostname, port);
 
             initialConnect = false;
+        }
+
+        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden) {
+            // We are just returning here, because waiting is handled in the AfterSwap method.
+            // (Its this late so we connect to the websocket)
+            return;
         }
 
         auto state = ws->getReadyState();
