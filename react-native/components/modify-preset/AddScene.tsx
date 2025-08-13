@@ -1,5 +1,8 @@
+import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import uuid from 'react-native-uuid';
 import { titleCase } from '~/lib/utils';
 import { Scene } from '../apiTypes/list_presets';
 import { ListScenes } from '../apiTypes/list_scenes';
@@ -8,12 +11,12 @@ import { Button } from '../ui/button';
 import { Option, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 import { Text } from '../ui/text';
 import usePresetId from './PresetIdProvider';
-import { useState } from 'react';
-import Toast from 'react-native-toast-message';
-import uuid from 'react-native-uuid';
 
 export default function AddScene({ scenes }: { scenes: ListScenes[] }) {
-    const [opt, setValue] = useState<Option>({ value: scenes[0].name, label: titleCase(scenes[0].name) })
+    const sortedScenes = useMemo(() => {
+        return scenes.toSorted((a, b) => a.name.localeCompare(b.name));
+    }, [scenes])
+    const [opt, setValue] = useState<Option>({ value: sortedScenes[0].name, label: titleCase(sortedScenes[0].name) })
 
     const insets = useSafeAreaInsets();
     const presetId = usePresetId()
@@ -44,7 +47,7 @@ export default function AddScene({ scenes }: { scenes: ListScenes[] }) {
                 <ScrollView>
                     <SelectGroup>
                         <SelectLabel>Scenes</SelectLabel>
-                        {scenes.map(e => {
+                        {sortedScenes.map(e => {
                             return <SelectItem key={e.name} label={titleCase(e.name)} value={e.name}>
                                 {titleCase(e.name)}
                             </SelectItem>
@@ -61,7 +64,7 @@ export default function AddScene({ scenes }: { scenes: ListScenes[] }) {
                     return
                 }
 
-                const scene = scenes.find(e => e.name === opt.value)
+                const scene = sortedScenes.find(e => e.name === opt.value)
                 if (!scene) {
                     Toast.show({
                         type: "error",

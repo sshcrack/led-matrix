@@ -57,8 +57,11 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         spdlog::trace("Serving {}", file_path.c_str());
         auto response = req->create_response(restinio::status_ok())
             .append_header_date_field()
-            .append_header(restinio::http_field::content_type, content_type)
-            .append_header(restinio::http_field::cache_control, "public, max-age=31536000");
+            .append_header(restinio::http_field::content_type, content_type);
+
+        if(content_type == "application/javascript" || content_type == "text/css" || file_path.extension() == ".ico")
+                    response.append_header(restinio::http_field::cache_control, "public, max-age=31536000");
+
         Server::add_cors_headers(response);
         return response.set_body(restinio::sendfile(file_path)).done(); });
 

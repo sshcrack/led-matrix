@@ -74,15 +74,15 @@ namespace Update
         // Launch update script if pending
         if (pending_update_.load() && !pending_update_filename_.empty())
         {
-            #ifdef ENABLE_UPDATE_TESTING
-                // For testing, just set the success flag
-                filesystem::path success_flag = get_exec_dir() / ".update_test_success";
-                try_remove(success_flag);
-                ofstream(success_flag).close();
-                info("Update test success flag created at {}", success_flag.string());
-                info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_);
-                return;
-            #endif
+#ifdef ENABLE_UPDATE_TESTING
+            // For testing, just set the success flag
+            filesystem::path success_flag = get_exec_dir() / ".update_test_success";
+            try_remove(success_flag);
+            ofstream(success_flag).close();
+            info("Update test success flag created at {}", success_flag.string());
+            info("Normally, the UpdateManager is stopping here and running the update script at {}", pending_update_filename_);
+            return;
+#endif
 
             std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
             string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
@@ -99,15 +99,19 @@ namespace Update
     void UpdateManager::update_loop()
     {
         info("Getting latest version information...");
-        auto latest_info = get_update_info();
-        if (latest_info.has_value())
+        latest_version_ = Common::Version::getCurrentVersion();
+        if (should_check_for_updates())
         {
-            latest_version_ = latest_info->version;
-            info("Latest version: {}", latest_version_.toString());
-        }
-        else
-        {
-            info("No updates available or error fetching update info: {}", latest_info.error());
+            auto latest_info = get_update_info();
+            if (latest_info.has_value())
+            {
+                latest_version_ = latest_info->version;
+                info("Latest version: {}", latest_version_.toString());
+            }
+            else
+            {
+                warn("Error fetching update info: {}", latest_info.error());
+            }
         }
 
         while (!should_stop_.load())
@@ -139,7 +143,7 @@ namespace Update
             config_->save();
 
             latest_version_ = latest_info.version;
-            if(latest_version_ <= Common::Version::getCurrentVersion())
+            if (latest_version_ <= Common::Version::getCurrentVersion())
                 continue;
 
             auto res = manual_download_and_install(latest_info);
@@ -281,6 +285,10 @@ namespace Update
 
     bool UpdateManager::should_check_for_updates()
     {
+#if !defined(ENABLE_UPDATE_TESTING) && defined(ENABLE_EMULATOR)
+        return false; // Disable updates in emulator mode
+#endif
+
         if (!is_auto_update_enabled())
             return false;
 
@@ -447,11 +455,11 @@ namespace Update
     bool UpdateManager::check_and_handle_update_completion()
     {
 
-        #ifdef ENABLE_UPDATE_TESTING
-            filesystem::path success_flag = get_exec_dir() / ".update_test_success";
-        #else
-            filesystem::path success_flag = "/opt/led-matrix/.update_success";
-        #endif
+#ifdef ENABLE_UPDATE_TESTING
+        filesystem::path success_flag = get_exec_dir() / ".update_test_success";
+#else
+        filesystem::path success_flag = "/opt/led-matrix/.update_success";
+#endif
         filesystem::path error_flag = "/opt/led-matrix/.update_error";
 
         // Check for update success flag
