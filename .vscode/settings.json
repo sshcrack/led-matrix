@@ -1,10 +1,6 @@
 {
     "debug.onTaskErrors": "abort",
     "lldb.verboseLogging": true,
-    "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "/home/sshcrack/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "ENABLE_UPDATE_TESTING": "ON"
-    },
     "git.ignoreSubmodules": true,
     "files.associations": {
         "*.scss": "scss",
