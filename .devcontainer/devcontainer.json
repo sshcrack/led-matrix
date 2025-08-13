@@ -21,7 +21,7 @@
 		"CROSS_COMPILE_ROOT": "/opt/cross-compile",
 		"VCPKG_BINARY_SOURCES": "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
 	},
-	"initializeCommand": "git submodule update --init --recursive",
+	"postCreateCommand": "git submodule update --init --recursive",
 	"customizations": {
 		"vscode": {
 			"extensions": [
