@@ -2,7 +2,7 @@
   "expo": {
     "name": "led-matrix",
     "slug": "led-matrix",
-    "version": "1.11.7",
+    "version": "1.11.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
