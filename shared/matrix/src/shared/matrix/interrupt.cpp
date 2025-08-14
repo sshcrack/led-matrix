@@ -6,7 +6,7 @@ std::atomic interrupt_received = false;
 
 void InterruptHandler(int signo)
 {
-    spdlog::debug("Interrupt signal received: {}", signo);
+    spdlog::info("Interrupt signal received: {}. Exiting...", signo);
     interrupt_received = true;
     exit_canvas_update = true;
 }

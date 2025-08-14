@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
         error("Could not initialize hardware_code.");
         initiate_shutdown(server);
 
-        debug("Terminating plugin loader...");
+        info("Terminating plugin loader...");
         pl->destroy_plugins();
 
         return hardware_code;
@@ -204,18 +204,18 @@ int main(int argc, char *argv[])
 
     delete Constants::global_post_processor;
 
-    debug("Joining control thread...");
+    info("Joining control thread...");
     control_thread.join();
 
     pl->delete_references();
 
-    debug("Destroying config instance...");
+    info("Destroying config instance...");
     delete config;
 
-    debug("Terminating plugin loader...");
+    info("Terminating plugin loader...");
     pl->destroy_plugins();
 
-    debug("Stopping UpdateManager...");
+    info("Stopping UpdateManager...");
     if (Constants::global_update_manager)
     {
         Constants::global_update_manager->stop();
