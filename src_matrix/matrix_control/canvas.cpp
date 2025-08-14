@@ -66,11 +66,13 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
         cantFindScene = 0;
         const tmillis_t start_ms = GetTimeInMillis();
         const tmillis_t end_ms = start_ms + scene->get_duration();
+        spdlog::debug("Curr scene mutex");
         {
             std::unique_lock lock(Server::currSceneMutex);
             Server::currScene = scene;
         }
 
+        spdlog::debug("Registry mutex");
         {
             std::shared_lock lock(Server::registryMutex);
             spdlog::debug("Now displaying scene: {}", scene->get_name());
@@ -93,8 +95,7 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
 
 
             if (!should_continue || interrupt_received || exit_canvas_update) {
-                // I removed this log, this seems to spam if there is no scene to display
-                // debug("Exiting scene early.");
+                trace("Exiting scene early.");
                 break;
             }
 
@@ -106,9 +107,10 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
             if(scene->offscreen_canvas != nullptr && should_continue) {
                 scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
             }
-            // SleepMillis(10);
+
         }
 
+        spdlog::debug("Exiting scene: {}", scene->get_name());
         scene->after_render_stop(matrix);
         if(scene->offscreen_canvas != nullptr)
             pCanvas = scene->offscreen_canvas;
