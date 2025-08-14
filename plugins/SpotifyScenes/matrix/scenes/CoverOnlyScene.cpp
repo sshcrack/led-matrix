@@ -486,7 +486,7 @@ void CoverOnlyScene::register_properties() {
 }
 
 CoverOnlyScene::~CoverOnlyScene() {
-    spdlog::debug("Waiting for CoverOnlyScene to finish...");
+    spdlog::info("Waiting for CoverOnlyScene to finish...");
     if (refresh_future.valid()) {
         refresh_future.wait();
     }

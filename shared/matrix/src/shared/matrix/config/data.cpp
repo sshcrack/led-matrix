@@ -86,7 +86,9 @@ namespace ConfigData {
             };
         }
 
-        p.turned_off = j.value("turned_off", false);
+        // Properly set atomic<bool> using .store()
+        bool turned_off_val = j.value("turned_off", false);
+        p.turned_off.store(turned_off_val);
         p.spotify = j.value("spotify", SpotifyData());
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
         p.schedules = j.value("schedules", std::map<string, Schedule>());

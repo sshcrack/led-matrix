@@ -226,7 +226,7 @@ std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vec
 }
 
 ImageScene::~ImageScene() {
-    spdlog::debug("Waiting for ImageScene to finish...");
+    spdlog::info("Waiting for ImageScene to finish...");
     is_exiting = true;
     if (next_img.has_value() && next_img.value().valid()) {
         next_img.value().wait();
