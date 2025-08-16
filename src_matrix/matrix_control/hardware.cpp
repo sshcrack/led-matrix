@@ -40,11 +40,14 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
                 debug("Switching to scheduled preset: {}", active_preset.value());
                 config->set_curr(active_preset.value());
                 last_scheduled_preset = active_preset.value();
+                config->set_turned_off(false);
             }
             else if (!active_preset.has_value() && !last_scheduled_preset.empty())
             {
-                debug("No active schedule, clearing scheduled preset");
+
+                debug("No active schedule, clearing scheduled preset and turning off canvas");
                 last_scheduled_preset = "";
+                config->set_turned_off(true);
             }
         }
 
@@ -79,31 +82,24 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
         {
             offscreen_canvas = update_canvas(matrix, offscreen_canvas);
             exit_canvas_update = false;
+            continue;
         }
 
-        while (config->is_turned_off())
-        {
-            static int off_counter = 0;
-            if (off_counter++ % 10 == 0)
-            { // Print every 10 seconds
-                trace("Canvas is turned off, waiting for motion or signal to turn on...");
-            }
-            matrix->Clear();
-            SleepMillis(1000);
+        matrix->Clear();
+        SleepMillis(1000);
 
 #if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
-            // Check the sensor while turned off
-            if (digitalRead(MOTION_SENSOR_PIN) == HIGH)
-            {
-                debug("Motion detected, turning on canvas");
-                last_motion_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                       std::chrono::steady_clock::now().time_since_epoch())
-                                       .count();
-                config->set_turned_off(false);
-                break;
-            }
-#endif
+        // Check the sensor while turned off
+        if (digitalRead(MOTION_SENSOR_PIN) == HIGH)
+        {
+            debug("Motion detected, turning on canvas");
+            last_motion_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now().time_since_epoch())
+                                   .count();
+            config->set_turned_off(false);
+            break;
         }
+#endif
     }
 
     // Cleanup post-processor
