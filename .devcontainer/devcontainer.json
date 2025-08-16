@@ -8,6 +8,7 @@
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
 		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers/features/powershell": {},
 		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {}
 	},
 
