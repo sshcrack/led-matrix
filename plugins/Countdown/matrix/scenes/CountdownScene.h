@@ -11,8 +11,10 @@
 // rgb matrix types
 #include "graphics.h"
 
-namespace Scenes {
-    class CountdownScene : public Scene {
+namespace Scenes
+{
+    class CountdownScene : public Scene
+    {
     private:
         FrameTimer frameTimer;
 
@@ -21,15 +23,16 @@ namespace Scenes {
         PropertyPointer<bool> confetti = MAKE_PROPERTY("confetti", bool, true);
         PropertyPointer<bool> big_digits = MAKE_PROPERTY("big_digits", bool, true);
         PropertyPointer<float> pulse_speed = MAKE_PROPERTY("pulse_speed", float, 1.0f);
-    PropertyPointer<rgb_matrix::Color> digit_color = MAKE_PROPERTY("digit_color", rgb_matrix::Color, rgb_matrix::Color(255, 180, 60));
-    PropertyPointer<int> show_seconds = MAKE_PROPERTY("show_seconds", int, 1);
+        PropertyPointer<rgb_matrix::Color> digit_color = MAKE_PROPERTY("digit_color", rgb_matrix::Color, rgb_matrix::Color(255, 180, 60));
+        PropertyPointer<int> show_seconds = MAKE_PROPERTY("show_seconds", int, 1);
 #ifdef ENABLE_EMULATOR
-    // Debug property to enable fast-preview/testing mode
-    PropertyPointer<bool> debug = MAKE_PROPERTY("debug", bool, false);
+        // Debug property to enable fast-preview/testing mode
+        PropertyPointer<bool> debug = MAKE_PROPERTY("debug", bool, false);
 #endif
 
         // Particle structs
-        struct Particle {
+        struct Particle
+        {
             float x, y;
             float vx, vy;
             rgb_matrix::Color color;
@@ -41,21 +44,9 @@ namespace Scenes {
 
         int width = 0, height = 0;
         std::mt19937 rng;
-    // Spawn throttle helpers
-    float last_confetti_spawn = -1.0f;
-    float last_firework_spawn = -1.0f;
-    // FPS debug counters
-    int frame_counter = 0;
-    float fps_last_log_time = -1.0f;
-
-    // Performance counters (accumulate time in seconds)
-    double perf_accum_bg = 0.0;
-    double perf_accum_text = 0.0;
-    double perf_accum_particle_update = 0.0;
-    double perf_accum_particle_render = 0.0;
-    double perf_accum_total = 0.0;
-    int perf_samples = 0;
-    std::chrono::high_resolution_clock::time_point perf_last_report = std::chrono::high_resolution_clock::now();
+        // Spawn throttle helpers
+        float last_confetti_spawn = -1.0f;
+        float last_firework_spawn = -1.0f;
 
         void spawn_confetti(int count);
         void spawn_firework(float x, float y);
@@ -73,7 +64,8 @@ namespace Scenes {
         int get_weight() const override;
     };
 
-    class CountdownSceneWrapper : public Plugins::SceneWrapper {
+    class CountdownSceneWrapper : public Plugins::SceneWrapper
+    {
     public:
         std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
     };

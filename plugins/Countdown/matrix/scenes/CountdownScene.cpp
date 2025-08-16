@@ -24,7 +24,7 @@ void CountdownScene::spawn_confetti(int count)
     std::uniform_real_distribution<float> uvy(10.0f, 30.0f);
     std::uniform_int_distribution<int> uc(0, 255);
 
-    const size_t MAX_CONFETTI = 150; // cap to avoid excessive slowdowns
+    const size_t MAX_CONFETTI = 600; // increased cap for richer confetti
     for (int i = 0; i < count; i++)
     {
         Particle p;
@@ -45,8 +45,8 @@ void CountdownScene::spawn_firework(float x, float y)
     std::uniform_real_distribution<float> uspeed(20.0f, 60.0f);
     std::uniform_int_distribution<int> uc(0, 255);
 
-    int pieces = 18; // fewer pieces per firework for performance
-    const size_t MAX_FIREWORKS = 300;
+    int pieces = 32;                   // more pieces per firework for fuller bursts
+    const size_t MAX_FIREWORKS = 1200; // increased cap for more simultaneous fireworks
     for (int i = 0; i < pieces; i++)
     {
         float a = uangle(rng);
@@ -90,26 +90,10 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
     auto ft = frameTimer.tick();
     float dt = ft.dt;
 
-    // start total timer
-    auto total_start = std::chrono::high_resolution_clock::now();
-
     width = matrix->width();
     height = matrix->height();
 
-    // FPS counting
-    frame_counter++;
-    if(fps_last_log_time < 0) fps_last_log_time = ft.t;
-    float elapsed_since_log = ft.t - fps_last_log_time;
-    if(elapsed_since_log >= 5.0f) {
-        float fps = frame_counter / elapsed_since_log;
-        spdlog::debug("CountdownScene FPS: {:.2f}", fps);
-        // reset
-        frame_counter = 0;
-        fps_last_log_time = ft.t;
-    }
-
     // Clear with a subtle pulse background
-    auto t0 = std::chrono::high_resolution_clock::now();
     float pulse = (std::sin(ft.t * pulse_speed->get()) + 1.0f) / 2.0f;
     uint8_t bg = static_cast<uint8_t>(20 + pulse * 40);
     for (int y = 0; y < height; y++)
@@ -119,8 +103,6 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
             offscreen_canvas->SetPixel(x, y, bg / 2, bg / 3, bg);
         }
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
-    perf_accum_bg += std::chrono::duration<double>(t1 - t0).count();
 
     // Determine time left until target year (assume Jan 1 target_year at midnight UTC)
     auto now = system_clock::now();
@@ -140,7 +122,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
 
     if (is_past)
         remaining = 0;
-// Determine whether we're in the New Year's window: Dec 31 (any time) or Jan 1 within first 5 hours
+    // Determine whether we're in the New Year's window: Dec 31 (any time) or Jan 1 within first 5 hours
     bool new_year_window = false;
 
 #ifndef ENABLE_EMULATOR
@@ -194,7 +176,6 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
     std::string disp = buffer;
 
     // Draw digits using the loaded fonts. Choose color
-    auto t2 = std::chrono::high_resolution_clock::now();
     rgb_matrix::Color text_color = digit_color->get();
 
     // Choose font and vertical position based on big_digits flag
@@ -208,7 +189,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
             text_width += HEADER_FONT.CharacterWidth(static_cast<uint32_t>(c));
         int text_x = (width - text_width) / 2;
         int text_y = (height + baseline) / 2;
-    rgb_matrix::DrawText(offscreen_canvas, HEADER_FONT, text_x, text_y, text_color, disp.c_str());
+        rgb_matrix::DrawText(offscreen_canvas, HEADER_FONT, text_x, text_y, text_color, disp.c_str());
     }
     else
     {
@@ -220,8 +201,6 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
         int text_y = (height + baseline) / 2;
         rgb_matrix::DrawText(offscreen_canvas, BODY_FONT, text_x, text_y, text_color, disp.c_str());
     }
-    auto t3 = std::chrono::high_resolution_clock::now();
-    perf_accum_text += std::chrono::duration<double>(t3 - t2).count();
 
     // Particle effects
     if ((confetti->get()
@@ -258,16 +237,13 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
         }
     }
 
-    auto t4 = std::chrono::high_resolution_clock::now();
     update_particles(dt);
-    auto t5 = std::chrono::high_resolution_clock::now();
-    perf_accum_particle_update += std::chrono::duration<double>(t5 - t4).count();
 
     // render particles
     auto render_particles = [&](const std::vector<Particle> &vec)
     {
-        // If there are many particles, sample to reduce draw calls
-        size_t sample_step = vec.size() > 200 ? 2 : 1;
+        // If there are many particles, sample to reduce draw calls (threshold raised)
+        size_t sample_step = vec.size() > 800 ? 2 : 1;
         for (size_t idx = 0; idx < vec.size(); idx += sample_step)
         {
             const auto &p = vec[idx];
@@ -284,11 +260,8 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
         }
     };
 
-    auto t6 = std::chrono::high_resolution_clock::now();
     render_particles(confetti_particles);
     render_particles(fireworks_particles);
-    auto t7 = std::chrono::high_resolution_clock::now();
-    perf_accum_particle_render += std::chrono::duration<double>(t7 - t6).count();
 
     // If reached target, show celebratory message (simple)
     if (is_past)
@@ -325,34 +298,6 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
                 spawn_firework(ux(rng), height * 0.5f);
             }
         }
-    }
-
-    auto total_end = std::chrono::high_resolution_clock::now();
-    double total = std::chrono::duration<double>(total_end - total_start).count();
-    perf_accum_total += total;
-    perf_samples++;
-
-    // Report every 5 seconds
-    auto perf_now = std::chrono::high_resolution_clock::now();
-    if (std::chrono::duration<double>(perf_now - perf_last_report).count() >= 5.0 && perf_samples > 0) {
-        double avg_total = perf_accum_total / perf_samples;
-        double avg_bg = perf_accum_bg / perf_samples;
-        double avg_text = perf_accum_text / perf_samples;
-        double avg_upd = perf_accum_particle_update / perf_samples;
-        double avg_pr = perf_accum_particle_render / perf_samples;
-
-        spdlog::info("CountdownScene perf (avg over {} samples): total={:.4f}s, bg={:.4f}s ({}%), text={:.4f}s ({}%), upd={:.4f}s ({}%), pr={:.4f}s ({}%)",
-                     perf_samples,
-                     avg_total,
-                     avg_bg, (int)std::round((avg_bg / avg_total) * 100.0),
-                     avg_text, (int)std::round((avg_text / avg_total) * 100.0),
-                     avg_upd, (int)std::round((avg_upd / avg_total) * 100.0),
-                     avg_pr, (int)std::round((avg_pr / avg_total) * 100.0));
-
-        // reset accumulators
-        perf_accum_bg = perf_accum_text = perf_accum_particle_update = perf_accum_particle_render = perf_accum_total = 0.0;
-        perf_samples = 0;
-        perf_last_report = perf_now;
     }
 
     return true;
