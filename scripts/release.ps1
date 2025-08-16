@@ -1,4 +1,5 @@
 #! /usr/bin/env pwsh
+$ErrorActionPreference = "Stop"
 # Show current version and prompt for new version
 
 $CMakeLists = "CMakeLists.txt"
@@ -29,9 +30,9 @@ if (-not $NewVersion -or $NewVersion -eq $currentVersion) {
 # Update version in CMakeLists.txt
 $updated = $false
 $cmakeContent = $cmakeContent | ForEach-Object {
-    if ($_ -match '^project\(([^)]*)VERSION\s+[0-9]+\.[0-9]+\.[0-9]+') {
+    if ($_ -match '^(\s*project\([^)]*VERSION\s+)([0-9]+\.[0-9]+\.[0-9]+)(.*)$') {
         $updated = $true
-        return ($_ -replace '(project\([^\)]*VERSION\s+)[0-9]+\.[0-9]+\.[0-9]+', "`$1$NewVersion")
+        return "$($Matches[1])$NewVersion$($Matches[3])"
     } else {
         return $_
     }
