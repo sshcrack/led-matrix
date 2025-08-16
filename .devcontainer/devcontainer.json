@@ -15,6 +15,9 @@
 	// "features": {},
 
 	"appPort": [8080, "8080:8080/udp"],
+	"remoteEnv": {
+    	"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+	},
 
 	"containerEnv": {
 		"BUILD_TYPE": "RelWithDebInfo",
