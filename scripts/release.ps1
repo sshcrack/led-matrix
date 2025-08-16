@@ -54,7 +54,7 @@ Write-Host "Configuring with preset: $preset"
 cmake --preset $preset
 
 # Commit and push changes
-git add $CMakeLists
+git add $CMakeLists react-native/package.json react-native/app.json
 git commit -m "Bump to version $NewVersion"
 git push
 
