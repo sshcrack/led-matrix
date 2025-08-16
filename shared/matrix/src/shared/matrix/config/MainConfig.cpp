@@ -181,43 +181,43 @@ namespace Config {
 
     optional<string> MainConfig::get_active_scheduled_preset() {
         shared_lock lock(this->data_mutex);
-        
+
         if (!this->data.scheduling_enabled) {
             return nullopt;
         }
 
         // Find all active schedules and sort by priority (shorter duration = higher priority)
         vector<pair<string, ConfigData::Schedule>> active_schedules;
-        
+
         for (const auto& [id, schedule] : this->data.schedules) {
             if (schedule.is_active_now()) {
                 active_schedules.emplace_back(id, schedule);
             }
         }
-        
+
         if (active_schedules.empty()) {
             return nullopt;
         }
-        
+
         // Sort by duration (ascending), so shorter schedules come first
-        sort(active_schedules.begin(), active_schedules.end(), 
+        sort(active_schedules.begin(), active_schedules.end(),
              [](const auto& a, const auto& b) {
                  const auto& schedule_a = a.second;
                  const auto& schedule_b = b.second;
-                 
+
                  // Calculate duration in minutes for each schedule
-                 int duration_a = (schedule_a.end_hour * 60 + schedule_a.end_minute) - 
+                 int duration_a = (schedule_a.end_hour * 60 + schedule_a.end_minute) -
                                   (schedule_a.start_hour * 60 + schedule_a.start_minute);
-                 int duration_b = (schedule_b.end_hour * 60 + schedule_b.end_minute) - 
+                 int duration_b = (schedule_b.end_hour * 60 + schedule_b.end_minute) -
                                   (schedule_b.start_hour * 60 + schedule_b.start_minute);
-                 
+
                  // Handle schedules that cross midnight
                  if (duration_a < 0) duration_a += 24 * 60;  // Add 24 hours worth of minutes
                  if (duration_b < 0) duration_b += 24 * 60;
-                 
+
                  return duration_a < duration_b;  // Shorter duration = higher priority
              });
-        
+
         // Return the preset_id of the highest priority (shortest duration) schedule
         return active_schedules[0].second.preset_id;
     }
