@@ -16,6 +16,11 @@ import { ConfigProvider } from '~/components/configShare/ConfigProvider';
 import { ApiUrlProvider } from '~/components/apiUrl/ApiUrlProvider';
 import ResetApiUrl from '~/components/modify-preset/ResetApiUrl';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
+
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -25,6 +30,12 @@ const DARK_THEME: Theme = {
   ...DarkTheme,
   colors: NAV_THEME.dark,
 };
+
+// This is the default configuration
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: true, // Reanimated runs in strict mode by default
+});
 
 export {
   // Catch any errors thrown by the Layout component.

@@ -38,10 +38,11 @@ export function DynamicPluginProperty({ sceneId, ...props }: DynamicPluginProper
     const Component = propertyComponents[props.propertyName as ComponentKeys] ?? propertyComponents["general"]
     const presetId = usePresetId()
 
+    const { setSubConfig } = useSubConfig<Scene>(presetId, ["scenes", sceneId])
+
     if (!Component)
         return <Text>Unknown Property type {props.propertyName}</Text>
 
-    const { setSubConfig } = useSubConfig<Scene>(presetId, ["scenes", sceneId])
     return (
         <SceneContext.Provider
             value={{
