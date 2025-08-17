@@ -26,47 +26,52 @@ export default function GeneralProvider({ preset_id, scene_id }: { preset_id: st
 
 
     return <View className="w-full flex-1">
-        {config?.map((provider, index) => {
+        {config?.map((provider) => {
             const Provider = providers[provider.type as keyof typeof providers]
+            const key = (provider as any).uuid ?? provider.type
             if (!Provider)
-                return <Text key={index}>Unknown provider type: {provider.type}</Text>
+                return <Text key={key}>Unknown provider type: {provider.type}</Text>
 
-            return <ProviderDataProvider key={index} data={provider} setData={x => {
-                if (typeof x === "function") {
-                    setSubConfig(e => {
-                        if (!e)
-                            return e
+            return <ProviderDataProvider key={key} data={provider} setData={x => {
+                // Find the provider index by uuid so updates remain stable even if order changes
+                setSubConfig(prev => {
+                    if (!prev)
+                        return prev
 
-                        const copy = JSON.parse(JSON.stringify(e))
-                        const res = x(copy[index]);
+                    const copy = JSON.parse(JSON.stringify(prev)) as any[]
+                    const idx = copy.findIndex((p: any) => (p && p.uuid) ? p.uuid === (provider as any).uuid : false)
+                    if (idx === -1)
+                        return prev
+
+                    if (typeof x === "function") {
+                        const res = x(copy[idx]);
                         if (!res)
-                            return e
+                            return prev
 
-                        copy[index] = res
-
-                        console.log("Setting to", copy)
+                        copy[idx] = res
                         return copy
-                    })
-                } else {
-                    if (!config || !x)
-                        return
+                    } else {
+                        if (!x)
+                            return prev
 
-                    const copy = JSON.parse(JSON.stringify(config))
-                    copy[index] = x
-
-                    console.log("Setting to", copy)
-                    setSubConfig(copy)
-                }
+                        copy[idx] = x
+                        return copy
+                    }
+                })
             }}>
                 <View className='w-full flex-1'>
                     <View className="flex-row mb-5 items-center">
                         <Button size="icon" variant="ghost" className='mr-5' onPress={() => {
-                            setSubConfig(e => {
-                                if (!e)
-                                    return e
+                            setSubConfig(prev => {
+                                if (!prev)
+                                    return prev
 
-                                const copy = JSON.parse(JSON.stringify(e))
-                                copy.splice(index, 1)
+                                const copy = JSON.parse(JSON.stringify(prev)) as any[]
+                                const idx = copy.findIndex((p: any) => (p && p.uuid) ? p.uuid === (provider as any).uuid : false)
+                                if (idx === -1)
+                                    return prev
+
+                                copy.splice(idx, 1)
 
                                 return copy
                             })

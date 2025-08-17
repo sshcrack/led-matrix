@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { format } from '@lukeed/ms';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -54,10 +55,14 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
         return config.arguments["duration"] ?? 0
     }, [config.arguments])
 
+    // Update rotation when isOpen changes. Avoid writing to shared values during render
+    // (some components may call onOpenChange during render), so perform the animation in an effect.
+    React.useEffect(() => {
+        rotation.value = withTiming(isOpen ? 180 : 0, { easing: Easing.inOut(Easing.quad) });
+    }, [isOpen]);
+
     return <Collapsible open={isOpen} onOpenChange={e => {
         setOpen(e)
-
-        rotation.value = withTiming(e ? 180 : 0, { easing: Easing.inOut(Easing.quad) });
     }} className='w-full gap-6'>
         <CollapsibleTrigger className='flex-row gap-2 items-center w-full'>
             <View className="flex-row items-center gap-3">

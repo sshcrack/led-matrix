@@ -1,20 +1,17 @@
+import * as Slot from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-import { Text, View } from 'react-native';
-import { TextClassContext } from '~/components/ui/text';
+import { View, ViewProps } from 'react-native';
 import { cn } from '~/lib/utils';
+import { TextClassContext } from '~/components/ui/text';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold web:transition-colors web:focus:outline-none web:focus:ring-2 web:focus:ring-ring web:focus:ring-offset-2',
+  'web:inline-flex items-center rounded-full border border-border px-2.5 py-0.5 web:transition-colors web:focus:outline-none web:focus:ring-2 web:focus:ring-ring web:focus:ring-offset-2',
   {
     variants: {
       variant: {
-        default:
-          'border-transparent bg-primary text-primary-foreground web:hover:opacity-80',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground web:hover:opacity-80',
-        destructive:
-          'border-transparent bg-destructive text-destructive-foreground web:hover:opacity-80',
+        default: 'border-transparent bg-primary web:hover:opacity-80 active:opacity-80',
+        secondary: 'border-transparent bg-secondary web:hover:opacity-80 active:opacity-80',
+        destructive: 'border-transparent bg-destructive web:hover:opacity-80 active:opacity-80',
         outline: 'text-foreground',
       },
     },
@@ -24,7 +21,7 @@ const badgeVariants = cva(
   }
 );
 
-const badgeTextVariants = cva('text-xs font-semibold web:whitespace-nowrap', {
+const badgeTextVariants = cva('text-xs font-semibold ', {
   variants: {
     variant: {
       default: 'text-primary-foreground',
@@ -38,19 +35,18 @@ const badgeTextVariants = cva('text-xs font-semibold web:whitespace-nowrap', {
   },
 });
 
-type BadgeProps = React.ComponentPropsWithoutRef<typeof View> &
-  VariantProps<typeof badgeVariants>;
+type BadgeProps = ViewProps & {
+  asChild?: boolean;
+} & VariantProps<typeof badgeVariants>;
 
-function Badge({ className, children, variant, ...props }: BadgeProps) {
-  const textClass = badgeTextVariants({ variant });
+function Badge({ className, variant, asChild, ...props }: BadgeProps) {
+  const Component = asChild ? Slot.View : View;
   return (
-    <TextClassContext.Provider value={textClass}>
-      <View className={cn(badgeVariants({ variant }), className)} {...props}>
-        <Text className={textClass}>{children}</Text>
-      </View>
+    <TextClassContext.Provider value={badgeTextVariants({ variant })}>
+      <Component className={cn(badgeVariants({ variant }), className)} {...props} />
     </TextClassContext.Provider>
   );
 }
 
-export { Badge, badgeVariants };
+export { Badge, badgeTextVariants, badgeVariants };
 export type { BadgeProps };

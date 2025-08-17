@@ -1,208 +1,153 @@
+import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
-import { Platform, View, Modal, type ViewProps } from 'react-native';
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { X } from '~/lib/icons/X';
 import { cn } from '~/lib/utils';
-import { TextClassContext } from '~/components/ui/text';
 
-interface DialogContextValue {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+const Dialog = DialogPrimitive.Root;
 
-const DialogContext = React.createContext<DialogContextValue | null>(null);
+const DialogTrigger = DialogPrimitive.Trigger;
 
-const useDialogContext = () => {
-  const context = React.useContext(DialogContext);
-  if (!context) {
-    throw new Error('Dialog components must be used within a Dialog');
-  }
-  return context;
-};
+const DialogPortal = DialogPrimitive.Portal;
 
-interface DialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  children: React.ReactNode;
-}
+const DialogClose = DialogPrimitive.Close;
 
-const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
+function DialogOverlayWeb({
+  className,
+  ...props
+}: DialogPrimitive.OverlayProps & {
+  ref?: React.RefObject<DialogPrimitive.OverlayRef>;
+}) {
+  const { open } = DialogPrimitive.useRootContext();
   return (
-    <DialogContext.Provider value={{ open, onOpenChange }}>
-      {children}
-    </DialogContext.Provider>
+    <DialogPrimitive.Overlay
+      className={cn(
+        'bg-black/80 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
+        open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
+        className
+      )}
+      {...props}
+    />
   );
-};
-
-interface DialogTriggerProps extends ViewProps {
-  children: React.ReactNode;
 }
 
-const DialogTrigger = React.forwardRef<View, DialogTriggerProps>(
-  ({ children, ...props }, ref) => {
-    return (
-      <View ref={ref} {...props}>
-        {children}
-      </View>
-    );
-  }
-);
-DialogTrigger.displayName = 'DialogTrigger';
-
-interface DialogPortalProps {
-  children: React.ReactNode;
-}
-
-const DialogPortal = ({ children }: DialogPortalProps) => {
-  const { open, onOpenChange } = useDialogContext();
-
+function DialogOverlayNative({
+  className,
+  children,
+  ...props
+}: DialogPrimitive.OverlayProps & {
+  ref?: React.RefObject<DialogPrimitive.OverlayRef>;
+  children?: React.ReactNode;
+}) {
   return (
-    <Modal
-      visible={open}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => onOpenChange(false)}
-      statusBarTranslucent={true}
+    <DialogPrimitive.Overlay
+      style={StyleSheet.absoluteFill}
+      className={cn('flex bg-black/80 justify-center items-center p-2', className)}
+      {...props}
     >
-      {children}
-    </Modal>
-  );
-};
-
-interface DialogOverlayProps extends ViewProps {
-  className?: string;
-}
-
-const DialogOverlay = React.forwardRef<View, DialogOverlayProps>(
-  ({ className, children, ...props }, ref) => {
-    const { onOpenChange } = useDialogContext();
-
-    return (
-      <View
-        ref={ref}
-        className={cn(
-          'flex-1 bg-black/80 justify-center items-center p-4',
-          className
-        )}
-        style={{
-          minHeight: '100%',
-          width: '100%',
-        }}
-        onTouchStart={(e) => {
-          if (e.target === e.currentTarget) {
-            onOpenChange(false);
-          }
-        }}
-        {...props}
-      >
+      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)}>
         {children}
-      </View>
-    );
-  }
-);
-DialogOverlay.displayName = 'DialogOverlay';
-
-interface DialogContentProps extends ViewProps {
-  className?: string;
-  children: React.ReactNode;
+      </Animated.View>
+    </DialogPrimitive.Overlay>
+  );
 }
 
-const DialogContent = React.forwardRef<View, DialogContentProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <DialogPortal>
-        <DialogOverlay>
-          <Animated.View
-            ref={ref}
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            className={cn(
-              'bg-card p-6 rounded-lg shadow-lg w-full',
-              className
-            )}
-            style={{
-              maxWidth: 400,
-              maxHeight: '80%',
-              minWidth: 320,
-              width: Platform.OS === 'web' ? 400 : '90%',
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-            }}
-            {...props}
+const DialogOverlay = Platform.select({
+  web: DialogOverlayWeb,
+  default: DialogOverlayNative,
+});
+
+function DialogContent({
+  className,
+  children,
+  portalHost,
+  ...props
+}: DialogPrimitive.ContentProps & {
+  ref?: React.RefObject<DialogPrimitive.ContentRef>;
+  className?: string;
+  portalHost?: string;
+}) {
+  const { open } = DialogPrimitive.useRootContext();
+  return (
+    <DialogPortal hostName={portalHost}>
+      <DialogOverlay>
+        <DialogPrimitive.Content
+          className={cn(
+            'max-w-lg gap-4 border border-border web:cursor-default bg-background p-6 shadow-lg web:duration-200 rounded-lg',
+            open
+              ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
+              : 'web:animate-out web:fade-out-0 web:zoom-out-95',
+            className
+          )}
+          {...props}
+        >
+          {children}
+          <DialogPrimitive.Close
+            className={
+              'absolute right-4 top-4 p-0.5 web:group rounded-sm opacity-70 web:ring-offset-background web:transition-opacity web:hover:opacity-100 web:focus:outline-none web:focus:ring-2 web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
+            }
           >
-            <TextClassContext.Provider value="text-card-foreground">
-              {children}
-            </TextClassContext.Provider>
-          </Animated.View>
-        </DialogOverlay>
-      </DialogPortal>
-    );
-  }
-);
-DialogContent.displayName = 'DialogContent';
-
-interface DialogHeaderProps extends ViewProps {
-  className?: string;
+            <X
+              size={Platform.OS === 'web' ? 16 : 18}
+              className={cn('text-muted-foreground', open && 'text-accent-foreground')}
+            />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogOverlay>
+    </DialogPortal>
+  );
 }
 
-const DialogHeader = React.forwardRef<View, DialogHeaderProps>(
-  ({ className, ...props }, ref) => (
-    <View
-      ref={ref}
-      className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)}
-      {...props}
-    />
-  )
-);
-DialogHeader.displayName = 'DialogHeader';
-
-interface DialogFooterProps extends ViewProps {
-  className?: string;
+function DialogHeader({ className, ...props }: ViewProps) {
+  return (
+    <View className={cn('flex flex-col gap-1.5 text-center sm:text-left', className)} {...props} />
+  );
 }
 
-const DialogFooter = React.forwardRef<View, DialogFooterProps>(
-  ({ className, ...props }, ref) => (
+function DialogFooter({ className, ...props }: ViewProps) {
+  return (
     <View
-      ref={ref}
-      className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
+      className={cn('flex flex-col-reverse sm:flex-row sm:justify-end gap-2', className)}
       {...props}
     />
-  )
-);
-DialogFooter.displayName = 'DialogFooter';
-
-interface DialogTitleProps extends ViewProps {
-  className?: string;
+  );
 }
 
-const DialogTitle = React.forwardRef<View, DialogTitleProps>(
-  ({ className, ...props }, ref) => (
-    <View
-      ref={ref}
-      className={cn('text-lg font-semibold leading-none tracking-tight', className)}
+function DialogTitle({
+  className,
+  ...props
+}: DialogPrimitive.TitleProps & {
+  ref?: React.RefObject<DialogPrimitive.TitleRef>;
+}) {
+  return (
+    <DialogPrimitive.Title
+      className={cn(
+        'text-lg native:text-xl text-foreground font-semibold leading-none tracking-tight',
+        className
+      )}
       {...props}
     />
-  )
-);
-DialogTitle.displayName = 'DialogTitle';
-
-interface DialogDescriptionProps extends ViewProps {
-  className?: string;
+  );
 }
 
-const DialogDescription = React.forwardRef<View, DialogDescriptionProps>(
-  ({ className, ...props }, ref) => (
-    <View
-      ref={ref}
-      className={cn('text-sm text-muted-foreground', className)}
+function DialogDescription({
+  className,
+  ...props
+}: DialogPrimitive.DescriptionProps & {
+  ref?: React.RefObject<DialogPrimitive.DescriptionRef>;
+}) {
+  return (
+    <DialogPrimitive.Description
+      className={cn('text-sm native:text-base text-muted-foreground', className)}
       {...props}
     />
-  )
-);
-DialogDescription.displayName = 'DialogDescription';
+  );
+}
 
 export {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,

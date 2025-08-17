@@ -17,7 +17,7 @@ const StatusIndicator = ({ status, size = 'md', className }: StatusIndicatorProp
 
   const statusClasses = {
     active: 'bg-success animate-pulse-glow',
-    inactive: 'bg-muted-foreground',
+    inactive: 'bg-muted-foreground animate-none',
     pending: 'bg-warning animate-pulse',
     error: 'bg-destructive animate-pulse'
   };

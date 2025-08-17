@@ -1,20 +1,16 @@
 import { useContext, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { Check } from '~/lib/icons/Check';
 import { Save } from '~/lib/icons/Save';
-import { objectToArrayPresets } from '../apiTypes/list_presets';
-import { ConfigContext } from './ConfigProvider';
-import { useApiUrl } from '../apiUrl/ApiUrlProvider';
 import Loader from '../Loader';
+import { ConfigContext } from './ConfigProvider';
 
 export default function SaveButton({ presetId }: { presetId: string }) {
-    const { config, setUpdate, savePreset } = useContext(ConfigContext)
-    const preset = config.get(presetId)
+    const { setUpdate, savePreset } = useContext(ConfigContext)
     const [isSaving, setIsSaving] = useState(false)
     const showSaved = useSharedValue(0)
-    const apiUrl = useApiUrl()
 
 
     const saveButtonStyle = useAnimatedStyle(() => {
