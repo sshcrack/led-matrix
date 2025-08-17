@@ -11,6 +11,10 @@
 #include "shared/matrix/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
 
+#ifdef ENABLE_EMULATOR
+#include "emulator.h"
+#endif
+
 using namespace std;
 using namespace spdlog;
 
@@ -108,6 +112,9 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 scene->offscreen_canvas = matrix->SwapOnVSync(scene->offscreen_canvas, 1);
             }
 
+#ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+        #endif
         }
 
         spdlog::debug("Exiting scene: {}", scene->get_name());
