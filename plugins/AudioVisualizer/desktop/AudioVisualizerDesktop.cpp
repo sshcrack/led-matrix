@@ -34,9 +34,7 @@ int PortFilter(ImGuiInputTextCallbackData *data) {
 
 void AudioVisualizerDesktop::render() {
     ImPlot::SetCurrentContext(implotContext);
-#ifndef _WIN32
-    ImGui::Text("This plugin isn't supported for linux. Loopback recording is not available in this OS.");
-#else
+
     addConnectionSettings();
     addAudioSettings();
     addAnalysisSettings();
@@ -44,20 +42,17 @@ void AudioVisualizerDesktop::render() {
     addBeatDetectionSettings();
 
     addVisualizer();
-#endif
 }
 
 void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> config) {
     if (config.has_value())
         cfg = config.value();
 
-#ifdef _WIN32
     if (audioProcessor == nullptr)
         audioProcessor = std::make_unique<AudioProcessor>(cfg);
 
     if (recorder == nullptr)
         recorder = std::make_unique<AudioRecorder::Recorder>();
-#endif
 
     // Configure beat detector with loaded config
     if (beatDetector) {
@@ -170,6 +165,11 @@ void AudioVisualizerDesktop::addDeviceSettings() {
     if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
         for (const auto &device: devices) {
             std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
+            #ifndef _WIN32
+                if(device.name == "pipewire") {
+                    deviceNameWithId = "PipeWire (causes audio issues, not recommended)##" + std::to_string(device.index);
+                }
+            #endif
             if (ImGui::Selectable(deviceNameWithId.c_str())) {
                 cfg.deviceName = device.name;
                 recorder->stopRecording();
@@ -357,10 +357,6 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGu
 
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
-#ifndef _WIN32
-    if constexpr (true)
-        return std::nullopt;
-#else
     if (sceneName != "audio_spectrum")
         return std::nullopt;
 
@@ -426,5 +422,4 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
                                                              {
                                                                  delete (CompactAudioPacket *)packet;
                                                              });
-#endif
 }
