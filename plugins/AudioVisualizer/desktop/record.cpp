@@ -99,7 +99,7 @@ namespace AudioRecorder
         double rate = info->defaultSampleRate;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = info->maxInputChannels;
+        inputParams.channelCount = std::min(info->maxInputChannels, 1);
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
