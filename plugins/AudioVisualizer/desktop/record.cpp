@@ -95,11 +95,11 @@ namespace AudioRecorder
             return false;
         }
 
-        // Find a supported sample rate
-        double rate = info->defaultSampleRate;
+        // Fix at 48000 Hz for now
+        double rate = 48000;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = std::min(info->maxInputChannels, 1);
+        inputParams.channelCount = 1;
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
