@@ -20,12 +20,14 @@ interface QuickActionsCardProps {
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ isWeb, updateStatus, setRetry }) => (
     <Card className="w-full shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
         <CardHeader className="pb-4">
-            <CardTitle className="flex flex-row items-center gap-3">
-                <View className="p-2 bg-info/10 rounded-full">
-                    <Activity className="text-info" width={20} height={20} />
+            <View className='w-full flex flex-row items-center justify-between'>
+                <View className="flex flex-row items-center gap-3">
+                    <View className="p-2 bg-info/10 rounded-full">
+                        <Activity className="text-info" width={20} height={20} />
+                    </View>
+                    <Text className="text-xl font-bold">Quick Actions</Text>
                 </View>
-                <Text className="text-xl font-bold">Quick Actions</Text>
-            </CardTitle>
+            </View>
         </CardHeader>
         <CardContent className="pt-0">
             <View className={`flex flex-row gap-3 ${isWeb ? 'justify-start' : 'justify-between'}`}>
@@ -57,12 +59,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ isWeb, updateStatus
                         </View>
                     </Button>
                 </Link>
-                <Button variant="outline" className="flex-1 max-w-48 h-16" onPress={setRetry}>
-                    <View className="flex flex-row items-center gap-2">
-                        <Settings className="text-foreground" width={20} height={20} />
-                        <Text className="text-sm font-medium">Refresh</Text>
-                    </View>
-                </Button>
             </View>
         </CardContent>
     </Card>
