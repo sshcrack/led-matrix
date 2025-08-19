@@ -10,7 +10,6 @@ web-build/
 build-*.apk
 
 # Native
-android
 *.orig.*
 *.jks
 *.p8
