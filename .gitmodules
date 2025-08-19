@@ -1,6 +1,3 @@
-[submodule "shared/PicoSHA2"]
-	path = shared_matrix/PicoSHA2
-	url = https://github.com/okdshin/PicoSHA2
 [submodule "thirdparty/rpi-rgb-led-matrix"]
 	path = thirdparty/rpi-rgb-led-matrix
 	url = https://github.com/sshcrack/rpi-rgb-led-matrix.git

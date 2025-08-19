@@ -1,7 +1,14 @@
 {
     "debug.onTaskErrors": "abort",
     "lldb.verboseLogging": true,
-    "git.ignoreSubmodules": true,
+    "git.ignoredRepositories": [
+        "thirdparty/rpi-rgb-led-matrix",
+        "thirdparty/traypp",
+        "plugins/AudioVisualizer/thirdparty/implot",
+        "plugins/AudioVisualizer/thirdparty/portaudio",
+        "plugins/Shadertoy/thirdparty/shadertoy-headless",
+        "scripts/rpi_vm/pi-ci-larger"
+    ],
     "files.associations": {
         "*.scss": "scss",
         "optional": "cpp",
