@@ -117,7 +117,7 @@ export default function AddPresetButton({ presetNames, setRetry }: { presetNames
                                     <Plus className="text-primary" width={24} height={24} />
                                 )}
                             </View>
-                            <Text className="text-lg font-semibold text-primary">
+                            <Text className="text-lg font-bold text-primary">
                                 Add Preset
                             </Text>
                             <Text className="text-sm text-foreground text-center">
