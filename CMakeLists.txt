@@ -259,8 +259,8 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
 
     # Install React Native dependencies
     add_custom_target(react_native_install ALL
-        COMMAND ${CMAKE_COMMAND} -E env bash -c "yes | pnpm install --frozen-lockfile"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
+        COMMAND /bin/bash -c ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Installing React Native dependencies"
     )
 
