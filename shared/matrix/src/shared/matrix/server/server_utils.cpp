@@ -1,4 +1,5 @@
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/server/common.h"
 #include "restinio/all.hpp"
 #include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
@@ -16,9 +17,9 @@ namespace Server {
         auto response = req->create_response(std::move(status))
                 .append_header_date_field()
                 .append_header(http_field::content_type, "application/json; charset=utf-8");
-        
+
         add_cors_headers(response);
-        
+
         return response.set_body(to_string(j)).done();
     }
 
@@ -34,12 +35,17 @@ namespace Server {
 #ifdef ENABLE_CORS
         auto response = req->create_response(status_ok())
                 .append_header_date_field();
-        
+
         add_cors_headers(response);
-        
+
         return response.done();
 #else
         return req->create_response(status_method_not_allowed()).done();
 #endif
+    }
+
+    [[nodiscard]] bool is_desktop_connected() {
+        std::shared_lock lock(registryMutex);
+        return !registry.empty();
     }
 }
