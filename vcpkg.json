@@ -23,7 +23,7 @@
       ]
     },
     "desktop": {
-      "description": "Dependencies needed for the desktop application. The portaudio/fftw3 dependency is only needed for the AudioVisualizer plugin.",
+      "description": "Dependencies needed for the desktop application.",
       "dependencies": [
         {
           "name": "hello-imgui",
@@ -47,16 +47,7 @@
     "shadertoy-desktop": {
       "description": "Dependencies needed by shadertoy-headless",
       "dependencies": [
-        "glfw3",
-        "fmt",
-        "glew",
-        "cpp-httplib",
-        "ms-gsl",
-        "magic-enum",
-        "cpp-base64",
-        "nlohmann-json",
-        "stb",
-        "openssl"
+        "shadertoy-headless"
       ]
     }
   },

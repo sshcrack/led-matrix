@@ -1,5 +1,9 @@
 #include "MazeGameScene.h"
 
+#ifdef ENABLE_EMULATOR
+#include "emulator.h"
+#endif
+
 namespace Scenes {
     MazeGameScene::MazeGameScene() : Scene() {
         rng = std::mt19937(std::random_device()());
@@ -62,6 +66,10 @@ namespace Scenes {
 
         if (solving_complete) {
             offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
+
+        #ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+        #endif
             SleepMillis(2000);
             return false;
         }

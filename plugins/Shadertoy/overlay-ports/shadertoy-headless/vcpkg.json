@@ -1,0 +1,27 @@
+{
+    "name": "shadertoy-headless",
+    "version": "1.0.1",
+    "description": "This fork turns this application into a library for getting the video output of shadertoys without a window.",
+    "homepage": "https://github.com/sshcrack/shadertoy-headless",
+    "license": "Apache-2.0",
+    "dependencies": [
+        "glfw3",
+        "fmt",
+        "glew",
+        "cpp-httplib",
+        "ms-gsl",
+        "magic-enum",
+        "cpp-base64",
+        "nlohmann-json",
+        "stb",
+        "openssl",
+        {
+            "name": "vcpkg-cmake",
+            "host": true
+        },
+        {
+            "name": "vcpkg-cmake-config",
+            "host": true
+        }
+    ]
+}
