@@ -29,4 +29,6 @@ namespace Server {
 
     // Handle CORS preflight requests
     restinio::request_handling_status_t handle_cors_preflight(const restinio::request_handle_t &req);
+
+    [[nodiscard]] bool is_desktop_connected();
 }

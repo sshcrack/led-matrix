@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     Constants::global_update_manager = new Update::UpdateManager(config);
     Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
-    
+
     // Check for completed updates from previous session
     debug("Checking for completed updates...");
     Constants::global_update_manager->check_and_handle_update_completion();
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
             settings.address(host);
             settings.request_handler(std::move(router));
             settings.cleanup_func([]
-                                  { 
+                                  {
             std::unique_lock lock(Server::registryMutex);
             Server::registry.clear(); });
         }};

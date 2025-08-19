@@ -7,8 +7,10 @@
 using namespace Scenes;
 
 // Helper function to convert HSV to RGB
-void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
-    if (s <= 0.0f) {
+void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b)
+{
+    if (s <= 0.0f)
+    {
         r = g = b = static_cast<uint8_t>(v * 255);
         return;
     }
@@ -20,62 +22,76 @@ void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
     float q = v * (1.0f - s * f);
     float t = v * (1.0f - s * (1.0f - f));
 
-    switch (hi) {
-        case 0: r = v * 255;
-            g = t * 255;
-            b = p * 255;
-            break;
-        case 1: r = q * 255;
-            g = v * 255;
-            b = p * 255;
-            break;
-        case 2: r = p * 255;
-            g = v * 255;
-            b = t * 255;
-            break;
-        case 3: r = p * 255;
-            g = q * 255;
-            b = v * 255;
-            break;
-        case 4: r = t * 255;
-            g = p * 255;
-            b = v * 255;
-            break;
-        default: r = v * 255;
-            g = p * 255;
-            b = q * 255;
-            break;
+    switch (hi)
+    {
+    case 0:
+        r = v * 255;
+        g = t * 255;
+        b = p * 255;
+        break;
+    case 1:
+        r = q * 255;
+        g = v * 255;
+        b = p * 255;
+        break;
+    case 2:
+        r = p * 255;
+        g = v * 255;
+        b = t * 255;
+        break;
+    case 3:
+        r = p * 255;
+        g = q * 255;
+        b = v * 255;
+        break;
+    case 4:
+        r = t * 255;
+        g = p * 255;
+        b = v * 255;
+        break;
+    default:
+        r = v * 255;
+        g = p * 255;
+        b = q * 255;
+        break;
     }
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> AudioSpectrumSceneWrapper::create() {
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> AudioSpectrumSceneWrapper::create()
+{
     return {
-        new AudioSpectrumScene(), [](Scenes::Scene *scene) {
+        new AudioSpectrumScene(), [](Scenes::Scene *scene)
+        {
             delete scene;
-        }
-    };
+        }};
 }
 
-AudioSpectrumScene::AudioSpectrumScene() : plugin(nullptr), last_timestamp(0) {
+AudioSpectrumScene::AudioSpectrumScene() : plugin(nullptr), last_timestamp(0)
+{
     // Find the AudioVisualizer plugin
     auto plugins = Plugins::PluginManager::instance()->get_plugins();
-    for (auto &p: plugins) {
-        if (auto av = dynamic_cast<AudioVisualizer *>(p)) {
+    for (auto &p : plugins)
+    {
+        if (auto av = dynamic_cast<AudioVisualizer *>(p))
+        {
             plugin = av;
             break;
         }
     }
 
-    if (!plugin) {
+    if (!plugin)
+    {
         spdlog::error("AudioSpectrumScene: Failed to find AudioVisualizer plugin");
     }
 }
 
-string AudioSpectrumScene::get_name() const {
+string AudioSpectrumScene::get_name() const
+{
     return "audio_spectrum";
 }
 
-void AudioSpectrumScene::register_properties() {
+void AudioSpectrumScene::register_properties()
+{
     add_property(bar_width);
     add_property(gap_width);
     add_property(mirror_display);
@@ -93,24 +109,32 @@ void AudioSpectrumScene::register_properties() {
     add_property(rotation_speed);
 }
 
-void AudioSpectrumScene::initialize_if_needed(int num_bands) {
-    if (peak_positions.size() != num_bands) {
+void AudioSpectrumScene::initialize_if_needed(int num_bands)
+{
+    if (peak_positions.size() != num_bands)
+    {
         peak_positions.resize(num_bands, 0.0f);
     }
 }
 
-uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float intensity, const int num_bands) const {
-    if (gradient_mode->get()) {
+uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float intensity, const int num_bands) const
+{
+    if (gradient_mode->get())
+    {
         // Use gradient coloring
         float position = static_cast<float>(band_index) / num_bands;
         return get_gradient_color(position, intensity);
-    } else if (rainbow_colors->get()) {
+    }
+    else if (rainbow_colors->get())
+    {
         // Generate rainbow color based on band index
         const float hue = static_cast<float>(band_index) / num_bands * 360.0f;
         uint8_t r, g, b;
         hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
         return (r << 16) | (g << 8) | b;
-    } else {
+    }
+    else
+    {
         // Use base color with intensity
         const rgb_matrix::Color color = base_color->get();
         const uint8_t r = color.r * intensity;
@@ -120,35 +144,44 @@ uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float int
     }
 }
 
-uint32_t AudioSpectrumScene::get_gradient_color(float position, float intensity) const {
+uint32_t AudioSpectrumScene::get_gradient_color(float position, float intensity) const
+{
     const auto color1 = gradient_color1->get();
     const auto color2 = gradient_color2->get();
-    
+
     uint8_t r, g, b;
-    
-    if (smooth_gradient->get()) {
+
+    if (smooth_gradient->get())
+    {
         // Smooth interpolation between colors
         r = static_cast<uint8_t>((color1.r * (1.0f - position) + color2.r * position) * intensity);
         g = static_cast<uint8_t>((color1.g * (1.0f - position) + color2.g * position) * intensity);
         b = static_cast<uint8_t>((color1.b * (1.0f - position) + color2.b * position) * intensity);
-    } else {
+    }
+    else
+    {
         // Hard transition at midpoint
-        if (position < 0.5f) {
+        if (position < 0.5f)
+        {
             r = color1.r * intensity;
             g = color1.g * intensity;
             b = color1.b * intensity;
-        } else {
+        }
+        else
+        {
             r = color2.r * intensity;
             g = color2.g * intensity;
             b = color2.b * intensity;
         }
     }
-    
+
     return (r << 16) | (g << 8) | b;
 }
 
-bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
-    if (!plugin) {
+bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
+{
+    if (!plugin)
+    {
         spdlog::info("AudioSpectrumScene: Plugin not found, cannot render");
         return false;
     }
@@ -156,7 +189,8 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     auto frame_time = frameTimer.tick();
     auto audio_data = plugin->get_audio_data();
 
-    if (audio_data.empty()) {
+    if (audio_data.empty())
+    {
         // No audio data yet, clear the display
         spdlog::error("AudioSpectrumScene: Audio Data is empty, cannot render");
         offscreen_canvas->Clear();
@@ -175,19 +209,24 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
 
     const int width = matrix->width();
     const int height = matrix->height();
-    
+
     // Update rotation angle if rotation is enabled
-    if (rotate_visualization->get()) {
-        rotation_angle += 0.01f * rotation_speed->get();
-        if (rotation_angle > 2 * M_PI) rotation_angle -= 2 * M_PI;
+    if (rotate_visualization->get())
+    {
+        rotation_angle += 0.001f * rotation_speed->get();
+        if (rotation_angle > 2 * M_PI)
+            rotation_angle -= 2 * M_PI;
     }
 
     // Handle special visualization modes
     DisplayMode mode = display_mode->get().get();
-    if (mode == DisplayMode::CIRCLE) {
+    if (mode == DisplayMode::CIRCLE)
+    {
         render_circle_visualization(matrix, audio_data);
         return true;
-    } else if (mode == DisplayMode::SPIRAL) {
+    }
+    else if (mode == DisplayMode::SPIRAL)
+    {
         render_spiral_visualization(matrix, audio_data);
         return true;
     }
@@ -199,86 +238,102 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     const int num_bands = std::min(static_cast<int>(audio_data.size()), max_bands);
 
     // Update peak positions (falling dots)
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         float band_value = audio_data[i] / 255.0f;
-        
+
         // Update peak positions (falling dots)
-        if (band_value > peak_positions[i]) {
+        if (band_value > peak_positions[i])
+        {
             peak_positions[i] = band_value;
-        } else if (falling_dots->get()) {
+        }
+        else if (falling_dots->get())
+        {
             peak_positions[i] -= dot_fall_speed->get() * frame_time.deltaFrame.count();
             peak_positions[i] = std::max(0.0f, peak_positions[i]);
         }
     }
 
     // Draw the spectrum
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         int x;
-        
-        // Calculate x position based on display mode
-        switch(display_mode->get().get()) {
-            case DisplayMode::CENTER_OUT:
-                {
-                    int half_width = width / 2;
-                    int half_bands = num_bands / 2;
-                    if (i < half_bands) {
-                        // Left side
-                        x = half_width - (i + 1) * total_width_per_band;
-                    } else {
-                        // Right side
-                        x = half_width + (i - half_bands) * total_width_per_band;
-                    }
-                }
-                break;
-                
-            case DisplayMode::EDGES_TO_CENTER:
-                {
-                    int half_bands = num_bands / 2;
-                    if (i < half_bands) {
-                        // Left side (starting from edge)
-                        x = i * total_width_per_band;
-                    } else {
-                        // Right side (starting from edge)
-                        x = width - 1 - ((i - half_bands) + 1) * total_width_per_band;
-                    }
-                }
-                break;
-                
-            case DisplayMode::NORMAL: // Normal (left to right)
-            default:
-                x = i * total_width_per_band;
-                break;
-        }
-        
         float band_value = audio_data[i] / 255.0f;
 
         // Calculate bar height based on band value
         int bar_height = static_cast<int>(band_value * height);
         bar_height = std::min(bar_height, height);
 
-        // Draw the bar
-        for (int y = 0; y < bar_height; y++) {
-            // Calculate color intensity based on height
-            float intensity = static_cast<float>(height - y) / height;
-            uint32_t color = get_bar_color(i, intensity, num_bands);
+        auto display_mode = this->display_mode->get().get();
 
-            uint8_t r = (color >> 16) & 0xFF;
-            uint8_t g = (color >> 8) & 0xFF;
-            uint8_t b = color & 0xFF;
+        // Calculate x position based on display mode
+        switch (display_mode)
+        {
+        case DisplayMode::EDGES_TO_CENTER:
+        {
+            int half_bands = num_bands / 2;
+            if (i < half_bands)
+            {
+                // Left side (starting from edge)
+                x = i * total_width_per_band;
+            }
+            else
+            {
+                // Right side (starting from edge)
+                x = width - 1 - ((i - half_bands) + 1) * total_width_per_band;
+            }
+        }
+        break;
 
-            // Draw the main bar
-            for (int w = 0; w < bar_width->get(); w++) {
-                offscreen_canvas->SetPixel(x + w, height - 1 - y, r, g, b);
+        case DisplayMode::CENTER_OUT:
+        case DisplayMode::NORMAL: // Normal (left to right)
+        default:
+            x = i * total_width_per_band;
+            break;
+        }
 
-                // Mirror if enabled, but only in normal mode
-                if (mirror_display->get() && display_mode->get().get() == DisplayMode::NORMAL) {
-                    offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
+        auto draw_bar = [&](int y_start, int y_end, int step)
+        {
+            for (int y = y_start; y != y_end; y += step)
+            {
+                if (y < 0 || y >= height)
+                    continue;
+
+                float intensity = static_cast<float>(height - y) / height;
+                uint32_t color = get_bar_color(i, intensity, num_bands);
+
+                uint8_t r = (color >> 16) & 0xFF;
+                uint8_t g = (color >> 8) & 0xFF;
+                uint8_t b = color & 0xFF;
+
+                for (int w = 0; w < bar_width->get(); w++)
+                {
+                    offscreen_canvas->SetPixel(x + w, height - 1 - y, r, g, b);
+
+                    // Mirror if enabled, but only in normal mode
+                    if (mirror_display->get() && display_mode == DisplayMode::NORMAL)
+                    {
+                        offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
+                    }
                 }
             }
+        };
+
+        if (display_mode != DisplayMode::CENTER_OUT)
+        {
+            draw_bar(0, bar_height, 1);
+        }
+        else
+        {
+            bar_height /= 2;
+            int half_height = height / 2;
+            draw_bar(half_height, half_height + bar_height, 1);
+            draw_bar(half_height - 1, half_height - bar_height - 1, -1);
         }
 
         // Draw the peak dot
-        if (falling_dots->get()) {
+        if (falling_dots->get() && display_mode != DisplayMode::CENTER_OUT)
+        {
             int peak_y = static_cast<int>(peak_positions[i] * height);
             peak_y = std::min(peak_y, height - 1);
 
@@ -287,13 +342,9 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
             uint8_t g = (peak_color >> 8) & 0xFF;
             uint8_t b = peak_color & 0xFF;
 
-            for (int w = 0; w < bar_width->get(); w++) {
+            for (int w = 0; w < bar_width->get(); w++)
+            {
                 offscreen_canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
-
-                // Mirror if enabled, but only in normal mode
-                if (mirror_display->get() && display_mode->get().get() == DisplayMode::NORMAL) {
-                    offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - peak_y, r, g, b);
-                }
             }
         }
     }
@@ -301,148 +352,170 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix) {
     return true;
 }
 
-void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data) {
+void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data)
+{
     const int width = matrix->width();
     const int height = matrix->height();
     const int center_x = width / 2;
     const int center_y = height / 2;
     const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
-    
+
     const int num_bands = std::min(static_cast<int>(audio_data.size()), 64); // Limit for performance
     const float angle_step = 2 * M_PI / num_bands;
-    
+
     initialize_if_needed(num_bands);
-    
+
     // Update peak positions
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         float band_value = audio_data[i] / 255.0f;
-        
-        if (band_value > peak_positions[i]) {
+
+        if (band_value > peak_positions[i])
+        {
             peak_positions[i] = band_value;
-        } else if (falling_dots->get()) {
+        }
+        else if (falling_dots->get())
+        {
             peak_positions[i] -= dot_fall_speed->get() * 0.016f; // Assume 60 FPS
             peak_positions[i] = std::max(0.0f, peak_positions[i]);
         }
     }
-    
+
     // Draw circular spectrum
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         float angle = i * angle_step + rotation_angle;
         float band_value = audio_data[i] / 255.0f;
-        
+
         // Draw expanding radial line from center outward
         float line_length = band_value * max_radius;
         int steps = static_cast<int>(line_length);
-        
-        for (int step = 0; step < steps; step++) {
+
+        for (int step = 0; step < steps; step++)
+        {
             float radius = static_cast<float>(step);
             // Calculate line width that expands outward to reduce empty space
             float width_factor = 1.0f + (radius / max_radius) * 2.0f; // Expands from 1 to 3 pixels wide
             int line_width = static_cast<int>(width_factor);
-            
-            for (int w = -line_width/2; w <= line_width/2; w++) {
+
+            for (int w = -line_width / 2; w <= line_width / 2; w++)
+            {
                 float offset_angle = angle + (w * 0.05f); // Small angular offset for width
                 auto [x, y] = polar_to_cartesian(radius, offset_angle, center_x, center_y);
-                
-                if (x >= 0 && x < width && y >= 0 && y < height) {
+
+                if (x >= 0 && x < width && y >= 0 && y < height)
+                {
                     float intensity = 1.0f - (radius / max_radius) * 0.3f; // Less fade for better visibility
                     uint32_t color = get_bar_color(i, intensity, num_bands);
-                    
+
                     uint8_t r = (color >> 16) & 0xFF;
                     uint8_t g = (color >> 8) & 0xFF;
                     uint8_t b = color & 0xFF;
-                    
+
                     offscreen_canvas->SetPixel(x, y, r, g, b);
                 }
             }
         }
-        
+
         // Draw peak dot
-        if (falling_dots->get()) {
+        if (falling_dots->get())
+        {
             float peak_radius = peak_positions[i] * max_radius;
             auto [peak_x, peak_y] = polar_to_cartesian(peak_radius, angle, center_x, center_y);
-            
-            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height) {
+
+            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height)
+            {
                 uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
                 uint8_t r = (peak_color >> 16) & 0xFF;
                 uint8_t g = (peak_color >> 8) & 0xFF;
                 uint8_t b = peak_color & 0xFF;
-                
+
                 offscreen_canvas->SetPixel(peak_x, peak_y, r, g, b);
             }
         }
     }
 }
 
-void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data) {
+void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data)
+{
     const int width = matrix->width();
     const int height = matrix->height();
     const int center_x = width / 2;
     const int center_y = height / 2;
     const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
-    
+
     const int num_bands = std::min(static_cast<int>(audio_data.size()), 128);
     const float spiral_turns = 3.0f; // Number of spiral turns
     const float angle_step = (2 * M_PI * spiral_turns) / num_bands;
-    
+
     initialize_if_needed(num_bands);
-    
+
     // Update peak positions
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         float band_value = audio_data[i] / 255.0f;
-        
-        if (band_value > peak_positions[i]) {
+
+        if (band_value > peak_positions[i])
+        {
             peak_positions[i] = band_value;
-        } else if (falling_dots->get()) {
+        }
+        else if (falling_dots->get())
+        {
             peak_positions[i] -= dot_fall_speed->get() * 0.016f;
             peak_positions[i] = std::max(0.0f, peak_positions[i]);
         }
     }
-    
+
     // Draw spiral spectrum
-    for (int i = 0; i < num_bands; i++) {
+    for (int i = 0; i < num_bands; i++)
+    {
         float angle = i * angle_step + rotation_angle;
         float base_radius = (static_cast<float>(i) / num_bands) * max_radius;
         float band_value = audio_data[i] / 255.0f;
-        
+
         // Draw line outward from spiral path
         float line_length = band_value * max_radius * 0.3f; // Shorter lines for spiral
         int steps = static_cast<int>(line_length);
-        
-        for (int step = 0; step < steps; step++) {
+
+        for (int step = 0; step < steps; step++)
+        {
             float radius = base_radius + static_cast<float>(step);
             auto [x, y] = polar_to_cartesian(radius, angle, center_x, center_y);
-            
-            if (x >= 0 && x < width && y >= 0 && y < height) {
+
+            if (x >= 0 && x < width && y >= 0 && y < height)
+            {
                 float intensity = 1.0f - (static_cast<float>(step) / line_length) * 0.3f;
                 uint32_t color = get_bar_color(i, intensity, num_bands);
-                
+
                 uint8_t r = (color >> 16) & 0xFF;
                 uint8_t g = (color >> 8) & 0xFF;
                 uint8_t b = color & 0xFF;
-                
+
                 offscreen_canvas->SetPixel(x, y, r, g, b);
             }
         }
-        
+
         // Draw peak dot
-        if (falling_dots->get()) {
+        if (falling_dots->get())
+        {
             float peak_radius = base_radius + peak_positions[i] * max_radius * 0.3f;
             auto [peak_x, peak_y] = polar_to_cartesian(peak_radius, angle, center_x, center_y);
-            
-            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height) {
+
+            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height)
+            {
                 uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
                 uint8_t r = (peak_color >> 16) & 0xFF;
                 uint8_t g = (peak_color >> 8) & 0xFF;
                 uint8_t b = peak_color & 0xFF;
-                
+
                 offscreen_canvas->SetPixel(peak_x, peak_y, r, g, b);
             }
         }
     }
 }
 
-std::pair<int, int> AudioSpectrumScene::polar_to_cartesian(float radius, float angle, int center_x, int center_y) const {
+std::pair<int, int> AudioSpectrumScene::polar_to_cartesian(float radius, float angle, int center_x, int center_y) const
+{
     int x = static_cast<int>(center_x + radius * cos(angle));
     int y = static_cast<int>(center_y + radius * sin(angle));
     return {x, y};
