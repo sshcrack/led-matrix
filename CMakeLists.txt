@@ -49,6 +49,12 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
             list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
         endif()
     endif()
+
+    set(PLUGIN_DIR "${CMAKE_SOURCE_DIR}/plugins/${PLUGIN_NAME}")
+    if(EXISTS "${PLUGIN_DIR}/overlay-ports/")
+        list(APPEND VCPKG_OVERLAY_PORTS "${PLUGIN_DIR}/overlay-ports/")
+    endif()
+
 endforeach()
 
 project(main VERSION 1.11.13)

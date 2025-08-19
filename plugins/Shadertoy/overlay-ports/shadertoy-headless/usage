@@ -1,0 +1,4 @@
+shadertoy-headless provides CMake targets:
+
+find_package(shadertoy-headless CONFIG REQUIRED)
+target_link_libraries(main PRIVATE shadertoy-headless::shadertoy-headless)

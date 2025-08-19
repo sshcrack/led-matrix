@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <shadertoy/NodeEditor/PipelineEditor.hpp>
+#include <shadertoy/PipelineEditor.hpp>
 #include <shared/desktop/glfw.h>
 
 #include "CanvasPacket.h"
