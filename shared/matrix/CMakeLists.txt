@@ -41,7 +41,8 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
+find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
 
 

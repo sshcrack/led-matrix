@@ -35,9 +35,6 @@ register_plugin(AudioVisualizer
 )
 
 if(ENABLE_DESKTOP)
-        # Setting up PortAudio
-
-        # Make lib shared
         set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
         set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
 
@@ -57,8 +54,8 @@ if(ENABLE_DESKTOP)
 
 
 
-        add_subdirectory(thirdparty)
-        target_link_libraries(AudioVisualizer PRIVATE implot)
+        find_package(implot CONFIG REQUIRED)
+        target_link_libraries(AudioVisualizer PRIVATE implot::implot)
 
         find_package(FFTW3f CONFIG REQUIRED)
         target_link_libraries(AudioVisualizer PRIVATE FFTW3::fftw3f)

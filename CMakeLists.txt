@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 set(VCPKG_APPLOCAL_DEPS ON)
+set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
@@ -49,6 +50,12 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
             list(APPEND VCPKG_MANIFEST_FEATURES "${FEATURE_NAME}")
         endif()
     endif()
+
+    set(PLUGIN_DIR "${CMAKE_SOURCE_DIR}/plugins/${PLUGIN_NAME}")
+    if(EXISTS "${PLUGIN_DIR}/overlay-ports/")
+        list(APPEND VCPKG_OVERLAY_PORTS "${PLUGIN_DIR}/overlay-ports/")
+    endif()
+
 endforeach()
 
 project(main VERSION 1.11.13)
@@ -103,14 +110,6 @@ else()
     file(GLOB_RECURSE SOURCES
         src_matrix/*.c*
     )
-    add_subdirectory(thirdparty/rpi-rgb-led-matrix)
-
-    install(TARGETS rpi-rgb-led-matrix
-        EXPORT rpi-rgb-led-matrixTargets
-        LIBRARY DESTINATION "."
-        ARCHIVE DESTINATION "."
-        RUNTIME DESTINATION "."
-    )
 endif()
 
 
@@ -135,10 +134,10 @@ if(ENABLE_DESKTOP)
         target_link_libraries(${PROJECT_NAME} PRIVATE ${DBUS_LIBRARIES})
     endif()
 
-    add_subdirectory(thirdparty/traypp)
-
+    find_package(tray CONFIG REQUIRED)
     find_package(hello-imgui CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray implot)
+    find_package(implot CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray::tray)
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
     )
@@ -214,9 +213,16 @@ else()
     find_package(cpr CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE rpi-rgb-led-matrix)
+    find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/include
+    )
+
+    install(FILES
+        "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib/librpi-rgb-led-matrix.so"
+        DESTINATION "."
     )
 endif()
 
@@ -324,7 +330,7 @@ if(NOT ENABLE_DESKTOP)
 
     # Install fonts to fonts directory
     install(FILES
-        "${CMAKE_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/fonts/7x13.bdf"
+        "${RPI_RGB_LED_MATRIX_FONTS_DIR}/7x13.bdf"
         DESTINATION "."
     )
 else()
