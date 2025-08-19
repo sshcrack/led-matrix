@@ -84,6 +84,12 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
 
+        /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
+        /// If this is true, the scene will only be rendered if the desktop application is running.
+        [[nodiscard]] virtual bool needs_desktop_app() const {
+            return false;  // Default implementation, can be overridden
+        }
+
         /// Set l_offscreen_canvas to nullptr if you are directly rendering onto the matrix.
         virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
 
