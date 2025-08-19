@@ -12,7 +12,7 @@
 #include <deque>
 #include <chrono>
 #include <mutex>
-#include "../../../thirdparty/implot/implot.h"
+#include <implot/implot.h>
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin
 {

@@ -1,0 +1,61 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..e410c93
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,54 @@
++cmake_minimum_required(VERSION 3.10)
++
++project(implot)
++
++include(GNUInstallDirs)
++
++# Find dependencies
++find_package(hello-imgui CONFIG REQUIRED)
++
++# Set sources and headers
++set(IMPLOT_HEADERS implot.h implot_internal.h)
++set(IMPLOT_SRC implot.cpp implot_items.cpp implot_demo.cpp)
++
++# Add the library
++add_library(implot STATIC ${IMPLOT_HEADERS} ${IMPLOT_SRC})
++
++# Link dependencies
++# (hello-imgui is required is found but not linked here; add if needed)
++target_link_libraries(implot PRIVATE hello-imgui::hello_imgui)
++
++target_compile_definitions(implot PUBLIC IMPLOT_DEBUG IMPLOT_DLL_EXPORT IMPLOT_BACKEND_ENABLE_OPENGL3 IMGUI_IMPL_OPENGL_LOADER_GLAD)
++
++# Include directories for build and install
++# (Assumes headers are in the root, adjust if in subdir)
++target_include_directories(implot PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
++
++# Install the library and headers
++install(TARGETS implot
++        EXPORT implot_targets
++        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
++        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
++        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
++
++install(FILES implot.h implot_internal.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
++
++# Export targets
++install(EXPORT implot_targets
++        FILE implot-targets.cmake
++        NAMESPACE implot::
++        DESTINATION share/implot)
++
++# Generate the config file in the binary dir
++file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/implot-config.cmake"
++"include(CMakeFindDependencyMacro)\n"
++"find_dependency(hello-imgui CONFIG REQUIRED)\n"
++"include(\"\${CMAKE_CURRENT_LIST_DIR}/implot-targets.cmake\")\n"
++)
++
++# Install the generated config file
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/implot-config.cmake"
++        DESTINATION share/implot)
+\ No newline at end of file

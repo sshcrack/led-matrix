@@ -64,8 +64,9 @@ function(register_plugin PLUGIN_NAME)
             unofficial::graphicsmagick::graphicsmagick
             magic_enum::magic_enum
         )
-        target_include_directories(${PLUGIN_NAME} PRIVATE ${RGB_HEADER_DIR})
-        target_link_libraries(${PLUGIN_NAME} PRIVATE rpi-rgb-led-matrix)
+
+        find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+        target_link_libraries(${PLUGIN_NAME} PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
     endif()
 
     if(${PLUGIN_NAME} STREQUAL "ExampleScenes")

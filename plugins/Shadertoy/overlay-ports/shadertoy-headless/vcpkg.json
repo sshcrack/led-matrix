@@ -1,6 +1,6 @@
 {
     "name": "shadertoy-headless",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "description": "This fork turns this application into a library for getting the video output of shadertoys without a window.",
     "homepage": "https://github.com/sshcrack/shadertoy-headless",
     "license": "Apache-2.0",

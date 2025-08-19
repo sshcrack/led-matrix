@@ -4,7 +4,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/shadertoy-headless
     REF "v${VERSION}"
-    SHA512 6cde6e3ee61b9e62d4773e9b9050137e35cb7c4a37d1fdaf0b0a434457de745029b49cb6874b7e31dff6ef5aeb694ac6ebf0b037901d7b7c8e9a83b8dd5c7bd1
+    SHA512 fca3faa48fd71ab1705718720f2bf50f5571f63de3dbb4796753601c5aab061b94c81ac536bb36a5f38550a5ae0318fc94a9a7d5ba8d5e13617b203253483ed1
     HEAD_REF main
 )
 
@@ -14,6 +14,7 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
+vcpkg_copy_pdbs()
 vcpkg_cmake_config_fixup(PACKAGE_NAME "shadertoy-headless")
 
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

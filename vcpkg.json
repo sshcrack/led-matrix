@@ -13,13 +13,19 @@
         "restinio",
         "libxml2",
         "cpr",
-        "magic-enum"
+        "magic-enum",
+        "rpi-rgb-led-matrix"
       ]
     },
     "emulator": {
       "description": "Dependencies needed for the emulator application.",
       "dependencies": [
-        "sdl2"
+        {
+          "name": "rpi-rgb-led-matrix",
+          "features": [
+            "emulator"
+          ]
+        }
       ]
     },
     "desktop": {
@@ -35,13 +41,16 @@
           ]
         },
         "ixwebsocket",
-        "cpr"
+        "cpr",
+        "tray"
       ]
     },
     "audio-visualizer-desktop": {
       "description": "AudioVisualizer plugin for desktop applications.",
       "dependencies": [
-        "fftw3"
+        "fftw3",
+        "portaudio",
+        "implot"
       ]
     },
     "shadertoy-desktop": {
