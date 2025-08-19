@@ -320,6 +320,13 @@ if(NOT ENABLE_DESKTOP)
         ARCHIVE DESTINATION . # .lib (Windows static or import lib)
         LIBRARY DESTINATION . # .so/.dylib (Unix)
     )
+
+
+    # Install fonts to fonts directory
+    install(FILES
+        "${CMAKE_SOURCE_DIR}/thirdparty/rpi-rgb-led-matrix/fonts/7x13.bdf"
+        DESTINATION "."
+    )
 else()
     install(TARGETS SharedToolsCommon SharedToolsDesktop
         RUNTIME DESTINATION bin # .dll (Windows)

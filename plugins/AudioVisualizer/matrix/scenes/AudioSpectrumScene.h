@@ -20,7 +20,7 @@ namespace Scenes {
         FrameTimer frameTimer;
         AudioVisualizer* plugin;
         uint32_t last_timestamp;
-        
+
         // Properties for the scene
         PropertyPointer<int> bar_width = MAKE_PROPERTY_MINMAX("bar_width", int, 2, 1, 10);
         PropertyPointer<int> gap_width = MAKE_PROPERTY_MINMAX("gap_width", int, 1, 0, 5);
@@ -38,10 +38,10 @@ namespace Scenes {
         PropertyPointer<float> circle_radius = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.8f, 0.3f, 1.0f);
         PropertyPointer<bool> rotate_visualization = MAKE_PROPERTY("rotate_visualization", bool, false);
         PropertyPointer<float> rotation_speed = MAKE_PROPERTY_MINMAX("rotation_speed", float, 1.0f, 0.1f, 5.0f);
-        
+
         std::vector<float> peak_positions;
         float rotation_angle = 0.0f;
-        
+
         // Helper methods
         void initialize_if_needed(int num_bands);
         uint32_t get_bar_color(int band_index, float intensity, int num_bands) const;
@@ -49,7 +49,7 @@ namespace Scenes {
         void render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data);
         void render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data);
         std::pair<int, int> polar_to_cartesian(float radius, float angle, int center_x, int center_y) const;
-        
+
     public:
         AudioSpectrumScene();
         ~AudioSpectrumScene() override = default;
@@ -57,13 +57,17 @@ namespace Scenes {
         bool render(rgb_matrix::RGBMatrixBase *matrix) override;
         string get_name() const override;
         void register_properties() override;
-        
+
         tmillis_t get_default_duration() override {
             return 20000;
         }
-        
+
         int get_default_weight() override {
             return 5;
+        }
+
+        [[nodiscard]] bool needs_desktop_app() const override {
+            return true; // This scene requires audio data from the desktop application
         }
     };
 

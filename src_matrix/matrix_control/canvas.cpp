@@ -4,6 +4,7 @@
 
 #include <shared/matrix/server/common.h>
 
+#include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
@@ -21,6 +22,33 @@ using namespace spdlog;
 using rgb_matrix::RGBMatrixBase;
 
 
+
+rgb_matrix::Color ERROR_COLOR = rgb_matrix::Color(255, 0, 0);
+rgb_matrix::Font ERROR_FONT = rgb_matrix::Font();
+bool load_font_error = false;
+bool loaded_font_success = false;
+
+void render_fallback(FrameCanvas* canvas) {
+    if(!loaded_font_success && !load_font_error) {
+        if (!ERROR_FONT.LoadFont((get_exec_dir() / "7x13.bdf").c_str())) {
+            spdlog::error("Could not load error font");
+            load_font_error = true;
+            return;
+        }
+
+        loaded_font_success = true;
+    }
+
+    if(load_font_error) {
+        spdlog::error("Error font not loaded, cannot render fallback");
+        return;
+    }
+
+    canvas->Fill(0, 0, 0); // Fill with black
+    rgb_matrix::DrawText(canvas, ERROR_FONT, 0, 11, ERROR_COLOR, "No scene available");
+}
+
+
 FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
     const auto preset = config->get_curr();
     auto scenes = preset->scenes;
@@ -35,9 +63,14 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
         int total_weight = 0;
 
         vector<std::pair<int, std::shared_ptr<Scenes::Scene> > > weighted_scenes;
+        bool is_desktop_connected = Server::is_desktop_connected();
+
         for (const auto &item: scenes) {
             auto weight = item->get_weight();
             if(weight <= 0)
+                continue;
+
+            if(item->needs_desktop_app() && !is_desktop_connected)
                 continue;
 
             weighted_scenes.emplace_back(weight, item);
@@ -62,8 +95,15 @@ FrameCanvas *update_canvas(RGBMatrixBase *matrix, FrameCanvas *pCanvas) {
                 error("Could not find scene to display.");
             cantFindScene++;
 
-            SleepMillis(300);
             Server::currScene = nullptr;
+            render_fallback(pCanvas);
+            pCanvas = matrix->SwapOnVSync(pCanvas, 1);
+
+#ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+#endif
+
+            SleepMillis(300);
             continue;
         }
 

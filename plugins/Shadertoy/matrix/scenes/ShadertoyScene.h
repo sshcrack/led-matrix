@@ -38,6 +38,10 @@ namespace Scenes {
         PropertyPointer<bool> random_shader = MAKE_PROPERTY("random_shader", bool, true);
         PropertyPointer<int> min_page = MAKE_PROPERTY_MINMAX("min_page", int, 0, 0, 8819);
         PropertyPointer<int> max_page = MAKE_PROPERTY_MINMAX("max_page", int, 100, 0, 8819);
+
+        [[nodiscard]] bool needs_desktop_app() const override {
+            return true; // This scene requires audio data from the desktop application
+        }
     };
 
     class ShadertoySceneWrapper : public Plugins::SceneWrapper {
