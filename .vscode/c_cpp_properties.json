@@ -16,7 +16,8 @@
                 "/usr/include/atk-1.0"
             ],
             "compileCommands": [
-                "${workspaceFolder}/emulator_build/compile_commands.json"
+                "${workspaceFolder}/emulator_build/compile_commands.json",
+                "${workspaceFolder}/desktop_build/compile_commands.json"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
