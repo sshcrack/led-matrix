@@ -35,26 +35,22 @@ register_plugin(AudioVisualizer
 )
 
 if(ENABLE_DESKTOP)
-        # Setting up PortAudio
-
-        # Make lib shared
-        # set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-        # set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
 
 
-        # set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-        # set(PA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(PA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
 
-        # if(WIN32)
-        #         set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
-        # endif()
+        if(WIN32)
+                set(PA_USE_WASAPI ON CACHE BOOL "" FORCE)
+        endif()
 
 
-        # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio EXCLUDE_FROM_ALL)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio EXCLUDE_FROM_ALL)
 
-        find_package(PortAudio CONFIG REQUIRED)
-        target_link_libraries(AudioVisualizer PRIVATE PortAudio::portaudio)
+        target_link_libraries(AudioVisualizer PRIVATE portaudio)
 
 
 
