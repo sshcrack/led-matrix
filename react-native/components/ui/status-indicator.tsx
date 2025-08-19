@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { cn } from '~/lib/utils';
 
 interface StatusIndicatorProps {
@@ -15,20 +16,43 @@ const StatusIndicator = ({ status, size = 'md', className }: StatusIndicatorProp
     lg: 'w-4 h-4'
   };
 
+  // Remove animation classes, keep only color classes
   const statusClasses = {
-    active: 'bg-success animate-pulse-glow',
+    active: 'bg-success',
     inactive: 'bg-muted-foreground',
-    pending: 'bg-warning animate-pulse',
-    error: 'bg-destructive animate-pulse'
+    pending: 'bg-warning',
+    error: 'bg-destructive'
   };
 
+  // Animation logic
+  const pulse = useSharedValue(1);
+
+  React.useEffect(() => {
+    if (status === 'active' || status === 'pending' || status === 'error') {
+      pulse.value = withRepeat(
+        withTiming(1.5, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+    } else {
+      pulse.value = 1;
+    }
+  }, [status]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }]
+  }));
+
   return (
-    <View className={cn(
-      'rounded-full',
-      sizeClasses[size],
-      statusClasses[status],
-      className
-    )} />
+    <Animated.View
+      className={cn(
+        'rounded-full',
+        sizeClasses[size],
+        statusClasses[status],
+        className
+      )}
+      style={animatedStyle}
+    />
   );
 };
 

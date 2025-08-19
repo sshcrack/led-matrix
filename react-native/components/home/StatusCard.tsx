@@ -16,13 +16,15 @@ interface StatusCardProps {
 const StatusCard: React.FC<StatusCardProps> = ({ turnedOn, settingStatus, setSettingStatus, setTurnedOn }) => (
     <Card className="w-full shadow-lg border-0 bg-gradient-to-br from-card to-card/80">
         <CardHeader className="pb-4">
-            <CardTitle className="flex flex-row items-center gap-3">
-                <View className="p-2 bg-primary/10 rounded-full">
-                    <Power className="text-primary" width={24} height={24} />
+            <View className='w-full flex flex-row items-center justify-between'>
+                <View className="flex flex-row items-center gap-3">
+                    <View className="p-2 bg-primary/10 rounded-full">
+                        <Power className="text-primary" width={20} height={20} />
+                    </View>
+                    <Text className="text-xl font-bold">Matrix Control</Text>
                 </View>
-                <Text className="text-2xl font-bold">Matrix Control</Text>
-            </CardTitle>
-            <CardDescription className="text-base">
+            </View>
+            <CardDescription className="text-base pt-10">
                 Manage your LED matrix display system
             </CardDescription>
         </CardHeader>
