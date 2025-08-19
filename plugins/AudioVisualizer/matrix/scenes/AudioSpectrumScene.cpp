@@ -332,19 +332,30 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
         }
 
         // Draw the peak dot
-        if (falling_dots->get() && display_mode != DisplayMode::CENTER_OUT)
+        if (falling_dots->get())
         {
             int peak_y = static_cast<int>(peak_positions[i] * height);
             peak_y = std::min(peak_y, height - 1);
+
+            if(display_mode == DisplayMode::CENTER_OUT)
+                peak_y /= 2;
 
             uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
             uint8_t r = (peak_color >> 16) & 0xFF;
             uint8_t g = (peak_color >> 8) & 0xFF;
             uint8_t b = peak_color & 0xFF;
 
+            int half_height = height / 2;
             for (int w = 0; w < bar_width->get(); w++)
             {
-                offscreen_canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
+                if(display_mode == DisplayMode::CENTER_OUT)
+                {
+                    // Center out mode, draw peak at center
+                    offscreen_canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
+                    offscreen_canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
+                }
+                else
+                    offscreen_canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
             }
         }
     }

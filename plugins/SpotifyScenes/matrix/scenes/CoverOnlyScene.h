@@ -18,18 +18,19 @@
 namespace Scenes {
     class CoverOnlyScene final : public Scene {
     private:
-        PropertyPointer<float> border_intensity_prop =
-                MAKE_PROPERTY_MINMAX("border_intensity", float, 0.6f, 0.0f, 1.0f);
-        PropertyPointer<bool> wait_on_cover = MAKE_PROPERTY("wait_on_cover", bool, true);
-        PropertyPointer<tmillis_t> zoom_wait = MAKE_PROPERTY("zoom_wait", tmillis_t, 40);
-        PropertyPointer<tmillis_t> cover_wait = MAKE_PROPERTY("cover_wait", tmillis_t, 1000);
-        PropertyPointer<int> new_song_weight = MAKE_PROPERTY("weight_if_new_song", int, 100);
-        PropertyPointer<float> zoom_factor = MAKE_PROPERTY("zoom_factor", float, 10.0f);
-        PropertyPointer<bool> sync_with_beat = MAKE_PROPERTY("sync_with_beat", bool, true);
-        PropertyPointer<int> transition_steps = MAKE_PROPERTY_MINMAX("transition_steps", int, 25, 0, INT_MAX);
-        PropertyPointer<float> beat_sync_slowdown_factor = MAKE_PROPERTY("beat_sync_slowdown_factor", float, 1.0f);
-        PropertyPointer<float> beat_sync_slowdown_threshold = MAKE_PROPERTY(
-            "beat_sync_slowdown_threshold", float, 110.0f);
+        PropertyPointer<float> cover_border_glow_intensity =
+                MAKE_PROPERTY_MINMAX("cover_border_glow_intensity", float, 0.6f, 0.0f, 1.0f);
+        PropertyPointer<bool> wait_on_final_cover = MAKE_PROPERTY("wait_on_final_cover", bool, true);
+        PropertyPointer<tmillis_t> zoom_transition_frame_wait = MAKE_PROPERTY("zoom_transition_frame_wait", tmillis_t, 40);
+        PropertyPointer<tmillis_t> final_cover_wait = MAKE_PROPERTY("final_cover_wait", tmillis_t, 1000);
+        PropertyPointer<int> scene_weight_if_new_song = MAKE_PROPERTY("scene_weight_if_new_song", int, 100);
+        PropertyPointer<float> cover_zoom_factor = MAKE_PROPERTY("cover_zoom_factor", float, 10.0f);
+        PropertyPointer<bool> sync_transitions_with_beat = MAKE_PROPERTY("sync_transition_with_beat", bool, true);
+        PropertyPointer<int> cover_transition_steps = MAKE_PROPERTY_MINMAX("cover_transition_steps", int, 25, 0, INT_MAX);
+        PropertyPointer<float> bpm_slowdown_factor = MAKE_PROPERTY("bpm_slowdown_factor", float, 1.0f);
+        PropertyPointer<float> bpm_slowdown_threshold = MAKE_PROPERTY(
+            "bpm_slowdown_threshold", float, 110.0f);
+        PropertyPointer<bool> disable_cover_animation = MAKE_PROPERTY("disable_cover_animation", bool, true);
 
         bool DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix);
 

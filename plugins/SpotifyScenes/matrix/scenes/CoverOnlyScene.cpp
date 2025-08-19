@@ -18,16 +18,19 @@ using namespace std;
 using namespace Scenes;
 
 // Helper function to create a color based on progress
-rgb_matrix::Color getProgressColor(float progress) {
+rgb_matrix::Color getProgressColor(float progress)
+{
     // Create a gradient from blue to purple to red
-    if (progress < 0.33f) {
+    if (progress < 0.33f)
+    {
         // Blue to purple
         uint8_t r = 64 + 128 * (progress / 0.33f);
         uint8_t g = 0;
         uint8_t b = 255;
         return {r, g, b};
     }
-    if (progress < 0.66f) {
+    if (progress < 0.66f)
+    {
         // Purple to red
         float adjusted = (progress - 0.33f) / 0.33f;
         uint8_t r = 192 + 63 * adjusted;
@@ -45,38 +48,45 @@ rgb_matrix::Color getProgressColor(float progress) {
 
 // Helper function to draw a glowing border
 void drawGlowingBorder(rgb_matrix::FrameCanvas *canvas, int x, int y, int width, int height,
-                       const rgb_matrix::Color &color, float intensity) {
+                       const rgb_matrix::Color &color, float intensity)
+{
     // Draw the main border
-    for (int i = x; i < x + width; i++) {
+    for (int i = x; i < x + width; i++)
+    {
         canvas->SetPixel(i, y, color.r, color.g, color.b);
         canvas->SetPixel(i, y + height - 1, color.r, color.g, color.b);
     }
 
-    for (int i = y; i < y + height; i++) {
+    for (int i = y; i < y + height; i++)
+    {
         canvas->SetPixel(x, i, color.r, color.g, color.b);
         canvas->SetPixel(x + width - 1, i, color.r, color.g, color.b);
     }
 
     // Draw a softer glow (if there's enough space)
-    if (width > 4 && height > 4) {
+    if (width > 4 && height > 4)
+    {
         rgb_matrix::Color dimColor(
             color.r * intensity,
             color.g * intensity,
             color.b * intensity);
 
-        for (int i = x + 1; i < x + width - 1; i++) {
+        for (int i = x + 1; i < x + width - 1; i++)
+        {
             canvas->SetPixel(i, y + 1, dimColor.r, dimColor.g, dimColor.b);
             canvas->SetPixel(i, y + height - 2, dimColor.r, dimColor.g, dimColor.b);
         }
 
-        for (int i = y + 1; i < y + height - 1; i++) {
+        for (int i = y + 1; i < y + height - 1; i++)
+        {
             canvas->SetPixel(x + 1, i, dimColor.r, dimColor.g, dimColor.b);
             canvas->SetPixel(x + width - 2, i, dimColor.r, dimColor.g, dimColor.b);
         }
     }
 }
 
-void CoverOnlyScene::update_beat_simulation() {
+void CoverOnlyScene::update_beat_simulation()
+{
     // Get the current time
     auto current_time = std::chrono::steady_clock::now();
 
@@ -84,11 +94,12 @@ void CoverOnlyScene::update_beat_simulation() {
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_beat_time).count();
 
     // If we have a BPM value, use it to simulate beats
-    if (curr_bpm > 0) {
+    if (curr_bpm > 0)
+    {
         float beat_interval_ms = 60000.0f / curr_bpm;
 
         // Calculate phase within the beat (0.0 to 1.0)
-        float phase = (float) elapsed / beat_interval_ms;
+        float phase = (float)elapsed / beat_interval_ms;
         target_beat_intensity = std::max(0.0f, 1.0f - phase * 2.0f);
     }
 
@@ -96,18 +107,23 @@ void CoverOnlyScene::update_beat_simulation() {
     current_beat_intensity = current_beat_intensity * 0.7f + target_beat_intensity * 0.3f;
 }
 
-bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
+bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix)
+{
     uint32_t delay_us = 0;
 
-    bool has_anim = false; {
+    bool has_anim = false;
+    {
         std::shared_lock anim_lock(animation_mtx);
-        if (curr_animation.has_value()) {
+        if (curr_animation.has_value() && !disable_cover_animation->get())
+        {
             has_anim = true;
-            if (!curr_animation->GetNext(offscreen_canvas, &delay_us)) {
+            if (!curr_animation->GetNext(offscreen_canvas, &delay_us))
+            {
                 // Try to rewind
                 curr_animation->Rewind();
                 // And get again, if fails, return
-                if (!curr_animation->GetNext(offscreen_canvas, &delay_us)) {
+                if (!curr_animation->GetNext(offscreen_canvas, &delay_us))
+                {
                     trace("Returning, reader done");
                     return false;
                 }
@@ -115,7 +131,8 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
         }
     }
 
-    if (!has_anim) {
+    if (!has_anim)
+    {
         std::shared_lock cover_lock(quick_cover_mtx);
 
         const int x_offset = (offscreen_canvas->width() - quick_cover->columns()) / 2;
@@ -125,11 +142,14 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
         const Magick::PixelPacket *pixels = quick_cover->getConstPixels(0, 0, quick_cover->columns(),
                                                                         quick_cover->rows());
 
-        for (size_t y = 0; y < quick_cover->rows(); ++y) {
+        for (size_t y = 0; y < quick_cover->rows(); ++y)
+        {
             const Magick::PixelPacket *row = pixels + (y * quick_cover->columns());
-            for (size_t x = 0; x < quick_cover->columns(); ++x) {
+            for (size_t x = 0; x < quick_cover->columns(); ++x)
+            {
                 const auto &q = row[x];
-                if (q.opacity != MaxRGB) {
+                if (q.opacity != MaxRGB)
+                {
                     // Check for non-transparent pixels
                     offscreen_canvas->SetPixel(x + x_offset, y + y_offset,
                                                ScaleQuantumToChar(q.red),
@@ -143,7 +163,8 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
     auto progress_opt = curr_state->get_progress();
-    if (!progress_opt.has_value()) {
+    if (!progress_opt.has_value())
+    {
         error("Could not get progress");
         return false;
     }
@@ -164,9 +185,9 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
     rgb_matrix::Color border_color = getProgressColor(progress);
 
     // Enhance border color based on beat intensity
-    border_color.r = std::min(255, (int) (border_color.r * (1.0f + beat_intensity * 0.5f)));
-    border_color.g = std::min(255, (int) (border_color.g * (1.0f + beat_intensity * 0.5f)));
-    border_color.b = std::min(255, (int) (border_color.b * (1.0f + beat_intensity * 0.5f)));
+    border_color.r = std::min(255, (int)(border_color.r * (1.0f + beat_intensity * 0.5f)));
+    border_color.g = std::min(255, (int)(border_color.g * (1.0f + beat_intensity * 0.5f)));
+    border_color.b = std::min(255, (int)(border_color.b * (1.0f + beat_intensity * 0.5f)));
 
     /* I don't like the glowing border, disabled for now
         drawGlowingBorder(offscreen_canvas, border_margin, border_margin,
@@ -182,87 +203,110 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix) {
     int pixels_to_fill = static_cast<int>(perimeter * progress);
     int pixels_filled = 0;
 
-
     // Draw a black border first
-    for (int x = 0; x < max_x; x++) { offscreen_canvas->SetPixel(x, 0, 0, 0, 0); }
-    for (int y = 1; y < max_y; y++) { offscreen_canvas->SetPixel(max_x - 1, y, 0, 0, 0); }
-    for (int x = max_x - 2; x >= 0; x--) { offscreen_canvas->SetPixel(x, max_y - 1, 0, 0, 0); }
-    for (int y = max_y - 2; y >= 1; y--) { offscreen_canvas->SetPixel(0, y, 0, 0, 0); }
+    for (int x = 0; x < max_x; x++)
+    {
+        offscreen_canvas->SetPixel(x, 0, 0, 0, 0);
+    }
+    for (int y = 1; y < max_y; y++)
+    {
+        offscreen_canvas->SetPixel(max_x - 1, y, 0, 0, 0);
+    }
+    for (int x = max_x - 2; x >= 0; x--)
+    {
+        offscreen_canvas->SetPixel(x, max_y - 1, 0, 0, 0);
+    }
+    for (int y = max_y - 2; y >= 1; y--)
+    {
+        offscreen_canvas->SetPixel(0, y, 0, 0, 0);
+    }
 
     // Top edge (left to right)
-    for (int x = 0; x < max_x && pixels_filled < pixels_to_fill; x++) {
-        rgb_matrix::Color color = getProgressColor((float) pixels_filled / perimeter);
+    for (int x = 0; x < max_x && pixels_filled < pixels_to_fill; x++)
+    {
+        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
         offscreen_canvas->SetPixel(x, 0, color.r, color.g, color.b);
         pixels_filled++;
     }
 
     // Right edge (top to bottom)
-    for (int y = 1; y < max_y && pixels_filled < pixels_to_fill; y++) {
-        rgb_matrix::Color color = getProgressColor((float) pixels_filled / perimeter);
+    for (int y = 1; y < max_y && pixels_filled < pixels_to_fill; y++)
+    {
+        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
         offscreen_canvas->SetPixel(max_x - 1, y, color.r, color.g, color.b);
         pixels_filled++;
     }
 
     // Bottom edge (right to left)
-    for (int x = max_x - 2; x >= 0 && pixels_filled < pixels_to_fill; x--) {
-        rgb_matrix::Color color = getProgressColor((float) pixels_filled / perimeter);
+    for (int x = max_x - 2; x >= 0 && pixels_filled < pixels_to_fill; x--)
+    {
+        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
         offscreen_canvas->SetPixel(x, max_y - 1, color.r, color.g, color.b);
         pixels_filled++;
     }
 
     // Left edge (bottom to top)
-    for (int y = max_y - 2; y >= 1 && pixels_filled < pixels_to_fill; y--) {
-        rgb_matrix::Color color = getProgressColor((float) pixels_filled / perimeter);
+    for (int y = max_y - 2; y >= 1 && pixels_filled < pixels_to_fill; y--)
+    {
+        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
         offscreen_canvas->SetPixel(0, y, color.r, color.g, color.b);
         pixels_filled++;
     }
-
 
     wait_until_next_frame();
 
     return true;
 }
 
-bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
+bool CoverOnlyScene::render(RGBMatrixBase *matrix)
+{
     auto temp = spotify->get_currently_playing();
-    if (!temp.has_value()) {
+    if (!temp.has_value())
+    {
         spdlog::debug("Tried to render CoverOnlyScene, but no current track");
         return false;
     }
 
     auto track = std::move(temp.value());
     const auto track_id = track.get_track().get_id();
-    if (!track_id.has_value()) {
+    if (!track_id.has_value())
+    {
         spdlog::debug("No track id, exiting");
         return false;
     }
 
-    if (!curr_state.has_value() || curr_state->get_track().get_id().value() != track_id) {
+    if (!curr_state.has_value() || curr_state->get_track().get_id().value() != track_id)
+    {
         {
             std::unique_lock lock(state_mtx);
             curr_state.emplace(track);
         }
 
         refresh_future = std::async(launch::async,
-                                    [this, matrix
-                                    ]() -> std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> {
+                                    [this, matrix]() -> std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string>
+                                    {
                                         return this->refresh_info(matrix->width(), matrix->height());
                                     });
-    } else {
+    }
+    else
+    {
         std::unique_lock lock(state_mtx);
         curr_state.emplace(track);
     }
 
-    if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) == future_status::ready) {
+    if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) == future_status::ready)
+    {
         spdlog::trace("Future is ready");
         const auto res = refresh_future.get();
-        if (!res.has_value()) {
+        if (!res.has_value())
+        {
             spdlog::error("Failed to refresh info: {}", res.error());
             return false;
         }
 
         auto images = std::move(res.value());
-        if (images.empty()) {
+        if (images.empty())
+        {
             spdlog::debug("Exited refresh thread, waiting for new future");
             return true;
         }
@@ -270,7 +314,8 @@ bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
         auto content_stream = new rgb_matrix::MemStreamIO();
         rgb_matrix::StreamWriter out(content_stream);
 
-        for (auto pair: images) {
+        for (auto pair : images)
+        {
             StoreInStream(pair.second, pair.first, true, offscreen_canvas, &out);
         }
 
@@ -286,12 +331,14 @@ bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
         curr_content_stream = content_stream;
     }
 
-    if (!quick_cover.has_value() && !curr_animation.has_value()) {
+    if (!quick_cover.has_value() && !curr_animation.has_value())
+    {
         SleepMillis(10);
         return true;
     }
 
-    if(!curr_state->is_playing()) {
+    if (!curr_state->is_playing())
+    {
         SleepMillis(500);
         return true;
     }
@@ -300,8 +347,9 @@ bool CoverOnlyScene::render(RGBMatrixBase *matrix) {
     return DisplaySpotifySong(matrix);
 }
 
-std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> CoverOnlyScene::refresh_info(
-    int width, int height) {
+std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> CoverOnlyScene::refresh_info(
+    int width, int height)
+{
     // Verified previously that this must have a value
 
     std::shared_lock state_lock(state_mtx);
@@ -310,7 +358,8 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
     state_lock.unlock();
 
     auto opt_track = track.get_id();
-    if (!opt_track.has_value()) {
+    if (!opt_track.has_value())
+    {
         trace("No track id, exiting future");
         return {};
     }
@@ -319,14 +368,16 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
     trace("New track, refreshing state: {}", track_id);
 
     auto cover_opt = track.get_cover();
-    if (!cover_opt.has_value()) {
+    if (!cover_opt.has_value())
+    {
         return unexpected("No track cover for track '" + track_id + "'");
     }
 
     const auto &cover = cover_opt.value();
     string out_file = "/tmp/spotify_cover." + track_id + ".jpg";
 
-    if (!std::filesystem::exists(out_file)) {
+    if (!std::filesystem::exists(out_file))
+    {
         const auto res = utils::download_image(cover, out_file);
         if (!res.has_value())
             return unexpected(res.error());
@@ -336,7 +387,8 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
     auto res = LoadImageAndScale(out_file, width, height, true, true,
                                  true);
     try_remove(out_file);
-    if (!res) {
+    if (!res)
+    {
         return unexpected(res.error());
     }
 
@@ -346,12 +398,15 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
     // Apply a subtle enhancement to the cover
     Magick::Image enhanced_cover = frames[0];
 
-    try {
+    try
+    {
         // Try to enhance the image with all three required parameters
         // modulate(brightness, saturation, hue)
         enhanced_cover.modulate(105.0, 110.0, 100.0);
         // Slightly increase brightness and saturation, keep hue unchanged
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
         trace("Failed to modulate image: {}", e.what());
         // Just use the original cover if modulate fails
         enhanced_cover = frames[0];
@@ -363,7 +418,8 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
                                                   enhanced_cover));
 
     state_lock.lock();
-    if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id) {
+    if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id)
+    {
         state_lock.unlock();
         spdlog::debug("New track detected, exiting");
         return {};
@@ -383,32 +439,33 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
     if (!bpm_res.has_value())
         spdlog::error("Couldn't get bpm {}", bpm_res.error());
 
-
     curr_bpm = bpm_res.value_or(120);
-    auto slowed_down = curr_bpm > beat_sync_slowdown_threshold->get()
-                           ? curr_bpm / beat_sync_slowdown_factor->get()
+    auto slowed_down = curr_bpm > bpm_slowdown_threshold->get()
+                           ? curr_bpm / bpm_slowdown_factor->get()
                            : curr_bpm;
 
     // Fix: Calculate beat duration correctly (milliseconds per beat)
     float beat_duration_ms = 60000.0f / slowed_down;
 
     // Create a more interesting transition effect
-    const int transition_steps = this->transition_steps->get();
+    const int transition_steps = this->cover_transition_steps->get();
 
     float single_img_duration_ms = beat_duration_ms / transition_steps;
 
-    std::vector<std::pair<int64_t, Magick::Image> > track_images;
+    std::vector<std::pair<int64_t, Magick::Image>> track_images;
     // Then, create a zoom-in effect
-    for (int i = 0; i < transition_steps; i++) {
+    for (int i = 0; i < transition_steps; i++)
+    {
         state_lock.lock();
-        if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id) {
+        if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id)
+        {
             state_lock.unlock();
             spdlog::debug("New track detected, exiting");
             return {};
         }
 
         state_lock.unlock();
-        float zoom = (float) i / (float) (transition_steps);
+        float zoom = (float)i / (float)(transition_steps);
 
         Magick::Image img(Magick::Geometry(width, height), Magick::Color("black"));
 
@@ -416,7 +473,7 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
         Magick::Image cover_copy = frames[0];
 
         // Calculate margins for the zoom effect
-        int zoom_margin = (int) (width * zoom * zoom_factor->get());
+        int zoom_margin = (int)(width * zoom * cover_zoom_factor->get());
 
         // Composite the cover onto the black background
         img.draw(Magick::DrawableCompositeImage(-zoom_margin, -zoom_margin,
@@ -429,28 +486,28 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image> >, std::string> Cove
         int x = width / 2 - size / 2;
         int y = height / 2 - size / 2;
 
-
         img.draw(Magick::DrawableCompositeImage(x, y, size, size, cover_copy));
 
         // Store the frame with a short delay
-        int64_t delay = sync_with_beat->get() ? single_img_duration_ms * 1000 : zoom_wait->get() * 1000;
+        int64_t delay = sync_transitions_with_beat->get() ? single_img_duration_ms * 1000 : zoom_transition_frame_wait->get() * 1000;
 
         track_images.push_back(std::make_pair(delay, std::move(img)));
-        // Simulate calculation
-        SleepMillis(100);
     }
 
-    if (wait_on_cover->get() && !sync_with_beat->get()) {
-        track_images.push_back(std::make_pair(cover_wait->get() * 1000, std::move(cover_img)));
+    if (wait_on_final_cover->get() && !sync_transitions_with_beat->get())
+    {
+        track_images.push_back(std::make_pair(final_cover_wait->get() * 1000, std::move(cover_img)));
     }
 
     return track_images;
 }
 
-int CoverOnlyScene::get_weight() const {
-    if (spotify != nullptr) {
+int CoverOnlyScene::get_weight() const
+{
+    if (spotify != nullptr)
+    {
         if (spotify->has_changed(false))
-            return new_song_weight->get();
+            return scene_weight_if_new_song->get();
 
         if (spotify->get_currently_playing().has_value())
             return Scene::get_weight();
@@ -460,34 +517,39 @@ int CoverOnlyScene::get_weight() const {
     return 0;
 }
 
-string CoverOnlyScene::get_name() const {
+string CoverOnlyScene::get_name() const
+{
     return "spotify";
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> CoverOnlySceneWrapper::create() {
+std::unique_ptr<Scene, void (*)(Scene *)> CoverOnlySceneWrapper::create()
+{
     return {
-        new CoverOnlyScene(), [](Scene *scene) {
+        new CoverOnlyScene(), [](Scene *scene)
+        {
             delete scene;
-        }
-    };
+        }};
 }
 
-void CoverOnlyScene::register_properties() {
-    add_property(border_intensity_prop);
-    add_property(wait_on_cover);
-    add_property(zoom_wait);
-    add_property(cover_wait);
-    add_property(new_song_weight);
-    add_property(zoom_factor);
-    add_property(sync_with_beat);
-    add_property(beat_sync_slowdown_factor);
-    add_property(beat_sync_slowdown_threshold);
-    add_property(transition_steps);
+void CoverOnlyScene::register_properties()
+{
+    add_property(cover_border_glow_intensity);
+    add_property(wait_on_final_cover);
+    add_property(zoom_transition_frame_wait);
+    add_property(final_cover_wait);
+    add_property(scene_weight_if_new_song);
+    add_property(cover_zoom_factor);
+    add_property(sync_transitions_with_beat);
+    add_property(bpm_slowdown_factor);
+    add_property(bpm_slowdown_threshold);
+    add_property(cover_transition_steps);
 }
 
-CoverOnlyScene::~CoverOnlyScene() {
+CoverOnlyScene::~CoverOnlyScene()
+{
     spdlog::info("Waiting for CoverOnlyScene to finish...");
-    if (refresh_future.valid()) {
+    if (refresh_future.valid())
+    {
         refresh_future.wait();
     }
 
