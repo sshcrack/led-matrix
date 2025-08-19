@@ -1,0 +1,26 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6d4bf46..3d1a715 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -373,7 +373,20 @@ elseif(UNIX)
+       set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_AUDIOIO=1")
+     endif()
+ 
+-    find_package(PulseAudio)
++    # Use system PulseAudio via pkg-config
++    find_package(PkgConfig QUIET)
++    if(PKG_CONFIG_FOUND)
++      pkg_check_modules(PULSE libpulse QUIET)
++      if(PULSE_FOUND)
++        # Create an imported target for system PulseAudio
++        add_library(PulseAudio::PulseAudio INTERFACE IMPORTED)
++        target_include_directories(PulseAudio::PulseAudio INTERFACE ${PULSE_INCLUDE_DIRS})
++        target_link_libraries(PulseAudio::PulseAudio INTERFACE ${PULSE_LIBRARIES})
++        target_link_directories(PulseAudio::PulseAudio INTERFACE ${PULSE_LIBRARY_DIRS})
++        target_compile_options(PulseAudio::PulseAudio INTERFACE ${PULSE_CFLAGS_OTHER})
++        set(PulseAudio_FOUND TRUE)
++      endif()
++    endif()
+     cmake_dependent_option(PA_USE_PULSEAUDIO "Enable support for PulseAudio general purpose sound server" ON PulseAudio_FOUND OFF)
+     if(PA_USE_PULSEAUDIO)
+       target_link_libraries(portaudio PRIVATE PulseAudio::PulseAudio)

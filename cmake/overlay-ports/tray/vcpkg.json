@@ -1,0 +1,17 @@
+{
+    "name": "tray",
+    "version": "0.2.3",
+    "description": "🛩️ A cross-platform C++ system tray library ",
+    "homepage": "https://github.com/sshcrack/traypp",
+    "license": "MIT",
+    "dependencies": [
+        {
+            "name": "vcpkg-cmake",
+            "host": true
+        },
+        {
+            "name": "vcpkg-cmake-config",
+            "host": true
+        }
+    ]
+}
