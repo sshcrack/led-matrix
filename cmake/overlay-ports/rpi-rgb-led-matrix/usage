@@ -1,0 +1,13 @@
+The package rpi-rgb-led-matrix provides CMake targets:
+
+    find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
+
+The library includes bitmap fonts in BDF format located at:
+- share/rpi-rgb-led-matrix/fonts/ (when installed via vcpkg)
+
+Available fonts include: 4x6.bdf, 5x7.bdf, 5x8.bdf, 6x9.bdf, 6x10.bdf, 6x12.bdf, 6x13.bdf, 7x13.bdf, 7x14.bdf, 8x13.bdf, 9x15.bdf, 9x18.bdf, and more.
+
+Note: When using with vcpkg, the fonts directory will be available relative to your vcpkg installation at:
+${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/rpi-rgb-led-matrix/fonts/
+Or use the CMake variable `${RPI_RGB_LED_MATRIX_FONTS_DIR}` for a portable path.

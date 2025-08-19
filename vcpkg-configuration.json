@@ -13,6 +13,6 @@
     }
   ],
   "overlay-ports": [
-    "./thirdparty/overlay-ports"
+    "./cmake/overlay-ports"
   ]
 }
