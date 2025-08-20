@@ -23,11 +23,17 @@ namespace Config
         std::string hostname;
         uint16_t port = 8080; // Default port
         int fpsLimit = 60; // Default FPS limit
+        bool turnMatrixOffOnExit;
+        bool turnMatrixOnOnStart;
 
         bool autostart = Autostart::isEnabled(APP_NAME);
+
         mutable std::shared_mutex mutex_;
 
     public:
+        friend void to_json(json &j, const General &p);
+        friend void from_json(const json &j, General &p);
+
         General() = default;
         General(const General &other);
         General &operator=(const General &other);
@@ -46,6 +52,12 @@ namespace Config
 
         int getFpsLimit() const;
         void setFpsLimit(int newFpsLimit);
+
+        bool isTurnMatrixOffOnExit() const;
+        void setTurnMatrixOffOnExit(bool value);
+
+        bool isTurnMatrixOnOnStart() const;
+        void setTurnMatrixOnOnStart(bool value);
     };
 
     SHARED_DESKTOP_API void to_json(json &j, const General &p);
