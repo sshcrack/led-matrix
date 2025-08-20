@@ -114,10 +114,14 @@ namespace Autostart
         {
             return std::unexpected("Failed to open autostart file for writing: " + desktopFile + ": " + std::system_category().message(errno));
         }
+        std::filesystem::path exePathObj(exePath);
+        std::filesystem::path exePathDir = exePathObj.parent_path().parent_path(); // Assuming icon is a PNG with the same name
+
         ofs << "[Desktop Entry]\n";
         ofs << "Type=Application\n";
         // Add --start-minimized flag to the Exec line
         ofs << "Exec=" << exePath << " --start-minimized\n";
+        ofs << "Icon=" << (exePathDir / "assets" / "app_settings" / "icon.svg").string() << "\n";
         ofs << "Hidden=false\n";
         ofs << "NoDisplay=false\n";
         ofs << "X-GNOME-Autostart-enabled=true\n";
