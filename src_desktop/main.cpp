@@ -14,6 +14,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <tray.hpp>
+#include <cpr/cpr.h>
 
 // Project includes
 #include "shared/desktop/WebsocketClient.h"
@@ -76,6 +77,32 @@ static void window_iconify_callback(GLFWwindow *window, const int iconified)
         spdlog::info("Window restored.");
         HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
     }
+}
+
+// ----- Function to change matrix status ----
+static void change_matrix_status(const std::string &hostname, uint16_t port, bool turnOn)
+{
+    std::thread([hostname, port, turnOn]()
+                {
+        try
+        {
+            auto url = fmt::format("http://{}:{}/set_enabled?enabled={}", hostname, port, turnOn ? "true" : "false");
+
+            cpr::Response response = cpr::Get(cpr::Url(url));
+            if (response.error)
+            {
+                spdlog::error("Failed to change matrix status: {}", response.error.message);
+            }
+            else
+            {
+                spdlog::info("Matrix turned {} successfully.", turnOn ? "on" : "off");
+            }
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Exception while changing matrix status: {}", e.what());
+        } })
+        .detach();
 }
 
 // ---- Tray setup ----
@@ -236,6 +263,12 @@ int run_app(int argc, char *argv[])
             matrixVersionManager.checkMatrixVersionAsync(hostname, port);
 
             initialConnect = false;
+
+            if (generalCfg.isTurnMatrixOnOnStart())
+            {
+                spdlog::info("Turning Matrix ON on start.");
+                change_matrix_status(hostname, port, true);
+            }
         }
 
         if (HelloImGui::GetRunnerParams()->appWindowParams.hidden)
@@ -243,6 +276,18 @@ int run_app(int argc, char *argv[])
             // We are just returning here, because waiting is handled in the AfterSwap method.
             // (Its this late so we connect to the websocket)
             return;
+        }
+
+        static bool matrixOnOnStart = generalCfg.isTurnMatrixOnOnStart();
+        if (ImGui::Checkbox("Turn Matrix On on Start", &matrixOnOnStart))
+        {
+            generalCfg.setTurnMatrixOnOnStart(matrixOnOnStart);
+        }
+        ImGui::SameLine();
+        static bool matrixOffOnExit = generalCfg.isTurnMatrixOffOnExit();
+        if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit))
+        {
+            generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
         }
 
         auto state = ws->getReadyState();
@@ -514,16 +559,30 @@ int run_app(int argc, char *argv[])
         // Check for updates on startup
         updateManager.checkForUpdatesAsync();
     };
+
     runnerParams.appWindowParams.restorePreviousGeometry = true;
     if (argc > 1 && std::string(argv[1]) == "--start-minimized")
     {
         spdlog::info("Starting minimized.");
         runnerParams.appWindowParams.hidden = true;
     }
+
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
     tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
     WebsocketClient::setInstance(nullptr);
+
+    {
+        auto generalCfg = cfg->getGeneralConfig();
+        auto hostname = generalCfg.getHostnameCopy();
+        auto port = generalCfg.getPort();
+        if (generalCfg.isTurnMatrixOffOnExit())
+        {
+            spdlog::info("Turning Matrix OFF on exit.");
+            change_matrix_status(hostname, port, false);
+        }
+    }
+
     delete ws;
     delete cfg;
     pl->destroy_plugins();
