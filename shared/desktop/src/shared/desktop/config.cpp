@@ -15,6 +15,8 @@ Config::General::General(const General &other)
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+    turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
 
 Config::General &Config::General::operator=(const General &other)
@@ -29,6 +31,8 @@ Config::General &Config::General::operator=(const General &other)
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+        turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
     return *this;
 }
@@ -40,6 +44,8 @@ Config::General::General(General &&other) noexcept
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+    turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
 
 Config::General &Config::General::operator=(General &&other) noexcept
@@ -54,6 +60,8 @@ Config::General &Config::General::operator=(General &&other) noexcept
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+        turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
     return *this;
 }
@@ -123,35 +131,59 @@ void Config::General::setFpsLimit(int newFpsLimit)
     fpsLimit = newFpsLimit;
 }
 
+bool Config::General::isTurnMatrixOffOnExit() const
+{
+    std::shared_lock lock(mutex_);
+    return turnMatrixOffOnExit;
+}
+
+void Config::General::setTurnMatrixOffOnExit(bool value)
+{
+    std::unique_lock lock(mutex_);
+    turnMatrixOffOnExit = value;
+}
+
+bool Config::General::isTurnMatrixOnOnStart() const
+{
+    std::shared_lock lock(mutex_);
+    return turnMatrixOnOnStart;
+}
+
+void Config::General::setTurnMatrixOnOnStart(bool value)
+{
+    std::unique_lock lock(mutex_);
+    turnMatrixOnOnStart = value;
+}
+
 void Config::from_json(const json &j, General &p)
 {
     if (j.contains("hostname"))
-    {
-        std::string hostname;
-        j.at("hostname").get_to(hostname);
-        p.setHostname(hostname);
-    }
+        j.at("hostname").get_to(p.hostname);
 
     if (j.contains("port"))
-    {
-        uint16_t port;
-        j.at("port").get_to(port);
-        p.setPort(port);
-    }
+        j.at("port").get_to(p.port);
     if (j.contains("fpsLimit"))
-    {
-        int fpsLimit;
-        j.at("fpsLimit").get_to(fpsLimit);
-        p.setFpsLimit(fpsLimit);
-    }
+        j.at("fpsLimit").get_to(p.fpsLimit);
+
+    if (j.contains("turnMatrixOffOnExit"))
+        j.at("turnMatrixOffOnExit").get_to(p.turnMatrixOffOnExit);
+    else
+        p.turnMatrixOffOnExit = true; // Default value if not specified
+
+    if (j.contains("turnMatrixOnOnStart"))
+        j.at("turnMatrixOnOnStart").get_to(p.turnMatrixOnOnStart);
+    else
+        p.turnMatrixOnOnStart = true; // Default value if not specified
 }
 
 void Config::to_json(json &j, const General &p)
 {
     j = {
-        {"hostname", p.getHostname()},
-        {"port", p.getPort()},
-        {"fpsLimit", p.getFpsLimit()}
+        {"hostname", p.hostname},
+        {"port", p.port},
+        {"fpsLimit", p.fpsLimit},
+        {"turnMatrixOffOnExit", p.turnMatrixOffOnExit},
+        {"turnMatrixOnOnStart", p.turnMatrixOnOnStart} //
     };
 }
 

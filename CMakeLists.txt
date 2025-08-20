@@ -137,7 +137,9 @@ if(ENABLE_DESKTOP)
     find_package(tray CONFIG REQUIRED)
     find_package(hello-imgui CONFIG REQUIRED)
     find_package(implot CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray::tray)
+    find_package(cpr CONFIG REQUIRED)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui tray::tray cpr::cpr)
     target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/traypp/include
     )
