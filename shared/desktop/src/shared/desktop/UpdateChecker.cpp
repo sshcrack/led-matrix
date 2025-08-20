@@ -159,28 +159,28 @@ namespace UpdateChecker
                     {
         try {
             spdlog::info("Checking for updates from GitHub...");
-            
+
             auto response = cpr::Get(
                 cpr::Url{"https://api.github.com/repos/sshcrack/led-matrix/releases/latest"},
                 cpr::Header{{"User-Agent", "led-matrix-desktop/" + getCurrentVersion().toString()}}
             );
-            
+
             if (response.status_code == 200) {
                 auto releaseJson = nlohmann::json::parse(response.text);
                 ReleaseInfo release = parseReleaseInfo(releaseJson);
-                
+
                 Common::Version currentVersion = getCurrentVersion();
                 bool hasUpdate = release.version > currentVersion;
-                
+
                 // Check preferences to see if we should notify about this update
                 if (hasUpdate && !pImpl->preferences.shouldRemindForVersion(release.tagName)) {
                     spdlog::info("Update available but skipped due to user preferences: {}", release.tagName);
                     hasUpdate = false; // Don't notify
                 }
-                
-                spdlog::info("Current version: {}, Latest version: {}, Has update: {}", 
+
+                spdlog::info("Current version: {}, Latest version: {}, Has update: {}",
                            currentVersion.toString(), release.version.toString(), hasUpdate);
-                
+
                 // Call callback on main thread
                 callback(hasUpdate, release);
             } else {
@@ -193,7 +193,7 @@ namespace UpdateChecker
             ReleaseInfo empty;
             callback(false, empty);
         }
-        
+
         pImpl->isCheckingForUpdates = false; })
             .detach();
     }
@@ -344,8 +344,7 @@ namespace UpdateChecker
             std::string errorMsg = "Exception during update: " + std::string(e.what());
             spdlog::error(errorMsg);
             callback(false, errorMsg);
-        }
-        })
+        } })
             .detach();
     }
 #else

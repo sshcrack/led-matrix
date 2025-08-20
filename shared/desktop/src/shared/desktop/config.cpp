@@ -15,6 +15,8 @@ Config::General::General(const General &other)
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+    turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
 
 Config::General &Config::General::operator=(const General &other)
@@ -29,6 +31,8 @@ Config::General &Config::General::operator=(const General &other)
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+        turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
     return *this;
 }
@@ -40,6 +44,8 @@ Config::General::General(General &&other) noexcept
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+    turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
 
 Config::General &Config::General::operator=(General &&other) noexcept
@@ -54,6 +60,8 @@ Config::General &Config::General::operator=(General &&other) noexcept
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        turnMatrixOffOnExit = other.turnMatrixOffOnExit;
+        turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
     return *this;
 }
