@@ -5,20 +5,10 @@
 #include <memory>
 #include <string>
 
-// Third-party includes
-#include <fmt/format.h>
-#include <nlohmann/json.hpp>
-#include <GLFW/glfw3.h>
-#include <hello_imgui/hello_imgui.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <tray.hpp>
-#include <cpr/cpr.h>
-
 // Project includes
 #include "shared/desktop/WebsocketClient.h"
 #include <shared/common/utils/utils.h>
+#include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_freetype.h"
@@ -31,6 +21,16 @@
 #include "single_instance_manager.h"
 #include <shared/desktop/glfw.h>
 #include "spdlog/cfg/env.h"
+
+// Third-party includes
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
+#include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <tray.hpp>
+#include <cpr/cpr.h>
 
 #ifdef _WIN32
 #include <windows.h>

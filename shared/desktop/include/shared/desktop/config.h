@@ -31,8 +31,8 @@ namespace Config
         mutable std::shared_mutex mutex_;
 
     public:
-        friend void to_json(json &j, const General &p);
-        friend void from_json(const json &j, General &p);
+        friend SHARED_DESKTOP_API void to_json(json &j, const General &p);
+        friend SHARED_DESKTOP_API void from_json(const json &j, General &p);
 
         General() = default;
         General(const General &other);
