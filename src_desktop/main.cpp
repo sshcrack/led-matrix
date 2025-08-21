@@ -21,6 +21,7 @@
 #include "single_instance_manager.h"
 #include <shared/desktop/glfw.h>
 #include "spdlog/cfg/env.h"
+#include <csignal>
 
 // Third-party includes
 #include <fmt/format.h>
@@ -63,6 +64,25 @@ std::string get_noto_color_emoji_path()
 static bool shouldExit = false;
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static bool showMainWindow = false;
+
+#ifdef _WIN32
+// Console control handler for Windows
+static BOOL WINAPI console_ctrl_handler(DWORD ctrlType)
+{
+    // Request graceful shutdown
+    shouldExit = true;
+    // Indicate we've handled the event so the process isn't terminated immediately
+    return TRUE;
+}
+#else
+// Use sig_atomic_t for async-signal-safety
+static volatile sig_atomic_t signalReceived = 0;
+static void signal_handler(int /*signum*/)
+{
+    signalReceived = 1;
+    shouldExit = true;
+}
+#endif
 
 // ---- Window iconify callback ----
 static void window_iconify_callback(GLFWwindow *window, const int iconified)
@@ -566,6 +586,15 @@ int run_app(int argc, char *argv[])
         spdlog::info("Starting minimized.");
         runnerParams.appWindowParams.hidden = true;
     }
+
+    // Register signal/console handlers so the application can request a graceful shutdown
+#ifdef _WIN32
+    // Install console control handler to catch Ctrl+C / console close events
+    SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
+#else
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+#endif
 
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
