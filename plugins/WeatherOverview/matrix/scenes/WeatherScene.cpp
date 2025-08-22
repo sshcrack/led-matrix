@@ -576,6 +576,10 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
         DrawText(offscreen_canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
                  {200, 200, 200}, data_res.error().c_str());
         offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+
+#ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+#endif
         SleepMillis(1000);
         return false; // Continue running despite error
     }
