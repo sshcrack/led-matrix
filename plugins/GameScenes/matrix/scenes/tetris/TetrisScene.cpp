@@ -118,9 +118,7 @@ namespace Scenes {
             }
         }
 
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
-        SleepMillis(50);
-
+        wait_until_next_frame();
         return true;
     }
 
