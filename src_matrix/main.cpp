@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
             settings.port(port);
             settings.address(host);
             settings.request_handler(std::move(router));
+            settings.write_http_response_timelimit(10s);
             settings.cleanup_func([]
                                   {
             std::unique_lock lock(Server::registryMutex);
