@@ -608,6 +608,12 @@ This comprehensive guide covers:
 
 ### 🚀 **Get Started**
 
+> [!NOTE]
+> Linux-Specific: Make sure you have the necessary development packages installed:
+>```bash
+>sudo apt install libasound2-dev python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
+>```
+
 1. **Read the [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**
 2. **Study existing plugins** for patterns and inspiration
 3. **Use the emulator** for development and testing
