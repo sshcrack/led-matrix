@@ -26,13 +26,11 @@ Displays a real-time audio spectrum visualization with the following configurabl
 - **falling_dots**: Whether to show falling dots at the peak of each frequency band
 - **dot_fall_speed**: Speed at which the peak dots fall (0.01 - 1.0)
 
-## Compatible Clients
+## Desktop Audio Plugin
 
-### Rust Audio Client
+The plugin is designed to work with the desktop cpp audio plugin that is installed with the desktop application of this project. 
 
-The plugin is designed to work with the Rust audio client located in the `audio-visualizer` directory. The client captures audio from your system and sends it to the LED matrix over UDP.
-
-#### Packet Format
+#### Packet Format (outdated) 
 
 The client uses a compact binary packet format:
 
