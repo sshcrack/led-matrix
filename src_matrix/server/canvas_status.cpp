@@ -33,6 +33,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
     router->http_get("/status", [](auto req, auto) {
         return reply_with_json(req, {
                                    {"turned_off", config->is_turned_off()},
+                                   {"turned_on", !config->is_turned_off()},
                                    {"current", config->get_curr_id()}
                                }
         );
