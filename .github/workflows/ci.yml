@@ -52,6 +52,11 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: |
+          choco install nsis -y
+          
       - uses: awalsh128/cache-apt-pkgs-action@latest
         if: runner.os != 'Windows'
         with:
