@@ -6,6 +6,9 @@
 #include "shared/matrix/utils/image_fetch.h"
 #include <shared/matrix/utils/utils.h>
 #include <iostream>
+#ifdef ENABLE_EMULATOR
+#include "emulator.h"
+#endif
 
 namespace fs = std::filesystem;
 
