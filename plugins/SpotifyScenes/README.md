@@ -23,7 +23,7 @@ SPOTIFY_CLIENT_SECRET=your_client_secret
 
 1. Create a Spotify Developer application at [developer.spotify.com](https://developer.spotify.com/dashboard/)
 2. Get your Client ID and Client Secret
-3. Set the redirect URI in your Spotify app settings
+3. Set the redirect URI to `http://127.0.01.:8080/spotify/callback` in your Spotify app settings
 4. Complete the authentication flow to obtain a refresh token
 5. Add your credentials to the configuration file
 
