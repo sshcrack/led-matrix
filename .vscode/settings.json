@@ -102,6 +102,9 @@
         "xtree": "cpp",
         "xstring": "cpp",
         "filesystem": "cpp",
-        "xlocinfo": "cpp"
+        "xlocinfo": "cpp",
+        "netfwd": "cpp",
+        "rope": "cpp",
+        "slist": "cpp"
     }
 }
