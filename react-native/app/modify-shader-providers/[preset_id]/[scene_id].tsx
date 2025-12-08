@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import ImageProviders from '~/components/modify-providers/ImageProviders';
+import ShaderUrlProviders from '~/components/modify-providers/ShaderUrlProviders';
 import { Text } from '~/components/ui/text';
 
 export default function ModifyPreset() {
@@ -15,8 +15,7 @@ export default function ModifyPreset() {
         <SafeAreaView className="flex-1 w-full bg-background">
             <ScrollView className='flex-1 gap-5 p-4 bg-secondary/30 w-full' contentContainerStyle={{
                 alignItems: "center"
-            }}>
-                <ImageProviders preset_id={preset_id} scene_id={scene_id} />
+            }}><ShaderUrlProviders preset_id={preset_id} scene_id={scene_id} />
             </ScrollView>
         </SafeAreaView>
     </SafeAreaProvider >

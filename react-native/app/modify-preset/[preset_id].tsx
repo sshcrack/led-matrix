@@ -62,6 +62,7 @@ export default function ModifyPreset() {
     const { data: properties, error: errorProperty, isLoading: isLoadingProperty, setRetry: setPropertyRetry } = useFetch<ListScenes[]>(`/list_scenes`)
     const { config, update, setConfig } = useContext(ConfigContext)
 
+    console.log("Config", config)
 
     useEffect(() => {
         if (data) {

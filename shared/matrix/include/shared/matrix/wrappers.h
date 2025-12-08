@@ -3,6 +3,7 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/config/image_providers/general.h"
+#include "shared/matrix/config/shader_providers/general.h"
 
 namespace Plugins {
     class ImageProviderWrapper {
@@ -18,6 +19,28 @@ namespace Plugins {
         }
 
         std::shared_ptr<ImageProviders::General> get_default() {
+            if (default_general == nullptr) {
+                default_general = create();
+                default_general->register_properties();
+            }
+
+            return default_general;
+        }
+    };
+
+    class ShaderProviderWrapper {
+        std::shared_ptr<ShaderProviders::General> default_general;
+
+    public:
+        virtual ~ShaderProviderWrapper() = default;
+
+        virtual std::unique_ptr<ShaderProviders::General, void (*)(ShaderProviders::General *)> create() = 0;
+
+        virtual string get_name() {
+            return get_default()->get_name();
+        }
+
+        std::shared_ptr<ShaderProviders::General> get_default() {
             if (default_general == nullptr) {
                 default_general = create();
                 default_general->register_properties();

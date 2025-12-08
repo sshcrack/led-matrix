@@ -9,6 +9,9 @@
         "plugins/Shadertoy/thirdparty/shadertoy-headless",
         "scripts/rpi_vm/pi-ci-larger"
     ],
+    "rust-analyzer.linkedProjects": [
+        "plugins/Shadertoy/desktop/shadertoy-scraper/Cargo.toml"
+    ],
     "files.associations": {
         "*.scss": "scss",
         "optional": "cpp",

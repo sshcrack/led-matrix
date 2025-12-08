@@ -36,6 +36,7 @@ void PluginManager::delete_references() {
     for (auto &item: loaded_plugins) {
         item.sceneWrappers.clear();
         item.imageProviderWrappers.clear();
+        item.shaderProviderWrappers.clear();
     }
 }
 
@@ -66,6 +67,19 @@ std::vector<std::shared_ptr<ImageProviderWrapper> > PluginManager::get_image_pro
     std::vector<std::shared_ptr<ImageProviderWrapper> > types;
     for (const auto &item: get_plugins()) {
         auto pl_providers = item->get_image_providers();
+        types.insert(types.end(),
+                     pl_providers.begin(),
+                     pl_providers.end()
+        );
+    }
+
+    return types;
+}
+
+std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> PluginManager::get_shader_providers() {
+    std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> types;
+    for (const auto &item: get_plugins()) {
+        auto pl_providers = item->get_shader_providers();
         types.insert(types.end(),
                      pl_providers.begin(),
                      pl_providers.end()

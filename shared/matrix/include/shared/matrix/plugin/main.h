@@ -18,10 +18,16 @@ namespace Plugins
     class BasicPlugin
     {
         vector<std::shared_ptr<ImageProviderWrapper>> image_providers;
+        vector<std::shared_ptr<ShaderProviderWrapper>> shader_providers;
         vector<std::shared_ptr<SceneWrapper>> scenes;
 
         virtual vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
         create_image_providers() = 0;
+
+        virtual vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+        create_shader_providers() {
+            return {};
+        }
 
         virtual vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() = 0;
 
@@ -52,6 +58,21 @@ namespace Plugins
             }
 
             return image_providers;
+        }
+
+        vector<std::shared_ptr<ShaderProviderWrapper>> get_shader_providers()
+        {
+            if (shader_providers.empty())
+            {
+                auto providers = create_shader_providers();
+                shader_providers.reserve(providers.size());
+                for (auto &item : providers)
+                {
+                    shader_providers.push_back(std::move(item));
+                }
+            }
+
+            return shader_providers;
         }
 
         vector<std::shared_ptr<SceneWrapper>> get_scenes()

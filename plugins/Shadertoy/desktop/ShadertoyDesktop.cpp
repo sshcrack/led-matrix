@@ -19,6 +19,14 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
     delete c;
 }
 
+ShadertoyDesktop::~ShadertoyDesktop()
+{
+    if (mCache)
+    {
+        mCache->save();
+    }
+}
+
 static bool isActive = false;
 static bool currShaderHasError = false;
 void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
@@ -28,17 +36,8 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 
     if (hasUrlChanged)
     {
-        spdlog::info("Loading shader {}...", url);
-        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
-        if (!res.has_value())
-        {
-            spdlog::error("Failed to load from shadertoy: {}", res.error().what());
-
-            send_websocket_message("next_shader");
-            currShaderHasError = true;
-            return;
-        }
-        hasUrlChanged = false;
+        spdlog::info("URL changed, loading shader {}...", url);
+        loadCacheFromUrl(url);
     }
 
     auto res = ShaderToy::PipelineEditor::get().update(ctx);
@@ -88,6 +87,9 @@ void ShadertoyDesktop::render()
     if (ImGui::Button("Next Shader"))
         send_websocket_message("next_shader");
 
+    if (ImGui::Button("Manage Cache"))
+        mShowCacheEditor = true;
+
     ImGui::Checkbox("Enable Preview", &enablePreview);
     if (enablePreview)
     {
@@ -111,6 +113,132 @@ void ShadertoyDesktop::render()
         }
 
         ImGui::End();
+    }
+
+    renderCacheEditorUI();
+}
+
+void ShadertoyDesktop::renderCacheEditorUI()
+{
+    if (!mShowCacheEditor)
+        return;
+
+    if (!ImGui::Begin("Shader Cache Manager", &mShowCacheEditor))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Add Custom Cache Entry");
+    ImGui::InputText("Cache Key (URL)", mCacheKeyInput, sizeof(mCacheKeyInput));
+    ImGui::InputTextMultiline("Cache Value (Response)", mCacheValueInput, sizeof(mCacheValueInput),
+                              ImVec2(-1.0f, 200.0f));
+
+    if (ImGui::Button("Add to Cache") && mCache)
+    {
+        if (strlen(mCacheKeyInput) > 0 && strlen(mCacheValueInput) > 0)
+        {
+            mCache->set(std::string(mCacheKeyInput), std::string(mCacheValueInput));
+            mCacheKeyInput[0] = '\0';
+            mCacheValueInput[0] = '\0';
+            spdlog::info("Added custom cache entry");
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Cached Entries: %zu", mCache ? mCache->getKeys().size() : 0);
+
+    if (mCache && ImGui::BeginChild("CacheList", ImVec2(0, -50), true))
+    {
+        auto keys = mCache->getKeys();
+        for (const auto& key : keys)
+        {
+            ImGui::PushID(key.c_str());
+            ImGui::TextWrapped("%s", key.c_str());
+            ImGui::SameLine();
+
+            if (ImGui::SmallButton("Delete"))
+            {
+                mCacheToDelete = key;
+            }
+
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+
+    // Handle deletion
+    if (!mCacheToDelete.empty())
+    {
+        if (ImGui::BeginPopupModal("Delete Cache Entry?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Are you sure you want to delete this cache entry?\n%s", mCacheToDelete.c_str());
+            ImGui::Separator();
+
+            if (ImGui::Button("Delete", ImVec2(120, 0)))
+            {
+                if (mCache)
+                {
+                    mCache->remove(mCacheToDelete);
+                    spdlog::info("Deleted cache entry: {}", mCacheToDelete);
+                }
+                mCacheToDelete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::SetItemDefaultFocus();
+            ImGui::SameLine();
+
+            if (ImGui::Button("Cancel", ImVec2(120, 0)))
+            {
+                mCacheToDelete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (!mCacheToDelete.empty())
+            ImGui::OpenPopup("Delete Cache Entry?");
+    }
+
+    ImGui::End();
+}
+
+void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
+{
+    if (!mCache)
+    {
+        spdlog::error("Cache not initialized");
+        return;
+    }
+
+    auto cached = mCache->get(url);
+    if (cached.has_value())
+    {
+        spdlog::info("Loading shader from cache for {}", url);
+        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToyResponse(url, cached.value());
+        if (!res.has_value())
+        {
+            spdlog::error("Failed to load from cache: {}", res.error().what());
+            send_websocket_message("next_shader");
+            currShaderHasError = true;
+            return;
+        }
+        hasUrlChanged = false;
+    }
+    else
+    {
+        spdlog::info("Loading shader {} from ShaderToy...", url);
+        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
+        if (!res.has_value())
+        {
+            spdlog::error("Failed to load from shadertoy: {}", res.error().what());
+            send_websocket_message("next_shader");
+            currShaderHasError = true;
+            return;
+        }
+        hasUrlChanged = false;
     }
 }
 
@@ -165,4 +293,8 @@ void ShadertoyDesktop::post_init()
     }
     else
         spdlog::info("Glew initialized successfully");
+    
+    // Initialize cache with plugin directory
+    auto cacheDir = _plugin_location.parent_path().parent_path() / "cache";
+    mCache = std::make_unique<ShaderCache>(cacheDir);
 }

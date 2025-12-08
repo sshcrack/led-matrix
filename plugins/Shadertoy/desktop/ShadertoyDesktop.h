@@ -5,11 +5,13 @@
 #include <thread>
 #include <shared_mutex>
 #include <shadertoy/ShaderToyContext.hpp>
+#include "ShaderCache.h"
 
 class ShadertoyDesktop final : public Plugins::DesktopPlugin
 {
 public:
     ShadertoyDesktop() = default;
+    ~ShadertoyDesktop() override;
 
     void render() override;
     void on_websocket_message(std::string message) override;
@@ -36,4 +38,16 @@ private:
 
     std::shared_mutex currDataMutex;
     std::vector<uint8_t> currData;
+
+    // Cache system
+    std::unique_ptr<ShaderCache> mCache;
+    
+    // Custom cache entry UI
+    bool mShowCacheEditor = false;
+    char mCacheKeyInput[256] = {0};
+    char mCacheValueInput[4096] = {0};
+    std::string mCacheToDelete;
+    
+    void renderCacheEditorUI();
+    void loadCacheFromUrl(const std::string& url);
 };

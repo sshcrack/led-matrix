@@ -3,6 +3,10 @@ register_plugin(Shadertoy
         matrix/ShadertoyPlugin.h
         matrix/scenes/ShadertoyScene.cpp
         matrix/scenes/ShadertoyScene.h
+        matrix/providers/Random.cpp
+        matrix/providers/Random.h
+        matrix/providers/Collection.cpp
+        matrix/providers/Collection.h
         matrix/scraper/Scraper.cpp
         matrix/scraper/Scraper.h
         DESKTOP
@@ -10,6 +14,8 @@ register_plugin(Shadertoy
         desktop/ShadertoyDesktop.h
         desktop/CanvasPacket.cpp
         desktop/CanvasPacket.h
+        desktop/ShaderCache.cpp
+        desktop/ShaderCache.h
 )
 
 if(ENABLE_DESKTOP)

@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import { Option, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
 import { Text } from '../ui/text';
 
-export default function AddProviderButton({ providers, presetId, sceneId }: { providers: ListProviders[], presetId: string, sceneId: string }) {
+export default function AddProviderButton({ providers, presetId, sceneId, providerKey }: { providers: ListProviders[], presetId: string, sceneId: string, providerKey: string }) {
     const [opt, setValue] = useState<Option>({ value: providers[0].name, label: titleCase(providers[0].name) })
 
     const insets = useSafeAreaInsets();
@@ -22,7 +22,7 @@ export default function AddProviderButton({ providers, presetId, sceneId }: { pr
     };
 
 
-    const { setSubConfig } = useSubConfig<ProviderValue[]>(presetId, ["scenes", sceneId, "arguments", "providers"])
+    const { setSubConfig } = useSubConfig<ProviderValue[]>(presetId, ["scenes", sceneId, "arguments", providerKey])
     return <View className='w-full flex-row'>
         <Select
             className='flex-1 h-full rounded-r-none'

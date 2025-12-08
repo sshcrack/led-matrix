@@ -89,5 +89,36 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         return reply_with_json(req, j);
     });
 
+    router->http_get("/list_shader_providers", [](auto req, auto) {
+        auto providers = Plugins::PluginManager::instance()->get_shader_providers();
+        std::vector<json> j;
+
+        for (const auto &item: providers) {
+            auto properties = item->get_default()->get_properties();
+            std::vector<json> properties_json;
+
+            for (const auto &item1: properties) {
+                json j1;
+                item1->dump_to_json(j1);
+
+                json j2;
+                j2["name"] = item1->getName();
+                j2["default_value"] = j1[item1->getName()];
+                j2["type_id"] = item1->get_type_id();
+
+                properties_json.push_back(j2);
+            }
+
+            json j1 = {
+                {"name", item->get_name()},
+                {"properties", properties_json}
+            };
+
+            j.push_back(j1);
+        }
+
+        return reply_with_json(req, j);
+    });
+
     return std::move(router);
 }

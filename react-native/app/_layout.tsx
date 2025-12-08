@@ -149,6 +149,22 @@ export default function RootLayout() {
                   headerTintColor: dynamicColor,
                 }}
               />
+              <Stack.Screen
+                name='modify-shader-providers/[preset_id]/[scene_id]'
+                dangerouslySingular={(name, params) => `modify-shader-providers-${params?.preset_id}-${params?.scene_id}`}
+                options={{
+                  title: `Configure Scene`,
+                  headerStyle: {
+                    backgroundColor: isDarkColorScheme ? 'rgb(15 23 42)' : 'rgb(255 255 255)',
+                  },
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 18,
+                    color: dynamicColor,
+                  },
+                  headerTintColor: dynamicColor,
+                }}
+              />
             </Stack>
           </ConfigProvider>
         </ApiUrlProvider>
