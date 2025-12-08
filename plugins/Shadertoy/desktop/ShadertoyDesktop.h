@@ -45,7 +45,7 @@ private:
     // Custom cache entry UI
     bool mShowCacheEditor = false;
     char mCacheKeyInput[256] = {0};
-    char mCacheValueInput[4096] = {0};
+    char mCacheFileInput[1024] = {0};
     std::string mCacheToDelete;
     
     void renderCacheEditorUI();

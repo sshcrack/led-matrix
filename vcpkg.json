@@ -56,7 +56,8 @@
     "shadertoy-desktop": {
       "description": "Dependencies needed by shadertoy-headless",
       "dependencies": [
-        "shadertoy-headless"
+        "shadertoy-headless",
+        "nativefiledialog-extended"
       ]
     }
   },
