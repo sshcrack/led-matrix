@@ -9,6 +9,8 @@ register_plugin(GameScenes
         matrix/scenes/SnakeGameScene.h
         matrix/scenes/tetris/TetrisScene.cpp
         matrix/scenes/tetris/TetrisScene.h
+        matrix/scenes/PacmanGameScene.cpp
+        matrix/scenes/PacmanGameScene.h
 
         matrix/scenes/tetris/utils/brain.cpp
         matrix/scenes/tetris/utils/brain.hpp
