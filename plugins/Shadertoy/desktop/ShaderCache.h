@@ -1,9 +1,8 @@
 #pragma once
-#include <nlohmann/json.hpp>
 #include <string>
-#include <unordered_map>
 #include <filesystem>
 #include <optional>
+#include <vector>
 
 class ShaderCache {
 public:
@@ -12,19 +11,13 @@ public:
     // Get cached response for a URL
     std::optional<std::string> get(const std::string& url) const;
     
-    // Set cache entry
-    void set(const std::string& url, const std::string& response);
+    // Set cache entry by loading from file
+    void setFromFile(const std::string& url, const std::filesystem::path& filePath);
     
     // Check if URL is cached
     bool has(const std::string& url) const;
     
-    // Load cache from disk
-    void load();
-    
-    // Save cache to disk
-    void save() const;
-    
-    // Get all keys
+    // Get all keys (URLs) currently cached
     std::vector<std::string> getKeys() const;
     
     // Remove a cache entry
@@ -35,8 +28,12 @@ public:
 
 private:
     std::filesystem::path mCacheDir;
-    std::filesystem::path mCacheFile;
-    nlohmann::json mCache;
+    
+    // Convert URL to safe filename
+    std::string urlToFilename(const std::string& url) const;
+    
+    // Get the cache file path for a URL
+    std::filesystem::path getCacheFilePath(const std::string& url) const;
     
     void ensureCacheDirExists() const;
 };

@@ -6,6 +6,8 @@
 #include <GLFW/glfw3.h>
 #include <shadertoy/PipelineEditor.hpp>
 #include <shared/desktop/glfw.h>
+#include <nfd.hpp>
+#include <shared/desktop/utils.h>
 
 #include "CanvasPacket.h"
 
@@ -19,12 +21,38 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
     delete c;
 }
 
+static std::string normalizeShaderToyUrl(const std::string& input)
+{
+    // Check if input is already a full URL
+    if (input.find("http://") == 0 || input.find("https://") == 0)
+    {
+        return input;
+    }
+    
+    // Check if input looks like a shader ID (alphanumeric, typically 6 characters)
+    // Pattern: /view/XXXXXX where X is alphanumeric
+    bool isLikelyId = true;
+    for (char c : input)
+    {
+        if (!std::isalnum(c))
+        {
+            isLikelyId = false;
+            break;
+        }
+    }
+    
+    if (isLikelyId && input.length() > 0)
+    {
+        return "https://www.shadertoy.com/view/" + input;
+    }
+    
+    // Return as-is if doesn't match patterns
+    return input;
+}
+
 ShadertoyDesktop::~ShadertoyDesktop()
 {
-    if (mCache)
-    {
-        mCache->save();
-    }
+    // Cache now saves individual files automatically
 }
 
 static bool isActive = false;
@@ -129,19 +157,42 @@ void ShadertoyDesktop::renderCacheEditorUI()
         return;
     }
 
-    ImGui::Text("Add Custom Cache Entry");
+    ImGui::Text("Add Cache Entry from File");
     ImGui::InputText("Cache Key (URL)", mCacheKeyInput, sizeof(mCacheKeyInput));
-    ImGui::InputTextMultiline("Cache Value (Response)", mCacheValueInput, sizeof(mCacheValueInput),
-                              ImVec2(-1.0f, 200.0f));
+    ImGui::InputText("Cache File Path##file", mCacheFileInput, sizeof(mCacheFileInput));
+    
+    ImGui::SameLine();
+    if (ImGui::Button("Browse...##cache"))
+    {
+        nfdchar_t* outPath = nullptr;
+        nfdfilteritem_t filters[2] = { { "JSON files", "json" }, { "All files", nullptr } };
+        nfdresult_t result = NFD_OpenDialog(&outPath, filters, 2, nullptr);
+        if (result == NFD_OKAY)
+        {
+            strncpy(mCacheFileInput, outPath, sizeof(mCacheFileInput) - 1);
+            mCacheFileInput[sizeof(mCacheFileInput) - 1] = '\0';
+            NFD_FreePath(outPath);
+        }
+        else if (result == NFD_CANCEL)
+        {
+            // User cancelled, no action needed
+        }
+        else
+        {
+            spdlog::error("File dialog error: {}", NFD_GetError());
+        }
+    }
 
     if (ImGui::Button("Add to Cache") && mCache)
     {
-        if (strlen(mCacheKeyInput) > 0 && strlen(mCacheValueInput) > 0)
+        if (strlen(mCacheKeyInput) > 0 && strlen(mCacheFileInput) > 0)
         {
-            mCache->set(std::string(mCacheKeyInput), std::string(mCacheValueInput));
+            std::string normalizedKey = normalizeShaderToyUrl(std::string(mCacheKeyInput));
+            std::filesystem::path filePath(mCacheFileInput);
+            mCache->setFromFile(normalizedKey, filePath);
             mCacheKeyInput[0] = '\0';
-            mCacheValueInput[0] = '\0';
-            spdlog::info("Added custom cache entry");
+            mCacheFileInput[0] = '\0';
+            spdlog::info("Added custom cache entry from file: {}", normalizedKey);
         }
     }
 
@@ -294,7 +345,7 @@ void ShadertoyDesktop::post_init()
     else
         spdlog::info("Glew initialized successfully");
     
-    // Initialize cache with plugin directory
-    auto cacheDir = _plugin_location.parent_path().parent_path() / "cache";
+    // Initialize cache in writable data directory
+    auto cacheDir = get_data_dir() / "cache" / "shadertoy";
     mCache = std::make_unique<ShaderCache>(cacheDir);
 }

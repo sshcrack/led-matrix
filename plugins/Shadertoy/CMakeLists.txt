@@ -21,9 +21,11 @@ register_plugin(Shadertoy
 if(ENABLE_DESKTOP)
         find_package(GLEW REQUIRED)
         find_package(shadertoy-headless CONFIG REQUIRED)
+        find_package(nfd CONFIG REQUIRED)
 
         target_link_libraries(Shadertoy PRIVATE shadertoy_headless::shadertoy-headless)
         target_link_libraries(Shadertoy PRIVATE GLEW::GLEW)
+        target_link_libraries(Shadertoy PRIVATE nfd::nfd)
 
         if(WIN32)
                 set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
@@ -42,6 +44,17 @@ if(ENABLE_DESKTOP)
 
                 if(BROTLI_DLLS)
                         install(FILES ${BROTLI_DLLS}
+                                DESTINATION plugins/Shadertoy
+                                COMPONENT Shadertoy
+                        )
+                else()
+                        message(WARNING "No Brotli DLLs found in ${VCPKG_BIN_DIR}. The plugin might not load")
+                endif()
+
+                file(GLOB NFD_DLLS "${VCPKG_BIN_DIR}/nfd*.dll")
+
+                if(NFD_DLLS)
+                        install(FILES ${NFD_DLLS}
                                 DESTINATION plugins/Shadertoy
                                 COMPONENT Shadertoy
                         )
