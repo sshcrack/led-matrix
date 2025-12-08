@@ -5,6 +5,7 @@
 #include "scenes/tetris/TetrisScene.h"
 #include "scenes/MazeGameScene.h"
 #include "scenes/SnakeGameScene.h"
+#include "scenes/PacmanGameScene.h"
 
 using namespace Scenes;
 
@@ -30,6 +31,7 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GameSce
     scenes.push_back({new TetrisSceneWrapper(), destroyScene});
     scenes.push_back({new MazeGameSceneWrapper(), destroyScene});
     scenes.push_back({new SnakeGameSceneWrapper(), destroyScene});
+    scenes.push_back({new PacmanGameSceneWrapper(), destroyScene});
 
     return scenes;
 }

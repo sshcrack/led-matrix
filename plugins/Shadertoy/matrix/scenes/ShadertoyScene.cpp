@@ -70,6 +70,49 @@ void ShadertoyScene::load_properties(const nlohmann::json &j)
 void Scenes::ShadertoyScene::after_render_stop(RGBMatrixBase *matrix)
 {
     switchToNextRandomShader = true;
+    failed_provider_count = 0;
+    showing_loading_animation = false;
+}
+
+void Scenes::ShadertoyScene::render_loading_animation()
+{
+    const int width = Constants::width;
+    const int height = Constants::height;
+    
+    // Clear canvas
+    offscreen_canvas->Fill(0, 0, 0);
+    
+    // Simple rotating dots animation
+    const int num_dots = 8;
+    const int radius = std::min(width, height) / 3;
+    const int center_x = width / 2;
+    const int center_y = height / 2;
+    
+    for (int i = 0; i < num_dots; ++i)
+    {
+        float angle = (2.0f * M_PI * i / num_dots) + (loading_animation_frame * 0.05f);
+        int x = center_x + static_cast<int>(radius * cos(angle));
+        int y = center_y + static_cast<int>(radius * sin(angle));
+        
+        // Fade dots based on position in rotation
+        int brightness = 255 - (i * 255 / num_dots);
+        
+        // Draw a small circle for each dot
+        for (int dx = -1; dx <= 1; ++dx)
+        {
+            for (int dy = -1; dy <= 1; ++dy)
+            {
+                int px = x + dx;
+                int py = y + dy;
+                if (px >= 0 && px < width && py >= 0 && py < height)
+                {
+                    offscreen_canvas->SetPixel(px, py, 0, brightness, brightness);
+                }
+            }
+        }
+    }
+    
+    loading_animation_frame++;
 }
 
 bool ShadertoyScene::render(RGBMatrixBase *matrix)
@@ -101,17 +144,47 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
             url_to_send = *result;
             spdlog::info("ShadertoyScene: Got shader URL from provider: {}", url_to_send);
             switchToNextRandomShader = false;
-            
+            failed_provider_count = 0;
+            showing_loading_animation = false;
+
             // Rotate to next provider for next time
             curr_provider_index = (curr_provider_index + 1) % providers.size();
         }
         else
         {
             spdlog::warn("ShadertoyScene: Failed to get shader from provider: {}", result.error());
+            failed_provider_count++;
+            
             // Try next provider
             curr_provider_index = (curr_provider_index + 1) % providers.size();
+            
+            // If we've tried all providers, flush them and show loading animation
+            if (failed_provider_count >= providers.size())
+            {
+                if (!showing_loading_animation)
+                {
+                    spdlog::info("ShadertoyScene: All providers failed, flushing all providers and showing loading animation");
+                    
+                    // Flush all providers
+                    for (auto &provider : providers)
+                    {
+                        provider->flush();
+                    }
+                    
+                    showing_loading_animation = true;
+                    loading_animation_frame = 0;
+                }
+            }
+            
             return true; // Continue rendering
         }
+    }
+
+    // If showing loading animation, render it and return
+    if (showing_loading_animation)
+    {
+        render_loading_animation();
+        return true;
     }
 
     if (!url_to_send.empty() && lastUrlSent != url_to_send)
