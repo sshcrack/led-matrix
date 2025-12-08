@@ -1,10 +1,10 @@
 #include "ShadertoyScene.h"
-#include "../scraper/Scraper.h"
 #include "spdlog/spdlog.h"
 #include <shared/matrix/canvas_consts.h>
-#include <future>
 
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/config/shader_providers/general.h"
+
 bool Scenes::switchToNextRandomShader = true;
 
 using namespace Scenes;
@@ -45,29 +45,31 @@ string ShadertoyScene::get_name() const
 
 void ShadertoyScene::register_properties()
 {
-    add_property(toy_url);
-    add_property(random_shader);
-    add_property(min_page);
-    add_property(max_page);
+    add_property(json_providers);
 }
 
-void ShadertoyScene::prefetch_random_shader()
+void ShadertoyScene::load_properties(const nlohmann::json &j)
 {
-    if (random_shader->get())
-    {
-        int minPage = min_page->get();
-        int maxPage = max_page->get();
-        Scraper::instance().prefetchShadersAsync(minPage, maxPage);
+    Scene::load_properties(j);
+
+    auto is_array = json_providers.get()->get().is_array();
+    if (!is_array)
+        throw std::runtime_error("Providers of shadertoy scene must be an array");
+
+    auto arr = json_providers->get();
+    if (arr.empty())
+        throw std::runtime_error("No shader providers given for shadertoy scene");
+
+    for (const auto &provider_json: arr) {
+        providers.push_back(ShaderProviders::General::from_json(provider_json));
     }
+    
+    spdlog::info("ShadertoyScene: Loaded {} shader providers", providers.size());
 }
 
 void Scenes::ShadertoyScene::after_render_stop(RGBMatrixBase *matrix)
 {
     switchToNextRandomShader = true;
-    if (random_shader->get())
-    {
-        prefetch_random_shader();
-    }
 }
 
 bool ShadertoyScene::render(RGBMatrixBase *matrix)
@@ -77,79 +79,40 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
         spdlog::info("ShadertoyScene: Plugin not found, cannot render");
         return false;
     }
-    static bool waiting_for_shader = false;
-    static int loading_anim_frame = 0;
+
+    if (providers.empty())
+    {
+        spdlog::error("ShadertoyScene: No providers configured");
+        offscreen_canvas->Fill(255, 0, 0); // Red for error
+        return false;
+    }
+
     static std::string url_to_send;
 
-    if ((random_shader->get() && switchToNextRandomShader))
-    {
-        if (!Scraper::instance().hasShadersLeft())
-        {
-            // Start async fetch if not already running
-            Scraper::instance().prefetchShadersAsync(min_page->get(), max_page->get());
-            // Show loading animation: a line of 5 pixels going around the frame
-            int w = Constants::width, h = Constants::height;
-            int perimeter = 2 * (w + h) - 4;
-            int pos = (loading_anim_frame / 500) % perimeter; // slow down by factor 500
-            offscreen_canvas->Fill(0, 0, 0);
-            
-            // Draw a line of 15 pixels
-            for (int i = 0; i < 15; i++)
-            {
-                int current_pos = (pos + i) % perimeter;
-                int x = 0, y = 0;
-                
-                if (current_pos < w)
-                {
-                    x = current_pos;
-                    y = 0;
-                }
-                else if (current_pos < w + h - 1)
-                {
-                    x = w - 1;
-                    y = current_pos - w + 1;
-                }
-                else if (current_pos < 2 * w + h - 2)
-                {
-                    x = w - 1 - (current_pos - (w + h - 1));
-                    y = h - 1;
-                }
-                else
-                {
-                    x = 0;
-                    y = h - 1 - (current_pos - (2 * w + h - 2));
-                }
-                offscreen_canvas->SetPixel(x, y, 255, 255, 255);
-            }
-            loading_anim_frame++;
-            waiting_for_shader = true;
+    // Call tick() on current provider for background tasks (like prefetching)
+    providers[curr_provider_index]->tick();
 
-            return true;
+    if (switchToNextRandomShader)
+    {
+        // Get next shader from current provider
+        auto result = providers[curr_provider_index]->get_next_shader();
+        if (result)
+        {
+            url_to_send = *result;
+            spdlog::info("ShadertoyScene: Got shader URL from provider: {}", url_to_send);
+            switchToNextRandomShader = false;
+            
+            // Rotate to next provider for next time
+            curr_provider_index = (curr_provider_index + 1) % providers.size();
         }
         else
         {
-            if (waiting_for_shader)
-            {
-                spdlog::info("ShadertoyScene: Shader(s) now available after loading.");
-                waiting_for_shader = false;
-            }
-            auto result = Scraper::instance().scrapeNextShader(min_page->get(), max_page->get());
-            if (result)
-            {
-                url_to_send = *result;
-                spdlog::info("ShadertoyScene: Got random shader URL: {}", url_to_send);
-            }
-            else
-            {
-                spdlog::warn("ShadertoyScene: Could not get random shader: {}", result.error());
-                url_to_send = toy_url->get(); // fallback to current
-            }
-
-            switchToNextRandomShader = false;
+            spdlog::warn("ShadertoyScene: Failed to get shader from provider: {}", result.error());
+            // Try next provider
+            curr_provider_index = (curr_provider_index + 1) % providers.size();
+            return true; // Continue rendering
         }
     }
-    if (!random_shader->get())
-        url_to_send = toy_url->get();
 
     if (!url_to_send.empty() && lastUrlSent != url_to_send)
     {
@@ -159,7 +122,6 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
     }
 
     const auto pixels = plugin->get_data();
-
 
     if (pixels.empty())
     {

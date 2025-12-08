@@ -3,10 +3,13 @@
 #include <shared/matrix/plugin_loader/loader.h>
 
 #include "scenes/ShadertoyScene.h"
+#include "providers/Random.h"
+#include "providers/Collection.h"
 #include "shared/matrix/canvas_consts.h"
 #include "spdlog/spdlog.h"
 
 using namespace Scenes;
+using namespace ShaderProviders;
 
 extern "C" PLUGIN_EXPORT ShadertoyPlugin *createShadertoy()
 {
@@ -22,6 +25,20 @@ vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
 ShadertoyPlugin::create_image_providers()
 {
     return {};
+}
+
+vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+ShadertoyPlugin::create_shader_providers()
+{
+    auto providers = vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>();
+    auto deleteWrapper = [](ShaderProviderWrapper *wrapper) {
+        delete wrapper;
+    };
+
+    providers.push_back({new RandomWrapper(), deleteWrapper});
+    providers.push_back({new CollectionWrapper(), deleteWrapper});
+
+    return providers;
 }
 
 vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> ShadertoyPlugin::create_scenes()
@@ -64,20 +81,7 @@ std::optional<std::vector<std::string>> ShadertoyPlugin::on_websocket_open()
 {
     std::shared_lock lock(Server::currSceneMutex);
     std::string sizeMsg = "size:" + std::to_string(Constants::width) + "x" + std::to_string(Constants::height);
-    if (Server::currScene && dynamic_cast<ShadertoyScene *>(Server::currScene.get()))
-    {
-        auto scene = static_cast<ShadertoyScene *>(Server::currScene.get());
-        if (scene)
-        {
-            std::vector v = {
-                "url:" + scene->toy_url->get(),
-                sizeMsg};
-
-            return v;
-        }
-    }
-
-    std::vector v = {sizeMsg};
+    std::vector<std::string> v = {sizeMsg};
     return v;
 }
 

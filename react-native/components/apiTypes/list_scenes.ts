@@ -28,8 +28,25 @@ export type PagesProvider = {
     }
 }
 
+export type RandomShaderProvider = {
+    type: "random";
+    uuid: string,
+    arguments: {
+        min_page: number,
+        max_page: number
+    }
+}
+
+export type CollectionShaderProvider = {
+    type: "shader_collection";
+    uuid: string,
+    arguments: {
+        urls: string[]
+    }
+}
+
 export type ListProviders = ListScenes
-export type ProviderValue = CollectionProvider | PagesProvider | {
+export type ProviderValue = CollectionProvider | PagesProvider | RandomShaderProvider | CollectionShaderProvider | {
     type: string,
     uuid: string,
     arguments: {

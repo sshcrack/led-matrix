@@ -15,3 +15,7 @@ USER vscode
 RUN mono `vcpkg fetch nuget | tail -n 1` sources add -Name sshcrack -Source https://nuget.sshcrack.me/v3/index.json
 RUN echo '\nalias gs="git status"\n' >> $HOME/.zshrc
 RUN echo '\nalias gs="git status"\n' >> $HOME/.bashrc
+
+RUN wget "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" -O /tmp/chrome.deb && \
+    sudo apt-get update && sudo apt-get install /tmp/chrome.deb -y && \
+    rm /tmp/chrome.deb

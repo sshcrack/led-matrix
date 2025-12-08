@@ -2,6 +2,7 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
+#include "shared/matrix/config/shader_providers/general.h"
 #include "../ShadertoyPlugin.h"
 
 namespace Scenes {
@@ -12,7 +13,8 @@ namespace Scenes {
         static std::string lastUrlSent;
         ShadertoyPlugin* plugin;
 
-        std::string currRandomUrl;
+        std::vector<std::shared_ptr<ShaderProviders::General>> providers;
+        uint curr_provider_index = 0;
 
     public:
         ShadertoyScene();
@@ -21,7 +23,7 @@ namespace Scenes {
         bool render(rgb_matrix::RGBMatrixBase *matrix) override;
         string get_name() const override;
         void register_properties() override;
-        void prefetch_random_shader();
+        void load_properties(const nlohmann::json &j) override;
 
         tmillis_t get_default_duration() override {
             return 20000;
@@ -34,10 +36,8 @@ namespace Scenes {
         void after_render_stop(RGBMatrixBase *matrix) override;
 
         // Properties for the scene
-        PropertyPointer<std::string> toy_url = MAKE_PROPERTY("url", std::string, "https://www.shadertoy.com/view/33cGDj");
-        PropertyPointer<bool> random_shader = MAKE_PROPERTY("random_shader", bool, true);
-        PropertyPointer<int> min_page = MAKE_PROPERTY_MINMAX("min_page", int, 0, 0, 8819);
-        PropertyPointer<int> max_page = MAKE_PROPERTY_MINMAX("max_page", int, 100, 0, 8819);
+        PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY("shader_providers", nlohmann::json,
+                                                                       nlohmann::json::parse(R"([{"type":"random","arguments":{"min_page":0,"max_page":100}}])"));
 
         [[nodiscard]] bool needs_desktop_app() const override {
             return true; // This scene requires audio data from the desktop application

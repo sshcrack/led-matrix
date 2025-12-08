@@ -1,10 +1,10 @@
 import { View } from 'react-native';
-import { ReactSetState, titleCase } from '~/lib/utils';
+import { titleCase } from '~/lib/utils';
 import { ListProviders, ProviderValue } from '../apiTypes/list_scenes';
 import { Text } from '../ui/text';
 import AddProviderButton from './AddProviderButton';
-import CollectionProvider from './collection/CollectionProvider';
-import PagesProvider from './PagesProvider';
+import RandomShaderProvider from './RandomShaderProvider';
+import CollectionShaderProvider from './CollectionShaderProvider';
 import { ProviderDataProvider } from './ProviderDataContext';
 import useFetch from '../useFetch';
 import Loader from '../Loader';
@@ -12,24 +12,24 @@ import { Button } from '../ui/button';
 import { Trash2 } from '~/lib/icons/Trash2';
 import { useSubConfig } from '../configShare/ConfigProvider';
 
-const providers = {
-    "collection": CollectionProvider,
-    "pages": PagesProvider
+const shaderProviders = {
+    "random": RandomShaderProvider,
+    "shader_collection": CollectionShaderProvider
 }
 
-export default function GeneralProvider({ preset_id, scene_id }: { preset_id: string, scene_id: string }) {
-    const { data: providerData } = useFetch<ListProviders[]>(`/list_providers`)
-    const { config, setSubConfig } = useSubConfig<ProviderValue[] | null>(preset_id, ["scenes", scene_id, "arguments", "providers"])
+export default function ShaderUrlProviders({ preset_id, scene_id }: { preset_id: string, scene_id: string }) {
+    const { config, setSubConfig } = useSubConfig<ProviderValue[] | null>(preset_id, ["scenes", scene_id, "arguments", "shader_providers"])
+    const { data: providerData } = useFetch<ListProviders[]>(`/list_shader_providers`)
 
     if (!providerData)
         return <Loader />
 
-
+    console.log("ShaderUrlProviders config:", config);
     return <View className="w-full flex-1">
         {config?.map((provider, index) => {
-            const Provider = providers[provider.type as keyof typeof providers]
+            const Provider = shaderProviders[provider.type as keyof typeof shaderProviders]
             if (!Provider)
-                return <Text key={index}>Unknown provider type: {provider.type}</Text>
+                return <Text key={index}>Unknown provider type: '{provider.type}'</Text>
 
             return <ProviderDataProvider key={index} data={provider} setData={x => {
                 if (typeof x === "function") {
@@ -79,6 +79,6 @@ export default function GeneralProvider({ preset_id, scene_id }: { preset_id: st
                 </View>
             </ProviderDataProvider>
         })}
-        <AddProviderButton providers={providerData} sceneId={scene_id} presetId={preset_id} />
+        <AddProviderButton providers={providerData} sceneId={scene_id} presetId={preset_id} providerKey='shader_providers'/>
     </View>
 }

@@ -3,6 +3,7 @@
 #include <vector>
 #include "shared/matrix/plugin/main.h"
 #include "shared/matrix/config/image_providers/general.h"
+#include "shared/matrix/config/shader_providers/general.h"
 
 namespace Plugins {
     struct PluginInfo {
@@ -13,6 +14,7 @@ namespace Plugins {
 
         std::vector<std::shared_ptr<SceneWrapper>> sceneWrappers;
         std::vector<std::shared_ptr<ImageProviderWrapper>> imageProviderWrappers;
+        std::vector<std::shared_ptr<ShaderProviderWrapper>> shaderProviderWrappers;
     };
 
     class PluginManager {
@@ -42,5 +44,6 @@ namespace Plugins {
 
         std::vector<std::shared_ptr<SceneWrapper>> &get_scenes();
         std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
+        std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> get_shader_providers();
     };
 }

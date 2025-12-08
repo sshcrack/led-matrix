@@ -13,6 +13,8 @@ export default function ProvidersProperty({ propertyName }: Omit<PluginPropertyP
     const presetId = usePresetId()
     const router = useRouter()
 
+    const subPath = propertyName === "providers" ? "providers" : "shader-providers"
+
     return <View className='flex-row gap-2 w-full justify-between items-center'>
         <Text className='font-semibold self-center'>{titleCase(propertyName)}</Text>
         <View className='w-1/2 gap-2 flex-row items-center'>
@@ -21,7 +23,7 @@ export default function ProvidersProperty({ propertyName }: Omit<PluginPropertyP
                 onPress={() => {
                     console.log("Opening modify providers")
                     router.push({
-                        pathname: '/modify-providers/[preset_id]/[scene_id]',
+                        pathname: `/modify-${subPath}/[preset_id]/[scene_id]`,
                         params: { preset_id: presetId, scene_id: sceneId },
                     })
                 }}

@@ -9,17 +9,26 @@
 		"ghcr.io/devcontainers/features/github-cli:1": {},
 		"ghcr.io/devcontainers/features/node:1": {},
 		"ghcr.io/devcontainers/features/powershell": {},
-		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {}
+		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {},
+		"ghcr.io/devcontainers/features/rust:1.5.0": {}
 	},
-
+	"runArgs": [
+		"--device=/dev/dri",
+		"--env=WAYLAND_DISPLAY=${localEnv:WAYLAND_DISPLAY}",
+		"--network=host"
+	],
+	"mounts": [
+		"source=${localEnv:XAUTHORITY},target=/home/vscode/.Xauthority,type=bind,consistency=cached",
+	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
-
-	"appPort": [8080, "8080:8080/udp"],
+	"appPort": [
+		8080,
+		"8080:8080/udp"
+	],
 	"remoteEnv": {
-    	"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
 	},
-
 	"containerEnv": {
 		"BUILD_TYPE": "RelWithDebInfo",
 		"CROSS_COMPILE_ROOT": "/opt/cross-compile",
