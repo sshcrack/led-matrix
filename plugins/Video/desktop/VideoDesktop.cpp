@@ -1,8 +1,10 @@
 #include "VideoDesktop.h"
 #include "VideoPacket.h"
+#include "shared/desktop/utils.h"
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
+#include <cstdio>
 #include <filesystem>
 #include <fmt/format.h>
 #include <imgui.h>
@@ -12,6 +14,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 extern "C" PLUGIN_EXPORT VideoDesktop *createVideo() {
   return new VideoDesktop();
@@ -27,6 +32,53 @@ inline const char *null_device() {
   return "/dev/null";
 #endif
 }
+
+inline FILE *open_pipe(const char *cmd) {
+#ifdef _WIN32
+  return _popen(cmd, "rb");
+#else
+  return popen(cmd, "r");
+#endif
+}
+
+inline void close_pipe(FILE *pipe) {
+  if (!pipe)
+    return;
+#ifdef _WIN32
+  _pclose(pipe);
+#else
+  pclose(pipe);
+#endif
+}
+
+inline int run_command_no_window(const std::string &cmd) {
+#ifdef _WIN32
+  // Suppress spawning a console window for ffmpeg/yt-dlp.
+  STARTUPINFOA si{};
+  PROCESS_INFORMATION pi{};
+  si.cb = sizeof(si);
+  si.dwFlags = STARTF_USESHOWWINDOW;
+  si.wShowWindow = SW_HIDE;
+
+  std::string fullCmd = "cmd.exe /C " + cmd;
+  std::vector<char> cmdline(fullCmd.begin(), fullCmd.end());
+  cmdline.push_back('\0');
+
+  if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
+                      CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+    return -1;
+  }
+
+  WaitForSingleObject(pi.hProcess, INFINITE);
+  DWORD exitCode = 1;
+  GetExitCodeProcess(pi.hProcess, &exitCode);
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
+  return static_cast<int>(exitCode);
+#else
+  return system(cmd.c_str());
+#endif
+}
 }
 
 VideoDesktop::VideoDesktop() {
@@ -34,10 +86,7 @@ VideoDesktop::VideoDesktop() {
 }
 
 VideoDesktop::~VideoDesktop() {
-  processing_thread_running = false;
-  if (processing_thread.joinable()) {
-    processing_thread.join();
-  }
+  stop_stream();
 }
 
 void VideoDesktop::check_tools() {
@@ -45,7 +94,7 @@ void VideoDesktop::check_tools() {
     // Check ffmpeg
     const auto ffmpeg_cmd =
         fmt::format("ffmpeg -version > {} 2>&1", null_device());
-    int ffmpeg_ret = system(ffmpeg_cmd.c_str());
+    int ffmpeg_ret = run_command_no_window(ffmpeg_cmd.c_str());
     if (ffmpeg_ret != 0) {
       tools_available = false;
       tools_error_msg = "ffmpeg not found in PATH.";
@@ -56,7 +105,7 @@ void VideoDesktop::check_tools() {
     // Check yt-dlp
     const auto ytdlp_cmd =
         fmt::format("yt-dlp --version > {} 2>&1", null_device());
-    int ytdlp_ret = system(ytdlp_cmd.c_str());
+    int ytdlp_ret = run_command_no_window(ytdlp_cmd.c_str());
     if (ytdlp_ret != 0) {
       tools_available = false;
       tools_error_msg = "yt-dlp not found in PATH.";
@@ -77,8 +126,7 @@ void VideoDesktop::check_tools() {
 void VideoDesktop::post_init() {
   check_tools();
 
-  auto cacheDir =
-      _plugin_location.parent_path().parent_path() / "cache" / "video";
+  auto cacheDir = get_data_dir() / "cache" / "video";
   if (!std::filesystem::exists(cacheDir)) {
     std::filesystem::create_directories(cacheDir);
   }
@@ -145,54 +193,7 @@ void VideoDesktop::render_status_ui() {
 }
 
 void VideoDesktop::pre_new_frame() {
-  // Skip work while streaming is paused by the matrix
-  if (!allow_sending_packets.load()) {
-    return;
-  }
-
-  // Only fetch frames if we are playing
-  if (state.load() == State::Playing) {
-    auto now = std::chrono::steady_clock::now();
-    std::chrono::duration<double> diff = now - last_frame_time;
-
-    if (diff.count() >= (1.0 / fps)) {
-      // Need new frame
-      if (video_file_stream.is_open()) {
-        size_t frameSize = matrix_width * matrix_height * 3;
-        std::vector<uint8_t> frame(frameSize);
-
-        if (video_file_stream.read(reinterpret_cast<char *>(frame.data()),
-                                   frameSize)) {
-          std::lock_guard<std::mutex> lock(data_mutex);
-          current_frame_data = frame;
-          last_frame_time = now;
-        } else {
-          // Start over? OR stop? For now loop
-          video_file_stream.clear();
-          video_file_stream.seekg(0);
-          if (video_file_stream.read(reinterpret_cast<char *>(frame.data()),
-                                     frameSize)) {
-            std::lock_guard<std::mutex> lock(data_mutex);
-            current_frame_data = frame;
-            last_frame_time = now;
-          } else {
-            // Error reading file
-            state = State::Error;
-            last_error = "Could not read processed video file.";
-            send_websocket_message("status:error");
-          }
-        }
-      } else {
-        std::filesystem::path processedPath = get_processed_path(current_url);
-        video_file_stream.open(processedPath, std::ios::binary);
-        if (!video_file_stream.is_open()) {
-          state = State::Error;
-          last_error = "Failed to open processed video file.";
-          send_websocket_message("status:error");
-        }
-      }
-    }
-  }
+  // Nothing to do; frames arrive via streaming thread.
 }
 
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>>
@@ -201,6 +202,15 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
       !tools_available || !allow_sending_packets.load()) {
     return std::nullopt;
   }
+
+  // Throttle to target fps
+  const auto now = std::chrono::steady_clock::now();
+  const double frame_interval = 1.0 / fps;
+  if (std::chrono::duration<double>(now - last_packet_time).count() <
+      frame_interval) {
+    return std::nullopt;
+  }
+  last_packet_time = now;
 
   std::lock_guard<std::mutex> lock(data_mutex);
   if (current_frame_data.empty()) {
@@ -215,6 +225,7 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
 void VideoDesktop::on_websocket_message(const std::string message) {
   if (message == "stream:stop") {
     allow_sending_packets = false;
+    stop_stream();
     return;
   }
 
@@ -236,60 +247,8 @@ void VideoDesktop::on_websocket_message(const std::string message) {
 
     current_url = newUrl;
 
-    // Stop previous work logic
-    processing_thread_running = false;
-    if (processing_thread.joinable()) {
-      processing_thread.join();
-    }
-
-    // Start new thread
-    processing_thread_running = true;
-    processing_thread = std::thread([this, newUrl]() {
-      // Check if already processed
-      std::filesystem::path processedPath = get_processed_path(newUrl);
-
-      if (std::filesystem::exists(processedPath)) {
-        // Already cached
-        spdlog::info("Video already cached: {}", newUrl);
-        state = State::Playing;
-        send_websocket_message("status:playing");
-
-        std::lock_guard<std::mutex> lock(data_mutex);
-        if (video_file_stream.is_open())
-          video_file_stream.close();
-        // Reset file stream in main thread or here?
-        // It's safer to flag it and let pre_new_frame handle opening if
-        // possible, but pre_new_frame runs on main thread. We need to
-        // synchronize. We will close it here, and pre_new_frame will open it.
-      } else {
-        // Determine if it is a local file or download
-        // Simple heuristic: if it starts with http/https, try to
-        // download/process However, user said "youtube video urls or general
-        // mp4 urls" yt-dlp handles many urls. logic: try yt-dlp.
-
-        state = State::Downloading;
-        send_websocket_message("status:downloading");
-
-        if (download_video(newUrl)) {
-          state = State::Processing;
-          send_websocket_message("status:processing");
-
-          std::string cacheFile = get_cache_path(newUrl);
-          if (process_video(cacheFile)) {
-            state = State::Playing;
-            send_websocket_message("status:playing");
-            if (video_file_stream.is_open())
-              video_file_stream.close();
-          } else {
-            state = State::Error;
-            send_websocket_message("status:error");
-          }
-        } else {
-          state = State::Error;
-          send_websocket_message("status:error");
-        }
-      }
-    });
+    stop_stream();
+    start_stream(newUrl);
   }
 
   if (message.starts_with("size:")) {
@@ -307,68 +266,190 @@ std::string VideoDesktop::get_video_id(const std::string &url) const {
   size_t hash = std::hash<std::string>{}(url);
   return std::to_string(hash);
 }
+void VideoDesktop::start_stream(const std::string &url) {
+  stop_stream();
 
-std::string VideoDesktop::get_cache_path(const std::string &url) const {
-  auto cacheDir =
-      _plugin_location.parent_path().parent_path() / "cache" / "video";
-  return (cacheDir / (get_video_id(url) + "_download.mp4")).string();
+  state = State::Downloading;
+  spdlog::info("Starting stream for URL: {}", url);
+  send_websocket_message("status:downloading");
+
+  // Reset pacing so first frame can go out immediately after start
+  last_packet_time = std::chrono::steady_clock::now();
+
+  streaming_thread_running = true;
+  processing_thread = std::thread([this, url]() {
+    const size_t frameSize = static_cast<size_t>(matrix_width) *
+                             static_cast<size_t>(matrix_height) * 3;
+
+    auto play_chunk = [&](int chunk_index) -> bool {
+      spdlog::info("Playing chunk {}", chunk_index);
+      std::string binPath = chunk_bin_path(chunk_index);
+      FILE *bin = fopen(binPath.c_str(), "rb");
+      if (!bin) {
+        last_error = "Failed to open processed chunk: " + binPath;
+        state = State::Error;
+        send_websocket_message("status:error");
+        return false;
+      }
+
+      state = State::Playing;
+      send_websocket_message("status:playing");
+
+      std::vector<uint8_t> buffer(frameSize);
+      size_t frame_idx = 0;
+      const size_t frames_per_chunk = static_cast<size_t>(chunk_duration_sec * fps);
+
+      while (streaming_thread_running) {
+        size_t readBytes = fread(buffer.data(), 1, frameSize, bin);
+        if (readBytes == frameSize) {
+          {
+            std::lock_guard<std::mutex> lock(data_mutex);
+            current_frame_data = buffer;
+          }
+
+          // Pace playback
+          const auto frame_interval = std::chrono::duration<double>(1.0 / fps);
+          std::this_thread::sleep_for(frame_interval);
+          frame_idx++;
+
+          if (frame_idx >= frames_per_chunk) {
+            break; // move to next chunk
+          }
+        } else {
+          break; // end of chunk file
+        }
+      }
+
+      fclose(bin);
+      return streaming_thread_running.load();
+    };
+
+    // Initial chunk 0
+    spdlog::info("Downloading and processing initial chunk 0");
+    if (!download_and_process_chunk(url, 0)) {
+      streaming_thread_running = false;
+      return;
+    }
+
+    current_chunk = 0;
+
+    spdlog::info("Starting playback loop");
+    while (streaming_thread_running) {
+      // Start prefetching next chunk in background
+      int next_chunk = current_chunk + 1;
+      spdlog::info("Starting prefetch of chunk {} in background", next_chunk);
+      prefetch_thread = std::thread([this, url, next_chunk]() {
+        if (download_and_process_chunk(url, next_chunk)) {
+          spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
+        } else {
+          spdlog::warn("Prefetch of chunk {} failed", next_chunk);
+        }
+      });
+
+      // Play current chunk while prefetch happens in background
+      if (!play_chunk(current_chunk.load())) {
+        break;
+      }
+
+      // Wait for prefetch to complete after playback finishes
+      if (prefetch_thread.joinable()) {
+        spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
+        prefetch_thread.join();
+      }
+
+      // Clean up the chunk that's two steps behind
+      cleanup_chunk(current_chunk - 1);
+
+      // Move to next chunk
+      current_chunk = next_chunk;
+    }
+
+    streaming_thread_running = false;
+    state = State::Idle;
+    send_websocket_message("status:idle");
+  });
 }
 
-std::string VideoDesktop::get_processed_path(const std::string &url) const {
-  auto cacheDir =
-      _plugin_location.parent_path().parent_path() / "cache" / "video";
-  return (cacheDir / (get_video_id(url) + "_processed.bin")).string();
+void VideoDesktop::stop_stream() {
+  streaming_thread_running = false;
+  if (prefetch_thread.joinable()) {
+    prefetch_thread.join();
+  }
+  if (stream_pipe) {
+    close_pipe(stream_pipe);
+    stream_pipe = nullptr;
+  }
+  if (processing_thread.joinable()) {
+    processing_thread.join();
+  }
+  current_frame_data.clear();
+  state = State::Idle;
 }
 
-bool VideoDesktop::download_video(const std::string &url) {
-  if (!tools_available)
-    return false;
+bool VideoDesktop::download_and_process_chunk(const std::string &url,
+                                              int chunk_index) {
+  const int start_sec = chunk_index * chunk_duration_sec;
+  const int end_sec = start_sec + chunk_duration_sec;
 
-  std::string outputPath = get_cache_path(url);
+  std::string mp4Path = chunk_mp4_path(chunk_index);
+  std::string binPath = chunk_bin_path(chunk_index);
 
-  // If it is a direct file url ending in .mp4, we might just wget it?
-  // But yt-dlp is robust.
+  // Download chunk
+  std::string dlCmd = fmt::format(
+      "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm "
+      "--download-sections \"*{}-{}\" --force-overwrites -o \"{}\" \"{}\"",
+      start_sec, end_sec, mp4Path, url);
 
-  // Command: yt-dlp -f
-  // "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" -o <output>
-  // <url> Note: for LED matrix we don't strictly need audio, but usually mp4 is
-  // fine. Let's force mp4.
-
-  std::string cmd =
-      "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm --force-overwrites -o \"" + outputPath +
-      "\" \"" + url + "\"";
-  spdlog::info("Executing: {}", cmd);
-
-  int result = system(cmd.c_str());
-  if (result != 0) {
-    last_error = "yt-dlp failed to download video.";
+  spdlog::info("Downloading chunk {} ({}-{}s): {}", chunk_index, start_sec,
+               end_sec, dlCmd);
+  if (run_command_no_window(dlCmd) != 0) {
+    last_error = "yt-dlp chunk download failed";
     spdlog::error(last_error);
+    state = State::Error;
+    send_websocket_message("status:error");
     return false;
   }
+
+  // Process chunk to raw
+  std::string ffCmd = fmt::format(
+      "ffmpeg -y -i \"{}\" -vf \"scale={}:{} ,setsar=1:1,fps={}\" -f "
+      "rawvideo -pix_fmt rgb24 \"{}\"", mp4Path, matrix_width,
+      matrix_height, fps, binPath);
+
+  spdlog::info("Processing chunk {}: {}", chunk_index, ffCmd);
+  if (run_command_no_window(ffCmd) != 0) {
+    last_error = "ffmpeg chunk processing failed";
+    spdlog::error(last_error);
+    state = State::Error;
+    send_websocket_message("status:error");
+    return false;
+  }
+
   return true;
 }
 
-bool VideoDesktop::process_video(const std::string &inputFile) {
-  if (!tools_available)
-    return false;
-
-  std::string outputPath = get_processed_path(current_url);
-
-  // ffmpeg command to scale and output raw RGB24
-  // -i input -vf scale=128:128 -f rawvideo -pix_fmt rgb24 output.bin
-
-  std::string cmd =
-      fmt::format("ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1\" -f "
-                  "rawvideo -pix_fmt rgb24 \"{}\"",
-                  inputFile, matrix_width, matrix_height, outputPath);
-
-  spdlog::info("Executing: {}", cmd);
-
-  int result = system(cmd.c_str());
-  if (result != 0) {
-    last_error = "ffmpeg failed to process video.";
-    spdlog::error(last_error);
-    return false;
+std::string VideoDesktop::chunk_mp4_path(int chunk_index) const {
+  auto cacheDir = get_data_dir() / "cache" / "video" /
+                  get_video_id(current_url);
+  if (!std::filesystem::exists(cacheDir)) {
+    std::filesystem::create_directories(cacheDir);
   }
-  return true;
+  return (cacheDir / fmt::format("chunk_{}.mp4", chunk_index)).string();
+}
+
+std::string VideoDesktop::chunk_bin_path(int chunk_index) const {
+  auto cacheDir = get_data_dir() / "cache" / "video" /
+                  get_video_id(current_url);
+  if (!std::filesystem::exists(cacheDir)) {
+    std::filesystem::create_directories(cacheDir);
+  }
+  return (cacheDir / fmt::format("chunk_{}.bin", chunk_index)).string();
+}
+
+void VideoDesktop::cleanup_chunk(int chunk_index) {
+  if (chunk_index < 0)
+    return;
+  std::error_code ec;
+  std::filesystem::remove(chunk_mp4_path(chunk_index), ec);
+  std::filesystem::remove(chunk_bin_path(chunk_index), ec);
 }

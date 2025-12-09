@@ -1,6 +1,4 @@
 #pragma once
-#include <fstream>
-
 #include "shared/desktop/plugin/main.h"
 #include <atomic>
 #include <chrono>
@@ -32,16 +30,14 @@ public:
 
 private:
   void check_tools();
-  void process_logic_loop();
   void render_status_ui();
+  void start_stream(const std::string &url);
+  void stop_stream();
+  bool download_and_process_chunk(const std::string &url, int chunk_index);
+  std::string chunk_mp4_path(int chunk_index) const;
+  std::string chunk_bin_path(int chunk_index) const;
+  void cleanup_chunk(int chunk_index);
 
-  // Commands
-  bool download_video(const std::string &url);
-  bool process_video(const std::string &inputFile);
-
-  // Helpers
-  std::string get_cache_path(const std::string &url) const;
-  std::string get_processed_path(const std::string &url) const;
   std::string get_video_id(const std::string &url) const;
 
   // State
@@ -57,17 +53,23 @@ private:
   std::string last_error;
   std::string status_message;
   std::atomic<bool> allow_sending_packets{true};
+  std::atomic<bool> streaming_thread_running{false};
+  FILE *stream_pipe = nullptr;
+
+  // Chunked streaming
+  const int chunk_duration_sec = 300;      // 5 minutes per chunk
+  std::atomic<int> current_chunk{0};
+  std::thread prefetch_thread;
 
   // Playback
   std::vector<uint8_t> current_frame_data;
   std::mutex data_mutex;
+  std::chrono::steady_clock::time_point last_packet_time =
+      std::chrono::steady_clock::now();
 
   std::thread processing_thread;
-  std::atomic<bool> processing_thread_running = false;
 
-  // Frame reading
-  std::ifstream video_file_stream;
-  std::chrono::steady_clock::time_point last_frame_time;
+  // Frame pacing (unused but kept for possible future throttling)
   double fps = 30.0;
 };
 
