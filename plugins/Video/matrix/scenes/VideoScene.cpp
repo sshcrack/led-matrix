@@ -8,43 +8,54 @@ using namespace Scenes;
 std::string VideoScene::lastUrlSent = "";
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)>
-VideoSceneWrapper::create() {
-  return {new VideoScene(), [](Scenes::Scene *scene) { delete scene; }};
+VideoSceneWrapper::create()
+{
+  return {new VideoScene(), [](Scenes::Scene *scene)
+          { delete scene; }};
 }
 
-VideoScene::VideoScene() : plugin(nullptr) {
+VideoScene::VideoScene() : plugin(nullptr)
+{
   auto plugins = Plugins::PluginManager::instance()->get_plugins();
-  for (auto &p : plugins) {
-    if (auto v = dynamic_cast<VideoPlugin *>(p)) {
+  for (auto &p : plugins)
+  {
+    if (auto v = dynamic_cast<VideoPlugin *>(p))
+    {
       plugin = v;
       break;
     }
   }
 
-  if (!plugin) {
+  if (!plugin)
+  {
     spdlog::error("VideoScene: Failed to find Video plugin");
   }
 }
 
 string VideoScene::get_name() const { return "video"; }
 
-void VideoScene::register_properties() {
+void VideoScene::register_properties()
+{
   add_property(video_urls);
   add_property(random_playback);
 }
 
-void VideoScene::after_render_stop(RGBMatrixBase *matrix) {
+void VideoScene::after_render_stop(RGBMatrixBase *matrix)
+{
   showing_loading_animation = false;
   // We might want to force a URL resend on next start if needed,
   // but preserving state is also fine.
   lastUrlSent = "";
-  if (plugin && streaming_enabled) {
+  if (plugin && streaming_enabled)
+  {
+    spdlog::info("VideoScene: Stopping streaming");
     plugin->send_msg_to_desktop("stream:stop");
   }
   streaming_enabled = false;
 }
 
-void VideoScene::render_loading_animation() {
+void VideoScene::render_loading_animation()
+{
   const int width = Constants::width;
   const int height = Constants::height;
 
@@ -57,8 +68,10 @@ void VideoScene::render_loading_animation() {
   int y = (height - barHeight) / 2;
 
   // Background
-  for (int i = 0; i < barWidth; ++i) {
-    for (int j = 0; j < barHeight; ++j) {
+  for (int i = 0; i < barWidth; ++i)
+  {
+    for (int j = 0; j < barHeight; ++j)
+    {
       offscreen_canvas->SetPixel(x + i, y + j, 50, 50, 50);
     }
   }
@@ -67,8 +80,10 @@ void VideoScene::render_loading_animation() {
   int progress = (loading_animation_frame % 100);
   int fillWidth = (barWidth * progress) / 100;
 
-  for (int i = 0; i < fillWidth; ++i) {
-    for (int j = 0; j < barHeight; ++j) {
+  for (int i = 0; i < fillWidth; ++i)
+  {
+    for (int j = 0; j < barHeight; ++j)
+    {
       offscreen_canvas->SetPixel(x + i, y + j, 0, 255, 0);
     }
   }
@@ -76,59 +91,73 @@ void VideoScene::render_loading_animation() {
   loading_animation_frame++;
 }
 
-bool VideoScene::render(RGBMatrixBase *matrix) {
+bool VideoScene::render(RGBMatrixBase *matrix)
+{
   if (!plugin)
     return false;
 
-  if (!streaming_enabled) {
+  if (!streaming_enabled)
+  {
+    spdlog::info("VideoScene: Starting streaming");
     plugin->send_msg_to_desktop("stream:start");
     streaming_enabled = true;
   }
 
   auto urls = video_urls->get();
-  if (urls.empty()) {
+  if (urls.empty())
+  {
     offscreen_canvas->Fill(50, 0, 0); // Dim red for no config
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
     return true;
   }
 
   // Check status
   std::string status = plugin->get_status();
 
-  if (status == "downloading" || status == "processing") {
+  if (status == "downloading" || status == "processing")
+  {
     render_loading_animation();
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
     return true;
   }
 
   // Select URL logic
   tmillis_t now = GetTimeInMillis();
   if (lastUrlSent.empty() ||
-      (now - last_switch_time > 30000 && urls.size() > 1)) { // 30 seconds
+      (now - last_switch_time > 30000 && urls.size() > 1))
+  { // 30 seconds
 
-    if (!lastUrlSent.empty()) {
-      if (random_playback->get()) {
+    if (!lastUrlSent.empty())
+    {
+      if (random_playback->get())
+      {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> distrib(0, urls.size() - 1);
         current_video_index = distrib(gen);
-      } else {
+      }
+      else
+      {
         current_video_index = (current_video_index + 1) % urls.size();
       }
-    } else { // This block was missing in the snippet, added to handle initial
-             // selection
-      if (random_playback->get()) {
+    }
+    else
+    { // This block was missing in the snippet, added to handle initial
+      // selection
+      if (random_playback->get())
+      {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> distrib(0, urls.size() - 1);
         current_video_index = distrib(gen);
-      } else {
+      }
+      else
+      {
         current_video_index = 0; // Start with the first video if not random
       }
     }
 
     std::string targetUrl = urls[current_video_index];
-    if (targetUrl != lastUrlSent) {
+    if (targetUrl != lastUrlSent)
+    {
       plugin->send_msg_to_desktop("url:" + targetUrl);
       lastUrlSent = targetUrl;
       last_switch_time = now;
@@ -137,10 +166,10 @@ bool VideoScene::render(RGBMatrixBase *matrix) {
 
   // Render Frame
   const auto pixels = plugin->get_data();
-  if (pixels.empty()) {
+  if (pixels.empty())
+  {
     // loading or waiting
     render_loading_animation();
-    offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
     return true;
   }
 
@@ -150,7 +179,8 @@ bool VideoScene::render(RGBMatrixBase *matrix) {
   const int max_pixels = pixels.size() / 3;
   const int limit = std::min(width * height, max_pixels);
 
-  for (int idx = 0; idx < limit; ++idx) {
+  for (int idx = 0; idx < limit; ++idx)
+  {
     int x = idx % width;
     int y = idx / width; // Standard scanline order from ffmpeg rgb24 usually
                          // (top-left to bottom-right)
@@ -162,6 +192,5 @@ bool VideoScene::render(RGBMatrixBase *matrix) {
     offscreen_canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
   }
 
-  offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
   return true;
 }
