@@ -32,10 +32,23 @@
         [](Plugins::Property<Plugins::EnumProperty<enum_type>>* p) { delete p; } \
     )
 
+
 #define MAKE_ENUM_PROPERTY_REQ(name, enum_type, default_value) \
     std::unique_ptr<Plugins::Property<Plugins::EnumProperty<enum_type>>, void (*)(Plugins::Property<Plugins::EnumProperty<enum_type>>*)>( \
         new Plugins::Property<Plugins::EnumProperty<enum_type>>(name, Plugins::EnumProperty<enum_type>(default_value), true), \
         [](Plugins::Property<Plugins::EnumProperty<enum_type>>* p) { delete p; } \
+    )
+
+#define MAKE_STRING_LIST_PROPERTY(name, default_value) \
+    std::unique_ptr<Plugins::Property<std::vector<std::string>>, void (*)(Plugins::Property<std::vector<std::string>>*)>( \
+        new Plugins::Property<std::vector<std::string>>(name, default_value, false), \
+        [](Plugins::Property<std::vector<std::string>>* p) { delete p; } \
+    )
+
+#define MAKE_STRING_LIST_PROPERTY_REQ(name, default_value) \
+    std::unique_ptr<Plugins::Property<std::vector<std::string>>, void (*)(Plugins::Property<std::vector<std::string>>*)>( \
+        new Plugins::Property<std::vector<std::string>>(name, default_value, true), \
+        [](Plugins::Property<std::vector<std::string>>* p) { delete p; } \
     )
 
 template<typename N>
