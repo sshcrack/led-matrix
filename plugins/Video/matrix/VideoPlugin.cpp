@@ -4,9 +4,11 @@
 
 using namespace Plugins;
 
-extern "C" PLUGIN_EXPORT BasicPlugin *create() { return new VideoPlugin(); }
+extern "C" PLUGIN_EXPORT BasicPlugin *createVideo() {
+  return new VideoPlugin();
+}
 
-extern "C" PLUGIN_EXPORT void destroy(BasicPlugin *c) { delete c; }
+extern "C" PLUGIN_EXPORT void destroyVideo(BasicPlugin *c) { delete c; }
 
 vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>
 VideoPlugin::create_scenes() {
