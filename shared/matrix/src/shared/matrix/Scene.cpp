@@ -26,8 +26,11 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_js
 
         auto scene = item->create();
 
+        spdlog::debug("Creating scene '{}'", t);
         scene->update_default_properties();
         scene->register_properties();
+
+        spdlog::debug("Loading properties for scene '{}'", t);
         scene->load_properties(arguments);
         if (j.contains("uuid"))
             scene->uuid = j["uuid"].get<string>();
@@ -63,9 +66,6 @@ void Scenes::Scene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_c
     matrix_height = matrix->height();
     matrix_width = matrix->width();
     initialized = true;
-
-    // Call update_default_properties() here after the scene is initialized
-    update_default_properties();
 }
 
 bool Scenes::Scene::is_initialized() const
