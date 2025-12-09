@@ -56,6 +56,7 @@ private:
   std::atomic<State> state = State::Idle;
   std::string last_error;
   std::string status_message;
+  std::atomic<bool> allow_sending_packets{true};
 
   // Playback
   std::vector<uint8_t> current_frame_data;

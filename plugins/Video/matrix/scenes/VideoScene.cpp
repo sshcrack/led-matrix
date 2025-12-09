@@ -38,6 +38,10 @@ void VideoScene::after_render_stop(RGBMatrixBase *matrix) {
   // We might want to force a URL resend on next start if needed,
   // but preserving state is also fine.
   lastUrlSent = "";
+  if (plugin && streaming_enabled) {
+    plugin->send_msg_to_desktop("stream:stop");
+  }
+  streaming_enabled = false;
 }
 
 void VideoScene::render_loading_animation() {
@@ -75,6 +79,11 @@ void VideoScene::render_loading_animation() {
 bool VideoScene::render(RGBMatrixBase *matrix) {
   if (!plugin)
     return false;
+
+  if (!streaming_enabled) {
+    plugin->send_msg_to_desktop("stream:start");
+    streaming_enabled = true;
+  }
 
   auto urls = video_urls->get();
   if (urls.empty()) {

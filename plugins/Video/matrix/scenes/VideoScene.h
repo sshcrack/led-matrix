@@ -11,6 +11,7 @@ class VideoScene : public Scene {
 
   bool showing_loading_animation = false;
   int loading_animation_frame = 0;
+  bool streaming_enabled = false;
 
   size_t current_video_index = 0;
   tmillis_t last_switch_time = 0;
