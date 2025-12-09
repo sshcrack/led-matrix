@@ -1,19 +1,33 @@
 #include "VideoDesktop.h"
 #include "VideoPacket.h"
-#include <array>
+#include <atomic>
 #include <chrono>
-#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fmt/format.h>
 #include <imgui.h>
-#include <iostream>
+#include <mutex>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <vector>
 
 extern "C" PLUGIN_EXPORT VideoDesktop *createVideo() {
   return new VideoDesktop();
 }
 
 extern "C" PLUGIN_EXPORT void destroyVideo(VideoDesktop *c) { delete c; }
+
+namespace {
+inline const char *null_device() {
+#ifdef _WIN32
+  return "NUL";
+#else
+  return "/dev/null";
+#endif
+}
+}
 
 VideoDesktop::VideoDesktop() {
   // check_tools(); // Post-init is better for this
@@ -26,24 +40,12 @@ VideoDesktop::~VideoDesktop() {
   }
 }
 
-// Utility to run command and get output
-std::string exec(const char *cmd) {
-  std::array<char, 128> buffer;
-  std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-  if (!pipe) {
-    throw std::runtime_error("popen() failed!");
-  }
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-    result += buffer.data();
-  }
-  return result;
-}
-
 void VideoDesktop::check_tools() {
   try {
     // Check ffmpeg
-    int ffmpeg_ret = system("ffmpeg -version > /dev/null 2>&1");
+    const auto ffmpeg_cmd =
+        fmt::format("ffmpeg -version > {} 2>&1", null_device());
+    int ffmpeg_ret = system(ffmpeg_cmd.c_str());
     if (ffmpeg_ret != 0) {
       tools_available = false;
       tools_error_msg = "ffmpeg not found in PATH.";
@@ -52,7 +54,9 @@ void VideoDesktop::check_tools() {
     }
 
     // Check yt-dlp
-    int ytdlp_ret = system("yt-dlp --version > /dev/null 2>&1");
+    const auto ytdlp_cmd =
+        fmt::format("yt-dlp --version > {} 2>&1", null_device());
+    int ytdlp_ret = system(ytdlp_cmd.c_str());
     if (ytdlp_ret != 0) {
       tools_available = false;
       tools_error_msg = "yt-dlp not found in PATH.";
@@ -141,6 +145,11 @@ void VideoDesktop::render_status_ui() {
 }
 
 void VideoDesktop::pre_new_frame() {
+  // Skip work while streaming is paused by the matrix
+  if (!allow_sending_packets.load()) {
+    return;
+  }
+
   // Only fetch frames if we are playing
   if (state.load() == State::Playing) {
     auto now = std::chrono::steady_clock::now();
@@ -189,7 +198,7 @@ void VideoDesktop::pre_new_frame() {
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>>
 VideoDesktop::compute_next_packet(const std::string sceneName) {
   if (sceneName != "video" || state.load() != State::Playing ||
-      !tools_available) {
+      !tools_available || !allow_sending_packets.load()) {
     return std::nullopt;
   }
 
@@ -204,6 +213,16 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
 }
 
 void VideoDesktop::on_websocket_message(const std::string message) {
+  if (message == "stream:stop") {
+    allow_sending_packets = false;
+    return;
+  }
+
+  if (message == "stream:start") {
+    allow_sending_packets = true;
+    return;
+  }
+
   if (message.starts_with("url:")) {
     if (!tools_available) {
       send_websocket_message("status:error");
@@ -316,7 +335,7 @@ bool VideoDesktop::download_video(const std::string &url) {
   // fine. Let's force mp4.
 
   std::string cmd =
-      "yt-dlp -f \"best[ext=mp4]/best\" --force-overwrites -o \"" + outputPath +
+      "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm --force-overwrites -o \"" + outputPath +
       "\" \"" + url + "\"";
   spdlog::info("Executing: {}", cmd);
 
