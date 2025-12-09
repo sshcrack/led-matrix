@@ -3,6 +3,7 @@
 #include "nlohmann/json.hpp"
 #include "fmt/format.h"
 #include "led-matrix.h"
+#include <spdlog/spdlog.h>
 #include <vector>
 #include <shared/matrix/plugin/property.h>
 #include <shared/common/utils/utils.h>
@@ -72,6 +73,7 @@ namespace Scenes {
 
         /// This method is used to update the default of properties dynamically. It is called before a property has been registered.
         virtual void update_default_properties() {
+            spdlog::trace("Updating default properties for scene '{}'", get_name());
             weight->set_value(get_default_weight());
             duration->set_value(get_default_duration());
         }

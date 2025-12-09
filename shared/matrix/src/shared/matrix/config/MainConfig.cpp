@@ -67,6 +67,7 @@ namespace Config {
 
     void MainConfig::set_presets(const string &id, std::shared_ptr<ConfigData::Preset> preset) {
         unique_lock lock(this->data_mutex);
+spdlog::info("Setting preset {}", id);
 
         this->data.presets[id] = std::move(preset);
         this->mark_dirty();
