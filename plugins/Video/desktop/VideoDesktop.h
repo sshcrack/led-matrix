@@ -20,6 +20,8 @@ public:
                         void **user_data) override;
   void pre_new_frame() override;
   void post_init() override;
+  void load_config(std::optional<const nlohmann::json> config) override;
+  void save_config(nlohmann::json &config) const override;
 
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
 
@@ -47,10 +49,11 @@ private:
   std::string tools_error_msg;
 
   std::string current_url;
+  bool enable_audio = true;
   int matrix_width = 128;
   int matrix_height = 128;
 
-  enum class State { Idle, Downloading, Processing, Playing, Error };
+  enum class State { Idle, Downloading, Processing, Playing, Finished, Error };
   std::atomic<State> state = State::Idle;
   std::string last_error;
   std::string status_message;
@@ -62,6 +65,7 @@ private:
   PROCESS_INFORMATION audio_process_info{};
 #else
   FILE *audio_pipe = nullptr;
+  pid_t audio_pid = -1;
 #endif
 
   // Chunked streaming

@@ -16,6 +16,11 @@
 #include <vector>
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h>
 #endif
 
 extern "C" PLUGIN_EXPORT VideoDesktop *createVideo() {
@@ -143,6 +148,19 @@ void VideoDesktop::post_init() {
   }
 }
 
+void VideoDesktop::load_config(std::optional<const nlohmann::json> config) {
+  if (config.has_value()) {
+    const auto& cfg = config.value();
+    if (cfg.contains("enable_audio")) {
+      enable_audio = cfg["enable_audio"].get<bool>();
+    }
+  }
+}
+
+void VideoDesktop::save_config(nlohmann::json &config) const {
+  config["enable_audio"] = enable_audio;
+}
+
 void VideoDesktop::initialize_imgui(ImGuiContext *im_gui_context,
                                     ImGuiMemAllocFunc *alloc_fn,
                                     ImGuiMemFreeFunc *free_fn,
@@ -166,6 +184,12 @@ void VideoDesktop::render_status_ui() {
   ImGui::Text("Current URL: %s",
               current_url.empty() ? "None" : current_url.c_str());
 
+  if (ImGui::Checkbox("Enable Audio", &enable_audio)) {
+    if (!enable_audio) {
+      stop_audio();
+    }
+  }
+
   std::string stateStr = "Unknown";
   ImVec4 stateColor = ImVec4(1, 1, 1, 1);
 
@@ -184,6 +208,10 @@ void VideoDesktop::render_status_ui() {
   case State::Playing:
     stateStr = "Playing";
     stateColor = ImVec4(0, 1, 0, 1);
+    break;
+  case State::Finished:
+    stateStr = "Finished";
+    stateColor = ImVec4(0, 0.8, 0.8, 1);
     break;
   case State::Error:
     stateStr = "Error";
@@ -252,13 +280,15 @@ void VideoDesktop::on_websocket_message(const std::string message) {
     }
 
     std::string newUrl = message.substr(4);
-    if (newUrl == current_url && state.load() == State::Playing) {
-      return; // Already playing this
+    
+    // Always abort current stream when new URL comes in
+    if (state.load() != State::Idle) {
+      spdlog::info("Aborting current stream for new URL: {}", newUrl);
+      stop_stream();
+      spdlog::info("Current stream stopped.");
     }
 
     current_url = newUrl;
-
-    stop_stream();
     start_stream(newUrl);
   }
 
@@ -304,7 +334,9 @@ void VideoDesktop::start_stream(const std::string &url) {
         return false;
       }
 
-      start_audio(mp4Path);
+      if (enable_audio) {
+        start_audio(mp4Path);
+      }
 
       state = State::Playing;
       send_websocket_message("status:playing");
@@ -380,8 +412,8 @@ void VideoDesktop::start_stream(const std::string &url) {
     }
 
     streaming_thread_running = false;
-    state = State::Idle;
-    send_websocket_message("status:idle");
+    state = State::Finished;
+    send_websocket_message("status:finished");
   });
 }
 
@@ -427,12 +459,27 @@ void VideoDesktop::start_audio(const std::string &path) {
 
   audio_process_info = pi;
 #else
-  std::string cmd = fmt::format(
-      "ffplay -nodisp -autoexit -loglevel error \"{}\" >/dev/null 2>&1",
-      path);
-  audio_pipe = open_pipe(cmd.c_str());
-  if (!audio_pipe) {
-    spdlog::error("Failed to start ffplay for audio");
+  // Fork a child process to run ffplay
+  audio_pid = fork();
+  if (audio_pid == 0) {
+    // Child process
+    // Redirect stdout and stderr to /dev/null
+    int devnull = open("/dev/null", O_WRONLY);
+    if (devnull != -1) {
+      dup2(devnull, STDOUT_FILENO);
+      dup2(devnull, STDERR_FILENO);
+      close(devnull);
+    }
+    
+    // Execute ffplay
+    execlp("ffplay", "ffplay", "-nodisp", "-autoexit", "-loglevel", "error",
+           path.c_str(), nullptr);
+    
+    // If execlp fails
+    _exit(1);
+  } else if (audio_pid < 0) {
+    spdlog::error("Failed to fork for audio playback");
+    audio_pid = -1;
   }
 #endif
 }
@@ -450,6 +497,24 @@ void VideoDesktop::stop_audio() {
     audio_process_info = {};
   }
 #else
+  if (audio_pid > 0) {
+    // Send SIGTERM to the process
+    kill(audio_pid, SIGTERM);
+    
+    // Wait briefly for graceful shutdown
+    int status;
+    pid_t result = waitpid(audio_pid, &status, WNOHANG);
+    
+    // If process didn't exit, force kill it
+    if (result == 0) {
+      // Still running, force kill
+      kill(audio_pid, SIGKILL);
+      waitpid(audio_pid, &status, 0);
+    }
+    
+    audio_pid = -1;
+  }
+  
   if (audio_pipe) {
     close_pipe(audio_pipe);
     audio_pipe = nullptr;
