@@ -50,6 +50,7 @@ void VideoScene::after_render_stop(RGBMatrixBase *matrix)
   {
     spdlog::info("VideoScene: Stopping streaming");
     plugin->send_msg_to_desktop("stream:stop");
+    plugin->flush_status();
   }
   streaming_enabled = false;
 }

@@ -39,6 +39,9 @@ public:
     std::lock_guard<std::mutex> lock(statusMutex);
     return status;
   }
+  void flush_status() {
+    status = "idle";
+  }
 
 private:
   std::mutex dataMutex;

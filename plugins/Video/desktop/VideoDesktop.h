@@ -37,7 +37,7 @@ private:
   void stop_stream();
   void start_audio(const std::string &path);
   void stop_audio();
-  bool download_and_process_chunk(const std::string &url, int chunk_index);
+  bool download_and_process_chunk(const std::string &url, int chunk_index, bool set_error_on_fail = true);
   std::string chunk_mp4_path(int chunk_index) const;
   std::string chunk_bin_path(int chunk_index) const;
   void cleanup_chunk(int chunk_index);
