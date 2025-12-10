@@ -385,11 +385,15 @@ void VideoDesktop::start_stream(const std::string &url) {
       // Start prefetching next chunk in background
       int next_chunk = current_chunk + 1;
       spdlog::info("Starting prefetch of chunk {} in background", next_chunk);
-      prefetch_thread = std::thread([this, url, next_chunk]() {
-        if (download_and_process_chunk(url, next_chunk)) {
+      
+      std::atomic<bool> prefetch_success{false};
+      prefetch_thread = std::thread([this, url, next_chunk, &prefetch_success]() {
+        if (download_and_process_chunk(url, next_chunk, false)) {
           spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
+          prefetch_success = true;
         } else {
-          spdlog::warn("Prefetch of chunk {} failed", next_chunk);
+          spdlog::info("Prefetch of chunk {} failed (video ended)", next_chunk);
+          prefetch_success = false;
         }
       });
 
@@ -402,6 +406,12 @@ void VideoDesktop::start_stream(const std::string &url) {
       if (prefetch_thread.joinable()) {
         spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
         prefetch_thread.join();
+      }
+
+      // If prefetch failed, video is done (shorter than expected)
+      if (!prefetch_success) {
+        spdlog::info("Video finished - no more chunks available");
+        break;
       }
 
       // Clean up the chunk that's two steps behind
@@ -523,7 +533,7 @@ void VideoDesktop::stop_audio() {
 }
 
 bool VideoDesktop::download_and_process_chunk(const std::string &url,
-                                              int chunk_index) {
+                                              int chunk_index, bool set_error_on_fail) {
   const int start_sec = chunk_index * chunk_duration_sec;
   const int end_sec = start_sec + chunk_duration_sec;
 
@@ -539,10 +549,14 @@ bool VideoDesktop::download_and_process_chunk(const std::string &url,
   spdlog::info("Downloading chunk {} ({}-{}s): {}", chunk_index, start_sec,
                end_sec, dlCmd);
   if (run_command_no_window(dlCmd) != 0) {
-    last_error = "yt-dlp chunk download failed";
-    spdlog::error(last_error);
-    state = State::Error;
-    send_websocket_message("status:error");
+    if (set_error_on_fail) {
+      last_error = "yt-dlp chunk download failed";
+      spdlog::error(last_error);
+      state = State::Error;
+      send_websocket_message("status:error");
+    } else {
+      spdlog::warn("Chunk {} download failed (video may be shorter than expected)", chunk_index);
+    }
     return false;
   }
 
@@ -554,10 +568,14 @@ bool VideoDesktop::download_and_process_chunk(const std::string &url,
 
   spdlog::info("Processing chunk {}: {}", chunk_index, ffCmd);
   if (run_command_no_window(ffCmd) != 0) {
-    last_error = "ffmpeg chunk processing failed";
-    spdlog::error(last_error);
-    state = State::Error;
-    send_websocket_message("status:error");
+    if (set_error_on_fail) {
+      last_error = "ffmpeg chunk processing failed";
+      spdlog::error(last_error);
+      state = State::Error;
+      send_websocket_message("status:error");
+    } else {
+      spdlog::warn("Chunk {} processing failed (video may be shorter than expected)", chunk_index);
+    }
     return false;
   }
 
