@@ -33,6 +33,8 @@ private:
   void render_status_ui();
   void start_stream(const std::string &url);
   void stop_stream();
+  void start_audio(const std::string &path);
+  void stop_audio();
   bool download_and_process_chunk(const std::string &url, int chunk_index);
   std::string chunk_mp4_path(int chunk_index) const;
   std::string chunk_bin_path(int chunk_index) const;
@@ -55,6 +57,12 @@ private:
   std::atomic<bool> allow_sending_packets{true};
   std::atomic<bool> streaming_thread_running{false};
   FILE *stream_pipe = nullptr;
+
+#ifdef _WIN32
+  PROCESS_INFORMATION audio_process_info{};
+#else
+  FILE *audio_pipe = nullptr;
+#endif
 
   // Chunked streaming
   const int chunk_duration_sec = 300;      // 5 minutes per chunk

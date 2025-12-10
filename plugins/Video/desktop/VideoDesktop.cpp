@@ -94,7 +94,7 @@ void VideoDesktop::check_tools() {
     // Check ffmpeg
     const auto ffmpeg_cmd =
         fmt::format("ffmpeg -version > {} 2>&1", null_device());
-    int ffmpeg_ret = run_command_no_window(ffmpeg_cmd.c_str());
+    int ffmpeg_ret = run_command_no_window(ffmpeg_cmd);
     if (ffmpeg_ret != 0) {
       tools_available = false;
       tools_error_msg = "ffmpeg not found in PATH.";
@@ -105,7 +105,7 @@ void VideoDesktop::check_tools() {
     // Check yt-dlp
     const auto ytdlp_cmd =
         fmt::format("yt-dlp --version > {} 2>&1", null_device());
-    int ytdlp_ret = run_command_no_window(ytdlp_cmd.c_str());
+    int ytdlp_ret = run_command_no_window(ytdlp_cmd);
     if (ytdlp_ret != 0) {
       tools_available = false;
       tools_error_msg = "yt-dlp not found in PATH.";
@@ -113,8 +113,19 @@ void VideoDesktop::check_tools() {
       return;
     }
 
+    // Check ffplay for audio playback
+    const auto ffplay_cmd =
+        fmt::format("ffplay -version > {} 2>&1", null_device());
+    int ffplay_ret = run_command_no_window(ffplay_cmd);
+    if (ffplay_ret != 0) {
+      tools_available = false;
+      tools_error_msg = "ffplay not found in PATH (needed for audio playback).";
+      spdlog::error(tools_error_msg);
+      return;
+    }
+
     tools_available = true;
-    spdlog::info("ffmpeg and yt-dlp found.");
+    spdlog::info("ffmpeg, ffplay, and yt-dlp found.");
 
   } catch (const std::exception &e) {
     tools_available = false;
@@ -283,6 +294,7 @@ void VideoDesktop::start_stream(const std::string &url) {
 
     auto play_chunk = [&](int chunk_index) -> bool {
       spdlog::info("Playing chunk {}", chunk_index);
+      std::string mp4Path = chunk_mp4_path(chunk_index);
       std::string binPath = chunk_bin_path(chunk_index);
       FILE *bin = fopen(binPath.c_str(), "rb");
       if (!bin) {
@@ -291,6 +303,8 @@ void VideoDesktop::start_stream(const std::string &url) {
         send_websocket_message("status:error");
         return false;
       }
+
+      start_audio(mp4Path);
 
       state = State::Playing;
       send_websocket_message("status:playing");
@@ -321,6 +335,7 @@ void VideoDesktop::start_stream(const std::string &url) {
       }
 
       fclose(bin);
+      stop_audio();
       return streaming_thread_running.load();
     };
 
@@ -372,6 +387,7 @@ void VideoDesktop::start_stream(const std::string &url) {
 
 void VideoDesktop::stop_stream() {
   streaming_thread_running = false;
+  stop_audio();
   if (prefetch_thread.joinable()) {
     prefetch_thread.join();
   }
@@ -384,6 +400,61 @@ void VideoDesktop::stop_stream() {
   }
   current_frame_data.clear();
   state = State::Idle;
+}
+
+void VideoDesktop::start_audio(const std::string &path) {
+  stop_audio();
+
+#ifdef _WIN32
+  std::string cmd =
+      fmt::format("ffplay -nodisp -autoexit -loglevel error \"{}\"", path);
+
+  STARTUPINFOA si{};
+  PROCESS_INFORMATION pi{};
+  si.cb = sizeof(si);
+  si.dwFlags = STARTF_USESHOWWINDOW;
+  si.wShowWindow = SW_HIDE;
+
+  std::vector<char> cmdline(cmd.begin(), cmd.end());
+  cmdline.push_back('\0');
+
+  if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
+                      CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+    spdlog::error("Failed to start ffplay for audio (error code {})",
+                  GetLastError());
+    return;
+  }
+
+  audio_process_info = pi;
+#else
+  std::string cmd = fmt::format(
+      "ffplay -nodisp -autoexit -loglevel error \"{}\" >/dev/null 2>&1",
+      path);
+  audio_pipe = open_pipe(cmd.c_str());
+  if (!audio_pipe) {
+    spdlog::error("Failed to start ffplay for audio");
+  }
+#endif
+}
+
+void VideoDesktop::stop_audio() {
+#ifdef _WIN32
+  if (audio_process_info.hProcess) {
+    // If still running, terminate; otherwise just close handles.
+    if (WaitForSingleObject(audio_process_info.hProcess, 0) == WAIT_TIMEOUT) {
+      TerminateProcess(audio_process_info.hProcess, 0);
+    }
+
+    CloseHandle(audio_process_info.hProcess);
+    CloseHandle(audio_process_info.hThread);
+    audio_process_info = {};
+  }
+#else
+  if (audio_pipe) {
+    close_pipe(audio_pipe);
+    audio_pipe = nullptr;
+  }
+#endif
 }
 
 bool VideoDesktop::download_and_process_chunk(const std::string &url,
