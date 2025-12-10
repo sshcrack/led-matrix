@@ -113,6 +113,12 @@ bool VideoScene::render(RGBMatrixBase *matrix)
   // Check status
   std::string status = plugin->get_status();
 
+  if (status == "finished")
+  {
+    // Video is done, allow scene to change
+    return false;
+  }
+
   if (status == "downloading" || status == "processing")
   {
     render_loading_animation();
