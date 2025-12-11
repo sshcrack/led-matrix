@@ -6,6 +6,9 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 using namespace Plugins;
 
@@ -72,6 +75,7 @@ private:
   const int chunk_duration_sec = 300;      // 5 minutes per chunk
   std::atomic<int> current_chunk{0};
   std::thread prefetch_thread;
+  std::mutex prefetch_mutex;
 
   // Playback
   std::vector<uint8_t> current_frame_data;
@@ -83,6 +87,11 @@ private:
 
   // Frame pacing (unused but kept for possible future throttling)
   double fps = 30.0;
+
+  // Stats
+  std::atomic<uint64_t> frames_sent_total{0};
+  std::atomic<int64_t> playback_start_ns{0};
+  double frame_delivery_percent() const;
 };
 
 extern "C" PLUGIN_EXPORT VideoDesktop *createVideo();
