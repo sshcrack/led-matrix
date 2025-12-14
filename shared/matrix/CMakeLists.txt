@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/utils/canvas_image.cpp
         src/shared/matrix/utils/consts.cpp
         src/shared/matrix/plugin_loader/loader.cpp
+        src/shared/matrix/plugin_loader/PluginStore.cpp
         src/shared/matrix/config/MainConfig.cpp
         src/shared/matrix/config/image_providers/general.cpp
         src/shared/matrix/config/shader_providers/general.cpp
