@@ -6,6 +6,7 @@
 #include "canvas_status.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "other_routes.h"
+#include "plugin_routes.h"
 #include "desktop_ws.h"
 #include "preset_management.h"
 #include "scene_management.h"
@@ -34,6 +35,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_post_processing_routes(std::move(router));
     router = add_update_routes(std::move(router), Constants::global_update_manager);
     router = add_other_routes(std::move(router));
+    router = add_plugin_routes(std::move(router));
     router = add_desktop_routes(std::move(router), registry);
 
     const auto pl = Plugins::PluginManager::instance();

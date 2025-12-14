@@ -9,6 +9,7 @@ import { Activity } from '~/lib/icons/Activity';
 import { Calendar } from '~/lib/icons/Calendar';
 import { Download } from '~/lib/icons/Download';
 import { Settings } from '~/lib/icons/Settings';
+import { FilePlus2 } from '~/lib/icons/FilePlus2';
 import { UpdateStatus } from '~/components/apiTypes/update';
 
 interface QuickActionsCardProps {
@@ -56,6 +57,14 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ isWeb, updateStatus
                                     </Badge>
                                 ) : null}
                             </View>
+                        </View>
+                    </Button>
+                </Link>
+                <Link href="/plugins" asChild>
+                    <Button variant="outline" className="flex-1 max-w-48 h-16">
+                        <View className="flex flex-row items-center gap-2">
+                            <FilePlus2 className="text-foreground" width={20} height={20} />
+                            <Text className="text-sm font-medium">Plugins</Text>
                         </View>
                     </Button>
                 </Link>
