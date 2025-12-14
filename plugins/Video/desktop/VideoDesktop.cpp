@@ -1,5 +1,3 @@
-#define NOMINMAX
-
 #include "VideoDesktop.h"
 #include "VideoPacket.h"
 #include "shared/desktop/utils.h"
@@ -16,8 +14,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <memory>
-#include <fstream>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -233,10 +229,6 @@ void VideoDesktop::render_status_ui() {
   if (!status_message.empty()) {
     ImGui::Text("Info: %s", status_message.c_str());
   }
-
-  if (state.load() == State::Playing) {
-    ImGui::Text("Frame delivery: %.1f%%", frame_delivery_percent());
-  }
 }
 
 void VideoDesktop::pre_new_frame() {
@@ -264,8 +256,6 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
     return std::nullopt;
   }
 
-  frames_sent_total.fetch_add(1, std::memory_order_relaxed);
-
   return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(
       new VideoPacket(current_frame_data),
       [](UdpPacket *packet) { delete dynamic_cast<VideoPacket *>(packet); });
@@ -290,14 +280,8 @@ void VideoDesktop::on_websocket_message(const std::string message) {
     }
 
     std::string newUrl = message.substr(4);
-
-    // If the same URL is already running, ignore duplicate command to avoid restart races
-    if (streaming_thread_running.load() && newUrl == current_url) {
-      spdlog::info("Ignoring duplicate URL request while already streaming: {}", newUrl);
-      return;
-    }
-
-    // Abort current stream when a different URL arrives
+    
+    // Always abort current stream when new URL comes in
     if (state.load() != State::Idle) {
       spdlog::info("Aborting current stream for new URL: {}", newUrl);
       stop_stream();
@@ -330,10 +314,6 @@ void VideoDesktop::start_stream(const std::string &url) {
   spdlog::info("Starting stream for URL: {}", url);
   send_websocket_message("status:downloading");
 
-  // Reset stats
-  frames_sent_total = 0;
-  playback_start_ns = 0;
-
   // Reset pacing so first frame can go out immediately after start
   last_packet_time = std::chrono::steady_clock::now();
 
@@ -346,13 +326,6 @@ void VideoDesktop::start_stream(const std::string &url) {
       spdlog::info("Playing chunk {}", chunk_index);
       std::string mp4Path = chunk_mp4_path(chunk_index);
       std::string binPath = chunk_bin_path(chunk_index);
-      
-      // Check if chunk files exist (could be missing if duration was invalid)
-      if (!std::filesystem::exists(binPath)) {
-        spdlog::warn("Chunk {} bin file doesn't exist, skipping playback", chunk_index);
-        return false;
-      }
-      
       FILE *bin = fopen(binPath.c_str(), "rb");
       if (!bin) {
         last_error = "Failed to open processed chunk: " + binPath;
@@ -364,12 +337,6 @@ void VideoDesktop::start_stream(const std::string &url) {
       if (enable_audio) {
         start_audio(mp4Path);
       }
-
-      // Start stats tracking when playback begins
-      playback_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                              std::chrono::steady_clock::now().time_since_epoch())
-                              .count();
-      frames_sent_total = 0;
 
       state = State::Playing;
       send_websocket_message("status:playing");
@@ -386,7 +353,9 @@ void VideoDesktop::start_stream(const std::string &url) {
             current_frame_data = buffer;
           }
 
-          // No sleep here - let compute_next_packet handle frame pacing
+          // Pace playback
+          const auto frame_interval = std::chrono::duration<double>(1.0 / fps);
+          std::this_thread::sleep_for(frame_interval);
           frame_idx++;
 
           if (frame_idx >= frames_per_chunk) {
@@ -417,42 +386,30 @@ void VideoDesktop::start_stream(const std::string &url) {
       int next_chunk = current_chunk + 1;
       spdlog::info("Starting prefetch of chunk {} in background", next_chunk);
       
-      auto prefetch_success = std::make_shared<std::atomic<bool>>(false);
-      {
-        std::lock_guard<std::mutex> lock(prefetch_mutex);
-        if (prefetch_thread.joinable()) {
-          prefetch_thread.join();
+      std::atomic<bool> prefetch_success{false};
+      prefetch_thread = std::thread([this, url, next_chunk, &prefetch_success]() {
+        if (download_and_process_chunk(url, next_chunk, false)) {
+          spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
+          prefetch_success = true;
+        } else {
+          spdlog::info("Prefetch of chunk {} failed (video ended)", next_chunk);
+          prefetch_success = false;
         }
-        prefetch_thread = std::thread([this, url, next_chunk, prefetch_success]() {
-          if (download_and_process_chunk(url, next_chunk, false)) {
-            spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
-            *prefetch_success = true;
-          } else {
-            spdlog::info("Prefetch of chunk {} failed (video ended)", next_chunk);
-            *prefetch_success = false;
-          }
-        });
-      }
+      });
 
       // Play current chunk while prefetch happens in background
-      bool played = play_chunk(current_chunk.load());
-
-      // Wait for prefetch to complete after playback finishes or early exit
-      {
-        std::lock_guard<std::mutex> lock(prefetch_mutex);
-        if (prefetch_thread.joinable()) {
-          spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
-          prefetch_thread.join();
-        }
-      }
-
-      if (!played) {
-        spdlog::info("Playback stopped before chunk {} finished", current_chunk.load());
+      if (!play_chunk(current_chunk.load())) {
         break;
       }
 
+      // Wait for prefetch to complete after playback finishes
+      if (prefetch_thread.joinable()) {
+        spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
+        prefetch_thread.join();
+      }
+
       // If prefetch failed, video is done (shorter than expected)
-      if (!(*prefetch_success)) {
+      if (!prefetch_success) {
         spdlog::info("Video finished - no more chunks available");
         break;
       }
@@ -464,15 +421,6 @@ void VideoDesktop::start_stream(const std::string &url) {
       current_chunk = next_chunk;
     }
 
-    // Ensure any dangling prefetch thread is joined before leaving the processing thread
-    {
-      std::lock_guard<std::mutex> lock(prefetch_mutex);
-      if (prefetch_thread.joinable()) {
-        spdlog::info("Joining pending prefetch thread during shutdown");
-        prefetch_thread.join();
-      }
-    }
-
     streaming_thread_running = false;
     state = State::Finished;
     send_websocket_message("status:finished");
@@ -482,11 +430,8 @@ void VideoDesktop::start_stream(const std::string &url) {
 void VideoDesktop::stop_stream() {
   streaming_thread_running = false;
   stop_audio();
-  {
-    std::lock_guard<std::mutex> lock(prefetch_mutex);
-    if (prefetch_thread.joinable()) {
-      prefetch_thread.join();
-    }
+  if (prefetch_thread.joinable()) {
+    prefetch_thread.join();
   }
   if (stream_pipe) {
     close_pipe(stream_pipe);
@@ -497,8 +442,6 @@ void VideoDesktop::stop_stream() {
   }
   current_frame_data.clear();
   state = State::Idle;
-  playback_start_ns = 0;
-  frames_sent_total = 0;
 }
 
 void VideoDesktop::start_audio(const std::string &path) {
@@ -617,41 +560,6 @@ bool VideoDesktop::download_and_process_chunk(const std::string &url,
     return false;
   }
 
-  // Check if the downloaded chunk has valid duration using ffprobe
-  std::string probeCmd = fmt::format(
-      "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{}\"",
-      mp4Path);
-  
-  std::string probeTempFile = mp4Path + ".probe.txt";
-  std::string probeFullCmd = fmt::format("{} > \"{}\" 2>&1", probeCmd, probeTempFile);
-  
-  if (run_command_no_window(probeFullCmd) == 0) {
-    std::ifstream probeFile(probeTempFile);
-    if (probeFile.is_open()) {
-      std::string durationStr;
-      std::getline(probeFile, durationStr);
-      probeFile.close();
-      
-      // Remove the temp file
-      std::error_code ec;
-      std::filesystem::remove(probeTempFile, ec);
-      
-      // Trim whitespace
-      durationStr.erase(0, durationStr.find_first_not_of(" \t\r\n"));
-      durationStr.erase(durationStr.find_last_not_of(" \t\r\n") + 1);
-      
-      // Check for N/A or invalid duration
-      if (durationStr == "N/A" || durationStr.empty() || durationStr == "0.000000" || durationStr == "0") {
-        spdlog::warn("Chunk {} has invalid duration ({}), video has ended", chunk_index, durationStr);
-        // Clean up the invalid chunk
-        std::filesystem::remove(mp4Path, ec);
-        return false;
-      }
-      
-      spdlog::info("Chunk {} duration: {} seconds", chunk_index, durationStr);
-    }
-  }
-
   // Process chunk to raw
   std::string ffCmd = fmt::format(
       "ffmpeg -y -i \"{}\" -vf \"scale={}:{} ,setsar=1:1,fps={}\" -f "
@@ -698,28 +606,4 @@ void VideoDesktop::cleanup_chunk(int chunk_index) {
   std::error_code ec;
   std::filesystem::remove(chunk_mp4_path(chunk_index), ec);
   std::filesystem::remove(chunk_bin_path(chunk_index), ec);
-}
-
-double VideoDesktop::frame_delivery_percent() const {
-  const int64_t start_ns = playback_start_ns.load(std::memory_order_relaxed);
-  if (start_ns == 0) {
-    return 0.0;
-  }
-
-  const auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                          std::chrono::steady_clock::now().time_since_epoch())
-                          .count();
-  const double elapsed_seconds =
-      static_cast<double>(now_ns - start_ns) / 1'000'000'000.0;
-  if (elapsed_seconds <= 0.0) {
-    return 0.0;
-  }
-
-  const double expected = elapsed_seconds * fps;
-  const double sent = static_cast<double>(frames_sent_total.load(std::memory_order_relaxed));
-  if (expected <= 1e-6) {
-    return 0.0;
-  }
-
-  return std::min(100.0, (sent / expected) * 100.0);
 }
