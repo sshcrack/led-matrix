@@ -48,7 +48,7 @@
     "expo-splash-screen": "^0.30.10",
     "expo-status-bar": "^2.2.3",
     "expo-system-ui": "^5.0.10",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "lucide-react-native": "^0.525.0",
     "nativewind": "^4.1.23",
     "react": "^19.0.0",
