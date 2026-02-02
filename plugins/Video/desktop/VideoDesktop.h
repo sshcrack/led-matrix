@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 
+#include "shared/desktop/UdpSender.h"
+
 using namespace Plugins;
 
 class VideoDesktop final : public DesktopPlugin {
