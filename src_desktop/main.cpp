@@ -166,7 +166,7 @@ int run_app(int argc, char *argv[]) {
     static UpdateChecker::UpdateManager updateManager;
     static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
 
-    static boolean startMinimized = false;
+    static bool startMinimized = false;
     // somehow because portaudio is bugged or idk, we need to have like 10 frames of the program and then we can hide it so there's your counter
     static int startupFrameCounter = 0;
 
