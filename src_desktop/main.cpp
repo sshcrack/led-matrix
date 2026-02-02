@@ -22,6 +22,8 @@
 #include <shared/desktop/glfw.h>
 #include "spdlog/cfg/env.h"
 #include <csignal>
+#include <future>
+#include <chrono>
 
 // Third-party includes
 #include <fmt/format.h>
@@ -64,19 +66,59 @@ static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static bool showMainWindow = false;
 
 #ifdef _WIN32
+// Global variables for shutdown handling on Windows
+static std::string g_shutdown_hostname;
+static uint16_t g_shutdown_port = 0;
+static bool g_should_turn_off_on_exit = false;
+
 // Console control handler for Windows
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
     // Request graceful shutdown
     shouldExit = true;
+    // Attempt to turn off matrix during shutdown on Windows
+    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
+        spdlog::info("Received shutdown signal, turning Matrix OFF.");
+        try {
+            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
+            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
+            if (response.error) {
+                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
+            } else {
+                spdlog::info("Matrix turned OFF during shutdown.");
+            }
+        } catch (const std::exception &e) {
+            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
+        }
+    }
     // Indicate we've handled the event so the process isn't terminated immediately
     return TRUE;
 }
 #else
+// Global variables for shutdown handling on Linux
+static std::string g_shutdown_hostname;
+static uint16_t g_shutdown_port = 0;
+static bool g_should_turn_off_on_exit = false;
 // Use sig_atomic_t for async-signal-safety
 static volatile sig_atomic_t signalReceived = 0;
+
 static void signal_handler(int /*signum*/) {
     signalReceived = 1;
     shouldExit = true;
+    // Attempt to turn off matrix during shutdown on Linux
+    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
+        spdlog::info("Received shutdown signal, turning Matrix OFF.");
+        try {
+            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
+            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
+            if (response.error) {
+                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
+            } else {
+                spdlog::info("Matrix turned OFF during shutdown.");
+            }
+        } catch (const std::exception &e) {
+            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
+        }
+    }
 }
 #endif
 
@@ -91,24 +133,31 @@ static void window_iconify_callback(GLFWwindow *window, const int iconified) {
     }
 }
 
-// ----- Function to change matrix status ----
-static void change_matrix_status(const std::string &hostname, uint16_t port, bool turnOn) {
-    std::thread([hostname, port, turnOn]() {
-                try {
-                    auto url = fmt::format("http://{}:{}/set_enabled?enabled={}", hostname, port,
-                                           turnOn ? "true" : "false");
+// ----- Function to change matrix status (synchronous with timeout) ----
+static void change_matrix_status(const std::string &hostname, uint16_t port, bool turnOn, bool waitForCompletion = false) {
+    auto task = [hostname, port, turnOn]() {
+        try {
+            auto url = fmt::format("http://{}:{}/set_enabled?enabled={}", hostname, port,
+                                   turnOn ? "true" : "false");
 
-                    cpr::Response response = cpr::Get(cpr::Url(url));
-                    if (response.error) {
-                        spdlog::error("Failed to change matrix status: {}", response.error.message);
-                    } else {
-                        spdlog::info("Matrix turned {} successfully.", turnOn ? "on" : "off");
-                    }
-                } catch (const std::exception &e) {
-                    spdlog::error("Exception while changing matrix status: {}", e.what());
-                }
-            })
-            .detach();
+            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{5000L}); // 5 second timeout
+            if (response.error) {
+                spdlog::error("Failed to change matrix status: {}", response.error.message);
+            } else {
+                spdlog::info("Matrix turned {} successfully.", turnOn ? "on" : "off");
+            }
+        } catch (const std::exception &e) {
+            spdlog::error("Exception while changing matrix status: {}", e.what());
+        }
+    };
+
+    if (waitForCompletion) {
+        // Synchronous call for shutdown scenarios
+        task();
+    } else {
+        // Asynchronous call for normal operation
+        std::thread(task).detach();
+    }
 }
 
 // ---- Tray setup ----
@@ -161,6 +210,12 @@ int run_app(int argc, char *argv[]) {
     for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->load_config(cfg->getPluginSetting(plName));
     }
+
+    // Store shutdown configuration in global variables for signal handlers
+    General &generalCfgRef = cfg->getGeneralConfig();
+    g_shutdown_hostname = generalCfgRef.getHostnameCopy();
+    g_shutdown_port = generalCfgRef.getPort();
+    g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
 
     static WebsocketClient *ws;
     static UpdateChecker::UpdateManager updateManager;
@@ -548,7 +603,8 @@ int run_app(int argc, char *argv[]) {
         auto port = generalCfg.getPort();
         if (generalCfg.isTurnMatrixOffOnExit()) {
             spdlog::info("Turning Matrix OFF on exit.");
-            change_matrix_status(hostname, port, false);
+            // Use synchronous call on exit to ensure completion before shutdown
+            change_matrix_status(hostname, port, false, true);
         }
     }
 
