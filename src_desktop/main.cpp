@@ -188,6 +188,13 @@ int run_app(int argc, char *argv[])
     static UpdateChecker::UpdateManager updateManager;
     static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
 
+    static boolean startMinimized = false;
+    if (argc > 1 && std::string(argv[1]) == "--start-minimized")
+    {
+        spdlog::info("Starting minimized.");
+        startMinimized = true;
+    }
+
     // ---- GUI function ----
     auto guiFunction = [pl, cfg]
     {
@@ -296,6 +303,11 @@ int run_app(int argc, char *argv[])
             // We are just returning here, because waiting is handled in the AfterSwap method.
             // (Its this late so we connect to the websocket)
             return;
+        }
+
+        if (startMinimized) {
+            HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;
+            startMinimized = false;
         }
 
         static bool matrixOnOnStart = generalCfg.isTurnMatrixOnOnStart();
@@ -581,11 +593,6 @@ int run_app(int argc, char *argv[])
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;
-    if (argc > 1 && std::string(argv[1]) == "--start-minimized")
-    {
-        spdlog::info("Starting minimized.");
-        runnerParams.appWindowParams.hidden = true;
-    }
 
     // Register signal/console handlers so the application can request a graceful shutdown
 #ifdef _WIN32
