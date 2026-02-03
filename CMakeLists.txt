@@ -123,6 +123,7 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 if(ENABLE_DESKTOP)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
 
@@ -158,6 +159,8 @@ if(ENABLE_DESKTOP)
             PATTERN "*.pdb" EXCLUDE
         )
     endif()
+else()
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "main")
 endif()
 
 install(FILES
