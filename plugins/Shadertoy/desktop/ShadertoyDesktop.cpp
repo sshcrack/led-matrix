@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <shadertoy/PipelineEditor.hpp>
 #include <shared/desktop/glfw.h>
+#include "shared/desktop/utils.h"
 
 #include "CanvasPacket.h"
 
@@ -295,6 +296,6 @@ void ShadertoyDesktop::post_init()
         spdlog::info("Glew initialized successfully");
     
     // Initialize cache with plugin directory
-    auto cacheDir = _plugin_location.parent_path().parent_path() / "cache";
+    auto cacheDir = get_data_dir() / "cache";
     mCache = std::make_unique<ShaderCache>(cacheDir);
 }
