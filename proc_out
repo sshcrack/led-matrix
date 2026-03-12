@@ -1,0 +1,807 @@
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x610f6dcc2f00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1553 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=51.8x    
+[info] Starting playback loop from chunk 0
+[info] Starting prefetch of chunk 1 in background
+[info] Playing chunk 0
+[info] Downloading chunk 1 (300-600s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*300-600" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 300.0-600.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358029&ei=bfeyabe8HLqKgMMP6dLu6AI&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-AKIAqH_V3qUAtyiUr2VE4F_rbflMixzv_g74voQogZqF&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=590&met=1773336429%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5edn6r&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=2756250&bui=AVNa5-xViD4UBkIDRLSFVmV6ptXtXBOdnDiH7FTGG_GuKwVztcIucb1JZJpN3Nb0D6boNvuNsdYPeFbt&spc=6dlaFG8oEzLRjmKs5CaugAaw0GmEldPNVroKNlGQ3jKcfVyBZuaV&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773335847&fvip=2&fexp=51565115%2C51565682%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIgP8RYYj3rU5UauofalILPfePD_g4KQ_rHBR2Fk9DFVqMCIQCmdYakn7M1IGKxU1FU_-igIu3PVDEaxLTBMYVEyW8mIw%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIgbCyn6hCqb2WqcN7LU9RoKgVPSm61E-nahNUTyTLOoOUCIQCDpKwXFNCUt7XlYpol_MEWj3kbxCLd0MqBxfk8OjYOyA%3D%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x59edbc5fdf80] video:50KiB audio:91KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 5.201542%
+frame=  175 fps=0.0 q=-1.0 Lsize=     149KiB time=-00:01:21.00 bitrate=N/A speed=N/A    
+[download] 100% of  148.75KiB in 00:00:00 at 602.87KiB/s
+[info] Processing chunk 1: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:00:05.85, start: 0.000000, bitrate: 208 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 70 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+[vf#0:0 @ 0x5983d1ad2540] No filtered frames for output stream, trying to initialize anyway.
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x5983d1acf0c0] video:0KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[out#0/rawvideo @ 0x5983d1acf0c0] Output file is empty, nothing was encoded(check -ss / -t / -frames parameters if used)
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A    
+[info] Prefetch of chunk 1 completed successfully
+[info] Aborting current stream for new URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Current stream stopped.
+[info] Starting stream for URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Starting fresh (no checkpoint found)
+[info] Downloading and processing initial chunk 0
+[info] Downloading chunk 0 (0-300s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*0-300" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+WARNING: [youtube] FtutLA63Cp8: Some android_vr client https formats have been skipped as they are missing a URL. YouTube may have enabled the SABR-only streaming experiment for the current session. See  https://github.com/yt-dlp/yt-dlp/issues/12482  for more details
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 0.0-300.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358051&ei=g_eyadXZJu_Ki9oPrbja6A8&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-AORIQS6OQA3dZMagPjmea3b13oWiRnDF3gRHni6kvT4M&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=987&met=1773336451%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-zi2HnISS4h59bxAQ3XmU-CCs7zItkj-K42JLYu53hNQZVB1QSAkvex1QB3AR1BjVi3np_Myoub&spc=6dlaFDUwB2KssNz3e_W4Fm__wB3HsmNlvGUgw9G4CmkDvaVy5vhTyZ--&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565682%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIhAI0U3-c5v_ZQK2Nw-PgGDRxSxaaYt5_9uyKjNalvw8DEAiAU-w8qcVClYZvMCpnkh15K7QLvgYX-lsny2jBF-jF8nw%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIgZN6r43vmbVDhSjDxepUY7EdOGA-n4QwKj5pI89SMgSICIQDvghp9JiNK1U0Stim1rggYS2Xrz0ka7hhVczEiPFOojg%3D%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x5e19cfa3ec80] video:3602KiB audio:3422KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 3.172811%
+frame= 6571 fps=0.0 q=-1.0 Lsize=    7247KiB time=00:03:39.00 bitrate= 271.1kbits/s speed= 469x    
+[download] 100% of    7.08MiB in 00:00:00 at 10.66MiB/s
+[info] Processing chunk 0: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:03:39.03, start: 0.000000, bitrate: 271 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x57dbb733cf00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1558 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=51.9x    
+[info] Starting playback loop from chunk 0
+[info] Aborting current stream for new URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Current stream stopped.
+[info] Starting stream for URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Starting fresh (no checkpoint found)
+[info] Downloading and processing initial chunk 0
+[info] Downloading chunk 0 (0-300s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*0-300" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 0.0-300.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358059&ei=i_eyabiPE4uAi9oPqIxt&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-AFhosJu6vQ3URRPT5yxNF7WwKmuVnQveGNmqfMzuKI4F&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=997&met=1773336459%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-xttKpoe8QW-RZB7alEPwHXgHltYUQEV2v_zQ6jE_kA2HaplwGq7AW0bMLuC3A4nehc1qLnewUd&spc=6dlaFLn7mWve-EDOTXw-x1pie4gBpuuO20sZirymVZKeZNPeaVwL4GIo&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565681%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIhAM8iz4jlRh-cQ4rB508YV6gygzVKRXGQSw7N3xgUTkA1AiAXEOwwRaa-ZaHEkHYnp3YtTtuTw7eQtPwHXsHqidqd4A%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRgIhAODildyNBjwjxXroYmuNR3tWP4PDHoQ1ozXWdBKC4Z1lAiEA5UAzjHEM6BVKST-TOi5EfkpnUN_R1kwKBrpRnCAXZGA%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x61f4160e9c40] video:3602KiB audio:3422KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 3.172811%
+frame= 6571 fps=0.0 q=-1.0 Lsize=    7247KiB time=00:03:39.00 bitrate= 271.1kbits/s speed= 568x    
+[download] 100% of    7.08MiB in 00:00:00 at 12.16MiB/s
+[info] Processing chunk 0: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:03:39.03, start: 0.000000, bitrate: 271 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x63196929df00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1581 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=52.7x    
+[info] Starting playback loop from chunk 0
+[info] Starting prefetch of chunk 1 in background
+[info] Playing chunk 0
+[info] Downloading chunk 1 (300-600s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*300-600" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 300.0-600.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358066&ei=kveyaY-tKfGjw-APzZW92Ak&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-AOOPFYyp5n0PomAsi4EXjlUpxmMxHUaveERvL_V5A4Dv&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=1021&met=1773336466%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pcm2cms=yes&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-w1tN_Afiw-69LadMNoUdesd6weG3zFCEnpVmgqtnYTuY45vXgGywnVGvfSZzmIemyyM05tXThz&spc=6dlaFIksTH7ZW4eUv2TwUnzqGkfSpJX_8_2didveZOnD28p370PVEBJe&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565681%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRgIhAKitIWPgGAhDjBHIYMMTft_0Mf8bwiIrYKbP4nNC_IJqAiEAkOgZT2sYaXfV8WFVoa_Q8x0DVKqvTJ5aWaSd7Cgi4C0%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpcm2cms%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIhAM9etbiEsX9KesrxgJSpHQt70jnff63sddzquab3FjflAiBXSV6-o0X8SDYKVwDuaLg8NdMCCYlDQhjJRpgTyk3IrQ%3D%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x60ed24f51000] video:50KiB audio:91KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 5.201542%
+frame=  175 fps=0.0 q=-1.0 Lsize=     149KiB time=-00:01:21.00 bitrate=N/A speed=N/A    
+[download] 100% of  148.75KiB in 00:00:00 at 641.13KiB/s
+[info] Processing chunk 1: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:00:05.85, start: 0.000000, bitrate: 208 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 70 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+[vf#0:0 @ 0x5f2ee0131540] No filtered frames for output stream, trying to initialize anyway.
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x5f2ee012e0c0] video:0KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[out#0/rawvideo @ 0x5f2ee012e0c0] Output file is empty, nothing was encoded(check -ss / -t / -frames parameters if used)
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A    
+[info] Prefetch of chunk 1 completed successfully
+[info] Aborting current stream for new URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Current stream stopped.
+[info] Starting stream for URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Starting fresh (no checkpoint found)
+[info] Downloading and processing initial chunk 0
+[info] Downloading chunk 0 (0-300s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*0-300" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+WARNING: [youtube] FtutLA63Cp8: Some android_vr client https formats have been skipped as they are missing a URL. YouTube may have enabled the SABR-only streaming experiment for the current session. See  https://github.com/yt-dlp/yt-dlp/issues/12482  for more details
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 0.0-300.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358081&ei=ofeyadnRLc206dsP3_yR6Aw&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-APPWvI0utssjGCGTU1bVfoO5ldoyEi1eKR6VYHwiUjpr&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=991&met=1773336481%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-wcyiNLnKJj7cjXsmc72u7L2M17k_rg4nuILx99VgLkoRGpOQ_OHhjxADPL5Q2ox9hMLVr2sGF6&spc=6dlaFHe7T9adIFG9dp-Lslt9m5QKkT-Ew4kSq32kJxkgH1ThEwcd&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565682%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIhALXKdE65ZlDoucwxy5kVw-W74vdC0h4AHwRS-DgovxpeAiA5XScjMWnzevwJSx0qtZ91i7GmM-KVflBovkUoRx1DKA%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRAIgPE5W1KlSV0ETK5Yq__g-DtuF-5OHIdCTPgwb9tVhyuECIEZxDEVzZd-6H9s0e2F5ZReOEqf_BlMECdh1BHUOX1Se':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x5f3c2a9c3c40] video:3602KiB audio:3422KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 3.172811%
+frame= 6571 fps=0.0 q=-1.0 Lsize=    7247KiB time=00:03:39.00 bitrate= 271.1kbits/s speed= 524x    
+[download] 100% of    7.08MiB in 00:00:00 at 11.42MiB/s
+[info] Processing chunk 0: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:03:39.03, start: 0.000000, bitrate: 271 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x59515a5aef00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1578 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=52.6x    
+[info] Starting playback loop from chunk 0
+[info] Aborting current stream for new URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Current stream stopped.
+[info] Starting stream for URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Starting fresh (no checkpoint found)
+[info] Downloading and processing initial chunk 0
+[info] Downloading chunk 0 (0-300s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*0-300" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 0.0-300.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358089&ei=qfeyaYDhCtTj6dsPz-Cg2Qw&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-ADHy9B1V4gV7P9-WH8HDE--Jby1aG6zpxe5ZSOrGc9qX&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=993&met=1773336489%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5edn6r&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-x-RjSOmD_JfgMa1i80Hui7Q2CdXMe1dFSwkDlbpEglRdigX-u0tolPJNbuvDglpyxCUSQuQb6l&spc=6dlaFFSCHFnN-mEP7M5QTPagDjoLZ0G_rhBIRsv-h_9wW1pFNAni&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=2&fexp=51565115%2C51565682%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIhAK7bmwmaREb0G9D4DnNBnOV29C_XOK9ZvrtzfTwU8wb1AiBNgKXO3jiOpsMKwWvObFy9E-KLr_qJCKeuWxfe4_fJ4A%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIgVp1wkHWhxiqkHSIkuIgidxGj137ZNdETSVGHUFp9gV0CIQC8PN8GkIpkExl19TczXyqXnJ-Dv4YaiDyWYMjQIONl5g%3D%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x5d592e1c2c40] video:3602KiB audio:3422KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 3.172811%
+frame= 6571 fps=0.0 q=-1.0 Lsize=    7247KiB time=00:03:39.00 bitrate= 271.1kbits/s speed= 555x    
+[download] 100% of    7.08MiB in 00:00:00 at 12.82MiB/s
+[info] Processing chunk 0: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:03:39.03, start: 0.000000, bitrate: 271 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x57780abdef00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1653 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=55.1x    
+[info] Starting playback loop from chunk 0
+[info] Aborting current stream for new URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Current stream stopped.
+[info] Starting stream for URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[info] Starting fresh (no checkpoint found)
+[info] Downloading and processing initial chunk 0
+[info] Downloading chunk 0 (0-300s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*0-300" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 0.0-300.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358096&ei=sPeyaafYG-bT6dsPtKTfsQ8&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-ADoe8V6xssgrUbhco38CzCVfU_fe2Lq-Zr964l3GCSGK&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=1005&met=1773336496%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-xDSt43mECRA-JcLrdYPEwb6DuO1FEX1MxlLnmruTomoN9JrUPCfy8J_-tImXOXEq89u0ihHBED&spc=6dlaFCo1JVkmSxA7lEMvbAuznJ8eIkkj3E3mVBNn78Td1MHAn8DM&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565681%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIgArKAw3RAtyrBrzSTQptbBPwkq_01ssblKVrAFCXDMLECIQCzrmzEJ2cyPli8HuPNrAZlBinFDrZFBCA7tzRSzdsGXg%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRgIhAIqZCkMIFKqvFj_PvVnd_ILNeREYtYGAWQbaLgnKyHEcAiEA2PsJnN6vbCH0TVjzDir52DmJiKQ2l1uQ8CY78nbbw_k%3D':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x559588134c40] video:3602KiB audio:3422KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 3.172811%
+frame= 6571 fps=0.0 q=-1.0 Lsize=    7247KiB time=00:03:39.00 bitrate= 271.1kbits/s speed= 509x    
+[download] 100% of    7.08MiB in 00:00:00 at 11.37MiB/s
+[info] Processing chunk 0: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:03:39.03, start: 0.000000, bitrate: 271 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_0.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(pc, gbr/bt709/bt709, progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x643516125f00] video:315456KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame= 6572 fps=1616 q=-0.0 Lsize=  315456KiB time=00:03:39.06 bitrate=11796.5kbits/s speed=53.9x    
+[info] Starting playback loop from chunk 0
+[info] Starting prefetch of chunk 1 in background
+[info] Playing chunk 0
+[info] Downloading chunk 1 (300-600s): yt-dlp -f "best[ext=mp4]/best" --remote-components ejs:npm --download-sections "*300-600" --force-overwrites -o "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" "https://www.youtube.com/watch?v=FtutLA63Cp8"
+[youtube] Extracting URL: https://www.youtube.com/watch?v=FtutLA63Cp8
+[youtube] FtutLA63Cp8: Downloading webpage
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] FtutLA63Cp8: Downloading android vr player API JSON
+[info] FtutLA63Cp8: Downloading 1 format(s): 18
+[info] FtutLA63Cp8: Downloading 1 time ranges: 300.0-600.0
+[download] Destination: /home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'https://rr2---sn-cxaf0x-nugl.googlevideo.com/videoplayback?expire=1773358103&ei=t_eyaZPwMe6dp-oPvfrg2A8&ip=2a00%3A1398%3A9%3Afb03%3A7f15%3A9b53%3A8e40%3A958d&id=o-ALv6ztV75YlAI6vzi7yBIhbVaUgqEEPAExkf5tsVSWIh&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=813&met=1773336503%2C&mh=XP&mm=31%2C29&mn=sn-cxaf0x-nugl%2Csn-4g5lznss&ms=au%2Crdu&mv=m&mvi=2&pl=45&rms=au%2Cau&initcwndbps=3145000&bui=AVNa5-ymUR5hVWd_DTQQQoYvuoYvveb5AwDJ-6Di4dbcm8wr-9EGRoaUYlvUvMli456ZqL39plC-1Pot&spc=6dlaFFQ9sORmB9pHnETvI3PUfgY0ruNKCjylUHe3Lxk5_Jb5VPoCSPpv&vprv=1&svpuc=1&mime=video%2Fmp4&rqh=1&cnr=14&ratebypass=yes&dur=219.149&lmt=1763162453596479&mt=1773336095&fvip=1&fexp=51565115%2C51565682%2C51791334&c=ANDROID_VR&txp=5538534&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AHEqNM4wRQIhALnRED0RD9uejWvEENjnoGIFxit7BsBP3qZmbE8znNvEAiBwkWhndPe_ZEhrFI91R79CUkBZzc0OevugS0NOiA819g%3D%3D&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRAIgVc0ymN5K29kG2wFwdqpqLKZwqUTtxWAS_ricAaFiIsYCIErikMpAKFFrh3RAcZ8JK3JKxY5LqtzkWVIYepZ4Az_m':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2025-11-14T23:11:38.000000Z
+    encoder         : Google
+  Duration: 00:03:39.08, start: 0.000000, bitrate: 266 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (copy)
+  Stream #0:1 -> #0:1 (copy)
+Output #0, mp4, to 'file:/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4.part':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], q=2-31, 134 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        creation_time   : 2025-11-14T23:11:38.000000Z
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Press [q] to stop, [?] for help
+[out#0/mp4 @ 0x6182d29dcf80] video:50KiB audio:91KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 5.201542%
+frame=  175 fps=0.0 q=-1.0 Lsize=     149KiB time=-00:01:21.00 bitrate=N/A speed=N/A    
+[download] 100% of  148.75KiB in 00:00:00 at 618.75KiB/s
+[info] Processing chunk 1: ffmpeg -y -i "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4" -vf "scale=128:128 ,setsar=1:1,fps=30" -f rawvideo -pix_fmt rgb24 "/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin"
+ffmpeg version 7.1.1-1ubuntu4.2 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15 (Ubuntu 15.2.0-4ubuntu4)
+  configuration: --prefix=/usr --extra-version=1ubuntu4.2 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-libmfx --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:00:05.85, start: 0.000000, bitrate: 208 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 480x360 [SAR 1:1 DAR 4:3], 70 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> rawvideo (native))
+Press [q] to stop, [?] for help
+[vf#0:0 @ 0x55af64ba9540] No filtered frames for output stream, trying to initialize anyway.
+Output #0, rawvideo, to '/home/hendrik/.config/led-matrix-desktop/cache/video/8715928326564945581/chunk_1.bin':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Video: rawvideo (RGB[24] / 0x18424752), rgb24(progressive), 128x128 [SAR 1:1 DAR 1:1], q=2-31, 11796 kb/s, 30 fps, 30 tbn (default)
+      Metadata:
+        handler_name    : ISO Media file produced by Google Inc. Created on: 11/14/2025.
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 rawvideo
+[out#0/rawvideo @ 0x55af64ba60c0] video:0KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[out#0/rawvideo @ 0x55af64ba60c0] Output file is empty, nothing was encoded(check -ss / -t / -frames parameters if used)
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A    
+[info] Prefetch of chunk 1 completed successfully
+^C[info] Received shutdown signal, turning Matrix OFF.
+[info] Matrix turned OFF during shutdown.
+[info] Exiting application...
+[info] Exiting tray thread...
+[info] Turning Matrix OFF on exit.
+[info] Matrix turned off successfully.
+[info] Configuration saved to /home/hendrik/.config/led-matrix-desktop/config.json
+[info] Destroying plugins...
+[info] Recording stopped
+[info] Exited cleanly.
