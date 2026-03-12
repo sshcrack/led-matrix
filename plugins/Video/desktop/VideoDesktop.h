@@ -55,6 +55,7 @@ private:
   std::optional<std::pair<int, std::set<int>>> load_checkpoint();
   std::string checkpoint_path() const;
   void cleanup_checkpoint();
+  void evict_oldest_video_caches();
 
   // State
   bool tools_available = false;
@@ -81,6 +82,7 @@ private:
 #endif
 
   // Chunked streaming
+  static constexpr int MAX_VIDEO_CACHE_FOLDERS = 10;
   const int chunk_duration_sec = 300;      // 5 minutes per chunk
   std::atomic<int> current_chunk{0};
   std::thread prefetch_thread;
