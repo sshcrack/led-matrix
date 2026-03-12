@@ -11,6 +11,8 @@ register_plugin(GameScenes
         matrix/scenes/tetris/TetrisScene.h
         matrix/scenes/PacmanGameScene.cpp
         matrix/scenes/PacmanGameScene.h
+        matrix/scenes/Connect4AIScene.cpp
+        matrix/scenes/Connect4AIScene.h
 
         matrix/scenes/tetris/utils/brain.cpp
         matrix/scenes/tetris/utils/brain.hpp
