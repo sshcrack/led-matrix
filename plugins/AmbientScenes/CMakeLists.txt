@@ -17,4 +17,10 @@ register_plugin(AmbientScenes
         matrix/scenes/FallingSandScene.h
         matrix/scenes/NeonTunnelScene.cpp
         matrix/scenes/NeonTunnelScene.h
+        matrix/scenes/OrbitingPlanetsScene.cpp
+        matrix/scenes/OrbitingPlanetsScene.h
+        matrix/scenes/KaleidoscopeGenesisScene.cpp
+        matrix/scenes/KaleidoscopeGenesisScene.h
+        matrix/scenes/CrystalGrowthScene.cpp
+        matrix/scenes/CrystalGrowthScene.h
 )

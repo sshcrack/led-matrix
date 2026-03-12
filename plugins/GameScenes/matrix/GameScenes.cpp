@@ -6,6 +6,7 @@
 #include "scenes/MazeGameScene.h"
 #include "scenes/SnakeGameScene.h"
 #include "scenes/PacmanGameScene.h"
+#include "scenes/Connect4AIScene.h"
 
 using namespace Scenes;
 
@@ -32,6 +33,7 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GameSce
     scenes.push_back({new MazeGameSceneWrapper(), destroyScene});
     scenes.push_back({new SnakeGameSceneWrapper(), destroyScene});
     scenes.push_back({new PacmanGameSceneWrapper(), destroyScene});
+    scenes.push_back({new Connect4AISceneWrapper(), destroyScene});
 
     return scenes;
 }
