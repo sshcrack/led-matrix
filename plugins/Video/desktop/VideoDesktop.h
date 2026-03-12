@@ -6,8 +6,11 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <set>
+#include <optional>
 
 #include "shared/desktop/UdpSender.h"
+#include <nlohmann/json.hpp>
 
 using namespace Plugins;
 
@@ -43,8 +46,15 @@ private:
   std::string chunk_mp4_path(int chunk_index) const;
   std::string chunk_bin_path(int chunk_index) const;
   void cleanup_chunk(int chunk_index);
+  void cleanup_all_chunks();
 
   std::string get_video_id(const std::string &url) const;
+
+  // Checkpoint/resume system
+  void save_checkpoint(int current_chunk, const std::set<int> &processed_chunks);
+  std::optional<std::pair<int, std::set<int>>> load_checkpoint();
+  std::string checkpoint_path() const;
+  void cleanup_checkpoint();
 
   // State
   bool tools_available = false;
@@ -74,6 +84,8 @@ private:
   const int chunk_duration_sec = 300;      // 5 minutes per chunk
   std::atomic<int> current_chunk{0};
   std::thread prefetch_thread;
+  std::set<int> processed_chunks;          // Track chunks completed for this video
+  std::mutex chunks_mutex;
 
   // Playback
   std::vector<uint8_t> current_frame_data;
