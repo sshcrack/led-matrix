@@ -1,6 +1,7 @@
 #include "VideoDesktop.h"
 #include "VideoPacket.h"
 #include "shared/desktop/utils.h"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -93,7 +94,13 @@ VideoDesktop::VideoDesktop() = default;
 
 VideoDesktop::~VideoDesktop() {
   stop_stream();
-  cleanup_all_chunks();
+  // Only clean up chunks if there's no checkpoint to resume from.
+  if (!current_url.empty()) {
+    auto cp = get_data_dir() / "cache" / "video" / get_video_id(current_url) / "checkpoint.json";
+    if (!std::filesystem::exists(cp)) {
+      cleanup_all_chunks();
+    }
+  }
 }
 
 void VideoDesktop::check_tools() {
@@ -148,6 +155,8 @@ void VideoDesktop::post_init() {
   if (!std::filesystem::exists(cacheDir)) {
     std::filesystem::create_directories(cacheDir);
   }
+
+  evict_oldest_video_caches();
 }
 
 void VideoDesktop::load_config(std::optional<const nlohmann::json> config) {
@@ -418,9 +427,12 @@ void VideoDesktop::start_stream(const std::string &url) {
       {
         std::lock_guard<std::mutex> lock(chunks_mutex);
         processed_chunks.insert(start_chunk);
+        save_checkpoint(start_chunk, processed_chunks);
       }
 
       spdlog::info("Starting playback loop from chunk {}", start_chunk);
+      bool video_ended_naturally = false;
+
       while (streaming_thread_running) {
         // Start prefetching next chunk in background
         int next_chunk = current_chunk + 1;
@@ -444,6 +456,17 @@ void VideoDesktop::start_stream(const std::string &url) {
 
         // Play current chunk while prefetch happens in background
         if (!play_chunk(current_chunk.load())) {
+          // Stopped mid-stream — join prefetch before saving state
+          if (prefetch_thread.joinable()) {
+            prefetch_thread.join();
+          }
+          // Save position so next run can resume from here
+          if (state.load() != State::Error) {
+            std::lock_guard<std::mutex> lock(chunks_mutex);
+            int resume_chunk = prefetch_success ? next_chunk : current_chunk.load();
+            save_checkpoint(resume_chunk, processed_chunks);
+            spdlog::info("Saved checkpoint at chunk {} for resume", resume_chunk);
+          }
           break;
         }
 
@@ -453,30 +476,30 @@ void VideoDesktop::start_stream(const std::string &url) {
           prefetch_thread.join();
         }
 
-        // If prefetch failed, video is done (shorter than expected)
+        // If prefetch failed, video is done
         if (!prefetch_success) {
           spdlog::info("Video finished - no more chunks available");
+          video_ended_naturally = true;
           break;
         }
 
-        // Clean up old chunks aggressively (keep only current and next)
+        // Clean up old chunks (keep only current and next)
         cleanup_chunk(current_chunk - 1);
 
-        // Save checkpoint periodically
+        // Save checkpoint now that next chunk is confirmed on disk
         {
           std::lock_guard<std::mutex> lock(chunks_mutex);
-          if (current_chunk % 2 == 0) {  // Save every 2 chunks
-            save_checkpoint(next_chunk, processed_chunks);
-          }
+          save_checkpoint(next_chunk, processed_chunks);
         }
 
         // Move to next chunk
         current_chunk = next_chunk;
       }
 
-      // Clean up checkpoint on successful completion
-      if (streaming_thread_running.load() == false && state.load() != State::Error) {
+      // Only clean up checkpoint when video genuinely ends — not on user stop
+      if (video_ended_naturally) {
         cleanup_checkpoint();
+        cleanup_all_chunks();
       }
 
       streaming_thread_running = false;
@@ -630,6 +653,14 @@ bool VideoDesktop::download_and_process_chunk(const std::string &url,
     std::string mp4Path = chunk_mp4_path(chunk_index);
     std::string binPath = chunk_bin_path(chunk_index);
 
+    // Skip download if the processed .bin file already exists (resume path)
+    std::error_code ec;
+    if (std::filesystem::exists(binPath, ec) &&
+        std::filesystem::file_size(binPath, ec) > 0) {
+      spdlog::info("Chunk {} already on disk, skipping download", chunk_index);
+      return true;
+    }
+
     // Download chunk
     std::string dlCmd = fmt::format(
         "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm "
@@ -705,17 +736,66 @@ std::string VideoDesktop::chunk_bin_path(int chunk_index) const {
   return (cacheDir / fmt::format("chunk_{}.bin", chunk_index)).string();
 }
 
+void VideoDesktop::cleanup_chunk(int chunk_index) {
+  if (chunk_index <= 0) return; // Never delete chunk 0
+  std::error_code ec;
+  std::filesystem::remove(chunk_mp4_path(chunk_index), ec);
+  std::filesystem::remove(chunk_bin_path(chunk_index), ec);
+}
+
 void VideoDesktop::cleanup_all_chunks() {
   auto cacheDir = get_data_dir() / "cache" / "video" / get_video_id(current_url);
   if (!std::filesystem::exists(cacheDir)) {
     return;
   }
 
+  // Count video folders; only really clean if we're above the limit
+  auto videoRoot = get_data_dir() / "cache" / "video";
+  int folderCount = 0;
   std::error_code ec;
+  for (auto &e : std::filesystem::directory_iterator(videoRoot, ec)) {
+    if (e.is_directory(ec)) ++folderCount;
+  }
+  if (folderCount <= MAX_VIDEO_CACHE_FOLDERS) {
+    return; // Still within limit — leave the folder intact
+  }
+
+  // Preserve chunk_0 (.mp4 and .bin) as a fast-start cache
+  auto chunk0mp4 = std::filesystem::path(chunk_mp4_path(0)).filename();
+  auto chunk0bin = std::filesystem::path(chunk_bin_path(0)).filename();
+
   for (auto &entry : std::filesystem::directory_iterator(cacheDir, ec)) {
+    auto name = entry.path().filename();
+    if (name == chunk0mp4 || name == chunk0bin) continue;
     if (entry.path().extension() == ".mp4" || entry.path().extension() == ".bin") {
       std::filesystem::remove(entry, ec);
     }
+  }
+}
+
+void VideoDesktop::evict_oldest_video_caches() {
+  auto videoRoot = get_data_dir() / "cache" / "video";
+  std::error_code ec;
+  if (!std::filesystem::exists(videoRoot, ec)) return;
+
+  // Collect all video cache subdirectories with their last-write times
+  std::vector<std::pair<std::filesystem::file_time_type, std::filesystem::path>> folders;
+  for (auto &entry : std::filesystem::directory_iterator(videoRoot, ec)) {
+    if (entry.is_directory(ec)) {
+      auto mtime = entry.last_write_time(ec);
+      folders.emplace_back(mtime, entry.path());
+    }
+  }
+
+  if (static_cast<int>(folders.size()) <= MAX_VIDEO_CACHE_FOLDERS) return;
+
+  // Sort oldest first
+  std::sort(folders.begin(), folders.end());
+
+  int excess = static_cast<int>(folders.size()) - MAX_VIDEO_CACHE_FOLDERS;
+  for (int i = 0; i < excess; ++i) {
+    spdlog::info("Evicting old video cache: {}", folders[i].second.string());
+    std::filesystem::remove_all(folders[i].second, ec);
   }
 }
 
