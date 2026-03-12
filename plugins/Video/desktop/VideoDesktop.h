@@ -6,17 +6,14 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#include <set>
-#include <optional>
 
 #include "shared/desktop/UdpSender.h"
-#include <nlohmann/json.hpp>
 
 using namespace Plugins;
 
 class VideoDesktop final : public DesktopPlugin {
 public:
-  VideoDesktop();
+  VideoDesktop() = default;
   ~VideoDesktop() override;
 
   void render() override;
@@ -42,34 +39,26 @@ private:
   void stop_stream();
   void start_audio(const std::string &path);
   void stop_audio();
-  bool download_and_process_chunk(const std::string &url, int chunk_index, bool set_error_on_fail = true);
+  bool download_and_process_chunk(const std::string &url, int chunk_index,
+                                  bool set_error_on_fail = true);
   std::string chunk_mp4_path(int chunk_index) const;
   std::string chunk_bin_path(int chunk_index) const;
   void cleanup_chunk(int chunk_index);
-  void cleanup_all_chunks();
-
+  void cleanup_non_first_chunks();
+  void evict_oldest_first_chunks();
   std::string get_video_id(const std::string &url) const;
-
-  // Checkpoint/resume system
-  void save_checkpoint(int current_chunk, const std::set<int> &processed_chunks);
-  std::optional<std::pair<int, std::set<int>>> load_checkpoint();
-  std::string checkpoint_path() const;
-  void cleanup_checkpoint();
-  void evict_oldest_video_caches();
 
   // State
   bool tools_available = false;
   std::string tools_error_msg;
-
   std::string current_url;
   bool enable_audio = true;
   int matrix_width = 128;
   int matrix_height = 128;
 
-  enum class State { Idle, Downloading, Processing, Playing, Finished, Error };
-  std::atomic<State> state = State::Idle;
+  enum class State { Idle, Downloading, Playing, Error };
+  std::atomic<State> state{State::Idle};
   std::string last_error;
-  std::string status_message;
   std::atomic<bool> allow_sending_packets{true};
   std::atomic<bool> streaming_thread_running{false};
   FILE *stream_pipe = nullptr;
@@ -82,22 +71,17 @@ private:
 #endif
 
   // Chunked streaming
-  static constexpr int MAX_VIDEO_CACHE_FOLDERS = 10;
-  const int chunk_duration_sec = 300;      // 5 minutes per chunk
-  std::atomic<int> current_chunk{0};
+  // Number of video folders (each holds a cached first chunk) to keep on disk.
+  static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
+  const int chunk_duration_sec = 300; // 5 minutes per chunk
   std::thread prefetch_thread;
-  std::set<int> processed_chunks;          // Track chunks completed for this video
-  std::mutex chunks_mutex;
 
   // Playback
   std::vector<uint8_t> current_frame_data;
   std::mutex data_mutex;
   std::chrono::steady_clock::time_point last_packet_time =
       std::chrono::steady_clock::now();
-
   std::thread processing_thread;
-
-  // Frame pacing (unused but kept for possible future throttling)
   double fps = 30.0;
 };
 
