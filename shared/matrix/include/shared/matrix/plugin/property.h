@@ -163,7 +163,7 @@ namespace Plugins {
         const T &get() const
         {
             if (!registered)
-                throw std::runtime_error("Property not registered");
+                throw std::runtime_error("Property " + getName() + " not registered");
 
             return value;
         }
