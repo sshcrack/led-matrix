@@ -5,6 +5,8 @@
 #include "scenes/SortingVisualizerScene.h"
 #include "scenes/BoidsScene.h"
 #include "scenes/BouncingLogoScene.h"
+#include "scenes/FallingSandScene.h"
+#include "scenes/NeonTunnelScene.h"
 
 using namespace Scenes;
 using namespace AmbientScenes;
@@ -47,6 +49,16 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > AmbientPlugin::
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new BouncingLogoSceneWrapper(),
                                                                              [](SceneWrapper *scene) {
                                                                                  delete (BouncingLogoSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FallingSandSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (FallingSandSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new NeonTunnelSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (NeonTunnelSceneWrapper *) scene;
                                                                              }));
 
     return scenes;
