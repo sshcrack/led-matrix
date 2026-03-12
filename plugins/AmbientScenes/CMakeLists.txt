@@ -13,4 +13,8 @@ register_plugin(AmbientScenes
         matrix/scenes/BoidsScene.h
         matrix/scenes/BouncingLogoScene.cpp
         matrix/scenes/BouncingLogoScene.h
+        matrix/scenes/FallingSandScene.cpp
+        matrix/scenes/FallingSandScene.h
+        matrix/scenes/NeonTunnelScene.cpp
+        matrix/scenes/NeonTunnelScene.h
 )
