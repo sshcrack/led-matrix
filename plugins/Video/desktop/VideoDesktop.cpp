@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstdio>
+#include <ctime>
 #include <filesystem>
 #include <fmt/format.h>
 #include <imgui.h>
@@ -14,6 +15,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <fstream>
+#include <nlohmann/json.hpp>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -86,12 +89,11 @@ inline int run_command_no_window(const std::string &cmd) {
 }
 }
 
-VideoDesktop::VideoDesktop() {
-  // check_tools(); // Post-init is better for this
-}
+VideoDesktop::VideoDesktop() = default;
 
 VideoDesktop::~VideoDesktop() {
   stop_stream();
+  cleanup_all_chunks();
 }
 
 void VideoDesktop::check_tools() {
@@ -319,129 +321,216 @@ void VideoDesktop::start_stream(const std::string &url) {
 
   streaming_thread_running = true;
   processing_thread = std::thread([this, url]() {
-    const size_t frameSize = static_cast<size_t>(matrix_width) *
-                             static_cast<size_t>(matrix_height) * 3;
+    try {
+      const size_t frameSize = static_cast<size_t>(matrix_width) *
+                               static_cast<size_t>(matrix_height) * 3;
 
-    auto play_chunk = [&](int chunk_index) -> bool {
-      spdlog::info("Playing chunk {}", chunk_index);
-      std::string mp4Path = chunk_mp4_path(chunk_index);
-      std::string binPath = chunk_bin_path(chunk_index);
-      FILE *bin = fopen(binPath.c_str(), "rb");
-      if (!bin) {
-        last_error = "Failed to open processed chunk: " + binPath;
-        state = State::Error;
-        send_websocket_message("status:error");
-        return false;
-      }
+      auto play_chunk = [&](int chunk_index) -> bool {
+        try {
+          spdlog::info("Playing chunk {}", chunk_index);
+          std::string mp4Path = chunk_mp4_path(chunk_index);
+          std::string binPath = chunk_bin_path(chunk_index);
+          FILE *bin = fopen(binPath.c_str(), "rb");
+          if (!bin) {
+            last_error = "Failed to open processed chunk: " + binPath;
+            spdlog::error(last_error);
+            state = State::Error;
+            send_websocket_message("status:error");
+            return false;
+          }
 
-      if (enable_audio) {
-        start_audio(mp4Path);
-      }
+          if (enable_audio) {
+            start_audio(mp4Path);
+          }
 
-      state = State::Playing;
-      send_websocket_message("status:playing");
+          state = State::Playing;
+          send_websocket_message("status:playing");
 
-      std::vector<uint8_t> buffer(frameSize);
-      size_t frame_idx = 0;
-      const size_t frames_per_chunk = static_cast<size_t>(chunk_duration_sec * fps);
+          std::vector<uint8_t> buffer(frameSize);
+          size_t frame_idx = 0;
+          const size_t frames_per_chunk = static_cast<size_t>(chunk_duration_sec * fps);
 
-      while (streaming_thread_running) {
-        size_t readBytes = fread(buffer.data(), 1, frameSize, bin);
-        if (readBytes == frameSize) {
+          while (streaming_thread_running) {
+            size_t readBytes = fread(buffer.data(), 1, frameSize, bin);
+            if (readBytes == frameSize) {
+              {
+                std::lock_guard<std::mutex> lock(data_mutex);
+                current_frame_data = buffer;
+              }
+
+              // Pace playback
+              const auto frame_interval = std::chrono::duration<double>(1.0 / fps);
+              std::this_thread::sleep_for(frame_interval);
+              frame_idx++;
+
+              if (frame_idx >= frames_per_chunk) {
+                break; // move to next chunk
+              }
+            } else {
+              break; // end of chunk file
+            }
+          }
+
+          fclose(bin);
+          stop_audio();
+
+          // Mark chunk as processed
           {
-            std::lock_guard<std::mutex> lock(data_mutex);
-            current_frame_data = buffer;
+            std::lock_guard<std::mutex> lock(chunks_mutex);
+            processed_chunks.insert(chunk_index);
           }
 
-          // Pace playback
-          const auto frame_interval = std::chrono::duration<double>(1.0 / fps);
-          std::this_thread::sleep_for(frame_interval);
-          frame_idx++;
-
-          if (frame_idx >= frames_per_chunk) {
-            break; // move to next chunk
-          }
-        } else {
-          break; // end of chunk file
+          return streaming_thread_running.load();
+        } catch (const std::exception &e) {
+          spdlog::error("Exception in play_chunk({}): {}", chunk_index, e.what());
+          last_error = std::string("Playback error: ") + e.what();
+          state = State::Error;
+          send_websocket_message("status:error");
+          return false;
         }
+      };
+
+      // Check for checkpoint (resume support)
+      int start_chunk = 0;
+      auto checkpoint = load_checkpoint();
+      if (checkpoint.has_value()) {
+        spdlog::info("Resuming from checkpoint");
+        start_chunk = checkpoint->first;
+        {
+          std::lock_guard<std::mutex> lock(chunks_mutex);
+          processed_chunks = checkpoint->second;
+        }
+      } else {
+        spdlog::info("Starting fresh (no checkpoint found)");
+        // Clean up any old chunks from previous attempts
+        cleanup_all_chunks();
       }
 
-      fclose(bin);
-      stop_audio();
-      return streaming_thread_running.load();
-    };
+      // Download and process initial chunk
+      spdlog::info("Downloading and processing initial chunk {}", start_chunk);
+      if (!download_and_process_chunk(url, start_chunk)) {
+        streaming_thread_running = false;
+        cleanup_checkpoint();
+        return;
+      }
 
-    // Initial chunk 0
-    spdlog::info("Downloading and processing initial chunk 0");
-    if (!download_and_process_chunk(url, 0)) {
+      current_chunk = start_chunk;
+      {
+        std::lock_guard<std::mutex> lock(chunks_mutex);
+        processed_chunks.insert(start_chunk);
+      }
+
+      spdlog::info("Starting playback loop from chunk {}", start_chunk);
+      while (streaming_thread_running) {
+        // Start prefetching next chunk in background
+        int next_chunk = current_chunk + 1;
+        spdlog::info("Starting prefetch of chunk {} in background", next_chunk);
+
+        std::atomic<bool> prefetch_success{false};
+        prefetch_thread = std::thread([this, url, next_chunk, &prefetch_success]() {
+          try {
+            if (download_and_process_chunk(url, next_chunk, false)) {
+              spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
+              prefetch_success = true;
+            } else {
+              spdlog::info("Prefetch of chunk {} failed (video ended)", next_chunk);
+              prefetch_success = false;
+            }
+          } catch (const std::exception &e) {
+            spdlog::warn("Exception in prefetch thread: {}", e.what());
+            prefetch_success = false;
+          }
+        });
+
+        // Play current chunk while prefetch happens in background
+        if (!play_chunk(current_chunk.load())) {
+          break;
+        }
+
+        // Wait for prefetch to complete after playback finishes
+        if (prefetch_thread.joinable()) {
+          spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
+          prefetch_thread.join();
+        }
+
+        // If prefetch failed, video is done (shorter than expected)
+        if (!prefetch_success) {
+          spdlog::info("Video finished - no more chunks available");
+          break;
+        }
+
+        // Clean up old chunks aggressively (keep only current and next)
+        cleanup_chunk(current_chunk - 1);
+
+        // Save checkpoint periodically
+        {
+          std::lock_guard<std::mutex> lock(chunks_mutex);
+          if (current_chunk % 2 == 0) {  // Save every 2 chunks
+            save_checkpoint(next_chunk, processed_chunks);
+          }
+        }
+
+        // Move to next chunk
+        current_chunk = next_chunk;
+      }
+
+      // Clean up checkpoint on successful completion
+      if (streaming_thread_running.load() == false && state.load() != State::Error) {
+        cleanup_checkpoint();
+      }
+
       streaming_thread_running = false;
-      return;
+      state = State::Finished;
+      send_websocket_message("status:finished");
+
+    } catch (const std::exception &e) {
+      spdlog::error("Critical exception in streaming thread: {}", e.what());
+      last_error = std::string("Streaming error: ") + e.what();
+      state = State::Error;
+      send_websocket_message("status:error");
+      streaming_thread_running = false;
+    } catch (...) {
+      spdlog::error("Unknown exception in streaming thread");
+      last_error = "Unknown streaming error";
+      state = State::Error;
+      send_websocket_message("status:error");
+      streaming_thread_running = false;
     }
-
-    current_chunk = 0;
-
-    spdlog::info("Starting playback loop");
-    while (streaming_thread_running) {
-      // Start prefetching next chunk in background
-      int next_chunk = current_chunk + 1;
-      spdlog::info("Starting prefetch of chunk {} in background", next_chunk);
-      
-      std::atomic<bool> prefetch_success{false};
-      prefetch_thread = std::thread([this, url, next_chunk, &prefetch_success]() {
-        if (download_and_process_chunk(url, next_chunk, false)) {
-          spdlog::info("Prefetch of chunk {} completed successfully", next_chunk);
-          prefetch_success = true;
-        } else {
-          spdlog::info("Prefetch of chunk {} failed (video ended)", next_chunk);
-          prefetch_success = false;
-        }
-      });
-
-      // Play current chunk while prefetch happens in background
-      if (!play_chunk(current_chunk.load())) {
-        break;
-      }
-
-      // Wait for prefetch to complete after playback finishes
-      if (prefetch_thread.joinable()) {
-        spdlog::info("Waiting for prefetch of chunk {} to complete", next_chunk);
-        prefetch_thread.join();
-      }
-
-      // If prefetch failed, video is done (shorter than expected)
-      if (!prefetch_success) {
-        spdlog::info("Video finished - no more chunks available");
-        break;
-      }
-
-      // Clean up the chunk that's two steps behind
-      cleanup_chunk(current_chunk - 1);
-
-      // Move to next chunk
-      current_chunk = next_chunk;
-    }
-
-    streaming_thread_running = false;
-    state = State::Finished;
-    send_websocket_message("status:finished");
   });
 }
 
 void VideoDesktop::stop_stream() {
   streaming_thread_running = false;
   stop_audio();
+
+  // Join prefetch thread with safeguards
   if (prefetch_thread.joinable()) {
-    prefetch_thread.join();
+    try {
+      prefetch_thread.join();
+    } catch (const std::exception &e) {
+      spdlog::error("Exception joining prefetch thread: {}", e.what());
+    }
   }
+
+  // Close stream pipe safely
   if (stream_pipe) {
     close_pipe(stream_pipe);
     stream_pipe = nullptr;
   }
+
+  // Join processing thread with safeguards
   if (processing_thread.joinable()) {
-    processing_thread.join();
+    try {
+      processing_thread.join();
+    } catch (const std::exception &e) {
+      spdlog::error("Exception joining processing thread: {}", e.what());
+    }
   }
+
   current_frame_data.clear();
-  state = State::Idle;
+  if (state.load() != State::Error && state.load() != State::Finished) {
+    state = State::Idle;
+  }
 }
 
 void VideoDesktop::start_audio(const std::string &path) {
@@ -534,52 +623,68 @@ void VideoDesktop::stop_audio() {
 
 bool VideoDesktop::download_and_process_chunk(const std::string &url,
                                               int chunk_index, bool set_error_on_fail) {
-  const int start_sec = chunk_index * chunk_duration_sec;
-  const int end_sec = start_sec + chunk_duration_sec;
+  try {
+    const int start_sec = chunk_index * chunk_duration_sec;
+    const int end_sec = start_sec + chunk_duration_sec;
 
-  std::string mp4Path = chunk_mp4_path(chunk_index);
-  std::string binPath = chunk_bin_path(chunk_index);
+    std::string mp4Path = chunk_mp4_path(chunk_index);
+    std::string binPath = chunk_bin_path(chunk_index);
 
-  // Download chunk
-  std::string dlCmd = fmt::format(
-      "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm "
-      "--download-sections \"*{}-{}\" --force-overwrites -o \"{}\" \"{}\"",
-      start_sec, end_sec, mp4Path, url);
+    // Download chunk
+    std::string dlCmd = fmt::format(
+        "yt-dlp -f \"best[ext=mp4]/best\" --remote-components ejs:npm "
+        "--download-sections \"*{}-{}\" --force-overwrites -o \"{}\" \"{}\"",
+        start_sec, end_sec, mp4Path, url);
 
-  spdlog::info("Downloading chunk {} ({}-{}s): {}", chunk_index, start_sec,
-               end_sec, dlCmd);
-  if (run_command_no_window(dlCmd) != 0) {
+    spdlog::info("Downloading chunk {} ({}-{}s): {}", chunk_index, start_sec,
+                 end_sec, dlCmd);
+    int dl_result = run_command_no_window(dlCmd);
+    if (dl_result != 0) {
+      std::string error_msg = fmt::format(
+          "yt-dlp chunk {} download failed with exit code {}", chunk_index, dl_result);
+      if (set_error_on_fail) {
+        last_error = error_msg;
+        spdlog::error(last_error);
+        state = State::Error;
+        send_websocket_message("status:error");
+      } else {
+        spdlog::warn("{} (video may be shorter than expected)", error_msg);
+      }
+      return false;
+    }
+
+    // Process chunk to raw
+    std::string ffCmd = fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{} ,setsar=1:1,fps={}\" -f "
+        "rawvideo -pix_fmt rgb24 \"{}\"", mp4Path, matrix_width,
+        matrix_height, fps, binPath);
+
+    spdlog::info("Processing chunk {}: {}", chunk_index, ffCmd);
+    int ff_result = run_command_no_window(ffCmd);
+    if (ff_result != 0) {
+      std::string error_msg = fmt::format(
+          "ffmpeg chunk {} processing failed with exit code {}", chunk_index, ff_result);
+      if (set_error_on_fail) {
+        last_error = error_msg;
+        spdlog::error(last_error);
+        state = State::Error;
+        send_websocket_message("status:error");
+      } else {
+        spdlog::warn("{} (video may be shorter than expected)", error_msg);
+      }
+      return false;
+    }
+
+    return true;
+  } catch (const std::exception &e) {
+    spdlog::error("Exception in download_and_process_chunk({}): {}", chunk_index, e.what());
     if (set_error_on_fail) {
-      last_error = "yt-dlp chunk download failed";
-      spdlog::error(last_error);
+      last_error = std::string("Chunk processing error: ") + e.what();
       state = State::Error;
       send_websocket_message("status:error");
-    } else {
-      spdlog::warn("Chunk {} download failed (video may be shorter than expected)", chunk_index);
     }
     return false;
   }
-
-  // Process chunk to raw
-  std::string ffCmd = fmt::format(
-      "ffmpeg -y -i \"{}\" -vf \"scale={}:{} ,setsar=1:1,fps={}\" -f "
-      "rawvideo -pix_fmt rgb24 \"{}\"", mp4Path, matrix_width,
-      matrix_height, fps, binPath);
-
-  spdlog::info("Processing chunk {}: {}", chunk_index, ffCmd);
-  if (run_command_no_window(ffCmd) != 0) {
-    if (set_error_on_fail) {
-      last_error = "ffmpeg chunk processing failed";
-      spdlog::error(last_error);
-      state = State::Error;
-      send_websocket_message("status:error");
-    } else {
-      spdlog::warn("Chunk {} processing failed (video may be shorter than expected)", chunk_index);
-    }
-    return false;
-  }
-
-  return true;
 }
 
 std::string VideoDesktop::chunk_mp4_path(int chunk_index) const {
@@ -600,10 +705,99 @@ std::string VideoDesktop::chunk_bin_path(int chunk_index) const {
   return (cacheDir / fmt::format("chunk_{}.bin", chunk_index)).string();
 }
 
-void VideoDesktop::cleanup_chunk(int chunk_index) {
-  if (chunk_index < 0)
+void VideoDesktop::cleanup_all_chunks() {
+  auto cacheDir = get_data_dir() / "cache" / "video" / get_video_id(current_url);
+  if (!std::filesystem::exists(cacheDir)) {
     return;
+  }
+
   std::error_code ec;
-  std::filesystem::remove(chunk_mp4_path(chunk_index), ec);
-  std::filesystem::remove(chunk_bin_path(chunk_index), ec);
+  for (auto &entry : std::filesystem::directory_iterator(cacheDir, ec)) {
+    if (entry.path().extension() == ".mp4" || entry.path().extension() == ".bin") {
+      std::filesystem::remove(entry, ec);
+    }
+  }
 }
+
+std::string VideoDesktop::checkpoint_path() const {
+  auto cacheDir = get_data_dir() / "cache" / "video" / get_video_id(current_url);
+  if (!std::filesystem::exists(cacheDir)) {
+    std::filesystem::create_directories(cacheDir);
+  }
+  return (cacheDir / "checkpoint.json").string();
+}
+
+void VideoDesktop::save_checkpoint(int chunk_idx, const std::set<int> &processed) {
+  try {
+    nlohmann::json checkpoint;
+    checkpoint["chunk_index"] = chunk_idx;
+    checkpoint["url"] = current_url;
+    checkpoint["timestamp"] = std::time(nullptr);
+
+    std::vector<int> chunks_list(processed.begin(), processed.end());
+    checkpoint["processed_chunks"] = chunks_list;
+
+    std::ofstream file(checkpoint_path());
+    if (!file.is_open()) {
+      spdlog::warn("Failed to save checkpoint: cannot open file");
+      return;
+    }
+    file << checkpoint.dump(2);
+    spdlog::debug("Checkpoint saved for chunk {}", chunk_idx);
+  } catch (const std::exception &e) {
+    spdlog::warn("Failed to save checkpoint: {}", e.what());
+  }
+}
+
+std::optional<std::pair<int, std::set<int>>> VideoDesktop::load_checkpoint() {
+  try {
+    std::string path = checkpoint_path();
+    if (!std::filesystem::exists(path)) {
+      return std::nullopt;
+    }
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+      return std::nullopt;
+    }
+
+    nlohmann::json checkpoint;
+    file >> checkpoint;
+
+    if (!checkpoint.contains("chunk_index") || !checkpoint.contains("url")) {
+      return std::nullopt;
+    }
+
+    if (checkpoint["url"] != current_url) {
+      return std::nullopt;  // Checkpoint is for different URL
+    }
+
+    int chunk_idx = checkpoint["chunk_index"].get<int>();
+    std::set<int> processed_chunks;
+
+    if (checkpoint.contains("processed_chunks")) {
+      auto chunks = checkpoint["processed_chunks"].get<std::vector<int>>();
+      processed_chunks.insert(chunks.begin(), chunks.end());
+    }
+
+    spdlog::info("Loaded checkpoint: chunk {}, {} processed chunks",
+                 chunk_idx, processed_chunks.size());
+    return std::make_pair(chunk_idx, processed_chunks);
+  } catch (const std::exception &e) {
+    spdlog::debug("Failed to load checkpoint: {}", e.what());
+    return std::nullopt;
+  }
+}
+
+void VideoDesktop::cleanup_checkpoint() {
+  try {
+    std::string path = checkpoint_path();
+    if (std::filesystem::exists(path)) {
+      std::filesystem::remove(path);
+      spdlog::debug("Checkpoint cleaned up");
+    }
+  } catch (const std::exception &e) {
+    spdlog::warn("Failed to cleanup checkpoint: {}", e.what());
+  }
+}
+
