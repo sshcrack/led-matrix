@@ -2,6 +2,9 @@
 #include "scenes/StarFieldScene.h"
 #include "scenes/MetaBlobScene.h"
 #include "scenes/ClockScene.h"
+#include "scenes/SortingVisualizerScene.h"
+#include "scenes/BoidsScene.h"
+#include "scenes/BouncingLogoScene.h"
 
 using namespace Scenes;
 using namespace AmbientScenes;
@@ -29,6 +32,21 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > AmbientPlugin::
     scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new ClockSceneWrapper(),
                                                                              [](SceneWrapper *scene) {
                                                                                  delete (ClockSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new SortingVisualizerSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (SortingVisualizerSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new BoidsSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (BoidsSceneWrapper *) scene;
+                                                                             }));
+
+    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new BouncingLogoSceneWrapper(),
+                                                                             [](SceneWrapper *scene) {
+                                                                                 delete (BouncingLogoSceneWrapper *) scene;
                                                                              }));
 
     return scenes;

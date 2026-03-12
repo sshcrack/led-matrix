@@ -7,4 +7,10 @@ register_plugin(AmbientScenes
         matrix/scenes/MetaBlobScene.h
         matrix/scenes/StarFieldScene.cpp
         matrix/scenes/StarFieldScene.h
+        matrix/scenes/SortingVisualizerScene.cpp
+        matrix/scenes/SortingVisualizerScene.h
+        matrix/scenes/BoidsScene.cpp
+        matrix/scenes/BoidsScene.h
+        matrix/scenes/BouncingLogoScene.cpp
+        matrix/scenes/BouncingLogoScene.h
 )
