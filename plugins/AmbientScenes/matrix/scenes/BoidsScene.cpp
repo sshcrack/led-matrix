@@ -23,10 +23,10 @@ namespace AmbientScenes {
         b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
-    void BoidsScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
-        matrix_width = matrix->width();
-        matrix_height = matrix->height();
+    void BoidsScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
+        matrix_width = matrix_width;
+        matrix_height = matrix_height;
 
         flock.clear();
         for (int i = 0; i < num_boids->get(); i++) {
@@ -40,11 +40,11 @@ namespace AmbientScenes {
         }
     }
 
-    bool BoidsScene::render(RGBMatrixBase *matrix) {
+    bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
         // Fade out slightly to leave trails
         // Boids move fast, let's clear the canvas completely to avoid mess? Or fade.
         // Let's clear for now.
-        offscreen_canvas->Clear();
+        canvas->Clear();
 
         run_boids();
 
@@ -57,10 +57,10 @@ namespace AmbientScenes {
             
             if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
                 if (use_random_colors->get()) {
-                    offscreen_canvas->SetPixel(px, py, b.r, b.g, b.b);
+                    canvas->SetPixel(px, py, b.r, b.g, b.b);
                 } else {
                     auto col = boid_color->get();
-                    offscreen_canvas->SetPixel(px, py, col.r, col.g, col.b);
+                    canvas->SetPixel(px, py, col.r, col.g, col.b);
                 }
             }
         }

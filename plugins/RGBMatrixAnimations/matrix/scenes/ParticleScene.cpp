@@ -12,27 +12,26 @@ ParticleScene::ParticleScene()
       matrix(nullptr) {
 }
 
-void ParticleScene::initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(p_matrix, nullptr);
-
-    matrix = p_matrix;
-
-    renderer = {
-        new ParticleMatrixRenderer(p_matrix->width(), p_matrix->height(), p_matrix), [](ParticleMatrixRenderer *r) {
-            delete r;
-        }
-    };
-
-    animation = {
-        new GravityParticles(renderer.value(), shake->get(), bounce->get()), [](GravityParticles *a) {
-            delete a;
-        }
-    };
-
-    initializeParticles();
+void ParticleScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
+    matrix = nullptr;
+    renderer.reset();
+    animation.reset();
 }
 
-bool ParticleScene::render(RGBMatrixBase *rgbMatrix) {
+bool ParticleScene::render(rgb_matrix::FrameCanvas *canvas) {
+    if (matrix != canvas || !renderer.has_value() || !animation.has_value()) {
+        matrix = canvas;
+        renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, matrix);
+        animation = std::unique_ptr<GravityParticles, void(*)(GravityParticles *)>(
+            new GravityParticles(renderer.value(), shake->get(), bounce->get()),
+            [](GravityParticles *a) {
+                delete a;
+            }
+        );
+        initializeParticles();
+    }
+
     animation->get()->runCycle();
 
     uint8_t MAX_FPS = 1000 / delay_ms->get();
@@ -68,6 +67,12 @@ void ParticleScene::register_properties() {
     add_property(delay_ms);
 }
 
-void ParticleScene::after_render_stop(RGBMatrixBase *m) {
-    this->animation->get()->clearParticles();
+void ParticleScene::after_render_stop() {
+    if (this->animation.has_value()) {
+        this->animation->get()->clearParticles();
+    }
+
+    animation.reset();
+    renderer.reset();
+    matrix = nullptr;
 }

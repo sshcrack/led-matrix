@@ -48,7 +48,7 @@ namespace Scenes {
         PropertyDemoScene() = default;
         ~PropertyDemoScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "property_demo"; }
         void register_properties() override;
         

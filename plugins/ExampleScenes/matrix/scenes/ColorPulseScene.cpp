@@ -3,7 +3,7 @@
 
 using namespace Scenes;
 
-bool ColorPulseScene::render(RGBMatrixBase *matrix) {
+bool ColorPulseScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frameTime = frameTimer.tick();
     float t = frameTime.t * pulseSpeed->get();
     
@@ -21,9 +21,9 @@ bool ColorPulseScene::render(RGBMatrixBase *matrix) {
             break;
     }
     
-    for(int y = 0; y < matrix->height(); y++) {
-        for(int x = 0; x < matrix->width(); x++) {
-            offscreen_canvas->SetPixel(x, y, r, g, b);
+    for(int y = 0; y < matrix_height; y++) {
+        for(int x = 0; x < matrix_width; x++) {
+            canvas->SetPixel(x, y, r, g, b);
         }
     }
     

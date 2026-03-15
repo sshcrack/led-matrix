@@ -6,7 +6,7 @@ namespace AmbientScenes {
         return std::sin(float(i) * 1.64f);
     }
 
-    MetaBlobScene::Blob MetaBlobScene::get_blob(rgb_matrix::RGBMatrixBase *matrix, int i, float time) const {
+    MetaBlobScene::Blob MetaBlobScene::get_blob(int i, float time) const {
         float x = 0.5f + 0.1f * rand_sin(i);
         float y = 0.5f + 0.1f * rand_sin(i + 42);
 
@@ -17,9 +17,9 @@ namespace AmbientScenes {
 
         // Convert normalized coordinates to matrix space
         return Blob(
-                x * matrix->width(),
-                y * matrix->height(),
-                radius * matrix->width()
+                x * matrix_width,
+                y * matrix_height,
+                radius * matrix_width
         );
     }
 
@@ -35,18 +35,18 @@ namespace AmbientScenes {
             : Scene(), time(0.0f) {
     }
 
-    void MetaBlobScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void MetaBlobScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         blobs.reserve(num_blobs->get());
     }
 
-    bool MetaBlobScene::render(RGBMatrixBase *matrix) {
-        offscreen_canvas->Clear();
+    bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas) {
+        canvas->Clear();
 
         // Update blob positions
         blobs.clear();
         for (int i = 0; i < num_blobs->get(); i++) {
-            blobs.push_back(get_blob(matrix, i, time));
+            blobs.push_back(get_blob(i, time));
         }
 
         // Calculate base color from time (use color_speed to control rate of change)
@@ -86,8 +86,8 @@ namespace AmbientScenes {
         };
 
         // Render metaballs
-        for (int y = 0; y < matrix->height(); y++) {
-            for (int x = 0; x < matrix->width(); x++) {
+        for (int y = 0; y < matrix_height; y++) {
+            for (int x = 0; x < matrix_width; x++) {
                 float dist_sum = 0.0f;
                 for (const auto &blob: blobs) {
                     dist_sum += calculate_field(x, y, blob);
@@ -108,7 +108,7 @@ namespace AmbientScenes {
                     uint8_t g = static_cast<uint8_t>(g1 * t + g2 * (1 - t));
                     uint8_t b = static_cast<uint8_t>(b1 * t + b2 * (1 - t));
 
-                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                    canvas->SetPixel(x, y, r, g, b);
                 }
                 // Black background - no else clause needed as Clear() sets black
             }

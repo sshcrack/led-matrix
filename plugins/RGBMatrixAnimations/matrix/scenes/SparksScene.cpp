@@ -39,7 +39,7 @@ void SparksScene::initializeParticles() {
     animation->get()->setAcceleration(ax, ay);
 }
 
-void SparksScene::after_render_stop(RGBMatrixBase *matrix) {
+void SparksScene::after_render_stop() {
     animation->get()->clearParticles();
     initializeParticles();
 }

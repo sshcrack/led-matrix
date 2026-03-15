@@ -33,12 +33,12 @@ namespace Scenes {
 
         ~RainScene() override;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) override; // Add override here instead
+        void initialize(int width, int height) override; // Add override here instead
         [[nodiscard]] string get_name() const override;
 
-        void after_render_stop(RGBMatrixBase *matrix) override {
+        void after_render_stop() override {
         }
 
 

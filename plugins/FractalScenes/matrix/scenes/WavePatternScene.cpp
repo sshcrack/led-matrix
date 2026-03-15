@@ -7,8 +7,8 @@ using namespace Scenes;
 WavePatternScene::WavePatternScene() : Scene() {
 }
 
-void WavePatternScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, l_offscreen_canvas);
+void WavePatternScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
     last_update = std::chrono::steady_clock::now();
     total_time = 0.0f;
     init_waves();
@@ -34,17 +34,17 @@ void WavePatternScene::init_waves() {
     }
 }
 
-bool WavePatternScene::render(RGBMatrixBase *matrix) {
+bool WavePatternScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
     last_update = current_time;
     total_time += delta_time * speed->get();
     
-    int width = matrix->width();
-    int height = matrix->height();
+    int width = matrix_width;
+    int height = matrix_height;
     
     // Clear the canvas
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
     // Calculate wave values for each column
     for (int x = 0; x < width; ++x) {
@@ -78,7 +78,7 @@ bool WavePatternScene::render(RGBMatrixBase *matrix) {
         }
         
         // Draw the wave pixel
-        offscreen_canvas->SetPixel(x, y_pos, r, g, b);
+        canvas->SetPixel(x, y_pos, r, g, b);
         
         // Add glow effect
         for (int glow = 1; glow <= 2; glow++) {
@@ -88,10 +88,10 @@ bool WavePatternScene::render(RGBMatrixBase *matrix) {
             uint8_t glow_factor = static_cast<uint8_t>(255 / (glow + 1));
             
             if (glow_y_up >= 0) {
-                offscreen_canvas->SetPixel(x, glow_y_up, r * glow_factor / 255, g * glow_factor / 255, b * glow_factor / 255);
+                canvas->SetPixel(x, glow_y_up, r * glow_factor / 255, g * glow_factor / 255, b * glow_factor / 255);
             }
             if (glow_y_down < height) {
-                offscreen_canvas->SetPixel(x, glow_y_down, r * glow_factor / 255, g * glow_factor / 255, b * glow_factor / 255);
+                canvas->SetPixel(x, glow_y_down, r * glow_factor / 255, g * glow_factor / 255, b * glow_factor / 255);
             }
         }
     }

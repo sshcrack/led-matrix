@@ -178,7 +178,7 @@ uint32_t AudioSpectrumScene::get_gradient_color(float position, float intensity)
     return (r << 16) | (g << 8) | b;
 }
 
-bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
+bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     if (!plugin)
     {
@@ -193,7 +193,7 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
     {
         // No audio data yet, clear the display
         spdlog::error("AudioSpectrumScene: Audio Data is empty, cannot render");
-        offscreen_canvas->Clear();
+        canvas->Clear();
         return false;
     }
 
@@ -205,10 +205,10 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
     last_timestamp = current_timestamp;
 
     // Clear the display
-    offscreen_canvas->Clear();
+    canvas->Clear();
 
-    const int width = matrix->width();
-    const int height = matrix->height();
+    const int width = matrix_width;
+    const int height = matrix_height;
 
     // Update rotation angle if rotation is enabled
     if (rotate_visualization->get())
@@ -222,12 +222,12 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
     DisplayMode mode = display_mode->get().get();
     if (mode == DisplayMode::CIRCLE)
     {
-        render_circle_visualization(matrix, audio_data);
+        render_circle_visualization(canvas, audio_data);
         return true;
     }
     else if (mode == DisplayMode::SPIRAL)
     {
-        render_spiral_visualization(matrix, audio_data);
+        render_spiral_visualization(canvas, audio_data);
         return true;
     }
 
@@ -308,12 +308,12 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
 
                 for (int w = 0; w < bar_width->get(); w++)
                 {
-                    offscreen_canvas->SetPixel(x + w, height - 1 - y, r, g, b);
+                    canvas->SetPixel(x + w, height - 1 - y, r, g, b);
 
                     // Mirror if enabled, but only in normal mode
                     if (mirror_display->get() && display_mode == DisplayMode::NORMAL)
                     {
-                        offscreen_canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
+                        canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
                     }
                 }
             }
@@ -351,11 +351,11 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
                 if(display_mode == DisplayMode::CENTER_OUT)
                 {
                     // Center out mode, draw peak at center
-                    offscreen_canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
-                    offscreen_canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
+                    canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
                 }
                 else
-                    offscreen_canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
             }
         }
     }
@@ -363,10 +363,10 @@ bool AudioSpectrumScene::render(rgb_matrix::RGBMatrixBase *matrix)
     return true;
 }
 
-void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data)
+void AudioSpectrumScene::render_circle_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data)
 {
-    const int width = matrix->width();
-    const int height = matrix->height();
+    const int width = matrix_width;
+    const int height = matrix_height;
     const int center_x = width / 2;
     const int center_y = height / 2;
     const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
@@ -423,7 +423,7 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *
                     uint8_t g = (color >> 8) & 0xFF;
                     uint8_t b = color & 0xFF;
 
-                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                    canvas->SetPixel(x, y, r, g, b);
                 }
             }
         }
@@ -441,16 +441,16 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::RGBMatrixBase *
                 uint8_t g = (peak_color >> 8) & 0xFF;
                 uint8_t b = peak_color & 0xFF;
 
-                offscreen_canvas->SetPixel(peak_x, peak_y, r, g, b);
+                canvas->SetPixel(peak_x, peak_y, r, g, b);
             }
         }
     }
 }
 
-void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data)
+void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data)
 {
-    const int width = matrix->width();
-    const int height = matrix->height();
+    const int width = matrix_width;
+    const int height = matrix_height;
     const int center_x = width / 2;
     const int center_y = height / 2;
     const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
@@ -502,7 +502,7 @@ void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *
                 uint8_t g = (color >> 8) & 0xFF;
                 uint8_t b = color & 0xFF;
 
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
         }
 
@@ -519,7 +519,7 @@ void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::RGBMatrixBase *
                 uint8_t g = (peak_color >> 8) & 0xFF;
                 uint8_t b = peak_color & 0xFF;
 
-                offscreen_canvas->SetPixel(peak_x, peak_y, r, g, b);
+                canvas->SetPixel(peak_x, peak_y, r, g, b);
             }
         }
     }

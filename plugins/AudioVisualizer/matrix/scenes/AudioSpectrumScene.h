@@ -46,15 +46,15 @@ namespace Scenes {
         void initialize_if_needed(int num_bands);
         uint32_t get_bar_color(int band_index, float intensity, int num_bands) const;
         uint32_t get_gradient_color(float position, float intensity) const;
-        void render_circle_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data);
-        void render_spiral_visualization(rgb_matrix::RGBMatrixBase *matrix, const std::vector<uint8_t> &audio_data);
+        void render_circle_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data);
+        void render_spiral_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data);
         std::pair<int, int> polar_to_cartesian(float radius, float angle, int center_x, int center_y) const;
 
     public:
         AudioSpectrumScene();
         ~AudioSpectrumScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
         void register_properties() override;
 

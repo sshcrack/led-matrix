@@ -8,8 +8,8 @@ namespace GenerativeScenes {
         set_target_fps(30);
     }
 
-    void ReactionDiffusionScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) {
-        Scene::initialize(matrix, canvas);
+    void ReactionDiffusionScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         u_cur.fill(1.0f);
         v_cur.fill(0.0f);
         seed_random_patch();
@@ -121,7 +121,7 @@ namespace GenerativeScenes {
         };
     }
 
-    bool ReactionDiffusionScene::render(RGBMatrixBase *matrix) {
+    bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas *canvas) {
         const Preset &preset = PRESETS[current_preset];
 
         for (int s = 0; s < SIM_STEPS_PER_FRAME; s++) {
@@ -147,7 +147,7 @@ namespace GenerativeScenes {
             for (int x = 0; x < W; x++) {
                 const float v = v_cur[y * W + x];
                 auto [r, g, b] = palette(v, global_hue);
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
         }
 

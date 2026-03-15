@@ -15,6 +15,7 @@ namespace Scenes {
 
         bool generation_complete = false;
         bool solving_complete = false;
+        bool should_wait_for_solution_to_render = false;
 
         // Current positions for hunt and kill algorithm
         int current_x;
@@ -39,7 +40,7 @@ namespace Scenes {
 
         bool solve_step();
 
-        void draw_maze();
+        void draw_maze(rgb_matrix::FrameCanvas *canvas);
 
         // A* algorithm structures
         struct Node {
@@ -67,11 +68,11 @@ namespace Scenes {
         explicit MazeGameScene();
         ~MazeGameScene() override = default;
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
+        void after_render_stop() override;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
 

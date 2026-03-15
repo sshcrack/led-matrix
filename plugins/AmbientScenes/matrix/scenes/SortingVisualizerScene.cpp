@@ -188,15 +188,15 @@ namespace AmbientScenes {
         }
     }
 
-    void SortingVisualizerScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
-        matrix_width = matrix->width();
-        matrix_height = matrix->height();
+    void SortingVisualizerScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
+        matrix_width = matrix_width;
+        matrix_height = matrix_height;
         reset_array();
     }
 
-    bool SortingVisualizerScene::render(RGBMatrixBase *matrix) {
-        offscreen_canvas->Clear();
+    bool SortingVisualizerScene::render(rgb_matrix::FrameCanvas *canvas) {
+        canvas->Clear();
 
         int gap = std::max(0, bar_gap->get());
         int current_num_bars = (matrix_width + gap) / (1 + gap);
@@ -253,7 +253,7 @@ namespace AmbientScenes {
             int screen_x = x * (1 + gap);
             for (int y = matrix_height - bar_height; y < matrix_height; ++y) {
                 if (screen_x < matrix_width) {
-                    offscreen_canvas->SetPixel(screen_x, y, r, g, b);
+                    canvas->SetPixel(screen_x, y, r, g, b);
                 }
             }
         }

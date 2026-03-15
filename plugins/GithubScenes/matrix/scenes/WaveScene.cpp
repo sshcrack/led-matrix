@@ -10,11 +10,11 @@
 unsigned int xyToIndex(int h, int x, int y) { return y * h + x; }
 
 
-void WaveScene::drawMap(RGBMatrixBase *matrix, float *iMap) {
-    for (int y = 0; y < matrix->height(); y++) {
-        for (int x = 0; x < matrix->width(); x++) {
-            const int i = xyToIndex(matrix->width(), x, y);
-            floatPixelSet(offscreen_canvas, x, y,
+void WaveScene::drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap) {
+    for (int y = 0; y < matrix_height; y++) {
+        for (int x = 0; x < matrix_width; x++) {
+            const int i = xyToIndex(matrix_width, x, y);
+            floatPixelSet(canvas, x, y,
                           std::pow(iMap[i], 4 + (iMap[i] * 0.5)) * std::cos(iMap[i]),
                           std::pow(iMap[i], 3 + (iMap[i] * 0.5)) * std::sin(iMap[i]),
                           std::pow(iMap[i], 2 + (iMap[i] * 0.5)));
@@ -22,15 +22,15 @@ void WaveScene::drawMap(RGBMatrixBase *matrix, float *iMap) {
     }
 }
 
-bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
-    offscreen_canvas->Clear();
+bool Scenes::WaveScene::render(rgb_matrix::FrameCanvas *canvas) {
+    canvas->Clear();
 
     float *lastMap = map;
-    map = new float[matrix->width() * matrix->height()];
+    map = new float[matrix_width * matrix_height];
 
-    for (int y = 0; y < matrix->height(); y++) {
-        for (int x = 0; x < matrix->width(); x++) {
-            const int i = xyToIndex(matrix->width(), x, y);
+    for (int y = 0; y < matrix_height; y++) {
+        for (int x = 0; x < matrix_width; x++) {
+            const int i = xyToIndex(matrix_width, x, y);
             const float lastValue = lastMap[i];
 
             map[i] = lastValue * (0.96 + 0.02 * (static_cast<float>(std::rand()) / RAND_MAX));
@@ -44,10 +44,10 @@ bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
                             continue;
                         }
 
-                        int nX = std::abs((x + u) % matrix->width());
-                        int nY = std::abs((y + v) % matrix->height());
+                        int nX = std::abs((x + u) % matrix_width);
+                        int nY = std::abs((y + v) % matrix_height);
 
-                        const int nI = xyToIndex(matrix->width(), nX, nY);
+                        const int nI = xyToIndex(matrix_width, nX, nY);
                         const float nLastValue = lastMap[nI];
 
                         if (nLastValue >= (0.5 + 0.04 * (static_cast<float>(std::rand()) / RAND_MAX))) {
@@ -67,23 +67,23 @@ bool Scenes::WaveScene::render(RGBMatrixBase *matrix) {
         }
     }
 
-    drawMap(matrix, map);
+    drawMap(canvas, map);
 
     delete[] lastMap;
     wait_until_next_frame();
     return true;
 }
 
-void WaveScene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, l_offscreen_canvas);
+void WaveScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
 
     std::srand(std::time(nullptr));
 
-    map = new float[matrix->width() * matrix->height()];
+    map = new float[matrix_width * matrix_height];
 
-    for (int y = 0; y < matrix->height(); y++) {
-        for (int x = 0; x < matrix->width(); x++) {
-            const int i = xyToIndex(matrix->width(), x, y);
+    for (int y = 0; y < matrix_height; y++) {
+        for (int x = 0; x < matrix_width; x++) {
+            const int i = xyToIndex(matrix_width, x, y);
             map[i] = static_cast<float>(std::rand()) / RAND_MAX;
         }
     }
