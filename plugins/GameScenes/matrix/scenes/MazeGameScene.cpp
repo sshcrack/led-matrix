@@ -55,9 +55,7 @@ namespace Scenes {
     }
 
     bool MazeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
-        if(solving_complete && should_wait_for_solution_to_render) {
-            SleepMillis(delay_solution_found * 1000);
-            should_wait_for_solution_to_render = false;
+        if(solving_complete && GetTimeInMillis() - finished_maze_at_ms > delay_solution_found * 1000) {
             return false;
         }
 
@@ -66,12 +64,14 @@ namespace Scenes {
             generation_complete = hunt_and_kill_step();
         } else if (!solving_complete) {
             solving_complete = solve_step();
+            if(solving_complete) {
+                finished_maze_at_ms = GetTimeInMillis();
+            }
         }
 
         draw_maze(canvas);
 
         if (solving_complete) {
-            should_wait_for_solution_to_render = true;
             return true;
         }
 

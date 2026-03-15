@@ -15,7 +15,7 @@ namespace Scenes {
 
         bool generation_complete = false;
         bool solving_complete = false;
-        bool should_wait_for_solution_to_render = false;
+        tmillis_t finished_maze_at_ms = 0;
 
         // Current positions for hunt and kill algorithm
         int current_x;
