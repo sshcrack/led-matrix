@@ -4,7 +4,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
     REF "v${VERSION}"
-    SHA512 0576ca7fd3754f39391ef86b5310ee719e3415302c8648d7d62f2effb0c0afe10ee95da3e788c7c47d7614b96df0df431cb33bc7636837185ced78f09eef43fa
+    SHA512 61123059cacee4699cefdac60dcb94facfda716b342465550d8ba5090f3cf64dac2e99fdb6bf2e77deb5cc0fa6cee39be14115f30abea6cf914579e6cfb48495
     HEAD_REF master
 )
 
