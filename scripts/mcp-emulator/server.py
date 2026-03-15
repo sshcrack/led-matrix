@@ -325,12 +325,11 @@ async def list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent | types.ImageContent]:
+    global _emulator_proc, _emulator_start_time, _emulator_config
     args = arguments or {}
 
     # ------------------------------------------------------------------
     if name == "start_emulator":
-        global _emulator_proc, _emulator_start_time, _emulator_config
-
         if _is_running():
             return [types.TextContent(type="text", text=f"Emulator already running (PID {_emulator_proc.pid}).")]
 
@@ -417,8 +416,6 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
 
     # ------------------------------------------------------------------
     elif name == "stop_emulator":
-        global _emulator_proc, _emulator_start_time, _emulator_config
-
         if not _is_running():
             _emulator_proc = None
             return [types.TextContent(type="text", text="Emulator is not running.")]

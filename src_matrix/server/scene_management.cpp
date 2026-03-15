@@ -3,6 +3,7 @@
 #include "shared/matrix/server/server_utils.h"
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/canvas_consts.h"
 
 using json = nlohmann::json;
 
@@ -117,6 +118,15 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
             j.push_back(j1);
         }
 
+        return reply_with_json(req, j);
+    });
+
+    router->http_get("/list_transitions", [](auto req, auto) {
+        std::vector<std::string> names;
+        if (Constants::global_transition_manager) {
+            names = Constants::global_transition_manager->get_registered_transitions();
+        }
+        nlohmann::json j = names;
         return reply_with_json(req, j);
     });
 

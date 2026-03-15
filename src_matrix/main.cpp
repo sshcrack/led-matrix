@@ -23,6 +23,7 @@
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 #include <shared/matrix/canvas_consts.h>
+#include "shared/matrix/transition_manager.h"
 
 using namespace spdlog;
 using namespace std;
@@ -82,6 +83,9 @@ int main(int argc, char *argv[])
     Constants::global_post_processor = new PostProcessor();
     spdlog::info("Post-processor initialized");
 
+    Constants::global_transition_manager = new TransitionManager();
+    spdlog::info("Transition manager initialized");
+
     debug("Loading plugins...");
     const auto pl = PluginManager::instance();
     pl->initialize();
@@ -111,6 +115,12 @@ int main(int argc, char *argv[])
         for (auto &effect : effects)
         {
             Constants::global_post_processor->register_effect(std::move(effect));
+        }
+
+        auto transitions = item->create_transitions();
+        for (auto &transition : transitions)
+        {
+            Constants::global_transition_manager->register_transition(std::move(transition));
         }
     }
 
@@ -204,6 +214,7 @@ int main(int argc, char *argv[])
     config->save();
 
     delete Constants::global_post_processor;
+    delete Constants::global_transition_manager;
 
     info("Joining control thread...");
     control_thread.join();

@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/server/MimeTypes.cpp
         src/shared/matrix/server/common.cpp
         src/shared/matrix/canvas_consts.cpp
+        src/shared/matrix/transition_manager.cpp
 )
 
 # Main Target Compile

@@ -89,6 +89,16 @@ tmillis_t Scenes::Scene::get_duration() const
     return duration->get();
 }
 
+tmillis_t Scenes::Scene::get_transition_duration() const
+{
+    return transition_duration->get();
+}
+
+std::string Scenes::Scene::get_transition_name() const
+{
+    return transition_name->get();
+}
+
 int Scenes::Scene::get_weight() const
 {
     return weight->get();
@@ -113,9 +123,15 @@ Scenes::Scene::Scene()
 {
     add_property(weight);
     add_property(duration);
+    add_property(transition_duration);
+    add_property(transition_name);
 }
 
 void Scenes::Scene::after_render_stop(RGBMatrixBase *matrix)
+{
+}
+
+void Scenes::Scene::before_transition_stop(RGBMatrixBase *matrix)
 {
 }
 
