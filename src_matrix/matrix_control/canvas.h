@@ -15,4 +15,4 @@ using rgb_matrix::StreamReader;
 
 // Global post-processor instance
 
-void update_canvas(RGBMatrixBase * matrix, FrameCanvas *first_offscreen_canvas, FrameCanvas *second_offscreen_canvas,  FrameCanvas *composite_offscreen_canvas);
+void update_canvas(RGBMatrixBase * matrix, FrameCanvas **first_offscreen_canvas, FrameCanvas **second_offscreen_canvas,  FrameCanvas **composite_offscreen_canvas);
