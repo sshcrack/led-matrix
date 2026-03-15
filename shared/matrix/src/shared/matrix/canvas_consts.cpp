@@ -7,4 +7,7 @@ namespace Constants {
 
     // Global post-processor instance
     PostProcessor* global_post_processor = nullptr;
+
+    // Global transition manager instance
+    TransitionManager* global_transition_manager = nullptr;
 }

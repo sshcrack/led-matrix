@@ -34,6 +34,8 @@ namespace Scenes {
         // Initialize with temporary values instead of calling virtual functions
         PropertyPointer<int> weight = MAKE_PROPERTY("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
+        PropertyPointer<tmillis_t> transition_duration = MAKE_PROPERTY("transition_duration", tmillis_t, 0);
+        PropertyPointer<std::string> transition_name = MAKE_PROPERTY("transition_name", std::string, std::string(""));
 
         std::string uuid;
 
@@ -82,6 +84,10 @@ namespace Scenes {
 
         [[nodiscard]] virtual tmillis_t get_duration() const;
 
+        [[nodiscard]] virtual tmillis_t get_transition_duration() const;
+
+        [[nodiscard]] virtual std::string get_transition_name() const;
+
         [[nodiscard]] virtual nlohmann::json to_json() const;
 
         [[nodiscard]] virtual string get_name() const = 0;
@@ -96,6 +102,8 @@ namespace Scenes {
         virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
 
         virtual void after_render_stop(RGBMatrixBase *matrix);
+
+        virtual void before_transition_stop(RGBMatrixBase *matrix);
 
         [[nodiscard]] bool is_initialized() const;
 
