@@ -31,30 +31,28 @@ namespace AmbientScenes {
         }
     }
 
-    void BouncingLogoScene::draw_logo(int px, int py) {
+    void BouncingLogoScene::draw_logo(rgb_matrix::FrameCanvas *canvas, int px, int py) {
         // Draw a simple rectangle representing the logo
         for (int x = 0; x < logo_width; x++) {
             for (int y = 0; y < logo_height; y++) {
                 // If it's a border pixel
                 if (x == 0 || x == logo_width - 1 || y == 0 || y == logo_height - 1) {
-                    offscreen_canvas->SetPixel(px + x, py + y, color_r, color_g, color_b);
+                    canvas->SetPixel(px + x, py + y, color_r, color_g, color_b);
                 } else {
                     // Internal fill or "DVD" text placeholder
                     // Draw a simple diamond inside
                     int cx = logo_width / 2;
                     int cy = logo_height / 2;
                     if (std::abs(x - cx) + std::abs(y - cy) < (logo_height / 2)) {
-                        offscreen_canvas->SetPixel(px + x, py + y, color_r, color_g, color_b);
+                        canvas->SetPixel(px + x, py + y, color_r, color_g, color_b);
                     }
                 }
             }
         }
     }
 
-    void BouncingLogoScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
-        matrix_width = matrix->width();
-        matrix_height = matrix->height();
+    void BouncingLogoScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
 
         logo_height = size->get();
         logo_width = logo_height * 2; // Aspect ratio ~ 2:1
@@ -69,8 +67,8 @@ namespace AmbientScenes {
         change_color();
     }
 
-    bool BouncingLogoScene::render(RGBMatrixBase *matrix) {
-        offscreen_canvas->Clear();
+    bool BouncingLogoScene::render(rgb_matrix::FrameCanvas *canvas) {
+        canvas->Clear();
 
         pos_x += vel_x;
         pos_y += vel_y;
@@ -104,7 +102,7 @@ namespace AmbientScenes {
         int px = (int)std::round(pos_x);
         int py = (int)std::round(pos_y);
 
-        draw_logo(px, py);
+        draw_logo(canvas, px, py);
 
         wait_until_next_frame();
         return true;

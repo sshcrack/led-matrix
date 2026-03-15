@@ -29,7 +29,7 @@ namespace Scenes
             return 0; // Default duration for unknown scene
         }
 
-        bool render(RGBMatrixBase *matrix) override
+        bool render(rgb_matrix::FrameCanvas *canvas) override
         {
             return false;
         }

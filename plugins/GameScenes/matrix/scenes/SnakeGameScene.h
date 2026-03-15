@@ -75,13 +75,13 @@ namespace Scenes {
         bool willCauseSelfTrap(Direction dir) const;
         
         // Rendering methods
-        void renderGame();
-        void renderGameOver();
-        void renderWin();
-        void renderSnake();
-        void renderFood();
-        void renderScore();
-        void renderUI();
+        void renderGame(rgb_matrix::FrameCanvas *canvas);
+        void renderGameOver(rgb_matrix::FrameCanvas *canvas);
+        void renderWin(rgb_matrix::FrameCanvas *canvas);
+        void renderSnake(rgb_matrix::FrameCanvas *canvas);
+        void renderFood(rgb_matrix::FrameCanvas *canvas);
+        void renderScore(rgb_matrix::FrameCanvas *canvas);
+        void renderUI(rgb_matrix::FrameCanvas *canvas);
         
         // Utility methods
         rgb_matrix::Color getSnakeColor(int segment_index) const;
@@ -92,10 +92,10 @@ namespace Scenes {
         SnakeGameScene();
         ~SnakeGameScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override;
         void register_properties() override;
-        void initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) override;
+        void initialize(int width, int height) override;
         
         tmillis_t get_default_duration() override {
             return 60000; // 1 minute game sessions

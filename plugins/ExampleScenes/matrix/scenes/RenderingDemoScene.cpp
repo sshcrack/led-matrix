@@ -8,8 +8,8 @@ RenderingDemoScene::RenderingDemoScene() : rng(std::random_device{}()) {
     set_target_fps(60); // Smooth animations
 }
 
-void RenderingDemoScene::initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) {
-    Scene::initialize(matrix, canvas);
+void RenderingDemoScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
     
     // Initialize particle system
     particles.clear();
@@ -25,39 +25,39 @@ void RenderingDemoScene::initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matri
     }
 }
 
-bool RenderingDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
+bool RenderingDemoScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frame = frameTimer.tick();
     time += frame.dt * animation_speed->get();
     
     // Clear canvas
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
     // Select demo based on mode
     switch (demo_mode->get()) {
         case 0:
-            renderPixelManipulation();
+            renderPixelManipulation(canvas);
             break;
         case 1:
-            renderGeometricPatterns();
+            renderGeometricPatterns(canvas);
             break;
         case 2:
-            renderColorInterpolation();
+            renderColorInterpolation(canvas);
             break;
         case 3:
-            renderParticleSystem();
+            renderParticleSystem(canvas);
             break;
         case 4:
-            renderMathematicalVisualization();
+            renderMathematicalVisualization(canvas);
             break;
         default:
-            renderPixelManipulation();
+            renderPixelManipulation(canvas);
             break;
     }
     
     return true;
 }
 
-void RenderingDemoScene::renderPixelManipulation() {
+void RenderingDemoScene::renderPixelManipulation(rgb_matrix::FrameCanvas *canvas) {
     // Demonstrate basic pixel manipulation techniques
     int width = matrix_width;
     int height = matrix_height;
@@ -76,12 +76,12 @@ void RenderingDemoScene::renderPixelManipulation() {
             uint8_t g = static_cast<uint8_t>(c1.g * pattern + c2.g * (1.0f - pattern));
             uint8_t b = static_cast<uint8_t>(c1.b * pattern + c2.b * (1.0f - pattern));
             
-            setPixelSafe(x, y, r, g, b);
+            setPixelSafe(canvas, x, y, r, g, b);
         }
     }
 }
 
-void RenderingDemoScene::renderGeometricPatterns() {
+void RenderingDemoScene::renderGeometricPatterns(rgb_matrix::FrameCanvas *canvas) {
     // Demonstrate drawing geometric shapes
     int center_x = matrix_width / 2;
     int center_y = matrix_height / 2;
@@ -91,7 +91,7 @@ void RenderingDemoScene::renderGeometricPatterns() {
     
     // Rotating circle
     float radius = 10 + 5 * sin(time);
-    drawCircle(center_x, center_y, static_cast<int>(radius), c1.r, c1.g, c1.b);
+    drawCircle(canvas, center_x, center_y, static_cast<int>(radius), c1.r, c1.g, c1.b);
     
     // Rotating lines
     for (int i = 0; i < 6; i++) {
@@ -99,7 +99,7 @@ void RenderingDemoScene::renderGeometricPatterns() {
         int x1 = center_x + static_cast<int>(cos(angle) * 15);
         int y1 = center_y + static_cast<int>(sin(angle) * 15);
         
-        drawLine(center_x, center_y, x1, y1, c2.r, c2.g, c2.b);
+        drawLine(canvas, center_x, center_y, x1, y1, c2.r, c2.g, c2.b);
     }
     
     // Corner squares
@@ -110,13 +110,13 @@ void RenderingDemoScene::renderGeometricPatterns() {
         
         for (int dx = 0; dx < square_size; dx++) {
             for (int dy = 0; dy < square_size; dy++) {
-                setPixelSafe(x + dx, y + dy, c1.r, c1.g, c1.b);
+                setPixelSafe(canvas, x + dx, y + dy, c1.r, c1.g, c1.b);
             }
         }
     }
 }
 
-void RenderingDemoScene::renderColorInterpolation() {
+void RenderingDemoScene::renderColorInterpolation(rgb_matrix::FrameCanvas *canvas) {
     // Demonstrate smooth color transitions
     auto c1 = color1->get();
     auto c2 = color2->get();
@@ -140,12 +140,12 @@ void RenderingDemoScene::renderColorInterpolation() {
             }
             
             rgb_matrix::Color result = interpolateColors(color1_rgb, color2_rgb, t);
-            setPixelSafe(x, y, result.r, result.g, result.b);
+            setPixelSafe(canvas, x, y, result.r, result.g, result.b);
         }
     }
 }
 
-void RenderingDemoScene::renderParticleSystem() {
+void RenderingDemoScene::renderParticleSystem(rgb_matrix::FrameCanvas *canvas) {
     // Update particles
     for (auto& p : particles) {
         p.x += p.vx;
@@ -174,14 +174,14 @@ void RenderingDemoScene::renderParticleSystem() {
         uint8_t g = static_cast<uint8_t>(p.color.g * alpha);
         uint8_t b = static_cast<uint8_t>(p.color.b * alpha);
         
-        setPixelSafe(static_cast<int>(p.x), static_cast<int>(p.y), r, g, b);
+        setPixelSafe(canvas, static_cast<int>(p.x), static_cast<int>(p.y), r, g, b);
         
         // Draw trail
-        setPixelSafe(static_cast<int>(p.x - p.vx), static_cast<int>(p.y - p.vy), r/2, g/2, b/2);
+        setPixelSafe(canvas, static_cast<int>(p.x - p.vx), static_cast<int>(p.y - p.vy), r/2, g/2, b/2);
     }
 }
 
-void RenderingDemoScene::renderMathematicalVisualization() {
+    void RenderingDemoScene::renderMathematicalVisualization(rgb_matrix::FrameCanvas *canvas) {
     // Demonstrate mathematical functions for visualization
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {
@@ -207,28 +207,28 @@ void RenderingDemoScene::renderMathematicalVisualization() {
             uint8_t r, g, b;
             hsv_to_rgb(hue, 1.0f, iterations < max_iterations ? 1.0f : 0.0f, r, g, b);
             
-            setPixelSafe(x, y, r, g, b);
+            setPixelSafe(canvas, x, y, r, g, b);
         }
     }
 }
 
-void RenderingDemoScene::setPixelSafe(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
-    if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
-        offscreen_canvas->SetPixel(x, y, r, g, b);
+void RenderingDemoScene::setPixelSafe(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+    if (canvas && x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+        canvas->SetPixel(x, y, r, g, b);
     }
 }
 
-void RenderingDemoScene::drawCircle(int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b) {
+void RenderingDemoScene::drawCircle(rgb_matrix::FrameCanvas *canvas, int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b) {
     for (int y = -radius; y <= radius; y++) {
         for (int x = -radius; x <= radius; x++) {
             if (x*x + y*y <= radius*radius) {
-                setPixelSafe(center_x + x, center_y + y, r, g, b);
+                setPixelSafe(canvas, center_x + x, center_y + y, r, g, b);
             }
         }
     }
 }
 
-void RenderingDemoScene::drawLine(int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b) {
+void RenderingDemoScene::drawLine(rgb_matrix::FrameCanvas *canvas, int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b) {
     // Bresenham's line algorithm
     int dx = abs(x1 - x0);
     int dy = abs(y1 - y0);
@@ -237,7 +237,7 @@ void RenderingDemoScene::drawLine(int x0, int y0, int x1, int y1, uint8_t r, uin
     int err = dx - dy;
     
     while (true) {
-        setPixelSafe(x0, y0, r, g, b);
+        setPixelSafe(canvas, x0, y0, r, g, b);
         
         if (x0 == x1 && y0 == y1) break;
         

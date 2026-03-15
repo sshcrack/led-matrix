@@ -153,7 +153,7 @@ namespace AmbientScenes
             int perpendicular_dx = static_cast<int>(-cos(hour_angle));
             int perpendicular_dy = static_cast<int>(-sin(hour_angle));
 
-            draw_antialiased_line(matrix, center_x + perpendicular_dx, center_y + perpendicular_dy,
+            draw_antialiased_line(canvas, center_x + perpendicular_dx, center_y + perpendicular_dy,
                                   hour_x + perpendicular_dx, hour_y + perpendicular_dy,
                                   h_color.r, h_color.g, h_color.b,
                                   false);

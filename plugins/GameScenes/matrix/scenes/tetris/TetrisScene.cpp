@@ -16,20 +16,20 @@ namespace Scenes {
         last_fall_time = std::chrono::steady_clock::now();
     }
 
-    void TetrisScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void TetrisScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
 
         // Calculate scaling and offsets
-        block_size = std::min(matrix->width() / 10, matrix->height() / 20);
-        offset_x = (matrix->width() - (10 * block_size)) / 2;
-        offset_y = (matrix->height() - (20 * block_size)) / 2;
+        block_size = std::min(matrix_width / 10, matrix_height / 20);
+        offset_x = (matrix_width - (10 * block_size)) / 2;
+        offset_y = (matrix_height - (20 * block_size)) / 2;
 
         bestMove = brain.getBestMove(grid);
         bestRotation = static_cast<int>(bestMove.back()) - 48;
         bestMove.pop_back();
     }
 
-    bool TetrisScene::render(RGBMatrixBase *matrix) {
+    bool TetrisScene::render(rgb_matrix::FrameCanvas *canvas) {
         if (gameOver) return false;
 
         if (!rotated) {
@@ -83,16 +83,16 @@ namespace Scenes {
             fixed = true;
         }
 
-        offscreen_canvas->Clear();
+        canvas->Clear();
 
         // Draw game outline
         for (int x = offset_x - 1; x <= offset_x + (10 * block_size); x++) {
-            offscreen_canvas->SetPixel(x, offset_y - 1, 50, 50, 50);  // top
-            offscreen_canvas->SetPixel(x, offset_y + (20 * block_size), 50, 50, 50);  // bottom
+            canvas->SetPixel(x, offset_y - 1, 50, 50, 50);  // top
+            canvas->SetPixel(x, offset_y + (20 * block_size), 50, 50, 50);  // bottom
         }
         for (int y = offset_y - 1; y <= offset_y + (20 * block_size); y++) {
-            offscreen_canvas->SetPixel(offset_x - 1, y, 50, 50, 50);  // left
-            offscreen_canvas->SetPixel(offset_x + (10 * block_size), y, 50, 50, 50);  // right
+            canvas->SetPixel(offset_x - 1, y, 50, 50, 50);  // left
+            canvas->SetPixel(offset_x + (10 * block_size), y, 50, 50, 50);  // right
         }
 
         for (int j = 4; j < 24; j++) {
@@ -108,9 +108,9 @@ namespace Scenes {
                             int pixel_x = offset_x + (i * block_size) + x;
                             int pixel_y = offset_y + ((j - 4) * block_size) + y;
 
-                            if (pixel_x >= 0 && pixel_x < matrix->width() &&
-                                pixel_y >= 0 && pixel_y < matrix->height()) {
-                                offscreen_canvas->SetPixel(pixel_x, pixel_y, color.r, color.g, color.b);
+                            if (pixel_x >= 0 && pixel_x < matrix_width &&
+                                pixel_y >= 0 && pixel_y < matrix_height) {
+                                canvas->SetPixel(pixel_x, pixel_y, color.r, color.g, color.b);
                             }
                         }
                     }
@@ -126,7 +126,7 @@ namespace Scenes {
         return "tetris";
     }
 
-    void TetrisScene::after_render_stop(RGBMatrixBase *matrix) {
+    void TetrisScene::after_render_stop() {
         if (gameOver) {
             // Reset game state
             grid = Grid();  // Create new grid

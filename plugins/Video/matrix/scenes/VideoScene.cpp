@@ -40,7 +40,7 @@ void VideoScene::register_properties()
   add_property(random_playback);
 }
 
-void VideoScene::after_render_stop(RGBMatrixBase *matrix)
+void VideoScene::after_render_stop()
 {
   showing_loading_animation = false;
   // We might want to force a URL resend on next start if needed,
@@ -55,12 +55,12 @@ void VideoScene::after_render_stop(RGBMatrixBase *matrix)
   streaming_enabled = false;
 }
 
-void VideoScene::render_loading_animation()
+void VideoScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
 {
   const int width = Constants::width;
   const int height = Constants::height;
 
-  offscreen_canvas->Fill(0, 0, 0);
+  canvas->Fill(0, 0, 0);
 
   // Simple loading bar
   int barWidth = width * 0.8;
@@ -73,7 +73,7 @@ void VideoScene::render_loading_animation()
   {
     for (int j = 0; j < barHeight; ++j)
     {
-      offscreen_canvas->SetPixel(x + i, y + j, 50, 50, 50);
+      canvas->SetPixel(x + i, y + j, 50, 50, 50);
     }
   }
 
@@ -85,14 +85,14 @@ void VideoScene::render_loading_animation()
   {
     for (int j = 0; j < barHeight; ++j)
     {
-      offscreen_canvas->SetPixel(x + i, y + j, 0, 255, 0);
+      canvas->SetPixel(x + i, y + j, 0, 255, 0);
     }
   }
 
   loading_animation_frame++;
 }
 
-bool VideoScene::render(RGBMatrixBase *matrix)
+bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
 {
   if (!plugin)
     return false;
@@ -107,7 +107,7 @@ bool VideoScene::render(RGBMatrixBase *matrix)
   auto urls = video_urls->get();
   if (urls.empty())
   {
-    offscreen_canvas->Fill(50, 0, 0); // Dim red for no config
+    canvas->Fill(50, 0, 0); // Dim red for no config
     return true;
   }
 
@@ -122,7 +122,7 @@ bool VideoScene::render(RGBMatrixBase *matrix)
 
   if (status == "downloading" || status == "processing")
   {
-    render_loading_animation();
+    render_loading_animation(canvas);
     return true;
   }
 
@@ -176,7 +176,7 @@ bool VideoScene::render(RGBMatrixBase *matrix)
   if (pixels.empty())
   {
     // loading or waiting
-    render_loading_animation();
+    render_loading_animation(canvas);
     return true;
   }
 
@@ -196,7 +196,7 @@ bool VideoScene::render(RGBMatrixBase *matrix)
     // rpi-rgb-led-matrix is top-left origin usually.
 
     int i = idx * 3;
-    offscreen_canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+    canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
   }
 
   return true;

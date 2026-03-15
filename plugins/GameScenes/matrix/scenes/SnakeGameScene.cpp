@@ -17,8 +17,8 @@ std::unique_ptr<Scene, void (*)(Scene *)> SnakeGameSceneWrapper::create() {
     }};
 }
 
-void SnakeGameScene::initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) {
-    Scene::initialize(matrix, canvas);
+void SnakeGameScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
     initializeGame();
 }
 
@@ -52,23 +52,23 @@ void SnakeGameScene::initializeGame() {
     calculateLevel();
 }
 
-bool SnakeGameScene::render(rgb_matrix::RGBMatrixBase *matrix) {
+bool SnakeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frame = frameTimer.tick();
     frame_counter++;
     
     // Clear canvas
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
     if (game_over) {
-        renderGameOver();
+        renderGameOver(canvas);
     } else if (game_won) {
-        renderWin();
+        renderWin(canvas);
     } else {
         // Update game at target framerate with proper timing
         if (frame_counter % static_cast<int>(get_target_fps() * game_speed) == 0) {
             updateGame();
         }
-        renderGame();
+        renderGame(canvas);
     }
     
     // Use proper frame timing instead of custom timing
@@ -297,34 +297,34 @@ Position SnakeGameScene::getNextPosition(const Position& pos, Direction dir) con
     return pos;
 }
 
-void SnakeGameScene::renderGame() {
-    renderSnake();
-    renderFood();
+void SnakeGameScene::renderGame(rgb_matrix::FrameCanvas *canvas) {
+    renderSnake(canvas);
+    renderFood(canvas);
     if (show_score->get()) {
-        renderScore();
+        renderScore(canvas);
     }
 }
 
-void SnakeGameScene::renderSnake() {
+void SnakeGameScene::renderSnake(rgb_matrix::FrameCanvas *canvas) {
     for (size_t i = 0; i < snake.size(); i++) {
         const Position& segment = snake[i];
         rgb_matrix::Color color = getSnakeColor(i);
         
         if (segment.x >= 0 && segment.x < matrix_width && segment.y >= 0 && segment.y < matrix_height) {
-            offscreen_canvas->SetPixel(segment.x, segment.y, color.r, color.g, color.b);
+            canvas->SetPixel(segment.x, segment.y, color.r, color.g, color.b);
         }
     }
 }
 
-void SnakeGameScene::renderFood() {
+void SnakeGameScene::renderFood(rgb_matrix::FrameCanvas *canvas) {
     rgb_matrix::Color color = getFoodColor();
     
     if (food.x >= 0 && food.x < matrix_width && food.y >= 0 && food.y < matrix_height) {
-        offscreen_canvas->SetPixel(food.x, food.y, color.r, color.g, color.b);
+        canvas->SetPixel(food.x, food.y, color.r, color.g, color.b);
     }
 }
 
-void SnakeGameScene::renderScore() {
+    void SnakeGameScene::renderScore(rgb_matrix::FrameCanvas *canvas) {
     if (!show_score->get()) return;
     
     // Simple score display in corner - using green colors instead of blue
@@ -334,11 +334,11 @@ void SnakeGameScene::renderScore() {
     for (int i = 0; i < display_score && i < 10; i++) {
         int x = i % 5;
         int y = i / 5;
-        offscreen_canvas->SetPixel(matrix_width - 5 + x, y, 100, 255, 100); // Green instead of blue
+        canvas->SetPixel(matrix_width - 5 + x, y, 100, 255, 100); // Green instead of blue
     }
 }
 
-void SnakeGameScene::renderGameOver() {
+    void SnakeGameScene::renderGameOver(rgb_matrix::FrameCanvas *canvas) {
     death_animation_frame++;
     
     // Flash effect
@@ -348,14 +348,14 @@ void SnakeGameScene::renderGameOver() {
         // Fill screen with red flash
         for (int y = 0; y < matrix_height; y++) {
             for (int x = 0; x < matrix_width; x++) {
-                offscreen_canvas->SetPixel(x, y, flash_intensity, 0, 0);
+                canvas->SetPixel(x, y, flash_intensity, 0, 0);
             }
         }
         
         // Still show snake in different color
         for (const auto& segment : snake) {
             if (segment.x >= 0 && segment.x < matrix_width && segment.y >= 0 && segment.y < matrix_height) {
-                offscreen_canvas->SetPixel(segment.x, segment.y, 255, 255, 255);
+                canvas->SetPixel(segment.x, segment.y, 255, 255, 255);
             }
         }
     } else {
@@ -364,7 +364,7 @@ void SnakeGameScene::renderGameOver() {
     }
 }
 
-void SnakeGameScene::renderWin() {
+void SnakeGameScene::renderWin(rgb_matrix::FrameCanvas *canvas) {
     win_animation_frame++;
     
     // Rainbow celebration effect
@@ -386,7 +386,7 @@ void SnakeGameScene::renderWin() {
             else if (hue < 300) { r = x_val * 255; g = 0; b = c * 255; }
             else { r = c * 255; g = 0; b = x_val * 255; }
             
-            offscreen_canvas->SetPixel(x, y, r, g, b);
+            canvas->SetPixel(x, y, r, g, b);
         }
     }
     

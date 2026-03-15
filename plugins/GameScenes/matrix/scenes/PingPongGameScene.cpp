@@ -6,7 +6,7 @@
 
 using namespace Scenes;
 
-bool PingPongGameScene::render(RGBMatrixBase *matrix) {
+bool PingPongGameScene::render(rgb_matrix::FrameCanvas *canvas) {
     float ball_size_l = this->ball_size->get();
     float paddle_width_l = this->paddle_width->get();
     float paddle_height_l = this->paddle_height->get();
@@ -29,15 +29,15 @@ bool PingPongGameScene::render(RGBMatrixBase *matrix) {
     // Clear old ball position
     for (int y = 0; y < ball_size_l; y++) {
         for (int x = 0; x < ball_size_l; x++) {
-            matrix->SetPixel(int(prev_ball_x) + x, int(prev_ball_y) + y, 0, 0, 0);
+            canvas->SetPixel(int(prev_ball_x) + x, int(prev_ball_y) + y, 0, 0, 0);
         }
     }
 
     // Clear old paddle positions
     for (int y = 0; y < paddle_height_l; y++) {
         for (int x = 0; x < paddle_width_l; x++) {
-            matrix->SetPixel(x, int(prev_left_paddle_y) + y, 0, 0, 0);
-            matrix->SetPixel(matrix_width - 1 - x, int(prev_right_paddle_y) + y, 0, 0, 0);
+            canvas->SetPixel(x, int(prev_left_paddle_y) + y, 0, 0, 0);
+            canvas->SetPixel(matrix_width - 1 - x, int(prev_right_paddle_y) + y, 0, 0, 0);
         }
     }
 
@@ -91,15 +91,15 @@ bool PingPongGameScene::render(RGBMatrixBase *matrix) {
     // Draw paddles
     for (int y = 0; y < paddle_height_l; y++) {
         for (int x = 0; x < paddle_width_l; x++) {
-            matrix->SetPixel(x, int(left_paddle_y) + y, 255, 255, 255);
-            matrix->SetPixel(matrix_width - 1 - x, int(right_paddle_y) + y, 255, 255, 255);
+            canvas->SetPixel(x, int(left_paddle_y) + y, 255, 255, 255);
+            canvas->SetPixel(matrix_width - 1 - x, int(right_paddle_y) + y, 255, 255, 255);
         }
     }
 
     // Draw ball
     for (int y = 0; y < ball_size_l; y++) {
         for (int x = 0; x < ball_size_l; x++) {
-            matrix->SetPixel(int(ball_x) + x, int(ball_y) + y, 255, 255, 255);
+            canvas->SetPixel(int(ball_x) + x, int(ball_y) + y, 255, 255, 255);
         }
     }
 
@@ -107,8 +107,8 @@ bool PingPongGameScene::render(RGBMatrixBase *matrix) {
     return true;
 }
 
-void PingPongGameScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, nullptr);
+void PingPongGameScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
     last_update = std::chrono::steady_clock::now();
     accumulated_time = 0.0f;
 

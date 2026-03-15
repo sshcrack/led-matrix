@@ -9,19 +9,19 @@ namespace Scenes {
         rng = std::mt19937(std::random_device()());
     }
 
-    void MazeGameScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void MazeGameScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         // Calculate maze size to maintain odd dimensions
-        int minSize = std::min(matrix->width(), matrix->height()) / 2;
+        int minSize = std::min(matrix_width, matrix_height) / 2;
         if (minSize % 2 == 0) {
             minSize--;
         }
         maze_size = minSize;
 
         // Calculate scale factor and offsets
-        scale_factor = std::min(matrix->width() / maze_size, matrix->height() / maze_size);
-        offset_x = (matrix->width() - (maze_size * scale_factor)) / 2;
-        offset_y = (matrix->height() - (maze_size * scale_factor)) / 2;
+        scale_factor = std::min(matrix_width / maze_size, matrix_height / maze_size);
+        offset_x = (matrix_width - (maze_size * scale_factor)) / 2;
+        offset_y = (matrix_height - (maze_size * scale_factor)) / 2;
 
         initialize_maze();
     }
@@ -54,7 +54,13 @@ namespace Scenes {
         }
     }
 
-    bool MazeGameScene::render(RGBMatrixBase *matrix) {
+    bool MazeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
+        if(solving_complete && should_wait_for_solution_to_render) {
+            SleepMillis(delay_solution_found * 1000);
+            should_wait_for_solution_to_render = false;
+            return false;
+        }
+
         wait_until_next_frame();
         if (!generation_complete) {
             generation_complete = hunt_and_kill_step();
@@ -62,16 +68,11 @@ namespace Scenes {
             solving_complete = solve_step();
         }
 
-        draw_maze();
+        draw_maze(canvas);
 
         if (solving_complete) {
-            offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas);
-
-        #ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
-        #endif
-            SleepMillis(2000);
-            return false;
+            should_wait_for_solution_to_render = true;
+            return true;
         }
 
         return true;
@@ -202,8 +203,8 @@ namespace Scenes {
         return false;
     }
 
-    void MazeGameScene::draw_maze() {
-        offscreen_canvas->Clear();
+    void MazeGameScene::draw_maze(rgb_matrix::FrameCanvas *canvas) {
+        canvas->Clear();
 
         // Draw maze with scaling
         for (int y = 0; y < maze_size; y++) {
@@ -212,7 +213,7 @@ namespace Scenes {
                     // Draw scaled pixel as a filled rectangle
                     for (int dy = 0; dy < scale_factor; dy++) {
                         for (int dx = 0; dx < scale_factor; dx++) {
-                            offscreen_canvas->SetPixel(
+                            canvas->SetPixel(
                                 offset_x + x * scale_factor + dx,
                                 offset_y + y * scale_factor + dy,
                                 50, 50, 50
@@ -227,7 +228,7 @@ namespace Scenes {
         if (!generation_complete) {
             for (int dy = 0; dy < scale_factor; dy++) {
                 for (int dx = 0; dx < scale_factor; dx++) {
-                    offscreen_canvas->SetPixel(
+                    canvas->SetPixel(
                         offset_x + current_x * scale_factor + dx,
                         offset_y + current_y * scale_factor + dy,
                         0, 255, 0
@@ -242,7 +243,7 @@ namespace Scenes {
             for (const auto &[x, y]: closed_set) {
                 for (int dy = 0; dy < scale_factor; dy++) {
                     for (int dx = 0; dx < scale_factor; dx++) {
-                        offscreen_canvas->SetPixel(
+                        canvas->SetPixel(
                             offset_x + x * scale_factor + dx,
                             offset_y + y * scale_factor + dy,
                             255, 0, 0
@@ -255,7 +256,7 @@ namespace Scenes {
             for (const auto &[x, y]: open_set) {
                 for (int dy = 0; dy < scale_factor; dy++) {
                     for (int dx = 0; dx < scale_factor; dx++) {
-                        offscreen_canvas->SetPixel(
+                        canvas->SetPixel(
                             offset_x + x * scale_factor + dx,
                             offset_y + y * scale_factor + dy,
                             0, 255, 0
@@ -270,7 +271,7 @@ namespace Scenes {
             for (const auto &[x, y]: path) {
                 for (int dy = 0; dy < scale_factor; dy++) {
                     for (int dx = 0; dx < scale_factor; dx++) {
-                        offscreen_canvas->SetPixel(
+                        canvas->SetPixel(
                             offset_x + x * scale_factor + dx,
                             offset_y + y * scale_factor + dy,
                             0, 0, 255
@@ -285,7 +286,7 @@ namespace Scenes {
         return "maze";
     }
 
-    void MazeGameScene::after_render_stop(RGBMatrixBase *matrix) {
+    void MazeGameScene::after_render_stop() {
         if (solving_complete)
             initialize_maze();
     }

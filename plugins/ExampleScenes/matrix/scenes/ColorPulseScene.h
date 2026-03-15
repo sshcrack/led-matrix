@@ -15,7 +15,7 @@ namespace Scenes {
         ColorPulseScene() {}
 
         ~ColorPulseScene() override = default;
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
         void register_properties() override;
 

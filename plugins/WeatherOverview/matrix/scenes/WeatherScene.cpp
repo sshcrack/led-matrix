@@ -63,51 +63,51 @@ static void pre_process_image(Magick::Image *img)
     img->crop(Magick::Geometry(w, h, x, y));
 }
 
-void Scenes::WeatherScene::renderCurrentWeather(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     // Draw the main weather icon
     if (images.has_value())
     {
-        SetImageTransparent(offscreen_canvas, 2, 12,
+        SetImageTransparent(canvas, 2, 12,
                             images->currentIcon);
     }
 
     // Draw temperature in large font
     constexpr int temp_x = MAIN_ICON_SIZE + 6;
     constexpr int temp_y = 20;
-    DrawText(offscreen_canvas, HEADER_FONT, temp_x, temp_y,
+    DrawText(canvas, HEADER_FONT, temp_x, temp_y,
              {255, 255, 255}, data.temperature.c_str());
 
     // Draw weather description with scroll effect if needed
     const std::string desc = data.description;
     const int desc_y = temp_y + 14;
 
-    DrawText(offscreen_canvas, BODY_FONT, temp_x, desc_y,
+    DrawText(canvas, BODY_FONT, temp_x, desc_y,
              {220, 220, 255}, desc.c_str());
 
     // Draw additional weather info
     constexpr int add_info_y = desc_y + 10;
     const std::string humidity_info = "Humidity: " + data.humidity;
-    DrawText(offscreen_canvas, SMALL_FONT, temp_x, add_info_y,
+    DrawText(canvas, SMALL_FONT, temp_x, add_info_y,
              {200, 200, 255}, humidity_info.c_str());
 
     const std::string wind_info = "Wind: " + data.wind_speed;
-    DrawText(offscreen_canvas, SMALL_FONT, temp_x, add_info_y + 7,
+    DrawText(canvas, SMALL_FONT, temp_x, add_info_y + 7,
              {200, 200, 255}, wind_info.c_str());
 }
 
-void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const WeatherData &data) const
+void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const
 {
     int base_offset_x = 5;
 
     // Draw forecast title
-    DrawText(offscreen_canvas, SMALL_FONT, base_offset_x, 65,
+    DrawText(canvas, SMALL_FONT, base_offset_x, 65,
              {255, 255, 255}, "3-Day Forecast:");
 
     // Draw forecast data
     if (data.forecast.size() >= 3 && images.has_value())
     {
-        const int forecast_width = matrix->width() / 3;
+        const int forecast_width = matrix_width / 3;
 
         for (int i = 0; i < std::min(size_t(3), data.forecast.size()); i++)
         {
@@ -115,20 +115,20 @@ void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const Wea
             const int base_x = i * forecast_width + base_offset_x;
 
             // Draw day name
-            DrawText(offscreen_canvas, SMALL_FONT, base_x + 2, 78,
+            DrawText(canvas, SMALL_FONT, base_x + 2, 78,
                      {255, 255, 255}, day.day_name.c_str());
 
             // Draw forecast icon
             if (i < images->forecastIcons.size())
             {
-                SetImageTransparent(offscreen_canvas, base_x + (forecast_width - FORECAST_ICON_SIZE) / 2 - 7, 79,
+                SetImageTransparent(canvas, base_x + (forecast_width - FORECAST_ICON_SIZE) / 2 - 7, 79,
                                     images->forecastIcons[i]);
             }
 
             // Draw min/max temperature
             std::string temp = day.temperature_min + "/" + day.temperature_max;
             const int temp_width = SMALL_FONT.CharacterWidth('A') * temp.length();
-            DrawText(offscreen_canvas, SMALL_FONT, base_x + (forecast_width - temp_width) / 2, 100,
+            DrawText(canvas, SMALL_FONT, base_x + (forecast_width - temp_width) / 2, 100,
                      {220, 220, 255}, temp.c_str());
 
             // Draw precipitation indicator if probability is significant
@@ -139,11 +139,11 @@ void Scenes::WeatherScene::renderForecast(const RGBMatrixBase *matrix, const Wea
                 const int indicator_y = 95;
 
                 // Draw the precipitation indicator
-                drawPrecipitationIndicator(matrix, day.precipitation_chance, indicator_x, indicator_y);
+                drawPrecipitationIndicator(canvas, day.precipitation_chance, indicator_x, indicator_y);
 
                 // Draw the probability percentage
                 std::string prob = std::to_string(static_cast<int>(day.precipitation_chance * 100)) + "%";
-                DrawText(offscreen_canvas, SMALL_FONT, base_x + 10, 110,
+                DrawText(canvas, SMALL_FONT, base_x + 10, 110,
                          {150, 200, 255}, prob.c_str());
             }
         }
@@ -189,21 +189,21 @@ void Scenes::WeatherScene::updateAnimationState(const WeatherData &data)
     updateEnhancedParticles(data);
 }
 
-void Scenes::WeatherScene::renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_animations->get())
     {
         return;
     }
 
-    renderEnhancedParticles(matrix, data);
+    renderEnhancedParticles(canvas, data);
 
     // Add new beautiful weather effects
-    renderClouds(matrix, data);
-    renderLightning(matrix);
-    renderSunRays(matrix, data);
-    renderFogMist(matrix, data);
-    renderAurora(matrix);
+    renderClouds(canvas, data);
+    renderLightning(canvas);
+    renderSunRays(canvas, data);
+    renderFogMist(canvas, data);
+    renderAurora(canvas);
 }
 
 RGB Scenes::WeatherScene::interpolateColor(const RGB &start, const RGB &end, float progress)
@@ -215,15 +215,15 @@ RGB Scenes::WeatherScene::interpolateColor(const RGB &start, const RGB &end, flo
         static_cast<uint8_t>(start.b + (end.b - start.b) * progress)};
 }
 
-void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, const RGB &base_color)
+void Scenes::WeatherScene::applyBackgroundEffects(rgb_matrix::FrameCanvas *canvas, const RGB &base_color)
 {
     // Create a gradient background
-    for (int y = 0; y < matrix->height(); y++)
+    for (int y = 0; y < matrix_height; y++)
     {
         // Calculate gradient factor (darker at bottom, lighter at top)
-        float gradient_factor = 1.0f - (float)y / matrix->height() * GRADIENT_INTENSITY;
+        float gradient_factor = 1.0f - (float)y / matrix_height * GRADIENT_INTENSITY;
 
-        for (int x = 0; x < matrix->width(); x++)
+        for (int x = 0; x < matrix_width; x++)
         {
             // Add some subtle horizontal variation
             float x_variation = 1.0f + std::sin(x * 0.1f) * 0.05f;
@@ -237,7 +237,7 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
             uint8_t g = std::min(255.0f, base_color.g * gradient_factor * x_variation * pulse_factor);
             uint8_t b = std::min(255.0f, base_color.b * gradient_factor * x_variation * pulse_factor);
 
-            offscreen_canvas->SetPixel(x, y, r, g, b);
+            canvas->SetPixel(x, y, r, g, b);
         }
     }
 
@@ -257,7 +257,7 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
 
             // Make stars twinkle
             const int brightness = 150 + (std::sin(0.1f * animation_frame + i) + 1) * 50;
-            offscreen_canvas->SetPixel(x, y, brightness, brightness, brightness);
+            canvas->SetPixel(x, y, brightness, brightness, brightness);
         }
 
         // Update and render shooting stars
@@ -265,7 +265,7 @@ void Scenes::WeatherScene::applyBackgroundEffects(const RGBMatrixBase *matrix, c
         {
             tryCreateShootingStar();
             updateShootingStars();
-            renderShootingStars();
+            renderShootingStars(canvas);
         }
     }
 }
@@ -375,7 +375,7 @@ void Scenes::WeatherScene::updateShootingStars()
     }
 }
 
-void Scenes::WeatherScene::renderShootingStars()
+void Scenes::WeatherScene::renderShootingStars(rgb_matrix::FrameCanvas *canvas)
 {
     for (const auto &star : shooting_stars)
     {
@@ -396,41 +396,41 @@ void Scenes::WeatherScene::renderShootingStars()
                 int py = static_cast<int>(tail_y);
                 if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height)
                 {
-                    SetPixelAlpha(offscreen_canvas, px, py, 255, 255, 255, ((float)b / 255.0f));
+                    SetPixelAlpha(canvas, px, py, 255, 255, 255, ((float)b / 255.0f));
                 }
             }
         }
     }
 }
 
-void Scenes::WeatherScene::drawWeatherBorder(const RGBMatrixBase *matrix, const RGB &color, int brightness_mod) const
+void Scenes::WeatherScene::drawWeatherBorder(rgb_matrix::FrameCanvas *canvas, const RGB &color, int brightness_mod) const
 {
     // Draw a subtle border around the display
     for (int i = 0; i < BORDER_THICKNESS; i++)
     {
         // Top and bottom borders
-        for (int x = BORDER_PADDING; x < matrix->width() - BORDER_PADDING; x++)
+        for (int x = BORDER_PADDING; x < matrix_width - BORDER_PADDING; x++)
         {
-            offscreen_canvas->SetPixel(x, BORDER_PADDING + i,
+            canvas->SetPixel(x, BORDER_PADDING + i,
                                        std::min(255, color.r + brightness_mod),
                                        std::min(255, color.g + brightness_mod),
                                        std::min(255, color.b + brightness_mod));
 
-            offscreen_canvas->SetPixel(x, matrix->height() - BORDER_PADDING - i - 1,
+            canvas->SetPixel(x, matrix_height - BORDER_PADDING - i - 1,
                                        std::min(255, color.r + brightness_mod),
                                        std::min(255, color.g + brightness_mod),
                                        std::min(255, color.b + brightness_mod));
         }
 
         // Left and right borders
-        for (int y = BORDER_PADDING; y < matrix->height() - BORDER_PADDING; y++)
+        for (int y = BORDER_PADDING; y < matrix_height - BORDER_PADDING; y++)
         {
-            offscreen_canvas->SetPixel(BORDER_PADDING + i, y,
+            canvas->SetPixel(BORDER_PADDING + i, y,
                                        std::min(255, color.r + brightness_mod),
                                        std::min(255, color.g + brightness_mod),
                                        std::min(255, color.b + brightness_mod));
 
-            offscreen_canvas->SetPixel(matrix->width() - BORDER_PADDING - i - 1, y,
+            canvas->SetPixel(matrix_width - BORDER_PADDING - i - 1, y,
                                        std::min(255, color.r + brightness_mod),
                                        std::min(255, color.g + brightness_mod),
                                        std::min(255, color.b + brightness_mod));
@@ -438,7 +438,7 @@ void Scenes::WeatherScene::drawWeatherBorder(const RGBMatrixBase *matrix, const 
     }
 }
 
-void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matrix, float probability, int x,
+void Scenes::WeatherScene::drawPrecipitationIndicator(rgb_matrix::FrameCanvas *canvas, float probability, int x,
                                                       int y) const
 {
     if (probability <= 0.05f)
@@ -459,13 +459,13 @@ void Scenes::WeatherScene::drawPrecipitationIndicator(const RGBMatrixBase *matri
         int width = std::max(1, i / 2);
         for (int j = -width; j <= width; j++)
         {
-            offscreen_canvas->SetPixel(x + j, y + i,
+            canvas->SetPixel(x + j, y + i,
                                        100, 150, intensity);
         }
     }
 }
 
-void Scenes::WeatherScene::renderSunriseSunset(const RGBMatrixBase *matrix, const WeatherData &data) const
+void Scenes::WeatherScene::renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const
 {
     if (data.sunrise.empty() || data.sunset.empty() || !show_sunrise_sunset->get())
     {
@@ -484,38 +484,38 @@ void Scenes::WeatherScene::renderSunriseSunset(const RGBMatrixBase *matrix, cons
         {
             if (i == 0 || j == 0)
             {
-                offscreen_canvas->SetPixel(base_x + i, base_y + j, 255, 200, 50);
+                canvas->SetPixel(base_x + i, base_y + j, 255, 200, 50);
             }
         }
     }
-    offscreen_canvas->SetPixel(base_x, base_y, 255, 220, 100);
+    canvas->SetPixel(base_x, base_y, 255, 220, 100);
 
     // Draw sunrise time
     std::string sunrise_text = "↑ " + data.sunrise;
-    DrawText(offscreen_canvas, SMALL_FONT, base_x + icon_size + 2, base_y + 2,
+    DrawText(canvas, SMALL_FONT, base_x + icon_size + 2, base_y + 2,
              {255, 220, 100}, sunrise_text.c_str());
 
     // Draw sunset icon (simple sun with down arrow)
-    const int sunset_x = matrix->width() / 2 + 20;
+    const int sunset_x = matrix_width / 2 + 20;
     for (int i = -1; i <= 1; i++)
     {
         for (int j = -1; j <= 1; j++)
         {
             if (i == 0 || j == 0)
             {
-                offscreen_canvas->SetPixel(sunset_x + i, base_y + j, 255, 150, 50);
+                canvas->SetPixel(sunset_x + i, base_y + j, 255, 150, 50);
             }
         }
     }
-    offscreen_canvas->SetPixel(sunset_x, base_y, 255, 180, 80);
+    canvas->SetPixel(sunset_x, base_y, 255, 180, 80);
 
     // Draw sunset time
     std::string sunset_text = "↓ " + data.sunset;
-    DrawText(offscreen_canvas, SMALL_FONT, sunset_x + icon_size + 2, base_y + 2,
+    DrawText(canvas, SMALL_FONT, sunset_x + icon_size + 2, base_y + 2,
              {255, 180, 80}, sunset_text.c_str());
 }
 
-void Scenes::WeatherScene::renderClock(const RGBMatrixBase *matrix) const
+void Scenes::WeatherScene::renderClock(rgb_matrix::FrameCanvas *canvas) const
 {
     const time_t timestamp = time(nullptr);
     const tm datetime = *localtime(&timestamp);
@@ -523,7 +523,7 @@ void Scenes::WeatherScene::renderClock(const RGBMatrixBase *matrix) const
     char output[50];
     strftime(output, 50, "%H:%M", &datetime);
 
-    rgb_matrix::DrawText(offscreen_canvas, BODY_FONT, 98, 11, {255, 255, 255}, output);
+    rgb_matrix::DrawText(canvas, BODY_FONT, 98, 11, {255, 255, 255}, output);
 }
 
 void Scenes::WeatherScene::resetStars()
@@ -566,22 +566,22 @@ RGB Scenes::WeatherScene::getThemeColor(const ColorTheme theme, const WeatherDat
     }
 }
 
-bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
+bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     auto data_res = parser.get_data(location_lat->get(), location_lon->get());
     if (!data_res)
     {
         spdlog::warn("Could not get weather data: {}", data_res.error());
         // Instead of returning false, show an error message and continue
-        offscreen_canvas->Clear();
-        DrawText(offscreen_canvas, BODY_FONT, 2, BODY_FONT.baseline() + 5,
+        canvas->Clear();
+        DrawText(canvas, BODY_FONT, 2, BODY_FONT.baseline() + 5,
                  {255, 100, 100}, "Weather data error");
-        DrawText(offscreen_canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
+        DrawText(canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
                  {200, 200, 200}, data_res.error().c_str());
-        offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, 1);
+        // Render loop now uses the provided canvas directly.
 
 #ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+            ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
 #endif
         SleepMillis(1000);
         return false; // Continue running despite error
@@ -691,45 +691,45 @@ bool Scenes::WeatherScene::render(RGBMatrixBase *matrix)
     animation_frame = (animation_frame + 1) % get_target_fps();
 
     updateEnhancedParticles(data);
-    offscreen_canvas->Clear();
+    canvas->Clear();
 
     // Apply beautiful background with gradient if enabled
     if (gradient_background->get())
     {
-        applyBackgroundEffects(matrix, theme_color);
+        applyBackgroundEffects(canvas, theme_color);
     }
     else
     {
         // Simple background fill
-        offscreen_canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
+        canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
     }
 
-    renderRainbowEffect(matrix, data);
+    renderRainbowEffect(canvas, data);
     // Draw a subtle border if enabled
     if (show_border->get())
     {
-        drawWeatherBorder(matrix, theme_color, 40);
+        drawWeatherBorder(canvas, theme_color, 40);
     }
 
     if (enable_clock->get())
-        renderClock(matrix);
+        renderClock(canvas);
 
     // Render all components
-    renderCurrentWeather(matrix, data);
-    renderSunriseSunset(matrix, data);
-    renderForecast(matrix, data);
+    renderCurrentWeather(canvas, data);
+    renderSunriseSunset(canvas, data);
+    renderForecast(canvas, data);
 
     // Render weather animations (rain, snow, etc.)
     if (enable_animations->get())
     {
-        renderAnimations(matrix, data);
+        renderAnimations(canvas, data);
     }
 
     wait_until_next_frame();
     return true; // Always return true to keep the scene running
 }
 
-void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix)
+void Scenes::WeatherScene::after_render_stop()
 {
     if (reset_stars_on_exit->get())
     {
@@ -740,7 +740,7 @@ void Scenes::WeatherScene::after_render_stop(RGBMatrixBase *matrix)
             star.active = false;
         }
     }
-    Scene::after_render_stop(matrix);
+    Scene::after_render_stop();
 }
 
 // Enhanced Animation Methods
@@ -854,7 +854,7 @@ void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
     }
 }
 
-void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderEnhancedParticles(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!has_precipitation || !enable_animations->get())
     {
@@ -884,7 +884,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
                     // Enhanced snow rendering with rotation and clustering
                     float alpha = p.opacity / 255.0f; // Convert to float for proper blending
 
-                    SetPixelAlpha(offscreen_canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), alpha);
+                    SetPixelAlpha(canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), alpha);
 
                     // For larger snow particles, draw a cluster with rotation
                     if (p.size > 1.5f)
@@ -906,7 +906,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
                                 if (rx >= 0 && rx < matrix_width && ry >= 0 && ry < matrix_height)
                                 {
                                     float sub_alpha = alpha * 0.6f;
-                                    SetPixelAlpha(offscreen_canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), sub_alpha);
+                                    SetPixelAlpha(canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), sub_alpha);
                                 }
                             }
                         }
@@ -924,7 +924,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
                         if (ry >= 0 && ry < matrix_height)
                         {
                             float streak_alpha = alpha * (1.0f - i * (1.0f / 3.0f));
-                            SetPixelAlpha(offscreen_canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), streak_alpha);
+                            SetPixelAlpha(canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), streak_alpha);
                         }
                     }
                 }
@@ -933,7 +933,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(const RGBMatrixBase *matrix, 
     }
 }
 
-void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderClouds(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_animations->get())
         return;
@@ -1005,7 +1005,7 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
                             uint8_t blue_tint = base_gray + 22 + static_cast<uint8_t>(5 * sin(cloud_phase + e));
                             float alpha = cloud_intensity * edge_factor * (0.7f + 0.3f * (1.0f - i / (float)cloud_layers.size()));
 
-                            SetPixelAlpha(offscreen_canvas, px, py, base_gray, base_gray, blue_tint, alpha);
+                            SetPixelAlpha(canvas, px, py, base_gray, base_gray, blue_tint, alpha);
                         }
                     }
                 }
@@ -1014,7 +1014,7 @@ void Scenes::WeatherScene::renderClouds(const RGBMatrixBase *matrix, const Weath
     }
 }
 
-void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
+void Scenes::WeatherScene::renderLightning(rgb_matrix::FrameCanvas *canvas)
 {
     if (!enable_lightning->get() || !enable_animations->get())
         return;
@@ -1045,7 +1045,7 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
             {
                 for (int x = 0; x < matrix_width; x++)
                 {
-                    offscreen_canvas->SetPixel(x, y, 255, 255, 200);
+                    canvas->SetPixel(x, y, 255, 255, 200);
                 }
             }
         }
@@ -1057,7 +1057,7 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
                 if (point.first >= 0 && point.first < matrix_width &&
                     point.second >= 0 && point.second < matrix_height)
                 {
-                    offscreen_canvas->SetPixel(point.first, point.second, 200, 200, 255);
+                    canvas->SetPixel(point.first, point.second, 200, 200, 255);
                 }
             }
         }
@@ -1089,7 +1089,7 @@ void Scenes::WeatherScene::renderLightning(const RGBMatrixBase *matrix)
     }
 }
 
-void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderSunRays(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_sun_rays->get() || !enable_animations->get() || !data.is_day)
         return;
@@ -1126,7 +1126,7 @@ void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const Weat
                     {
                         // Get existing pixel to blend with (background effect)
                         uint8_t existing_r, existing_g, existing_b;
-                        offscreen_canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
+                        canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
 
                         // Calculate ray intensity - fades out and gets more subtle
                         float base_intensity = 1.0f - distance_factor;
@@ -1138,7 +1138,7 @@ void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const Weat
                         uint8_t sun_g = 220;
                         uint8_t sun_b = 100 + static_cast<uint8_t>(50 * distance_factor);
 
-                        SetPixelAlpha(offscreen_canvas, x, y, sun_r, sun_g, sun_b, final_intensity);
+                        SetPixelAlpha(canvas, x, y, sun_r, sun_g, sun_b, final_intensity);
                     }
                 }
             }
@@ -1146,7 +1146,7 @@ void Scenes::WeatherScene::renderSunRays(const RGBMatrixBase *matrix, const Weat
     }
 }
 
-void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderFogMist(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_animations->get())
         return;
@@ -1172,7 +1172,7 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
         static int last_matrix_width = 0, last_matrix_height = 0;
         const int NUM_PATCHES = 7 + rand() % 3; // 7-9 patches for variety
 
-        // Reinitialize if matrix size changes or not initialized
+        // Reinitialize if canvas size changes or not initialized
         if (!fog_initialized || last_matrix_width != matrix_width || last_matrix_height != matrix_height) {
             fog_patches.clear();
             for (int i = 0; i < NUM_PATCHES; ++i) {
@@ -1222,7 +1222,7 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
                             // Blend with background, don't overpower text
                             if (local_alpha > 0.05f) {
                                 uint8_t fog_gray = 160 + static_cast<uint8_t>(30 * patch.density);
-                                SetPixelAlpha(offscreen_canvas, x, y, fog_gray, fog_gray, fog_gray + 10, std::min(local_alpha, 0.35f));
+                                SetPixelAlpha(canvas, x, y, fog_gray, fog_gray, fog_gray + 10, std::min(local_alpha, 0.35f));
                             }
                         }
                     }
@@ -1233,13 +1233,13 @@ void Scenes::WeatherScene::renderFogMist(const RGBMatrixBase *matrix, const Weat
         for (int y = 0; y < matrix_height; ++y) {
             float grad_alpha = 0.08f * (1.0f - y / (float)matrix_height);
             for (int x = 0; x < matrix_width; ++x) {
-                SetPixelAlpha(offscreen_canvas, x, y, 180, 180, 190, grad_alpha);
+                SetPixelAlpha(canvas, x, y, 180, 180, 190, grad_alpha);
             }
         }
     }
 }
 
-void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, const WeatherData &data)
+void Scenes::WeatherScene::renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_rainbow->get() || !enable_animations->get())
         return;
@@ -1307,7 +1307,7 @@ void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, cons
                         uint8_t r = static_cast<uint8_t>(std::min(255.0f, (r_f + m) * 255.0f));
                         uint8_t g = static_cast<uint8_t>(std::min(255.0f, (g_f + m) * 255.0f));
                         uint8_t b = static_cast<uint8_t>(std::min(255.0f, (b_f + m) * 255.0f));
-                        offscreen_canvas->SetPixel(x, y, r, g, b);
+                        canvas->SetPixel(x, y, r, g, b);
                     }
                 }
             }
@@ -1315,7 +1315,7 @@ void Scenes::WeatherScene::renderRainbowEffect(const RGBMatrixBase *matrix, cons
     }
 }
 
-void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix)
+void Scenes::WeatherScene::renderAurora(rgb_matrix::FrameCanvas *canvas)
 {
     if (!enable_aurora->get() || !enable_animations->get())
         return;
@@ -1330,7 +1330,7 @@ void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix)
         for (int x = 0; x < matrix_width; x++)
         {
             for (int y = 0; y < matrix_height; y++)
-            { // Span whole matrix
+            { // Span whole canvas
                 // Create flowing aurora waves with more complexity
                 float wave1 = sin(aurora_continuous_time + x * 0.15f + y * 0.08f);
                 float wave2 = sin(aurora_continuous_time * 1.2f + x * 0.12f - y * 0.05f);
@@ -1353,7 +1353,7 @@ void Scenes::WeatherScene::renderAurora(const RGBMatrixBase *matrix)
                     uint8_t g = static_cast<uint8_t>(intensity * 180 + color_shift * 40);
                     uint8_t b = static_cast<uint8_t>(intensity * 120 - color_shift * 30);
 
-                    SetPixelAlpha(offscreen_canvas, x, y, r, g, b, alpha);
+                    SetPixelAlpha(canvas, x, y, r, g, b, alpha);
                 }
             }
         }

@@ -17,8 +17,8 @@ namespace AmbientScenes {
             gen(rd()) {
     }
 
-    void StarFieldScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void StarFieldScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         stars.resize(num_stars->get());
         dis = std::uniform_real_distribution<>(0.0, 1.0);
 
@@ -30,11 +30,11 @@ namespace AmbientScenes {
         }
     }
 
-    bool StarFieldScene::render(RGBMatrixBase *matrix) {
-        offscreen_canvas->Clear();
+    bool StarFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
+        canvas->Clear();
 
-        int center_x = matrix->width() / 2;
-        int center_y = matrix->height() / 2;
+        int center_x = matrix_width / 2;
+        int center_y = matrix_height / 2;
 
         for (auto &star: stars) {
             star.update(speed->get());
@@ -59,8 +59,8 @@ namespace AmbientScenes {
             }
 
             // Draw star if it's within bounds
-            if (x >= 0 && x < matrix->width() && y >= 0 && y < matrix->height()) {
-                offscreen_canvas->SetPixel(x, y, brightness, brightness, brightness);
+            if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
+                canvas->SetPixel(x, y, brightness, brightness, brightness);
 
                 // Add subtle glow for closer stars
                 if (star.z < max_depth->get() * 0.3f) {
@@ -70,8 +70,8 @@ namespace AmbientScenes {
                             if (dx == 0 && dy == 0) continue;
                             int gx = x + dx;
                             int gy = y + dy;
-                            if (gx >= 0 && gx < matrix->width() && gy >= 0 && gy < matrix->height()) {
-                                offscreen_canvas->SetPixel(gx, gy, glow, glow, glow);
+                            if (gx >= 0 && gx < matrix_width && gy >= 0 && gy < matrix_height) {
+                                canvas->SetPixel(gx, gy, glow, glow, glow);
                             }
                         }
                     }

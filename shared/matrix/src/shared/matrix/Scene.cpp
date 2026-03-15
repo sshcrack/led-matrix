@@ -62,8 +62,8 @@ void Scenes::Scene::initialize(int width, int height)
     if (initialized)
         return;
 
-    matrix_height = width;
-    matrix_width = height;
+    matrix_width = width;
+    matrix_height = height;
     initialized = true;
 }
 

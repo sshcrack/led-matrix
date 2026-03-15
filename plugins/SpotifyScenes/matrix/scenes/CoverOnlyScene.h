@@ -32,7 +32,7 @@ namespace Scenes {
             "bpm_slowdown_threshold", float, 110.0f);
         PropertyPointer<bool> disable_cover_animation = MAKE_PROPERTY("disable_cover_animation", bool, true);
 
-        bool DisplaySpotifySong(rgb_matrix::RGBMatrixBase *matrix);
+        bool DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas);
 
         std::shared_mutex state_mtx;
         std::optional<SpotifyState> curr_state;
@@ -70,7 +70,7 @@ namespace Scenes {
 
         ~CoverOnlyScene() override;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         [[nodiscard]] int get_weight() const override;
 

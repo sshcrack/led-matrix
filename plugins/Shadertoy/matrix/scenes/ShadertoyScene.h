@@ -19,14 +19,14 @@ namespace Scenes {
         bool showing_loading_animation = false;
         uint loading_animation_frame = 0;
 
-        void render_loading_animation();
+        void render_loading_animation(rgb_matrix::FrameCanvas *canvas);
 
     public:
         ShadertoyScene();
 
         ~ShadertoyScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
 
@@ -38,7 +38,7 @@ namespace Scenes {
 
         int get_default_weight() override { return 5; }
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
+        void after_render_stop() override;
 
         // Properties for the scene
         PropertyPointer<nlohmann::json> json_providers = MAKE_PROPERTY(

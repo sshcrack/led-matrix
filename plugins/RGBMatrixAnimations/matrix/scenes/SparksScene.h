@@ -19,7 +19,7 @@ namespace Scenes {
 
         [[nodiscard]] string get_name() const override;
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
+        void after_render_stop() override;
 
 
         tmillis_t get_default_duration() override {

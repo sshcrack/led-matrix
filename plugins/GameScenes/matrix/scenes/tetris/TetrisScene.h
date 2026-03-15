@@ -56,11 +56,11 @@ namespace Scenes {
     public:
         explicit TetrisScene();
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
+        void after_render_stop() override;
 
         [[nodiscard]] std::string get_name() const override;
 

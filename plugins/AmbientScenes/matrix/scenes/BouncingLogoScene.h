@@ -16,15 +16,15 @@ namespace AmbientScenes {
         PropertyPointer<int> size = MAKE_PROPERTY("size", int, 16);
 
         void change_color();
-        void draw_logo(int x, int y);
+        void draw_logo(rgb_matrix::FrameCanvas *canvas, int x, int y);
 
     public:
         explicit BouncingLogoScene();
         ~BouncingLogoScene() override = default;
 
         void register_properties() override;
-        bool render(RGBMatrixBase *matrix) override;
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
+        void initialize(int width, int height) override;
 
         tmillis_t get_default_duration() override { return 30000; }
         int get_default_weight() override { return 1; }

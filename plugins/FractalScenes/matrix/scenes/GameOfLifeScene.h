@@ -17,9 +17,9 @@ namespace Scenes {
 
         ~GameOfLifeScene() override = default;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
 

@@ -7,10 +7,10 @@ using namespace Scenes;
 GameOfLifeScene::GameOfLifeScene() : Scene() {
 }
 
-void GameOfLifeScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, l_offscreen_canvas);
-    width = matrix->width();
-    height = matrix->height();
+void GameOfLifeScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
+    width = matrix_width;
+    height = matrix_height;
     
     // Setup grid sizes
     current_grid.resize(width * height);
@@ -26,7 +26,7 @@ void GameOfLifeScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas 
     reset_simulation();
 }
 
-bool GameOfLifeScene::render(RGBMatrixBase *matrix) {
+bool GameOfLifeScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
     last_update = current_time;
@@ -48,7 +48,7 @@ bool GameOfLifeScene::render(RGBMatrixBase *matrix) {
     }
     
     // Render the current state
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -56,7 +56,7 @@ bool GameOfLifeScene::render(RGBMatrixBase *matrix) {
             if (current_grid[idx]) {
                 uint8_t r, g, b;
                 get_cell_color(cell_ages[idx], r, g, b);
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
         }
     }
