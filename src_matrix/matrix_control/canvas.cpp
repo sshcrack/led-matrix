@@ -31,17 +31,11 @@ namespace
 {
     std::vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> build_weighted_scenes(
         const std::vector<std::shared_ptr<Scenes::Scene>> &scenes,
-        bool is_desktop_connected,
-        const std::shared_ptr<Scenes::Scene> &exclude_scene = nullptr)
+        bool is_desktop_connected)
     {
         std::vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> weighted_scenes;
         for (const auto &item : scenes)
         {
-            if (exclude_scene != nullptr && item == exclude_scene)
-            {
-                continue;
-            }
-
             auto weight = item->get_weight();
             if (weight <= 0)
                 continue;
@@ -110,19 +104,6 @@ namespace
     bool should_schedule_transition(tmillis_t transition_duration, tmillis_t scene_duration)
     {
         return transition_duration > 0 && transition_duration < scene_duration;
-    }
-
-    bool is_same_scene_selection(const std::shared_ptr<Scenes::Scene> &current_scene,
-                                 const std::shared_ptr<Scenes::Scene> &candidate_scene)
-    {
-        if (candidate_scene == nullptr || current_scene == nullptr)
-        {
-            return false;
-        }
-
-        return candidate_scene == current_scene ||
-               candidate_scene->get_uuid() == current_scene->get_uuid() ||
-               candidate_scene->get_name() == current_scene->get_name();
     }
 
     void copy_canvas(FrameCanvas *dst, FrameCanvas *src, int width, int height)
@@ -215,11 +196,10 @@ void render_fallback(RGBMatrixBase *canvas)
     rgb_matrix::DrawText(canvas, ERROR_FONT, 0, 11, ERROR_COLOR, "No scene available");
 }
 
-void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, FrameCanvas **second_offscreen_canvas, FrameCanvas **composite_offscreen_canvas)
+void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas, FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene)
 {
     const auto preset = config->get_curr();
-    auto scenes = preset->scenes;
-    auto forced_scene = std::shared_ptr<Scenes::Scene>(nullptr);
+    const auto &scenes = preset->scenes;
     const int matrix_width = matrix->width();
     const int matrix_height = matrix->height();
 
@@ -229,10 +209,11 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
             item->initialize(matrix_width, matrix_height);
     }
 
-    int cantFindScene = 0;
+    int no_scene_count = 0;
     while (!exit_canvas_update)
     {
         bool is_desktop_connected = Server::is_desktop_connected();
+
         std::shared_ptr<Scenes::Scene> scene = forced_scene;
         forced_scene = nullptr;
         if (scene == nullptr)
@@ -243,9 +224,9 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
 
         if (scene == nullptr)
         {
-            if (cantFindScene < 3)
+            if (no_scene_count < 3)
                 error("Could not find scene to display.");
-            cantFindScene++;
+            no_scene_count++;
 
             Server::currScene = nullptr;
             render_fallback(matrix);
@@ -258,49 +239,61 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
             continue;
         }
 
-        cantFindScene = 0;
+        no_scene_count = 0;
         const tmillis_t start_ms = GetTimeInMillis();
         const tmillis_t end_ms = start_ms + scene->get_duration();
+
         notify_scene_active(scene);
 
-        std::shared_ptr<Scenes::Scene> next_scene = nullptr;
+        std::shared_ptr<Scenes::Scene> next_scene;
         const auto transition_duration = resolve_transition_duration(preset, scene);
-        auto transition_start_ms = end_ms;
+        const auto transition_name = resolve_transition_name(preset, scene);
         if (should_schedule_transition(transition_duration, scene->get_duration()))
         {
-            transition_start_ms = end_ms - transition_duration;
-            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene);
+            const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected);
             next_scene = select_scene(weighted_scenes);
-            // Skip transition when the selected scene is effectively the same scene again.
-            if (is_same_scene_selection(scene, next_scene))
-            {
-                next_scene = nullptr;
-            }
             if (next_scene != nullptr && !next_scene->is_initialized())
             {
                 next_scene->initialize(matrix_width, matrix_height);
             }
         }
 
-        Constants::isRenderingSceneInitially = true;
-        bool transitioned_to_next = false;
-        bool transition_started = false;
+        // Phase 1: render current scene until transition window or scene end
+        bool early_exit = false;
         while (GetTimeInMillis() < end_ms)
         {
-            const auto now_ms = GetTimeInMillis();
-            const bool in_transition_window = next_scene != nullptr && now_ms >= transition_start_ms;
+            const auto should_continue = scene->render(composite_offscreen_canvas);
 
-            if (in_transition_window)
+            if (!should_continue || interrupt_received || exit_canvas_update)
             {
-                if (!transition_started)
-                {
-                    scene->before_transition_stop();
-                    transition_started = true;
-                }
+                trace("Exiting scene early.");
+                early_exit = true;
+                break;
+            }
 
-                const auto current_continue = scene->render(*first_offscreen_canvas);
-                const auto next_continue = next_scene->render(*second_offscreen_canvas);
-                Constants::isRenderingSceneInitially = false;
+            if (Constants::global_post_processor)
+            {
+                Constants::global_post_processor->apply_effects(composite_offscreen_canvas);
+            }
+
+            composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
+
+#ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+#endif
+        }
+
+        // Phase 2: cross-fade to next scene
+        if (!early_exit && next_scene != nullptr)
+        {
+            scene->before_transition_stop();
+
+            tmillis_t transition_start_ms = GetTimeInMillis();
+            while (true)
+            {
+                const auto now_ms = GetTimeInMillis();
+                const auto current_continue = scene->render(first_offscreen_canvas);
+                const auto next_continue = next_scene->render(second_offscreen_canvas);
 
                 if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
                 {
@@ -313,10 +306,9 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
                     static_cast<float>(elapsed_transition) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)),
                     0.0f,
                     1.0f);
-                const auto transition_name = resolve_transition_name(preset, scene);
-                apply_transition_frame(*composite_offscreen_canvas,
-                                       *first_offscreen_canvas,
-                                       *second_offscreen_canvas,
+                apply_transition_frame(composite_offscreen_canvas,
+                                       first_offscreen_canvas,
+                                       second_offscreen_canvas,
                                        alpha_progress,
                                        matrix_width,
                                        matrix_height,
@@ -324,10 +316,10 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
 
                 if (Constants::global_post_processor)
                 {
-                    Constants::global_post_processor->apply_effects(*composite_offscreen_canvas);
+                    Constants::global_post_processor->apply_effects(composite_offscreen_canvas);
                 }
 
-                *composite_offscreen_canvas = matrix->SwapOnVSync(*composite_offscreen_canvas, 1);
+                composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
 
 #ifdef ENABLE_EMULATOR
                 ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
@@ -335,43 +327,13 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, 
 
                 if (alpha_progress >= 1.0f)
                 {
-                    transitioned_to_next = true;
+                    forced_scene = next_scene;
                     break;
                 }
-
-                continue;
             }
-
-            const auto should_continue = scene->render(*first_offscreen_canvas);
-            Constants::isRenderingSceneInitially = false;
-
-            if (!should_continue || interrupt_received || exit_canvas_update)
-            {
-                trace("Exiting scene early.");
-                break;
-            }
-
-            // Check for beat detection from any plugin and trigger post-processing
-            if (Constants::global_post_processor)
-            {
-                Constants::global_post_processor->apply_effects(*first_offscreen_canvas);
-            }
-
-            if (should_continue)
-            {
-                *first_offscreen_canvas = matrix->SwapOnVSync(*first_offscreen_canvas, 1);
-            }
-
-#ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
-#endif
         }
 
         spdlog::debug("Exiting scene: {}", scene->get_name());
         scene->after_render_stop();
-        if (transitioned_to_next && next_scene != nullptr)
-        {
-            forced_scene = next_scene;
-        }
     }
 }

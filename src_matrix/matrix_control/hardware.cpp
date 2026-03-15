@@ -30,6 +30,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
     FrameCanvas *second_offscreen_canvas = matrix->CreateFrameCanvas();
     FrameCanvas *composite_offscreen_Canvas = matrix->CreateFrameCanvas();
     string last_scheduled_preset = "";
+    std::shared_ptr<Scenes::Scene> forced_scene = nullptr;
 
     while (!interrupt_received)
     {
@@ -82,8 +83,9 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
 #endif
         if (!config->is_turned_off())
         {
-            update_canvas(matrix, &first_offscreen_canvas, &second_offscreen_canvas, &composite_offscreen_Canvas);
+            update_canvas(matrix, first_offscreen_canvas, second_offscreen_canvas, composite_offscreen_Canvas, forced_scene);
             exit_canvas_update = false;
+            debug("Outer loop iteration, checking again...");
             continue;
         }
 

@@ -33,11 +33,6 @@ void SleepMillis(tmillis_t milli_seconds)
             skip_image.store(false);
             break;
         }
-
-        if(Constants::isRenderingSceneInitially)
-        {
-            break;
-        }
     }
 }
 
