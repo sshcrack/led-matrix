@@ -61,9 +61,6 @@ namespace Scenes {
         }
 
     public:
-        /// If this variable is set to a nullptr, this plugin will need to render directly onto the matrix and the offscreen_canvas will not get swapped with the matrix.
-        FrameCanvas *offscreen_canvas = nullptr;
-
         Scene();
 
         virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
@@ -99,16 +96,16 @@ namespace Scenes {
         }
 
         /// Set l_offscreen_canvas to nullptr if you are directly rendering onto the matrix.
-        virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
+        virtual void initialize(int width, int height);
 
-        virtual void after_render_stop(RGBMatrixBase *matrix);
+        virtual void after_render_stop();
 
-        virtual void before_transition_stop(RGBMatrixBase *matrix);
+        virtual void before_transition_stop();
 
         [[nodiscard]] bool is_initialized() const;
 
         /// Returns true if the scene should continue rendering, false if not
-        virtual bool render(RGBMatrixBase *matrix) = 0;
+        virtual bool render(FrameCanvas *canvas) = 0;
 
         static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
 

@@ -22,7 +22,7 @@ bool PostProcessor::add_effect(const std::string& effect_name, float duration, f
     return true;
 }
 
-void PostProcessor::process_canvas(RGBMatrixBase* matrix, FrameCanvas* canvas) {
+void PostProcessor::apply_effects(FrameCanvas* canvas) {
     if (active_effects.empty() || !canvas) {
         return;
     }

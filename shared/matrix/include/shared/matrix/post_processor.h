@@ -26,7 +26,7 @@ public:
     bool add_effect(const std::string& effect_name, float duration = 0.5f, float intensity = 1.0f);
     
     // Apply all active post-processing effects to the canvas
-    void process_canvas(RGBMatrixBase* matrix, FrameCanvas* canvas);
+    void apply_effects(FrameCanvas* canvas);
     
     // Clear all effects
     void clear_effects();

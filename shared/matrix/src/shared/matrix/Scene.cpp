@@ -57,14 +57,13 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_js
     return unknown_scene;
 }
 
-void Scenes::Scene::initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas)
+void Scenes::Scene::initialize(int width, int height)
 {
     if (initialized)
         return;
 
-    offscreen_canvas = l_offscreen_canvas;
-    matrix_height = matrix->height();
-    matrix_width = matrix->width();
+    matrix_height = width;
+    matrix_width = height;
     initialized = true;
 }
 
@@ -127,11 +126,11 @@ Scenes::Scene::Scene()
     add_property(transition_name);
 }
 
-void Scenes::Scene::after_render_stop(RGBMatrixBase *matrix)
+void Scenes::Scene::after_render_stop()
 {
 }
 
-void Scenes::Scene::before_transition_stop(RGBMatrixBase *matrix)
+void Scenes::Scene::before_transition_stop()
 {
 }
 
