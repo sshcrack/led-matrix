@@ -215,7 +215,7 @@ void render_fallback(RGBMatrixBase *canvas)
     rgb_matrix::DrawText(canvas, ERROR_FONT, 0, 11, ERROR_COLOR, "No scene available");
 }
 
-void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, FrameCanvas *second_offscreen_canvas, FrameCanvas *composite_offscreen_canvas)
+void update_canvas(RGBMatrixBase *matrix, FrameCanvas **first_offscreen_canvas, FrameCanvas **second_offscreen_canvas, FrameCanvas **composite_offscreen_canvas)
 {
     const auto preset = config->get_curr();
     auto scenes = preset->scenes;
@@ -298,8 +298,8 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, F
                     transition_started = true;
                 }
 
-                const auto current_continue = scene->render(first_offscreen_canvas);
-                const auto next_continue = next_scene->render(second_offscreen_canvas);
+                const auto current_continue = scene->render(*first_offscreen_canvas);
+                const auto next_continue = next_scene->render(*second_offscreen_canvas);
                 Constants::isRenderingSceneInitially = false;
 
                 if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
@@ -314,9 +314,9 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, F
                     0.0f,
                     1.0f);
                 const auto transition_name = resolve_transition_name(preset, scene);
-                apply_transition_frame(composite_offscreen_canvas,
-                                       first_offscreen_canvas,
-                                       second_offscreen_canvas,
+                apply_transition_frame(*composite_offscreen_canvas,
+                                       *first_offscreen_canvas,
+                                       *second_offscreen_canvas,
                                        alpha_progress,
                                        matrix_width,
                                        matrix_height,
@@ -324,10 +324,10 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, F
 
                 if (Constants::global_post_processor)
                 {
-                    Constants::global_post_processor->apply_effects(composite_offscreen_canvas);
+                    Constants::global_post_processor->apply_effects(*composite_offscreen_canvas);
                 }
 
-                composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
+                *composite_offscreen_canvas = matrix->SwapOnVSync(*composite_offscreen_canvas, 1);
 
 #ifdef ENABLE_EMULATOR
                 ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
@@ -342,7 +342,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, F
                 continue;
             }
 
-            const auto should_continue = scene->render(first_offscreen_canvas);
+            const auto should_continue = scene->render(*first_offscreen_canvas);
             Constants::isRenderingSceneInitially = false;
 
             if (!should_continue || interrupt_received || exit_canvas_update)
@@ -354,12 +354,12 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *first_offscreen_canvas, F
             // Check for beat detection from any plugin and trigger post-processing
             if (Constants::global_post_processor)
             {
-                Constants::global_post_processor->apply_effects(first_offscreen_canvas);
+                Constants::global_post_processor->apply_effects(*first_offscreen_canvas);
             }
 
             if (should_continue)
             {
-                first_offscreen_canvas = matrix->SwapOnVSync(first_offscreen_canvas, 1);
+                *first_offscreen_canvas = matrix->SwapOnVSync(*first_offscreen_canvas, 1);
             }
 
 #ifdef ENABLE_EMULATOR
