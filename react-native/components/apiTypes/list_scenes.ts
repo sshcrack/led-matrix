@@ -54,4 +54,4 @@ export type ProviderValue = CollectionProvider | PagesProvider | RandomShaderPro
     }
 };
 
-export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t" | "enum"
+export type TypeId = "string" | "int" | "double" | "bool" | "float" | "millis" | "json" | "int16_t" | "uint8_t" | "enum" | "color" | "string[]"
