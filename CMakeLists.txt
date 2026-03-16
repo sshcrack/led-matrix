@@ -252,6 +252,78 @@ if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
     endif()
 endif()
 
+# ---------------------------------------------------------------------------
+# preview_gen: headless scene-preview GIF generator (emulator builds only)
+# ---------------------------------------------------------------------------
+if(ENABLE_EMULATOR)
+    option(GENERATE_SCENE_PREVIEWS
+        "Generate scene preview GIFs during cmake --install" ON)
+
+    add_executable(preview_gen
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_preview_gen/main.cpp
+    )
+
+    target_compile_features(preview_gen PRIVATE cxx_std_23)
+    target_compile_definitions(preview_gen PRIVATE ENABLE_EMULATOR)
+
+    target_link_libraries(preview_gen PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        spdlog::spdlog
+        nlohmann_json::nlohmann_json
+        unofficial::graphicsmagick::graphicsmagick
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        ${CMAKE_DL_LIBS}
+    )
+
+    # Custom target that generates the GIFs from the build tree.
+    # Run:  cmake --build <build_dir> --target generate_scene_previews
+    add_custom_target(generate_scene_previews
+        COMMAND ${CMAKE_COMMAND} -E env
+            "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib:$ENV{LD_LIBRARY_PATH}"
+            "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
+            $<TARGET_FILE:preview_gen>
+            --output "${CMAKE_BINARY_DIR}/previews"
+        DEPENDS preview_gen ${LIB_NAMES}
+        COMMENT "Generating scene preview GIFs into ${CMAKE_BINARY_DIR}/previews/"
+        VERBATIM
+    )
+
+    # Install the binary itself so users can re-run it manually
+    install(TARGETS preview_gen
+        DESTINATION .
+    )
+
+    # Run preview_gen from the BUILD tree to populate the install tree's previews/
+    # directory.  Using the build tree avoids any install-order dependency between
+    # preview_gen and the plugin SO files, since all build outputs exist before
+    # cmake --install is invoked.
+    if(GENERATE_SCENE_PREVIEWS)
+        install(CODE "
+            set(_preview_bin \"${CMAKE_BINARY_DIR}/preview_gen\")
+            set(_preview_out \"\${CMAKE_INSTALL_PREFIX}/previews\")
+            if(EXISTS \"\${_preview_bin}\")
+                message(STATUS \"Generating scene preview GIFs in \${_preview_out} ...\")
+                file(MAKE_DIRECTORY \"\${_preview_out}\")
+                execute_process(
+                    COMMAND \${CMAKE_COMMAND} -E env
+                        \"LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib\"
+                        \"PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins\"
+                        \"\${_preview_bin}\" --output \"\${_preview_out}\"
+                    RESULT_VARIABLE _preview_result
+                )
+                if(NOT _preview_result EQUAL 0)
+                    message(WARNING \"Scene preview generation exited with code \${_preview_result}\")
+                else()
+                    message(STATUS \"Scene previews generated successfully.\")
+                endif()
+            else()
+                message(WARNING \"preview_gen not found at \${_preview_bin}; skipping preview generation.\")
+            endif()
+        ")
+    endif()
+endif()
+
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
 if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
@@ -330,7 +402,6 @@ if(NOT ENABLE_DESKTOP)
         ARCHIVE DESTINATION . # .lib (Windows static or import lib)
         LIBRARY DESTINATION . # .so/.dylib (Unix)
     )
-
 
     # Install fonts to fonts directory
     install(FILES
