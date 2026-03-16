@@ -14,7 +14,12 @@ namespace Scenes {
         }
 
         void setCanvas(rgb_matrix::Canvas *canvas) {
+            if (canvas_ == canvas) {
+                return;
+            }
+
             canvas_ = canvas;
+            updateDisplay();
         }
 
         void setPixel(uint16_t x, uint16_t y, RGB_color colour) override {
@@ -41,7 +46,6 @@ namespace Scenes {
 
     class ParticleScene : public Scene {
     private:
-        rgb_matrix::Canvas *matrix;
         std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
         std::optional<std::shared_ptr<GravityParticles> > animation;
 
