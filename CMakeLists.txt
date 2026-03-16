@@ -61,8 +61,7 @@ endforeach()
 project(main VERSION 1.11.19)
 include(cmake/update_package_version.cmake)
 
-add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json" TARGET_NAME "update_package_version")
-add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/app.json" TARGET_NAME "update_app_version")
+add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
@@ -268,18 +267,18 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
         message(FATAL_ERROR "pnpm not found! Please install pnpm.")
     endif()
 
-    # Install React Native dependencies
+    # Install React web dependencies
     add_custom_target(react_native_install ALL
         COMMAND /bin/bash -c ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Installing React Native dependencies"
+        COMMENT "Installing React web dependencies"
     )
 
     # Build web version, depends on install
     add_custom_target(react_native_build ALL
-        COMMAND ${NODEJS} node_modules/.bin/expo export --platform web
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native
-        COMMENT "Building React Native web version"
+        COMMAND ${PNPM} run build
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web
+        COMMENT "Building React web version"
         DEPENDS react_native_install
     )
 
@@ -316,7 +315,7 @@ install(DIRECTORY DESTINATION "plugins")
 
 if(NOT ENABLE_DESKTOP)
     # Install web files
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-native/dist/
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
         DESTINATION web
     )
 

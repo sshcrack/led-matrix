@@ -3,7 +3,7 @@ import { Plus, Trash2, Clock, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import useFetch from '~/useFetch'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Card, CardContent } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -20,13 +20,20 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import type { ListPresets } from '~/apiTypes/list_presets'
 
+/** Matches the server's ConfigData::Schedule struct */
 interface Schedule {
-  id?: string
+  id: string
+  name: string
   preset_id: string
-  time: string
-  days: number[]
-  enabled?: boolean
+  start_hour: number    // 0-23
+  start_minute: number  // 0-59
+  end_hour: number      // 0-23
+  end_minute: number    // 0-59
+  days_of_week: number[] // 0=Sun … 6=Sat
+  enabled: boolean
 }
+
+type NewSchedule = Omit<Schedule, 'id'>
 
 interface SchedulingStatus {
   enabled: boolean
@@ -35,6 +42,25 @@ interface SchedulingStatus {
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function formatTime(hour: number, minute: number) {
+  return `${pad(hour)}:${pad(minute)}`
+}
+
+const DEFAULT_NEW: NewSchedule = {
+  name: '',
+  preset_id: '',
+  start_hour: 8,
+  start_minute: 0,
+  end_hour: 17,
+  end_minute: 0,
+  days_of_week: [1, 2, 3, 4, 5],
+  enabled: true,
+}
+
 export default function Schedules() {
   const apiUrl = useApiUrl()
   const { data: schedules, isLoading, setRetry } = useFetch<Record<string, Schedule>>('/schedules')
@@ -42,7 +68,7 @@ export default function Schedules() {
   const { data: presets } = useFetch<ListPresets>('/list_presets')
   const [showCreate, setShowCreate] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [newSchedule, setNewSchedule] = useState<Schedule>({ preset_id: '', time: '08:00', days: [1, 2, 3, 4, 5] })
+  const [newSchedule, setNewSchedule] = useState<NewSchedule>(DEFAULT_NEW)
 
   const handleToggleScheduling = async (enabled: boolean) => {
     if (!apiUrl) return
@@ -60,16 +86,19 @@ export default function Schedules() {
   }
 
   const handleCreate = async () => {
-    if (!apiUrl || !newSchedule.preset_id) return
+    if (!apiUrl || !newSchedule.preset_id || newSchedule.days_of_week.length === 0) {
+      toast.error('Please fill in all fields and select at least one day')
+      return
+    }
     try {
-      await fetch(`${apiUrl}/api/schedule`, {
+      await fetch(`${apiUrl}/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSchedule),
       })
       toast.success('Schedule created')
       setShowCreate(false)
-      setNewSchedule({ preset_id: '', time: '08:00', days: [1, 2, 3, 4, 5] })
+      setNewSchedule(DEFAULT_NEW)
       setRetry(r => r + 1)
     } catch {
       toast.error('Failed to create schedule')
@@ -79,7 +108,7 @@ export default function Schedules() {
   const handleDelete = async (id: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/api/schedule/${id}`, { method: 'DELETE' })
+      await fetch(`${apiUrl}/schedule?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
       toast.success('Schedule deleted')
       setRetry(r => r + 1)
     } catch {
@@ -90,7 +119,9 @@ export default function Schedules() {
   const toggleDay = (day: number) => {
     setNewSchedule(prev => ({
       ...prev,
-      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day]
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter(d => d !== day)
+        : [...prev.days_of_week, day],
     }))
   }
 
@@ -147,14 +178,19 @@ export default function Schedules() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{schedule.preset_id}</span>
+                        <span className="font-medium">{schedule.name || schedule.preset_id}</span>
                       </div>
-                      <p className="text-lg font-semibold">{schedule.time}</p>
+                      <p className="text-sm text-muted-foreground">{schedule.preset_id}</p>
+                      <p className="text-lg font-semibold">
+                        {formatTime(schedule.start_hour, schedule.start_minute)}
+                        {' – '}
+                        {formatTime(schedule.end_hour, schedule.end_minute)}
+                      </p>
                       <div className="flex gap-1 flex-wrap">
                         {DAYS.map((day, i) => (
                           <Badge
                             key={day}
-                            variant={schedule.days.includes(i) ? 'default' : 'outline'}
+                            variant={schedule.days_of_week.includes(i) ? 'default' : 'outline'}
                             className="text-xs px-1.5 py-0"
                           >
                             {day}
@@ -190,12 +226,20 @@ export default function Schedules() {
 
       {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create Schedule</DialogTitle>
-            <DialogDescription>Set a time to automatically switch to a preset.</DialogDescription>
+            <DialogDescription>Automatically switch to a preset during a time window.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                placeholder="e.g. Morning"
+                value={newSchedule.name}
+                onChange={e => setNewSchedule(p => ({ ...p, name: e.target.value }))}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Preset</Label>
               <Select value={newSchedule.preset_id} onValueChange={v => setNewSchedule(p => ({ ...p, preset_id: v }))}>
@@ -209,13 +253,29 @@ export default function Schedules() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Time</Label>
-              <Input
-                type="time"
-                value={newSchedule.time}
-                onChange={e => setNewSchedule(p => ({ ...p, time: e.target.value }))}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Start time</Label>
+                <Input
+                  type="time"
+                  value={formatTime(newSchedule.start_hour, newSchedule.start_minute)}
+                  onChange={e => {
+                    const [h, m] = e.target.value.split(':').map(Number)
+                    setNewSchedule(p => ({ ...p, start_hour: h ?? 0, start_minute: m ?? 0 }))
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End time</Label>
+                <Input
+                  type="time"
+                  value={formatTime(newSchedule.end_hour, newSchedule.end_minute)}
+                  onChange={e => {
+                    const [h, m] = e.target.value.split(':').map(Number)
+                    setNewSchedule(p => ({ ...p, end_hour: h ?? 0, end_minute: m ?? 0 }))
+                  }}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Days</Label>
@@ -226,7 +286,7 @@ export default function Schedules() {
                     type="button"
                     onClick={() => toggleDay(i)}
                     className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                      newSchedule.days.includes(i)
+                      newSchedule.days_of_week.includes(i)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                     }`}
@@ -236,10 +296,20 @@ export default function Schedules() {
                 ))}
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="enabled"
+                checked={newSchedule.enabled}
+                onCheckedChange={v => setNewSchedule(p => ({ ...p, enabled: v }))}
+              />
+              <Label htmlFor="enabled">Enabled</Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!newSchedule.preset_id}>Create</Button>
+            <Button onClick={handleCreate} disabled={!newSchedule.preset_id || newSchedule.days_of_week.length === 0}>
+              Create
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

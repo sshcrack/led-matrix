@@ -64,7 +64,7 @@ function(update_package_json_version_configure)
 
     # Set default values
     if(NOT DEFINED ARGS_PACKAGE_JSON_PATH)
-        set(ARGS_PACKAGE_JSON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/react-native/package.json")
+        set(ARGS_PACKAGE_JSON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/react-web/package.json")
     endif()
 
     # Convert relative path to absolute if needed
@@ -92,7 +92,7 @@ macro(add_package_json_version_update)
 
     # Set default values
     if(NOT DEFINED ARGS_PACKAGE_JSON_PATH)
-        set(ARGS_PACKAGE_JSON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/react-native/package.json")
+        set(ARGS_PACKAGE_JSON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/react-web/package.json")
     endif()
 
     if(NOT DEFINED ARGS_TARGET_NAME)
@@ -140,17 +140,17 @@ endmacro()
 # Usage examples:
 #
 # CONFIGURE-TIME UPDATES (happens during cmake configure step):
-# Default usage (uses ./react-native/package.json):
+# Default usage (uses ./react-web/package.json):
 #    add_package_json_version_update(CONFIGURE_TIME)
 #
 # Custom package.json path at configure time:
 #    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "frontend/package.json")
 #
 # Alternative function for configure-time only:
-#    update_package_json_version_configure(PACKAGE_JSON_PATH "react-native/package.json")
+#    update_package_json_version_configure(PACKAGE_JSON_PATH "react-web/package.json")
 #
 # BUILD-TIME UPDATES (happens during build step - original behavior):
-# Default usage (uses ./react-native/package.json):
+# Default usage (uses ./react-web/package.json):
 #    add_package_json_version_update()
 #
 # Custom package.json path:
@@ -160,13 +160,13 @@ endmacro()
 #    add_package_json_version_update(PACKAGE_JSON_PATH "web/package.json" TARGET_NAME "update_web_version")
 #
 # Multiple package.json files:
-#    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json")
+#    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json")
 #    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "web-app/package.json")
 #
 # RECOMMENDED FOR YOUR USE CASE:
 # Since you want it to happen during configure step, use:
-#    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-native/package.json")
+#    add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json")
 #
 # Manual usage:
 # You can also run this script manually:
-# cmake -DPACKAGE_JSON_PATH="./react-native/package.json" -DPROJECT_VERSION="1.11.0" -P cmake/update_package_version.cmake
+# cmake -DPACKAGE_JSON_PATH="./react-web/package.json" -DPROJECT_VERSION="1.11.0" -P cmake/update_package_version.cmake
