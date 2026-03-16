@@ -324,32 +324,51 @@ Perfect for development, testing, and demonstrations!
 
 #### **Scene Preview GIFs**
 
-The web interface shows animated GIF previews for each scene in the gallery. Previews are generated from the emulator build and then packaged into the deploy directory.
+The web interface shows animated GIF previews for each scene in the gallery. Previews are **committed to git** in the `scene_previews/` directory and deployed with the application.
 
-**First-time full generation** (generates all non-desktop scenes):
+**Generate all scene previews:**
 ```bash
+# Build the emulator first
 cmake --preset emulator
-cmake --build emulator_build
-cmake --build emulator_build --target generate_scene_previews
+cmake --build --preset emulator --target install
+
+# Generate previews (outputs to scene_previews/)
+./scripts/generate_scene_previews.sh --all
 ```
 
-**Incremental generation** (only regenerates scenes whose plugin has changed):
+**Generate specific scenes:**
 ```bash
-cmake --build emulator_build --target generate_scene_previews_incremental
+./scripts/generate_scene_previews.sh --scenes "WaveScene,ColorPulseScene,FractalScene"
 ```
 
-**Manual override** (force specific scenes regardless of fingerprint):
+**Generate from a list file:**
 ```bash
-cmake --build emulator_build --target generate_scene_previews_incremental \
-  -DPREVIEW_SCENES="ColorPulseScene,WaveScene"
+# Create a file with scene names (one per line, # for comments)
+cat > my_scenes.txt << EOF
+WaveScene
+ColorPulseScene
+# FractalScene  (commented out)
+EOF
+
+./scripts/generate_scene_previews.sh --list my_scenes.txt
 ```
 
-**Disable preview install** (skip GIF install step during `cmake --install`):
+**Customize preview parameters:**
 ```bash
-cmake --preset emulator -DGENERATE_SCENE_PREVIEWS=OFF
+./scripts/generate_scene_previews.sh --all \
+  --fps 20 \
+  --frames 120 \
+  --width 128 \
+  --height 128
 ```
 
-**Desktop-dependent scenes** (VideoScene, AudioSpectrumScene, ShadertoyScene, etc.) cannot be rendered headlessly and must be captured manually with the desktop app running:
+**Commit previews to git:**
+```bash
+git add scene_previews/
+git commit -m "Update scene previews"
+```
+
+**Desktop-dependent scenes** (VideoScene, AudioSpectrumScene, ShadertoyScene, etc.) cannot be generated headlessly and must be captured manually:
 ```bash
 # 1. Start the emulator (non-headless) and the desktop app
 ./scripts/run_emulator.sh &
@@ -361,17 +380,25 @@ cmake --preset emulator -DGENERATE_SCENE_PREVIEWS=OFF
 # Options:
 #   --scenes AudioSpectrumScene,ShadertoyScene   # specific scenes only
 #   --duration 8                                 # capture 8 seconds per scene
-#   --output ./emulator_build/previews           # output directory (default)
+#   --output ./scene_previews                    # output directory
 ```
 
 **Full deploy workflow:**
 ```bash
-# 1. Generate/update previews on the host (emulator build)
-cmake --build emulator_build --target generate_scene_previews_incremental
+# 1. Generate/update previews (outputs to scene_previews/)
+./scripts/generate_scene_previews.sh --all
 
-# 2. Cross-compile and deploy (build_upload.sh syncs previews automatically)
+# 2. Commit previews to git
+git add scene_previews/
+git commit -m "Update scene previews"
+
+# 3. Cross-compile and deploy
+cmake --preset cross-compile
+cmake --build <build_dir>
+cmake --build <build_dir> --target install
+
+# Or use the build_upload.sh helper script
 ./scripts/build_upload.sh
-# Pass SKIP_PREVIEWS=1 to skip preview sync if emulator build is not available.
 ```
 
 ### 🌐 **Web App Development**
@@ -482,7 +509,7 @@ By default, the main index page will redirect you to the web controller (located
 | `GET` | `/list_providers` | Available image providers |
 | `GET` | `/scene_preview?name=<scene_name>` | Preview GIF for a scene (if available) |
 
-> **Scene Previews:** GIF files are placed in the `previews/` directory next to the matrix executable (e.g. `/opt/led-matrix/previews/WaveScene.gif`). Generate them automatically with `cmake --build emulator_build --target generate_scene_previews` (or the `_incremental` variant). For scenes that require the desktop app, use `scripts/capture_desktop_preview.sh`. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
+> **Scene Previews:** GIF files are pre-generated and committed to git in the `scene_previews/` directory. They are deployed to `<install_dir>/scene_previews/` and accessible via the `/scene_preview?name=<scene_name>` endpoint. To generate or update previews, use the `./scripts/generate_scene_previews.sh` script. After generating, commit the GIFs to git before deploying. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
 
 ### ⚙️ **System Control**
 

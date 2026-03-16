@@ -48,7 +48,7 @@ namespace fs = std::filesystem;
 // ---------------------------------------------------------------------------
 // Argument parsing helpers
 // ---------------------------------------------------------------------------
-static bool parse_int(const char *str, int &out)
+static bool parse_int(const char* str, int& out)
 {
     try
     {
@@ -64,7 +64,7 @@ static bool parse_int(const char *str, int &out)
 struct Args
 {
     std::string output_dir = "./previews";
-    std::string filter_scene;            // legacy --scene (single scene)
+    std::string filter_scene; // legacy --scene (single scene)
     std::vector<std::string> filter_scenes; // --scenes (comma-separated list)
     int fps = 15;
     int total_frames = 90; // 6 seconds @ 15 fps
@@ -74,7 +74,7 @@ struct Args
     std::string manifest_out; // path for --manifest-out; empty = stdout
 };
 
-static Args parse_args(int argc, char *argv[])
+static Args parse_args(int argc, char* argv[])
 {
     Args a;
     for (int i = 1; i < argc; ++i)
@@ -124,7 +124,7 @@ static Args parse_args(int argc, char *argv[])
 // ---------------------------------------------------------------------------
 // Read all pixels from a FrameCanvas into a flat RGB byte vector
 // ---------------------------------------------------------------------------
-static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas *canvas,
+static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas* canvas,
                                            int w, int h)
 {
     std::vector<uint8_t> buf(static_cast<size_t>(w * h * 3));
@@ -146,7 +146,7 @@ static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas *canvas,
 // ---------------------------------------------------------------------------
 // Convert a flat RGB buffer to a GraphicsMagick Image with a GIF delay
 // ---------------------------------------------------------------------------
-static Magick::Image make_frame(const std::vector<uint8_t> &rgb,
+static Magick::Image make_frame(const std::vector<uint8_t>& rgb,
                                 int w, int h,
                                 size_t delay_centiseconds)
 {
@@ -155,7 +155,7 @@ static Magick::Image make_frame(const std::vector<uint8_t> &rgb,
                       Magick::Color(0, 0, 0));
     img.modifyImage();
 
-    Magick::PixelPacket *pixels =
+    Magick::PixelPacket* pixels =
         img.getPixels(0, 0, static_cast<size_t>(w), static_cast<size_t>(h));
 
     // Scale each 8-bit channel to the full Quantum range [0, MaxRGB].
@@ -164,11 +164,11 @@ static Magick::Image make_frame(const std::vector<uint8_t> &rgb,
     for (size_t i = 0; i < total; ++i)
     {
         using MagickLib::Quantum;
-        pixels[i].red   = static_cast<Quantum>(
-            static_cast<unsigned long>(rgb[i * 3])     * MaxRGB / 255UL);
+        pixels[i].red = static_cast<Quantum>(
+            static_cast<unsigned long>(rgb[i * 3]) * MaxRGB / 255UL);
         pixels[i].green = static_cast<Quantum>(
             static_cast<unsigned long>(rgb[i * 3 + 1]) * MaxRGB / 255UL);
-        pixels[i].blue  = static_cast<Quantum>(
+        pixels[i].blue = static_cast<Quantum>(
             static_cast<unsigned long>(rgb[i * 3 + 2]) * MaxRGB / 255UL);
         pixels[i].opacity = 0; // fully opaque
     }
@@ -182,7 +182,7 @@ static Magick::Image make_frame(const std::vector<uint8_t> &rgb,
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     spdlog::cfg::load_env_levels();
 
@@ -216,12 +216,18 @@ int main(int argc, char *argv[])
     emu_opts.headless = true;
     emu_opts.refresh_rate_hz = args.fps;
 
-    rgb_matrix::EmulatorMatrix *matrix =
+    rgb_matrix::EmulatorMatrix* matrix =
         rgb_matrix::EmulatorMatrix::Create(led_opts, emu_opts);
     if (!matrix)
     {
         spdlog::error("Failed to create headless emulator matrix.");
         return 1;
+    }
+
+
+    if (!filesystem::exists(Constants::root_dir))
+    {
+        filesystem::create_directory(Constants::root_dir);
     }
 
     // ---- initialise shared globals expected by SharedToolsMatrix ----------
@@ -236,15 +242,21 @@ int main(int argc, char *argv[])
     config = new Config::MainConfig(cfg_path.string());
 
     // ---- load plugins ------------------------------------------------------
-    spdlog::info("Loading plugins…");
+    spdlog::trace("Loading plugins…");
     const auto pl = Plugins::PluginManager::instance();
     pl->initialize();
 
-    const auto &wrappers = pl->get_scenes();
+    for (auto plugin : pl->get_plugins())
+    {
+        plugin->before_server_init();
+        plugin->after_server_init();
+    }
+
+    const auto& wrappers = pl->get_scenes();
     if (wrappers.empty())
     {
         spdlog::warn("No scenes found. Make sure PLUGIN_DIR points to the "
-                     "built plugins directory.");
+            "built plugins directory.");
     }
 
     // ---- dump-manifest mode: output scene→plugin mapping then exit --------
@@ -252,7 +264,7 @@ int main(int argc, char *argv[])
     {
         nlohmann::json manifest = nlohmann::json::array();
 
-        for (const auto &wrapper : wrappers)
+        for (const auto& wrapper : wrappers)
         {
             const std::string scene_name = wrapper->get_name();
             const bool needs_desktop = wrapper->get_default()->needs_desktop_app();
@@ -260,9 +272,9 @@ int main(int argc, char *argv[])
             std::string plugin_path;
 
             // Find which loaded plugin owns this scene wrapper
-            for (const auto &pi : pl->get_plugins())
+            for (const auto& pi : pl->get_plugins())
             {
-                for (const auto &sw : pi->get_scenes())
+                for (const auto& sw : pi->get_scenes())
                 {
                     if (sw->get_name() == scene_name)
                     {
@@ -276,9 +288,9 @@ int main(int argc, char *argv[])
             }
 
             manifest.push_back({
-                {"name",          scene_name},
-                {"plugin_name",   plugin_name},
-                {"plugin_path",   plugin_path},
+                {"name", scene_name},
+                {"plugin_name", plugin_name},
+                {"plugin_path", plugin_path},
                 {"needs_desktop", needs_desktop},
             });
         }
@@ -311,7 +323,7 @@ int main(int argc, char *argv[])
     }
 
     // ---- allocate a single render canvas ----------------------------------
-    rgb_matrix::FrameCanvas *canvas = matrix->CreateFrameCanvas();
+    rgb_matrix::FrameCanvas* canvas = matrix->CreateFrameCanvas();
     canvas->Clear();
 
     // Timing constants
@@ -323,7 +335,7 @@ int main(int argc, char *argv[])
     int skipped = 0;
 
     // ---- iterate scenes ---------------------------------------------------
-    for (const auto &wrapper : wrappers)
+    for (const auto& wrapper : wrappers)
     {
         const std::string scene_name = wrapper->get_name();
 
@@ -341,8 +353,12 @@ int main(int argc, char *argv[])
         if (!args.filter_scenes.empty())
         {
             bool found = false;
-            for (const auto &f : args.filter_scenes)
-                if (f == scene_name) { found = true; break; }
+            for (const auto& f : args.filter_scenes)
+                if (f == scene_name)
+                {
+                    found = true;
+                    break;
+                }
             if (!found)
                 continue;
         }
@@ -363,7 +379,7 @@ int main(int argc, char *argv[])
             scene->register_properties();
 
             nlohmann::json default_props = nlohmann::json::object();
-            for (const auto &prop : scene->get_properties())
+            for (const auto& prop : scene->get_properties())
                 prop->dump_to_json(default_props);
 
             scene->load_properties(default_props);
@@ -412,7 +428,7 @@ int main(int argc, char *argv[])
             spdlog::info("Saved preview → {}", gif_path.string());
             ++generated;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             spdlog::warn("Scene '{}' failed ({}); skipping — existing preview (if any) preserved.",
                          scene_name, e.what());

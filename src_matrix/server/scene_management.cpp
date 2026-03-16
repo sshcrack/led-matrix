@@ -54,7 +54,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
             json j1 = {
                 {"name", item->get_name()},
                 {"properties", properties_json},
-                {"has_preview", std::filesystem::exists(get_exec_dir() / "previews" / (item->get_name() + ".gif"))},
+                {"has_preview", std::filesystem::exists(get_exec_dir() / "scene_previews" / (item->get_name() + ".gif"))},
                 {"needs_desktop", item->get_default()->needs_desktop_app()}
             };
 
@@ -142,10 +142,10 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         }
 
         const std::string scene_name{qp["name"]};
-        const std::filesystem::path preview_dir = get_exec_dir() / "previews";
+        const std::filesystem::path preview_dir = get_exec_dir() / "scene_previews";
         const std::filesystem::path gif_path = preview_dir / (scene_name + ".gif");
 
-        // Validate path is inside previews dir
+        // Validate path is inside scene_previews dir
         std::error_code ec;
         if (!std::filesystem::exists(gif_path, ec) || ec) {
             return reply_with_error(req, "Preview not found", restinio::status_not_found());
