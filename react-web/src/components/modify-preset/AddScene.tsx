@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ImageOff } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 
 interface AddSceneProps {
   sceneDefinitions: ListScenes[]
@@ -17,6 +18,10 @@ interface AddSceneProps {
 export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string>('')
+  const [imgError, setImgError] = useState(false)
+  const apiUrl = useApiUrl()
+
+  const selectedDef = sceneDefinitions.find(s => s.name === selected)
 
   const handleAdd = () => {
     const def = sceneDefinitions.find(s => s.name === selected)
@@ -35,6 +40,11 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
     setOpen(false)
   }
 
+  const handleSelectChange = (value: string) => {
+    setSelected(value)
+    setImgError(false)
+  }
+
   return (
     <>
       <Button variant="outline" className="gap-2 w-full" onClick={() => setOpen(true)}>
@@ -48,7 +58,7 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
             <DialogTitle>Add Scene</DialogTitle>
             <DialogDescription>Choose the type of scene to add.</DialogDescription>
           </DialogHeader>
-          <Select value={selected} onValueChange={setSelected}>
+          <Select value={selected} onValueChange={handleSelectChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select scene type..." />
             </SelectTrigger>
@@ -58,6 +68,23 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
               ))}
             </SelectContent>
           </Select>
+          {selected && (
+            <div className="rounded-lg border border-border bg-muted overflow-hidden w-full aspect-video flex items-center justify-center">
+              {selectedDef?.has_preview && !imgError ? (
+                <img
+                  src={`${apiUrl}/scene_preview?name=${encodeURIComponent(selected)}`}
+                  alt={`${selected} preview`}
+                  className="w-full h-full object-contain"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
+                  <ImageOff className="h-6 w-6" />
+                  <span className="text-xs">No preview available</span>
+                </div>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!selected}>Add</Button>

@@ -21,7 +21,6 @@ extern "C" PLUGIN_EXPORT void destroyBasicEffects(BasicEffects *c)
 
 BasicEffects::BasicEffects()
 {
-    spdlog::info("BasicEffects plugin initialized");
 }
 
 vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> BasicEffects::create_image_providers()
