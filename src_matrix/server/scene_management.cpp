@@ -54,7 +54,8 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
             json j1 = {
                 {"name", item->get_name()},
                 {"properties", properties_json},
-                {"has_preview", std::filesystem::exists(get_exec_dir() / "previews" / (item->get_name() + ".gif"))}
+                {"has_preview", std::filesystem::exists(get_exec_dir() / "previews" / (item->get_name() + ".gif"))},
+                {"needs_desktop", item->get_default()->needs_desktop_app()}
             };
 
             j.push_back(j1);

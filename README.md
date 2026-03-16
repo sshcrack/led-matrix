@@ -322,6 +322,58 @@ Test your scenes without physical hardware using our SDL2-based emulator:
 
 Perfect for development, testing, and demonstrations!
 
+#### **Scene Preview GIFs**
+
+The web interface shows animated GIF previews for each scene in the gallery. Previews are generated from the emulator build and then packaged into the deploy directory.
+
+**First-time full generation** (generates all non-desktop scenes):
+```bash
+cmake --preset emulator
+cmake --build emulator_build
+cmake --build emulator_build --target generate_scene_previews
+```
+
+**Incremental generation** (only regenerates scenes whose plugin has changed):
+```bash
+cmake --build emulator_build --target generate_scene_previews_incremental
+```
+
+**Manual override** (force specific scenes regardless of fingerprint):
+```bash
+cmake --build emulator_build --target generate_scene_previews_incremental \
+  -DPREVIEW_SCENES="ColorPulseScene,WaveScene"
+```
+
+**Disable preview install** (skip GIF install step during `cmake --install`):
+```bash
+cmake --preset emulator -DGENERATE_SCENE_PREVIEWS=OFF
+```
+
+**Desktop-dependent scenes** (VideoScene, AudioSpectrumScene, ShadertoyScene, etc.) cannot be rendered headlessly and must be captured manually with the desktop app running:
+```bash
+# 1. Start the emulator (non-headless) and the desktop app
+./scripts/run_emulator.sh &
+./desktop_build/bin/led-matrix-desktop &
+
+# 2. Capture desktop-dependent scene previews
+./scripts/capture_desktop_preview.sh --api-url http://localhost:8080
+
+# Options:
+#   --scenes AudioSpectrumScene,ShadertoyScene   # specific scenes only
+#   --duration 8                                 # capture 8 seconds per scene
+#   --output ./emulator_build/previews           # output directory (default)
+```
+
+**Full deploy workflow:**
+```bash
+# 1. Generate/update previews on the host (emulator build)
+cmake --build emulator_build --target generate_scene_previews_incremental
+
+# 2. Cross-compile and deploy (build_upload.sh syncs previews automatically)
+./scripts/build_upload.sh
+# Pass SKIP_PREVIEWS=1 to skip preview sync if emulator build is not available.
+```
+
 ### 🌐 **Web App Development**
 
 Run the development server in minutes:
@@ -408,7 +460,7 @@ By default, the main index page will redirect you to the web controller (located
 |--------|----------|-------------|
 | `GET` | `/status` | System status and current state |
 | `GET` | `/get_curr` | Current scene information |
-| `GET` | `/list_scenes` | Available scenes and plugins |
+| `GET` | `/list_scenes` | Available scenes and plugins (includes `has_preview` and `needs_desktop` per scene) |
 | `GET` | `/toggle` | Toggle display on/off |
 | `GET` | `/skip` | Skip to next scene |
 
@@ -430,7 +482,7 @@ By default, the main index page will redirect you to the web controller (located
 | `GET` | `/list_providers` | Available image providers |
 | `GET` | `/scene_preview?name=<scene_name>` | Preview GIF for a scene (if available) |
 
-> **Scene Previews:** Place GIF files in the `previews/` directory next to the matrix executable (e.g. `/opt/led-matrix/previews/WaveScene.gif`). Use `scripts/record_scene_preview.sh` to record them automatically from the emulator. The `/list_scenes` endpoint includes a `has_preview` field indicating whether a preview GIF exists for each scene.
+> **Scene Previews:** GIF files are placed in the `previews/` directory next to the matrix executable (e.g. `/opt/led-matrix/previews/WaveScene.gif`). Generate them automatically with `cmake --build emulator_build --target generate_scene_previews` (or the `_incremental` variant). For scenes that require the desktop app, use `scripts/capture_desktop_preview.sh`. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
 
 ### ⚙️ **System Control**
 
