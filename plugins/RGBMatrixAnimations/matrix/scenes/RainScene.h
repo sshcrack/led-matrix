@@ -18,15 +18,17 @@ namespace Scenes {
         uint32_t counter;
 
 
-        void initializeParticles() override;
+        void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) override;
 
         void initializeColumns();
 
-        void createColorPalette();
+        void createColorPalette(std::shared_ptr<ParticleMatrixRenderer> renderer);
 
-        void addNewParticles();
+        void addNewParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation);
 
-        void removeOldParticles();
+        void removeOldParticles(std::shared_ptr<GravityParticles> animation);
+    protected:
+        void preRender(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) override;
 
     public:
         explicit RainScene();
@@ -37,10 +39,6 @@ namespace Scenes {
 
         void initialize(int width, int height) override; // Add override here instead
         [[nodiscard]] string get_name() const override;
-
-        void after_render_stop() override {
-        }
-
 
         tmillis_t get_default_duration() override {
             return 20000;

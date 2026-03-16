@@ -173,6 +173,20 @@ namespace
             }
         }
     }
+
+    tmillis_t render_interval_ms_from_visibility(float visibility)
+    {
+        const auto clamped_visibility = std::clamp(visibility, 0.0f, 1.0f);
+
+        // Keep visible scenes responsive while aggressively throttling nearly-hidden scenes.
+        constexpr tmillis_t min_interval_ms = 33;   // ~30 FPS
+        constexpr tmillis_t max_interval_ms = 140;  // ~7 FPS
+
+        const auto interval_range = max_interval_ms - min_interval_ms;
+        const auto interval = max_interval_ms - static_cast<tmillis_t>(clamped_visibility * static_cast<float>(interval_range));
+
+        return std::clamp(interval, min_interval_ms, max_interval_ms);
+    }
 }
 
 void render_fallback(RGBMatrixBase *canvas)
@@ -292,35 +306,44 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
             scene->before_transition_stop();
 
             tmillis_t transition_start_ms = GetTimeInMillis();
-            int iteration = 0;
+            tmillis_t last_current_render_ms = transition_start_ms;
+            tmillis_t last_next_render_ms = transition_start_ms;
+
+            auto current_continue = scene->render(first_offscreen_canvas);
+            auto next_continue = next_scene->render(second_offscreen_canvas);
+
             while (true)
             {
                 const auto now_ms = GetTimeInMillis();
-                auto current_continue = true;
-                auto next_continue = true;
-
-                if (iteration == 0 || iteration % 2 == 0)
-                {
-                    current_continue = scene->render(first_offscreen_canvas);
-                }
-
-                if(iteration == 0 || iteration % 2 == 1)
-                {
-                    next_continue = next_scene->render(second_offscreen_canvas);
-                }
-
-                iteration++;
-                if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
-                {
-                    trace("Exiting scene early.");
-                    break;
-                }
-
                 const auto elapsed_transition = now_ms - transition_start_ms;
                 const auto alpha_progress = std::clamp(
                     static_cast<float>(elapsed_transition) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)),
                     0.0f,
                     1.0f);
+
+                const auto current_visibility = 1.0f - alpha_progress;
+                const auto next_visibility = alpha_progress;
+
+                const auto current_render_interval_ms = render_interval_ms_from_visibility(current_visibility);
+                const auto next_render_interval_ms = render_interval_ms_from_visibility(next_visibility);
+
+                if ((now_ms - last_current_render_ms) >= current_render_interval_ms)
+                {
+                    current_continue = scene->render(first_offscreen_canvas);
+                    last_current_render_ms = now_ms;
+                }
+
+                if ((now_ms - last_next_render_ms) >= next_render_interval_ms)
+                {
+                    next_continue = next_scene->render(second_offscreen_canvas);
+                    last_next_render_ms = now_ms;
+                }
+
+                if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
+                {
+                    trace("Exiting scene early.");
+                    break;
+                }
                 apply_transition_frame(composite_offscreen_canvas,
                                        first_offscreen_canvas,
                                        second_offscreen_canvas,

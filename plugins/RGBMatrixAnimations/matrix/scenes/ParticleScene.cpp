@@ -9,41 +9,72 @@ ParticleScene::ParticleScene()
       prevTime(0),
       lastFpsLog(0),
       frameCount(0),
-      matrix(nullptr) {
+      matrix(nullptr)
+{
 }
 
-void ParticleScene::initialize(int width, int height) {
+void ParticleScene::initialize(int width, int height)
+{
     Scene::initialize(width, height);
     matrix = nullptr;
     renderer.reset();
     animation.reset();
 }
 
-bool ParticleScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (matrix != canvas || !renderer.has_value() || !animation.has_value()) {
+bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
+{
+    if (matrix != canvas && renderer.has_value() && renderer.value())
+    {
+        renderer.value()->setCanvas(canvas);
         matrix = canvas;
-        renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, matrix);
-        animation = std::unique_ptr<GravityParticles, void(*)(GravityParticles *)>(
-            new GravityParticles(renderer.value(), shake->get(), bounce->get()),
-            [](GravityParticles *a) {
+    }
+
+    if (!renderer.has_value() || !animation.has_value() || !renderer.value() || !animation.value())
+    {
+        spdlog::trace("Init particle scenes");
+        matrix = canvas;
+        auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, matrix);
+        auto local_animation = std::shared_ptr<GravityParticles>(
+            new GravityParticles(local_renderer, shake->get(), bounce->get()),
+            [](GravityParticles* a)
+            {
                 delete a;
             }
         );
-        initializeParticles();
+
+        renderer = local_renderer;
+        animation = local_animation;
+
+        initializeParticles(local_renderer, local_animation);
     }
 
-    animation->get()->runCycle();
+    auto current_renderer = renderer.value();
+    auto current_animation = animation.value();
+
+    if (!current_renderer || !current_animation)
+    {
+        spdlog::warn("Particle scene renderer or animation was unexpectedly null, reinitializing on next frame.");
+        renderer.reset();
+        animation.reset();
+        matrix = nullptr;
+        return true;
+    }
+
+    preRender(current_renderer, current_animation);
+    current_animation->runCycle();
 
     uint8_t MAX_FPS = 1000 / delay_ms->get();
     uint32_t t;
-    while ((t = micros() - prevTime) < (100000L / MAX_FPS)) {
+    while ((t = micros() - prevTime) < (100000L / MAX_FPS))
+    {
     }
 
     frameCount++;
     uint64_t now = micros();
 
-    if (now - lastFpsLog >= 1000000) {
-        spdlog::trace("FPS: {:.2f}", (float) frameCount * 1000000.0f / (now - lastFpsLog));
+    if (now - lastFpsLog >= 1000000)
+    {
+        spdlog::trace("FPS: {:.2f}", (float)frameCount * 1000000.0f / (now - lastFpsLog));
         frameCount = 0;
         lastFpsLog = now;
     }
@@ -52,13 +83,15 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas *canvas) {
     return true;
 }
 
-uint64_t ParticleScene::micros() {
+uint64_t ParticleScene::micros()
+{
     uint64_t us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::
         now().time_since_epoch()).count();
     return us;
 }
 
-void ParticleScene::register_properties() {
+void ParticleScene::register_properties()
+{
     add_property(numParticles);
     add_property(velocity);
     add_property(accel);
@@ -67,12 +100,15 @@ void ParticleScene::register_properties() {
     add_property(delay_ms);
 }
 
-void ParticleScene::after_render_stop() {
-    if (this->animation.has_value()) {
-        this->animation->get()->clearParticles();
+void ParticleScene::after_render_stop()
+{
+    if (animation.has_value() && renderer.has_value())
+    {
+        this->particle_on_render_stop(renderer.value(), animation.value());
     }
 
-    animation.reset();
-    renderer.reset();
-    matrix = nullptr;
+    if (this->animation.has_value())
+    {
+        this->animation->get()->clearParticles();
+    }
 }

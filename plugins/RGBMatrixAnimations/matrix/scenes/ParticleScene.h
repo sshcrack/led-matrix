@@ -13,6 +13,10 @@ namespace Scenes {
             : RGBMatrixRenderer(width, height), canvas_(canvas) {
         }
 
+        void setCanvas(rgb_matrix::Canvas *canvas) {
+            canvas_ = canvas;
+        }
+
         void setPixel(uint16_t x, uint16_t y, RGB_color colour) override {
             if (canvas_) {
                 canvas_->SetPixel(x, gridHeight - y - 1, colour.r, colour.g, colour.b);
@@ -36,11 +40,13 @@ namespace Scenes {
     };
 
     class ParticleScene : public Scene {
-    protected:
+    private:
         rgb_matrix::Canvas *matrix;
         std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
-        std::optional<std::unique_ptr<GravityParticles, void(*)(GravityParticles *)> > animation;
+        std::optional<std::shared_ptr<GravityParticles> > animation;
 
+        void after_render_stop() override;
+    protected:
         PropertyPointer<int> numParticles = MAKE_PROPERTY("numParticles", int, 40);
         PropertyPointer<int16_t> velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
         PropertyPointer<int> accel = MAKE_PROPERTY("acceleration", int, 1);
@@ -59,7 +65,11 @@ namespace Scenes {
             return renderer ? renderer->get()->random_int16(a, b) : a + rand() % (b - a);
         }
 
-        virtual void initializeParticles() = 0;
+        virtual void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) = 0;
+        virtual void preRender(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
+        {
+
+        }
 
     public:
         explicit ParticleScene();
@@ -72,6 +82,9 @@ namespace Scenes {
 
         void initialize(int width, int height) override;
 
-        void after_render_stop() override;
+        virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
+        {
+
+        }
     };
 }
