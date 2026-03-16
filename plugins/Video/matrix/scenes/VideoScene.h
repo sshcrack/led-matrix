@@ -16,13 +16,13 @@ class VideoScene : public Scene {
   size_t current_video_index = 0;
   tmillis_t last_switch_time = 0;
 
-  void render_loading_animation();
+  void render_loading_animation(rgb_matrix::FrameCanvas *canvas);
 
 public:
   VideoScene();
   ~VideoScene() override = default;
 
-  bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+  bool render(rgb_matrix::FrameCanvas *canvas) override;
 
   string get_name() const override;
 
@@ -31,7 +31,7 @@ public:
   tmillis_t get_default_duration() override { return 30000; }
   int get_default_weight() override { return 5; }
 
-  void after_render_stop(RGBMatrixBase *matrix) override;
+  void after_render_stop() override;
 
   // Properties
   PropertyPointer<std::vector<std::string>> video_urls =

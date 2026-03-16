@@ -1,6 +1,6 @@
 {
     "name": "rpi-rgb-led-matrix",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A C++ library for controlling RGB LED matrices on Raspberry Pi, with optional emulator support.",
     "homepage": "https://github.com/sshcrack/rpi-rgb-led-matrix",
     "license": "MIT",

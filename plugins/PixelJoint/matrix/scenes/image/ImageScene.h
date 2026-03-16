@@ -80,10 +80,10 @@ class ImageScene final : public Scenes::Scene {
     optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
 
 
-    bool DisplayAnimation(RGBMatrixBase *matrix);
+    bool DisplayAnimation(rgb_matrix::FrameCanvas *canvas);
 
     expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
-    get_next_anim(RGBMatrixBase *matrix, int recursiveness);
+    get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness);
 
     static expected<optional<ImageInfo>, string>
     get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height,
@@ -98,7 +98,7 @@ class ImageScene final : public Scenes::Scene {
 
 public:
     /// Return true if scene should continue rendering
-    bool render(RGBMatrixBase *matrix) override;
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
 
     [[nodiscard]] string get_name() const override;
 

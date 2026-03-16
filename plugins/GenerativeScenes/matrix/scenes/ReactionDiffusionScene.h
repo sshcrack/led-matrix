@@ -16,8 +16,8 @@ namespace GenerativeScenes {
         ReactionDiffusionScene();
         ~ReactionDiffusionScene() override = default;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) override;
-        bool render(RGBMatrixBase *matrix) override;
+        void initialize(int width, int height) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         void register_properties() override;
 
         std::string get_name() const override { return "reaction_diffusion"; }

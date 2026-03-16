@@ -95,41 +95,41 @@ namespace Scenes {
         static RGB getThemeColor(ColorTheme theme, const WeatherData &data);
 
         // Rendering methods
-        void renderCurrentWeather(const RGBMatrixBase *matrix, const WeatherData &data);
-        void renderForecast(const RGBMatrixBase *matrix, const WeatherData &data) const;
-        void renderSunriseSunset(const RGBMatrixBase *matrix, const WeatherData &data) const;
-        void renderClock(const RGBMatrixBase *matrix) const;
+        void renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
+        void renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const;
+        void renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const;
+        void renderClock(rgb_matrix::FrameCanvas *canvas) const;
         void resetStars();
         
         // Enhanced animation methods
         void updateAnimationState(const WeatherData &data);
-        void renderAnimations(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
         void initializeParticles();
 
         // New sophisticated animation methods
-        void renderClouds(const RGBMatrixBase *matrix, const WeatherData &data);
-        void renderLightning(const RGBMatrixBase *matrix);
-        void renderSunRays(const RGBMatrixBase *matrix, const WeatherData &data);
-        void renderFogMist(const RGBMatrixBase *matrix, const WeatherData &data);
-        void renderRainbowEffect(const RGBMatrixBase *matrix, const WeatherData &data);
-        void renderAurora(const RGBMatrixBase *matrix);
+        void renderClouds(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
+        void renderLightning(rgb_matrix::FrameCanvas *canvas);
+        void renderSunRays(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
+        void renderFogMist(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
+        void renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
+        void renderAurora(rgb_matrix::FrameCanvas *canvas);
         
         // Enhanced particle effects
         void updateEnhancedParticles(const WeatherData &data);
-        void renderEnhancedParticles(const RGBMatrixBase *matrix, const WeatherData &data);
+        void renderEnhancedParticles(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
         
         // Shooting star methods
         void updateShootingStars();
-        void renderShootingStars();
+        void renderShootingStars(rgb_matrix::FrameCanvas *canvas);
         void tryCreateShootingStar();
         
         // Shared rendering utilities
         static RGB interpolateColor(const RGB &start, const RGB &end, float progress) ;
-        void applyBackgroundEffects(const RGBMatrixBase *matrix, const RGB &base_color);
+        void applyBackgroundEffects(rgb_matrix::FrameCanvas *canvas, const RGB &base_color);
         
         // Visual styling helpers
-        void drawWeatherBorder(const RGBMatrixBase *matrix, const RGB &color, int brightness_mod) const;
-        void drawPrecipitationIndicator(const RGBMatrixBase *matrix, float probability, int x, int y) const;
+        void drawWeatherBorder(rgb_matrix::FrameCanvas *canvas, const RGB &color, int brightness_mod) const;
+        void drawPrecipitationIndicator(rgb_matrix::FrameCanvas *canvas, float probability, int x, int y) const;
 
         // Location properties
         PropertyPointer<std::string> location_lat = MAKE_PROPERTY("location_lat", std::string, "52.5200");
@@ -156,11 +156,11 @@ namespace Scenes {
         PropertyPointer<int> particle_density = MAKE_PROPERTY_MINMAX("particle_density", int, 5, 1, 10);
 
     public:
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         [[nodiscard]] string get_name() const override;
 
-        void after_render_stop(RGBMatrixBase *matrix) override;
+        void after_render_stop() override;
 
         void register_properties() override {
             add_property(location_lat);

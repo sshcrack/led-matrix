@@ -5,13 +5,13 @@
 
 using namespace std;
 
-bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
+bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frameTime = frameTimer.tick();
     float t = frameTime.t;
 
-    offscreen_canvas->Clear();
-    for (int y = 0; y < matrix->height(); y++) {
-        for (int x = 0; x < matrix->width(); x++) {
+    canvas->Clear();
+    for (int y = 0; y < matrix_height; y++) {
+        for (int x = 0; x < matrix_width; x++) {
             float xp =
                     ((x / 128.0f) - 0.5f) * (5.0f + sin(t * 0.25)) + sin(t * 0.25) * 5.0f;
             float yp =
@@ -28,7 +28,7 @@ bool Scenes::WatermelonPlasmaScene::render(RGBMatrixBase *matrix) {
             float u = pow(cos(9 * pixel + 0.5f * xp + t) * 0.5f + 0.5f, 2);
             float v = pow(sin(9 * pixel + 0.5f * yp + t) * 0.5f + 0.5f, 2);
 
-            floatPixelSet(offscreen_canvas, x, y, u, v, (u + v) / 2);
+            floatPixelSet(canvas, x, y, u, v, (u + v) / 2);
         }
     }
 

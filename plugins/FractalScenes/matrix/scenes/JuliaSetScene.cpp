@@ -6,13 +6,13 @@ using namespace Scenes;
 JuliaSetScene::JuliaSetScene() : Scene() {
 }
 
-void JuliaSetScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-    Scene::initialize(matrix, l_offscreen_canvas);
+void JuliaSetScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
     last_update = std::chrono::steady_clock::now();
     total_time = 0.0f;
 }
 
-bool JuliaSetScene::render(RGBMatrixBase *matrix) {
+bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
     last_update = current_time;
@@ -24,11 +24,11 @@ bool JuliaSetScene::render(RGBMatrixBase *matrix) {
         c = {-0.7f + 0.2f * std::sin(t * 0.3f), 0.27f + 0.1f * std::cos(t * 0.5f)};
     }
     
-    int width = matrix->width();
-    int height = matrix->height();
+    int width = matrix_width;
+    int height = matrix_height;
     
     // Clear the canvas
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
     float aspect_ratio = static_cast<float>(width) / height;
     
@@ -64,7 +64,7 @@ bool JuliaSetScene::render(RGBMatrixBase *matrix) {
                 float hue = std::fmod(smoothed * 0.01f + color_shift->get(), 1.0f);
                 hsv_to_rgb(hue, 0.9f, 1.0f, r, g, b);
                 
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
             // Pixels that exceed the max iterations remain black
         }

@@ -34,6 +34,8 @@ namespace Scenes {
         // Initialize with temporary values instead of calling virtual functions
         PropertyPointer<int> weight = MAKE_PROPERTY("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
+        PropertyPointer<tmillis_t> transition_duration = MAKE_PROPERTY("transition_duration", tmillis_t, 0);
+        PropertyPointer<std::string> transition_name = MAKE_PROPERTY("transition_name", std::string, std::string(""));
 
         std::string uuid;
 
@@ -59,9 +61,6 @@ namespace Scenes {
         }
 
     public:
-        /// If this variable is set to a nullptr, this plugin will need to render directly onto the matrix and the offscreen_canvas will not get swapped with the matrix.
-        FrameCanvas *offscreen_canvas = nullptr;
-
         Scene();
 
         virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
@@ -82,6 +81,10 @@ namespace Scenes {
 
         [[nodiscard]] virtual tmillis_t get_duration() const;
 
+        [[nodiscard]] virtual tmillis_t get_transition_duration() const;
+
+        [[nodiscard]] virtual std::string get_transition_name() const;
+
         [[nodiscard]] virtual nlohmann::json to_json() const;
 
         [[nodiscard]] virtual string get_name() const = 0;
@@ -93,14 +96,16 @@ namespace Scenes {
         }
 
         /// Set l_offscreen_canvas to nullptr if you are directly rendering onto the matrix.
-        virtual void initialize(RGBMatrixBase *matrix, FrameCanvas *l_offscreen_canvas);
+        virtual void initialize(int width, int height);
 
-        virtual void after_render_stop(RGBMatrixBase *matrix);
+        virtual void after_render_stop();
+
+        virtual void before_transition_stop();
 
         [[nodiscard]] bool is_initialized() const;
 
         /// Returns true if the scene should continue rendering, false if not
-        virtual bool render(RGBMatrixBase *matrix) = 0;
+        virtual bool render(FrameCanvas *canvas) = 0;
 
         static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
 

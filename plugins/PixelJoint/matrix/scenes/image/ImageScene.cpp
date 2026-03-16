@@ -16,7 +16,7 @@ using namespace spdlog;
 using rgb_matrix::StreamReader;
 
 
-bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
+bool ImageScene::DisplayAnimation(rgb_matrix::FrameCanvas *canvas) {
     auto curr = &curr_animation.value();
     const tmillis_t start_wait_ms = GetTimeInMillis();
 
@@ -26,12 +26,12 @@ bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
     }
 
     uint32_t delay_us = 0;
-    offscreen_canvas->Clear();
+    canvas->Clear();
 
     //TODO I think this isn't safe like at all
-    if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(offscreen_canvas, &delay_us)) {
+    if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(canvas, &delay_us)) {
         reader->Rewind();
-        if (!reader->GetNext(offscreen_canvas, &delay_us)) {
+        if (!reader->GetNext(canvas, &delay_us)) {
             this->curr_animation.reset();
             return false;
         }
@@ -63,11 +63,11 @@ bool ImageScene::DisplayAnimation(RGBMatrixBase *matrix) {
 }
 
 
-bool ImageScene::render(RGBMatrixBase *matrix) {
+bool ImageScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (!this->curr_animation.has_value()) {
         // This is only called once on first render
         debug("Getting next animation");
-        auto res = get_next_anim(matrix, 0);
+        auto res = get_next_anim(canvas, 0);
         if (!res.has_value()) {
             error("Error getting next animation: {}", res.error());
             return false;
@@ -76,7 +76,7 @@ bool ImageScene::render(RGBMatrixBase *matrix) {
         this->curr_animation.emplace(std::move(res.value()));
     }
 
-    return DisplayAnimation(matrix);
+    return DisplayAnimation(canvas);
 }
 
 Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > &post) {
@@ -88,7 +88,7 @@ Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std:
 }
 
 expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
-ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
+ImageScene::get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness) {
     // NOLINT(*-no-recursion)
 
     if (recursiveness > 10) {
@@ -99,8 +99,8 @@ ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
         this->curr_category = 0;
     }
 
-    int width = matrix->width();
-    int height = matrix->height();
+    int width = matrix_width;
+    int height = matrix_height;
 
 
     auto img_category = providers[this->curr_category];
@@ -115,11 +115,11 @@ ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
         info_res_opt = std::move(next_img->get());
         if (!info_res_opt.value().has_value()) {
             warn("Could not get next image. Trying again. Error was: {}", info_res_opt.value().error());
-            return get_next_anim(matrix, recursiveness + 1);
+            return get_next_anim(canvas, recursiveness + 1);
         }
     } catch (const std::bad_alloc &e) {
         error("Memory allocation failed: {}. Trying next image.", e.what());
-        return get_next_anim(matrix, recursiveness + 1);
+        return get_next_anim(canvas, recursiveness + 1);
     }
 
     auto info_res = std::move(info_res_opt.value());
@@ -131,7 +131,7 @@ ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
         this->curr_category++;
 
         debug("No images left. Flushing and moving onto next category.");
-        return get_next_anim(matrix, recursiveness + 1);
+        return get_next_anim(canvas, recursiveness + 1);
     }
 
     next_img = async(launch::async, get_next_image, img_category, width, height, std::ref(is_exiting));
@@ -141,7 +141,7 @@ ImageScene::get_next_anim(RGBMatrixBase *matrix, int recursiveness) {
     auto filename = raw_ptr->get_filename();
     auto image_url = raw_ptr->get_image_url();
 
-    auto file = GetFileInfo(frames, offscreen_canvas);
+    auto file = GetFileInfo(frames, canvas);
     info("Loaded p_info for {} ({})", filename, image_url);
 
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);

@@ -3,15 +3,15 @@
 
 using namespace Scenes;
 
-bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
+bool PropertyDemoScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frame = frameTimer.tick();
     animation_time += frame.dt;
     
     // Clear canvas
-    offscreen_canvas->Clear();
+    canvas->Clear();
     
-    int width = matrix->width();
-    int height = matrix->height();
+    int width = matrix_width;
+    int height = matrix_height;
     
     // Get enum values for demonstration
     AnimationMode anim_mode = animation_mode->get().get();
@@ -102,7 +102,7 @@ bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                         b = static_cast<uint8_t>((primary.b * anim_factor + secondary.b * (1.0f - anim_factor)) * color_intensity);
                     }
                     
-                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                    canvas->SetPixel(x, y, r, g, b);
                 }
             }
         }
@@ -118,7 +118,7 @@ bool PropertyDemoScene::render(rgb_matrix::RGBMatrixBase *matrix) {
                 uint8_t g = static_cast<uint8_t>(base_color.g * intensity);
                 uint8_t b = static_cast<uint8_t>(base_color.b * intensity);
                 
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
         }
     }

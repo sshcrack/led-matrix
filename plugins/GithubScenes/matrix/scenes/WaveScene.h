@@ -12,15 +12,15 @@ namespace Scenes {
         float *map = nullptr;
         FrameTimer frameTimer;
 
-        void drawMap(RGBMatrixBase *matrix, float *iMap);
+        void drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap);
 
     public:
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         using Scene::Scene::Scene;
         ~WaveScene() override;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
 

@@ -23,12 +23,12 @@ namespace AmbientScenes {
         b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
-    void NeonTunnelScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void NeonTunnelScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         time_counter = 0.0f;
     }
 
-    bool NeonTunnelScene::render(RGBMatrixBase *matrix) {
+    bool NeonTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
         time_counter += 0.05f;
 
         float center_x = matrix_width / 2.0f;
@@ -70,7 +70,7 @@ namespace AmbientScenes {
                 uint8_t r, g, b;
                 hsl_to_rgb(hue, 1.0f, lightness, r, g, b);
 
-                offscreen_canvas->SetPixel(x, y, r, g, b);
+                canvas->SetPixel(x, y, r, g, b);
             }
         }
 

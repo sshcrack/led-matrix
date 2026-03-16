@@ -15,6 +15,8 @@ namespace ConfigData
     struct Preset
     {
         vector<std::shared_ptr<Scenes::Scene>> scenes;
+        tmillis_t transition_duration = 750;
+        std::string transition_name = "blend";  ///< Global default transition effect name
 
         static std::shared_ptr<Preset> create_default();
         ~Preset() = default; // Add explicit destructor

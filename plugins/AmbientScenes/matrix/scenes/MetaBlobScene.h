@@ -29,7 +29,7 @@ namespace AmbientScenes {
         // Shader conversion helpers
         float rand_sin(int i) const;
 
-        Blob get_blob(rgb_matrix::RGBMatrixBase *matrix, int i, float time) const;
+        Blob get_blob(int i, float time) const;
 
         float calculate_field(float x, float y, const Blob &blob) const;
 
@@ -38,9 +38,9 @@ namespace AmbientScenes {
 
         ~MetaBlobScene() override = default;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
         tmillis_t get_default_duration() override {
             return 20000;

@@ -1,0 +1,10 @@
+{
+    "servers": {
+        "led-matrix": {
+            "command": "/home/hendrik/Documents/cpp/led-matrix/scripts/mcp-emulator/.venv/bin/python",
+            "args": [
+                "/home/hendrik/Documents/cpp/led-matrix/scripts/mcp-emulator/server.py"
+            ]
+        }
+    }
+}
