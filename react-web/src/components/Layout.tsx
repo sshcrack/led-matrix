@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Grid3x3, Calendar, Download, Moon, Sun } from 'lucide-react'
+import { Grid3x3, Calendar, Download, Moon, Sun, Images } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import { useState, useEffect } from 'react'
 
@@ -11,6 +11,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/', label: 'Home', icon: <Grid3x3 className="h-5 w-5" /> },
+  { to: '/gallery', label: 'Gallery', icon: <Images className="h-5 w-5" /> },
   { to: '/schedules', label: 'Schedules', icon: <Calendar className="h-5 w-5" /> },
   { to: '/updates', label: 'Updates', icon: <Download className="h-5 w-5" /> },
 ]
