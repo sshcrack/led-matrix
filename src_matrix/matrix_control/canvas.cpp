@@ -97,7 +97,7 @@ namespace
                                         const std::shared_ptr<Scenes::Scene> &scene)
     {
         const auto scene_override = scene->get_transition_name();
-        if (!scene_override.empty())
+        if (!scene_override.empty() && scene_override != Plugins::TRANSITION_NAME_GLOBAL_DEFAULT)
         {
             return scene_override;
         }
