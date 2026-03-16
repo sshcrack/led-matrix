@@ -8,32 +8,28 @@ ParticleScene::ParticleScene()
     : Scene(),
       prevTime(0),
       lastFpsLog(0),
-      frameCount(0),
-      matrix(nullptr)
+      frameCount(0)
 {
 }
 
 void ParticleScene::initialize(int width, int height)
 {
     Scene::initialize(width, height);
-    matrix = nullptr;
     renderer.reset();
     animation.reset();
 }
 
 bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
 {
-    if (matrix != canvas && renderer.has_value() && renderer.value())
+    if (renderer.has_value())
     {
         renderer.value()->setCanvas(canvas);
-        matrix = canvas;
     }
 
-    if (!renderer.has_value() || !animation.has_value() || !renderer.value() || !animation.value())
+    if (!renderer.has_value() || !animation.has_value())
     {
         spdlog::trace("Init particle scenes");
-        matrix = canvas;
-        auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, matrix);
+        auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, canvas);
         auto local_animation = std::shared_ptr<GravityParticles>(
             new GravityParticles(local_renderer, shake->get(), bounce->get()),
             [](GravityParticles* a)
@@ -56,7 +52,6 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
         spdlog::warn("Particle scene renderer or animation was unexpectedly null, reinitializing on next frame.");
         renderer.reset();
         animation.reset();
-        matrix = nullptr;
         return true;
     }
 
@@ -102,13 +97,24 @@ void ParticleScene::register_properties()
 
 void ParticleScene::after_render_stop()
 {
-    if (animation.has_value() && renderer.has_value())
+    if (animation.has_value() && renderer.value())
     {
         this->particle_on_render_stop(renderer.value(), animation.value());
     }
 
-    if (this->animation.has_value())
+    if (animation.has_value())
     {
-        this->animation->get()->clearParticles();
+        animation.value()->clearParticles();
     }
+
+    if (renderer.has_value())
+    {
+        renderer.value()->clearImage();
+    }
+
+    animation.reset();
+    renderer.reset();
+    prevTime = 0;
+    lastFpsLog = 0;
+    frameCount = 0;
 }
