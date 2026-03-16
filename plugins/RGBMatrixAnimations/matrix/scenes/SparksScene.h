@@ -10,7 +10,7 @@ namespace Scenes {
     class SparksScene : public ParticleScene {
         int16_t ax, ay;
 
-        void initializeParticles() override;
+        void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) override;
 
     public:
         explicit SparksScene();
@@ -18,8 +18,6 @@ namespace Scenes {
         ~SparksScene() override = default;
 
         [[nodiscard]] string get_name() const override;
-
-        void after_render_stop() override;
 
 
         tmillis_t get_default_duration() override {
@@ -29,6 +27,8 @@ namespace Scenes {
         int get_default_weight() override {
             return 2;
         }
+
+        void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) override;
     };
 
     class SparksSceneWrapper : public Plugins::SceneWrapper {

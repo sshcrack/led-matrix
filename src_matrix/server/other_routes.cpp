@@ -23,6 +23,13 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         return response.done(); });
 
+    router->http_get("/web", [](auto req, auto)
+                     {
+        auto response = req->create_response(restinio::status_see_other())
+            .append_header(restinio::http_field::location, "/web/");
+        Server::add_cors_headers(response);
+        return response.done(); });
+
     // Static file serving
     router->http_get("/web/:path(.*)", [](auto req, auto params)
                      {

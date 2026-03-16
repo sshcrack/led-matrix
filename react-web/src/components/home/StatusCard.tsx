@@ -7,11 +7,12 @@ import type { Status } from '~/apiTypes/status'
 
 interface StatusCardProps {
   status: Status | null
+  currentPresetLabel?: string | null
   isLoading: boolean
   onToggle: (enabled: boolean) => void
 }
 
-export default function StatusCard({ status, isLoading, onToggle }: StatusCardProps) {
+export default function StatusCard({ status, currentPresetLabel, isLoading, onToggle }: StatusCardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -29,7 +30,7 @@ export default function StatusCard({ status, isLoading, onToggle }: StatusCardPr
   }
 
   const isOn = status ? !status.turned_off : false
-  const currentPreset = status?.current || 'None'
+  const currentPreset = currentPresetLabel || status?.current || 'None'
 
   return (
     <Card>

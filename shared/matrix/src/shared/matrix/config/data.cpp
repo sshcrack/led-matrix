@@ -52,7 +52,8 @@ namespace ConfigData {
         j = json{
             {"scenes", scenes_json},
             {"transition_duration", p->transition_duration},
-            {"transition_name", p->transition_name}
+            {"transition_name", p->transition_name},
+            {"display_name", p->display_name}
         };
     }
 
@@ -159,6 +160,7 @@ namespace ConfigData {
         p->scenes = std::move(scenes);
         p->transition_duration = j.value("transition_duration", static_cast<tmillis_t>(750));
         p->transition_name = j.value("transition_name", std::string("blend"));
+        p->display_name = j.value("display_name", std::string());
     }
 
     void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General *)> &p) {
@@ -192,6 +194,7 @@ namespace ConfigData {
         preset->scenes = scenes;
         preset->transition_duration = 750;
         preset->transition_name = "blend";
+        preset->display_name = "Default";
 
         return {
             preset,

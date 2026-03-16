@@ -37,7 +37,10 @@ export default function NumberProperty({ property, value, onChange }: NumberProp
   const numericValue = Number.isFinite(value) ? value : 0
 
   if (property.type_id === 'millis') {
-    const presets = [250, 500, 750, 1000, 2000, 5000]
+    const defaultPresetDurations = [1000, 1000 * 10, 1000 * 30, 1000 * 60];
+    const transitionDurationPresets = [250, 500, 750, 1000, 2000, 5000];
+
+    const presets = property.name === 'transition_duration' ? transitionDurationPresets : defaultPresetDurations
 
     return (
       <div className="space-y-2">

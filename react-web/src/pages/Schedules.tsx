@@ -125,7 +125,13 @@ export default function Schedules() {
     }))
   }
 
-  const presetNames = presets ? Object.keys(presets) : []
+  const presetOptions = presets
+    ? Object.entries(presets).map(([id, preset]) => ({ id, label: preset.display_name ?? id }))
+    : []
+
+  const presetDisplayById = presets
+    ? Object.fromEntries(Object.entries(presets).map(([id, preset]) => [id, preset.display_name ?? id]))
+    : {}
 
   return (
     <div className="space-y-6">
@@ -180,7 +186,7 @@ export default function Schedules() {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{schedule.name || schedule.preset_id}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{schedule.preset_id}</p>
+                      <p className="text-sm text-muted-foreground">{presetDisplayById[schedule.preset_id] ?? schedule.preset_id}</p>
                       <p className="text-lg font-semibold">
                         {formatTime(schedule.start_hour, schedule.start_minute)}
                         {' – '}
@@ -247,8 +253,8 @@ export default function Schedules() {
                   <SelectValue placeholder="Select preset..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {presetNames.map(name => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  {presetOptions.map(preset => (
+                    <SelectItem key={preset.id} value={preset.id}>{preset.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
