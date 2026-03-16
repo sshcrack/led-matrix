@@ -87,8 +87,8 @@ function AddToPresetDialog({
             <SelectValue placeholder="Select preset..." />
           </SelectTrigger>
           <SelectContent>
-            {presets && Object.keys(presets).map(name => (
-              <SelectItem key={name} value={name}>{name}</SelectItem>
+            {presets && Object.entries(presets).map(([name, preset]) => (
+              <SelectItem key={name} value={name}>{preset.display_name ?? name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
