@@ -136,7 +136,7 @@ jobs:
           tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
 
-      # React Native web build only for led-matrix build
+      # React web build only for led-matrix build
       - name: Install pnpm
         if: matrix.name == 'led-matrix'
         uses: pnpm/action-setup@v4
@@ -150,17 +150,17 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache-dependency-path: "react-native/pnpm-lock.yaml"
+          cache-dependency-path: "react-web/pnpm-lock.yaml"
 
-      - name: Install React Native dependencies
+      - name: Install React web dependencies
         if: matrix.name == 'led-matrix'
-        working-directory: react-native
+        working-directory: react-web
         run: pnpm install
 
-      - name: Build React Native web version
+      - name: Build React web version
         if: matrix.name == 'led-matrix'
-        working-directory: react-native
-        run: pnpm exec expo export --platform web
+        working-directory: react-web
+        run: pnpm run build
 
       - name: Build ${{ matrix.name }}
         uses: lukka/run-cmake@v10

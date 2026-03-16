@@ -325,7 +325,7 @@ bool MyScene::render(rgb_matrix::RGBMatrixBase *matrix) {
 
 ## 🖼️ Image Providers
 Image Providers used (for now) in the ImageScene, where the user can specify if they want images to be displayed from for example a collection of pictures or from PixelJoint. By registering ImageProviders, you are able to add a new source of images to the led matrix.
-A example for a image provider can be found [here](https://github.com/sshcrack/led-matrix/blob/master/plugins/PixelJoint/matrix/providers/collection.cpp). If you want to add a image provider yourself, you'll also need to edit the react-native app to support that provider.
+A example for a image provider can be found [here](https://github.com/sshcrack/led-matrix/blob/master/plugins/PixelJoint/matrix/providers/collection.cpp). If you want to add a image provider yourself, you'll also need to edit the react-web app to support that provider.
 
 ## 🎭 Post-Processing Effects
 

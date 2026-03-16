@@ -94,7 +94,7 @@ jobs:
           tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
 
-      # React Native web build only for led-matrix build
+      # React web build
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -106,15 +106,15 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache-dependency-path: "react-native/pnpm-lock.yaml"
+          cache-dependency-path: "react-web/pnpm-lock.yaml"
 
-      - name: Install React Native dependencies
-        working-directory: react-native
+      - name: Install React web dependencies
+        working-directory: react-web
         run: pnpm install
 
-      - name: Build React Native web version
-        working-directory: react-native
-        run: pnpm exec expo export --platform web
+      - name: Build React web version
+        working-directory: react-web
+        run: pnpm run build
 
       - name: Configure emulator
         uses: lukka/run-cmake@v10

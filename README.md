@@ -174,16 +174,16 @@ The heart of the system - a high-performance application that orchestrates every
 - **RESTful API server** for external control and integration
 - **Configuration persistence** and real-time updates
 
-### 📱 **React Native Mobile App**
-A sleek mobile companion for remote control:
+### 🌐 **React Web App**
+A sleek web companion for remote control, also installable as a PWA on mobile:
 - **Intuitive scene selection** with live previews
 - **Real-time matrix control** from anywhere on your network
 - **Preset management** for quick configuration switching
 - **Schedule management** - Create and manage time-based automation
 - **Image upload functionality** for custom displays
-- Only android for now, I don't have a MacBook unfortunately
+- Works on any device with a modern browser
 
-Located in the `react-native/` directory with modern TypeScript and native performance.
+Located in the `react-web/` directory with Vite, React, TypeScript and Tailwind CSS.
 
 ## 🛠️ **Hardware Support**
 
@@ -322,13 +322,13 @@ Test your scenes without physical hardware using our SDL2-based emulator:
 
 Perfect for development, testing, and demonstrations!
 
-### 📱 **Mobile App Setup**
+### 🌐 **Web App Development**
 
-Get the mobile app running in minutes:
+Run the development server in minutes:
 
 1. **Navigate to the app directory:**
    ```bash
-   cd react-native
+   cd react-web
    ```
 
 2. **Install dependencies:**
@@ -336,11 +336,9 @@ Get the mobile app running in minutes:
    pnpm install
    ```
 
-3. **Launch the app:**
+3. **Launch the dev server:**
    ```bash
-   pnpm run dev:android        # For Android
-   pnpm run dev:ios            # For iOS
-   pnpm run dev:web            # For web
+   pnpm run dev
    ```
 
 ## 🎯 **Usage Guide**
