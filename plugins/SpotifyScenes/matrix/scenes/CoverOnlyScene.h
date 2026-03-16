@@ -44,6 +44,8 @@ namespace Scenes {
 
         std::optional<rgb_matrix::StreamReader> curr_animation;
         std::optional<rgb_matrix::MemStreamIO*> curr_content_stream;
+        tmillis_t anim_frame_start_ms = 0;
+        tmillis_t anim_frame_delay_ms = 0;
 
         // This is just the cover until the animation is calculated
         std::optional<Magick::Image> quick_cover;

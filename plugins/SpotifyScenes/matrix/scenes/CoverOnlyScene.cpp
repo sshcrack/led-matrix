@@ -109,24 +109,38 @@ void CoverOnlyScene::update_beat_simulation()
 
 bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
 {
-    uint32_t delay_us = 0;
-
     bool has_anim = false;
     {
         std::shared_lock anim_lock(animation_mtx);
         if (curr_animation.has_value() && !disable_cover_animation->get())
         {
             has_anim = true;
-            if (!curr_animation->GetNext(canvas, &delay_us))
+            uint32_t delay_us = 0;
+
+            // Peek at the current frame to render it without consuming
+            if (!curr_animation->PeekNext(canvas, &delay_us))
             {
-                // Try to rewind
                 curr_animation->Rewind();
-                // And get again, if fails, return
-                if (!curr_animation->GetNext(canvas, &delay_us))
+                if (!curr_animation->PeekNext(canvas, &delay_us))
                 {
                     trace("Returning, reader done");
                     return false;
                 }
+                anim_frame_start_ms = 0;
+            }
+
+            // Record start time and delay on first peek after an advance (or at start)
+            if (anim_frame_start_ms == 0)
+            {
+                anim_frame_start_ms = GetTimeInMillis();
+                anim_frame_delay_ms = delay_us / 1000;
+            }
+
+            // Consume the frame and advance once its hold time has elapsed
+            if (GetTimeInMillis() >= anim_frame_start_ms + anim_frame_delay_ms)
+            {
+                curr_animation->GetNext(canvas, &delay_us);
+                anim_frame_start_ms = 0;
             }
         }
     }
@@ -159,8 +173,6 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
             }
         }
     }
-
-    const tmillis_t start_wait_ms = GetTimeInMillis();
 
     auto progress_opt = curr_state->get_progress();
     if (!progress_opt.has_value())
@@ -327,19 +339,18 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
 
         spdlog::trace("Constructing reader");
         curr_animation = rgb_matrix::StreamReader(content_stream);
+        anim_frame_start_ms = 0;
         spdlog::trace("Setting stream");
         curr_content_stream = content_stream;
     }
 
     if (!quick_cover.has_value() && !curr_animation.has_value())
     {
-        SleepMillis(10);
         return true;
     }
 
     if (!curr_state->is_playing())
     {
-        SleepMillis(500);
         return true;
     }
 

@@ -185,7 +185,10 @@ namespace Scenes {
 
         using Scene::Scene;
 
-        ~WeatherScene() override = default;
+        ~WeatherScene() override
+        {
+            images.reset();
+        };
 
 
         tmillis_t get_default_duration() override {
