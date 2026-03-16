@@ -1,0 +1,267 @@
+import { useState } from 'react'
+import { Plus, Trash2, Clock, Calendar } from 'lucide-react'
+import { toast } from 'sonner'
+import useFetch from '~/useFetch'
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Button } from '~/components/ui/button'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import { Switch } from '~/components/ui/switch'
+import { Badge } from '~/components/ui/badge'
+import { Skeleton } from '~/components/ui/skeleton'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from '~/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '~/components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import type { ListPresets } from '~/apiTypes/list_presets'
+
+interface Schedule {
+  id?: string
+  preset_id: string
+  time: string
+  days: number[]
+  enabled?: boolean
+}
+
+interface SchedulingStatus {
+  enabled: boolean
+  active_preset: string
+}
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export default function Schedules() {
+  const apiUrl = useApiUrl()
+  const { data: schedules, isLoading, setRetry } = useFetch<Record<string, Schedule>>('/schedules')
+  const { data: schedulingStatus, setData: setSchedulingStatus } = useFetch<SchedulingStatus>('/scheduling_status')
+  const { data: presets } = useFetch<ListPresets>('/list_presets')
+  const [showCreate, setShowCreate] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [newSchedule, setNewSchedule] = useState<Schedule>({ preset_id: '', time: '08:00', days: [1, 2, 3, 4, 5] })
+
+  const handleToggleScheduling = async (enabled: boolean) => {
+    if (!apiUrl) return
+    try {
+      await fetch(`${apiUrl}/scheduling_status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+      setSchedulingStatus(prev => prev ? { ...prev, enabled } : null)
+      toast.success(enabled ? 'Scheduling enabled' : 'Scheduling disabled')
+    } catch {
+      toast.error('Failed to update scheduling status')
+    }
+  }
+
+  const handleCreate = async () => {
+    if (!apiUrl || !newSchedule.preset_id) return
+    try {
+      await fetch(`${apiUrl}/api/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSchedule),
+      })
+      toast.success('Schedule created')
+      setShowCreate(false)
+      setNewSchedule({ preset_id: '', time: '08:00', days: [1, 2, 3, 4, 5] })
+      setRetry(r => r + 1)
+    } catch {
+      toast.error('Failed to create schedule')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!apiUrl) return
+    try {
+      await fetch(`${apiUrl}/api/schedule/${id}`, { method: 'DELETE' })
+      toast.success('Schedule deleted')
+      setRetry(r => r + 1)
+    } catch {
+      toast.error('Failed to delete schedule')
+    }
+  }
+
+  const toggleDay = (day: number) => {
+    setNewSchedule(prev => ({
+      ...prev,
+      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day]
+    }))
+  }
+
+  const presetNames = presets ? Object.keys(presets) : []
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Schedules</h1>
+        <p className="text-muted-foreground text-sm mt-1">Automate preset switching by time</p>
+      </div>
+
+      {/* Scheduling toggle */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Auto Scheduling</p>
+                <p className="text-sm text-muted-foreground">Switch presets on a schedule</p>
+              </div>
+            </div>
+            <Switch
+              checked={schedulingStatus?.enabled ?? false}
+              onCheckedChange={handleToggleScheduling}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Schedules list */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Schedules</h2>
+          <Button size="sm" onClick={() => setShowCreate(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            Add
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+          </div>
+        ) : schedules && Object.keys(schedules).length > 0 ? (
+          <div className="space-y-2">
+            {Object.entries(schedules).map(([id, schedule]) => (
+              <Card key={id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{schedule.preset_id}</span>
+                      </div>
+                      <p className="text-lg font-semibold">{schedule.time}</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {DAYS.map((day, i) => (
+                          <Badge
+                            key={day}
+                            variant={schedule.days.includes(i) ? 'default' : 'outline'}
+                            className="text-xs px-1.5 py-0"
+                          >
+                            {day}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteId(id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No schedules yet</p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => setShowCreate(true)}>
+                Create first schedule
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Create dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Schedule</DialogTitle>
+            <DialogDescription>Set a time to automatically switch to a preset.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Preset</Label>
+              <Select value={newSchedule.preset_id} onValueChange={v => setNewSchedule(p => ({ ...p, preset_id: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select preset..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {presetNames.map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Time</Label>
+              <Input
+                type="time"
+                value={newSchedule.time}
+                onChange={e => setNewSchedule(p => ({ ...p, time: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Days</Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAYS.map((day, i) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                      newSchedule.days.includes(i)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={!newSchedule.preset_id}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
+            <AlertDialogDescription>This schedule will be permanently deleted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteId) { handleDelete(deleteId); setDeleteId(null) } }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
