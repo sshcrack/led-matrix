@@ -21,6 +21,7 @@ interface EnumOption {
 interface EnumPropertyData {
     enum_name: string;
     enum_values: EnumOption[];
+    empty_value_sentinel?: string;
 }
 
 // The value for enum properties will be a string (the enum value name)
@@ -42,6 +43,9 @@ export function EnumProperty({ value, defaultVal, propertyName, additional, ...p
         );
     }
 
+    const sentinel = enumData.empty_value_sentinel;
+    const selectValue = value === '' && sentinel ? sentinel : value;
+
     return (
         <View className='flex-row gap-2 w-full justify-between'>
             <Text className='font-semibold self-center'>{title}</Text>
@@ -55,10 +59,11 @@ export function EnumProperty({ value, defaultVal, propertyName, additional, ...p
                 </Button>
                 <View className='flex-1'>
                     <Select
-                        value={{ value, label: enumData.enum_values.find(opt => opt.value === value)?.display_name || value }}
+                        value={{ value: selectValue, label: enumData.enum_values.find(opt => opt.value === selectValue)?.display_name || selectValue }}
                         onValueChange={(option) => {
                             if (option?.value) {
-                                setValue(option.value);
+                                const mappedValue = sentinel && option.value === sentinel ? '' : option.value;
+                                setValue(mappedValue);
                             }
                         }}
                     >

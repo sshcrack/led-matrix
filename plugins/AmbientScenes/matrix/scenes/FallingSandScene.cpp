@@ -24,8 +24,8 @@ namespace AmbientScenes {
         b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
-    void FallingSandScene::initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) {
-        Scene::initialize(matrix, l_offscreen_canvas);
+    void FallingSandScene::initialize(int width, int height) {
+        Scene::initialize(width, height);
         grid.assign(matrix_width * matrix_height, 0);
         next_grid.assign(matrix_width * matrix_height, 0);
         spawner_x = matrix_width / 2;
@@ -34,7 +34,7 @@ namespace AmbientScenes {
         current_hue = 0.0f;
     }
 
-    bool FallingSandScene::render(RGBMatrixBase *matrix) {
+    bool FallingSandScene::render(rgb_matrix::FrameCanvas *canvas) {
         // Spawn sand if under limit
         if (sand_count < max_sand->get()) {
             for (int i = 0; i < spawn_rate->get() && sand_count < max_sand->get(); i++) {
@@ -109,14 +109,14 @@ namespace AmbientScenes {
 
         grid = next_grid; // swap grids
 
-        offscreen_canvas->Clear();
+        canvas->Clear();
         for (int y = 0; y < matrix_height; y++) {
             for (int x = 0; x < matrix_width; x++) {
                 uint32_t c = grid[y * matrix_width + x];
                 if (c != 0) {
                     uint8_t r, g, b;
                     unpack_color(c, r, g, b);
-                    offscreen_canvas->SetPixel(x, y, r, g, b);
+                    canvas->SetPixel(x, y, r, g, b);
                 }
             }
         }

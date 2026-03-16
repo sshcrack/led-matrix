@@ -85,13 +85,13 @@ void CountdownScene::update_particles(float dt)
 
 // We now use the shared BDF fonts (HEADER_FONT/BODY_FONT/SMALL_FONT) for rendering digits
 
-bool CountdownScene::render(RGBMatrixBase *matrix)
+bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     auto ft = frameTimer.tick();
     float dt = ft.dt;
 
-    width = matrix->width();
-    height = matrix->height();
+    width = matrix_width;
+    height = matrix_height;
 
     // Clear with a subtle pulse background
     float pulse = (std::sin(ft.t * pulse_speed->get()) + 1.0f) / 2.0f;
@@ -100,7 +100,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
     {
         for (int x = 0; x < width; x++)
         {
-            offscreen_canvas->SetPixel(x, y, bg / 2, bg / 3, bg);
+            canvas->SetPixel(x, y, bg / 2, bg / 3, bg);
         }
     }
 
@@ -189,7 +189,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
             text_width += HEADER_FONT.CharacterWidth(static_cast<uint32_t>(c));
         int text_x = (width - text_width) / 2;
         int text_y = (height + baseline) / 2;
-        rgb_matrix::DrawText(offscreen_canvas, HEADER_FONT, text_x, text_y, text_color, disp.c_str());
+        rgb_matrix::DrawText(canvas, HEADER_FONT, text_x, text_y, text_color, disp.c_str());
     }
     else
     {
@@ -199,7 +199,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
             text_width += BODY_FONT.CharacterWidth(static_cast<uint32_t>(c));
         int text_x = (width - text_width) / 2;
         int text_y = (height + baseline) / 2;
-        rgb_matrix::DrawText(offscreen_canvas, BODY_FONT, text_x, text_y, text_color, disp.c_str());
+        rgb_matrix::DrawText(canvas, BODY_FONT, text_x, text_y, text_color, disp.c_str());
     }
 
     // Particle effects
@@ -255,7 +255,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
                 uint8_t rr = static_cast<uint8_t>(p.color.r * life_ratio);
                 uint8_t gg = static_cast<uint8_t>(p.color.g * life_ratio);
                 uint8_t bb = static_cast<uint8_t>(p.color.b * life_ratio);
-                offscreen_canvas->SetPixel(x, y, rr, gg, bb);
+                canvas->SetPixel(x, y, rr, gg, bb);
             }
         }
     };
@@ -280,7 +280,7 @@ bool CountdownScene::render(RGBMatrixBase *matrix)
                     int x = px + i * 6 + ox;
                     int y = py + oy;
                     if (x >= 0 && x < width && y >= 0 && y < height)
-                        offscreen_canvas->SetPixel(x, y, 255, 220, 100);
+                        canvas->SetPixel(x, y, 255, 220, 100);
                 }
             }
         }

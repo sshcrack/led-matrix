@@ -23,16 +23,16 @@ namespace Scenes {
         float time = 0.0f;
         
         // Demo functions for different rendering techniques
-        void renderPixelManipulation();
-        void renderGeometricPatterns();
-        void renderColorInterpolation();
-        void renderParticleSystem();
-        void renderMathematicalVisualization();
+        void renderPixelManipulation(rgb_matrix::FrameCanvas *canvas);
+        void renderGeometricPatterns(rgb_matrix::FrameCanvas *canvas);
+        void renderColorInterpolation(rgb_matrix::FrameCanvas *canvas);
+        void renderParticleSystem(rgb_matrix::FrameCanvas *canvas);
+        void renderMathematicalVisualization(rgb_matrix::FrameCanvas *canvas);
         
         // Utility functions
-        void setPixelSafe(int x, int y, uint8_t r, uint8_t g, uint8_t b);
-        void drawCircle(int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b);
-        void drawLine(int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b);
+        void setPixelSafe(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b);
+        void drawCircle(rgb_matrix::FrameCanvas *canvas, int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b);
+        void drawLine(rgb_matrix::FrameCanvas *canvas, int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b);
         rgb_matrix::Color interpolateColors(const rgb_matrix::Color& c1, const rgb_matrix::Color& c2, float t);
         void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
         
@@ -47,10 +47,10 @@ namespace Scenes {
         RenderingDemoScene();
         ~RenderingDemoScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "rendering_demo"; }
         void register_properties() override;
-        void initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *canvas) override;
+        void initialize(int width, int height) override;
         
         tmillis_t get_default_duration() override { return 20000; }
         int get_default_weight() override { return 7; }

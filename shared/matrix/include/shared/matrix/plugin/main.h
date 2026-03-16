@@ -8,6 +8,7 @@
 // This is included so the plugins don't have to include it every time
 #include "shared/common/plugin_macros.h"
 #include "shared/matrix/post_processing_effect.h"
+#include "shared/matrix/transition_effect.h"
 
 using std::string;
 using std::vector;
@@ -34,6 +35,10 @@ namespace Plugins
         
     public:
         virtual vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> create_effects() {
+            return {};
+        }
+
+        virtual vector<std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>> create_transitions() {
             return {};
         }
         std::string _plugin_location;

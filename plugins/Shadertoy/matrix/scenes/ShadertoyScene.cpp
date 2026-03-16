@@ -67,20 +67,20 @@ void ShadertoyScene::load_properties(const nlohmann::json &j)
     spdlog::info("ShadertoyScene: Loaded {} shader providers", providers.size());
 }
 
-void Scenes::ShadertoyScene::after_render_stop(RGBMatrixBase *matrix)
+void Scenes::ShadertoyScene::after_render_stop()
 {
     switchToNextRandomShader = true;
     failed_provider_count = 0;
     showing_loading_animation = false;
 }
 
-void Scenes::ShadertoyScene::render_loading_animation()
+void Scenes::ShadertoyScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
 {
     const int width = Constants::width;
     const int height = Constants::height;
     
     // Clear canvas
-    offscreen_canvas->Fill(0, 0, 0);
+    canvas->Fill(0, 0, 0);
     
     // Simple rotating dots animation
     const int num_dots = 8;
@@ -106,7 +106,7 @@ void Scenes::ShadertoyScene::render_loading_animation()
                 int py = y + dy;
                 if (px >= 0 && px < width && py >= 0 && py < height)
                 {
-                    offscreen_canvas->SetPixel(px, py, 0, brightness, brightness);
+                    canvas->SetPixel(px, py, 0, brightness, brightness);
                 }
             }
         }
@@ -115,7 +115,7 @@ void Scenes::ShadertoyScene::render_loading_animation()
     loading_animation_frame++;
 }
 
-bool ShadertoyScene::render(RGBMatrixBase *matrix)
+bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     if (!plugin)
     {
@@ -126,7 +126,7 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
     if (providers.empty())
     {
         spdlog::error("ShadertoyScene: No providers configured");
-        offscreen_canvas->Fill(255, 0, 0); // Red for error
+        canvas->Fill(255, 0, 0); // Red for error
         return false;
     }
 
@@ -183,7 +183,7 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
     // If showing loading animation, render it and return
     if (showing_loading_animation)
     {
-        render_loading_animation();
+        render_loading_animation(canvas);
         return true;
     }
 
@@ -198,7 +198,7 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
 
     if (pixels.empty())
     {
-        offscreen_canvas->Fill(0, 0, 255); // Clear the canvas if no data
+        canvas->Fill(0, 0, 255); // Clear the canvas if no data
     }
     // Use pointers for faster access and avoid repeated division/modulo
     const int width = Constants::width;
@@ -213,7 +213,7 @@ bool ShadertoyScene::render(RGBMatrixBase *matrix)
         if (y >= 0)
         {
             int i = idx * 3;
-            offscreen_canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+            canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
         }
     }
 

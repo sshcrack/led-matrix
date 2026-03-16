@@ -8,6 +8,8 @@ import { ConfigContext } from '~/components/configShare/ConfigProvider';
 import AddScene from '~/components/modify-preset/AddScene';
 import ExitConfirmation from '~/components/modify-preset/ExitConfirmation';
 import { PresetIdContext } from '~/components/modify-preset/PresetIdProvider';
+import PresetTransitionDuration from '~/components/modify-preset/PresetTransitionDuration';
+import TransitionPicker from '~/components/modify-preset/TransitionPicker';
 import { Text } from '~/components/ui/text';
 import useFetch from '~/components/useFetch';
 import SceneComponent from '../../components/modify-preset/Scene';
@@ -97,6 +99,8 @@ export default function ModifyPreset() {
                     }} />
             }>
                 <PresetIdContext.Provider value={preset_id}>
+                    <PresetTransitionDuration />
+                    <TransitionPicker />
                     <SceneWrapper
                         errorProperties={errorProperty}
                         data={preset}

@@ -3,8 +3,10 @@
 namespace Constants {
     std::atomic<int> width;
     std::atomic<int> height;
-    bool isRenderingSceneInitially;
 
     // Global post-processor instance
     PostProcessor* global_post_processor = nullptr;
+
+    // Global transition manager instance
+    TransitionManager* global_transition_manager = nullptr;
 }

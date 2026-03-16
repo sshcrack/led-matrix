@@ -34,25 +34,25 @@ private:
     int last_digit_update;
 
     // Clock face helpers
-    void draw_analog_clock(rgb_matrix::RGBMatrixBase *matrix, int center_x, int center_y, int radius);
-    void draw_digital_clock(rgb_matrix::RGBMatrixBase *matrix, int y_position);
-    void draw_date(rgb_matrix::RGBMatrixBase *matrix, int y_position);
-    void draw_clock_hand(rgb_matrix::RGBMatrixBase *matrix, int center_x, int center_y, 
+    void draw_analog_clock(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, int radius);
+    void draw_digital_clock(rgb_matrix::FrameCanvas *matrix, int y_position);
+    void draw_date(rgb_matrix::FrameCanvas *matrix, int y_position);
+    void draw_clock_hand(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, 
                         float angle, int length, uint8_t r, uint8_t g, uint8_t b, int thickness);
-    void draw_antialiased_line(rgb_matrix::RGBMatrixBase *matrix, int x0, int y0, int x1, int y1, 
+    void draw_antialiased_line(rgb_matrix::FrameCanvas *matrix, int x0, int y0, int x1, int y1, 
                         uint8_t r, uint8_t g, uint8_t b, bool apply_glow = false);
-    void draw_small_digit(rgb_matrix::RGBMatrixBase *matrix, int digit, int x, int y, 
+    void draw_small_digit(rgb_matrix::FrameCanvas *matrix, int digit, int x, int y, 
                         uint8_t r, uint8_t g, uint8_t b);
-    void set_pixel_with_brightness(int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness);
-    void apply_glow(int x, int y, uint8_t r, uint8_t g, uint8_t b, float intensity);
-    void draw_clock_face(rgb_matrix::RGBMatrixBase *matrix, int center_x, int center_y, int radius);
+    void set_pixel_with_brightness(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness);
+    void apply_glow(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float intensity);
+    void draw_clock_face(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, int radius);
 
 public:
     explicit ClockScene();
     ~ClockScene() override = default;
 
-    bool render(rgb_matrix::RGBMatrixBase *matrix) override;
-    void initialize(rgb_matrix::RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    void initialize(int width, int height) override;
     [[nodiscard]] std::string get_name() const override;
     void register_properties() override;
 

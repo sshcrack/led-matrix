@@ -68,10 +68,10 @@ namespace Scenes {
 
         void register_properties() override;
 
-        bool render(RGBMatrixBase *rgbMatrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *p_matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
-        void after_render_stop(RGBMatrixBase *m) override;
+        void after_render_stop() override;
     };
 }

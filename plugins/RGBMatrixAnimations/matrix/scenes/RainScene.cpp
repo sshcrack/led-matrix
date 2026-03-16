@@ -25,9 +25,9 @@ RainScene::~RainScene() {
     delete[] lengths;
 }
 
-void RainScene::initialize(RGBMatrixBase *p_matrix, FrameCanvas *l_offscreen_canvas) {
-    totalCols = p_matrix->width() / 1.4;
-    ParticleScene::initialize(p_matrix, l_offscreen_canvas);
+void RainScene::initialize(int width, int height) {
+    ParticleScene::initialize(width, height);
+    totalCols = matrix_width / 1.4;
 }
 
 void RainScene::initializeParticles() {
@@ -43,7 +43,7 @@ void RainScene::initializeColumns() {
 
     float v = velocity->get();
     for (uint16_t x = 0; x < totalCols; ++x) {
-        cols[x] = matrix->width();
+        cols[x] = matrix_width;
         vels[x] = random_int16(v / 4, v);
         lengths[x] = 0;
     }
@@ -115,12 +115,12 @@ void RainScene::createColorPalette() {
     totalColors = renderer->get()->getColourId(RGB_color(0, 255, 0)) - 1;
 }
 
-bool RainScene::render(RGBMatrixBase *matrix) {
+bool RainScene::render(rgb_matrix::FrameCanvas *canvas) {
     addNewParticles();
     removeOldParticles();
 
     // Call parent class render which handles animation and FPS
-    return ParticleScene::render(matrix);
+    return ParticleScene::render(canvas);
 }
 
 void RainScene::addNewParticles() {
@@ -139,7 +139,7 @@ void RainScene::addNewParticles() {
             uint16_t newPos;
             while (!colClear) {
                 colClear = true;
-                newPos = random_int16(0, matrix->width());
+                newPos = random_int16(0, matrix_width);
                 for (uint16_t x = 0; x < totalCols; ++x) {
                     if (newPos == cols[x]) colClear = false;
                 }
@@ -164,7 +164,7 @@ void RainScene::addNewParticles() {
 void RainScene::removeOldParticles() {
     auto anim = animation->get();
 
-    uint16_t removeNum = std::min((uint16_t) (numParticles->get() - 1), (uint16_t) matrix->width());
+    uint16_t removeNum = std::min((uint16_t) (numParticles->get() - 1), (uint16_t) matrix_width);
     if (anim->getParticleCount() > removeNum) {
         for (uint16_t i = 0; i < removeNum; i++) {
             auto particle = anim->getParticle(removeNum - 1 - i);

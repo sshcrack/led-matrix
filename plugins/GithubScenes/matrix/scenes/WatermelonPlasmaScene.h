@@ -11,7 +11,7 @@ namespace Scenes {
         FrameTimer frameTimer;
     public:
         ~WatermelonPlasmaScene() override = default;
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
 

@@ -37,9 +37,9 @@ namespace AmbientScenes {
 
         void register_properties() override;
 
-        bool render(RGBMatrixBase *matrix) override;
+        bool render(rgb_matrix::FrameCanvas *canvas) override;
 
-        void initialize(RGBMatrixBase *matrix, rgb_matrix::FrameCanvas *l_offscreen_canvas) override;
+        void initialize(int width, int height) override;
 
         tmillis_t get_default_duration() override {
             return 20000;

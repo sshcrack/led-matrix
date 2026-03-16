@@ -34,10 +34,10 @@ export default function SceneComponent({ sceneId, properties }: SceneComponentPr
     const entries = useMemo(() => {
         const arr = Object.entries(config.arguments)
         arr.sort(([a], [b]) => {
-            if (a === "weight" || a === "duration")
+            if (a === "weight" || a === "duration" || a === "transition_duration")
                 return -1
 
-            if (b === "weight" || b === "duration")
+            if (b === "weight" || b === "duration" || b === "transition_duration")
                 return 1
 
             return 0
