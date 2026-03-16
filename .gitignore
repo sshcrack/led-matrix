@@ -1,3 +1,4 @@
+.cache
 build
 CMakeFiles
 cmake-build-*
@@ -15,4 +16,5 @@ desktop_build
 __pycache__
 LED_Matrix_Controller.ini
 desktop_build*
-.cache
+.cachereact-web/node_modules
+react-web/dist
