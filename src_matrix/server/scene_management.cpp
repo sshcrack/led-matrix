@@ -4,6 +4,9 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/server/MimeTypes.h"
+#include "shared/common/utils/utils.h"
+#include <filesystem>
 
 using json = nlohmann::json;
 
@@ -50,7 +53,8 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
 
             json j1 = {
                 {"name", item->get_name()},
-                {"properties", properties_json}
+                {"properties", properties_json},
+                {"has_preview", std::filesystem::exists(get_exec_dir() / "previews" / (item->get_name() + ".gif"))}
             };
 
             j.push_back(j1);
@@ -128,6 +132,35 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         }
         nlohmann::json j = names;
         return reply_with_json(req, j);
+    });
+
+    router->http_get("/scene_preview", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
+        if (!qp.has("name")) {
+            return reply_with_error(req, "No name given");
+        }
+
+        const std::string scene_name{qp["name"]};
+        const std::filesystem::path preview_dir = get_exec_dir() / "previews";
+        const std::filesystem::path gif_path = preview_dir / (scene_name + ".gif");
+
+        // Validate path is inside previews dir
+        std::error_code ec;
+        if (!std::filesystem::exists(gif_path, ec) || ec) {
+            return reply_with_error(req, "Preview not found", restinio::status_not_found());
+        }
+
+        const auto canonical_preview_dir = std::filesystem::canonical(preview_dir, ec);
+        const auto canonical_gif = std::filesystem::canonical(gif_path, ec);
+        if (ec || !canonical_gif.string().starts_with(canonical_preview_dir.string())) {
+            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+        }
+
+        auto response = req->create_response(restinio::status_ok())
+            .append_header_date_field()
+            .append_header(restinio::http_field::content_type, "image/gif");
+        Server::add_cors_headers(response);
+        return response.set_body(restinio::sendfile(gif_path)).done();
     });
 
     return std::move(router);

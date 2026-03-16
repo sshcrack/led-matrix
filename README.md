@@ -428,6 +428,9 @@ By default, the main index page will redirect you to the web controller (located
 | `GET` | `/list` | Available local images |
 | `GET` | `/image?url=<url>` | Fetch and display remote image |
 | `GET` | `/list_providers` | Available image providers |
+| `GET` | `/scene_preview?name=<scene_name>` | Preview GIF for a scene (if available) |
+
+> **Scene Previews:** Place GIF files in the `previews/` directory next to the matrix executable (e.g. `/opt/led-matrix/previews/WaveScene.gif`). Use `scripts/record_scene_preview.sh` to record them automatically from the emulator. The `/list_scenes` endpoint includes a `has_preview` field indicating whether a preview GIF exists for each scene.
 
 ### ⚙️ **System Control**
 
