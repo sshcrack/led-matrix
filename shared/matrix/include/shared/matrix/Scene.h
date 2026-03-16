@@ -8,6 +8,7 @@
 #include <shared/matrix/plugin/property.h>
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/plugin/PropertyMacros.h>
+#include <shared/matrix/plugin/TransitionNameProperty.h>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -35,7 +36,7 @@ namespace Scenes {
         PropertyPointer<int> weight = MAKE_PROPERTY("weight", int, 1);
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
         PropertyPointer<tmillis_t> transition_duration = MAKE_PROPERTY("transition_duration", tmillis_t, 0);
-        PropertyPointer<std::string> transition_name = MAKE_PROPERTY("transition_name", std::string, std::string(""));
+        std::shared_ptr<Plugins::TransitionNameProperty> transition_name = std::make_shared<Plugins::TransitionNameProperty>();
 
         std::string uuid;
 
