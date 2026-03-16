@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/canvas_consts.h"
+#include <filesystem>
 
 using json = nlohmann::json;
 
@@ -128,6 +129,32 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         }
         nlohmann::json j = names;
         return reply_with_json(req, j);
+    });
+
+    router->http_get("/scene_preview/:scene_name", [](auto req, auto params) {
+        const auto scene_name = std::string(params["scene_name"]);
+        const auto exec_dir = get_exec_dir();
+        const filesystem::path preview_dir = exec_dir / "previews";
+        const filesystem::path file_path = preview_dir / (scene_name + ".png");
+
+        const auto canonical_preview = filesystem::weakly_canonical(preview_dir);
+        std::error_code ec;
+        const auto canonical_file = filesystem::weakly_canonical(file_path, ec);
+
+        if (ec || !canonical_file.string().starts_with(canonical_preview.string())) {
+            return reply_with_error(req, "Invalid scene name", restinio::status_bad_request());
+        }
+
+        if (!filesystem::exists(file_path)) {
+            return reply_with_error(req, "Preview not found", restinio::status_not_found());
+        }
+
+        auto response = req->create_response(restinio::status_ok())
+            .append_header_date_field()
+            .append_header(restinio::http_field::content_type, "image/png")
+            .append_header(restinio::http_field::cache_control, "public, max-age=86400");
+        Server::add_cors_headers(response);
+        return response.set_body(restinio::sendfile(file_path)).done();
     });
 
     return std::move(router);

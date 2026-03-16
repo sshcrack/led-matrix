@@ -286,6 +286,35 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     add_dependencies(${PROJECT_NAME} react_native_build)
 endif()
 
+# ---------------------------------------------------------------------------
+# Scene preview generation (emulator builds only)
+# ---------------------------------------------------------------------------
+if(ENABLE_EMULATOR)
+    find_program(PYTHON3 python3)
+    if(PYTHON3)
+        set(PREVIEW_PORT 18080 CACHE STRING "HTTP port used by the emulator when generating scene previews")
+        set(PREVIEW_WAIT 3 CACHE STRING "Seconds to wait for each scene to render before capturing a preview")
+        set(PREVIEW_STARTUP 5 CACHE STRING "Seconds to wait for the emulator to finish starting up")
+        set(PREVIEW_OUTPUT_DIR "${CMAKE_INSTALL_PREFIX}/previews" CACHE PATH "Directory where scene preview PNG files are written")
+
+        # Custom target to generate scene previews (not built by default; run with --target generate_previews)
+        add_custom_target(generate_previews
+            COMMAND ${PYTHON3}
+                ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_previews.py
+                --binary  ${CMAKE_INSTALL_PREFIX}/main
+                --output  ${PREVIEW_OUTPUT_DIR}
+                --port    ${PREVIEW_PORT}
+                --wait    ${PREVIEW_WAIT}
+                --startup ${PREVIEW_STARTUP}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating scene preview images (run 'cmake --build . --target install' first)"
+            VERBATIM
+        )
+    else()
+        message(STATUS "python3 not found – 'generate_previews' target will not be available")
+    endif()
+endif()
+
 set(INSTALL_DESTINATION ".")
 if(ENABLE_DESKTOP)
     set(INSTALL_DESTINATION "bin")
