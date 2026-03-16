@@ -11,6 +11,8 @@
 #include "shared/matrix/utils/canvas_image.h"
 #include <spdlog/spdlog.h>
 
+#include "shared/matrix/interrupt.h"
+
 using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router)

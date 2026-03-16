@@ -40,6 +40,8 @@ struct CurrAnimation {
     rgb_matrix::StreamReader reader;
     std::unique_ptr<FileInfo, void(*)(FileInfo *)> file;
     const tmillis_t end_time_ms;
+    tmillis_t frame_start_ms = 0;
+    tmillis_t frame_delay_ms = 0;
 
     CurrAnimation(const rgb_matrix::StreamReader &reader,
                   const tmillis_t end_time_ms,

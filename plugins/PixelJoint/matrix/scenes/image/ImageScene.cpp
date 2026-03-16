@@ -2,7 +2,6 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/utils/shared.h"
-#include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include <vector>
 
@@ -17,47 +16,38 @@ using rgb_matrix::StreamReader;
 
 
 bool ImageScene::DisplayAnimation(rgb_matrix::FrameCanvas *canvas) {
-    auto curr = &curr_animation.value();
-    const tmillis_t start_wait_ms = GetTimeInMillis();
-
-    if (skip_image || GetTimeInMillis() > curr->get()->end_time_ms) {
+    if (skip_image || GetTimeInMillis() > curr_animation->get()->end_time_ms) {
         this->curr_animation.reset();
         return true;
     }
 
-    uint32_t delay_us = 0;
     canvas->Clear();
 
-    //TODO I think this isn't safe like at all
-    if (const auto reader = &curr_animation->get()->reader; !reader->GetNext(canvas, &delay_us)) {
+    auto *anim = curr_animation->get();
+    auto *reader = &anim->reader;
+    uint32_t delay_us = 0;
+
+    // Peek at the current frame to render it without consuming
+    if (!reader->PeekNext(canvas, &delay_us)) {
         reader->Rewind();
-        if (!reader->GetNext(canvas, &delay_us)) {
+        if (!reader->PeekNext(canvas, &delay_us)) {
             this->curr_animation.reset();
             return false;
         }
+        anim->frame_start_ms = 0;
     }
 
-// Skip for first frame
-#ifndef SKIP_MS_WAIT
-    const tmillis_t anim_delay_ms = delay_us / 1000;
-    const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
-
-    tmillis_t to_wait = anim_delay_ms - time_already_spent;
-    while (to_wait > 0) {
-        if (interrupt_received || exit_canvas_update) {
-            this->curr_animation.reset();
-            return false;
-        }
-
-        if (to_wait < 250) {
-            SleepMillis(to_wait);
-            break;
-        }
-
-        SleepMillis(250);
-        to_wait -= 250;
+    // Record start time and delay on first peek after an advance (or at start)
+    if (anim->frame_start_ms == 0) {
+        anim->frame_start_ms = GetTimeInMillis();
+        anim->frame_delay_ms = delay_us / 1000;
     }
-#endif
+
+    // Consume the frame and advance once its hold time has elapsed
+    if (GetTimeInMillis() >= anim->frame_start_ms + anim->frame_delay_ms) {
+        reader->GetNext(canvas, &delay_us);
+        anim->frame_start_ms = 0;
+    }
 
     return true;
 }
