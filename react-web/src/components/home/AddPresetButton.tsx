@@ -21,10 +21,15 @@ export default function AddPresetButton({ onCreated }: AddPresetButtonProps) {
     if (!name.trim() || !apiUrl) return
     setLoading(true)
     try {
-      const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(name.trim())}`, {
+      const res = await fetch(`${apiUrl}/add_preset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes: [], transition_duration: 750, transition_name: 'blend' }),
+        body: JSON.stringify({
+          scenes: [],
+          transition_duration: 750,
+          transition_name: 'blend',
+          display_name: name.trim(),
+        }),
       })
       if (!res.ok) throw new Error('Failed to create preset')
       toast.success(`Preset "${name.trim()}" created`)

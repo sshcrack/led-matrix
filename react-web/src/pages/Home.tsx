@@ -32,27 +32,47 @@ export default function Home() {
     }
   }
 
-  const handleActivate = async (name: string) => {
+  const handleActivate = async (id: string, displayName: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(name)}`)
-      setStatus(prev => prev ? { ...prev, current: name } : null)
-      toast.success(`Activated "${name}"`)
+      await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(id)}`)
+      setStatus(prev => prev ? { ...prev, current: id } : null)
+      toast.success(`Activated "${displayName}"`)
     } catch {
       toast.error('Failed to activate preset')
     }
   }
 
-  const handleDelete = async (name: string) => {
+  const handleDelete = async (id: string, displayName: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/preset?id=${encodeURIComponent(name)}`, { method: 'DELETE' })
-      toast.success(`Deleted "${name}"`)
+      await fetch(`${apiUrl}/preset?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      toast.success(`Deleted "${displayName}"`)
       retryPresets(r => r + 1)
     } catch {
       toast.error('Failed to delete preset')
     }
   }
+
+  const handleRename = async (id: string, displayName: string) => {
+    if (!apiUrl) return
+    try {
+      const res = await fetch(`${apiUrl}/preset_display_name?id=${encodeURIComponent(id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: displayName }),
+      })
+      if (!res.ok) throw new Error('Failed to rename preset')
+      toast.success(`Renamed to "${displayName}"`)
+      retryPresets(r => r + 1)
+    } catch {
+      toast.error('Failed to rename preset')
+    }
+  }
+
+  const activePresetLabel = status?.current && presets?.[status.current]
+    ? (presets[status.current].display_name ?? status.current)
+    : (status?.current ?? null)
 
   return (
     <div className="space-y-6">
@@ -66,6 +86,7 @@ export default function Home() {
       ) : (
         <StatusCard
           status={status}
+          currentPresetLabel={activePresetLabel}
           isLoading={statusLoading}
           onToggle={handleToggle}
         />
@@ -77,9 +98,10 @@ export default function Home() {
         <PresetsSection
           presets={presets}
           isLoading={presetsLoading}
-          activePreset={status?.current ?? null}
+          activePresetId={status?.current ?? null}
           onActivate={handleActivate}
           onDelete={handleDelete}
+          onRename={handleRename}
           onCreated={() => retryPresets(r => r + 1)}
         />
       )}

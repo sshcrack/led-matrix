@@ -6,14 +6,15 @@ import type { ListPresets } from '~/apiTypes/list_presets'
 interface PresetsSectionProps {
   presets: ListPresets | null
   isLoading: boolean
-  activePreset: string | null
-  onActivate: (name: string) => void
-  onDelete: (name: string) => void
+  activePresetId: string | null
+  onActivate: (id: string, displayName: string) => void
+  onDelete: (id: string, displayName: string) => void
+  onRename: (id: string, displayName: string) => void
   onCreated: () => void
 }
 
 export default function PresetsSection({
-  presets, isLoading, activePreset, onActivate, onDelete, onCreated
+  presets, isLoading, activePresetId, onActivate, onDelete, onRename, onCreated
 }: PresetsSectionProps) {
   return (
     <div className="space-y-3">
@@ -32,14 +33,16 @@ export default function PresetsSection({
         </div>
       ) : presets && Object.keys(presets).length > 0 ? (
         <div className="space-y-2">
-          {Object.entries(presets).map(([name, preset]) => (
+          {Object.entries(presets).map(([id, preset]) => (
             <PresetCard
-              key={name}
-              name={name}
+              key={id}
+              id={id}
+              displayName={preset.display_name ?? id}
               preset={preset}
-              isActive={name === activePreset}
+              isActive={id === activePresetId}
               onActivate={onActivate}
               onDelete={onDelete}
+              onRename={onRename}
             />
           ))}
         </div>

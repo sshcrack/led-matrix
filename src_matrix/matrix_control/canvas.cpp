@@ -292,12 +292,24 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
             scene->before_transition_stop();
 
             tmillis_t transition_start_ms = GetTimeInMillis();
+            int iteration = 0;
             while (true)
             {
                 const auto now_ms = GetTimeInMillis();
-                const auto current_continue = scene->render(first_offscreen_canvas);
-                const auto next_continue = next_scene->render(second_offscreen_canvas);
+                auto current_continue = true;
+                auto next_continue = true;
 
+                if (iteration == 0 || iteration % 2 == 0)
+                {
+                    current_continue = scene->render(first_offscreen_canvas);
+                }
+
+                if(iteration == 0 || iteration % 2 == 1)
+                {
+                    next_continue = next_scene->render(second_offscreen_canvas);
+                }
+
+                iteration++;
                 if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
                 {
                     trace("Exiting scene early.");

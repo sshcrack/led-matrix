@@ -3,13 +3,40 @@
 #include "spdlog/spdlog.h"
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/utils/shared.h>
+#include <shared/matrix/utils/uuid.h>
 
 
 using namespace spdlog;
 
 namespace Config {
+    namespace {
+        bool is_uuid_like(const std::string &value) {
+            if (value.size() != 36) {
+                return false;
+            }
+
+            for (size_t i = 0; i < value.size(); ++i) {
+                const bool is_hyphen = (i == 8 || i == 13 || i == 18 || i == 23);
+                if (is_hyphen) {
+                    if (value[i] != '-') {
+                        return false;
+                    }
+                    continue;
+                }
+
+                const char c = value[i];
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
     void MainConfig::mark_dirty() {
         unique_lock lock(this->update_mutex);
 
@@ -62,6 +89,19 @@ namespace Config {
             return false;
 
         this->data.presets.erase(it);
+        return true;
+    }
+
+    bool MainConfig::set_preset_display_name(const string &id, const string &display_name) {
+        unique_lock lock(this->data_mutex);
+
+        const auto it = this->data.presets.find(id);
+        if (it == this->data.presets.end() || !it->second) {
+            return false;
+        }
+
+        it->second->display_name = display_name;
+        this->mark_dirty();
         return true;
     }
 
@@ -120,6 +160,69 @@ spdlog::info("Setting preset {}", id);
         f.close();
 
         this->data = std::move(temp.get<ConfigData::Root>());
+        bool migrated = false;
+
+        if (this->data.presets.empty()) {
+            auto preset = ConfigData::Preset::create_default();
+            const auto id = uuid::generate_uuid_v4();
+            preset->display_name = "Default";
+            this->data.presets[id] = std::move(preset);
+            this->data.curr = id;
+            migrated = true;
+        }
+
+        std::map<std::string, std::shared_ptr<ConfigData::Preset>> migrated_presets;
+        std::unordered_map<std::string, std::string> id_map;
+
+        for (const auto &[old_id, old_preset]: this->data.presets) {
+            auto preset = old_preset;
+            if (!preset) {
+                preset = ConfigData::Preset::create_default();
+                migrated = true;
+            }
+
+            std::string new_id = old_id;
+            const bool keep_existing_id = is_uuid_like(old_id) && !migrated_presets.contains(old_id);
+
+            if (!keep_existing_id) {
+                do {
+                    new_id = uuid::generate_uuid_v4();
+                } while (migrated_presets.contains(new_id));
+
+                id_map[old_id] = new_id;
+                migrated = true;
+            }
+
+            if (preset->display_name.empty()) {
+                preset->display_name = old_id;
+                migrated = true;
+            }
+
+            migrated_presets[new_id] = std::move(preset);
+        }
+
+        if (migrated) {
+            this->data.presets = std::move(migrated_presets);
+
+            if (id_map.contains(this->data.curr)) {
+                this->data.curr = id_map[this->data.curr];
+            }
+
+            if (!this->data.presets.contains(this->data.curr) && !this->data.presets.empty()) {
+                this->data.curr = this->data.presets.begin()->first;
+            }
+
+            for (auto &[schedule_id, schedule]: this->data.schedules) {
+                (void) schedule_id;
+                if (id_map.contains(schedule.preset_id)) {
+                    schedule.preset_id = id_map[schedule.preset_id];
+                }
+            }
+
+            info("Migrated preset IDs to UUID keys and persisted updated config");
+            this->save();
+        }
+
         this->dirty = false;
     }
 
