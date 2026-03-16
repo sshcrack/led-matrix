@@ -113,9 +113,11 @@ endif()
 
 
 
-
 # Adding plugins
 add_subdirectory(plugins)
+
+# Collect the list of matrix plugin targets published by register_plugin()
+get_property(MATRIX_PLUGIN_TARGETS GLOBAL PROPERTY MATRIX_PLUGIN_TARGETS)
 
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
@@ -252,6 +254,64 @@ if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
     endif()
 endif()
 
+# ---------------------------------------------------------------------------
+# preview_gen: headless scene-preview GIF generator (emulator builds only)
+# ---------------------------------------------------------------------------
+if(ENABLE_EMULATOR)
+    # Tunable preview parameters - override on the command line as needed.
+    set(PREVIEW_FPS    "15"  CACHE STRING "Frames per second for scene preview GIFs")
+    set(PREVIEW_FRAMES "90"  CACHE STRING "Total frames per scene preview GIF (90 @ 15fps = 6 s)")
+    set(PREVIEW_WIDTH  "128" CACHE STRING "Preview GIF width (pixels)")
+    set(PREVIEW_HEIGHT "128" CACHE STRING "Preview GIF height (pixels)")
+
+    set(_PREVIEW_LIB_PATH
+        "${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+    )
+
+    add_executable(preview_gen
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_preview_gen/main.cpp
+    )
+
+    target_compile_features(preview_gen PRIVATE cxx_std_23)
+    target_compile_definitions(preview_gen PRIVATE ENABLE_EMULATOR)
+
+    target_link_libraries(preview_gen PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        spdlog::spdlog
+        nlohmann_json::nlohmann_json
+        unofficial::graphicsmagick::graphicsmagick
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        ${CMAKE_DL_LIBS}
+    )
+
+    # Install the binary itself so users can manually generate/regenerate previews
+    install(TARGETS preview_gen
+        DESTINATION .
+    )
+
+    # Install scene previews from the git-tracked scene_previews/ directory
+    # Previews are committed to git and deployed as-is, not auto-generated
+    # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
+    
+    # Install to web directory (for web interface access)
+    if(NOT ENABLE_DESKTOP)
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
+            DESTINATION web/scene_previews
+            OPTIONAL
+            FILES_MATCHING PATTERN "*.gif"
+        )
+    endif()
+    
+    # Install to root for server access (e.g., /scene_preview endpoint)
+    # This maintains backward compatibility with the server's /scene_preview endpoint
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
+        DESTINATION scene_previews
+        OPTIONAL
+        FILES_MATCHING PATTERN "*.gif"
+    )
+endif()
+
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
 if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
@@ -330,7 +390,6 @@ if(NOT ENABLE_DESKTOP)
         ARCHIVE DESTINATION . # .lib (Windows static or import lib)
         LIBRARY DESTINATION . # .so/.dylib (Unix)
     )
-
 
     # Install fonts to fonts directory
     install(FILES

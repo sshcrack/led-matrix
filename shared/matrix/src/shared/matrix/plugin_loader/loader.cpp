@@ -158,7 +158,7 @@ void PluginManager::initialize() {
             dladdr((void *) create, &dl_info);
 
             p->_plugin_location = dl_info.dli_fname;
-            info("Successfully loaded plugin {}", plPath.string());
+            trace("Successfully loaded plugin {}", plPath.string());
 
             PluginInfo info = {
                 .handle = dlhandle,
@@ -172,8 +172,8 @@ void PluginManager::initialize() {
         }
     }
 
-    info("Loaded a total of {} plugins.", loaded_plugins.size());
-    info("Loading providers to register...");
+    trace("Loaded a total of {} plugins.", loaded_plugins.size());
+    trace("Loading providers to register...");
 
     initialized = true;
 }
