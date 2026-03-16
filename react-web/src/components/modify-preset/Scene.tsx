@@ -15,6 +15,8 @@ import type { Scene as SceneType } from '~/apiTypes/list_presets'
 import type { ListScenes, ListProviders } from '~/apiTypes/list_scenes'
 import { useSceneContext } from './SceneContext'
 import PropertyList from './property_list'
+import ScenePreview from './ScenePreview'
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 
 interface SceneProps {
   scene: SceneType
@@ -28,6 +30,7 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { deleteScene, updateScene } = useSceneContext()
   const navigate = useNavigate()
+  const apiUrl = useApiUrl()
 
   const def = sceneDefinitions.find(s => s.name === scene.type)
 
@@ -56,6 +59,14 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
             <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  {apiUrl && (
+                    <ScenePreview
+                      sceneName={scene.type}
+                      apiUrl={apiUrl}
+                      compact
+                      className="h-8 w-8 rounded-sm flex-shrink-0"
+                    />
+                  )}
                   <Badge variant="secondary" className="font-mono text-xs">
                     {scene.type}
                   </Badge>

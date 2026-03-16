@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import ScenePreview from './ScenePreview'
 
 interface AddSceneProps {
   sceneDefinitions: ListScenes[]
@@ -17,6 +19,7 @@ interface AddSceneProps {
 export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string>('')
+  const apiUrl = useApiUrl()
 
   const handleAdd = () => {
     const def = sceneDefinitions.find(s => s.name === selected)
@@ -58,6 +61,9 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
               ))}
             </SelectContent>
           </Select>
+          {selected && apiUrl && (
+            <ScenePreview sceneName={selected} apiUrl={apiUrl} className="rounded-md overflow-hidden" />
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!selected}>Add</Button>
