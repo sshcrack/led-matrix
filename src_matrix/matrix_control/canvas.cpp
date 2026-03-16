@@ -31,13 +31,16 @@ namespace
 {
     std::vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> build_weighted_scenes(
         const std::vector<std::shared_ptr<Scenes::Scene>> &scenes,
-        bool is_desktop_connected)
+        bool is_desktop_connected,
+        std::string exclude_scene_name = "")
     {
         std::vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> weighted_scenes;
         for (const auto &item : scenes)
         {
             auto weight = item->get_weight();
             if (weight <= 0)
+                continue;
+            if (item->get_name() == exclude_scene_name)
                 continue;
 
             if (item->needs_desktop_app() && !is_desktop_connected)
@@ -218,7 +221,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         forced_scene = nullptr;
         if (scene == nullptr)
         {
-            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected);
+            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene != nullptr ? scene->get_name() : "");
             scene = select_scene(weighted_scenes);
         }
 
@@ -250,7 +253,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         const auto transition_name = resolve_transition_name(preset, scene);
         if (should_schedule_transition(transition_duration, scene->get_duration()))
         {
-            const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected);
+            const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene != nullptr ? scene->get_name() : "");
             next_scene = select_scene(weighted_scenes);
             if (next_scene != nullptr && !next_scene->is_initialized())
             {
@@ -333,7 +336,6 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
             }
         }
 
-        spdlog::debug("Exiting scene: {}", scene->get_name());
         scene->after_render_stop();
     }
 }
