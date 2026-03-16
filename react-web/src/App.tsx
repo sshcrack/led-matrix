@@ -8,6 +8,7 @@ import Updates from './pages/Updates'
 import ModifyPreset from './pages/ModifyPreset'
 import ModifyProviders from './pages/ModifyProviders'
 import ModifyShaderProviders from './pages/ModifyShaderProviders'
+import SceneGallery from './pages/SceneGallery'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/gallery" element={<SceneGallery />} />
             <Route path="/schedules" element={<Schedules />} />
             <Route path="/updates" element={<Updates />} />
             <Route path="/modify-preset/:preset_id" element={<ModifyPreset />} />

@@ -220,7 +220,7 @@ void PluginManager::initialize()
             }
 #endif
 
-            info("Successfully loaded plugin {}", plPath.string());
+            trace("Successfully loaded plugin {}", plPath.string());
 
             PluginInfo info = {
                 .handle = dlhandle,

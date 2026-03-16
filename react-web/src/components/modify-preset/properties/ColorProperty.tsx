@@ -6,12 +6,12 @@ import { titleCase } from '~/lib/utils'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface ColorPropertyProps {
-  property: Property<string>
-  value: string
-  onChange: (value: string) => void
+  property: Property<number>
+  value: number | string
+  onChange: (value: number) => void
 }
 
-function normalizeHex(color: any): string {
+function normalizeHex(color: unknown): string {
   if (typeof color === 'string') {
     if (color.startsWith('#')) return color
     return '#' + color
@@ -22,8 +22,15 @@ function normalizeHex(color: any): string {
   return '#000000'
 }
 
-function toHex(color: string): string {
-  return color.startsWith('#') ? color : '#' + color
+function hexToNumber(color: string): number {
+  const normalized = color.startsWith('#') ? color.slice(1) : color
+  const parsed = Number.parseInt(normalized, 16)
+
+  if (Number.isNaN(parsed)) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(0xffffff, parsed))
 }
 
 export default function ColorProperty({ property, value, onChange }: ColorPropertyProps) {
@@ -43,7 +50,7 @@ export default function ColorProperty({ property, value, onChange }: ColorProper
         />
         <Input
           value={hexColor}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(hexToNumber(e.target.value))}
           placeholder="#000000"
           className="font-mono"
           maxLength={7}
@@ -53,7 +60,7 @@ export default function ColorProperty({ property, value, onChange }: ColorProper
         <div className="mt-2 p-3 border border-border rounded-xl bg-card shadow-md">
           <HexColorPicker
             color={hexColor}
-            onChange={(c) => onChange(c)}
+            onChange={(c) => onChange(hexToNumber(c))}
           />
           <button
             className="mt-2 text-xs text-muted-foreground hover:text-foreground"

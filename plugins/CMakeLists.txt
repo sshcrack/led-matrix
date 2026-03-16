@@ -69,6 +69,12 @@ function(register_plugin PLUGIN_NAME)
         target_link_libraries(${PLUGIN_NAME} PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
     endif()
 
+    # Publish to a global property so the root CMakeLists can wire up
+    # preview_gen dependencies on actual plugin targets rather than opaque names.
+    if(NOT ENABLE_DESKTOP)
+        set_property(GLOBAL APPEND PROPERTY MATRIX_PLUGIN_TARGETS ${PLUGIN_NAME})
+    endif()
+
     if(${PLUGIN_NAME} STREQUAL "ExampleScenes")
         return()
     endif()

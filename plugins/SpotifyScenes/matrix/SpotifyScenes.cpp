@@ -40,7 +40,7 @@ std::optional<string> SpotifyScenes::after_server_init() {
     if(is_disabled)
         return std::nullopt;
 
-    spdlog::info("Initializing SpotifyScenes");
+    spdlog::debug("Initializing SpotifyScenes");
 
     spotify = new Spotify();
     spotify->initialize();
