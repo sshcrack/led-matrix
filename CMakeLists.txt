@@ -259,9 +259,9 @@ endif()
 # ---------------------------------------------------------------------------
 if(ENABLE_EMULATOR)
     # Tunable preview parameters - override on the command line as needed.
-    set(PREVIEW_FPS    "15"  CACHE STRING "Frames per second for scene preview GIFs")
-    set(PREVIEW_FRAMES "90"  CACHE STRING "Total frames per scene preview GIF (90 @ 15fps = 6 s)")
-    set(PREVIEW_WIDTH  "128" CACHE STRING "Preview GIF width (pixels)")
+    set(PREVIEW_FPS "15" CACHE STRING "Frames per second for scene preview GIFs")
+    set(PREVIEW_FRAMES "90" CACHE STRING "Total frames per scene preview GIF (90 @ 15fps = 6 s)")
+    set(PREVIEW_WIDTH "128" CACHE STRING "Preview GIF width (pixels)")
     set(PREVIEW_HEIGHT "128" CACHE STRING "Preview GIF height (pixels)")
 
     set(_PREVIEW_LIB_PATH
@@ -289,11 +289,13 @@ if(ENABLE_EMULATOR)
     install(TARGETS preview_gen
         DESTINATION .
     )
+endif()
 
+if(NOT ENABLE_DESKTOP)
     # Install scene previews from the git-tracked scene_previews/ directory
     # Previews are committed to git and deployed as-is, not auto-generated
     # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
-    
+
     # Install to web directory (for web interface access)
     if(NOT ENABLE_DESKTOP)
         install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
@@ -302,7 +304,7 @@ if(ENABLE_EMULATOR)
             FILES_MATCHING PATTERN "*.gif"
         )
     endif()
-    
+
     # Install to root for server access (e.g., /scene_preview endpoint)
     # This maintains backward compatibility with the server's /scene_preview endpoint
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
