@@ -353,8 +353,8 @@ if(ENABLE_EMULATOR)
     if(GENERATE_SCENE_PREVIEWS)
         install(DIRECTORY "${CMAKE_BINARY_DIR}/previews/"
             DESTINATION previews
-            FILES_MATCHING PATTERN "*.gif"
             OPTIONAL
+            FILES_MATCHING PATTERN "*.gif"
         )
     endif()
 endif()
