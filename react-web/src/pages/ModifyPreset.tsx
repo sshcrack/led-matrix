@@ -70,7 +70,7 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-sm">{presetId}</h1>
+              <h1 className="font-semibold text-sm">{rawPreset?.display_name ?? presetId}</h1>
               <p className="text-xs text-muted-foreground">Edit preset</p>
             </div>
           </div>

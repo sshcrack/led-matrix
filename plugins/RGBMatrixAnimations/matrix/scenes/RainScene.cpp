@@ -30,13 +30,17 @@ void RainScene::initialize(int width, int height) {
     totalCols = matrix_width / 1.4;
 }
 
-void RainScene::initializeParticles() {
-    animation->get()->setAcceleration(0, -accel->get());
+void RainScene::initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) {
+    animation->setAcceleration(0, -accel->get());
     initializeColumns();
-    createColorPalette();
+    createColorPalette(renderer);
 }
 
 void RainScene::initializeColumns() {
+    delete[] cols;
+    delete[] vels;
+    delete[] lengths;
+
     cols = new uint16_t[totalCols];
     vels = new uint16_t[totalCols];
     lengths = new uint8_t[totalCols];
@@ -49,7 +53,7 @@ void RainScene::initializeColumns() {
     }
 }
 
-void RainScene::createColorPalette() {
+void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> renderer) {
     uint16_t brightness = 255;
     uint8_t red = 0, green = 255, blue = 0;
     uint8_t shadeSize = 8;
@@ -62,7 +66,7 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * i / 255);
             green = brightness;
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -71,7 +75,7 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             red = brightness;
             green = uint16_t(brightness * (255 - i) / 255);
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -80,7 +84,7 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             red = brightness;
             blue = uint16_t(brightness * i / 255);
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -89,7 +93,7 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * (255 - i) / 255);
             blue = brightness;
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -98,7 +102,7 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             green = uint16_t(brightness * i / 255);
             blue = brightness;
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -107,27 +111,31 @@ void RainScene::createColorPalette() {
             brightness = random_int16(50, 255);
             green = brightness;
             blue = uint16_t(brightness * (255 - i) / 255);
-            colID = renderer->get()->getColourId(RGB_color(red, green, blue));
+            colID = renderer->getColourId(RGB_color(red, green, blue));
         }
     }
 
     // ...additional color transitions...
-    totalColors = renderer->get()->getColourId(RGB_color(0, 255, 0)) - 1;
+    totalColors = renderer->getColourId(RGB_color(0, 255, 0)) - 1;
 }
 
 bool RainScene::render(rgb_matrix::FrameCanvas *canvas) {
-    addNewParticles();
-    removeOldParticles();
-
-    // Call parent class render which handles animation and FPS
     return ParticleScene::render(canvas);
 }
 
-void RainScene::addNewParticles() {
-    auto ren = renderer->get();
+void RainScene::preRender(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
+{
+    if (!renderer || !animation || !cols || !vels || !lengths) {
+        return;
+    }
 
+    addNewParticles(renderer, animation);
+    removeOldParticles(animation);
+}
+
+void RainScene::addNewParticles(std::shared_ptr<ParticleMatrixRenderer> ren, std::shared_ptr<GravityParticles> animation) {
     const uint16_t stepSize = 1;
-    if (animation->get()->getParticleCount() >= numParticles->get()) return;
+    if (animation->getParticleCount() >= numParticles->get()) return;
     float v = velocity->get();
 
     counter++;
@@ -155,15 +163,13 @@ void RainScene::addNewParticles() {
                 if (currentColorId >= totalColors) currentColorId = 1;
             }
             RGB_color color = ren->getColor(currentColorId);
-            animation->get()->addParticle(cols[i], ren->getGridHeight() - 1, color, 0, -vels[i]);
+            animation->addParticle(cols[i], ren->getGridHeight() - 1, color, 0, -vels[i]);
             lengths[i]--;
         }
     }
 }
 
-void RainScene::removeOldParticles() {
-    auto anim = animation->get();
-
+void RainScene::removeOldParticles(std::shared_ptr<GravityParticles> anim) {
     uint16_t removeNum = std::min((uint16_t) (numParticles->get() - 1), (uint16_t) matrix_width);
     if (anim->getParticleCount() > removeNum) {
         for (uint16_t i = 0; i < removeNum; i++) {

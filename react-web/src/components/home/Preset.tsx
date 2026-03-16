@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, Pencil, Trash2, MoreVertical, Layers } from 'lucide-react'
+import { Play, Pencil, Trash2, MoreVertical, Layers, Type } from 'lucide-react'
 import { Card, CardContent } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -12,19 +12,44 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '~/components/ui/alert-dialog'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from '~/components/ui/dialog'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
 import type { RawPreset } from '~/apiTypes/list_presets'
 
 interface PresetCardProps {
-  name: string
+  id: string
+  displayName: string
   preset: RawPreset
   isActive: boolean
-  onActivate: (name: string) => void
-  onDelete: (name: string) => void
+  onActivate: (id: string, displayName: string) => void
+  onDelete: (id: string, displayName: string) => void
+  onRename: (id: string, displayName: string) => void
 }
 
-export default function PresetCard({ name, preset, isActive, onActivate, onDelete }: PresetCardProps) {
+export default function PresetCard({ id, displayName, preset, isActive, onActivate, onDelete, onRename }: PresetCardProps) {
   const navigate = useNavigate()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showRename, setShowRename] = useState(false)
+  const [renameValue, setRenameValue] = useState(displayName)
+
+  const handleOpenRename = () => {
+    setRenameValue(displayName)
+    setShowRename(true)
+  }
+
+  const handleRename = () => {
+    const nextName = renameValue.trim()
+    if (!nextName || nextName === displayName) {
+      setShowRename(false)
+      return
+    }
+    onRename(id, nextName)
+    setShowRename(false)
+  }
 
   return (
     <>
@@ -33,7 +58,7 @@ export default function PresetCard({ name, preset, isActive, onActivate, onDelet
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-medium truncate">{name}</h3>
+                <h3 className="font-medium truncate">{displayName}</h3>
                 {isActive && (
                   <Badge variant="default" className="text-xs shrink-0">Active</Badge>
                 )}
@@ -49,7 +74,7 @@ export default function PresetCard({ name, preset, isActive, onActivate, onDelet
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => onActivate(name)}
+                  onClick={() => onActivate(id, displayName)}
                   title="Activate"
                 >
                   <Play className="h-4 w-4" />
@@ -63,12 +88,16 @@ export default function PresetCard({ name, preset, isActive, onActivate, onDelet
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {!isActive && (
-                    <DropdownMenuItem onClick={() => onActivate(name)}>
+                    <DropdownMenuItem onClick={() => onActivate(id, displayName)}>
                       <Play className="h-4 w-4 mr-2" />
                       Activate
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => navigate(`/modify-preset/${encodeURIComponent(name)}`)}>
+                  <DropdownMenuItem onClick={handleOpenRename}>
+                    <Type className="h-4 w-4 mr-2" />
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/modify-preset/${encodeURIComponent(id)}`)}>
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
@@ -92,20 +121,43 @@ export default function PresetCard({ name, preset, isActive, onActivate, onDelet
           <AlertDialogHeader>
             <AlertDialogTitle>Delete preset?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{name}". This action cannot be undone.
+              This will permanently delete "{displayName}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { onDelete(name); setConfirmDelete(false) }}
+              onClick={() => { onDelete(id, displayName); setConfirmDelete(false) }}
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showRename} onOpenChange={setShowRename}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename preset</DialogTitle>
+            <DialogDescription>Change the display name shown in the app.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor={`rename-${id}`}>Display Name</Label>
+            <Input
+              id={`rename-${id}`}
+              value={renameValue}
+              onChange={e => setRenameValue(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleRename()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRename(false)}>Cancel</Button>
+            <Button onClick={handleRename} disabled={!renameValue.trim() || renameValue.trim() === displayName}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
