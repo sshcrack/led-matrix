@@ -45,13 +45,13 @@ AudioVisualizer::AudioVisualizer() : last_timestamp(0), interpolated_log(false)
 
 std::optional<string> AudioVisualizer::before_server_init()
 {
-    spdlog::info("Starting UDP server for audio visualization");
+    spdlog::debug("Starting UDP server for audio visualization");
     return std::nullopt;
 }
 
 std::optional<string> AudioVisualizer::pre_exit()
 {
-    spdlog::info("Stopping UDP server for audio visualization");
+    spdlog::debug("Stopping UDP server for audio visualization");
     return std::nullopt;
 }
 

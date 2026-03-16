@@ -258,20 +258,11 @@ endif()
 # preview_gen: headless scene-preview GIF generator (emulator builds only)
 # ---------------------------------------------------------------------------
 if(ENABLE_EMULATOR)
-    # Option to generate previews; default ON for emulator workflow.
-    # Disable with -DGENERATE_SCENE_PREVIEWS=OFF to skip preview generation
-    # during cmake --install (e.g. for CI or cross-compile packaging).
-    option(GENERATE_SCENE_PREVIEWS
-        "Install scene preview GIFs (copy from staging dir) during cmake --install" ON)
-
     # Tunable preview parameters - override on the command line as needed.
     set(PREVIEW_FPS    "15"  CACHE STRING "Frames per second for scene preview GIFs")
     set(PREVIEW_FRAMES "90"  CACHE STRING "Total frames per scene preview GIF (90 @ 15fps = 6 s)")
     set(PREVIEW_WIDTH  "128" CACHE STRING "Preview GIF width (pixels)")
     set(PREVIEW_HEIGHT "128" CACHE STRING "Preview GIF height (pixels)")
-    # Leave empty to auto-detect changed scenes; set to comma-separated scene names
-    # to regenerate only those scenes regardless of fingerprints.
-    set(PREVIEW_SCENES "" CACHE STRING "Comma-separated scene names to force-regenerate (empty = auto)")
 
     set(_PREVIEW_LIB_PATH
         "${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
@@ -294,69 +285,31 @@ if(ENABLE_EMULATOR)
         ${CMAKE_DL_LIBS}
     )
 
-    # ---------------------------------------------------------------------------
-    # generate_scene_previews: full regeneration of all scene GIFs.
-    # Staging area: ${CMAKE_BINARY_DIR}/previews/
-    # Run:  cmake --build <build_dir> --target generate_scene_previews
-    # ---------------------------------------------------------------------------
-    add_custom_target(generate_scene_previews
-        COMMAND ${CMAKE_COMMAND} -E env
-            "LD_LIBRARY_PATH=${_PREVIEW_LIB_PATH}:$ENV{LD_LIBRARY_PATH}"
-            "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
-            $<TARGET_FILE:preview_gen>
-            --output "${CMAKE_BINARY_DIR}/previews"
-            --fps "${PREVIEW_FPS}"
-            --frames "${PREVIEW_FRAMES}"
-            --width "${PREVIEW_WIDTH}"
-            --height "${PREVIEW_HEIGHT}"
-        DEPENDS preview_gen ${MATRIX_PLUGIN_TARGETS}
-        COMMENT "Generating all scene preview GIFs into ${CMAKE_BINARY_DIR}/previews/"
-        VERBATIM
-    )
-
-    # ---------------------------------------------------------------------------
-    # generate_scene_previews_incremental: only regenerate scenes whose plugin
-    # .so has changed (or whose GIF is missing).  Uses previews_manifest.json
-    # stored in the staging directory to track per-scene fingerprints.
-    # Run:  cmake --build <build_dir> --target generate_scene_previews_incremental
-    # ---------------------------------------------------------------------------
-    add_custom_target(generate_scene_previews_incremental
-        COMMAND ${CMAKE_COMMAND}
-            "-DPREVIEW_GEN=$<TARGET_FILE:preview_gen>"
-            "-DPLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
-            "-DLIBRARY_PATH=${_PREVIEW_LIB_PATH}"
-            "-DOUTPUT_DIR=${CMAKE_BINARY_DIR}/previews"
-            "-DMANIFEST_FILE=${CMAKE_BINARY_DIR}/previews/previews_manifest.json"
-            "-DFPS=${PREVIEW_FPS}"
-            "-DFRAMES=${PREVIEW_FRAMES}"
-            "-DWIDTH=${PREVIEW_WIDTH}"
-            "-DHEIGHT=${PREVIEW_HEIGHT}"
-            "-DGENERATOR_VERSION=${PROJECT_VERSION}"
-            "-DSCENES_OVERRIDE=${PREVIEW_SCENES}"
-            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/incremental_preview.cmake"
-        DEPENDS preview_gen ${MATRIX_PLUGIN_TARGETS}
-        COMMENT "Incrementally generating scene preview GIFs (changed scenes only)"
-        VERBATIM
-    )
-
-    # Install the binary itself so users can re-run it manually
+    # Install the binary itself so users can manually generate/regenerate previews
     install(TARGETS preview_gen
         DESTINATION .
     )
 
-    # Install step: copy pre-generated GIFs from the staging area into
-    # <install_prefix>/previews/.  The staging area is populated by either
-    # generate_scene_previews or generate_scene_previews_incremental before
-    # running cmake --install.
-    # Non-fatal: if the staging dir is empty or missing, installation succeeds
-    # without any preview files (OPTIONAL flag).
-    if(GENERATE_SCENE_PREVIEWS)
-        install(DIRECTORY "${CMAKE_BINARY_DIR}/previews/"
-            DESTINATION previews
+    # Install scene previews from the git-tracked scene_previews/ directory
+    # Previews are committed to git and deployed as-is, not auto-generated
+    # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
+    
+    # Install to web directory (for web interface access)
+    if(NOT ENABLE_DESKTOP)
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
+            DESTINATION web/scene_previews
             OPTIONAL
             FILES_MATCHING PATTERN "*.gif"
         )
     endif()
+    
+    # Install to root for server access (e.g., /scene_preview endpoint)
+    # This maintains backward compatibility with the server's /scene_preview endpoint
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
+        DESTINATION scene_previews
+        OPTIONAL
+        FILES_MATCHING PATTERN "*.gif"
+    )
 endif()
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916

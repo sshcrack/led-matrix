@@ -16,7 +16,7 @@
 #
 # Options:
 #   --api-url <url>      Matrix API base URL (default: http://localhost:8080)
-#   --output <dir>       Output directory for GIF files (default: ./previews)
+#   --output <dir>       Output directory for GIF files (default: ./scene_previews)
 #   --scenes <s1,s2,...> Comma-separated list of scene names to capture.
 #                        If omitted, all desktop-dependent scenes are captured.
 #   --duration <secs>    Capture duration per scene in seconds (default: 6)
@@ -27,11 +27,11 @@
 #   --help               Show this help
 #
 # Workflow:
-#   1. Emulator preview target (auto scenes, no desktop needed):
-#        cmake --build emulator_build --target generate_scene_previews_incremental
+#   1. Generate auto-render previews (scenes without desktop requirement):
+#        ./scripts/generate_scene_previews.sh --all
 #   2. Start the emulator and desktop app, then run this script for desktop scenes:
 #        ./scripts/capture_desktop_preview.sh --api-url http://localhost:8080
-#   3. Deploy previews with the cross-compile build (build_upload.sh handles the sync).
+#   3. Commit previews and deploy with build_upload.sh
 
 set -euo pipefail
 
@@ -42,7 +42,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Defaults
 # ---------------------------------------------------------------------------
 API_URL="http://localhost:8080"
-OUTPUT_DIR="$REPO_DIR/emulator_build/previews"
+OUTPUT_DIR="$REPO_DIR/scene_previews"
 SCENES_OVERRIDE=""
 DURATION=6
 FPS=15
