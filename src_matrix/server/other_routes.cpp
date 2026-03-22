@@ -26,53 +26,13 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         return response.done(); });
 
     router->http_get("/web", [](auto req, auto)
-                     {
-        auto response = req->create_response(restinio::status_see_other())
-            .append_header(restinio::http_field::location, "/web/");
-        Server::add_cors_headers(response);
-        return response.done(); });
+                     { return handle_web_request(req, "/"); });
 
     // Static file serving
     router->http_get("/web/:path(.*)", [](auto req, auto params)
                      {
-        auto exec_dir = get_exec_dir();
-
-        const auto requested_path = params["path"];
-        const filesystem::path web_dir = exec_dir / "web";
-        filesystem::path file_path = web_dir / requested_path;
-        if(!filesystem::exists(file_path))
-            file_path = web_dir / "index.html"; // Fallback to index.html if not found
-
-
-        // Ensure the requested path is within the web directory
-        const auto canonical_web = filesystem::canonical(web_dir);
-        std::error_code ec;
-        const auto canonical_file = filesystem::canonical(file_path, ec);
-        
-        if (ec || !canonical_file.string().starts_with(canonical_web.string())) {
-            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
-        }
-
-        // Serve index file if directory
-        if (filesystem::is_directory(file_path))
-            file_path = file_path / "index.html";
-
-        if (!filesystem::exists(file_path)) {
-            return reply_with_error(req, "File not found", restinio::status_not_found());
-        }
-
-        const string content_type = MimeTypes::getType(file_path.string());
-        
-        spdlog::trace("Serving {}", file_path.c_str());
-        auto response = req->create_response(restinio::status_ok())
-            .append_header_date_field()
-            .append_header(restinio::http_field::content_type, content_type);
-
-        if(content_type == "application/javascript" || content_type == "text/css" || file_path.extension() == ".ico")
-                    response.append_header(restinio::http_field::cache_control, "public, max-age=31536000");
-
-        Server::add_cors_headers(response);
-        return response.set_body(restinio::sendfile(file_path)).done(); });
+                         const auto requested_path = params["path"];
+                         return handle_web_request(req, requested_path); });
 
     router->http_get("/list", [](auto req, auto)
                      {
@@ -122,4 +82,45 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         return restinio::request_accepted(); });
 
     return std::move(router);
+}
+
+restinio::request_handling_status_t Server::handle_web_request(const restinio::request_handle_t &req, const restinio::string_view_t requested_path)
+{
+    auto exec_dir = get_exec_dir();
+    const filesystem::path web_dir = exec_dir / "web";
+    filesystem::path file_path = web_dir / requested_path;
+    if (!filesystem::exists(file_path))
+        file_path = web_dir / "index.html"; // Fallback to index.html if not found
+
+    // Ensure the requested path is within the web directory
+    const auto canonical_web = filesystem::canonical(web_dir);
+    std::error_code ec;
+    const auto canonical_file = filesystem::canonical(file_path, ec);
+
+    if (ec || !canonical_file.string().starts_with(canonical_web.string()))
+    {
+        return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+    }
+
+    // Serve index file if directory
+    if (filesystem::is_directory(file_path))
+        file_path = file_path / "index.html";
+
+    if (!filesystem::exists(file_path))
+    {
+        return reply_with_error(req, "File not found", restinio::status_not_found());
+    }
+
+    const string content_type = MimeTypes::getType(file_path.string());
+
+    spdlog::trace("Serving {}", file_path.c_str());
+    auto response = req->create_response(restinio::status_ok())
+                        .append_header_date_field()
+                        .append_header(restinio::http_field::content_type, content_type);
+
+    if (content_type == "application/javascript" || content_type == "text/css" || file_path.extension() == ".ico")
+        response.append_header(restinio::http_field::cache_control, "public, max-age=31536000");
+
+    Server::add_cors_headers(response);
+    return response.set_body(restinio::sendfile(file_path)).done();
 }
