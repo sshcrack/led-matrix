@@ -554,6 +554,7 @@ void CoverOnlyScene::register_properties()
     add_property(bpm_slowdown_factor);
     add_property(bpm_slowdown_threshold);
     add_property(cover_transition_steps);
+    add_property(disable_cover_animation);
 }
 
 CoverOnlyScene::~CoverOnlyScene()
