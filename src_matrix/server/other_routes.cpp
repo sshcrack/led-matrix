@@ -26,7 +26,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         return response.done(); });
 
     router->http_get("/web", [](auto req, auto)
-                     { return handle_web_request(req, "/"); });
+                     { return handle_web_request(req, "/web/"); });
 
     // Static file serving
     router->http_get("/web/:path(.*)", [](auto req, auto params)
