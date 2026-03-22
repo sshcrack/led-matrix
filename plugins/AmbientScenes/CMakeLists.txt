@@ -17,4 +17,6 @@ register_plugin(AmbientScenes
         matrix/scenes/FallingSandScene.h
         matrix/scenes/NeonTunnelScene.cpp
         matrix/scenes/NeonTunnelScene.h
+        matrix/scenes/DigitalRainScene.cpp
+        matrix/scenes/DigitalRainScene.h
 )
