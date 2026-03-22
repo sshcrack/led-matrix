@@ -58,7 +58,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-project(main VERSION 1.11.19)
+project(main VERSION 1.12.0)
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
