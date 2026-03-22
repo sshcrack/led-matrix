@@ -78,6 +78,7 @@ public:
     bool linearAmplitudeScaling;
     bool interpolateMissingBands;
     bool skipMissingBandsFromOutput;
+    bool alwaysSendData;
 
     // ----- Audio Device Settings -----
     std::string deviceName;
