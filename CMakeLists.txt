@@ -330,22 +330,22 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     endif()
 
     # Install React web dependencies
-    add_custom_target(react_native_install ALL
+    add_custom_target(react_web_install ALL
         COMMAND /bin/bash -c ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Installing React web dependencies"
     )
 
     # Build web version, depends on install
-    add_custom_target(react_native_build ALL
+    add_custom_target(react_web_build ALL
         COMMAND ${PNPM} run build
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web
         COMMENT "Building React web version"
-        DEPENDS react_native_install
+        DEPENDS react_web_install
     )
 
-    # Make main target depend on react_native_build
-    add_dependencies(${PROJECT_NAME} react_native_build)
+    # Make main target depend on react_web_build
+    add_dependencies(${PROJECT_NAME} react_web_build)
 endif()
 
 set(INSTALL_DESTINATION ".")

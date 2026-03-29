@@ -2,7 +2,7 @@
 This project consists of three main components:
 1. **Matrix Control**: There is one controller program for a 128x128 LED matrix. The main entry point is `src_matrix/main.cpp`.
 2. **Desktop Application**: The desktop application is based on ImGui and the source code is located in "src_desktop/". The main entry point is `src_desktop/main.cpp`.
-3. **React-Native**: This react-native application is used to control the matrix. It'll be used as web version and as mobile app. The source code is in `react_native/`.
+3. **React-Web**: This react application will be used by the user (either as a website or PWA) to control the matrix.. The source code is in `react_web/`.
 
 ### Plugins
 Both the desktop application and the matrix load plugins. The plugins are located in the `plugins/` directory. Each plugin has its own subdirectory, e.g., `plugins/AudioVisualizer/`. Matrix plugins are loaded from `plugins/matrix/`, while desktop plugins are loaded from `plugins/desktop/`.
@@ -31,10 +31,8 @@ A UDP socket is also listening, this is used to receive data from the desktop ap
 The desktop application is built using ImGui and is used to do heavy lifting, such as rendering GPU intensive animations (like GLSL shaders) and host specific visualizations (like the real-time audio visualizer). It communicates with the matrix controller via a UDP socket (for streaming pixel data and custom UDP packets, which share a common class `UdpPacket`). For non-streaming data, it uses a WebSocket connection to the matrix controller.
 
 
-## React-Native Application
-The React-Native application is used to control the matrix from a mobile device. It communicates with the matrix controller via a REST-Interface (you'll need to update the README.md file if you add new endpoints or modify them). This application uses tailwindcss for styling and is designed to be responsive and good looking on both web and mobile devices.
-Build it in the subdirectory `react-native/` using the command `./node_modules/.bin/expo export --platform web`. Make sure to use pnpm to install the dependencies.
-
+## React-Web
+The React web application is used to control the matrix from a web interface. It communicates with the matrix controller via the REST API hosted by the controller. The web application allows users to select presets, upload custom images, and control various settings of the matrix.
 
 ## Github Copilot Agent
 If you are the GitHub copilot agent, the project has already been configured using CMake and the appropriate presets. You'll just need to build the project using CMake and the specific preset.
