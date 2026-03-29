@@ -64,7 +64,7 @@ Below are some example scenes and effects from the included plugins:
 
 ### 🎮 **Comprehensive Control System**
 - **REST API server** for seamless remote control
-- **React Native mobile app** and **a website** for on-the-go management  
+- **PWA** and **a website** for on-the-go management
 - **11+ specialized plugins** for unlimited visual variety
 - **Preset management** for quick scene switching
 - **Advanced scheduling** - Automatically switch presets based on time and day
