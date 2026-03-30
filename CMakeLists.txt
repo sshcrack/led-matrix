@@ -245,15 +245,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
 
 
-
-if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
-    find_package(WiringPi)
-    if(WiringPi_FOUND)
-        include_directories(${WiringPi_INCLUDE_DIR})
-        target_link_libraries(${PROJECT_NAME} PRIVATE ${WiringPi_LIBRARIES})
-    endif()
-endif()
-
 # ---------------------------------------------------------------------------
 # preview_gen: headless scene-preview GIF generator (emulator builds only)
 # ---------------------------------------------------------------------------
