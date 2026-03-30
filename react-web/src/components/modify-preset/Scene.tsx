@@ -56,7 +56,7 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
             <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="font-mono text-xs">
+                  <Badge variant="secondary" className={`font-mono text-xs ${(def || sceneDefinitions.length === 0) ? 'bg-secondary text-secondary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
                     {scene.type}
                   </Badge>
                 </div>
