@@ -7,20 +7,11 @@
 #include "shared/matrix/canvas_consts.h"
 
 #include <csignal>
-#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
-#include <wiringPi.h>
-#endif
 #include <chrono>
 #include "spdlog/spdlog.h"
 
 using namespace rgb_matrix;
 using namespace spdlog;
-
-// Motion sensor constants
-constexpr int MOTION_SENSOR_PIN = 14;
-constexpr unsigned long MOTION_TIMEOUT_MS = 300000; // 5 minutes in milliseconds
-unsigned long last_motion_time = 0;
-bool motion_detected = false;
 
 void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
 {
@@ -54,33 +45,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
             }
         }
 
-#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
-        // Check motion sensor
-        int sensor_state = digitalRead(MOTION_SENSOR_PIN);
-        unsigned long current_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                         std::chrono::steady_clock::now().time_since_epoch())
-                                         .count();
-
-        if (sensor_state == HIGH)
-        {
-            // Motion detected, update the timestamp
-            last_motion_time = current_time;
-
-            if (config->is_turned_off())
-            {
-                // Turn on the canvas if it was off
-                debug("Motion detected, turning on canvas");
-                config->set_turned_off(false);
-            }
-        }
-        else if (!config->is_turned_off() && (current_time - last_motion_time > MOTION_TIMEOUT_MS))
-        {
-            // No motion for 5 minutes, turn off the canvas
-            debug("No motion for 5 minutes, turning off canvas");
-            config->set_turned_off(true);
-        }
-
-#endif
         if (!config->is_turned_off())
         {
             update_canvas(matrix, first_offscreen_canvas, second_offscreen_canvas, composite_offscreen_Canvas, forced_scene);
@@ -91,19 +55,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
 
         matrix->Clear();
         SleepMillis(1000);
-
-#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
-        // Check the sensor while turned off
-        if (digitalRead(MOTION_SENSOR_PIN) == HIGH)
-        {
-            debug("Motion detected, turning on canvas");
-            last_motion_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   std::chrono::steady_clock::now().time_since_epoch())
-                                   .count();
-            config->set_turned_off(false);
-            break;
-        }
-#endif
     }
 
     // Cleanup post-processor
@@ -127,18 +78,6 @@ int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
 
     signal(SIGTERM, InterruptHandler);
     signal(SIGINT, InterruptHandler);
-
-    // Initialize GPIO for motion sensor
-#if !defined(ENABLE_EMULATOR) && defined(MOTION_SENSOR)
-    wiringPiSetup();
-    pinMode(MOTION_SENSOR_PIN, INPUT);
-    debug("Motion sensor initialized on pin {}", MOTION_SENSOR_PIN);
-#endif
-
-    // Initialize motion timer
-    last_motion_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                           std::chrono::steady_clock::now().time_since_epoch())
-                           .count();
 
     debug("Running hardware mainloop...");
     hardware_mainloop(matrix);
