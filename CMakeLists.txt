@@ -307,6 +307,16 @@ endif()
 
 #Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
+# ---------------------------------------------------------------------------
+# WASM browser-side scene preview (Emscripten builds only)
+# The wasm/ subdirectory is a standalone CMake project; it is only added here
+# when the parent project itself is being built with the Emscripten toolchain.
+# Normal native / cross-compile builds are unaffected.
+# ---------------------------------------------------------------------------
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    add_subdirectory(wasm)
+endif()
+
 if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     # Check for Node.js
     find_program(NODEJS node)
