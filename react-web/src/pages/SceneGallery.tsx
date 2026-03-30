@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ImageOff } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Badge } from '~/components/ui/badge'
@@ -13,26 +13,18 @@ import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
+import WasmScenePreview from '~/components/WasmScenePreview'
 
 function ScenePreviewCard({ scene, apiUrl }: { scene: ListScenes; apiUrl: string }) {
-  const [imgError, setImgError] = useState(false)
-
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col">
       <div className="relative bg-muted w-full aspect-square flex items-center justify-center">
-        {scene.has_preview && !imgError ? (
-          <img
-            src={`${apiUrl}/scene_preview?name=${encodeURIComponent(scene.name)}`}
-            alt={`${scene.name} preview`}
-            className="w-full h-full object-contain"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground p-4">
-            <ImageOff className="h-8 w-8" />
-            <span className="text-xs text-center">No preview</span>
-          </div>
-        )}
+        <WasmScenePreview
+          sceneName={scene.name}
+          hasPreview={scene.has_preview}
+          apiUrl={apiUrl}
+          className="w-full h-full"
+        />
       </div>
       <div className="p-3">
         <p className="text-sm font-medium truncate" title={scene.name}>{scene.name}</p>

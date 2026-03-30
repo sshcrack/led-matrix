@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, ImageOff } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -9,6 +9,7 @@ import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import WasmScenePreview from '~/components/WasmScenePreview'
 
 interface AddSceneProps {
   sceneDefinitions: ListScenes[]
@@ -18,7 +19,6 @@ interface AddSceneProps {
 export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string>('')
-  const [imgError, setImgError] = useState(false)
   const apiUrl = useApiUrl()
 
   const selectedDef = sceneDefinitions.find(s => s.name === selected)
@@ -42,7 +42,6 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
 
   const handleSelectChange = (value: string) => {
     setSelected(value)
-    setImgError(false)
   }
 
   return (
@@ -70,19 +69,12 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
           </Select>
           {selected && (
             <div className="rounded-lg border border-border bg-muted overflow-hidden w-full aspect-video flex items-center justify-center">
-              {selectedDef?.has_preview && !imgError ? (
-                <img
-                  src={`${apiUrl}/scene_preview?name=${encodeURIComponent(selected)}`}
-                  alt={`${selected} preview`}
-                  className="w-full h-full object-contain"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
-                  <ImageOff className="h-6 w-6" />
-                  <span className="text-xs">No preview available</span>
-                </div>
-              )}
+              <WasmScenePreview
+                sceneName={selected}
+                hasPreview={selectedDef?.has_preview}
+                apiUrl={apiUrl ?? ''}
+                className="w-full h-full"
+              />
             </div>
           )}
           <DialogFooter>
