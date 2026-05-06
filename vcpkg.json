@@ -58,6 +58,13 @@
       "dependencies": [
         "shadertoy-headless"
       ]
+    },
+    "scripted-scenes-matrix": {
+      "description": "Lua scripted scenes support (ScriptedScenes plugin). Installs lua + sol2 via vcpkg.",
+      "dependencies": [
+        "lua",
+        "sol2"
+      ]
     }
   },
   "name": "led-matrix",
