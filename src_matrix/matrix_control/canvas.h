@@ -16,4 +16,4 @@ using rgb_matrix::StreamReader;
 
 // Global post-processor instance
 
-void update_canvas(RGBMatrixBase * matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas,  FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene);
+void update_canvas(RGBMatrixBase * matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas,  FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene, std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);

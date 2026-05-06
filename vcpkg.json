@@ -25,7 +25,8 @@
           "features": [
             "emulator"
           ]
-        }
+        },
+        "cli11"
       ]
     },
     "desktop": {
