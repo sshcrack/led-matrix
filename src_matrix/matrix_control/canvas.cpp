@@ -213,7 +213,7 @@ void render_fallback(RGBMatrixBase *canvas)
     rgb_matrix::DrawText(canvas, ERROR_FONT, 0, 11, ERROR_COLOR, "No scene available");
 }
 
-void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas, FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene)
+void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas, FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
     const auto preset = config->get_curr();
     const auto &scenes = preset->scenes;
@@ -231,7 +231,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
     {
         bool is_desktop_connected = Server::is_desktop_connected();
 
-        std::shared_ptr<Scenes::Scene> scene = forced_scene;
+        std::shared_ptr<Scenes::Scene> scene = pinned_scene ? pinned_scene : forced_scene;
         forced_scene = nullptr;
         if (scene == nullptr)
         {
@@ -265,7 +265,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         std::shared_ptr<Scenes::Scene> next_scene;
         const auto transition_duration = resolve_transition_duration(preset, scene);
         const auto transition_name = resolve_transition_name(preset, scene);
-        if (should_schedule_transition(transition_duration, scene->get_duration()))
+        if (should_schedule_transition(transition_duration, scene->get_duration()) && !pinned_scene)
         {
             const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene != nullptr ? scene->get_name() : "");
             next_scene = select_scene(weighted_scenes);

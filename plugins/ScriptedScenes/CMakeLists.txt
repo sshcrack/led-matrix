@@ -9,6 +9,7 @@ if(ENABLE_DESKTOP)
     return()
 endif()
 
+find_package(Lua REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 
 register_plugin(ScriptedScenes
@@ -18,5 +19,6 @@ register_plugin(ScriptedScenes
     matrix/LuaScene.h
 )
 
-# sol2::sol2 is header-only and transitively links lua.
-target_link_libraries(ScriptedScenes PRIVATE sol2::sol2)
+# sol2::sol2 is header-only, so we must explicitly link the Lua library
+target_link_libraries(ScriptedScenes PRIVATE sol2::sol2 ${LUA_LIBRARIES})
+target_include_directories(ScriptedScenes PRIVATE ${LUA_INCLUDE_DIR})
