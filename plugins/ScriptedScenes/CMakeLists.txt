@@ -17,6 +17,8 @@ register_plugin(ScriptedScenes
     matrix/ScriptedScenes.h
     matrix/LuaScene.cpp
     matrix/LuaScene.h
+    matrix/LatestLuaScene.cpp
+    matrix/LatestLuaScene.h
 )
 
 # sol2::sol2 is header-only, so we must explicitly link the Lua library

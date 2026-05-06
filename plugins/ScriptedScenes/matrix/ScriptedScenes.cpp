@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include "shared/matrix/plugin_loader/loader.h"
+#include "LatestLuaScene.h"
 #include <chrono>
 
 namespace fs = std::filesystem;
@@ -87,6 +88,8 @@ ScriptedScenes::create_scenes() {
 
         scenes.emplace_back(new Scenes::LuaSceneWrapper(path, name), deleter);
     }
+
+    scenes.emplace_back(new Scenes::LatestLuaSceneWrapper(), deleter);
 
     return scenes;
 }
