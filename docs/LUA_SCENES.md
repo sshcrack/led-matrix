@@ -64,6 +64,8 @@ led-matrix-v1.x.x/
 > **Tip for development with the emulator:** The emulator is run from
 > `<repo root>/emulator_build/install/`, so create
 > `emulator_build/install/lua_scenes/` to test your scripts locally.
+> `lua` and `sol2` are installed automatically via vcpkg — no
+> system-wide Lua installation is required.
 
 ---
 
@@ -242,13 +244,14 @@ configured one.
 
 ## Examples
 
-Three ready-to-use scripts are included in the source tree at:
+Four ready-to-use scripts are included in the source tree at:
 
 ```
 plugins/ScriptedScenes/matrix/examples/
 ├── plasma.lua       – classic plasma wave with configurable speed & scale
 ├── starfield.lua    – 3-D star warp with configurable speed
-└── colour_bars.lua  – scrolling colour bars with configurable count & speed
+├── colour_bars.lua  – scrolling colour bars with configurable count & speed
+└── ripple.lua       – concentric ripples from a bouncing centre point
 ```
 
 Copy any of these into your `lua_scenes/` directory to get started:
