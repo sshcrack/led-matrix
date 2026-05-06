@@ -2,6 +2,7 @@
 
 #include <set>
 #include <filesystem>
+#include <algorithm>
 #include "spdlog/spdlog.h"
 
 #include "shared/matrix/plugin_loader/loader.h"
@@ -50,17 +51,35 @@ std::vector<BasicPlugin *> PluginManager::get_plugins() {
     return plugins;
 }
 
-std::vector<std::shared_ptr<SceneWrapper>> &PluginManager::get_scenes() {
-    if (all_scenes.size() == 0) {
+std::vector<std::shared_ptr<SceneWrapper>> PluginManager::get_scenes() {
+    std::lock_guard<std::mutex> lock(scenes_mutex);
+    if (!scenes_initialized) {
         for (auto &item: get_plugins()) {
             auto pl_scenes = item->get_scenes();
             all_scenes.insert(all_scenes.end(),
                               pl_scenes.begin(),
                               pl_scenes.end());
         }
+        scenes_initialized = true;
     }
 
     return all_scenes;
+}
+
+void PluginManager::add_scene(std::shared_ptr<SceneWrapper> scene) {
+    std::lock_guard<std::mutex> lock(scenes_mutex);
+    all_scenes.push_back(std::move(scene));
+}
+
+void PluginManager::remove_scene(const std::string& name) {
+    std::lock_guard<std::mutex> lock(scenes_mutex);
+    all_scenes.erase(
+        std::remove_if(all_scenes.begin(), all_scenes.end(),
+                       [&name](const std::shared_ptr<SceneWrapper>& s) {
+                           return s->get_name() == name;
+                       }),
+        all_scenes.end()
+    );
 }
 
 std::vector<std::shared_ptr<ImageProviderWrapper> > PluginManager::get_image_providers() {
