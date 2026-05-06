@@ -4,6 +4,7 @@
 #include "shared/matrix/plugin/main.h"
 #include "shared/matrix/config/image_providers/general.h"
 #include "shared/matrix/config/shader_providers/general.h"
+#include <mutex>
 
 namespace Plugins {
     struct PluginInfo {
@@ -25,6 +26,8 @@ namespace Plugins {
         /// Handle, DestroyFunction, Plugin
         std::vector<PluginInfo> loaded_plugins;
         std::vector<std::shared_ptr<SceneWrapper>> all_scenes;
+        std::mutex scenes_mutex;
+        bool scenes_initialized = false;
 
         bool initialized = false;
 
@@ -42,7 +45,9 @@ namespace Plugins {
 
         std::vector<Plugins::BasicPlugin*> get_plugins();
 
-        std::vector<std::shared_ptr<SceneWrapper>> &get_scenes();
+        std::vector<std::shared_ptr<SceneWrapper>> get_scenes();
+        void add_scene(std::shared_ptr<SceneWrapper> scene);
+        void remove_scene(const std::string& name);
         std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
         std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> get_shader_providers();
     };

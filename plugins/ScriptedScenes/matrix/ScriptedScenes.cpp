@@ -5,6 +5,8 @@
 
 #include <filesystem>
 #include <spdlog/spdlog.h>
+#include "shared/matrix/plugin_loader/loader.h"
+#include <chrono>
 
 namespace fs = std::filesystem;
 
@@ -77,8 +79,93 @@ ScriptedScenes::create_scenes() {
         spdlog::info("[ScriptedScenes] Registering Lua scene '{}' from '{}'",
                      name, path.filename().string());
 
+        try {
+            known_files_[name] = fs::last_write_time(path);
+        } catch (...) {
+            known_files_[name] = std::filesystem::file_time_type::min();
+        }
+
         scenes.emplace_back(new Scenes::LuaSceneWrapper(path, name), deleter);
     }
 
     return scenes;
+}
+
+std::optional<std::string> ScriptedScenes::after_server_init() {
+    stop_watcher_ = false;
+    watcher_thread_ = std::thread(&ScriptedScenes::watch_directory, this);
+    return std::nullopt;
+}
+
+std::optional<std::string> ScriptedScenes::pre_exit() {
+    stop_watcher_ = true;
+    if (watcher_thread_.joinable()) {
+        watcher_thread_.join();
+    }
+    return std::nullopt;
+}
+
+void ScriptedScenes::watch_directory() {
+    while (!stop_watcher_) {
+        for (int i = 0; i < 10 && !stop_watcher_; i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (stop_watcher_) break;
+
+        if (!fs::exists(lua_scenes_dir)) continue;
+
+        std::unordered_map<std::string, bool> found_files;
+        auto deleter = [](Plugins::SceneWrapper *w) { delete w; };
+
+        for (const auto &entry : fs::directory_iterator(lua_scenes_dir)) {
+            if (!entry.is_regular_file()) continue;
+            if (entry.path().extension() != ".lua") continue;
+
+            const fs::path &path = entry.path();
+            std::string name = path.stem().string();
+
+            // Quick-load the script to read the optional `name` global
+            {
+                try {
+                    sol::state tmp;
+                    tmp.open_libraries(sol::lib::base);
+                    auto res = tmp.script_file(path.string(),
+                        [](lua_State *, sol::protected_function_result pfr) { return pfr; });
+                    if (res.valid()) {
+                        sol::object n = tmp["name"];
+                        if (n.is<std::string>()) name = n.as<std::string>();
+                    }
+                } catch (...) {}
+            }
+
+            found_files[name] = true;
+
+            if (known_files_.find(name) == known_files_.end()) {
+                try {
+                    known_files_[name] = fs::last_write_time(path);
+                } catch (...) {
+                    known_files_[name] = std::filesystem::file_time_type::min();
+                }
+
+                spdlog::info("[ScriptedScenes] Runtime loading new Lua scene '{}' from '{}'",
+                             name, path.filename().string());
+
+                std::shared_ptr<Plugins::SceneWrapper> wrapper(
+                    new Scenes::LuaSceneWrapper(path, name), deleter);
+
+                Plugins::PluginManager::instance()->add_scene(std::move(wrapper));
+            }
+        }
+
+        // Check for deletions
+        for (auto it = known_files_.begin(); it != known_files_.end(); ) {
+            if (found_files.find(it->first) == found_files.end()) {
+                spdlog::info("[ScriptedScenes] Unloading deleted Lua scene '{}'", it->first);
+                Plugins::PluginManager::instance()->remove_scene(it->first);
+                it = known_files_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 }
