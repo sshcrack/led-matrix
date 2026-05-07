@@ -303,9 +303,9 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
         profile_avg_packet_ms_ = static_cast<float>(profile_packet_ms_sum_ / frames);
         profile_avg_total_ms_ = static_cast<float>(profile_total_ms_sum_ / frames);
         profile_avg_set_pixel_calls_per_frame_ =
-            static_cast<float>(static_cast<double>(profile_set_pixel_calls_) / static_cast<double>(profile_frames_));
+            static_cast<float>(profile_set_pixel_calls_) / frames;
         profile_avg_clear_calls_per_frame_ =
-            static_cast<float>(static_cast<double>(profile_clear_calls_) / static_cast<double>(profile_frames_));
+            static_cast<float>(profile_clear_calls_) / frames;
 
         spdlog::info(
             "[ScriptedScenesDesktop:{}] perf avg: total={:.3f}ms render={:.3f}ms globals={:.3f}ms packet={:.3f}ms set_pixel/frame={:.1f} clear/frame={:.2f} fps={:.1f}",
