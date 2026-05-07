@@ -22,6 +22,7 @@ static double get_time_sec()
 ScriptedScenesDesktop::ScriptedScenesDesktop()
 {
     canvas_data_.resize(matrix_width_ * matrix_height_ * 3, 0);
+    update_script_dimensions_locked();
 }
 
 ScriptedScenesDesktop::~ScriptedScenesDesktop() = default;
@@ -44,6 +45,16 @@ void ScriptedScenesDesktop::render()
     ImGui::Text("Current Scene: %s", current_scene_name_.c_str());
     ImGui::Text("Offload Render: %s", offload_render_ ? "Yes" : "No");
     ImGui::Text("FPS: %.1f", current_fps_);
+    if (ImGui::SliderInt("Render Downscale", &render_downscale_, 1, 4))
+    {
+        update_script_dimensions_locked();
+        if (lua_)
+        {
+            (*lua_)["width"] = script_width_;
+            (*lua_)["height"] = script_height_;
+        }
+    }
+    ImGui::Text("Lua Resolution: %dx%d", script_width_, script_height_);
     ImGui::Separator();
     ImGui::Text("Lua Profiling (1s avg)");
     ImGui::Text("Compute total: %.3f ms", profile_avg_total_ms_);
@@ -66,11 +77,12 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
             matrix_width_ = std::stoi(sizeStr.substr(0, xPos));
             matrix_height_ = std::stoi(sizeStr.substr(xPos + 1));
             canvas_data_.resize(matrix_width_ * matrix_height_ * 3, 0);
+            update_script_dimensions_locked();
 
             if (lua_)
             {
-                (*lua_)["width"] = matrix_width_;
-                (*lua_)["height"] = matrix_height_;
+                (*lua_)["width"] = script_width_;
+                (*lua_)["height"] = script_height_;
             }
         }
     }
@@ -102,8 +114,8 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
                     }
                 }
 
-                (*lua_)["width"] = matrix_width_;
-                (*lua_)["height"] = matrix_height_;
+                (*lua_)["width"] = script_width_;
+                (*lua_)["height"] = script_height_;
 
                 sol::protected_function init_fn = (*lua_)["initialize"];
                 if (init_fn.valid())
@@ -138,7 +150,39 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
 
                 // Clear canvas on new script
                 std::fill(canvas_data_.begin(), canvas_data_.end(), 0);
+                std::fill(script_canvas_data_.begin(), script_canvas_data_.end(), 0);
             }
+        }
+    }
+}
+
+void ScriptedScenesDesktop::update_script_dimensions_locked()
+{
+    render_downscale_ = std::clamp(render_downscale_, 1, 4);
+    script_width_ = std::max(1, matrix_width_ / render_downscale_);
+    script_height_ = std::max(1, matrix_height_ / render_downscale_);
+    script_canvas_data_.assign(script_width_ * script_height_ * 3, 0);
+}
+
+void ScriptedScenesDesktop::blit_script_canvas_to_output_locked()
+{
+    if (script_width_ == matrix_width_ && script_height_ == matrix_height_)
+    {
+        std::copy(script_canvas_data_.begin(), script_canvas_data_.end(), canvas_data_.begin());
+        return;
+    }
+
+    for (int y = 0; y < matrix_height_; ++y)
+    {
+        const int src_y = std::min(script_height_ - 1, y / render_downscale_);
+        for (int x = 0; x < matrix_width_; ++x)
+        {
+            const int src_x = std::min(script_width_ - 1, x / render_downscale_);
+            const int src_idx = (src_y * script_width_ + src_x) * 3;
+            const int dst_idx = (y * matrix_width_ + x) * 3;
+            canvas_data_[dst_idx] = script_canvas_data_[src_idx];
+            canvas_data_[dst_idx + 1] = script_canvas_data_[src_idx + 1];
+            canvas_data_[dst_idx + 2] = script_canvas_data_[src_idx + 2];
         }
     }
 }
@@ -157,18 +201,18 @@ void ScriptedScenesDesktop::setup_lua_state()
     lua_->set_function("set_pixel", [this](int x, int y, int r, int g, int b)
     {
         profile_set_pixel_calls_++;
-        if (x < 0 || x >= matrix_width_ || y < 0 || y >= matrix_height_) return;
-        int idx = (y * matrix_width_ + x) * 3;
-        canvas_data_[idx] = static_cast<uint8_t>(std::clamp(r, 0, 255));
-        canvas_data_[idx + 1] = static_cast<uint8_t>(std::clamp(g, 0, 255));
-        canvas_data_[idx + 2] = static_cast<uint8_t>(std::clamp(b, 0, 255));
+        if (x < 0 || x >= script_width_ || y < 0 || y >= script_height_) return;
+        int idx = (y * script_width_ + x) * 3;
+        script_canvas_data_[idx] = static_cast<uint8_t>(std::clamp(r, 0, 255));
+        script_canvas_data_[idx + 1] = static_cast<uint8_t>(std::clamp(g, 0, 255));
+        script_canvas_data_[idx + 2] = static_cast<uint8_t>(std::clamp(b, 0, 255));
     });
 
     // clear
     lua_->set_function("clear", [this]()
     {
         profile_clear_calls_++;
-        std::fill(canvas_data_.begin(), canvas_data_.end(), 0);
+        std::fill(script_canvas_data_.begin(), script_canvas_data_.end(), 0);
     });
 
     // log
@@ -194,8 +238,8 @@ void ScriptedScenesDesktop::setup_lua_state()
         return sol::nil;
     });
 
-    (*lua_)["width"] = matrix_width_;
-    (*lua_)["height"] = matrix_height_;
+    (*lua_)["width"] = script_width_;
+    (*lua_)["height"] = script_height_;
     (*lua_)["time"] = 0.0;
     (*lua_)["dt"] = 0.0;
 }
@@ -278,6 +322,7 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
     }
 
     const double packet_start = get_time_sec();
+    blit_script_canvas_to_output_locked();
     auto packet = std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>(
         new ScriptedScenesPacket(canvas_data_),
         [](UdpPacket* p) { delete dynamic_cast<ScriptedScenesPacket*>(p); }
