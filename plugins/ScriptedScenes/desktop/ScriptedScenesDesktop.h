@@ -10,6 +10,7 @@
 #include <thread>
 #include <deque>
 #include <condition_variable>
+#include <atomic>
 #include "shared/desktop/utils.h"
 
 #define SOL_ALL_SAFETIES_ON 1
@@ -22,7 +23,7 @@ class ScriptedScenesPacket : public UdpPacket
 public:
     std::vector<uint8_t> frameData;
 
-    explicit ScriptedScenesPacket(const std::vector<uint8_t>& data) : UdpPacket(0x04), frameData(data)
+    explicit ScriptedScenesPacket(const std::vector<uint8_t> &data) : UdpPacket(0x04), frameData(data)
     {
     }
 
@@ -43,11 +44,11 @@ public:
 
     void on_websocket_message(const std::string message) override;
 
-    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>>
+    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>>
     compute_next_packet(const std::string sceneName) override;
 
-    void initialize_imgui(ImGuiContext* im_gui_context, ImGuiMemAllocFunc* alloc_fn, ImGuiMemFreeFunc* free_fn,
-                          void** user_data) override;
+    void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc *alloc_fn, ImGuiMemFreeFunc *free_fn,
+                          void **user_data) override;
 
 private:
     struct RenderConfig
@@ -90,6 +91,9 @@ private:
         bool lua_loaded = false;
         uint64_t set_pixel_calls = 0;
         uint64_t clear_calls = 0;
+
+        std::atomic<bool> stop_requested{false};
+        std::atomic<bool> is_finished{false};
     };
 
     std::unique_ptr<sol::state> lua_;
@@ -143,7 +147,8 @@ private:
     std::mutex script_mutex_;
     std::mutex pipeline_mutex_;
     std::condition_variable pipeline_cv_;
-    std::deque<WorkerState> workers_;
+
+    std::vector<std::unique_ptr<WorkerState>> workers_;
     std::deque<FrameJob> frame_jobs_;
     std::map<uint64_t, FrameResult> completed_frames_;
     RenderConfig pipeline_render_config_;
@@ -174,53 +179,33 @@ private:
     double pipeline_worker_total_ms_sum_ = 0.0;
     uint64_t pipeline_worker_samples_ = 0;
 
-    // ---------------------------------------------------------------
     // Adaptive pipeline tuning
-    // ---------------------------------------------------------------
-    // When enabled, the system adjusts pipeline_worker_count_,
-    // pipeline_lookahead_depth_, pipeline_max_queued_frames_, and
-    // pipeline_max_reorder_wait_ms_ automatically once per second
-    // based on the observed drop rate and FPS ratio.
-    //
-    // Soft parameters (lookahead, queue size, reorder wait) are changed
-    // in-place with no pipeline restart.  Worker count changes always
-    // trigger a restart because each worker owns its own Lua state.
-    // ---------------------------------------------------------------
     bool adaptive_pipeline_ = true;
-
-    // Total drop count at the start of the last adaptive window.
     uint64_t adaptive_last_drop_count_ = 0;
-
-    // How many consecutive 1-second windows have been "healthy"
-    // (zero drops, FPS at or above target).
     int adaptive_stable_seconds_ = 0;
-
-    // How many consecutive 1-second windows have had drops or low FPS.
     int adaptive_drop_bursts_ = 0;
-
-    // Drops observed in the last adaptive evaluation window.
     uint64_t adaptive_drops_last_window_ = 0;
-
-    // FPS ratio at the last adaptive evaluation (effective / target).
     float adaptive_fps_ratio_last_ = 1.0f;
-
-    // Last action taken by the adaptive system (shown in UI).
     std::string adaptive_last_action_ = "none";
 
     void maybe_adapt_pipeline_locked();
-
     void update_script_dimensions_locked();
     void blit_script_canvas_to_output_locked();
-    static void blit_script_canvas_to_output(const std::vector<uint8_t>& script_canvas,
-                                             std::vector<uint8_t>& output_canvas,
-                                             const RenderConfig& config);
+    static void blit_script_canvas_to_output(const std::vector<uint8_t> &script_canvas,
+                                             std::vector<uint8_t> &output_canvas,
+                                             const RenderConfig &config);
     void setup_lua_state();
-    bool load_and_exec_script(const std::string& script_content);
+    bool load_and_exec_script(const std::string &script_content);
     void reset_profiling_locked(double now);
+
+    // Dynamic thread lifecycle
     void stop_pipeline_workers_locked();
     bool start_pipeline_workers_locked();
+    void sync_pipeline_workers_locked();
+    bool init_worker(WorkerState *worker_ctx);
+
     void maybe_update_pipeline_mode_locked();
     void schedule_pipeline_jobs_locked();
     std::optional<FrameResult> try_take_next_pipeline_frame_locked(double now);
-    void worker_loop(int worker_id);
+    void worker_loop(WorkerState *worker);
 };
