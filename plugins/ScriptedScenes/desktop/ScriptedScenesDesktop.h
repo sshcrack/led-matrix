@@ -60,6 +60,11 @@ private:
     double start_time_ = 0.0;
     double last_time_ = 0.0;
 
+    // FPS tracking
+    int frame_count_ = 0;
+    double last_fps_update_ = 0.0;
+    float current_fps_ = 0.0f;
+
     std::mutex script_mutex_;
 
     void setup_lua_state();
