@@ -41,6 +41,7 @@ namespace Scenes {
         std::filesystem::file_time_type last_write_time_{};
         bool lua_loaded_ = false;
         bool is_first_load_ = true;
+        bool offload_render_ = false;
 
         /// Canvas pointer valid only inside render(); used by set_pixel / clear callbacks.
         rgb_matrix::FrameCanvas *current_canvas_ = nullptr;

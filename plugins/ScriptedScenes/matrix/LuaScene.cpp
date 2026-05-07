@@ -7,6 +7,10 @@
 #include <filesystem>
 #include <stdexcept>
 #include <cstdint>
+#include <fstream>
+#include <sstream>
+#include "ScriptedScenes.h"
+#include "shared/matrix/plugin_loader/loader.h"
 
 // ---------------------------------------------------------------------------
 // Helper: extract the Lua `name` global from a file without keeping state.
@@ -205,9 +209,34 @@ bool LuaScene::load_and_exec_script() {
         scene_name_ = name_obj.as<std::string>();
     }
 
+    sol::object offload_obj = (*lua_)["offload"];
+    if (offload_obj.is<bool>()) {
+        offload_render_ = offload_obj.as<bool>();
+    } else {
+        offload_render_ = false;
+    }
+
     try {
         last_write_time_ = std::filesystem::last_write_time(script_path_);
     } catch (...) {}
+
+    if (offload_render_) {
+        // Send script to desktop
+        std::ifstream file(script_path_);
+        if (file) {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            std::string content = buffer.str();
+            
+            auto plugins = Plugins::PluginManager::instance()->get_plugins();
+            for (auto &p : plugins) {
+                if (auto plugin = dynamic_cast<ScriptedScenes*>(p)) {
+                    plugin->send_msg_to_desktop("script:" + scene_name_ + ":" + content);
+                    break;
+                }
+            }
+        }
+    }
 
     lua_loaded_ = true;
     return true;
@@ -262,6 +291,18 @@ void LuaScene::initialize(int width, int height) {
 bool LuaScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (!lua_) return true;
 
+    // We can fetch the plugin instance once to avoid doing it every frame
+    static ScriptedScenes* plugin = nullptr;
+    if (!plugin) {
+        auto plugins = Plugins::PluginManager::instance()->get_plugins();
+        for (auto &p : plugins) {
+            if (auto v = dynamic_cast<ScriptedScenes*>(p)) {
+                plugin = v;
+                break;
+            }
+        }
+    }
+
     // --- hot-reload: check if the script file has changed -----------------
     try {
         auto mtime = std::filesystem::last_write_time(script_path_);
@@ -288,6 +329,27 @@ bool LuaScene::render(rgb_matrix::FrameCanvas *canvas) {
     auto frame = frame_timer_.tick();
     (*lua_)["time"] = frame.t;
     (*lua_)["dt"]   = frame.dt;
+
+    if (offload_render_) {
+        // Desktop is rendering this, so we just return true.
+        // The actual drawing to canvas happens via ScriptedScenes::on_udp_packet.
+        if (plugin) {
+            const auto pixels = plugin->get_data();
+            if (!pixels.empty()) {
+                const uint8_t *data = pixels.data();
+                const int max_pixels = pixels.size() / 3;
+                const int limit = std::min(matrix_width * matrix_height, max_pixels);
+
+                for (int idx = 0; idx < limit; ++idx) {
+                    int x = idx % matrix_width;
+                    int y = idx / matrix_width;
+                    int i = idx * 3;
+                    canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+                }
+            }
+        }
+        return true;
+    }
 
     sol::protected_function render_fn = (*lua_)["render"];
     if (!render_fn.valid()) return true;

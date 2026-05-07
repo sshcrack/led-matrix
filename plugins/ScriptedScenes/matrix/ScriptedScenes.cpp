@@ -172,3 +172,19 @@ void ScriptedScenes::watch_directory() {
         }
     }
 }
+
+bool ScriptedScenes::on_udp_packet(const uint8_t pluginId, const uint8_t *packetData, const size_t size) {
+    if (pluginId != 0x03) return false;
+    std::lock_guard<std::mutex> lock(dataMutex);
+    data.assign(packetData, packetData + size);
+    return true;
+}
+
+std::vector<uint8_t> ScriptedScenes::get_data() {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    return data;
+}
+
+std::optional<std::vector<std::string>> ScriptedScenes::on_websocket_open() {
+    return std::optional<std::vector<std::string>>({"scripted_scenes"});
+}
