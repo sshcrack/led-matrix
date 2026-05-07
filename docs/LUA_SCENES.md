@@ -366,3 +366,12 @@ prefixing them with `lua_` to avoid collisions with C++ scene names.
 The directory is scanned only at startup.  Dropping a new `.lua` file into
 `lua_scenes/` while the server is running has no effect until the next restart.
 Hot-reload only refreshes *existing* scenes, not new files.
+
+### 11. Math function `math.pow` is deprecated. Use the `^` operator instead.
+
+```lua
+-- Deprecated:
+local x = math.pow(2, 3)  -- 8
+-- Preferred:
+local x = 2 ^ 3            -- 8
+```
