@@ -139,6 +139,14 @@
         "write",
         "read",
         "sleep",
-        "set_pixel"
+        "set_pixel",
+        "clear",
+        "log",
+        "define_property",
+        "get_property",
+        "width",
+        "height",
+        "time",
+        "dt"
     ]
 }
