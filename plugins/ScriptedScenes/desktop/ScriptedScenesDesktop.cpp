@@ -135,8 +135,13 @@ void ScriptedScenesDesktop::render()
         ImGui::Text("Dropped frames: %llu", static_cast<unsigned long long>(pipeline_frames_dropped_));
         ImGui::Text("Sent frames: %llu", static_cast<unsigned long long>(pipeline_frames_sent_));
         ImGui::Text("Effective send FPS: %.1f", pipeline_effective_send_fps_);
+
+        const double base_frame_budget_ms = 1000.0 / static_cast<double>(std::max(1.0f, pipeline_target_fps_));
+        const double parallel_budget_ms = base_frame_budget_ms * pipeline_worker_count_ * 0.95;
+
         ImGui::Text("Worker render avg: %.3f ms", pipeline_avg_worker_render_ms_);
         ImGui::Text("Worker total avg: %.3f ms", pipeline_avg_worker_total_ms_);
+        ImGui::Text("Parallel budget: %.2f ms", parallel_budget_ms);
     }
 
     ImGui::Separator();
