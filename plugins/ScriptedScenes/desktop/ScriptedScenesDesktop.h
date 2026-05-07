@@ -28,7 +28,7 @@ public:
     ~ScriptedScenesDesktop() override;
 
     void render() override;
-    std::string get_plugin_name() const override { return "scripted_scenes"; }
+    std::string get_plugin_name() const override { return "ScriptedScenes"; }
 
     void on_websocket_message(const std::string message) override;
 

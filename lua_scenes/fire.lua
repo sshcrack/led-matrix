@@ -4,6 +4,7 @@
 -- Drop into lua_scenes/ and restart the server.
 
 name = "lua_fire"
+offload = true
 
 -- ─── Setup ────────────────────────────────────────────────────────────────────
 
