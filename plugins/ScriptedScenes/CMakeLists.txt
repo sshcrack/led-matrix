@@ -12,6 +12,9 @@ if(ENABLE_DESKTOP)
         desktop/ScriptedScenesDesktop.cpp
         desktop/ScriptedScenesDesktop.h
     )
+
+    find_package(GLEW REQUIRED)
+    target_link_libraries(ScriptedScenes PRIVATE GLEW::GLEW)
 else()
     register_plugin(ScriptedScenes
         matrix/ScriptedScenes.cpp

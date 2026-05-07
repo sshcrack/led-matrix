@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <map>
 #include <cstdint>
 #include <thread>
@@ -16,7 +17,18 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
+#include <GL/glew.h>
+
 const int MAX_WORKERS = std::thread::hardware_concurrency();
+
+// Stores a property definition (name + type + default value) as concrete C++ types
+// so that it can safely outlive the sol::state that created it.
+struct PropertyDef
+{
+    std::string type;           // "float" | "int" | "bool" | "color"
+    double      numeric_value = 0.0; // for float / int / color (raw 0xRRGGBB)
+    bool        bool_value    = false;
+};
 
 class ScriptedScenesPacket : public UdpPacket
 {
@@ -49,6 +61,9 @@ public:
 
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc *alloc_fn, ImGuiMemFreeFunc *free_fn,
                           void **user_data) override;
+
+    void post_init() override;
+    void after_swap(ImGuiContext *imGuiContext) override;
 
 private:
     struct RenderConfig
@@ -186,6 +201,49 @@ private:
     float adaptive_fps_ratio_last_ = 1.0f;
     std::string adaptive_last_action_ = "none";
 
+    // ── GPU rendering ────────────────────────────────────────────────────────
+    // property_defs_ mirrors default_properties_ but stores concrete C++ types
+    // (no sol::state dependency) so they can be safely copied across threads.
+    // Protected by script_mutex_.
+    std::map<std::string, PropertyDef> property_defs_;
+
+    // Current GPU shader configuration – protected by script_mutex_.
+    bool        gpu_mode_active_   = false;
+    std::string gpu_current_src_;   // GLSL source for the active scene
+
+    // Pending GPU compilation – written by WebSocket thread (under script_mutex_),
+    // consumed by the render thread in after_swap().
+    // The pending data itself is under gpu_compile_mutex_ so that after_swap()
+    // can pick it up without holding script_mutex_ for long.
+    std::mutex            gpu_compile_mutex_;
+    std::atomic<bool>     gpu_shader_pending_{false};
+    std::string           gpu_pending_src_;
+    std::map<std::string, PropertyDef> gpu_pending_props_;
+    int                   gpu_pending_w_ = 0;
+    int                   gpu_pending_h_ = 0;
+
+    // GL objects – owned exclusively by the render thread (after_swap).
+    // No lock needed when accessed only from that thread.
+    bool    gpu_gl_initialized_ = false;
+    GLuint  gpu_fbo_            = 0;
+    GLuint  gpu_texture_        = 0;
+    GLuint  gpu_quad_vao_       = 0;
+    GLuint  gpu_quad_vbo_       = 0;
+    GLuint  gpu_program_        = 0;
+    int     gpu_fbo_width_      = 0;
+    int     gpu_fbo_height_     = 0;
+    std::map<std::string, PropertyDef> gpu_active_props_;
+    double  gpu_start_time_     = 0.0;
+    double  gpu_last_time_      = 0.0;
+    int     gpu_frame_count_    = 0;
+    double  gpu_last_fps_upd_   = 0.0;
+    float   gpu_fps_            = 0.0f;
+
+    // GPU frame data – written by render thread, read by UDP thread.
+    std::shared_mutex    gpu_data_mutex_;
+    std::vector<uint8_t> gpu_frame_data_;
+    // ── end GPU rendering ────────────────────────────────────────────────────
+
     void maybe_adapt_pipeline_locked();
     void update_script_dimensions_locked();
     void blit_script_canvas_to_output_locked();
@@ -195,6 +253,13 @@ private:
     void setup_lua_state();
     bool load_and_exec_script(const std::string &script_content);
     void reset_profiling_locked(double now);
+
+    // GPU helpers (called from render thread only)
+    bool compile_gpu_program(const std::string &frag_src);
+    bool setup_gpu_fbo(int w, int h);
+    void cleanup_gpu_resources();
+    void apply_gpu_uniforms(double elapsed, double dt);
+    void render_gpu_frame();
 
     // Dynamic thread lifecycle
     void stop_pipeline_workers_locked();
