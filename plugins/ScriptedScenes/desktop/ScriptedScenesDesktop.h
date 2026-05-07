@@ -80,8 +80,11 @@ private:
         int id = 0;
         std::thread thread;
         std::unique_ptr<sol::state> lua;
+        RenderConfig render_config;
         std::vector<uint8_t> script_canvas_data;
         std::map<std::string, sol::object> default_properties;
+        std::string scene_name;
+        bool unsafe_mode = false;
         bool lua_loaded = false;
         uint64_t set_pixel_calls = 0;
         uint64_t clear_calls = 0;

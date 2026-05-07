@@ -435,17 +435,22 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
     auto init_worker = [this](WorkerState& worker) -> bool
     {
+        worker.render_config = pipeline_render_config_;
+        worker.scene_name = current_scene_name_;
+        worker.unsafe_mode = unsafe_parallel_mode_;
         worker.lua = std::make_unique<sol::state>();
         worker.lua->open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
-        worker.script_canvas_data.assign(script_width_ * script_height_ * 3, 0);
+        worker.script_canvas_data.assign(worker.render_config.script_width * worker.render_config.script_height * 3, 0);
         worker.default_properties.clear();
+        const int worker_script_width = worker.render_config.script_width;
+        const int worker_script_height = worker.render_config.script_height;
 
-        worker.lua->set_function("set_pixel", [&worker, this](int x, int y, int r, int g, int b)
+        worker.lua->set_function("set_pixel", [&worker, worker_script_width, worker_script_height](int x, int y, int r, int g, int b)
         {
             worker.set_pixel_calls++;
-            if (x < 0 || x >= script_width_ || y < 0 || y >= script_height_)
+            if (x < 0 || x >= worker_script_width || y < 0 || y >= worker_script_height)
                 return;
-            int idx = (y * script_width_ + x) * 3;
+            int idx = (y * worker_script_width + x) * 3;
             worker.script_canvas_data[idx] = static_cast<uint8_t>(std::clamp(r, 0, 255));
             worker.script_canvas_data[idx + 1] = static_cast<uint8_t>(std::clamp(g, 0, 255));
             worker.script_canvas_data[idx + 2] = static_cast<uint8_t>(std::clamp(b, 0, 255));
@@ -457,9 +462,9 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
             std::fill(worker.script_canvas_data.begin(), worker.script_canvas_data.end(), 0);
         });
 
-        worker.lua->set_function("log", [this](const std::string& msg)
+        worker.lua->set_function("log", [&worker](const std::string& msg)
         {
-            spdlog::info("[ScriptedScenesDesktop:{}] {}", current_scene_name_, msg);
+            spdlog::info("[ScriptedScenesDesktop:{}] {}", worker.scene_name, msg);
         });
 
         worker.lua->set_function("define_property",
@@ -479,15 +484,15 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
             return sol::nil;
         });
 
-        (*worker.lua)["width"] = script_width_;
-        (*worker.lua)["height"] = script_height_;
+        (*worker.lua)["width"] = worker_script_width;
+        (*worker.lua)["height"] = worker_script_height;
         (*worker.lua)["time"] = 0.0;
         (*worker.lua)["dt"] = 0.0;
 
         bool load_ok = true;
         try
         {
-            if (unsafe_parallel_mode_)
+            if (worker.unsafe_mode)
             {
                 worker.lua->script(script_content_);
             }
@@ -499,14 +504,14 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
                 if (!result.valid())
                 {
                     sol::error err = result;
-                    spdlog::error("[ScriptedScenesDesktop:{}] Worker script load error: {}", current_scene_name_, err.what());
+                    spdlog::error("[ScriptedScenesDesktop:{}] Worker script load error: {}", worker.scene_name, err.what());
                     load_ok = false;
                 }
             }
         }
         catch (const std::exception& ex)
         {
-            spdlog::error("[ScriptedScenesDesktop:{}] Worker script load exception: {}", current_scene_name_, ex.what());
+            spdlog::error("[ScriptedScenesDesktop:{}] Worker script load exception: {}", worker.scene_name, ex.what());
             load_ok = false;
         }
 
@@ -518,7 +523,7 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
         try
         {
-            if (unsafe_parallel_mode_)
+            if (worker.unsafe_mode)
             {
                 sol::function setup_fn = (*worker.lua)["setup"];
                 if (setup_fn.valid())
@@ -541,7 +546,7 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
                     if (!setup_result.valid())
                     {
                         sol::error err = setup_result;
-                        spdlog::error("[ScriptedScenesDesktop:{}] Worker setup() error: {}", current_scene_name_, err.what());
+                        spdlog::error("[ScriptedScenesDesktop:{}] Worker setup() error: {}", worker.scene_name, err.what());
                     }
                 }
 
@@ -552,14 +557,14 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
                     if (!init_result.valid())
                     {
                         sol::error err = init_result;
-                        spdlog::error("[ScriptedScenesDesktop:{}] Worker initialize() error: {}", current_scene_name_, err.what());
+                        spdlog::error("[ScriptedScenesDesktop:{}] Worker initialize() error: {}", worker.scene_name, err.what());
                     }
                 }
             }
         }
         catch (const std::exception& ex)
         {
-            spdlog::error("[ScriptedScenesDesktop:{}] Worker init exception: {}", current_scene_name_, ex.what());
+            spdlog::error("[ScriptedScenesDesktop:{}] Worker init exception: {}", worker.scene_name, ex.what());
             worker.lua_loaded = false;
             return false;
         }
@@ -755,7 +760,7 @@ void ScriptedScenesDesktop::worker_loop(int worker_id)
 
         try
         {
-            if (unsafe_parallel_mode_)
+            if (worker.unsafe_mode)
             {
                 const double render_start = get_time_sec();
                 sol::function render_fn = (*worker.lua)["render"];
@@ -776,7 +781,7 @@ void ScriptedScenesDesktop::worker_loop(int worker_id)
                     if (!result.valid())
                     {
                         sol::error err = result;
-                        spdlog::error("[ScriptedScenesDesktop:{}] worker render() error: {}", current_scene_name_, err.what());
+                        spdlog::error("[ScriptedScenesDesktop:{}] worker render() error: {}", worker.scene_name, err.what());
                         render_ok = false;
                     }
                 }
@@ -786,7 +791,7 @@ void ScriptedScenesDesktop::worker_loop(int worker_id)
         }
         catch (const std::exception& ex)
         {
-            spdlog::error("[ScriptedScenesDesktop:{}] worker render() exception: {}", current_scene_name_, ex.what());
+            spdlog::error("[ScriptedScenesDesktop:{}] worker render() exception: {}", worker.scene_name, ex.what());
             render_ok = false;
         }
 
@@ -801,7 +806,7 @@ void ScriptedScenesDesktop::worker_loop(int worker_id)
         result.clear_calls = worker.clear_calls;
         result.render_ms = render_ms;
 
-        blit_script_canvas_to_output(worker.script_canvas_data, result.frame_data, pipeline_render_config_);
+        blit_script_canvas_to_output(worker.script_canvas_data, result.frame_data, worker.render_config);
 
         const double total_end = get_time_sec();
         result.total_ms = (total_end - total_start) * 1000.0;
