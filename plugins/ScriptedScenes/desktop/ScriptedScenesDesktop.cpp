@@ -35,10 +35,10 @@ static constexpr int   ADAPTIVE_QUEUE_MAX                  = 120;
 static constexpr int   ADAPTIVE_QUEUE_MIN                  = 16;
 static constexpr float ADAPTIVE_FPS_POOR_THRESHOLD         = 0.90f;
 static constexpr float ADAPTIVE_FPS_GOOD_THRESHOLD         = 0.98f;
-static constexpr float ADAPTIVE_REORDER_STEP_UP_MS         = 4.0f;
-static constexpr float ADAPTIVE_REORDER_MAX_MS             = 60.0f;
-static constexpr float ADAPTIVE_REORDER_STEP_DOWN_MS       = 2.0f;
-static constexpr float ADAPTIVE_REORDER_MIN_MS             = 4.0f;
+static constexpr float ADAPTIVE_REORDER_STEP_UP_MS         = 50.0f;
+static constexpr float ADAPTIVE_REORDER_MAX_MS             = 2000.0f;
+static constexpr float ADAPTIVE_REORDER_STEP_DOWN_MS       = 5.0f;
+static constexpr float ADAPTIVE_REORDER_MIN_MS             = 34.0f;
 
 ScriptedScenesDesktop::ScriptedScenesDesktop()
 {
@@ -103,7 +103,7 @@ void ScriptedScenesDesktop::render()
 
     ImGui::SliderInt("Pipeline Lookahead", &pipeline_lookahead_depth_, 1, 30);
     ImGui::SliderInt("Pipeline Max Queue", &pipeline_max_queued_frames_, 4, 120);
-    ImGui::SliderFloat("Max Reorder Wait (ms)", &pipeline_max_reorder_wait_ms_, 0.0f, 60.0f, "%.1f");
+    ImGui::SliderFloat("Max Reorder Wait (ms)", &pipeline_max_reorder_wait_ms_, 0.0f, 2000.0f, "%.1f");
 
     if (!manual_control) ImGui::EndDisabled();
 
@@ -430,8 +430,6 @@ void ScriptedScenesDesktop::reset_profiling_locked(double now)
     pipeline_effective_send_fps_ = 0.0f;
     pipeline_avg_worker_render_ms_ = 0.0f;
     pipeline_avg_worker_total_ms_ = 0.0f;
-    pipeline_send_window_start_ = now;
-    pipeline_send_window_frames_ = 0;
     pipeline_worker_render_ms_sum_ = 0.0;
     pipeline_worker_total_ms_sum_ = 0.0;
     pipeline_worker_samples_ = 0;
@@ -1109,64 +1107,63 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
         schedule_pipeline_jobs_locked();
 
         auto next_frame = try_take_next_pipeline_frame_locked(current_time);
-        if (!next_frame.has_value())
-        {
-            return std::nullopt;
-        }
-
-        const double packet_start = get_time_sec();
-        auto packet = std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>(
-            new ScriptedScenesPacket(next_frame->frame_data),[](UdpPacket* p) { delete dynamic_cast<ScriptedScenesPacket*>(p); }
-        );
-        const double packet_end = get_time_sec();
-
-        ++next_send_frame_index_;
-        ++pipeline_frames_sent_;
-
-        profile_frames_++;
-        profile_set_pixel_calls_ += next_frame->set_pixel_calls;
-        profile_clear_calls_ += next_frame->clear_calls;
-        profile_globals_ms_sum_ += 0.0;
-        profile_lua_render_ms_sum_ += next_frame->render_ms;
-        profile_packet_ms_sum_ += (packet_end - packet_start) * 1000.0;
-        profile_total_ms_sum_ += next_frame->total_ms;
-
-        pipeline_worker_render_ms_sum_ += next_frame->render_ms;
-        pipeline_worker_total_ms_sum_ += next_frame->total_ms;
-        pipeline_worker_samples_++;
-
-        if (pipeline_send_window_start_ <= 0.0)
-            pipeline_send_window_start_ = current_time;
-        pipeline_send_window_frames_++;
-
-        if (current_time - pipeline_send_window_start_ >= 1.0)
-        {
-            pipeline_effective_send_fps_ = static_cast<float>(pipeline_send_window_frames_) /
-                static_cast<float>(current_time - pipeline_send_window_start_);
-            pipeline_send_window_start_ = current_time;
-            pipeline_send_window_frames_ = 0;
-        }
-
-        if (current_time - last_fps_update_ >= 1.0)
-        {
-            current_fps_ = pipeline_effective_send_fps_;
-            last_fps_update_ = current_time;
-        }
+        
+        std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> packet_opt = std::nullopt;
 
         if (profile_window_start_ <= 0.0)
             profile_window_start_ = current_time;
 
-        if (current_time - profile_window_start_ >= 1.0 && profile_frames_ > 0)
+        if (next_frame.has_value())
         {
-            const float frames = static_cast<float>(profile_frames_);
-            profile_avg_globals_ms_ = static_cast<float>(profile_globals_ms_sum_ / frames);
-            profile_avg_lua_render_ms_ = static_cast<float>(profile_lua_render_ms_sum_ / frames);
-            profile_avg_packet_ms_ = static_cast<float>(profile_packet_ms_sum_ / frames);
-            profile_avg_total_ms_ = static_cast<float>(profile_total_ms_sum_ / frames);
-            profile_avg_set_pixel_calls_per_frame_ =
-                static_cast<float>(profile_set_pixel_calls_) / frames;
-            profile_avg_clear_calls_per_frame_ =
-                static_cast<float>(profile_clear_calls_) / frames;
+            const double packet_start = get_time_sec();
+            auto packet = std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>(
+                new ScriptedScenesPacket(next_frame->frame_data),[](UdpPacket* p) { delete dynamic_cast<ScriptedScenesPacket*>(p); }
+            );
+            const double packet_end = get_time_sec();
+
+            ++next_send_frame_index_;
+            ++pipeline_frames_sent_;
+
+            profile_frames_++;
+            profile_set_pixel_calls_ += next_frame->set_pixel_calls;
+            profile_clear_calls_ += next_frame->clear_calls;
+            profile_globals_ms_sum_ += 0.0;
+            profile_lua_render_ms_sum_ += next_frame->render_ms;
+            profile_packet_ms_sum_ += (packet_end - packet_start) * 1000.0;
+            profile_total_ms_sum_ += next_frame->total_ms;
+
+            pipeline_worker_render_ms_sum_ += next_frame->render_ms;
+            pipeline_worker_total_ms_sum_ += next_frame->total_ms;
+            pipeline_worker_samples_++;
+
+            packet_opt = std::move(packet);
+        }
+
+        if (current_time - profile_window_start_ >= 1.0)
+        {
+            double elapsed = current_time - profile_window_start_;
+            pipeline_effective_send_fps_ = static_cast<float>(profile_frames_) / static_cast<float>(elapsed);
+            current_fps_ = pipeline_effective_send_fps_;
+
+            if (profile_frames_ > 0)
+            {
+                const float frames = static_cast<float>(profile_frames_);
+                profile_avg_globals_ms_ = static_cast<float>(profile_globals_ms_sum_ / frames);
+                profile_avg_lua_render_ms_ = static_cast<float>(profile_lua_render_ms_sum_ / frames);
+                profile_avg_packet_ms_ = static_cast<float>(profile_packet_ms_sum_ / frames);
+                profile_avg_total_ms_ = static_cast<float>(profile_total_ms_sum_ / frames);
+                profile_avg_set_pixel_calls_per_frame_ = static_cast<float>(profile_set_pixel_calls_) / frames;
+                profile_avg_clear_calls_per_frame_ = static_cast<float>(profile_clear_calls_) / frames;
+            }
+            else
+            {
+                profile_avg_globals_ms_ = 0.0f;
+                profile_avg_lua_render_ms_ = 0.0f;
+                profile_avg_packet_ms_ = 0.0f;
+                profile_avg_total_ms_ = 0.0f;
+                profile_avg_set_pixel_calls_per_frame_ = 0.0f;
+                profile_avg_clear_calls_per_frame_ = 0.0f;
+            }
 
             if (pipeline_worker_samples_ > 0)
             {
@@ -1196,7 +1193,7 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
             pipeline_worker_samples_ = 0;
         }
 
-        return packet;
+        return packet_opt;
     }
 
     if (!lua_) return std::nullopt;
@@ -1252,17 +1249,27 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
     if (profile_window_start_ <= 0.0)
         profile_window_start_ = current_time;
 
-    if (current_time - profile_window_start_ >= 1.0 && profile_frames_ > 0)
+    if (current_time - profile_window_start_ >= 1.0)
     {
-        const float frames = static_cast<float>(profile_frames_);
-        profile_avg_globals_ms_ = static_cast<float>(profile_globals_ms_sum_ / frames);
-        profile_avg_lua_render_ms_ = static_cast<float>(profile_lua_render_ms_sum_ / frames);
-        profile_avg_packet_ms_ = static_cast<float>(profile_packet_ms_sum_ / frames);
-        profile_avg_total_ms_ = static_cast<float>(profile_total_ms_sum_ / frames);
-        profile_avg_set_pixel_calls_per_frame_ =
-            static_cast<float>(profile_set_pixel_calls_) / frames;
-        profile_avg_clear_calls_per_frame_ =
-            static_cast<float>(profile_clear_calls_) / frames;
+        if (profile_frames_ > 0)
+        {
+            const float frames = static_cast<float>(profile_frames_);
+            profile_avg_globals_ms_ = static_cast<float>(profile_globals_ms_sum_ / frames);
+            profile_avg_lua_render_ms_ = static_cast<float>(profile_lua_render_ms_sum_ / frames);
+            profile_avg_packet_ms_ = static_cast<float>(profile_packet_ms_sum_ / frames);
+            profile_avg_total_ms_ = static_cast<float>(profile_total_ms_sum_ / frames);
+            profile_avg_set_pixel_calls_per_frame_ = static_cast<float>(profile_set_pixel_calls_) / frames;
+            profile_avg_clear_calls_per_frame_ = static_cast<float>(profile_clear_calls_) / frames;
+        }
+        else
+        {
+            profile_avg_globals_ms_ = 0.0f;
+            profile_avg_lua_render_ms_ = 0.0f;
+            profile_avg_packet_ms_ = 0.0f;
+            profile_avg_total_ms_ = 0.0f;
+            profile_avg_set_pixel_calls_per_frame_ = 0.0f;
+            profile_avg_clear_calls_per_frame_ = 0.0f;
+        }
 
         spdlog::info(
             "[ScriptedScenesDesktop:{}] perf avg: total={:.3f}ms render={:.3f}ms globals={:.3f}ms packet={:.3f}ms set_pixel/frame={:.1f} clear/frame={:.2f} fps={:.1f}",
