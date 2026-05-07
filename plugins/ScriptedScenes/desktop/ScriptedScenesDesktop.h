@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <map>
+#include <cstdint>
 #include "shared/desktop/utils.h"
 
 #define SOL_ALL_SAFETIES_ON 1
@@ -46,8 +47,8 @@ public:
 private:
     std::unique_ptr<sol::state> lua_;
     std::string current_scene_name_;
-    bool is_lua_loaded_;
-    bool offload_render_;
+    bool is_lua_loaded_ = false;
+    bool offload_render_ = true;
 
     // Desktop canvas buffer
     std::vector<uint8_t> canvas_data_;
@@ -64,6 +65,23 @@ private:
     int frame_count_ = 0;
     double last_fps_update_ = 0.0;
     float current_fps_ = 0.0f;
+
+    // Lightweight performance profiling (updated once per second)
+    double profile_window_start_ = 0.0;
+    uint64_t profile_frames_ = 0;
+    uint64_t profile_set_pixel_calls_ = 0;
+    uint64_t profile_clear_calls_ = 0;
+    double profile_globals_ms_sum_ = 0.0;
+    double profile_lua_render_ms_sum_ = 0.0;
+    double profile_packet_ms_sum_ = 0.0;
+    double profile_total_ms_sum_ = 0.0;
+
+    float profile_avg_globals_ms_ = 0.0f;
+    float profile_avg_lua_render_ms_ = 0.0f;
+    float profile_avg_packet_ms_ = 0.0f;
+    float profile_avg_total_ms_ = 0.0f;
+    float profile_avg_set_pixel_calls_per_frame_ = 0.0f;
+    float profile_avg_clear_calls_per_frame_ = 0.0f;
 
     std::mutex script_mutex_;
 
