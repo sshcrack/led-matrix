@@ -63,6 +63,7 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message) {
             current_scene_name_ = name;
             
             std::lock_guard<std::mutex> lock(script_mutex_);
+            default_properties_.clear();
             setup_lua_state();
             if (load_and_exec_script(script_content)) {
                 sol::protected_function setup_fn = (*lua_)["setup"];
