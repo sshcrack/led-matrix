@@ -52,8 +52,12 @@ private:
 
     // Desktop canvas buffer
     std::vector<uint8_t> canvas_data_;
+    std::vector<uint8_t> script_canvas_data_;
     int matrix_width_ = 128;
     int matrix_height_ = 128;
+    int script_width_ = 128;
+    int script_height_ = 128;
+    int render_downscale_ = 2;
 
     std::map<std::string, sol::object> default_properties_;
 
@@ -85,6 +89,8 @@ private:
 
     std::mutex script_mutex_;
 
+    void update_script_dimensions_locked();
+    void blit_script_canvas_to_output_locked();
     void setup_lua_state();
     bool load_and_exec_script(const std::string& script_content);
 };
