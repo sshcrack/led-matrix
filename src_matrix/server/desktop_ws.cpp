@@ -40,7 +40,8 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                                 wsh->send_message(resp);
                             } else if (rws::opcode_t::connection_close_frame == m->opcode()) {
                                 std::unique_lock lock(registryMutex);
-                                registry.erase(wsh->connection_id());
+                                registry.erase(wsh->connection_id());   
+                                desktop_connection_count--;
                             }
                         });
             // Store websocket handle to registry object to prevent closing of the websocket
@@ -49,6 +50,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             {
                 std::unique_lock lock(registryMutex);
                 registry.emplace(wsh->connection_id(), wsh);
+                desktop_connection_count++;
             } // Release registryMutex here
 
             std::string sceneName;
