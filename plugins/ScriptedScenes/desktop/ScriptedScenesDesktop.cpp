@@ -499,8 +499,6 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
     }
 
     const int worker_count = std::clamp(pipeline_worker_count_, 1, MAX_WORKERS);
-    workers_.reserve(static_cast<size_t>(worker_count));
-
     auto init_worker = [this](WorkerState& worker) -> bool
     {
         worker.render_config = pipeline_render_config_;
@@ -848,8 +846,6 @@ void ScriptedScenesDesktop::maybe_adapt_pipeline_locked()
     {
         adaptive_stable_seconds_ = 0;
         ++adaptive_drop_bursts_;
-        spdlog::info("[ScriptedScenesDesktop:{}] Performed poorly because (drops={} fps_ratio={:.2f} frame_budget_ms={} avg_worker_ms={})",
-            current_scene_name_, drops_this_window, fps_ratio, frame_budget_ms, pipeline_avg_worker_render_ms_);
 
         // ── Soft adjustments (no pipeline restart) ──────────────────────────
         bool soft_changed = false;
@@ -902,7 +898,7 @@ void ScriptedScenesDesktop::maybe_adapt_pipeline_locked()
                 "[ScriptedScenesDesktop:{}] Adaptive scale-up: workers {} -> {} "
                 "(drops={} fps_ratio={:.2f} render_ms={:.2f} budget_ms={:.2f})",
                 current_scene_name_, pipeline_worker_count_ - 1, pipeline_worker_count_,
-                drops_this_window, fps_ratio, pipeline_avg_worker_render_ms_, frame_budget_ms);
+                drops_this_window, fps_ratio, pipeline_avg_worker_render_ms_, parallel_budget_ms);
 
             adaptive_drop_bursts_ = 0;
             stop_pipeline_workers_locked();
