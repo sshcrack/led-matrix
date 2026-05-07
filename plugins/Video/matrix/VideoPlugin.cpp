@@ -31,6 +31,8 @@ VideoPlugin::create_shader_providers() {
 
 bool VideoPlugin::on_udp_packet(const uint8_t pluginId,
                                 const uint8_t *packetData, const size_t size) {
+  if (pluginId != 0x03) return false;
+  
   std::lock_guard<std::mutex> lock(dataMutex);
   data.assign(packetData, packetData + size);
   return true;

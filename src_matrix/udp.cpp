@@ -14,7 +14,10 @@ void UdpServer::server_loop()
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
 
+    spdlog::info("Getting plugins...");
     auto plugins = Plugins::PluginManager::instance()->get_plugins();
+    spdlog::info("Done. Found {} plugins.", plugins.size());
+    
     while (server_running)
     {
         ssize_t n = recvfrom(udp_socket, receive_buffer.data(), receive_buffer.size(), 0,

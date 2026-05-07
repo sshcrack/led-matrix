@@ -2,6 +2,7 @@
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 #include <shared_mutex>
+#include <atomic>
 #include "shared/matrix/Scene.h"
 
 namespace Server {
@@ -18,6 +19,7 @@ namespace Server {
 
     extern std::shared_mutex registryMutex;
     extern ws_registry_t registry;
+    extern std::atomic<int> desktop_connection_count;
 
     extern std::shared_mutex currSceneMutex;
     extern std::shared_ptr<Scenes::Scene> currScene;

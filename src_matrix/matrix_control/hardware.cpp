@@ -13,7 +13,7 @@
 using namespace rgb_matrix;
 using namespace spdlog;
 
-void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
+void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
     info("Press Ctrl+C to quit");
 
@@ -47,7 +47,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
 
         if (!config->is_turned_off())
         {
-            update_canvas(matrix, first_offscreen_canvas, second_offscreen_canvas, composite_offscreen_Canvas, forced_scene);
+            update_canvas(matrix, first_offscreen_canvas, second_offscreen_canvas, composite_offscreen_Canvas, forced_scene, pinned_scene);
             exit_canvas_update = false;
             debug("Outer loop iteration, checking again...");
             continue;
@@ -70,7 +70,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
     info("Finished, shutting down...");
 }
 
-int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
+int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
 
     Constants::height = matrix->height();
@@ -80,6 +80,6 @@ int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix)
     signal(SIGINT, InterruptHandler);
 
     debug("Running hardware mainloop...");
-    hardware_mainloop(matrix);
+    hardware_mainloop(matrix, pinned_scene);
     return 0;
 }
