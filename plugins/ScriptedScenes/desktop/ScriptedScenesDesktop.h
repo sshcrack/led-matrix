@@ -159,7 +159,7 @@ private:
     double pipeline_start_time_ = 0.0;
     double missing_frame_since_ = 0.0;
 
-    int pipeline_worker_count_ = 1;
+    int pipeline_worker_count_ = std::max(MAX_WORKERS / 2, 1);
     int pipeline_lookahead_depth_ = 12;
     int pipeline_max_queued_frames_ = 32;
     float pipeline_max_reorder_wait_ms_ = 250.0f;
