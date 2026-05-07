@@ -174,6 +174,41 @@ private:
     double pipeline_worker_total_ms_sum_ = 0.0;
     uint64_t pipeline_worker_samples_ = 0;
 
+    // ---------------------------------------------------------------
+    // Adaptive pipeline tuning
+    // ---------------------------------------------------------------
+    // When enabled, the system adjusts pipeline_worker_count_,
+    // pipeline_lookahead_depth_, pipeline_max_queued_frames_, and
+    // pipeline_max_reorder_wait_ms_ automatically once per second
+    // based on the observed drop rate and FPS ratio.
+    //
+    // Soft parameters (lookahead, queue size, reorder wait) are changed
+    // in-place with no pipeline restart.  Worker count changes always
+    // trigger a restart because each worker owns its own Lua state.
+    // ---------------------------------------------------------------
+    bool adaptive_pipeline_ = true;
+
+    // Total drop count at the start of the last adaptive window.
+    uint64_t adaptive_last_drop_count_ = 0;
+
+    // How many consecutive 1-second windows have been "healthy"
+    // (zero drops, FPS at or above target).
+    int adaptive_stable_seconds_ = 0;
+
+    // How many consecutive 1-second windows have had drops or low FPS.
+    int adaptive_drop_bursts_ = 0;
+
+    // Drops observed in the last adaptive evaluation window.
+    uint64_t adaptive_drops_last_window_ = 0;
+
+    // FPS ratio at the last adaptive evaluation (effective / target).
+    float adaptive_fps_ratio_last_ = 1.0f;
+
+    // Last action taken by the adaptive system (shown in UI).
+    std::string adaptive_last_action_ = "none";
+
+    void maybe_adapt_pipeline_locked();
+
     void update_script_dimensions_locked();
     void blit_script_canvas_to_output_locked();
     static void blit_script_canvas_to_output(const std::vector<uint8_t>& script_canvas,
