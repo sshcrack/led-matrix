@@ -184,6 +184,8 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 # Add emulator flag if enabled
 if(ENABLE_EMULATOR)
     target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_EMULATOR)
+    find_package(CLI11 CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE CLI11::CLI11)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)

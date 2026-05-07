@@ -25,6 +25,10 @@
 #include <shared/matrix/canvas_consts.h>
 #include "shared/matrix/transition_manager.h"
 
+#ifdef ENABLE_EMULATOR
+#include <CLI/CLI.hpp>
+#endif
+
 using namespace spdlog;
 using namespace std;
 using json = nlohmann::json;
@@ -33,6 +37,36 @@ using Plugins::PluginManager;
 using server_t = restinio::http_server_t<Server::traits_t>;
 
 #include "shared/matrix/utils/consts.h"
+
+// ---------------------------------------------------------------------------
+// Emulator-only helpers
+// ---------------------------------------------------------------------------
+#ifdef ENABLE_EMULATOR
+
+/// Build a fully-initialised Scene from a SceneWrapper, applying default
+/// properties and then any JSON overrides supplied via --prop.
+static std::shared_ptr<Scenes::Scene>
+build_pinned_scene(const std::shared_ptr<Plugins::SceneWrapper> &wrapper,
+                   const nlohmann::json &prop_overrides,
+                   int width, int height)
+{
+    auto scene = wrapper->create();  // fresh instance
+    scene->update_default_properties();
+    scene->register_properties();
+
+    // Dump defaults then layer the CLI overrides on top.
+    nlohmann::json props = nlohmann::json::object();
+    for (const auto &p : scene->get_properties())
+        p->dump_to_json(props);
+    for (auto it = prop_overrides.begin(); it != prop_overrides.end(); ++it)
+        props[it.key()] = it.value();
+
+    scene->load_properties(props);
+    scene->initialize(width, height);
+    return scene;
+}
+
+#endif // ENABLE_EMULATOR
 
 int usage(const char *progname)
 {
@@ -48,6 +82,51 @@ int main(int argc, char *argv[])
     SetMagickResourceLimit(Magick::MemoryResource, 256 * 1024 * 1024); // Limit to 256MB
     SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024);    // Limit to 512MB
     cfg::load_env_levels();
+
+    // -----------------------------------------------------------------------
+    // Emulator-only: parse --scene / --prop before the rgb-matrix flags so
+    // that CLI11 consumes its arguments first and the remainder is handed to
+    // ParseOptionsFromFlags.
+    // -----------------------------------------------------------------------
+#ifdef ENABLE_EMULATOR
+    std::string pinned_scene_name;
+    std::vector<std::string> raw_props;  // "key=json_value" pairs
+
+    {
+        CLI::App cli{"LED Matrix emulator"};
+        cli.allow_extras(true);  // pass unknown flags to rgb-matrix
+
+        cli.add_option("--scene", pinned_scene_name,
+            "Pin the emulator to a single scene by name (skips normal playlist).");
+        cli.add_option("--prop", raw_props,
+            "Override a scene property: --prop speed=1.5  (repeatable; values are JSON-parsed).");
+
+        // Parse only the args CLI11 knows; leave the rest for rgb-matrix.
+        try {
+            cli.parse(argc, argv);
+        } catch (const CLI::ParseError &e) {
+            return cli.exit(e);
+        }
+    }
+
+    // Build a JSON object from the raw key=value pairs.
+    nlohmann::json prop_overrides = nlohmann::json::object();
+    for (const auto &kv : raw_props) {
+        const auto eq = kv.find('=');
+        if (eq == std::string::npos) {
+            spdlog::warn("[--prop] Ignoring '{}': expected 'key=value' format", kv);
+            continue;
+        }
+        const std::string key   = kv.substr(0, eq);
+        const std::string value = kv.substr(eq + 1);
+        try {
+            prop_overrides[key] = nlohmann::json::parse(value);
+        } catch (const nlohmann::json::parse_error &) {
+            // Fall back to treating the value as a plain string.
+            prop_overrides[key] = value;
+        }
+    }
+#endif // ENABLE_EMULATOR
 
     rgb_matrix::MatrixFactory::Options options;
 
@@ -129,6 +208,30 @@ int main(int argc, char *argv[])
     debug("Starting mainloop_thread");
     uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
 
+    // -----------------------------------------------------------------------
+    // Emulator-only: find and pre-build the pinned scene if --scene was given.
+    // -----------------------------------------------------------------------
+#ifdef ENABLE_EMULATOR
+    std::shared_ptr<Scenes::Scene> pinned_scene;
+    if (!pinned_scene_name.empty()) {
+        const int w = matrix->width();
+        const int h = matrix->height();
+        for (const auto &wrapper : pl->get_scenes()) {
+            if (wrapper->get_name() == pinned_scene_name) {
+                pinned_scene = build_pinned_scene(wrapper, prop_overrides, w, h);
+                info("[emulator] Pinned to scene '{}'", pinned_scene_name);
+                break;
+            }
+        }
+        if (!pinned_scene) {
+            error("[emulator] Scene '{}' not found. Available scenes:", pinned_scene_name);
+            for (const auto &wrapper : pl->get_scenes())
+                error("  - {}", wrapper->get_name());
+            return 1;
+        }
+    }
+#endif // ENABLE_EMULATOR
+
     string host = "0.0.0.0";
     server_t server{
         restinio::own_io_context(),
@@ -183,7 +286,11 @@ int main(int argc, char *argv[])
     UdpServer *udpServer = new UdpServer(port);
 
     debug("Initializing hardware...");
+#ifdef ENABLE_EMULATOR
+    auto hardware_code = start_hardware_mainloop(matrix, pinned_scene);
+#else
     auto hardware_code = start_hardware_mainloop(matrix);
+#endif
 
     if (hardware_code != 0)
     {

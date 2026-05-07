@@ -25,7 +25,8 @@
           "features": [
             "emulator"
           ]
-        }
+        },
+        "cli11"
       ]
     },
     "desktop": {
@@ -57,6 +58,20 @@
       "description": "Dependencies needed by shadertoy-headless",
       "dependencies": [
         "shadertoy-headless"
+      ]
+    },
+    "scripted-scenes-matrix": {
+      "description": "Lua scripted scenes support (ScriptedScenes plugin). Installs lua + sol2 via vcpkg.",
+      "dependencies": [
+        "lua",
+        "sol2"
+      ]
+    },
+    "scripted-scenes-desktop": {
+      "description": "Lua scripted scenes support for desktop (ScriptedScenes plugin). Installs lua + sol2 via vcpkg.",
+      "dependencies": [
+        "lua",
+        "sol2"
       ]
     }
   },

@@ -44,7 +44,7 @@ public:
   PropertyPointer<bool> random_playback =
       MAKE_PROPERTY("random_playback", bool, false);
 
-  [[nodiscard]] bool needs_desktop_app() const override { return true; }
+  [[nodiscard]] bool needs_desktop_app() override { return true; }
 };
 
 class VideoSceneWrapper : public Plugins::SceneWrapper {

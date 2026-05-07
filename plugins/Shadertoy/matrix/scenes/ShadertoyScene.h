@@ -46,7 +46,7 @@ namespace Scenes {
             nlohmann::json::parse(
                 R"([{"type":"random","arguments":{"min_page":0,"max_page":100}}])"));
 
-        [[nodiscard]] bool needs_desktop_app() const override {
+        [[nodiscard]] bool needs_desktop_app() override {
             return true; // This scene requires audio data from the desktop application
         }
     };
