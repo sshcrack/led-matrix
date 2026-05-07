@@ -23,6 +23,23 @@ static double get_time_sec()
 static constexpr int MIN_RENDER_DOWNSCALE = 1;
 static constexpr int MAX_RENDER_DOWNSCALE = 4;
 
+// Adaptive tuning constants
+static constexpr int   ADAPTIVE_SCALE_UP_BURST_THRESHOLD   = 2;   // consecutive bad windows before adding a worker
+static constexpr int   ADAPTIVE_SCALE_DOWN_STABLE_SECONDS  = 10;  // consecutive good windows before removing a worker
+static constexpr int   ADAPTIVE_MIN_WORKERS                = 1;
+static constexpr int   ADAPTIVE_LOOKAHEAD_STEP_UP          = 2;
+static constexpr int   ADAPTIVE_LOOKAHEAD_MAX              = 30;
+static constexpr int   ADAPTIVE_LOOKAHEAD_MIN              = 4;
+static constexpr int   ADAPTIVE_QUEUE_STEP_UP              = 8;
+static constexpr int   ADAPTIVE_QUEUE_MAX                  = 120;
+static constexpr int   ADAPTIVE_QUEUE_MIN                  = 16;
+static constexpr float ADAPTIVE_FPS_POOR_THRESHOLD         = 0.90f; // below 90 % of target → "poor"
+static constexpr float ADAPTIVE_FPS_GOOD_THRESHOLD         = 0.98f; // above 98 % of target → "good"
+static constexpr float ADAPTIVE_REORDER_STEP_UP_MS         = 4.0f;
+static constexpr float ADAPTIVE_REORDER_MAX_MS             = 60.0f;
+static constexpr float ADAPTIVE_REORDER_STEP_DOWN_MS       = 2.0f;
+static constexpr float ADAPTIVE_REORDER_MIN_MS             = 4.0f;
+
 ScriptedScenesDesktop::ScriptedScenesDesktop()
 {
     canvas_data_.resize(matrix_width_ * matrix_height_ * 3, 0);
@@ -75,6 +92,12 @@ void ScriptedScenesDesktop::render()
         should_restart_pipeline = true;
     }
 
+    // Worker / pipeline controls are greyed-out when adaptive mode is on
+    // (the adaptive system owns those knobs).
+    const bool manual_control = !adaptive_pipeline_;
+
+    if (!manual_control) ImGui::BeginDisabled();
+
     if (ImGui::SliderInt("Pipeline Workers", &pipeline_worker_count_, 1, MAX_WORKERS))
     {
         should_restart_pipeline = true;
@@ -83,6 +106,8 @@ void ScriptedScenesDesktop::render()
     ImGui::SliderInt("Pipeline Lookahead", &pipeline_lookahead_depth_, 1, 30);
     ImGui::SliderInt("Pipeline Max Queue", &pipeline_max_queued_frames_, 4, 120);
     ImGui::SliderFloat("Max Reorder Wait (ms)", &pipeline_max_reorder_wait_ms_, 0.0f, 60.0f, "%.1f");
+
+    if (!manual_control) ImGui::EndDisabled();
 
     ImGui::Text("Deterministic parallel: %s", deterministic_parallel_ ? "Yes" : "No");
     ImGui::Text("Parallel active: %s", use_parallel_pipeline_ ? "Yes" : "No");
@@ -114,6 +139,32 @@ void ScriptedScenesDesktop::render()
         ImGui::Text("Effective send FPS: %.1f", pipeline_effective_send_fps_);
         ImGui::Text("Worker render avg: %.3f ms", pipeline_avg_worker_render_ms_);
         ImGui::Text("Worker total avg: %.3f ms", pipeline_avg_worker_total_ms_);
+    }
+
+    // ---------------------------------------------------------------
+    // Adaptive pipeline tuning UI
+    // ---------------------------------------------------------------
+    ImGui::Separator();
+    ImGui::Text("Adaptive Pipeline Tuning");
+
+    if (ImGui::Checkbox("Enable Adaptive Mode", &adaptive_pipeline_))
+    {
+        // Reset adaptive state when toggling so we start fresh.
+        adaptive_last_drop_count_  = pipeline_frames_dropped_;
+        adaptive_stable_seconds_   = 0;
+        adaptive_drop_bursts_      = 0;
+        adaptive_drops_last_window_= 0;
+        adaptive_fps_ratio_last_   = 1.0f;
+        adaptive_last_action_      = "none";
+    }
+
+    if (adaptive_pipeline_)
+    {
+        ImGui::Text("FPS ratio (eff/target): %.2f", adaptive_fps_ratio_last_);
+        ImGui::Text("Drops last window: %llu", static_cast<unsigned long long>(adaptive_drops_last_window_));
+        ImGui::Text("Stable seconds: %d", adaptive_stable_seconds_);
+        ImGui::Text("Drop burst count: %d", adaptive_drop_bursts_);
+        ImGui::Text("Last action: %s", adaptive_last_action_.c_str());
     }
 }
 
@@ -356,7 +407,7 @@ bool ScriptedScenesDesktop::load_and_exec_script(const std::string& script_conte
     (*lua_)["height"] = script_height_;
 
     sol::object deterministic_obj = (*lua_)["parallel_deterministic"];
-    deterministic_parallel_ = deterministic_obj.is<bool>() && deterministic_obj.as<bool>();
+    deterministic_parallel_ = !deterministic_obj.is<bool>() || deterministic_obj.as<bool>();
 
     is_lua_loaded_ = true;
     return true;
@@ -397,6 +448,14 @@ void ScriptedScenesDesktop::reset_profiling_locked(double now)
     pipeline_worker_render_ms_sum_ = 0.0;
     pipeline_worker_total_ms_sum_ = 0.0;
     pipeline_worker_samples_ = 0;
+
+    // Reset adaptive tracking so the new script starts with a clean slate.
+    adaptive_last_drop_count_   = 0;
+    adaptive_stable_seconds_    = 0;
+    adaptive_drop_bursts_       = 0;
+    adaptive_drops_last_window_ = 0;
+    adaptive_fps_ratio_last_    = 1.0f;
+    adaptive_last_action_       = "none";
 }
 
 void ScriptedScenesDesktop::stop_pipeline_workers_locked()
@@ -732,6 +791,194 @@ std::optional<ScriptedScenesDesktop::FrameResult> ScriptedScenesDesktop::try_tak
     return std::nullopt;
 }
 
+// -----------------------------------------------------------------------------
+// maybe_adapt_pipeline_locked
+//
+// Called once per profiling window (approximately every 1 second) when the
+// parallel pipeline is active and adaptive mode is enabled.
+//
+// Decision tree
+// ─────────────
+// POOR window  (drops > 0  OR  fps_ratio < FPS_POOR_THRESHOLD)
+//   • Always: nudge up lookahead, queue size, reorder-wait (no restart needed).
+//   • After SCALE_UP_BURST_THRESHOLD consecutive poor windows AND worker count
+//     is below MAX_WORKERS: increment workers and restart the pipeline.
+//   • Reset stable counter.
+//
+// GOOD window  (no drops  AND  fps_ratio >= FPS_GOOD_THRESHOLD)
+//   • Increment stable counter, reset burst counter.
+//   • After SCALE_DOWN_STABLE_SECONDS consecutive good windows:
+//       – If workers > ADAPTIVE_MIN_WORKERS: decrement workers, restart.
+//       – Else: nudge down lookahead and queue size (no restart needed).
+//   • Reset stable counter after acting.
+// -----------------------------------------------------------------------------
+void ScriptedScenesDesktop::maybe_adapt_pipeline_locked()
+{
+    if (!adaptive_pipeline_ || !use_parallel_pipeline_)
+        return;
+
+    // Drops observed this window
+    const uint64_t drops_this_window = pipeline_frames_dropped_ - adaptive_last_drop_count_;
+    adaptive_last_drop_count_ = pipeline_frames_dropped_;
+    adaptive_drops_last_window_ = drops_this_window;
+
+    // FPS ratio: how close are we to the target?
+    const float fps_ratio = (pipeline_target_fps_ > 0.0f)
+        ? pipeline_effective_send_fps_ / pipeline_target_fps_
+        : 1.0f;
+    adaptive_fps_ratio_last_ = fps_ratio;
+
+    // Worker render budget: if average render time > frame budget we are
+    // CPU-bound regardless of drops.
+    // Base time available between frames (e.g., 16.67ms for 60fps)
+    const double base_frame_budget_ms = 1000.0 / static_cast<double>(std::max(1.0f, pipeline_target_fps_));
+    
+    // In parallel, N workers give us N times the budget per frame.
+    // We multiply by 0.95 to leave a 5% safety margin for thread-switching/queue overhead.
+    const double parallel_budget_ms = base_frame_budget_ms * pipeline_worker_count_ * 0.95;
+    
+    // Check if the average time a single worker takes to render exceeds our total parallel capacity
+    const bool render_over_budget = pipeline_avg_worker_render_ms_ > static_cast<float>(parallel_budget_ms);
+    const bool performing_poorly =
+        (drops_this_window > 0) ||
+        (fps_ratio < ADAPTIVE_FPS_POOR_THRESHOLD) ||
+        render_over_budget;
+
+    if (performing_poorly)
+    {
+        adaptive_stable_seconds_ = 0;
+        ++adaptive_drop_bursts_;
+        spdlog::info("[ScriptedScenesDesktop:{}] Performed poorly because (drops={} fps_ratio={:.2f} frame_budget_ms={} avg_worker_ms={})",
+            current_scene_name_, drops_this_window, fps_ratio, frame_budget_ms, pipeline_avg_worker_render_ms_);
+
+        // ── Soft adjustments (no pipeline restart) ──────────────────────────
+        bool soft_changed = false;
+
+        if (pipeline_lookahead_depth_ < ADAPTIVE_LOOKAHEAD_MAX)
+        {
+            pipeline_lookahead_depth_ = std::min(
+                pipeline_lookahead_depth_ + ADAPTIVE_LOOKAHEAD_STEP_UP,
+                ADAPTIVE_LOOKAHEAD_MAX);
+            soft_changed = true;
+        }
+
+        if (pipeline_max_queued_frames_ < ADAPTIVE_QUEUE_MAX)
+        {
+            pipeline_max_queued_frames_ = std::min(
+                pipeline_max_queued_frames_ + ADAPTIVE_QUEUE_STEP_UP,
+                ADAPTIVE_QUEUE_MAX);
+            soft_changed = true;
+        }
+
+        // Relax reorder tolerance so we stop waiting so long for slow frames.
+        if (pipeline_max_reorder_wait_ms_ < ADAPTIVE_REORDER_MAX_MS)
+        {
+            pipeline_max_reorder_wait_ms_ = std::min(
+                pipeline_max_reorder_wait_ms_ + ADAPTIVE_REORDER_STEP_UP_MS,
+                ADAPTIVE_REORDER_MAX_MS);
+            soft_changed = true;
+        }
+
+        if (soft_changed)
+        {
+            adaptive_last_action_ = "soft-up: lookahead=" + std::to_string(pipeline_lookahead_depth_)
+                + " queue=" + std::to_string(pipeline_max_queued_frames_);
+
+            spdlog::info(
+                "[ScriptedScenesDesktop:{}] Adaptive soft-up: lookahead={} queue={} reorder_wait={:.1f}ms"
+                " (drops={} fps_ratio={:.2f} burst={})",
+                current_scene_name_, pipeline_lookahead_depth_, pipeline_max_queued_frames_,
+                pipeline_max_reorder_wait_ms_, drops_this_window, fps_ratio, adaptive_drop_bursts_);
+        }
+
+        // ── Hard adjustment: add a worker (requires restart) ─────────────────
+        if (adaptive_drop_bursts_ >= ADAPTIVE_SCALE_UP_BURST_THRESHOLD &&
+            pipeline_worker_count_ < MAX_WORKERS)
+        {
+            ++pipeline_worker_count_;
+            adaptive_last_action_ = "scale-up workers=" + std::to_string(pipeline_worker_count_);
+
+            spdlog::info(
+                "[ScriptedScenesDesktop:{}] Adaptive scale-up: workers {} -> {} "
+                "(drops={} fps_ratio={:.2f} render_ms={:.2f} budget_ms={:.2f})",
+                current_scene_name_, pipeline_worker_count_ - 1, pipeline_worker_count_,
+                drops_this_window, fps_ratio, pipeline_avg_worker_render_ms_, frame_budget_ms);
+
+            adaptive_drop_bursts_ = 0;
+            stop_pipeline_workers_locked();
+            start_pipeline_workers_locked();
+        }
+    }
+    else
+    {
+        // ── Healthy window ───────────────────────────────────────────────────
+        adaptive_drop_bursts_ = 0;
+        ++adaptive_stable_seconds_;
+
+        if (adaptive_stable_seconds_ >= ADAPTIVE_SCALE_DOWN_STABLE_SECONDS)
+        {
+            if (pipeline_worker_count_ > ADAPTIVE_MIN_WORKERS)
+            {
+                // Try removing one worker.
+                --pipeline_worker_count_;
+                adaptive_last_action_ = "scale-down workers=" + std::to_string(pipeline_worker_count_);
+
+                spdlog::info(
+                    "[ScriptedScenesDesktop:{}] Adaptive scale-down: workers {} -> {} "
+                    "(stable for {}s, fps_ratio={:.2f})",
+                    current_scene_name_, pipeline_worker_count_ + 1, pipeline_worker_count_,
+                    adaptive_stable_seconds_, fps_ratio);
+
+                adaptive_stable_seconds_ = 0;
+                stop_pipeline_workers_locked();
+                start_pipeline_workers_locked();
+            }
+            else
+            {
+                // Already at minimum workers — gently reduce buffer parameters.
+                bool soft_changed = false;
+
+                if (pipeline_lookahead_depth_ > ADAPTIVE_LOOKAHEAD_MIN)
+                {
+                    --pipeline_lookahead_depth_;
+                    soft_changed = true;
+                }
+
+                if (pipeline_max_queued_frames_ > ADAPTIVE_QUEUE_MIN)
+                {
+                    pipeline_max_queued_frames_ = std::max(
+                        pipeline_max_queued_frames_ - ADAPTIVE_QUEUE_STEP_UP / 2,
+                        ADAPTIVE_QUEUE_MIN);
+                    soft_changed = true;
+                }
+
+                if (pipeline_max_reorder_wait_ms_ > ADAPTIVE_REORDER_MIN_MS)
+                {
+                    pipeline_max_reorder_wait_ms_ = std::max(
+                        pipeline_max_reorder_wait_ms_ - ADAPTIVE_REORDER_STEP_DOWN_MS,
+                        ADAPTIVE_REORDER_MIN_MS);
+                    soft_changed = true;
+                }
+
+                if (soft_changed)
+                {
+                    adaptive_last_action_ = "soft-down: lookahead=" + std::to_string(pipeline_lookahead_depth_)
+                        + " queue=" + std::to_string(pipeline_max_queued_frames_);
+
+                    spdlog::info(
+                        "[ScriptedScenesDesktop:{}] Adaptive soft-down: lookahead={} queue={} reorder_wait={:.1f}ms"
+                        " (stable for {}s, fps_ratio={:.2f})",
+                        current_scene_name_, pipeline_lookahead_depth_, pipeline_max_queued_frames_,
+                        pipeline_max_reorder_wait_ms_, adaptive_stable_seconds_, fps_ratio);
+                }
+
+                // Back off the stable counter so we do not hammer the log every second.
+                adaptive_stable_seconds_ = ADAPTIVE_SCALE_DOWN_STABLE_SECONDS / 2;
+            }
+        }
+    }
+}
+
 void ScriptedScenesDesktop::worker_loop(int worker_id)
 {
     WorkerState* worker_ptr = nullptr;
@@ -936,6 +1183,9 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
                 current_scene_name_, profile_avg_total_ms_, profile_avg_lua_render_ms_,
                 profile_avg_packet_ms_, pipeline_queue_depth_, pipeline_completed_depth_,
                 pipeline_frames_dropped_, pipeline_effective_send_fps_);
+
+            // ── Adaptive tuning evaluation (once per profiling window) ──────
+            maybe_adapt_pipeline_locked();
 
             profile_window_start_ = current_time;
             profile_frames_ = 0;
