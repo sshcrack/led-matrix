@@ -92,7 +92,8 @@ namespace Scenes {
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.
-        [[nodiscard]] virtual bool needs_desktop_app() const {
+        [[nodiscard]] virtual bool needs_desktop_app()
+        {
             return false;  // Default implementation, can be overridden
         }
 

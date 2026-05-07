@@ -66,7 +66,7 @@ namespace Scenes {
             return 5;
         }
 
-        [[nodiscard]] bool needs_desktop_app() const override {
+        [[nodiscard]] bool needs_desktop_app() override {
             return true; // This scene requires audio data from the desktop application
         }
     };

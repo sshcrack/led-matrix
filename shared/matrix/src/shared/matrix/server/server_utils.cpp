@@ -45,7 +45,6 @@ namespace Server {
     }
 
     [[nodiscard]] bool is_desktop_connected() {
-        std::shared_lock lock(registryMutex);
-        return !registry.empty();
+        return desktop_connection_count > 0;
     }
 }
