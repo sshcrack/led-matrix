@@ -89,7 +89,6 @@ void ScriptedScenesDesktop::render()
     ImGui::SliderInt("Pipeline Max Queue", &pipeline_max_queued_frames_, 4, 120);
     ImGui::SliderFloat("Max Reorder Wait (ms)", &pipeline_max_reorder_wait_ms_, 0.0f, 60.0f, "%.1f");
 
-    ImGui::Text("Parallel script opt-in: %s", parallel_offload_opt_in_ ? "Yes" : "No");
     ImGui::Text("Deterministic parallel: %s", deterministic_parallel_ ? "Yes" : "No");
     ImGui::Text("Parallel active: %s", use_parallel_pipeline_ ? "Yes" : "No");
 
@@ -345,9 +344,6 @@ bool ScriptedScenesDesktop::load_and_exec_script(const std::string& script_conte
         offload_render_ = true;
     }
 
-    sol::object parallel_obj = (*lua_)["parallel_offload"];
-    parallel_offload_opt_in_ = parallel_obj.is<bool>() && parallel_obj.as<bool>();
-
     sol::object deterministic_obj = (*lua_)["parallel_deterministic"];
     deterministic_parallel_ = deterministic_obj.is<bool>() && deterministic_obj.as<bool>();
 
@@ -427,8 +423,7 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 {
     stop_pipeline_workers_locked();
 
-    if (!is_lua_loaded_ || !offload_render_ || !enable_parallel_pipeline_ || !parallel_offload_opt_in_ ||
-        !deterministic_parallel_)
+    if (!is_lua_loaded_ || !offload_render_ || !enable_parallel_pipeline_ || !deterministic_parallel_)
     {
         return false;
     }
@@ -617,12 +612,12 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
 void ScriptedScenesDesktop::maybe_update_pipeline_mode_locked()
 {
-    const bool desired = is_lua_loaded_ && offload_render_ && enable_parallel_pipeline_ && parallel_offload_opt_in_ &&
-                         deterministic_parallel_;
+    const bool desired = is_lua_loaded_ && offload_render_ && enable_parallel_pipeline_ && deterministic_parallel_;
 
     if (!desired)
     {
-        stop_pipeline_workers_locked();
+        if (workers_started_)
+            stop_pipeline_workers_locked();
         return;
     }
 

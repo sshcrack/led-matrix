@@ -95,7 +95,6 @@ private:
     std::string current_scene_name_;
     bool is_lua_loaded_ = false;
     bool offload_render_ = true;
-    bool parallel_offload_opt_in_ = false;
     bool deterministic_parallel_ = false;
     bool enable_parallel_pipeline_ = false;
     bool bypass_protected_calls_ = false;
