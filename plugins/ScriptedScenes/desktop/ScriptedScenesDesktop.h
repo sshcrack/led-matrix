@@ -98,7 +98,7 @@ private:
     bool parallel_offload_opt_in_ = false;
     bool deterministic_parallel_ = false;
     bool enable_parallel_pipeline_ = false;
-    bool unsafe_parallel_mode_ = false;
+    bool bypass_protected_calls_ = false;
     bool use_parallel_pipeline_ = false;
 
     // Desktop canvas buffer

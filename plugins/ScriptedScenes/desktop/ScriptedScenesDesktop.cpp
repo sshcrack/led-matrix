@@ -20,6 +20,9 @@ static double get_time_sec()
     return std::chrono::duration<double>(now.time_since_epoch()).count();
 }
 
+static constexpr int MIN_RENDER_DOWNSCALE = 1;
+static constexpr int MAX_RENDER_DOWNSCALE = 4;
+
 ScriptedScenesDesktop::ScriptedScenesDesktop()
 {
     canvas_data_.resize(matrix_width_ * matrix_height_ * 3, 0);
@@ -54,7 +57,7 @@ void ScriptedScenesDesktop::render()
 
     bool should_restart_pipeline = false;
 
-    if (ImGui::SliderInt("Render Downscale", &render_downscale_, 1, 4))
+    if (ImGui::SliderInt("Render Downscale", &render_downscale_, MIN_RENDER_DOWNSCALE, MAX_RENDER_DOWNSCALE))
     {
         update_script_dimensions_locked();
         if (lua_)
@@ -72,7 +75,7 @@ void ScriptedScenesDesktop::render()
         should_restart_pipeline = true;
     }
 
-    if (ImGui::Checkbox("Unsafe Parallel Mode", &unsafe_parallel_mode_))
+    if (ImGui::Checkbox("Unsafe Parallel Mode", &bypass_protected_calls_))
     {
         should_restart_pipeline = true;
     }
@@ -201,7 +204,7 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
 
 void ScriptedScenesDesktop::update_script_dimensions_locked()
 {
-    render_downscale_ = std::clamp(render_downscale_, 1, 4);
+    render_downscale_ = std::clamp(render_downscale_, MIN_RENDER_DOWNSCALE, MAX_RENDER_DOWNSCALE);
     script_width_ = std::max(1, matrix_width_ / render_downscale_);
     script_height_ = std::max(1, matrix_height_ / render_downscale_);
     script_canvas_data_.assign(script_width_ * script_height_ * 3, 0);
@@ -437,29 +440,30 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
     {
         worker.render_config = pipeline_render_config_;
         worker.scene_name = current_scene_name_;
-        worker.unsafe_mode = unsafe_parallel_mode_;
+        worker.unsafe_mode = bypass_protected_calls_;
         worker.lua = std::make_unique<sol::state>();
         worker.lua->open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
         worker.script_canvas_data.assign(worker.render_config.script_width * worker.render_config.script_height * 3, 0);
         worker.default_properties.clear();
-        const int worker_script_width = worker.render_config.script_width;
-        const int worker_script_height = worker.render_config.script_height;
+        WorkerState* worker_ctx = &worker;
+        const int canvas_width = worker.render_config.script_width;
+        const int canvas_height = worker.render_config.script_height;
 
-        worker.lua->set_function("set_pixel", [&worker, worker_script_width, worker_script_height](int x, int y, int r, int g, int b)
+        worker.lua->set_function("set_pixel", [worker_ctx, canvas_width, canvas_height](int x, int y, int r, int g, int b)
         {
-            worker.set_pixel_calls++;
-            if (x < 0 || x >= worker_script_width || y < 0 || y >= worker_script_height)
+            worker_ctx->set_pixel_calls++;
+            if (x < 0 || x >= canvas_width || y < 0 || y >= canvas_height)
                 return;
-            int idx = (y * worker_script_width + x) * 3;
-            worker.script_canvas_data[idx] = static_cast<uint8_t>(std::clamp(r, 0, 255));
-            worker.script_canvas_data[idx + 1] = static_cast<uint8_t>(std::clamp(g, 0, 255));
-            worker.script_canvas_data[idx + 2] = static_cast<uint8_t>(std::clamp(b, 0, 255));
+            int idx = (y * canvas_width + x) * 3;
+            worker_ctx->script_canvas_data[idx] = static_cast<uint8_t>(std::clamp(r, 0, 255));
+            worker_ctx->script_canvas_data[idx + 1] = static_cast<uint8_t>(std::clamp(g, 0, 255));
+            worker_ctx->script_canvas_data[idx + 2] = static_cast<uint8_t>(std::clamp(b, 0, 255));
         });
 
-        worker.lua->set_function("clear", [&worker]()
+        worker.lua->set_function("clear", [worker_ctx]()
         {
-            worker.clear_calls++;
-            std::fill(worker.script_canvas_data.begin(), worker.script_canvas_data.end(), 0);
+            worker_ctx->clear_calls++;
+            std::fill(worker_ctx->script_canvas_data.begin(), worker_ctx->script_canvas_data.end(), 0);
         });
 
         worker.lua->set_function("log", [&worker](const std::string& msg)
@@ -468,24 +472,24 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
         });
 
         worker.lua->set_function("define_property",
-                                 [&worker](const std::string& name, const std::string& type, sol::object default_val,
+                                 [worker_ctx](const std::string& name, const std::string& type, sol::object default_val,
                                            sol::variadic_args va)
                                  {
-                                     worker.default_properties[name] = default_val;
+                                     worker_ctx->default_properties[name] = default_val;
                                  });
 
-        worker.lua->set_function("get_property", [&worker](const std::string& name) -> sol::object
+        worker.lua->set_function("get_property", [worker_ctx](const std::string& name) -> sol::object
         {
-            auto it = worker.default_properties.find(name);
-            if (it != worker.default_properties.end())
+            auto it = worker_ctx->default_properties.find(name);
+            if (it != worker_ctx->default_properties.end())
             {
                 return it->second;
             }
             return sol::nil;
         });
 
-        (*worker.lua)["width"] = worker_script_width;
-        (*worker.lua)["height"] = worker_script_height;
+        (*worker.lua)["width"] = canvas_width;
+        (*worker.lua)["height"] = canvas_height;
         (*worker.lua)["time"] = 0.0;
         (*worker.lua)["dt"] = 0.0;
 
@@ -606,7 +610,7 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
     spdlog::info(
         "[ScriptedScenesDesktop:{}] Parallel pipeline started: workers={} lookahead={} max_queue={} unsafe_mode={}.",
-        current_scene_name_, worker_count, pipeline_lookahead_depth_, pipeline_max_queued_frames_, unsafe_parallel_mode_ ? "on" : "off");
+        current_scene_name_, worker_count, pipeline_lookahead_depth_, pipeline_max_queued_frames_, bypass_protected_calls_ ? "on" : "off");
 
     return true;
 }
@@ -636,9 +640,15 @@ void ScriptedScenesDesktop::schedule_pipeline_jobs_locked()
     const double dt = 1.0 / static_cast<double>(std::max(1.0f, pipeline_target_fps_));
 
     std::lock_guard<std::mutex> pipeline_lock(pipeline_mutex_);
-    while ((next_schedule_frame_index_ - next_send_frame_index_) < static_cast<uint64_t>(std::max(1, pipeline_lookahead_depth_)) &&
-           (frame_jobs_.size() + completed_frames_.size()) < static_cast<size_t>(std::max(1, pipeline_max_queued_frames_)))
+    const uint64_t max_lookahead = static_cast<uint64_t>(std::max(1, pipeline_lookahead_depth_));
+    const size_t max_queue = static_cast<size_t>(std::max(1, pipeline_max_queued_frames_));
+    while (true)
     {
+        const bool within_lookahead = (next_schedule_frame_index_ - next_send_frame_index_) < max_lookahead;
+        const bool queue_has_capacity = (frame_jobs_.size() + completed_frames_.size()) < max_queue;
+        if (!within_lookahead || !queue_has_capacity)
+            break;
+
         const uint64_t frame_index = next_schedule_frame_index_;
         frame_jobs_.push_back(FrameJob{frame_index, static_cast<double>(frame_index) * dt, dt});
         next_schedule_frame_index_++;
@@ -698,7 +708,7 @@ std::optional<ScriptedScenesDesktop::FrameResult> ScriptedScenesDesktop::try_tak
             }
         }
 
-        // Nothing ready at all, skip one stale frame index to unblock sender progress.
+        // Nothing ready within timeout, so advance one send index to keep the stream progressing.
         ++pipeline_frames_dropped_;
         ++next_send_frame_index_;
         missing_frame_since_ = now;
