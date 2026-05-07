@@ -162,6 +162,18 @@ void ScriptedScenesDesktop::update_script_dimensions_locked()
     script_width_ = std::max(1, matrix_width_ / render_downscale_);
     script_height_ = std::max(1, matrix_height_ / render_downscale_);
     script_canvas_data_.assign(script_width_ * script_height_ * 3, 0);
+
+    upscale_x_map_.resize(matrix_width_);
+    for (int x = 0; x < matrix_width_; ++x)
+    {
+        upscale_x_map_[x] = std::min(script_width_ - 1, x / render_downscale_);
+    }
+
+    upscale_y_map_.resize(matrix_height_);
+    for (int y = 0; y < matrix_height_; ++y)
+    {
+        upscale_y_map_[y] = std::min(script_height_ - 1, y / render_downscale_);
+    }
 }
 
 void ScriptedScenesDesktop::blit_script_canvas_to_output_locked()
@@ -174,10 +186,10 @@ void ScriptedScenesDesktop::blit_script_canvas_to_output_locked()
 
     for (int y = 0; y < matrix_height_; ++y)
     {
-        const int src_y = std::min(script_height_ - 1, y / render_downscale_);
+        const int src_y = upscale_y_map_[y];
         for (int x = 0; x < matrix_width_; ++x)
         {
-            const int src_x = std::min(script_width_ - 1, x / render_downscale_);
+            const int src_x = upscale_x_map_[x];
             const int src_idx = (src_y * script_width_ + src_x) * 3;
             const int dst_idx = (y * matrix_width_ + x) * 3;
             canvas_data_[dst_idx] = script_canvas_data_[src_idx];

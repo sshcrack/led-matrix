@@ -53,6 +53,8 @@ private:
     // Desktop canvas buffer
     std::vector<uint8_t> canvas_data_;
     std::vector<uint8_t> script_canvas_data_;
+    std::vector<int> upscale_x_map_;
+    std::vector<int> upscale_y_map_;
     int matrix_width_ = 128;
     int matrix_height_ = 128;
     int script_width_ = 128;
