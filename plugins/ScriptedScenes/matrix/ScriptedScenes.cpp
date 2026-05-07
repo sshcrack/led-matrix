@@ -8,6 +8,8 @@
 #include "shared/matrix/plugin_loader/loader.h"
 #include "LatestLuaScene.h"
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -186,5 +188,25 @@ std::vector<uint8_t> ScriptedScenes::get_data() {
 }
 
 std::optional<std::vector<std::string>> ScriptedScenes::on_websocket_open() {
-    return std::optional<std::vector<std::string>>({"scripted_scenes"});
+    std::vector<std::string> messages;
+    
+    if (fs::exists(lua_scenes_dir)) {
+        for (const auto &entry : fs::directory_iterator(lua_scenes_dir)) {
+            if (!entry.is_regular_file()) continue;
+            if (entry.path().extension() != ".lua") continue;
+
+            const fs::path &path = entry.path();
+            std::string name = path.stem().string();
+            
+            // Read file content
+            std::ifstream file(path);
+            if (file) {
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                messages.push_back("script:" + name + ":" + buffer.str());
+            }
+        }
+    }
+    
+    return messages.empty() ? std::nullopt : std::optional<std::vector<std::string>>(messages);
 }
