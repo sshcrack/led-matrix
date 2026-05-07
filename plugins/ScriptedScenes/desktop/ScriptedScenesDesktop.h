@@ -5,12 +5,11 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <map>
 #include "shared/desktop/utils.h"
 
-// Forward-declare sol2 types
-namespace sol {
-    class state;
-}
+#define SOL_ALL_SAFETIES_ON 1
+#include <sol/sol.hpp>
 
 class ScriptedScenesPacket : public UdpPacket {
 public:

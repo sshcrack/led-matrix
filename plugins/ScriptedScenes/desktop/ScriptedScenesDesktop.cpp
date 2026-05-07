@@ -1,7 +1,5 @@
 #include "ScriptedScenesDesktop.h"
 
-#define SOL_ALL_SAFETIES_ON 1
-#include <sol/sol.hpp>
 #include <spdlog/spdlog.h>
 #include <chrono>
 
