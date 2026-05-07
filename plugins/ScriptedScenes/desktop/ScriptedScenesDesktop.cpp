@@ -3,6 +3,16 @@
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <algorithm>
+#include <GL/glew.h>
+
+// Vertex shader for the full-screen quad used in GPU rendering
+static const char* kGpuVertexShader = R"glsl(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+void main() {
+    gl_Position = vec4(aPos, 0.0, 1.0);
+}
+)glsl";
 
 extern "C" PLUGIN_EXPORT ScriptedScenesDesktop* createScriptedScenes()
 {
@@ -189,6 +199,17 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
 
             stop_pipeline_workers_locked();
             maybe_update_pipeline_mode_locked();
+
+            // If a GPU shader is active, recreate the FBO with the new dimensions.
+            if (gpu_mode_active_ && !gpu_current_src_.empty())
+            {
+                std::lock_guard<std::mutex> glock(gpu_compile_mutex_);
+                gpu_pending_src_   = gpu_current_src_;
+                gpu_pending_props_ = property_defs_;
+                gpu_pending_w_     = matrix_width_;
+                gpu_pending_h_     = matrix_height_;
+                gpu_shader_pending_.store(true);
+            }
         }
     }
     else if (message.starts_with("script:"))
@@ -205,6 +226,8 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
 
             std::lock_guard<std::mutex> lock(script_mutex_);
             default_properties_.clear();
+            property_defs_.clear();
+            gpu_mode_active_ = false;
             stop_pipeline_workers_locked();
             setup_lua_state();
             if (load_and_exec_script(script_content))
@@ -239,7 +262,22 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
                 std::fill(canvas_data_.begin(), canvas_data_.end(), 0);
                 std::fill(script_canvas_data_.begin(), script_canvas_data_.end(), 0);
 
-                maybe_update_pipeline_mode_locked();
+                // Enable GPU path when the scene embeds a GLSL shader.
+                if (!gpu_current_src_.empty() && offload_render_)
+                {
+                    gpu_mode_active_ = true;
+                    std::lock_guard<std::mutex> glock(gpu_compile_mutex_);
+                    gpu_pending_src_   = gpu_current_src_;
+                    gpu_pending_props_ = property_defs_;
+                    gpu_pending_w_     = matrix_width_;
+                    gpu_pending_h_     = matrix_height_;
+                    gpu_shader_pending_.store(true);
+                    spdlog::info("[ScriptedScenesDesktop] GPU shader queued for '{}'", current_scene_name_);
+                }
+                else
+                {
+                    maybe_update_pipeline_mode_locked();
+                }
             }
         }
     }
@@ -304,7 +342,281 @@ void ScriptedScenesDesktop::blit_script_canvas_to_output_locked()
     blit_script_canvas_to_output(script_canvas_data_, canvas_data_, pipeline_render_config_);
 }
 
-void ScriptedScenesDesktop::setup_lua_state()
+// ── GPU rendering helpers ────────────────────────────────────────────────────
+
+void ScriptedScenesDesktop::post_init()
+{
+    GLenum init = glewInit();
+    if (init != GLEW_OK)
+    {
+        spdlog::error("[ScriptedScenesDesktop] GLEW init failed: {}",
+                      reinterpret_cast<const char*>(glewGetErrorString(init)));
+        return;
+    }
+
+    // Build full-screen quad (2 triangles in clip space).
+    constexpr float kQuad[] = {
+        -1.0f, -1.0f,   1.0f, -1.0f,   1.0f,  1.0f,
+        -1.0f, -1.0f,   1.0f,  1.0f,  -1.0f,  1.0f,
+    };
+    glGenVertexArrays(1, &gpu_quad_vao_);
+    glGenBuffers(1, &gpu_quad_vbo_);
+    glBindVertexArray(gpu_quad_vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, gpu_quad_vbo_);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(kQuad), kQuad, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
+    glBindVertexArray(0);
+
+    gpu_gl_initialized_ = true;
+    spdlog::info("[ScriptedScenesDesktop] GPU rendering initialized (GLEW {})",
+                 reinterpret_cast<const char*>(glewGetString(GLEW_VERSION)));
+}
+
+bool ScriptedScenesDesktop::compile_gpu_program(const std::string& frag_src)
+{
+    auto compile_shader = [](GLenum type, const char* src) -> GLuint
+    {
+        GLuint shader = glCreateShader(type);
+        glShaderSource(shader, 1, &src, nullptr);
+        glCompileShader(shader);
+        GLint ok = GL_FALSE;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+        if (!ok)
+        {
+            char log[2048];
+            glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
+            spdlog::error("[ScriptedScenesDesktop] Shader compile error: {}", log);
+            glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
+    };
+
+    GLuint vert = compile_shader(GL_VERTEX_SHADER, kGpuVertexShader);
+    if (!vert) return false;
+
+    GLuint frag = compile_shader(GL_FRAGMENT_SHADER, frag_src.c_str());
+    if (!frag) { glDeleteShader(vert); return false; }
+
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vert);
+    glAttachShader(prog, frag);
+    glLinkProgram(prog);
+    glDeleteShader(vert);
+    glDeleteShader(frag);
+
+    GLint ok = GL_FALSE;
+    glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+    if (!ok)
+    {
+        char log[2048];
+        glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
+        spdlog::error("[ScriptedScenesDesktop] Shader link error: {}", log);
+        glDeleteProgram(prog);
+        return false;
+    }
+
+    if (gpu_program_) glDeleteProgram(gpu_program_);
+    gpu_program_ = prog;
+    return true;
+}
+
+bool ScriptedScenesDesktop::setup_gpu_fbo(int w, int h)
+{
+    if (gpu_fbo_)     { glDeleteFramebuffers(1, &gpu_fbo_);   gpu_fbo_     = 0; }
+    if (gpu_texture_) { glDeleteTextures(1, &gpu_texture_);   gpu_texture_ = 0; }
+
+    glGenFramebuffers(1, &gpu_fbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, gpu_fbo_);
+
+    glGenTextures(1, &gpu_texture_);
+    glBindTexture(GL_TEXTURE_2D, gpu_texture_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gpu_texture_, 0);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        spdlog::error("[ScriptedScenesDesktop] FBO incomplete: {:#x}", static_cast<unsigned>(status));
+        return false;
+    }
+    gpu_fbo_width_  = w;
+    gpu_fbo_height_ = h;
+    return true;
+}
+
+void ScriptedScenesDesktop::cleanup_gpu_resources()
+{
+    if (gpu_fbo_)     { glDeleteFramebuffers(1, &gpu_fbo_);   gpu_fbo_     = 0; }
+    if (gpu_texture_) { glDeleteTextures(1, &gpu_texture_);   gpu_texture_ = 0; }
+    if (gpu_program_) { glDeleteProgram(gpu_program_);         gpu_program_ = 0; }
+    gpu_fbo_width_  = 0;
+    gpu_fbo_height_ = 0;
+}
+
+void ScriptedScenesDesktop::apply_gpu_uniforms(double elapsed, double dt)
+{
+    glUniform1f(glGetUniformLocation(gpu_program_, "iTime"),
+                static_cast<float>(elapsed));
+    glUniform1f(glGetUniformLocation(gpu_program_, "iDeltaTime"),
+                static_cast<float>(dt));
+    glUniform2f(glGetUniformLocation(gpu_program_, "iResolution"),
+                static_cast<float>(gpu_fbo_width_),
+                static_cast<float>(gpu_fbo_height_));
+
+    for (const auto& [name, def] : gpu_active_props_)
+    {
+        const std::string uname = "u_" + name;
+        GLint loc = glGetUniformLocation(gpu_program_, uname.c_str());
+        if (loc < 0) continue;
+
+        if (def.type == "color")
+        {
+            auto ci = static_cast<int>(def.numeric_value);
+            glUniform3f(loc,
+                        static_cast<float>((ci >> 16) & 0xFF) / 255.0f,
+                        static_cast<float>((ci >>  8) & 0xFF) / 255.0f,
+                        static_cast<float>( ci        & 0xFF) / 255.0f);
+        }
+        else if (def.type == "bool")
+        {
+            glUniform1i(loc, def.bool_value ? 1 : 0);
+        }
+        else
+        {
+            glUniform1f(loc, static_cast<float>(def.numeric_value));
+        }
+    }
+}
+
+void ScriptedScenesDesktop::render_gpu_frame()
+{
+    if (!gpu_fbo_ || !gpu_program_ || !gpu_quad_vao_) return;
+
+    const double now = get_time_sec();
+    const double elapsed = now - gpu_start_time_;
+    const double dt = now - gpu_last_time_;
+    gpu_last_time_ = now;
+
+    // Save current GL state that we will temporarily override.
+    GLint prev_fbo;
+    GLint prev_viewport[4];
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glGetIntegerv(GL_VIEWPORT, prev_viewport);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, gpu_fbo_);
+    glViewport(0, 0, gpu_fbo_width_, gpu_fbo_height_);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glUseProgram(gpu_program_);
+    apply_gpu_uniforms(elapsed, dt);
+
+    glBindVertexArray(gpu_quad_vao_);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    // Read back pixels.  Use RGBA (4-byte aligned) for driver efficiency, then
+    // convert to tightly-packed RGB while also flipping the y-axis so that
+    // row 0 of the result corresponds to the top of the matrix (OpenGL y=0 is
+    // the bottom of the framebuffer).
+    const int w = gpu_fbo_width_;
+    const int h = gpu_fbo_height_;
+    std::vector<uint8_t> rgba_buf(static_cast<size_t>(w * h * 4));
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba_buf.data());
+
+    std::vector<uint8_t> rgb_buf(static_cast<size_t>(w * h * 3));
+    for (int row = 0; row < h; ++row)
+    {
+        const int src_row = h - 1 - row; // flip y
+        for (int col = 0; col < w; ++col)
+        {
+            const int src = (src_row * w + col) * 4;
+            const int dst = (row    * w + col) * 3;
+            rgb_buf[dst]     = rgba_buf[src];
+            rgb_buf[dst + 1] = rgba_buf[src + 1];
+            rgb_buf[dst + 2] = rgba_buf[src + 2];
+        }
+    }
+
+    {
+        std::unique_lock<std::shared_mutex> glock(gpu_data_mutex_);
+        gpu_frame_data_ = std::move(rgb_buf);
+    }
+
+    ++gpu_frame_count_;
+    if (now - gpu_last_fps_upd_ >= 1.0)
+    {
+        const double window = now - gpu_last_fps_upd_;
+        gpu_fps_ = static_cast<float>(gpu_frame_count_) / static_cast<float>(window);
+        gpu_frame_count_ = 0;
+        gpu_last_fps_upd_ = now;
+    }
+
+    // Restore previous GL state.
+    glUseProgram(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prev_fbo));
+    glViewport(prev_viewport[0], prev_viewport[1], prev_viewport[2], prev_viewport[3]);
+}
+
+void ScriptedScenesDesktop::after_swap(ImGuiContext* /*imGuiContext*/)
+{
+    if (!gpu_gl_initialized_) return;
+
+    // Pick up any pending GPU shader (re)compilation.
+    if (gpu_shader_pending_.exchange(false))
+    {
+        std::string src;
+        std::map<std::string, PropertyDef> props;
+        int w, h;
+        {
+            std::lock_guard<std::mutex> glock(gpu_compile_mutex_);
+            src   = gpu_pending_src_;
+            props = gpu_pending_props_;
+            w     = gpu_pending_w_;
+            h     = gpu_pending_h_;
+        }
+
+        cleanup_gpu_resources();
+        gpu_active_props_ = props;
+
+        if (!src.empty() && compile_gpu_program(src) && setup_gpu_fbo(w, h))
+        {
+            const double now = get_time_sec();
+            gpu_start_time_   = now;
+            gpu_last_time_    = now;
+            gpu_frame_count_  = 0;
+            gpu_last_fps_upd_ = now;
+            gpu_fps_          = 0.0f;
+            spdlog::info("[ScriptedScenesDesktop] GPU shader compiled ({}×{})", w, h);
+        }
+        else if (!src.empty())
+        {
+            spdlog::error("[ScriptedScenesDesktop] GPU shader compilation failed – disabling GPU path");
+            cleanup_gpu_resources();
+            std::lock_guard<std::mutex> lock(script_mutex_);
+            gpu_mode_active_ = false;
+        }
+    }
+
+    // Render a frame if the GPU path is currently active.
+    bool do_gpu = false;
+    {
+        std::lock_guard<std::mutex> lock(script_mutex_);
+        do_gpu = gpu_mode_active_;
+    }
+    if (do_gpu && gpu_program_ && gpu_fbo_)
+        render_gpu_frame();
+}
+
+// ── end GPU rendering helpers ────────────────────────────────────────────────
+
+
 {
     lua_ = std::make_unique<sol::state>();
     lua_->open_libraries(
@@ -339,6 +651,24 @@ void ScriptedScenesDesktop::setup_lua_state()
                               sol::variadic_args va)
                        {
                            default_properties_[name] = default_val;
+
+                           // Also capture a type-safe copy for GPU uniform binding.
+                           PropertyDef def;
+                           def.type = type;
+                           if (type == "bool")
+                           {
+                               def.bool_value = default_val.is<bool>() ? default_val.as<bool>() : false;
+                           }
+                           else
+                           {
+                               if (default_val.is<double>())
+                                   def.numeric_value = default_val.as<double>();
+                               else if (default_val.is<int>())
+                                   def.numeric_value = static_cast<double>(default_val.as<int>());
+                               else if (default_val.is<bool>())
+                                   def.numeric_value = default_val.as<bool>() ? 1.0 : 0.0;
+                           }
+                           property_defs_[name] = def;
                        });
 
     lua_->set_function("get_property", [this](const std::string& name) -> sol::object
@@ -400,6 +730,18 @@ bool ScriptedScenesDesktop::load_and_exec_script(const std::string& script_conte
 
     sol::object deterministic_obj = (*lua_)["parallel_deterministic"];
     deterministic_parallel_ = !deterministic_obj.is<bool>() || deterministic_obj.as<bool>();
+
+    // Extract optional GPU shader source.  When present, the desktop renders this
+    // scene on the GPU instead of running the Lua script on the CPU.
+    sol::object gpu_shader_obj = (*lua_)["gpu_shader"];
+    if (gpu_shader_obj.is<std::string>())
+    {
+        gpu_current_src_ = gpu_shader_obj.as<std::string>();
+    }
+    else
+    {
+        gpu_current_src_.clear();
+    }
 
     is_lua_loaded_ = true;
     return true;
@@ -726,7 +1068,8 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
 void ScriptedScenesDesktop::maybe_update_pipeline_mode_locked()
 {
-    const bool desired = is_lua_loaded_ && offload_render_ && deterministic_parallel_;
+    // Never start the CPU parallel pipeline when the GPU path is handling rendering.
+    const bool desired = is_lua_loaded_ && offload_render_ && deterministic_parallel_ && !gpu_mode_active_;
 
     if (!desired)
     {
@@ -1101,6 +1444,20 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
     if ((sceneName != current_scene_name_ && sceneName != "Latest Lua Scene") || !is_lua_loaded_ || !offload_render_)
     {
         return std::nullopt;
+    }
+
+    // GPU path – return the latest frame rendered by after_swap().
+    if (gpu_mode_active_)
+    {
+        std::shared_lock<std::shared_mutex> glock(gpu_data_mutex_);
+        if (gpu_frame_data_.empty())
+            return std::nullopt;
+
+        auto packet = std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>(
+            new ScriptedScenesPacket(gpu_frame_data_),
+            [](UdpPacket* p) { delete dynamic_cast<ScriptedScenesPacket*>(p); }
+        );
+        return packet;
     }
 
     maybe_update_pipeline_mode_locked();
