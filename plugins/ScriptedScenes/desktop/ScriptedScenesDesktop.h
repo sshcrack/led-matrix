@@ -7,6 +7,9 @@
 #include <mutex>
 #include <map>
 #include <cstdint>
+#include <thread>
+#include <deque>
+#include <condition_variable>
 #include "shared/desktop/utils.h"
 
 #define SOL_ALL_SAFETIES_ON 1
@@ -45,10 +48,55 @@ public:
                           void** user_data) override;
 
 private:
+    struct RenderConfig
+    {
+        int matrix_width = 128;
+        int matrix_height = 128;
+        int script_width = 128;
+        int script_height = 128;
+        std::vector<int> upscale_x_map;
+        std::vector<int> upscale_y_map;
+    };
+
+    struct FrameJob
+    {
+        uint64_t frame_index = 0;
+        double t = 0.0;
+        double dt = 0.0;
+    };
+
+    struct FrameResult
+    {
+        uint64_t frame_index = 0;
+        std::vector<uint8_t> frame_data;
+        uint64_t set_pixel_calls = 0;
+        uint64_t clear_calls = 0;
+        double render_ms = 0.0;
+        double total_ms = 0.0;
+    };
+
+    struct WorkerState
+    {
+        int id = 0;
+        std::thread thread;
+        std::unique_ptr<sol::state> lua;
+        std::vector<uint8_t> script_canvas_data;
+        std::map<std::string, sol::object> default_properties;
+        bool lua_loaded = false;
+        uint64_t set_pixel_calls = 0;
+        uint64_t clear_calls = 0;
+    };
+
     std::unique_ptr<sol::state> lua_;
+    std::string script_content_;
     std::string current_scene_name_;
     bool is_lua_loaded_ = false;
     bool offload_render_ = true;
+    bool parallel_offload_opt_in_ = false;
+    bool deterministic_parallel_ = false;
+    bool enable_parallel_pipeline_ = false;
+    bool unsafe_parallel_mode_ = false;
+    bool use_parallel_pipeline_ = false;
 
     // Desktop canvas buffer
     std::vector<uint8_t> canvas_data_;
@@ -90,9 +138,51 @@ private:
     float profile_avg_clear_calls_per_frame_ = 0.0f;
 
     std::mutex script_mutex_;
+    std::mutex pipeline_mutex_;
+    std::condition_variable pipeline_cv_;
+    std::vector<WorkerState> workers_;
+    std::deque<FrameJob> frame_jobs_;
+    std::map<uint64_t, FrameResult> completed_frames_;
+    RenderConfig pipeline_render_config_;
+    bool stop_workers_ = false;
+    bool workers_started_ = false;
+    uint64_t next_schedule_frame_index_ = 0;
+    uint64_t next_send_frame_index_ = 0;
+    double pipeline_start_time_ = 0.0;
+    double missing_frame_since_ = 0.0;
+
+    int pipeline_worker_count_ = 2;
+    int pipeline_lookahead_depth_ = 6;
+    int pipeline_max_queued_frames_ = 24;
+    float pipeline_max_reorder_wait_ms_ = 18.0f;
+    float pipeline_target_fps_ = 60.0f;
+
+    uint64_t pipeline_frames_sent_ = 0;
+    uint64_t pipeline_frames_dropped_ = 0;
+    float pipeline_queue_depth_ = 0.0f;
+    float pipeline_completed_depth_ = 0.0f;
+    float pipeline_reorder_wait_ms_ = 0.0f;
+    float pipeline_effective_send_fps_ = 0.0f;
+    float pipeline_avg_worker_render_ms_ = 0.0f;
+    float pipeline_avg_worker_total_ms_ = 0.0f;
+    double pipeline_send_window_start_ = 0.0;
+    uint64_t pipeline_send_window_frames_ = 0;
+    double pipeline_worker_render_ms_sum_ = 0.0;
+    double pipeline_worker_total_ms_sum_ = 0.0;
+    uint64_t pipeline_worker_samples_ = 0;
 
     void update_script_dimensions_locked();
     void blit_script_canvas_to_output_locked();
+    static void blit_script_canvas_to_output(const std::vector<uint8_t>& script_canvas,
+                                             std::vector<uint8_t>& output_canvas,
+                                             const RenderConfig& config);
     void setup_lua_state();
     bool load_and_exec_script(const std::string& script_content);
+    void reset_profiling_locked(double now);
+    void stop_pipeline_workers_locked();
+    bool start_pipeline_workers_locked();
+    void maybe_update_pipeline_mode_locked();
+    void schedule_pipeline_jobs_locked();
+    std::optional<FrameResult> try_take_next_pipeline_frame_locked(double now);
+    void worker_loop(int worker_id);
 };
