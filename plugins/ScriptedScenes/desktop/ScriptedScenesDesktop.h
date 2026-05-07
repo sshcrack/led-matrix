@@ -15,6 +15,8 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
+const int MAX_WORKERS = std::thread::hardware_concurrency();
+
 class ScriptedScenesPacket : public UdpPacket
 {
 public:
@@ -96,7 +98,6 @@ private:
     bool is_lua_loaded_ = false;
     bool offload_render_ = true;
     bool deterministic_parallel_ = false;
-    bool enable_parallel_pipeline_ = false;
     bool bypass_protected_calls_ = false;
     bool use_parallel_pipeline_ = false;
 
@@ -109,7 +110,7 @@ private:
     int matrix_height_ = 128;
     int script_width_ = 128;
     int script_height_ = 128;
-    int render_downscale_ = 2;
+    int render_downscale_ = 1;
 
     std::map<std::string, sol::object> default_properties_;
 
@@ -153,10 +154,10 @@ private:
     double pipeline_start_time_ = 0.0;
     double missing_frame_since_ = 0.0;
 
-    int pipeline_worker_count_ = 2;
-    int pipeline_lookahead_depth_ = 6;
-    int pipeline_max_queued_frames_ = 24;
-    float pipeline_max_reorder_wait_ms_ = 18.0f;
+    int pipeline_worker_count_ = MAX_WORKERS;
+    int pipeline_lookahead_depth_ = 12;
+    int pipeline_max_queued_frames_ = 32;
+    float pipeline_max_reorder_wait_ms_ = 24.0f;
     float pipeline_target_fps_ = 60.0f;
 
     uint64_t pipeline_frames_sent_ = 0;

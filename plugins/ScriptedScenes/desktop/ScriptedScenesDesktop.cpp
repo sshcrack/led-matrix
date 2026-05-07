@@ -70,17 +70,12 @@ void ScriptedScenesDesktop::render()
 
     ImGui::Text("Lua Resolution: %dx%d", script_width_, script_height_);
 
-    if (ImGui::Checkbox("Enable Parallel Pipeline", &enable_parallel_pipeline_))
-    {
-        should_restart_pipeline = true;
-    }
-
     if (ImGui::Checkbox("Unsafe Parallel Mode", &bypass_protected_calls_))
     {
         should_restart_pipeline = true;
     }
 
-    if (ImGui::SliderInt("Pipeline Workers", &pipeline_worker_count_, 1, 8))
+    if (ImGui::SliderInt("Pipeline Workers", &pipeline_worker_count_, 1, MAX_WORKERS))
     {
         should_restart_pipeline = true;
     }
@@ -344,6 +339,22 @@ bool ScriptedScenesDesktop::load_and_exec_script(const std::string& script_conte
         offload_render_ = true;
     }
 
+    // Allow Lua scripts to declare the render scale as a global.
+    render_downscale_ = 1;
+    sol::object render_downscale_obj = (*lua_)["render_downscale"];
+    if (render_downscale_obj.is<int>())
+    {
+        render_downscale_ = render_downscale_obj.as<int>();
+    }
+    else if (render_downscale_obj.is<double>())
+    {
+        render_downscale_ = static_cast<int>(render_downscale_obj.as<double>());
+    }
+    render_downscale_ = std::clamp(render_downscale_, MIN_RENDER_DOWNSCALE, MAX_RENDER_DOWNSCALE);
+    update_script_dimensions_locked();
+    (*lua_)["width"] = script_width_;
+    (*lua_)["height"] = script_height_;
+
     sol::object deterministic_obj = (*lua_)["parallel_deterministic"];
     deterministic_parallel_ = deterministic_obj.is<bool>() && deterministic_obj.as<bool>();
 
@@ -423,12 +434,12 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 {
     stop_pipeline_workers_locked();
 
-    if (!is_lua_loaded_ || !offload_render_ || !enable_parallel_pipeline_ || !deterministic_parallel_)
+    if (!is_lua_loaded_ || !offload_render_ || !deterministic_parallel_)
     {
         return false;
     }
 
-    const int worker_count = std::clamp(pipeline_worker_count_, 1, 8);
+    const int worker_count = std::clamp(pipeline_worker_count_, 1, MAX_WORKERS);
     workers_.reserve(static_cast<size_t>(worker_count));
 
     auto init_worker = [this](WorkerState& worker) -> bool
@@ -612,7 +623,7 @@ bool ScriptedScenesDesktop::start_pipeline_workers_locked()
 
 void ScriptedScenesDesktop::maybe_update_pipeline_mode_locked()
 {
-    const bool desired = is_lua_loaded_ && offload_render_ && enable_parallel_pipeline_ && deterministic_parallel_;
+    const bool desired = is_lua_loaded_ && offload_render_ && deterministic_parallel_;
 
     if (!desired)
     {
@@ -639,7 +650,11 @@ void ScriptedScenesDesktop::schedule_pipeline_jobs_locked()
     const size_t max_queue = static_cast<size_t>(std::max(1, pipeline_max_queued_frames_));
     while (true)
     {
-        const bool within_lookahead = (next_schedule_frame_index_ - next_send_frame_index_) < max_lookahead;
+        const uint64_t outstanding_frames =
+            (next_schedule_frame_index_ > next_send_frame_index_)
+                ? (next_schedule_frame_index_ - next_send_frame_index_)
+                : 0;
+        const bool within_lookahead = outstanding_frames < max_lookahead;
         const bool queue_has_capacity = (frame_jobs_.size() + completed_frames_.size()) < max_queue;
         if (!within_lookahead || !queue_has_capacity)
             break;
@@ -705,7 +720,10 @@ std::optional<ScriptedScenesDesktop::FrameResult> ScriptedScenesDesktop::try_tak
 
         // Nothing ready within timeout, so advance one send index to keep the stream progressing.
         ++pipeline_frames_dropped_;
-        ++next_send_frame_index_;
+        if (next_send_frame_index_ < next_schedule_frame_index_)
+        {
+            ++next_send_frame_index_;
+        }
         missing_frame_since_ = now;
     }
 
