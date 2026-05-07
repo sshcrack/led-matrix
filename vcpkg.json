@@ -66,6 +66,13 @@
         "lua",
         "sol2"
       ]
+    },
+    "scripted-scenes-desktop": {
+      "description": "Lua scripted scenes support for desktop (ScriptedScenes plugin). Installs lua + sol2 via vcpkg.",
+      "dependencies": [
+        "lua",
+        "sol2"
+      ]
     }
   },
   "name": "led-matrix",
