@@ -143,7 +143,7 @@ private:
     std::mutex script_mutex_;
     std::mutex pipeline_mutex_;
     std::condition_variable pipeline_cv_;
-    std::vector<WorkerState> workers_;
+    std::deque<WorkerState> workers_;
     std::deque<FrameJob> frame_jobs_;
     std::map<uint64_t, FrameResult> completed_frames_;
     RenderConfig pipeline_render_config_;
