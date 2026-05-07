@@ -43,6 +43,7 @@ void ScriptedScenesDesktop::render()
     }
     ImGui::Text("Current Scene: %s", current_scene_name_.c_str());
     ImGui::Text("Offload Render: %s", offload_render_ ? "Yes" : "No");
+    ImGui::Text("FPS: %.1f", current_fps_);
 }
 
 void ScriptedScenesDesktop::on_websocket_message(const std::string message)
@@ -109,6 +110,9 @@ void ScriptedScenesDesktop::on_websocket_message(const std::string message)
 
                 start_time_ = get_time_sec();
                 last_time_ = start_time_;
+                last_fps_update_ = start_time_;
+                frame_count_ = 0;
+                current_fps_ = 0.0f;
 
                 // Clear canvas on new script
                 std::fill(canvas_data_.begin(), canvas_data_.end(), 0);
@@ -218,6 +222,14 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket*)>> ScriptedScenesDe
     double t = current_time - start_time_;
     double dt = current_time - last_time_;
     last_time_ = current_time;
+
+    frame_count_++;
+    if (current_time - last_fps_update_ >= 1.0)
+    {
+        current_fps_ = static_cast<float>(frame_count_) / static_cast<float>(current_time - last_fps_update_);
+        frame_count_ = 0;
+        last_fps_update_ = current_time;
+    }
 
     (*lua_)["time"] = t;
     (*lua_)["dt"] = dt;
