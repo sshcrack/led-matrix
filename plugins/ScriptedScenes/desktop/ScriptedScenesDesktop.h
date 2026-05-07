@@ -162,7 +162,7 @@ private:
     int pipeline_worker_count_ = MAX_WORKERS;
     int pipeline_lookahead_depth_ = 12;
     int pipeline_max_queued_frames_ = 32;
-    float pipeline_max_reorder_wait_ms_ = 24.0f;
+    float pipeline_max_reorder_wait_ms_ = 250.0f;
     float pipeline_target_fps_ = 60.0f;
 
     uint64_t pipeline_frames_sent_ = 0;
@@ -173,8 +173,6 @@ private:
     float pipeline_effective_send_fps_ = 0.0f;
     float pipeline_avg_worker_render_ms_ = 0.0f;
     float pipeline_avg_worker_total_ms_ = 0.0f;
-    double pipeline_send_window_start_ = 0.0;
-    uint64_t pipeline_send_window_frames_ = 0;
     double pipeline_worker_render_ms_sum_ = 0.0;
     double pipeline_worker_total_ms_sum_ = 0.0;
     uint64_t pipeline_worker_samples_ = 0;
