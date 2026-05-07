@@ -917,9 +917,14 @@ void ScriptedScenesDesktop::maybe_adapt_pipeline_locked()
 
         if (adaptive_stable_seconds_ >= ADAPTIVE_SCALE_DOWN_STABLE_SECONDS)
         {
-            if (pipeline_worker_count_ > ADAPTIVE_MIN_WORKERS)
+            // Simulate what our parallel budget WOULD be if we removed a worker.
+            // Using 0.90 (10% margin) to ensure we have comfortable headroom to scale down.
+            const double simulated_lower_budget_ms = base_frame_budget_ms * (pipeline_worker_count_ - 1) * 0.90;
+
+            if (pipeline_worker_count_ > ADAPTIVE_MIN_WORKERS && 
+                pipeline_avg_worker_render_ms_ < static_cast<float>(simulated_lower_budget_ms))
             {
-                // Try removing one worker.
+                // Safe to remove one worker.
                 --pipeline_worker_count_;
                 adaptive_last_action_ = "scale-down workers=" + std::to_string(pipeline_worker_count_);
 
