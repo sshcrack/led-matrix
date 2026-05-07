@@ -22,6 +22,8 @@ namespace Scenes {
         tmillis_t get_default_duration() override { return 10000; }
         int get_default_weight() override { return 5; }
 
+        bool needs_desktop_app() override;
+
     private:
         std::unique_ptr<LuaScene> current_scene_;
         std::filesystem::path current_script_path_;

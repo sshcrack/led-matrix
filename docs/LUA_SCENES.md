@@ -76,7 +76,8 @@ led-matrix-v1.x.x/
 | Global | Type | Description |
 |--------|------|-------------|
 | `name` | string | **Required.** Unique scene identifier used in the REST API and UI. Must not contain spaces (use underscores). |
-
+| `external_render_only` | boolean | **Optional.** If this is a very computational heavy renderer and the Raspbeery PI will not be able to handle this on its own, set this to `true`. The scene will require a desktop (PC/Laptop) running the script |
+| `offload` | boolean | **Optional.** Defaults to `true`. Set this to false, if this scene is computationally cheap and should run on the Raspberry PI itself. If offloading is enabled, the scene will fallback to render on the RPI if no desktop is connected. |
 ```lua
 name = "my_plasma"
 ```
