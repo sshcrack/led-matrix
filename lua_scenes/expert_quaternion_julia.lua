@@ -8,7 +8,7 @@
 -- ============================================================================
 
 name = "expert_quaternion_julia"
-external_render_only = true
+-- external_render_only = true
 
 function setup()
     -- Note: Properties only update on server restart, but the logic updates instantly!

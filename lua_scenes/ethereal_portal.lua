@@ -5,7 +5,7 @@
 -- ============================================================================
 
 name = "ethereal_portal"
-external_render_only = true -- Flagged for heavy computation
+-- external_render_only = true -- Flagged for heavy computation
 
 -- ============================================================================
 -- 1. Property Setup
