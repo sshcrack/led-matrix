@@ -254,9 +254,25 @@ bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
         return false;
     }
 
-    if (last_shader_sent_ != shader_file) {
-        plugin->send_msg_to_desktop("shader_file:" + shader_file);
-        last_shader_sent_ = shader_file;
+    std::error_code ec;
+    auto last_write = std::filesystem::last_write_time(shader_path_, ec);
+    std::string current_state = shader_file + ":" + std::to_string(last_write.time_since_epoch().count());
+
+    if (last_shader_sent_ != current_state) {
+        std::ifstream file(shader_path_);
+        if (!file.is_open()) {
+            spdlog::warn("CustomShadertoyScene: Failed to open shader file: {}", shader_file);
+            return false;
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        
+        nlohmann::json payload = {
+            {"name", shader_path_.stem().string()},
+            {"code", buffer.str()}
+        };
+        plugin->send_msg_to_desktop("custom_shader:" + payload.dump());
+        last_shader_sent_ = current_state;
     }
 
     render_plugin_pixels(plugin, canvas);
