@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, Trash2, Upload } from 'lucide-react'
 import { Button } from '~/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import LuaPreview from '~/components/AssetManager/LuaPreview'
+import ShaderPreview from '~/components/AssetManager/ShaderPreview'
+
+
 
 type AssetType = 'lua' | 'shader'
 
@@ -18,7 +22,11 @@ export default function AssetManager() {
   const [assets, setAssets] = useState<CustomAsset[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedLua, setSelectedLua] = useState<string | null>(null)
+  const [selectedShader, setSelectedShader] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [previewScript, setPreviewScript] = useState<string | null>(null)
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
 
   const endpointType = useMemo(() => (tab === 'lua' ? 'lua' : 'shader'), [tab])
 
@@ -34,6 +42,12 @@ export default function AssetManager() {
       }
       if (tab === 'lua' && Array.isArray(data) && data.length === 0) {
         setSelectedLua(null)
+      }
+      if (tab === 'shader' && Array.isArray(data) && data.length > 0 && !selectedShader) {
+        setSelectedShader(data[0].filename)
+      }
+      if (tab === 'shader' && Array.isArray(data) && data.length === 0) {
+        setSelectedShader(null)
       }
     } finally {
       setLoading(false)
@@ -52,14 +66,39 @@ export default function AssetManager() {
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !apiUrl) return
+    
+    // Store the selected file and show a preview dialog. Only upload after confirmation.
+    setPendingFile(file)
+    try {
+      const text = await file.text()
+      setPreviewScript(text)
+      setShowUploadDialog(true)
+    } catch (err) {
+      // fallback: clear selection
+      setPendingFile(null)
+      e.target.value = ''
+    }
+  }
 
+  const handleDialogOpenChange = (open: boolean) => {
+    setShowUploadDialog(open)
+    if (!open) {
+      setPendingFile(null)
+      setPreviewScript(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const confirmUpload = async () => {
+    if (!pendingFile || !apiUrl) return
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', pendingFile)
     await fetch(`${apiUrl}/api/custom-assets/${endpointType}`, {
       method: 'POST',
       body: formData,
     })
-    e.target.value = ''
+    handleDialogOpenChange(false)
+    // cleanup handled by handleDialogOpenChange when dialog closes
     await fetchAssets()
   }
 
@@ -71,6 +110,9 @@ export default function AssetManager() {
     })
     if (tab === 'lua' && selectedLua === filename) {
       setSelectedLua(null)
+    }
+    if (tab === 'shader' && selectedShader === filename) {
+      setSelectedShader(null)
     }
     await fetchAssets()
   }
@@ -123,8 +165,14 @@ export default function AssetManager() {
                 ) : assets.map((asset) => (
                   <tr
                     key={asset.filename}
-                    className={`border-b border-border/60 ${tab === 'lua' && selectedLua === asset.filename ? 'bg-muted/60' : ''}`}
-                    onClick={() => tab === 'lua' && setSelectedLua(asset.filename)}
+                    className={`border-b border-border/60 ${
+                      tab === 'lua' ? (selectedLua === asset.filename ? 'bg-muted/60' : '') 
+                                    : (selectedShader === asset.filename ? 'bg-muted/60' : '')
+                    }`}
+                    onClick={() => {
+                      if (tab === 'lua') setSelectedLua(asset.filename)
+                      else setSelectedShader(asset.filename)
+                    }}
                   >
                     <td className="px-4 py-2">{asset.filename}</td>
                     <td className="px-4 py-2 text-muted-foreground">{Math.max(1, Math.round(asset.size / 1024))} KB</td>
@@ -153,10 +201,30 @@ export default function AssetManager() {
           {tab === 'lua' ? (
             <LuaPreview apiUrl={apiUrl ?? ''} filename={selectedLua} />
           ) : (
-            <p className="text-sm text-muted-foreground">Select and export shaders from the table on the left.</p>
+            <ShaderPreview apiUrl={apiUrl ?? ''} filename={selectedShader} />
           )}
         </div>
       </div>
+
+      <Dialog open={showUploadDialog} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Preview Upload</DialogTitle>
+            <DialogDescription>{pendingFile ? pendingFile.name : 'Preview the script before uploading.'}</DialogDescription>
+          </DialogHeader>
+          <div className="p-2">
+            {tab === 'lua' ? (
+              <LuaPreview apiUrl={apiUrl ?? ''} filename={pendingFile?.name ?? null} script={previewScript} />
+            ) : (
+              <ShaderPreview apiUrl={apiUrl ?? ''} filename={pendingFile?.name ?? null} script={previewScript} />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>Cancel</Button>
+            <Button onClick={confirmUpload} className="ml-2">Upload</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

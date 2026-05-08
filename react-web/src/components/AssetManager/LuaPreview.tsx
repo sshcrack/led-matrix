@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { load } from 'fengari-web'
-
+import { LuaEngine, LuaFactory } from 'wasmoon'
 interface LuaPreviewProps {
   apiUrl: string
   filename: string | null
+  script?: string | null
 }
 
 const PREVIEW_SIZE = 128
 const PIXEL_SCALE = 3
 
-export default function LuaPreview({ apiUrl, filename }: LuaPreviewProps) {
+export default function LuaPreview({ apiUrl, filename, script }: LuaPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('Select a Lua script to preview')
@@ -19,54 +19,79 @@ export default function LuaPreview({ apiUrl, filename }: LuaPreviewProps) {
     let cancelled = false
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !filename) {
+    if (!canvas || !ctx || (!filename && !script)) {
       return
     }
 
     const width = PREVIEW_SIZE
     const height = PREVIEW_SIZE
 
-    const setPixel = (x: number, y: number, r: number, g: number, b: number) => {
-      if (x < 0 || y < 0 || x >= width || y >= height) return
-      ctx.fillStyle = `rgb(${Math.max(0, Math.min(255, r))}, ${Math.max(0, Math.min(255, g))}, ${Math.max(0, Math.min(255, b))})`
-      ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE)
-    }
-
-    const matrix = {
-      width: () => width,
-      height: () => height,
-      setPixel,
-      fill: (r: number = 0, g: number = 0, b: number = 0) => {
-        ctx.fillStyle = `rgb(${Math.max(0, Math.min(255, r))}, ${Math.max(0, Math.min(255, g))}, ${Math.max(0, Math.min(255, b))})`
-        ctx.fillRect(0, 0, width * PIXEL_SCALE, height * PIXEL_SCALE)
-      },
-    }
-
+    let lua: LuaEngine | null = null
     const start = async () => {
       try {
         setError(null)
-        setStatus(`Loading ${filename}...`)
-        const res = await fetch(`${apiUrl}/api/custom-assets/lua/${encodeURIComponent(filename)}/download`)
-        if (!res.ok) {
-          throw new Error(`Failed to fetch script (${res.status})`)
+        setStatus(script ? `Previewing ${filename ?? 'local script'}` : `Loading ${filename}...`)
+        let scriptText: string | null = null
+        if (script) {
+          scriptText = script
+        } else if (filename != null) {
+          const res = await fetch(`${apiUrl}/api/custom-assets/lua/${encodeURIComponent(filename)}/download`)
+          if (!res.ok) {
+            throw new Error(`Failed to fetch script (${res.status})`)
+          }
+          scriptText = await res.text()
+        } else {
+          console.warn('No script or filename provided for LuaPreview')
         }
-        const script = await res.text()
         if (cancelled) return
 
-        ;(globalThis as any).matrix = matrix
-        matrix.fill(0, 0, 0)
-        load(script)()
-        setStatus(`Previewing ${filename}`)
+        const factory = new LuaFactory()
+        lua = await factory.createEngine()
+        lua.global.set("log", (msg: string) => console.log(msg))
+        lua.global.set("set_pixel", (x: number, y: number, r: number, g: number, b: number) => {
+          ctx.fillStyle = `rgb(${Math.max(0, Math.min(255, r))}, ${Math.max(0, Math.min(255, g))}, ${Math.max(0, Math.min(255, b))})`
+          ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE)
+        })
 
+        lua.global.set("clear", () => {
+          ctx.fillStyle = 'black'
+          ctx.fillRect(0, 0, width * PIXEL_SCALE, height * PIXEL_SCALE)
+        })
+
+        let properties: { [key: string]: any } = {}
+        lua.global.set("define_property", (name: string, type: string, defaultValue: any) => {
+          properties[name] = defaultValue
+        })
+
+        lua.global.set("get_property", (name: string) => {
+          return properties[name]
+        })
+
+        lua.global.set("width", width)
+        lua.global.set("height", height)
+
+        lua.global.set("time", 0)
+        lua.global.set("dt", 0)
+
+        console.log('Executing Lua script...')
+        lua.doStringSync(scriptText!)
+        setStatus(`Previewing ${filename ?? 'local script'}`)
+
+        const renderFn = lua.global.get('render')
+        lua.global.get("setup")()
+        lua.global.get("initialize")()
+
+        let currentTime = performance.now()
         const tick = () => {
           if (cancelled) return
-          try {
-            load('if update then update() end')()
-            load('if draw then draw() end')()
-          } catch (e: any) {
-            setError(e?.message ?? 'Lua runtime error')
-            return
-          }
+
+          let delta = performance.now() - currentTime
+          currentTime = performance.now()
+
+          lua!.global.set("time", currentTime / 1000)
+          lua!.global.set("dt", delta / 1000)
+
+          renderFn()
           rafId = requestAnimationFrame(tick)
         }
         rafId = requestAnimationFrame(tick)
@@ -80,11 +105,11 @@ export default function LuaPreview({ apiUrl, filename }: LuaPreviewProps) {
     return () => {
       cancelled = true
       cancelAnimationFrame(rafId)
-      if ((globalThis as any).matrix === matrix) {
-        delete (globalThis as any).matrix
+      if(lua && !lua.global.isClosed()) {
+        lua.global.close()
       }
     }
-  }, [apiUrl, filename])
+  }, [apiUrl, filename, script])
 
   return (
     <div className="space-y-2">
