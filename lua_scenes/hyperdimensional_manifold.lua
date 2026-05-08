@@ -1,5 +1,5 @@
 name = "hyperdimensional_manifold"
--- external_render_only = true
+external_render_only = true
 
 -- Cache math functions locally for maximum performance during the heavy raymarching loop
 local sin, cos, sqrt, abs, max, min, floor, exp = math.sin, math.cos, math.sqrt, math.abs, math.max, math.min, math

@@ -1,5 +1,7 @@
 #include "ShadertoyDesktop.h"
 #include <fstream>
+#include <filesystem>
+#include <sstream>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <GL/glew.h>
@@ -37,8 +39,16 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 
     if (hasUrlChanged)
     {
-        spdlog::info("URL changed, loading shader {}...", url);
-        loadCacheFromUrl(url);
+        if (!custom_shader_code.empty())
+        {
+            spdlog::info("Custom shader changed, loading from code...");
+            loadLocalShaderFromCode(custom_shader_name, custom_shader_code);
+        }
+        else
+        {
+            spdlog::info("URL changed, loading shader {}...", url);
+            loadCacheFromUrl(url);
+        }
     }
 
     auto res = ShaderToy::PipelineEditor::get().update(ctx);
@@ -73,7 +83,11 @@ void ShadertoyDesktop::render()
         return;
     }
 
-    if (url.empty())
+    if (!custom_shader_code.empty())
+    {
+        ImGui::Text("Current Custom Shader: %s", custom_shader_name.c_str());
+    }
+    else if (url.empty())
     {
         ImGui::Text("Currently no URL is set (or no shadertoy scene is active).");
     }
@@ -243,6 +257,60 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
     }
 }
 
+void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code)
+{
+    try
+    {
+        nlohmann::json response = nlohmann::json::array({
+            {
+                {"ver", "0.1"},
+                {"info", {
+                    {"id", "ldlGD4"},
+                    {"date", "1370982836"},
+                    {"viewed", 3033},
+                    {"name", name},
+                    {"username", "ammarz"},
+                    {"description", "Basic GLSL tutorial, for noobs, by a noob!\nWarning: this tutorial is based on my own understanding, so if there's wrong info please tell me about it.\n[Edit] fixed an error in part 2 and added more info."},
+                    {"likes", 14},
+                    {"published", 1},
+                    {"flags", 0},
+                    {"usePreview", 0},
+                    {"tags", nlohmann::json::array({"tutorial"})},
+                    {"hasliked", 0},
+                    {"parentid", ""},
+                    {"parentname", ""}
+                }},
+                {"renderpass", nlohmann::json::array({
+                    {
+                        {"inputs", nlohmann::json::array()},
+                        {"outputs", nlohmann::json::array()},
+                        {"code", code},
+                        {"name", ""},
+                        {"description", ""},
+                        {"type", "image"}
+                    }
+                })}
+            }
+        });
+
+        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToyResponse("local", response.dump());
+        if (!res.has_value())
+        {
+            spdlog::error("Failed to load custom shader '{}': {}", name, res.error().what());
+            currShaderHasError = true;
+            return;
+        }
+
+        hasUrlChanged = false;
+        currShaderHasError = false;
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("Error loading custom shader '{}': {}", name, e.what());
+        currShaderHasError = true;
+    }
+}
+
 void ShadertoyDesktop::on_websocket_message(const std::string message)
 {
     if (message.starts_with("size:"))
@@ -259,16 +327,35 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
         std::string newUrl = message.substr(4);
         bool urlChanged = newUrl != url;
 
+        custom_shader_code.clear();
+        custom_shader_name.clear();
         url = newUrl;
         hasUrlChanged = urlChanged;
         currShaderHasError = false;
+    }
+    else if (message.starts_with("custom_shader:"))
+    {
+        try {
+            auto payload = nlohmann::json::parse(message.substr(14));
+            std::string name = payload.value("name", "unknown");
+            std::string code = payload.value("code", "");
+            
+            bool changed = (code != custom_shader_code) || (name != custom_shader_name);
+            custom_shader_code = code;
+            custom_shader_name = name;
+            url = "local://" + name;
+            hasUrlChanged = changed;
+            currShaderHasError = false;
+        } catch (const std::exception& e) {
+            spdlog::error("Failed to parse custom_shader payload: {}", e.what());
+        }
     }
 }
 
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDesktop::compute_next_packet(
     const std::string sceneName)
 {
-    if (sceneName != "shadertoy" || width == 0 || height == 0 || !initError.empty())
+    if ((sceneName != "shadertoy" && !sceneName.starts_with("custom_shader:")) || width == 0 || height == 0 || !initError.empty())
     {
         isActive = false;
         return std::nullopt; // Not for this scene

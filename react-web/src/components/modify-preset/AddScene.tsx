@@ -4,7 +4,7 @@ import { Button } from '~/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from '~/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '~/components/ui/select'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
@@ -22,6 +22,12 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const apiUrl = useApiUrl()
 
   const selectedDef = sceneDefinitions.find(s => s.name === selected)
+  const groupedScenes = sceneDefinitions.reduce<Record<string, ListScenes[]>>((acc, scene) => {
+    const category = scene.category ?? 'General'
+    if (!acc[category]) acc[category] = []
+    acc[category].push(scene)
+    return acc
+  }, {})
 
   const handleAdd = () => {
     const def = sceneDefinitions.find(s => s.name === selected)
@@ -63,8 +69,13 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
               <SelectValue placeholder="Select scene type..." />
             </SelectTrigger>
             <SelectContent>
-              {sceneDefinitions.map(s => (
-                <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+              {Object.entries(groupedScenes).map(([category, scenes]) => (
+                <SelectGroup key={category}>
+                  <SelectLabel>{category}</SelectLabel>
+                  {scenes.map(s => (
+                    <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>

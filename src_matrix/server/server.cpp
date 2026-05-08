@@ -12,6 +12,7 @@
 #include "post_processing_routes.h"
 #include "update_routes.h"
 #include "shared/matrix/server/server_utils.h"
+#include "custom_assets_management.h"
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
 
@@ -30,6 +31,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_preset_routes(std::move(router));
     router = add_canvas_status_routes(std::move(router));
     router = add_scene_routes(std::move(router));
+    router = add_custom_assets_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
     router = add_post_processing_routes(std::move(router));
     router = add_update_routes(std::move(router), Constants::global_update_manager);
