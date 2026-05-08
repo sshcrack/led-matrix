@@ -1,10 +1,11 @@
 #include "LatestLuaScene.h"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include "shared/common/utils/utils.h"
 
 namespace fs = std::filesystem;
 
-static const fs::path lua_scenes_dir = fs::current_path() / "lua_scenes";
+static const fs::path lua_scenes_dir = get_exec_dir() / "data" / "custom_lua";
 
 namespace Scenes
 {

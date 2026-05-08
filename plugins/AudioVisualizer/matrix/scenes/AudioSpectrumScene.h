@@ -56,6 +56,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
+        std::string getCategory() const override { return "Audio Reactive"; }
         void register_properties() override;
 
         tmillis_t get_default_duration() override {

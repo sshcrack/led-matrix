@@ -1,4 +1,4 @@
-export interface ListScenes { name: string; properties: Property<any>[]; has_preview?: boolean; }
+export interface ListScenes { name: string; properties: Property<any>[]; has_preview?: boolean; category: string; }
 
 export interface Property<T> {
   default_value: T;
