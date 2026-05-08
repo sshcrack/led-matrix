@@ -1,5 +1,7 @@
 #include "ShadertoyDesktop.h"
 #include <fstream>
+#include <filesystem>
+#include <sstream>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <GL/glew.h>
@@ -37,8 +39,16 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 
     if (hasUrlChanged)
     {
-        spdlog::info("URL changed, loading shader {}...", url);
-        loadCacheFromUrl(url);
+        if (!shader_file_path.empty())
+        {
+            spdlog::info("Custom shader changed, loading local file {}...", shader_file_path);
+            loadLocalShaderFromFile(shader_file_path);
+        }
+        else
+        {
+            spdlog::info("URL changed, loading shader {}...", url);
+            loadCacheFromUrl(url);
+        }
     }
 
     auto res = ShaderToy::PipelineEditor::get().update(ctx);
@@ -73,7 +83,11 @@ void ShadertoyDesktop::render()
         return;
     }
 
-    if (url.empty())
+    if (!shader_file_path.empty())
+    {
+        ImGui::Text("Current Local Shader: %s", shader_file_path.c_str());
+    }
+    else if (url.empty())
     {
         ImGui::Text("Currently no URL is set (or no shadertoy scene is active).");
     }
@@ -243,6 +257,75 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
     }
 }
 
+void ShadertoyDesktop::loadLocalShaderFromFile(const std::string &file_path)
+{
+    try
+    {
+        if (!std::filesystem::exists(file_path))
+        {
+            spdlog::error("Local shader file does not exist: {}", file_path);
+            currShaderHasError = true;
+            return;
+        }
+
+        std::ifstream file(file_path);
+        if (!file.is_open())
+        {
+            spdlog::error("Failed to open local shader file: {}", file_path);
+            currShaderHasError = true;
+            return;
+        }
+
+        std::stringstream ss;
+        ss << file.rdbuf();
+        const auto source = ss.str();
+        const std::string uniforms = R"(uniform vec3 iResolution;
+uniform float iTime;
+uniform float iTimeDelta;
+uniform int iFrame;
+)";
+        const std::string shader_code = uniforms + "\n" + source;
+
+        nlohmann::json response = {
+            {"Shader",
+             {
+                 {"info",
+                  {
+                      {"id", "local"},
+                      {"name", std::filesystem::path(file_path).stem().string()},
+                      {"username", "local"},
+                      {"description", "Local custom shader"},
+                  }},
+                 {"renderpass",
+                  nlohmann::json::array(
+                      {{
+                          {"name", "Image"},
+                          {"type", "image"},
+                          {"code", shader_code},
+                          {"inputs", nlohmann::json::array()},
+                          {"outputs", nlohmann::json::array({{{"id", "4dXGR8"}, {"channel", 0}}})},
+                      }})},
+             }},
+        };
+
+        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToyResponse("local", response.dump());
+        if (!res.has_value())
+        {
+            spdlog::error("Failed to load local shader '{}': {}", file_path, res.error().what());
+            currShaderHasError = true;
+            return;
+        }
+
+        hasUrlChanged = false;
+        currShaderHasError = false;
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("Error loading local shader '{}': {}", file_path, e.what());
+        currShaderHasError = true;
+    }
+}
+
 void ShadertoyDesktop::on_websocket_message(const std::string message)
 {
     if (message.starts_with("size:"))
@@ -259,8 +342,18 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
         std::string newUrl = message.substr(4);
         bool urlChanged = newUrl != url;
 
+        shader_file_path.clear();
         url = newUrl;
         hasUrlChanged = urlChanged;
+        currShaderHasError = false;
+    }
+    else if (message.starts_with("shader_file:"))
+    {
+        const std::string filePath = message.substr(12);
+        bool changed = filePath != shader_file_path;
+        shader_file_path = filePath;
+        url = "local://" + std::filesystem::path(filePath).filename().string();
+        hasUrlChanged = changed;
         currShaderHasError = false;
     }
 }
@@ -268,7 +361,7 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
 std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDesktop::compute_next_packet(
     const std::string sceneName)
 {
-    if (sceneName != "shadertoy" || width == 0 || height == 0 || !initError.empty())
+    if ((sceneName != "shadertoy" && !sceneName.starts_with("custom_shader:")) || width == 0 || height == 0 || !initError.empty())
     {
         isActive = false;
         return std::nullopt; // Not for this scene
