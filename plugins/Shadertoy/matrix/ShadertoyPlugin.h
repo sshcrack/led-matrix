@@ -38,7 +38,14 @@ public:
         return data;
     }
 
+    void set_last_sent_message(const std::string& message) {
+        std::lock_guard<std::mutex> lock(lastMsgMutex);
+        last_sent_message = message;
+    }
+
 private:
+    std::mutex lastMsgMutex;
+    std::string last_sent_message;
     std::mutex dataMutex;
     std::vector<uint8_t> data;
     std::mutex customSceneMutex;
