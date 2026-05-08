@@ -94,6 +94,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override;
+        std::string getCategory() const override { return "Games"; }
         void register_properties() override;
         void initialize(int width, int height) override;
         
