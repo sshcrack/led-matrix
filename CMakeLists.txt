@@ -58,7 +58,12 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-project(main VERSION 1.13.0)
+set(VERSION 1.13.0)
+if (ENABLE_DESKTOP)
+project(led-matrix-desktop VERSION ${VERSION})
+else()
+project(main VERSION ${VERSION})
+endif()
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
@@ -426,7 +431,7 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
         set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
         set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
-        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/main.exe")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/led-matrix-desktop.exe")
         set(CPACK_NSIS_HELP_LINK "https://github.com/sshcrack/led-matrix")
         set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/sshcrack/led-matrix")
         set(CPACK_NSIS_CONTACT "hendrik@sshcrack.me")
@@ -468,8 +473,8 @@ if(ENABLE_DESKTOP)
 
         # Properly create shortcuts with working NSIS commands
         set(CPACK_NSIS_CREATE_ICONS_EXTRA "
-            CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" 0
-            CreateShortCut \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\main.exe\\\" 0
+            CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" 0
+            CreateShortCut \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" 0
         ")
 
         # Remove shortcuts during uninstall
@@ -479,7 +484,7 @@ if(ENABLE_DESKTOP)
         ")
 
         # Add option to launch application after installation
-        set(CPACK_NSIS_MUI_FINISHPAGE_RUN "$INSTDIR\\\\bin\\\\main.exe")
+        set(CPACK_NSIS_MUI_FINISHPAGE_RUN "$INSTDIR\\\\bin\\\\led-matrix-desktop.exe")
         set(CPACK_NSIS_MUI_FINISHPAGE_RUN_TEXT "Launch LED Matrix Controller")
         set(CPACK_NSIS_MUI_FINISHPAGE_RUN_CHECKED "1")
     else()
