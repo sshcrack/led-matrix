@@ -27,6 +27,7 @@ namespace Scenes
 
         bool render(rgb_matrix::FrameCanvas* canvas) override;
         std::string get_name() const override { return scene_name_; }
+        std::string getCategory() const override { return "Custom Lua"; }
         void register_properties() override;
         void initialize(int width, int height) override;
 
@@ -88,6 +89,33 @@ namespace Scenes
 
         /// Return the pre-scanned name so we don't need to spin up a Lua state
         /// just to populate the scene list.
+        std::string get_name() override { return cached_name_; }
+
+    private:
+        std::filesystem::path script_path_;
+        std::string cached_name_;
+    };
+
+    class CustomLuaScene final : public LuaScene
+    {
+    public:
+        explicit CustomLuaScene(std::filesystem::path script_path) : LuaScene(std::move(script_path)) {}
+        std::string getCategory() const override { return "Custom Lua"; }
+    };
+
+    class CustomLuaSceneWrapper : public Plugins::SceneWrapper
+    {
+    public:
+        CustomLuaSceneWrapper(std::filesystem::path path, std::string name)
+            : script_path_(std::move(path)), cached_name_(std::move(name))
+        {
+        }
+
+        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene*)> create() override
+        {
+            return {new CustomLuaScene(script_path_), [](Scenes::Scene* s) { delete s; }};
+        }
+
         std::string get_name() override { return cached_name_; }
 
     private:

@@ -16,6 +16,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "Latest Lua Scene"; }
+        std::string getCategory() const override { return "Custom Lua"; }
         void register_properties() override;
         void initialize(int width, int height) override;
 

@@ -5,6 +5,7 @@
 
 #include "LatestLuaScene.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/common/utils/utils.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -18,7 +19,7 @@ namespace fs = std::filesystem;
 // Resolved relative to the process working directory, which is the same root
 // used for Constants::root_dir ("images/").
 // ---------------------------------------------------------------------------
-static const fs::path lua_scenes_dir = fs::current_path() / "lua_scenes";
+static const fs::path lua_scenes_dir = get_exec_dir() / "data" / "custom_lua";
 
 extern "C" PLUGIN_EXPORT ScriptedScenes *createScriptedScenes() {
   return new ScriptedScenes();
@@ -96,7 +97,8 @@ ScriptedScenes::create_scenes() {
       known_files_[name] = std::filesystem::file_time_type::min();
     }
 
-    scenes.emplace_back(new Scenes::LuaSceneWrapper(path, name), deleter);
+    scene_name_by_path_[path.string()] = name;
+    scenes.emplace_back(new Scenes::CustomLuaSceneWrapper(path, name), deleter);
   }
 
   scenes.emplace_back(new Scenes::LatestLuaSceneWrapper(), deleter);
@@ -173,8 +175,9 @@ void ScriptedScenes::watch_directory() {
             "[ScriptedScenes] Runtime loading new Lua scene '{}' from '{}'",
             name, path.filename().string());
 
+        scene_name_by_path_[path.string()] = name;
         std::shared_ptr<Plugins::SceneWrapper> wrapper(
-            new Scenes::LuaSceneWrapper(path, name), deleter);
+            new Scenes::CustomLuaSceneWrapper(path, name), deleter);
 
         Plugins::PluginManager::instance()->add_scene(std::move(wrapper));
       }
@@ -186,6 +189,13 @@ void ScriptedScenes::watch_directory() {
         spdlog::info("[ScriptedScenes] Unloading deleted Lua scene '{}'",
                      it->first);
         Plugins::PluginManager::instance()->remove_scene(it->first);
+        for (auto itr = scene_name_by_path_.begin(); itr != scene_name_by_path_.end();) {
+          if (itr->second == it->first) {
+            itr = scene_name_by_path_.erase(itr);
+          } else {
+            ++itr;
+          }
+        }
         it = known_files_.erase(it);
       } else {
         ++it;
@@ -232,4 +242,52 @@ std::optional<std::vector<std::string>> ScriptedScenes::on_websocket_open() {
 
   return messages.empty() ? std::nullopt
                           : std::optional<std::vector<std::string>>(messages);
+}
+
+std::string ScriptedScenes::add_custom_lua_scene(const std::filesystem::path &script_path) {
+  std::string name = script_path.stem().string();
+  if (!fs::exists(script_path)) {
+    return name;
+  }
+
+  try {
+    sol::state tmp;
+    tmp.open_libraries(sol::lib::base);
+    auto res = tmp.script_file(
+        script_path.string(), [](lua_State *, sol::protected_function_result pfr) {
+          return pfr;
+        });
+    if (res.valid()) {
+      sol::object n = tmp["name"];
+      if (n.is<std::string>())
+        name = n.as<std::string>();
+    }
+  } catch (...) {
+  }
+
+  std::error_code ec;
+  known_files_[name] = fs::last_write_time(script_path, ec);
+  if (ec) {
+    known_files_[name] = std::filesystem::file_time_type::min();
+  }
+  scene_name_by_path_[script_path.string()] = name;
+
+  auto deleter = [](Plugins::SceneWrapper *w) { delete w; };
+  std::shared_ptr<Plugins::SceneWrapper> wrapper(new Scenes::CustomLuaSceneWrapper(script_path, name), deleter);
+  Plugins::PluginManager::instance()->add_scene(std::move(wrapper));
+  spdlog::info("[ScriptedScenes] Runtime loading new Lua scene '{}' from '{}'", name, script_path.filename().string());
+  return name;
+}
+
+std::string ScriptedScenes::remove_custom_lua_scene(const std::filesystem::path &script_path) {
+  const auto key = script_path.string();
+  std::string scene_name = script_path.stem().string();
+  if (scene_name_by_path_.contains(key)) {
+    scene_name = scene_name_by_path_[key];
+    scene_name_by_path_.erase(key);
+  }
+  known_files_.erase(scene_name);
+  Plugins::PluginManager::instance()->remove_scene(scene_name);
+  spdlog::info("[ScriptedScenes] Runtime removed Lua scene '{}' from '{}'", scene_name, script_path.filename().string());
+  return scene_name;
 }

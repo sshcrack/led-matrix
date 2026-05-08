@@ -89,6 +89,7 @@ namespace Scenes {
         [[nodiscard]] virtual nlohmann::json to_json() const;
 
         [[nodiscard]] virtual string get_name() const = 0;
+        [[nodiscard]] virtual std::string getCategory() const { return "General"; }
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.
