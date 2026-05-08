@@ -4,11 +4,47 @@
 
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/config/shader_providers/general.h"
+#include <filesystem>
 
 bool Scenes::switchToNextRandomShader = true;
 
 using namespace Scenes;
 std::string Scenes::ShadertoyScene::lastUrlSent = "";
+
+namespace {
+ShadertoyPlugin *get_shadertoy_plugin() {
+    auto plugins = Plugins::PluginManager::instance()->get_plugins();
+    for (auto &p : plugins) {
+        if (auto av = dynamic_cast<ShadertoyPlugin *>(p)) {
+            return av;
+        }
+    }
+    return nullptr;
+}
+
+void render_plugin_pixels(ShadertoyPlugin *plugin, rgb_matrix::FrameCanvas *canvas) {
+    const auto pixels = plugin->get_data();
+
+    if (pixels.empty()) {
+        canvas->Fill(0, 0, 255);
+        return;
+    }
+
+    const int width = Constants::width;
+    const int height = Constants::height;
+    const uint8_t *data = pixels.data();
+    const int num_pixels = pixels.size() / 3;
+
+    for (int idx = 0; idx < num_pixels; ++idx) {
+        int x = idx % width;
+        int y = height - 1 - (idx / width);
+        if (y >= 0) {
+            int i = idx * 3;
+            canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+        }
+    }
+}
+}
 
 std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ShadertoySceneWrapper::create()
 {
@@ -21,16 +57,7 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ShadertoySceneWrapper:
 
 ShadertoyScene::ShadertoyScene() : plugin(nullptr)
 {
-    // Find the AudioVisualizer plugin
-    auto plugins = Plugins::PluginManager::instance()->get_plugins();
-    for (auto &p : plugins)
-    {
-        if (auto av = dynamic_cast<ShadertoyPlugin *>(p))
-        {
-            plugin = av;
-            break;
-        }
-    }
+    plugin = get_shadertoy_plugin();
 
     if (!plugin)
     {
@@ -190,32 +217,79 @@ bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
     if (!url_to_send.empty() && lastUrlSent != url_to_send)
     {
         spdlog::info("ShadertoyScene: Sending new URL to plugin: {}", url_to_send);
-        plugin->send_msg_to_desktop("url:" + url_to_send);
+        auto msg = "url:" + url_to_send;
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
         lastUrlSent = url_to_send;
     }
 
-    const auto pixels = plugin->get_data();
-
-    if (pixels.empty())
-    {
-        canvas->Fill(0, 0, 255); // Clear the canvas if no data
-    }
-    // Use pointers for faster access and avoid repeated division/modulo
-    const int width = Constants::width;
-    const int height = Constants::height;
-    const uint8_t *data = pixels.data();
-    const int num_pixels = pixels.size() / 3;
-
-    for (int idx = 0; idx < num_pixels; ++idx)
-    {
-        int x = idx % width;
-        int y = height - 1 - (idx / width);
-        if (y >= 0)
-        {
-            int i = idx * 3;
-            canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
-        }
-    }
+    render_plugin_pixels(plugin, canvas);
 
     return true;
+}
+
+CustomShadertoyScene::CustomShadertoyScene(std::filesystem::path shader_path)
+    : plugin(get_shadertoy_plugin()), shader_path_(std::move(shader_path))
+{
+    scene_name_ = "custom_shader:" + shader_path_.stem().string();
+
+    if (!plugin) {
+        spdlog::error("CustomShadertoyScene: Failed to find Shadertoy plugin");
+    }
+}
+
+string CustomShadertoyScene::get_name() const
+{
+    return scene_name_;
+}
+
+bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
+{
+    if (!plugin) {
+        spdlog::warn("CustomShadertoyScene: Plugin not found, cannot render");
+        return false;
+    }
+
+    const auto shader_file = shader_path_.string();
+    if (!std::filesystem::exists(shader_path_)) {
+        spdlog::warn("CustomShadertoyScene: Shader file no longer exists: {}", shader_file);
+        return false;
+    }
+
+    std::error_code ec;
+    auto last_write = std::filesystem::last_write_time(shader_path_, ec);
+    std::string current_state = shader_file + ":" + std::to_string(last_write.time_since_epoch().count());
+
+    if (last_shader_sent_ != current_state) {
+        std::ifstream file(shader_path_);
+        if (!file.is_open()) {
+            spdlog::warn("CustomShadertoyScene: Failed to open shader file: {}", shader_file);
+            return false;
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        
+        nlohmann::json payload = {
+            {"name", shader_path_.stem().string()},
+            {"code", buffer.str()}
+        };
+        auto msg = "custom_shader:" + payload.dump();
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
+        last_shader_sent_ = current_state;
+    }
+
+    render_plugin_pixels(plugin, canvas);
+    return true;
+}
+
+CustomShadertoySceneWrapper::CustomShadertoySceneWrapper(std::filesystem::path shader_path)
+    : shader_path_(std::move(shader_path))
+{
+    name_ = "custom_shader:" + shader_path_.stem().string();
+}
+
+std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> CustomShadertoySceneWrapper::create()
+{
+    return {new CustomShadertoyScene(shader_path_), [](Scenes::Scene *scene) { delete scene; }};
 }

@@ -29,6 +29,8 @@ public:
 private:
     int width, height;
     std::string url;
+    std::string custom_shader_code;
+    std::string custom_shader_name;
     // Default is false, still waiting for the WebsocketClient to send the URL
     bool hasUrlChanged = false;
 
@@ -50,4 +52,5 @@ private:
     
     void renderCacheEditorUI();
     void loadCacheFromUrl(const std::string& url);
+    void loadLocalShaderFromCode(const std::string& name, const std::string& code);
 };

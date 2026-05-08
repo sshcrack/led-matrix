@@ -75,6 +75,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
+        [[nodiscard]] std::string getCategory() const override { return "Games"; }
 
         void register_properties() override {}
 

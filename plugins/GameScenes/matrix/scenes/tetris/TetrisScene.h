@@ -63,6 +63,7 @@ namespace Scenes {
         void after_render_stop() override;
 
         [[nodiscard]] std::string get_name() const override;
+        [[nodiscard]] std::string getCategory() const override { return "Games"; }
 
         void register_properties() override {
             add_property(fall_speed_ms);
