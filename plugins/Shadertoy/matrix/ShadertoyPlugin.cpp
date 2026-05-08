@@ -115,6 +115,12 @@ std::optional<std::vector<std::string>> ShadertoyPlugin::on_websocket_open()
     std::shared_lock lock(Server::currSceneMutex);
     std::string sizeMsg = "size:" + std::to_string(Constants::width) + "x" + std::to_string(Constants::height);
     std::vector<std::string> v = {sizeMsg};
+    
+    std::lock_guard<std::mutex> lock2(lastMsgMutex);
+    if (!last_sent_message.empty()) {
+        v.push_back(last_sent_message);
+    }
+    
     return v;
 }
 
