@@ -217,7 +217,9 @@ bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
     if (!url_to_send.empty() && lastUrlSent != url_to_send)
     {
         spdlog::info("ShadertoyScene: Sending new URL to plugin: {}", url_to_send);
-        plugin->send_msg_to_desktop("url:" + url_to_send);
+        auto msg = "url:" + url_to_send;
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
         lastUrlSent = url_to_send;
     }
 
@@ -271,7 +273,9 @@ bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
             {"name", shader_path_.stem().string()},
             {"code", buffer.str()}
         };
-        plugin->send_msg_to_desktop("custom_shader:" + payload.dump());
+        auto msg = "custom_shader:" + payload.dump();
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
         last_shader_sent_ = current_state;
     }
 
