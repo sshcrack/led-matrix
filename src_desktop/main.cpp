@@ -634,8 +634,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             return -1;
         }
 
-        std::string arg(static_cast<size_t>(len) - 1, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, arg.data(), len, nullptr, nullptr);
+        std::string arg(static_cast<size_t>(len), '\0');
+        const int written = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, arg.data(), len, nullptr, nullptr);
+        if (written <= 0) {
+            LocalFree(argv_w);
+            return -1;
+        }
+        arg.resize(static_cast<size_t>(written) - 1);
         argv_storage.push_back(std::move(arg));
     }
 
