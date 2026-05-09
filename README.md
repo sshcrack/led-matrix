@@ -1,7 +1,7 @@
 # 🌈 LED Matrix Controller
 
 > [!TIP]
-> This project is still mainatined, but I just don't have any ideas what to do right now, I'm open for suggestions!
+> This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
 
 <div align="center">
 
