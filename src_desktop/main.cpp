@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Project includes
 #include "shared/desktop/WebsocketClient.h"
@@ -193,9 +194,9 @@ int run_app(int argc, char *argv[]) {
     HelloImGui::SetAssetsFolder((get_exec_dir() / ".." / "assets").string());
 
     // Single instance manager
-    SingleInstanceManager *instanceManager = nullptr;
+    std::unique_ptr<SingleInstanceManager> instanceManager;
     try {
-        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
+        instanceManager = std::make_unique<SingleInstanceManager>("LedMatrixController", [] {
             spdlog::info("Focus request received, showing main window.");
             showMainWindow = true;
         });
@@ -217,7 +218,7 @@ int run_app(int argc, char *argv[]) {
     g_shutdown_port = generalCfgRef.getPort();
     g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
 
-    static WebsocketClient *ws;
+    static std::unique_ptr<WebsocketClient> ws;
     static UpdateChecker::UpdateManager updateManager;
     static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
 
@@ -262,12 +263,13 @@ int run_app(int argc, char *argv[]) {
         }
 
         bool somethingInvalid = false;
-        if (hostname.empty()) {
+        const auto mark_last_item_invalid = [] {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            ImGui::GetWindowDrawList()->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+        };
+        if (hostname.empty()) {
+            mark_last_item_invalid();
             somethingInvalid = true;
         }
 
@@ -278,11 +280,7 @@ int run_app(int argc, char *argv[]) {
         }
 
         if (port < 1 || port > 65535) {
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            mark_last_item_invalid();
             somethingInvalid = true;
         }
 
@@ -296,10 +294,7 @@ int run_app(int argc, char *argv[]) {
             HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
         }
         if (fpsLimit < 1 || fpsLimit > 360) {
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+            mark_last_item_invalid();
             somethingInvalid = true;
         }
 
@@ -577,8 +572,8 @@ int run_app(int argc, char *argv[]) {
             plugin->post_init();
         }
         // Only now create the WebsocketClient, so the UDP thread starts after the window is set
-        ws = new WebsocketClient();
-        WebsocketClient::setInstance(ws);
+        ws = std::make_unique<WebsocketClient>();
+        WebsocketClient::setInstance(ws.get());
         // Check for updates on startup
         updateManager.checkForUpdatesAsync();
     };
@@ -608,10 +603,9 @@ int run_app(int argc, char *argv[]) {
         }
     }
 
-    delete ws;
+    ws.reset();
     delete cfg;
     pl->destroy_plugins();
-    delete instanceManager;
     spdlog::info("Exited cleanly.");
     return 0;
 }
@@ -627,23 +621,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     LPWSTR *argv_w = CommandLineToArgvW(fullCmdLine, &argc);
     if (!argv_w)
         return -1;
-    char **argv = new char *[argc];
+
+    std::vector<std::string> argv_storage;
+    argv_storage.reserve(argc);
+    std::vector<char *> argv;
+    argv.reserve(argc);
+
     for (int i = 0; i < argc; ++i) {
         const int len = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, nullptr, 0, nullptr, nullptr);
         if (len <= 0) {
-            for (int j = 0; j < i; ++j)
-                delete[] argv[j];
-            delete[] argv;
             LocalFree(argv_w);
             return -1;
         }
-        argv[i] = new char[len];
-        WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, argv[i], len, nullptr, nullptr);
+
+        std::string arg(static_cast<size_t>(len) - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, arg.data(), len, nullptr, nullptr);
+        argv_storage.push_back(std::move(arg));
     }
-    const int result = inner_main(argc, argv);
-    for (int i = 0; i < argc; ++i)
-        delete[] argv[i];
-    delete[] argv;
+
+    for (auto &arg: argv_storage) {
+        argv.push_back(arg.data());
+    }
+
+    const int result = inner_main(argc, argv.data());
     LocalFree(argv_w);
     return result;
 }
