@@ -1,7 +1,7 @@
 {
   "name": "led-matrix",
   "private": true,
-  "version": "1.13.0",
+  "version": "1.13.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -33,7 +33,6 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.1",
     "uuid": "^14.0.0",
-    "wasmoon": "^1.16.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
