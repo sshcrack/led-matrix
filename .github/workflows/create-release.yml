@@ -34,9 +34,15 @@ jobs:
       - name: Extract version from CMakeLists.txt
         id: version
         run: |
-          VERSION=$(grep -Po 'project\([^ ]+ VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          # Matches 'set(VERSION 1.2.3)' and extracts the numbers
+          VERSION=$(grep -Po 'set\(VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          
+          if [ -z "$VERSION" ]; then
+            echo "Could not extract version from CMakeLists.txt" >&2
+            exit 1
+          fi
+          
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Check if tag or release exists
         id: check_tag
         run: |
