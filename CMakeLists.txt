@@ -59,10 +59,10 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 endforeach()
 
 set(VERSION 1.13.1)
-if (ENABLE_DESKTOP)
-project(led-matrix-desktop VERSION ${VERSION})
+if(ENABLE_DESKTOP)
+    project(led-matrix-desktop VERSION ${VERSION})
 else()
-project(main VERSION ${VERSION})
+    project(main VERSION ${VERSION})
 endif()
 include(cmake/update_package_version.cmake)
 
@@ -155,16 +155,6 @@ if(ENABLE_DESKTOP)
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
         DESTINATION assets
     )
-
-    # Install required DLLs on Windows automatically
-    if(WIN32)
-        # Install all DLLs from the build output directory
-        install(DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/"
-            DESTINATION "bin"
-            FILES_MATCHING PATTERN "*.dll"
-            PATTERN "*.pdb" EXCLUDE
-        )
-    endif()
 else()
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "main")
 endif()
