@@ -104,7 +104,9 @@ jobs:
             os: ubuntu-latest
             preset: "desktop-linux"
             artifact-name: "desktop-linux-build"
-            artifact-path: desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+            artifact-path: |
+              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.deb
             requires-toolchain: false
           - name: "desktop-windows"
             os: windows-latest
@@ -285,6 +287,7 @@ jobs:
 
           # Upload desktop-linux
           gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
+          gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.deb
 
           # Upload desktop-windows
           gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
