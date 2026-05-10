@@ -16,21 +16,6 @@ AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false), beatDet
 }
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
-int PortFilter(ImGuiInputTextCallbackData *data) {
-    if (data->EventChar < 32 || data->EventChar >= 127)
-        return 1; // Disallow non-printable
-
-    if (data->BufTextLen > 5) {
-        return 1; // Limit to 5 characters
-    }
-
-    char c = static_cast<char>(data->EventChar);
-    if (c >= '0' && c <= '9') {
-        return 0; // Allow
-    }
-
-    return 1; // Block everything else
-}
 
 void AudioVisualizerDesktop::render() {
     ImPlot::SetCurrentContext(implotContext);
