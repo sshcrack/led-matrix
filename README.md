@@ -1,7 +1,7 @@
 # 🌈 LED Matrix Controller
 
 > [!TIP]
-> This project is still mainatined, but I just don't have any ideas what to do right now, I'm open for suggestions!
+> This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
 
 <div align="center">
 
@@ -250,7 +250,7 @@ The Desktop App is used for compute intensive applications, like the AudioVisual
    ```bash
    tar -xzf led-matrix-desktop-*-Linux.tar.gz
    cd led-matrix-desktop-*
-   ./bin/main
+   ./bin/led-matrix-desktop
    ```
 
 ### 🔧 **Usage**
@@ -271,12 +271,8 @@ If you want to build from source or develop locally, follow these steps:
 - **Python 3** with `jinja2` package (`apt install python3-jinja2 -y`)
 - **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
 
-#### 📱 **For Mobile App Development**
-- **Node.js 18+** and npm
-- **React Native CLI** and development environment
-- **Android Studio** (for Android development)
-- **Xcode** (for iOS development on macOS)
-
+#### 📱 **For Web Development**
+- **Node.js 20+** and pnpm
 
 #### **Building with CMake Presets (Recommended)**
 
