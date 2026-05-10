@@ -44,9 +44,14 @@ namespace AudioRecorder
             bool isValid = info->maxInputChannels > 0;
             if (isValid && info->hostApi == hostApi)
             {
-                devices.push_back({i, info->name});
+                bool isLoopback = false;
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+                isLoopback = PaWasapi_IsLoopback(i) == 1;
+#endif
+                devices.push_back({i, info->name, isLoopback});
             }
         }
+
         return devices;
     }
 
@@ -80,7 +85,9 @@ namespace AudioRecorder
 
     bool Recorder::startRecording(int deviceIndex)
     {
-        if (recording)
+        // Atomically claim recording ownership to prevent concurrent entry
+        bool expected = false;
+        if (!recording.compare_exchange_strong(expected, true))
         {
             spdlog::warn("Already recording. Aborting...");
             return false;
@@ -92,10 +99,15 @@ namespace AudioRecorder
         if (!info)
         {
             spdlog::warn("Couldn't get device info for index {}. Aborting...", deviceIndex);
+            recording = false;
             return false;
         }
 
-        // Fix at 48000 Hz for now
+        bool isLoopback = false;
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        isLoopback = PaWasapi_IsLoopback(deviceIndex) == 1;
+#endif
+
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
         inputParams.channelCount = 1;
@@ -103,11 +115,29 @@ namespace AudioRecorder
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
 
-        spdlog::info("Trying to open device {}: {} at {} Hz with {} channels", deviceIndex, info->name, info->defaultSampleRate, inputParams.channelCount);
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        // For loopback devices, enable WASAPI auto-conversion to handle
+        // channel count and sample rate differences between our request and the output device
+        PaWasapiStreamInfo wasapiInfo = {};
+        if (isLoopback)
+        {
+            wasapiInfo.size = sizeof(PaWasapiStreamInfo);
+            wasapiInfo.hostApiType = paWASAPI;
+            wasapiInfo.version = 1;
+            wasapiInfo.flags = paWinWasapiAutoConvert;
+            inputParams.hostApiSpecificStreamInfo = &wasapiInfo;
+        }
+#endif
+
+        spdlog::info("Trying to open device {}: {} at {} Hz with {} channels{}",
+            deviceIndex, info->name, info->defaultSampleRate, inputParams.channelCount,
+            isLoopback ? " (loopback)" : "");
+
         PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, info->defaultSampleRate);
         if (formatResult != paFormatIsSupported)
         {
             spdlog::error("Format isn't supported for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
+            recording = false;
             return false;
         }
 
@@ -125,6 +155,7 @@ namespace AudioRecorder
         {
             spdlog::error("Failed to open stream: {}", Pa_GetErrorText(err));
             stream = nullptr;
+            recording = false;
             return false;
         }
 
@@ -134,11 +165,11 @@ namespace AudioRecorder
             spdlog::error("Failed to start stream: {}", Pa_GetErrorText(err));
             Pa_CloseStream(stream);
             stream = nullptr;
+            recording = false;
             return false;
         }
 
-        spdlog::info("Recording started on device {} at {} Hz", deviceIndex, sampleRate);
-        recording = true;
+        spdlog::info("Recording started on device {} at {} Hz{}", deviceIndex, sampleRate, isLoopback ? " (loopback)" : "");
         currentDeviceIndex = deviceIndex;
         return true;
     }
@@ -168,6 +199,42 @@ namespace AudioRecorder
     double Recorder::getSampleRate() const
     {
         return sampleRate;
+    }
+
+    int Recorder::getDefaultOutputLoopbackIndex()
+    {
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        PaDeviceIndex defaultOutput = Pa_GetDefaultOutputDevice();
+        if (defaultOutput == paNoDevice)
+            return -1;
+
+        const PaDeviceInfo *outputInfo = Pa_GetDeviceInfo(defaultOutput);
+        if (!outputInfo)
+            return -1;
+
+        std::string outputName = outputInfo->name;
+        int hostApi = Pa_HostApiTypeIdToHostApiIndex(paWASAPI);
+
+        // PortAudio creates loopback devices with the name "<output device name> [Loopback]"
+        // Find the loopback device that matches the default output device's name
+        const int numDevices = Pa_GetDeviceCount();
+        for (int i = 0; i < numDevices; ++i)
+        {
+            const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
+            if (!info || info->hostApi != hostApi || info->maxInputChannels <= 0)
+                continue;
+
+            if (PaWasapi_IsLoopback(i) == 1)
+            {
+                std::string loopbackName = info->name;
+                // Check if this loopback device corresponds to our default output
+                // PA names loopback devices as "<name> [Loopback]"
+                if (loopbackName.find(outputName) == 0)
+                    return i;
+            }
+        }
+#endif
+        return -1;
     }
 
     std::optional<std::vector<float>> Recorder::getLastSamples()
