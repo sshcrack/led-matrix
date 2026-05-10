@@ -96,7 +96,6 @@ namespace AudioRecorder
         }
 
         // Fix at 48000 Hz for now
-        double rate = 48000;
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
         inputParams.channelCount = 1;
@@ -104,20 +103,20 @@ namespace AudioRecorder
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
 
-        spdlog::info("Trying to open device {}: {} at {} Hz with {} channels", deviceIndex, info->name, rate, inputParams.channelCount);
-        PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, rate);
+        spdlog::info("Trying to open device {}: {} at {} Hz with {} channels", deviceIndex, info->name, info->defaultSampleRate, inputParams.channelCount);
+        PaError formatResult = Pa_IsFormatSupported(&inputParams, nullptr, info->defaultSampleRate);
         if (formatResult != paFormatIsSupported)
         {
             spdlog::error("Format isn't supported for device {}: {}(code: {})", deviceIndex, Pa_GetErrorText(formatResult), formatResult);
             return false;
         }
 
-        sampleRate = rate;
+        sampleRate = info->defaultSampleRate;
 
         PaError err = Pa_OpenStream(&stream,
                                     &inputParams,
                                     nullptr,
-                                    rate,
+                                    info->defaultSampleRate,
                                     paFramesPerBufferUnspecified,
                                     paNoFlag,
                                     audioCallback,

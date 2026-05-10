@@ -31,8 +31,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ixwebsocket::ixwebsocket)
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
-if (WIN32)
-    target_link_libraries(${PROJECT_NAME} PUBLIC bcrypt)
+if(WIN32)
+        target_link_libraries(${PROJECT_NAME} PUBLIC bcrypt)
 endif()
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -55,25 +55,22 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 if(WIN32)
-        # Look for FFTW3 DLL in vcpkg bin directory
         set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
-        file(GLOB CPR_DLLS "${VCPKG_BIN_DIR}/cpr.dll")
 
-        if(CPR_DLLS)
-                install(FILES ${CPR_DLLS}
+        # Just install all dlls here, probably everything will be used...
+        file(GLOB ALL_DLLS "${VCPKG_BIN_DIR}/*.dll")
+
+        if(ALL_DLLS)
+                install(FILES ${ALL_DLLS}
                         DESTINATION bin
                 )
         else()
-                message(FATAL_ERROR "No CPR DLLs found in ${VCPKG_BIN_DIR}.")
+                message(FATAL_ERROR "No DLLs found in ${VCPKG_BIN_DIR}.")
         endif()
-
-                file(GLOB LIBCURL_DLLS "${VCPKG_BIN_DIR}/libcurl.dll")
-
-        if(LIBCURL_DLLS)
-                install(FILES ${LIBCURL_DLLS}
-                        DESTINATION bin
-                )
-        else()
-                message(FATAL_ERROR "No libcurl DLLs found in ${VCPKG_BIN_DIR}.")
-        endif()
+        # Install all DLLs from the build output directory
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/"
+                DESTINATION "bin"
+                FILES_MATCHING PATTERN "*.dll"
+                PATTERN "*.pdb" EXCLUDE
+        )
 endif()
