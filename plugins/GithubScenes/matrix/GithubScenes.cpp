@@ -29,3 +29,6 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> GithubS
 }
 
 GithubScenes::GithubScenes() = default;
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

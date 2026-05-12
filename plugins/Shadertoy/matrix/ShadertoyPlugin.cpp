@@ -220,3 +220,6 @@ void ShadertoyPlugin::watch_custom_shader_dir() {
         }
     }
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

@@ -606,3 +606,6 @@ void VideoDesktop::evict_oldest_first_chunks() {
     std::filesystem::remove_all(others[i].second, ec);
   }
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, DESKTOP_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, DESKTOP_PLUGIN_API_VERSION)

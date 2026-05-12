@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 #include <shared/matrix/wrappers.h>
 #include <shared/matrix/server/common.h>
 // ReSharper disable once CppUnusedIncludeDirective
@@ -21,9 +22,14 @@ namespace Plugins
         vector<std::shared_ptr<ImageProviderWrapper>> image_providers;
         vector<std::shared_ptr<ShaderProviderWrapper>> shader_providers;
         vector<std::shared_ptr<SceneWrapper>> scenes;
+        std::once_flag image_providers_once;
+        std::once_flag shader_providers_once;
+        std::once_flag scenes_once;
 
         virtual vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
-        create_image_providers() = 0;
+        create_image_providers() {
+            return {};
+        }
 
         virtual vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
         create_shader_providers() {
@@ -52,7 +58,7 @@ namespace Plugins
 
         vector<std::shared_ptr<ImageProviderWrapper>> get_image_providers()
         {
-            if (image_providers.empty())
+            std::call_once(image_providers_once, [this]
             {
                 auto providers = create_image_providers();
                 image_providers.reserve(providers.size());
@@ -60,14 +66,14 @@ namespace Plugins
                 {
                     image_providers.push_back(std::move(item));
                 }
-            }
+            });
 
             return image_providers;
         }
 
         vector<std::shared_ptr<ShaderProviderWrapper>> get_shader_providers()
         {
-            if (shader_providers.empty())
+            std::call_once(shader_providers_once, [this]
             {
                 auto providers = create_shader_providers();
                 shader_providers.reserve(providers.size());
@@ -75,14 +81,14 @@ namespace Plugins
                 {
                     shader_providers.push_back(std::move(item));
                 }
-            }
+            });
 
             return shader_providers;
         }
 
         vector<std::shared_ptr<SceneWrapper>> get_scenes()
         {
-            if (scenes.empty())
+            std::call_once(scenes_once, [this]
             {
                 auto sc = create_scenes();
                 scenes.reserve(sc.size());
@@ -90,7 +96,7 @@ namespace Plugins
                 {
                     scenes.push_back(std::move(item));
                 }
-            }
+            });
 
             return scenes;
         }
@@ -130,6 +136,10 @@ namespace Plugins
         }
 
         virtual std::string get_plugin_name() const = 0;
+        virtual std::string get_plugin_version() const
+        {
+            return "0.0.0";
+        }
         virtual void on_websocket_message(const std::string &message)
         {
             // Default implementation does nothing

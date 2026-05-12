@@ -159,3 +159,6 @@ std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> 
 
     return std::move(router);
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

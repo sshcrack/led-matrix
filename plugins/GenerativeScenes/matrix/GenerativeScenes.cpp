@@ -26,3 +26,6 @@ vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> 
 }
 
 GenerativePlugin::GenerativePlugin() = default;
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

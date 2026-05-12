@@ -13,6 +13,11 @@ using json = nlohmann::json;
 std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router) {
     // GET routes
     router->http_get("/get_curr", [](auto req, auto) {
+        if (config == nullptr)
+        {
+            return reply_with_error(req, "Configuration not initialized", restinio::status_service_unavailable());
+        }
+
         std::vector<json> scenes;
 
         for (const auto &item: config->get_curr()->scenes) {

@@ -21,16 +21,32 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                             if(rws::opcode_t::text_frame == m->opcode()) {
                                 std::string mStr = m->payload();
                                 if (mStr.starts_with("msg:")) {
-                                    const int pluginNameEnd = mStr.find(':', 4);
+                                    const auto pluginNameEnd = mStr.find(':', 4);
+                                    if (pluginNameEnd == std::string::npos) {
+                                        spdlog::warn("Discarding malformed plugin message (missing plugin delimiter): {}", mStr);
+                                        return;
+                                    }
 
-                                    const std::string pluginName = mStr.substr(4, pluginNameEnd -4);
-                                    const std::string message = mStr.substr(mStr.find(':', pluginNameEnd) +1);
+                                    const auto messageStart = pluginNameEnd + 1;
+                                    if (messageStart > mStr.size()) {
+                                        spdlog::warn("Discarding malformed plugin message (invalid payload delimiter): {}", mStr);
+                                        return;
+                                    }
+
+                                    const std::string pluginName = mStr.substr(4, pluginNameEnd - 4);
+                                    const std::string message = mStr.substr(messageStart);
 
                                     for (const auto & plugin : Plugins::PluginManager::instance()->get_plugins()) {
                                         if (plugin->get_plugin_name() != pluginName)
                                             continue;
 
-                                        plugin->on_websocket_message(message);
+                                        try {
+                                            plugin->on_websocket_message(message);
+                                        } catch (const std::exception &ex) {
+                                            spdlog::error("Plugin '{}' websocket handler failed: {}", plugin->get_plugin_name(), ex.what());
+                                        } catch (...) {
+                                            spdlog::error("Plugin '{}' websocket handler failed with unknown exception", plugin->get_plugin_name());
+                                        }
                                     }
                             }
                             }
@@ -69,7 +85,16 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             wsh->send_message(message);
 
             for (const auto &plugin: Plugins::PluginManager::instance()->get_plugins()) {
-                auto msgs = plugin->on_websocket_open();
+                std::optional<std::vector<std::string>> msgs;
+                try {
+                    msgs = plugin->on_websocket_open();
+                } catch (const std::exception &ex) {
+                    spdlog::error("Plugin '{}' websocket-open hook failed: {}", plugin->get_plugin_name(), ex.what());
+                    continue;
+                } catch (...) {
+                    spdlog::error("Plugin '{}' websocket-open hook failed with unknown exception", plugin->get_plugin_name());
+                    continue;
+                }
                 if (!msgs.has_value())
                     continue;
 

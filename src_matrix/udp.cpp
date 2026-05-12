@@ -63,8 +63,17 @@ void UdpServer::server_loop()
                                     (static_cast<uint32_t>(data[5]) << 8) |
                                     (static_cast<uint32_t>(data[6]));
 
+            if (payload_size > buffer_size)
+            {
+                spdlog::warn("Dropping UDP packet with oversized payload: {}", payload_size);
+                offset += 1;
+                continue;
+            }
+
+            const size_t total_packet_size = static_cast<size_t>(7) + static_cast<size_t>(payload_size);
+
             // Check if we have the complete packet
-            if (packet_buffer.size() - offset < 7 + payload_size)
+            if (packet_buffer.size() - offset < total_packet_size)
             {
                 // Not enough data for full payload, wait for more data
                 break;
@@ -75,14 +84,28 @@ void UdpServer::server_loop()
             // Pass to plugins (note: using data[1] as magicPacket for backward compatibility)
             for (const auto &plugin : plugins)
             {
-                if (plugin->on_udp_packet(pluginId, payload, payload_size))
+                bool handled = false;
+                try
+                {
+                    handled = plugin->on_udp_packet(pluginId, payload, payload_size);
+                }
+                catch (const std::exception &ex)
+                {
+                    spdlog::error("Plugin '{}' UDP handler failed: {}", plugin->get_plugin_name(), ex.what());
+                }
+                catch (...)
+                {
+                    spdlog::error("Plugin '{}' UDP handler failed with unknown exception", plugin->get_plugin_name());
+                }
+
+                if (handled)
                 {
                     // Packet was handled by the plugin
                     break;
                 }
             }
 
-            offset += 7 + payload_size;
+            offset += total_packet_size;
         }
 
         // Remove processed data from buffer

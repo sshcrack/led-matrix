@@ -279,7 +279,23 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         bool early_exit = false;
         while (GetTimeInMillis() < end_ms)
         {
-            const auto should_continue = scene->render(composite_offscreen_canvas);
+            bool should_continue = false;
+            try
+            {
+                should_continue = scene->render(composite_offscreen_canvas);
+            }
+            catch (const std::exception &ex)
+            {
+                error("Scene '{}' render failed: {}", scene->get_name(), ex.what());
+                early_exit = true;
+                break;
+            }
+            catch (...)
+            {
+                error("Scene '{}' render failed with unknown exception", scene->get_name());
+                early_exit = true;
+                break;
+            }
 
             if (!should_continue || interrupt_received || exit_canvas_update)
             {
@@ -303,14 +319,76 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         // Phase 2: cross-fade to next scene
         if (!early_exit && next_scene != nullptr)
         {
-            scene->before_transition_stop();
+            try
+            {
+                scene->before_transition_stop();
+            }
+            catch (const std::exception &ex)
+            {
+                error("Scene '{}' before_transition_stop failed: {}", scene->get_name(), ex.what());
+                early_exit = true;
+            }
+            catch (...)
+            {
+                error("Scene '{}' before_transition_stop failed with unknown exception", scene->get_name());
+                early_exit = true;
+            }
+
+            if (early_exit)
+            {
+                try
+                {
+                    scene->after_render_stop();
+                }
+                catch (const std::exception &ex)
+                {
+                    error("Scene '{}' after_render_stop failed: {}", scene->get_name(), ex.what());
+                }
+                catch (...)
+                {
+                    error("Scene '{}' after_render_stop failed with unknown exception", scene->get_name());
+                }
+                continue;
+            }
 
             tmillis_t transition_start_ms = GetTimeInMillis();
             tmillis_t last_current_render_ms = transition_start_ms;
             tmillis_t last_next_render_ms = transition_start_ms;
 
-            auto current_continue = scene->render(first_offscreen_canvas);
-            auto next_continue = next_scene->render(second_offscreen_canvas);
+            bool current_continue = false;
+            bool next_continue = false;
+            try
+            {
+                current_continue = scene->render(first_offscreen_canvas);
+                next_continue = next_scene->render(second_offscreen_canvas);
+            }
+            catch (const std::exception &ex)
+            {
+                error("Scene transition render failed ('{}' -> '{}'): {}", scene->get_name(), next_scene->get_name(), ex.what());
+                early_exit = true;
+            }
+            catch (...)
+            {
+                error("Scene transition render failed ('{}' -> '{}') with unknown exception", scene->get_name(), next_scene->get_name());
+                early_exit = true;
+            }
+
+            if (early_exit)
+            {
+                try
+                {
+                    scene->after_render_stop();
+                }
+                catch (const std::exception &ex)
+                {
+                    error("Scene '{}' after_render_stop failed: {}", scene->get_name(), ex.what());
+                }
+                catch (...)
+                {
+                    error("Scene '{}' after_render_stop failed with unknown exception", scene->get_name());
+                }
+                continue;
+            }
 
             while (true)
             {
@@ -329,13 +407,39 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
 
                 if ((now_ms - last_current_render_ms) >= current_render_interval_ms)
                 {
-                    current_continue = scene->render(first_offscreen_canvas);
+                    try
+                    {
+                        current_continue = scene->render(first_offscreen_canvas);
+                    }
+                    catch (const std::exception &ex)
+                    {
+                        error("Scene '{}' transition render failed: {}", scene->get_name(), ex.what());
+                        break;
+                    }
+                    catch (...)
+                    {
+                        error("Scene '{}' transition render failed with unknown exception", scene->get_name());
+                        break;
+                    }
                     last_current_render_ms = now_ms;
                 }
 
                 if ((now_ms - last_next_render_ms) >= next_render_interval_ms)
                 {
-                    next_continue = next_scene->render(second_offscreen_canvas);
+                    try
+                    {
+                        next_continue = next_scene->render(second_offscreen_canvas);
+                    }
+                    catch (const std::exception &ex)
+                    {
+                        error("Scene '{}' transition render failed: {}", next_scene->get_name(), ex.what());
+                        break;
+                    }
+                    catch (...)
+                    {
+                        error("Scene '{}' transition render failed with unknown exception", next_scene->get_name());
+                        break;
+                    }
                     last_next_render_ms = now_ms;
                 }
 
@@ -371,6 +475,17 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
             }
         }
 
-        scene->after_render_stop();
+        try
+        {
+            scene->after_render_stop();
+        }
+        catch (const std::exception &ex)
+        {
+            error("Scene '{}' after_render_stop failed: {}", scene->get_name(), ex.what());
+        }
+        catch (...)
+        {
+            error("Scene '{}' after_render_stop failed with unknown exception", scene->get_name());
+        }
     }
 }

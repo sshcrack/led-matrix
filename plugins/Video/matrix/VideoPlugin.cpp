@@ -49,3 +49,6 @@ void VideoPlugin::on_websocket_message(const std::string &message) {
     spdlog::info("VideoPlugin status update: {}", status);
   }
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

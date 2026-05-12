@@ -17,9 +17,6 @@ namespace Plugins
 
     class SHARED_DESKTOP_API PluginManager
     {
-    protected:
-        static PluginManager *instance_;
-
     private:
         /// Handle, DestroyFunction, Plugin
         std::vector<PluginInfo> loaded_plugins;
