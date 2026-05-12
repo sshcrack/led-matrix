@@ -454,3 +454,6 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
                                                                  delete (CompactAudioPacket *)packet;
                                                              });
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, DESKTOP_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, DESKTOP_PLUGIN_API_VERSION)

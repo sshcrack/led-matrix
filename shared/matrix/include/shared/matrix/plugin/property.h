@@ -5,6 +5,8 @@
 #include <optional>
 #include <vector>
 #include <type_traits>
+#include <cassert>
+#include <memory>
 
 #include "graphics.h"
 #include "shared/matrix/utils/utils.h"
@@ -162,6 +164,9 @@ namespace Plugins {
 
         const T &get() const
         {
+            // Properties are expected to be registered via register_properties()
+            // before runtime access.
+            assert(registered && "Property accessed before register_properties()");
             if (!registered)
                 throw std::runtime_error("Property " + getName() + " not registered");
 
@@ -329,6 +334,18 @@ namespace Plugins {
             return max_value;
         }
     };
+
+    template<typename EnumType>
+    EnumType enum_value(const Property<EnumProperty<EnumType>> &property)
+    {
+        return property.get().get();
+    }
+
+    template<typename EnumType>
+    EnumType enum_value(const std::shared_ptr<Property<EnumProperty<EnumType>>> &property)
+    {
+        return property->get().get();
+    }
 }
 
 // Define JSON serialization for rgb_matrix::Color in the nlohmann namespace for better ADL

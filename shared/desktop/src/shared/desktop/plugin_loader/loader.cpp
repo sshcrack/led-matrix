@@ -45,7 +45,26 @@ void PluginManager::destroy_plugins()
         {
             destroy(item.plugin);
         }
+        else
+        {
+            warn("Destroy function '{}' missing for desktop plugin '{}'", item.destroyFnName, item.name);
+        }
+
+#ifdef _WIN32
+        if (item.handle != nullptr && !FreeLibrary((HMODULE)item.handle))
+        {
+            warn("Failed to free desktop plugin handle '{}' (error={})", item.name, GetLastError());
+        }
+#else
+        if (item.handle != nullptr && dlclose(item.handle) != 0)
+        {
+            warn("Failed to close desktop plugin handle '{}': {}", item.name, dlerror());
+        }
+#endif
     }
+
+    loaded_plugins.clear();
+    initialized = false;
 }
 
 void PluginManager::delete_references()
@@ -145,55 +164,126 @@ void PluginManager::initialize()
 
         fs::path pl_copy = plPath;
         std::string libName = get_lib_name(pl_copy);
+        constexpr const char *createSymbol = "plugin_create";
+        constexpr const char *destroySymbol = "plugin_destroy";
+        constexpr const char *apiVersionSymbol = "plugin_get_api_version";
+        constexpr const char *legacyApiVersionSymbol = "get_api_version";
         std::string cn = "create" + libName;
         std::string dn = "destroy" + libName;
+
+        int (*get_api_version)() = nullptr;
+#ifdef _WIN32
+        get_api_version = (int(*)())GetProcAddress((HMODULE)dlhandle, apiVersionSymbol);
+        if (get_api_version == nullptr)
+        {
+            get_api_version = (int(*)())GetProcAddress((HMODULE)dlhandle, legacyApiVersionSymbol);
+        }
+#else
+        dlerror();
+        get_api_version = (int (*)())(dlsym(dlhandle, apiVersionSymbol));
+        const char *api_error = dlerror();
+        if (api_error != nullptr || get_api_version == nullptr)
+        {
+            dlerror();
+            get_api_version = (int (*)())(dlsym(dlhandle, legacyApiVersionSymbol));
+            api_error = dlerror();
+        }
+#endif
+
+        if (get_api_version == nullptr)
+        {
+            error("Plugin '{}' does not export desktop API version symbol ('{}' or '{}')", plPath.string(), apiVersionSymbol, legacyApiVersionSymbol);
+#ifdef _WIN32
+            FreeLibrary((HMODULE)dlhandle);
+#else
+            dlclose(dlhandle);
+#endif
+            continue;
+        }
+
+        const int api_version = get_api_version();
+        if (api_version != DESKTOP_PLUGIN_API_VERSION)
+        {
+            error("Plugin '{}' has incompatible desktop API version {} (expected {})", plPath.string(), api_version, DESKTOP_PLUGIN_API_VERSION);
+#ifdef _WIN32
+            FreeLibrary((HMODULE)dlhandle);
+#else
+            dlclose(dlhandle);
+#endif
+            continue;
+        }
 
         // Get create function
         DesktopPlugin *(*create)() = nullptr;
 
 #ifdef _WIN32
-        create = (DesktopPlugin * (*)())(GetProcAddress((HMODULE)dlhandle, cn.c_str()));
+        create = (DesktopPlugin * (*)())(GetProcAddress((HMODULE)dlhandle, createSymbol));
         if (create == nullptr)
         {
-            DWORD error_code = GetLastError();
-            error("Symbol lookup error in plugin '{}': Error code {}", plPath.string(), error_code);
-            error("Expected symbol '{}' not found", cn);
-            FreeLibrary((HMODULE)dlhandle);
-            continue;
+            create = (DesktopPlugin * (*)())(GetProcAddress((HMODULE)dlhandle, cn.c_str()));
+            if (create == nullptr)
+            {
+                DWORD error_code = GetLastError();
+                error("Symbol lookup error in plugin '{}': Error code {}", plPath.string(), error_code);
+                error("Expected symbol '{}' or '{}' not found", createSymbol, cn);
+                FreeLibrary((HMODULE)dlhandle);
+                continue;
+            }
         }
 #else
         dlerror(); // Clear any existing errors before dlsym
-        create = (DesktopPlugin * (*)())(dlsym(dlhandle, cn.c_str()));
+        create = (DesktopPlugin * (*)())(dlsym(dlhandle, createSymbol));
         const char *dlsym_error = dlerror();
 
-        if (dlsym_error != nullptr)
+        if (dlsym_error != nullptr || create == nullptr)
         {
-            error("Symbol lookup error in plugin '{}': {}", plPath.string(), dlsym_error);
-            error("Expected symbol '{}' not found", cn);
-            dlclose(dlhandle);
-            continue;
+            dlerror();
+            create = (DesktopPlugin * (*)())(dlsym(dlhandle, cn.c_str()));
+            dlsym_error = dlerror();
+
+            if (dlsym_error != nullptr || create == nullptr)
+            {
+                error("Symbol lookup error in plugin '{}': {}", plPath.string(), dlsym_error != nullptr ? dlsym_error : "unknown");
+                error("Expected symbol '{}' or '{}' not found", createSymbol, cn);
+                dlclose(dlhandle);
+                continue;
+            }
         }
 #endif
 
         // Verify destroy function exists before creating plugin
         void *destroy_sym = nullptr;
+        std::string resolvedDestroySymbol = destroySymbol;
 
 #ifdef _WIN32
-        destroy_sym = (void *)GetProcAddress((HMODULE)dlhandle, dn.c_str());
+        destroy_sym = (void *)GetProcAddress((HMODULE)dlhandle, destroySymbol);
         if (destroy_sym == nullptr)
         {
-            error("Destroy function '{}' not found in plugin '{}'", dn, plPath.string());
-            FreeLibrary((HMODULE)dlhandle);
-            continue;
+            destroy_sym = (void *)GetProcAddress((HMODULE)dlhandle, dn.c_str());
+            resolvedDestroySymbol = dn;
+            if (destroy_sym == nullptr)
+            {
+                error("Destroy function '{}' or '{}' not found in plugin '{}'", destroySymbol, dn, plPath.string());
+                FreeLibrary((HMODULE)dlhandle);
+                continue;
+            }
         }
 #else
         dlerror();
-        destroy_sym = dlsym(dlhandle, dn.c_str());
-        if (dlerror() != nullptr || destroy_sym == nullptr)
+        destroy_sym = dlsym(dlhandle, destroySymbol);
+        const char *destroy_error = dlerror();
+        if (destroy_error != nullptr || destroy_sym == nullptr)
         {
-            error("Destroy function '{}' not found in plugin '{}'", dn, plPath.string());
-            dlclose(dlhandle);
-            continue;
+            dlerror();
+            destroy_sym = dlsym(dlhandle, dn.c_str());
+            destroy_error = dlerror();
+            resolvedDestroySymbol = dn;
+            if (destroy_error != nullptr || destroy_sym == nullptr)
+            {
+                error("Destroy function '{}' or '{}' not found in plugin '{}'", destroySymbol, dn, plPath.string());
+                dlclose(dlhandle);
+                continue;
+            }
         }
 #endif
 
@@ -224,7 +314,7 @@ void PluginManager::initialize()
 
             PluginInfo info = {
                 .handle = dlhandle,
-                .destroyFnName = dn,
+                .destroyFnName = resolvedDestroySymbol,
                 .name = libName,
                 .plugin = p,
             };
@@ -252,14 +342,8 @@ void PluginManager::initialize()
     initialized = true;
 }
 
-PluginManager *PluginManager::instance_ = nullptr;
-
 PluginManager *PluginManager::instance()
 {
-    if (instance_ == nullptr)
-    {
-        instance_ = new PluginManager();
-    }
-
-    return instance_;
+    static PluginManager instance;
+    return &instance;
 }

@@ -118,3 +118,6 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
 
     return true;
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)

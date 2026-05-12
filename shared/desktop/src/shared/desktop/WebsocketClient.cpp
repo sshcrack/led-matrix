@@ -31,15 +31,31 @@ WebsocketClient::WebsocketClient() : udpSender()
 
             if (m.starts_with("msg:")) {
                 const auto pluginNameEnd = m.find(':', 4);
+                if (pluginNameEnd == std::string::npos) {
+                    spdlog::warn("Discarding malformed websocket message (missing plugin delimiter): {}", m);
+                    return;
+                }
 
-                const std::string pluginName = m.substr(4, pluginNameEnd -4);
-                const std::string message = m.substr(m.find(':', pluginNameEnd) +1);
+                const auto messageStart = pluginNameEnd + 1;
+                if (messageStart > m.size()) {
+                    spdlog::warn("Discarding malformed websocket message (invalid payload delimiter): {}", m);
+                    return;
+                }
+
+                const std::string pluginName = m.substr(4, pluginNameEnd - 4);
+                const std::string message = m.substr(messageStart);
 
                 for (const auto & [_p, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
                     if (plugin->get_plugin_name() != pluginName)
                         continue;
 
-                    plugin->on_websocket_message(message);
+                    try {
+                        plugin->on_websocket_message(message);
+                    } catch (const std::exception &ex) {
+                        spdlog::error("Desktop plugin '{}' websocket handler failed: {}", plugin->get_plugin_name(), ex.what());
+                    } catch (...) {
+                        spdlog::error("Desktop plugin '{}' websocket handler failed with unknown exception", plugin->get_plugin_name());
+                    }
                 }
             }
         } });
@@ -90,7 +106,21 @@ void WebsocketClient::threadLoop()
 
         for (auto &pl : plugins | std::views::values)
         {
-            auto packet = pl->compute_next_packet(scene);
+            std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> packet;
+            try
+            {
+                packet = pl->compute_next_packet(scene);
+            }
+            catch (const std::exception &ex)
+            {
+                spdlog::error("Desktop plugin '{}' compute_next_packet failed: {}", pl->get_plugin_name(), ex.what());
+                continue;
+            }
+            catch (...)
+            {
+                spdlog::error("Desktop plugin '{}' compute_next_packet failed with unknown exception", pl->get_plugin_name());
+                continue;
+            }
             if (!packet.has_value())
                 continue;
 

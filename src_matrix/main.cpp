@@ -321,15 +321,18 @@ int main(int argc, char *argv[])
     config->save();
 
     delete Constants::global_post_processor;
+    Constants::global_post_processor = nullptr;
     delete Constants::global_transition_manager;
+    Constants::global_transition_manager = nullptr;
 
     info("Joining control thread...");
     control_thread.join();
 
-    pl->delete_references();
-
     info("Destroying config instance...");
     delete config;
+    config = nullptr;
+
+    pl->delete_references();
 
     info("Terminating plugin loader...");
     pl->destroy_plugins();

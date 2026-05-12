@@ -32,6 +32,7 @@ namespace Plugins
         virtual void load_config(std::optional<const nlohmann::json> config) {}
         virtual void save_config(nlohmann::json &config) const {}
         virtual std::string get_plugin_name() const = 0;
+        virtual std::string get_plugin_version() const { return "0.0.0"; }
 
         virtual void before_exit()
         {

@@ -386,3 +386,6 @@ void ShadertoyDesktop::post_init()
     auto cacheDir = get_data_dir() / "cache";
     mCache = std::make_unique<ShaderCache>(cacheDir);
 }
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, DESKTOP_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, DESKTOP_PLUGIN_API_VERSION)

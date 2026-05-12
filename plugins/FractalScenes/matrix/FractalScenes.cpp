@@ -33,3 +33,6 @@ vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> FractalScenes::c
 }
 
 FractalScenes::FractalScenes() = default;
+
+DECLARE_PLUGIN_API_VERSION(plugin_get_api_version, MATRIX_PLUGIN_API_VERSION)
+DECLARE_PLUGIN_API_VERSION(get_api_version, MATRIX_PLUGIN_API_VERSION)
