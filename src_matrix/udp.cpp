@@ -66,7 +66,7 @@ void UdpServer::server_loop()
             if (payload_size > buffer_size)
             {
                 spdlog::warn("Dropping UDP packet with oversized payload: {}", payload_size);
-                offset += 1;
+                offset += 7;
                 continue;
             }
 

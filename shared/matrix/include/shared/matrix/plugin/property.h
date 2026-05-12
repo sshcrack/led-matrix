@@ -5,7 +5,6 @@
 #include <optional>
 #include <vector>
 #include <type_traits>
-#include <cassert>
 #include <memory>
 
 #include "graphics.h"
@@ -164,9 +163,6 @@ namespace Plugins {
 
         const T &get() const
         {
-            // Properties are expected to be registered via register_properties()
-            // before runtime access.
-            assert(registered && "Property accessed before register_properties()");
             if (!registered)
                 throw std::runtime_error("Property " + getName() + " not registered");
 
