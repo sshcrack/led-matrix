@@ -16,21 +16,6 @@ AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false), beatDet
 }
 AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
-int PortFilter(ImGuiInputTextCallbackData *data) {
-    if (data->EventChar < 32 || data->EventChar >= 127)
-        return 1; // Disallow non-printable
-
-    if (data->BufTextLen > 5) {
-        return 1; // Limit to 5 characters
-    }
-
-    char c = static_cast<char>(data->EventChar);
-    if (c >= '0' && c <= '9') {
-        return 0; // Allow
-    }
-
-    return 1; // Block everything else
-}
 
 void AudioVisualizerDesktop::render() {
     ImPlot::SetCurrentContext(implotContext);
@@ -163,6 +148,23 @@ void AudioVisualizerDesktop::addDeviceSettings() {
     }
 
     if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
+#ifdef _WIN32
+        // Special entry: follow the default output device as loopback
+        {
+            bool isSelected = (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME);
+            if (ImGui::Selectable((DEFAULT_LOOPBACK_DEVICE_NAME + "##default_loopback").c_str(), isSelected)) {
+                cfg.deviceName = DEFAULT_LOOPBACK_DEVICE_NAME;
+                recorder->stopRecording();
+                int loopbackIdx = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+                if (loopbackIdx >= 0)
+                    recorder->startRecording(loopbackIdx);
+            }
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::Separator();
+#endif
+
         for (const auto &device: devices) {
             std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
             #ifndef _WIN32
@@ -362,26 +364,55 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
 
     if (!recorder->isRecording())
     {
-        auto devices = AudioRecorder::Recorder::listDevices();
         int deviceIndex = -1;
-        for (const auto &device : devices)
+
+        if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
         {
-            if (device.name == cfg.deviceName)
+            // Resolve to the current default output's loopback device
+            deviceIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+            if (deviceIndex == -1)
             {
-                deviceIndex = device.index;
-                break;
+                std::unique_lock lock(lastErrorMutex);
+                lastError = "No loopback device found for the default output device.";
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            auto devices = AudioRecorder::Recorder::listDevices();
+            for (const auto &device : devices)
+            {
+                if (device.name == cfg.deviceName)
+                {
+                    deviceIndex = device.index;
+                    break;
+                }
+            }
+
+            if (deviceIndex == -1)
+            {
+                std::unique_lock lock(lastErrorMutex);
+                lastError = "Device not found: '" + cfg.deviceName + "'. Please select another device in the settings.";
+                return std::nullopt;
             }
         }
 
-        if (deviceIndex == -1)
         {
             std::unique_lock lock(lastErrorMutex);
-            lastError = "Device not found: '" + cfg.deviceName + "'. Please select another device in the settings.";
-            return std::nullopt;
+            lastError.clear();
         }
-
-        lastError.clear();
         recorder->startRecording(deviceIndex);
+    }
+    else if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
+    {
+        // Auto-switch: check if the default output device changed
+        int expectedLoopback = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+        if (expectedLoopback >= 0 && expectedLoopback != recorder->getCurrentDeviceIndex())
+        {
+            spdlog::info("Default output device changed, switching loopback to device {}", expectedLoopback);
+            recorder->stopRecording();
+            recorder->startRecording(expectedLoopback);
+        }
     }
 
     auto samplesOpt = recorder->getLastSamples();

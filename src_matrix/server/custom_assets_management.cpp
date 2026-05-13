@@ -10,95 +10,112 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-namespace {
-struct AssetTypeConfig {
-    std::string type;
-    fs::path directory;
-    std::string extension;
-};
+namespace
+{
+    struct AssetTypeConfig
+    {
+        std::string type;
+        fs::path directory;
+        std::string extension;
+    };
 
-std::optional<AssetTypeConfig> asset_type_from_param(const std::string &type) {
-    const auto root = get_exec_dir() / "data";
-    if (type == "lua") {
-        return AssetTypeConfig{type, root / "custom_lua", ".lua"};
-    }
-    if (type == "shader" || type == "shaders") {
-        return AssetTypeConfig{type, root / "custom_shaders", ".frag"};
-    }
-    return std::nullopt;
-}
-
-bool is_safe_filename(const std::string &filename) {
-    return !filename.empty() &&
-           filename.find('/') == std::string::npos &&
-           filename.find('\\') == std::string::npos &&
-           filename.find("..") == std::string::npos;
-}
-
-std::optional<std::pair<std::string, std::string>> parse_multipart_file(const std::string &content_type, const std::string &body) {
-    const auto boundary_pos = content_type.find("boundary=");
-    if (boundary_pos == std::string::npos) {
+    std::optional<AssetTypeConfig> asset_type_from_param(const std::string &type)
+    {
+        const auto root = get_exec_dir() / "data";
+        if (type == "shader" || type == "shaders")
+        {
+            return AssetTypeConfig{type, root / "custom_shaders", ".frag"};
+        }
         return std::nullopt;
     }
 
-    std::string boundary = content_type.substr(boundary_pos + 9);
-    if (!boundary.empty() && boundary.front() == '"') {
-        boundary.erase(0, 1);
-    }
-    if (!boundary.empty() && boundary.back() == '"') {
-        boundary.pop_back();
-    }
-    if (boundary.empty()) {
-        return std::nullopt;
+    bool is_safe_filename(const std::string &filename)
+    {
+        return !filename.empty() &&
+               filename.find('/') == std::string::npos &&
+               filename.find('\\') == std::string::npos &&
+               filename.find("..") == std::string::npos;
     }
 
-    const std::string boundary_marker = "--" + boundary;
-    size_t pos = 0;
-    while (true) {
-        const auto part_start = body.find(boundary_marker, pos);
-        if (part_start == std::string::npos) {
-            break;
+    std::optional<std::pair<std::string, std::string>> parse_multipart_file(const std::string &content_type, const std::string &body)
+    {
+        const auto boundary_pos = content_type.find("boundary=");
+        if (boundary_pos == std::string::npos)
+        {
+            return std::nullopt;
         }
 
-        auto cursor = part_start + boundary_marker.size();
-        if (body.compare(cursor, 2, "--") == 0) {
-            break;
+        std::string boundary = content_type.substr(boundary_pos + 9);
+        if (!boundary.empty() && boundary.front() == '"')
+        {
+            boundary.erase(0, 1);
         }
-        if (body.compare(cursor, 2, "\r\n") == 0) {
-            cursor += 2;
+        if (!boundary.empty() && boundary.back() == '"')
+        {
+            boundary.pop_back();
         }
-
-        const auto headers_end = body.find("\r\n\r\n", cursor);
-        if (headers_end == std::string::npos) {
-            break;
-        }
-        const std::string headers = body.substr(cursor, headers_end - cursor);
-        const auto filename_pos = headers.find("filename=\"");
-        const auto data_start = headers_end + 4;
-        const auto data_end = body.find("\r\n" + boundary_marker, data_start);
-        if (data_end == std::string::npos) {
-            break;
+        if (boundary.empty())
+        {
+            return std::nullopt;
         }
 
-        if (filename_pos != std::string::npos) {
-            const auto filename_start = filename_pos + 10;
-            const auto filename_end = headers.find('"', filename_start);
-            if (filename_end != std::string::npos) {
-                std::string filename = headers.substr(filename_start, filename_end - filename_start);
-                std::string data = body.substr(data_start, data_end - data_start);
-                return std::make_pair(filename, data);
+        const std::string boundary_marker = "--" + boundary;
+        size_t pos = 0;
+        while (true)
+        {
+            const auto part_start = body.find(boundary_marker, pos);
+            if (part_start == std::string::npos)
+            {
+                break;
             }
+
+            auto cursor = part_start + boundary_marker.size();
+            if (body.compare(cursor, 2, "--") == 0)
+            {
+                break;
+            }
+            if (body.compare(cursor, 2, "\r\n") == 0)
+            {
+                cursor += 2;
+            }
+
+            const auto headers_end = body.find("\r\n\r\n", cursor);
+            if (headers_end == std::string::npos)
+            {
+                break;
+            }
+            const std::string headers = body.substr(cursor, headers_end - cursor);
+            const auto filename_pos = headers.find("filename=\"");
+            const auto data_start = headers_end + 4;
+            const auto data_end = body.find("\r\n" + boundary_marker, data_start);
+            if (data_end == std::string::npos)
+            {
+                break;
+            }
+
+            if (filename_pos != std::string::npos)
+            {
+                const auto filename_start = filename_pos + 10;
+                const auto filename_end = headers.find('"', filename_start);
+                if (filename_end != std::string::npos)
+                {
+                    std::string filename = headers.substr(filename_start, filename_end - filename_start);
+                    std::string data = body.substr(data_start, data_end - data_start);
+                    return std::make_pair(filename, data);
+                }
+            }
+
+            pos = data_end + 2;
         }
 
-        pos = data_end + 2;
+        return std::nullopt;
     }
-
-    return std::nullopt;
-}
 }
 
-std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_ptr<router_t> router) {
-    router->http_get("/api/custom-assets/:type", [](auto req, auto params) {
+std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_ptr<router_t> router)
+{
+    router->http_get("/api/custom-assets/:type", [](auto req, auto params)
+                     {
         const auto type = std::string(params["type"]);
         const auto cfg_opt = asset_type_from_param(type);
         if (!cfg_opt.has_value()) {
@@ -129,10 +146,10 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
             result.push_back(item);
         }
 
-        return reply_with_json(req, result);
-    });
+        return reply_with_json(req, result); });
 
-    router->http_post("/api/custom-assets/:type", [](auto req, auto params) {
+    router->http_post("/api/custom-assets/:type", [](auto req, auto params)
+                      {
         const auto type = std::string(params["type"]);
         const auto cfg_opt = asset_type_from_param(type);
         if (!cfg_opt.has_value()) {
@@ -172,10 +189,10 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         return reply_with_json(req, json{
             {"success", true},
             {"filename", filename},
-        });
-    });
+        }); });
 
-    router->http_delete("/api/custom-assets/:type/:filename", [](auto req, auto params) {
+    router->http_delete("/api/custom-assets/:type/:filename", [](auto req, auto params)
+                        {
         const auto type = std::string(params["type"]);
         const auto filename = std::string(params["filename"]);
         const auto cfg_opt = asset_type_from_param(type);
@@ -202,10 +219,10 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         return reply_with_json(req, json{
             {"success", true},
             {"filename", filename},
-        });
-    });
+        }); });
 
-    router->http_get("/api/custom-assets/:type/:filename/download", [](auto req, auto params) {
+    router->http_get("/api/custom-assets/:type/:filename/download", [](auto req, auto params)
+                     {
         const auto type = std::string(params["type"]);
         const auto filename = std::string(params["filename"]);
         const auto cfg_opt = asset_type_from_param(type);
@@ -228,9 +245,7 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
             .append_header(restinio::http_field::content_type, MimeTypes::getType(target_path.string()))
             .append_header(restinio::http_field::content_disposition, "attachment; filename=\"" + filename + "\"");
         Server::add_cors_headers(response);
-        return response.set_body(restinio::sendfile(target_path)).done();
-    });
+        return response.set_body(restinio::sendfile(target_path)).done(); });
 
     return std::move(router);
 }
-
