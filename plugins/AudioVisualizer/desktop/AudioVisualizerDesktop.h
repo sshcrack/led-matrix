@@ -51,6 +51,10 @@ private:
     std::shared_mutex lastErrorMutex;
     std::string lastError;
     
+    // Concurrency protection
+    std::mutex stateMutex;
+    std::string currentDeviceName;
+    
     // Beat detection
     std::unique_ptr<BeatDetector> beatDetector;
     bool beat_detected;

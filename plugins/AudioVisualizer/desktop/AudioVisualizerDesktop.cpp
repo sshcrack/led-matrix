@@ -18,6 +18,8 @@ AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 
 void AudioVisualizerDesktop::render() {
+    std::lock_guard<std::mutex> lock(stateMutex);
+    
     ImPlot::SetCurrentContext(implotContext);
 
     addConnectionSettings();
@@ -154,10 +156,6 @@ void AudioVisualizerDesktop::addDeviceSettings() {
             bool isSelected = (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME);
             if (ImGui::Selectable((DEFAULT_LOOPBACK_DEVICE_NAME + "##default_loopback").c_str(), isSelected)) {
                 cfg.deviceName = DEFAULT_LOOPBACK_DEVICE_NAME;
-                recorder->stopRecording();
-                int loopbackIdx = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
-                if (loopbackIdx >= 0)
-                    recorder->startRecording(loopbackIdx);
             }
             if (isSelected)
                 ImGui::SetItemDefaultFocus();
@@ -174,8 +172,6 @@ void AudioVisualizerDesktop::addDeviceSettings() {
             #endif
             if (ImGui::Selectable(deviceNameWithId.c_str())) {
                 cfg.deviceName = device.name;
-                recorder->stopRecording();
-                recorder->startRecording(device.index);
             }
 
             if (cfg.deviceName == device.name)
@@ -362,6 +358,21 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     if (sceneName != "audio_spectrum")
         return std::nullopt;
 
+    std::lock_guard<std::mutex> stateLock(stateMutex);
+
+    if (cfg.deviceName != currentDeviceName) {
+        recorder->stopRecording();
+        currentDeviceName = cfg.deviceName;
+    }
+
+    if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME) {
+        int expectedLoopback = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+        if (recorder->isRecording() && expectedLoopback >= 0 && expectedLoopback != recorder->getCurrentDeviceIndex()) {
+            spdlog::info("Default output device changed, switching loopback to device {}", expectedLoopback);
+            recorder->stopRecording();
+        }
+    }
+
     if (!recorder->isRecording())
     {
         int deviceIndex = -1;
@@ -402,17 +413,6 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
             lastError.clear();
         }
         recorder->startRecording(deviceIndex);
-    }
-    else if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
-    {
-        // Auto-switch: check if the default output device changed
-        int expectedLoopback = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
-        if (expectedLoopback >= 0 && expectedLoopback != recorder->getCurrentDeviceIndex())
-        {
-            spdlog::info("Default output device changed, switching loopback to device {}", expectedLoopback);
-            recorder->stopRecording();
-            recorder->startRecording(expectedLoopback);
-        }
     }
 
     auto samplesOpt = recorder->getLastSamples();
