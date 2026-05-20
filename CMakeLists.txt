@@ -207,9 +207,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio magic_enum::magic_enum)
 
     # ImageMagick
-
-    find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GM_CXX REQUIRED IMPORTED_TARGET GraphicsMagick++)
+    target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GM_CXX)
 
     # HTTP Requests
 
@@ -263,12 +263,16 @@ if(ENABLE_EMULATOR)
     target_compile_features(preview_gen PRIVATE cxx_std_23)
     target_compile_definitions(preview_gen PRIVATE ENABLE_EMULATOR)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GM_CXX REQUIRED IMPORTED_TARGET GraphicsMagick++)
+target_link_libraries(preview_gen PRIVATE PkgConfig::GM_CXX)
+
+
     target_link_libraries(preview_gen PRIVATE
         SharedToolsCommon
         SharedToolsMatrix
         spdlog::spdlog
         nlohmann_json::nlohmann_json
-        unofficial::graphicsmagick::graphicsmagick
         rpi_rgb_led_matrix::rpi-rgb-led-matrix
         ${CMAKE_DL_LIBS}
     )

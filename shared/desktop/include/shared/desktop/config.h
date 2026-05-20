@@ -99,7 +99,7 @@ namespace Config
             if (!pluginSettings.contains(pluginName))
                 return std::nullopt;
 
-            return pluginSettings.at(pluginName);
+            return std::optional(pluginSettings.at(pluginName));
         }
 
         void setPluginSetting(const std::string pluginName, const json &settings)

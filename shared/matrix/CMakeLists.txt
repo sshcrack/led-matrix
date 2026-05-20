@@ -73,8 +73,9 @@ find_package(LibXml2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
 
 # ImageMagick
-find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GM_CXX REQUIRED IMPORTED_TARGET GraphicsMagick++)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GM_CXX)
 
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)

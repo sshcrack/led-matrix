@@ -15,8 +15,7 @@ register_plugin(PixelJoint
 if(NOT ENABLE_DESKTOP)
         # Curl
         find_package(CURL REQUIRED)
-        include_directories(${CURL_INCLUDE_DIR})
-        target_link_libraries(PixelJoint PRIVATE ${CURL_LIBRARIES})
+        target_link_libraries(PixelJoint PRIVATE CURL::libcurl)
 
 
         # HTTP Requests
