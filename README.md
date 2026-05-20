@@ -269,7 +269,7 @@ If you want to build from source or develop locally, follow these steps:
 - **C++23 compatible compiler** (GCC 12+ or Clang 15+)
 - **vcpkg package manager** for dependency management
 - **Python 3** with `jinja2` package (`apt install python3-jinja2 -y`)
-- **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
+- **development headers** (`apt install libayatana-appindicator3-dev libgtk-3-dev libibus-1.0-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev linux-libc-dev`)
 
 #### 📱 **For Web Development**
 - **Node.js 20+** and pnpm
