@@ -113,7 +113,7 @@
                 "TGZ",
                 "DEB"
             ],
-            "packageName": "desktop"
+            "packageName": "led-matrix-desktop"
         },
         {
             "name": "desktop-windows",
@@ -122,7 +122,7 @@
                 "ZIP",
                 "NSIS64"
             ],
-            "packageName": "desktop"
+            "packageName": "led-matrix-desktop"
         },
         {
             "name": "desktop-windows-debug",

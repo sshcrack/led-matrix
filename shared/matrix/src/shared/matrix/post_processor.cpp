@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 
 void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)> effect) {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     if (effect) {
         std::string name = effect->get_name();
         spdlog::debug("Registered post-processing effect: {}", name);
@@ -11,6 +12,7 @@ void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect, void (
 }
 
 bool PostProcessor::add_effect(const std::string& effect_name, float duration, float intensity) {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     auto it = registered_effects.find(effect_name);
     if (it == registered_effects.end()) {
         spdlog::warn("Unknown post-processing effect: {}", effect_name);
@@ -23,6 +25,7 @@ bool PostProcessor::add_effect(const std::string& effect_name, float duration, f
 }
 
 void PostProcessor::apply_effects(FrameCanvas* canvas) {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     if (active_effects.empty() || !canvas) {
         return;
     }
@@ -46,14 +49,17 @@ void PostProcessor::apply_effects(FrameCanvas* canvas) {
 }
 
 void PostProcessor::clear_effects() {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     active_effects.clear();
 }
 
 bool PostProcessor::has_active_effects() const {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     return !active_effects.empty();
 }
 
 std::vector<std::string> PostProcessor::get_registered_effects() const {
+    std::lock_guard<std::mutex> lock(effectsMutex);
     std::vector<std::string> names;
     names.reserve(registered_effects.size());
     for (const auto& pair : registered_effects) {
