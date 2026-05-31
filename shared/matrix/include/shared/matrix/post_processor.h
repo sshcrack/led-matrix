@@ -3,6 +3,7 @@
 #include "led-matrix.h"
 #include "post_processing_effect.h"
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -12,6 +13,7 @@ using rgb_matrix::RGBMatrixBase;
 
 class PostProcessor {
 private:
+    mutable std::mutex effectsMutex;
     std::vector<PostProcessEffect> active_effects;
     std::unordered_map<std::string, std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> registered_effects;
 

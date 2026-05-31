@@ -50,9 +50,6 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION "bin"
-)
 
 if(WIN32)
         set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")

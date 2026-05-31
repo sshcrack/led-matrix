@@ -69,51 +69,47 @@ void AudioVisualizerDesktop::addConnectionSettings() {
 void AudioVisualizerDesktop::addAnalysisSettings() {
     ImGui::SeparatorText("Analysis Settings");
 
-    static int selectedModeIdx = cfg.analysisMode;
+    int selectedModeIdx = static_cast<int>(cfg.analysisMode);
     const std::string &modePreview = analysisModes[selectedModeIdx];
     if (ImGui::BeginCombo("Mode", modePreview.c_str())) {
         for (int n = 0; n < analysisModes.size(); n++) {
             const bool is_selected = (selectedModeIdx == n);
             if (ImGui::Selectable(analysisModes[n].c_str(), is_selected)) {
                 cfg.analysisMode = static_cast<AnalysisMode>(n);
-                selectedModeIdx = n;
                 audioProcessor->updateAnalyzer();
             }
 
-            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
             if (is_selected)
                 ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
 
-    static int selectedFreqIdx = cfg.frequencyScale;
+    int selectedFreqIdx = static_cast<int>(cfg.frequencyScale);
     const std::string &frequencyPreview = frequencyScales[selectedFreqIdx];
     if (ImGui::BeginCombo("Frequency Scale", frequencyPreview.c_str())) {
         for (int n = 0; n < frequencyScales.size(); n++) {
             const bool is_selected = (selectedFreqIdx == n);
             if (ImGui::Selectable(frequencyScales[n].c_str(), is_selected)) {
                 cfg.frequencyScale = static_cast<FrequencyScale>(n);
-                selectedFreqIdx = n;
                 audioProcessor->updateAnalyzer();
             }
 
-            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
             if (is_selected)
                 ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
 
-    static bool linearAmplitudeScaling = cfg.linearAmplitudeScaling;
+    bool linearAmplitudeScaling = cfg.linearAmplitudeScaling;
     if (ImGui::Checkbox("Linear Amplitude Scaling", &linearAmplitudeScaling))
         cfg.linearAmplitudeScaling = linearAmplitudeScaling;
 
-    static bool interpolateMissingBands = cfg.interpolateMissingBands;
+    bool interpolateMissingBands = cfg.interpolateMissingBands;
     if (ImGui::Checkbox("Interpolate Missing Bands", &interpolateMissingBands))
         cfg.interpolateMissingBands = interpolateMissingBands;
 
-    static bool skipMissingBandsFromOutput = cfg.skipMissingBandsFromOutput;
+    bool skipMissingBandsFromOutput = cfg.skipMissingBandsFromOutput;
     if (ImGui::Checkbox("Skip Missing Bands from Output", &skipMissingBandsFromOutput))
         cfg.skipMissingBandsFromOutput = skipMissingBandsFromOutput;
 }

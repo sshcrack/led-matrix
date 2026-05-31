@@ -190,7 +190,12 @@ int run_app(int argc, char *argv[]) {
     spdlog::logger logger("multi_sink", {console_sink, file_sink});
     auto sharedLogger = std::make_shared<spdlog::logger>(logger);
     spdlog::set_default_logger(sharedLogger);
-    HelloImGui::SetAssetsFolder((get_exec_dir() / ".." / "assets").string());
+    // Prefer the FHS path for DEB installations, fall back to relative dev layout
+    auto assets_dir = get_exec_dir() / ".." / "share" / "led-matrix-desktop" / "assets";
+    if (!fs::is_directory(assets_dir)) {
+        assets_dir = get_exec_dir() / ".." / "assets";
+    }
+    HelloImGui::SetAssetsFolder(assets_dir.string());
 
     // Single instance manager
     SingleInstanceManager *instanceManager = nullptr;
