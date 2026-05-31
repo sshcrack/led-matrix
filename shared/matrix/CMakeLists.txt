@@ -70,7 +70,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 # HTTP Parsing
 
 find_package(LibXml2 REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
+target_link_libraries(${PROJECT_NAME} PUBLIC LibXml2::LibXml2)
 
 # ImageMagick
 find_package(unofficial-graphicsmagick CONFIG REQUIRED)
