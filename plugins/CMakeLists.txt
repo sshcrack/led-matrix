@@ -79,12 +79,23 @@ function(register_plugin PLUGIN_NAME)
         return()
     endif()
 
-    install(TARGETS ${PLUGIN_NAME}
-        RUNTIME DESTINATION plugins/${PLUGIN_NAME} # For DLLs and executables (Windows)
-        LIBRARY DESTINATION plugins/${PLUGIN_NAME} # For shared libraries (.so/.dylib)
-        ARCHIVE DESTINATION plugins/${PLUGIN_NAME} # For static libraries (.lib/.a)
-        COMPONENT ${PLUGIN_NAME}
-    )
+    if(ENABLE_DESKTOP)
+        # Desktop DEB: plugins go under /usr/lib/led-matrix-desktop/plugins/<name>/
+        install(TARGETS ${PLUGIN_NAME}
+            RUNTIME DESTINATION lib/led-matrix-desktop/plugins/${PLUGIN_NAME}
+            LIBRARY DESTINATION lib/led-matrix-desktop/plugins/${PLUGIN_NAME}
+            ARCHIVE DESTINATION lib/led-matrix-desktop/plugins/${PLUGIN_NAME}
+            COMPONENT ${PLUGIN_NAME}
+        )
+    else()
+        # Matrix TGZ: flat layout extracted to /opt/led-matrix by install_led_matrix.sh
+        install(TARGETS ${PLUGIN_NAME}
+            RUNTIME DESTINATION plugins/${PLUGIN_NAME}
+            LIBRARY DESTINATION plugins/${PLUGIN_NAME}
+            ARCHIVE DESTINATION plugins/${PLUGIN_NAME}
+            COMPONENT ${PLUGIN_NAME}
+        )
+    endif()
 endfunction()
 
 subdirlist(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})

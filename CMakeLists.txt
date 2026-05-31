@@ -96,7 +96,13 @@ if(SKIP_MS_WAIT)
 endif()
 
 # Set RPATH settings
-set(CMAKE_INSTALL_RPATH "$ORIGIN")
+if(ENABLE_DESKTOP)
+    # Desktop DEB installs shared libs to /usr/lib/led-matrix-desktop
+    set(CMAKE_INSTALL_RPATH "/usr/lib/led-matrix-desktop")
+else()
+    # Matrix TGZ is extracted flat; all .so files are co-located with the binary
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -153,16 +159,24 @@ if(ENABLE_DESKTOP)
 
     install(
         DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/
-        DESTINATION assets
+        DESTINATION share/led-matrix-desktop/assets
     )
 else()
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "main")
 endif()
 
-install(FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
-    DESTINATION .
-)
+# LICENSE destination differs: FHS doc path for desktop DEB, flat dir for matrix TGZ
+if(ENABLE_DESKTOP)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+        DESTINATION share/doc/led-matrix-desktop
+    )
+else()
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+        DESTINATION .
+    )
+endif()
 
 # Install update script for matrix builds (not for desktop)
 if(NOT ENABLE_DESKTOP)
@@ -356,12 +370,21 @@ foreach(COPYRIGHT_FILE ${COPYRIGHT_FILES})
     get_filename_component(PACKAGE_DIR "${COPYRIGHT_FILE}" DIRECTORY)
     get_filename_component(PACKAGE_NAME "${PACKAGE_DIR}" NAME)
 
-    install(FILES "${COPYRIGHT_FILE}"
-        DESTINATION "licenses/${PACKAGE_NAME}")
+    if(ENABLE_DESKTOP)
+        install(FILES "${COPYRIGHT_FILE}"
+            DESTINATION "share/doc/led-matrix-desktop/licenses/${PACKAGE_NAME}")
+    else()
+        install(FILES "${COPYRIGHT_FILE}"
+            DESTINATION "licenses/${PACKAGE_NAME}")
+    endif()
 endforeach()
 
-# Create plugins and fonts directories
-install(DIRECTORY DESTINATION "plugins")
+# Create plugins directory
+if(ENABLE_DESKTOP)
+    install(DIRECTORY DESTINATION "lib/led-matrix-desktop/plugins")
+else()
+    install(DIRECTORY DESTINATION "plugins")
+endif()
 
 if(NOT ENABLE_DESKTOP)
     # Install web files
@@ -388,9 +411,9 @@ if(NOT ENABLE_DESKTOP)
     )
 else()
     install(TARGETS SharedToolsCommon SharedToolsDesktop
-        RUNTIME DESTINATION bin # .dll (Windows)
-        ARCHIVE DESTINATION bin # .lib (Windows static or import lib)
-        LIBRARY DESTINATION bin # .so/.dylib (Unix)
+        RUNTIME DESTINATION bin                         # .dll (Windows)
+        ARCHIVE DESTINATION lib/led-matrix-desktop      # .lib (Windows static or import lib)
+        LIBRARY DESTINATION lib/led-matrix-desktop      # .so/.dylib (Unix)
     )
 
 endif()
@@ -415,6 +438,7 @@ if(ENABLE_DESKTOP)
 
     if(WIN32)
         set(CPACK_GENERATOR "ZIP;NSIS64")
+        set(CPACK_SYSTEM_NAME "win64")
         set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
         set(CPACK_NSIS_PACKAGE_NAME "LED Matrix Controller")
         set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}")
@@ -479,6 +503,67 @@ if(ENABLE_DESKTOP)
         set(CPACK_NSIS_MUI_FINISHPAGE_RUN_CHECKED "1")
     else()
         set(CPACK_GENERATOR "DEB;TGZ")
+
+        # --- Debian-specific settings ---
+        # Install prefix for DEB packages (files land at /usr/bin, /usr/lib/..., etc.)
+        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+
+        set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+        set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+
+        # Runtime dependencies: dbus (used via pkg-config), and common GUI libs
+        # pulled in by hello-imgui / SDL / X11.  List only what dpkg won't
+        # auto-detect via shlibs so the package still installs on a minimal system.
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS
+            "libc6 (>= 2.17), libstdc++6 (>= 10), libdbus-1-3, libgl1")
+
+        set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
+            "LED Matrix Desktop Controller\n"
+            " A desktop application for controlling RGB LED matrix panels\n"
+            " connected to a Raspberry Pi.  Communicates with the on-device\n"
+            " led-matrix service over the network.")
+
+        # Generate a proper changelog.Debian.gz so lintian is happy
+        # (content is minimal; a real changelog lives in the git history)
+        set(CPACK_DEBIAN_CHANGELOG
+            "led-matrix-desktop (${PROJECT_VERSION}) stable; urgency=low\n\n"
+            "  * See https://github.com/sshcrack/led-matrix/releases\n\n"
+            " -- sshcrack <hendrik@sshcrack.me>  Sat, 01 Jan 2000 00:00:00 +0000\n")
+
+        # Install a .desktop file so the app appears in application launchers
+        set(DESKTOP_FILE_CONTENT
+            "[Desktop Entry]\nType=Application\nName=LED Matrix Controller\n"
+            "Comment=Control your RGB LED matrix panels\n"
+            "Exec=/usr/bin/led-matrix-desktop\n"
+            "Icon=led-matrix-desktop\n"
+            "Categories=Utility;\n"
+            "Terminal=false\n")
+        file(WRITE "${CMAKE_BINARY_DIR}/led-matrix-desktop.desktop" ${DESKTOP_FILE_CONTENT})
+        install(FILES "${CMAKE_BINARY_DIR}/led-matrix-desktop.desktop"
+            DESTINATION share/applications)
+
+        # Install app icon so the desktop entry finds it
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.png"
+            DESTINATION share/icons/hicolor/512x512/apps
+            RENAME led-matrix-desktop.png
+        )
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.svg"
+            DESTINATION share/icons/hicolor/scalable/apps
+            RENAME led-matrix-desktop.svg
+        )
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.png"
+            DESTINATION share/pixmaps
+            RENAME led-matrix-desktop.png
+        )
+
+        # Post-install / pre-remove scripts are not strictly needed but make
+        # dpkg -i work cleanly on a system without the icon cache already primed.
+        set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian/postinst"
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian/prerm")
     endif()
     include(CPack)
 else()

@@ -68,7 +68,23 @@ void PluginManager::initialize()
     if (initialized)
         return;
 
-    const fs::path plugin_dir = get_exec_dir().parent_path() / "plugins";
+    const fs::path exec_dir = get_exec_dir();
+
+    // Determine plugin directory with precedence:
+    // 1. PLUGIN_DIR environment variable
+    // 2. plugins/ co-located with the executable (development layout)
+    // 3. ../lib/led-matrix-desktop/plugins relative to executable (DEB FHS layout)
+    // 4. ../plugins relative to executable (legacy fallback)
+    fs::path plugin_dir;
+    if (auto raw = getenv("PLUGIN_DIR")) {
+        plugin_dir = fs::path(raw);
+    } else if (fs::is_directory(exec_dir / "plugins")) {
+        plugin_dir = exec_dir / "plugins";
+    } else {
+        fs::path fhs = exec_dir.parent_path() / "lib" / "led-matrix-desktop" / "plugins";
+        plugin_dir = fs::is_directory(fhs) ? fhs : exec_dir.parent_path() / "plugins";
+    }
+
     std::vector<fs::path> libPaths;
 
     for (const auto &entry : fs::directory_iterator(plugin_dir))
