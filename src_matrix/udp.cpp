@@ -72,6 +72,8 @@ void UdpServer::server_loop()
 
             const uint8_t *payload = data + 7;
 
+            spdlog::debug("[UDP] Packet: pluginId={}, payload_size={}", pluginId, payload_size);
+
             // Pass to plugins (note: using data[1] as magicPacket for backward compatibility)
             for (const auto &plugin : plugins)
             {
