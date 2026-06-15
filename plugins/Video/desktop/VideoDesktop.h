@@ -32,6 +32,8 @@ public:
 
   void on_websocket_message(const std::string message) override;
 
+  [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
+
 private:
   void render_status_ui();
   void start_audio(const std::string &path);

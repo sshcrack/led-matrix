@@ -24,6 +24,7 @@ public:
 
     void post_init() override;
     void after_swap(ImGuiContext *imCtx) override;
+    [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn, ImGuiMemFreeFunc*free_fn, void **user_data) override;
 
 private:
