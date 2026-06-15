@@ -71,35 +71,67 @@ void SpotifyMVScene::render_loading(rgb_matrix::FrameCanvas *canvas, bool is_sea
 
   canvas->Fill(0, 0, 0);
 
-  int barWidth = width * 0.8;
-  int barHeight = 10;
-  int x = (width - barWidth) / 2;
-  int y = (height - barHeight) / 2;
-
-  for (int i = 0; i < barWidth; ++i)
-    for (int j = 0; j < barHeight; ++j)
-      canvas->SetPixel(x + i, y + j, 50, 50, 50);
-
-  int progress = (loading_frame_ % 100);
-  int fillWidth = (barWidth * progress) / 100;
-
   uint8_t r, g, b;
   if (is_searching)
   {
     r = 30;
     g = 215;
-    b = 96; // Spotify green
+    b = 96;
   }
   else
   {
     r = 0;
     g = 255;
-    b = 0; // Standard green
+    b = 0;
   }
 
-  for (int i = 0; i < fillWidth; ++i)
-    for (int j = 0; j < barHeight; ++j)
-      canvas->SetPixel(x + i, y + j, r, g, b);
+  // Dim border
+  for (int x = 0; x < width; x++)
+  {
+    canvas->SetPixel(x, 0, 6, 6, 6);
+    canvas->SetPixel(x, height - 1, 6, 6, 6);
+  }
+  for (int y = 0; y < height; y++)
+  {
+    canvas->SetPixel(0, y, 6, 6, 6);
+    canvas->SetPixel(width - 1, y, 6, 6, 6);
+  }
+
+  // Bright segment traveling around the perimeter
+  int perimeter = 2 * (width + height);
+  int tail_len = perimeter / 16;
+  int head = loading_frame_ % perimeter;
+
+  for (int i = 0; i < tail_len; i++)
+  {
+    int pos = (head - i + perimeter) % perimeter;
+    int px, py;
+    if (pos < width)
+    {
+      px = pos;
+      py = 0;
+    }
+    else if (pos < width + height)
+    {
+      px = width - 1;
+      py = pos - width;
+    }
+    else if (pos < 2 * width + height)
+    {
+      px = width - 1 - (pos - width - height);
+      py = height - 1;
+    }
+    else
+    {
+      px = 0;
+      py = height - 1 - (pos - 2 * width - height);
+    }
+    float fade = 1.0f - (float)i / tail_len;
+    canvas->SetPixel(px, py,
+                     (uint8_t)(r * fade),
+                     (uint8_t)(g * fade),
+                     (uint8_t)(b * fade));
+  }
 
   loading_frame_++;
 }
