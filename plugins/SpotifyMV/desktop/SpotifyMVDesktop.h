@@ -29,6 +29,7 @@ private:
 
     bool tools_available_ = false;
     std::string tools_error_msg_;
+    std::mutex track_id_mutex_;
     std::string current_track_id_;
 
     static constexpr int kWidth  = 128;

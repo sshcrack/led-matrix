@@ -57,7 +57,10 @@ void SpotifyMVDesktop::render() {
         return;
     }
 
-    ImGui::Text("Track ID: %s", current_track_id_.empty() ? "None" : current_track_id_.c_str());
+    {
+        std::lock_guard<std::mutex> lk(track_id_mutex_);
+        ImGui::Text("Track ID: %s", current_track_id_.empty() ? "None" : current_track_id_.c_str());
+    }
     ImGui::Text("URL: %s", engine_->get_current_url().empty() ? "None" : engine_->get_current_url().c_str());
 
     const char* stateStr = "Unknown";
@@ -104,7 +107,10 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         if (colon_pos == std::string::npos) return;
         std::string track_id = remainder.substr(0, colon_pos);
 
-        if (track_id == current_track_id_) return;
+        {
+            std::lock_guard<std::mutex> lk(track_id_mutex_);
+            if (track_id == current_track_id_) return;
+        }
 
         remainder = remainder.substr(colon_pos + 1);
         auto newline1 = remainder.find('\n');
@@ -154,7 +160,10 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // to prevent a race where the old search calls engine_->start() after our stop().
         if (search_thread_.joinable()) search_thread_.join();
         engine_->stop();
-        current_track_id_ = track_id;
+        {
+            std::lock_guard<std::mutex> lk(track_id_mutex_);
+            current_track_id_ = track_id;
+        }
         search_and_play(track_id, song, artist, suffix, fallback, progress_ms, duration_ms);
         return;
     }
@@ -163,7 +172,10 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // Join search thread first so it can't call engine_->start() after we stop the engine
         if (search_thread_.joinable()) search_thread_.join();
         engine_->stop();
-        current_track_id_ = "";
+        {
+            std::lock_guard<std::mutex> lk(track_id_mutex_);
+            current_track_id_ = "";
+        }
         send_websocket_message("status:idle");
         return;
     }

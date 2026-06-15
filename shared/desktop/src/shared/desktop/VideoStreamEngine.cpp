@@ -141,7 +141,10 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
     cache_key_ = cache_key;
     seek_ms_.store(seek_ms);
     running_ = true;
-    last_frame_time_ = std::chrono::steady_clock::now();
+    {
+        std::lock_guard<std::mutex> lock(frame_mutex_);
+        last_frame_time_ = std::chrono::steady_clock::now();
+    }
 
     processing_thread_ = std::thread([this]() {
         try {
@@ -154,7 +157,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     std::string binPath = chunk_bin_path(chunk_index).string();
                     FILE* bin = fopen(binPath.c_str(), "rb");
                     if (!bin) {
-                        last_error_ = "Failed to open chunk: " + binPath;
+                        set_last_error("Failed to open chunk: " + binPath);
                         spdlog::error(last_error_);
                         state_ = State::Error;
                         notify_status("error");
@@ -185,7 +188,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     return running_.load();
                 } catch (const std::exception& e) {
                     spdlog::error("Exception playing chunk {}: {}", chunk_index, e.what());
-                    last_error_ = std::string("Playback error: ") + e.what();
+                    set_last_error(std::string("Playback error: ") + e.what());
                     state_ = State::Error;
                     notify_status("error");
                     return false;
@@ -323,13 +326,13 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
             }
         } catch (const std::exception& e) {
             spdlog::error("Critical exception in streaming thread: {}", e.what());
-            last_error_ = std::string("Streaming error: ") + e.what();
+            set_last_error(std::string("Streaming error: ") + e.what());
             state_ = State::Error;
             notify_status("error");
             running_ = false;
         } catch (...) {
             spdlog::error("Unknown exception in streaming thread");
-            last_error_ = "Unknown streaming error";
+            set_last_error("Unknown streaming error");
             state_ = State::Error;
             notify_status("error");
             running_ = false;
@@ -418,7 +421,10 @@ void VideoStreamEngine::stop() {
     // parent's destructor, that `this` may already be partially destroyed by the time
     // the thread fires the callback. Clearing it here makes the callback a no-op,
     // preventing a use-after-free crash.
-    on_status_change = nullptr;
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        on_status_change = nullptr;
+    }
 
     // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
     // so joining processing_thread_ first would deadlock.
@@ -450,6 +456,7 @@ std::vector<uint8_t> VideoStreamEngine::get_current_frame() {
 
 bool VideoStreamEngine::tick() {
     const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(frame_mutex_);
     if (std::chrono::duration<double>(now - last_frame_time_).count() < 1.0 / fps_)
         return false;
     last_frame_time_ = now;
@@ -485,7 +492,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             }
             std::string msg = fmt::format("yt-dlp chunk {} failed (exit {})", chunk_index, dlResult);
             if (set_error_on_fail) {
-                last_error_ = msg;
+                set_last_error(msg);
                 spdlog::error(last_error_);
                 state_ = State::Error;
                 notify_status("error");
@@ -509,7 +516,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             }
             std::string msg = fmt::format("ffmpeg chunk {} failed (exit {})", chunk_index, ffResult);
             if (set_error_on_fail) {
-                last_error_ = msg;
+                set_last_error(msg);
                 spdlog::error(last_error_);
                 state_ = State::Error;
                 notify_status("error");
@@ -524,7 +531,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             std::filesystem::remove(binPath, ec2);
             std::string msg = fmt::format("ffmpeg chunk {} produced empty output — video ended", chunk_index);
             if (set_error_on_fail) {
-                last_error_ = msg;
+                set_last_error(msg);
                 spdlog::error(last_error_);
                 state_ = State::Error;
                 notify_status("error");
@@ -538,7 +545,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
     } catch (const std::exception& e) {
         spdlog::error("Exception in download_and_process_chunk({}): {}", chunk_index, e.what());
         if (set_error_on_fail) {
-            last_error_ = std::string("Chunk error: ") + e.what();
+            set_last_error(std::string("Chunk error: ") + e.what());
             state_ = State::Error;
             notify_status("error");
         }
@@ -617,7 +624,13 @@ void VideoStreamEngine::evict_oldest_first_chunks() {
     }
 }
 
+void VideoStreamEngine::set_last_error(const std::string& msg) {
+    std::lock_guard<std::mutex> lk(error_mutex_);
+    last_error_ = msg;
+}
+
 void VideoStreamEngine::notify_status(const std::string& s) {
+    std::lock_guard<std::mutex> lk(status_cb_mutex_);
     if (on_status_change)
         on_status_change(s);
 }
