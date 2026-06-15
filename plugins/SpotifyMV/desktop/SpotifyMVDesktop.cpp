@@ -81,26 +81,26 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
         return std::nullopt;
     }
     if (!tools_available_) {
-        spdlog::trace("[SpotifyMV] skip: tools not available");
+        spdlog::info("[SpotifyMV] skip: tools not available");
         return std::nullopt;
     }
     auto state = engine_->get_state();
     if (state != Shared::VideoStreamEngine::State::Playing) {
-        spdlog::debug("[SpotifyMV] skip: state={}", static_cast<int>(state));
+        spdlog::info("[SpotifyMV] skip: state={}", static_cast<int>(state));
         return std::nullopt;
     }
     if (!engine_->tick()) {
-        spdlog::debug("[SpotifyMV] skip: tick rejected");
+        spdlog::info("[SpotifyMV] skip: tick rejected");
         return std::nullopt;
     }
 
     auto frame = engine_->get_current_frame();
     if (frame.empty()) {
-        spdlog::debug("[SpotifyMV] skip: empty frame");
+        spdlog::info("[SpotifyMV] skip: empty frame");
         return std::nullopt;
     }
 
-    spdlog::debug("[SpotifyMV] sending frame ({} bytes)", frame.size());
+    spdlog::info("[SpotifyMV] sending frame ({} bytes)", frame.size());
     return std::unique_ptr<UdpPacket, void(*)(UdpPacket*)>(
         new SpotifyMVPacket(std::move(frame)),
         [](UdpPacket* p) { delete static_cast<SpotifyMVPacket*>(p); });
