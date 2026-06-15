@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include "udpBandsPacket.h"
+#include <chrono>
 
 extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer() {
     return new AudioVisualizerDesktop();
@@ -359,6 +360,11 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
         return std::nullopt;
 
     std::lock_guard<std::mutex> stateLock(stateMutex);
+    // Shared cached loopback index to avoid frequent WASAPI queries
+    static bool loggedLoopbackWarning = false;
+    static int cachedLoopbackIndex = -2; // -2 = unknown, -1 = not found, >=0 = device index
+    static std::chrono::steady_clock::time_point lastLoopbackCheck = std::chrono::steady_clock::time_point::min();
+    const auto loopbackRefreshInterval = std::chrono::milliseconds(2000);
 
     if (cfg.deviceName != currentDeviceName) {
         recorder->stopRecording();
@@ -366,7 +372,23 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     }
 
     if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME) {
-        int expectedLoopback = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+        const auto now = std::chrono::steady_clock::now();
+
+        if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > loopbackRefreshInterval) {
+            cachedLoopbackIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+            lastLoopbackCheck = now;
+        }
+
+        int expectedLoopback = cachedLoopbackIndex;
+        if (expectedLoopback == -1) {
+            if (!loggedLoopbackWarning) {
+                spdlog::warn("Default output loopback device not found. Make sure you're on Windows with WASAPI and have a default output device set.");
+                loggedLoopbackWarning = true;
+            }
+        } else {
+            loggedLoopbackWarning = false; // device available again
+        }
+
         if (recorder->isRecording() && expectedLoopback >= 0 && expectedLoopback != recorder->getCurrentDeviceIndex()) {
             spdlog::info("Default output device changed, switching loopback to device {}", expectedLoopback);
             recorder->stopRecording();
@@ -379,8 +401,14 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
 
         if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
         {
-            // Resolve to the current default output's loopback device
-            deviceIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+            // Use cached loopback index (should have been refreshed above); fallback-refresh if unknown
+            const auto now = std::chrono::steady_clock::now();
+            if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > loopbackRefreshInterval) {
+                cachedLoopbackIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+                lastLoopbackCheck = now;
+            }
+
+            deviceIndex = cachedLoopbackIndex;
             if (deviceIndex == -1)
             {
                 std::unique_lock lock(lastErrorMutex);
