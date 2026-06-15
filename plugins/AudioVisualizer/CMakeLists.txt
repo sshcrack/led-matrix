@@ -50,6 +50,10 @@ if(ENABLE_DESKTOP)
 
         add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio EXCLUDE_FROM_ALL)
 
+        target_compile_definitions(portaudio PRIVATE
+                PA_WASAPI_MAX_CONST_DEVICE_COUNT=64
+        )
+
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
 
 
