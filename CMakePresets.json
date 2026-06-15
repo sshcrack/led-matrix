@@ -50,14 +50,16 @@
         },
         {
             "name": "desktop-windows",
-            "architecture": "x64",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             },
             "inherits": "desktop",
-            "toolset": "v143,version=14.44"
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            }
         },
         {
             "name": "desktop-windows-debug",

@@ -214,6 +214,10 @@ jobs:
           tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
 
+      - name: Setup MSVC dev command prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build ${{ matrix.name }}
         uses: lukka/run-cmake@v10
         with:
