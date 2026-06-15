@@ -76,15 +76,31 @@ void SpotifyMVDesktop::render() {
 
 std::optional<std::unique_ptr<UdpPacket, void(*)(UdpPacket*)>>
 SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
-    if (sceneName != "spotifymv") return std::nullopt;
-    if (!tools_available_) return std::nullopt;
-    if (engine_->get_state() != Shared::VideoStreamEngine::State::Playing)
+    if (sceneName != "spotifymv") {
+        spdlog::info("[SpotifyMV] skip: scene='{}' (expected 'spotifymv')", sceneName);
         return std::nullopt;
-    if (!engine_->tick()) return std::nullopt;
+    }
+    if (!tools_available_) {
+        spdlog::trace("[SpotifyMV] skip: tools not available");
+        return std::nullopt;
+    }
+    auto state = engine_->get_state();
+    if (state != Shared::VideoStreamEngine::State::Playing) {
+        spdlog::debug("[SpotifyMV] skip: state={}", static_cast<int>(state));
+        return std::nullopt;
+    }
+    if (!engine_->tick()) {
+        spdlog::debug("[SpotifyMV] skip: tick rejected");
+        return std::nullopt;
+    }
 
     auto frame = engine_->get_current_frame();
-    if (frame.empty()) return std::nullopt;
+    if (frame.empty()) {
+        spdlog::debug("[SpotifyMV] skip: empty frame");
+        return std::nullopt;
+    }
 
+    spdlog::debug("[SpotifyMV] sending frame ({} bytes)", frame.size());
     return std::unique_ptr<UdpPacket, void(*)(UdpPacket*)>(
         new SpotifyMVPacket(std::move(frame)),
         [](UdpPacket* p) { delete static_cast<SpotifyMVPacket*>(p); });
