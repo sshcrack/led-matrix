@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/post.cpp
         src/shared/matrix/post_processor.cpp
         src/shared/matrix/utils/utils.cpp
+        src/shared/matrix/utils/LoadingAnimation.cpp
         src/shared/matrix/utils/shared.cpp
         src/shared/matrix/utils/image_fetch.cpp
         src/shared/matrix/utils/FrameTimer.cpp
