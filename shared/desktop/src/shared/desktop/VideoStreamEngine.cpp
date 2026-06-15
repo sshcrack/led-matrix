@@ -213,12 +213,47 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     state_ = State::Downloading;
                     notify_status("downloading");
                     spdlog::info("Downloading initial chunk {}", start_chunk);
-                    if (!download_and_process_chunk(start_chunk)) {
+
+                    // Fast-start: kick off background download of the full chunk 0,
+                    // then immediately stream a short clip so playback starts in seconds.
+                    int fast_start_sec = start_chunk * chunk_duration_sec_ +
+                                         static_cast<int>(skip_frames / fps_);
+                    auto full_chunk_done = std::make_shared<std::atomic<bool>>(false);
+                    auto full_chunk_ok   = std::make_shared<std::atomic<bool>>(false);
+                    std::thread full_chunk_thread([this, start_chunk, full_chunk_done, full_chunk_ok]() {
+                        *full_chunk_ok = download_and_process_chunk(start_chunk);
+                        if (start_chunk == 0 && full_chunk_ok->load())
+                            evict_oldest_first_chunks();
+                        *full_chunk_done = true;
+                    });
+
+                    // Play the fast clip while the full chunk downloads in the background.
+                    // If fast start fails (e.g. yt-dlp flake) we fall through and wait
+                    // for the full chunk like before — no UX regression.
+                    if (running_.load()) {
+                        play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_);
+                    }
+
+                    // Now wait for the full chunk to be ready
+                    if (full_chunk_thread.joinable()) {
+                        // Show downloading state again while we wait (fast clip has ended)
+                        if (running_.load() && !full_chunk_done->load()) {
+                            state_ = State::Downloading;
+                            notify_status("downloading");
+                        }
+                        full_chunk_thread.join();
+                    }
+
+                    if (!full_chunk_ok->load()) {
                         break;
                     }
-                    if (start_chunk == 0) {
-                        evict_oldest_first_chunks();
-                    }
+                    // Advance skip_frames past what the fast chunk already displayed,
+                    // so the normal play_chunk doesn't replay those frames.
+                    skip_frames = static_cast<int>(fast_start_sec * fps_) +
+                                  static_cast<int>(fast_chunk_duration_sec_ * fps_);
+                    // Clamp to chunk size so we don't skip past the end
+                    int max_skip = static_cast<int>(chunk_duration_sec_ * fps_);
+                    if (skip_frames > max_skip) skip_frames = max_skip;
                 } else {
                     spdlog::info("Using cached chunk {} — starting immediately", start_chunk);
                 }
@@ -291,6 +326,77 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
             running_ = false;
         }
     });
+}
+
+// Downloads a short clip with yt-dlp and pipes ffmpeg output directly to the
+// frame buffer so playback starts on the first decoded frame, without waiting
+// for a complete .bin file to be written to disk first.
+bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
+    if (!running_.load()) return false;
+
+    auto mp4Path = fast_chunk_mp4_path();
+    std::error_code ec;
+    std::filesystem::remove(mp4Path, ec); // always re-download; it's a temp file
+
+    // Download the short clip
+    std::string dlCmd = fmt::format(
+        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "--force-overwrites -o \"{}\" \"{}\"",
+        start_sec, start_sec + duration_sec, mp4Path.string(), current_url_);
+    spdlog::info("Fast chunk: downloading {}s clip starting at {}s", duration_sec, start_sec);
+    int dlResult = run_command(dlCmd, &running_);
+    if (dlResult != 0) {
+        spdlog::warn("Fast chunk download failed (exit {}), skipping fast start", dlResult);
+        return false;
+    }
+    if (!running_.load()) return false;
+
+    // Pipe ffmpeg raw output directly — frames arrive as ffmpeg encodes them
+    const size_t frameSize = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 3;
+#ifdef _WIN32
+    std::string ffCmd = fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>NUL",
+        mp4Path.string(), width_, height_, fps_);
+    FILE* pipe = _popen(ffCmd.c_str(), "rb");
+#else
+    std::string ffCmd = fmt::format(
+        "ffmpeg -y -i '{}' -vf 'scale={}:{},setsar=1:1,fps={}' "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>/dev/null",
+        mp4Path.string(), width_, height_, fps_);
+    FILE* pipe = popen(ffCmd.c_str(), "r");
+#endif
+    if (!pipe) {
+        spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
+        return false;
+    }
+
+    state_ = State::Playing;
+    notify_status("playing");
+
+    std::vector<uint8_t> buffer(frameSize);
+    int frames_played = 0;
+    while (running_) {
+        size_t got = fread(buffer.data(), 1, frameSize, pipe);
+        if (got != frameSize) break; // ffmpeg finished or error
+        {
+            std::lock_guard<std::mutex> lock(frame_mutex_);
+            current_frame_ = buffer;
+        }
+        ++frames_played;
+        std::this_thread::sleep_for(std::chrono::duration<double>(1.0 / fps_));
+    }
+
+#ifdef _WIN32
+    _pclose(pipe);
+#else
+    pclose(pipe);
+#endif
+
+    // Clean up the temp mp4 — chunk 0 .mp4 will be downloaded separately
+    std::filesystem::remove(mp4Path, ec);
+    spdlog::info("Fast chunk: played {} frames, handing off to normal playback", frames_played);
+    return running_.load();
 }
 
 void VideoStreamEngine::stop() {
@@ -438,6 +544,12 @@ std::filesystem::path VideoStreamEngine::chunk_bin_path(int chunk_index) const {
     auto dir = cache_root_ / effective_cache_key();
     std::filesystem::create_directories(dir);
     return dir / fmt::format("chunk_{}.bin", chunk_index);
+}
+
+std::filesystem::path VideoStreamEngine::fast_chunk_mp4_path() const {
+    auto dir = cache_root_ / effective_cache_key();
+    std::filesystem::create_directories(dir);
+    return dir / "fast_chunk.mp4";
 }
 
 std::string VideoStreamEngine::effective_cache_key() const {
