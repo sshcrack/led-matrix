@@ -85,7 +85,10 @@ void SpotifyMVScene::render_loading(rgb_matrix::FrameCanvas* canvas, bool is_sea
 }
 
 bool SpotifyMVScene::render(rgb_matrix::FrameCanvas* canvas) {
-  if (!plugin_) return false;
+  if (!plugin_) {
+    spdlog::warn("[SpotifyMVScene] No plugin instance — SpotifyMVScene will not render");
+    return false;
+  }
 
   auto* sp = resolve_spotify();
   if (sp == nullptr) {
