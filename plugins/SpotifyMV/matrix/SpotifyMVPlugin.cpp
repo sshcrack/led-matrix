@@ -25,6 +25,7 @@ SpotifyMVPlugin::create_image_providers() {
 
 bool SpotifyMVPlugin::on_udp_packet(uint8_t pluginId, const uint8_t* data, size_t size) {
   if (pluginId != 0x04) return false;
+  spdlog::debug("[SpotifyMV] UDP frame received: {} bytes", size);
   std::lock_guard<std::mutex> lock(frame_mutex_);
   frame_.assign(data, data + size);
   return true;
