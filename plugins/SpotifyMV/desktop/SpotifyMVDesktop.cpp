@@ -2,9 +2,15 @@
 #include "SpotifyMVPacket.h"
 #include "YouTubeSearcher.h"
 #include "shared/desktop/utils.h"
+#include <cstdio>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <cpr/cpr.h>
+
+#ifdef _WIN32
+#define popen _popen
+#define pclose _pclose
+#endif
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
