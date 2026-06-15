@@ -12,8 +12,4 @@ register_plugin(SpotifyMV
     desktop/YouTubeSearcher.h
 )
 
-if(NOT ENABLE_DESKTOP)
-    target_include_directories(SpotifyMV PRIVATE
-        ${CMAKE_SOURCE_DIR}/plugins/SpotifyScenes
-    )
-endif()
+
