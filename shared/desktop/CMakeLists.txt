@@ -15,6 +15,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/MatrixVersionChecker.cpp
         src/shared/desktop/MatrixVersionManager.cpp
         src/shared/desktop/plugin/main.cpp
+        src/shared/desktop/VideoStreamEngine.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
