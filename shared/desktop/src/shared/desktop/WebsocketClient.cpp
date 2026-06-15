@@ -77,7 +77,7 @@ void WebsocketClient::threadLoop()
     for (const auto &plugin : plugins | std::views::values)
     {
         plugin->udp_init();
-        lastLargePayloadSend[plugin->get_plugin_name()] = clock::time_point::min();
+        lastLargePayloadSend[plugin->get_plugin_name()] = clock::time_point{};
     }
 
     while (senderRunning)
