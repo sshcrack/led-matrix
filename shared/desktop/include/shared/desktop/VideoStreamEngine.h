@@ -38,9 +38,11 @@ public:
     bool tick();
 
     State get_state() const { return state_.load(); }
-    std::string get_last_error() const { return last_error_; }
+    std::string get_last_error() const { std::lock_guard<std::mutex> lk(error_mutex_); return last_error_; }
     std::string get_current_url() const { return current_url_; }
 
+    // Guarded by status_cb_mutex_ — may be called from processing_thread_
+    // and cleared from stop() concurrently.
     std::function<void(const std::string&)> on_status_change;
 
 private:
@@ -51,6 +53,8 @@ private:
     std::string cache_key_;
 
     std::atomic<State> state_{State::Idle};
+    mutable std::mutex error_mutex_;
+    std::mutex status_cb_mutex_;
     std::string last_error_;
 
     static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
@@ -78,6 +82,7 @@ private:
     void cleanup_chunk(int chunk_index);
     void cleanup_non_first_chunks();
     void evict_oldest_first_chunks();
+    void set_last_error(const std::string& msg);
     void notify_status(const std::string& s);
 };
 
