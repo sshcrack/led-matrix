@@ -4,6 +4,7 @@
 #include "shared/desktop/utils.h"
 #include <fmt/format.h>
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV() {
@@ -180,9 +181,7 @@ void SpotifyMVDesktop::search_and_play(const std::string& track_id,
                 return;
             }
 
-            long seek_ms = spotify_progress_ms;
-            spdlog::info("SpotifyMV: seeking to {}ms (track {}s long)",
-                         seek_ms, spotify_duration_ms / 1000);
+            long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms);
             engine_->start(url, track_id, seek_ms);
         } catch (const std::exception& e) {
             spdlog::error("SpotifyMV search exception: {}", e.what());
@@ -190,4 +189,118 @@ void SpotifyMVDesktop::search_and_play(const std::string& track_id,
         }
         search_running_ = false;
     });
+}
+
+long SpotifyMVDesktop::compute_video_seek(const std::string& url,
+                                           long spotify_progress_ms,
+                                           long spotify_duration_ms) {
+    if (spotify_duration_ms <= 0)
+        return spotify_progress_ms;
+
+    std::string video_id;
+    auto vpos = url.find("v=");
+    if (vpos != std::string::npos) {
+        video_id = url.substr(vpos + 2);
+        auto amp = video_id.find('&');
+        if (amp != std::string::npos) video_id = video_id.substr(0, amp);
+    } else {
+        auto last_slash = url.rfind('/');
+        if (last_slash != std::string::npos) {
+            video_id = url.substr(last_slash + 1);
+            auto qmark = video_id.find('?');
+            if (qmark != std::string::npos) video_id = video_id.substr(0, qmark);
+        }
+    }
+    if (video_id.empty()) {
+        spdlog::warn("SpotifyMV: could not extract video ID from URL");
+        return spotify_progress_ms;
+    }
+
+    double video_duration = 0;
+    std::string durCmd = "yt-dlp --print duration \"" + url + "\" 2>/dev/null";
+    FILE* durPipe = popen(durCmd.c_str(), "r");
+    if (durPipe) {
+        char buf[64];
+        if (fgets(buf, sizeof(buf), durPipe)) {
+            try { video_duration = std::stod(buf); } catch (...) {}
+        }
+        pclose(durPipe);
+    }
+    if (video_duration <= 0) {
+        spdlog::warn("SpotifyMV: could not get video duration, falling back to raw seek");
+        return spotify_progress_ms;
+    }
+
+    double intro_end = 0;
+    double outro_start = video_duration;
+
+    bool curl_ok = (system("curl --version >/dev/null 2>&1") == 0);
+    if (curl_ok) {
+        std::string sbUrl = "https://sponsor.ajay.app/api/skipSegments?videoID=" + video_id
+            + "&categories=%5B%22intro%22,%22outro%22,%22music_offtopic%22%5D";
+        std::string sbCmd = "curl -s --max-time 3 \"" + sbUrl + "\" 2>/dev/null";
+        FILE* sbPipe = popen(sbCmd.c_str(), "r");
+        if (sbPipe) {
+            std::string sbOutput;
+            char buf[4096];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), sbPipe)) > 0)
+                sbOutput.append(buf, n);
+            pclose(sbPipe);
+
+            if (!sbOutput.empty() && sbOutput[0] == '[') {
+                try {
+                    auto segments = nlohmann::json::parse(sbOutput);
+                    for (auto& seg : segments) {
+                        if (!seg.contains("segment") || !seg["segment"].is_array()
+                            || seg["segment"].size() < 2)
+                            continue;
+                        double start = seg["segment"][0].get<double>();
+                        double end = seg["segment"][1].get<double>();
+                        std::string cat = seg.value("category", "");
+
+                        if (cat == "intro" && end > intro_end)
+                            intro_end = end;
+                        if (cat == "outro" && start < outro_start)
+                            outro_start = start;
+                        if (cat == "music_offtopic") {
+                            if (end > intro_end && end < video_duration / 2)
+                                intro_end = end;
+                            if (start < outro_start && start > video_duration / 2)
+                                outro_start = start;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    spdlog::warn("SpotifyMV: failed to parse SponsorBlock JSON: {}", e.what());
+                }
+            }
+        }
+    } else {
+        spdlog::debug("SpotifyMV: curl not available, skipping SponsorBlock");
+    }
+
+    double spotify_dur_sec = spotify_duration_ms / 1000.0;
+    if (intro_end == 0 && outro_start >= video_duration && video_duration > spotify_dur_sec) {
+        double diff = video_duration - spotify_dur_sec;
+        intro_end = diff * 0.35;
+        outro_start = video_duration - diff * 0.65;
+        spdlog::info("SpotifyMV: no SponsorBlock data, using duration heuristic (intro={:.1f}s, outro={:.1f}s)",
+                     intro_end, video_duration - outro_start);
+    }
+
+    double music_duration = outro_start - intro_end;
+    if (music_duration <= 0) {
+        spdlog::warn("SpotifyMV: invalid music duration ({:.1f}s), falling back to raw seek", music_duration);
+        return spotify_progress_ms;
+    }
+
+    double ratio = static_cast<double>(spotify_progress_ms) / spotify_duration_ms;
+    double video_seek_sec = intro_end + ratio * music_duration;
+    if (video_seek_sec < 0) video_seek_sec = 0;
+    if (video_seek_sec > video_duration) video_seek_sec = video_duration;
+
+    long seek_ms = static_cast<long>(video_seek_sec * 1000.0);
+    spdlog::info("SpotifyMV: {}ms in song \u2192 {}ms in video (intro={:.1f}s, outro={:.1f}s, ratio={:.3f})",
+                 spotify_progress_ms, seek_ms, intro_end, outro_start, ratio);
+    return seek_ms;
 }
