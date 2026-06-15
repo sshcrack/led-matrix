@@ -117,8 +117,9 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     auto duration_ms = duration_opt.value_or(0);
     auto suffix = search_suffix->get();
     auto fb = fallback_to_lyric_video->get() ? "true" : "false";
-    plugin_->send_msg_to_desktop(
-        "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb + "\n" + std::to_string(progress_ms) + "\n" + std::to_string(duration_ms));
+    auto track_msg = "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb + "\n" + std::to_string(progress_ms) + "\n" + std::to_string(duration_ms);
+    plugin_->send_msg_to_desktop(track_msg);
+    plugin_->set_last_track_message(track_msg);
     last_track_id_sent_ = track_id;
     loading_frame_ = 0;
     plugin_->flush_status();
@@ -138,6 +139,12 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
   if (status == "searching" || status == "downloading" || status == "processing")
   {
     render_loading(canvas, status == "searching");
+    return true;
+  }
+
+  if (plugin_->is_stale())
+  {
+    canvas->Fill(10, 0, 20);
     return true;
   }
 
