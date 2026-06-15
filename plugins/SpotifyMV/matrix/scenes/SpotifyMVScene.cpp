@@ -1,9 +1,9 @@
 #include "SpotifyMVScene.h"
+#include "matrix/SpotifyScenes.h"
+#include "matrix/manager/spotify.h"
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/plugin_loader/loader.h>
 #include <spdlog/spdlog.h>
-#include <dlfcn.h>
-#include "../../../SpotifyScenes/matrix/manager/spotify.h"
 
 using namespace Scenes;
 
@@ -13,8 +13,13 @@ namespace {
     static bool tried = false;
     if (!tried) {
       tried = true;
-      auto* sym = dlsym(RTLD_DEFAULT, "spotify");
-      if (sym) cached = *static_cast<Spotify**>(sym);
+      auto plugins = Plugins::PluginManager::instance()->get_plugins();
+      for (auto* p : plugins) {
+        if (auto* ss = dynamic_cast<SpotifyScenes*>(p)) {
+          cached = ss->get_spotify();
+          break;
+        }
+      }
     }
     return cached;
   }

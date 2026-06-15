@@ -128,6 +128,10 @@ string SpotifyScenes::generate_random_string(size_t length) {
     return result;
 }
 
+Spotify* SpotifyScenes::get_spotify() const {
+    return spotify;
+}
+
 SpotifyScenes::SpotifyScenes() {
     auto id = std::getenv("SPOTIFY_CLIENT_ID");
     auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
