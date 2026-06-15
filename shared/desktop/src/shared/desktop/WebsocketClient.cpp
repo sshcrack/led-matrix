@@ -121,8 +121,6 @@ void WebsocketClient::threadLoop()
 
                 if (consecutiveError < 3)
                     spdlog::error("Failed to send packet: {}", lastError);
-
-                lastLargePayloadSend[name] = clock::now();
             }
             else
             {
