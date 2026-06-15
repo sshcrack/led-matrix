@@ -2,6 +2,7 @@
 #include <random>
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/utils/LoadingAnimation.h>
 #include <spdlog/spdlog.h>
 
 using namespace Scenes;
@@ -57,39 +58,7 @@ void VideoScene::after_render_stop()
 
 void VideoScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
 {
-  const int width = Constants::width;
-  const int height = Constants::height;
-
-  canvas->Fill(0, 0, 0);
-
-  // Simple loading bar
-  int barWidth = width * 0.8;
-  int barHeight = 10;
-  int x = (width - barWidth) / 2;
-  int y = (height - barHeight) / 2;
-
-  // Background
-  for (int i = 0; i < barWidth; ++i)
-  {
-    for (int j = 0; j < barHeight; ++j)
-    {
-      canvas->SetPixel(x + i, y + j, 50, 50, 50);
-    }
-  }
-
-  // Foreground (animating)
-  int progress = (loading_animation_frame % 100);
-  int fillWidth = (barWidth * progress) / 100;
-
-  for (int i = 0; i < fillWidth; ++i)
-  {
-    for (int j = 0; j < barHeight; ++j)
-    {
-      canvas->SetPixel(x + i, y + j, 0, 255, 0);
-    }
-  }
-
-  loading_animation_frame++;
+  LoadingAnimation::render(canvas, loading_animation_frame++, 0, 255, 0);
 }
 
 bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
