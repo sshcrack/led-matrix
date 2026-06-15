@@ -49,7 +49,7 @@ void SpotifyMVScene::register_properties() {
 
 void SpotifyMVScene::after_render_stop() {
   if (plugin_) {
-    plugin_->send_msg_to_desktop("spotifymv:stop");
+    plugin_->send_msg_to_desktop("stop");
     plugin_->flush_status();
   }
   last_track_id_sent_ = "";
@@ -114,7 +114,7 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas* canvas) {
     auto suffix = search_suffix->get();
     auto fb = fallback_to_lyric_video->get() ? "true" : "false";
     plugin_->send_msg_to_desktop(
-        "spotifymv:track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb);
+        "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb);
     last_track_id_sent_ = track_id;
     loading_frame_ = 0;
     plugin_->flush_status();
