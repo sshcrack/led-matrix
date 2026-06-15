@@ -267,8 +267,10 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
 
                     // Use shared_ptr so the atomic outlives any potential lambda/thread lifetime mismatch
                     auto prefetch_success = std::make_shared<std::atomic<bool>>(false);
-                    if (prefetch_thread_.joinable()) prefetch_thread_.join(); // safety guard
-                    prefetch_thread_ = std::thread([this, next, prefetch_success]() {
+                    {
+                        std::lock_guard<std::mutex> lk(prefetch_mutex_);
+                        if (prefetch_thread_.joinable()) prefetch_thread_.join(); // safety guard
+                        prefetch_thread_ = std::thread([this, next, prefetch_success]() {
                         try {
                             *prefetch_success = download_and_process_chunk(next, false);
                             spdlog::info("Prefetch chunk {}: {}",
@@ -278,18 +280,25 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                             spdlog::warn("Prefetch chunk {} exception: {}", next, e.what());
                         }
                     });
+                    } // prefetch_mutex_ released here — stop() can now join if needed
 
                     int this_skip = first_chunk ? skip_frames : 0;
                     if (!play_chunk(current, this_skip)) {
-                        if (prefetch_thread_.joinable()) prefetch_thread_.join();
+                        {
+                            std::lock_guard<std::mutex> lk(prefetch_mutex_);
+                            if (prefetch_thread_.joinable()) prefetch_thread_.join();
+                        }
                         had_error = (state_.load() == State::Error);
                         break;
                     }
                     first_chunk = false;
 
-                    if (prefetch_thread_.joinable()) {
-                        spdlog::debug("Waiting for prefetch of chunk {}", next);
-                        prefetch_thread_.join();
+                    {
+                        std::lock_guard<std::mutex> lk(prefetch_mutex_);
+                        if (prefetch_thread_.joinable()) {
+                            spdlog::debug("Waiting for prefetch of chunk {}", next);
+                            prefetch_thread_.join();
+                        }
                     }
 
                     if (current > 0)
@@ -413,8 +422,11 @@ void VideoStreamEngine::stop() {
 
     // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
     // so joining processing_thread_ first would deadlock.
-    if (prefetch_thread_.joinable())
-        prefetch_thread_.join();
+    {
+        std::lock_guard<std::mutex> lk(prefetch_mutex_);
+        if (prefetch_thread_.joinable())
+            prefetch_thread_.join();
+    }
 
     if (processing_thread_.joinable()) {
         try {
