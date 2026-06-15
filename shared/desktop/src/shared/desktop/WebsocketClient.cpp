@@ -107,7 +107,7 @@ void WebsocketClient::threadLoop()
                 auto &last = lastLargePayloadSend[name];
                 if (now - last < largePayloadMinInterval)
                 {
-                    spdlog::trace("[UDP] {} throttled (interval={}ms)", name,
+                    spdlog::info("[UDP] {} throttled (interval={}ms)", name,
                                  std::chrono::duration<double, std::milli>(largePayloadMinInterval).count());
                     continue;
                 }
@@ -135,7 +135,7 @@ void WebsocketClient::threadLoop()
 
                 lastLargePayloadSend[name] = clock::now();
                 consecutiveError = 0;
-                spdlog::trace("[UDP] {} sent packet", name);
+                spdlog::info("[UDP] {} sent packet", name);
             }
         }
 
