@@ -6,6 +6,8 @@ using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
 using Plugins::BasicPlugin;
 
+class Spotify;
+
 class SpotifyScenes : public BasicPlugin {
 public:
     SpotifyScenes();
@@ -18,6 +20,7 @@ public:
 
     std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
+    Spotify* get_spotify() const;
 
 private:
     static string generate_random_string(size_t length);
