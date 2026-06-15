@@ -5,6 +5,10 @@
 #include <memory>
 #include <string>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 using namespace Plugins;
 
 class VideoDesktop final : public DesktopPlugin {

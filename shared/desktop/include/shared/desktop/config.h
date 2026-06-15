@@ -93,13 +93,13 @@ namespace Config
             return generalConfig;
         }
 
-        std::optional<const nlohmann::json> getPluginSetting(const std::string pluginName) const
+        std::optional<nlohmann::json> getPluginSetting(const std::string pluginName) const
         {
             std::shared_lock<std::shared_mutex> lock(mutex_);
             if (!pluginSettings.contains(pluginName))
                 return std::nullopt;
 
-            return pluginSettings.at(pluginName);
+            return nlohmann::json(pluginSettings.at(pluginName));
         }
 
         void setPluginSetting(const std::string pluginName, const json &settings)
