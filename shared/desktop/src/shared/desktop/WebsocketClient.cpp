@@ -72,6 +72,8 @@ void WebsocketClient::threadLoop()
 
     std::unordered_map<std::string, clock::time_point> lastLargePayloadSend;
 
+    spdlog::info("[UDP] Starting thread loop with udpFpsLimit={}", udpFpsLimit);
+
     for (const auto &plugin : plugins | std::views::values)
     {
         plugin->udp_init();
@@ -104,7 +106,11 @@ void WebsocketClient::threadLoop()
                 auto now = clock::now();
                 auto &last = lastLargePayloadSend[name];
                 if (now - last < largePayloadMinInterval)
+                {
+                    spdlog::trace("[UDP] {} throttled (interval={}ms)", name,
+                                 std::chrono::duration<double, std::milli>(largePayloadMinInterval).count());
                     continue;
+                }
             }
 
             auto packet = pl->compute_next_packet(scene);
@@ -129,6 +135,7 @@ void WebsocketClient::threadLoop()
 
                 lastLargePayloadSend[name] = clock::now();
                 consecutiveError = 0;
+                spdlog::trace("[UDP] {} sent packet", name);
             }
         }
 
