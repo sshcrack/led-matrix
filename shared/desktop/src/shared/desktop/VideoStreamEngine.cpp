@@ -188,13 +188,15 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                 while (running_) {
                     int next = current + 1;
 
-                    std::atomic<bool> prefetch_success{false};
-                    prefetch_thread_ = std::thread([this, next, &prefetch_success]() {
+                    // Use shared_ptr so the atomic outlives any potential lambda/thread lifetime mismatch
+                    auto prefetch_success = std::make_shared<std::atomic<bool>>(false);
+                    if (prefetch_thread_.joinable()) prefetch_thread_.join(); // safety guard
+                    prefetch_thread_ = std::thread([this, next, prefetch_success]() {
                         try {
-                            prefetch_success = download_and_process_chunk(next, false);
+                            *prefetch_success = download_and_process_chunk(next, false);
                             spdlog::info("Prefetch chunk {}: {}",
                                          next,
-                                         prefetch_success.load() ? "ok" : "failed (end of video)");
+                                         prefetch_success->load() ? "ok" : "failed (end of video)");
                         } catch (const std::exception& e) {
                             spdlog::warn("Prefetch chunk {} exception: {}", next, e.what());
                         }
@@ -216,7 +218,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     if (current > 0)
                         cleanup_chunk(current);
 
-                    if (!prefetch_success) {
+                    if (!prefetch_success->load()) {
                         spdlog::info("Video ended — looping from chunk 0");
                         cleanup_non_first_chunks();
                         break;
@@ -252,6 +254,11 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
 void VideoStreamEngine::stop() {
     running_ = false;
 
+    // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
+    // so joining processing_thread_ first would deadlock.
+    if (prefetch_thread_.joinable())
+        prefetch_thread_.join();
+
     if (processing_thread_.joinable()) {
         try {
             processing_thread_.join();
@@ -259,8 +266,6 @@ void VideoStreamEngine::stop() {
             spdlog::error("Exception joining processing thread: {}", e.what());
         }
     }
-    if (prefetch_thread_.joinable())
-        prefetch_thread_.join();
 
     {
         std::lock_guard<std::mutex> lock(frame_mutex_);
