@@ -414,6 +414,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 void VideoStreamEngine::stop() {
     running_ = false;
 
+    std::function<void(const std::string &)> tmp_status_change;
     // Clear the status callback BEFORE joining threads.
     // The processing_thread_ calls notify_status() just before it exits, which fires
     // on_status_change — a lambda that typically captures the parent plugin's `this`
@@ -423,6 +424,7 @@ void VideoStreamEngine::stop() {
     // preventing a use-after-free crash.
     {
         std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        tmp_status_change = on_status_change;
         on_status_change = nullptr;
     }
 
@@ -446,6 +448,7 @@ void VideoStreamEngine::stop() {
         std::lock_guard<std::mutex> lock(frame_mutex_);
         current_frame_.clear();
     }
+    on_status_change = tmp_status_change;
     state_ = State::Idle;
 }
 

@@ -38,6 +38,7 @@ void SpotifyMVDesktop::post_init() {
         spdlog::error(tools_error_msg_);
     }
     engine_->on_status_change = [this](const std::string& s) {
+        spdlog::info("Status change " + s);
         send_websocket_message("status:" + s);
     };
     engine_->set_chunk_duration_sec(20);
