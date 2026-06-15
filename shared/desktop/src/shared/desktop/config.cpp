@@ -15,6 +15,7 @@ Config::General::General(const General &other)
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    udpFpsLimit = other.udpFpsLimit;
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
@@ -31,6 +32,7 @@ Config::General &Config::General::operator=(const General &other)
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        udpFpsLimit = other.udpFpsLimit;
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
@@ -44,6 +46,7 @@ Config::General::General(General &&other) noexcept
     autostart = other.autostart;
     port = other.port;
     fpsLimit = other.fpsLimit;
+    udpFpsLimit = other.udpFpsLimit;
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
 }
@@ -60,6 +63,7 @@ Config::General &Config::General::operator=(General &&other) noexcept
         autostart = other.autostart;
         port = other.port;
         fpsLimit = other.fpsLimit;
+        udpFpsLimit = other.udpFpsLimit;
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     }
@@ -131,6 +135,18 @@ void Config::General::setFpsLimit(int newFpsLimit)
     fpsLimit = newFpsLimit;
 }
 
+int Config::General::getUdpFpsLimit() const
+{
+    std::shared_lock lock(mutex_);
+    return udpFpsLimit;
+}
+
+void Config::General::setUdpFpsLimit(int newUdpFpsLimit)
+{
+    std::unique_lock lock(mutex_);
+    udpFpsLimit = newUdpFpsLimit;
+}
+
 bool Config::General::isTurnMatrixOffOnExit() const
 {
     std::shared_lock lock(mutex_);
@@ -165,6 +181,9 @@ void Config::from_json(const json &j, General &p)
     if (j.contains("fpsLimit"))
         j.at("fpsLimit").get_to(p.fpsLimit);
 
+    if (j.contains("udpFpsLimit"))
+        j.at("udpFpsLimit").get_to(p.udpFpsLimit);
+
     if (j.contains("turnMatrixOffOnExit"))
         j.at("turnMatrixOffOnExit").get_to(p.turnMatrixOffOnExit);
     else
@@ -182,6 +201,7 @@ void Config::to_json(json &j, const General &p)
         {"hostname", p.hostname},
         {"port", p.port},
         {"fpsLimit", p.fpsLimit},
+        {"udpFpsLimit", p.udpFpsLimit},
         {"turnMatrixOffOnExit", p.turnMatrixOffOnExit},
         {"turnMatrixOnOnStart", p.turnMatrixOnOnStart} //
     };

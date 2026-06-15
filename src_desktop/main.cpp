@@ -308,6 +308,17 @@ int run_app(int argc, char *argv[]) {
             somethingInvalid = true;
         }
 
+        static int udpFpsLimit = generalCfg.getUdpFpsLimit();
+        if (ImGui::SliderInt("UDP Send FPS", &udpFpsLimit, 1, 120, "%d FPS")) {
+            if (udpFpsLimit < 1)
+                udpFpsLimit = 1;
+            if (udpFpsLimit > 120)
+                udpFpsLimit = 120;
+            generalCfg.setUdpFpsLimit(udpFpsLimit);
+        }
+        ImGui::SetItemTooltip("Limits the rate at which frames are sent to the Pi. "
+                              "Lower this if the Pi can't keep up (e.g. 15-25 FPS).");
+
         if (somethingInvalid) {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
         } else if (initialConnect) {

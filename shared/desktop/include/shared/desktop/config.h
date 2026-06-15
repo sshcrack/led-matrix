@@ -23,6 +23,7 @@ namespace Config
         std::string hostname;
         uint16_t port = 8080; // Default port
         int fpsLimit = 60; // Default FPS limit
+        int udpFpsLimit = 30; // Default UDP send FPS limit
         bool turnMatrixOffOnExit;
         bool turnMatrixOnOnStart;
 
@@ -52,6 +53,9 @@ namespace Config
 
         int getFpsLimit() const;
         void setFpsLimit(int newFpsLimit);
+
+        int getUdpFpsLimit() const;
+        void setUdpFpsLimit(int newUdpFpsLimit);
 
         bool isTurnMatrixOffOnExit() const;
         void setTurnMatrixOffOnExit(bool value);

@@ -5,6 +5,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <unordered_map>
 #include <spdlog/spdlog.h>
 
 class SHARED_DESKTOP_API WebsocketClient
