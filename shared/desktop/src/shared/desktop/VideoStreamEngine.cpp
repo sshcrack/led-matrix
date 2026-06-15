@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fmt/format.h>
+#include <thread>
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
@@ -34,7 +35,8 @@ inline void close_pipe(FILE* pipe) {
 #endif
 }
 
-inline int run_command(const std::string& cmd) {
+inline int run_command(const std::string& cmd,
+                       const std::atomic<bool>* running = nullptr) {
 #ifdef _WIN32
     STARTUPINFOA si{};
     PROCESS_INFORMATION pi{};
@@ -47,14 +49,54 @@ inline int run_command(const std::string& cmd) {
     if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
                         CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
         return -1;
-    WaitForSingleObject(pi.hProcess, INFINITE);
+    // Poll running_ so stop() is not blocked for the full yt-dlp/ffmpeg duration
+    while (true) {
+        DWORD waitResult = WaitForSingleObject(pi.hProcess, 200);
+        if (waitResult == WAIT_OBJECT_0) break;
+        if (running && !running->load()) {
+            TerminateProcess(pi.hProcess, 1);
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return -2; // Interrupted
+        }
+    }
     DWORD exitCode = 1;
     GetExitCodeProcess(pi.hProcess, &exitCode);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     return static_cast<int>(exitCode);
 #else
-    return system(cmd.c_str());
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        // Child: redirect stdout/stderr to /dev/null and exec
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); close(devnull); }
+        execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
+        _exit(127);
+    }
+    // Parent: poll so stop() can kill the child promptly
+    while (true) {
+        int status = 0;
+        pid_t ret = waitpid(pid, &status, WNOHANG);
+        if (ret == pid) {
+            return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+        }
+        if (running && !running->load()) {
+            kill(pid, SIGTERM);
+            // Give it 500ms to exit cleanly, then SIGKILL
+            for (int i = 0; i < 5; ++i) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (waitpid(pid, &status, WNOHANG) == pid) goto done;
+            }
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+            done:
+            return -2; // Interrupted
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 #endif
 }
 
@@ -254,6 +296,15 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
 void VideoStreamEngine::stop() {
     running_ = false;
 
+    // Clear the status callback BEFORE joining threads.
+    // The processing_thread_ calls notify_status() just before it exits, which fires
+    // on_status_change — a lambda that typically captures the parent plugin's `this`
+    // pointer (e.g. to call send_websocket_message). If stop() is called from the
+    // parent's destructor, that `this` may already be partially destroyed by the time
+    // the thread fires the callback. Clearing it here makes the callback a no-op,
+    // preventing a use-after-free crash.
+    on_status_change = nullptr;
+
     // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
     // so joining processing_thread_ first would deadlock.
     if (prefetch_thread_.joinable())
@@ -308,8 +359,12 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             "--force-overwrites -o \"{}\" \"{}\"",
             start_sec, end_sec, mp4Path.string(), current_url_);
         spdlog::info("Downloading chunk {} ({}-{}s)", chunk_index, start_sec, end_sec);
-        int dlResult = run_command(dlCmd);
+        int dlResult = run_command(dlCmd, &running_);
         if (dlResult != 0) {
+            if (dlResult == -2 || !running_.load()) {
+                spdlog::info("yt-dlp chunk {} interrupted by stop()", chunk_index);
+                return false;
+            }
             std::string msg = fmt::format("yt-dlp chunk {} failed (exit {})", chunk_index, dlResult);
             if (set_error_on_fail) {
                 last_error_ = msg;
@@ -328,8 +383,12 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             mp4Path.string(), width_, height_, fps_, binPath.string());
         spdlog::info("Processing chunk {} to {}x{} @ {}fps", chunk_index,
                      width_, height_, fps_);
-        int ffResult = run_command(ffCmd);
+        int ffResult = run_command(ffCmd, &running_);
         if (ffResult != 0) {
+            if (ffResult == -2 || !running_.load()) {
+                spdlog::info("ffmpeg chunk {} interrupted by stop()", chunk_index);
+                return false;
+            }
             std::string msg = fmt::format("ffmpeg chunk {} failed (exit {})", chunk_index, ffResult);
             if (set_error_on_fail) {
                 last_error_ = msg;
