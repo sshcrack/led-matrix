@@ -1,13 +1,9 @@
 #pragma once
 #include "shared/desktop/plugin/main.h"
+#include "shared/desktop/VideoStreamEngine.h"
 #include <atomic>
-#include <chrono>
-#include <filesystem>
-#include <mutex>
-#include <thread>
-#include <vector>
-
-#include "shared/desktop/UdpSender.h"
+#include <memory>
+#include <string>
 
 using namespace Plugins;
 
@@ -33,20 +29,9 @@ public:
   void on_websocket_message(const std::string message) override;
 
 private:
-  void check_tools();
   void render_status_ui();
-  void start_stream(const std::string &url);
-  void stop_stream();
   void start_audio(const std::string &path);
   void stop_audio();
-  bool download_and_process_chunk(const std::string &url, int chunk_index,
-                                  bool set_error_on_fail = true);
-  std::string chunk_mp4_path(int chunk_index) const;
-  std::string chunk_bin_path(int chunk_index) const;
-  void cleanup_chunk(int chunk_index);
-  void cleanup_non_first_chunks();
-  void evict_oldest_first_chunks();
-  std::string get_video_id(const std::string &url) const;
 
   // State
   bool tools_available = false;
@@ -60,8 +45,6 @@ private:
   std::atomic<State> state{State::Idle};
   std::string last_error;
   std::atomic<bool> allow_sending_packets{true};
-  std::atomic<bool> streaming_thread_running{false};
-  FILE *stream_pipe = nullptr;
 
 #ifdef _WIN32
   PROCESS_INFORMATION audio_process_info{};
@@ -70,19 +53,9 @@ private:
   pid_t audio_pid = -1;
 #endif
 
-  // Chunked streaming
-  // Number of video folders (each holds a cached first chunk) to keep on disk.
-  static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
-  const int chunk_duration_sec = 300; // 5 minutes per chunk
-  std::thread prefetch_thread;
-
-  // Playback
-  std::vector<uint8_t> current_frame_data;
-  std::mutex data_mutex;
-  std::chrono::steady_clock::time_point last_packet_time =
-      std::chrono::steady_clock::now();
-  std::thread processing_thread;
   double fps = 30.0;
+
+  std::unique_ptr<Shared::VideoStreamEngine> engine_;
 };
 
 extern "C" PLUGIN_EXPORT VideoDesktop *createVideo();

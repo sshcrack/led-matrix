@@ -72,9 +72,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 find_package(LibXml2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC LibXml2::LibXml2)
 
-# ImageMagick
-find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+# GraphicsMagick (via vcpkg pkg-config to resolve transitive deps)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)

@@ -23,7 +23,7 @@ std::optional<std::string> SpotifyTrack::get_cover() const {
 
 std::optional<std::string> SpotifyTrack::get_song_name() const {
     try {
-        return this->track_json["name"];
+        return this->track_json["name"].template get<std::string>();
     } catch (std::exception& ex) {
         return std::nullopt;
     }
@@ -31,7 +31,7 @@ std::optional<std::string> SpotifyTrack::get_song_name() const {
 
 std::optional<std::string> SpotifyTrack::get_artist_name() const {
     try {
-        return this->track_json["artists"][0]["name"];
+        return this->track_json["artists"][0]["name"].template get<std::string>();
     } catch (std::exception& ex) {
         return std::nullopt;
     }

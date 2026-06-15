@@ -55,13 +55,14 @@ function(register_plugin PLUGIN_NAME)
         target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui nlohmann_json::nlohmann_json)
     else()
         find_package(restinio REQUIRED)
-        find_package(unofficial-graphicsmagick CONFIG REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
         find_package(magic_enum CONFIG REQUIRED)
 
         target_link_libraries(${PLUGIN_NAME} PRIVATE
             SharedToolsMatrix
             restinio::restinio
-            unofficial::graphicsmagick::graphicsmagick
+            PkgConfig::GraphicsMagick
             magic_enum::magic_enum
         )
 
