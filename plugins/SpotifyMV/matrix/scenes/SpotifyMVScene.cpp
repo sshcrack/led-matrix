@@ -11,18 +11,13 @@ namespace
 {
   Spotify *resolve_spotify()
   {
-    static Spotify *cached = nullptr;
-    static bool tried = false;
-    static bool warned = false;
-    if (!tried)
+    static std::once_flag warned;
+    auto *cached = static_cast<Spotify *>(PluginRegistry::get("spotify"));
+    if (cached == nullptr)
     {
-      tried = true;
-      cached = static_cast<Spotify *>(PluginRegistry::get("spotify"));
-      if (cached == nullptr && !warned)
-      {
-        warned = true;
+      std::call_once(warned, [] {
         spdlog::warn("[SpotifyMVScene] SpotifyScenes unavailable (disabled or missing credentials) — track detection disabled");
-      }
+      });
     }
     return cached;
   }
