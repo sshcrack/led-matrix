@@ -195,7 +195,7 @@ void VideoDesktop::stop_audio() {
     audio_pid = -1;
   }
   if (audio_pipe) {
-    close_pipe(audio_pipe);
+    pclose(audio_pipe);
     audio_pipe = nullptr;
   }
 #endif
