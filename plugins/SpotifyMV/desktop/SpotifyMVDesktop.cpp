@@ -21,8 +21,10 @@ extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV() {
 extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVDesktop* c) { delete c; }
 
 SpotifyMVDesktop::~SpotifyMVDesktop() {
-    if (search_thread_.joinable()) search_thread_.join();
+    // Stop engine first so that any in-progress search_thread_ calling engine_->start()
+    // has a chance to finish and won't start new threads after we return.
     if (engine_) engine_->stop();
+    if (search_thread_.joinable()) search_thread_.join();
 }
 
 void SpotifyMVDesktop::post_init() {
@@ -148,6 +150,9 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         long progress_ms = std::stol(progress_ms_str);
         long duration_ms = std::stol(duration_ms_str);
 
+        // Join any existing search thread before stopping the engine,
+        // to prevent a race where the old search calls engine_->start() after our stop().
+        if (search_thread_.joinable()) search_thread_.join();
         engine_->stop();
         current_track_id_ = track_id;
         search_and_play(track_id, song, artist, suffix, fallback, progress_ms, duration_ms);
@@ -155,6 +160,8 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
     }
 
     if (message == "stop") {
+        // Join search thread first so it can't call engine_->start() after we stop the engine
+        if (search_thread_.joinable()) search_thread_.join();
         engine_->stop();
         current_track_id_ = "";
         send_websocket_message("status:idle");
