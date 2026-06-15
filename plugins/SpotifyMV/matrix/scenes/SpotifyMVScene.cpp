@@ -111,10 +111,20 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas* canvas) {
   if (track_id != last_track_id_sent_) {
     auto song = track.get_song_name().value_or("");
     auto artist = track.get_artist_name().value_or("");
+
+    if (song.empty() && artist.empty()) {
+      canvas->Fill(0, 0, 0);
+      return true;
+    }
+
+    auto progress_ms = state_opt->get_progress_ms();
+    auto duration_opt = track.get_duration();
+    auto duration_ms = duration_opt.value_or(0);
     auto suffix = search_suffix->get();
     auto fb = fallback_to_lyric_video->get() ? "true" : "false";
     plugin_->send_msg_to_desktop(
-        "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb);
+        "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb + "\n"
+        + std::to_string(progress_ms) + "\n" + std::to_string(duration_ms));
     last_track_id_sent_ = track_id;
     loading_frame_ = 0;
     plugin_->flush_status();

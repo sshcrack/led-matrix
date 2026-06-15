@@ -30,6 +30,7 @@ void SpotifyMVDesktop::post_init() {
     engine_->on_status_change = [this](const std::string& s) {
         send_websocket_message("status:" + s);
     };
+    engine_->set_chunk_duration_sec(20);
 }
 
 void SpotifyMVDesktop::initialize_imgui(ImGuiContext* ctx,
@@ -83,14 +84,13 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
     if (message.starts_with("track:")) {
-        std::string remainder = message.substr(6); // after "track:"
+        std::string remainder = message.substr(6);
 
-        // Parse: <track_id>:<song>\n<artist>\n<suffix>\n<fallback>
         auto colon_pos = remainder.find(':');
         if (colon_pos == std::string::npos) return;
         std::string track_id = remainder.substr(0, colon_pos);
 
-        if (track_id == current_track_id_) return; // Already loading/playing this track
+        if (track_id == current_track_id_) return;
 
         remainder = remainder.substr(colon_pos + 1);
         auto newline1 = remainder.find('\n');
@@ -107,12 +107,38 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         if (newline3 == std::string::npos) return;
         std::string suffix = remainder.substr(0, newline3);
 
-        std::string fallback_str = remainder.substr(newline3 + 1);
+        remainder = remainder.substr(newline3 + 1);
+        auto newline4 = remainder.find('\n');
+        std::string fallback_str;
+        std::string progress_ms_str = "0";
+        std::string duration_ms_str = "0";
+        if (newline4 != std::string::npos) {
+            fallback_str = remainder.substr(0, newline4);
+            remainder = remainder.substr(newline4 + 1);
+            auto newline5 = remainder.find('\n');
+            if (newline5 != std::string::npos) {
+                progress_ms_str = remainder.substr(0, newline5);
+                duration_ms_str = remainder.substr(newline5 + 1);
+            } else {
+                progress_ms_str = remainder;
+            }
+        } else {
+            fallback_str = remainder;
+        }
         bool fallback = (fallback_str == "true");
+
+        if (song.empty() && artist.empty()) {
+            spdlog::warn("SpotifyMV: empty song/artist, skipping search");
+            send_websocket_message("status:error");
+            return;
+        }
+
+        long progress_ms = std::stol(progress_ms_str);
+        long duration_ms = std::stol(duration_ms_str);
 
         engine_->stop();
         current_track_id_ = track_id;
-        search_and_play(track_id, song, artist, suffix, fallback);
+        search_and_play(track_id, song, artist, suffix, fallback, progress_ms, duration_ms);
         return;
     }
 
@@ -128,13 +154,16 @@ void SpotifyMVDesktop::search_and_play(const std::string& track_id,
                                         const std::string& song,
                                         const std::string& artist,
                                         const std::string& suffix,
-                                        bool fallback) {
+                                        bool fallback,
+                                        long spotify_progress_ms,
+                                        long spotify_duration_ms) {
     if (search_thread_.joinable()) search_thread_.join();
 
     search_running_ = true;
     send_websocket_message("status:searching");
 
-    search_thread_ = std::thread([this, track_id, song, artist, suffix, fallback]() {
+    search_thread_ = std::thread([this, track_id, song, artist, suffix, fallback,
+                                  spotify_progress_ms, spotify_duration_ms]() {
         try {
             std::string query = song + " " + artist + " " + suffix;
             std::string url = YouTubeSearcher::search(query);
@@ -151,7 +180,10 @@ void SpotifyMVDesktop::search_and_play(const std::string& track_id,
                 return;
             }
 
-            engine_->start(url, track_id);
+            long seek_ms = spotify_progress_ms;
+            spdlog::info("SpotifyMV: seeking to {}ms (track {}s long)",
+                         seek_ms, spotify_duration_ms / 1000);
+            engine_->start(url, track_id, seek_ms);
         } catch (const std::exception& e) {
             spdlog::error("SpotifyMV search exception: {}", e.what());
             send_websocket_message("status:error");
