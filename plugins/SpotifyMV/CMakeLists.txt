@@ -12,4 +12,9 @@ register_plugin(SpotifyMV
     desktop/YouTubeSearcher.h
 )
 
+if(ENABLE_DESKTOP)
+    find_package(cpr CONFIG REQUIRED)
+    target_link_libraries(SpotifyMV PRIVATE cpr::cpr)
+endif()
+
 
