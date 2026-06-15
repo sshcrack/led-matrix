@@ -82,8 +82,8 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 }
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
-    if (message.starts_with("spotifymv:track:")) {
-        std::string remainder = message.substr(16); // after "spotifymv:track:"
+    if (message.starts_with("track:")) {
+        std::string remainder = message.substr(6); // after "track:"
 
         // Parse: <track_id>:<song>\n<artist>\n<suffix>\n<fallback>
         auto colon_pos = remainder.find(':');
@@ -116,7 +116,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         return;
     }
 
-    if (message == "spotifymv:stop") {
+    if (message == "stop") {
         engine_->stop();
         current_track_id_ = "";
         send_websocket_message("status:idle");
