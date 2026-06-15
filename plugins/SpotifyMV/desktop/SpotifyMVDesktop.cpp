@@ -4,6 +4,7 @@
 #include "shared/desktop/utils.h"
 #include <fmt/format.h>
 #include <imgui.h>
+#include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -234,49 +235,42 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     double intro_end = 0;
     double outro_start = video_duration;
 
-    bool curl_ok = (system("curl --version >/dev/null 2>&1") == 0);
-    if (curl_ok) {
-        std::string sbUrl = "https://sponsor.ajay.app/api/skipSegments?videoID=" + video_id
-            + "&categories=%5B%22intro%22,%22outro%22,%22music_offtopic%22%5D";
-        std::string sbCmd = "curl -s --max-time 3 \"" + sbUrl + "\" 2>/dev/null";
-        FILE* sbPipe = popen(sbCmd.c_str(), "r");
-        if (sbPipe) {
-            std::string sbOutput;
-            char buf[4096];
-            size_t n;
-            while ((n = fread(buf, 1, sizeof(buf), sbPipe)) > 0)
-                sbOutput.append(buf, n);
-            pclose(sbPipe);
+    {
+        auto response = cpr::Get(
+            cpr::Url{"https://sponsor.ajay.app/api/skipSegments"},
+            cpr::Parameters{
+                {"videoID", video_id},
+                {"categories", R"(["intro","outro","music_offtopic"])"}
+            },
+            cpr::Timeout{3000}
+        );
 
-            if (!sbOutput.empty() && sbOutput[0] == '[') {
-                try {
-                    auto segments = nlohmann::json::parse(sbOutput);
-                    for (auto& seg : segments) {
-                        if (!seg.contains("segment") || !seg["segment"].is_array()
-                            || seg["segment"].size() < 2)
-                            continue;
-                        double start = seg["segment"][0].get<double>();
-                        double end = seg["segment"][1].get<double>();
-                        std::string cat = seg.value("category", "");
+        if (response.status_code == 200 && !response.text.empty()) {
+            try {
+                auto segments = nlohmann::json::parse(response.text);
+                for (auto& seg : segments) {
+                    if (!seg.contains("segment") || !seg["segment"].is_array()
+                        || seg["segment"].size() < 2)
+                        continue;
+                    double start = seg["segment"][0].get<double>();
+                    double end = seg["segment"][1].get<double>();
+                    std::string cat = seg.value("category", "");
 
-                        if (cat == "intro" && end > intro_end)
+                    if (cat == "intro" && end > intro_end)
+                        intro_end = end;
+                    if (cat == "outro" && start < outro_start)
+                        outro_start = start;
+                    if (cat == "music_offtopic") {
+                        if (end > intro_end && end < video_duration / 2)
                             intro_end = end;
-                        if (cat == "outro" && start < outro_start)
+                        if (start < outro_start && start > video_duration / 2)
                             outro_start = start;
-                        if (cat == "music_offtopic") {
-                            if (end > intro_end && end < video_duration / 2)
-                                intro_end = end;
-                            if (start < outro_start && start > video_duration / 2)
-                                outro_start = start;
-                        }
                     }
-                } catch (const std::exception& e) {
-                    spdlog::warn("SpotifyMV: failed to parse SponsorBlock JSON: {}", e.what());
                 }
+            } catch (const std::exception& e) {
+                spdlog::warn("SpotifyMV: failed to parse SponsorBlock JSON: {}", e.what());
             }
         }
-    } else {
-        spdlog::debug("SpotifyMV: curl not available, skipping SponsorBlock");
     }
 
     double spotify_dur_sec = spotify_duration_ms / 1000.0;
