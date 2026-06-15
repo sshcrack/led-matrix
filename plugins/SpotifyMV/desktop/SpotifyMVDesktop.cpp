@@ -224,7 +224,11 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
-    std::string durCmd = "yt-dlp --print duration \"" + url + "\" 2>/dev/null";
+#ifdef _WIN32
+    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>nul";
+#else
+    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>/dev/null";
+#endif
     FILE* durPipe = popen(durCmd.c_str(), "r");
     if (durPipe) {
         char buf[64];
