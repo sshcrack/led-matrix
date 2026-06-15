@@ -128,6 +128,13 @@ UdpServer::UdpServer(int port) : server_running(true)
         return;
     }
 
+    // Enlarge receive buffer to handle large video frames (128x128x3 + header = ~49KB)
+    int rcvbuf = 256 * 1024;
+    if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
+    {
+        spdlog::warn("Failed to set SO_RCVBUF: {}", strerror(errno));
+    }
+
     // Set socket to non-blocking mode
     int flags = fcntl(udp_socket, F_GETFL, 0);
     if (flags < 0)
