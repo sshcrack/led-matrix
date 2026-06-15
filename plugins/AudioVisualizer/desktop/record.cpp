@@ -204,10 +204,20 @@ namespace AudioRecorder
     int Recorder::getDefaultOutputLoopbackIndex()
     {
 #if defined(_WIN32) && defined(PA_USE_WASAPI)
+spdlog::info("Checking for default output loopback device...");
+        // Ensure PortAudio updates the WASAPI device list so new loopback devices are visible
+        PaError err = PaWasapi_UpdateDeviceList();
+        if (err != paNoError)
+        {
+            spdlog::error("Failed to update WASAPI device list: {}", Pa_GetErrorText(err));
+            return -1;
+        }
+
         PaDeviceIndex defaultOutput = Pa_GetDefaultOutputDevice();
         if (defaultOutput == paNoDevice)
             return -1;
 
+            spdlog::info("Default output device index: {}", defaultOutput);
         const PaDeviceInfo *outputInfo = Pa_GetDeviceInfo(defaultOutput);
         if (!outputInfo)
             return -1;
@@ -229,8 +239,10 @@ namespace AudioRecorder
                 std::string loopbackName = info->name;
                 // Check if this loopback device corresponds to our default output
                 // PA names loopback devices as "<name> [Loopback]"
-                if (loopbackName.find(outputName) == 0)
+                if (loopbackName.find(outputName) == 0) {
+                    spdlog::info("Found loopback device '{}' for default output '{}'", loopbackName, outputName);
                     return i;
+                }
             }
         }
 #endif
