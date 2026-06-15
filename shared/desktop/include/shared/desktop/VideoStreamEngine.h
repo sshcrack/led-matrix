@@ -54,6 +54,7 @@ private:
     int chunk_duration_sec_ = 300;
 
     std::atomic<bool> running_{false};
+    std::atomic<long> seek_ms_{0};
     std::thread processing_thread_;
     std::thread prefetch_thread_;
 
