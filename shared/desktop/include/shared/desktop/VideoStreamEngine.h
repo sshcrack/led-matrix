@@ -29,6 +29,9 @@ public:
     void stop();
 
     void set_chunk_duration_sec(int sec) { chunk_duration_sec_ = sec; }
+    // Duration of the initial fast-start clip (default 4s). Keep short so first
+    // frame appears quickly; the normal chunk 0 is downloaded in parallel.
+    void set_fast_chunk_duration_sec(int sec) { fast_chunk_duration_sec_ = sec; }
 
     std::vector<uint8_t> get_current_frame();
 
@@ -52,6 +55,7 @@ private:
 
     static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
     int chunk_duration_sec_ = 300;
+    int fast_chunk_duration_sec_ = 4;
 
     std::atomic<bool> running_{false};
     std::atomic<long> seek_ms_{0};
@@ -63,8 +67,12 @@ private:
     std::chrono::steady_clock::time_point last_frame_time_;
 
     bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true);
+    // Download a short clip and stream its frames directly via ffmpeg pipe,
+    // so playback starts immediately without waiting for a full chunk to be encoded.
+    bool play_fast_chunk(int start_sec, int duration_sec);
     std::filesystem::path chunk_mp4_path(int chunk_index) const;
     std::filesystem::path chunk_bin_path(int chunk_index) const;
+    std::filesystem::path fast_chunk_mp4_path() const;
     std::string effective_cache_key() const;
     void cleanup_chunk(int chunk_index);
     void cleanup_non_first_chunks();
