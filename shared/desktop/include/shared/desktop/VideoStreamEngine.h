@@ -60,6 +60,7 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<long> seek_ms_{0};
     std::thread processing_thread_;
+    std::mutex prefetch_mutex_;  // guards prefetch_thread_ across stop() and processing_thread_
     std::thread prefetch_thread_;
 
     std::vector<uint8_t> current_frame_;
