@@ -1,0 +1,13 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "mcp": {
+        "led-matrix": {
+            "type": "local",
+            "command": [
+                "./scripts/mcp-emulator/.venv/bin/python3",
+                "scripts/mcp-emulator/server.py"
+            ],
+            "enabled": true
+        },
+    },
+}
