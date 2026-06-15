@@ -25,6 +25,8 @@ public:
     void on_websocket_message(const std::string message) override;
 
 private:
+    [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
+
     bool tools_available_ = false;
     std::string tools_error_msg_;
     std::string current_track_id_;
