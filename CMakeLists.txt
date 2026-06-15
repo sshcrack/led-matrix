@@ -97,8 +97,11 @@ endif()
 
 # Set RPATH settings
 if(ENABLE_DESKTOP)
-    # Desktop DEB installs shared libs to /usr/lib/led-matrix-desktop
-    set(CMAKE_INSTALL_RPATH "/usr/lib/led-matrix-desktop")
+    # Desktop DEB installs shared libs to /usr/lib/led-matrix-desktop.
+    # $ORIGIN/../lib/led-matrix-desktop resolves correctly for both
+    # local dev installs (install/bin/ -> install/lib/led-matrix-desktop/)
+    # and system DEB installs (/usr/bin/ -> /usr/lib/led-matrix-desktop/).
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib/led-matrix-desktop")
 else()
     # Matrix TGZ is extracted flat; all .so files are co-located with the binary
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
