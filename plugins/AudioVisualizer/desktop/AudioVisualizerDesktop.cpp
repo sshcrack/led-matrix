@@ -33,7 +33,7 @@ void AudioVisualizerDesktop::render() {
 }
 
 void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> config) {
-    if (config.has_value())
+    if (config.has_value() && !config.value().is_null())
         cfg = config.value();
 
     if (audioProcessor == nullptr)
