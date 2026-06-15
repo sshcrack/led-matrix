@@ -1,5 +1,6 @@
 #include "SpotifyScenes.h"
 #include "shared/matrix/utils/shared.h"
+#include "shared/matrix/plugin_registry.h"
 #include "manager/shared_spotify.h"
 #include "scenes/CoverOnlyScene.h"
 #include "spdlog/spdlog.h"
@@ -44,6 +45,7 @@ std::optional<string> SpotifyScenes::after_server_init() {
 
     spotify = new Spotify();
     spotify->initialize();
+    PluginRegistry::set("spotify", spotify);
 
     config->save();
     return std::nullopt;
@@ -126,10 +128,6 @@ string SpotifyScenes::generate_random_string(size_t length) {
     }
 
     return result;
-}
-
-Spotify* SpotifyScenes::get_spotify() const {
-    return spotify;
 }
 
 SpotifyScenes::SpotifyScenes() {

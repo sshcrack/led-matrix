@@ -1,7 +1,7 @@
 #include "SpotifyMVScene.h"
-#include "matrix/SpotifyScenes.h"
-#include "matrix/manager/spotify.h"
+#include "../../../SpotifyScenes/matrix/manager/spotify.h"
 #include <shared/matrix/canvas_consts.h>
+#include <shared/matrix/plugin_registry.h>
 #include <shared/matrix/plugin_loader/loader.h>
 #include <spdlog/spdlog.h>
 
@@ -13,13 +13,7 @@ namespace {
     static bool tried = false;
     if (!tried) {
       tried = true;
-      auto plugins = Plugins::PluginManager::instance()->get_plugins();
-      for (auto* p : plugins) {
-        if (auto* ss = dynamic_cast<SpotifyScenes*>(p)) {
-          cached = ss->get_spotify();
-          break;
-        }
-      }
+      cached = static_cast<Spotify*>(PluginRegistry::get("spotify"));
     }
     return cached;
   }
