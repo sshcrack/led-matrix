@@ -25,8 +25,10 @@ public:
 
     std::string check_tools();
 
-    void start(const std::string& url, const std::string& cache_key = "");
+    void start(const std::string& url, const std::string& cache_key = "", long seek_ms = 0);
     void stop();
+
+    void set_chunk_duration_sec(int sec) { chunk_duration_sec_ = sec; }
 
     std::vector<uint8_t> get_current_frame();
 
@@ -49,7 +51,7 @@ private:
     std::string last_error_;
 
     static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
-    static constexpr int CHUNK_DURATION_SEC = 300;
+    int chunk_duration_sec_ = 300;
 
     std::atomic<bool> running_{false};
     std::thread processing_thread_;

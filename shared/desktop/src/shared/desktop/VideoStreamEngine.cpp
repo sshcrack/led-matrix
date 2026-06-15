@@ -88,15 +88,16 @@ std::string VideoStreamEngine::check_tools() {
     }
 }
 
-void VideoStreamEngine::start(const std::string& url, const std::string& cache_key) {
+void VideoStreamEngine::start(const std::string& url, const std::string& cache_key, long seek_ms) {
     if (state_.load() == State::Playing && url == current_url_ && cache_key == cache_key_) {
-        return; // Already streaming this URL
+        return;
     }
 
-    stop(); // Stop any existing stream
+    stop();
 
     current_url_ = url;
     cache_key_ = cache_key;
+    seek_ms_.store(seek_ms);
     running_ = true;
     last_frame_time_ = std::chrono::steady_clock::now();
 
@@ -105,9 +106,9 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
             const size_t frameSize = static_cast<size_t>(width_) *
                                      static_cast<size_t>(height_) * 3;
 
-            auto play_chunk = [&](int chunk_index) -> bool {
+            auto play_chunk = [&](int chunk_index, int skip_frames = 0) -> bool {
                 try {
-                    spdlog::info("Playing chunk {}", chunk_index);
+                    spdlog::info("Playing chunk {} (skip {} frames)", chunk_index, skip_frames);
                     std::string binPath = chunk_bin_path(chunk_index).string();
                     FILE* bin = fopen(binPath.c_str(), "rb");
                     if (!bin) {
@@ -122,6 +123,11 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     notify_status("playing");
 
                     std::vector<uint8_t> buffer(frameSize);
+
+                    for (int i = 0; i < skip_frames && running_; ++i) {
+                        if (fread(buffer.data(), 1, frameSize, bin) != frameSize) break;
+                    }
+
                     while (running_) {
                         if (fread(buffer.data(), 1, frameSize, bin) != frameSize)
                             break;
@@ -145,25 +151,39 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
             };
 
             while (running_) {
-                std::string bin0 = chunk_bin_path(0).string();
+                long seek = seek_ms_.exchange(0);
+                int start_chunk = 0;
+                int skip_frames = 0;
+                if (seek > 0) {
+                    start_chunk = static_cast<int>(seek / (chunk_duration_sec_ * 1000));
+                    skip_frames = static_cast<int>(
+                        (seek % (chunk_duration_sec_ * 1000)) * fps_ / 1000.0);
+                    spdlog::info("Seek: {}ms \u2192 chunk {} skip {} frames",
+                                 seek, start_chunk, skip_frames);
+                }
+
+                std::string startBin = chunk_bin_path(start_chunk).string();
                 std::error_code ec;
-                bool cached = std::filesystem::exists(bin0, ec) &&
-                              std::filesystem::file_size(bin0, ec) > 0;
+                bool cached = std::filesystem::exists(startBin, ec) &&
+                              std::filesystem::file_size(startBin, ec) > 0;
 
                 if (!cached) {
                     state_ = State::Downloading;
                     notify_status("downloading");
-                    spdlog::info("Downloading initial chunk 0");
-                    if (!download_and_process_chunk(0)) {
+                    spdlog::info("Downloading initial chunk {}", start_chunk);
+                    if (!download_and_process_chunk(start_chunk)) {
                         break;
                     }
-                    evict_oldest_first_chunks();
+                    if (start_chunk == 0) {
+                        evict_oldest_first_chunks();
+                    }
                 } else {
-                    spdlog::info("Using cached chunk 0 — starting immediately");
+                    spdlog::info("Using cached chunk {} — starting immediately", start_chunk);
                 }
 
-                int current = 0;
+                int current = start_chunk;
                 bool had_error = false;
+                bool first_chunk = true;
 
                 while (running_) {
                     int next = current + 1;
@@ -180,11 +200,13 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                         }
                     });
 
-                    if (!play_chunk(current)) {
+                    int this_skip = first_chunk ? skip_frames : 0;
+                    if (!play_chunk(current, this_skip)) {
                         if (prefetch_thread_.joinable()) prefetch_thread_.join();
                         had_error = (state_.load() == State::Error);
                         break;
                     }
+                    first_chunk = false;
 
                     if (prefetch_thread_.joinable()) {
                         spdlog::debug("Waiting for prefetch of chunk {}", next);
@@ -263,8 +285,8 @@ bool VideoStreamEngine::tick() {
 bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
                                                     bool set_error_on_fail) {
     try {
-        const int start_sec = chunk_index * CHUNK_DURATION_SEC;
-        const int end_sec   = start_sec + CHUNK_DURATION_SEC;
+        const int start_sec = chunk_index * chunk_duration_sec_;
+        const int end_sec   = start_sec + chunk_duration_sec_;
 
         auto mp4Path = chunk_mp4_path(chunk_index);
         auto binPath = chunk_bin_path(chunk_index);

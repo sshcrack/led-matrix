@@ -38,7 +38,7 @@ private:
 
     void search_and_play(const std::string& track_id, const std::string& song,
                          const std::string& artist, const std::string& suffix,
-                         bool fallback);
+                         bool fallback, long spotify_progress_ms, long spotify_duration_ms);
 };
 
 extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV();
