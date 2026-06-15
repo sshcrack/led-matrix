@@ -11,9 +11,14 @@ namespace {
   Spotify* resolve_spotify() {
     static Spotify* cached = nullptr;
     static bool tried = false;
+    static bool warned = false;
     if (!tried) {
       tried = true;
       cached = static_cast<Spotify*>(PluginRegistry::get("spotify"));
+      if (cached == nullptr && !warned) {
+        warned = true;
+        spdlog::warn("[SpotifyMVScene] SpotifyScenes unavailable (disabled or missing credentials) — track detection disabled");
+      }
     }
     return cached;
   }
@@ -92,7 +97,6 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas* canvas) {
   auto* sp = resolve_spotify();
   if (sp == nullptr) {
     canvas->Fill(0, 0, 0);
-    spdlog::warn("[SpotifyMVScene] spotify global is null — SpotifyScenes not loaded yet");
     return true;
   }
 
