@@ -72,6 +72,7 @@ void UdpServer::server_loop()
 
             const uint8_t *payload = data + 7;
 
+
             // Pass to plugins (note: using data[1] as magicPacket for backward compatibility)
             for (const auto &plugin : plugins)
             {
@@ -124,6 +125,13 @@ UdpServer::UdpServer(int port) : server_running(true)
         close(udp_socket);
         udp_socket = -1;
         return;
+    }
+
+    // Enlarge receive buffer to handle large video frames (128x128x3 + header = ~49KB)
+    int rcvbuf = 256 * 1024;
+    if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
+    {
+        spdlog::warn("Failed to set SO_RCVBUF: {}", strerror(errno));
     }
 
     // Set socket to non-blocking mode

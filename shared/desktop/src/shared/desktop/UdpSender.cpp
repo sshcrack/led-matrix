@@ -23,10 +23,19 @@ UdpSender::UdpSender() {
     WSACleanup();
     throw std::runtime_error("Failed to create socket");
   }
+  {
+    int sndbuf = 256 * 1024;
+    setsockopt(socket, SOL_SOCKET, SO_SNDBUF,
+               reinterpret_cast<const char*>(&sndbuf), sizeof(sndbuf));
+  }
 #else
   socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (socket < 0) {
     throw std::runtime_error("Failed to create socket");
+  }
+  {
+    int sndbuf = 256 * 1024;
+    setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
   }
 #endif
 }

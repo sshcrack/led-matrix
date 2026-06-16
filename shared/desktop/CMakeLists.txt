@@ -15,6 +15,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/MatrixVersionChecker.cpp
         src/shared/desktop/MatrixVersionManager.cpp
         src/shared/desktop/plugin/main.cpp
+        src/shared/desktop/VideoStreamEngine.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
@@ -53,9 +54,10 @@ target_include_directories(${PROJECT_NAME}
 
 if(WIN32)
         set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
+        set(VCPKG_DEBUG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/debug/bin")
 
         # Just install all dlls here, probably everything will be used...
-        file(GLOB ALL_DLLS "${VCPKG_BIN_DIR}/*.dll")
+        file(GLOB ALL_DLLS "${VCPKG_BIN_DIR}/*.dll" "${VCPKG_DEBUG_BIN_DIR}/*.dll")
 
         if(ALL_DLLS)
                 install(FILES ${ALL_DLLS}
