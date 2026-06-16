@@ -40,6 +40,19 @@ cmake --build --preset emulator --target install
 ./scripts/run_emulator.sh
 ```
 
+Desktop build on Windows (requires `VCToolsVersion` env var to align vcpkg and MSBuild toolsets):
+```bash
+# Configure
+$env:VCToolsVersion="14.44.35207"; cmake --preset desktop-windows
+# Build
+$env:VCToolsVersion="14.44.35207"; cmake --build --preset desktop-windows
+# Debug variant
+$env:VCToolsVersion="14.44.35207"; cmake --preset desktop-windows-debug
+$env:VCToolsVersion="14.44.35207"; cmake --build --preset desktop-windows-debug
+```
+
+Set `VCToolsVersion` to the latest MSVC version under `E:\PCProgs\VsCode2022\VC\Tools\MSVC\`.
+
 Cross-compile for Pi and deploy:
 ```bash
 cmake --preset cross-compile

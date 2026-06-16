@@ -138,7 +138,7 @@ void PluginManager::initialize() {
         // Clear any existing errors
         dlerror();
 
-        void *dlhandle = dlopen(plPath.c_str(), RTLD_LAZY);
+        void *dlhandle = dlopen(plPath.c_str(), RTLD_LAZY | RTLD_GLOBAL);
         if (dlhandle == nullptr) {
             error("Failed to load plugin '{}': {}", plPath.string(), dlerror());
             continue; // Skip this plugin and try the next one

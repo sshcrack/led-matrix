@@ -26,16 +26,14 @@ bool Spotify::refresh() const {
     }
 
     std::string url = "https://accounts.spotify.com/api/token";
-    std::string post_fields = "grant_type=refresh_token&refresh_token=" + spAuth.refresh_token.value();
-
-    std::string auth = client_id + ":" + client_secret;
 
     auto r = cpr::Post(cpr::Url{url},
                        cpr::Payload{
                                {"grant_type",    "refresh_token"},
-                               {"refresh_token", spAuth.refresh_token.value()}
-                       },
-                       cpr::Authentication(client_id, client_secret, cpr::AuthMode::BASIC)
+                               {"refresh_token", spAuth.refresh_token.value()},
+                               {"client_id",     client_id},
+                               {"client_secret", client_secret}
+                       }
     );
 
     if (r.status_code != 200) {
