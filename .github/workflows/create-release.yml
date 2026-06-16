@@ -2,6 +2,9 @@ name: Release new version
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,13 +46,27 @@ jobs:
           fi
           
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate tag matches CMakeLists.txt version
+        if: github.event_name == 'push'
+        run: |
+          EXPECTED="v${{ steps.version.outputs.VERSION }}"
+          if [ "$EXPECTED" != "${{ github.ref_name }}" ]; then
+            echo "Tag '${{ github.ref_name }}' does not match CMakeLists.txt version '$EXPECTED'" >&2
+            exit 1
+          fi
+          echo "Tag '${{ github.ref_name }}' matches CMakeLists.txt version"
+
       - name: Check if tag or release exists
         id: check_tag
         run: |
           TAG="v${{ steps.version.outputs.VERSION }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists!" >&2
-            exit 1
+          # For workflow_dispatch, also check the tag doesn't exist yet
+          if [ "${{ github.event_name }}" != "push" ]; then
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "Tag $TAG already exists!" >&2
+              exit 1
+            fi
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists!" >&2
