@@ -54,10 +54,9 @@ target_include_directories(${PROJECT_NAME}
 
 if(WIN32)
         set(VCPKG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
-        set(VCPKG_DEBUG_BIN_DIR "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/debug/bin")
 
-        # Just install all dlls here, probably everything will be used...
-        file(GLOB ALL_DLLS "${VCPKG_BIN_DIR}/*.dll" "${VCPKG_DEBUG_BIN_DIR}/*.dll")
+        # Install all required DLLs from vcpkg release bin directory
+        file(GLOB ALL_DLLS "${VCPKG_BIN_DIR}/*.dll")
 
         if(ALL_DLLS)
                 install(FILES ${ALL_DLLS}
@@ -66,10 +65,4 @@ if(WIN32)
         else()
                 message(FATAL_ERROR "No DLLs found in ${VCPKG_BIN_DIR}.")
         endif()
-        # Install all DLLs from the build output directory
-        install(DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/"
-                DESTINATION "bin"
-                FILES_MATCHING PATTERN "*.dll"
-                PATTERN "*.pdb" EXCLUDE
-        )
 endif()
