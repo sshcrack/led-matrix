@@ -16,8 +16,8 @@ std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, c
         return std::unexpected("No API key found for SongBPM API (must be defined in pluginConfigs.song_bpm_api_key)");
     }
 
-    const auto str_url = "https://api.getsong.co/search/?type=both&limit=1&lookup=song:" + urlEncode(song_name) +
-                         "%20artist:" + urlEncode(artist_name) + "&api_key=" + config->get_plugin_configs().find("song_bpm_api_key")->second;
+    const auto str_url = "https://api.getsong.co/search/?type=both&limit=1&lookup=song:" + std::string(urlEncode(song_name)) +
+                         "%20artist:" + std::string(urlEncode(artist_name)) + "&api_key=" + config->get_plugin_configs().find("song_bpm_api_key")->second;
     auto url = cpr::Url{str_url};
 
     auto response = cpr::Get(url);
@@ -35,7 +35,7 @@ std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, c
         if (search.empty() || !search[0].contains("tempo") || !(search[0]["tempo"].is_string()))
             return unexpected("Invalid JSON returned: " + j.dump());
 
-        std::string s = search[0]["tempo"];
+        std::string s = search[0]["tempo"].template get<std::string>();
         spdlog::trace("Got BPM {}", s);
 
         return std::stof(s);

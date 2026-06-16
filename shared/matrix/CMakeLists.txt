@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/post.cpp
         src/shared/matrix/post_processor.cpp
         src/shared/matrix/utils/utils.cpp
+        src/shared/matrix/utils/LoadingAnimation.cpp
         src/shared/matrix/utils/shared.cpp
         src/shared/matrix/utils/image_fetch.cpp
         src/shared/matrix/utils/FrameTimer.cpp
@@ -26,6 +27,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/server/common.cpp
         src/shared/matrix/canvas_consts.cpp
         src/shared/matrix/transition_manager.cpp
+        src/shared/matrix/plugin_registry.cpp
 )
 
 # Main Target Compile
@@ -72,9 +74,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio)
 find_package(LibXml2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC LibXml2::LibXml2)
 
-# ImageMagick
-find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+# GraphicsMagick (via vcpkg pkg-config to resolve transitive deps)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)

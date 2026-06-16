@@ -47,6 +47,10 @@ namespace Plugins
         virtual void on_websocket_message(const std::string message) {}
         void send_websocket_message(const std::string &message);
 
+        /// Override to return true for plugins that send large payloads (full frames).
+        /// These will be throttled by the UDP send FPS limit.
+        [[nodiscard]] virtual bool is_large_payload_plugin() const { return false; }
+
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet
         [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(const std::string sceneName)
         {

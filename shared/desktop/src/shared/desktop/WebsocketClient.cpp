@@ -67,11 +67,15 @@ void WebsocketClient::threadLoop()
     auto generalConfig = configManager->getGeneralConfig();
     std::string hostname = generalConfig.getHostname();
     uint16_t port = generalConfig.getPort();
+    int udpFpsLimit = generalConfig.getUdpFpsLimit();
     auto lastUpdated = clock::now();
+
+    std::unordered_map<std::string, clock::time_point> lastLargePayloadSend;
 
     for (const auto &plugin : plugins | std::views::values)
     {
         plugin->udp_init();
+        lastLargePayloadSend[plugin->get_plugin_name()] = clock::time_point{};
     }
 
     while (senderRunning)
@@ -86,13 +90,28 @@ void WebsocketClient::threadLoop()
             generalConfig = configManager->getGeneralConfig();
             hostname = generalConfig.getHostname();
             port = generalConfig.getPort();
+            udpFpsLimit = generalConfig.getUdpFpsLimit();
         }
+
+        auto largePayloadMinInterval = std::chrono::duration<double, std::milli>(1000.0 / udpFpsLimit);
 
         for (auto &pl : plugins | std::views::values)
         {
+            const auto &name = pl->get_plugin_name();
+
+            if (pl->is_large_payload_plugin())
+            {
+                auto now = clock::now();
+                auto &last = lastLargePayloadSend[name];
+                if (now - last < largePayloadMinInterval)
+                    continue;
+            }
+
             auto packet = pl->compute_next_packet(scene);
             if (!packet.has_value())
                 continue;
+
+            lastLargePayloadSend[name] = clock::now();
 
             auto res = this->udpSender.sendPacket(std::move(packet.value()), hostname, port);
             static int consecutiveError = 0;
@@ -108,8 +127,7 @@ void WebsocketClient::threadLoop()
             else
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
-                lastError.clear(); // Clear error on successful send
-
+                lastError.clear();
                 consecutiveError = 0;
             }
         }

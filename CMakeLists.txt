@@ -97,8 +97,11 @@ endif()
 
 # Set RPATH settings
 if(ENABLE_DESKTOP)
-    # Desktop DEB installs shared libs to /usr/lib/led-matrix-desktop
-    set(CMAKE_INSTALL_RPATH "/usr/lib/led-matrix-desktop")
+    # Desktop DEB installs shared libs to /usr/lib/led-matrix-desktop.
+    # $ORIGIN/../lib/led-matrix-desktop resolves correctly for both
+    # local dev installs (install/bin/ -> install/lib/led-matrix-desktop/)
+    # and system DEB installs (/usr/bin/ -> /usr/lib/led-matrix-desktop/).
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib/led-matrix-desktop")
 else()
     # Matrix TGZ is extracted flat; all .so files are co-located with the binary
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
@@ -220,10 +223,11 @@ else()
 
     target_link_libraries(${PROJECT_NAME} PRIVATE restinio::restinio magic_enum::magic_enum)
 
-    # ImageMagick
+    # GraphicsMagick (via vcpkg pkg-config to resolve transitive deps)
 
-    find_package(unofficial-graphicsmagick CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::graphicsmagick::graphicsmagick)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
+    target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 
     # HTTP Requests
 
@@ -277,12 +281,14 @@ if(ENABLE_EMULATOR)
     target_compile_features(preview_gen PRIVATE cxx_std_23)
     target_compile_definitions(preview_gen PRIVATE ENABLE_EMULATOR)
 
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
     target_link_libraries(preview_gen PRIVATE
         SharedToolsCommon
         SharedToolsMatrix
         spdlog::spdlog
         nlohmann_json::nlohmann_json
-        unofficial::graphicsmagick::graphicsmagick
+        PkgConfig::GraphicsMagick
         rpi_rgb_led_matrix::rpi-rgb-led-matrix
         ${CMAKE_DL_LIBS}
     )

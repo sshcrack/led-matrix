@@ -23,6 +23,7 @@ namespace Config
         std::string hostname;
         uint16_t port = 8080; // Default port
         int fpsLimit = 60; // Default FPS limit
+        int udpFpsLimit = 30; // Default UDP send FPS limit
         bool turnMatrixOffOnExit;
         bool turnMatrixOnOnStart;
 
@@ -52,6 +53,9 @@ namespace Config
 
         int getFpsLimit() const;
         void setFpsLimit(int newFpsLimit);
+
+        int getUdpFpsLimit() const;
+        void setUdpFpsLimit(int newUdpFpsLimit);
 
         bool isTurnMatrixOffOnExit() const;
         void setTurnMatrixOffOnExit(bool value);
@@ -93,13 +97,13 @@ namespace Config
             return generalConfig;
         }
 
-        std::optional<const nlohmann::json> getPluginSetting(const std::string pluginName) const
+        std::optional<nlohmann::json> getPluginSetting(const std::string pluginName) const
         {
             std::shared_lock<std::shared_mutex> lock(mutex_);
             if (!pluginSettings.contains(pluginName))
                 return std::nullopt;
 
-            return pluginSettings.at(pluginName);
+            return nlohmann::json(pluginSettings.at(pluginName));
         }
 
         void setPluginSetting(const std::string pluginName, const json &settings)

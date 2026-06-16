@@ -1,6 +1,7 @@
 #include "ShadertoyScene.h"
 #include "spdlog/spdlog.h"
 #include <shared/matrix/canvas_consts.h>
+#include <shared/matrix/utils/LoadingAnimation.h>
 
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/config/shader_providers/general.h"
@@ -103,43 +104,7 @@ void Scenes::ShadertoyScene::after_render_stop()
 
 void Scenes::ShadertoyScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
 {
-    const int width = Constants::width;
-    const int height = Constants::height;
-    
-    // Clear canvas
-    canvas->Fill(0, 0, 0);
-    
-    // Simple rotating dots animation
-    const int num_dots = 8;
-    const int radius = std::min(width, height) / 3;
-    const int center_x = width / 2;
-    const int center_y = height / 2;
-    
-    for (int i = 0; i < num_dots; ++i)
-    {
-        float angle = (2.0f * M_PI * i / num_dots) + (loading_animation_frame * 0.05f);
-        int x = center_x + static_cast<int>(radius * cos(angle));
-        int y = center_y + static_cast<int>(radius * sin(angle));
-        
-        // Fade dots based on position in rotation
-        int brightness = 255 - (i * 255 / num_dots);
-        
-        // Draw a small circle for each dot
-        for (int dx = -1; dx <= 1; ++dx)
-        {
-            for (int dy = -1; dy <= 1; ++dy)
-            {
-                int px = x + dx;
-                int py = y + dy;
-                if (px >= 0 && px < width && py >= 0 && py < height)
-                {
-                    canvas->SetPixel(px, py, 0, brightness, brightness);
-                }
-            }
-        }
-    }
-    
-    loading_animation_frame++;
+    LoadingAnimation::render(canvas, loading_animation_frame++, 0, 255, 255);
 }
 
 bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)

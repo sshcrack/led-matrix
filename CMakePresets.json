@@ -30,6 +30,7 @@
             "binaryDir": "${sourceDir}/desktop_build",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/triplets",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "ENABLE_DESKTOP": true
             }
@@ -49,13 +50,16 @@
         },
         {
             "name": "desktop-windows",
-            "architecture": "x64",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             },
-            "inherits": "desktop"
+            "inherits": "desktop",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            }
         },
         {
             "name": "desktop-windows-debug",
