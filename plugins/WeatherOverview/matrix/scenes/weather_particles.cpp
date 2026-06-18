@@ -145,6 +145,10 @@ void Scenes::WeatherScene::renderShootingStars(rgb_matrix::FrameCanvas *canvas)
 
 void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
 {
+    if (particles.empty()) {
+        initializeParticles();
+    }
+
     const int code = data.weatherCode;
     bool is_snow =
         (code >= 70 && code <= 79) ||
@@ -180,7 +184,7 @@ void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
 
             p.x += wind_offset;
             p.y += p.speed * speed_mult;
-            p.life_time += 1.0f / static_cast<float>(get_target_fps());
+            p.life_time += 1.0f / static_cast<float>(std::max(1, get_target_fps()));
 
             if (is_snow)
             {
@@ -290,7 +294,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(rgb_matrix::FrameCanvas *canv
                                 if (rx >= 0 && rx < matrix_width && ry >= 0 && ry < matrix_height)
                                 {
                                     float sub_alpha = alpha * 0.6f;
-                                    SetPixelAlpha(canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), sub_alpha);
+                                    SetPixelAlpha(canvas, rx, ry, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), sub_alpha);
                                 }
                             }
                         }
@@ -306,7 +310,7 @@ void Scenes::WeatherScene::renderEnhancedParticles(rgb_matrix::FrameCanvas *canv
                         if (ry >= 0 && ry < matrix_height)
                         {
                             float streak_alpha = alpha * (1.0f - i * (1.0f / 3.0f));
-                            SetPixelAlpha(canvas, px, py, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), streak_alpha);
+                            SetPixelAlpha(canvas, px, ry, std::min(max, p.r), std::min(max, p.g), std::min(max, p.b), streak_alpha);
                         }
                     }
                 }

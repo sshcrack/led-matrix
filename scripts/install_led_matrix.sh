@@ -36,7 +36,7 @@ REPO="sshcrack/led-matrix"
 API_URL="https://api.github.com/repos/$REPO/releases/latest"
 print_info "Fetching latest release info from GitHub... 🚀"
 ASSET_URL=$(curl -s "$API_URL" | grep "browser_download_url" \
-  | grep -E 'led-matrix-[0-9]+\.[0-9]+\.[0-9]+-arm64\.deb' \
+  | grep -E 'led-matrix-[0-9]+\.[0-9]+\.[0-9]+_arm64\.deb' \
   | cut -d '"' -f 4 | head -n 1)
 
 if [[ -z "$ASSET_URL" ]]; then

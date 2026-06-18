@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import fs from 'fs'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 function pwaAssetCheckPlugin(): import('vite').Plugin {
   const requiredAssets = ['icon-192.png', 'icon-512.png', 'screenshot-wide.png', 'screenshot-mobile.png']

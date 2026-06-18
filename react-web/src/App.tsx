@@ -19,7 +19,7 @@ export default function App() {
     <ApiUrlProvider>
       <BrowserRouter basename="/web">
         <ErrorBoundary>
-        <Layout>
+          <Layout>
             <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading...</div>}>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -32,7 +32,7 @@ export default function App() {
                 <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<ModifyShaderProviders />} />
               </Routes>
             </Suspense>
-        </Layout>
+          </Layout>
         </ErrorBoundary>
       </BrowserRouter>
       <Toaster richColors position="top-right" />

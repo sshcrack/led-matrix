@@ -2,12 +2,7 @@
 set -e
 
 if [ "$1" = "purge" ]; then
-    # Remove specific known files instead of the entire directory
-    rm -f /var/lib/led-matrix/config.json
-    rm -f /var/lib/led-matrix/.update_success
-    rm -f /var/lib/led-matrix/.update_error
-    rm -rf /var/lib/led-matrix/data
-    rmdir /var/lib/led-matrix 2>/dev/null || true
+    rm -rf /var/lib/led-matrix
     # Remove debconf answers on purge
     if command -v db_purge >/dev/null 2>&1; then
         . /usr/share/debconf/confmodule
