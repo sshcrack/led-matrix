@@ -65,7 +65,6 @@ namespace AmbientScenes {
         ms_right = 0;
         ms_i = 0;
         ms_j = 0;
-        ms_k = 0;
         ms_merging = false;
     }
 
@@ -121,7 +120,6 @@ namespace AmbientScenes {
         ms_right = 0;
         ms_i = 0;
         ms_j = 0;
-        ms_k = 0;
         ms_merging = false;
         ms_temp.clear();
         ms_temp.reserve(n);
