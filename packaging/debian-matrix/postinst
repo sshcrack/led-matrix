@@ -65,18 +65,18 @@ EOF
 
 if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
     cat >> "$ENV_FILE" << EOF
-SPOTIFY_CLIENT_ID=${SPOTIFY_ID}
-SPOTIFY_CLIENT_SECRET=${SPOTIFY_SECRET}
+SPOTIFY_CLIENT_ID="${SPOTIFY_ID}"
+SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET}"
 EOF
 fi
+
+PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 
 # --- Write initial config.json if not already present ---
 if [ ! -f "$DATA_DIR/config.json" ]; then
     AUTO_UPDATE_BOOL="false"
     [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
     INTERVAL="${UPDATE_INTERVAL:-24}"
-
-    PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 
     cat > "$DATA_DIR/config.json" << EOF
 {
@@ -94,6 +94,15 @@ if [ ! -f "$DATA_DIR/config.json" ]; then
 EOF
     if id pi >/dev/null 2>&1; then
         chown pi:pi "$DATA_DIR/config.json"
+    fi
+else
+    # Update the current_version field on every upgrade
+    if command -v jq >/dev/null 2>&1; then
+        tmp=$(mktemp)
+        jq --arg ver "$PKG_VERSION" '.update_settings.current_version = $ver' "$DATA_DIR/config.json" > "$tmp" && mv "$tmp" "$DATA_DIR/config.json"
+        if id pi >/dev/null 2>&1; then
+            chown pi:pi "$DATA_DIR/config.json"
+        fi
     fi
 fi
 

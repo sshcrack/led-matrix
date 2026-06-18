@@ -327,12 +327,6 @@ int main(int argc, char *argv[])
 
     pl->delete_references();
 
-    info("Destroying config instance...");
-    delete config;
-
-    info("Terminating plugin loader...");
-    pl->destroy_plugins();
-
     info("Stopping UpdateManager...");
     if (Constants::global_update_manager)
     {
@@ -340,6 +334,11 @@ int main(int argc, char *argv[])
         Constants::global_update_manager.reset();
     }
 
+    info("Terminating plugin loader...");
+    pl->destroy_plugins();
+
+    info("Destroying config instance...");
+    delete config;
 
     return 0;
 }
