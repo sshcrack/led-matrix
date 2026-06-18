@@ -22,11 +22,6 @@ using namespace spdlog;
 
 using rgb_matrix::RGBMatrixBase;
 
-rgb_matrix::Color ERROR_COLOR = rgb_matrix::Color(255, 0, 0);
-rgb_matrix::Font ERROR_FONT = rgb_matrix::Font();
-bool load_font_error = false;
-bool loaded_font_success = false;
-
 namespace
 {
     std::vector<std::pair<int, std::shared_ptr<Scenes::Scene>>> build_weighted_scenes(
@@ -191,6 +186,11 @@ namespace
 
 void render_fallback(RGBMatrixBase *canvas)
 {
+    static rgb_matrix::Color ERROR_COLOR = rgb_matrix::Color(255, 0, 0);
+    static rgb_matrix::Font ERROR_FONT = rgb_matrix::Font();
+    static bool load_font_error = false;
+    static bool loaded_font_success = false;
+
     if (!loaded_font_success && !load_font_error)
     {
         if (!ERROR_FONT.LoadFont((get_exec_dir() / "7x13.bdf").c_str()))
@@ -231,7 +231,7 @@ bool render_scene_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> sc
         composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
 
 #ifdef ENABLE_EMULATOR
-        ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+        static_cast<rgb_matrix::EmulatorMatrix *>(matrix)->Render();
 #endif
     }
 
@@ -298,7 +298,7 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
         composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
 
 #ifdef ENABLE_EMULATOR
-        ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+        static_cast<rgb_matrix::EmulatorMatrix *>(matrix)->Render();
 #endif
 
         if (alpha_progress >= 1.0f)
@@ -345,7 +345,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
             render_fallback(matrix);
 
 #ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)matrix)->Render();
+            static_cast<rgb_matrix::EmulatorMatrix *>(matrix)->Render();
 #endif
 
             SleepMillis(300);

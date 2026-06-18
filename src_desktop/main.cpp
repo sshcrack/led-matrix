@@ -65,6 +65,7 @@ std::string get_noto_color_emoji_path() {
 static std::atomic<bool> shouldExit{false};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static bool showMainWindow = false;
+static std::future<void> g_pending_http;
 
 #ifdef _WIN32
 // Global variables for shutdown handling on Windows
@@ -143,7 +144,7 @@ static void change_matrix_status(const std::string &hostname, uint16_t port, boo
         task();
     } else {
         // Asynchronous call for normal operation
-        std::thread(task).detach();
+        g_pending_http = std::async(std::launch::async, task);
     }
 }
 
@@ -200,202 +201,7 @@ static void init_plugins() {
     }
 }
 
-static void show_gui() {
-    static bool initialConnect = true;
-    auto pl = Plugins::PluginManager::instance();
-    auto cfg = ConfigManager::instance();
-    if (shouldExit.load()) {
-        shutdown_matrix();
-        HelloImGui::GetRunnerParams()->appShallExit = true;
-        shouldExit.store(false);
-    }
 
-    if (showMainWindow) {
-            spdlog::info("Showing main window.");
-            showMainWindow = false;
-            HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
-            auto window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
-
-            // Restore the window if it was minimized or hidden
-            glfwRestoreWindow(window);
-            glfwShowWindow(window);
-            glfwFocusWindow(window);
-        }
-
-        General &generalCfg = cfg->getGeneralConfig();
-        ImGui::SeparatorText("General Device Settings");
-
-        static std::string hostname = generalCfg.getHostname();
-        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname,
-                                     ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter)) {
-            std::cout << "Hostname changed to: " << hostname << std::endl;
-            generalCfg.setHostname(hostname);
-            ws->stop();
-        }
-
-        bool somethingInvalid = false;
-        if (hostname.empty()) {
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
-            somethingInvalid = true;
-        }
-
-        static int port = generalCfg.getPort();
-        if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None)) {
-            std::cout << "Port changed to: " << port << std::endl;
-            generalCfg.setPort(port);
-        }
-
-        if (port < 1 || port > 65535) {
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
-            somethingInvalid = true;
-        }
-
-        static int fpsLimit = generalCfg.getFpsLimit();
-        if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5, ImGuiInputFlags_None)) {
-            if (fpsLimit < 1)
-                fpsLimit = 1;
-            if (fpsLimit > 360)
-                fpsLimit = 360;
-            generalCfg.setFpsLimit(fpsLimit);
-            HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
-        }
-        if (fpsLimit < 1 || fpsLimit > 360) {
-            const ImVec2 min = ImGui::GetItemRectMin();
-            const ImVec2 max = ImGui::GetItemRectMax();
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
-            somethingInvalid = true;
-        }
-
-        static int udpFpsLimit = generalCfg.getUdpFpsLimit();
-        if (ImGui::SliderInt("UDP Send FPS", &udpFpsLimit, 1, 120, "%d FPS")) {
-            if (udpFpsLimit < 1)
-                udpFpsLimit = 1;
-            if (udpFpsLimit > 120)
-                udpFpsLimit = 120;
-            generalCfg.setUdpFpsLimit(udpFpsLimit);
-        }
-        ImGui::SetItemTooltip("Limits the rate at which frames are sent to the Pi. "
-                              "Lower this if the Pi can't keep up (e.g. 15-25 FPS).");
-
-        if (somethingInvalid) {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
-        } else if (initialConnect) {
-            ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
-            ws->start();
-
-            // Check matrix version when connecting
-            matrixVersionManager.checkMatrixVersionAsync(hostname, port);
-
-            initialConnect = false;
-
-            if (generalCfg.isTurnMatrixOnOnStart()) {
-                spdlog::info("Turning Matrix ON on start.");
-                change_matrix_status(hostname, port, true);
-            }
-        }
-
-        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden) {
-            // We are just returning here, because waiting is handled in the AfterSwap method.
-            // (Its this late so we connect to the websocket)
-            return;
-        }
-
-        if (startMinimized) {
-            if (startupFrameCounter > 10) {
-                spdlog::info("Hiding window after startup.");
-                HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;
-                startMinimized = false;
-            } else {
-                startupFrameCounter++;
-            }
-            return;
-        }
-
-        static bool matrixOnOnStart = generalCfg.isTurnMatrixOnOnStart();
-        if (ImGui::Checkbox("Turn Matrix On on Start", &matrixOnOnStart)) {
-            generalCfg.setTurnMatrixOnOnStart(matrixOnOnStart);
-        }
-        ImGui::SameLine();
-        static bool matrixOffOnExit = generalCfg.isTurnMatrixOffOnExit();
-        if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
-            generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
-        }
-
-        auto state = ws->getReadyState();
-        const std::string stateStr = ws->getReadyStateString();
-        std::string statusText = "WebSocket is currently: " + stateStr;
-
-        ImGui::Text(statusText.c_str());
-        if (state != ix::ReadyState::Open) {
-            if (ImGui::Button("Connect", ImVec2(0, 0))) {
-                ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
-                ws->start();
-                ws->webSocket.enableAutomaticReconnection();
-
-                // Check matrix version when manually connecting
-                matrixVersionManager.checkMatrixVersionAsync(hostname, port);
-
-                spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
-            }
-
-            return;
-        } else {
-            if (ImGui::Button("Disconnect", ImVec2(0, 0))) {
-                ws->stop();
-                ws->webSocket.disableAutomaticReconnection();
-                spdlog::info("Disconnecting from WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
-            }
-        }
-
-        ImGui::Text(("Active Scene: " + ws->getActiveScene()).c_str());
-        auto last = ws->getLastError();
-        if (!last.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last Error: %s", last.c_str());
-        }
-
-        ImGui::SeparatorText("Plugin Settings");
-        auto plugins = pl->get_plugins();
-        if (plugins.empty()) {
-            ImGui::Text("No plugins loaded.");
-            return;
-        }
-
-        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0]; {
-            ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0),
-                              ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-            for (const auto &currPair: plugins) {
-                std::string currName = currPair.first;
-                if (ImGui::Selectable(currName.c_str(), selected.first == currName))
-                    selected = currPair;
-            }
-
-            ImGui::EndChild();
-        }
-
-        ImGui::SameLine();
-        ImGui::BeginGroup();
-        ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
-        // Leave room for 1 line below us
-
-        selected.second->render();
-
-        ImGui::EndChild();
-        ImGui::EndGroup();
-
-        updateManager.render(ImGui::GetCurrentContext());
-        matrixVersionManager.render(ImGui::GetCurrentContext());
-        if (updateManager.shallAppExit())
-            HelloImGui::GetRunnerParams()->appShallExit = true;
-}
 
 // ---- Main application logic ----
 int run_app(int argc, char *argv[]) {
@@ -419,6 +225,15 @@ int run_app(int argc, char *argv[]) {
     g_shutdown_hostname = generalCfgRef.getHostnameCopy();
     g_shutdown_port = generalCfgRef.getPort();
     g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
+
+    // UI state variables (non-static, persist via lambda captures)
+    bool initialConnect = true;
+    std::string hostname = generalCfgRef.getHostname();
+    int port = generalCfgRef.getPort();
+    int fpsLimit = generalCfgRef.getFpsLimit();
+    int udpFpsLimit = generalCfgRef.getUdpFpsLimit();
+    bool matrixOnOnStart = generalCfgRef.isTurnMatrixOnOnStart();
+    bool matrixOffOnExit = generalCfgRef.isTurnMatrixOffOnExit();
 
     if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
         spdlog::info("Starting minimized.");

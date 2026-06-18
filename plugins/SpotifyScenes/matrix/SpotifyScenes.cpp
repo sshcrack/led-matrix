@@ -1,4 +1,5 @@
 #include "SpotifyScenes.h"
+#include <random>
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/plugin_registry.h"
 #include "manager/shared_spotify.h"
@@ -115,11 +116,13 @@ register_routes(std::unique_ptr<router_t> router) {
 
 string SpotifyScenes::generate_random_string(size_t length) {
     static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    static std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<size_t> dist(0, sizeof(charset) - 2);
     string result;
     result.resize(length);
 
     for (size_t i = 0; i < length; i++) {
-        result[i] = charset[rand() % (sizeof(charset) - 1)];
+        result[i] = charset[dist(rng)];
     }
 
     return result;

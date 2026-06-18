@@ -12,6 +12,8 @@ namespace fs = std::filesystem;
 
 namespace
 {
+    constexpr size_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
     struct AssetTypeConfig
     {
         std::string type;
@@ -37,12 +39,34 @@ namespace
                filename.find("..") == std::string::npos;
     }
 
-    std::optional<std::pair<std::string, std::string>> parse_multipart_file(const std::string &content_type, const std::string &body)
+    bool is_valid_boundary(const std::string &boundary)
     {
+        if (boundary.empty() || boundary.size() > 70)
+            return false;
+        for (const auto c : boundary)
+        {
+            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_' && c != '.' && c != '+' && c != '\'')
+                return false;
+        }
+        return true;
+    }
+
+    enum class MultipartError { None, ParseError, TooLarge };
+
+    std::pair<std::optional<std::pair<std::string, std::string>>, MultipartError>
+    parse_multipart_file(const std::string &content_type, const std::string &body)
+    {
+        if (body.size() > MAX_FILE_SIZE * 2)
+        {
+            spdlog::error("Request body too large: {} bytes", body.size());
+            return {std::nullopt, MultipartError::TooLarge};
+        }
+
         const auto boundary_pos = content_type.find("boundary=");
         if (boundary_pos == std::string::npos)
         {
-            return std::nullopt;
+            spdlog::error("No boundary found in Content-Type header");
+            return {std::nullopt, MultipartError::ParseError};
         }
 
         std::string boundary = content_type.substr(boundary_pos + 9);
@@ -56,7 +80,14 @@ namespace
         }
         if (boundary.empty())
         {
-            return std::nullopt;
+            spdlog::error("Empty boundary in Content-Type header");
+            return {std::nullopt, MultipartError::ParseError};
+        }
+
+        if (!is_valid_boundary(boundary))
+        {
+            spdlog::error("Invalid boundary format: '{}'", boundary);
+            return {std::nullopt, MultipartError::ParseError};
         }
 
         const std::string boundary_marker = "--" + boundary;
@@ -66,6 +97,7 @@ namespace
             const auto part_start = body.find(boundary_marker, pos);
             if (part_start == std::string::npos)
             {
+                spdlog::error("Boundary marker '{}' not found in body", boundary_marker);
                 break;
             }
 
@@ -82,6 +114,7 @@ namespace
             const auto headers_end = body.find("\r\n\r\n", cursor);
             if (headers_end == std::string::npos)
             {
+                spdlog::error("Malformed multipart: no end of headers (CRLFCRLF) found");
                 break;
             }
             const std::string headers = body.substr(cursor, headers_end - cursor);
@@ -90,6 +123,7 @@ namespace
             const auto data_end = body.find("\r\n" + boundary_marker, data_start);
             if (data_end == std::string::npos)
             {
+                spdlog::error("Malformed multipart: closing boundary not found");
                 break;
             }
 
@@ -100,15 +134,21 @@ namespace
                 if (filename_end != std::string::npos)
                 {
                     std::string filename = headers.substr(filename_start, filename_end - filename_start);
-                    std::string data = body.substr(data_start, data_end - data_start);
-                    return std::make_pair(filename, data);
+                    const size_t data_size = data_end - data_start;
+                    if (data_size > MAX_FILE_SIZE)
+                    {
+                        spdlog::error("File '{}' exceeds max size: {} > {}", filename, data_size, MAX_FILE_SIZE);
+                        return {std::nullopt, MultipartError::TooLarge};
+                    }
+                    std::string data = body.substr(data_start, data_size);
+                    return {std::make_pair(filename, data), MultipartError::None};
                 }
             }
 
             pos = data_end + 2;
         }
 
-        return std::nullopt;
+        return {std::nullopt, MultipartError::ParseError};
     }
 }
 
@@ -164,8 +204,11 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         }
 
         const auto content_type = req->header().get_field(restinio::http_field::content_type);
-        const auto parsed_file = parse_multipart_file(content_type, req->body());
+        const auto [parsed_file, mp_error] = parse_multipart_file(content_type, req->body());
         if (!parsed_file.has_value()) {
+            if (mp_error == MultipartError::TooLarge) {
+                return reply_with_error(req, "File exceeds maximum size of 10MB", restinio::status_payload_too_large());
+            }
             return reply_with_error(req, "No multipart file found in request", restinio::status_bad_request());
         }
 

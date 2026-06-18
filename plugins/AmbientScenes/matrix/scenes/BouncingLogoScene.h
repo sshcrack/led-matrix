@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
 #include <vector>
+#include <random>
 
 namespace AmbientScenes {
     class BouncingLogoScene : public Scenes::Scene {
@@ -17,6 +18,7 @@ namespace AmbientScenes {
 
         void change_color();
         void draw_logo(rgb_matrix::FrameCanvas *canvas, int x, int y);
+        std::mt19937 rng{std::random_device{}()};
 
     public:
         explicit BouncingLogoScene();

@@ -86,10 +86,7 @@ namespace AmbientScenes {
         std::shuffle(array_data.begin(), array_data.end(), g);
 
         sort_phase = 1;
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            access_indices.clear();
-        }
+        access_indices.clear();
         delay_counter = 0;
         last_step_time = std::chrono::steady_clock::now();
 
@@ -154,10 +151,7 @@ namespace AmbientScenes {
         }
 
         if (j < bubble_pass_end) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {j, j + 1};
-            }
+            access_indices = {j, j + 1};
             if (array_data[j] > array_data[j + 1]) {
                 std::swap(array_data[j], array_data[j + 1]);
             }
@@ -177,10 +171,7 @@ namespace AmbientScenes {
         }
 
         if (j < n) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {min_idx, j};
-            }
+            access_indices = {min_idx, j};
             if (array_data[j] < array_data[min_idx]) {
                 min_idx = j;
             }
@@ -188,10 +179,7 @@ namespace AmbientScenes {
             return false;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            access_indices = {i, min_idx};
-        }
+        access_indices = {i, min_idx};
         std::swap(array_data[min_idx], array_data[i]);
         ++i;
         if (i >= n - 1) {
@@ -215,10 +203,7 @@ namespace AmbientScenes {
             j = i - 1;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            access_indices = {j, i};
-        }
+        access_indices = {j, i};
         if (j >= 0 && array_data[j] > key) {
             array_data[j + 1] = array_data[j];
             --j;
@@ -244,10 +229,7 @@ namespace AmbientScenes {
 
         if (cocktail_forward) {
             if (j < cocktail_end) {
-                {
-                    std::lock_guard<std::mutex> lock(access_indices_mutex);
-                    access_indices = {j, j + 1};
-                }
+                access_indices = {j, j + 1};
                 if (array_data[j] > array_data[j + 1]) {
                     std::swap(array_data[j], array_data[j + 1]);
                 }
@@ -264,10 +246,7 @@ namespace AmbientScenes {
         }
 
         if (j > cocktail_start) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {j - 1, j};
-            }
+            access_indices = {j - 1, j};
             if (array_data[j - 1] > array_data[j]) {
                 std::swap(array_data[j - 1], array_data[j]);
             }
@@ -292,10 +271,7 @@ namespace AmbientScenes {
         }
 
         if (shell_i < n) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {shell_j, shell_i};
-            }
+            access_indices = {shell_j, shell_i};
             if (shell_j >= 0 && array_data[shell_j] > shell_key) {
                 array_data[shell_j + shell_gap] = array_data[shell_j];
                 shell_j -= shell_gap;
@@ -332,10 +308,7 @@ namespace AmbientScenes {
 
         bool swapped = false;
         for (int idx = 0; idx + comb_gap < n; ++idx) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {idx, idx + comb_gap};
-            }
+            access_indices = {idx, idx + comb_gap};
             if (array_data[idx] > array_data[idx + comb_gap]) {
                 std::swap(array_data[idx], array_data[idx + comb_gap]);
                 swapped = true;
@@ -360,10 +333,7 @@ namespace AmbientScenes {
             return false;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            access_indices = {gnome_pos - 1, gnome_pos};
-        }
+        access_indices = {gnome_pos - 1, gnome_pos};
         if (array_data[gnome_pos] >= array_data[gnome_pos - 1]) {
             ++gnome_pos;
         } else {
@@ -398,10 +368,7 @@ namespace AmbientScenes {
 
         if (ms_merging) {
             while (ms_i <= ms_mid && ms_j <= ms_right) {
-                {
-                    std::lock_guard<std::mutex> lock(access_indices_mutex);
-                    access_indices = {ms_i, ms_j};
-                }
+                access_indices = {ms_i, ms_j};
                 if (array_data[ms_i] <= array_data[ms_j]) {
                     ms_temp.push_back(array_data[ms_i]);
                     ++ms_i;
@@ -462,10 +429,7 @@ namespace AmbientScenes {
         }
 
         if (qs_j <= qs_high - 1) {
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices = {qs_j, qs_pivot_index};
-            }
+            access_indices = {qs_j, qs_pivot_index};
             if (array_data[qs_j] < qs_pivot_value) {
                 ++qs_i;
                 if (qs_i != qs_j) {
@@ -518,10 +482,7 @@ namespace AmbientScenes {
                     largest = child + 1;
                 }
 
-                {
-                    std::lock_guard<std::mutex> lock(access_indices_mutex);
-                    access_indices = {current_root, largest};
-                }
+                access_indices = {current_root, largest};
                 if (array_data[largest] > array_data[current_root]) {
                     std::swap(array_data[current_root], array_data[largest]);
                     heap_sift_root = largest;
@@ -557,10 +518,7 @@ namespace AmbientScenes {
             largest = child + 1;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            access_indices = {current_root, largest};
-        }
+        access_indices = {current_root, largest};
         if (array_data[largest] > array_data[current_root]) {
             std::swap(array_data[current_root], array_data[largest]);
             heap_sift_root = largest;
@@ -647,17 +605,12 @@ namespace AmbientScenes {
 
         if (done) {
             sort_phase = 2;
-            {
-                std::lock_guard<std::mutex> lock(access_indices_mutex);
-                access_indices.clear();
-            }
+            access_indices.clear();
         }
     }
 
     void SortingVisualizerScene::initialize(int width, int height) {
         Scene::initialize(width, height);
-        matrix_width = matrix_width;
-        matrix_height = matrix_height;
         reset_array();
     }
 
@@ -694,12 +647,7 @@ namespace AmbientScenes {
             }
         }
 
-        // Create a safe copy of access_indices to avoid race conditions during rendering
-        std::vector<int> local_access_indices;
-        {
-            std::lock_guard<std::mutex> lock(access_indices_mutex);
-            local_access_indices = access_indices;
-        }
+        std::vector<int> local_access_indices = access_indices;
 
         int n = static_cast<int>(array_data.size());
         for (int x = 0; x < n; ++x) {

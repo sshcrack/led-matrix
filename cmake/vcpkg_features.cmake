@@ -14,7 +14,7 @@ function(check_vcpkg_feature_exists FEATURE_NAME RESULT_VAR)
     
     # Check if the feature exists in the features section
     # This is a simple string search - more robust JSON parsing could be added if needed
-    string(FIND "${VCPKG_JSON_CONTENT}" "\"${FEATURE_NAME}\":" FEATURE_FOUND_POS)
+    string(FIND "${VCPKG_JSON_CONTENT}" "\"${FEATURE_NAME}\": " FEATURE_FOUND_POS)
     
     if(FEATURE_FOUND_POS GREATER_EQUAL 0)
         set(${RESULT_VAR} TRUE PARENT_SCOPE)
