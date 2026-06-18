@@ -281,7 +281,7 @@ Type=simple
 WorkingDirectory=/opt/led-matrix
 ExecStart=/opt/led-matrix/main $MATRIX_OPTS
 Restart=on-failure
-User=root
+User=pi
 Environment=SUDO_UID=$PI_UID
 Environment=SUDO_GID=$PI_GID
 $SPOTIFY_ENV

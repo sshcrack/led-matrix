@@ -47,13 +47,9 @@ void render_plugin_pixels(ShadertoyPlugin *plugin, rgb_matrix::FrameCanvas *canv
 }
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ShadertoySceneWrapper::create()
+std::unique_ptr<Scenes::Scene> ShadertoySceneWrapper::create()
 {
-    return {
-        new ShadertoyScene(), [](Scenes::Scene *scene)
-        {
-            delete scene;
-        }};
+    return std::make_unique<ShadertoyScene>();
 }
 
 ShadertoyScene::ShadertoyScene() : plugin(nullptr)
@@ -254,7 +250,7 @@ CustomShadertoySceneWrapper::CustomShadertoySceneWrapper(std::filesystem::path s
     name_ = "custom_shader:" + shader_path_.stem().string();
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> CustomShadertoySceneWrapper::create()
+std::unique_ptr<Scenes::Scene> CustomShadertoySceneWrapper::create()
 {
-    return {new CustomShadertoyScene(shader_path_), [](Scenes::Scene *scene) { delete scene; }};
+    return std::make_unique<CustomShadertoyScene>(shader_path_);
 }

@@ -533,13 +533,9 @@ string CoverOnlyScene::get_name() const
     return "spotify";
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> CoverOnlySceneWrapper::create()
+std::unique_ptr<Scene> CoverOnlySceneWrapper::create()
 {
-    return {
-        new CoverOnlyScene(), [](Scene *scene)
-        {
-            delete scene;
-        }};
+    return std::make_unique<CoverOnlyScene>();
 }
 
 void CoverOnlyScene::register_properties()

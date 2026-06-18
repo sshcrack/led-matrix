@@ -10,7 +10,7 @@
 
 using namespace spdlog;
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_json(const nlohmann::json &j)
+std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
 {
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
@@ -41,13 +41,9 @@ std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::Scene::from_js
     }
 
     spdlog::warn("Unknown scene type '{}', returning FallbackScene", t);
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> unknown_scene = {
-        new Scenes::FallbackScene(t), [](Scenes::Scene *scene)
-        {
-            delete scene;
-        }};
+    auto unknown_scene = std::make_unique<Scenes::FallbackScene>(t);
 
-    ((FallbackScene*) unknown_scene.get())->arguments = arguments;
+    unknown_scene->arguments = arguments;
     if (j.contains("uuid"))
         unknown_scene->uuid = j["uuid"].get<string>();
 

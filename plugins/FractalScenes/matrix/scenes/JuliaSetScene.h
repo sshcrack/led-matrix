@@ -8,7 +8,7 @@
 namespace Scenes {
     class JuliaSetSceneWrapper final : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
 
     class JuliaSetScene final : public Scene {
@@ -47,6 +47,6 @@ namespace Scenes {
         PropertyPointer<float> color_shift = MAKE_PROPERTY_MINMAX("color_shift", float, 0.0f, 0.0f, 1.0f);
         
         // Color mapping
-        void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) const;
+
     };
 }

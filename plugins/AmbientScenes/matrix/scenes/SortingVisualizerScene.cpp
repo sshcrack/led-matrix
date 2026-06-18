@@ -1,4 +1,5 @@
 #include "SortingVisualizerScene.h"
+#include <shared/matrix/utils/color.h>
 
 #include <algorithm>
 #include <cmath>
@@ -65,40 +66,6 @@ namespace AmbientScenes {
         ms_j = 0;
         ms_k = 0;
         ms_merging = false;
-    }
-
-    void SortingVisualizerScene::hsl_to_rgb(float h, float s, float l, uint8_t &r, uint8_t &g, uint8_t &b) {
-        float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
-        float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-        float m = l - c / 2.0f;
-
-        float r1 = 0.0f;
-        float g1 = 0.0f;
-        float b1 = 0.0f;
-
-        if (h >= 0.0f && h < 60.0f) {
-            r1 = c;
-            g1 = x;
-        } else if (h >= 60.0f && h < 120.0f) {
-            r1 = x;
-            g1 = c;
-        } else if (h >= 120.0f && h < 180.0f) {
-            g1 = c;
-            b1 = x;
-        } else if (h >= 180.0f && h < 240.0f) {
-            g1 = x;
-            b1 = c;
-        } else if (h >= 240.0f && h < 300.0f) {
-            r1 = x;
-            b1 = c;
-        } else if (h >= 300.0f && h < 360.0f) {
-            r1 = c;
-            b1 = x;
-        }
-
-        r = static_cast<uint8_t>((r1 + m) * 255.0f);
-        g = static_cast<uint8_t>((g1 + m) * 255.0f);
-        b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
     void SortingVisualizerScene::reset_array() {
@@ -748,7 +715,7 @@ namespace AmbientScenes {
 
             if (rainbow_mode->get()) {
                 float hue = static_cast<float>(val) / static_cast<float>(n) * 360.0f;
-                hsl_to_rgb(hue, 1.0f, 0.5f, r, g, b);
+                color::hsl_to_rgb(hue, 1.0f, 0.5f, r, g, b);
             } else {
                 auto col = bar_color->get();
                 r = col.r;
@@ -976,9 +943,7 @@ namespace AmbientScenes {
         add_property(solved_color);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> SortingVisualizerSceneWrapper::create() {
-        return {new SortingVisualizerScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<SortingVisualizerScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> SortingVisualizerSceneWrapper::create() {
+        return std::make_unique<SortingVisualizerScene>();
     }
 }

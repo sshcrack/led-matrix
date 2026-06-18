@@ -57,7 +57,7 @@ struct CurrAnimation {
 
 struct ImageInfo {
     vector<Magick::Image> frames;
-    std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > post;
+    std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > post;
 };
 
 const std::string PROVIDER_DEFAULT = R"(
@@ -126,5 +126,5 @@ public:
 };
 
 class ImageSceneWrapper final : public Plugins::SceneWrapper {
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+    std::unique_ptr<Scenes::Scene> create() override;
 };

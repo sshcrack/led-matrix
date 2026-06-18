@@ -117,9 +117,7 @@ namespace AmbientScenes {
         add_property(size);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> BouncingLogoSceneWrapper::create() {
-        return {new BouncingLogoScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<BouncingLogoScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> BouncingLogoSceneWrapper::create() {
+        return std::make_unique<BouncingLogoScene>();
     }
 }

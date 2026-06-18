@@ -40,6 +40,6 @@ namespace Scenes {
     class WaveSceneWrapper : public Plugins::SceneWrapper {
     public:
 
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

@@ -34,7 +34,6 @@ namespace Scenes {
         void drawCircle(rgb_matrix::FrameCanvas *canvas, int center_x, int center_y, int radius, uint8_t r, uint8_t g, uint8_t b);
         void drawLine(rgb_matrix::FrameCanvas *canvas, int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b);
         rgb_matrix::Color interpolateColors(const rgb_matrix::Color& c1, const rgb_matrix::Color& c2, float t);
-        void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
         
         struct Particle {
             float x, y, vx, vy;
@@ -58,6 +57,6 @@ namespace Scenes {
 
     class RenderingDemoSceneWrapper : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

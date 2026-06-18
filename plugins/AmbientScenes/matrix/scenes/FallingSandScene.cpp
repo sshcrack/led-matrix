@@ -1,27 +1,10 @@
 #include "FallingSandScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
 #include <cstdlib> // rand
 
 namespace AmbientScenes {
     FallingSandScene::FallingSandScene() : Scene() {
-    }
-
-    void FallingSandScene::hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b) {
-        float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
-        float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-        float m = l - c / 2.0f;
-        
-        float r1 = 0, g1 = 0, b1 = 0;
-        if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0; }
-        else if (h >= 60 && h < 120) { r1 = x; g1 = c; b1 = 0; }
-        else if (h >= 120 && h < 180) { r1 = 0; g1 = c; b1 = x; }
-        else if (h >= 180 && h < 240) { r1 = 0; g1 = x; b1 = c; }
-        else if (h >= 240 && h < 300) { r1 = x; g1 = 0; b1 = c; }
-        else if (h >= 300 && h < 360) { r1 = c; g1 = 0; b1 = x; }
-        
-        r = static_cast<uint8_t>((r1 + m) * 255.0f);
-        g = static_cast<uint8_t>((g1 + m) * 255.0f);
-        b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
     void FallingSandScene::initialize(int width, int height) {
@@ -43,7 +26,7 @@ namespace AmbientScenes {
                     if (grid[spawn_x_pos] == 0) {
                         uint8_t r, g, b;
                         float h = std::fmod(current_hue + i * 2, 360.0f);
-                        hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
+                        color::hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
                         grid[spawn_x_pos] = pack_color(r, g, b);
                         sand_count++;
                     }
@@ -135,9 +118,7 @@ namespace AmbientScenes {
         add_property(max_sand);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FallingSandSceneWrapper::create() {
-        return {new FallingSandScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<FallingSandScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> FallingSandSceneWrapper::create() {
+        return std::make_unique<FallingSandScene>();
     }
 }

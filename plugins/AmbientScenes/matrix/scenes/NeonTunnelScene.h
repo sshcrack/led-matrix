@@ -13,8 +13,6 @@ namespace AmbientScenes {
         
         float time_counter = 0.0f;
 
-        void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b);
-
     public:
         explicit NeonTunnelScene();
         ~NeonTunnelScene() override = default;
@@ -31,6 +29,6 @@ namespace AmbientScenes {
     };
 
     class NeonTunnelSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

@@ -9,7 +9,7 @@
 /// Holds all plugin-registered transition effects and provides lookup by name.
 class TransitionManager {
     std::unordered_map<std::string,
-                       std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>>
+                       std::unique_ptr<TransitionEffect>>
         registered_transitions;
 
 public:
@@ -17,7 +17,7 @@ public:
     ~TransitionManager() = default;
 
     void register_transition(
-        std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)> effect);
+        std::unique_ptr<TransitionEffect> effect);
 
     /// Returns the effect for 'name', or nullptr if not found.
     TransitionEffect *get_transition(const std::string &name) const;

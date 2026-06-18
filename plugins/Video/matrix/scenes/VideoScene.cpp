@@ -8,11 +8,10 @@
 using namespace Scenes;
 std::string VideoScene::lastUrlSent = "";
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)>
+std::unique_ptr<Scenes::Scene>
 VideoSceneWrapper::create()
 {
-  return {new VideoScene(), [](Scenes::Scene *scene)
-          { delete scene; }};
+  return std::make_unique<VideoScene>();
 }
 
 VideoScene::VideoScene() : plugin(nullptr)

@@ -10,9 +10,9 @@ class SpotifyScenes : public BasicPlugin {
 public:
     SpotifyScenes();
 
-    vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> create_scenes() override;
+    vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
 
-    vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
+    vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
 
     std::optional<string> after_server_init() override;
 

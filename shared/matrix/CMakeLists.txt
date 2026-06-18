@@ -3,6 +3,7 @@ project(SharedToolsMatrix)
 
 set(CMAKE_CXX_STANDARD 23)
 
+include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/data.cpp
@@ -82,8 +83,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
-
-include(GNUInstallDirs)
 
 # Installation
 install(TARGETS ${PROJECT_NAME}

@@ -110,7 +110,7 @@ namespace Scenes {
         /// Returns true if the scene should continue rendering, false if not
         virtual bool render(FrameCanvas *canvas) = 0;
 
-        static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
+        static std::unique_ptr<Scene> from_json(const nlohmann::json &j);
 
         virtual void register_properties() = 0;
 

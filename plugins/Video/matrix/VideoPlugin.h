@@ -11,15 +11,15 @@ using Plugins::ShaderProviderWrapper;
 
 class VideoPlugin final : public BasicPlugin {
 public:
-  vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>
+  vector<std::unique_ptr<SceneWrapper>>
   create_scenes() override;
 
   vector<
-      std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+      std::unique_ptr<ImageProviderWrapper>>
   create_image_providers() override;
 
   vector<
-      std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+      std::unique_ptr<ShaderProviderWrapper>>
   create_shader_providers() override;
 
   bool on_udp_packet(const uint8_t pluginId, const uint8_t *packetData,

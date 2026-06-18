@@ -19,8 +19,6 @@ namespace AmbientScenes {
         int spawner_x = 64;
         int spawner_dir = 1;
 
-        void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b);
-
         uint32_t pack_color(uint8_t r, uint8_t g, uint8_t b) {
             return (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
         }
@@ -47,6 +45,6 @@ namespace AmbientScenes {
     };
 
     class FallingSandSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

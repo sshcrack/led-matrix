@@ -47,6 +47,6 @@ namespace ShaderProviders {
 
         [[nodiscard]] virtual json to_json() const;
 
-        static std::unique_ptr<General, void (*)(General *)> from_json(const json &j);
+        static std::unique_ptr<General> from_json(const json &j);
     };
 }

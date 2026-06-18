@@ -31,35 +31,28 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyPlugin *c)
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+vector<std::unique_ptr<ImageProviderWrapper>>
 ShadertoyPlugin::create_image_providers()
 {
     return {};
 }
 
-vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+vector<std::unique_ptr<ShaderProviderWrapper>>
 ShadertoyPlugin::create_shader_providers()
 {
-    auto providers = vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>();
-    auto deleteWrapper = [](ShaderProviderWrapper *wrapper) {
-        delete wrapper;
-    };
+    auto providers = vector<std::unique_ptr<ShaderProviderWrapper>>();
 
-    providers.push_back({new RandomWrapper(), deleteWrapper});
-    providers.push_back({new CollectionWrapper(), deleteWrapper});
+    providers.push_back(std::make_unique<RandomWrapper>());
+    providers.push_back(std::make_unique<CollectionWrapper>());
 
     return providers;
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> ShadertoyPlugin::create_scenes()
+vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
 {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
-    auto deleteScene = [](SceneWrapper *scene)
-    {
-        delete scene;
-    };
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back({new ShadertoySceneWrapper(), deleteScene});
+    scenes.push_back(std::make_unique<ShadertoySceneWrapper>());
 
     const auto custom_dir = custom_shader_dir();
     std::error_code ec;
@@ -79,9 +72,9 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> Shadert
             continue;
         }
 
-        auto *custom_wrapper = new CustomShadertoySceneWrapper(entry.path());
+        auto custom_wrapper = std::make_unique<CustomShadertoySceneWrapper>(entry.path());
         customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
-        scenes.push_back({custom_wrapper, deleteScene});
+        scenes.push_back(std::move(custom_wrapper));
     }
 
     return scenes;

@@ -94,9 +94,7 @@ namespace AmbientScenes {
         add_property(max_depth);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> StarFieldSceneWrapper::create() {
-        return {new StarFieldScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<StarFieldScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> StarFieldSceneWrapper::create() {
+        return std::make_unique<StarFieldScene>();
     }
 }

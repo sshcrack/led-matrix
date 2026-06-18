@@ -15,21 +15,14 @@ extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper> >
 WeatherOverview::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> >();
-    
-    // Add the original weather scene
-    scenes.push_back({
-        new WeatherSceneWrapper(), [](SceneWrapper *scene) {
-            delete scene;
-        }
-    });
-
+vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<WeatherSceneWrapper>());
     return scenes;
 }
 

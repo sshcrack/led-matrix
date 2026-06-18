@@ -160,11 +160,11 @@ namespace ConfigData {
         p->display_name = j.value("display_name", std::string());
     }
 
-    void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General *)> &p) {
+    void from_json(const json &j, std::unique_ptr<ImageProviders::General> &p) {
         p = std::move(ImageProviders::General::from_json(j));
     }
 
-    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> &p) {
+    void from_json(const json &j, std::unique_ptr<Scenes::Scene> &p) {
         p = std::move(Scenes::Scene::from_json(j));
     }
 
