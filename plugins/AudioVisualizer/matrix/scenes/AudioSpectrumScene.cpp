@@ -254,12 +254,13 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
 
                 for (int w = 0; w < bar_width->get(); w++)
                 {
-                    canvas->SetPixel(x + w, height - 1 - y, r, g, b);
+                    int px = std::min(x + w, canvas->width() - 1);
+                    canvas->SetPixel(px, height - 1 - y, r, g, b);
 
                     // Mirror if enabled, but only in normal mode
                     if (mirror_display->get() && display_mode == DisplayMode::NORMAL)
                     {
-                        canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
+                        canvas->SetPixel(width - 1 - px, height - 1 - y, r, g, b);
                     }
                 }
             }
@@ -294,14 +295,15 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
             int half_height = height / 2;
             for (int w = 0; w < bar_width->get(); w++)
             {
+                int px = std::min(x + w, canvas->width() - 1);
                 if(display_mode == DisplayMode::CENTER_OUT)
                 {
                     // Center out mode, draw peak at center
-                    canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
-                    canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
+                    canvas->SetPixel(px, half_height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(px, half_height - 1 + peak_y, r, g, b);
                 }
                 else
-                    canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(px, height - 1 - peak_y, r, g, b);
             }
         }
     }

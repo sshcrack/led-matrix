@@ -296,6 +296,9 @@ int main(int argc, char *argv[])
         error("Could not initialize hardware_code.");
         initiate_shutdown(server);
 
+        info("Joining control thread...");
+        control_thread.join();
+
         info("Terminating plugin loader...");
         pl->destroy_plugins();
 
@@ -319,9 +322,6 @@ int main(int argc, char *argv[])
     info("Saving config...");
     config->save();
 
-    delete Constants::global_post_processor;
-    delete Constants::global_transition_manager;
-
     info("Joining control thread...");
     control_thread.join();
 
@@ -330,8 +330,8 @@ int main(int argc, char *argv[])
 
     pl->delete_references();
 
-    info("Destroying config instance...");
-    delete config;
+    delete Constants::global_post_processor;
+    delete Constants::global_transition_manager;
 
     info("Stopping UpdateManager...");
     if (Constants::global_update_manager)
@@ -339,6 +339,9 @@ int main(int argc, char *argv[])
         Constants::global_update_manager->stop();
         Constants::global_update_manager.reset();
     }
+
+    info("Destroying config instance...");
+    delete config;
 
     return 0;
 }

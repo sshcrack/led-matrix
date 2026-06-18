@@ -30,13 +30,7 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
     {
         spdlog::trace("Init particle scenes");
         auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, canvas);
-        auto local_animation = std::shared_ptr<GravityParticles>(
-            new GravityParticles(local_renderer, shake->get(), bounce->get()),
-            [](GravityParticles* a)
-            {
-                delete a;
-            }
-        );
+        auto local_animation = std::make_shared<GravityParticles>(local_renderer, shake->get(), bounce->get());
 
         renderer = local_renderer;
         animation = local_animation;

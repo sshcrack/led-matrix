@@ -19,7 +19,8 @@ AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 
 void AudioVisualizerDesktop::render() {
-    std::lock_guard<std::mutex> lock(stateMutex);
+    if (!stateMutex.try_lock()) return;
+    std::lock_guard<std::mutex> lock(stateMutex, std::adopt_lock);
     
     ImPlot::SetCurrentContext(implotContext);
 
