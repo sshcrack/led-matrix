@@ -139,7 +139,8 @@ void Scenes::WeatherScene::renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, 
 void Scenes::WeatherScene::renderClock(rgb_matrix::FrameCanvas *canvas) const
 {
     const time_t timestamp = time(nullptr);
-    const tm datetime = *localtime(&timestamp);
+    tm local_time_storage{};
+    const tm datetime = *localtime_r(&timestamp, &local_time_storage);
 
     char output[50];
     strftime(output, 50, "%H:%M", &datetime);

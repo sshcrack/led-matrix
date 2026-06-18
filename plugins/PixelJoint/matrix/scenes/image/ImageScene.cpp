@@ -77,7 +77,7 @@ Post *get_pointer_raw(std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> 
     return get<1>(post).get();
 }
 
-expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
+expected<std::unique_ptr<CurrAnimation>, string>
 ImageScene::get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness) {
     // NOLINT(*-no-recursion)
 
@@ -140,13 +140,7 @@ ImageScene::get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness) {
     StreamReader reader(file->content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> res(
-        new CurrAnimation(reader, end_time_ms, std::move(file)),
-        [](CurrAnimation *anim) {
-            delete anim;
-        });
-
-    return res;
+    return std::make_unique<CurrAnimation>(reader, end_time_ms, std::move(file));
 }
 
 
@@ -184,17 +178,12 @@ ImageScene::get_next_image(const std::shared_ptr<ImageProviders::General> &categ
     };
 }
 
-std::unique_ptr<FileInfo, void(*)(FileInfo *)> ImageScene::GetFileInfo(const vector<Magick::Image> &frames,
-                                                                       FrameCanvas *canvas) const {
+std::unique_ptr<FileInfo> ImageScene::GetFileInfo(const vector<Magick::Image> &frames,
+                                                                        FrameCanvas *canvas) const {
     auto params = ImageParams();
     params.duration_ms = image_display_duration->get();
 
-    std::unique_ptr<FileInfo, void(*)(FileInfo *)> file_info = {
-        new FileInfo(),
-        [](FileInfo *file) {
-            delete file;
-        }
-    };
+    auto file_info = std::make_unique<FileInfo>();
 
     file_info->params = params;
     file_info->content_stream = new rgb_matrix::MemStreamIO();

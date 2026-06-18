@@ -22,7 +22,7 @@
 #include <shared/desktop/glfw.h>
 #include "spdlog/cfg/env.h"
 #include <csignal>
-#include <future>
+#include <thread>
 #include <chrono>
 #include <atomic>
 
@@ -65,7 +65,7 @@ std::string get_noto_color_emoji_path() {
 static std::atomic<bool> shouldExit{false};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static bool showMainWindow = false;
-static std::future<void> g_pending_http;
+// g_pending_http removed — async HTTP calls use detached threads
 
 #ifdef _WIN32
 // Global variables for shutdown handling on Windows
@@ -142,8 +142,8 @@ static void change_matrix_status(const std::string &hostname, uint16_t port, boo
         // Synchronous call for shutdown scenarios
         task();
     } else {
-        // Asynchronous call for normal operation
-        g_pending_http = std::async(std::launch::async, task);
+        // Asynchronous call for normal operation (self-contained lambda, safe to detach)
+        std::thread(task).detach();
     }
 }
 
@@ -349,6 +349,7 @@ int run_app(int argc, char *argv[]) {
         ImGui::SameLine();
         if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
             generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
+            g_should_turn_off_on_exit = matrixOffOnExit;
         }
 
         auto state = ws->getReadyState();
