@@ -126,6 +126,38 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     plugin_->flush_status();
   }
 
+  auto frame = plugin_->get_frame();
+  if (!frame.empty())
+  {
+    const int width = Constants::width;
+    const int height = Constants::height;
+    const uint8_t *data = frame.data();
+    const int max_pixels = frame.size() / 3;
+    const int limit = std::min(width * height, max_pixels);
+
+    for (int idx = 0; idx < limit; ++idx)
+    {
+      int x = idx % width;
+      int y = idx / width;
+      int i = idx * 3;
+      canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+    }
+
+    auto status = plugin_->get_status();
+    if (status == "pending" || status == "searching" || status == "downloading" || status == "processing")
+    {
+      LoadingAnimation::render_overlay(canvas, loading_frame_++, 30, 215, 96);
+    }
+
+    return true;
+  }
+
+  if (plugin_->is_stale())
+  {
+    canvas->Fill(10, 0, 20);
+    return true;
+  }
+
   auto status = plugin_->get_status();
   if (status == "idle")
   {
@@ -143,32 +175,6 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     return true;
   }
 
-  if (plugin_->is_stale())
-  {
-    canvas->Fill(10, 0, 20);
-    return true;
-  }
-
-  auto frame = plugin_->get_frame();
-  if (frame.empty())
-  {
-    render_loading(canvas, false);
-    return true;
-  }
-
-  const int width = Constants::width;
-  const int height = Constants::height;
-  const uint8_t *data = frame.data();
-  const int max_pixels = frame.size() / 3;
-  const int limit = std::min(width * height, max_pixels);
-
-  for (int idx = 0; idx < limit; ++idx)
-  {
-    int x = idx % width;
-    int y = idx / width;
-    int i = idx * 3;
-    canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
-  }
-
+  render_loading(canvas, false);
   return true;
 }

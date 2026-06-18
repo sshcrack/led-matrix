@@ -56,6 +56,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
     }
 
     stop();
+    first_frame_fired_ = false;
 
     current_url_ = url;
     cache_key_ = cache_key;
@@ -100,6 +101,8 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                             std::lock_guard<std::mutex> lock(frame_mutex_);
                             current_frame_ = buffer;
                         }
+                        if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+                            on_first_frame_ready();
                         std::this_thread::sleep_for(
                             std::chrono::duration<double>(1.0 / fps_));
                     }
@@ -319,6 +322,8 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             current_frame_ = buffer;
         }
+        if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+            on_first_frame_ready();
         ++frames_played;
         std::this_thread::sleep_for(std::chrono::duration<double>(1.0 / fps_));
     }
@@ -361,6 +366,7 @@ void VideoStreamEngine::stop() {
         std::lock_guard<std::mutex> lk(status_cb_mutex_);
         tmp_status_change = on_status_change;
         on_status_change = nullptr;
+        on_first_frame_ready = nullptr;
     }
 
     // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
