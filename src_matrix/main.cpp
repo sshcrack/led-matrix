@@ -165,7 +165,10 @@ int main(int argc, char *argv[])
     pl->initialize();
 
     debug("Loading config...");
-    config = new Config::MainConfig("config.json");
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
+    config = new Config::MainConfig(std::string(LED_MATRIX_DATA_DIR) + "/config.json");
 
     debug("Initializing UpdateManager...");
     Constants::global_update_manager = new Update::UpdateManager(config);

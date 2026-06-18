@@ -10,6 +10,10 @@
 
 using json = nlohmann::json;
 
+#ifndef LED_MATRIX_SHARE_DIR
+#define LED_MATRIX_SHARE_DIR "."
+#endif
+
 namespace {
     std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional) {
         std::vector<json> properties_json;
@@ -54,7 +58,7 @@ namespace {
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
-                {"has_preview", std::filesystem::exists(get_exec_dir() / "scene_previews" / (scene->get_name() + ".gif"))},
+                {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
                 {"needs_desktop", scene->get_default()->needs_desktop_app()},
                 {"category", scene->get_default()->get_category()}
             });
@@ -107,7 +111,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         }
 
         const std::string scene_name{qp["name"]};
-        const std::filesystem::path preview_dir = get_exec_dir() / "scene_previews";
+        const std::filesystem::path preview_dir = std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews";
         const std::filesystem::path gif_path = preview_dir / (scene_name + ".gif");
 
         // Validate path is inside scene_previews dir
