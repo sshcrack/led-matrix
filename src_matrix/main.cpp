@@ -4,7 +4,6 @@
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
 #include <nlohmann/json.hpp>
-#include <utility>
 
 #include <Magick++.h>
 #include <shared/matrix/utils/consts.h>
@@ -14,7 +13,6 @@
 #include "matrix-factory.h"
 #include "server/server.h"
 #include "server/update_routes.h"
-#include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/update/UpdateManager.h"
 #include "udp.h"
@@ -35,8 +33,6 @@ using json = nlohmann::json;
 using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<Server::traits_t>;
-
-#include "shared/matrix/utils/consts.h"
 
 // ---------------------------------------------------------------------------
 // Emulator-only helpers
@@ -79,8 +75,10 @@ int main(int argc, char *argv[])
 {
     Magick::InitializeMagick(*argv);
 
-    SetMagickResourceLimit(Magick::MemoryResource, 256 * 1024 * 1024); // Limit to 256MB
-    SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024);    // Limit to 512MB
+    constexpr size_t magick_memory_limit = 256ULL * 1024 * 1024;
+    constexpr size_t magick_map_limit = 512ULL * 1024 * 1024;
+    SetMagickResourceLimit(Magick::MemoryResource, magick_memory_limit);
+    SetMagickResourceLimit(Magick::MapResource, magick_map_limit);
     cfg::load_env_levels();
 
     // -----------------------------------------------------------------------
@@ -129,9 +127,6 @@ int main(int argc, char *argv[])
 #endif // ENABLE_EMULATOR
 
     rgb_matrix::MatrixFactory::Options options;
-
-    // Should be in hardware.cpp but this actually drops privileges, so I moved it here
-
 
     bool is_debugging = false;
     for (int i = 0; i < argc; i++)
@@ -206,7 +201,8 @@ int main(int argc, char *argv[])
     info("Loaded {} Scenes and {} Image Types", pl->get_scenes().size(), pl->get_image_providers().size());
 
     debug("Starting mainloop_thread");
-    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
+    constexpr uint16_t default_http_port = 8080;
+    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : default_http_port;
 
     // -----------------------------------------------------------------------
     // Emulator-only: find and pre-build the pinned scene if --scene was given.

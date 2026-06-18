@@ -214,7 +214,6 @@ namespace Plugins {
                         if (j.at(name).is_string()) {
                             std::string enum_str = j.at(name).get<std::string>();
                             if (!value.set_from_string(enum_str)) {
-                                // If invalid, keep default value and log warning (could add logging here)
                             }
                         }
                     } else {

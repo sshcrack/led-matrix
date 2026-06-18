@@ -84,7 +84,7 @@ namespace Server
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
                 
                 auto parsed_version = Common::Version::fromString(version);
-                if(parsed_version.isInvalid())
+                if(parsed_version.is_invalid())
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
                 // Start installation in background thread
