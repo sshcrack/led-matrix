@@ -314,7 +314,11 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
 
 void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas, FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    const auto preset = config->get_curr();
+    std::shared_ptr<ConfigData::Preset> preset = config->get_curr();
+    if (!preset) {
+        spdlog::error("config->get_curr() returned null, using fallback preset");
+        preset = ConfigData::Preset::create_default();
+    }
     const auto &scenes = preset->scenes;
     const int matrix_width = matrix->width();
     const int matrix_height = matrix->height();
@@ -334,7 +338,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         forced_scene = nullptr;
         if (scene == nullptr)
         {
-            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, "");
+            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, forced_scene ? forced_scene->get_name() : "");
             scene = select_scene(weighted_scenes);
         }
 
@@ -365,7 +369,7 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         const auto transition_name = resolve_transition_name(preset, scene);
         if (should_schedule_transition(transition_duration, scene->get_duration()) && !pinned_scene)
         {
-            const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene->get_name());
+            const auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, scene != nullptr ? scene->get_name() : "");
             next_scene = select_scene(weighted_scenes);
             if (next_scene != nullptr && !next_scene->is_initialized())
             {

@@ -199,12 +199,13 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
             DrawText(canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
                      {200, 200, 200}, data_res.error().c_str());
 
-#ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
-#endif
             SleepMillis(1000);
             return false;
         }
+
+#ifdef ENABLE_EMULATOR
+        ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
+#endif
 
         data = data_res.value();
         last_weather_fetch = now;

@@ -134,5 +134,5 @@ SpotifyScenes::SpotifyScenes() {
 
     is_disabled = !id || !secret;
     if (is_disabled)
-        spdlog::error("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
+        spdlog::warn("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
 };

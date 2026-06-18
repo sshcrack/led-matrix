@@ -43,8 +43,12 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
 
         // Prevent directory traversal
-        const auto canonical = filesystem::canonical(file_path);
-        const auto canonical_upload = filesystem::canonical(Constants::upload_dir);
+        std::error_code can_ec;
+        const auto canonical = filesystem::canonical(file_path, can_ec);
+        const auto canonical_upload = filesystem::canonical(Constants::upload_dir, can_ec);
+        if (can_ec) {
+            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+        }
         if (!canonical.string().starts_with(canonical_upload.string())) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
@@ -118,9 +122,13 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
         file_path = web_dir / "index.html"; // Fallback to index.html if not found
 
     // Ensure the requested path is within the web directory
-    const auto canonical_web = filesystem::canonical(web_dir);
+    std::error_code web_ec;
+    const auto canonical_web = filesystem::canonical(web_dir, web_ec);
     std::error_code ec;
     const auto canonical_file = filesystem::canonical(file_path, ec);
+    if (web_ec) {
+        return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+    }
 
     if (ec || !canonical_file.string().starts_with(canonical_web.string()))
     {

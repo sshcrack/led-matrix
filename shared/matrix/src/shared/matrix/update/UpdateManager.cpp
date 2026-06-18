@@ -85,7 +85,7 @@ namespace Update
 #endif
 
             std::filesystem::path script_path = "/usr/lib/led-matrix/update_service.sh";
-            string command = script_path.string() + " " + pending_update_filename_ + " &";
+            string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
             int result = system(command.c_str());
             if (result != 0)
             {

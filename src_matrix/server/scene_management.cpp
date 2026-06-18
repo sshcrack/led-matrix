@@ -72,7 +72,12 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
     router->http_get("/get_curr", [](auto req, auto) {
         std::vector<json> scenes;
 
-        for (const auto &item: config->get_curr()->scenes) {
+        auto curr_preset = config->get_curr();
+        if (!curr_preset) {
+            return reply_with_json(req, scenes);
+        }
+
+        for (const auto &item: curr_preset->scenes) {
             json j;
             j["name"] = item->get_name();
             j["properties"] = item->to_json();

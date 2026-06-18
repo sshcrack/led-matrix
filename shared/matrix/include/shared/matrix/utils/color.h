@@ -7,6 +7,8 @@
 namespace color {
 
 inline void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b) {
+    h = std::fmod(h, 360.0f);
+    if (h < 0) h += 360.0f;
     float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
     float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
     float m = l - c / 2.0f;
@@ -25,11 +27,12 @@ inline void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_
 }
 
 inline void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
+    h = h - std::floor(h);
     float c = v * s;
     float x = c * (1.0f - std::abs(std::fmod(h * 6.0f, 2.0f) - 1.0f));
     float m = v - c;
 
-    float r1, g1, b1;
+    float r1 = 0, g1 = 0, b1 = 0;
     if (h < 1.0f/6.0f) { r1 = c; g1 = x; b1 = 0; }
     else if (h < 2.0f/6.0f) { r1 = x; g1 = c; b1 = 0; }
     else if (h < 3.0f/6.0f) { r1 = 0; g1 = c; b1 = x; }

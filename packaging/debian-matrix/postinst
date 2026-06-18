@@ -76,12 +76,14 @@ if [ ! -f "$DATA_DIR/config.json" ]; then
     [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
     INTERVAL="${UPDATE_INTERVAL:-24}"
 
+    PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
+
     cat > "$DATA_DIR/config.json" << EOF
 {
   "update_settings": {
     "auto_update_enabled": ${AUTO_UPDATE_BOOL},
     "check_interval_hours": ${INTERVAL},
-    "current_version": "1.0.0",
+    "current_version": "${PKG_VERSION}",
     "last_check_time": 0,
     "last_update_time": 0,
     "update_available": false,

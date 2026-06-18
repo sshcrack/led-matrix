@@ -44,7 +44,7 @@ namespace Config
         bool isAutostartEnabled() const;
         void setAutostartEnabled(bool enabled);
 
-        const uint16_t &getPort() const;
+        uint16_t getPort() const;
         void setPort(uint16_t newPort);
 
         std::string getHostname() const;

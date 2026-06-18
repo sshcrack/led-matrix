@@ -92,7 +92,7 @@ void Config::General::setAutostartEnabled(bool enabled)
     }
 }
 
-const uint16_t &Config::General::getPort() const
+uint16_t Config::General::getPort() const
 {
     std::shared_lock lock(mutex_);
     return port;
