@@ -1,7 +1,6 @@
 #include "FallingSandScene.h"
 #include <shared/matrix/utils/color.h>
 #include <cmath>
-#include <cstdlib> // rand
 
 namespace AmbientScenes {
     FallingSandScene::FallingSandScene() : Scene() {
@@ -21,7 +20,7 @@ namespace AmbientScenes {
         // Spawn sand if under limit
         if (sand_count < max_sand->get()) {
             for (int i = 0; i < spawn_rate->get() && sand_count < max_sand->get(); i++) {
-                int spawn_x_pos = spawner_x + (rand() % 5) - 2; // slight jitter
+                int spawn_x_pos = spawner_x + (std::uniform_int_distribution<int>(0, 4)(rng)) - 2; // slight jitter
                 if (spawn_x_pos >= 0 && spawn_x_pos < matrix_width) {
                     if (grid[spawn_x_pos] == 0) {
                         uint8_t r, g, b;
@@ -73,7 +72,7 @@ namespace AmbientScenes {
                             bool can_right = x < matrix_width - 1 && next_grid[down_right] == 0 && grid[down_right] == 0;
                             
                             if (can_left && can_right) {
-                                if (rand() % 2 == 0) next_grid[down_left] = val;
+                                if (std::uniform_int_distribution<int>(0, 1)(rng)) next_grid[down_left] = val;
                                 else next_grid[down_right] = val;
                             } else if (can_left) {
                                 next_grid[down_left] = val;

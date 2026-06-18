@@ -134,6 +134,24 @@ Ideas already explicitly rejected: Home Assistant/MQTT, WebSocket live preview, 
 - The devcontainer (`postCreateCommand`) runs `git submodule update --init --recursive` — submodules are required.
 - WSL users: see `scripts/WSL_SYNC_README.md` for the file-watch sync setup between Windows and WSL.
 
+## Preview Generator (`src_preview_gen`)
+
+The `src_preview_gen` binary generates animated GIF previews for all registered matrix scenes. It is **tightly coupled to the emulator preset** — it requires `ENABLE_EMULATOR` at compile time and instantiates `EmulatorMatrix` directly. It will **not** build under the cross-compile or desktop presets.
+
+Usage after building the emulator preset:
+```bash
+# Generate previews for all scenes (requires emulator preset build)
+./emulator_build/install/preview_gen --output ./previews
+
+# Dump scene manifest as JSON
+./emulator_build/install/preview_gen --dump-manifest
+
+# Generate specific scenes
+./emulator_build/install/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
+```
+
+Scenes that require the desktop app (`needs_desktop` = true) are skipped automatically. Use `scripts/capture_desktop_preview.sh` to capture them manually.
+
 ## CI
 
 `.github/workflows/ci.yml` builds all three presets (cross-compile, desktop-linux, desktop-windows) on push/PR to `master`. The react-web is built only for the `cross-compile` job (pnpm + node 22). Desktop jobs pass `-DSKIP_WEB_BUILD=ON`.

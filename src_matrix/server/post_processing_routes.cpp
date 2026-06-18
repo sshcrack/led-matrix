@@ -46,7 +46,7 @@ namespace {
 std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router) {
     
     // Trigger flash effect
-    router->http_get("/post_processing/flash", [](const auto& req, auto) {
+    router->http_post("/post_processing/flash", [](const auto& req, auto) {
         if (Constants::global_post_processor) {
             auto [duration, intensity] = parse_duration_intensity(req, 0.5f, 1.0f, 0.1f, 5.0f, 0.0f, 1.0f);
             
@@ -65,7 +65,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Trigger rotate effect
-    router->http_get("/post_processing/rotate", [](const auto&  req, auto) {
+    router->http_post("/post_processing/rotate", [](const auto&  req, auto) {
         if (Constants::global_post_processor) {
             auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.5f, 10.0f, 0.0f, 2.0f);
             
@@ -84,7 +84,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Clear all post-processing effects
-    router->http_get("/post_processing/clear", [](const auto&  req, auto) {
+    router->http_post("/post_processing/clear", [](const auto&  req, auto) {
         if (Constants::global_post_processor) {
             Constants::global_post_processor->clear_effects();
             
@@ -112,7 +112,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
 
     // Generic endpoint to trigger any registered effect
-    router->http_get("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
+    router->http_post("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
         if (Constants::global_post_processor) {
             auto effect_name = std::string(params["effect_name"]);
             auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.1f, 10.0f, 0.0f, 2.0f);

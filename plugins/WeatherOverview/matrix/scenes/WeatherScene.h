@@ -2,6 +2,7 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
+#include <random>
 #include "../WeatherParser.h"
 
 namespace Scenes {
@@ -29,6 +30,15 @@ namespace Scenes {
         float tail_length;
         float brightness;
         bool active;
+    };
+    
+    // Struct for fog patches (used in renderFogMist)
+    struct FogPatch {
+        float x, y;
+        float vx, vy;
+        float radius;
+        float density;
+        float phase;
     };
     
     // Color themes for the weather display
@@ -84,13 +94,27 @@ namespace Scenes {
         // Reference to current weather data for animations
         WeatherData data = {};
 
+        // C8: Weather fetch refresh timer
+        std::chrono::steady_clock::time_point last_weather_fetch{};
+        int weather_refresh_interval_seconds = 300;
+
+        // C9: Fog/rainbow/aurora scene state (moved from static locals)
+        std::vector<FogPatch> fog_patches;
+        bool fog_initialized = false;
+        int last_fog_matrix_width = 0;
+        int last_fog_matrix_height = 0;
+        float fog_time = 0.0f;
+        float rainbow_time = 0.0f;
+        float aurora_continuous_time = 0.0f;
+
         struct Images {
             Magick::Image currentIcon;
             std::vector<Magick::Image> forecastIcons;
         };
 
         std::optional<Images> images;
-        
+        std::mt19937 rng{std::random_device{}()};
+
         // Get theme color based on selected theme
         static RGB getThemeColor(ColorTheme theme, const WeatherData &data);
 

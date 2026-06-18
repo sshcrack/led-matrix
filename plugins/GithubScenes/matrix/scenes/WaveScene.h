@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
+#include <random>
 
 using namespace Scenes;
 
@@ -11,6 +12,7 @@ namespace Scenes {
     private:
         float *map = nullptr;
         FrameTimer frameTimer;
+        std::mt19937 rng{std::random_device{}()};
 
         void drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap);
 

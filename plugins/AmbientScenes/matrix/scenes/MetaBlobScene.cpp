@@ -114,7 +114,7 @@ namespace AmbientScenes {
             }
         }
 
-        time += 1.0f / 60.0f;
+        time += 1.0f / static_cast<float>(get_target_fps());
         return true;
     }
 

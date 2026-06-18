@@ -2,19 +2,9 @@
 #include "shared/desktop/utils.h"
 #include <algorithm>
 #include <cstdio>
-#include <cstdlib>
 #include <fmt/format.h>
 #include <thread>
 #include <spdlog/spdlog.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <fcntl.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
 
 namespace {
 
@@ -23,80 +13,6 @@ inline const char* null_device() {
     return "NUL";
 #else
     return "/dev/null";
-#endif
-}
-
-inline void close_pipe(FILE* pipe) {
-    if (!pipe) return;
-#ifdef _WIN32
-    _pclose(pipe);
-#else
-    pclose(pipe);
-#endif
-}
-
-inline int run_command(const std::string& cmd,
-                       const std::atomic<bool>* running = nullptr) {
-#ifdef _WIN32
-    STARTUPINFOA si{};
-    PROCESS_INFORMATION pi{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    std::string fullCmd = "cmd.exe /C " + cmd;
-    std::vector<char> cmdline(fullCmd.begin(), fullCmd.end());
-    cmdline.push_back('\0');
-    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
-        return -1;
-    // Poll running_ so stop() is not blocked for the full yt-dlp/ffmpeg duration
-    while (true) {
-        DWORD waitResult = WaitForSingleObject(pi.hProcess, 200);
-        if (waitResult == WAIT_OBJECT_0) break;
-        if (running && !running->load()) {
-            TerminateProcess(pi.hProcess, 1);
-            WaitForSingleObject(pi.hProcess, INFINITE);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-            return -2; // Interrupted
-        }
-    }
-    DWORD exitCode = 1;
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    return static_cast<int>(exitCode);
-#else
-    pid_t pid = fork();
-    if (pid < 0) return -1;
-    if (pid == 0) {
-        // Child: redirect stdout/stderr to /dev/null and exec
-        int devnull = open("/dev/null", O_WRONLY);
-        if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); close(devnull); }
-        execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
-        _exit(127);
-    }
-    // Parent: poll so stop() can kill the child promptly
-    while (true) {
-        int status = 0;
-        pid_t ret = waitpid(pid, &status, WNOHANG);
-        if (ret == pid) {
-            return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-        }
-        if (running && !running->load()) {
-            kill(pid, SIGTERM);
-            // Give it 500ms to exit cleanly, then SIGKILL
-            for (int i = 0; i < 5; ++i) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                if (waitpid(pid, &status, WNOHANG) == pid) goto done;
-            }
-            kill(pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            done:
-            return -2; // Interrupted
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
 #endif
 }
 
@@ -351,10 +267,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     std::filesystem::remove(mp4Path, ec); // always re-download; it's a temp file
 
     // Download the short clip
-    std::string dlCmd = fmt::format(
-        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
-        "--force-overwrites -o \"{}\" \"{}\"",
-        start_sec, start_sec + duration_sec, mp4Path.string(), current_url_);
+    std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, start_sec + duration_sec);
     spdlog::info("Fast chunk: downloading {}s clip starting at {}s", duration_sec, start_sec);
     int dlResult = run_command(dlCmd, &running_);
     if (dlResult != 0) {
@@ -365,17 +278,10 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 
     // Pipe ffmpeg raw output directly — frames arrive as ffmpeg encodes them
     const size_t frameSize = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 3;
+    std::string ffCmd = build_ffmpeg_pipe_command(mp4Path);
 #ifdef _WIN32
-    std::string ffCmd = fmt::format(
-        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
-        "-f rawvideo -pix_fmt rgb24 pipe:1 2>NUL",
-        mp4Path.string(), width_, height_, fps_);
     FILE* pipe = _popen(ffCmd.c_str(), "rb");
 #else
-    std::string ffCmd = fmt::format(
-        "ffmpeg -y -i '{}' -vf 'scale={}:{},setsar=1:1,fps={}' "
-        "-f rawvideo -pix_fmt rgb24 pipe:1 2>/dev/null",
-        mp4Path.string(), width_, height_, fps_);
     FILE* pipe = popen(ffCmd.c_str(), "r");
 #endif
     if (!pipe) {
@@ -452,6 +358,42 @@ void VideoStreamEngine::stop() {
     state_ = State::Idle;
 }
 
+// ---- Command construction helpers ----
+std::string VideoStreamEngine::build_ytdlp_command(
+    const std::filesystem::path& output_path, int start_sec, int end_sec) const
+{
+    return fmt::format(
+        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "--force-overwrites -o \"{}\" \"{}\"",
+        start_sec, end_sec, output_path.string(), current_url_);
+}
+
+std::string VideoStreamEngine::build_ffmpeg_command(
+    const std::filesystem::path& input_path,
+    const std::filesystem::path& output_path) const
+{
+    return fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
+        "-f rawvideo -pix_fmt rgb24 \"{}\"",
+        input_path.string(), width_, height_, fps_, output_path.string());
+}
+
+std::string VideoStreamEngine::build_ffmpeg_pipe_command(
+    const std::filesystem::path& input_path) const
+{
+#ifdef _WIN32
+    return fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>NUL",
+        input_path.string(), width_, height_, fps_);
+#else
+    return fmt::format(
+        "ffmpeg -y -i '{}' -vf 'scale={}:{},setsar=1:1,fps={}' "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>/dev/null",
+        input_path.string(), width_, height_, fps_);
+#endif
+}
+
 std::vector<uint8_t> VideoStreamEngine::get_current_frame() {
     std::lock_guard<std::mutex> lock(frame_mutex_);
     return current_frame_;
@@ -482,10 +424,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             return true;
         }
 
-        std::string dlCmd = fmt::format(
-            "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
-            "--force-overwrites -o \"{}\" \"{}\"",
-            start_sec, end_sec, mp4Path.string(), current_url_);
+        std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, end_sec);
         spdlog::info("Downloading chunk {} ({}-{}s)", chunk_index, start_sec, end_sec);
         int dlResult = run_command(dlCmd, &running_);
         if (dlResult != 0) {
@@ -505,10 +444,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             return false;
         }
 
-        std::string ffCmd = fmt::format(
-            "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
-            "-f rawvideo -pix_fmt rgb24 \"{}\"",
-            mp4Path.string(), width_, height_, fps_, binPath.string());
+        std::string ffCmd = build_ffmpeg_command(mp4Path, binPath);
         spdlog::info("Processing chunk {} to {}x{} @ {}fps", chunk_index,
                      width_, height_, fps_);
         int ffResult = run_command(ffCmd, &running_);

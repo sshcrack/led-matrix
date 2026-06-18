@@ -28,14 +28,15 @@ bool Scenes::WaveScene::render(rgb_matrix::FrameCanvas *canvas) {
     float *lastMap = map;
     map = new float[matrix_width * matrix_height];
 
+    std::uniform_real_distribution<float> rdist(0.0f, 1.0f);
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {
             const int i = xyToIndex(matrix_width, x, y);
             const float lastValue = lastMap[i];
 
-            map[i] = lastValue * (0.96 + 0.02 * (static_cast<float>(std::rand()) / RAND_MAX));
+            map[i] = lastValue * (0.96f + 0.02f * rdist(rng));
 
-            if (lastValue <= (0.18 + 0.04 * (static_cast<float>(std::rand()) / RAND_MAX))) {
+            if (lastValue <= (0.18f + 0.04f * rdist(rng))) {
                 float n = 0;
 
                 for (int u = -1; u <= 1; u++) {
@@ -50,9 +51,9 @@ bool Scenes::WaveScene::render(rgb_matrix::FrameCanvas *canvas) {
                         const int nI = xyToIndex(matrix_width, nX, nY);
                         const float nLastValue = lastMap[nI];
 
-                        if (nLastValue >= (0.5 + 0.04 * (static_cast<float>(std::rand()) / RAND_MAX))) {
+                        if (nLastValue >= (0.5f + 0.04f * rdist(rng))) {
                             n += 1;
-                            map[i] += nLastValue * (0.8 + 0.4 * (static_cast<float>(std::rand()) / RAND_MAX));
+                            map[i] += nLastValue * (0.8f + 0.4f * rdist(rng));
                         }
                     }
                 }
@@ -77,14 +78,13 @@ bool Scenes::WaveScene::render(rgb_matrix::FrameCanvas *canvas) {
 void WaveScene::initialize(int width, int height) {
     Scene::initialize(width, height);
 
-    std::srand(std::time(nullptr));
-
     map = new float[matrix_width * matrix_height];
 
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {
             const int i = xyToIndex(matrix_width, x, y);
-            map[i] = static_cast<float>(std::rand()) / RAND_MAX;
+            map[i] = dist(rng);
         }
     }
 }

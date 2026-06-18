@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.21.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 set(VCPKG_APPLOCAL_DEPS ON)
@@ -112,16 +112,31 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(shared)
 if(ENABLE_DESKTOP)
-    file(GLOB_RECURSE SOURCES
-        src_desktop/*.c*
+    set(SOURCES
+        src_desktop/main.cpp
+        src_desktop/filters.cpp
+        src_desktop/single_instance_manager.cpp
     )
 
     if(WIN32)
         list(APPEND SOURCES src_desktop/app_icon.rc)
     endif()
 else()
-    file(GLOB_RECURSE SOURCES
-        src_matrix/*.c*
+    set(SOURCES
+        src_matrix/main.cpp
+        src_matrix/matrix_control/canvas.cpp
+        src_matrix/matrix_control/hardware.cpp
+        src_matrix/server/canvas_status.cpp
+        src_matrix/server/custom_assets_management.cpp
+        src_matrix/server/desktop_ws.cpp
+        src_matrix/server/other_routes.cpp
+        src_matrix/server/post_processing_routes.cpp
+        src_matrix/server/preset_management.cpp
+        src_matrix/server/scene_management.cpp
+        src_matrix/server/schedule_management.cpp
+        src_matrix/server/server.cpp
+        src_matrix/server/update_routes.cpp
+        src_matrix/udp.cpp
     )
 endif()
 
@@ -304,14 +319,11 @@ if(NOT ENABLE_DESKTOP)
     # Previews are committed to git and deployed as-is, not auto-generated
     # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
 
-    # Install to web directory (for web interface access)
-    if(NOT ENABLE_DESKTOP)
-        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
-            DESTINATION web/scene_previews
-            OPTIONAL
-            FILES_MATCHING PATTERN "*.gif"
-        )
-    endif()
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
+        DESTINATION web/scene_previews
+        OPTIONAL
+        FILES_MATCHING PATTERN "*.gif"
+    )
 
     # Install to root for server access (e.g., /scene_preview endpoint)
     # This maintains backward compatibility with the server's /scene_preview endpoint

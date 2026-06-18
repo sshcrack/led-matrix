@@ -1,2 +1,4 @@
 CompileFlags:
   CompilationDatabase: emulator_build
+  # For other presets, symlink or change the path above.
+  # E.g.: ln -sfT desktop_build compile_commands.json

@@ -210,7 +210,8 @@ namespace ConfigData {
         
         auto now = std::chrono::system_clock::now();
         auto time_t = std::chrono::system_clock::to_time_t(now);
-        auto* tm = std::localtime(&time_t);
+        std::tm result{};
+        auto* tm = localtime_r(&time_t, &result);
         
         return is_active_at_time(tm->tm_hour, tm->tm_min, tm->tm_wday);
     }

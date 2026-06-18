@@ -21,7 +21,7 @@ void UdpServer::server_loop()
     while (server_running)
     {
         ssize_t n = recvfrom(udp_socket, receive_buffer.data(), receive_buffer.size(), 0,
-                             (struct sockaddr *)&client_addr, &client_addr_len);
+                             reinterpret_cast<struct sockaddr *>(&client_addr), &client_addr_len);
 
         if (n < 0)
         {
@@ -146,7 +146,7 @@ UdpServer::UdpServer(int port) : server_running(false), udp_socket(-1)
         return;
     }
 
-    if (bind(udp_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    if (bind(udp_socket, reinterpret_cast<struct sockaddr *>(&server_addr), sizeof(server_addr)) < 0)
     {
         spdlog::error("Failed to bind UDP socket: {}", strerror(errno));
         close(udp_socket);

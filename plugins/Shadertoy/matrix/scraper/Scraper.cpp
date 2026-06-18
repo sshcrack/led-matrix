@@ -52,7 +52,8 @@ std::expected<std::string, std::string> Scraper::scrapeNextShader(int minPage, i
 
 std::expected<std::string, std::string> Scraper::returnShaderFromVector()
 {
-    int randomIndex = std::rand() % shaderIds.size();
+    std::uniform_int_distribution<size_t> dist(0, shaderIds.size() - 1);
+    int randomIndex = static_cast<int>(dist(rng));
     std::string shaderId = shaderIds[randomIndex];
     shaderIds.erase(shaderIds.begin() + randomIndex);
     return SHADERTOY_BASE_URL + "view/" + shaderId;
@@ -69,7 +70,8 @@ std::expected<std::string, std::string> Scraper::peekNextShader(int minPage, int
     }
     if (!shaderIds.empty())
     {
-        int randomIndex = std::rand() % shaderIds.size();
+        std::uniform_int_distribution<size_t> dist(0, shaderIds.size() - 1);
+        int randomIndex = static_cast<int>(dist(rng));
         std::string shaderId = shaderIds[randomIndex];
         return SHADERTOY_BASE_URL + "view/" + shaderId;
     }
@@ -77,7 +79,8 @@ std::expected<std::string, std::string> Scraper::peekNextShader(int minPage, int
     fetchShadersSync(minPage, maxPage);
     if (!shaderIds.empty())
     {
-        int randomIndex = std::rand() % shaderIds.size();
+        std::uniform_int_distribution<size_t> dist(0, shaderIds.size() - 1);
+        int randomIndex = static_cast<int>(dist(rng));
         std::string shaderId = shaderIds[randomIndex];
         return SHADERTOY_BASE_URL + "view/" + shaderId;
     }

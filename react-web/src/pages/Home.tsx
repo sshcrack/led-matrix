@@ -23,7 +23,7 @@ export default function Home() {
   const handleToggle = async (enabled: boolean) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_enabled?enabled=${enabled}`)
+      await fetch(`${apiUrl}/set_enabled?enabled=${enabled}`, { method: 'POST' })
       setStatus(prev => prev ? { ...prev, turned_off: !enabled } : null)
       toast.success(enabled ? 'Matrix turned on' : 'Matrix turned off')
     } catch {
@@ -35,7 +35,7 @@ export default function Home() {
   const handleActivate = async (id: string, displayName: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(id)}`)
+      await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(id)}`, { method: 'POST' })
       setStatus(prev => prev ? { ...prev, current: id } : null)
       toast.success(`Activated "${displayName}"`)
     } catch {

@@ -8,15 +8,16 @@ namespace AmbientScenes {
 
     void BoidsScene::initialize(int width, int height) {
         Scene::initialize(width, height);
-        matrix_width = matrix_width;
-        matrix_height = matrix_height;
 
         flock.clear();
+        std::uniform_int_distribution<int> x_dist(0, matrix_width - 1);
+        std::uniform_int_distribution<int> y_dist(0, matrix_height - 1);
+        std::uniform_int_distribution<int> h_dist(0, 359);
         for (int i = 0; i < num_boids->get(); i++) {
-            Boid b((float)(rand() % matrix_width), (float)(rand() % matrix_height));
+            Boid b(x_dist(rng), y_dist(rng), rng);
             
             // Random color 
-            float h = (float)(rand() % 360);
+            float h = h_dist(rng);
             color::hsl_to_rgb(h, 1.0f, 0.5f, b.r, b.g, b.b);
 
             flock.push_back(b);

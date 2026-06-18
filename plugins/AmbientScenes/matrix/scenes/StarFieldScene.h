@@ -15,7 +15,7 @@ namespace AmbientScenes {
             Star() : x(0), y(0), z(0), brightness(255) {
             }
 
-            void respawn(float max_depth);
+            void respawn(float max_depth, std::mt19937& rng);
 
             void update(float speed);
         };

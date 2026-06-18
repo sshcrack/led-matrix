@@ -2,9 +2,26 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import fs from 'fs'
+
+function pwaAssetCheckPlugin(): import('vite').Plugin {
+  const requiredAssets = ['icon-192.png', 'icon-512.png', 'screenshot-wide.png', 'screenshot-mobile.png']
+  return {
+    name: 'pwa-asset-check',
+    buildStart() {
+      for (const asset of requiredAssets) {
+        const fullPath = path.resolve(__dirname, 'public', asset)
+        if (!fs.existsSync(fullPath)) {
+          console.warn(`[PWA] Missing asset: ${asset} — expected at ${fullPath}`)
+        }
+      }
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
+    pwaAssetCheckPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
