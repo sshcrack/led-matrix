@@ -1,5 +1,6 @@
 #pragma once
 #include <thread>
+#include <atomic>
 #include <arpa/inet.h>
 
 class UdpServer {
@@ -9,7 +10,7 @@ class UdpServer {
 
         int udp_socket;
         struct sockaddr_in server_addr;
-        bool server_running;
+        std::atomic<bool> server_running{false};
 
         std::thread udp_server_thread;
     public:

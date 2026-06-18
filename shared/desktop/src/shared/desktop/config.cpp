@@ -105,7 +105,7 @@ void Config::General::setPort(uint16_t newPort)
     spdlog::info("Port set to {}", port);
 }
 
-const std::string &Config::General::getHostname() const
+std::string Config::General::getHostname() const
 {
     std::shared_lock lock(mutex_);
     return hostname;

@@ -47,7 +47,7 @@ WebsocketClient::WebsocketClient() : udpSender()
 
 WebsocketClient::~WebsocketClient()
 {
-    ix::initNetSystem();
+    ix::uninitNetSystem();
     senderRunning = false;
     if (senderThread.joinable())
     {

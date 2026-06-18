@@ -47,7 +47,7 @@ namespace Config
         const uint16_t &getPort() const;
         void setPort(uint16_t newPort);
 
-        const std::string &getHostname() const;
+        std::string getHostname() const;
         std::string getHostnameCopy() const; // Thread-safe copy method
         void setHostname(const std::string &hostname);
 

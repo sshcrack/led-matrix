@@ -12,21 +12,17 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     void to_json(json &j, const Scenes::Scene *&p) {
-        auto &c = const_cast<Scenes::Scene *&>(p);
-
         j = {
-            {"type", c->get_name()},
-            {"arguments", c->to_json()},
-            {"uuid", c->get_uuid()}
+            {"type", p->get_name()},
+            {"arguments", p->to_json()},
+            {"uuid", p->get_uuid()}
         };
     }
 
     void to_json(json &j, const ImageProviders::General *&p) {
-        auto &c = const_cast<ImageProviders::General *&>(p);
-
         j = {
-            {"type", c->get_name()},
-            {"arguments", c->to_json()}
+            {"type", p->get_name()},
+            {"arguments", p->to_json()}
         };
     }
 
@@ -44,7 +40,8 @@ namespace ConfigData {
         scenes_json.reserve(p->scenes.size());
         for (const auto &item: p->scenes) {
             json local_j;
-            to_json(local_j, (const Scenes::Scene *&) item);
+            const auto* scene_ptr = item.get();
+            to_json(local_j, scene_ptr);
 
             scenes_json.push_back(local_j);
         }
