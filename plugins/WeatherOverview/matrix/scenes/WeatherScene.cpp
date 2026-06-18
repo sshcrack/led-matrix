@@ -2,6 +2,7 @@
 #include "WeatherScene.h"
 #include "../Constants.h"
 #include "shared/matrix/utils/canvas_image.h"
+#include "shared/matrix/utils/utils.h"
 #include <iostream>
 #ifdef ENABLE_EMULATOR
 #include "emulator.h"

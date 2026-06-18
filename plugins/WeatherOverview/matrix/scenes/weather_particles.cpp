@@ -1,6 +1,7 @@
 #include "WeatherScene.h"
 #include "../Constants.h"
 #include <cmath>
+#include <shared/matrix/utils/utils.h>
 
 void Scenes::WeatherScene::initializeParticles()
 {
