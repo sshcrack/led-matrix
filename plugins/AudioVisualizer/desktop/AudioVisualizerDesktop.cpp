@@ -472,9 +472,5 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    return std::unique_ptr<UdpPacket>(new CompactAudioPacket(bands, interpolatedLog, send_beat_flag),
-                                                             [](UdpPacket *packet)
-                                                             {
-                                                                 delete (CompactAudioPacket *)packet;
-                                                             });
+    return std::make_unique<CompactAudioPacket>(bands, interpolatedLog, send_beat_flag);
 }

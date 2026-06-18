@@ -97,8 +97,8 @@ static void shutdown_matrix() {
     if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
         spdlog::info("Received shutdown signal, turning Matrix OFF.");
         try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L});
+            auto url = fmt::format("http://{}:{}/set_enabled", g_shutdown_hostname, g_shutdown_port);
+            cpr::Response response = cpr::Post(cpr::Url(url), cpr::Payload{{"enabled", "false"}}, cpr::Timeout{3000L});
             if (response.error) {
                 spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
             } else {
@@ -125,10 +125,9 @@ static void window_iconify_callback(GLFWwindow *window, const int iconified) {
 static void change_matrix_status(const std::string &hostname, uint16_t port, bool turnOn, bool waitForCompletion = false) {
     auto task = [hostname, port, turnOn]() {
         try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled={}", hostname, port,
-                                   turnOn ? "true" : "false");
+            auto url = fmt::format("http://{}:{}/set_enabled", hostname, port);
 
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{5000L}); // 5 second timeout
+            cpr::Response response = cpr::Post(cpr::Url(url), cpr::Payload{{"enabled", turnOn ? "true" : "false"}}, cpr::Timeout{5000L});
             if (response.error) {
                 spdlog::error("Failed to change matrix status: {}", response.error.message);
             } else {
@@ -245,7 +244,170 @@ int run_app(int argc, char *argv[]) {
     setup_tray(tray);
 
     HelloImGui::RunnerParams runnerParams;
-    runnerParams.callbacks.ShowGui = show_gui;
+    runnerParams.callbacks.ShowGui = [&] {
+        if (shouldExit.load()) {
+            shutdown_matrix();
+            HelloImGui::GetRunnerParams()->appShallExit = true;
+            shouldExit.store(false);
+        }
+
+        if (showMainWindow) {
+            spdlog::info("Showing main window.");
+            showMainWindow = false;
+            HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
+            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
+            glfwRestoreWindow(window);
+            glfwShowWindow(window);
+            glfwFocusWindow(window);
+        }
+
+        General &generalCfg = cfg->getGeneralConfig();
+        ImGui::SeparatorText("General Device Settings");
+
+        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname,
+                                     ImGuiInputTextFlags_CallbackCharFilter, hostname_filter)) {
+            std::cout << "Hostname changed to: " << hostname << std::endl;
+            generalCfg.setHostname(hostname);
+            ws->stop();
+        }
+
+        bool somethingInvalid = false;
+        if (hostname.empty()) {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+            somethingInvalid = true;
+        }
+
+        if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None)) {
+            std::cout << "Port changed to: " << port << std::endl;
+            generalCfg.setPort(port);
+        }
+
+        if (port < 1 || port > 65535) {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+            somethingInvalid = true;
+        }
+
+        if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5, ImGuiInputFlags_None)) {
+            if (fpsLimit < 1) fpsLimit = 1;
+            if (fpsLimit > 360) fpsLimit = 360;
+            generalCfg.setFpsLimit(fpsLimit);
+            HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
+        }
+        if (fpsLimit < 1 || fpsLimit > 360) {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+            somethingInvalid = true;
+        }
+
+        if (ImGui::SliderInt("UDP Send FPS", &udpFpsLimit, 1, 120, "%d FPS")) {
+            if (udpFpsLimit < 1) udpFpsLimit = 1;
+            if (udpFpsLimit > 120) udpFpsLimit = 120;
+            generalCfg.setUdpFpsLimit(udpFpsLimit);
+        }
+        ImGui::SetItemTooltip("Limits the rate at which frames are sent to the Pi. "
+                              "Lower this if the Pi can't keep up (e.g. 15-25 FPS).");
+
+        if (somethingInvalid) {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Please fix the highlighted fields.");
+        } else if (initialConnect) {
+            ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
+            ws->start();
+            matrixVersionManager.checkMatrixVersionAsync(hostname, port);
+            initialConnect = false;
+            if (generalCfg.isTurnMatrixOnOnStart()) {
+                spdlog::info("Turning Matrix ON on start.");
+                change_matrix_status(hostname, port, true);
+            }
+        }
+
+        if (HelloImGui::GetRunnerParams()->appWindowParams.hidden) {
+            return;
+        }
+
+        if (startMinimized) {
+            if (startupFrameCounter > 10) {
+                spdlog::info("Hiding window after startup.");
+                HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;
+                startMinimized = false;
+            } else {
+                startupFrameCounter++;
+            }
+            return;
+        }
+
+        if (ImGui::Checkbox("Turn Matrix On on Start", &matrixOnOnStart)) {
+            generalCfg.setTurnMatrixOnOnStart(matrixOnOnStart);
+        }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
+            generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
+        }
+
+        auto state = ws->getReadyState();
+        const std::string stateStr = ws->getReadyStateString();
+        ImGui::Text("WebSocket is currently: %s", stateStr.c_str());
+
+        if (state != ix::ReadyState::Open) {
+            if (ImGui::Button("Connect", ImVec2(0, 0))) {
+                ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
+                ws->start();
+                ws->webSocket.enableAutomaticReconnection();
+                matrixVersionManager.checkMatrixVersionAsync(hostname, port);
+                spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
+            }
+            return;
+        } else {
+            if (ImGui::Button("Disconnect", ImVec2(0, 0))) {
+                ws->stop();
+                ws->webSocket.disableAutomaticReconnection();
+                spdlog::info("Disconnecting from WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
+            }
+        }
+
+        ImGui::Text("Active Scene: %s", ws->getActiveScene().c_str());
+        auto last = ws->getLastError();
+        if (!last.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last Error: %s", last.c_str());
+        }
+
+        ImGui::SeparatorText("Plugin Settings");
+        auto plugins = pl->get_plugins();
+        if (plugins.empty()) {
+            ImGui::Text("No plugins loaded.");
+            return;
+        }
+
+        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
+        {
+            ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0),
+                              ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
+            for (const auto &currPair : plugins) {
+                if (ImGui::Selectable(currPair.first.c_str(), selected.first == currPair.first))
+                    selected = currPair;
+            }
+            ImGui::EndChild();
+        }
+
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+        selected.second->render();
+        ImGui::EndChild();
+        ImGui::EndGroup();
+
+        updateManager.render(ImGui::GetCurrentContext());
+        matrixVersionManager.render(ImGui::GetCurrentContext());
+        if (updateManager.shallAppExit())
+            HelloImGui::GetRunnerParams()->appShallExit = true;
+    };
     runnerParams.callbacks.PreNewFrame = [&] {
         tray.pump();
 #ifndef _WIN32
