@@ -129,12 +129,12 @@ namespace
         const std::string &transition_name)
     {
         TransitionEffect *transition_effect = nullptr;
-        if (Constants::global_transition_manager != nullptr)
+        if (auto* tm = Constants::global_transition_manager)
         {
-            transition_effect = Constants::global_transition_manager->get_transition(transition_name);
+            transition_effect = tm->get_transition(transition_name);
             if (transition_effect == nullptr)
             {
-                transition_effect = Constants::global_transition_manager->get_transition("blend");
+                transition_effect = tm->get_transition("blend");
             }
         }
 
@@ -226,9 +226,9 @@ bool render_scene_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> sc
             return true;
         }
 
-        if (Constants::global_post_processor)
+        if (auto* pp = Constants::global_post_processor)
         {
-            Constants::global_post_processor->apply_effects(composite_offscreen_canvas);
+            pp->apply_effects(composite_offscreen_canvas);
         }
 
         composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);
@@ -293,9 +293,9 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
                                matrix_height,
                                transition_name);
 
-        if (Constants::global_post_processor)
+        if (auto* pp = Constants::global_post_processor)
         {
-            Constants::global_post_processor->apply_effects(composite_offscreen_canvas);
+            pp->apply_effects(composite_offscreen_canvas);
         }
 
         composite_offscreen_canvas = matrix->SwapOnVSync(composite_offscreen_canvas, 1);

@@ -11,7 +11,7 @@ endif()
 # Check if the cross-compile directory exists
 if(NOT EXISTS "${CROSS_COMPILE_DIR}")
   if(DEFINED $ENV{CROSS_COMPILE_ROOT})
-    message(FATAL_ERROR "CROSS_COMPILE_DIR was defined in env but does not exist.")
+    message(FATAL_ERROR "CROSS_COMPILE_ROOT was defined in env but does not exist.")
   endif()
 
   message(STATUS "Cross-compile directory not found. Downloading and extracting...")

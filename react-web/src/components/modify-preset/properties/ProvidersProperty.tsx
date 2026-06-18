@@ -4,10 +4,10 @@ import { titleCase } from '~/lib/utils'
 import type { Property, ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 
 interface ProvidersPropertyProps {
-  property: Property<any>
+  property: Property<unknown>
   value: ProviderValue | null
   providers: ListProviders[]
-  onChange: (value: any) => void
+  onChange: (value: unknown) => void
 }
 
 export default function ProvidersProperty({ property, value }: ProvidersPropertyProps) {

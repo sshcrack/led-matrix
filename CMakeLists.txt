@@ -308,10 +308,6 @@ if(ENABLE_EMULATOR)
     set(PREVIEW_WIDTH "128" CACHE STRING "Preview GIF width (pixels)")
     set(PREVIEW_HEIGHT "128" CACHE STRING "Preview GIF height (pixels)")
 
-    set(_PREVIEW_LIB_PATH
-        "${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
-    )
-
     add_executable(preview_gen
         ${CMAKE_CURRENT_SOURCE_DIR}/src_preview_gen/main.cpp
     )
