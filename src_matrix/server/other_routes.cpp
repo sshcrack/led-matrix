@@ -43,10 +43,14 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
 
         // Prevent directory traversal
+        if (filename.find("..") != std::string::npos || filename.find("/") != std::string::npos) {
+            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+        }
         std::error_code can_ec;
         const auto canonical = filesystem::canonical(file_path, can_ec);
-        const auto canonical_upload = filesystem::canonical(Constants::upload_dir, can_ec);
-        if (can_ec) {
+        std::error_code upload_ec;
+        const auto canonical_upload = filesystem::canonical(Constants::upload_dir, upload_ec);
+        if (can_ec || upload_ec) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
         if (!canonical.string().starts_with(canonical_upload.string())) {

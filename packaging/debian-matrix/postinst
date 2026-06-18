@@ -70,6 +70,7 @@ SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET}"
 EOF
 fi
 
+# --- Read package version (also used for config.json update below) ---
 PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 
 # --- Write initial config.json if not already present ---
@@ -96,7 +97,7 @@ EOF
         chown pi:pi "$DATA_DIR/config.json"
     fi
 else
-    # Update the current_version field on every upgrade
+    # Update current_version in existing config.json on every upgrade
     if command -v jq >/dev/null 2>&1; then
         tmp=$(mktemp)
         jq --arg ver "$PKG_VERSION" '.update_settings.current_version = $ver' "$DATA_DIR/config.json" > "$tmp" && mv "$tmp" "$DATA_DIR/config.json"

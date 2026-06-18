@@ -3,33 +3,48 @@ set -e
 . /usr/share/debconf/confmodule
 
 # Ask hardware configuration questions (only if not already set)
-db_get led-matrix/led-rows;            [ -n "$RET" ] || db_input high led-matrix/led-rows       || true
-db_get led-matrix/led-cols;            [ -n "$RET" ] || db_input high led-matrix/led-cols       || true
-db_get led-matrix/led-chain;           [ -n "$RET" ] || db_input high led-matrix/led-chain      || true
-db_get led-matrix/led-parallel;        [ -n "$RET" ] || db_input high led-matrix/led-parallel   || true
-db_get led-matrix/led-slowdown-gpio;   [ -n "$RET" ] || db_input high led-matrix/led-slowdown-gpio || true
-db_get led-matrix/extra-opts;          [ -n "$RET" ] || db_input medium led-matrix/extra-opts   || true
+db_get led-matrix/led-rows
+if [ -z "$RET" ]; then db_input high led-matrix/led-rows || true; fi
+db_get led-matrix/led-cols
+if [ -z "$RET" ]; then db_input high led-matrix/led-cols || true; fi
+db_get led-matrix/led-chain
+if [ -z "$RET" ]; then db_input high led-matrix/led-chain || true; fi
+db_get led-matrix/led-parallel
+if [ -z "$RET" ]; then db_input high led-matrix/led-parallel || true; fi
+db_get led-matrix/led-slowdown-gpio
+if [ -z "$RET" ]; then db_input high led-matrix/led-slowdown-gpio || true; fi
+db_get led-matrix/extra-opts
+if [ -z "$RET" ]; then db_input medium led-matrix/extra-opts || true; fi
+db_go || true
 
-# Ask Spotify question (only if not already set)
-db_get led-matrix/spotify-enable;      [ -n "$RET" ] || db_input medium led-matrix/spotify-enable || true
+# Ask Spotify question, then conditionally ask for credentials
+db_get led-matrix/spotify-enable
+if [ -z "$RET" ]; then
+    db_input medium led-matrix/spotify-enable || true
+    db_go || true
+fi
 
-# Ask Spotify credentials if Spotify is enabled
 db_get led-matrix/spotify-enable
 if [ "$RET" = "true" ]; then
-    db_get led-matrix/spotify-client-id;        [ -n "$RET" ] || db_input high led-matrix/spotify-client-id     || true
-    db_get led-matrix/spotify-client-secret;    [ -n "$RET" ] || db_input high led-matrix/spotify-client-secret || true
+    db_get led-matrix/spotify-client-id
+    if [ -z "$RET" ]; then db_input high led-matrix/spotify-client-id || true; fi
+    db_get led-matrix/spotify-client-secret
+    if [ -z "$RET" ]; then db_input high led-matrix/spotify-client-secret || true; fi
+    db_go || true
 fi
 
-# Ask update configuration questions (only if not already set)
-db_get led-matrix/auto-update-enable;  [ -n "$RET" ] || db_input medium led-matrix/auto-update-enable   || true
+# Ask update configuration questions
+db_get led-matrix/auto-update-enable
+if [ -z "$RET" ]; then
+    db_input medium led-matrix/auto-update-enable || true
+    db_go || true
+fi
 
-# Conditionally ask for interval
 db_get led-matrix/auto-update-enable
 if [ "$RET" = "true" ]; then
-    db_get led-matrix/auto-update-interval; [ -n "$RET" ] || db_input medium led-matrix/auto-update-interval || true
+    db_get led-matrix/auto-update-interval
+    if [ -z "$RET" ]; then db_input medium led-matrix/auto-update-interval || true; fi
+    db_go || true
 fi
-
-# Single db_go at the end
-db_go || true
 
 exit 0

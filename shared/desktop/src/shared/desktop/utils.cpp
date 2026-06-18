@@ -108,6 +108,9 @@ int run_command(const std::string& cmd,
     while (true) {
         int status = 0;
         pid_t ret = waitpid(pid, &status, WNOHANG);
+        if (ret < 0) {
+            return -1;
+        }
         if (ret == pid) {
             return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
         }

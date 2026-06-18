@@ -198,7 +198,12 @@ namespace ConfigData {
         auto now = std::chrono::system_clock::now();
         auto time_t = std::chrono::system_clock::to_time_t(now);
         std::tm result{};
-        auto* tm = localtime_r(&time_t, &result);
+        auto* tm =
+#ifdef _WIN32
+            localtime_s(&result, &time_t) ? nullptr : &result;
+#else
+            localtime_r(&time_t, &result);
+#endif
         
         return is_active_at_time(tm->tm_hour, tm->tm_min, tm->tm_wday);
     }

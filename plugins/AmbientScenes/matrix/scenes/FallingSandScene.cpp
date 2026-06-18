@@ -72,7 +72,7 @@ namespace AmbientScenes {
                             bool can_right = x < matrix_width - 1 && next_grid[down_right] == 0 && grid[down_right] == 0;
                             
                             if (can_left && can_right) {
-                                if (std::uniform_int_distribution<int>(0, 1)(rng) == 0) next_grid[down_left] = val;
+                                if (std::uniform_int_distribution<int>(0, 1)(rng)) next_grid[down_left] = val;
                                 else next_grid[down_right] = val;
                             } else if (can_left) {
                                 next_grid[down_left] = val;

@@ -223,7 +223,7 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
         reloadImages();
     }
 
-    animation_frame = (animation_frame + 1) % get_target_fps();
+    animation_frame = (animation_frame + 1) % std::max(1, get_target_fps());
 
     updateEnhancedParticles(data);
     canvas->Clear();
