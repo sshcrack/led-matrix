@@ -84,7 +84,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
-# Installation
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION "."
-)
+
