@@ -390,7 +390,7 @@ rgb_matrix::Color SnakeGameScene::getSnakeColor(int segment_index) const {
     if (rainbow_snake->get()) {
         // Rainbow snake - each segment has different color
         // Use frame_counter as a simple time source for animation
-        float time_factor = frame_counter * 0.016f; // Approximate 60fps
+        float time_factor = frame_counter / static_cast<float>(get_target_fps());
         float hue = fmod(segment_index * 30.0f + time_factor * 50.0f, 360.0f);
         
         uint8_t r, g, b;

@@ -56,18 +56,18 @@ bool PingPongGameScene::render(rgb_matrix::FrameCanvas *canvas)
     prev_right_paddle_y = right_paddle_y;
 
     // Update ball position with time-scaled movement
-    ball_x += ball_dx * time_step * 60.0f * curr_speed_multiplier; // Apply speed multiplier
-    ball_y += ball_dy * time_step * 60.0f * curr_speed_multiplier;
+    ball_x += ball_dx * time_step * curr_speed_multiplier; // Apply speed multiplier
+    ball_y += ball_dy * time_step * curr_speed_multiplier;
 
     // Simple AI for paddles with time-scaled movement
     float target_y = ball_y - paddle_height_l / 2;
     if (ball_dx < 0)
     {
-        left_paddle_y += (target_y - left_paddle_y) * paddle_speed_l * time_step * 60.0f;
+        left_paddle_y += (target_y - left_paddle_y) * paddle_speed_l * time_step;
     }
     else
     {
-        right_paddle_y += (target_y - right_paddle_y) * paddle_speed_l * time_step * 60.0f;
+        right_paddle_y += (target_y - right_paddle_y) * paddle_speed_l * time_step;
     }
 
     // Ball collision with top/bottom

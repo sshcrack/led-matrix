@@ -302,7 +302,7 @@ void Scenes::WeatherScene::tryCreateShootingStar()
     if (chance <= 0)
         return;
 
-    if (rand() % 100 < chance)
+    if (std::uniform_int_distribution<int>(0, 99)(rng) < chance)
     {
         // Create a new shooting star
         if (shooting_stars.size() < MAX_SHOOTING_STARS)
@@ -316,32 +316,33 @@ void Scenes::WeatherScene::tryCreateShootingStar()
             if (!star.active)
             {
                 // Determine direction (diagonal across the screen)
-                bool from_top = (rand() % 2 == 0);
-                bool from_left = (rand() % 2 == 0);
+                bool from_top = std::uniform_int_distribution<int>(0, 1)(rng);
+                bool from_left = std::uniform_int_distribution<int>(0, 1)(rng);
 
                 // Set starting position
                 if (from_top)
                 {
-                    star.x = rand() % matrix_width;
+                    star.x = std::uniform_int_distribution<int>(0, matrix_width - 1)(rng);
                     star.y = 0;
                 }
                 else
                 {
                     star.x = from_left ? 0 : matrix_width - 1;
-                    star.y = rand() % (matrix_height / 2); // Start in top half
+                    star.y = std::uniform_int_distribution<int>(0, matrix_height / 2 - 1)(rng);
                 }
 
                 // Set direction and speed
-                float speed = SHOOTING_STAR_SPEED_MIN +
-                              (static_cast<float>(rand()) / RAND_MAX) *
-                                  (SHOOTING_STAR_SPEED_MAX - SHOOTING_STAR_SPEED_MIN);
+                std::uniform_real_distribution<float> sdist(SHOOTING_STAR_SPEED_MIN, SHOOTING_STAR_SPEED_MAX);
+                float speed = sdist(rng);
 
                 star.dx = from_left ? speed : -speed;
                 star.dy = speed;
 
                 // Set other properties
-                star.tail_length = 3.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
-                star.brightness = 150.0f + (static_cast<float>(rand()) / RAND_MAX) * 105.0f;
+                std::uniform_real_distribution<float> tail_dist(3.0f, 8.0f);
+                std::uniform_real_distribution<float> bright_dist(150.0f, 255.0f);
+                star.tail_length = tail_dist(rng);
+                star.brightness = bright_dist(rng);
                 star.active = true;
 
                 last_shooting_star_time = std::chrono::steady_clock::now();
@@ -526,12 +527,11 @@ void Scenes::WeatherScene::resetStars()
 {
     this->stars.clear();
 
+    std::uniform_int_distribution<int> x_dist(0, matrix_width);
+    std::uniform_int_distribution<int> y_dist(0, matrix_height);
     for (int i = 0; i < 20; i++)
     {
-        int x = rand() % (matrix_width + 1);
-        int y = rand() % (matrix_height + 1);
-
-        stars.emplace_back(x, y);
+        stars.emplace_back(x_dist(rng), y_dist(rng));
     }
 }
 
@@ -564,26 +564,33 @@ RGB Scenes::WeatherScene::getThemeColor(const ColorTheme theme, const WeatherDat
 
 bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 {
-    auto data_res = parser.get_data(location_lat->get(), location_lon->get());
-    if (!data_res)
+    const auto now = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_weather_fetch).count();
+
+    if (elapsed >= weather_refresh_interval_seconds)
     {
-        spdlog::warn("Could not get weather data: {}", data_res.error());
-        // Instead of returning false, show an error message and continue
-        canvas->Clear();
-        DrawText(canvas, BODY_FONT, 2, BODY_FONT.baseline() + 5,
-                 {255, 100, 100}, "Weather data error");
-        DrawText(canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
-                 {200, 200, 200}, data_res.error().c_str());
-        // Render loop now uses the provided canvas directly.
+        auto data_res = parser.get_data(location_lat->get(), location_lon->get());
+        if (!data_res)
+        {
+            spdlog::warn("Could not get weather data: {}", data_res.error());
+            // Instead of returning false, show an error message and continue
+            canvas->Clear();
+            DrawText(canvas, BODY_FONT, 2, BODY_FONT.baseline() + 5,
+                     {255, 100, 100}, "Weather data error");
+            DrawText(canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
+                     {200, 200, 200}, data_res.error().c_str());
+            // Render loop now uses the provided canvas directly.
 
 #ifdef ENABLE_EMULATOR
             ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
 #endif
-        SleepMillis(1000);
-        return false; // Continue running despite error
-    }
+            SleepMillis(1000);
+            return false; // Continue running despite error
+        }
 
-    data = data_res.value(); // Store data for animations
+        data = data_res.value();
+        last_weather_fetch = now;
+    }
 
     // Get the appropriate color based on theme setting
     RGB theme_color = getThemeColor(color_theme->get().get(), data);
@@ -782,7 +789,7 @@ void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
 
             p.x += wind_offset;
             p.y += p.speed * speed_mult;
-            p.life_time += 0.016f; // Assuming 60 FPS
+            p.life_time += 1.0f / static_cast<float>(get_target_fps());
 
             // Snow rotation
             if (is_snow)
@@ -813,31 +820,30 @@ void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
             if (!p.active)
             {
                 p.active = true;
-                p.x = static_cast<float>(rand() % (matrix_width + 10) - 5);
+                p.x = std::uniform_int_distribution<int>(-5, matrix_width + 4)(rng);
                 p.y = -5;
                 p.life_time = 0;
-                p.wind_factor = static_cast<float>(rand() % 360) * 0.0174f; // Random starting phase
+                p.wind_factor = std::uniform_int_distribution<int>(0, 359)(rng) * 0.0174f;
                 p.rotation = 0;
 
                 if (is_snow)
                 {
-                    p.size = 1.0f + (rand() % 3);
-                    p.speed = 0.1f + (rand() % 8) / 10.0f;
-                    p.opacity = 180 + (rand() % 75);
-                    // Varied snow colors for more realism
-                    p.r = 240 + (rand() % 15);
-                    p.g = 240 + (rand() % 15);
-                    p.b = 250 + (rand() % 5);
+                    std::uniform_int_distribution<int> sz(1, 3);
+                    p.size = sz(rng);
+                    p.speed = std::uniform_int_distribution<int>(1, 8)(rng) / 10.0f + 0.1f;
+                    p.opacity = std::uniform_int_distribution<int>(180, 254)(rng);
+                    p.r = std::uniform_int_distribution<int>(240, 254)(rng);
+                    p.g = std::uniform_int_distribution<int>(240, 254)(rng);
+                    p.b = std::uniform_int_distribution<int>(250, 254)(rng);
                 }
                 else if (is_rain)
                 {
                     p.size = 1.0f;
-                    p.speed = 0.8f + (rand() % 20) / 10.0f;
-                    p.opacity = 150 + (rand() % 105);
-                    // Rain colors with slight blue tint
-                    p.r = 150 + (rand() % 50);
-                    p.g = 180 + (rand() % 50);
-                    p.b = 200 + (rand() % 55);
+                    p.speed = std::uniform_int_distribution<int>(8, 27)(rng) / 10.0f;
+                    p.opacity = std::uniform_int_distribution<int>(150, 254)(rng);
+                    p.r = std::uniform_int_distribution<int>(150, 199)(rng);
+                    p.g = std::uniform_int_distribution<int>(180, 229)(rng);
+                    p.b = std::uniform_int_distribution<int>(200, 254)(rng);
                 }
 
                 active_particles++;
@@ -937,10 +943,12 @@ void Scenes::WeatherScene::renderClouds(rgb_matrix::FrameCanvas *canvas, const W
     // Initialize cloud layers if empty
     if (cloud_layers.empty())
     {
+        std::uniform_int_distribution<int> xcld(0, matrix_width - 1);
+        std::uniform_int_distribution<int> ycld(10, 29);
         for (int i = 0; i < 3; i++)
         {
-            cloud_layers.push_back({static_cast<float>(rand() % matrix_width),
-                                    static_cast<float>(10 + rand() % 20)});
+            cloud_layers.push_back({static_cast<float>(xcld(rng)),
+                                    static_cast<float>(ycld(rng))});
         }
     }
 
@@ -963,7 +971,7 @@ void Scenes::WeatherScene::renderClouds(rgb_matrix::FrameCanvas *canvas, const W
             if (cloud.first > matrix_width + 20)
             {
                 cloud.first = -20;
-                cloud.second = 10 + rand() % 20;
+                cloud.second = std::uniform_int_distribution<int>(10, 29)(rng);
             }
 
             // Beautiful cloud rendering: multiple overlapping ellipses
@@ -1065,21 +1073,22 @@ void Scenes::WeatherScene::renderLightning(rgb_matrix::FrameCanvas *canvas)
     }
 
     // Randomly trigger new lightning only for thunderstorm codes (200-299)
-    if (!lightning_active && (rand() % 1800) == 0)
-    { // About every 30 seconds at 60fps
+    if (!lightning_active && std::uniform_int_distribution<int>(0, 1799)(rng) == 0)
+    {
         lightning_active = true;
         lightning_timer = 200;
 
         // Generate lightning bolt path
         lightning_points.clear();
-        int x = rand() % matrix_width;
+        std::uniform_int_distribution<int> x_start(0, matrix_width - 1);
+        int x = x_start(rng);
         int y = 0;
 
         while (y < matrix_height)
         {
             lightning_points.push_back({x, y});
-            y += 1 + rand() % 3;
-            x += (rand() % 3) - 1; // -1, 0, or 1
+            y += 1 + std::uniform_int_distribution<int>(1, 3)(rng);
+            x += std::uniform_int_distribution<int>(-1, 1)(rng);
             x = std::max(0, std::min(matrix_width - 1, x));
         }
     }
@@ -1156,39 +1165,35 @@ void Scenes::WeatherScene::renderFogMist(rgb_matrix::FrameCanvas *canvas, const 
     if (is_fog)
     {
         // --- Enhanced fog patch system (stable, no flicker) ---
-        struct FogPatch {
-            float x, y; // Center position
-            float vx, vy; // Velocity
-            float radius; // Size
-            float density; // Opacity
-            float phase; // For organic movement
-        };
-        static std::vector<FogPatch> fog_patches;
-        static bool fog_initialized = false;
-        static int last_matrix_width = 0, last_matrix_height = 0;
-        const int NUM_PATCHES = 7 + rand() % 3; // 7-9 patches for variety
+        std::uniform_int_distribution<int> num_dist(7, 9);
+        const int NUM_PATCHES = num_dist(rng);
 
         // Reinitialize if canvas size changes or not initialized
-        if (!fog_initialized || last_matrix_width != matrix_width || last_matrix_height != matrix_height) {
+        if (!fog_initialized || last_fog_matrix_width != matrix_width || last_fog_matrix_height != matrix_height) {
             fog_patches.clear();
+            std::uniform_real_distribution<float> r_dist(18.0f, 40.0f);
+            std::uniform_real_distribution<float> d_dist(0.25f, 0.55f);
+            std::uniform_int_distribution<int> xy_dist(0, matrix_width - 1);
+            std::uniform_int_distribution<int> yh_dist(0, matrix_height - 1);
+            std::uniform_real_distribution<float> vx_dist(0.08f, 0.18f);
+            std::uniform_int_distribution<int> sign_dist(0, 1);
+            std::uniform_real_distribution<float> phase_dist(0.0f, 10.0f);
             for (int i = 0; i < NUM_PATCHES; ++i) {
-                float r = 18.0f + rand() % 22; // 18-40 px radius
-                float d = 0.25f + (rand() % 60) / 200.0f; // 0.25-0.55 density
-                float x = rand() % matrix_width;
-                float y = rand() % matrix_height;
-                float vx = 0.08f + (rand() % 10) / 100.0f * ((rand() % 2) ? 1 : -1);
-                float vy = 0.03f * ((rand() % 2) ? 1 : -1);
-                float phase = rand() % 1000 / 100.0f;
+                float r = r_dist(rng);
+                float d = d_dist(rng);
+                float x = xy_dist(rng);
+                float y = yh_dist(rng);
+                float vx = vx_dist(rng) * (sign_dist(rng) ? 1 : -1);
+                float vy = 0.03f * (sign_dist(rng) ? 1 : -1);
+                float phase = phase_dist(rng);
                 fog_patches.push_back({x, y, vx, vy, r, d, phase});
             }
             fog_initialized = true;
-            last_matrix_width = matrix_width;
-            last_matrix_height = matrix_height;
+            last_fog_matrix_width = matrix_width;
+            last_fog_matrix_height = matrix_height;
         }
 
         // Animate fog patches (smooth, stable)
-        static float fog_time = 0.0f;
-
         fog_time += 0.05f * animation_speed_multiplier->get();
         for (auto &patch : fog_patches) {
             patch.x += patch.vx * (0.7f + 0.3f * sin(fog_time + patch.phase));
@@ -1247,7 +1252,6 @@ void Scenes::WeatherScene::renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, 
         (code == 91 || code == 92);
     if (is_rain && data.is_day)
     {
-        static float rainbow_time = 0.0f;
         rainbow_time += 0.008f;
 
         int center_x = matrix_width / 2;
@@ -1320,7 +1324,6 @@ void Scenes::WeatherScene::renderAurora(rgb_matrix::FrameCanvas *canvas)
     if (!data.is_day && data.temperature.find("-") != std::string::npos)
     {
         // Use a continuous time variable to avoid animation resets
-        static float aurora_continuous_time = 0.0f;
         aurora_continuous_time += 0.02f * animation_speed_multiplier->get();
 
         for (int x = 0; x < matrix_width; x++)

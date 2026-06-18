@@ -6,7 +6,6 @@
 #include <random>
 #include <utility>
 #include <vector>
-#include <mutex>
 
 namespace AmbientScenes {
     class SortingVisualizerScene : public Scenes::Scene {
@@ -27,7 +26,6 @@ namespace AmbientScenes {
 
         std::vector<int> array_data;
         std::vector<int> access_indices; // Indices currently being accessed/compared
-        mutable std::mutex access_indices_mutex; // Protect access_indices from concurrent access
         Algorithm current_algorithm;
         int sort_phase; // 0 = unsorting, 1 = sorting, 2 = sorted (wait), 3 = completed
         int delay_counter;

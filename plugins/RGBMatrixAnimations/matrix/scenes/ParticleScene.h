@@ -5,6 +5,7 @@
 #include "../anim/gravityparticles.h"
 #include "spdlog/spdlog.h"
 #include <led-matrix.h>
+#include <random>
 
 namespace Scenes {
     class ParticleMatrixRenderer : public RGBMatrixRenderer {
@@ -37,11 +38,13 @@ namespace Scenes {
         }
 
         int16_t random_int16(int16_t a, int16_t b) override {
-            return a + rand() % (b - a);
+            std::uniform_int_distribution<int16_t> dist(a, b - 1);
+            return dist(rng);
         }
 
     protected:
         rgb_matrix::Canvas *canvas_;
+        std::mt19937 rng{std::random_device{}()};
     };
 
     class ParticleScene : public Scene {
@@ -61,12 +64,14 @@ namespace Scenes {
         uint64_t prevTime;
         uint64_t lastFpsLog;
         uint32_t frameCount;
+        std::mt19937 scene_rng{std::random_device{}()};
 
         static uint64_t micros();
 
         int16_t random_int16(int16_t a, int16_t b) {
             // Added helper function
-            return renderer ? renderer->get()->random_int16(a, b) : a + rand() % (b - a);
+            std::uniform_int_distribution<int16_t> dist(a, b - 1);
+            return renderer ? renderer->get()->random_int16(a, b) : dist(scene_rng);
         }
 
         virtual void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) = 0;

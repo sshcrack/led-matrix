@@ -18,7 +18,8 @@ namespace AmbientScenes
 
         // Initialize clock hands to current time
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         current_hour = local_time->tm_hour % 12;
         current_minute = local_time->tm_min;
@@ -29,7 +30,8 @@ namespace AmbientScenes
     {
         // Get current time
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int hour = local_time->tm_hour % 12;
         int minute = local_time->tm_min;
@@ -252,7 +254,8 @@ namespace AmbientScenes
     void ClockScene::draw_digital_clock(rgb_matrix::FrameCanvas *canvas, int y_position)
     {
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int hour = local_time->tm_hour;
         int minute = local_time->tm_min;
@@ -673,7 +676,8 @@ namespace AmbientScenes
     void ClockScene::draw_date(rgb_matrix::FrameCanvas *canvas, int y_position)
     {
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int day = local_time->tm_mday;
         int month = local_time->tm_mon + 1; // tm_mon is 0-11

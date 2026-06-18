@@ -50,14 +50,15 @@ namespace AmbientScenes {
             Vector2 acceleration;
             uint8_t r, g, b;
 
-            Boid(float x, float y) : position(x, y) {
+            Boid(float x, float y, std::mt19937& rng) : position(x, y) {
                 acceleration = Vector2(0, 0);
-                velocity = Vector2(2.0f * ((float)rand() / RAND_MAX - 0.5f), 
-                                   2.0f * ((float)rand() / RAND_MAX - 0.5f));
+                std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+                velocity = Vector2(dist(rng), dist(rng));
             }
         };
 
         std::vector<Boid> flock;
+        std::mt19937 rng{std::random_device{}()};
 
         PropertyPointer<int> num_boids = MAKE_PROPERTY("num_boids", int, 100);
         PropertyPointer<float> max_speed = MAKE_PROPERTY("max_speed", float, 1.0f);

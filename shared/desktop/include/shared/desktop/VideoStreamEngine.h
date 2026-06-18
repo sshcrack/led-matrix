@@ -71,6 +71,11 @@ private:
     std::mutex frame_mutex_;
     std::chrono::steady_clock::time_point last_frame_time_;
 
+    // Command construction helpers
+    std::string build_ytdlp_command(const std::filesystem::path& output_path, int start_sec, int end_sec) const;
+    std::string build_ffmpeg_command(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const;
+    std::string build_ffmpeg_pipe_command(const std::filesystem::path& input_path) const;
+
     bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true);
     // Download a short clip and stream its frames directly via ffmpeg pipe,
     // so playback starts immediately without waiting for a full chunk to be encoded.
