@@ -27,7 +27,7 @@ namespace ConfigData
     {
         optional<string> access_token;
         optional<string> refresh_token;
-        tmillis_t expires_at;
+        tmillis_t expires_at = 0;
 
         [[nodiscard]] bool is_expired() const;
 

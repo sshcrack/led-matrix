@@ -76,7 +76,10 @@ vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
         }
 
         auto custom_wrapper = std::make_unique<CustomShadertoySceneWrapper>(entry.path());
-        customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
+        {
+            std::lock_guard lock(customSceneMutex);
+            customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
+        }
         scenes.push_back(std::move(custom_wrapper));
     }
 
@@ -133,8 +136,7 @@ std::string ShadertoyPlugin::add_custom_shader_scene(const std::filesystem::path
         return customSceneNamesByFile[file_key];
     }
 
-    auto deleter = [](SceneWrapper *scene) { delete scene; };
-    std::shared_ptr<Plugins::SceneWrapper> wrapper(new CustomShadertoySceneWrapper(shader_file_path), deleter);
+    auto wrapper = std::make_shared<CustomShadertoySceneWrapper>(shader_file_path);
     const auto scene_name = wrapper->get_name();
     customSceneNamesByFile[file_key] = scene_name;
     Plugins::PluginManager::instance()->add_scene(std::move(wrapper));

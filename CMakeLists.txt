@@ -611,7 +611,7 @@ else()
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libc6 (>= 2.17), libstdc++6 (>= 10), debconf")
+        "libc6 (>= 2.17), libstdc++6 (>= 10), debconf, libgraphicsmagick++-q16-12 (>= 1.3.26), libxml2 (>= 2.9.0)")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"

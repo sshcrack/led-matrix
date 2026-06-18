@@ -102,7 +102,7 @@ void UdpServer::server_loop()
     }
 }
 
-UdpServer::UdpServer(int port) : server_running(false), udp_socket(-1)
+UdpServer::UdpServer(int port) : udp_socket(-1), server_running(false)
 {
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0)

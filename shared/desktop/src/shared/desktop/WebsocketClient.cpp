@@ -129,21 +129,20 @@ void WebsocketClient::threadLoop()
             lastLargePayloadSend[name] = clock::now();
 
             auto res = this->udpSender.sendPacket(std::move(packet.value()), hostname, port);
-            static int consecutiveError = 0;
             if (!res.has_value())
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
                 lastError = res.error();
-                consecutiveError++;
+                consecutiveError_++;
 
-                if (consecutiveError < 3)
+                if (consecutiveError_ < 3)
                     spdlog::error("Failed to send packet: {}", lastError);
             }
             else
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
                 lastError.clear();
-                consecutiveError = 0;
+                consecutiveError_ = 0;
             }
         }
 
