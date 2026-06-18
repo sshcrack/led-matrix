@@ -8,7 +8,8 @@
 
 void UdpServer::server_loop()
 {
-    constexpr size_t buffer_size = 64 * 1024; // Larger buffer for big packets
+    constexpr size_t buffer_size = 64 * 1024;
+    constexpr size_t packet_header_size = 7;
     std::vector<uint8_t> receive_buffer(buffer_size);
     std::vector<uint8_t> packet_buffer; // For reassembling large packets
     struct sockaddr_in client_addr;
@@ -43,7 +44,7 @@ void UdpServer::server_loop()
 
         // Process complete packets in the buffer
         size_t offset = 0;
-        while (packet_buffer.size() - offset >= 7)
+        while (packet_buffer.size() - offset >= packet_header_size)
         {
             const uint8_t *data = packet_buffer.data() + offset;
 
@@ -64,16 +65,16 @@ void UdpServer::server_loop()
                                     (static_cast<uint32_t>(data[6]));
 
             // Check if we have the complete packet
-            if (packet_buffer.size() - offset < 7 + payload_size)
+            if (packet_buffer.size() - offset < packet_header_size + payload_size)
             {
                 // Not enough data for full payload, wait for more data
                 break;
             }
 
-            const uint8_t *payload = data + 7;
+            const uint8_t *payload = data + packet_header_size;
 
 
-            // Pass to plugins (note: using data[1] as magicPacket for backward compatibility)
+            // Pass to plugins
             for (const auto &plugin : plugins)
             {
                 if (plugin->on_udp_packet(pluginId, payload, payload_size))
@@ -83,7 +84,7 @@ void UdpServer::server_loop()
                 }
             }
 
-            offset += 7 + payload_size;
+            offset += packet_header_size + payload_size;
         }
 
         // Remove processed data from buffer
@@ -124,7 +125,8 @@ UdpServer::UdpServer(int port) : server_running(false), udp_socket(-1)
         return;
     }
 
-    int rcvbuf = 256 * 1024;
+    constexpr int rcvbuf_size = 256 * 1024;
+    int rcvbuf = rcvbuf_size;
     if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
     {
         spdlog::warn("Failed to set SO_RCVBUF: {}", strerror(errno));

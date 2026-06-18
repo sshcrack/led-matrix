@@ -22,7 +22,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
-        std::string getCategory() const override { return "Fractals"; }
+        std::string get_category() const override { return "Fractals"; }
 
         tmillis_t get_default_duration() override {
             return 30000;

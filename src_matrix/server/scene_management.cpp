@@ -56,7 +56,7 @@ namespace {
                 {"properties", std::move(properties_json)},
                 {"has_preview", std::filesystem::exists(get_exec_dir() / "scene_previews" / (scene->get_name() + ".gif"))},
                 {"needs_desktop", scene->get_default()->needs_desktop_app()},
-                {"category", scene->get_default()->getCategory()}
+                {"category", scene->get_default()->get_category()}
             });
         }
         return j;

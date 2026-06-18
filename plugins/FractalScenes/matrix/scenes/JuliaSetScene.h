@@ -19,7 +19,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         [[nodiscard]] string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Fractals"; }
+        [[nodiscard]] std::string get_category() const override { return "Fractals"; }
 
         tmillis_t get_default_duration() override {
             return 20000;
