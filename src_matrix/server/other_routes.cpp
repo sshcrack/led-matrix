@@ -86,8 +86,10 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
 
 restinio::request_handling_status_t Server::handle_web_request(const restinio::request_handle_t &req, const restinio::string_view_t requested_path)
 {
-    auto exec_dir = get_exec_dir();
-    const filesystem::path web_dir = exec_dir / "web";
+#ifndef LED_MATRIX_SHARE_DIR
+#define LED_MATRIX_SHARE_DIR "."
+#endif
+    const filesystem::path web_dir = filesystem::path(LED_MATRIX_SHARE_DIR) / "web";
     filesystem::path file_path = web_dir / requested_path;
     if (!filesystem::exists(file_path))
         file_path = web_dir / "index.html"; // Fallback to index.html if not found

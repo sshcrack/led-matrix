@@ -1,5 +1,11 @@
 # 🌈 LED Matrix Controller
 
+**One‑line install on a Raspberry Pi (arm64):**
+```bash
+curl -sSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
+```
+Downloads the latest `.deb` from GitHub Releases, presents an interactive config dialog (matrix dimensions, Spotify, auto‑updates), and installs the systemd service.
+
 > [!TIP]
 > This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
 
