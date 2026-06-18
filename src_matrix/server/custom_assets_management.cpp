@@ -23,7 +23,10 @@ namespace
 
     std::optional<AssetTypeConfig> asset_type_from_param(const std::string &type)
     {
-        const auto root = get_exec_dir() / "data";
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
+        const auto root = std::filesystem::path(LED_MATRIX_DATA_DIR) / "data";
         if (type == "shader" || type == "shaders")
         {
             return AssetTypeConfig{type, root / "custom_shaders", ".frag"};

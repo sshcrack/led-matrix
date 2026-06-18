@@ -1,0 +1,82 @@
+Template: led-matrix/led-rows
+Type: string
+Default: 64
+Description: Rows per panel (--led-rows)
+ Number of rows on each LED matrix panel.
+ Common values are 16, 32, 64.
+
+Template: led-matrix/led-cols
+Type: string
+Default: 64
+Description: Columns per panel (--led-cols)
+ Number of columns on each LED matrix panel.
+ Common values are 32, 64.
+
+Template: led-matrix/led-chain
+Type: string
+Default: 2
+Description: Number of chained panels (--led-chain)
+ How many panels are daisy-chained together per parallel chain.
+
+Template: led-matrix/led-parallel
+Type: string
+Default: 2
+Description: Number of parallel chains (--led-parallel)
+ How many parallel chains of panels are connected.
+
+Template: led-matrix/led-slowdown-gpio
+Type: string
+Default: 3
+Description: GPIO slowdown value (--led-slowdown-gpio)
+ Slows down GPIO writes to avoid visual artefacts.
+ Recommended value is 3 for Raspberry Pi 3 Model B,
+ 2 for Raspberry Pi 4. Leave blank to use library default.
+
+Template: led-matrix/extra-opts
+Type: string
+Default:
+Description: Extra matrix options
+ Any additional command-line flags for the matrix controller,
+ e.g. --led-brightness=80 --led-rgb-sequence=RBG.
+ Leave blank to skip.
+
+Template: led-matrix/spotify-enable
+Type: boolean
+Default: false
+Description: Enable Spotify Plugin?
+ The Spotify Plugin displays the album art of the song currently
+ playing on your Spotify account. Requires a Spotify Developer
+ account with a registered application.
+
+Template: led-matrix/spotify-client-id
+Type: string
+Default:
+Description: Spotify Client ID
+ The Client ID from your Spotify Developer application.
+ Leave blank to configure later.
+
+Template: led-matrix/spotify-client-secret
+Type: password
+Default:
+Description: Spotify Client Secret
+ The Client Secret from your Spotify Developer application.
+
+Template: led-matrix/auto-update-enable
+Type: boolean
+Default: true
+Description: Enable automatic updates?
+ The LED Matrix Controller can automatically check for and install
+ updates from GitHub releases. This keeps your system up to date
+ with the latest features and fixes.
+
+Template: led-matrix/auto-update-interval
+Type: select
+Default: 24
+Choices: 6, 12, 24, 48, 168
+Description: Update check interval (hours)
+ How often to check for new releases.
+ 6 = every 6 hours (bleeding edge)
+ 12 = every 12 hours
+ 24 = every 24 hours (recommended)
+ 48 = every 48 hours
+ 168 = every week

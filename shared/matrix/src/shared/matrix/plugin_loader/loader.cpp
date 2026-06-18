@@ -115,9 +115,14 @@ void PluginManager::initialize() {
     auto exec_dir = get_exec_dir();
     auto raw_plugin = getenv("PLUGIN_DIR");
 
-    fs::path plugin_dir = exec_dir / "plugins";
-    if(raw_plugin != nullptr) {
-        plugin_dir = std::filesystem::path(raw_plugin);
+    fs::path plugin_dir;
+    if (raw_plugin != nullptr) {
+        plugin_dir = fs::path(raw_plugin);
+    } else if (fs::is_directory(exec_dir / "plugins")) {
+        plugin_dir = exec_dir / "plugins";
+    } else {
+        fs::path fhs = exec_dir.parent_path() / "lib" / "led-matrix" / "plugins";
+        plugin_dir = fs::is_directory(fhs) ? fhs : exec_dir.parent_path() / "plugins";
     }
 
     std::vector<fs::path> libPaths;

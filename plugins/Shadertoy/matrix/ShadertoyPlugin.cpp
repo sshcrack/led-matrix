@@ -1,6 +1,9 @@
 #include "ShadertoyPlugin.h"
 
 #include <shared/matrix/plugin_loader/loader.h>
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
 
 #include "scenes/ShadertoyScene.h"
 #include "providers/Random.h"
@@ -17,7 +20,7 @@ namespace fs = std::filesystem;
 
 namespace {
 fs::path custom_shader_dir() {
-    return get_exec_dir() / "data" / "custom_shaders";
+    return std::filesystem::path(LED_MATRIX_DATA_DIR) / "data" / "custom_shaders";
 }
 }
 
