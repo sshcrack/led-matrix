@@ -15,3 +15,8 @@ std::any PluginRegistry::get(const std::string& key) {
     auto it = s_registry.find(key);
     return it != s_registry.end() ? it->second : std::any{};
 }
+
+bool PluginRegistry::contains(const std::string& key) {
+    std::lock_guard<std::mutex> lock(s_mutex);
+    return s_registry.contains(key);
+}

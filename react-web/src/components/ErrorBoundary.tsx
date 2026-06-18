@@ -29,7 +29,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <h1>Something went wrong</h1>
           <p style={{ color: '#888' }}>{this.state.error?.message}</p>
-          <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload() }}>
+          <button onClick={() => window.location.reload()}>
             Reload
           </button>
         </div>

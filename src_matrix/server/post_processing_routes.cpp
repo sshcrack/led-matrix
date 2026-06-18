@@ -70,10 +70,11 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     
     // Trigger flash effect
     router->http_post("/post_processing/flash", [](const auto& req, auto) {
-        if (Constants::global_post_processor) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
             auto [duration, intensity] = parse_duration_intensity(req, flash_default_duration, flash_default_intensity, flash_duration_min, flash_duration_max, flash_intensity_min, flash_intensity_max);
             
-            Constants::global_post_processor->add_effect("flash", duration, intensity);
+            pp->add_effect("flash", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -89,10 +90,11 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     
     // Trigger rotate effect
     router->http_post("/post_processing/rotate", [](const auto&  req, auto) {
-        if (Constants::global_post_processor) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
             auto [duration, intensity] = parse_duration_intensity(req, rotate_default_duration, rotate_default_intensity, rotate_duration_min, rotate_duration_max, rotate_intensity_min, rotate_intensity_max);
             
-            Constants::global_post_processor->add_effect("rotate", duration, intensity);
+            pp->add_effect("rotate", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -108,8 +110,9 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     
     // Clear all post-processing effects
     router->http_post("/post_processing/clear", [](const auto&  req, auto) {
-        if (Constants::global_post_processor) {
-            Constants::global_post_processor->clear_effects();
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
+            pp->clear_effects();
             
             json response;
             response["status"] = "success";
@@ -123,12 +126,13 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     
     // Get post-processing status
     router->http_get("/post_processing/status", [](const auto& req, auto) {
+        auto* pp = Constants::global_post_processor;
         json response;
-        response["post_processor_available"] = (Constants::global_post_processor != nullptr);
+        response["post_processor_available"] = (pp != nullptr);
         
-        if (Constants::global_post_processor) {
-            response["has_active_effects"] = Constants::global_post_processor->has_active_effects();
-            response["registered_effects"] = Constants::global_post_processor->get_registered_effects();
+        if (pp) {
+            response["has_active_effects"] = pp->has_active_effects();
+            response["registered_effects"] = pp->get_registered_effects();
         }
         
         return reply_with_json(req, response);
@@ -136,11 +140,12 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
 
     // Generic endpoint to trigger any registered effect
     router->http_post("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
-        if (Constants::global_post_processor) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
             auto effect_name = std::string(params["effect_name"]);
             auto [duration, intensity] = parse_duration_intensity(req, generic_default_duration, generic_default_intensity, generic_duration_min, generic_duration_max, generic_intensity_min, generic_intensity_max);
             
-            if (Constants::global_post_processor->add_effect(effect_name, duration, intensity)) {
+            if (pp->add_effect(effect_name, duration, intensity)) {
                 json response;
                 response["status"] = "success";
                 response["message"] = "Effect '" + effect_name + "' triggered";

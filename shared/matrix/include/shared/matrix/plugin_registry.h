@@ -8,5 +8,6 @@ namespace PluginRegistry {
 
 void set(const std::string& key, std::any ptr);
 std::any get(const std::string& key);
+bool contains(const std::string& key);
 
 }
