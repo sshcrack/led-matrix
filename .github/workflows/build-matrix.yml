@@ -145,9 +145,9 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: |
-            ${{ matrix.name == 'desktop-linux' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-Linux.tar.gz', inputs.version) || 'desktop_build/led-matrix-desktop-*-Linux.tar.gz') }}
-            ${{ matrix.name == 'desktop-linux' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-Linux.deb', inputs.version) || 'desktop_build/led-matrix-desktop-*-Linux.deb') }}
-            ${{ matrix.name == 'desktop-windows' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-win64.zip', inputs.version) || 'desktop_build/led-matrix-desktop-*-win64.zip') }}
-            ${{ matrix.name == 'desktop-windows' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-win64.exe', inputs.version) || 'desktop_build/led-matrix-desktop-*-win64.exe') }}
-            ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}-arm64.tar.gz', inputs.version) || 'build/led-matrix-*-arm64.tar.gz') }}
-            ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}_arm64.deb', inputs.version) || 'build/*.deb') }}
+            ${{ matrix.name == 'desktop-linux' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-Linux.tar.gz', inputs.version) || 'desktop_build/led-matrix-desktop-*-Linux.tar.gz') || '' }}
+            ${{ matrix.name == 'desktop-linux' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-Linux.deb', inputs.version) || 'desktop_build/led-matrix-desktop-*-Linux.deb') || '' }}
+            ${{ matrix.name == 'desktop-windows' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-win64.zip', inputs.version) || 'desktop_build/led-matrix-desktop-*-win64.zip') || '' }}
+            ${{ matrix.name == 'desktop-windows' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-win64.exe', inputs.version) || 'desktop_build/led-matrix-desktop-*-win64.exe') || '' }}
+            ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}-arm64.tar.gz', inputs.version) || 'build/led-matrix-*-arm64.tar.gz') || '' }}
+            ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}_arm64.deb', inputs.version) || 'build/led-matrix-*-arm64.deb') || '' }}

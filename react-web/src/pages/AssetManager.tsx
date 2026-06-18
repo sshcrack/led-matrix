@@ -3,6 +3,7 @@ import { Download, Trash2, Upload } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { toast } from 'sonner'
 import ShaderPreview from '~/components/AssetManager/ShaderPreview'
 
 
@@ -80,10 +81,19 @@ export default function AssetManager() {
     if (!pendingFile || !apiUrl) return
     const formData = new FormData()
     formData.append('file', pendingFile)
-    await fetch(`${apiUrl}/api/custom-assets/shader`, {
-      method: 'POST',
-      body: formData,
-    })
+    try {
+      const res = await fetch(`${apiUrl}/api/custom-assets/shader`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) {
+        toast.error(`Upload failed: ${res.status} ${res.statusText}`)
+        return
+      }
+    } catch (err) {
+      toast.error(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return
+    }
     handleDialogOpenChange(false)
     // cleanup handled by handleDialogOpenChange when dialog closes
     await fetchAssets()

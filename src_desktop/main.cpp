@@ -64,7 +64,7 @@ std::string get_noto_color_emoji_path() {
 // ---- Global/static variables ----
 static std::atomic<bool> shouldExit{false};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
-static bool showMainWindow = false;
+static std::atomic<bool> showMainWindow{false};
 // g_pending_http removed — async HTTP calls use detached threads
 
 #ifdef _WIN32
@@ -121,7 +121,7 @@ static void setup_tray(Tray::Tray &tray) {
     tray.addEntry(
         Tray::Button(
             "Show Window",
-            [&] { showMainWindow = true; }));
+            [&] { showMainWindow.store(true); }));
     tray.addEntry(
         Tray::Button(
             "Exit",
@@ -179,7 +179,7 @@ int run_app(int argc, char *argv[]) {
     try {
         instanceManager = new SingleInstanceManager("LedMatrixController", [] {
             spdlog::info("Focus request received, showing main window.");
-            showMainWindow = true;
+            showMainWindow.store(true);
         });
     } catch ([[maybe_unused]] const std::exception &e) {
         return 0;
@@ -216,9 +216,9 @@ int run_app(int argc, char *argv[]) {
             shouldExit.store(false);
         }
 
-        if (showMainWindow) {
+        if (showMainWindow.load()) {
             spdlog::info("Showing main window.");
-            showMainWindow = false;
+            showMainWindow.store(false);
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
             auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
             glfwRestoreWindow(window);

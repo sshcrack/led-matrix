@@ -28,7 +28,7 @@ main() {
     # - preserves /var/lib/led-matrix/config.json (update settings + user data)
     # - reloads and restarts the service
     log "Installing package..."
-    if ! dpkg -i "$deb_file"; then
+    if ! DEBIAN_FRONTEND=noninteractive dpkg -i "$deb_file"; then
         error_exit "dpkg -i failed" "$deb_file"
     fi
 
