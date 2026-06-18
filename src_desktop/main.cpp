@@ -71,8 +71,6 @@ static bool showMainWindow = false;
 // Global variables for shutdown handling on Windows
 static std::string g_shutdown_hostname;
 static uint16_t g_shutdown_port = 0;
-static bool g_should_turn_off_on_exit = false;
-
 // Console control handler for Windows — must be async-signal-safe
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
     shouldExit.store(true);
@@ -82,7 +80,6 @@ static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
 // Global variables for shutdown handling on Linux
 static std::string g_shutdown_hostname;
 static uint16_t g_shutdown_port = 0;
-static bool g_should_turn_off_on_exit = false;
 // Use sig_atomic_t for async-signal-safety
 static volatile sig_atomic_t signalReceived = 0;
 
@@ -91,24 +88,6 @@ static void signal_handler(int /*signum*/) {
     shouldExit.store(true);
 }
 #endif
-
-// ---- Non-signal-safe shutdown: turn matrix off via HTTP ----
-static void shutdown_matrix() {
-    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
-        spdlog::info("Received shutdown signal, turning Matrix OFF.");
-        try {
-            auto url = fmt::format("http://{}:{}/set_enabled", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Post(cpr::Url(url), cpr::Payload{{"enabled", "false"}}, cpr::Timeout{3000L});
-            if (response.error) {
-                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
-            } else {
-                spdlog::info("Matrix turned OFF during shutdown.");
-            }
-        } catch (const std::exception &e) {
-            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
-        }
-    }
-}
 
 // ---- Window iconify callback ----
 static void window_iconify_callback(GLFWwindow *window, const int iconified) {
@@ -223,7 +202,6 @@ int run_app(int argc, char *argv[]) {
     General &generalCfgRef = cfg->getGeneralConfig();
     g_shutdown_hostname = generalCfgRef.getHostnameCopy();
     g_shutdown_port = generalCfgRef.getPort();
-    g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
 
     // UI state variables (non-static, persist via lambda captures)
     bool initialConnect = true;
@@ -246,7 +224,6 @@ int run_app(int argc, char *argv[]) {
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = [&] {
         if (shouldExit.load()) {
-            shutdown_matrix();
             HelloImGui::GetRunnerParams()->appShallExit = true;
             shouldExit.store(false);
         }
@@ -349,7 +326,6 @@ int run_app(int argc, char *argv[]) {
         ImGui::SameLine();
         if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
             generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
-            g_should_turn_off_on_exit = matrixOffOnExit;
         }
 
         auto state = ws->getReadyState();

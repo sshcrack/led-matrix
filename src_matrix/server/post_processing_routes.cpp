@@ -40,7 +40,7 @@ namespace {
     DurationIntensity parse_duration_intensity(const Req& req, float default_duration, float default_intensity,
                                                float duration_min, float duration_max,
                                                float intensity_min, float intensity_max) {
-        auto query_params = restinio::parse_query(req->header().query());
+        auto query_params = restinio::parse_query(req->body());
         float duration = default_duration;
         float intensity = default_intensity;
 
