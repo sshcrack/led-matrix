@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         return usage(argv[0]);
     }
 
-    rgb_matrix::RGBMatrixBase *matrix = rgb_matrix::MatrixFactory::CreateMatrix(options);
+    std::unique_ptr<rgb_matrix::RGBMatrixBase> matrix(rgb_matrix::MatrixFactory::CreateMatrix(options));
     if (matrix == nullptr)
         return usage(argv[0]);
 
@@ -287,9 +287,9 @@ int main(int argc, char *argv[])
 
     debug("Initializing hardware...");
 #ifdef ENABLE_EMULATOR
-    auto hardware_code = start_hardware_mainloop(matrix, pinned_scene);
+    auto hardware_code = start_hardware_mainloop(matrix.get(), pinned_scene);
 #else
-    auto hardware_code = start_hardware_mainloop(matrix);
+    auto hardware_code = start_hardware_mainloop(matrix.get());
 #endif
 
     if (hardware_code != 0)

@@ -11,7 +11,7 @@ using json = nlohmann::json;
 
 namespace Config {
     class MainConfig {
-        shared_mutex data_mutex;
+        mutable shared_mutex data_mutex;
         ConfigData::Root data;
 
         shared_mutex update_mutex;
