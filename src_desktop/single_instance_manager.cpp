@@ -111,6 +111,7 @@ void SingleInstanceManager::sendFocusRequest() {
     const char* cstr = _appId.c_str();
     dbus_message_append_args(msg, DBUS_TYPE_STRING, &cstr, DBUS_TYPE_INVALID);
     dbus_connection_send(conn, msg, nullptr);
+    dbus_connection_flush(conn);
     dbus_message_unref(msg);
 }
 
