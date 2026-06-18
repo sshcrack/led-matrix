@@ -325,8 +325,6 @@ int main(int argc, char *argv[])
     info("Joining control thread...");
     control_thread.join();
 
-    pl->delete_references();
-
     info("Stopping UpdateManager...");
     if (Constants::global_update_manager)
     {
@@ -336,6 +334,8 @@ int main(int argc, char *argv[])
 
     info("Terminating plugin loader...");
     pl->destroy_plugins();
+
+    pl->delete_references();
 
     info("Destroying config instance...");
     delete config;

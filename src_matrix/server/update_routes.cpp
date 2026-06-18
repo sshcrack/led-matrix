@@ -187,7 +187,7 @@ namespace Server
                         std::string asset_name = asset["name"];
                         if (asset_name.find("led-matrix") != std::string::npos && 
                             asset_name.find("arm64") != std::string::npos &&
-                            asset_name.ends_with(".deb")) {
+                            (asset_name.ends_with(".tar.gz") || asset_name.ends_with(".deb"))) {
                             simplified["download_url"] = asset["browser_download_url"];
                             simplified["download_size"] = asset["size"];
                             break;

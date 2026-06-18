@@ -14,8 +14,8 @@ namespace Scenes {
         PropertyPointer<int> ball_size = MAKE_PROPERTY("ball_size", int, 2);
         PropertyPointer<int> paddle_width = MAKE_PROPERTY("paddle_width", int, 2);
         PropertyPointer<int> paddle_height = MAKE_PROPERTY("paddle_height", int, 8);
-        PropertyPointer<float> ball_speed = MAKE_PROPERTY("ball_speed", float, 18.0f);
-        PropertyPointer<float> paddle_speed = MAKE_PROPERTY("paddle_speed", float, 9.0f);
+        PropertyPointer<float> ball_speed = MAKE_PROPERTY("ball_speed", float, 0.3f);
+        PropertyPointer<float> paddle_speed = MAKE_PROPERTY("paddle_speed", float, 0.15f);
         PropertyPointer<float> target_fps = MAKE_PROPERTY("target_fps", float, 60.0f);
         PropertyPointer<float> speed_multiplier = MAKE_PROPERTY("speed_multiplier", float, 1.0f);
         PropertyPointer<float> max_speed_multiplier = MAKE_PROPERTY("max_speed_multiplier", float, 4.0f);

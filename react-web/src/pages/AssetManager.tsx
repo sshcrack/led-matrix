@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Download, Trash2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
-import { toast } from 'sonner'
 import ShaderPreview from '~/components/AssetManager/ShaderPreview'
 
 
@@ -87,16 +87,16 @@ export default function AssetManager() {
         body: formData,
       })
       if (!res.ok) {
-        toast.error(`Upload failed: ${res.status} ${res.statusText}`)
+        const err = await res.text()
+        toast.error(`Upload failed: ${err}`)
         return
       }
+      toast.success('Shader uploaded successfully')
+      handleDialogOpenChange(false)
+      await fetchAssets()
     } catch (err) {
       toast.error(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      return
     }
-    handleDialogOpenChange(false)
-    // cleanup handled by handleDialogOpenChange when dialog closes
-    await fetchAssets()
   }
 
   const onDelete = async (filename: string) => {

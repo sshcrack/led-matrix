@@ -22,14 +22,13 @@ WebsocketClient::WebsocketClient() : udpSender()
 
 void WebsocketClient::setup_callback()
 {
-    std::shared_ptr<WebsocketClient> strong_this;
+    std::weak_ptr<WebsocketClient> weak_this;
     try {
-        strong_this = shared_from_this();
+        weak_this = shared_from_this();
     } catch (const std::bad_weak_ptr&) {
-        spdlog::error("WebsocketClient::setup_callback called before object was owned by shared_ptr");
+        spdlog::error("WebsocketClient::setup_callback called before object was managed by shared_ptr");
         return;
     }
-    std::weak_ptr<WebsocketClient> weak_this = strong_this;
     webSocket.setOnMessageCallback([weak_this](const ix::WebSocketMessagePtr &msg)
                                    {
         auto shared_this = weak_this.lock();

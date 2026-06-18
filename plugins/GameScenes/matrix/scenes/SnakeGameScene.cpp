@@ -64,7 +64,7 @@ bool SnakeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
         renderWin(canvas);
     } else {
         // Update game at target framerate with proper timing
-        if (frame_counter % static_cast<int>(get_target_fps() * game_speed) == 0) {
+        if (frame_counter % std::max(1, static_cast<int>(get_target_fps() * game_speed)) == 0) {
             updateGame();
         }
         renderGame(canvas);
@@ -390,7 +390,7 @@ rgb_matrix::Color SnakeGameScene::getSnakeColor(int segment_index) const {
     if (rainbow_snake->get()) {
         // Rainbow snake - each segment has different color
         // Use frame_counter as a simple time source for animation
-        float time_factor = frame_counter / static_cast<float>(get_target_fps());
+        float time_factor = frame_counter / static_cast<float>(std::max(1, get_target_fps()));
         float hue = fmod(segment_index * 30.0f / 360.0f + time_factor * 50.0f / 360.0f, 1.0f);
         
         uint8_t r, g, b;
