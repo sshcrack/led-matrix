@@ -5,10 +5,11 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <memory>
 #include <unordered_map>
 #include <spdlog/spdlog.h>
 
-class SHARED_DESKTOP_API WebsocketClient
+class SHARED_DESKTOP_API WebsocketClient : public std::enable_shared_from_this<WebsocketClient>
 {
 public:
     WebsocketClient();
@@ -51,6 +52,8 @@ public:
         spdlog::info("Setting WebSocket URL to: {}", url);
         webSocket.setUrl(url);
     }
+
+    void setup_callback();
 
     void start()
     {

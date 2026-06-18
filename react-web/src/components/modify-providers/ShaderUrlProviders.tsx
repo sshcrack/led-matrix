@@ -4,15 +4,14 @@ import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import RandomShaderProvider from './RandomShaderProvider'
 import CollectionShaderProvider from './CollectionShaderProvider'
-import type { ProviderValue, ListProviders, RandomShaderProvider as RandomShaderProviderType, CollectionShaderProvider as CollectionShaderProviderType } from '~/apiTypes/list_scenes'
+import type { ProviderValue, RandomShaderProvider as RandomShaderProviderType, CollectionShaderProvider as CollectionShaderProviderType } from '~/apiTypes/list_scenes'
 
 interface ShaderUrlProvidersProps {
   providers: ProviderValue[]
-  providerDefinitions: ListProviders[]
   onChange: (providers: ProviderValue[]) => void
 }
 
-export default function ShaderUrlProviders({ providers, providerDefinitions, onChange }: ShaderUrlProvidersProps) {
+export default function ShaderUrlProviders({ providers, onChange }: ShaderUrlProvidersProps) {
   const updateProvider = (index: number, updated: ProviderValue) => {
     const newProviders = [...providers]
     newProviders[index] = updated

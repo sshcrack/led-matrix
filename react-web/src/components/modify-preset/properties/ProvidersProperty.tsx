@@ -11,7 +11,8 @@ interface ProvidersPropertyProps {
 }
 
 export default function ProvidersProperty({ property, value }: ProvidersPropertyProps) {
-  const providerType = property.additional?.provider_type ?? 'unknown'
+  const additional = property.additional as Record<string, unknown> | undefined;
+  const providerType = (additional?.provider_type as string | undefined) ?? 'unknown'
   const hasValue = value && typeof value === 'object' && 'type' in value
 
   return (

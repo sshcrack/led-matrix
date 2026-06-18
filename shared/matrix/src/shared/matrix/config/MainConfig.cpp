@@ -149,21 +149,23 @@ spdlog::info("Setting preset {}", id);
         return true;
     }
 
-    MainConfig::MainConfig(const string filename) : file_name(filename) {
-        if (!filesystem::exists(filename)) {
-            debug("Writing default config at '{}'...", filename);
+    void MainConfig::load_from_file() {
+        if (!filesystem::exists(file_name)) {
+            debug("Writing default config at '{}'...", file_name);
             ofstream file;
-            file.open(filename);
+            file.open(file_name);
             file << "{}";
             file.close();
         }
 
-        ifstream f(filename);
+        ifstream f(file_name);
         json temp = json::parse(f);
-
         f.close();
 
         this->data = std::move(temp.get<ConfigData::Root>());
+    }
+
+    void MainConfig::migrate_presets() {
         bool migrated = false;
 
         if (this->data.presets.empty()) {
@@ -226,7 +228,11 @@ spdlog::info("Setting preset {}", id);
             info("Migrated preset IDs to UUID keys and persisted updated config");
             this->save();
         }
+    }
 
+    MainConfig::MainConfig(const string filename) : file_name(filename) {
+        load_from_file();
+        migrate_presets();
         this->dirty = false;
     }
 

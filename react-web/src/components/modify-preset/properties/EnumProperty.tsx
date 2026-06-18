@@ -11,17 +11,18 @@ interface EnumPropertyProps {
 }
 
 export default function EnumProperty({ property, value, onChange }: EnumPropertyProps) {
-  // Support both 'values' and 'enum_values' keys for enum options
   let options: string[] = [];
   let displayNames: Record<string, string> = {};
-  if (property.additional?.enum_values) {
-    // enum_values is expected to be an array of objects with 'value' and 'display_name'
-    options = property.additional.enum_values.map((item: any) => item.value);
-    property.additional.enum_values.forEach((item: any) => {
+  const additional = property.additional as Record<string, unknown> | undefined;
+  const enumValues = additional?.enum_values as Array<{ value: string; display_name?: string }> | undefined;
+  const values = additional?.values as string[] | undefined;
+  if (enumValues) {
+    options = enumValues.map(item => item.value);
+    enumValues.forEach(item => {
       displayNames[item.value] = item.display_name ?? item.value;
     });
-  } else if (property.additional?.values) {
-    options = property.additional.values;
+  } else if (values) {
+    options = values;
   }
   const normalizedValue = options.includes(value) ? value : (options[0] ?? '')
 

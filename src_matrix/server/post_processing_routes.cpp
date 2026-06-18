@@ -7,34 +7,48 @@
 
 using json = nlohmann::json;
 
+namespace {
+    struct DurationIntensity {
+        float duration;
+        float intensity;
+    };
+
+    template<typename Req>
+    DurationIntensity parse_duration_intensity(const Req& req, float default_duration, float default_intensity,
+                                               float duration_min, float duration_max,
+                                               float intensity_min, float intensity_max) {
+        auto query_params = restinio::parse_query(req->header().query());
+        float duration = default_duration;
+        float intensity = default_intensity;
+
+        if (query_params.has("duration")) {
+            try {
+                duration = std::stof(std::string(query_params["duration"]));
+                duration = std::clamp(duration, duration_min, duration_max);
+            } catch (const std::exception& e) {
+                spdlog::warn("Invalid duration parameter: {}", e.what());
+            }
+        }
+
+        if (query_params.has("intensity")) {
+            try {
+                intensity = std::stof(std::string(query_params["intensity"]));
+                intensity = std::clamp(intensity, intensity_min, intensity_max);
+            } catch (const std::exception& e) {
+                spdlog::warn("Invalid intensity parameter: {}", e.what());
+            }
+        }
+
+        return {duration, intensity};
+    }
+}
+
 std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router) {
     
     // Trigger flash effect
     router->http_get("/post_processing/flash", [](const auto& req, auto) {
         if (Constants::global_post_processor) {
-            // Parse query parameters for duration and intensity
-            auto query_params = restinio::parse_query(req->header().query());
-            
-            float duration = 0.5f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.1f, 5.0f); // Limit duration
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 1.0f); // Limit intensity
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
+            auto [duration, intensity] = parse_duration_intensity(req, 0.5f, 1.0f, 0.1f, 5.0f, 0.0f, 1.0f);
             
             Constants::global_post_processor->add_effect("flash", duration, intensity);
             
@@ -53,29 +67,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     // Trigger rotate effect
     router->http_get("/post_processing/rotate", [](const auto&  req, auto) {
         if (Constants::global_post_processor) {
-            // Parse query parameters for duration and intensity
-            auto query_params = restinio::parse_query(req->header().query());
-            
-            float duration = 1.0f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.5f, 10.0f); // Limit duration
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 2.0f); // Limit intensity (can be > 1 for multiple rotations)
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
+            auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.5f, 10.0f, 0.0f, 2.0f);
             
             Constants::global_post_processor->add_effect("rotate", duration, intensity);
             
@@ -123,28 +115,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     router->http_get("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
         if (Constants::global_post_processor) {
             auto effect_name = std::string(params["effect_name"]);
-            auto query_params = restinio::parse_query(req->header().query());
-            
-            float duration = 1.0f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.1f, 10.0f);
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 2.0f);
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
+            auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.1f, 10.0f, 0.0f, 2.0f);
             
             if (Constants::global_post_processor->add_effect(effect_name, duration, intensity)) {
                 json response;

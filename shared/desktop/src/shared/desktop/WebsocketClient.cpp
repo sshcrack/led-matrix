@@ -18,22 +18,30 @@ WebsocketClient *WebsocketClient::instance()
 WebsocketClient::WebsocketClient() : udpSender()
 {
     ix::initNetSystem();
-    webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr &msg)
+}
+
+void WebsocketClient::setup_callback()
+{
+    std::weak_ptr<WebsocketClient> weak_this = shared_from_this();
+    webSocket.setOnMessageCallback([weak_this](const ix::WebSocketMessagePtr &msg)
                                    {
+        auto shared_this = weak_this.lock();
+        if (!shared_this) return;
+
         if (msg->type == ix::WebSocketMessageType::Message)
         {
-            std::unique_lock<std::mutex> lock(activeSceneMutex);
+            std::unique_lock<std::mutex> lock(shared_this->activeSceneMutex);
 
             const std::string &m = msg->str;
             if (m.starts_with("active:")) {
-                activeScene = m.substr(7);
+                shared_this->activeScene = m.substr(7);
             }
 
             if (m.starts_with("msg:")) {
                 const auto pluginNameEnd = m.find(':', 4);
 
-                const std::string pluginName = m.substr(4, pluginNameEnd -4);
-                const std::string message = m.substr(m.find(':', pluginNameEnd) +1);
+                const std::string pluginName = m.substr(4, pluginNameEnd - 4);
+                const std::string message = m.substr(m.find(':', pluginNameEnd) + 1);
 
                 for (const auto & [_p, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
                     if (plugin->get_plugin_name() != pluginName)

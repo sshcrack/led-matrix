@@ -127,7 +127,6 @@ export default function ModifyProviders() {
           <>
             <ImageProviders
               providers={providers}
-              providerDefinitions={providerDefs ?? []}
               onChange={handleProvidersChange}
             />
             <AddProviderButton
