@@ -55,6 +55,6 @@ namespace AmbientScenes {
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create();
     };
 }

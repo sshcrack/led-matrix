@@ -27,7 +27,7 @@ public:
 
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
 
-  std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>>
+  std::optional<std::unique_ptr<UdpPacket>>
   compute_next_packet(const std::string sceneName) override;
 
   void on_websocket_message(const std::string message) override;

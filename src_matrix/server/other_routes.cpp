@@ -59,7 +59,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
 
         const string remote_url{qp["url"]};
 
-        const std::unique_ptr<Post, void(*)(Post *)> post = {new Post(remote_url), [](Post *p) { delete p; }};
+        auto post = std::make_unique<Post>(remote_url);
         const filesystem::path file_path(Constants::post_dir / post->get_filename());
         const filesystem::path processing_path = to_processed_path(file_path);
         if (!exists(processing_path)) {

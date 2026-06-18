@@ -70,10 +70,8 @@ namespace GenerativeScenes {
 
     class ReactionDiffusionSceneWrapper : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override {
-            return {new ReactionDiffusionScene(), [](Scenes::Scene *s) {
-                delete (ReactionDiffusionScene *) s;
-            }};
+        std::unique_ptr<Scenes::Scene> create() override {
+            return std::make_unique<ReactionDiffusionScene>();
         }
     };
 

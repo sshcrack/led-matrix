@@ -23,7 +23,7 @@ void ImageProviders::Pages::flush() {
 }
 
 
-std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
+std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > >, string>
 ImageProviders::Pages::get_next_image() {
     // Load new page of posts if needed
     while (curr_posts.empty() && !total_pages.empty()) {
@@ -75,11 +75,7 @@ void ImageProviders::Pages::load_properties(const nlohmann::json &j) {
 }
 
 
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+std::unique_ptr<ImageProviders::General>
 ImageProviders::PagesWrapper::create() {
-    return {
-        new Pages(), [](General *p) {
-            delete p;
-        }
-    };
+    return std::make_unique<Pages>();
 }

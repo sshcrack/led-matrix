@@ -178,8 +178,7 @@ void PingPongGameScene::load_properties(const json &j)
     curr_speed_multiplier = speed_multiplier->get();
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> PingPongGameSceneWrapper::create()
+std::unique_ptr<Scenes::Scene> PingPongGameSceneWrapper::create()
 {
-    return std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)>(new PingPongGameScene(), [](Scenes::Scene *scene)
-                                                                     { delete scene; });
+    return std::make_unique<PingPongGameScene>();
 }

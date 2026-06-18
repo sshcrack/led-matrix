@@ -8,7 +8,7 @@
 namespace Scenes {
     class GameOfLifeSceneWrapper final : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
 
     class GameOfLifeScene final : public Scene {

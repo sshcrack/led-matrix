@@ -30,7 +30,7 @@ public:
 
     void before_exit() override;
     void post_init() override;
-    std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(std::string sceneName) override;
+    std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(std::string sceneName) override;
 
     std::string get_plugin_name() const override {
         return PLUGIN_NAME;

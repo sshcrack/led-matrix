@@ -139,8 +139,6 @@ void PropertyDemoScene::register_properties() {
     add_property(display_pattern);
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> PropertyDemoSceneWrapper::create() {
-    return {new PropertyDemoScene(), [](Scene *scene) {
-        delete scene;
-    }};
+std::unique_ptr<Scene> PropertyDemoSceneWrapper::create() {
+    return std::make_unique<PropertyDemoScene>();
 }

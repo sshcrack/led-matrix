@@ -15,11 +15,11 @@ using Plugins::BasicPlugin;
 
 class ShadertoyPlugin final : public BasicPlugin {
 public:
-    vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > create_scenes() override;
+    vector<std::unique_ptr<SceneWrapper> > create_scenes() override;
 
-    vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper *)> > create_image_providers() override;
+    vector<std::unique_ptr<ImageProviderWrapper> > create_image_providers() override;
 
-    vector<std::unique_ptr<ShaderProviderWrapper, void(*)(ShaderProviderWrapper *)> > create_shader_providers() override;
+    vector<std::unique_ptr<ShaderProviderWrapper> > create_shader_providers() override;
 
     bool on_udp_packet(const uint8_t pluginId, const uint8_t *packetData,
                        const size_t size) override;

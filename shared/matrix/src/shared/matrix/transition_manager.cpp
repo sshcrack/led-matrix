@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 
 void TransitionManager::register_transition(
-    std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)> effect) {
+    std::unique_ptr<TransitionEffect> effect) {
     if (!effect) return;
     std::string name = effect->get_name();
     spdlog::debug("Registered transition effect: {}", name);

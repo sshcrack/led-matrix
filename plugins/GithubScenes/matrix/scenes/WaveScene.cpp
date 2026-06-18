@@ -97,12 +97,8 @@ WaveScene::~WaveScene() {
     delete[] map;
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> WaveSceneWrapper::create() {
-    return {
-        new WaveScene(), [](Scene *scene) {
-            delete scene;
-        }
-    };
+std::unique_ptr<Scene> WaveSceneWrapper::create() {
+    return std::make_unique<WaveScene>();
 }
 
 #pragma clang diagnostic pop

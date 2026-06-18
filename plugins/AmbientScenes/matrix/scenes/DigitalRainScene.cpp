@@ -98,9 +98,7 @@ namespace AmbientScenes {
         add_property(color);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> DigitalRainSceneWrapper::create() {
-        return {new DigitalRainScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<DigitalRainScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> DigitalRainSceneWrapper::create() {
+        return std::make_unique<DigitalRainScene>();
     }
 }
