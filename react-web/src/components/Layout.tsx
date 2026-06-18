@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const isModifyPage = !!useMatch('/modify-:id')
+  const isModifyPage = !!useMatch('/modify-:id/*')
 
   if (isModifyPage) {
     return <main className="min-h-screen bg-background">{children}</main>

@@ -2,6 +2,7 @@
 #include "../Constants.h"
 #include <cmath>
 #include <cstring>
+#include <shared/matrix/utils/utils.h>
 
 void Scenes::WeatherScene::renderClouds(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
