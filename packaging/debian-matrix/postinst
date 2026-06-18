@@ -51,10 +51,11 @@ if [ -d "$OPT_DIR" ]; then
 fi
 
 # --- Write /etc/default/led-matrix with MATRIX_OPTS and Spotify env ---
-# Only write on fresh install; preserve on upgrade so user customisations survive.
+# Always regenerate from debconf answers. This file is derived from the
+# interactive prompts (hardware config, Spotify credentials, etc.), so it
+# must be refreshed on every configure, including dpkg-reconfigure.
 ENV_FILE=/etc/default/led-matrix
-if [ ! -f "$ENV_FILE" ]; then
-    cat > "$ENV_FILE" << EOF
+cat > "$ENV_FILE" << EOF
 # Runtime options for the led-matrix service.
 # The binary starts as root (required by rpi-rgb-led-matrix for GPIO access)
 # and automatically drops privileges to pi:pi after initialisation.
@@ -62,12 +63,11 @@ if [ ! -f "$ENV_FILE" ]; then
 MATRIX_OPTS="${MATRIX_OPTS}"
 EOF
 
-    if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
-        cat >> "$ENV_FILE" << EOF
+if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
+    cat >> "$ENV_FILE" << EOF
 SPOTIFY_CLIENT_ID=${SPOTIFY_ID}
 SPOTIFY_CLIENT_SECRET=${SPOTIFY_SECRET}
 EOF
-    fi
 fi
 
 # --- Write initial config.json if not already present ---
