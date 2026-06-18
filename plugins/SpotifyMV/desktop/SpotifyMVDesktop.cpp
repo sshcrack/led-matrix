@@ -23,14 +23,20 @@ extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVDesktop* c) { delete c; 
 SpotifyMVDesktop::~SpotifyMVDesktop() {
     if (search_thread_.joinable()) search_thread_.join();
     if (pending_engine_) {
-        pending_engine_->on_status_change = nullptr;
-        pending_engine_->on_first_frame_ready = nullptr;
-        pending_engine_->stop();
+        {
+            std::lock_guard<std::mutex> lk(engine_mutex_);
+            pending_engine_->on_status_change = nullptr;
+            pending_engine_->on_first_frame_ready = nullptr;
+            pending_engine_->stop();
+        }
     }
     if (current_engine_) {
-        current_engine_->on_status_change = nullptr;
-        current_engine_->on_first_frame_ready = nullptr;
-        current_engine_->stop();
+        {
+            std::lock_guard<std::mutex> lk(engine_mutex_);
+            current_engine_->on_status_change = nullptr;
+            current_engine_->on_first_frame_ready = nullptr;
+            current_engine_->stop();
+        }
     }
 }
 
@@ -188,6 +194,10 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
         } else {
             float alpha = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
             size_t blend_pixels = std::min(frame.size(), old_last_frame_.size());
+            if (blend_pixels < std::max(frame.size(), old_last_frame_.size())) {
+                spdlog::warn("SpotifyMV crossfade: frame size mismatch ({} vs {}), blending {} pixels",
+                             frame.size(), old_last_frame_.size(), blend_pixels);
+            }
             for (size_t i = 0; i < blend_pixels; ++i) {
                 frame[i] = static_cast<uint8_t>(
                     static_cast<float>(old_last_frame_[i]) * (1.0f - alpha) +
@@ -210,6 +220,8 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // ── Dedup ─────────────────────────────────────────────────────────
         // Lock ordering: track_id_mutex_ is released BEFORE engine_mutex_ is
         // taken, to avoid deadlock with on_pending_first_frame (engine → track_id).
+        std::unique_ptr<Shared::VideoStreamEngine> engine_to_cancel;
+        bool went_back = false;
         {
             std::lock_guard<std::mutex> lk(track_id_mutex_);
             if (track_id == current_track_id_) {
@@ -221,23 +233,26 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
                     // be a loose sync with Spotify progress (~1-4s window).
                     spdlog::info("SpotifyMV: went back to current track, cancelling pending");
                     pending_track_id_.clear();
-                    auto engine_to_cancel = std::move(pending_engine_);
-                    // track_id_mutex_ released here (end of scope) before
-                    // taking engine_mutex_ below.
-                    if (engine_to_cancel) {
-                        engine_to_cancel->on_status_change = nullptr;
-                        engine_to_cancel->on_first_frame_ready = nullptr;
-                        {
-                            std::lock_guard<std::mutex> lk_eng(engine_mutex_);
-                            engine_to_cancel->stop();
-                        }
-                    }
-                    send_websocket_message("status:playing");
+                    engine_to_cancel = std::move(pending_engine_);
+                    went_back = true;
                 }
                 return;
             }
             if (track_id == pending_track_id_)
                 return;
+        }
+        // track_id_mutex_ released — now safe to acquire engine_mutex_
+        if (engine_to_cancel) {
+            engine_to_cancel->on_status_change = nullptr;
+            engine_to_cancel->on_first_frame_ready = nullptr;
+            {
+                std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                engine_to_cancel->stop();
+            }
+        }
+        if (went_back) {
+            send_websocket_message("status:playing");
+            return;
         }
 
         remainder = remainder.substr(colon_pos + 1);
@@ -286,10 +301,10 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
 
         // ── Cancel any existing pending engine ───────────────────────────
         if (pending_engine_) {
-            pending_engine_->on_status_change = nullptr;
-            pending_engine_->on_first_frame_ready = nullptr;
             {
                 std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                pending_engine_->on_status_change = nullptr;
+                pending_engine_->on_first_frame_ready = nullptr;
                 pending_engine_->stop();
             }
             pending_engine_.reset();
@@ -302,6 +317,10 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // Do NOT set on_status_change on the pending engine — we don't want
         // "searching" / "downloading" status updates to reach the matrix
         // while the current engine is still playing. Only on_first_frame_ready.
+        // Only on_first_frame_ready — on_status_change is intentionally omitted
+        // to suppress intermediate status updates. The callback is cleared under
+        // engine_mutex_ before stop() and the destructor joins the thread, so
+        // [this] cannot outlive the object.
         pending_engine_->on_first_frame_ready = [this]() {
             on_pending_first_frame();
         };
@@ -318,23 +337,23 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         return;
     }
 
-    if (message == "stop") {
+        if (message == "stop") {
         if (search_thread_.joinable()) search_thread_.join();
 
         if (pending_engine_) {
-            pending_engine_->on_status_change = nullptr;
-            pending_engine_->on_first_frame_ready = nullptr;
             {
                 std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                pending_engine_->on_status_change = nullptr;
+                pending_engine_->on_first_frame_ready = nullptr;
                 pending_engine_->stop();
             }
             pending_engine_.reset();
         }
         if (current_engine_) {
-            current_engine_->on_status_change = nullptr;
-            current_engine_->on_first_frame_ready = nullptr;
             {
                 std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                current_engine_->on_status_change = nullptr;
+                current_engine_->on_first_frame_ready = nullptr;
                 current_engine_->stop();
             }
             current_engine_.reset();

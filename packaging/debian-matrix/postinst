@@ -40,7 +40,7 @@ if [ -d "$OPT_DIR" ]; then
         cp "$OPT_DIR/config.json" "$DATA_DIR/config.json"
         echo "  config.json migrated to $DATA_DIR/"
     fi
-    if [ -d "$OPT_DIR/data" ] && [ -z "$(ls -A $DATA_DIR/data 2>/dev/null)" ]; then
+    if [ -d "$OPT_DIR/data" ] && [ -z "$(find $DATA_DIR/data -mindepth 1 -print -quit 2>/dev/null)" ]; then
         cp -r "$OPT_DIR/data/." "$DATA_DIR/data/"
         echo "  data/ migrated to $DATA_DIR/data/"
     fi
@@ -64,7 +64,7 @@ MATRIX_OPTS="${MATRIX_OPTS}"
 EOF
 
 if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
-    cat >> "$ENV_FILE" << EOF
+    cat >> "$ENV_FILE" << 'EOF'
 SPOTIFY_CLIENT_ID="${SPOTIFY_ID}"
 SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET}"
 EOF
@@ -100,10 +100,10 @@ EOF
     fi
 else
     # Update current_version in existing config.json on every upgrade
+    AUTO_UPDATE_BOOL="false"
+    [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
+    INTERVAL="${UPDATE_INTERVAL:-24}"
     if command -v jq >/dev/null 2>&1; then
-        AUTO_UPDATE_BOOL="false"
-        [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
-        INTERVAL="${UPDATE_INTERVAL:-24}"
         tmp=$(mktemp)
         jq --arg ver "$PKG_VERSION" \
            --argjson auto "$AUTO_UPDATE_BOOL" \
@@ -113,6 +113,8 @@ else
         if id pi >/dev/null 2>&1; then
             chown pi:pi "$DATA_DIR/config.json"
         fi
+    else
+        echo "Warning: jq not found — config.json version fields not updated. Install jq to suppress this warning." >&2
     fi
 fi
 

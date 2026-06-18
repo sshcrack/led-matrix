@@ -64,7 +64,6 @@ jobs:
           sudo apt-get install --reinstall ca-certificates
           sudo update-ca-certificates
           sudo cert-sync /etc/ssl/certs/ca-certificates.crt
-          cert-sync --user /etc/ssl/certs/ca-certificates.crt
 
       - uses: lukka/get-cmake@latest
         with:

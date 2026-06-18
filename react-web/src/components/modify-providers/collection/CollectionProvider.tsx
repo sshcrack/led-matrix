@@ -44,6 +44,11 @@ export function CollectionProviderComponent({ provider, onChange }: CollectionPr
         const formData = new FormData()
         formData.append('photo', file)
         const res = await fetch(`${apiUrl}/pixeljoint/upload_img`, { method: 'POST', body: formData })
+        if (!res.ok) {
+          const err = await res.text().catch(() => 'Unknown error')
+          toast.error(`Upload failed for ${file.name}: ${err}`)
+          continue
+        }
         const data = await res.json()
         if (data.path) newUrls.push(`${apiUrl}/uploads/${data.path}`)
       } catch {

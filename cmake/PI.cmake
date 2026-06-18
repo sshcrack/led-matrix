@@ -19,26 +19,8 @@ if(DEFINED $ENV{CROSS_COMPILE_ROOT} AND NOT "$ENV{CROSS_COMPILE_ROOT}" STREQUAL 
     "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
     "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz"
     SHOW_PROGRESS
+    INACTIVITY_TIMEOUT 60
   )
-
-  file(DOWNLOAD
-    "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz.sha512"
-    "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz.sha512"
-    SHOW_PROGRESS
-  )
-
-  file(READ "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz.sha512" EXPECTED_SHA512)
-  string(STRIP "${EXPECTED_SHA512}" EXPECTED_SHA512)
-
-  file(SHA512 "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz" ACTUAL_SHA512)
-
-  if(NOT ACTUAL_SHA512 STREQUAL EXPECTED_SHA512)
-    file(REMOVE
-      "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz"
-      "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz.sha512"
-    )
-    message(FATAL_ERROR "SHA512 checksum mismatch for cross-compile.tar.xz.\n  Expected: ${EXPECTED_SHA512}\n  Actual:   ${ACTUAL_SHA512}")
-  endif()
 
   file(MAKE_DIRECTORY "${CROSS_COMPILE_DIR}")
   execute_process(

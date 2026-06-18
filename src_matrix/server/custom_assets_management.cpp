@@ -81,6 +81,13 @@ namespace
         {
             boundary.pop_back();
         }
+        // Strip trailing MIME parameters (e.g. "; charset=utf-8")
+        const auto semi = boundary.find(';');
+        if (semi != std::string::npos)
+            boundary.resize(semi);
+        const auto space = boundary.find(' ');
+        if (space != std::string::npos)
+            boundary.resize(space);
         if (boundary.empty())
         {
             spdlog::error("Empty boundary in Content-Type header");
