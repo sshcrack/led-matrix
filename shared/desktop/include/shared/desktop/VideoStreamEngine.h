@@ -46,6 +46,12 @@ public:
     // and cleared from stop() concurrently.
     std::function<void(const std::string&)> on_status_change;
 
+    // Fired exactly once when the first frame is written to current_frame_,
+    // whether via fast-start or chunk playback. The frame is already in
+    // current_frame_ when this fires (frame_mutex_ is NOT held).
+    // Guarded by status_cb_mutex_ — cleared in stop() like on_status_change.
+    std::function<void()> on_first_frame_ready;
+
 private:
     std::filesystem::path cache_root_;
     int width_, height_;
@@ -72,6 +78,8 @@ private:
     std::vector<uint8_t> current_frame_;
     std::mutex frame_mutex_;
     std::chrono::steady_clock::time_point last_frame_time_;
+
+    std::atomic<bool> first_frame_fired_{false};
 
     // Command construction helpers
     std::string build_ytdlp_command(const std::filesystem::path& output_path, int start_sec, int end_sec) const;
