@@ -104,9 +104,7 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
   auto frame = engine_->get_current_frame();
   if (frame.empty()) return std::nullopt;
 
-  return std::unique_ptr<UdpPacket>(
-      new VideoPacket(std::move(frame)),
-      [](UdpPacket *p) { delete dynamic_cast<VideoPacket *>(p); });
+  return std::make_unique<VideoPacket>(std::move(frame));
 }
 
 void VideoDesktop::on_websocket_message(const std::string message) {

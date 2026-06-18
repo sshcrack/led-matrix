@@ -95,9 +95,7 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
     auto frame = engine_->get_current_frame();
     if (frame.empty())
         return std::nullopt;
-    return std::unique_ptr<UdpPacket>(
-        new SpotifyMVPacket(std::move(frame)),
-        [](UdpPacket* p) { delete static_cast<SpotifyMVPacket*>(p); });
+    return std::make_unique<SpotifyMVPacket>(std::move(frame));
 }
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
