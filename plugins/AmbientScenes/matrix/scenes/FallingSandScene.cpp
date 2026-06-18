@@ -22,12 +22,16 @@ namespace AmbientScenes {
             for (int i = 0; i < spawn_rate->get() && sand_count < max_sand->get(); i++) {
                 int spawn_x_pos = spawner_x + (std::uniform_int_distribution<int>(0, 4)(rng)) - 2; // slight jitter
                 if (spawn_x_pos >= 0 && spawn_x_pos < matrix_width) {
-                    if (grid[spawn_x_pos] == 0) {
-                        uint8_t r, g, b;
-                        float h = std::fmod(current_hue + i * 2, 360.0f);
-                        color::hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
-                        grid[spawn_x_pos] = pack_color(r, g, b);
-                        sand_count++;
+                    for (int spawn_y = 0; spawn_y < matrix_height; spawn_y++) {
+                        int idx = spawn_y * matrix_width + spawn_x_pos;
+                        if (grid[idx] == 0) {
+                            uint8_t r, g, b;
+                            float h = std::fmod(current_hue + i * 2, 360.0f);
+                            color::hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
+                            grid[idx] = pack_color(r, g, b);
+                            sand_count++;
+                            break;
+                        }
                     }
                 }
             }

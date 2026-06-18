@@ -2,6 +2,7 @@
 #include "../Constants.h"
 #include <cmath>
 #include <cstring>
+#include <shared/matrix/utils/color.h>
 #include <shared/matrix/utils/utils.h>
 
 void Scenes::WeatherScene::renderClouds(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
@@ -326,27 +327,8 @@ void Scenes::WeatherScene::renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, 
                         hue = fmod(hue, 360.0f);
                         float s = 1.0f;
                         float v = intensity;
-                        float c = v * s;
-                        float h_prime = hue / 60.0f;
-                        float x_val = c * (1 - fabs(fmod(h_prime, 2) - 1));
-                        float m = v - c;
-                        float r_f, g_f, b_f;
-                        if (h_prime >= 0 && h_prime < 1) {
-                            r_f = c; g_f = x_val; b_f = 0;
-                        } else if (h_prime >= 1 && h_prime < 2) {
-                            r_f = x_val; g_f = c; b_f = 0;
-                        } else if (h_prime >= 2 && h_prime < 3) {
-                            r_f = 0; g_f = c; b_f = x_val;
-                        } else if (h_prime >= 3 && h_prime < 4) {
-                            r_f = 0; g_f = x_val; b_f = c;
-                        } else if (h_prime >= 4 && h_prime < 5) {
-                            r_f = x_val; g_f = 0; b_f = c;
-                        } else {
-                            r_f = c; g_f = 0; b_f = x_val;
-                        }
-                        uint8_t r = static_cast<uint8_t>(std::min(255.0f, (r_f + m) * 255.0f));
-                        uint8_t g = static_cast<uint8_t>(std::min(255.0f, (g_f + m) * 255.0f));
-                        uint8_t b = static_cast<uint8_t>(std::min(255.0f, (b_f + m) * 255.0f));
+                        uint8_t r, g, b;
+                        color::hsv_to_rgb(hue/360.0f, s, v, r, g, b);
                         canvas->SetPixel(x, y, r, g, b);
                     }
                 }

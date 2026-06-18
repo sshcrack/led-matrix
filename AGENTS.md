@@ -34,7 +34,7 @@ cmake --preset emulator -DSKIP_WEB_BUILD=ON
 cmake --build --preset emulator --target install
 
 # Run the emulator (128×128, SDL window ×4)
-./emulator_build/install/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
+./emulator_build/install/bin/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
 
 # Convenience wrapper (reads .env, builds, then runs)
 ./scripts/run_emulator.sh
@@ -183,13 +183,13 @@ The `src_preview_gen` binary generates animated GIF previews for all registered 
 Usage after building the emulator preset:
 ```bash
 # Generate previews for all scenes (requires emulator preset build)
-./emulator_build/install/preview_gen --output ./previews
+./emulator_build/install/bin/preview_gen --output ./previews
 
 # Dump scene manifest as JSON
-./emulator_build/install/preview_gen --dump-manifest
+./emulator_build/install/bin/preview_gen --dump-manifest
 
 # Generate specific scenes
-./emulator_build/install/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
+./emulator_build/install/bin/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
 ```
 
 Scenes that require the desktop app (`needs_desktop` = true) are skipped automatically. Use `scripts/capture_desktop_preview.sh` to capture them manually.
