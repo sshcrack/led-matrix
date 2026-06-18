@@ -55,12 +55,13 @@ void WebsocketClient::setup_callback()
 
 WebsocketClient::~WebsocketClient()
 {
-    ix::uninitNetSystem();
+    webSocket.stop();
     senderRunning = false;
     if (senderThread.joinable())
     {
         senderThread.join();
     }
+    ix::uninitNetSystem();
 }
 
 constexpr double TARGET_FPS = 60.0;
