@@ -131,7 +131,7 @@ An MCP server in `scripts/mcp-emulator/server.py` lets AI agents control the emu
 
 Tools exposed: `start_emulator`, `stop_emulator`, `get_status`, `get_frame` (returns PNG of the current matrix), `list_scenes`, `list_presets`, `set_preset`, `http_api`.
 
-The emulator binary must exist at `emulator_build/install/led-matrix` before starting the server.
+The emulator binary must exist at `emulator_build/install/bin/led-matrix` before starting the server.
 
 ## Plugin development
 

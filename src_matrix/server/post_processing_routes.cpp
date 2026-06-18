@@ -40,13 +40,31 @@ namespace {
     DurationIntensity parse_duration_intensity(const Req& req, float default_duration, float default_intensity,
                                                float duration_min, float duration_max,
                                                float intensity_min, float intensity_max) {
+        float duration = default_duration;
+        float intensity = default_intensity;
+
         std::string body = req->body();
+        if (!body.empty()) {
+            try {
+                auto j = nlohmann::json::parse(body);
+                if (j.contains("duration")) {
+                    duration = j["duration"].get<float>();
+                    duration = std::clamp(duration, duration_min, duration_max);
+                }
+                if (j.contains("intensity")) {
+                    intensity = j["intensity"].get<float>();
+                    intensity = std::clamp(intensity, intensity_min, intensity_max);
+                }
+                return {duration, intensity};
+            } catch (const nlohmann::json::parse_error&) {
+                // Not JSON, fall through to query-param parsing
+            }
+        }
+
         if (body.empty()) {
             body = req->header().query();
         }
         auto query_params = restinio::parse_query(body);
-        float duration = default_duration;
-        float intensity = default_intensity;
 
         if (query_params.has("duration")) {
             try {

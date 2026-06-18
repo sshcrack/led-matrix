@@ -15,8 +15,8 @@ extern "C" PLUGIN_EXPORT SpotifyScenes *createSpotifyScenes() {
 }
 
 extern "C" PLUGIN_EXPORT void destroySpotifyScenes(SpotifyScenes *c) {
-    delete spotify; // The destructor will handle termination
     delete c;
+    delete spotify; // The destructor will handle termination
 }
 
 vector<std::unique_ptr<ImageProviderWrapper> >

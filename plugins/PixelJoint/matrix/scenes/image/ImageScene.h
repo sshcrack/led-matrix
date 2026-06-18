@@ -77,8 +77,6 @@ class ImageScene final : public Scenes::Scene {
 
     uint curr_category = 0;
     std::atomic<bool> is_exiting{false};
-    std::atomic<bool> has_image{false};
-
     optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
 
 

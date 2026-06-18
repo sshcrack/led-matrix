@@ -289,6 +289,10 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
 
     if (!curr_state.has_value() || curr_state->get_track().get_id().value() != track_id)
     {
+        if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            return true; // Previous fetch still in progress
+        }
+
         {
             std::unique_lock lock(state_mtx);
             curr_state.emplace(track);
@@ -323,8 +327,8 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
             return true;
         }
 
-        auto content_stream = new rgb_matrix::MemStreamIO();
-        rgb_matrix::StreamWriter out(content_stream);
+        auto content_stream = std::make_unique<rgb_matrix::MemStreamIO>();
+        rgb_matrix::StreamWriter out(content_stream.get());
 
         for (auto pair : images)
         {
@@ -338,10 +342,10 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
         std::unique_lock lock(animation_mtx);
 
         spdlog::trace("Constructing reader");
-        curr_animation = rgb_matrix::StreamReader(content_stream);
+        curr_animation = rgb_matrix::StreamReader(content_stream.get());
         anim_frame_start_ms = 0;
         spdlog::trace("Setting stream");
-        curr_content_stream = content_stream;
+        curr_content_stream = content_stream.release();
     }
 
     if (!quick_cover.has_value() && !curr_animation.has_value())

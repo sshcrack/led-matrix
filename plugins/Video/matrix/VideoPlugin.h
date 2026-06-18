@@ -40,6 +40,7 @@ public:
     return status;
   }
   void flush_status() {
+    std::lock_guard<std::mutex> lock(statusMutex);
     status = "idle";
   }
 
