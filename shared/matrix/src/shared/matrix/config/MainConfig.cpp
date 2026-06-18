@@ -241,6 +241,7 @@ spdlog::info("Setting preset {}", id);
     }
 
     map<string, string> MainConfig::get_plugin_configs() const {
+        shared_lock lock(this->data_mutex);
         return this->data.pluginConfigs;
     }
 

@@ -141,18 +141,10 @@ namespace ConfigData {
 
             for (const auto &item: scenes_json)
                 scenes.push_back(Scenes::Scene::from_json(item));
-        } else {
-            info("No scenes in preset. Adding default...");
-            p = Preset::create_default();
         }
 
 
-        p = {
-            new Preset(),
-            [](Preset *p) {
-                delete p;
-            }
-        };
+        p = std::make_shared<Preset>();
 
         p->scenes = std::move(scenes);
         p->transition_duration = j.value("transition_duration", static_cast<tmillis_t>(750));
@@ -193,12 +185,7 @@ namespace ConfigData {
         preset->transition_name = "blend";
         preset->display_name = "Default";
 
-        return {
-            preset,
-            [](Preset *p) {
-                delete p;
-            }
-        };
+        return std::shared_ptr<Preset>(preset);
     }
 
     bool SpotifyData::is_expired() const {
