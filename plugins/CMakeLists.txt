@@ -89,11 +89,15 @@ function(register_plugin PLUGIN_NAME)
             COMPONENT ${PLUGIN_NAME}
         )
     else()
-        # Matrix TGZ: flat layout extracted to /opt/led-matrix by install_led_matrix.sh
+        # Matrix DEB: plugins under /usr/lib/led-matrix/plugins/<name>/
+        set_target_properties(${PLUGIN_NAME} PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../.."
+            BUILD_WITH_INSTALL_RPATH TRUE
+        )
         install(TARGETS ${PLUGIN_NAME}
-            RUNTIME DESTINATION plugins/${PLUGIN_NAME}
-            LIBRARY DESTINATION plugins/${PLUGIN_NAME}
-            ARCHIVE DESTINATION plugins/${PLUGIN_NAME}
+            RUNTIME DESTINATION lib/led-matrix/plugins/${PLUGIN_NAME}
+            LIBRARY DESTINATION lib/led-matrix/plugins/${PLUGIN_NAME}
+            ARCHIVE DESTINATION lib/led-matrix/plugins/${PLUGIN_NAME}
             COMPONENT ${PLUGIN_NAME}
         )
     endif()

@@ -34,7 +34,7 @@ cmake --preset emulator -DSKIP_WEB_BUILD=ON
 cmake --build --preset emulator --target install
 
 # Run the emulator (128×128, SDL window ×4)
-./emulator_build/install/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
+./emulator_build/install/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
 
 # Convenience wrapper (reads .env, builds, then runs)
 ./scripts/run_emulator.sh
@@ -60,6 +60,48 @@ cmake --build --preset cross-compile --target install
 # build_upload.sh does the above + rsync to ledmat:/home/pi/ledmat/run/ + service restart
 ./build_upload.sh
 ```
+
+### DEB packaging (cross-compile)
+
+The cross-compile preset now produces both `.tar.gz` and `.deb` packages. The `.deb` installs to FHS paths (`/usr/bin/`, `/usr/lib/led-matrix/`, `/usr/share/led-matrix/`) via CPack.
+
+Package the DEB:
+```bash
+cmake --preset cross-compile
+cmake --build --preset cross-compile --target package
+# Produces build/led-matrix-<version>-arm64.deb
+```
+
+The DEB includes:
+- **debconf templates** — interactive prompts for hardware config (rows, cols, chain, parallel), Spotify credentials, and auto-update settings on first install
+- **postinst** — writes `/etc/default/led-matrix` (flags + Spotify env), creates `/var/lib/led-matrix/` owned by `pi:pi`, migrates data from `/opt/led-matrix/` if present, enables and starts the systemd service
+- **prerm/postrm** — clean stop/disable on remove, purge `/var/lib/led-matrix` and debconf answers on `dpkg --purge`
+- **systemd unit** (`/lib/systemd/system/led-matrix.service`) — runs as `root` (required for GPIO `/dev/mem` access), reads `EnvironmentFile=/etc/default/led-matrix`, the library drops privileges to `pi:pi` after init via `--led-drop-priv-user=pi --led-drop-priv-group=pi`
+
+### Service user model
+
+- The systemd service runs as **root** (`User=root`) because `rpi-rgb-led-matrix` needs to open `/dev/mem` for GPIO
+- After matrix initialisation, the library automatically drops privileges via `setresuid`/`setresgid` to `pi:pi` (controlled by `--led-drop-priv-user=pi --led-drop-priv-group=pi` in `MATRIX_OPTS`)
+- Runtime data lives in `/var/lib/led-matrix/` (owned by `pi:pi`) so the process can write config files after privilege drop
+- To reconfigure: `sudo dpkg-reconfigure led-matrix` — this re-runs the debconf `config` script and `postinst`, updating `/etc/default/led-matrix`
+
+### FHS layout (DEB)
+
+| Content | Path |
+|---|---|
+| Main binary | `/usr/bin/led-matrix` |
+| Shared libs | `/usr/lib/led-matrix/*.so` |
+| Plugins | `/usr/lib/led-matrix/plugins/` |
+| Update script | `/usr/lib/led-matrix/update_service.sh` |
+| Web UI | `/usr/share/led-matrix/web/` |
+| Scene previews | `/usr/share/led-matrix/scene_previews/` |
+| Fonts | `/usr/share/led-matrix/7x13.bdf` |
+| Licenses | `/usr/share/doc/led-matrix/licenses/` |
+| Copyright | `/usr/share/doc/led-matrix/copyright` |
+| config.json | `/var/lib/led-matrix/config.json` |
+| Custom user data | `/var/lib/led-matrix/data/` |
+| Update flags | `/var/lib/led-matrix/.update_success` / `.update_error` |
+| Env config | `/etc/default/led-matrix` |
 
 ### clangd
 
@@ -89,7 +131,7 @@ An MCP server in `scripts/mcp-emulator/server.py` lets AI agents control the emu
 
 Tools exposed: `start_emulator`, `stop_emulator`, `get_status`, `get_frame` (returns PNG of the current matrix), `list_scenes`, `list_presets`, `set_preset`, `http_api`.
 
-The emulator binary must exist at `emulator_build/install/main` before starting the server.
+The emulator binary must exist at `emulator_build/install/led-matrix` before starting the server.
 
 ## Plugin development
 
