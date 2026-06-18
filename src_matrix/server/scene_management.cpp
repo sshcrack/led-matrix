@@ -10,6 +10,59 @@
 
 using json = nlohmann::json;
 
+namespace {
+    std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional) {
+        std::vector<json> properties_json;
+        properties_json.reserve(properties.size());
+        for (const auto& prop : properties) {
+            json j1;
+            prop->dump_to_json(j1);
+            json j2;
+            j2["name"] = prop->getName();
+            j2["default_value"] = j1[prop->getName()];
+            j2["type_id"] = prop->get_type_id();
+            if (include_additional) {
+                json additional_data;
+                prop->add_additional_data(additional_data);
+                j2["additional"] = std::move(additional_data);
+            }
+            properties_json.push_back(std::move(j2));
+        }
+        return properties_json;
+    }
+
+    template<typename T>
+    json make_providers_list(const std::vector<std::shared_ptr<T>>& items) {
+        std::vector<json> j;
+        j.reserve(items.size());
+        for (const auto& item : items) {
+            auto properties = item->get_default()->get_properties();
+            j.push_back({
+                {"name", item->get_name()},
+                {"properties", serialize_properties(properties, false)}
+            });
+        }
+        return j;
+    }
+
+    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes) {
+        std::vector<json> j;
+        j.reserve(scenes.size());
+        for (const auto& scene : scenes) {
+            auto properties = scene->get_default()->get_properties();
+            auto properties_json = serialize_properties(properties, true);
+            j.push_back({
+                {"name", scene->get_name()},
+                {"properties", std::move(properties_json)},
+                {"has_preview", std::filesystem::exists(get_exec_dir() / "scene_previews" / (scene->get_name() + ".gif"))},
+                {"needs_desktop", scene->get_default()->needs_desktop_app()},
+                {"category", scene->get_default()->getCategory()}
+            });
+        }
+        return j;
+    }
+}
+
 std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router) {
     // GET routes
     router->http_get("/get_curr", [](auto req, auto) {
@@ -27,104 +80,15 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
     });
 
     router->http_get("/list_scenes", [](auto req, auto) {
-        auto scenes = Plugins::PluginManager::instance()->get_scenes();
-        std::vector<json> j;
-
-        for (const auto &item: scenes) {
-            auto properties = item->get_default()->get_properties();
-            std::vector<json> properties_json;
-
-            for (const auto &item1: properties) {
-                json j1;
-                item1->dump_to_json(j1);
-
-                json additional_data;
-                item1->add_additional_data(additional_data);
-
-                json j2;
-
-                j2["additional"] = additional_data;
-                j2["name"] = item1->getName();
-                j2["default_value"] = j1[item1->getName()];
-                j2["type_id"] = item1->get_type_id();
-
-                properties_json.push_back(j2);
-            }
-
-            json j1 = {
-                {"name", item->get_name()},
-                {"properties", properties_json},
-                {"has_preview", std::filesystem::exists(get_exec_dir() / "scene_previews" / (item->get_name() + ".gif"))},
-                {"needs_desktop", item->get_default()->needs_desktop_app()},
-                {"category", item->get_default()->getCategory()}
-            };
-
-            j.push_back(j1);
-        }
-
-        return reply_with_json(req, j);
+        return reply_with_json(req, make_scenes_list(Plugins::PluginManager::instance()->get_scenes()));
     });
 
     router->http_get("/list_providers", [](auto req, auto) {
-        auto scenes = Plugins::PluginManager::instance()->get_image_providers();
-        std::vector<json> j;
-
-        for (const auto &item: scenes) {
-            auto properties = item->get_default()->get_properties();
-            std::vector<json> properties_json;
-
-            for (const auto &item1: properties) {
-                json j1;
-                item1->dump_to_json(j1);
-
-                json j2;
-                j2["name"] = item1->getName();
-                j2["default_value"] = j1[item1->getName()];
-                j2["type_id"] = item1->get_type_id();
-
-                properties_json.push_back(j2);
-            }
-
-            json j1 = {
-                {"name", item->get_name()},
-                {"properties", properties_json}
-            };
-
-            j.push_back(j1);
-        }
-
-        return reply_with_json(req, j);
+        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_image_providers()));
     });
 
     router->http_get("/list_shader_providers", [](auto req, auto) {
-        auto providers = Plugins::PluginManager::instance()->get_shader_providers();
-        std::vector<json> j;
-
-        for (const auto &item: providers) {
-            auto properties = item->get_default()->get_properties();
-            std::vector<json> properties_json;
-
-            for (const auto &item1: properties) {
-                json j1;
-                item1->dump_to_json(j1);
-
-                json j2;
-                j2["name"] = item1->getName();
-                j2["default_value"] = j1[item1->getName()];
-                j2["type_id"] = item1->get_type_id();
-
-                properties_json.push_back(j2);
-            }
-
-            json j1 = {
-                {"name", item->get_name()},
-                {"properties", properties_json}
-            };
-
-            j.push_back(j1);
-        }
-
-        return reply_with_json(req, j);
+        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_shader_providers()));
     });
 
     router->http_get("/list_transitions", [](auto req, auto) {

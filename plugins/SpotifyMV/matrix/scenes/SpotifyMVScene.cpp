@@ -13,7 +13,7 @@ namespace
   Spotify *resolve_spotify()
   {
     static std::once_flag warned;
-    auto *cached = static_cast<Spotify *>(PluginRegistry::get("spotify"));
+    auto *cached = std::any_cast<Spotify *>(PluginRegistry::get("spotify"));
     if (cached == nullptr)
     {
       std::call_once(warned, [] {

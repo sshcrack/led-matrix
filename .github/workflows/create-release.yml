@@ -22,14 +22,12 @@ env:
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
 
 jobs:
-  # Job to extract version and do initial validation
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
@@ -37,14 +35,11 @@ jobs:
       - name: Extract version from CMakeLists.txt
         id: version
         run: |
-          # Matches 'set(VERSION 1.2.3)' and extracts the numbers
           VERSION=$(grep -Po 'set\(VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
-          
           if [ -z "$VERSION" ]; then
             echo "Could not extract version from CMakeLists.txt" >&2
             exit 1
           fi
-          
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Validate tag matches CMakeLists.txt version
@@ -61,7 +56,6 @@ jobs:
         id: check_tag
         run: |
           TAG="v${{ steps.version.outputs.VERSION }}"
-          # For workflow_dispatch, also check the tag doesn't exist yet
           if [ "${{ github.event_name }}" != "push" ]; then
             if git rev-parse "$TAG" >/dev/null 2>&1; then
               echo "Tag $TAG already exists!" >&2
@@ -102,159 +96,19 @@ jobs:
           name: web-build
           path: react-web/dist/
 
-  # Build matrix for led-matrix and desktop app
   build:
-    runs-on: ${{ matrix.os }}
     needs: prepare
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - name: "led-matrix"
-            os: ubuntu-latest
-            preset: "cross-compile"
-            artifact-name: "led-matrix-build"
-            artifact-path: |
-              build/led-matrix-${{ needs.prepare.outputs.version }}-arm64.tar.gz
-            requires-toolchain: true
-          - name: "desktop-linux"
-            os: ubuntu-latest
-            preset: "desktop-linux"
-            artifact-name: "desktop-linux-build"
-            artifact-path: |
-              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
-              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.deb
-            requires-toolchain: false
-          - name: "desktop-windows"
-            os: windows-latest
-            preset: "desktop-windows"
-            artifact-name: "desktop-windows-build"
-            artifact-path: |
-              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
-              desktop_build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.exe
-            requires-toolchain: false
-    env:
-      BUILD_TYPE: RelWithDebInfo
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
+    uses: ./.github/workflows/build-matrix.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets:
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
-      - name: Install NSIS
-        if: runner.os == 'Windows'
-        run: |
-          choco install nsis -y
-          
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        if: runner.os != 'Windows'
-        with:
-          packages: libasound2-dev python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
-          version: 1.0
-
-      - name: Update certificates
-        if: runner.os != 'Windows'
-        run: |
-            sudo apt-get update
-            sudo apt-get install --reinstall ca-certificates
-            sudo update-ca-certificates
-            sudo cert-sync /etc/ssl/certs/ca-certificates.crt
-            cert-sync --user /etc/ssl/certs/ca-certificates.crt
-      - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: "~3.25.0"
-
-      - name: Setup anew (or from cache) vcpkg (and does not build any package)
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
-
-      - name: Add NuGet sources (Linux)
-        if: runner.os != 'Windows'
-        shell: bash
-        env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-          USERNAME: sshcrack
-          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-        run: |
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            sources add \
-            -Source "${{ env.FEED_URL }}" \
-            -StorePasswordInClearText \
-            -Name GitHubPackages \
-            -UserName "${{ env.USERNAME }}" \
-            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
-            -Source "${{ env.FEED_URL }}"
-
-      - name: Add NuGet sources (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
-          USERNAME: sshcrack
-          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-        run: |
-          .$(${{ env.VCPKG_EXE }} fetch nuget) `
-            sources add `
-            -Source "${{ env.FEED_URL }}" `
-            -StorePasswordInClearText `
-            -Name GitHubPackages `
-            -UserName "${{ env.USERNAME }}" `
-            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
-          .$(${{ env.VCPKG_EXE }} fetch nuget) `
-            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" `
-            -Source "${{ env.FEED_URL }}"
-
-      - name: Download web build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: web-build
-          path: react-web/dist/
-
-      - name: Cache cross-compile toolchain
-        if: matrix.requires-toolchain
-        id: cache-toolchain
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/cross-compile
-          key: cross-compile-toolchain-v0.0.1-beta
-
-      - name: Download and extract cross-compile toolchain
-        if: matrix.requires-toolchain && steps.cache-toolchain.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ${{ runner.temp }}/cross-compile
-          cd ${{ runner.temp }}/cross-compile
-          wget -O cross-compile.tar.xz "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
-          tar -xvf cross-compile.tar.xz
-          rm cross-compile.tar.xz
-
-      - name: Build ${{ matrix.name }}
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: ${{ matrix.preset }}
-          configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
-          buildPreset: ${{ matrix.preset }}
-          buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '[''--target'', ''package'', ''--config'', ''RelWithDebInfo'']' || '[''--target'', ''package'']' }}
-        env:
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
-          CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && runner.temp }}/cross-compile
-
-      - name: Upload ${{ matrix.name }} artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
-
-  # Create release and upload all artifacts
   create-release:
     runs-on: ubuntu-latest
     needs: [prepare, build]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
@@ -268,24 +122,17 @@ jobs:
         id: create_release
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
-          # Get previous tag (if any)
           PREV_TAG=$(git tag --sort=-creatordate | grep -v "$TAG" | head -n1 || true)
 
           if [ -n "$PREV_TAG" ]; then
-            # Fetch merged PRs between previous and current tag, with author
             PRS=$(gh pr list --state merged --search "merged:>=$(git log -1 --format=%aI $PREV_TAG)" --json number,title,author,mergedAt,mergeCommit --jq '.[] | select(.mergeCommit != null) | "- #\(.number) (\(.title)) - (@\(.author.login))"')
-
             FULL_CHANGELOG_LINK="[**Full Changelog**](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
-
             if [ -n "$PRS" ]; then
-              # Use template with PRs
               CHANGELOG=$(cat .github/changelog-template.md | sed "s|{{PRS}}|$PRS|g" | sed "s|{{FULL_CHANGELOG_LINK}}|$FULL_CHANGELOG_LINK|g")
             else
-              # Use template for no PRs
               CHANGELOG=$(cat .github/changelog-no-prs-template.md | sed "s|{{FULL_CHANGELOG_LINK}}|$FULL_CHANGELOG_LINK|g")
             fi
           else
-            # Fallback for edge case (no previous tag but not initial release)
             CHANGELOG="Release v${{ needs.prepare.outputs.version }}"
           fi
 
@@ -299,14 +146,11 @@ jobs:
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
 
-          # Upload led-matrix (cross-compile)
           gh release upload "$TAG" artifacts/led-matrix-build/led-matrix-${{ needs.prepare.outputs.version }}-arm64.tar.gz
 
-          # Upload desktop-linux
           gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.tar.gz
           gh release upload "$TAG" artifacts/desktop-linux-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-Linux.deb
 
-          # Upload desktop-windows
           gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.zip
           gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.exe
         env:

@@ -17,6 +17,9 @@ namespace Config {
         shared_mutex update_mutex;
         bool dirty;
         const string file_name;
+
+        void load_from_file();
+        void migrate_presets();
     public:
         explicit MainConfig(string filename);
 

@@ -108,7 +108,7 @@ export default function ShaderPreview({ apiUrl, filename, script }: ShaderPrevie
               shader={actualShader}
               loop={true}
               pixelRatio={2}
-              onReady={(renderer) => console.log('Shadertoy Ready!')}
+              onReady={() => console.log('Shadertoy Ready!')}
             />
           ) : (
             <div className="w-full h-full bg-black" />

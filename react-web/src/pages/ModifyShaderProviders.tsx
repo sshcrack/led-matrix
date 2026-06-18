@@ -117,7 +117,6 @@ export default function ModifyShaderProviders() {
           <>
             <ShaderUrlProviders
               providers={providers}
-              providerDefinitions={providerDefs ?? []}
               onChange={handleProvidersChange}
             />
             <AddProviderButton
