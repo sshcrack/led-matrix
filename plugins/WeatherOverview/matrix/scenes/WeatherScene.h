@@ -5,6 +5,24 @@
 #include <random>
 #include "../WeatherParser.h"
 
+// Constants used across split files
+constexpr int MAIN_ICON_SIZE = 42;
+constexpr int FORECAST_ICON_SIZE = 16;
+constexpr int MAX_SCROLL = 20;
+constexpr int SCROLL_PAUSE = 40;
+constexpr int ANIMATION_INTERVAL = 100;
+constexpr int MAX_PARTICLES = 50;
+constexpr float COLOR_TRANSITION_SPEED = 0.05f;
+constexpr int RAIN_SPEED_FACTOR = 2;
+constexpr int SNOW_SPEED_FACTOR = 1;
+constexpr float GRADIENT_INTENSITY = 0.7f;
+constexpr int BORDER_THICKNESS = 1;
+constexpr int BORDER_PADDING = 2;
+constexpr int MAX_SHOOTING_STARS = 3;
+constexpr int MIN_MS_BETWEEN_STARS = 5 * 1000;
+constexpr float SHOOTING_STAR_SPEED_MIN = 1.5f;
+constexpr float SHOOTING_STAR_SPEED_MAX = 3.0f;
+
 namespace Scenes {
     // Struct for animated particles (rain, snow, etc.)
     struct Particle {
@@ -151,6 +169,9 @@ namespace Scenes {
         static RGB interpolateColor(const RGB &start, const RGB &end, float progress) ;
         void applyBackgroundEffects(rgb_matrix::FrameCanvas *canvas, const RGB &base_color);
         
+        // Image caching
+        bool reloadImages();
+
         // Visual styling helpers
         void drawWeatherBorder(rgb_matrix::FrameCanvas *canvas, const RGB &color, int brightness_mod) const;
         void drawPrecipitationIndicator(rgb_matrix::FrameCanvas *canvas, float probability, int x, int y) const;

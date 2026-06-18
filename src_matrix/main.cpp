@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     config = new Config::MainConfig(std::string(LED_MATRIX_DATA_DIR) + "/config.json");
 
     debug("Initializing UpdateManager...");
-    Constants::global_update_manager = new Update::UpdateManager(config);
+    Constants::global_update_manager = std::make_shared<Update::UpdateManager>(config);
     Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
 
@@ -337,8 +337,7 @@ int main(int argc, char *argv[])
     if (Constants::global_update_manager)
     {
         Constants::global_update_manager->stop();
-        delete Constants::global_update_manager;
-        Constants::global_update_manager = nullptr;
+        Constants::global_update_manager.reset();
     }
 
 

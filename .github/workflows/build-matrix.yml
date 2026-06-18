@@ -138,7 +138,7 @@ jobs:
           buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '[''--target'', ''package'', ''--config'', ''RelWithDebInfo'']' || '[''--target'', ''package'']' }}
         env:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
-          CROSS_COMPILE_ROOT: ${{ matrix.requires-toolchain && format('{0}/cross-compile', runner.temp) || '' }}
+          CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
       - name: Upload ${{ matrix.name }} artifacts
         uses: actions/upload-artifact@v4
