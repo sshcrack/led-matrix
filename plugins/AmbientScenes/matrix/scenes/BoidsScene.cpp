@@ -25,9 +25,6 @@ namespace AmbientScenes {
     }
 
     bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
-        // Fade out slightly to leave trails
-        // Boids move fast, let's clear the canvas completely to avoid mess? Or fade.
-        // Let's clear for now.
         canvas->Clear();
 
         run_boids();

@@ -28,7 +28,6 @@ namespace Scenes {
         int target_fps = 60;
         tmillis_t last_render_time = 0;
 
-        // Pure virtual methods remain unchanged
         virtual int get_default_weight() = 0;
         virtual tmillis_t get_default_duration() = 0;
 
@@ -89,7 +88,7 @@ namespace Scenes {
         [[nodiscard]] virtual nlohmann::json to_json() const;
 
         [[nodiscard]] virtual string get_name() const = 0;
-        [[nodiscard]] virtual std::string getCategory() const { return "General"; }
+        [[nodiscard]] virtual std::string get_category() const { return "General"; }
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.

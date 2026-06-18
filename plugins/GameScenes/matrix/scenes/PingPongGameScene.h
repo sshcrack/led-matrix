@@ -55,7 +55,7 @@ namespace Scenes {
         void load_properties(const nlohmann::json &j) override;
 
         [[nodiscard]] string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Games"; }
+        [[nodiscard]] std::string get_category() const override { return "Games"; }
 
         using Scene::Scene;
 

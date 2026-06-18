@@ -115,8 +115,7 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
       }
     }
     else
-    { // This block was missing in the snippet, added to handle initial
-      // selection
+    {
       if (random_playback->get())
       {
         std::random_device rd;

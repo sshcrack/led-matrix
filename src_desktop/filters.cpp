@@ -1,7 +1,7 @@
 #include "filters.h"
 
 // Allow letters, digits, '.', '-', ':' only
-int HostnameFilter(ImGuiInputTextCallbackData *data)
+int hostname_filter(ImGuiInputTextCallbackData *data)
 {
     if (data->EventChar < 32 || data->EventChar >= 127)
         return 1; // Disallow non-printable

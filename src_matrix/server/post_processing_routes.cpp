@@ -8,6 +8,29 @@
 using json = nlohmann::json;
 
 namespace {
+    // Flash effect defaults and clamp ranges
+    constexpr float flash_default_duration = 0.5f;
+    constexpr float flash_default_intensity = 1.0f;
+    constexpr float flash_duration_min = 0.1f;
+    constexpr float flash_duration_max = 5.0f;
+    constexpr float flash_intensity_min = 0.0f;
+    constexpr float flash_intensity_max = 1.0f;
+
+    // Rotate effect defaults and clamp ranges
+    constexpr float rotate_default_duration = 1.0f;
+    constexpr float rotate_default_intensity = 1.0f;
+    constexpr float rotate_duration_min = 0.5f;
+    constexpr float rotate_duration_max = 10.0f;
+    constexpr float rotate_intensity_min = 0.0f;
+    constexpr float rotate_intensity_max = 2.0f;
+
+    // Generic effect defaults and clamp ranges
+    constexpr float generic_default_duration = 1.0f;
+    constexpr float generic_default_intensity = 1.0f;
+    constexpr float generic_duration_min = 0.1f;
+    constexpr float generic_duration_max = 10.0f;
+    constexpr float generic_intensity_min = 0.0f;
+    constexpr float generic_intensity_max = 2.0f;
     struct DurationIntensity {
         float duration;
         float intensity;
@@ -48,7 +71,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     // Trigger flash effect
     router->http_post("/post_processing/flash", [](const auto& req, auto) {
         if (Constants::global_post_processor) {
-            auto [duration, intensity] = parse_duration_intensity(req, 0.5f, 1.0f, 0.1f, 5.0f, 0.0f, 1.0f);
+            auto [duration, intensity] = parse_duration_intensity(req, flash_default_duration, flash_default_intensity, flash_duration_min, flash_duration_max, flash_intensity_min, flash_intensity_max);
             
             Constants::global_post_processor->add_effect("flash", duration, intensity);
             
@@ -67,7 +90,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     // Trigger rotate effect
     router->http_post("/post_processing/rotate", [](const auto&  req, auto) {
         if (Constants::global_post_processor) {
-            auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.5f, 10.0f, 0.0f, 2.0f);
+            auto [duration, intensity] = parse_duration_intensity(req, rotate_default_duration, rotate_default_intensity, rotate_duration_min, rotate_duration_max, rotate_intensity_min, rotate_intensity_max);
             
             Constants::global_post_processor->add_effect("rotate", duration, intensity);
             
@@ -115,7 +138,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     router->http_post("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
         if (Constants::global_post_processor) {
             auto effect_name = std::string(params["effect_name"]);
-            auto [duration, intensity] = parse_duration_intensity(req, 1.0f, 1.0f, 0.1f, 10.0f, 0.0f, 2.0f);
+            auto [duration, intensity] = parse_duration_intensity(req, generic_default_duration, generic_default_intensity, generic_duration_min, generic_duration_max, generic_intensity_min, generic_intensity_max);
             
             if (Constants::global_post_processor->add_effect(effect_name, duration, intensity)) {
                 json response;

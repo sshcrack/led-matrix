@@ -30,7 +30,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
-        std::string getCategory() const override { return "Shaders"; }
+        std::string get_category() const override { return "Shaders"; }
 
         void register_properties() override;
 
@@ -70,7 +70,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
-        std::string getCategory() const override { return "Custom Shaders"; }
+        std::string get_category() const override { return "Custom Shaders"; }
         void register_properties() override {}
         tmillis_t get_default_duration() override { return 20000; }
         int get_default_weight() override { return 5; }
