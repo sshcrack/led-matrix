@@ -196,4 +196,4 @@ Scenes that require the desktop app (`needs_desktop` = true) are skipped automat
 
 ## CI
 
-`.github/workflows/ci.yml` builds all three presets (cross-compile, desktop-linux, desktop-windows) on push/PR to `master`. The react-web is built only for the `cross-compile` job (pnpm + node 22). Desktop jobs pass `-DSKIP_WEB_BUILD=ON`.
+`.github/workflows/ci.yml` on push/PR to `master` builds only the react-web frontend (pnpm + node 22) and uploads it as the `web-build` artifact. It then delegates all three C++ builds (`cross-compile`, `desktop-linux`, `desktop-windows`) to the reusable workflow `.github/workflows/build-matrix.yml`, which downloads the `web-build` artifact so all presets get the bundled web UI without rebuilding it.

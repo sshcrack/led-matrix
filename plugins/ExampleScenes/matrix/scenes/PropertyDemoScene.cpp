@@ -82,18 +82,18 @@ bool PropertyDemoScene::render(rgb_matrix::FrameCanvas *canvas) {
                     
                     if (anim_mode == AnimationMode::RAINBOW) {
                         // Rainbow mode: cycle through hues
-                        float hue = fmod(anim_factor + (float)(x + y) / (width + height), 1.0f) * 6.0f;
-                        int h_i = (int)hue;
+                        float hue = fmod(anim_factor + static_cast<float>(x + y) / static_cast<float>(width + height), 1.0f) * 6.0f;
+                        int h_i = static_cast<int>(hue);
                         float h_f = hue - h_i;
                         float q = 1.0f - h_f;
                         
                         switch (h_i) {
-                            case 0: r = 255; g = (uint8_t)(255 * h_f); b = 0; break;
-                            case 1: r = (uint8_t)(255 * q); g = 255; b = 0; break;
-                            case 2: r = 0; g = 255; b = (uint8_t)(255 * h_f); break;
-                            case 3: r = 0; g = (uint8_t)(255 * q); b = 255; break;
-                            case 4: r = (uint8_t)(255 * h_f); g = 0; b = 255; break;
-                            default: r = 255; g = 0; b = (uint8_t)(255 * q); break;
+                            case 0: r = 255; g = static_cast<uint8_t>(255 * h_f); b = 0; break;
+                            case 1: r = static_cast<uint8_t>(255 * q); g = 255; b = 0; break;
+                            case 2: r = 0; g = 255; b = static_cast<uint8_t>(255 * h_f); break;
+                            case 3: r = 0; g = static_cast<uint8_t>(255 * q); b = 255; break;
+                            case 4: r = static_cast<uint8_t>(255 * h_f); g = 0; b = 255; break;
+                            default: r = 255; g = 0; b = static_cast<uint8_t>(255 * q); break;
                         }
                     } else {
                         // Interpolate between primary and secondary colors
