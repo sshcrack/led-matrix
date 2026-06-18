@@ -68,23 +68,13 @@ static bool showMainWindow = false;
 // g_pending_http removed — async HTTP calls use detached threads
 
 #ifdef _WIN32
-// Global variables for shutdown handling on Windows
-static std::string g_shutdown_hostname;
-static uint16_t g_shutdown_port = 0;
 // Console control handler for Windows — must be async-signal-safe
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
     shouldExit.store(true);
     return TRUE;
 }
 #else
-// Global variables for shutdown handling on Linux
-static std::string g_shutdown_hostname;
-static uint16_t g_shutdown_port = 0;
-// Use sig_atomic_t for async-signal-safety
-static volatile sig_atomic_t signalReceived = 0;
-
 static void signal_handler(int /*signum*/) {
-    signalReceived = 1;
     shouldExit.store(true);
 }
 #endif
@@ -200,8 +190,6 @@ int run_app(int argc, char *argv[]) {
     init_plugins();
 
     General &generalCfgRef = cfg->getGeneralConfig();
-    g_shutdown_hostname = generalCfgRef.getHostnameCopy();
-    g_shutdown_port = generalCfgRef.getPort();
 
     // UI state variables (non-static, persist via lambda captures)
     bool initialConnect = true;
