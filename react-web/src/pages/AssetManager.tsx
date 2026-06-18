@@ -37,6 +37,8 @@ export default function AssetManager() {
       if (Array.isArray(data) && data.length === 0) {
         setSelectedShader(null)
       }
+    } catch (err) {
+      toast.error(`Failed to fetch assets: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
