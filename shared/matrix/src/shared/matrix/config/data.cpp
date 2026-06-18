@@ -110,7 +110,7 @@ namespace ConfigData {
 
     void from_json(const json &j, SpotifyData &p) {
         string access, refresh;
-        tmillis_t expires_at;
+        tmillis_t expires_at = 0;
 
         if (j.contains("access_token"))
             j.at("access_token").get_to(access);
@@ -204,6 +204,7 @@ namespace ConfigData {
 #else
             localtime_r(&time_t, &result);
 #endif
+        if (!tm) return false;
         
         return is_active_at_time(tm->tm_hour, tm->tm_min, tm->tm_wday);
     }

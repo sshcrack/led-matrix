@@ -70,6 +70,8 @@ SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET}"
 EOF
 fi
 
+chmod 600 "$ENV_FILE"
+
 # --- Read package version (also used for config.json update below) ---
 PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 

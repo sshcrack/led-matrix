@@ -21,9 +21,9 @@ inline void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_
     else if (h < 300) { r1 = x; b1 = c; }
     else { r1 = c; b1 = x; }
 
-    r = static_cast<uint8_t>((r1 + m) * 255.0f);
-    g = static_cast<uint8_t>((g1 + m) * 255.0f);
-    b = static_cast<uint8_t>((b1 + m) * 255.0f);
+    r = static_cast<uint8_t>(std::clamp((r1 + m) * 255.0f, 0.0f, 255.0f));
+    g = static_cast<uint8_t>(std::clamp((g1 + m) * 255.0f, 0.0f, 255.0f));
+    b = static_cast<uint8_t>(std::clamp((b1 + m) * 255.0f, 0.0f, 255.0f));
 }
 
 inline void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -40,9 +40,9 @@ inline void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_
     else if (h < 5.0f/6.0f) { r1 = x; g1 = 0; b1 = c; }
     else { r1 = c; g1 = 0; b1 = x; }
 
-    r = static_cast<uint8_t>((r1 + m) * 255.0f);
-    g = static_cast<uint8_t>((g1 + m) * 255.0f);
-    b = static_cast<uint8_t>((b1 + m) * 255.0f);
+    r = static_cast<uint8_t>(std::clamp((r1 + m) * 255.0f, 0.0f, 255.0f));
+    g = static_cast<uint8_t>(std::clamp((g1 + m) * 255.0f, 0.0f, 255.0f));
+    b = static_cast<uint8_t>(std::clamp((b1 + m) * 255.0f, 0.0f, 255.0f));
 }
 
 }

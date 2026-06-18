@@ -5,6 +5,10 @@
 #include <fmt/format.h>
 #include <thread>
 #include <spdlog/spdlog.h>
+#ifndef _WIN32
+#include <unistd.h>
+#include <sys/wait.h>
+#endif
 
 namespace {
 
@@ -282,7 +286,21 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 #ifdef _WIN32
     FILE* pipe = _popen(ffCmd.c_str(), "rb");
 #else
-    FILE* pipe = popen(ffCmd.c_str(), "r");
+    int fds[2];
+    if (pipe(fds) != 0) return false;
+    pid_t child = fork();
+    if (child == -1) { close(fds[0]); close(fds[1]); return false; }
+    if (child == 0) {
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        close(fds[1]);
+        execl("/bin/sh", "sh", "-c", ffCmd.c_str(), (char*)nullptr);
+        _exit(1);
+    }
+    close(fds[1]);
+    ffmpeg_pid_ = child;
+    FILE* pipe = fdopen(fds[0], "r");
+    if (!pipe) { close(fds[0]); ffmpeg_pid_ = -1; return false; }
 #endif
     if (!pipe) {
         spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
@@ -308,7 +326,12 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 #ifdef _WIN32
     _pclose(pipe);
 #else
-    pclose(pipe);
+    fclose(pipe);
+    if (ffmpeg_pid_ > 0) {
+        int status;
+        waitpid(ffmpeg_pid_, &status, WNOHANG);
+        ffmpeg_pid_ = -1;
+    }
 #endif
 
     // Clean up the temp mp4 — chunk 0 .mp4 will be downloaded separately
@@ -319,6 +342,11 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 
 void VideoStreamEngine::stop() {
     running_ = false;
+
+    // Kill ffmpeg child process to unblock fread() in play_fast_chunk
+    if (ffmpeg_pid_ > 0) {
+        kill(ffmpeg_pid_, SIGTERM);
+    }
 
     std::function<void(const std::string &)> tmp_status_change;
     // Clear the status callback BEFORE joining threads.
