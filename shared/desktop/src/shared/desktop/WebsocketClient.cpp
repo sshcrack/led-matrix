@@ -15,6 +15,13 @@ WebsocketClient *WebsocketClient::instance()
     return websocketClientInstance;
 }
 
+std::shared_ptr<WebsocketClient> WebsocketClient::create()
+{
+    auto instance = std::shared_ptr<WebsocketClient>(new WebsocketClient());
+    instance->setup_callback();
+    return instance;
+}
+
 WebsocketClient::WebsocketClient() : udpSender()
 {
     ix::initNetSystem();
@@ -22,13 +29,7 @@ WebsocketClient::WebsocketClient() : udpSender()
 
 void WebsocketClient::setup_callback()
 {
-    std::weak_ptr<WebsocketClient> weak_this;
-    try {
-        weak_this = shared_from_this();
-    } catch (const std::bad_weak_ptr&) {
-        spdlog::error("WebsocketClient::setup_callback called before object was managed by shared_ptr");
-        return;
-    }
+    std::weak_ptr<WebsocketClient> weak_this = shared_from_this();
     webSocket.setOnMessageCallback([weak_this](const ix::WebSocketMessagePtr &msg)
                                    {
         auto shared_this = weak_this.lock();

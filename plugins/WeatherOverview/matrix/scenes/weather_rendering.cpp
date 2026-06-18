@@ -328,7 +328,7 @@ void Scenes::WeatherScene::renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, 
                         float s = 1.0f;
                         float v = intensity;
                         uint8_t r, g, b;
-                        color::hsv_to_rgb(hue/360.0f, s, v, r, g, b);
+                        color::hsv_to_rgb(hue, s, v, r, g, b);
                         canvas->SetPixel(x, y, r, g, b);
                     }
                 }

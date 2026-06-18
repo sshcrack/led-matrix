@@ -64,7 +64,7 @@ MATRIX_OPTS="${MATRIX_OPTS}"
 EOF
 
 if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
-    cat >> "$ENV_FILE" << 'EOF'
+    cat >> "$ENV_FILE" << EOF
 SPOTIFY_CLIENT_ID="${SPOTIFY_ID}"
 SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET}"
 EOF
@@ -105,11 +105,15 @@ else
     INTERVAL="${UPDATE_INTERVAL:-24}"
     if command -v jq >/dev/null 2>&1; then
         tmp=$(mktemp)
-        jq --arg ver "$PKG_VERSION" \
-           --argjson auto "$AUTO_UPDATE_BOOL" \
-           --argjson interval "$INTERVAL" \
-           '.update_settings.current_version = $ver | .update_settings.auto_update_enabled = $auto | .update_settings.check_interval_hours = $interval' \
-           "$DATA_DIR/config.json" > "$tmp" && mv "$tmp" "$DATA_DIR/config.json"
+        if jq --arg ver "$PKG_VERSION" \
+              --argjson auto "$AUTO_UPDATE_BOOL" \
+              --argjson interval "$INTERVAL" \
+              '.update_settings.current_version = $ver | .update_settings.auto_update_enabled = $auto | .update_settings.check_interval_hours = $interval' \
+              "$DATA_DIR/config.json" > "$tmp"; then
+            mv "$tmp" "$DATA_DIR/config.json"
+        else
+            rm -f "$tmp"
+        fi
         if id pi >/dev/null 2>&1; then
             chown pi:pi "$DATA_DIR/config.json"
         fi

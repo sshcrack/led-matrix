@@ -185,7 +185,17 @@ int main(int argc, char *argv[])
         if (err.has_value())
         {
             error(err.value());
-            std::exit(-1);
+            pl->destroy_plugins();
+            pl->delete_references();
+            delete Constants::global_post_processor;
+            delete Constants::global_transition_manager;
+            if (Constants::global_update_manager)
+            {
+                Constants::global_update_manager->stop();
+                Constants::global_update_manager.reset();
+            }
+            delete config;
+            return 1;
         }
 
         auto effects = item->create_effects();
@@ -208,7 +218,12 @@ int main(int argc, char *argv[])
     uint16_t port = default_http_port;
     if (const char* port_env = std::getenv("PORT")) {
         try {
-            port = static_cast<uint16_t>(std::stoi(port_env));
+            int parsed = std::stoi(port_env);
+            if (parsed < 0 || parsed > 65535) {
+                spdlog::warn("PORT env value '{}' out of range [0,65535]. Using default {}.", port_env, default_http_port);
+            } else {
+                port = static_cast<uint16_t>(parsed);
+            }
         } catch (const std::exception& e) {
             spdlog::warn("Invalid PORT env value '{}': {}. Using default {}.", port_env, e.what(), default_http_port);
         }
@@ -284,7 +299,19 @@ int main(int argc, char *argv[])
         if (err.has_value())
         {
             error(err.value());
-            std::exit(-1);
+            initiate_shutdown(server);
+            control_thread.join();
+            pl->destroy_plugins();
+            pl->delete_references();
+            delete Constants::global_post_processor;
+            delete Constants::global_transition_manager;
+            if (Constants::global_update_manager)
+            {
+                Constants::global_update_manager->stop();
+                Constants::global_update_manager.reset();
+            }
+            delete config;
+            return 1;
         }
     }
 
@@ -337,12 +364,12 @@ int main(int argc, char *argv[])
     control_thread.join();
 
     info("Terminating plugin loader...");
+    delete Constants::global_post_processor;
+    delete Constants::global_transition_manager;
+
     pl->destroy_plugins();
 
     pl->delete_references();
-
-    delete Constants::global_post_processor;
-    delete Constants::global_transition_manager;
 
     info("Stopping UpdateManager...");
     if (Constants::global_update_manager)

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <filesystem>
 #include <cstdio>
+#include <csignal>
 #include <memory>
 #include <string>
 
@@ -62,7 +63,7 @@ std::string get_noto_color_emoji_path() {
 #endif
 
 // ---- Global/static variables ----
-static std::atomic<bool> shouldExit{false};
+static volatile sig_atomic_t shouldExit{0};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static std::atomic<bool> showMainWindow{false};
 // g_pending_http removed — async HTTP calls use detached threads
@@ -70,12 +71,12 @@ static std::atomic<bool> showMainWindow{false};
 #ifdef _WIN32
 // Console control handler for Windows — must be async-signal-safe
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
-    shouldExit.store(true);
+    shouldExit = 1;
     return TRUE;
 }
 #else
 static void signal_handler(int /*signum*/) {
-    shouldExit.store(true);
+    shouldExit = 1;
 }
 #endif
 
@@ -125,7 +126,7 @@ static void setup_tray(Tray::Tray &tray) {
     tray.addEntry(
         Tray::Button(
             "Exit",
-            [&] { shouldExit.store(true); }));
+            [&] { shouldExit = 1; }));
 }
 
 // ---- File-scope state used by GUI and callbacks ----
@@ -209,9 +210,9 @@ int run_app(int argc, char *argv[]) {
 
     HelloImGui::RunnerParams runnerParams;
     runnerParams.callbacks.ShowGui = [&] {
-        if (shouldExit.load()) {
+        if (shouldExit) {
             HelloImGui::GetRunnerParams()->appShallExit = true;
-            shouldExit.store(false);
+            shouldExit = 0;
         }
 
         if (showMainWindow.load()) {
@@ -525,10 +526,9 @@ int run_app(int argc, char *argv[]) {
         for (auto &[name, plugin]: pl->get_plugins()) {
             plugin->post_init();
         }
-        ws_sp = std::make_shared<WebsocketClient>();
+        ws_sp = WebsocketClient::create();
         ws = ws_sp.get();
         WebsocketClient::setInstance(ws);
-        ws_sp->setup_callback();
         updateManager.checkForUpdatesAsync();
     };
 

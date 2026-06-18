@@ -52,7 +52,7 @@ curl -# -L -o "$DEB_FILE" "$ASSET_URL"
 
 # Install — debconf will present the configuration dialog automatically
 print_info "📦 Installing package (you will be prompted for configuration)..."
-sudo dpkg -i "$DEB_FILE"
+sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
 rm -rf "$TMP_DIR"
 
 print_success "Installation complete! 🎉"
