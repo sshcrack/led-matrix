@@ -42,7 +42,9 @@ std::expected<std::string, std::string> Scraper::scrapeNextShader(int minPage, i
         return result;
     }
     // If still empty, fetch synchronously
+    lock.unlock();
     fetchShadersSync(minPage, maxPage);
+    lock.lock();
     if (!shaderIds.empty())
         return returnShaderFromVector();
     if (!fetchError.empty())
@@ -76,7 +78,9 @@ std::expected<std::string, std::string> Scraper::peekNextShader(int minPage, int
         return SHADERTOY_BASE_URL + "view/" + shaderId;
     }
     // If still empty, fetch synchronously
+    lock.unlock();
     fetchShadersSync(minPage, maxPage);
+    lock.lock();
     if (!shaderIds.empty())
     {
         std::uniform_int_distribution<size_t> dist(0, shaderIds.size() - 1);
@@ -186,6 +190,7 @@ void Scraper::fetchShadersApi(int currPage, const char* api_key)
         std::scoped_lock lock(mtx);
         shaderIds.insert(shaderIds.end(), newShaderIds.begin(), newShaderIds.end());
         fetchError.clear();
+        fetchInProgress = false;
     }
 }
 
@@ -260,5 +265,6 @@ void Scraper::fetchShadersScrape(int currPage)
         std::scoped_lock lock(mtx);
         shaderIds.insert(shaderIds.end(), newShaderIds.begin(), newShaderIds.end());
         fetchError.clear();
+        fetchInProgress = false;
     }
 }

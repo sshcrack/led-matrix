@@ -158,7 +158,6 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
 
     // Build a display string like DD:HH:MM or HH:MM:SS depending on space
     // We'll render big digits centered horizontally
-    std::string left = std::to_string(days);
     // For simplicity, show HH:MM:SS if days==0 or if show_seconds enabled
     char buffer[64];
     if (days > 0)
