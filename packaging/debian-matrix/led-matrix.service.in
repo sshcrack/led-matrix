@@ -1,0 +1,17 @@
+[Unit]
+Description=LED Matrix Controller
+After=network.target
+
+[Service]
+Type=simple
+# rpi-rgb-led-matrix requires root to open /dev/mem for GPIO access.
+# After matrix initialisation the library automatically drops privileges
+# to pi:pi via --led-drop-priv-user/--led-drop-priv-group in MATRIX_OPTS.
+User=root
+EnvironmentFile=/etc/default/led-matrix
+ExecStart=/usr/bin/led-matrix $MATRIX_OPTS
+WorkingDirectory=/var/lib/led-matrix
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
