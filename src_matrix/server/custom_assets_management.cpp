@@ -166,13 +166,8 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         }
 
         const auto cfg = cfg_opt.value();
-        std::error_code ec;
-        fs::create_directories(cfg.directory, ec);
-        if (ec) {
-            return reply_with_error(req, "Failed to prepare asset directory", restinio::status_internal_server_error());
-        }
-
         json result = json::array();
+        std::error_code ec;
         for (const auto &entry : fs::directory_iterator(cfg.directory, ec)) {
             if (ec) {
                 break;

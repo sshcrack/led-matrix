@@ -57,14 +57,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
         SleepMillis(1000);
     }
 
-    // Cleanup post-processor
-    if (Constants::global_post_processor)
-    {
-        delete Constants::global_post_processor;
-        Constants::global_post_processor = nullptr;
-        spdlog::info("Post-processor cleaned up");
-    }
-
     // Finished. Shut down the RGB matrix.
     info("Finished, shutting down...");
 }
