@@ -24,6 +24,7 @@
 #include <csignal>
 #include <future>
 #include <chrono>
+#include <atomic>
 
 // Third-party includes
 #include <fmt/format.h>
@@ -61,7 +62,7 @@ std::string get_noto_color_emoji_path() {
 #endif
 
 // ---- Global/static variables ----
-static bool shouldExit = false;
+static std::atomic<bool> shouldExit{false};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 static bool showMainWindow = false;
 
@@ -71,26 +72,9 @@ static std::string g_shutdown_hostname;
 static uint16_t g_shutdown_port = 0;
 static bool g_should_turn_off_on_exit = false;
 
-// Console control handler for Windows
+// Console control handler for Windows — must be async-signal-safe
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
-    // Request graceful shutdown
-    shouldExit = true;
-    // Attempt to turn off matrix during shutdown on Windows
-    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
-        spdlog::info("Received shutdown signal, turning Matrix OFF.");
-        try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
-            if (response.error) {
-                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
-            } else {
-                spdlog::info("Matrix turned OFF during shutdown.");
-            }
-        } catch (const std::exception &e) {
-            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
-        }
-    }
-    // Indicate we've handled the event so the process isn't terminated immediately
+    shouldExit.store(true);
     return TRUE;
 }
 #else
@@ -103,13 +87,17 @@ static volatile sig_atomic_t signalReceived = 0;
 
 static void signal_handler(int /*signum*/) {
     signalReceived = 1;
-    shouldExit = true;
-    // Attempt to turn off matrix during shutdown on Linux
+    shouldExit.store(true);
+}
+#endif
+
+// ---- Non-signal-safe shutdown: turn matrix off via HTTP ----
+static void shutdown_matrix() {
     if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
         spdlog::info("Received shutdown signal, turning Matrix OFF.");
         try {
             auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
+            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L});
             if (response.error) {
                 spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
             } else {
@@ -120,7 +108,6 @@ static void signal_handler(int /*signum*/) {
         }
     }
 }
-#endif
 
 // ---- Window iconify callback ----
 static void window_iconify_callback(GLFWwindow *window, const int iconified) {
@@ -169,7 +156,7 @@ static void setup_tray(Tray::Tray &tray) {
     tray.addEntry(
         Tray::Button(
             "Exit",
-            [&] { shouldExit = true; }));
+            [&] { shouldExit.store(true); }));
 }
 
 // ---- Main application logic ----
@@ -238,9 +225,10 @@ int run_app(int argc, char *argv[]) {
     // ---- GUI function ----
     auto guiFunction = [pl, cfg] {
         static bool initialConnect = true;
-        if (shouldExit) {
+        if (shouldExit.load()) {
+            shutdown_matrix();
             HelloImGui::GetRunnerParams()->appShallExit = true;
-            shouldExit = false;
+            shouldExit.store(false);
         }
 
         if (showMainWindow) {

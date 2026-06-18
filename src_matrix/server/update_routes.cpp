@@ -88,13 +88,14 @@ namespace Server
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
                 // Start installation in background thread
-                std::thread([update_manager, parsed_version]() {
-                    auto update = update_manager->get_update_info(parsed_version);
+                auto update_manager_ptr = std::shared_ptr<Update::UpdateManager>(update_manager, [](auto*){});
+                std::thread([update_manager_ptr, parsed_version]() {
+                    auto update = update_manager_ptr->get_update_info(parsed_version);
                     if(!update) {
                         spdlog::error("Failed to get update info: {}", update.error());
                         return;
                     }
-                    auto res = update_manager->manual_download_and_install(update.value());
+                    auto res = update_manager_ptr->manual_download_and_install(update.value());
                     if (!res) {
                         spdlog::error("Update installation failed: {}", res.error());
                     }

@@ -58,7 +58,11 @@ namespace Config {
     std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
         shared_lock lock(this->data_mutex);
 
-        return this->data.presets[data.curr];
+        auto it = this->data.presets.find(data.curr);
+        if (it == this->data.presets.end()) {
+            return nullptr;
+        }
+        return it->second;
     }
 
     ConfigData::SpotifyData MainConfig::get_spotify() {

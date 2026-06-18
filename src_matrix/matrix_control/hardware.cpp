@@ -66,7 +66,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
     }
 
     // Finished. Shut down the RGB matrix.
-    delete matrix;
     info("Finished, shutting down...");
 }
 
