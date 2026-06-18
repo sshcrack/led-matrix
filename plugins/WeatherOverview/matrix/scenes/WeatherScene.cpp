@@ -200,6 +200,11 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
                      {200, 200, 200}, data_res.error().c_str());
 
             SleepMillis(1000);
+
+#ifdef ENABLE_EMULATOR
+            ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
+#endif
+
             return false;
         }
 
