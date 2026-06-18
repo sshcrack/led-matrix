@@ -23,7 +23,11 @@ export default function Home() {
   const handleToggle = async (enabled: boolean) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_enabled?enabled=${enabled}`, { method: 'POST' })
+      await fetch(`${apiUrl}/set_enabled`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `enabled=${enabled}`
+      })
       setStatus(prev => prev ? { ...prev, turned_off: !enabled } : null)
       toast.success(enabled ? 'Matrix turned on' : 'Matrix turned off')
     } catch {
