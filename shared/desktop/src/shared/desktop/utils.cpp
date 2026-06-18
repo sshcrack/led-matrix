@@ -107,7 +107,10 @@ int run_command(const std::string& cmd,
     }
     while (true) {
         int status = 0;
-        pid_t ret = waitpid(pid, &status, WNOHANG);
+        pid_t ret;
+        do {
+            ret = waitpid(pid, &status, WNOHANG);
+        } while (ret < 0 && errno == EINTR);
         if (ret < 0) {
             return -1;
         }

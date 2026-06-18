@@ -74,7 +74,7 @@ uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float int
     else if (rainbow_colors->get())
     {
         // Generate rainbow color based on band index
-        const float hue = static_cast<float>(band_index) / num_bands;
+        const float hue = static_cast<float>(band_index) / num_bands * 360.0f;
         uint8_t r, g, b;
         color::hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
         return (r << 16) | (g << 8) | b;
