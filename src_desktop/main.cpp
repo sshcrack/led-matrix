@@ -446,33 +446,35 @@ int run_app(int argc, char *argv[]) {
 
         ImGui::Separator();
 
+        // Matrix version compatibility info
         auto matrixVersionInfo = matrixVersionManager.getLastCheckResult();
         std::string matrixVersionText = "Matrix Version: ";
-        ImVec4 matrixVersionColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+        ImVec4 matrixVersionColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); // Default gray
 
         switch (matrixVersionInfo.compatibility) {
             case MatrixVersionChecker::VersionCompatibility::Compatible:
                 matrixVersionText += matrixVersionInfo.version.toString() + " ✓";
-                matrixVersionColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                matrixVersionColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
                 break;
             case MatrixVersionChecker::VersionCompatibility::MatrixNewer:
                 matrixVersionText += matrixVersionInfo.version.toString() + " (newer)";
-                matrixVersionColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f);
+                matrixVersionColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f); // Blue
                 break;
             case MatrixVersionChecker::VersionCompatibility::DesktopNewer:
                 matrixVersionText += matrixVersionInfo.version.toString() + " (needs update)";
-                matrixVersionColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
+                matrixVersionColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
                 break;
             case MatrixVersionChecker::VersionCompatibility::NetworkError:
                 matrixVersionText += "Connection Error";
-                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
                 break;
             case MatrixVersionChecker::VersionCompatibility::ParseError:
                 matrixVersionText += "Parse Error";
-                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
                 break;
         }
 
+        // Use colored text for the menu item (read-only)
         ImGui::TextColored(matrixVersionColor, "%s", matrixVersionText.c_str());
 
         if (matrixVersionInfo.compatibility == MatrixVersionChecker::VersionCompatibility::DesktopNewer) {

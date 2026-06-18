@@ -7,6 +7,9 @@ register_plugin(WeatherOverview
     matrix/Constants.h
     matrix/scenes/WeatherScene.cpp
     matrix/scenes/WeatherScene.h
+    matrix/scenes/weather_rendering.cpp
+    matrix/scenes/weather_particles.cpp
+    matrix/scenes/weather_cache.cpp
 )
 
 if(NOT ENABLE_DESKTOP)

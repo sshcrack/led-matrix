@@ -1,4 +1,5 @@
 #include "update_routes.h"
+#include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/common/Version.h"
@@ -88,14 +89,14 @@ namespace Server
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
                 // Start installation in background thread
-                auto update_manager_ptr = std::shared_ptr<Update::UpdateManager>(update_manager, [](auto*){});
-                std::thread([update_manager_ptr, parsed_version]() {
-                    auto update = update_manager_ptr->get_update_info(parsed_version);
+                auto update_manager_sp = Constants::global_update_manager;
+                std::thread([update_manager_sp, parsed_version]() {
+                    auto update = update_manager_sp->get_update_info(parsed_version);
                     if(!update) {
                         spdlog::error("Failed to get update info: {}", update.error());
                         return;
                     }
-                    auto res = update_manager_ptr->manual_download_and_install(update.value());
+                    auto res = update_manager_sp->manual_download_and_install(update.value());
                     if (!res) {
                         spdlog::error("Update installation failed: {}", res.error());
                     }

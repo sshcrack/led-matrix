@@ -34,6 +34,29 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                          const auto requested_path = params["path"];
                          return handle_web_request(req, requested_path); });
 
+    router->http_get("/uploads/:filename", [](auto req, auto params)
+                     {
+        const auto filename = std::string(params["filename"]);
+        const filesystem::path file_path = Constants::upload_dir / filename;
+        if (!filesystem::exists(file_path)) {
+            return reply_with_error(req, "File not found", restinio::status_not_found());
+        }
+
+        // Prevent directory traversal
+        const auto canonical = filesystem::canonical(file_path);
+        const auto canonical_upload = filesystem::canonical(Constants::upload_dir);
+        if (!canonical.string().starts_with(canonical_upload.string())) {
+            return reply_with_error(req, "Invalid path", restinio::status_forbidden());
+        }
+
+        const string ext = file_path.extension();
+        const string content_type = MimeTypes::getType("file" + ext);
+        auto response = req->create_response(restinio::status_ok())
+            .append_header_date_field()
+            .append_header(restinio::http_field::content_type, content_type);
+        Server::add_cors_headers(response);
+        return response.set_body(restinio::sendfile(file_path)).done(); });
+
     router->http_get("/list", [](auto req, auto)
                      {
         json file_list = json::array();

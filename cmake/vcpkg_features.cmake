@@ -9,17 +9,26 @@ function(check_vcpkg_feature_exists FEATURE_NAME RESULT_VAR)
         return()
     endif()
     
-    # Read vcpkg.json file
     file(READ "${VCPKG_JSON_PATH}" VCPKG_JSON_CONTENT)
     
-    # Check if the feature exists in the features section
-    # This is a simple string search - more robust JSON parsing could be added if needed
-    string(FIND "${VCPKG_JSON_CONTENT}" "\"${FEATURE_NAME}\": " FEATURE_FOUND_POS)
+    set(${RESULT_VAR} FALSE)
     
-    if(FEATURE_FOUND_POS GREATER_EQUAL 0)
-        set(${RESULT_VAR} TRUE PARENT_SCOPE)
-        message(STATUS "Found vcpkg feature: ${FEATURE_NAME}")
-    else()
+    string(JSON FEATURE_COUNT ERROR_VARIABLE FEATURES_ERROR LENGTH "${VCPKG_JSON_CONTENT}" "features")
+    if(FEATURES_ERROR)
         set(${RESULT_VAR} FALSE PARENT_SCOPE)
+        return()
+    endif()
+    
+    math(EXPR MAX_IDX "${FEATURE_COUNT} - 1")
+    foreach(IDX RANGE ${MAX_IDX})
+        string(JSON FEATURE_KEY MEMBER "${VCPKG_JSON_CONTENT}" "features" ${IDX})
+        if(FEATURE_KEY STREQUAL "${FEATURE_NAME}")
+            set(${RESULT_VAR} TRUE)
+            break()
+        endif()
+    endforeach()
+    
+    if(${RESULT_VAR})
+        message(STATUS "Found vcpkg feature: ${FEATURE_NAME}")
     endif()
 endfunction()
