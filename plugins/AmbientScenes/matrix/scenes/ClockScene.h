@@ -68,6 +68,6 @@ public:
 };
 
 class ClockSceneWrapper : public Plugins::SceneWrapper {
-    std::unique_ptr<Scenes::Scene> create();
+    std::unique_ptr<Scenes::Scene> create() override;
 };
 }

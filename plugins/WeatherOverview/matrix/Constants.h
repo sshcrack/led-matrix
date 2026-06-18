@@ -34,4 +34,4 @@ namespace AnimationConstants {
     constexpr int ANIMATION_INTERVAL = 1000 / FRAME_RATE; // milliseconds between frames
 }
 
-const static std::filesystem::path weather_dir = Constants::root_dir / "weather";
+inline const std::filesystem::path weather_dir = Constants::root_dir / "weather";

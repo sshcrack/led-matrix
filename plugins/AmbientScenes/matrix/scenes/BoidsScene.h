@@ -81,8 +81,6 @@ namespace AmbientScenes {
         Vector2 align(Boid& boid);
         Vector2 cohesion(Boid& boid);
 
-
-
     public:
         explicit BoidsScene();
         ~BoidsScene() override = default;
@@ -99,6 +97,6 @@ namespace AmbientScenes {
     };
 
     class BoidsSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene> create();
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

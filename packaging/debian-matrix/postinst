@@ -101,8 +101,15 @@ EOF
 else
     # Update current_version in existing config.json on every upgrade
     if command -v jq >/dev/null 2>&1; then
+        AUTO_UPDATE_BOOL="false"
+        [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
+        INTERVAL="${UPDATE_INTERVAL:-24}"
         tmp=$(mktemp)
-        jq --arg ver "$PKG_VERSION" '.update_settings.current_version = $ver' "$DATA_DIR/config.json" > "$tmp" && mv "$tmp" "$DATA_DIR/config.json"
+        jq --arg ver "$PKG_VERSION" \
+           --argjson auto "$AUTO_UPDATE_BOOL" \
+           --argjson interval "$INTERVAL" \
+           '.update_settings.current_version = $ver | .update_settings.auto_update_enabled = $auto | .update_settings.check_interval_hours = $interval' \
+           "$DATA_DIR/config.json" > "$tmp" && mv "$tmp" "$DATA_DIR/config.json"
         if id pi >/dev/null 2>&1; then
             chown pi:pi "$DATA_DIR/config.json"
         fi
@@ -111,7 +118,7 @@ fi
 
 # --- Enable and start the systemd service ---
 if command -v systemctl >/dev/null 2>&1; then
-    systemctl daemon-reload
+    systemctl daemon-reload || true
     systemctl enable led-matrix.service || true
     systemctl restart led-matrix.service || true
 fi

@@ -189,16 +189,14 @@ int run_app(int argc, char *argv[]) {
     auto cfg = ConfigManager::instance();
     init_plugins();
 
-    General &generalCfgRef = cfg->getGeneralConfig();
-
     // UI state variables (non-static, persist via lambda captures)
     bool initialConnect = true;
-    std::string hostname = generalCfgRef.getHostname();
-    int port = generalCfgRef.getPort();
-    int fpsLimit = generalCfgRef.getFpsLimit();
-    int udpFpsLimit = generalCfgRef.getUdpFpsLimit();
-    bool matrixOnOnStart = generalCfgRef.isTurnMatrixOnOnStart();
-    bool matrixOffOnExit = generalCfgRef.isTurnMatrixOffOnExit();
+    std::string hostname = cfg->getGeneralConfig().getHostname();
+    int port = cfg->getGeneralConfig().getPort();
+    int fpsLimit = cfg->getGeneralConfig().getFpsLimit();
+    int udpFpsLimit = cfg->getGeneralConfig().getUdpFpsLimit();
+    bool matrixOnOnStart = cfg->getGeneralConfig().isTurnMatrixOnOnStart();
+    bool matrixOffOnExit = cfg->getGeneralConfig().isTurnMatrixOffOnExit();
 
     if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
         spdlog::info("Starting minimized.");

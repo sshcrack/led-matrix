@@ -21,7 +21,6 @@ namespace AmbientScenes {
     void StarFieldScene::initialize(int width, int height) {
         Scene::initialize(width, height);
         stars.resize(num_stars->get());
-        dis = std::uniform_real_distribution<>(0.0, 1.0);
 
         // Initialize stars at different depths
         std::uniform_real_distribution<float> coord_dist(-1.0f, 1.0f);

@@ -300,7 +300,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     close(fds[1]);
     ffmpeg_pid_ = child;
     FILE* pipe = fdopen(fds[0], "r");
-    if (!pipe) { close(fds[0]); ffmpeg_pid_ = -1; return false; }
+    if (!pipe) { close(fds[0]); ffmpeg_pid_ = -1; kill(child, SIGTERM); waitpid(child, nullptr, 0); return false; }
 #endif
     if (!pipe) {
         spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
@@ -326,12 +326,13 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 #ifdef _WIN32
     _pclose(pipe);
 #else
-    fclose(pipe);
     if (ffmpeg_pid_ > 0) {
+        kill(ffmpeg_pid_, SIGTERM);
         int status;
-        waitpid(ffmpeg_pid_, &status, WNOHANG);
+        waitpid(ffmpeg_pid_, &status, 0);
         ffmpeg_pid_ = -1;
     }
+    fclose(pipe);
 #endif
 
     // Clean up the temp mp4 — chunk 0 .mp4 will be downloaded separately

@@ -20,7 +20,9 @@ namespace
       });
       return nullptr;
     }
-    return std::any_cast<Spotify *>(PluginRegistry::get("spotify"));
+    auto pluginAny = PluginRegistry::get("spotify");
+    auto *spotifyPtr = std::any_cast<Spotify *>(&pluginAny);
+    return spotifyPtr ? *spotifyPtr : nullptr;
   }
 }
 
