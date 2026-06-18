@@ -336,14 +336,20 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
         # ── Phase 2: Fix ─────────────────────────────────────
         bugs_json = json.dumps(bugs, indent=2)
 
+        fix_steps = (
+            f"1. Run: git add -A\n"
+            f"2. Run: git commit -m \"fix: address review findings — iteration {tui.iteration}\"\n"
+        )
+        if enable_push:
+            fix_steps += "3. Run: git push\n"
+        else:
+            fix_steps += "3. [--no-push active — skip git push]\n"
         fix_prompt = (
             f"Fix every bug listed below. These were found in the PR diff "
             f"against `{base}`.\n\n"
             f"Bug reports:\n{bugs_json}\n\n"
             f"Fix every issue above. After all fixes are applied:\n"
-            f"1. Run: git add -A\n"
-            f"2. Run: git commit -m \"fix: address review findings — iteration {tui.iteration}\"\n"
-            f"3. Run: git push\n\n"
+            f"{fix_steps}"
             f"IMPORTANT: verify every single bug above is actually resolved. "
             f"Do not skip any."
         )
@@ -396,7 +402,7 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
 
 
 def entry(stdscr: curses.window, args: argparse.Namespace) -> None:
-    signal.signal(signal.SIGINT, lambda s, f: None)
+    # SIGINT left as default — KeyboardInterrupt handled by outer try/except
     tui = TUI(stdscr)
     try:
         run_loop(tui, args)

@@ -1,0 +1,51 @@
+[
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/weather_rendering.cpp",
+    "line": 2411,
+    "description": "hsv_to_rgb called with hue/360.0f but the function expects degrees [0,360) and internally divides by 360. Result: hue double-normalized to ~0, entire rainbow arc renders monochromatic red. Old code had inline HSV→RGB that passed hue directly.",
+    "severity": "medium",
+    "category": "regression"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/weather_particles.cpp",
+    "line": 1774,
+    "description": "resetStars() uses uniform_int_distribution(0, matrix_width) and (0, matrix_height) which are inclusive bounds — generates x=matrix_width and y=matrix_height, both out of bounds (valid [0,width-1], [0,height-1]). SetPixel writes past pixel buffer if no bounds check. Pre-existing, not fixed.",
+    "severity": "medium",
+    "category": "bug"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.h",
+    "line": 1609,
+    "description": "std::mt19937 rng{std::random_device{}()} — random_device{}() can throw std::exception if no entropy source is available. On a headless/minimal Pi this could prevent scene construction. Old code used rand() which never throws.",
+    "severity": "low",
+    "category": "regression"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.cpp",
+    "line": 776,
+    "description": "Emulator Render() called after SleepMillis(1000) instead of before. Old code: Render → Sleep → return. New code: Sleep → Render → return. Error screen is not shown in emulator window for 1 second (stale frame shown instead).",
+    "severity": "low",
+    "category": "regression"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.cpp",
+    "line": 828,
+    "description": "Extraneous emulator Render() call in the successful-fetch path that was never present in the old code. Renders stale canvas content before the main render loop updates it. Only compiled under ENABLE_EMULATOR.",
+    "severity": "low",
+    "category": "regression"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/weather_particles.cpp",
+    "line": 1968,
+    "description": "std::uniform_int_distribution constructed per-iteration inside loop body in updateEnhancedParticles (also at lines 1971, 1976-1991). High allocation pressure in hot render path. Should be constructed once outside loop.",
+    "severity": "low",
+    "category": "smell"
+  },
+  {
+    "file": "plugins/WeatherOverview/matrix/scenes/weather_rendering.cpp",
+    "line": 2299,
+    "description": "NUM_PATCHES distribution evaluated every frame via rng but only consumed inside the fog-initialization block (guarded by fog_initialized). Wastes entropy and cycles on every frame when fog is already active.",
+    "severity": "low",
+    "category": "smell"
+  }
+]

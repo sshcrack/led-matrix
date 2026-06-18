@@ -304,9 +304,9 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
         _exit(1);
     }
     close(fds[1]);
-    ffmpeg_pid_ = child;
     FILE* pipe = fdopen(fds[0], "r");
-    if (!pipe) { close(fds[0]); ffmpeg_pid_ = -1; kill(child, SIGTERM); waitpid(child, nullptr, 0); return false; }
+    if (!pipe) { close(fds[0]); kill(child, SIGTERM); waitpid(child, nullptr, 0); return false; }
+    ffmpeg_pid_ = child;
 #endif
     if (!pipe) {
         spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
@@ -337,10 +337,10 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 #ifdef _WIN32
     _pclose(pipe);
 #else
-    if (ffmpeg_pid_ > 0) {
-        kill(ffmpeg_pid_, SIGTERM);
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+        kill(pid, SIGTERM);
         int status;
-        waitpid(ffmpeg_pid_, &status, 0);
+        waitpid(pid, &status, 0);
         ffmpeg_pid_ = -1;
     }
     fclose(pipe);
@@ -356,8 +356,8 @@ void VideoStreamEngine::stop() {
     running_ = false;
 
     // Kill ffmpeg child process to unblock fread() in play_fast_chunk
-    if (ffmpeg_pid_ > 0) {
-        kill(ffmpeg_pid_, SIGTERM);
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+        kill(pid, SIGTERM);
     }
 
     std::function<void(const std::string &)> tmp_status_change;

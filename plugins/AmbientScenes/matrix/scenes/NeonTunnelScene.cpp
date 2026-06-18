@@ -12,7 +12,7 @@ namespace AmbientScenes {
     }
 
     bool NeonTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-        time_counter += 1.0f / static_cast<float>(get_target_fps()) * 3.0f;
+        time_counter += 1.0f / std::max(1.0f, static_cast<float>(get_target_fps())) * 3.0f;
 
         float center_x = matrix_width / 2.0f;
         float center_y = matrix_height / 2.0f;

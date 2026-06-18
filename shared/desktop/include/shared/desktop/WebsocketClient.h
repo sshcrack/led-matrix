@@ -12,7 +12,7 @@
 class SHARED_DESKTOP_API WebsocketClient : public std::enable_shared_from_this<WebsocketClient>
 {
 public:
-    WebsocketClient();
+    static std::shared_ptr<WebsocketClient> create();
     ~WebsocketClient();
 
     static WebsocketClient *instance();
@@ -90,6 +90,7 @@ public:
     ix::WebSocket webSocket;
 
 private:
+    WebsocketClient();
     UdpSender udpSender;
 
     std::thread senderThread;

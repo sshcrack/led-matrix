@@ -126,23 +126,34 @@ void SpotifyMVDesktop::render() {
 }
 
 void SpotifyMVDesktop::on_pending_first_frame() {
-    std::lock_guard<std::mutex> lk(engine_mutex_);
+    std::unique_ptr<Shared::VideoStreamEngine> old_engine;
+    {
+        std::lock_guard<std::mutex> lk(engine_mutex_);
 
-    if (!pending_engine_ || !current_engine_)
-        return;
+        if (!pending_engine_ || !current_engine_)
+            return;
 
-    // Capture the old engine's last frame before the swap
-    old_last_frame_ = current_engine_->get_current_frame();
+        // Capture the old engine's last frame before the swap
+        old_last_frame_ = current_engine_->get_current_frame();
 
-    // Swap engines
-    std::swap(current_engine_, pending_engine_);
+        // Swap engines
+        std::swap(current_engine_, pending_engine_);
 
-    // Stop the old engine (now in pending_engine_) — clear its callbacks first
-    // to prevent use-after-free in case stop() fires on_status_change from threads.
-    pending_engine_->on_status_change = nullptr;
-    pending_engine_->on_first_frame_ready = nullptr;
-    current_engine_->on_first_frame_ready = nullptr;
-    pending_engine_->stop();
+        // Take ownership of the old engine to stop outside the lock,
+        // avoiding deadlock: processing thread holds status_cb_mutex_ and
+        // calls this callback which would acquire engine_mutex_ then
+        // status_cb_mutex_ again via stop(); on_websocket_message holds
+        // engine_mutex_ then status_cb_mutex_.
+        old_engine = std::move(pending_engine_);
+        if (current_engine_)
+            current_engine_->on_first_frame_ready = nullptr;
+    }
+
+    if (old_engine) {
+        old_engine->on_status_change = nullptr;
+        old_engine->on_first_frame_ready = nullptr;
+        old_engine->stop();
+    }
 
     // Update track IDs
     {
@@ -245,10 +256,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         if (engine_to_cancel) {
             engine_to_cancel->on_status_change = nullptr;
             engine_to_cancel->on_first_frame_ready = nullptr;
-            {
-                std::lock_guard<std::mutex> lk_eng(engine_mutex_);
-                engine_to_cancel->stop();
-            }
+            engine_to_cancel->stop();
         }
         if (went_back) {
             send_websocket_message("status:playing");
@@ -301,13 +309,14 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
 
         // ── Cancel any existing pending engine ───────────────────────────
         if (pending_engine_) {
+            std::unique_ptr<Shared::VideoStreamEngine> to_stop;
             {
                 std::lock_guard<std::mutex> lk_eng(engine_mutex_);
                 pending_engine_->on_status_change = nullptr;
                 pending_engine_->on_first_frame_ready = nullptr;
-                pending_engine_->stop();
+                to_stop = std::move(pending_engine_);
             }
-            pending_engine_.reset();
+            to_stop->stop();
         }
 
         // ── Create new pending engine ────────────────────────────────────

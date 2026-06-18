@@ -21,11 +21,12 @@ namespace
         std::string extension;
     };
 
-    std::optional<AssetTypeConfig> asset_type_from_param(const std::string &type)
-    {
 #ifndef LED_MATRIX_DATA_DIR
 #define LED_MATRIX_DATA_DIR "."
 #endif
+
+    std::optional<AssetTypeConfig> asset_type_from_param(const std::string &type)
+    {
         const auto root = std::filesystem::path(LED_MATRIX_DATA_DIR) / "data";
         if (type == "shader" || type == "shaders")
         {

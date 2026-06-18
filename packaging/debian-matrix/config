@@ -12,7 +12,6 @@ db_input medium led-matrix/extra-opts || true
 db_go || true
 
 # Ask Spotify question, then conditionally ask for credentials
-db_get led-matrix/spotify-enable
 db_input medium led-matrix/spotify-enable || true
 db_go || true
 
