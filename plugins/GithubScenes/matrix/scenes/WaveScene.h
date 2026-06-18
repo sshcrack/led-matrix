@@ -16,6 +16,11 @@ namespace Scenes {
 
         void drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap);
 
+        WaveScene(WaveScene&&) = default;
+        WaveScene& operator=(WaveScene&&) = default;
+        WaveScene(const WaveScene&) = delete;
+        WaveScene& operator=(const WaveScene&) = delete;
+
     public:
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 

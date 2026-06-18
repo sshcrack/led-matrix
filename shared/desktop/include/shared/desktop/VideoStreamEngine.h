@@ -63,7 +63,7 @@ private:
     int fast_chunk_duration_sec_ = 4;
 
     std::atomic<bool> running_{false};
-    pid_t ffmpeg_pid_ = -1;
+    std::atomic<pid_t> ffmpeg_pid_ = -1;
     std::atomic<long> seek_ms_{0};
     std::thread processing_thread_;
     std::mutex prefetch_mutex_;  // guards prefetch_thread_ across stop() and processing_thread_

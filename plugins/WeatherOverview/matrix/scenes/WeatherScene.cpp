@@ -225,7 +225,10 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 
     animation_frame = (animation_frame + 1) % std::max(1, get_target_fps());
 
-    updateEnhancedParticles(data);
+    if (enable_animations->get())
+    {
+        updateEnhancedParticles(data);
+    }
     canvas->Clear();
 
     if (gradient_background->get())

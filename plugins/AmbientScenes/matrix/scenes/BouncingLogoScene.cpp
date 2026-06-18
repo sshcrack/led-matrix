@@ -59,8 +59,8 @@ namespace AmbientScenes {
         logo_width = logo_height * 2; // Aspect ratio ~ 2:1
 
         // Start somewhere safe
-        pos_x = std::uniform_int_distribution<int>(0, matrix_width - logo_width)(rng);
-        pos_y = std::uniform_int_distribution<int>(0, matrix_height - logo_height)(rng);
+        pos_x = std::uniform_int_distribution<int>(0, std::max(0, matrix_width - logo_width))(rng);
+        pos_y = std::uniform_int_distribution<int>(0, std::max(0, matrix_height - logo_height))(rng);
 
         vel_x = speed->get();
         vel_y = speed->get();
