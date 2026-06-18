@@ -50,7 +50,7 @@ UdpSender::~UdpSender() {
 }
 
 std::expected<void, std::string>
-UdpSender::sendPacket(std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> packet,
+UdpSender::sendPacket(std::unique_ptr<UdpPacket> packet,
                       const std::string &targetAddr,
                       const uint16_t port) const {
   const std::vector<uint8_t> data = packet->toBytes();

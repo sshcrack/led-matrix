@@ -7,9 +7,9 @@
 
 class SpotifyMVPlugin final : public Plugins::BasicPlugin {
 public:
-  std::vector<std::unique_ptr<Plugins::SceneWrapper, void(*)(Plugins::SceneWrapper*)>>
+  std::vector<std::unique_ptr<Plugins::SceneWrapper>>
     create_scenes() override;
-  std::vector<std::unique_ptr<Plugins::ImageProviderWrapper, void(*)(Plugins::ImageProviderWrapper*)>>
+  std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>>
     create_image_providers() override;
 
   bool on_udp_packet(uint8_t pluginId, const uint8_t* data, size_t size) override;

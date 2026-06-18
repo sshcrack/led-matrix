@@ -24,11 +24,10 @@ namespace
   }
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)>
+std::unique_ptr<Scenes::Scene>
 SpotifyMVSceneWrapper::create()
 {
-  return {new SpotifyMVScene(), [](Scenes::Scene *scene)
-          { delete scene; }};
+  return std::make_unique<SpotifyMVScene>();
 }
 
 SpotifyMVScene::SpotifyMVScene() : plugin_(nullptr)

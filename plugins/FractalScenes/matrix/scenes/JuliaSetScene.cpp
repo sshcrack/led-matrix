@@ -1,4 +1,5 @@
 #include "JuliaSetScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
 
 using namespace Scenes;
@@ -62,7 +63,7 @@ bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
                 uint8_t r, g, b;
                 // Map iteration count to color
                 float hue = std::fmod(smoothed * 0.01f + color_shift->get(), 1.0f);
-                hsv_to_rgb(hue, 0.9f, 1.0f, r, g, b);
+                color::hsv_to_rgb(hue, 0.9f, 1.0f, r, g, b);
                 
                 canvas->SetPixel(x, y, r, g, b);
             }
@@ -86,29 +87,6 @@ void JuliaSetScene::register_properties() {
     add_property(color_shift);
 }
 
-// Convert HSV to RGB color
-void JuliaSetScene::hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) const {
-    float c = v * s;
-    float x = c * (1 - std::abs(std::fmod(h * 6, 2) - 1));
-    float m = v - c;
-    float r1, g1, b1;
-    
-    if (h < 1.0f/6.0f) { r1 = c; g1 = x; b1 = 0; }
-    else if (h < 2.0f/6.0f) { r1 = x; g1 = c; b1 = 0; }
-    else if (h < 3.0f/6.0f) { r1 = 0; g1 = c; b1 = x; }
-    else if (h < 4.0f/6.0f) { r1 = 0; g1 = x; b1 = c; }
-    else if (h < 5.0f/6.0f) { r1 = x; g1 = 0; b1 = c; }
-    else { r1 = c; g1 = 0; b1 = x; }
-    
-    r = static_cast<uint8_t>((r1 + m) * 255);
-    g = static_cast<uint8_t>((g1 + m) * 255);
-    b = static_cast<uint8_t>((b1 + m) * 255);
-}
-
-std::unique_ptr<Scene, void (*)(Scene *)> JuliaSetSceneWrapper::create() {
-    return {
-        new JuliaSetScene(), [](Scene *scene) {
-            delete dynamic_cast<JuliaSetScene*>(scene);
-        }
-    };
+std::unique_ptr<Scene> JuliaSetSceneWrapper::create() {
+    return std::make_unique<JuliaSetScene>();
 }

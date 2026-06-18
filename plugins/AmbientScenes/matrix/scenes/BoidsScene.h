@@ -80,7 +80,7 @@ namespace AmbientScenes {
         Vector2 align(Boid& boid);
         Vector2 cohesion(Boid& boid);
 
-        void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b);
+
 
     public:
         explicit BoidsScene();
@@ -98,6 +98,6 @@ namespace AmbientScenes {
     };
 
     class BoidsSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create();
     };
 }

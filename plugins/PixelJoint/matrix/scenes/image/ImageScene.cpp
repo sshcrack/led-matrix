@@ -69,8 +69,8 @@ bool ImageScene::render(rgb_matrix::FrameCanvas *canvas) {
     return DisplayAnimation(canvas);
 }
 
-Post *get_pointer_raw(std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > &post) {
-    if (holds_alternative<std::unique_ptr<Post, void (*)(Post *)> >(post)) {
+Post *get_pointer_raw(std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > &post) {
+    if (holds_alternative<std::unique_ptr<Post> >(post)) {
         return get<0>(post).get();
     }
 
@@ -245,10 +245,6 @@ void ImageScene::load_properties(const nlohmann::json &j) {
     }
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ImageSceneWrapper::create() {
-    return {
-        new ImageScene(), [](Scenes::Scene *scene) {
-            delete scene;
-        }
-    };
+std::unique_ptr<Scenes::Scene> ImageSceneWrapper::create() {
+    return std::make_unique<ImageScene>();
 }

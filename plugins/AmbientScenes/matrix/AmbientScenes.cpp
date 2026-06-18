@@ -20,57 +20,21 @@ extern "C" PLUGIN_EXPORT void destroyAmbientScenes(AmbientPlugin *c) {
     delete c;
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > AmbientPlugin::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > scenes;
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new StarFieldSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (StarFieldSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new MetaBlobSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (MetaBlobSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new ClockSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (ClockSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new SortingVisualizerSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (SortingVisualizerSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new BoidsSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (BoidsSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new BouncingLogoSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (BouncingLogoSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new FallingSandSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (FallingSandSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new NeonTunnelSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (NeonTunnelSceneWrapper *) scene;
-                                                                             }));
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(new DigitalRainSceneWrapper(),
-                                                                             [](SceneWrapper *scene) {
-                                                                                 delete (DigitalRainSceneWrapper *) scene;
-                                                                             }));
-
+vector<std::unique_ptr<SceneWrapper>> AmbientPlugin::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<StarFieldSceneWrapper>());
+    scenes.push_back(std::make_unique<MetaBlobSceneWrapper>());
+    scenes.push_back(std::make_unique<ClockSceneWrapper>());
+    scenes.push_back(std::make_unique<SortingVisualizerSceneWrapper>());
+    scenes.push_back(std::make_unique<BoidsSceneWrapper>());
+    scenes.push_back(std::make_unique<BouncingLogoSceneWrapper>());
+    scenes.push_back(std::make_unique<FallingSandSceneWrapper>());
+    scenes.push_back(std::make_unique<NeonTunnelSceneWrapper>());
+    scenes.push_back(std::make_unique<DigitalRainSceneWrapper>());
     return scenes;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper> >
 AmbientPlugin::create_image_providers() {
     return {};
 }

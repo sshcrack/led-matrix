@@ -1,4 +1,5 @@
 #include "WavePatternScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
 #include <random>
 
@@ -68,7 +69,7 @@ bool WavePatternScene::render(rgb_matrix::FrameCanvas *canvas) {
         uint8_t r, g, b;
         if (rainbow_mode->get()) {
             float hue = std::fmod(normalized_x + total_time * color_speed->get() * 0.1f, 1.0f);
-            hsv_to_rgb(hue, 1.0f, 1.0f, r, g, b);
+            color::hsv_to_rgb(hue, 1.0f, 1.0f, r, g, b);
         } else {
             // Blue-cyan-white theme
             float intensity = (1.0f + wave_value) * 0.5f;
@@ -117,29 +118,6 @@ void WavePatternScene::load_properties(const json &j) {
     init_waves();
 }
 
-// Convert HSV to RGB color
-void WavePatternScene::hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) const {
-    float c = v * s;
-    float x = c * (1 - std::abs(std::fmod(h * 6, 2) - 1));
-    float m = v - c;
-    float r1, g1, b1;
-    
-    if (h < 1.0f/6.0f) { r1 = c; g1 = x; b1 = 0; }
-    else if (h < 2.0f/6.0f) { r1 = x; g1 = c; b1 = 0; }
-    else if (h < 3.0f/6.0f) { r1 = 0; g1 = c; b1 = x; }
-    else if (h < 4.0f/6.0f) { r1 = 0; g1 = x; b1 = c; }
-    else if (h < 5.0f/6.0f) { r1 = x; g1 = 0; b1 = c; }
-    else { r1 = c; g1 = 0; b1 = x; }
-    
-    r = static_cast<uint8_t>((r1 + m) * 255);
-    g = static_cast<uint8_t>((g1 + m) * 255);
-    b = static_cast<uint8_t>((b1 + m) * 255);
-}
-
-std::unique_ptr<Scene, void (*)(Scene *)> WavePatternSceneWrapper::create() {
-    return {
-        new WavePatternScene(), [](Scene *scene) {
-            delete dynamic_cast<WavePatternScene*>(scene);
-        }
-    };
+std::unique_ptr<Scene> WavePatternSceneWrapper::create() {
+    return std::make_unique<WavePatternScene>();
 }

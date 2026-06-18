@@ -1,4 +1,5 @@
 #include "RenderingDemoScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
 #include <algorithm>
 
@@ -205,7 +206,7 @@ void RenderingDemoScene::renderParticleSystem(rgb_matrix::FrameCanvas *canvas) {
             // Convert iterations to color
             float hue = (static_cast<float>(iterations) / max_iterations) * 360.0f + time * 50;
             uint8_t r, g, b;
-            hsv_to_rgb(hue, 1.0f, iterations < max_iterations ? 1.0f : 0.0f, r, g, b);
+            color::hsv_to_rgb(hue, 1.0f, iterations < max_iterations ? 1.0f : 0.0f, r, g, b);
             
             setPixelSafe(canvas, x, y, r, g, b);
         }
@@ -262,29 +263,6 @@ rgb_matrix::Color RenderingDemoScene::interpolateColors(const rgb_matrix::Color&
     };
 }
 
-void RenderingDemoScene::hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
-    if (s <= 0.0f) {
-        r = g = b = static_cast<uint8_t>(v * 255);
-        return;
-    }
-
-    h = fmod(h, 360.0f) / 60.0f;
-    int hi = static_cast<int>(h);
-    float f = h - hi;
-    float p = v * (1.0f - s);
-    float q = v * (1.0f - s * f);
-    float t = v * (1.0f - s * (1.0f - f));
-
-    switch (hi) {
-        case 0: r = v * 255; g = t * 255; b = p * 255; break;
-        case 1: r = q * 255; g = v * 255; b = p * 255; break;
-        case 2: r = p * 255; g = v * 255; b = t * 255; break;
-        case 3: r = p * 255; g = q * 255; b = v * 255; break;
-        case 4: r = t * 255; g = p * 255; b = v * 255; break;
-        default: r = v * 255; g = p * 255; b = q * 255; break;
-    }
-}
-
 void RenderingDemoScene::register_properties() {
     add_property(demo_mode);
     add_property(animation_speed);
@@ -293,8 +271,6 @@ void RenderingDemoScene::register_properties() {
     add_property(smooth_animation);
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> RenderingDemoSceneWrapper::create() {
-    return {new RenderingDemoScene(), [](Scene *scene) {
-        delete scene;
-    }};
+std::unique_ptr<Scene> RenderingDemoSceneWrapper::create() {
+    return std::make_unique<RenderingDemoScene>();
 }

@@ -55,7 +55,7 @@ namespace Scenes {
 
     class ShadertoySceneWrapper : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 
     class CustomShadertoyScene : public Scene {
@@ -83,7 +83,7 @@ namespace Scenes {
 
     public:
         explicit CustomShadertoySceneWrapper(std::filesystem::path shader_path);
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
         std::string get_name() override { return name_; }
     };
 } // namespace Scenes

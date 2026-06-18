@@ -350,7 +350,7 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGu
     ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
 }
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualizerDesktop::compute_next_packet(
+std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
     if (sceneName != "audio_spectrum")
         return std::nullopt;
@@ -472,7 +472,7 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog, send_beat_flag),
+    return std::unique_ptr<UdpPacket>(new CompactAudioPacket(bands, interpolatedLog, send_beat_flag),
                                                              [](UdpPacket *packet)
                                                              {
                                                                  delete (CompactAudioPacket *)packet;

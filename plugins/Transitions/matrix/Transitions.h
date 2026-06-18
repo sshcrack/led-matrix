@@ -11,15 +11,15 @@ namespace Plugins
         Transitions() = default;
         ~Transitions() override = default;
 
-        vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+        vector<std::unique_ptr<ImageProviderWrapper>>
         create_image_providers() override { return {}; }
 
-        vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>
+        vector<std::unique_ptr<SceneWrapper>>
         create_scenes() override { return {}; }
 
         std::string get_plugin_name() const override { return "Transitions"; }
 
-        vector<std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>>
+        vector<std::unique_ptr<TransitionEffect>>
         create_transitions() override;
     };
 }

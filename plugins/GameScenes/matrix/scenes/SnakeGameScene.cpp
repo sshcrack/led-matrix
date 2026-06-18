@@ -1,4 +1,5 @@
 #include "SnakeGameScene.h"
+#include <shared/matrix/utils/color.h>
 #include "spdlog/spdlog.h"
 #include <algorithm>
 #include <cmath>
@@ -11,10 +12,8 @@ SnakeGameScene::SnakeGameScene()
 {
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> SnakeGameSceneWrapper::create() {
-    return {new SnakeGameScene(), [](Scene *scene) {
-        delete scene;
-    }};
+std::unique_ptr<Scene> SnakeGameSceneWrapper::create() {
+    return std::make_unique<SnakeGameScene>();
 }
 
 void SnakeGameScene::initialize(int width, int height) {
@@ -374,17 +373,8 @@ void SnakeGameScene::renderWin(rgb_matrix::FrameCanvas *canvas) {
         for (int x = 0; x < matrix_width; x++) {
             float hue = fmod(hue_offset + (x + y) * 20.0f, 360.0f);
             
-            // Simple HSV to RGB conversion
-            float c = 0.8f;
-            float x_val = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
-            
             uint8_t r, g, b;
-            if (hue < 60) { r = c * 255; g = x_val * 255; b = 0; }
-            else if (hue < 120) { r = x_val * 255; g = c * 255; b = 0; }
-            else if (hue < 180) { r = 0; g = c * 255; b = x_val * 255; }
-            else if (hue < 240) { r = 0; g = x_val * 255; b = c * 255; }
-            else if (hue < 300) { r = x_val * 255; g = 0; b = c * 255; }
-            else { r = c * 255; g = 0; b = x_val * 255; }
+            color::hsv_to_rgb(hue, 1.0f, 0.8f, r, g, b);
             
             canvas->SetPixel(x, y, r, g, b);
         }
@@ -403,16 +393,9 @@ rgb_matrix::Color SnakeGameScene::getSnakeColor(int segment_index) const {
         float time_factor = frame_counter * 0.016f; // Approximate 60fps
         float hue = fmod(segment_index * 30.0f + time_factor * 50.0f, 360.0f);
         
-        // Simple HSV to RGB conversion
-        float c = 0.9f;
-        float x = c * (1 - abs(fmod(hue / 60.0f, 2) - 1));
-        
-        if (hue < 60) return {static_cast<uint8_t>(c * 255), static_cast<uint8_t>(x * 255), 0};
-        else if (hue < 120) return {static_cast<uint8_t>(x * 255), static_cast<uint8_t>(c * 255), 0};
-        else if (hue < 180) return {0, static_cast<uint8_t>(c * 255), static_cast<uint8_t>(x * 255)};
-        else if (hue < 240) return {0, static_cast<uint8_t>(x * 255), static_cast<uint8_t>(c * 255)};
-        else if (hue < 300) return {static_cast<uint8_t>(x * 255), 0, static_cast<uint8_t>(c * 255)};
-        else return {static_cast<uint8_t>(c * 255), 0, static_cast<uint8_t>(x * 255)};
+        uint8_t r, g, b;
+        color::hsv_to_rgb(hue, 1.0f, 0.9f, r, g, b);
+        return {r, g, b};
     } else {
         // Traditional green snake with gradient
         uint8_t intensity = 255 - (segment_index * 20);

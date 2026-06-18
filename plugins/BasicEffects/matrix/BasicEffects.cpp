@@ -23,26 +23,21 @@ BasicEffects::BasicEffects()
 {
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> BasicEffects::create_image_providers()
+vector<std::unique_ptr<ImageProviderWrapper>> BasicEffects::create_image_providers()
 {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> BasicEffects::create_scenes()
+vector<std::unique_ptr<SceneWrapper>> BasicEffects::create_scenes()
 {
     return {};
 }
 
-vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> BasicEffects::create_effects()
+vector<std::unique_ptr<PostProcessingEffect>> BasicEffects::create_effects()
 {
-    auto deleteEffect = [](PostProcessingEffect *eff)
-    {
-        delete eff;
-    };
-
-    vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> effects;
-    effects.push_back({new FlashEffect(), deleteEffect});
-    effects.push_back({new RotateEffect(), deleteEffect});
+    vector<std::unique_ptr<PostProcessingEffect>> effects;
+    effects.push_back(std::make_unique<FlashEffect>());
+    effects.push_back(std::make_unique<RotateEffect>());
 
     return effects;
 }

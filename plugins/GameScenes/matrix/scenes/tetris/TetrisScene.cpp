@@ -144,9 +144,7 @@ namespace Scenes {
         }
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> TetrisSceneWrapper::create() {
-        return {new TetrisScene(), [](Scenes::Scene *scene) {
-            delete scene;
-        }};
+    std::unique_ptr<Scenes::Scene> TetrisSceneWrapper::create() {
+        return std::make_unique<TetrisScene>();
     }
 }

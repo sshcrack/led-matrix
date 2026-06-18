@@ -505,12 +505,9 @@ namespace AmbientScenes
         add_property(use_glow_effect);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ClockSceneWrapper::create()
+    std::unique_ptr<Scenes::Scene> ClockSceneWrapper::create()
     {
-        return {new ClockScene(), [](Scenes::Scene *scene)
-                {
-                    delete (ClockScene *)scene;
-                }};
+        return std::make_unique<ClockScene>();
     }
 
     void ClockScene::set_pixel_with_brightness(FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness)

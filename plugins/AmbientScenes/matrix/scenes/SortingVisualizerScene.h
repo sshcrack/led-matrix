@@ -81,8 +81,6 @@ namespace AmbientScenes {
         PropertyPointer<rgb_matrix::Color> solved_color = MAKE_PROPERTY("solved_color", rgb_matrix::Color, rgb_matrix::Color(64, 220, 96));
 
         // HSL to RGB conversion helper
-        void hsl_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
-
         void reset_array();
         void pick_next_algorithm();
         void step_sort();
@@ -113,6 +111,6 @@ namespace AmbientScenes {
     };
 
     class SortingVisualizerSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create();
     };
 }

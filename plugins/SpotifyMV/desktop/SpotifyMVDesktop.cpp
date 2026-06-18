@@ -80,7 +80,7 @@ void SpotifyMVDesktop::render() {
         ImGui::TextColored(ImVec4(1, 0, 0, 1), "Last Error: %s", engine_->get_last_error().c_str());
 }
 
-std::optional<std::unique_ptr<UdpPacket, void(*)(UdpPacket*)>>
+std::optional<std::unique_ptr<UdpPacket>>
 SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
     if (sceneName != "spotifymv")
         return std::nullopt;
@@ -95,7 +95,7 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
     auto frame = engine_->get_current_frame();
     if (frame.empty())
         return std::nullopt;
-    return std::unique_ptr<UdpPacket, void(*)(UdpPacket*)>(
+    return std::unique_ptr<UdpPacket>(
         new SpotifyMVPacket(std::move(frame)),
         [](UdpPacket* p) { delete static_cast<SpotifyMVPacket*>(p); });
 }

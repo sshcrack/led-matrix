@@ -351,8 +351,7 @@ int CountdownScene::get_weight() const
 #endif
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> CountdownSceneWrapper::create()
+std::unique_ptr<Scene> CountdownSceneWrapper::create()
 {
-    return {new CountdownScene(), [](Scene *scene)
-            { delete scene; }};
+    return std::make_unique<CountdownScene>();
 }

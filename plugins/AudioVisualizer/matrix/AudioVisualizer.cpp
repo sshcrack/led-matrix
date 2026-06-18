@@ -18,20 +18,16 @@ extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizer *c)
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> AudioVisualizer::create_image_providers()
+vector<std::unique_ptr<ImageProviderWrapper>> AudioVisualizer::create_image_providers()
 {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AudioVisualizer::create_scenes()
+vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
 {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
-    auto deleteScene = [](SceneWrapper *scene)
-    {
-        delete scene;
-    };
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back({new AudioSpectrumSceneWrapper(), deleteScene});
+    scenes.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
 
     return scenes;
 }

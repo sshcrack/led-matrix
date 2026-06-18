@@ -18,22 +18,17 @@ extern "C" PLUGIN_EXPORT void destroySpotifyScenes(SpotifyScenes *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper> >
 SpotifyScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > SpotifyScenes::create_scenes() {
+vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
     if(is_disabled)
         return {};
     
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> >();
-    scenes.push_back({
-        new CoverOnlySceneWrapper(), [](SceneWrapper *scene) {
-            delete scene;
-        }
-    });
-
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<CoverOnlySceneWrapper>());
     return scenes;
 }
 

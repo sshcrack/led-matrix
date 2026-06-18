@@ -15,20 +15,15 @@ extern "C" PLUGIN_EXPORT void destroyFractalScenes(FractalScenes *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> FractalScenes::create_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> FractalScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> FractalScenes::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>();
-    auto destroyScene = [](SceneWrapper *scene) {
-        delete scene;
-    };
-
-    scenes.push_back({new JuliaSetSceneWrapper(), destroyScene});
-    scenes.push_back({new WavePatternSceneWrapper(), destroyScene});
-    scenes.push_back({new GameOfLifeSceneWrapper(), destroyScene});
-
+vector<std::unique_ptr<SceneWrapper>> FractalScenes::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<JuliaSetSceneWrapper>());
+    scenes.push_back(std::make_unique<WavePatternSceneWrapper>());
+    scenes.push_back(std::make_unique<GameOfLifeSceneWrapper>());
     return scenes;
 }
 

@@ -219,10 +219,6 @@ void GameOfLifeScene::load_properties(const json &j) {
     reset_simulation();
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> GameOfLifeSceneWrapper::create() {
-    return {
-        new GameOfLifeScene(), [](Scene *scene) {
-            delete dynamic_cast<GameOfLifeScene*>(scene);
-        }
-    };
+std::unique_ptr<Scene> GameOfLifeSceneWrapper::create() {
+    return std::make_unique<GameOfLifeScene>();
 }

@@ -38,13 +38,9 @@ const float SHOOTING_STAR_SPEED_MIN = 1.5f;
 const float SHOOTING_STAR_SPEED_MAX = 3.0f;
 
 // Instead of a global should_render flag, track update state inside the scene
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> Scenes::WeatherSceneWrapper::create()
+std::unique_ptr<Scenes::Scene> Scenes::WeatherSceneWrapper::create()
 {
-    return {
-        new WeatherScene(), [](Scenes::Scene *scene)
-        {
-            delete scene;
-        }};
+    return std::make_unique<WeatherScene>();
 }
 
 string Scenes::WeatherScene::get_name() const
