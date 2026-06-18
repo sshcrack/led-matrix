@@ -101,8 +101,11 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                             std::lock_guard<std::mutex> lock(frame_mutex_);
                             current_frame_ = buffer;
                         }
-                        if (on_first_frame_ready && !first_frame_fired_.exchange(true))
-                            on_first_frame_ready();
+                        {
+                            std::lock_guard<std::mutex> lk(status_cb_mutex_);
+                            if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+                                on_first_frame_ready();
+                        }
                         std::this_thread::sleep_for(
                             std::chrono::duration<double>(1.0 / fps_));
                     }
@@ -322,8 +325,11 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             current_frame_ = buffer;
         }
-        if (on_first_frame_ready && !first_frame_fired_.exchange(true))
-            on_first_frame_ready();
+        {
+            std::lock_guard<std::mutex> lk(status_cb_mutex_);
+            if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+                on_first_frame_ready();
+        }
         ++frames_played;
         std::this_thread::sleep_for(std::chrono::duration<double>(1.0 / fps_));
     }

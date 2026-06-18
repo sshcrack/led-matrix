@@ -205,7 +205,14 @@ int main(int argc, char *argv[])
 
     debug("Starting mainloop_thread");
     constexpr uint16_t default_http_port = 8080;
-    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : default_http_port;
+    uint16_t port = default_http_port;
+    if (const char* port_env = std::getenv("PORT")) {
+        try {
+            port = static_cast<uint16_t>(std::stoi(port_env));
+        } catch (const std::exception& e) {
+            spdlog::warn("Invalid PORT env value '{}': {}. Using default {}.", port_env, e.what(), default_http_port);
+        }
+    }
 
     // -----------------------------------------------------------------------
     // Emulator-only: find and pre-build the pinned scene if --scene was given.
@@ -294,6 +301,7 @@ int main(int argc, char *argv[])
     if (hardware_code != 0)
     {
         error("Could not initialize hardware_code.");
+        delete udpServer;
         initiate_shutdown(server);
 
         info("Joining control thread...");
@@ -301,6 +309,9 @@ int main(int argc, char *argv[])
 
         info("Terminating plugin loader...");
         pl->destroy_plugins();
+
+        info("Destroying config instance...");
+        delete config;
 
         return hardware_code;
     }

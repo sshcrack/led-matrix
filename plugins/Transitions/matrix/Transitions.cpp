@@ -64,7 +64,8 @@ void SwipeTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to
     const float edge_px = std::max(1.0f, width * 0.10f);
     const float pivot = alpha * static_cast<float>(width);
     apply_pixel_loop(dst, from, to, alpha, width, height,
-        [edge_px, pivot](int x, int, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, float) {
+        [edge_px, pivot](int x, int, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, float a) {
+            if (a >= 1.0f) return 1.0f;
             const float dist = pivot - static_cast<float>(x);
             return std::clamp(dist / edge_px * 0.5f + 0.5f, 0.0f, 1.0f);
         });
@@ -95,6 +96,7 @@ void RadialRevealTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCan
 
     apply_pixel_loop(dst, from, to, alpha, width, height,
         [cx, cy, max_dist, soft](int x, int y, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, float a) {
+            if (a >= 1.0f) return 1.0f;
             const float dx = static_cast<float>(x) - cx;
             const float dy = static_cast<float>(y) - cy;
             const float threshold = std::sqrt(dx * dx + dy * dy) / max_dist;
@@ -132,6 +134,7 @@ void RandomDissolveTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameC
     const float soft = 0.06f;
     apply_pixel_loop(dst, from, to, alpha, width, height,
         [soft](int x, int y, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, float a) {
+            if (a >= 1.0f) return 1.0f;
             const float threshold = hash01(x, y);
             return std::clamp((a - threshold + soft) / (2.0f * soft), 0.0f, 1.0f);
         });

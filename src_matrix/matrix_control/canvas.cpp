@@ -193,10 +193,12 @@ void render_fallback(RGBMatrixBase *canvas)
 
     if (!loaded_font_success && !load_font_error)
     {
-    #ifndef LED_MATRIX_SHARE_DIR
-#define LED_MATRIX_SHARE_DIR "."
+#ifndef LED_MATRIX_SHARE_DIR
+        constexpr const char* kFontDir = ".";
+#else
+        constexpr const char* kFontDir = LED_MATRIX_SHARE_DIR;
 #endif
-    if (!ERROR_FONT.LoadFont((std::filesystem::path(LED_MATRIX_SHARE_DIR) / "7x13.bdf").c_str()))
+    if (!ERROR_FONT.LoadFont((std::filesystem::path(kFontDir) / "7x13.bdf").c_str()))
         {
             spdlog::error("Could not load error font");
             load_font_error = true;
@@ -338,10 +340,11 @@ void update_canvas(RGBMatrixBase *matrix, FrameCanvas *&first_offscreen_canvas, 
         bool is_desktop_connected = Server::is_desktop_connected();
 
         std::shared_ptr<Scenes::Scene> scene = pinned_scene ? pinned_scene : forced_scene;
+        std::string exclude_name = scene ? scene->get_name() : "";
         forced_scene = nullptr;
         if (scene == nullptr)
         {
-            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, forced_scene ? forced_scene->get_name() : "");
+            auto weighted_scenes = build_weighted_scenes(scenes, is_desktop_connected, exclude_name);
             scene = select_scene(weighted_scenes);
         }
 

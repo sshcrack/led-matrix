@@ -29,6 +29,12 @@ export default function AssetManager() {
     setLoading(true)
     try {
       const res = await fetch(`${apiUrl}/api/custom-assets/shader`)
+      if (!res.ok) {
+        const err = await res.text().catch(() => 'Unknown error')
+        toast.error(`Failed to fetch assets: ${err}`)
+        setAssets([])
+        return
+      }
       const data = await res.json()
       setAssets(Array.isArray(data) ? data : [])
       if (Array.isArray(data) && data.length > 0 && !selectedShader) {

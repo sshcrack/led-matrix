@@ -102,7 +102,7 @@ int run_command(const std::string& cmd,
     if (pid == 0) {
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); close(devnull); }
-        execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
+        execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
         _exit(127);
     }
     while (true) {

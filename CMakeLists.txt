@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.21.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
-set(VCPKG_APPLOCAL_DEPS ON)
+if(WIN32)
+    set(VCPKG_APPLOCAL_DEPS ON)
+endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
@@ -611,7 +613,7 @@ else()
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libc6 (>= 2.17), libstdc++6 (>= 10), debconf, libgraphicsmagick++-q16-12 (>= 1.3.26), libxml2 (>= 2.9.0)")
+        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, libgraphicsmagick++-q16-12 (>= 1.3.26), libxml2 (>= 2.9.0)")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"
