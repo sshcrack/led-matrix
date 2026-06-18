@@ -363,11 +363,7 @@ std::optional<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packet(
 
     isActive = true;
     std::shared_lock lock(currDataMutex);
-    return std::unique_ptr<UdpPacket>(new CanvasPacket(currData),
-                                                             [](UdpPacket *packet)
-                                                             {
-                                                                 delete dynamic_cast<CanvasPacket *>(packet);
-                                                             });
+    return std::make_unique<CanvasPacket>(currData);
 }
 
 void ShadertoyDesktop::post_init()
