@@ -193,7 +193,10 @@ void render_fallback(RGBMatrixBase *canvas)
 
     if (!loaded_font_success && !load_font_error)
     {
-        if (!ERROR_FONT.LoadFont((std::filesystem::path(LED_MATRIX_SHARE_DIR) / "7x13.bdf").c_str()))
+    #ifndef LED_MATRIX_SHARE_DIR
+#define LED_MATRIX_SHARE_DIR "."
+#endif
+    if (!ERROR_FONT.LoadFont((std::filesystem::path(LED_MATRIX_SHARE_DIR) / "7x13.bdf").c_str()))
         {
             spdlog::error("Could not load error font");
             load_font_error = true;
