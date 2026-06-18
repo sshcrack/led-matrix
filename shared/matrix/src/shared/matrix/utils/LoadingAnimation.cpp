@@ -61,4 +61,47 @@ void render(rgb_matrix::FrameCanvas *canvas, int frame,
   }
 }
 
+void render_overlay(rgb_matrix::FrameCanvas *canvas, int frame,
+                    uint8_t r, uint8_t g, uint8_t b)
+{
+  const int width = Constants::width;
+  const int height = Constants::height;
+
+  int perimeter = 2 * (width + height);
+  int tail_len = perimeter / 16;
+  int head = frame % perimeter;
+
+  for (int i = 0; i < tail_len; i++)
+  {
+    int pos = (head - i + perimeter) % perimeter;
+    int px, py;
+    if (pos < width)
+    {
+      px = pos;
+      py = 0;
+    }
+    else if (pos < width + height)
+    {
+      px = width - 1;
+      py = pos - width;
+    }
+    else if (pos < 2 * width + height)
+    {
+      px = width - 1 - (pos - width - height);
+      py = height - 1;
+    }
+    else
+    {
+      px = 0;
+      py = height - 1 - (pos - 2 * width - height);
+    }
+    float fade = 1.0f - (float)i / tail_len;
+    canvas->SetPixel(px, py,
+                     (uint8_t)(r * fade),
+                     (uint8_t)(g * fade),
+                     (uint8_t)(b * fade));
+  }
 }
+
+} // namespace LoadingAnimation
+
