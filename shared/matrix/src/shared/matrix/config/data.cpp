@@ -179,13 +179,13 @@ namespace ConfigData {
             scenes.push_back(std::move(scene));
         }
 
-        auto preset = new Preset();
+        auto preset = std::make_shared<Preset>();
         preset->scenes = scenes;
         preset->transition_duration = 750;
         preset->transition_name = "blend";
         preset->display_name = "Default";
 
-        return std::shared_ptr<Preset>(preset);
+        return preset;
     }
 
     bool SpotifyData::is_expired() const {
