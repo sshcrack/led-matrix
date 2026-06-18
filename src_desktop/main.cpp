@@ -545,6 +545,7 @@ int run_app(int argc, char *argv[]) {
 
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
+    ws->stop();
     tray.exit();
     WebsocketClient::setInstance(nullptr);
     {
@@ -559,8 +560,8 @@ int run_app(int argc, char *argv[]) {
 
     ws = nullptr;
     ws_sp.reset();
-    delete cfg;
     pl->destroy_plugins();
+    delete cfg;
     delete instanceManager;
     spdlog::info("Exited cleanly.");
     return 0;

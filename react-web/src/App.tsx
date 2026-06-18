@@ -18,22 +18,22 @@ export default function App() {
   return (
     <ApiUrlProvider>
       <BrowserRouter basename="/web">
-        <ErrorBoundary>
           <Layout>
-            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/gallery" element={<SceneGallery />} />
-                <Route path="/assets" element={<AssetManager />} />
-                <Route path="/schedules" element={<Schedules />} />
-                <Route path="/updates" element={<Updates />} />
-                <Route path="/modify-preset/:preset_id" element={<ModifyPreset />} />
-                <Route path="/modify-providers/:preset_id/:scene_id" element={<ModifyProviders />} />
-                <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<ModifyShaderProviders />} />
-              </Routes>
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/gallery" element={<SceneGallery />} />
+                  <Route path="/assets" element={<AssetManager />} />
+                  <Route path="/schedules" element={<Schedules />} />
+                  <Route path="/updates" element={<Updates />} />
+                  <Route path="/modify-preset/:preset_id" element={<ModifyPreset />} />
+                  <Route path="/modify-providers/:preset_id/:scene_id" element={<ModifyProviders />} />
+                  <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<ModifyShaderProviders />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
           </Layout>
-        </ErrorBoundary>
       </BrowserRouter>
       <Toaster richColors position="top-right" />
     </ApiUrlProvider>

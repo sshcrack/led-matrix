@@ -103,6 +103,7 @@ private:
     void threadLoop();
 
     bool senderRunning = false;
+    int consecutiveError_ = 0;
 };
 
 SHARED_DESKTOP_API extern WebsocketClient *websocketClientInstance;

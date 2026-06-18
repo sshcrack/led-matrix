@@ -98,9 +98,6 @@ namespace Scenes {
         // Sun ray animation
         float sun_ray_rotation = 0.0f;
         
-        // Fog/mist effect state
-        std::vector<std::vector<float>> fog_grid;
-
         // Animation system particles
         std::vector<Particle> particles;
         int active_particles = 0;

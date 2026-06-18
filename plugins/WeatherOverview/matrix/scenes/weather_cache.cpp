@@ -107,6 +107,5 @@ bool Scenes::WeatherScene::reloadImages()
     parser.unmark_changed();
     images = img;
 
-    updateAnimationState(data);
     return true;
 }

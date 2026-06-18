@@ -40,7 +40,9 @@ namespace {
         std::vector<json> j;
         j.reserve(items.size());
         for (const auto& item : items) {
-            auto properties = item->get_default()->get_properties();
+            auto default_item = item->get_default();
+            if (!default_item) continue;
+            auto properties = default_item->get_properties();
             j.push_back({
                 {"name", item->get_name()},
                 {"properties", serialize_properties(properties, false)}
@@ -53,14 +55,16 @@ namespace {
         std::vector<json> j;
         j.reserve(scenes.size());
         for (const auto& scene : scenes) {
-            auto properties = scene->get_default()->get_properties();
+            auto default_item = scene->get_default();
+            if (!default_item) continue;
+            auto properties = default_item->get_properties();
             auto properties_json = serialize_properties(properties, true);
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
                 {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
-                {"needs_desktop", scene->get_default()->needs_desktop_app()},
-                {"category", scene->get_default()->get_category()}
+                {"needs_desktop", default_item->needs_desktop_app()},
+                {"category", default_item->get_category()}
             });
         }
         return j;

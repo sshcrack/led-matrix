@@ -63,7 +63,6 @@ namespace AmbientScenes {
         int ms_right;
         int ms_i;
         int ms_j;
-        int ms_k;
         bool ms_merging;
         std::vector<int> ms_temp;
         

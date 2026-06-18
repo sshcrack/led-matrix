@@ -102,13 +102,23 @@ export default function AssetManager() {
   const onDelete = async (filename: string) => {
     if (!apiUrl) return
     if (!window.confirm(`Delete ${filename}?`)) return
-    await fetch(`${apiUrl}/api/custom-assets/shader/${encodeURIComponent(filename)}`, {
-      method: 'DELETE',
-    })
-    if (selectedShader === filename) {
-      setSelectedShader(null)
+    try {
+      const res = await fetch(`${apiUrl}/api/custom-assets/shader/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        toast.error(`Delete failed: ${err}`)
+        return
+      }
+      toast.success(`Deleted ${filename}`)
+      if (selectedShader === filename) {
+        setSelectedShader(null)
+      }
+      await fetchAssets()
+    } catch (err) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
-    await fetchAssets()
   }
 
   return (

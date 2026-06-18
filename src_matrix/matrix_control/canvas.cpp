@@ -245,6 +245,7 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
 {
     scene->before_transition_stop();
 
+    constexpr tmillis_t max_transition_ms = 10000;
     tmillis_t transition_start_ms = GetTimeInMillis();
     tmillis_t last_current_render_ms = transition_start_ms;
     tmillis_t last_next_render_ms = transition_start_ms;
@@ -255,6 +256,8 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
     while (true)
     {
         const auto now_ms = GetTimeInMillis();
+        if (now_ms - transition_start_ms > max_transition_ms)
+            break;
         const auto elapsed_transition = now_ms - transition_start_ms;
         const auto alpha_progress = std::clamp(
             static_cast<float>(elapsed_transition) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)),
