@@ -32,5 +32,5 @@ react-web/dist
 Thumbs.db
 
 # Install-directory artifacts
-install/*.so
-install/plugins/*.so
+install/lib/led-matrix/*.so
+install/lib/led-matrix/plugins/*.so

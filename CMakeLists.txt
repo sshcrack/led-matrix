@@ -329,7 +329,7 @@ if(ENABLE_EMULATOR)
 
     # Install the binary itself so users can manually generate/regenerate previews
     install(TARGETS preview_gen
-        DESTINATION .
+        DESTINATION bin
     )
 endif()
 
@@ -625,6 +625,8 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/postinst"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/prerm"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/postrm")
+
+    set(CPACK_DEBIAN_PACKAGE_FILE_NAME "led-matrix-${PROJECT_VERSION}_arm64")
 
     include(CPack)
 endif()
