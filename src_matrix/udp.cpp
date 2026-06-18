@@ -101,9 +101,8 @@ void UdpServer::server_loop()
     }
 }
 
-UdpServer::UdpServer(int port) : server_running(true)
+UdpServer::UdpServer(int port) : server_running(false), udp_socket(-1)
 {
-    // Create UDP socket
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0)
     {
@@ -111,13 +110,11 @@ UdpServer::UdpServer(int port) : server_running(true)
         return;
     }
 
-    // Configure server address
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(port);
 
-    // Set socket options for reuse
     int reuse = 1;
     if (setsockopt(udp_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
     {
@@ -127,14 +124,12 @@ UdpServer::UdpServer(int port) : server_running(true)
         return;
     }
 
-    // Enlarge receive buffer to handle large video frames (128x128x3 + header = ~49KB)
     int rcvbuf = 256 * 1024;
     if (setsockopt(udp_socket, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
     {
         spdlog::warn("Failed to set SO_RCVBUF: {}", strerror(errno));
     }
 
-    // Set socket to non-blocking mode
     int flags = fcntl(udp_socket, F_GETFL, 0);
     if (flags < 0)
     {
@@ -151,7 +146,6 @@ UdpServer::UdpServer(int port) : server_running(true)
         return;
     }
 
-    // Bind socket
     if (bind(udp_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         spdlog::error("Failed to bind UDP socket: {}", strerror(errno));
@@ -160,7 +154,6 @@ UdpServer::UdpServer(int port) : server_running(true)
         return;
     }
 
-    // Start server thread
     server_running = true;
     udp_server_thread = std::thread(&UdpServer::server_loop, this);
     spdlog::info("UDP server started on port {}", port);

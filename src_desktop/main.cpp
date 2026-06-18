@@ -159,9 +159,16 @@ static void setup_tray(Tray::Tray &tray) {
             [&] { shouldExit.store(true); }));
 }
 
-// ---- Main application logic ----
-int run_app(int argc, char *argv[]) {
-    // Logging setup
+// ---- File-scope state used by GUI and callbacks ----
+static std::shared_ptr<WebsocketClient> ws_sp;
+static WebsocketClient *ws = nullptr;
+static UpdateChecker::UpdateManager updateManager;
+static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
+static bool startMinimized = false;
+static int startupFrameCounter = 0;
+
+// ---- Extracted helpers ----
+static void setup_logging() {
     fs::path logDir = get_data_dir() / "logs";
     if (!fs::exists(logDir))
         fs::create_directories(logDir);
@@ -177,61 +184,33 @@ int run_app(int argc, char *argv[]) {
     spdlog::logger logger("multi_sink", {console_sink, file_sink});
     auto sharedLogger = std::make_shared<spdlog::logger>(logger);
     spdlog::set_default_logger(sharedLogger);
-    // Prefer the FHS path for DEB installations, fall back to relative dev layout
     auto assets_dir = get_exec_dir() / ".." / "share" / "led-matrix-desktop" / "assets";
     if (!fs::is_directory(assets_dir)) {
         assets_dir = get_exec_dir() / ".." / "assets";
     }
     HelloImGui::SetAssetsFolder(assets_dir.string());
+}
 
-    // Single instance manager
-    SingleInstanceManager *instanceManager = nullptr;
-    try {
-        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
-            spdlog::info("Focus request received, showing main window.");
-            showMainWindow = true;
-        });
-    } catch ([[maybe_unused]] const std::exception &e) {
-        // Already running, exit
-        return 0;
-    }
-
+static void init_plugins() {
     auto pl = Plugins::PluginManager::instance();
     auto cfg = ConfigManager::instance();
     pl->initialize();
     for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->load_config(cfg->getPluginSetting(plName));
     }
+}
 
-    // Store shutdown configuration in global variables for signal handlers
-    General &generalCfgRef = cfg->getGeneralConfig();
-    g_shutdown_hostname = generalCfgRef.getHostnameCopy();
-    g_shutdown_port = generalCfgRef.getPort();
-    g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
-
-    static WebsocketClient *ws;
-    static UpdateChecker::UpdateManager updateManager;
-    static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
-
-    static bool startMinimized = false;
-    // somehow because portaudio is bugged or idk, we need to have like 10 frames of the program and then we can hide it so there's your counter
-    static int startupFrameCounter = 0;
-
-    if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
-        spdlog::info("Starting minimized.");
-        startMinimized = true;
+static void show_gui() {
+    static bool initialConnect = true;
+    auto pl = Plugins::PluginManager::instance();
+    auto cfg = ConfigManager::instance();
+    if (shouldExit.load()) {
+        shutdown_matrix();
+        HelloImGui::GetRunnerParams()->appShallExit = true;
+        shouldExit.store(false);
     }
 
-    // ---- GUI function ----
-    auto guiFunction = [pl, cfg] {
-        static bool initialConnect = true;
-        if (shouldExit.load()) {
-            shutdown_matrix();
-            HelloImGui::GetRunnerParams()->appShallExit = true;
-            shouldExit.store(false);
-        }
-
-        if (showMainWindow) {
+    if (showMainWindow) {
             spdlog::info("Showing main window.");
             showMainWindow = false;
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
@@ -416,16 +395,42 @@ int run_app(int argc, char *argv[]) {
         matrixVersionManager.render(ImGui::GetCurrentContext());
         if (updateManager.shallAppExit())
             HelloImGui::GetRunnerParams()->appShallExit = true;
-    };
+}
 
-    // ---- Tray setup ----
+// ---- Main application logic ----
+int run_app(int argc, char *argv[]) {
+    setup_logging();
+
+    SingleInstanceManager *instanceManager = nullptr;
+    try {
+        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
+            spdlog::info("Focus request received, showing main window.");
+            showMainWindow = true;
+        });
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return 0;
+    }
+
+    auto pl = Plugins::PluginManager::instance();
+    auto cfg = ConfigManager::instance();
+    init_plugins();
+
+    General &generalCfgRef = cfg->getGeneralConfig();
+    g_shutdown_hostname = generalCfgRef.getHostnameCopy();
+    g_shutdown_port = generalCfgRef.getPort();
+    g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
+
+    if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
+        spdlog::info("Starting minimized.");
+        startMinimized = true;
+    }
+
     const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
     Tray::Tray tray(DISPLAY_APP_NAME, trayIco);
     setup_tray(tray);
 
-    // ---- HelloImGui runner setup ----
     HelloImGui::RunnerParams runnerParams;
-    runnerParams.callbacks.ShowGui = guiFunction;
+    runnerParams.callbacks.ShowGui = show_gui;
     runnerParams.callbacks.PreNewFrame = [&] {
         tray.pump();
 #ifndef _WIN32
@@ -464,35 +469,33 @@ int run_app(int argc, char *argv[]) {
 
         ImGui::Separator();
 
-        // Matrix version compatibility info
         auto matrixVersionInfo = matrixVersionManager.getLastCheckResult();
         std::string matrixVersionText = "Matrix Version: ";
-        ImVec4 matrixVersionColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); // Default gray
+        ImVec4 matrixVersionColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 
         switch (matrixVersionInfo.compatibility) {
             case MatrixVersionChecker::VersionCompatibility::Compatible:
                 matrixVersionText += matrixVersionInfo.version.toString() + " ✓";
-                matrixVersionColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                matrixVersionColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
                 break;
             case MatrixVersionChecker::VersionCompatibility::MatrixNewer:
                 matrixVersionText += matrixVersionInfo.version.toString() + " (newer)";
-                matrixVersionColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f); // Blue
+                matrixVersionColor = ImVec4(0.0f, 0.8f, 1.0f, 1.0f);
                 break;
             case MatrixVersionChecker::VersionCompatibility::DesktopNewer:
                 matrixVersionText += matrixVersionInfo.version.toString() + " (needs update)";
-                matrixVersionColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                matrixVersionColor = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
                 break;
             case MatrixVersionChecker::VersionCompatibility::NetworkError:
                 matrixVersionText += "Connection Error";
-                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
+                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
                 break;
             case MatrixVersionChecker::VersionCompatibility::ParseError:
                 matrixVersionText += "Parse Error";
-                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
+                matrixVersionColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
                 break;
         }
 
-        // Use colored text for the menu item (read-only)
         ImGui::TextColored(matrixVersionColor, "%s", matrixVersionText.c_str());
 
         if (matrixVersionInfo.compatibility == MatrixVersionChecker::VersionCompatibility::DesktopNewer) {
@@ -580,18 +583,16 @@ int run_app(int argc, char *argv[]) {
         for (auto &[name, plugin]: pl->get_plugins()) {
             plugin->post_init();
         }
-        // Only now create the WebsocketClient, so the UDP thread starts after the window is set
-        ws = new WebsocketClient();
+        ws_sp = std::make_shared<WebsocketClient>();
+        ws = ws_sp.get();
         WebsocketClient::setInstance(ws);
-        // Check for updates on startup
+        ws_sp->setup_callback();
         updateManager.checkForUpdatesAsync();
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;
 
-    // Register signal/console handlers so the application can request a graceful shutdown
 #ifdef _WIN32
-    // Install console control handler to catch Ctrl+C / console close events
     SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
 #else
     std::signal(SIGINT, signal_handler);
@@ -600,19 +601,20 @@ int run_app(int argc, char *argv[]) {
 
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
-    tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
-    WebsocketClient::setInstance(nullptr); {
+    tray.exit();
+    WebsocketClient::setInstance(nullptr);
+    {
         auto generalCfg = cfg->getGeneralConfig();
         auto hostname = generalCfg.getHostnameCopy();
         auto port = generalCfg.getPort();
         if (generalCfg.isTurnMatrixOffOnExit()) {
             spdlog::info("Turning Matrix OFF on exit.");
-            // Use synchronous call on exit to ensure completion before shutdown
             change_matrix_status(hostname, port, false, true);
         }
     }
 
-    delete ws;
+    ws = nullptr;
+    ws_sp.reset();
     delete cfg;
     pl->destroy_plugins();
     delete instanceManager;
