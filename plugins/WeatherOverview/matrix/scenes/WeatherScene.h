@@ -141,7 +141,6 @@ namespace Scenes {
         void resetStars();
         
         // Enhanced animation methods
-        void updateAnimationState(const WeatherData &data);
         void renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
         void initializeParticles();
 

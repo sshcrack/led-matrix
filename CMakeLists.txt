@@ -151,8 +151,6 @@ endif()
 add_subdirectory(plugins)
 
 # Collect the list of matrix plugin targets published by register_plugin()
-get_property(MATRIX_PLUGIN_TARGETS GLOBAL PROPERTY MATRIX_PLUGIN_TARGETS)
-
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
     ${SOURCES}
@@ -347,8 +345,6 @@ if(NOT ENABLE_DESKTOP)
     )
 endif()
 
-#Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
-
 if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     # Check for Node.js
     find_program(NODEJS node)
@@ -364,7 +360,7 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
 
     # Install React web dependencies
     add_custom_target(react_web_install ALL
-        COMMAND /bin/bash -c ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Installing React web dependencies"
     )

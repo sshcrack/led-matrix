@@ -399,7 +399,7 @@ namespace AmbientScenes {
                         break;
                     case Algorithm::COMB_SORT:
                         if (comb_gap > 1) {
-                            if (x == j || x == j + comb_gap) {
+                            if (contains_index(local_access_indices, x)) {
                                 r = kAccessColor.r;
                                 g = kAccessColor.g;
                                 b = kAccessColor.b;

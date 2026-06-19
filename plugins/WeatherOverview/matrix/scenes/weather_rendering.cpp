@@ -188,7 +188,7 @@ void Scenes::WeatherScene::renderSunRays(rgb_matrix::FrameCanvas *canvas, const 
                         canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
 
                         float base_intensity = 1.0f - distance_factor;
-                        float width_intensity = 1.0f - abs(w) / static_cast<float>(ray_width / 2 + 1);
+                        float width_intensity = 1.0f - std::abs(w) / static_cast<float>(ray_width / 2 + 1);
                         float final_intensity = base_intensity * width_intensity * 0.3f;
 
                         uint8_t sun_r = 255;
@@ -324,7 +324,7 @@ void Scenes::WeatherScene::renderRainbowEffect(rgb_matrix::FrameCanvas *canvas, 
                     {
                         float hue = ((float)x / matrix_width) * 360.0f;
                         hue += rainbow_time * 30.0f;
-                        hue = fmod(hue, 360.0f);
+                        hue = std::fmod(hue, 360.0f);
                         float s = 1.0f;
                         float v = intensity;
                         uint8_t r, g, b;
