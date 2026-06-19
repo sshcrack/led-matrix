@@ -51,12 +51,14 @@ bool Scenes::WeatherScene::reloadImages()
         contain_img, true,
         pre_process_image);
 
-    WeatherScene::Images img;
+    auto img = WeatherScene::Images();
+    bool have_any_image = false;
 
     if (res.has_value())
     {
         auto arr = std::move(res.value());
         img.currentIcon = arr.front();
+        have_any_image = true;
         try_remove(file_path);
     }
     else
@@ -94,6 +96,7 @@ bool Scenes::WeatherScene::reloadImages()
             if (f_res)
             {
                 img.forecastIcons.push_back(f_res.value().at(0));
+                have_any_image = true;
             }
             else
             {
@@ -104,8 +107,10 @@ bool Scenes::WeatherScene::reloadImages()
         }
     }
 
+    if (have_any_image) {
+        images = img;
+    }
     parser.unmark_changed();
-    images = img;
 
-    return true;
+    return have_any_image;
 }

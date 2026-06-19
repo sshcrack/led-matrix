@@ -2,7 +2,6 @@
 #include <iostream>
 #include <filesystem>
 #include <cstdio>
-#include <csignal>
 #include <memory>
 #include <string>
 

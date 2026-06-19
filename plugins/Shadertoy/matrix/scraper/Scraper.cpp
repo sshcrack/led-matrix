@@ -54,6 +54,8 @@ std::expected<std::string, std::string> Scraper::scrapeNextShader(int minPage, i
 
 std::expected<std::string, std::string> Scraper::returnShaderFromVector()
 {
+    if (shaderIds.empty())
+        return std::unexpected("No shaders available");
     std::uniform_int_distribution<size_t> dist(0, shaderIds.size() - 1);
     int randomIndex = static_cast<int>(dist(rng));
     std::string shaderId = shaderIds[randomIndex];
@@ -96,8 +98,6 @@ std::expected<std::string, std::string> Scraper::peekNextShader(int minPage, int
 void Scraper::fetchShaders(int minPage, int maxPage)
 {
     fetchShadersSync(minPage, maxPage);
-    std::unique_lock lock(mtx);
-    fetchInProgress = false;
 }
 
 void Scraper::prefetchShadersAsync(int minPage, int maxPage)

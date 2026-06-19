@@ -46,14 +46,20 @@ fi
 
 # Download
 TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
 DEB_FILE="$TMP_DIR/led-matrix-arm64.deb"
 print_info "⬇️  Downloading led-matrix for arm64..."
 curl -# -fL -o "$DEB_FILE" "$ASSET_URL"
 
 # Install — debconf will present the configuration dialog automatically
 print_info "📦 Installing package (you will be prompted for configuration)..."
-trap 'rm -rf "$TMP_DIR"' EXIT
-sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y || true
+if ! sudo dpkg -i "$DEB_FILE"; then
+    print_error "dpkg install failed. Attempting to fix dependencies..."
+    if ! sudo apt-get install -f -y; then
+        print_error "Failed to install dependencies."
+        exit 1
+    fi
+fi
 rm -rf "$TMP_DIR"
 
 print_success "Installation complete! 🎉"

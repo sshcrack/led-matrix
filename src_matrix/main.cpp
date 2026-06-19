@@ -221,7 +221,9 @@ int main(int argc, char *argv[])
             int parsed = std::stoi(port_env);
             if (parsed < 0 || parsed > 65535) {
                 spdlog::warn("PORT env value '{}' out of range [0,65535]. Using default {}.", port_env, default_http_port);
-            } else {
+                parsed = default_http_port;
+            }
+            {
                 port = static_cast<uint16_t>(parsed);
             }
         } catch (const std::exception& e) {
@@ -329,6 +331,13 @@ int main(int argc, char *argv[])
     {
         error("Could not initialize hardware_code.");
         delete udpServer;
+        delete Constants::global_post_processor;
+        delete Constants::global_transition_manager;
+        if (Constants::global_update_manager)
+        {
+            Constants::global_update_manager->stop();
+            Constants::global_update_manager.reset();
+        }
         initiate_shutdown(server);
 
         info("Joining control thread...");
@@ -336,6 +345,7 @@ int main(int argc, char *argv[])
 
         info("Terminating plugin loader...");
         pl->destroy_plugins();
+        pl->delete_references();
 
         info("Destroying config instance...");
         delete config;
@@ -364,10 +374,10 @@ int main(int argc, char *argv[])
     control_thread.join();
 
     info("Terminating plugin loader...");
+    pl->destroy_plugins();
+
     delete Constants::global_post_processor;
     delete Constants::global_transition_manager;
-
-    pl->destroy_plugins();
 
     pl->delete_references();
 

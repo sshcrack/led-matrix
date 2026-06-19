@@ -23,7 +23,7 @@ if [ -n "$LED_SLOWDOWN" ]; then
 fi
 if [ -n "$EXTRA_OPTS" ]; then
     # Escape $ and ` for systemd env file parser
-    EXTRA_OPTS_SAFE=$(printf '%s\n' "$EXTRA_OPTS" | sed 's/[$`]/\\&/g')
+    EXTRA_OPTS_SAFE=$(printf '%s\n' "$EXTRA_OPTS" | sed 's/[$`"\\]/\\&/g')
     MATRIX_OPTS="$MATRIX_OPTS $EXTRA_OPTS_SAFE"
 fi
 
@@ -77,7 +77,7 @@ fi
 chmod 600 "$ENV_FILE"
 
 # --- Read package version (also used for config.json update below) ---
-PKG_VERSION=$(dpkg-query -W -f='${Version}' led-matrix 2>/dev/null || echo "1.0.0")
+PKG_VERSION=$(dpkg-query -W -f '${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 
 # --- Write initial config.json if not already present ---
 if [ ! -f "$DATA_DIR/config.json" ]; then

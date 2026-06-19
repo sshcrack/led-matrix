@@ -24,7 +24,9 @@ std::shared_ptr<WebsocketClient> WebsocketClient::create()
 
 WebsocketClient::WebsocketClient() : udpSender()
 {
-    ix::initNetSystem();
+    if (net_refs().fetch_add(1, std::memory_order_relaxed) == 0) {
+        ix::initNetSystem();
+    }
 }
 
 void WebsocketClient::setup_callback()
@@ -68,7 +70,9 @@ WebsocketClient::~WebsocketClient()
     {
         senderThread.join();
     }
-    ix::uninitNetSystem();
+    if (net_refs().fetch_sub(1, std::memory_order_relaxed) == 1) {
+        ix::uninitNetSystem();
+    }
 }
 
 constexpr double TARGET_FPS = 60.0;

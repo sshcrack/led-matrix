@@ -267,7 +267,7 @@ namespace AmbientScenes
             hour = 12; // 12-hour format
 
         // Calculate horizontal centering based on matrix width
-        int x_start = (matrix_height - 24) / 2; // Adjust as needed for digit spacing
+        int x_start = (matrix_width - 24) / 2; // Adjust as needed for digit spacing
 
         // Draw hour digits
         auto h_color = hour_color->get();
