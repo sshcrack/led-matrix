@@ -1,51 +1,12 @@
 [
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/weather_rendering.cpp",
-    "line": 2411,
-    "description": "hsv_to_rgb called with hue/360.0f but the function expects degrees [0,360) and internally divides by 360. Result: hue double-normalized to ~0, entire rainbow arc renders monochromatic red. Old code had inline HSV→RGB that passed hue directly.",
-    "severity": "medium",
-    "category": "regression"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/weather_particles.cpp",
-    "line": 1774,
-    "description": "resetStars() uses uniform_int_distribution(0, matrix_width) and (0, matrix_height) which are inclusive bounds — generates x=matrix_width and y=matrix_height, both out of bounds (valid [0,width-1], [0,height-1]). SetPixel writes past pixel buffer if no bounds check. Pre-existing, not fixed.",
-    "severity": "medium",
-    "category": "bug"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.h",
-    "line": 1609,
-    "description": "std::mt19937 rng{std::random_device{}()} — random_device{}() can throw std::exception if no entropy source is available. On a headless/minimal Pi this could prevent scene construction. Old code used rand() which never throws.",
-    "severity": "low",
-    "category": "regression"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.cpp",
-    "line": 776,
-    "description": "Emulator Render() called after SleepMillis(1000) instead of before. Old code: Render → Sleep → return. New code: Sleep → Render → return. Error screen is not shown in emulator window for 1 second (stale frame shown instead).",
-    "severity": "low",
-    "category": "regression"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/WeatherScene.cpp",
-    "line": 828,
-    "description": "Extraneous emulator Render() call in the successful-fetch path that was never present in the old code. Renders stale canvas content before the main render loop updates it. Only compiled under ENABLE_EMULATOR.",
-    "severity": "low",
-    "category": "regression"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/weather_particles.cpp",
-    "line": 1968,
-    "description": "std::uniform_int_distribution constructed per-iteration inside loop body in updateEnhancedParticles (also at lines 1971, 1976-1991). High allocation pressure in hot render path. Should be constructed once outside loop.",
-    "severity": "low",
-    "category": "smell"
-  },
-  {
-    "file": "plugins/WeatherOverview/matrix/scenes/weather_rendering.cpp",
-    "line": 2299,
-    "description": "NUM_PATCHES distribution evaluated every frame via rng but only consumed inside the fog-initialization block (guarded by fog_initialized). Wastes entropy and cycles on every frame when fog is already active.",
-    "severity": "low",
-    "category": "smell"
-  }
+  {"file":"shared/matrix/include/shared/matrix/utils/color.h", "line":31, "description":"hsv_to_rgb expects hue in [0,360) but 5/7 callers pass [0,1] values after the 4995bbe 'fix' — every caller divides by 360 before calling, then the function divides by 360 again. Effective hue stuck near 0 (always redish). Only AudioSpectrumScene and weather_rendering survived with *360 factor intact", "severity":"high", "category":"bug"},
+  {"file":"plugins/GameScenes/matrix/scenes/SnakeGameScene.cpp", "line":370, "description":"renderWin: hue computed as fmod(hue_offset + (x+y)*20/360, 1.0) giving [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
+  {"file":"plugins/GameScenes/matrix/scenes/SnakeGameScene.cpp", "line":394, "description":"getSnakeColor: hue computed as fmod(segment_index*30/360 + time_factor*50/360, 1.0) giving [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
+  {"file":"plugins/ExampleScenes/matrix/scenes/RenderingDemoScene.cpp", "line":207, "description":"renderMathematicalVisualization: hue = iterations/max_iterations + time*50/360 gives [0,~1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
+  {"file":"plugins/FractalScenes/matrix/scenes/WavePatternScene.cpp", "line":71, "description":"hue = fmod(normalized_x + time*0.1, 1.0) gives [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
+  {"file":"plugins/FractalScenes/matrix/scenes/JuliaSetScene.cpp", "line":65, "description":"hue = fmod(smoothed*0.01 + color_shift, 1.0) gives [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
+  {"file":"plugins/PixelJoint/matrix/PixelJoint.cpp", "line":143, "description":"handle_providers(req, preset_id, scene_id) — arguments swapped: function signature expects (req, scene_id, preset_id) but caller passes (req, preset_id, scene_id). Causes preset lookup to receive scene_id and scene match to receive preset_id", "severity":"medium", "category":"bug"},
+  {"file":"plugins/SpotifyScenes/matrix/scenes/CoverOnlyScene.cpp", "line":339, "description":"Old curr_content_stream (MemStreamIO*) deleted at line 340 before old curr_animation (StreamReader, which references the same MemStreamIO) is destroyed at line 345. If StreamReader destructor touches the StreamIO, this is use-after-free", "severity":"medium", "category":"bug"},
+  {"file":"plugins/SpotifyScenes/matrix/SpotifyScenes.cpp", "line":119, "description":"generate_random_string uses static std::mt19937 rng without mutex — data race if /spotify/login route receives concurrent requests (restinio may dispatch to multiple threads)", "severity":"medium", "category":"bug"},
+  {"file":"plugins/SpotifyScenes/matrix/scenes/CoverOnlyScene.cpp", "line":69, "description":"drawGlowingBorder constructs rgb_matrix::Color(color.r * intensity, ...) where color.r is uint8_t and intensity is float. Narrowing float→uint8_t passed to Color ctor — truncation, no rounding", "severity":"low", "category":"smell"}
 ]
