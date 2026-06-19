@@ -3,6 +3,10 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#ifdef _WIN32
+#include <cstdint>
+using pid_t = int;
+#endif
 #include <filesystem>
 #include <functional>
 #include <mutex>

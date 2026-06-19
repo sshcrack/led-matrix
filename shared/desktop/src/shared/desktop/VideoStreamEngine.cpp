@@ -8,6 +8,10 @@
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/wait.h>
+#else
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
 #endif
 
 namespace {
@@ -290,7 +294,39 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     const size_t frameSize = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 3;
     std::string ffCmd = build_ffmpeg_pipe_command(mp4Path);
 #ifdef _WIN32
-    FILE* pipe = _popen(ffCmd.c_str(), "rb");
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        spdlog::warn("Fast chunk: CreatePipe failed, skipping fast start");
+        return false;
+    }
+    if (!SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        spdlog::warn("Fast chunk: SetHandleInformation failed, skipping fast start");
+        return false;
+    }
+    STARTUPINFOA si{};
+    PROCESS_INFORMATION pi{};
+    si.cb = sizeof(si);
+    si.hStdOutput = hWrite;
+    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    std::vector<char> cmdline(ffCmd.begin(), ffCmd.end());
+    cmdline.push_back('\0');
+    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        spdlog::warn("Fast chunk: CreateProcess failed, skipping fast start");
+        return false;
+    }
+    CloseHandle(hWrite);
+    int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
+    FILE* pipe = _fdopen(fd, "rb");
+    if (!pipe) { CloseHandle(hRead); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return false; }
+    ffmpeg_pid_ = static_cast<int>(pi.dwProcessId);
 #else
     int fds[2];
     if (pipe(fds) != 0) return false;
@@ -335,7 +371,12 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     }
 
 #ifdef _WIN32
-    _pclose(pipe);
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+        if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
+        ffmpeg_pid_ = -1;
+    }
+    fclose(pipe);
 #else
     if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
         kill(pid, SIGTERM);
@@ -355,10 +396,12 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 void VideoStreamEngine::stop() {
     running_ = false;
 
+#ifndef _WIN32
     // Kill ffmpeg child process to unblock fread() in play_fast_chunk
     if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
         kill(pid, SIGTERM);
     }
+#endif
 
     std::function<void(const std::string &)> tmp_status_change;
     // Clear the status callback BEFORE joining threads.
