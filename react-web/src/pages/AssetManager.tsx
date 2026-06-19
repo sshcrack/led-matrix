@@ -70,9 +70,9 @@ export default function AssetManager() {
       setPreviewScript(text)
       setShowUploadDialog(true)
     } catch (err) {
-      // fallback: clear selection
       setPendingFile(null)
       e.target.value = ''
+      toast.error(`Failed to read file: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 

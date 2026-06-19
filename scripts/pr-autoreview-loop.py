@@ -106,7 +106,7 @@ class TUI:
     def update_status(self, status: str, bugs: int = 0, bugs_list: list[dict] | None = None) -> None:
         self.status = status
         if bugs:
-            self.total_bugs = bugs
+            self.total_bugs += bugs
         if bugs_list is not None:
             self.bugs_last_review = bugs_list
         self.draw()
@@ -202,7 +202,7 @@ def run_opencode(
     else:
         tui.log(f"Exit code: {rc} ({label})", "red" if rc != 0 else "yellow")
         tui.update_status(f"Done ({label})")
-        return True, combined
+        return False, combined
 
 
 def parse_bugs(output: str, tui: TUI) -> list[dict]:
@@ -221,7 +221,7 @@ def parse_bugs(output: str, tui: TUI) -> list[dict]:
     patterns = [
         r"<REVIEW_RESULT>\s*(\{.*?\})\s*</REVIEW_RESULT>",
         r"```json\s*(\{.*?\})\s*```",
-        r"(\{\s*\"bugs_found\".*?\})",
+        r"(\{\s*\"bugs_found\".*\})",
     ]
     for pat in patterns:
         m = re.search(pat, output, re.DOTALL)
@@ -338,7 +338,7 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
 
         fix_steps = (
             f"1. Run: git add -A\n"
-            f"2. Run: git commit -m \"fix: address review findings — iteration {tui.iteration}\"\n"
+            f"2. Run: git commit -m \"fix: address review findings — iteration {tui.iteration}\" and add a description to the commit message on a summary on bugs fixed\n"
         )
         if enable_push:
             fix_steps += "3. Run: git push\n"

@@ -68,7 +68,7 @@ bool WavePatternScene::render(rgb_matrix::FrameCanvas *canvas) {
         // Calculate color based on position and time
         uint8_t r, g, b;
         if (rainbow_mode->get()) {
-            float hue = std::fmod(normalized_x + total_time * color_speed->get() * 0.1f, 1.0f);
+            float hue = std::fmod(normalized_x + total_time * color_speed->get() * 0.1f, 1.0f) * 360.0f;
             color::hsv_to_rgb(hue, 1.0f, 1.0f, r, g, b);
         } else {
             // Blue-cyan-white theme

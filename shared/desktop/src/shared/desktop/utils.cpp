@@ -1,4 +1,5 @@
 #include "shared/desktop/utils.h"
+#include <cerrno>
 #include <fstream>
 #include <thread>
 #include <chrono>

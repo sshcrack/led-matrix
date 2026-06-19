@@ -62,7 +62,7 @@ bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
             if (iteration < max_iter) {
                 uint8_t r, g, b;
                 // Map iteration count to color
-                float hue = std::fmod(smoothed * 0.01f + color_shift->get(), 1.0f);
+                float hue = std::fmod(smoothed * 0.01f + color_shift->get(), 1.0f) * 360.0f;
                 color::hsv_to_rgb(hue, 0.9f, 1.0f, r, g, b);
                 
                 canvas->SetPixel(x, y, r, g, b);
