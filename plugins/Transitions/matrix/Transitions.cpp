@@ -77,6 +77,7 @@ void MorphTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to
 {
     apply_pixel_loop(dst, from, to, alpha, width, height,
         [](int, int, uint8_t, uint8_t, uint8_t, uint8_t tr, uint8_t tg, uint8_t tb, float a) {
+            if (a >= 1.0f) return 1.0f;
             const float lum = (0.299f * tr + 0.587f * tg + 0.114f * tb) / 255.0f;
             const float shift = lum * 0.5f;
             return std::clamp((a - (1.0f - lum) * 0.5f) / (1.0f - shift * 0.5f + 0.001f), 0.0f, 1.0f);

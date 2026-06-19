@@ -137,34 +137,31 @@ bool SortingVisualizerScene::step_heap() {
     if (heap_sift_root == 0) {
         std::swap(array_data[0], array_data[heap_end]);
         --heap_end;
-        heap_sift_root = 0;
-        return false;
+        // Fall through to sift down the new root
     }
 
-    int current_root = heap_sift_root;
-    int child = current_root * 2 + 1;
-    if (child > heap_end) {
+    if (heap_sift_root < 0) {
         heap_sift_root = 0;
         return heap_end <= 0;
     }
+    int current_root = heap_sift_root;
+    int child = current_root * 2 + 1;
 
-    int largest = child;
-    if (child + 1 <= heap_end && array_data[child + 1] > array_data[child]) {
-        largest = child + 1;
-    }
-
-    access_indices = {current_root, largest};
-    if (array_data[largest] > array_data[current_root]) {
-        std::swap(array_data[current_root], array_data[largest]);
-        heap_sift_root = largest;
-    } else {
-        if (heap_end > 0) {
-            std::swap(array_data[0], array_data[heap_end]);
-            --heap_end;
+    if (child <= heap_end) {
+        int largest = child;
+        if (child + 1 <= heap_end && array_data[child + 1] > array_data[child]) {
+            largest = child + 1;
         }
-        heap_sift_root = 0;
+
+        access_indices = {current_root, largest};
+        if (array_data[largest] > array_data[current_root]) {
+            std::swap(array_data[current_root], array_data[largest]);
+            heap_sift_root = largest;
+            return false;
+        }
     }
 
+    heap_sift_root = 0;
     return heap_end <= 0;
 }
 
@@ -176,20 +173,24 @@ bool SortingVisualizerScene::step_comb() {
         comb_gap = std::max(1, static_cast<int>(comb_gap / comb_shrink));
     }
 
-    bool swapped = false;
-    for (int idx = 0; idx + comb_gap < n; ++idx) {
-        access_indices = {idx, idx + comb_gap};
-        if (array_data[idx] > array_data[idx + comb_gap]) {
-            std::swap(array_data[idx], array_data[idx + comb_gap]);
-            swapped = true;
+    if (comb_idx < 0) comb_idx = 0;
+
+    if (comb_idx + comb_gap < n) {
+        access_indices = {comb_idx, comb_idx + comb_gap};
+        if (array_data[comb_idx] > array_data[comb_idx + comb_gap]) {
+            std::swap(array_data[comb_idx], array_data[comb_idx + comb_gap]);
+            comb_swapped = true;
         }
+        ++comb_idx;
+        return false;
     }
 
-    comb_swapped = swapped;
+    comb_idx = 0;
     if (comb_gap <= 1 && !comb_swapped) {
         return true;
     }
 
+    comb_swapped = false;
     return false;
 }
 

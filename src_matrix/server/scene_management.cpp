@@ -41,7 +41,10 @@ namespace {
         j.reserve(items.size());
         for (const auto& item : items) {
             auto default_item = item->get_default();
-            if (!default_item) continue;
+            if (!default_item) {
+                spdlog::warn("make_providers_list: provider '{}' has null get_default(), skipping", item->get_name());
+                continue;
+            }
             auto properties = default_item->get_properties();
             j.push_back({
                 {"name", item->get_name()},

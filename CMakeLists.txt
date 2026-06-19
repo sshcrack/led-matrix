@@ -64,11 +64,11 @@ set(VERSION 1.14.1)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
-    project(main VERSION ${VERSION})
+    project(led-matrix VERSION ${VERSION})
 endif()
 include(cmake/update_package_version.cmake)
 
-add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
+add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
@@ -549,10 +549,11 @@ if(ENABLE_DESKTOP)
 
         # Generate a proper changelog.Debian.gz so lintian is happy
         # (content is minimal; a real changelog lives in the git history)
-        set(CPACK_DEBIAN_CHANGELOG
+        file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian"
             "led-matrix-desktop (${PROJECT_VERSION}) stable; urgency=low\n\n"
             "  * See https://github.com/sshcrack/led-matrix/releases\n\n"
             " -- sshcrack <hendrik@sshcrack.me>  Sat, 01 Jan 2000 00:00:00 +0000\n")
+        set(CPACK_DEBIAN_CHANGELOG "${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian")
 
         # Install a .desktop file so the app appears in application launchers
         set(DESKTOP_FILE_CONTENT
@@ -609,7 +610,7 @@ else()
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, libgraphicsmagick++-q16-12 (>= 1.3.26), libxml2 (>= 2.9.0)")
+        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq, libgraphicsmagick++-q16-12 (>= 1.3.26), libxml2 (>= 2.9.0)")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"

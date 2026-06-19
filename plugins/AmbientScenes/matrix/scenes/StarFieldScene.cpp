@@ -56,7 +56,7 @@ namespace AmbientScenes {
             uint8_t brightness = static_cast<uint8_t>(255 * std::pow(depth_factor, 0.5f));
 
             // Add twinkle effect
-            if (enable_twinkle) {
+            if (enable_twinkle->get()) {
                 brightness = static_cast<uint8_t>(brightness * (0.8f + 0.2f * dis(gen)));
             }
 

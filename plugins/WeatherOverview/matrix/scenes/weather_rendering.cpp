@@ -220,6 +220,7 @@ void Scenes::WeatherScene::renderFogMist(rgb_matrix::FrameCanvas *canvas, const 
         const int NUM_PATCHES = num_dist(rng);
 
         if (!fog_initialized || last_fog_matrix_width != matrix_width || last_fog_matrix_height != matrix_height) {
+            fog_initialized = false;
             fog_patches.clear();
             std::uniform_real_distribution<float> r_dist(18.0f, 40.0f);
             std::uniform_real_distribution<float> d_dist(0.25f, 0.55f);
@@ -280,6 +281,8 @@ void Scenes::WeatherScene::renderFogMist(rgb_matrix::FrameCanvas *canvas, const 
                 SetPixelAlpha(canvas, x, y, 180, 180, 190, grad_alpha);
             }
         }
+    } else {
+        fog_initialized = false;
     }
 }
 
@@ -342,7 +345,7 @@ void Scenes::WeatherScene::renderAurora(rgb_matrix::FrameCanvas *canvas)
     if (!enable_aurora->get() || !enable_animations->get())
         return;
 
-    if (!data.is_day && data.temperature.find("-") != std::string::npos)
+    if (data.temperature != "N/A" && !data.is_day && data.temperature.find("-") != std::string::npos)
     {
         aurora_continuous_time += 0.02f * animation_speed_multiplier->get();
 
@@ -362,9 +365,9 @@ void Scenes::WeatherScene::renderAurora(rgb_matrix::FrameCanvas *canvas)
                 {
                     float alpha = (intensity - 0.1f) * 0.8f;
                     float color_shift = sin(aurora_continuous_time * 0.5f + x * 0.1f) * 0.3f;
-                    uint8_t r = static_cast<uint8_t>((intensity + color_shift * 0.5f) * 80);
-                    uint8_t g = static_cast<uint8_t>(intensity * 180 + color_shift * 40);
-                    uint8_t b = static_cast<uint8_t>(intensity * 120 - color_shift * 30);
+                    uint8_t r = static_cast<uint8_t>(std::clamp((intensity + color_shift * 0.5f) * 80, 0.0f, 255.0f));
+                    uint8_t g = static_cast<uint8_t>(std::clamp(intensity * 180 + color_shift * 40, 0.0f, 255.0f));
+                    uint8_t b = static_cast<uint8_t>(std::clamp(intensity * 120 - color_shift * 30, 0.0f, 255.0f));
 
                     SetPixelAlpha(canvas, x, y, r, g, b, alpha);
                 }

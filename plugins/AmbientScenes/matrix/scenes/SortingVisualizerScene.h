@@ -52,6 +52,7 @@ namespace AmbientScenes {
         int comb_gap;
         float comb_shrink;
         bool comb_swapped;
+        int comb_idx;
 
         // Gnome sort state
         int gnome_pos;
