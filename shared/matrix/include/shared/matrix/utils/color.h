@@ -8,6 +8,7 @@ namespace color {
 
 // h in [0, 360) degrees, s/l in [0, 1]
 inline void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b) {
+    if (std::isnan(h) || std::isnan(s) || std::isnan(l)) { r = g = b = 0; return; }
     h = std::fmod(h, 360.0f);
     if (h < 0) h += 360.0f;
     float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
@@ -29,6 +30,7 @@ inline void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_
 
 // h in [0, 360) degrees (same convention as hsl_to_rgb), s/v in [0, 1]
 inline void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
+    if (std::isnan(h) || std::isnan(s) || std::isnan(v)) { r = g = b = 0; return; }
     h = std::fmod(h, 360.0f);
     if (h < 0) h += 360.0f;
     h /= 360.0f;

@@ -2,6 +2,7 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
+#include <chrono>
 #include <random>
 #include "../WeatherParser.h"
 
@@ -10,7 +11,6 @@ constexpr int MAIN_ICON_SIZE = 42;
 constexpr int FORECAST_ICON_SIZE = 16;
 constexpr int MAX_SCROLL = 20;
 constexpr int SCROLL_PAUSE = 40;
-constexpr int ANIMATION_INTERVAL = 100;
 constexpr int MAX_PARTICLES = 50;
 constexpr float COLOR_TRANSITION_SPEED = 0.05f;
 constexpr int RAIN_SPEED_FACTOR = 2;

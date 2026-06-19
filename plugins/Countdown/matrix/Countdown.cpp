@@ -29,7 +29,7 @@ Countdown::Countdown() = default;
 std::optional<string> Countdown::before_server_init() {
     // Determine font directory (allow override via env)
     auto plugin_dir = std::filesystem::path(get_plugin_location()).parent_path();
-    auto font_dir = plugin_dir / "Countdown" / "fonts";
+    auto font_dir = plugin_dir / "fonts";
     if (std::getenv("COUNTDOWN_FONT_DIRECTORY") != nullptr) {
         font_dir = std::getenv("COUNTDOWN_FONT_DIRECTORY");
     }

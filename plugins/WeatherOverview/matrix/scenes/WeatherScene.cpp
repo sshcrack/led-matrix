@@ -175,6 +175,7 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
     if (elapsed >= weather_refresh_interval_seconds)
     {
         auto data_res = parser.get_data(location_lat->get(), location_lon->get());
+
         if (!data_res)
         {
             spdlog::warn("Could not get weather data: {}", data_res.error());
@@ -186,19 +187,11 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 
             SleepMillis(1000);
 
-#ifdef ENABLE_EMULATOR
-            ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
-#endif
-
             return false;
         }
 
-#ifdef ENABLE_EMULATOR
-        ((rgb_matrix::EmulatorMatrix *)canvas)->Render();
-#endif
-
-        data = data_res.value();
         last_weather_fetch = now;
+        data = data_res.value();
     }
 
     RGB theme_color = getThemeColor(color_theme->get().get(), data);

@@ -193,7 +193,11 @@ def run_opencode(
         tui.draw()
         time.sleep(0.05)
 
-    proc.wait(5)
+    try:
+        proc.wait(5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
     combined = "\n".join(accumulated)
 
     if rc == 0 and not interrupted:
@@ -311,7 +315,6 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
         ok, output = run_opencode(review_prompt, model, "Review", tui, timeout=args.review_timeout)
         if not ok:
             tui.log("Review phase failed — retrying", "yellow")
-            tui.iteration -= 1
             time.sleep(2)
             continue
 
@@ -331,7 +334,7 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
             tui.update_status("Clean — exiting")
             break
 
-        tui.total_bugs += len(bugs)
+        tui.total_bugs = len(bugs)
 
         # ── Phase 2: Fix ─────────────────────────────────────
         bugs_json = json.dumps(bugs, indent=2)

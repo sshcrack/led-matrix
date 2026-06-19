@@ -10,7 +10,6 @@
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;
 extern rgb_matrix::Font SMALL_FONT;
-extern rgb_matrix::Font TINY_FONT;  // New tiny font for additional details
 
 // Sky colors for different conditions
 namespace SkyColor {

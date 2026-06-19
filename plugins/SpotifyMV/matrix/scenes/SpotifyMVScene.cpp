@@ -12,12 +12,13 @@ namespace
 {
   Spotify *resolve_spotify()
   {
-    static std::once_flag warned;
+    static bool warned = false;
     if (!PluginRegistry::contains("spotify"))
     {
-      std::call_once(warned, [] {
+      if (!warned) {
         spdlog::warn("[SpotifyMVScene] SpotifyScenes unavailable (disabled or missing credentials) — track detection disabled");
-      });
+        warned = true;
+      }
       return nullptr;
     }
     auto pluginAny = PluginRegistry::get("spotify");

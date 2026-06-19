@@ -222,11 +222,7 @@ bool render_scene_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> sc
 {
     while (GetTimeInMillis() < end_ms)
     {
-        if (!scene->render(composite_offscreen_canvas) || interrupt_received || exit_canvas_update)
-        {
-            trace("Exiting scene early.");
-            return true;
-        }
+        bool cont = scene->render(composite_offscreen_canvas);
 
         if (auto* pp = Constants::global_post_processor)
         {
@@ -238,6 +234,12 @@ bool render_scene_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> sc
 #ifdef ENABLE_EMULATOR
         static_cast<rgb_matrix::EmulatorMatrix *>(matrix)->Render();
 #endif
+
+        if (!cont || interrupt_received || exit_canvas_update)
+        {
+            trace("Exiting scene early.");
+            return true;
+        }
     }
 
     return false;
@@ -258,8 +260,18 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
     while (true)
     {
         const auto now_ms = GetTimeInMillis();
-        if (now_ms - transition_start_ms > max_transition_ms)
+        if (now_ms - transition_start_ms > max_transition_ms) {
+            // Apply final blend before exiting
+            apply_transition_frame(composite_offscreen_canvas,
+                                   first_offscreen_canvas,
+                                   second_offscreen_canvas,
+                                   1.0f,
+                                   matrix_width,
+                                   matrix_height,
+                                   transition_name);
+            forced_scene = next_scene;
             break;
+        }
         const auto elapsed_transition = now_ms - transition_start_ms;
         const auto alpha_progress = std::clamp(
             static_cast<float>(elapsed_transition) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)),
@@ -287,6 +299,7 @@ void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scen
         if (!current_continue || !next_continue || interrupt_received || exit_canvas_update)
         {
             trace("Exiting scene early.");
+            forced_scene = next_scene;
             break;
         }
 

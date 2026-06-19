@@ -17,8 +17,8 @@ void Scenes::WeatherScene::resetStars()
 {
     this->stars.clear();
 
-    std::uniform_int_distribution<int> x_dist(0, matrix_width);
-    std::uniform_int_distribution<int> y_dist(0, matrix_height);
+    std::uniform_int_distribution<int> x_dist(0, matrix_width - 1);
+    std::uniform_int_distribution<int> y_dist(0, matrix_height - 1);
     for (int i = 0; i < 20; i++)
     {
         stars.emplace_back(x_dist(rng), y_dist(rng));
@@ -199,7 +199,7 @@ void Scenes::WeatherScene::updateEnhancedParticles(const WeatherData &data)
             if (p.y > matrix_height || p.x < -5 || p.x > matrix_width + 5 || p.opacity < 10)
             {
                 p.active = false;
-                active_particles--;
+                if (active_particles > 0) active_particles--;
             }
         }
     }

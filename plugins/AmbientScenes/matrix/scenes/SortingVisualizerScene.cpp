@@ -56,6 +56,7 @@ namespace AmbientScenes {
         comb_gap = 0;
         comb_shrink = 1.3f;
         comb_swapped = false;
+        comb_idx = 0;
 
         gnome_pos = 1;
 

@@ -4,7 +4,7 @@ set -e
 
 script_dir=$(dirname "$(readlink -f "$0")")
 (
-    cd $script_dir/..
+    cd "$script_dir"/..
     if [  -f ".env" ]; then
         echo "Environment file found at '.env'. Sourcing..."
         set -a && source .env && set +a

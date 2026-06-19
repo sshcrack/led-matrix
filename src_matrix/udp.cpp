@@ -44,7 +44,7 @@ void UdpServer::server_loop()
 
         // Process complete packets in the buffer
         size_t offset = 0;
-        while (packet_buffer.size() - offset >= packet_header_size)
+        while (offset + packet_header_size <= packet_buffer.size())
         {
             const uint8_t *data = packet_buffer.data() + offset;
 
@@ -65,7 +65,7 @@ void UdpServer::server_loop()
                                     (static_cast<uint32_t>(data[6]));
 
             // Check if we have the complete packet
-            if (packet_buffer.size() - offset < packet_header_size + payload_size)
+            if (offset + packet_header_size + payload_size > packet_buffer.size())
             {
                 // Not enough data for full payload, wait for more data
                 break;

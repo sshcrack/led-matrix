@@ -164,7 +164,9 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     // If fast start fails (e.g. yt-dlp flake) we fall through and wait
                     // for the full chunk like before — no UX regression.
                     if (running_.load()) {
-                        play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_);
+                        if (!play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_) && !running_.load()) {
+                            break;
+                        }
                     }
 
                     // Now wait for the full chunk to be ready
@@ -323,11 +325,24 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
         return false;
     }
     CloseHandle(hWrite);
+    int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
+    if (fd == -1) {
+        CloseHandle(hRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        spdlog::warn("Fast chunk: _open_osfhandle failed, skipping fast start");
+        return false;
+    }
+    FILE* pipe = _fdopen(fd, "rb");
+    if (!pipe) {
+        _close(fd);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        spdlog::warn("Fast chunk: _fdopen failed, skipping fast start");
+        return false;
+    }
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
-    FILE* pipe = _fdopen(fd, "rb");
-    if (!pipe) { CloseHandle(hRead); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return false; }
     ffmpeg_pid_ = static_cast<int>(pi.dwProcessId);
 #else
     int fds[2];
@@ -383,7 +398,15 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
         kill(pid, SIGTERM);
         int status;
-        waitpid(pid, &status, 0);
+        for (int i = 0; i < 20; ++i) {
+            pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result == pid) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (waitpid(pid, &status, WNOHANG) == 0) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
         ffmpeg_pid_ = -1;
     }
     fclose(pipe);
@@ -405,6 +428,17 @@ void VideoStreamEngine::stop() {
         if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
 #else
         kill(pid, SIGTERM);
+        int status;
+        for (int i = 0; i < 20; ++i) {
+            pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result == pid) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (waitpid(pid, &status, WNOHANG) == 0) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
+        ffmpeg_pid_ = -1;
 #endif
     }
 
