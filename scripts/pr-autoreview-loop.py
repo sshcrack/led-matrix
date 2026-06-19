@@ -297,7 +297,7 @@ def run_loop(tui: TUI, args: argparse.Namespace) -> None:
             f"Spin up subagents to review each area of change. "
             f"Go deep: look for bugs, UB, memory errors, race conditions, "
             f"logic errors, API misuse, wrong defaults, missing error handling.\n\n"
-            f"Each subagent reports back to you. Then aggregate all findings.\n\n"
+            f"Each subagent reports back to you. SPIN THEM UP IN PARALLEL! Also if you need full git diffs, use /usr/bin/git. Then aggregate all findings.\n\n"
             f"IMPORTANT — write the result to {RESULT_FILE} as a JSON file:\n"
             f'{RESULT_FILE} ← a JSON array of bug objects:\n'
             f'[{{"file":"<path>", "line":<int>, '
