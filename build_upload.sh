@@ -12,4 +12,3 @@ fi
 echo "Installing $deb on ledmat..."
 rsync -avz "$deb" ledmat:/tmp/
 ssh ledmat sudo dpkg -i "/tmp/$(basename "$deb")"
-ssh ledmat sudo systemctl restart led-matrix.service

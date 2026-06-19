@@ -367,11 +367,11 @@ void SnakeGameScene::renderWin(rgb_matrix::FrameCanvas *canvas) {
     win_animation_frame++;
     
     // Rainbow celebration effect
-    float hue_offset = win_animation_frame * 0.1f / 360.0f;
-    
+    float hue_offset = std::fmod(win_animation_frame * 0.1f, 360.0f);
+
     for (int y = 0; y < matrix_height; y++) {
         for (int x = 0; x < matrix_width; x++) {
-            float hue = fmod(hue_offset + (x + y) * 20.0f / 360.0f, 1.0f);
+            float hue = std::fmod(hue_offset + (x + y) * 20.0f, 360.0f);
             
             uint8_t r, g, b;
             color::hsv_to_rgb(hue, 1.0f, 0.8f, r, g, b);
@@ -391,7 +391,7 @@ rgb_matrix::Color SnakeGameScene::getSnakeColor(int segment_index) const {
         // Rainbow snake - each segment has different color
         // Use frame_counter as a simple time source for animation
         float time_factor = frame_counter / static_cast<float>(std::max(1, get_target_fps()));
-        float hue = fmod(segment_index * 30.0f / 360.0f + time_factor * 50.0f / 360.0f, 1.0f);
+        float hue = fmod(segment_index * 30.0f + time_factor * 50.0f, 360.0f);
         
         uint8_t r, g, b;
         color::hsv_to_rgb(hue, 1.0f, 0.9f, r, g, b);

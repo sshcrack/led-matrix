@@ -3,6 +3,8 @@
 #include "../Constants.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include "shared/matrix/utils/utils.h"
+#include <algorithm>
+#include <ctime>
 #include <iostream>
 #ifdef ENABLE_EMULATOR
 #include "emulator.h"
@@ -149,23 +151,6 @@ void Scenes::WeatherScene::renderClock(rgb_matrix::FrameCanvas *canvas) const
     rgb_matrix::DrawText(canvas, BODY_FONT, 98, 11, {255, 255, 255}, output);
 }
 
-void Scenes::WeatherScene::updateAnimationState(const WeatherData &data)
-{
-    has_precipitation = false;
-
-    if (!enable_animations->get())
-    {
-        return;
-    }
-
-    if (particles.empty())
-    {
-        initializeParticles();
-    }
-
-    updateEnhancedParticles(data);
-}
-
 void Scenes::WeatherScene::renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
 {
     if (!enable_animations->get())
@@ -225,10 +210,7 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 
     animation_frame = (animation_frame + 1) % std::max(1, get_target_fps());
 
-    if (enable_animations->get())
-    {
-        updateEnhancedParticles(data);
-    }
+    updateEnhancedParticles(data);
     canvas->Clear();
 
     if (gradient_background->get())

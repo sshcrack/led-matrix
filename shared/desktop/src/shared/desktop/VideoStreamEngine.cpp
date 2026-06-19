@@ -323,6 +323,8 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
         return false;
     }
     CloseHandle(hWrite);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
     int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
     FILE* pipe = _fdopen(fd, "rb");
     if (!pipe) { CloseHandle(hRead); CloseHandle(pi.hProcess); CloseHandle(pi.hThread); return false; }
@@ -396,12 +398,15 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 void VideoStreamEngine::stop() {
     running_ = false;
 
-#ifndef _WIN32
     // Kill ffmpeg child process to unblock fread() in play_fast_chunk
     if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+#ifdef _WIN32
+        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, static_cast<DWORD>(pid));
+        if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
+#else
         kill(pid, SIGTERM);
-    }
 #endif
+    }
 
     std::function<void(const std::string &)> tmp_status_change;
     // Clear the status callback BEFORE joining threads.

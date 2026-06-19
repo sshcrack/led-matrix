@@ -204,7 +204,7 @@ void RenderingDemoScene::renderParticleSystem(rgb_matrix::FrameCanvas *canvas) {
             }
             
             // Convert iterations to color
-            float hue = static_cast<float>(iterations) / max_iterations + time * 50.0f / 360.0f;
+            float hue = static_cast<float>(iterations) / max_iterations * 360.0f + time * 50.0f;
             uint8_t r, g, b;
             color::hsv_to_rgb(hue, 1.0f, iterations < max_iterations ? 1.0f : 0.0f, r, g, b);
             

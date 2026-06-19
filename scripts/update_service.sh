@@ -10,7 +10,7 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') [UPDATE] $1" | tee -a /var/log/led-ma
 error_exit() {
     log "ERROR: $1"
     echo "$1" > "$ERROR_FLAG"
-    systemctl start led-matrix.service || log "Failed to restart service"
+    systemctl start led-matrix.service || log "Failed to start service"
     exit 1
 }
 

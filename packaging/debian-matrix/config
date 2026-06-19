@@ -23,7 +23,6 @@ if [ "$RET" = "true" ]; then
 fi
 
 # Ask update configuration questions
-db_get led-matrix/auto-update-enable
 db_input medium led-matrix/auto-update-enable || true
 db_go || true
 
