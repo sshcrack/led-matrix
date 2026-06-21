@@ -65,6 +65,8 @@ jobs:
           path: artifacts
 
       - name: Post or update PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           header="## Build Artifacts"
           body="$header
