@@ -4,11 +4,6 @@ import { Label } from '~/components/ui/label'
 import { titleCase } from '~/lib/utils'
 import type { Property } from '~/apiTypes/list_scenes'
 
-interface EnumValueItem {
-  value: string
-  display_name?: string
-}
-
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
