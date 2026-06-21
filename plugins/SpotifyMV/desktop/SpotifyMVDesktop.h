@@ -54,6 +54,14 @@ private:
     std::vector<uint8_t> old_last_frame_;
     int crossfade_duration_ms_ = 500;
 
+    // Chunk size (seconds of video downloaded/transcoded per chunk). Smaller
+    // chunks reduce the chance of a mid-playback stall on slow connections
+    // (less to download before the next chunk is needed) at the cost of more
+    // frequent yt-dlp/ffmpeg invocations. Configurable from the desktop UI;
+    // applies to engines created after the change (not the one currently
+    // playing).
+    std::atomic<int> chunk_duration_sec_{20};
+
     void on_pending_first_frame();
 
     void search_and_play(Shared::VideoStreamEngine* engine,
