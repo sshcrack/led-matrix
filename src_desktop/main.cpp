@@ -557,8 +557,10 @@ int run_app(int argc, char *argv[]) {
 
     ws = nullptr;
     ws_sp.reset();
-    pl->destroy_plugins();
+    // Destroy config BEFORE plugins: ~ConfigManager saveConfig()
+    // iterates plugins — they must still be alive.
     delete cfg;
+    pl->destroy_plugins();
     delete instanceManager;
     spdlog::info("Exited cleanly.");
     return 0;

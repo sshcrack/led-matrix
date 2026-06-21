@@ -151,10 +151,19 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     // then immediately stream a short clip so playback starts in seconds.
                     int fast_start_sec = start_chunk * chunk_duration_sec_ +
                                          static_cast<int>(skip_frames / fps_);
+                    // Align the initial full-chunk download with the seek point
+                    // (fast_start_sec) instead of the fixed chunk boundary.
+                    // This avoids wasting bandwidth on data before the seek and
+                    // gives the full chunk_duration_sec_ of play-time before the
+                    // prefetch of the next chunk is needed, eliminating the
+                    // "chunk finished before prefetch" stall when starting mid-chunk.
+                    int initial_chunk_sec = fast_start_sec;
                     auto full_chunk_done = std::make_shared<std::atomic<bool>>(false);
                     auto full_chunk_ok   = std::make_shared<std::atomic<bool>>(false);
-                    std::thread full_chunk_thread([this, start_chunk, full_chunk_done, full_chunk_ok]() {
-                        *full_chunk_ok = download_and_process_chunk(start_chunk);
+                    std::thread full_chunk_thread([this, start_chunk, initial_chunk_sec,
+                                                    full_chunk_done, full_chunk_ok]() {
+                        *full_chunk_ok = download_and_process_chunk(
+                            start_chunk, true, initial_chunk_sec);
                         if (start_chunk == 0 && full_chunk_ok->load())
                             evict_oldest_first_chunks();
                         *full_chunk_done = true;
@@ -182,10 +191,10 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     if (!full_chunk_ok->load()) {
                         break;
                     }
-                    // Advance skip_frames past what the fast chunk already displayed,
-                    // so the normal play_chunk doesn't replay those frames.
-                    skip_frames = static_cast<int>(fast_start_sec * fps_) +
-                                  static_cast<int>(fast_chunk_duration_sec_ * fps_);
+                    // The full chunk now starts at fast_start_sec (aligned to the
+                    // seek point), so we only skip frames the fast chunk already
+                    // played — not the gap between the chunk boundary and the seek.
+                    skip_frames = static_cast<int>(fast_chunk_duration_sec_ * fps_);
                     // Clamp to chunk size so we don't skip past the end
                     int max_skip = static_cast<int>(chunk_duration_sec_ * fps_);
                     if (skip_frames > max_skip) skip_frames = max_skip;
@@ -562,16 +571,21 @@ bool VideoStreamEngine::tick() {
 }
 
 bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
-                                                    bool set_error_on_fail) {
+                                                    bool set_error_on_fail,
+                                                    int start_sec_override) {
     try {
-        const int start_sec = chunk_index * chunk_duration_sec_;
+        const int normal_start = chunk_index * chunk_duration_sec_;
+        const int start_sec = (start_sec_override >= 0) ? start_sec_override : normal_start;
         const int end_sec   = start_sec + chunk_duration_sec_;
 
         auto mp4Path = chunk_mp4_path(chunk_index);
         auto binPath = chunk_bin_path(chunk_index);
 
         std::error_code ec;
-        if (std::filesystem::exists(binPath, ec) &&
+        // When using an override (seek-based offset), always re-download —
+        // a different seek position means different content.
+        if (start_sec_override < 0 &&
+            std::filesystem::exists(binPath, ec) &&
             std::filesystem::file_size(binPath, ec) > 0) {
             spdlog::info("Chunk {} already on disk, skipping download", chunk_index);
             return true;
