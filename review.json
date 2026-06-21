@@ -1,12 +1,79 @@
 [
-  {"file":"shared/matrix/include/shared/matrix/utils/color.h", "line":31, "description":"hsv_to_rgb expects hue in [0,360) but 5/7 callers pass [0,1] values after the 4995bbe 'fix' — every caller divides by 360 before calling, then the function divides by 360 again. Effective hue stuck near 0 (always redish). Only AudioSpectrumScene and weather_rendering survived with *360 factor intact", "severity":"high", "category":"bug"},
-  {"file":"plugins/GameScenes/matrix/scenes/SnakeGameScene.cpp", "line":370, "description":"renderWin: hue computed as fmod(hue_offset + (x+y)*20/360, 1.0) giving [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
-  {"file":"plugins/GameScenes/matrix/scenes/SnakeGameScene.cpp", "line":394, "description":"getSnakeColor: hue computed as fmod(segment_index*30/360 + time_factor*50/360, 1.0) giving [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
-  {"file":"plugins/ExampleScenes/matrix/scenes/RenderingDemoScene.cpp", "line":207, "description":"renderMathematicalVisualization: hue = iterations/max_iterations + time*50/360 gives [0,~1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
-  {"file":"plugins/FractalScenes/matrix/scenes/WavePatternScene.cpp", "line":71, "description":"hue = fmod(normalized_x + time*0.1, 1.0) gives [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
-  {"file":"plugins/FractalScenes/matrix/scenes/JuliaSetScene.cpp", "line":65, "description":"hue = fmod(smoothed*0.01 + color_shift, 1.0) gives [0,1], but hsv_to_rgb expects [0,360)", "severity":"high", "category":"bug"},
-  {"file":"plugins/PixelJoint/matrix/PixelJoint.cpp", "line":143, "description":"handle_providers(req, preset_id, scene_id) — arguments swapped: function signature expects (req, scene_id, preset_id) but caller passes (req, preset_id, scene_id). Causes preset lookup to receive scene_id and scene match to receive preset_id", "severity":"medium", "category":"bug"},
-  {"file":"plugins/SpotifyScenes/matrix/scenes/CoverOnlyScene.cpp", "line":339, "description":"Old curr_content_stream (MemStreamIO*) deleted at line 340 before old curr_animation (StreamReader, which references the same MemStreamIO) is destroyed at line 345. If StreamReader destructor touches the StreamIO, this is use-after-free", "severity":"medium", "category":"bug"},
-  {"file":"plugins/SpotifyScenes/matrix/SpotifyScenes.cpp", "line":119, "description":"generate_random_string uses static std::mt19937 rng without mutex — data race if /spotify/login route receives concurrent requests (restinio may dispatch to multiple threads)", "severity":"medium", "category":"bug"},
-  {"file":"plugins/SpotifyScenes/matrix/scenes/CoverOnlyScene.cpp", "line":69, "description":"drawGlowingBorder constructs rgb_matrix::Color(color.r * intensity, ...) where color.r is uint8_t and intensity is float. Narrowing float→uint8_t passed to Color ctor — truncation, no rounding", "severity":"low", "category":"smell"}
+  {
+    "file": ".github/workflows/create-release.yml",
+    "line": 149,
+    "description": "gh release upload paths omit build directory prefix. Artifacts downloaded from build-matrix.yml contain paths like build/led-matrix-1.14.1_arm64.deb and desktop_build/led-matrix-desktop-1.14.1-Linux.deb, but upload commands reference artifacts/led-matrix-build/led-matrix-1.14.1_arm64.deb (missing build/) and artifacts/desktop-linux-build/led-matrix-desktop-1.14.1-Linux.deb (missing desktop_build/). All 6 upload paths on lines 149-156 are affected — release creation will fail with file-not-found.",
+    "severity": "high",
+    "category": "bug"
+  },
+  {
+    "file": "scripts/install_led_matrix.sh",
+    "line": 56,
+    "description": "|| true masks all installation failures. On dpkg -i failure, apt-get install -f -y is attempted; if that also fails, || true swallows the error. Script always prints 'Installation complete!' regardless of outcome. User gets no indication of failure.",
+    "severity": "high",
+    "category": "bug"
+  },
+  {
+    "file": ".github/workflows/build-matrix.yml",
+    "line": 152,
+    "description": "DEB artifact glob pattern led-matrix-*-arm64.deb uses a hyphen before arm64 but CPACK_DEBIAN_PACKAGE_FILE_NAME in CMakeLists.txt:627 produces led-matrix-{version}_arm64.deb with an underscore. Glob won't match in CI runs (when inputs.version is empty), so the DEB won't be uploaded as a CI artifact. The TGZ glob on line 151 is correct (uses hyphen).",
+    "severity": "medium",
+    "category": "bug"
+  },
+  {
+    "file": "packaging/debian-matrix/postinst",
+    "line": 110,
+    "description": "jq is used to update config.json on package upgrades but is not listed in CPACK_DEBIAN_PACKAGE_DEPENDS (CMakeLists.txt:611-612). On systems without jq, current_version in config.json never advances past the initial install value, which may cause the auto-updater to think it is perpetually out of date and re-download the current version.",
+    "severity": "medium",
+    "category": "bug"
+  },
+  {
+    "file": ".github/workflows/create-release.yml",
+    "line": 131,
+    "description": "Multi-line PR list from gh pr list is substituted into a sed s||| replacement via $PRS (unquoted). If PR titles contain |, &, \ or newlines, sed may silently corrupt the changelog or fail. Template files .github/changelog-template.md and .github/changelog-no-prs-template.md exist (62B/49B) but the fragile sed pipeline is not the right approach for multi-line substitution.",
+    "severity": "medium",
+    "category": "smell"
+  },
+  {
+    "file": "scripts/pr-autoreview-loop.py",
+    "line": 196,
+    "description": "Unhandled subprocess.TimeoutExpired after timeout (line 179-183). When proc.terminate() times out at line 180, the loop breaks then calls proc.wait(5) at line 196. If the process refuses to die within 5 seconds, wait() raises TimeoutExpired which propagates uncaught, crashing the TUI.",
+    "severity": "medium",
+    "category": "bug"
+  },
+  {
+    "file": "scripts/update_service.sh",
+    "line": 19,
+    "description": "error_exit called with unused second argument in two places (line 19: error_exit 'Usage: ...' ''; line 20: error_exit 'DEB file not found: ...' '$deb_file'). The function ignores $2. The dead argument on line 19 is harmless; the one on line 20 was presumably meant to pass the filename for diagnostics but goes unused.",
+    "severity": "low",
+    "category": "smell"
+  },
+  {
+    "file": "scripts/update_service.sh",
+    "line": 13,
+    "description": "After dpkg -i fails, error_exit calls systemctl start led-matrix.service to restore operation. But the dpkg postinst may have already run systemctl restart (via postinst line 133), leaving the service running the new (possibly broken) binary, or the old binary may have been partially overwritten by the failed dpkg. Starting a partially-updated binary could lead to undefined behavior.",
+    "severity": "low",
+    "category": "smell"
+  },
+  {
+    "file": "CMakeLists.txt",
+    "line": 627,
+    "description": "DEB package filename led-matrix-{version}_arm64 uses a hyphen between package name and version (led-matrix-1.14.1_arm64.deb) instead of the Debian convention underscore (led-matrix_1.14.1_arm64.deb). Non-standard naming confuses tools like lintian and apt-listchanges. The hyphen in the glob pattern in build-matrix.yml:152 is derived from this but mismatches the underscore separator before arm64.",
+    "severity": "low",
+    "category": "smell"
+  },
+  {
+    "file": "scripts/pr-autoreview-loop.py",
+    "line": 23,
+    "description": "Hardcoded /tmp/pr-autoreview-result.json is vulnerable to symlink attacks and races between concurrent instances. Should use tempfile.NamedTemporaryFile or a REPO_DIR-scoped path.",
+    "severity": "low",
+    "category": "smell"
+  },
+  {
+    "file": ".github/workflows/build-matrix.yml",
+    "line": 54,
+    "description": "awalsh128/cache-apt-pkgs-action referenced at @latest instead of a pinned version. The action may break on any upstream release without warning. Pin to a specific commit or semver tag.",
+    "severity": "low",
+    "category": "smell"
+  }
 ]

@@ -5,6 +5,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <memory>
 #include <unordered_map>
 #include <spdlog/spdlog.h>
@@ -18,6 +19,12 @@ public:
     static WebsocketClient *instance();
 
     static void setInstance(WebsocketClient *instance);
+
+    static std::atomic<int>& net_refs()
+    {
+        static std::atomic<int> refs{0};
+        return refs;
+    }
 
     ix::ReadyState getReadyState() const
     {
