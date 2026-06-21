@@ -1,4 +1,5 @@
 #include "shared/desktop/utils.h"
+#include <array>
 #include <cerrno>
 #include <fstream>
 #include <thread>
@@ -132,4 +133,56 @@ int run_command(const std::string& cmd,
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 #endif
+}
+
+std::string run_command_and_get_output(const std::string& cmd) {
+    std::string result;
+#ifdef _WIN32
+    HANDLE hRead, hWrite;
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+        return {};
+    if (!SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        return {};
+    }
+    STARTUPINFOA si{};
+    PROCESS_INFORMATION pi{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.wShowWindow = SW_HIDE;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    std::string fullCmd = "cmd.exe /C " + cmd;
+    std::vector<char> cmdline(fullCmd.begin(), fullCmd.end());
+    cmdline.push_back('\0');
+    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        return {};
+    }
+    CloseHandle(hWrite);
+    std::array<char, 4096> buf{};
+    DWORD bytesRead;
+    while (ReadFile(hRead, buf.data(), static_cast<DWORD>(buf.size() - 1), &bytesRead, nullptr)
+           && bytesRead > 0) {
+        buf[bytesRead] = '\0';
+        result += buf.data();
+    }
+    CloseHandle(hRead);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+#else
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return {};
+    std::array<char, 4096> buf{};
+    while (fgets(buf.data(), static_cast<int>(buf.size()), pipe))
+        result += buf.data();
+    pclose(pipe);
+#endif
+    return result;
 }

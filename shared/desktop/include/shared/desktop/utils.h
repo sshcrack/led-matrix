@@ -10,3 +10,4 @@ SHARED_DESKTOP_API bool isWritableExistingFile(const std::filesystem::path &path
 SHARED_DESKTOP_API std::filesystem::path get_data_dir();
 SHARED_DESKTOP_API int run_command(const std::string& cmd,
                                     const std::atomic<bool>* running = nullptr);
+SHARED_DESKTOP_API std::string run_command_and_get_output(const std::string& cmd);
