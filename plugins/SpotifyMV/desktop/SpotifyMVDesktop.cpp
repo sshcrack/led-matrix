@@ -2,15 +2,9 @@
 #include "SpotifyMVPacket.h"
 #include "YouTubeSearcher.h"
 #include "shared/desktop/utils.h"
-#include <cstdio>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <cpr/cpr.h>
-
-#ifdef _WIN32
-#define popen _popen
-#define pclose _pclose
-#endif
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -23,20 +17,20 @@ extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVDesktop* c) { delete c; 
 SpotifyMVDesktop::~SpotifyMVDesktop() {
     if (search_thread_.joinable()) search_thread_.join();
     if (pending_engine_) {
-        {
-            std::lock_guard<std::mutex> lk(engine_mutex_);
-            pending_engine_->on_status_change = nullptr;
-            pending_engine_->on_first_frame_ready = nullptr;
-            pending_engine_->stop();
-        }
+        std::lock_guard<std::mutex> lk(engine_mutex_);
+        pending_engine_->stop();
+        // Clear AFTER stop() — stop() restores the captured callback, so we
+        // must null it out afterward to prevent ~VideoStreamEngine() from
+        // holding a dangling capture (the lambda's `this` becomes invalid as
+        // member destructors unwind).
+        pending_engine_->on_status_change = nullptr;
+        pending_engine_->on_first_frame_ready = nullptr;
     }
     if (current_engine_) {
-        {
-            std::lock_guard<std::mutex> lk(engine_mutex_);
-            current_engine_->on_status_change = nullptr;
-            current_engine_->on_first_frame_ready = nullptr;
-            current_engine_->stop();
-        }
+        std::lock_guard<std::mutex> lk(engine_mutex_);
+        current_engine_->stop();
+        current_engine_->on_status_change = nullptr;
+        current_engine_->on_first_frame_ready = nullptr;
     }
 }
 
@@ -464,18 +458,15 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
+    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>"
 #ifdef _WIN32
-    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>nul";
+                         "nul";
 #else
-    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>/dev/null";
+                         "/dev/null";
 #endif
-    FILE* durPipe = popen(durCmd.c_str(), "r");
-    if (durPipe) {
-        char buf[64];
-        if (fgets(buf, sizeof(buf), durPipe)) {
-            try { video_duration = std::stod(buf); } catch (...) {}
-        }
-        pclose(durPipe);
+    std::string durOut = run_command_and_get_output(durCmd);
+    if (!durOut.empty()) {
+        try { video_duration = std::stod(durOut); } catch (...) {}
     }
     if (video_duration <= 0) {
         spdlog::warn("SpotifyMV: could not get video duration, falling back to raw seek");
