@@ -8,6 +8,40 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+namespace {
+
+const char* engine_state_label(Shared::VideoStreamEngine::State s) {
+    switch (s) {
+    case Shared::VideoStreamEngine::State::Idle:        return "Idle";
+    case Shared::VideoStreamEngine::State::Downloading: return "Downloading";
+    case Shared::VideoStreamEngine::State::Playing:     return "Playing";
+    case Shared::VideoStreamEngine::State::Error:       return "Error";
+    }
+    return "Unknown";
+}
+
+ImVec4 engine_state_color(Shared::VideoStreamEngine::State s) {
+    switch (s) {
+    case Shared::VideoStreamEngine::State::Idle:        return {0.5f, 0.5f, 0.5f, 1};
+    case Shared::VideoStreamEngine::State::Downloading: return {1, 1, 0, 1};
+    case Shared::VideoStreamEngine::State::Playing:     return {0, 1, 0, 1};
+    case Shared::VideoStreamEngine::State::Error:       return {1, 0, 0, 1};
+    }
+    return {1, 1, 1, 1};
+}
+
+void draw_engine_status(Shared::VideoStreamEngine::State state,
+                         const std::string& error) {
+    ImGui::TextColored(engine_state_color(state), "State: %s",
+                       engine_state_label(state));
+    ImGui::SameLine();
+    ImGui::ProgressBar(0, ImVec2(-FLT_MIN, 0), "");
+    if (state == Shared::VideoStreamEngine::State::Error && !error.empty())
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", error.c_str());
+}
+
+} // anonymous namespace
+
 extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV() {
     return new SpotifyMVDesktop();
 }
@@ -91,56 +125,113 @@ void SpotifyMVDesktop::render() {
                              "Applies to the next track loaded, not the one currently playing.");
     }
 
-    {
-        std::lock_guard<std::mutex> lk(track_id_mutex_);
-        ImGui::Text("Current track: %s", current_track_id_.empty() ? "None" : current_track_id_.c_str());
-        if (!pending_track_id_.empty())
-            ImGui::Text("Pending track: %s", pending_track_id_.c_str());
-    }
-
-    std::string url;
-    Shared::VideoStreamEngine::State state = Shared::VideoStreamEngine::State::Idle;
-    std::string last_error;
+    // ── Snapshot engine state under lock ────────────────────────────────
+    std::string cur_url;
+    Shared::VideoStreamEngine::State cur_state = Shared::VideoStreamEngine::State::Idle;
+    std::string cur_error;
     bool has_pending = false;
-    Shared::VideoStreamEngine::State pending_state = Shared::VideoStreamEngine::State::Idle;
+    std::string pend_url;
+    Shared::VideoStreamEngine::State pend_state = Shared::VideoStreamEngine::State::Idle;
+    std::string pend_error;
     {
         std::lock_guard<std::mutex> lk(engine_mutex_);
-        if (!current_engine_) return;
-        url = current_engine_->get_current_url();
-        state = current_engine_->get_state();
-        last_error = current_engine_->get_last_error();
+        if (current_engine_) {
+            cur_url = current_engine_->get_current_url();
+            cur_state = current_engine_->get_state();
+            cur_error = current_engine_->get_last_error();
+        }
         if (pending_engine_) {
             has_pending = true;
-            pending_state = pending_engine_->get_state();
+            pend_url = pending_engine_->get_current_url();
+            pend_state = pending_engine_->get_state();
+            pend_error = pending_engine_->get_last_error();
         }
     }
 
-    ImGui::Text("URL: %s", url.empty() ? "None" : url.c_str());
-
-    const char* stateStr = "Unknown";
-    ImVec4 stateColor = {1, 1, 1, 1};
-    switch (state) {
-    case Shared::VideoStreamEngine::State::Idle:        stateStr = "Idle";        break;
-    case Shared::VideoStreamEngine::State::Downloading: stateStr = "Downloading"; stateColor = {1, 1, 0, 1}; break;
-    case Shared::VideoStreamEngine::State::Playing:     stateStr = "Playing";     stateColor = {0, 1, 0, 1}; break;
-    case Shared::VideoStreamEngine::State::Error:       stateStr = "Error";       stateColor = {1, 0, 0, 1}; break;
+    std::string cur_track;
+    std::string pend_track;
+    {
+        std::lock_guard<std::mutex> lk(track_id_mutex_);
+        cur_track = current_track_id_;
+        pend_track = pending_track_id_;
     }
-    ImGui::TextColored(stateColor, "State: %s", stateStr);
+
+    // ── Overall status bar ──────────────────────────────────────────────
+    {
+        ImVec4 barColor = {0.3f, 0.3f, 0.3f, 1};
+        const char* barLabel = "Idle";
+        if (cur_state == Shared::VideoStreamEngine::State::Downloading) {
+            barColor = {1, 1, 0, 1}; barLabel = "Downloading";
+        } else if (cur_state == Shared::VideoStreamEngine::State::Playing) {
+            barColor = {0, 1, 0, 1}; barLabel = "Playing";
+        } else if (cur_state == Shared::VideoStreamEngine::State::Error) {
+            barColor = {1, 0, 0, 1}; barLabel = "Error";
+        }
+        if (crossfade_active_.load()) {
+            barColor = {0.5f, 0.5f, 1, 1}; barLabel = "Crossfading";
+        } else if (search_running_.load() && cur_state != Shared::VideoStreamEngine::State::Playing) {
+            barColor = {0, 0.84f, 0.38f, 1}; barLabel = "Searching";
+        }
+        ImGui::PushStyleColor(ImGuiCol_Button, barColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, barColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, barColor);
+        ImGui::Button(barLabel, ImVec2(-FLT_MIN, 28));
+        ImGui::PopStyleColor(3);
+    }
+
+    // ── Current track info ──────────────────────────────────────────────
+    ImGui::Text("Track: %s", cur_track.empty() ? "None" : cur_track.c_str());
+    if (!pend_track.empty())
+        ImGui::Text("Next:  %s", pend_track.c_str());
+    if (!cur_url.empty())
+        ImGui::Text("URL:   %s", cur_url.c_str());
+
+    // ── Search status ───────────────────────────────────────────────────
     if (search_running_.load())
-        ImGui::TextColored(ImVec4(0, 0.84f, 0.38f, 1), "YouTube search in progress...");
+        ImGui::TextColored(ImVec4(0, 0.84f, 0.38f, 1), "Searching YouTube...");
 
-    if (crossfade_active_.load())
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1), "Crossfading...");
+    // ── Crossfade progress ──────────────────────────────────────────────
+    if (crossfade_active_.load()) {
+        auto elapsed = std::chrono::steady_clock::now() - crossfade_start_;
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+        float ratio = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
+        float progress = ratio > 1.0f ? 1.0f : ratio;
+        ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0), "Crossfade");
+    }
 
-    if (state == Shared::VideoStreamEngine::State::Error)
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Last Error: %s", last_error.c_str());
+    // ── Engine status cards ─────────────────────────────────────────────
+    if (ImGui::BeginTable("##engines", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchSame)) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::SeparatorText("Current Engine");
+        draw_engine_status(cur_state, cur_error);
+        ImGui::TableNextColumn();
+        ImGui::SeparatorText("Pending Engine");
+        if (has_pending)
+            draw_engine_status(pend_state, pend_error);
+        else
+            ImGui::TextDisabled("None");
+        ImGui::EndTable();
+    }
 
-    if (has_pending) {
-        const char* pStr = "Idle";
-        if (pending_state == Shared::VideoStreamEngine::State::Downloading) pStr = "Downloading";
-        else if (pending_state == Shared::VideoStreamEngine::State::Playing) pStr = "Playing";
-        else if (pending_state == Shared::VideoStreamEngine::State::Error)   pStr = "Error";
-        ImGui::Text("Pending engine: %s", pStr);
+    // ── Error display ────────────────────────────────────────────────────
+    if (cur_state == Shared::VideoStreamEngine::State::Error && !cur_error.empty())
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", cur_error.c_str());
+    if (has_pending && pend_state == Shared::VideoStreamEngine::State::Error && !pend_error.empty())
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Pending Error: %s", pend_error.c_str());
+
+    // ── Debug section ───────────────────────────────────────────────────
+    if (ImGui::CollapsingHeader("Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Total tracks played: %d", total_tracks_played_.load());
+        ImGui::Text("Total errors:       %d", total_errors_.load());
+        ImGui::Text("Engine swaps:       %d", total_swaps_.load());
+        ImGui::Text("Search running:     %s", search_running_.load() ? "Yes" : "No");
+        ImGui::Text("Crossfade active:   %s", crossfade_active_.load() ? "Yes" : "No");
+        ImGui::Separator();
+        ImGui::Text("Current engine:     %s", current_engine_ ? "Valid" : "NULL");
+        ImGui::Text("Pending engine:     %s", pending_engine_ ? "Valid" : "NULL");
+        if (has_pending)
+            ImGui::Text("Pending URL:  %s", pend_url.empty() ? "None" : pend_url.c_str());
     }
 }
 
@@ -152,6 +243,8 @@ void SpotifyMVDesktop::on_pending_first_frame() {
 
         if (!pending_engine_)
             return;
+
+        total_tracks_played_++;
 
         if (!current_engine_) {
             // current_engine_ was reset (e.g. by a prior "stop" message), so
@@ -171,6 +264,7 @@ void SpotifyMVDesktop::on_pending_first_frame() {
 
             // Swap engines
             std::swap(current_engine_, pending_engine_);
+            total_swaps_++;
 
             // Take ownership of the old engine to stop outside the lock,
             // avoiding deadlock: processing thread holds status_cb_mutex_ and
@@ -459,6 +553,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                 spdlog::error("SpotifyMV: no YouTube URL found for '{}'", song);
                 send_websocket_message("status:error");
                 search_running_ = false;
+                total_errors_++;
                 return;
             }
 
@@ -467,6 +562,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
         } catch (const std::exception& e) {
             spdlog::error("SpotifyMV search exception: {}", e.what());
             send_websocket_message("status:error");
+            total_errors_++;
         }
         search_running_ = false;
     });

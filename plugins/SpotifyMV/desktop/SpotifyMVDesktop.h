@@ -62,6 +62,11 @@ private:
     // playing).
     std::atomic<int> chunk_duration_sec_{20};
 
+    // Debug counters
+    std::atomic<int> total_tracks_played_{0};
+    std::atomic<int> total_errors_{0};
+    std::atomic<int> total_swaps_{0};
+
     void on_pending_first_frame();
 
     void search_and_play(Shared::VideoStreamEngine* engine,
