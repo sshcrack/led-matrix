@@ -310,21 +310,37 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
         spdlog::warn("Fast chunk: SetHandleInformation failed, skipping fast start");
         return false;
     }
+    // Redirect stderr to NUL explicitly. GetStdHandle(STD_ERROR_HANDLE) is not
+    // reliable here: this is a GUI-subsystem process with no attached console,
+    // so the "inherited" std handle can be NULL/invalid. Passing a bad handle
+    // through STARTF_USESTDHANDLES is exactly the kind of edge case that can
+    // make Windows fall back to creating a visible console for the child, so
+    // we hand it a real (writable, inheritable) handle instead.
+    SECURITY_ATTRIBUTES nulSa{};
+    nulSa.nLength = sizeof(nulSa);
+    nulSa.bInheritHandle = TRUE;
+    nulSa.lpSecurityDescriptor = nullptr;
+    HANDLE hNul = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &nulSa,
+                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
     STARTUPINFOA si{};
     PROCESS_INFORMATION pi{};
     si.cb = sizeof(si);
     si.hStdOutput = hWrite;
-    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    si.dwFlags |= STARTF_USESTDHANDLES;
+    si.hStdError = (hNul != INVALID_HANDLE_VALUE) ? hNul : nullptr;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
     std::vector<char> cmdline(ffCmd.begin(), ffCmd.end());
     cmdline.push_back('\0');
     if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE,
                         CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
         CloseHandle(hRead); CloseHandle(hWrite);
+        if (hNul != INVALID_HANDLE_VALUE) CloseHandle(hNul);
         spdlog::warn("Fast chunk: CreateProcess failed, skipping fast start");
         return false;
     }
     CloseHandle(hWrite);
+    if (hNul != INVALID_HANDLE_VALUE) CloseHandle(hNul);
     int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
     if (fd == -1) {
         CloseHandle(hRead);
