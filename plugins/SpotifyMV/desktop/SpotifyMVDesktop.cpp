@@ -559,6 +559,14 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
 
             long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms);
             engine->start(url, track_id, seek_ms);
+            // Re-set callbacks that start() cleared via its internal stop() call
+            engine->on_status_change = [this](const std::string& s) {
+                spdlog::info("Status change " + s);
+                send_websocket_message("status:" + s);
+            };
+            engine->on_first_frame_ready = [this]() {
+                on_pending_first_frame();
+            };
         } catch (const std::exception& e) {
             spdlog::error("SpotifyMV search exception: {}", e.what());
             send_websocket_message("status:error");
