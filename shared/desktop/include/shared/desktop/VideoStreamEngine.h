@@ -90,7 +90,8 @@ private:
     std::string build_ffmpeg_command(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const;
     std::string build_ffmpeg_pipe_command(const std::filesystem::path& input_path) const;
 
-    bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true);
+    bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true,
+                                     int start_sec_override = -1);
     // Download a short clip and stream its frames directly via ffmpeg pipe,
     // so playback starts immediately without waiting for a full chunk to be encoded.
     bool play_fast_chunk(int start_sec, int duration_sec);
