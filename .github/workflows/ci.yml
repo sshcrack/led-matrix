@@ -76,18 +76,31 @@ jobs:
           header="## Build Artifacts"
           body="$header
 
-          ${{ github.sha }}:
+          | Platform | Download | Files |
+          |---|---|---|"
 
-          | Platform | Artifacts |
-          |---|---|"
+          artifacts_json=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | {name, id}')
 
           for dir in artifacts/*/; do
             dir_name=$(basename "$dir")
+            artifact_id=$(echo "$artifacts_json" | jq -r --arg name "$dir_name" 'select(.name == $name) | .id')
+            download_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/$artifact_id"
+
+            file_list=""
+            first=true
             for file in "$dir"/*; do
               file_name=$(basename "$file")
               size=$(du -h "$file" | cut -f1)
-              body+=$'\n'"| $dir_name | \`$file_name\` ($size) |"
+              if [ "$first" = true ]; then
+                file_list="\`$file_name\` ($size)"
+                first=false
+              else
+                file_list="$file_list<br>\`$file_name\` ($size)"
+              fi
             done
+
+            body+=$'\n'"| $dir_name | [⬇ download]($download_url) | $file_list |"
           done
 
           existing=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
