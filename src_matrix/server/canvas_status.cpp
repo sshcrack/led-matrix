@@ -28,10 +28,10 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
                 auto body_json = nlohmann::json::parse(req->body());
                 if (body_json.contains("enabled")) {
                     if (body_json["enabled"].is_boolean()) {
-                        bool bval = body_json["enabled"].get<bool>();
+                        bool bval = body_json["enabled"].template get<bool>();
                         enabled_str = bval ? "true" : "false";
                     } else {
-                        enabled_str = body_json["enabled"].get<std::string>();
+                        enabled_str = body_json["enabled"].template get<std::string>();
                     }
                 }
             } catch (...) {}
