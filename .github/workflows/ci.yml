@@ -13,6 +13,7 @@ concurrency:
 permissions:
   contents: read
   packages: read
+  pull-requests: write
 
 jobs:
   react-web:
@@ -52,3 +53,42 @@ jobs:
     uses: ./.github/workflows/build-matrix.yml
     secrets:
       GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+  artifact-comment:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request' && always() && needs.build.result == 'success'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Post or update PR comment
+        run: |
+          header="## Build Artifacts"
+          body="$header
+
+          ${{ github.sha }}:
+
+          | Platform | Artifacts |
+          |---|---|"
+
+          for dir in artifacts/*/; do
+            dir_name=$(basename "$dir")
+            for file in "$dir"/*; do
+              file_name=$(basename "$file")
+              size=$(du -h "$file" | cut -f1)
+              body+=$'\n'"| $dir_name | \`$file_name\` ($size) |"
+            done
+          done
+
+          existing=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq ".[] | select(.body | startswith(\"$header\")) | .id")
+
+          if [ -n "$existing" ]; then
+            gh api "/repos/${{ github.repository }}/issues/comments/$existing" \
+              -X PATCH -f body="$body"
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" --body "$body"
+          fi
