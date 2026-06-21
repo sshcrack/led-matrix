@@ -48,7 +48,7 @@ void SpotifyMVDesktop::post_init() {
         spdlog::info("Status change " + s);
         send_websocket_message("status:" + s);
     };
-    current_engine_->set_chunk_duration_sec(20);
+    current_engine_->set_chunk_duration_sec(chunk_duration_sec_.load());
 }
 
 void SpotifyMVDesktop::load_config(std::optional<const nlohmann::json> config) {
@@ -56,11 +56,14 @@ void SpotifyMVDesktop::load_config(std::optional<const nlohmann::json> config) {
         const auto& cfg = config.value();
         if (cfg.contains("crossfade_duration_ms"))
             crossfade_duration_ms_ = cfg["crossfade_duration_ms"].get<int>();
+        if (cfg.contains("chunk_duration_sec"))
+            chunk_duration_sec_.store(cfg["chunk_duration_sec"].get<int>());
     }
 }
 
 void SpotifyMVDesktop::save_config(nlohmann::json& config) const {
     config["crossfade_duration_ms"] = crossfade_duration_ms_;
+    config["chunk_duration_sec"] = chunk_duration_sec_.load();
 }
 
 void SpotifyMVDesktop::initialize_imgui(ImGuiContext* ctx,
@@ -78,6 +81,15 @@ void SpotifyMVDesktop::render() {
     }
 
     ImGui::SliderInt("Crossfade (ms)", &crossfade_duration_ms_, 0, 2000);
+
+    {
+        int chunk_sec = chunk_duration_sec_.load();
+        if (ImGui::SliderInt("Chunk size (sec)", &chunk_sec, 5, 120)) {
+            chunk_duration_sec_.store(chunk_sec);
+        }
+        ImGui::TextDisabled("Smaller chunks buffer less but stall less on slow connections.\n"
+                             "Applies to the next track loaded, not the one currently playing.");
+    }
 
     {
         std::lock_guard<std::mutex> lk(track_id_mutex_);
@@ -134,26 +146,41 @@ void SpotifyMVDesktop::render() {
 
 void SpotifyMVDesktop::on_pending_first_frame() {
     std::unique_ptr<Shared::VideoStreamEngine> old_engine;
+    bool do_crossfade = true;
     {
         std::lock_guard<std::mutex> lk(engine_mutex_);
 
-        if (!pending_engine_ || !current_engine_)
+        if (!pending_engine_)
             return;
 
-        // Capture the old engine's last frame before the swap
-        old_last_frame_ = current_engine_->get_current_frame();
-
-        // Swap engines
-        std::swap(current_engine_, pending_engine_);
-
-        // Take ownership of the old engine to stop outside the lock,
-        // avoiding deadlock: processing thread holds status_cb_mutex_ and
-        // calls this callback which would acquire engine_mutex_ then
-        // status_cb_mutex_ again via stop(); on_websocket_message holds
-        // engine_mutex_ then status_cb_mutex_.
-        old_engine = std::move(pending_engine_);
-        if (current_engine_)
+        if (!current_engine_) {
+            // current_engine_ was reset (e.g. by a prior "stop" message), so
+            // there's nothing to crossfade from — just promote the pending
+            // engine directly. Without this, the swap below would silently
+            // no-op forever: the pending engine keeps decoding frames in the
+            // background, but compute_next_packet() only ever reads
+            // current_engine_ (null), so no frames are ever sent and the UI
+            // is stuck showing "Current track: None" with a pending track
+            // that never finishes loading.
+            current_engine_ = std::move(pending_engine_);
             current_engine_->on_first_frame_ready = nullptr;
+            do_crossfade = false;
+        } else {
+            // Capture the old engine's last frame before the swap
+            old_last_frame_ = current_engine_->get_current_frame();
+
+            // Swap engines
+            std::swap(current_engine_, pending_engine_);
+
+            // Take ownership of the old engine to stop outside the lock,
+            // avoiding deadlock: processing thread holds status_cb_mutex_ and
+            // calls this callback which would acquire engine_mutex_ then
+            // status_cb_mutex_ again via stop(); on_websocket_message holds
+            // engine_mutex_ then status_cb_mutex_.
+            old_engine = std::move(pending_engine_);
+            if (current_engine_)
+                current_engine_->on_first_frame_ready = nullptr;
+        }
     }
 
     if (old_engine) {
@@ -171,8 +198,10 @@ void SpotifyMVDesktop::on_pending_first_frame() {
 
     send_websocket_message("status:playing");
 
-    // Start crossfade
-    {
+    // Start crossfade (only if we actually have an old frame captured to
+    // blend from — not the case when current_engine_ was null, i.e. this is
+    // effectively a fresh start rather than a transition).
+    if (do_crossfade) {
         std::lock_guard<std::mutex> lk(engine_mutex_);
         crossfade_start_ = std::chrono::steady_clock::now();
         crossfade_active_ = true;
@@ -340,7 +369,18 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // ── Create new pending engine ────────────────────────────────────
         auto cacheRoot = get_data_dir() / "cache" / "spotifymv";
         auto new_engine = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, kWidth, kHeight);
-        new_engine->set_chunk_duration_sec(20);
+        new_engine->set_chunk_duration_sec(chunk_duration_sec_.load());
+        // NOTE: on_status_change must be wired here too, not just in
+        // post_init(). Engines are swapped (not copied) on
+        // on_pending_first_frame(), so the object that ends up as
+        // current_engine_ after a swap is *this* object — without this it
+        // would never forward status (downloading/error/etc.) once it
+        // becomes current, e.g. errors after the first track change would
+        // go unreported and the matrix would just freeze on the old frame.
+        new_engine->on_status_change = [this](const std::string& s) {
+            spdlog::info("Status change " + s);
+            send_websocket_message("status:" + s);
+        };
         new_engine->on_first_frame_ready = [this]() {
             on_pending_first_frame();
         };
