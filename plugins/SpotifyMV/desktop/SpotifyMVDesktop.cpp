@@ -218,8 +218,8 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
             old_last_frame_.clear();
         } else {
             float alpha = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
-            size_t blend_pixels = std::min(frame.size(), old_last_frame_.size());
-            if (blend_pixels < std::max(frame.size(), old_last_frame_.size())) {
+            size_t blend_pixels = (std::min)(frame.size(), old_last_frame_.size());
+            if (blend_pixels < (std::max)(frame.size(), old_last_frame_.size())) {
                 spdlog::warn("SpotifyMV crossfade: frame size mismatch ({} vs {}), blending {} pixels",
                              frame.size(), old_last_frame_.size(), blend_pixels);
             }
