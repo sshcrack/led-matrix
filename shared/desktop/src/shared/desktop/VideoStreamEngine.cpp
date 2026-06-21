@@ -200,12 +200,13 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                 while (running_) {
                     int next = current + 1;
 
-                    // Use shared_ptr so the atomic outlives any potential lambda/thread lifetime mismatch
+                    // Use shared_ptr so the atomics outlive any potential lambda/thread lifetime mismatch
                     auto prefetch_success = std::make_shared<std::atomic<bool>>(false);
+                    auto prefetch_done = std::make_shared<std::atomic<bool>>(false);
                     {
                         std::lock_guard<std::mutex> lk(prefetch_mutex_);
                         if (prefetch_thread_.joinable()) prefetch_thread_.join(); // safety guard
-                        prefetch_thread_ = std::thread([this, next, prefetch_success]() {
+                        prefetch_thread_ = std::thread([this, next, prefetch_success, prefetch_done]() {
                         try {
                             *prefetch_success = download_and_process_chunk(next, false);
                             spdlog::info("Prefetch chunk {}: {}",
@@ -214,6 +215,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                         } catch (const std::exception& e) {
                             spdlog::warn("Prefetch chunk {} exception: {}", next, e.what());
                         }
+                        *prefetch_done = true;
                     });
                     } // prefetch_mutex_ released here — stop() can now join if needed
 
@@ -231,6 +233,18 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     {
                         std::lock_guard<std::mutex> lk(prefetch_mutex_);
                         if (prefetch_thread_.joinable()) {
+                            if (!prefetch_done->load()) {
+                                // The chunk we just finished playing ran out before the
+                                // next one was ready — without this, playback just
+                                // freezes on the last frame with no indication why.
+                                // Surface it as "downloading" so callers (e.g. the
+                                // matrix-side loading overlay) can show buffering
+                                // instead of looking stuck.
+                                spdlog::info("Chunk {} finished before prefetch of {} was ready — buffering",
+                                             current, next);
+                                state_ = State::Downloading;
+                                notify_status("downloading");
+                            }
                             spdlog::debug("Waiting for prefetch of chunk {}", next);
                             prefetch_thread_.join();
                         }
