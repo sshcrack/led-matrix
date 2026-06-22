@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
 #include <vector>
+#include <random>
 
 namespace AmbientScenes {
     class FallingSandScene : public Scenes::Scene {
@@ -18,8 +19,7 @@ namespace AmbientScenes {
         int sand_count = 0;
         int spawner_x = 64;
         int spawner_dir = 1;
-
-        void hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b);
+        std::mt19937 rng{std::random_device{}()};
 
         uint32_t pack_color(uint8_t r, uint8_t g, uint8_t b) {
             return (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
@@ -47,6 +47,6 @@ namespace AmbientScenes {
     };
 
     class FallingSandSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

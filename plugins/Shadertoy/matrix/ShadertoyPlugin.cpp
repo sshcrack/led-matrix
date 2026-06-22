@@ -1,6 +1,9 @@
 #include "ShadertoyPlugin.h"
 
 #include <shared/matrix/plugin_loader/loader.h>
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
 
 #include "scenes/ShadertoyScene.h"
 #include "providers/Random.h"
@@ -17,7 +20,7 @@ namespace fs = std::filesystem;
 
 namespace {
 fs::path custom_shader_dir() {
-    return get_exec_dir() / "data" / "custom_shaders";
+    return std::filesystem::path(LED_MATRIX_DATA_DIR) / "data" / "custom_shaders";
 }
 }
 
@@ -31,35 +34,28 @@ extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyPlugin *c)
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+vector<std::unique_ptr<ImageProviderWrapper>>
 ShadertoyPlugin::create_image_providers()
 {
     return {};
 }
 
-vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+vector<std::unique_ptr<ShaderProviderWrapper>>
 ShadertoyPlugin::create_shader_providers()
 {
-    auto providers = vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>();
-    auto deleteWrapper = [](ShaderProviderWrapper *wrapper) {
-        delete wrapper;
-    };
+    auto providers = vector<std::unique_ptr<ShaderProviderWrapper>>();
 
-    providers.push_back({new RandomWrapper(), deleteWrapper});
-    providers.push_back({new CollectionWrapper(), deleteWrapper});
+    providers.push_back(std::make_unique<RandomWrapper>());
+    providers.push_back(std::make_unique<CollectionWrapper>());
 
     return providers;
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> ShadertoyPlugin::create_scenes()
+vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
 {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
-    auto deleteScene = [](SceneWrapper *scene)
-    {
-        delete scene;
-    };
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back({new ShadertoySceneWrapper(), deleteScene});
+    scenes.push_back(std::make_unique<ShadertoySceneWrapper>());
 
     const auto custom_dir = custom_shader_dir();
     std::error_code ec;
@@ -79,9 +75,12 @@ vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> Shadert
             continue;
         }
 
-        auto *custom_wrapper = new CustomShadertoySceneWrapper(entry.path());
-        customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
-        scenes.push_back({custom_wrapper, deleteScene});
+        auto custom_wrapper = std::make_unique<CustomShadertoySceneWrapper>(entry.path());
+        {
+            std::lock_guard lock(customSceneMutex);
+            customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
+        }
+        scenes.push_back(std::move(custom_wrapper));
     }
 
     return scenes;
@@ -137,8 +136,7 @@ std::string ShadertoyPlugin::add_custom_shader_scene(const std::filesystem::path
         return customSceneNamesByFile[file_key];
     }
 
-    auto deleter = [](SceneWrapper *scene) { delete scene; };
-    std::shared_ptr<Plugins::SceneWrapper> wrapper(new CustomShadertoySceneWrapper(shader_file_path), deleter);
+    auto wrapper = std::make_shared<CustomShadertoySceneWrapper>(shader_file_path);
     const auto scene_name = wrapper->get_name();
     customSceneNamesByFile[file_key] = scene_name;
     Plugins::PluginManager::instance()->add_scene(std::move(wrapper));

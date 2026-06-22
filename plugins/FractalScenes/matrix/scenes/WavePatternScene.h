@@ -8,7 +8,7 @@
 namespace Scenes {
     class WavePatternSceneWrapper final : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
     
     class WavePatternScene final : public Scene {
@@ -19,7 +19,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
-        std::string getCategory() const override { return "Fractals"; }
+        std::string get_category() const override { return "Fractals"; }
 
         tmillis_t get_default_duration() override {
             return 20000;
@@ -57,6 +57,6 @@ namespace Scenes {
         void init_waves();
         
         // Color mapping
-        void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) const;
+
     };
 }

@@ -63,7 +63,7 @@ namespace Scenes {
         void after_render_stop() override;
 
         [[nodiscard]] std::string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Games"; }
+        [[nodiscard]] std::string get_category() const override { return "Games"; }
 
         void register_properties() override {
             add_property(fall_speed_ms);
@@ -80,6 +80,6 @@ namespace Scenes {
     };
 
     class TetrisSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

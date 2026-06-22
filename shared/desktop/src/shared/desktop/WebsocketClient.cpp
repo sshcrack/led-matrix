@@ -15,25 +15,42 @@ WebsocketClient *WebsocketClient::instance()
     return websocketClientInstance;
 }
 
+std::shared_ptr<WebsocketClient> WebsocketClient::create()
+{
+    auto instance = std::shared_ptr<WebsocketClient>(new WebsocketClient());
+    instance->setup_callback();
+    return instance;
+}
+
 WebsocketClient::WebsocketClient() : udpSender()
 {
-    ix::initNetSystem();
-    webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr &msg)
+    if (net_refs().fetch_add(1, std::memory_order_relaxed) == 0) {
+        ix::initNetSystem();
+    }
+}
+
+void WebsocketClient::setup_callback()
+{
+    std::weak_ptr<WebsocketClient> weak_this = shared_from_this();
+    webSocket.setOnMessageCallback([weak_this](const ix::WebSocketMessagePtr &msg)
                                    {
+        auto shared_this = weak_this.lock();
+        if (!shared_this) return;
+
         if (msg->type == ix::WebSocketMessageType::Message)
         {
-            std::unique_lock<std::mutex> lock(activeSceneMutex);
+            std::unique_lock<std::mutex> lock(shared_this->activeSceneMutex);
 
             const std::string &m = msg->str;
             if (m.starts_with("active:")) {
-                activeScene = m.substr(7);
+                shared_this->activeScene = m.substr(7);
             }
 
             if (m.starts_with("msg:")) {
                 const auto pluginNameEnd = m.find(':', 4);
 
-                const std::string pluginName = m.substr(4, pluginNameEnd -4);
-                const std::string message = m.substr(m.find(':', pluginNameEnd) +1);
+                const std::string pluginName = m.substr(4, pluginNameEnd - 4);
+                const std::string message = m.substr(m.find(':', pluginNameEnd) + 1);
 
                 for (const auto & [_p, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
                     if (plugin->get_plugin_name() != pluginName)
@@ -47,11 +64,14 @@ WebsocketClient::WebsocketClient() : udpSender()
 
 WebsocketClient::~WebsocketClient()
 {
-    ix::initNetSystem();
+    webSocket.stop();
     senderRunning = false;
     if (senderThread.joinable())
     {
         senderThread.join();
+    }
+    if (net_refs().fetch_sub(1, std::memory_order_relaxed) == 1) {
+        ix::uninitNetSystem();
     }
 }
 
@@ -114,21 +134,20 @@ void WebsocketClient::threadLoop()
             lastLargePayloadSend[name] = clock::now();
 
             auto res = this->udpSender.sendPacket(std::move(packet.value()), hostname, port);
-            static int consecutiveError = 0;
             if (!res.has_value())
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
                 lastError = res.error();
-                consecutiveError++;
+                consecutiveError_++;
 
-                if (consecutiveError < 3)
+                if (consecutiveError_ < 3)
                     spdlog::error("Failed to send packet: {}", lastError);
             }
             else
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
                 lastError.clear();
-                consecutiveError = 0;
+                consecutiveError_ = 0;
             }
         }
 

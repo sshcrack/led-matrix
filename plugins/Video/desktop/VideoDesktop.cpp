@@ -92,7 +92,7 @@ void VideoDesktop::render_status_ui() {
 
 void VideoDesktop::pre_new_frame() {}
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>>
+std::optional<std::unique_ptr<UdpPacket>>
 VideoDesktop::compute_next_packet(const std::string sceneName) {
   if (sceneName != "video" || !tools_available || !allow_sending_packets.load())
     return std::nullopt;
@@ -104,9 +104,7 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
   auto frame = engine_->get_current_frame();
   if (frame.empty()) return std::nullopt;
 
-  return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(
-      new VideoPacket(std::move(frame)),
-      [](UdpPacket *p) { delete dynamic_cast<VideoPacket *>(p); });
+  return std::make_unique<VideoPacket>(std::move(frame));
 }
 
 void VideoDesktop::on_websocket_message(const std::string message) {

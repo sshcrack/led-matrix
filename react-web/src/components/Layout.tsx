@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useMatch } from 'react-router-dom'
 import { Grid3x3, Calendar, Download, Moon, Sun, Images, FolderCode } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import { useState, useEffect } from 'react'
@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const isModifyPage = location.pathname.startsWith('/modify-')
+  const isModifyPage = !!useMatch('/modify-:id/*')
 
   if (isModifyPage) {
     return <main className="min-h-screen bg-background">{children}</main>

@@ -1,9 +1,9 @@
-export interface ListScenes { name: string; properties: Property<any>[]; has_preview?: boolean; category: string; }
+export interface ListScenes { name: string; properties: Property<unknown>[]; has_preview?: boolean; category: string; }
 
-export interface Property<T> {
+export interface Property<T = unknown> {
   default_value: T;
   name: string;
-  additional?: any;
+  additional?: Record<string, unknown>;
   type_id: TypeId;
 }
 
@@ -38,7 +38,7 @@ export type ProviderValue =
   | PagesProvider
   | RandomShaderProvider
   | CollectionShaderProvider
-  | { type: string; uuid: string; arguments: { [key: string]: any } };
+  | { type: string; uuid: string; arguments: Record<string, unknown> };
 
 export type TypeId =
   | "string" | "int" | "double" | "bool" | "float" | "millis"

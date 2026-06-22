@@ -8,7 +8,7 @@
 namespace Scenes {
     class GameOfLifeSceneWrapper final : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
 
     class GameOfLifeScene final : public Scene {
@@ -22,7 +22,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
-        std::string getCategory() const override { return "Fractals"; }
+        std::string get_category() const override { return "Fractals"; }
 
         tmillis_t get_default_duration() override {
             return 30000;

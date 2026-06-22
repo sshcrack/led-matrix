@@ -2,7 +2,26 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
+#include <chrono>
+#include <random>
 #include "../WeatherParser.h"
+
+// Constants used across split files
+constexpr int MAIN_ICON_SIZE = 42;
+constexpr int FORECAST_ICON_SIZE = 16;
+constexpr int MAX_SCROLL = 20;
+constexpr int SCROLL_PAUSE = 40;
+constexpr int MAX_PARTICLES = 50;
+constexpr float COLOR_TRANSITION_SPEED = 0.05f;
+constexpr int RAIN_SPEED_FACTOR = 2;
+constexpr int SNOW_SPEED_FACTOR = 1;
+constexpr float GRADIENT_INTENSITY = 0.7f;
+constexpr int BORDER_THICKNESS = 1;
+constexpr int BORDER_PADDING = 2;
+constexpr int MAX_SHOOTING_STARS = 3;
+constexpr int MIN_MS_BETWEEN_STARS = 5 * 1000;
+constexpr float SHOOTING_STAR_SPEED_MIN = 1.5f;
+constexpr float SHOOTING_STAR_SPEED_MAX = 3.0f;
 
 namespace Scenes {
     // Struct for animated particles (rain, snow, etc.)
@@ -29,6 +48,15 @@ namespace Scenes {
         float tail_length;
         float brightness;
         bool active;
+    };
+    
+    // Struct for fog patches (used in renderFogMist)
+    struct FogPatch {
+        float x, y;
+        float vx, vy;
+        float radius;
+        float density;
+        float phase;
     };
     
     // Color themes for the weather display
@@ -70,9 +98,6 @@ namespace Scenes {
         // Sun ray animation
         float sun_ray_rotation = 0.0f;
         
-        // Fog/mist effect state
-        std::vector<std::vector<float>> fog_grid;
-
         // Animation system particles
         std::vector<Particle> particles;
         int active_particles = 0;
@@ -84,13 +109,27 @@ namespace Scenes {
         // Reference to current weather data for animations
         WeatherData data = {};
 
+        // C8: Weather fetch refresh timer
+        std::chrono::steady_clock::time_point last_weather_fetch{};
+        int weather_refresh_interval_seconds = 300;
+
+        // C9: Fog/rainbow/aurora scene state (moved from static locals)
+        std::vector<FogPatch> fog_patches;
+        bool fog_initialized = false;
+        int last_fog_matrix_width = 0;
+        int last_fog_matrix_height = 0;
+        float fog_time = 0.0f;
+        float rainbow_time = 0.0f;
+        float aurora_continuous_time = 0.0f;
+
         struct Images {
             Magick::Image currentIcon;
             std::vector<Magick::Image> forecastIcons;
         };
 
         std::optional<Images> images;
-        
+        std::mt19937 rng{std::random_device{}()};
+
         // Get theme color based on selected theme
         static RGB getThemeColor(ColorTheme theme, const WeatherData &data);
 
@@ -102,7 +141,6 @@ namespace Scenes {
         void resetStars();
         
         // Enhanced animation methods
-        void updateAnimationState(const WeatherData &data);
         void renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
         void initializeParticles();
 
@@ -127,6 +165,9 @@ namespace Scenes {
         static RGB interpolateColor(const RGB &start, const RGB &end, float progress) ;
         void applyBackgroundEffects(rgb_matrix::FrameCanvas *canvas, const RGB &base_color);
         
+        // Image caching
+        bool reloadImages();
+
         // Visual styling helpers
         void drawWeatherBorder(rgb_matrix::FrameCanvas *canvas, const RGB &color, int brightness_mod) const;
         void drawPrecipitationIndicator(rgb_matrix::FrameCanvas *canvas, float probability, int x, int y) const;
@@ -154,6 +195,7 @@ namespace Scenes {
         PropertyPointer<bool> enable_rainbow = MAKE_PROPERTY("enable_rainbow", bool, true);
         PropertyPointer<float> animation_speed_multiplier = MAKE_PROPERTY_MINMAX("animation_speed_multiplier", float, 1.0f, 0.1f, 3.0f);
         PropertyPointer<int> particle_density = MAKE_PROPERTY_MINMAX("particle_density", int, 5, 1, 10);
+        PropertyPointer<bool> show_indoor_temperature = MAKE_PROPERTY("show_indoor_temperature", bool, true);
 
     public:
         bool render(rgb_matrix::FrameCanvas *canvas) override;
@@ -181,6 +223,7 @@ namespace Scenes {
             add_property(enable_rainbow);
             add_property(animation_speed_multiplier);
             add_property(particle_density);
+            add_property(show_indoor_temperature);
         }
 
         using Scene::Scene;
@@ -201,6 +244,6 @@ namespace Scenes {
     };
 
     class WeatherSceneWrapper final : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

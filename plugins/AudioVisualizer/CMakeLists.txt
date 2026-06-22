@@ -53,6 +53,13 @@ if(ENABLE_DESKTOP)
         target_compile_definitions(portaudio PRIVATE
                 PA_WASAPI_MAX_CONST_DEVICE_COUNT=64
         )
+        if(NOT MSVC)
+                target_compile_options(portaudio PRIVATE -Wno-macro-redefined)
+                target_compile_definitions(portaudio PRIVATE
+                        _WIN32_WINNT=0x0601
+                        WINVER=0x0601
+                )
+        endif()
 
         target_link_libraries(AudioVisualizer PRIVATE portaudio)
 

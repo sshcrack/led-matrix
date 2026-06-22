@@ -1,4 +1,5 @@
 #include "AudioSpectrumScene.h"
+#include <shared/matrix/utils/color.h>
 #include "spdlog/spdlog.h"
 #include <cmath>
 #include <algorithm>
@@ -6,64 +7,9 @@
 
 using namespace Scenes;
 
-// Helper function to convert HSV to RGB
-void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b)
+std::unique_ptr<Scenes::Scene> AudioSpectrumSceneWrapper::create()
 {
-    if (s <= 0.0f)
-    {
-        r = g = b = static_cast<uint8_t>(v * 255);
-        return;
-    }
-
-    h = fmod(h, 360.0f) / 60.0f;
-    int hi = static_cast<int>(h);
-    float f = h - hi;
-    float p = v * (1.0f - s);
-    float q = v * (1.0f - s * f);
-    float t = v * (1.0f - s * (1.0f - f));
-
-    switch (hi)
-    {
-    case 0:
-        r = v * 255;
-        g = t * 255;
-        b = p * 255;
-        break;
-    case 1:
-        r = q * 255;
-        g = v * 255;
-        b = p * 255;
-        break;
-    case 2:
-        r = p * 255;
-        g = v * 255;
-        b = t * 255;
-        break;
-    case 3:
-        r = p * 255;
-        g = q * 255;
-        b = v * 255;
-        break;
-    case 4:
-        r = t * 255;
-        g = p * 255;
-        b = v * 255;
-        break;
-    default:
-        r = v * 255;
-        g = p * 255;
-        b = q * 255;
-        break;
-    }
-}
-
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> AudioSpectrumSceneWrapper::create()
-{
-    return {
-        new AudioSpectrumScene(), [](Scenes::Scene *scene)
-        {
-            delete scene;
-        }};
+    return std::make_unique<AudioSpectrumScene>();
 }
 
 AudioSpectrumScene::AudioSpectrumScene() : plugin(nullptr), last_timestamp(0)
@@ -130,7 +76,7 @@ uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float int
         // Generate rainbow color based on band index
         const float hue = static_cast<float>(band_index) / num_bands * 360.0f;
         uint8_t r, g, b;
-        hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
+        color::hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
         return (r << 16) | (g << 8) | b;
     }
     else
@@ -308,12 +254,13 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
 
                 for (int w = 0; w < bar_width->get(); w++)
                 {
-                    canvas->SetPixel(x + w, height - 1 - y, r, g, b);
+                    int px = std::min(x + w, canvas->width() - 1);
+                    canvas->SetPixel(px, height - 1 - y, r, g, b);
 
                     // Mirror if enabled, but only in normal mode
                     if (mirror_display->get() && display_mode == DisplayMode::NORMAL)
                     {
-                        canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
+                        canvas->SetPixel(width - 1 - px, height - 1 - y, r, g, b);
                     }
                 }
             }
@@ -348,14 +295,15 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
             int half_height = height / 2;
             for (int w = 0; w < bar_width->get(); w++)
             {
+                int px = std::min(x + w, canvas->width() - 1);
                 if(display_mode == DisplayMode::CENTER_OUT)
                 {
                     // Center out mode, draw peak at center
-                    canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
-                    canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
+                    canvas->SetPixel(px, half_height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(px, half_height - 1 + peak_y, r, g, b);
                 }
                 else
-                    canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
+                    canvas->SetPixel(px, height - 1 - peak_y, r, g, b);
             }
         }
     }

@@ -8,7 +8,6 @@
 using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router) {
-    // GET routes
     router->http_get("/set_active", [](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {

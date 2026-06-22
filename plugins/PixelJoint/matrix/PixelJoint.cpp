@@ -16,28 +16,18 @@
 using std::vector;
 using namespace ImageProviders;
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper>>
 PixelJoint::create_image_providers() {
-    auto scenes = vector<std::unique_ptr<ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)> >();
-    auto deleteWrapper = [](Plugins::ImageProviderWrapper *scene) {
-        delete scene;
-    };
-
-    scenes.push_back({new CollectionWrapper(), deleteWrapper});
-    scenes.push_back({new PagesWrapper(), deleteWrapper});
-
-    return scenes;
+    vector<std::unique_ptr<ImageProviderWrapper>> providers;
+    providers.push_back(std::make_unique<CollectionWrapper>());
+    providers.push_back(std::make_unique<PagesWrapper>());
+    return providers;
 }
 
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > PixelJoint::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> >();
-    scenes.push_back({
-        new ImageSceneWrapper(), [](Plugins::SceneWrapper *scene) {
-            delete scene;
-        }
-    });
-
+vector<std::unique_ptr<SceneWrapper>> PixelJoint::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<ImageSceneWrapper>());
     return scenes;
 }
 

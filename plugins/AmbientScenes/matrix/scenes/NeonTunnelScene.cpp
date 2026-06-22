@@ -1,26 +1,9 @@
 #include "NeonTunnelScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
 
 namespace AmbientScenes {
     NeonTunnelScene::NeonTunnelScene() : Scene() {
-    }
-
-    void NeonTunnelScene::hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b) {
-        float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
-        float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-        float m = l - c / 2.0f;
-        
-        float r1 = 0, g1 = 0, b1 = 0;
-        if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0; }
-        else if (h >= 60 && h < 120) { r1 = x; g1 = c; b1 = 0; }
-        else if (h >= 120 && h < 180) { r1 = 0; g1 = c; b1 = x; }
-        else if (h >= 180 && h < 240) { r1 = 0; g1 = x; b1 = c; }
-        else if (h >= 240 && h < 300) { r1 = x; g1 = 0; b1 = c; }
-        else if (h >= 300 && h < 360) { r1 = c; g1 = 0; b1 = x; }
-        
-        r = static_cast<uint8_t>((r1 + m) * 255.0f);
-        g = static_cast<uint8_t>((g1 + m) * 255.0f);
-        b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
     void NeonTunnelScene::initialize(int width, int height) {
@@ -29,7 +12,7 @@ namespace AmbientScenes {
     }
 
     bool NeonTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-        time_counter += 0.05f;
+        time_counter += 1.0f / std::max(1.0f, static_cast<float>(get_target_fps())) * 3.0f;
 
         float center_x = matrix_width / 2.0f;
         float center_y = matrix_height / 2.0f;
@@ -68,7 +51,7 @@ namespace AmbientScenes {
                 float lightness = (pattern > 128) ? (0.5f * depth_shade) : 0.00f;
 
                 uint8_t r, g, b;
-                hsl_to_rgb(hue, 1.0f, lightness, r, g, b);
+                color::hsl_to_rgb(hue, 1.0f, lightness, r, g, b);
 
                 canvas->SetPixel(x, y, r, g, b);
             }
@@ -89,9 +72,7 @@ namespace AmbientScenes {
         add_property(hue_shift_speed);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> NeonTunnelSceneWrapper::create() {
-        return {new NeonTunnelScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<NeonTunnelScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> NeonTunnelSceneWrapper::create() {
+        return std::make_unique<NeonTunnelScene>();
     }
 }

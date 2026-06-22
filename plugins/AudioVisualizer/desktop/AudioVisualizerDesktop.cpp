@@ -19,7 +19,8 @@ AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 
 void AudioVisualizerDesktop::render() {
-    std::lock_guard<std::mutex> lock(stateMutex);
+    if (!stateMutex.try_lock()) return;
+    std::lock_guard<std::mutex> lock(stateMutex, std::adopt_lock);
     
     ImPlot::SetCurrentContext(implotContext);
 
@@ -350,7 +351,7 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGu
     ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
 }
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualizerDesktop::compute_next_packet(
+std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
     if (sceneName != "audio_spectrum")
         return std::nullopt;
@@ -472,9 +473,5 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)> > AudioVisualize
     }
 
     bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CompactAudioPacket(bands, interpolatedLog, send_beat_flag),
-                                                             [](UdpPacket *packet)
-                                                             {
-                                                                 delete (CompactAudioPacket *)packet;
-                                                             });
+    return std::make_unique<CompactAudioPacket>(bands, interpolatedLog, send_beat_flag);
 }

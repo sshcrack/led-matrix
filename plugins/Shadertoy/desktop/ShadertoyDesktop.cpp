@@ -352,7 +352,7 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
     }
 }
 
-std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDesktop::compute_next_packet(
+std::optional<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packet(
     const std::string sceneName)
 {
     if ((sceneName != "shadertoy" && !sceneName.starts_with("custom_shader:")) || width == 0 || height == 0 || !initError.empty())
@@ -363,11 +363,7 @@ std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> ShadertoyDeskto
 
     isActive = true;
     std::shared_lock lock(currDataMutex);
-    return std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>(new CanvasPacket(currData),
-                                                             [](UdpPacket *packet)
-                                                             {
-                                                                 delete dynamic_cast<CanvasPacket *>(packet);
-                                                             });
+    return std::make_unique<CanvasPacket>(currData);
 }
 
 void ShadertoyDesktop::post_init()

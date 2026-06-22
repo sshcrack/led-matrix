@@ -18,7 +18,8 @@ namespace AmbientScenes
 
         // Initialize clock hands to current time
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         current_hour = local_time->tm_hour % 12;
         current_minute = local_time->tm_min;
@@ -29,7 +30,8 @@ namespace AmbientScenes
     {
         // Get current time
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int hour = local_time->tm_hour % 12;
         int minute = local_time->tm_min;
@@ -252,7 +254,8 @@ namespace AmbientScenes
     void ClockScene::draw_digital_clock(rgb_matrix::FrameCanvas *canvas, int y_position)
     {
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int hour = local_time->tm_hour;
         int minute = local_time->tm_min;
@@ -264,7 +267,7 @@ namespace AmbientScenes
             hour = 12; // 12-hour format
 
         // Calculate horizontal centering based on matrix width
-        int x_start = (matrix_height - 24) / 2; // Adjust as needed for digit spacing
+        int x_start = (matrix_width - 24) / 2; // Adjust as needed for digit spacing
 
         // Draw hour digits
         auto h_color = hour_color->get();
@@ -505,12 +508,9 @@ namespace AmbientScenes
         add_property(use_glow_effect);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> ClockSceneWrapper::create()
+    std::unique_ptr<Scenes::Scene> ClockSceneWrapper::create()
     {
-        return {new ClockScene(), [](Scenes::Scene *scene)
-                {
-                    delete (ClockScene *)scene;
-                }};
+        return std::make_unique<ClockScene>();
     }
 
     void ClockScene::set_pixel_with_brightness(FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness)
@@ -676,7 +676,8 @@ namespace AmbientScenes
     void ClockScene::draw_date(rgb_matrix::FrameCanvas *canvas, int y_position)
     {
         auto now = std::time(nullptr);
-        std::tm *local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm *local_time = localtime_r(&now, &local_time_storage);
 
         int day = local_time->tm_mday;
         int month = local_time->tm_mon + 1; // tm_mon is 0-11

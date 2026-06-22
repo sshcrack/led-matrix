@@ -45,7 +45,8 @@ std::string get_day_name(const std::string &date_str) {
 
     std::time_t time = std::mktime(&tm);
     char buffer[10];
-    std::strftime(buffer, sizeof(buffer), "%a", std::localtime(&time));
+    std::tm local_time_storage{};
+    std::strftime(buffer, sizeof(buffer), "%a", localtime_r(&time, &local_time_storage));
     return {buffer};
 }
 
@@ -140,7 +141,8 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
 
         // Format current time for last updated display
         std::time_t now = std::time(nullptr);
-        std::tm* local_time = std::localtime(&now);
+        std::tm local_time_storage{};
+        std::tm* local_time = localtime_r(&now, &local_time_storage);
         std::ostringstream time_str;
         time_str << std::put_time(local_time, "%H:%M");
         
@@ -248,7 +250,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
 
 std::expected<WeatherData, std::string> WeatherParser::get_data(const std::string& lat, const std::string& lon) {
     auto curr = GetTimeInMillis();
-    if (curr - last_fetch < CACHE_INVALIDATION) {
+    if (cached_data.has_value() && curr - last_fetch < CACHE_INVALIDATION) {
         return cached_data.value();
     }
 

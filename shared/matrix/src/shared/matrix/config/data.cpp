@@ -12,21 +12,17 @@ using json = nlohmann::json;
 
 namespace ConfigData {
     void to_json(json &j, const Scenes::Scene *&p) {
-        auto &c = const_cast<Scenes::Scene *&>(p);
-
         j = {
-            {"type", c->get_name()},
-            {"arguments", c->to_json()},
-            {"uuid", c->get_uuid()}
+            {"type", p->get_name()},
+            {"arguments", p->to_json()},
+            {"uuid", p->get_uuid()}
         };
     }
 
     void to_json(json &j, const ImageProviders::General *&p) {
-        auto &c = const_cast<ImageProviders::General *&>(p);
-
         j = {
-            {"type", c->get_name()},
-            {"arguments", c->to_json()}
+            {"type", p->get_name()},
+            {"arguments", p->to_json()}
         };
     }
 
@@ -44,7 +40,8 @@ namespace ConfigData {
         scenes_json.reserve(p->scenes.size());
         for (const auto &item: p->scenes) {
             json local_j;
-            to_json(local_j, (const Scenes::Scene *&) item);
+            const auto* scene_ptr = item.get();
+            to_json(local_j, scene_ptr);
 
             scenes_json.push_back(local_j);
         }
@@ -113,7 +110,7 @@ namespace ConfigData {
 
     void from_json(const json &j, SpotifyData &p) {
         string access, refresh;
-        tmillis_t expires_at;
+        tmillis_t expires_at = 0;
 
         if (j.contains("access_token"))
             j.at("access_token").get_to(access);
@@ -144,18 +141,10 @@ namespace ConfigData {
 
             for (const auto &item: scenes_json)
                 scenes.push_back(Scenes::Scene::from_json(item));
-        } else {
-            info("No scenes in preset. Adding default...");
-            p = Preset::create_default();
         }
 
 
-        p = {
-            new Preset(),
-            [](Preset *p) {
-                delete p;
-            }
-        };
+        p = std::make_shared<Preset>();
 
         p->scenes = std::move(scenes);
         p->transition_duration = j.value("transition_duration", static_cast<tmillis_t>(750));
@@ -163,11 +152,11 @@ namespace ConfigData {
         p->display_name = j.value("display_name", std::string());
     }
 
-    void from_json(const json &j, std::unique_ptr<ImageProviders::General, void(*)(ImageProviders::General *)> &p) {
+    void from_json(const json &j, std::unique_ptr<ImageProviders::General> &p) {
         p = std::move(ImageProviders::General::from_json(j));
     }
 
-    void from_json(const json &j, std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene *)> &p) {
+    void from_json(const json &j, std::unique_ptr<Scenes::Scene> &p) {
         p = std::move(Scenes::Scene::from_json(j));
     }
 
@@ -190,18 +179,13 @@ namespace ConfigData {
             scenes.push_back(std::move(scene));
         }
 
-        auto preset = new Preset();
+        auto preset = std::make_shared<Preset>();
         preset->scenes = scenes;
         preset->transition_duration = 750;
         preset->transition_name = "blend";
         preset->display_name = "Default";
 
-        return {
-            preset,
-            [](Preset *p) {
-                delete p;
-            }
-        };
+        return preset;
     }
 
     bool SpotifyData::is_expired() const {
@@ -213,7 +197,14 @@ namespace ConfigData {
         
         auto now = std::chrono::system_clock::now();
         auto time_t = std::chrono::system_clock::to_time_t(now);
-        auto* tm = std::localtime(&time_t);
+        std::tm result{};
+        auto* tm =
+#ifdef _WIN32
+            localtime_s(&result, &time_t) ? nullptr : &result;
+#else
+            localtime_r(&time_t, &result);
+#endif
+        if (!tm) return false;
         
         return is_active_at_time(tm->tm_hour, tm->tm_min, tm->tm_wday);
     }

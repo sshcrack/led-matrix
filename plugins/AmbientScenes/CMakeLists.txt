@@ -9,6 +9,8 @@ register_plugin(AmbientScenes
         matrix/scenes/StarFieldScene.h
         matrix/scenes/SortingVisualizerScene.cpp
         matrix/scenes/SortingVisualizerScene.h
+        matrix/scenes/sorting_simple.cpp
+        matrix/scenes/sorting_complex.cpp
         matrix/scenes/BoidsScene.cpp
         matrix/scenes/BoidsScene.h
         matrix/scenes/BouncingLogoScene.cpp

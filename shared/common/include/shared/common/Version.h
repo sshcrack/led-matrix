@@ -27,7 +27,7 @@ namespace Common {
         // Compare only major and minor versions (ignoring patch)
         bool isCompatibleWith(const Version &other) const;
 
-        bool isInvalid() const {
+        bool is_invalid() const {
             return major == 0 && minor == 0 && patch == 0;
         }
 

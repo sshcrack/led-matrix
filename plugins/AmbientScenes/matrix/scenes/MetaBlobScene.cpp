@@ -114,7 +114,7 @@ namespace AmbientScenes {
             }
         }
 
-        time += 1.0f / 60.0f;
+        time += 1.0f / std::max(1.0f, static_cast<float>(get_target_fps()));
         return true;
     }
 
@@ -130,9 +130,7 @@ namespace AmbientScenes {
         add_property(color_speed);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MetaBlobSceneWrapper::create() {
-        return {new MetaBlobScene(), [](Scenes::Scene *scene) {
-            delete (MetaBlobScene *) scene;
-        }};
+    std::unique_ptr<Scenes::Scene> MetaBlobSceneWrapper::create() {
+        return std::make_unique<MetaBlobScene>();
     }
 }

@@ -2,9 +2,10 @@
 #include <cmath>
 
 namespace AmbientScenes {
-    void StarFieldScene::Star::respawn(float max_depth) {
-        x = (float) (rand() % 2000 - 1000) / 1000.0f;
-        y = (float) (rand() % 2000 - 1000) / 1000.0f;
+    void StarFieldScene::Star::respawn(float max_depth, std::mt19937& rng) {
+        std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+        x = dist(rng);
+        y = dist(rng);
         z = max_depth;  // Start at maximum depth
     }
 
@@ -20,13 +21,14 @@ namespace AmbientScenes {
     void StarFieldScene::initialize(int width, int height) {
         Scene::initialize(width, height);
         stars.resize(num_stars->get());
-        dis = std::uniform_real_distribution<>(0.0, 1.0);
 
         // Initialize stars at different depths
+        std::uniform_real_distribution<float> coord_dist(-1.0f, 1.0f);
+        std::uniform_real_distribution<float> depth_dist(0.0f, 1.0f);
         for (auto &star: stars) {
-            star.x = (float) (rand() % 2000 - 1000) / 1000.0f;
-            star.y = (float) (rand() % 2000 - 1000) / 1000.0f;
-            star.z = (float) (rand() % (int) (max_depth->get() * 1000)) / 1000.0f;
+            star.x = coord_dist(gen);
+            star.y = coord_dist(gen);
+            star.z = depth_dist(gen) * max_depth->get();
         }
     }
 
@@ -41,7 +43,7 @@ namespace AmbientScenes {
 
             // Respawn star if it passes the viewer
             if (star.z <= 0.0f) {
-                star.respawn(max_depth->get());
+                star.respawn(max_depth->get(), gen);
             }
 
             // Project 3D coordinates to 2D screen space with perspective division
@@ -54,7 +56,7 @@ namespace AmbientScenes {
             uint8_t brightness = static_cast<uint8_t>(255 * std::pow(depth_factor, 0.5f));
 
             // Add twinkle effect
-            if (enable_twinkle) {
+            if (enable_twinkle->get()) {
                 brightness = static_cast<uint8_t>(brightness * (0.8f + 0.2f * dis(gen)));
             }
 
@@ -94,9 +96,7 @@ namespace AmbientScenes {
         add_property(max_depth);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> StarFieldSceneWrapper::create() {
-        return {new StarFieldScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<StarFieldScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> StarFieldSceneWrapper::create() {
+        return std::make_unique<StarFieldScene>();
     }
 }

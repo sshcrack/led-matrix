@@ -4,7 +4,6 @@
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
 #include <nlohmann/json.hpp>
-#include <utility>
 
 #include <Magick++.h>
 #include <shared/matrix/utils/consts.h>
@@ -14,7 +13,6 @@
 #include "matrix-factory.h"
 #include "server/server.h"
 #include "server/update_routes.h"
-#include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/update/UpdateManager.h"
 #include "udp.h"
@@ -35,8 +33,6 @@ using json = nlohmann::json;
 using Plugins::PluginManager;
 
 using server_t = restinio::http_server_t<Server::traits_t>;
-
-#include "shared/matrix/utils/consts.h"
 
 // ---------------------------------------------------------------------------
 // Emulator-only helpers
@@ -79,8 +75,10 @@ int main(int argc, char *argv[])
 {
     Magick::InitializeMagick(*argv);
 
-    SetMagickResourceLimit(Magick::MemoryResource, 256 * 1024 * 1024); // Limit to 256MB
-    SetMagickResourceLimit(Magick::MapResource, 512 * 1024 * 1024);    // Limit to 512MB
+    constexpr size_t magick_memory_limit = 256ULL * 1024 * 1024;
+    constexpr size_t magick_map_limit = 512ULL * 1024 * 1024;
+    SetMagickResourceLimit(Magick::MemoryResource, magick_memory_limit);
+    SetMagickResourceLimit(Magick::MapResource, magick_map_limit);
     cfg::load_env_levels();
 
     // -----------------------------------------------------------------------
@@ -130,9 +128,6 @@ int main(int argc, char *argv[])
 
     rgb_matrix::MatrixFactory::Options options;
 
-    // Should be in hardware.cpp but this actually drops privileges, so I moved it here
-
-
     bool is_debugging = false;
     for (int i = 0; i < argc; i++)
     {
@@ -150,7 +145,7 @@ int main(int argc, char *argv[])
         return usage(argv[0]);
     }
 
-    rgb_matrix::RGBMatrixBase *matrix = rgb_matrix::MatrixFactory::CreateMatrix(options);
+    std::unique_ptr<rgb_matrix::RGBMatrixBase> matrix(rgb_matrix::MatrixFactory::CreateMatrix(options));
     if (matrix == nullptr)
         return usage(argv[0]);
 
@@ -170,10 +165,13 @@ int main(int argc, char *argv[])
     pl->initialize();
 
     debug("Loading config...");
-    config = new Config::MainConfig("config.json");
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
+    config = new Config::MainConfig(std::string(LED_MATRIX_DATA_DIR) + "/config.json");
 
     debug("Initializing UpdateManager...");
-    Constants::global_update_manager = new Update::UpdateManager(config);
+    Constants::global_update_manager = std::make_shared<Update::UpdateManager>(config);
     Constants::global_update_manager->start();
     info("UpdateManager initialized and started");
 
@@ -187,7 +185,17 @@ int main(int argc, char *argv[])
         if (err.has_value())
         {
             error(err.value());
-            std::exit(-1);
+            pl->destroy_plugins();
+            pl->delete_references();
+            delete Constants::global_post_processor;
+            delete Constants::global_transition_manager;
+            if (Constants::global_update_manager)
+            {
+                Constants::global_update_manager->stop();
+                Constants::global_update_manager.reset();
+            }
+            delete config;
+            return 1;
         }
 
         auto effects = item->create_effects();
@@ -206,7 +214,22 @@ int main(int argc, char *argv[])
     info("Loaded {} Scenes and {} Image Types", pl->get_scenes().size(), pl->get_image_providers().size());
 
     debug("Starting mainloop_thread");
-    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
+    constexpr uint16_t default_http_port = 8080;
+    uint16_t port = default_http_port;
+    if (const char* port_env = std::getenv("PORT")) {
+        try {
+            int parsed = std::stoi(port_env);
+            if (parsed < 0 || parsed > 65535) {
+                spdlog::warn("PORT env value '{}' out of range [0,65535]. Using default {}.", port_env, default_http_port);
+                parsed = default_http_port;
+            }
+            {
+                port = static_cast<uint16_t>(parsed);
+            }
+        } catch (const std::exception& e) {
+            spdlog::warn("Invalid PORT env value '{}': {}. Using default {}.", port_env, e.what(), default_http_port);
+        }
+    }
 
     // -----------------------------------------------------------------------
     // Emulator-only: find and pre-build the pinned scene if --scene was given.
@@ -278,7 +301,19 @@ int main(int argc, char *argv[])
         if (err.has_value())
         {
             error(err.value());
-            std::exit(-1);
+            initiate_shutdown(server);
+            control_thread.join();
+            pl->destroy_plugins();
+            pl->delete_references();
+            delete Constants::global_post_processor;
+            delete Constants::global_transition_manager;
+            if (Constants::global_update_manager)
+            {
+                Constants::global_update_manager->stop();
+                Constants::global_update_manager.reset();
+            }
+            delete config;
+            return 1;
         }
     }
 
@@ -287,18 +322,33 @@ int main(int argc, char *argv[])
 
     debug("Initializing hardware...");
 #ifdef ENABLE_EMULATOR
-    auto hardware_code = start_hardware_mainloop(matrix, pinned_scene);
+    auto hardware_code = start_hardware_mainloop(matrix.get(), pinned_scene);
 #else
-    auto hardware_code = start_hardware_mainloop(matrix);
+    auto hardware_code = start_hardware_mainloop(matrix.get());
 #endif
 
     if (hardware_code != 0)
     {
         error("Could not initialize hardware_code.");
+        delete udpServer;
+        delete Constants::global_post_processor;
+        delete Constants::global_transition_manager;
+        if (Constants::global_update_manager)
+        {
+            Constants::global_update_manager->stop();
+            Constants::global_update_manager.reset();
+        }
         initiate_shutdown(server);
+
+        info("Joining control thread...");
+        control_thread.join();
 
         info("Terminating plugin loader...");
         pl->destroy_plugins();
+        pl->delete_references();
+
+        info("Destroying config instance...");
+        delete config;
 
         return hardware_code;
     }
@@ -320,28 +370,26 @@ int main(int argc, char *argv[])
     info("Saving config...");
     config->save();
 
-    delete Constants::global_post_processor;
-    delete Constants::global_transition_manager;
-
     info("Joining control thread...");
     control_thread.join();
 
-    pl->delete_references();
-
-    info("Destroying config instance...");
-    delete config;
-
     info("Terminating plugin loader...");
     pl->destroy_plugins();
+
+    delete Constants::global_post_processor;
+    delete Constants::global_transition_manager;
+
+    pl->delete_references();
 
     info("Stopping UpdateManager...");
     if (Constants::global_update_manager)
     {
         Constants::global_update_manager->stop();
-        delete Constants::global_update_manager;
-        Constants::global_update_manager = nullptr;
+        Constants::global_update_manager.reset();
     }
 
+    info("Destroying config instance...");
+    delete config;
 
     return 0;
 }

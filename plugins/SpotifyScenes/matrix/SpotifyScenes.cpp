@@ -1,4 +1,5 @@
 #include "SpotifyScenes.h"
+#include <random>
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/plugin_registry.h"
 #include "manager/shared_spotify.h"
@@ -14,26 +15,21 @@ extern "C" PLUGIN_EXPORT SpotifyScenes *createSpotifyScenes() {
 }
 
 extern "C" PLUGIN_EXPORT void destroySpotifyScenes(SpotifyScenes *c) {
-    delete spotify; // The destructor will handle termination
     delete c;
+    delete spotify; // The destructor will handle termination
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper> >
 SpotifyScenes::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > SpotifyScenes::create_scenes() {
+vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
     if(is_disabled)
         return {};
     
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> >();
-    scenes.push_back({
-        new CoverOnlySceneWrapper(), [](SceneWrapper *scene) {
-            delete scene;
-        }
-    });
-
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<CoverOnlySceneWrapper>());
     return scenes;
 }
 
@@ -120,11 +116,13 @@ register_routes(std::unique_ptr<router_t> router) {
 
 string SpotifyScenes::generate_random_string(size_t length) {
     static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    static std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<size_t> dist(0, sizeof(charset) - 2);
     string result;
     result.resize(length);
 
     for (size_t i = 0; i < length; i++) {
-        result[i] = charset[rand() % (sizeof(charset) - 1)];
+        result[i] = charset[dist(rng)];
     }
 
     return result;
@@ -136,5 +134,5 @@ SpotifyScenes::SpotifyScenes() {
 
     is_disabled = !id || !secret;
     if (is_disabled)
-        spdlog::error("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
+        spdlog::warn("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
 };

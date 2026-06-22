@@ -2,6 +2,5 @@
 #include "shared/matrix/update/UpdateManager.h"
 
 namespace Constants {
-    // Define the global UpdateManager instance
-    Update::UpdateManager* global_update_manager = nullptr;
+    std::shared_ptr<Update::UpdateManager> global_update_manager;
 }

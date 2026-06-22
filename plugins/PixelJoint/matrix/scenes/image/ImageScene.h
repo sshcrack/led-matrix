@@ -38,14 +38,14 @@ struct FileInfo {
 
 struct CurrAnimation {
     rgb_matrix::StreamReader reader;
-    std::unique_ptr<FileInfo, void(*)(FileInfo *)> file;
+    std::unique_ptr<FileInfo> file;
     const tmillis_t end_time_ms;
     tmillis_t frame_start_ms = 0;
     tmillis_t frame_delay_ms = 0;
 
     CurrAnimation(const rgb_matrix::StreamReader &reader,
                   const tmillis_t end_time_ms,
-                  std::unique_ptr<FileInfo, void(*)(FileInfo *)> file): reader(reader), file(std::move(file)),
+                  std::unique_ptr<FileInfo> file): reader(reader), file(std::move(file)),
                                                                         end_time_ms(end_time_ms) {
     }
 
@@ -57,7 +57,7 @@ struct CurrAnimation {
 
 struct ImageInfo {
     vector<Magick::Image> frames;
-    std::variant<std::unique_ptr<Post, void (*)(Post *)>, std::shared_ptr<Post> > post;
+    std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > post;
 };
 
 const std::string PROVIDER_DEFAULT = R"(
@@ -72,26 +72,24 @@ const std::string PROVIDER_DEFAULT = R"(
 ])";
 
 class ImageScene final : public Scenes::Scene {
-    std::optional<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)> > curr_animation;
+    std::optional<std::unique_ptr<CurrAnimation>> curr_animation;
     std::vector<std::shared_ptr<ImageProviders::General> > providers;
 
     uint curr_category = 0;
     std::atomic<bool> is_exiting{false};
-    std::atomic<bool> has_image{false};
-
     optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
 
 
     bool DisplayAnimation(rgb_matrix::FrameCanvas *canvas);
 
-    expected<std::unique_ptr<CurrAnimation, void(*)(CurrAnimation *)>, string>
+    expected<std::unique_ptr<CurrAnimation>, string>
     get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness);
 
     static expected<optional<ImageInfo>, string>
     get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height,
                    const atomic<bool> &is_exiting);
 
-    std::unique_ptr<FileInfo, void(*)(FileInfo *)> GetFileInfo(const vector<Magick::Image> &frames,
+    std::unique_ptr<FileInfo> GetFileInfo(const vector<Magick::Image> &frames,
                                                                FrameCanvas *canvas) const;
 
     PropertyPointer<tmillis_t> image_display_duration = MAKE_PROPERTY("display_duration", tmillis_t, 15000);
@@ -126,5 +124,5 @@ public:
 };
 
 class ImageSceneWrapper final : public Plugins::SceneWrapper {
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+    std::unique_ptr<Scenes::Scene> create() override;
 };

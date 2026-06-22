@@ -2,18 +2,16 @@
 #include "shared/desktop/utils.h"
 #include <algorithm>
 #include <cstdio>
-#include <cstdlib>
 #include <fmt/format.h>
 #include <thread>
 #include <spdlog/spdlog.h>
-
-#ifdef _WIN32
-#include <windows.h>
+#ifndef _WIN32
+#include <unistd.h>
+#include <sys/wait.h>
 #else
 #include <fcntl.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <io.h>
+#include <windows.h>
 #endif
 
 namespace {
@@ -23,80 +21,6 @@ inline const char* null_device() {
     return "NUL";
 #else
     return "/dev/null";
-#endif
-}
-
-inline void close_pipe(FILE* pipe) {
-    if (!pipe) return;
-#ifdef _WIN32
-    _pclose(pipe);
-#else
-    pclose(pipe);
-#endif
-}
-
-inline int run_command(const std::string& cmd,
-                       const std::atomic<bool>* running = nullptr) {
-#ifdef _WIN32
-    STARTUPINFOA si{};
-    PROCESS_INFORMATION pi{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    std::string fullCmd = "cmd.exe /C " + cmd;
-    std::vector<char> cmdline(fullCmd.begin(), fullCmd.end());
-    cmdline.push_back('\0');
-    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
-        return -1;
-    // Poll running_ so stop() is not blocked for the full yt-dlp/ffmpeg duration
-    while (true) {
-        DWORD waitResult = WaitForSingleObject(pi.hProcess, 200);
-        if (waitResult == WAIT_OBJECT_0) break;
-        if (running && !running->load()) {
-            TerminateProcess(pi.hProcess, 1);
-            WaitForSingleObject(pi.hProcess, INFINITE);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-            return -2; // Interrupted
-        }
-    }
-    DWORD exitCode = 1;
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    return static_cast<int>(exitCode);
-#else
-    pid_t pid = fork();
-    if (pid < 0) return -1;
-    if (pid == 0) {
-        // Child: redirect stdout/stderr to /dev/null and exec
-        int devnull = open("/dev/null", O_WRONLY);
-        if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); close(devnull); }
-        execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
-        _exit(127);
-    }
-    // Parent: poll so stop() can kill the child promptly
-    while (true) {
-        int status = 0;
-        pid_t ret = waitpid(pid, &status, WNOHANG);
-        if (ret == pid) {
-            return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-        }
-        if (running && !running->load()) {
-            kill(pid, SIGTERM);
-            // Give it 500ms to exit cleanly, then SIGKILL
-            for (int i = 0; i < 5; ++i) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                if (waitpid(pid, &status, WNOHANG) == pid) goto done;
-            }
-            kill(pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            done:
-            return -2; // Interrupted
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
 #endif
 }
 
@@ -136,6 +60,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
     }
 
     stop();
+    first_frame_fired_ = false;
 
     current_url_ = url;
     cache_key_ = cache_key;
@@ -180,6 +105,11 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                             std::lock_guard<std::mutex> lock(frame_mutex_);
                             current_frame_ = buffer;
                         }
+                        {
+                            std::lock_guard<std::mutex> lk(status_cb_mutex_);
+                            if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+                                on_first_frame_ready();
+                        }
                         std::this_thread::sleep_for(
                             std::chrono::duration<double>(1.0 / fps_));
                     }
@@ -221,10 +151,19 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     // then immediately stream a short clip so playback starts in seconds.
                     int fast_start_sec = start_chunk * chunk_duration_sec_ +
                                          static_cast<int>(skip_frames / fps_);
+                    // Align the initial full-chunk download with the seek point
+                    // (fast_start_sec) instead of the fixed chunk boundary.
+                    // This avoids wasting bandwidth on data before the seek and
+                    // gives the full chunk_duration_sec_ of play-time before the
+                    // prefetch of the next chunk is needed, eliminating the
+                    // "chunk finished before prefetch" stall when starting mid-chunk.
+                    int initial_chunk_sec = fast_start_sec;
                     auto full_chunk_done = std::make_shared<std::atomic<bool>>(false);
                     auto full_chunk_ok   = std::make_shared<std::atomic<bool>>(false);
-                    std::thread full_chunk_thread([this, start_chunk, full_chunk_done, full_chunk_ok]() {
-                        *full_chunk_ok = download_and_process_chunk(start_chunk);
+                    std::thread full_chunk_thread([this, start_chunk, initial_chunk_sec,
+                                                    full_chunk_done, full_chunk_ok]() {
+                        *full_chunk_ok = download_and_process_chunk(
+                            start_chunk, true, initial_chunk_sec);
                         if (start_chunk == 0 && full_chunk_ok->load())
                             evict_oldest_first_chunks();
                         *full_chunk_done = true;
@@ -234,7 +173,9 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     // If fast start fails (e.g. yt-dlp flake) we fall through and wait
                     // for the full chunk like before — no UX regression.
                     if (running_.load()) {
-                        play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_);
+                        if (!play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_) && !running_.load()) {
+                            break;
+                        }
                     }
 
                     // Now wait for the full chunk to be ready
@@ -250,10 +191,10 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     if (!full_chunk_ok->load()) {
                         break;
                     }
-                    // Advance skip_frames past what the fast chunk already displayed,
-                    // so the normal play_chunk doesn't replay those frames.
-                    skip_frames = static_cast<int>(fast_start_sec * fps_) +
-                                  static_cast<int>(fast_chunk_duration_sec_ * fps_);
+                    // The full chunk now starts at fast_start_sec (aligned to the
+                    // seek point), so we only skip frames the fast chunk already
+                    // played — not the gap between the chunk boundary and the seek.
+                    skip_frames = static_cast<int>(fast_chunk_duration_sec_ * fps_);
                     // Clamp to chunk size so we don't skip past the end
                     int max_skip = static_cast<int>(chunk_duration_sec_ * fps_);
                     if (skip_frames > max_skip) skip_frames = max_skip;
@@ -268,12 +209,13 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                 while (running_) {
                     int next = current + 1;
 
-                    // Use shared_ptr so the atomic outlives any potential lambda/thread lifetime mismatch
+                    // Use shared_ptr so the atomics outlive any potential lambda/thread lifetime mismatch
                     auto prefetch_success = std::make_shared<std::atomic<bool>>(false);
+                    auto prefetch_done = std::make_shared<std::atomic<bool>>(false);
                     {
                         std::lock_guard<std::mutex> lk(prefetch_mutex_);
                         if (prefetch_thread_.joinable()) prefetch_thread_.join(); // safety guard
-                        prefetch_thread_ = std::thread([this, next, prefetch_success]() {
+                        prefetch_thread_ = std::thread([this, next, prefetch_success, prefetch_done]() {
                         try {
                             *prefetch_success = download_and_process_chunk(next, false);
                             spdlog::info("Prefetch chunk {}: {}",
@@ -282,6 +224,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                         } catch (const std::exception& e) {
                             spdlog::warn("Prefetch chunk {} exception: {}", next, e.what());
                         }
+                        *prefetch_done = true;
                     });
                     } // prefetch_mutex_ released here — stop() can now join if needed
 
@@ -299,6 +242,18 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     {
                         std::lock_guard<std::mutex> lk(prefetch_mutex_);
                         if (prefetch_thread_.joinable()) {
+                            if (!prefetch_done->load()) {
+                                // The chunk we just finished playing ran out before the
+                                // next one was ready — without this, playback just
+                                // freezes on the last frame with no indication why.
+                                // Surface it as "downloading" so callers (e.g. the
+                                // matrix-side loading overlay) can show buffering
+                                // instead of looking stuck.
+                                spdlog::info("Chunk {} finished before prefetch of {} was ready — buffering",
+                                             current, next);
+                                state_ = State::Downloading;
+                                notify_status("downloading");
+                            }
                             spdlog::debug("Waiting for prefetch of chunk {}", next);
                             prefetch_thread_.join();
                         }
@@ -351,10 +306,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     std::filesystem::remove(mp4Path, ec); // always re-download; it's a temp file
 
     // Download the short clip
-    std::string dlCmd = fmt::format(
-        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
-        "--force-overwrites -o \"{}\" \"{}\"",
-        start_sec, start_sec + duration_sec, mp4Path.string(), current_url_);
+    std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, start_sec + duration_sec);
     spdlog::info("Fast chunk: downloading {}s clip starting at {}s", duration_sec, start_sec);
     int dlResult = run_command(dlCmd, &running_);
     if (dlResult != 0) {
@@ -365,18 +317,88 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 
     // Pipe ffmpeg raw output directly — frames arrive as ffmpeg encodes them
     const size_t frameSize = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 3;
+    std::string ffCmd = build_ffmpeg_pipe_command(mp4Path);
 #ifdef _WIN32
-    std::string ffCmd = fmt::format(
-        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
-        "-f rawvideo -pix_fmt rgb24 pipe:1 2>NUL",
-        mp4Path.string(), width_, height_, fps_);
-    FILE* pipe = _popen(ffCmd.c_str(), "rb");
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        spdlog::warn("Fast chunk: CreatePipe failed, skipping fast start");
+        return false;
+    }
+    if (!SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        spdlog::warn("Fast chunk: SetHandleInformation failed, skipping fast start");
+        return false;
+    }
+    // Redirect stderr to NUL explicitly. GetStdHandle(STD_ERROR_HANDLE) is not
+    // reliable here: this is a GUI-subsystem process with no attached console,
+    // so the "inherited" std handle can be NULL/invalid. Passing a bad handle
+    // through STARTF_USESTDHANDLES is exactly the kind of edge case that can
+    // make Windows fall back to creating a visible console for the child, so
+    // we hand it a real (writable, inheritable) handle instead.
+    SECURITY_ATTRIBUTES nulSa{};
+    nulSa.nLength = sizeof(nulSa);
+    nulSa.bInheritHandle = TRUE;
+    nulSa.lpSecurityDescriptor = nullptr;
+    HANDLE hNul = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE, &nulSa,
+                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+    STARTUPINFOA si{};
+    PROCESS_INFORMATION pi{};
+    si.cb = sizeof(si);
+    si.hStdOutput = hWrite;
+    si.hStdError = (hNul != INVALID_HANDLE_VALUE) ? hNul : nullptr;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    std::vector<char> cmdline(ffCmd.begin(), ffCmd.end());
+    cmdline.push_back('\0');
+    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, TRUE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        CloseHandle(hRead); CloseHandle(hWrite);
+        if (hNul != INVALID_HANDLE_VALUE) CloseHandle(hNul);
+        spdlog::warn("Fast chunk: CreateProcess failed, skipping fast start");
+        return false;
+    }
+    CloseHandle(hWrite);
+    if (hNul != INVALID_HANDLE_VALUE) CloseHandle(hNul);
+    int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
+    if (fd == -1) {
+        CloseHandle(hRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        spdlog::warn("Fast chunk: _open_osfhandle failed, skipping fast start");
+        return false;
+    }
+    FILE* pipe = _fdopen(fd, "rb");
+    if (!pipe) {
+        _close(fd);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        spdlog::warn("Fast chunk: _fdopen failed, skipping fast start");
+        return false;
+    }
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    ffmpeg_pid_ = static_cast<int>(pi.dwProcessId);
 #else
-    std::string ffCmd = fmt::format(
-        "ffmpeg -y -i '{}' -vf 'scale={}:{},setsar=1:1,fps={}' "
-        "-f rawvideo -pix_fmt rgb24 pipe:1 2>/dev/null",
-        mp4Path.string(), width_, height_, fps_);
-    FILE* pipe = popen(ffCmd.c_str(), "r");
+    int fds[2];
+    if (pipe(fds) != 0) return false;
+    pid_t child = fork();
+    if (child == -1) { close(fds[0]); close(fds[1]); return false; }
+    if (child == 0) {
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        close(fds[1]);
+        execl("/bin/sh", "sh", "-c", ffCmd.c_str(), (char*)nullptr);
+        _exit(1);
+    }
+    close(fds[1]);
+    FILE* pipe = fdopen(fds[0], "r");
+    if (!pipe) { close(fds[0]); kill(child, SIGTERM); waitpid(child, nullptr, 0); return false; }
+    ffmpeg_pid_ = child;
 #endif
     if (!pipe) {
         spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
@@ -395,14 +417,38 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             current_frame_ = buffer;
         }
+        {
+            std::lock_guard<std::mutex> lk(status_cb_mutex_);
+            if (on_first_frame_ready && !first_frame_fired_.exchange(true))
+                on_first_frame_ready();
+        }
         ++frames_played;
         std::this_thread::sleep_for(std::chrono::duration<double>(1.0 / fps_));
     }
 
 #ifdef _WIN32
-    _pclose(pipe);
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+        if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
+        ffmpeg_pid_ = -1;
+    }
+    fclose(pipe);
 #else
-    pclose(pipe);
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+        kill(pid, SIGTERM);
+        int status;
+        for (int i = 0; i < 20; ++i) {
+            pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result == pid) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (waitpid(pid, &status, WNOHANG) == 0) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
+        ffmpeg_pid_ = -1;
+    }
+    fclose(pipe);
 #endif
 
     // Clean up the temp mp4 — chunk 0 .mp4 will be downloaded separately
@@ -413,6 +459,27 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
 
 void VideoStreamEngine::stop() {
     running_ = false;
+
+    // Kill ffmpeg child process to unblock fread() in play_fast_chunk
+    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+#ifdef _WIN32
+        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, static_cast<DWORD>(pid));
+        if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
+#else
+        kill(pid, SIGTERM);
+        int status;
+        for (int i = 0; i < 20; ++i) {
+            pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result == pid) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (waitpid(pid, &status, WNOHANG) == 0) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
+        ffmpeg_pid_ = -1;
+#endif
+    }
 
     std::function<void(const std::string &)> tmp_status_change;
     // Clear the status callback BEFORE joining threads.
@@ -426,6 +493,7 @@ void VideoStreamEngine::stop() {
         std::lock_guard<std::mutex> lk(status_cb_mutex_);
         tmp_status_change = on_status_change;
         on_status_change = nullptr;
+        on_first_frame_ready = nullptr;
     }
 
     // Join prefetch_thread_ first: processing_thread_ may be blocked waiting for it,
@@ -452,6 +520,42 @@ void VideoStreamEngine::stop() {
     state_ = State::Idle;
 }
 
+// ---- Command construction helpers ----
+std::string VideoStreamEngine::build_ytdlp_command(
+    const std::filesystem::path& output_path, int start_sec, int end_sec) const
+{
+    return fmt::format(
+        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "--force-overwrites -o \"{}\" \"{}\"",
+        start_sec, end_sec, output_path.string(), current_url_);
+}
+
+std::string VideoStreamEngine::build_ffmpeg_command(
+    const std::filesystem::path& input_path,
+    const std::filesystem::path& output_path) const
+{
+    return fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
+        "-f rawvideo -pix_fmt rgb24 \"{}\"",
+        input_path.string(), width_, height_, fps_, output_path.string());
+}
+
+std::string VideoStreamEngine::build_ffmpeg_pipe_command(
+    const std::filesystem::path& input_path) const
+{
+#ifdef _WIN32
+    return fmt::format(
+        "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>NUL",
+        input_path.string(), width_, height_, fps_);
+#else
+    return fmt::format(
+        "ffmpeg -y -i '{}' -vf 'scale={}:{},setsar=1:1,fps={}' "
+        "-f rawvideo -pix_fmt rgb24 pipe:1 2>/dev/null",
+        input_path.string(), width_, height_, fps_);
+#endif
+}
+
 std::vector<uint8_t> VideoStreamEngine::get_current_frame() {
     std::lock_guard<std::mutex> lock(frame_mutex_);
     return current_frame_;
@@ -467,25 +571,27 @@ bool VideoStreamEngine::tick() {
 }
 
 bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
-                                                    bool set_error_on_fail) {
+                                                    bool set_error_on_fail,
+                                                    int start_sec_override) {
     try {
-        const int start_sec = chunk_index * chunk_duration_sec_;
+        const int normal_start = chunk_index * chunk_duration_sec_;
+        const int start_sec = (start_sec_override >= 0) ? start_sec_override : normal_start;
         const int end_sec   = start_sec + chunk_duration_sec_;
 
         auto mp4Path = chunk_mp4_path(chunk_index);
         auto binPath = chunk_bin_path(chunk_index);
 
         std::error_code ec;
-        if (std::filesystem::exists(binPath, ec) &&
+        // When using an override (seek-based offset), always re-download —
+        // a different seek position means different content.
+        if (start_sec_override < 0 &&
+            std::filesystem::exists(binPath, ec) &&
             std::filesystem::file_size(binPath, ec) > 0) {
             spdlog::info("Chunk {} already on disk, skipping download", chunk_index);
             return true;
         }
 
-        std::string dlCmd = fmt::format(
-            "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
-            "--force-overwrites -o \"{}\" \"{}\"",
-            start_sec, end_sec, mp4Path.string(), current_url_);
+        std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, end_sec);
         spdlog::info("Downloading chunk {} ({}-{}s)", chunk_index, start_sec, end_sec);
         int dlResult = run_command(dlCmd, &running_);
         if (dlResult != 0) {
@@ -505,10 +611,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             return false;
         }
 
-        std::string ffCmd = fmt::format(
-            "ffmpeg -y -i \"{}\" -vf \"scale={}:{},setsar=1:1,fps={}\" "
-            "-f rawvideo -pix_fmt rgb24 \"{}\"",
-            mp4Path.string(), width_, height_, fps_, binPath.string());
+        std::string ffCmd = build_ffmpeg_command(mp4Path, binPath);
         spdlog::info("Processing chunk {} to {}x{} @ {}fps", chunk_index,
                      width_, height_, fps_);
         int ffResult = run_command(ffCmd, &running_);

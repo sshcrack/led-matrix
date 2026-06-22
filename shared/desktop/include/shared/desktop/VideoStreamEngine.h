@@ -2,6 +2,11 @@
 #include "shared/desktop/macro.h"
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#ifdef _WIN32
+#include <cstdint>
+using pid_t = int;
+#endif
 #include <filesystem>
 #include <functional>
 #include <mutex>
@@ -45,6 +50,12 @@ public:
     // and cleared from stop() concurrently.
     std::function<void(const std::string&)> on_status_change;
 
+    // Fired exactly once when the first frame is written to current_frame_,
+    // whether via fast-start or chunk playback. The frame is already in
+    // current_frame_ when this fires (frame_mutex_ is NOT held).
+    // Guarded by status_cb_mutex_ — cleared in stop() like on_status_change.
+    std::function<void()> on_first_frame_ready;
+
 private:
     std::filesystem::path cache_root_;
     int width_, height_;
@@ -62,6 +73,7 @@ private:
     int fast_chunk_duration_sec_ = 4;
 
     std::atomic<bool> running_{false};
+    std::atomic<pid_t> ffmpeg_pid_ = -1;
     std::atomic<long> seek_ms_{0};
     std::thread processing_thread_;
     std::mutex prefetch_mutex_;  // guards prefetch_thread_ across stop() and processing_thread_
@@ -71,7 +83,15 @@ private:
     std::mutex frame_mutex_;
     std::chrono::steady_clock::time_point last_frame_time_;
 
-    bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true);
+    std::atomic<bool> first_frame_fired_{false};
+
+    // Command construction helpers
+    std::string build_ytdlp_command(const std::filesystem::path& output_path, int start_sec, int end_sec) const;
+    std::string build_ffmpeg_command(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const;
+    std::string build_ffmpeg_pipe_command(const std::filesystem::path& input_path) const;
+
+    bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true,
+                                     int start_sec_override = -1);
     // Download a short clip and stream its frames directly via ffmpeg pipe,
     // so playback starts immediately without waiting for a full chunk to be encoded.
     bool play_fast_chunk(int start_sec, int duration_sec);

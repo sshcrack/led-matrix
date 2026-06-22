@@ -15,7 +15,7 @@ namespace AmbientScenes {
             Star() : x(0), y(0), z(0), brightness(255) {
             }
 
-            void respawn(float max_depth);
+            void respawn(float max_depth, std::mt19937& rng);
 
             void update(float speed);
         };
@@ -55,6 +55,6 @@ namespace AmbientScenes {
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

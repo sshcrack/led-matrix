@@ -291,9 +291,7 @@ namespace Scenes {
             initialize_maze();
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> MazeGameSceneWrapper::create() {
-        return std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> (new MazeGameScene(), [](Scenes::Scene* scene) {
-            delete scene;
-        });
+    std::unique_ptr<Scenes::Scene> MazeGameSceneWrapper::create() {
+        return std::make_unique<MazeGameScene>();
     }
 }

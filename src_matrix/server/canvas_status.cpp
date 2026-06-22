@@ -2,6 +2,7 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 
 
 std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_ptr<router_t> router) {
@@ -20,11 +21,26 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
 
     router->http_get("/set_enabled", [](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
-        if (!qp.has("enabled")) {
+        std::string enabled_str = qp.has("enabled") ? std::string{qp["enabled"]} : "";
+        if (enabled_str.empty()) {
+            // Fallback: try JSON body
+            try {
+                auto body_json = nlohmann::json::parse(req->body());
+                if (body_json.contains("enabled")) {
+                    if (body_json["enabled"].is_boolean()) {
+                        bool bval = body_json["enabled"].template get<bool>();
+                        enabled_str = bval ? "true" : "false";
+                    } else {
+                        enabled_str = body_json["enabled"].template get<std::string>();
+                    }
+                }
+            } catch (...) {}
+        }
+        if (enabled_str.empty()) {
             return reply_with_error(req, "No enabled given");
         }
 
-        config->set_turned_off(qp["enabled"] == "false");
+        config->set_turned_off(enabled_str == "false");
         exit_canvas_update.store(true);
 
         return reply_with_json(req, {{"turned_off", config->is_turned_off()}});

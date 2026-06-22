@@ -2,10 +2,12 @@
 #include "WeatherOverview.h"
 #include "scenes/WeatherScene.h"
 #include "shared/matrix/utils/shared.h"
+#include "shared/matrix/server/server_utils.h"
 #include "spdlog/spdlog.h"
 #include "Constants.h"
 
 using namespace Scenes;
+using json = nlohmann::json;
 
 extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview() {
     return new WeatherOverview();
@@ -15,22 +17,31 @@ extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)> >
+vector<std::unique_ptr<ImageProviderWrapper> >
 WeatherOverview::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> > WeatherOverview::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)> >();
-    
-    // Add the original weather scene
-    scenes.push_back({
-        new WeatherSceneWrapper(), [](SceneWrapper *scene) {
-            delete scene;
+vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<WeatherSceneWrapper>());
+    return scenes;
+}
+
+std::unique_ptr<router_t> WeatherOverview::register_routes(std::unique_ptr<router_t> router) {
+    router->http_post("/weather/indoor_temp", [](auto req, auto) {
+        try {
+            json j = json::parse(req->body());
+            float value = j.value("temperature", -999.0f);
+            indoor_temperature.store(value);
+            spdlog::info("Indoor temperature updated: {:.1f}C", value);
+            return Server::reply_with_json(req, {{"success", true}, {"temperature", value}});
+        } catch (const std::exception &ex) {
+            spdlog::warn("Invalid indoor temperature payload: {}", ex.what());
+            return Server::reply_with_error(req, "Invalid JSON payload");
         }
     });
-
-    return scenes;
+    return std::move(router);
 }
 
 std::optional<string> WeatherOverview::before_server_init() {

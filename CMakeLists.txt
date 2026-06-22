@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.21.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
-set(VCPKG_APPLOCAL_DEPS ON)
+if(WIN32)
+    set(VCPKG_APPLOCAL_DEPS ON)
+endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
@@ -62,11 +64,11 @@ set(VERSION 1.14.1)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
-    project(main VERSION ${VERSION})
+    project(led-matrix VERSION ${VERSION})
 endif()
 include(cmake/update_package_version.cmake)
 
-add_package_json_version_update(CONFIGURE_TIME PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
+add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
@@ -103,8 +105,11 @@ if(ENABLE_DESKTOP)
     # and system DEB installs (/usr/bin/ -> /usr/lib/led-matrix-desktop/).
     set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib/led-matrix-desktop")
 else()
-    # Matrix TGZ is extracted flat; all .so files are co-located with the binary
-    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+    # Matrix DEB installs shared libs to /usr/lib/led-matrix.
+    # $ORIGIN/../lib/led-matrix resolves correctly for both
+    # local dev installs (install/bin/ -> install/lib/led-matrix/)
+    # and system DEB installs (/usr/bin/ -> /usr/lib/led-matrix/).
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib/led-matrix")
 endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
@@ -112,16 +117,31 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(shared)
 if(ENABLE_DESKTOP)
-    file(GLOB_RECURSE SOURCES
-        src_desktop/*.c*
+    set(SOURCES
+        src_desktop/main.cpp
+        src_desktop/filters.cpp
+        src_desktop/single_instance_manager.cpp
     )
 
     if(WIN32)
         list(APPEND SOURCES src_desktop/app_icon.rc)
     endif()
 else()
-    file(GLOB_RECURSE SOURCES
-        src_matrix/*.c*
+    set(SOURCES
+        src_matrix/main.cpp
+        src_matrix/matrix_control/canvas.cpp
+        src_matrix/matrix_control/hardware.cpp
+        src_matrix/server/canvas_status.cpp
+        src_matrix/server/custom_assets_management.cpp
+        src_matrix/server/desktop_ws.cpp
+        src_matrix/server/other_routes.cpp
+        src_matrix/server/post_processing_routes.cpp
+        src_matrix/server/preset_management.cpp
+        src_matrix/server/scene_management.cpp
+        src_matrix/server/schedule_management.cpp
+        src_matrix/server/server.cpp
+        src_matrix/server/update_routes.cpp
+        src_matrix/udp.cpp
     )
 endif()
 
@@ -131,8 +151,6 @@ endif()
 add_subdirectory(plugins)
 
 # Collect the list of matrix plugin targets published by register_plugin()
-get_property(MATRIX_PLUGIN_TARGETS GLOBAL PROPERTY MATRIX_PLUGIN_TARGETS)
-
 # Add an executable with the above sources
 add_executable(${PROJECT_NAME}
     ${SOURCES}
@@ -165,7 +183,7 @@ if(ENABLE_DESKTOP)
         DESTINATION share/led-matrix-desktop/assets
     )
 else()
-    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "main")
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix")
 endif()
 
 # LICENSE destination differs: FHS doc path for desktop DEB, flat dir for matrix TGZ
@@ -177,7 +195,8 @@ if(ENABLE_DESKTOP)
 else()
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
-        DESTINATION .
+        DESTINATION share/doc/led-matrix
+        RENAME copyright
     )
 endif()
 
@@ -185,8 +204,18 @@ endif()
 if(NOT ENABLE_DESKTOP)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
-        DESTINATION .
+        DESTINATION lib/led-matrix
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+
+    # Configure and install systemd service unit
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix.service.in"
+        "${CMAKE_BINARY_DIR}/led-matrix.service"
+        @ONLY
+    )
+    install(FILES "${CMAKE_BINARY_DIR}/led-matrix.service"
+        DESTINATION "lib/systemd/system"
     )
 endif()
 
@@ -198,6 +227,15 @@ if(ENABLE_EMULATOR)
     target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_EMULATOR)
     find_package(CLI11 CONFIG REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE CLI11::CLI11)
+endif()
+
+# Define FHS paths for matrix builds (emulator also uses these; source files
+# provide fallback defaults so the build is not broken without the defines).
+if(NOT ENABLE_DESKTOP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        LED_MATRIX_DATA_DIR="/var/lib/led-matrix"
+        LED_MATRIX_SHARE_DIR="/usr/share/led-matrix"
+    )
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SharedToolsCommon)
@@ -243,7 +281,7 @@ else()
 
     install(FILES
         "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib/librpi-rgb-led-matrix.so"
-        DESTINATION "."
+        DESTINATION "lib/led-matrix"
     )
 endif()
 
@@ -257,7 +295,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 
 # Link plugins as well
-target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_NAMES} ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS})
 
 
 # ---------------------------------------------------------------------------
@@ -269,10 +307,6 @@ if(ENABLE_EMULATOR)
     set(PREVIEW_FRAMES "90" CACHE STRING "Total frames per scene preview GIF (90 @ 15fps = 6 s)")
     set(PREVIEW_WIDTH "128" CACHE STRING "Preview GIF width (pixels)")
     set(PREVIEW_HEIGHT "128" CACHE STRING "Preview GIF height (pixels)")
-
-    set(_PREVIEW_LIB_PATH
-        "${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
-    )
 
     add_executable(preview_gen
         ${CMAKE_CURRENT_SOURCE_DIR}/src_preview_gen/main.cpp
@@ -295,7 +329,7 @@ if(ENABLE_EMULATOR)
 
     # Install the binary itself so users can manually generate/regenerate previews
     install(TARGETS preview_gen
-        DESTINATION .
+        DESTINATION bin
     )
 endif()
 
@@ -304,25 +338,12 @@ if(NOT ENABLE_DESKTOP)
     # Previews are committed to git and deployed as-is, not auto-generated
     # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
 
-    # Install to web directory (for web interface access)
-    if(NOT ENABLE_DESKTOP)
-        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
-            DESTINATION web/scene_previews
-            OPTIONAL
-            FILES_MATCHING PATTERN "*.gif"
-        )
-    endif()
-
-    # Install to root for server access (e.g., /scene_preview endpoint)
-    # This maintains backward compatibility with the server's /scene_preview endpoint
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
-        DESTINATION scene_previews
+        DESTINATION share/led-matrix/scene_previews
         OPTIONAL
         FILES_MATCHING PATTERN "*.gif"
     )
 endif()
-
-#Cross Comp https://forum.grin.mw/t/building-grin-for-raspberry-pi4/7916
 
 if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     # Check for Node.js
@@ -339,7 +360,7 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
 
     # Install React web dependencies
     add_custom_target(react_web_install ALL
-        COMMAND /bin/bash -c ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_deps.sh"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Installing React web dependencies"
     )
@@ -356,10 +377,7 @@ if(NOT SKIP_WEB_BUILD AND NOT ENABLE_DESKTOP)
     add_dependencies(${PROJECT_NAME} react_web_build)
 endif()
 
-set(INSTALL_DESTINATION ".")
-if(ENABLE_DESKTOP)
-    set(INSTALL_DESTINATION "bin")
-endif()
+set(INSTALL_DESTINATION "bin")
 
 # Install target
 install(TARGETS ${PROJECT_NAME}
@@ -381,7 +399,7 @@ foreach(COPYRIGHT_FILE ${COPYRIGHT_FILES})
             DESTINATION "share/doc/led-matrix-desktop/licenses/${PACKAGE_NAME}")
     else()
         install(FILES "${COPYRIGHT_FILE}"
-            DESTINATION "licenses/${PACKAGE_NAME}")
+            DESTINATION "share/doc/led-matrix/licenses/${PACKAGE_NAME}")
     endif()
 endforeach()
 
@@ -389,13 +407,13 @@ endforeach()
 if(ENABLE_DESKTOP)
     install(DIRECTORY DESTINATION "lib/led-matrix-desktop/plugins")
 else()
-    install(DIRECTORY DESTINATION "plugins")
+    install(DIRECTORY DESTINATION "lib/led-matrix/plugins")
 endif()
 
 if(NOT ENABLE_DESKTOP)
     # Install web files
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
-        DESTINATION web
+        DESTINATION share/led-matrix/web
     )
 
     # Add sync to RPI if enabled
@@ -405,15 +423,15 @@ if(NOT ENABLE_DESKTOP)
     endif()
 
     install(TARGETS SharedToolsCommon SharedToolsMatrix
-        RUNTIME DESTINATION . # .dll (Windows)
-        ARCHIVE DESTINATION . # .lib (Windows static or import lib)
-        LIBRARY DESTINATION . # .so/.dylib (Unix)
+        RUNTIME DESTINATION lib/led-matrix      # .dll (Windows)
+        ARCHIVE DESTINATION lib/led-matrix      # .lib (Windows static or import lib)
+        LIBRARY DESTINATION lib/led-matrix      # .so/.dylib (Unix)
     )
 
-    # Install fonts to fonts directory
+    # Install fonts to shared data directory
     install(FILES
         "${RPI_RGB_LED_MATRIX_FONTS_DIR}/7x13.bdf"
-        DESTINATION "."
+        DESTINATION "share/led-matrix"
     )
 else()
     install(TARGETS SharedToolsCommon SharedToolsDesktop
@@ -531,10 +549,11 @@ if(ENABLE_DESKTOP)
 
         # Generate a proper changelog.Debian.gz so lintian is happy
         # (content is minimal; a real changelog lives in the git history)
-        set(CPACK_DEBIAN_CHANGELOG
+        file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian"
             "led-matrix-desktop (${PROJECT_VERSION}) stable; urgency=low\n\n"
             "  * See https://github.com/sshcrack/led-matrix/releases\n\n"
             " -- sshcrack <hendrik@sshcrack.me>  Sat, 01 Jan 2000 00:00:00 +0000\n")
+        set(CPACK_DEBIAN_CHANGELOG "${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian")
 
         # Install a .desktop file so the app appears in application launchers
         set(DESKTOP_FILE_CONTENT
@@ -573,23 +592,41 @@ if(ENABLE_DESKTOP)
     endif()
     include(CPack)
 else()
-    set(CPACK_GENERATOR "TGZ")
-
-    # -------------------
-    # CPack configuration
-    # -------------------
     include(InstallRequiredSystemLibraries)
     set(CPACK_PACKAGE_NAME "led-matrix")
     set(CPACK_PACKAGE_VENDOR "sshcrack")
-    set(CPACK_SYSTEM_NAME "arm64")
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Controller (Raspberry Pi)")
     set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
     set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
     set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
     set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
     set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
-    set(CPACK_GENERATOR "TGZ")
+
+    # --- DEB + TGZ ---
+    set(CPACK_GENERATOR "DEB;TGZ")
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+    set(CPACK_SYSTEM_NAME "arm64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS
+        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq")
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
+        "LED Matrix Controller (Raspberry Pi)\n"
+        " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"
+        " Controls the display hardware and serves a web-based UI for configuration.\n"
+        " After GPIO initialisation the process drops privileges to pi:pi.\n"
+        " See https://github.com/sshcrack/led-matrix")
+
+    set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/config"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/templates"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/postinst"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/prerm"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/postrm")
+
+    set(CPACK_DEBIAN_PACKAGE_FILE_NAME "led-matrix-${PROJECT_VERSION}_arm64")
+
     include(CPack)
 endif()
 

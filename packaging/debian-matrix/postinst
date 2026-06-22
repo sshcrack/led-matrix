@@ -1,0 +1,136 @@
+#!/bin/sh
+set -e
+. /usr/share/debconf/confmodule
+
+# --- Read all debconf answers ---
+db_get led-matrix/led-rows;            LED_ROWS="$RET"
+db_get led-matrix/led-cols;            LED_COLS="$RET"
+db_get led-matrix/led-chain;           LED_CHAIN="$RET"
+db_get led-matrix/led-parallel;        LED_PARALLEL="$RET"
+db_get led-matrix/led-slowdown-gpio;   LED_SLOWDOWN="$RET"
+db_get led-matrix/extra-opts;          EXTRA_OPTS="$RET"
+db_get led-matrix/spotify-enable;      USE_SPOTIFY="$RET"
+db_get led-matrix/spotify-client-id;   SPOTIFY_ID="$RET"
+db_get led-matrix/spotify-client-secret; SPOTIFY_SECRET="$RET"
+db_get led-matrix/auto-update-enable;  AUTO_UPDATE="$RET"
+db_get led-matrix/auto-update-interval; UPDATE_INTERVAL="$RET"
+
+# --- Build MATRIX_OPTS ---
+MATRIX_OPTS="--led-rows=${LED_ROWS:-64} --led-cols=${LED_COLS:-64} --led-chain=${LED_CHAIN:-2} --led-parallel=${LED_PARALLEL:-2}"
+MATRIX_OPTS="$MATRIX_OPTS --led-drop-priv-user=pi --led-drop-priv-group=pi"
+if [ -n "$LED_SLOWDOWN" ]; then
+    MATRIX_OPTS="$MATRIX_OPTS --led-slowdown-gpio=${LED_SLOWDOWN}"
+fi
+if [ -n "$EXTRA_OPTS" ]; then
+    # Escape $ and ` for systemd env file parser
+    EXTRA_OPTS_SAFE=$(printf '%s\n' "$EXTRA_OPTS" | sed 's/[$`"\\]/\\&/g')
+    MATRIX_OPTS="$MATRIX_OPTS $EXTRA_OPTS_SAFE"
+fi
+
+# --- Create runtime data directory owned by pi (post-drop identity) ---
+DATA_DIR=/var/lib/led-matrix
+mkdir -p "$DATA_DIR/data"
+if id pi >/dev/null 2>&1; then
+    chown -R pi:pi "$DATA_DIR"
+fi
+
+# --- Migrate existing /opt/led-matrix installation ---
+OPT_DIR=/opt/led-matrix
+if [ -d "$OPT_DIR" ]; then
+    echo "Migrating existing /opt/led-matrix installation..."
+    if [ -f "$OPT_DIR/config.json" ] && [ ! -f "$DATA_DIR/config.json" ]; then
+        cp "$OPT_DIR/config.json" "$DATA_DIR/config.json"
+        echo "  config.json migrated to $DATA_DIR/"
+    fi
+    if [ -d "$OPT_DIR/data" ] && [ -z "$(find "$DATA_DIR/data" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+        cp -r "$OPT_DIR/data/." "$DATA_DIR/data/"
+        echo "  data/ migrated to $DATA_DIR/data/"
+    fi
+    if id pi >/dev/null 2>&1; then
+        chown -R pi:pi "$DATA_DIR"
+    fi
+    echo "Migration complete. /opt/led-matrix is no longer used; you may remove it manually."
+fi
+
+# --- Write /etc/default/led-matrix with MATRIX_OPTS and Spotify env ---
+# Always regenerate from debconf answers. This file is derived from the
+# interactive prompts (hardware config, Spotify credentials, etc.), so it
+# must be refreshed on every configure, including dpkg-reconfigure.
+ENV_FILE=/etc/default/led-matrix
+cat > "$ENV_FILE" << EOF
+# Runtime options for the led-matrix service.
+# The binary starts as root (required by rpi-rgb-led-matrix for GPIO access)
+# and automatically drops privileges to pi:pi after initialisation.
+# Re-run 'dpkg-reconfigure led-matrix' to regenerate this file from prompts.
+MATRIX_OPTS="${MATRIX_OPTS}"
+EOF
+
+if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
+    SPOTIFY_ID_SAFE=$(printf '%s\n' "$SPOTIFY_ID" | sed 's/[$`\\]/\\&/g')
+    SPOTIFY_SECRET_SAFE=$(printf '%s\n' "$SPOTIFY_SECRET" | sed 's/[$`\\]/\\&/g')
+    cat >> "$ENV_FILE" << EOF
+SPOTIFY_CLIENT_ID="${SPOTIFY_ID_SAFE}"
+SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET_SAFE}"
+EOF
+fi
+
+chmod 600 "$ENV_FILE"
+
+# --- Read package version (also used for config.json update below) ---
+PKG_VERSION=$(dpkg-query -W -f '${Version}' led-matrix 2>/dev/null || echo "1.0.0")
+
+# --- Write initial config.json if not already present ---
+if [ ! -f "$DATA_DIR/config.json" ]; then
+    AUTO_UPDATE_BOOL="false"
+    [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
+    INTERVAL="${UPDATE_INTERVAL:-24}"
+
+    cat > "$DATA_DIR/config.json" << EOF
+{
+  "update_settings": {
+    "auto_update_enabled": ${AUTO_UPDATE_BOOL},
+    "check_interval_hours": ${INTERVAL},
+    "current_version": "${PKG_VERSION}",
+    "last_check_time": 0,
+    "last_update_time": 0,
+    "update_available": false,
+    "latest_version": "",
+    "update_download_url": ""
+  }
+}
+EOF
+    if id pi >/dev/null 2>&1; then
+        chown pi:pi "$DATA_DIR/config.json"
+    fi
+else
+    # Update current_version in existing config.json on every upgrade
+    AUTO_UPDATE_BOOL="false"
+    [ "$AUTO_UPDATE" = "true" ] && AUTO_UPDATE_BOOL="true"
+    INTERVAL="${UPDATE_INTERVAL:-24}"
+    if command -v jq >/dev/null 2>&1; then
+        tmp=$(mktemp)
+        if jq --arg ver "$PKG_VERSION" \
+              --argjson auto "$AUTO_UPDATE_BOOL" \
+              --argjson interval "$INTERVAL" \
+              '.update_settings.current_version = $ver | .update_settings.auto_update_enabled = $auto | .update_settings.check_interval_hours = $interval' \
+              "$DATA_DIR/config.json" > "$tmp"; then
+            mv "$tmp" "$DATA_DIR/config.json"
+        else
+            rm -f "$tmp"
+        fi
+        if id pi >/dev/null 2>&1; then
+            chown pi:pi "$DATA_DIR/config.json"
+        fi
+    else
+        echo "Warning: jq not found — config.json version fields not updated. Install jq to suppress this warning." >&2
+    fi
+fi
+
+# --- Enable and start the systemd service ---
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload || true
+    systemctl enable led-matrix.service || true
+    systemctl restart led-matrix.service || true
+fi
+
+exit 0

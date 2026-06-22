@@ -6,7 +6,7 @@
 
 namespace ImageProviders {
     class Pages final : public General {
-        vector<std::unique_ptr<pixeljoint::ScrapedPost, void (*)(pixeljoint::ScrapedPost *)>> curr_posts;
+        vector<std::unique_ptr<pixeljoint::ScrapedPost>> curr_posts;
         vector<int> total_pages;
 
         int pages_end;
@@ -17,7 +17,7 @@ namespace ImageProviders {
         ~Pages() override = default;
         void flush() override;
 
-        std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
+        std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post>>>, string>
         get_next_image() override;
 
         [[nodiscard]] string get_name() const override;
@@ -29,7 +29,7 @@ namespace ImageProviders {
     };
 
     class PagesWrapper : public Plugins::ImageProviderWrapper {
-        std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+        std::unique_ptr<ImageProviders::General>
         create() override;
     };
 }

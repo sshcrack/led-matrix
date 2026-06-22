@@ -11,17 +11,15 @@ extern "C" PLUGIN_EXPORT void destroyGenerativeScenes(GenerativePlugin *c) {
     delete c;
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> GenerativePlugin::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> scenes;
+vector<std::unique_ptr<SceneWrapper>> GenerativePlugin::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
 
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(
-            new ReactionDiffusionSceneWrapper(),
-            [](SceneWrapper *s) { delete (ReactionDiffusionSceneWrapper *) s; }));
+    scenes.push_back(std::make_unique<ReactionDiffusionSceneWrapper>());
 
     return scenes;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> GenerativePlugin::create_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> GenerativePlugin::create_image_providers() {
     return {};
 }
 

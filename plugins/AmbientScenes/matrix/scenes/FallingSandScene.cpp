@@ -1,27 +1,9 @@
 #include "FallingSandScene.h"
+#include <shared/matrix/utils/color.h>
 #include <cmath>
-#include <cstdlib> // rand
 
 namespace AmbientScenes {
     FallingSandScene::FallingSandScene() : Scene() {
-    }
-
-    void FallingSandScene::hsl_to_rgb(float h, float s, float l, uint8_t& r, uint8_t& g, uint8_t& b) {
-        float c = (1.0f - std::abs(2.0f * l - 1.0f)) * s;
-        float x = c * (1.0f - std::abs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-        float m = l - c / 2.0f;
-        
-        float r1 = 0, g1 = 0, b1 = 0;
-        if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0; }
-        else if (h >= 60 && h < 120) { r1 = x; g1 = c; b1 = 0; }
-        else if (h >= 120 && h < 180) { r1 = 0; g1 = c; b1 = x; }
-        else if (h >= 180 && h < 240) { r1 = 0; g1 = x; b1 = c; }
-        else if (h >= 240 && h < 300) { r1 = x; g1 = 0; b1 = c; }
-        else if (h >= 300 && h < 360) { r1 = c; g1 = 0; b1 = x; }
-        
-        r = static_cast<uint8_t>((r1 + m) * 255.0f);
-        g = static_cast<uint8_t>((g1 + m) * 255.0f);
-        b = static_cast<uint8_t>((b1 + m) * 255.0f);
     }
 
     void FallingSandScene::initialize(int width, int height) {
@@ -38,14 +20,18 @@ namespace AmbientScenes {
         // Spawn sand if under limit
         if (sand_count < max_sand->get()) {
             for (int i = 0; i < spawn_rate->get() && sand_count < max_sand->get(); i++) {
-                int spawn_x_pos = spawner_x + (rand() % 5) - 2; // slight jitter
+                int spawn_x_pos = spawner_x + (std::uniform_int_distribution<int>(0, 4)(rng)) - 2; // slight jitter
                 if (spawn_x_pos >= 0 && spawn_x_pos < matrix_width) {
-                    if (grid[spawn_x_pos] == 0) {
-                        uint8_t r, g, b;
-                        float h = std::fmod(current_hue + i * 2, 360.0f);
-                        hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
-                        grid[spawn_x_pos] = pack_color(r, g, b);
-                        sand_count++;
+                    for (int spawn_y = 0; spawn_y < matrix_height; spawn_y++) {
+                        int idx = spawn_y * matrix_width + spawn_x_pos;
+                        if (grid[idx] == 0) {
+                            uint8_t r, g, b;
+                            float h = std::fmod(current_hue + i * 2, 360.0f);
+                            color::hsl_to_rgb(h, 1.0f, 0.5f, r, g, b);
+                            grid[idx] = pack_color(r, g, b);
+                            sand_count++;
+                            break;
+                        }
                     }
                 }
             }
@@ -90,7 +76,7 @@ namespace AmbientScenes {
                             bool can_right = x < matrix_width - 1 && next_grid[down_right] == 0 && grid[down_right] == 0;
                             
                             if (can_left && can_right) {
-                                if (rand() % 2 == 0) next_grid[down_left] = val;
+                                if (std::uniform_int_distribution<int>(0, 1)(rng)) next_grid[down_left] = val;
                                 else next_grid[down_right] = val;
                             } else if (can_left) {
                                 next_grid[down_left] = val;
@@ -135,9 +121,7 @@ namespace AmbientScenes {
         add_property(max_sand);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> FallingSandSceneWrapper::create() {
-        return {new FallingSandScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<FallingSandScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> FallingSandSceneWrapper::create() {
+        return std::make_unique<FallingSandScene>();
     }
 }

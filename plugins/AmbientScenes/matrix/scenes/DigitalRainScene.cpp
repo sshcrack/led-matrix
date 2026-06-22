@@ -68,9 +68,9 @@ namespace AmbientScenes {
                 float brightness = matrix_brightness[x][y];
                 if (brightness > 0.01f) {
                     canvas->SetPixel(x, y, 
-                        (uint8_t)(c.r * brightness), 
-                        (uint8_t)(c.g * brightness), 
-                        (uint8_t)(c.b * brightness));
+                        static_cast<uint8_t>(c.r * brightness), 
+                        static_cast<uint8_t>(c.g * brightness), 
+                        static_cast<uint8_t>(c.b * brightness));
                 }
             }
         }
@@ -98,9 +98,7 @@ namespace AmbientScenes {
         add_property(color);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> DigitalRainSceneWrapper::create() {
-        return {new DigitalRainScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<DigitalRainScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> DigitalRainSceneWrapper::create() {
+        return std::make_unique<DigitalRainScene>();
     }
 }

@@ -10,15 +10,14 @@ extern "C" PLUGIN_EXPORT SpotifyMVPlugin* createSpotifyMV() {
 
 extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVPlugin* c) { delete c; }
 
-std::vector<std::unique_ptr<SceneWrapper, void(*)(SceneWrapper*)>>
+std::vector<std::unique_ptr<SceneWrapper>>
 SpotifyMVPlugin::create_scenes() {
-  std::vector<std::unique_ptr<SceneWrapper, void(*)(SceneWrapper*)>> scenes;
-  scenes.push_back(std::unique_ptr<SceneWrapper, void(*)(SceneWrapper*)>(
-      new Scenes::SpotifyMVSceneWrapper(), [](SceneWrapper* s) { delete s; }));
+  std::vector<std::unique_ptr<SceneWrapper>> scenes;
+  scenes.push_back(std::make_unique<Scenes::SpotifyMVSceneWrapper>());
   return scenes;
 }
 
-std::vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>>
+std::vector<std::unique_ptr<ImageProviderWrapper>>
 SpotifyMVPlugin::create_image_providers() {
   return {};
 }

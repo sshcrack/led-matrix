@@ -6,7 +6,6 @@
 #include <random>
 #include <utility>
 #include <vector>
-#include <mutex>
 
 namespace AmbientScenes {
     class SortingVisualizerScene : public Scenes::Scene {
@@ -27,7 +26,6 @@ namespace AmbientScenes {
 
         std::vector<int> array_data;
         std::vector<int> access_indices; // Indices currently being accessed/compared
-        mutable std::mutex access_indices_mutex; // Protect access_indices from concurrent access
         Algorithm current_algorithm;
         int sort_phase; // 0 = unsorting, 1 = sorting, 2 = sorted (wait), 3 = completed
         int delay_counter;
@@ -54,6 +52,7 @@ namespace AmbientScenes {
         int comb_gap;
         float comb_shrink;
         bool comb_swapped;
+        int comb_idx;
 
         // Gnome sort state
         int gnome_pos;
@@ -65,7 +64,6 @@ namespace AmbientScenes {
         int ms_right;
         int ms_i;
         int ms_j;
-        int ms_k;
         bool ms_merging;
         std::vector<int> ms_temp;
         
@@ -79,9 +77,6 @@ namespace AmbientScenes {
         PropertyPointer<int> bar_gap = MAKE_PROPERTY("bar_gap", int, 0);
         PropertyPointer<rgb_matrix::Color> bar_color = MAKE_PROPERTY("bar_color", rgb_matrix::Color, rgb_matrix::Color(255, 255, 255));
         PropertyPointer<rgb_matrix::Color> solved_color = MAKE_PROPERTY("solved_color", rgb_matrix::Color, rgb_matrix::Color(64, 220, 96));
-
-        // HSL to RGB conversion helper
-        void hsl_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
 
         void reset_array();
         void pick_next_algorithm();
@@ -113,6 +108,6 @@ namespace AmbientScenes {
     };
 
     class SortingVisualizerSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

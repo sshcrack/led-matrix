@@ -44,7 +44,7 @@ struct WeatherData {
     std::vector<ForecastDay> forecast;
 };
 
-static long CACHE_INVALIDATION = 1000 * 60 * 15;
+static constexpr long CACHE_INVALIDATION = 1000 * 60 * 15;
 
 class WeatherParser {
 private:

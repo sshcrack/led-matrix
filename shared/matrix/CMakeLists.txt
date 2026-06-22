@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.21)
 project(SharedToolsMatrix)
 
 set(CMAKE_CXX_STANDARD 23)
 
+include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/data.cpp
@@ -83,9 +84,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
-include(GNUInstallDirs)
 
-# Installation
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION "."
-)

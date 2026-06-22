@@ -34,7 +34,7 @@ cmake --preset emulator -DSKIP_WEB_BUILD=ON
 cmake --build --preset emulator --target install
 
 # Run the emulator (128×128, SDL window ×4)
-./emulator_build/install/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
+./emulator_build/install/bin/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
 
 # Convenience wrapper (reads .env, builds, then runs)
 ./scripts/run_emulator.sh
@@ -60,6 +60,48 @@ cmake --build --preset cross-compile --target install
 # build_upload.sh does the above + rsync to ledmat:/home/pi/ledmat/run/ + service restart
 ./build_upload.sh
 ```
+
+### DEB packaging (cross-compile)
+
+The cross-compile preset now produces both `.tar.gz` and `.deb` packages. The `.deb` installs to FHS paths (`/usr/bin/`, `/usr/lib/led-matrix/`, `/usr/share/led-matrix/`) via CPack.
+
+Package the DEB:
+```bash
+cmake --preset cross-compile
+cmake --build --preset cross-compile --target package
+# Produces build/led-matrix-<version>-arm64.deb
+```
+
+The DEB includes:
+- **debconf templates** — interactive prompts for hardware config (rows, cols, chain, parallel), Spotify credentials, and auto-update settings on first install
+- **postinst** — writes `/etc/default/led-matrix` (flags + Spotify env), creates `/var/lib/led-matrix/` owned by `pi:pi`, migrates data from `/opt/led-matrix/` if present, enables and starts the systemd service
+- **prerm/postrm** — clean stop/disable on remove, purge `/var/lib/led-matrix` and debconf answers on `dpkg --purge`
+- **systemd unit** (`/lib/systemd/system/led-matrix.service`) — runs as `root` (required for GPIO `/dev/mem` access), reads `EnvironmentFile=/etc/default/led-matrix`, the library drops privileges to `pi:pi` after init via `--led-drop-priv-user=pi --led-drop-priv-group=pi`
+
+### Service user model
+
+- The systemd service runs as **root** (`User=root`) because `rpi-rgb-led-matrix` needs to open `/dev/mem` for GPIO
+- After matrix initialisation, the library automatically drops privileges via `setresuid`/`setresgid` to `pi:pi` (controlled by `--led-drop-priv-user=pi --led-drop-priv-group=pi` in `MATRIX_OPTS`)
+- Runtime data lives in `/var/lib/led-matrix/` (owned by `pi:pi`) so the process can write config files after privilege drop
+- To reconfigure: `sudo dpkg-reconfigure led-matrix` — this re-runs the debconf `config` script and `postinst`, updating `/etc/default/led-matrix`
+
+### FHS layout (DEB)
+
+| Content | Path |
+|---|---|
+| Main binary | `/usr/bin/led-matrix` |
+| Shared libs | `/usr/lib/led-matrix/*.so` |
+| Plugins | `/usr/lib/led-matrix/plugins/` |
+| Update script | `/usr/lib/led-matrix/update_service.sh` |
+| Web UI | `/usr/share/led-matrix/web/` |
+| Scene previews | `/usr/share/led-matrix/scene_previews/` |
+| Fonts | `/usr/share/led-matrix/7x13.bdf` |
+| Licenses | `/usr/share/doc/led-matrix/licenses/` |
+| Copyright | `/usr/share/doc/led-matrix/copyright` |
+| config.json | `/var/lib/led-matrix/config.json` |
+| Custom user data | `/var/lib/led-matrix/data/` |
+| Update flags | `/var/lib/led-matrix/.update_success` / `.update_error` |
+| Env config | `/etc/default/led-matrix` |
 
 ### clangd
 
@@ -89,7 +131,7 @@ An MCP server in `scripts/mcp-emulator/server.py` lets AI agents control the emu
 
 Tools exposed: `start_emulator`, `stop_emulator`, `get_status`, `get_frame` (returns PNG of the current matrix), `list_scenes`, `list_presets`, `set_preset`, `http_api`.
 
-The emulator binary must exist at `emulator_build/install/main` before starting the server.
+The emulator binary must exist at `emulator_build/install/bin/led-matrix` before starting the server.
 
 ## Plugin development
 
@@ -134,6 +176,24 @@ Ideas already explicitly rejected: Home Assistant/MQTT, WebSocket live preview, 
 - The devcontainer (`postCreateCommand`) runs `git submodule update --init --recursive` — submodules are required.
 - WSL users: see `scripts/WSL_SYNC_README.md` for the file-watch sync setup between Windows and WSL.
 
+## Preview Generator (`src_preview_gen`)
+
+The `src_preview_gen` binary generates animated GIF previews for all registered matrix scenes. It is **tightly coupled to the emulator preset** — it requires `ENABLE_EMULATOR` at compile time and instantiates `EmulatorMatrix` directly. It will **not** build under the cross-compile or desktop presets.
+
+Usage after building the emulator preset:
+```bash
+# Generate previews for all scenes (requires emulator preset build)
+./emulator_build/install/bin/preview_gen --output ./previews
+
+# Dump scene manifest as JSON
+./emulator_build/install/bin/preview_gen --dump-manifest
+
+# Generate specific scenes
+./emulator_build/install/bin/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
+```
+
+Scenes that require the desktop app (`needs_desktop` = true) are skipped automatically. Use `scripts/capture_desktop_preview.sh` to capture them manually.
+
 ## CI
 
-`.github/workflows/ci.yml` builds all three presets (cross-compile, desktop-linux, desktop-windows) on push/PR to `master`. The react-web is built only for the `cross-compile` job (pnpm + node 22). Desktop jobs pass `-DSKIP_WEB_BUILD=ON`.
+`.github/workflows/ci.yml` on push/PR to `master` builds only the react-web frontend (pnpm + node 22) and uploads it as the `web-build` artifact. It then delegates all three C++ builds (`cross-compile`, `desktop-linux`, `desktop-windows`) to the reusable workflow `.github/workflows/build-matrix.yml`, which downloads the `web-build` artifact so all presets get the bundled web UI without rebuilding it.

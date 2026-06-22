@@ -1,5 +1,11 @@
 # 🌈 LED Matrix Controller
 
+**One‑line install on a Raspberry Pi (arm64):**
+```bash
+curl -sSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
+```
+Downloads the latest `.deb` from GitHub Releases, presents an interactive config dialog (matrix dimensions, Spotify, auto‑updates), and installs the systemd service.
+
 > [!TIP]
 > This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
 
@@ -211,7 +217,7 @@ The easiest way to install and configure the LED Matrix Controller is with the p
 - Download the latest release for your platform
 - Guide you through hardware configuration (matrix size, chain, parallel, etc.)
 - Optionally set up Spotify integration
-- Install the binary to `/opt/led-matrix`
+- Install the binary via DEB package to `/usr/bin/led-matrix`
 - Set up a systemd service for automatic startup
 
 **To get started, simply run:**
@@ -420,10 +426,17 @@ Run the development server in minutes:
 
 ### 🐌 **Manual Installation**
 
-Download the built binary from GitHub releases (`led-matrix-arm64.tar.gz` for RPI 3 64-bit) and extract it at `/opt/led-matrix`
+Download the built binary from GitHub releases (`led-matrix-*-arm64.deb` or `led-matrix-*-arm64.tar.gz` for RPI 3 64-bit).
 
+For DEB:
 ```bash
-sudo ./main [options]
+sudo dpkg -i led-matrix-*.deb
+```
+
+For tarball (extract to FHS-like layout):
+```bash
+sudo tar -xzf led-matrix-*-arm64.tar.gz -C /usr/
+sudo led-matrix [options]
 ```
 
 > **🔑 Note:** `sudo` is required for GPIO access on Raspberry Pi.
@@ -464,7 +477,7 @@ Fine-tune logging for development and debugging:
 
 ```bash
 # Set log level via environment variable
-SPDLOG_LEVEL=debug ./main
+SPDLOG_LEVEL=debug ./led-matrix
 
 # Available levels: trace, debug, info, warn, error, critical, off
 ```

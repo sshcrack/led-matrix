@@ -22,23 +22,23 @@ namespace Plugins
         vector<std::shared_ptr<ShaderProviderWrapper>> shader_providers;
         vector<std::shared_ptr<SceneWrapper>> scenes;
 
-        virtual vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+        virtual vector<std::unique_ptr<ImageProviderWrapper>>
         create_image_providers() = 0;
 
-        virtual vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+        virtual vector<std::unique_ptr<ShaderProviderWrapper>>
         create_shader_providers() {
             return {};
         }
 
-        virtual vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() = 0;
+        virtual vector<std::unique_ptr<SceneWrapper>> create_scenes() = 0;
 
         
     public:
-        virtual vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> create_effects() {
+        virtual vector<std::unique_ptr<PostProcessingEffect>> create_effects() {
             return {};
         }
 
-        virtual vector<std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>> create_transitions() {
+        virtual vector<std::unique_ptr<TransitionEffect>> create_transitions() {
             return {};
         }
         std::string _plugin_location;

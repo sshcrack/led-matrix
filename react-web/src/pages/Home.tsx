@@ -23,7 +23,8 @@ export default function Home() {
   const handleToggle = async (enabled: boolean) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_enabled?enabled=${enabled}`)
+      const res = await fetch(`${apiUrl}/set_enabled?enabled=${enabled}`)
+      if (!res.ok) throw new Error('Failed to toggle matrix')
       setStatus(prev => prev ? { ...prev, turned_off: !enabled } : null)
       toast.success(enabled ? 'Matrix turned on' : 'Matrix turned off')
     } catch {
@@ -35,7 +36,8 @@ export default function Home() {
   const handleActivate = async (id: string, displayName: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(id)}`)
+      const res = await fetch(`${apiUrl}/set_active?id=${encodeURIComponent(id)}`)
+      if (!res.ok) throw new Error('Failed to activate preset')
       setStatus(prev => prev ? { ...prev, current: id } : null)
       toast.success(`Activated "${displayName}"`)
     } catch {

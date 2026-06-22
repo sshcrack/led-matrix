@@ -34,11 +34,7 @@ std::expected<std::string, std::string> ShaderProviders::Random::get_next_shader
     }
 }
 
-std::unique_ptr<ShaderProviders::General, void (*)(ShaderProviders::General *)>
+std::unique_ptr<ShaderProviders::General>
 ShaderProviders::RandomWrapper::create() {
-    return {
-        new Random(), [](General *p) {
-            delete p;
-        }
-    };
+    return std::make_unique<Random>();
 }

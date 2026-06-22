@@ -56,18 +56,18 @@ bool PingPongGameScene::render(rgb_matrix::FrameCanvas *canvas)
     prev_right_paddle_y = right_paddle_y;
 
     // Update ball position with time-scaled movement
-    ball_x += ball_dx * time_step * 60.0f * curr_speed_multiplier; // Apply speed multiplier
-    ball_y += ball_dy * time_step * 60.0f * curr_speed_multiplier;
+    ball_x += ball_dx * time_step * curr_speed_multiplier; // Apply speed multiplier
+    ball_y += ball_dy * time_step * curr_speed_multiplier;
 
     // Simple AI for paddles with time-scaled movement
     float target_y = ball_y - paddle_height_l / 2;
     if (ball_dx < 0)
     {
-        left_paddle_y += (target_y - left_paddle_y) * paddle_speed_l * time_step * 60.0f;
+        left_paddle_y += (target_y - left_paddle_y) * paddle_speed_l * 60.0f * time_step;
     }
     else
     {
-        right_paddle_y += (target_y - right_paddle_y) * paddle_speed_l * time_step * 60.0f;
+        right_paddle_y += (target_y - right_paddle_y) * paddle_speed_l * 60.0f * time_step;
     }
 
     // Ball collision with top/bottom
@@ -135,8 +135,8 @@ void PingPongGameScene::initialize(int width, int height)
     // Initialize ball at center
     ball_x = matrix_width / 2.0f;
     ball_y = matrix_height / 2.0f;
-    ball_dx = ball_speed->get();
-    ball_dy = ball_speed->get();
+    ball_dx = ball_speed->get() * 60.0f;
+    ball_dy = ball_speed->get() * 60.0f;
 
     // Initialize paddles at center
     left_paddle_y = matrix_height / 2.0f - paddle_height->get() / 2.0f;
@@ -178,8 +178,7 @@ void PingPongGameScene::load_properties(const json &j)
     curr_speed_multiplier = speed_multiplier->get();
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> PingPongGameSceneWrapper::create()
+std::unique_ptr<Scenes::Scene> PingPongGameSceneWrapper::create()
 {
-    return std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)>(new PingPongGameScene(), [](Scenes::Scene *scene)
-                                                                     { delete scene; });
+    return std::make_unique<PingPongGameScene>();
 }

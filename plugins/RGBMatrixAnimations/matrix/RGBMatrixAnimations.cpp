@@ -12,19 +12,16 @@ extern "C" PLUGIN_EXPORT void destroyRGBMatrixAnimations(RGBMatrixAnimations *c)
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+vector<std::unique_ptr<ImageProviderWrapper>>
 RGBMatrixAnimations::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> RGBMatrixAnimations::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>();
-    auto deleteScene = [](SceneWrapper *scene) {
-        delete scene;
-    };
+vector<std::unique_ptr<SceneWrapper>> RGBMatrixAnimations::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back({new RainSceneWrapper(), deleteScene});
-    scenes.push_back({new SparksSceneWrapper(), deleteScene});
+    scenes.push_back(std::make_unique<RainSceneWrapper>());
+    scenes.push_back(std::make_unique<SparksSceneWrapper>());
 
     return scenes;
 }

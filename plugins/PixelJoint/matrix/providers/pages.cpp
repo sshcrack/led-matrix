@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 vector<int> generate_rand_pages(int page_begin, int page_end) {
+    if (page_end <= page_begin) return {};
     vector<int> total_p;
     total_p.reserve(page_end - page_begin);
 
@@ -19,11 +20,12 @@ vector<int> generate_rand_pages(int page_begin, int page_end) {
 
 void ImageProviders::Pages::flush() {
     curr_posts.clear();
+    if (pages_end <= pages_begin->get()) return;
     total_pages = generate_rand_pages(pages_begin->get(), pages_end);
 }
 
 
-std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
+std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > >, string>
 ImageProviders::Pages::get_next_image() {
     // Load new page of posts if needed
     while (curr_posts.empty() && !total_pages.empty()) {
@@ -38,9 +40,10 @@ ImageProviders::Pages::get_next_image() {
     }
 
     // Get next post and fetch its link
-     const auto post = curr_posts.erase(curr_posts.begin());
+     auto post = std::move(curr_posts.front());
+     curr_posts.erase(curr_posts.begin());
     
-    if (auto link = post->get()->fetch_link(); !link) {
+    if (auto link = post->fetch_link(); !link) {
         return std::unexpected(link.error());
     } else {
         return std::move(link.value());
@@ -75,11 +78,7 @@ void ImageProviders::Pages::load_properties(const nlohmann::json &j) {
 }
 
 
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+std::unique_ptr<ImageProviders::General>
 ImageProviders::PagesWrapper::create() {
-    return {
-        new Pages(), [](General *p) {
-            delete p;
-        }
-    };
+    return std::make_unique<Pages>();
 }

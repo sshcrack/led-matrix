@@ -13,17 +13,14 @@ extern "C" PLUGIN_EXPORT void destroyCountdown(Countdown *c) {
     delete c;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper*)>> Countdown::create_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> Countdown::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> Countdown::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void(*)(Plugins::SceneWrapper*)>>();
-    auto deleteScene = [](SceneWrapper* scene) {
-        delete scene;
-    };
+vector<std::unique_ptr<SceneWrapper>> Countdown::create_scenes() {
+    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back({new Scenes::CountdownSceneWrapper(), deleteScene});
+    scenes.push_back(std::make_unique<Scenes::CountdownSceneWrapper>());
     return scenes;
 }
 

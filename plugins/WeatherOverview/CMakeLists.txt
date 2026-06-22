@@ -7,6 +7,9 @@ register_plugin(WeatherOverview
     matrix/Constants.h
     matrix/scenes/WeatherScene.cpp
     matrix/scenes/WeatherScene.h
+    matrix/scenes/weather_rendering.cpp
+    matrix/scenes/weather_particles.cpp
+    matrix/scenes/weather_cache.cpp
 )
 
 if(NOT ENABLE_DESKTOP)
@@ -21,6 +24,6 @@ if(NOT ENABLE_DESKTOP)
         "${RPI_RGB_LED_MATRIX_FONTS_DIR}/7x13.bdf"
         "${RPI_RGB_LED_MATRIX_FONTS_DIR}/5x8.bdf"
         "${RPI_RGB_LED_MATRIX_FONTS_DIR}/4x6.bdf"
-        DESTINATION "plugins/WeatherOverview/fonts"
+        DESTINATION "lib/led-matrix/plugins/WeatherOverview/fonts"
     )
 endif()

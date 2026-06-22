@@ -1,16 +1,19 @@
 #pragma once
 
 #include <string>
+#include <atomic>
 #include <filesystem>
 #include "shared/matrix/utils/consts.h"
 
 #include "led-matrix.h"
 
+// Indoor temperature set via HTTP from ESP32 (value in Celsius, -999 = no data)
+inline std::atomic<float> indoor_temperature{-999.0f};
+
 // Fonts
 extern rgb_matrix::Font HEADER_FONT;
 extern rgb_matrix::Font BODY_FONT;
 extern rgb_matrix::Font SMALL_FONT;
-extern rgb_matrix::Font TINY_FONT;  // New tiny font for additional details
 
 // Sky colors for different conditions
 namespace SkyColor {
@@ -34,4 +37,4 @@ namespace AnimationConstants {
     constexpr int ANIMATION_INTERVAL = 1000 / FRAME_RATE; // milliseconds between frames
 }
 
-const static std::filesystem::path weather_dir = Constants::root_dir / "weather";
+inline const std::filesystem::path weather_dir = Constants::root_dir / "weather";
