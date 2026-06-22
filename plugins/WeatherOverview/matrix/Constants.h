@@ -1,10 +1,14 @@
 #pragma once
 
 #include <string>
+#include <atomic>
 #include <filesystem>
 #include "shared/matrix/utils/consts.h"
 
 #include "led-matrix.h"
+
+// Indoor temperature set via HTTP from ESP32 (value in Celsius, -999 = no data)
+inline std::atomic<float> indoor_temperature{-999.0f};
 
 // Fonts
 extern rgb_matrix::Font HEADER_FONT;
