@@ -47,6 +47,16 @@ void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas,
     const std::string wind_info = "Wind: " + data.wind_speed;
     DrawText(canvas, SMALL_FONT, temp_x, add_info_y + 7,
              {200, 200, 255}, wind_info.c_str());
+
+    float indoor = indoor_temperature.load();
+    if (show_indoor_temperature->get() && indoor > -100.0f) {
+        std::string indoor_str = std::to_string(static_cast<int>(std::round(indoor))) + "C";
+        int indoor_x = matrix_width - 2 - SMALL_FONT.CharacterWidth('A') * indoor_str.length();
+        DrawText(canvas, SMALL_FONT, indoor_x, temp_y + 2,
+                 {255, 200, 100}, indoor_str.c_str());
+        DrawText(canvas, SMALL_FONT, indoor_x - SMALL_FONT.CharacterWidth('A') * 5 - 1, temp_y + 2,
+                 {200, 200, 200}, "Ind:");
+    }
 }
 
 void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const

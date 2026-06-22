@@ -195,6 +195,7 @@ namespace Scenes {
         PropertyPointer<bool> enable_rainbow = MAKE_PROPERTY("enable_rainbow", bool, true);
         PropertyPointer<float> animation_speed_multiplier = MAKE_PROPERTY_MINMAX("animation_speed_multiplier", float, 1.0f, 0.1f, 3.0f);
         PropertyPointer<int> particle_density = MAKE_PROPERTY_MINMAX("particle_density", int, 5, 1, 10);
+        PropertyPointer<bool> show_indoor_temperature = MAKE_PROPERTY("show_indoor_temperature", bool, true);
 
     public:
         bool render(rgb_matrix::FrameCanvas *canvas) override;
@@ -222,6 +223,7 @@ namespace Scenes {
             add_property(enable_rainbow);
             add_property(animation_speed_multiplier);
             add_property(particle_density);
+            add_property(show_indoor_temperature);
         }
 
         using Scene::Scene;
