@@ -129,6 +129,7 @@ if(ENABLE_DESKTOP)
 else()
     set(SOURCES
         src_matrix/main.cpp
+        src_matrix/daemon.cpp
         src_matrix/matrix_control/canvas.cpp
         src_matrix/matrix_control/hardware.cpp
         src_matrix/server/canvas_status.cpp
