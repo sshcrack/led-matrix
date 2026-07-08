@@ -2,6 +2,7 @@
 
 #include "led-matrix.h"
 #include "canvas.h"
+#include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/canvas_consts.h"
@@ -17,12 +18,14 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
 {
     info("Press Ctrl+C to quit");
 
-    CanvasCoordinator coordinator(matrix);
+    WallClock wall_clock;
+    CanvasCoordinator coordinator(matrix, &wall_clock,
+        Constants::global_post_processor,
+        Constants::global_transition_manager);
     string last_scheduled_preset = "";
 
     while (!interrupt_received)
     {
-        // Check for active scheduled preset
         if (config->is_scheduling_enabled())
         {
             auto active_preset = config->get_active_scheduled_preset();
@@ -54,7 +57,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
         SleepMillis(1000);
     }
 
-    // Finished. Shut down the RGB matrix.
     info("Finished, shutting down...");
 }
 
