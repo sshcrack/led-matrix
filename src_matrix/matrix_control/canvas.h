@@ -1,13 +1,17 @@
 #pragma once
 
+#include <atomic>
+#include <functional>
 #include <memory>
 
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/Scene.h"
+#include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
 
+#include "MatrixPresenter.h"
 #include "SceneScheduler.h"
 #include "SceneRenderer.h"
 #include "TransitionEngine.h"
@@ -20,7 +24,14 @@ public:
     CanvasCoordinator(RGBMatrixBase *matrix,
                       TimeSource *time_source,
                       PostProcessor *post_processor,
-                      TransitionManager *transition_manager);
+                      TransitionManager *transition_manager,
+                      MatrixPresenter *presenter,
+                      Config::MainConfig *cfg,
+                      const std::atomic<bool> *exit_flag,
+                      const std::atomic<bool> *interrupt_flag,
+                      std::function<bool()> is_desktop_connected,
+                      std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
+                      std::function<void(const std::string &)> broadcast);
     ~CanvasCoordinator();
 
     void run(std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);
@@ -28,10 +39,18 @@ public:
 private:
     RGBMatrixBase *matrix_;
     TimeSource *time_source_;
+    MatrixPresenter *presenter_;
+    Config::MainConfig *config_;
+    const std::atomic<bool> *exit_flag_;
+    const std::atomic<bool> *interrupt_flag_;
     FrameCanvas *first_offscreen_canvas_ = nullptr;
     FrameCanvas *second_offscreen_canvas_ = nullptr;
     FrameCanvas *composite_offscreen_canvas_ = nullptr;
     std::shared_ptr<Scenes::Scene> forced_scene_;
+
+    std::function<bool()> is_desktop_connected_fn_;
+    std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene_fn_;
+    std::function<void(const std::string &)> broadcast_fn_;
 
     SceneScheduler scheduler_;
     SceneRenderer renderer_;

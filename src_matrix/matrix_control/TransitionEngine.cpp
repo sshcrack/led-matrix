@@ -1,23 +1,24 @@
 #include "TransitionEngine.h"
 
 #include "spdlog/spdlog.h"
-#include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
-
-#ifdef ENABLE_EMULATOR
-#include "emulator.h"
-#endif
 
 using namespace spdlog;
 
 TransitionEngine::TransitionEngine(RGBMatrixBase *matrix,
                                     TimeSource *time_source,
                                     PostProcessor *post_processor,
-                                    TransitionManager *transition_manager)
+                                    TransitionManager *transition_manager,
+                                    MatrixPresenter *presenter,
+                                    const std::atomic<bool> *exit_flag,
+                                    const std::atomic<bool> *interrupt_flag)
     : matrix_(matrix)
     , time_source_(time_source)
     , post_processor_(post_processor)
     , transition_manager_(transition_manager)
+    , presenter_(presenter)
+    , exit_flag_(exit_flag)
+    , interrupt_flag_(interrupt_flag)
 {
 }
 
@@ -122,7 +123,7 @@ void TransitionEngine::render_transition_phase(
             last_next_render_ms = now_ms;
         }
 
-        if (!current_continue || !next_continue || interrupt_received || exit_canvas_update) {
+        if (!current_continue || !next_continue || *interrupt_flag_ || *exit_flag_) {
             trace("Exiting scene early.");
             forced_scene = next_scene;
             break;
@@ -141,9 +142,7 @@ void TransitionEngine::render_transition_phase(
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 
-#ifdef ENABLE_EMULATOR
-        static_cast<rgb_matrix::EmulatorMatrix *>(matrix_)->Render();
-#endif
+        presenter_->present();
 
         if (alpha >= 1.0f) {
             forced_scene = next_scene;

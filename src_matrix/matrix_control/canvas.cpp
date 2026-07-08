@@ -1,18 +1,7 @@
 #include "canvas.h"
 
-#include <restinio/core.hpp>
-#include <restinio/websocket/websocket.hpp>
-
-#include <shared/matrix/server/common.h>
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/interrupt.h"
-#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/utils/utils.h"
 #include "spdlog/spdlog.h"
-
-#ifdef ENABLE_EMULATOR
-#include "emulator.h"
-#endif
 
 using namespace std;
 using namespace spdlog;
@@ -20,11 +9,25 @@ using namespace spdlog;
 CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
                                       TimeSource *time_source,
                                       PostProcessor *post_processor,
-                                      TransitionManager *transition_manager)
+                                      TransitionManager *transition_manager,
+                                      MatrixPresenter *presenter,
+                                      Config::MainConfig *cfg,
+                                      const std::atomic<bool> *exit_flag,
+                                      const std::atomic<bool> *interrupt_flag,
+                                      std::function<bool()> is_desktop_connected,
+                                      std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
+                                      std::function<void(const std::string &)> broadcast)
     : matrix_(matrix)
     , time_source_(time_source)
-    , renderer_(matrix, time_source, post_processor)
-    , transition_engine_(matrix, time_source, post_processor, transition_manager)
+    , presenter_(presenter)
+    , config_(cfg)
+    , exit_flag_(exit_flag)
+    , interrupt_flag_(interrupt_flag)
+    , is_desktop_connected_fn_(std::move(is_desktop_connected))
+    , set_curr_scene_fn_(std::move(set_curr_scene))
+    , broadcast_fn_(std::move(broadcast))
+    , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag)
+    , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag)
 {
     first_offscreen_canvas_ = matrix->CreateFrameCanvas();
     second_offscreen_canvas_ = matrix->CreateFrameCanvas();
@@ -35,7 +38,7 @@ CanvasCoordinator::~CanvasCoordinator() = default;
 
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    std::shared_ptr<ConfigData::Preset> preset = config->get_curr();
+    std::shared_ptr<ConfigData::Preset> preset = config_->get_curr();
     if (!preset) {
         error("config->get_curr() returned null, using fallback preset");
         preset = ConfigData::Preset::create_default();
@@ -55,8 +58,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
     auto &composite = composite_offscreen_canvas_;
 
     int no_scene_count = 0;
-    while (!exit_canvas_update) {
-        bool is_desktop_connected = Server::is_desktop_connected();
+    while (!*exit_flag_) {
+        bool connected = is_desktop_connected_fn_();
 
         std::shared_ptr<Scenes::Scene> scene =
             pinned_scene ? pinned_scene : forced_scene_;
@@ -64,7 +67,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         forced_scene_ = nullptr;
 
         if (scene == nullptr) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, is_desktop_connected, exclude_name);
+            auto weighted = scheduler_.build_weighted_scenes(scenes, connected, exclude_name);
             scene = scheduler_.select_scene(weighted);
         }
 
@@ -73,12 +76,10 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 error("Could not find scene to display.");
             no_scene_count++;
 
-            Server::currScene = nullptr;
+            set_curr_scene_fn_(nullptr);
             renderer_.render_fallback();
 
-#ifdef ENABLE_EMULATOR
-            static_cast<rgb_matrix::EmulatorMatrix *>(matrix_)->Render();
-#endif
+            presenter_->present();
 
             SleepMillis(300);
             continue;
@@ -87,21 +88,10 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         no_scene_count = 0;
         const tmillis_t end_ms = time_source_->now_ms() + scene->get_duration();
 
-        {
-            unique_lock lock(Server::currSceneMutex);
-            Server::currScene = scene;
-        }
+        set_curr_scene_fn_(scene);
 
-        {
-            shared_lock lock(Server::registryMutex);
-            debug("Now displaying scene: {}", scene->get_name());
-            for (const auto ws_handle : Server::registry | views::values) {
-                restinio::websocket::basic::message_t msg;
-                msg.set_opcode(restinio::websocket::basic::opcode_t::text_frame);
-                msg.set_payload("active:" + scene->get_name());
-                ws_handle->send_message(msg);
-            }
-        }
+        debug("Now displaying scene: {}", scene->get_name());
+        broadcast_fn_(scene->get_name());
 
         std::shared_ptr<Scenes::Scene> next_scene;
         const auto transition_duration =
@@ -110,7 +100,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             scheduler_.resolve_transition_name(preset, scene);
         if (scheduler_.should_schedule_transition(transition_duration, scene->get_duration())
             && !pinned_scene) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, is_desktop_connected,
+            auto weighted = scheduler_.build_weighted_scenes(scenes, connected,
                 scene != nullptr ? scene->get_name() : "");
             next_scene = scheduler_.select_scene(weighted);
             if (next_scene != nullptr && !next_scene->is_initialized())
