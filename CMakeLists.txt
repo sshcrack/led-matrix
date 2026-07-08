@@ -233,9 +233,15 @@ if(ENABLE_EMULATOR)
     target_link_libraries(${PROJECT_NAME} PRIVATE CLI11::CLI11)
 endif()
 
-# Define FHS paths for matrix builds (emulator also uses these; source files
+# Define FHS paths for matrix builds (emulator uses local paths; source files
 # provide fallback defaults so the build is not broken without the defines).
-if(NOT ENABLE_DESKTOP)
+if(ENABLE_EMULATOR)
+    # Local writable paths for development — no sudo needed.
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        LED_MATRIX_DATA_DIR="${CMAKE_INSTALL_PREFIX}/data"
+        LED_MATRIX_SHARE_DIR="${CMAKE_INSTALL_PREFIX}/share/led-matrix"
+    )
+elseif(NOT ENABLE_DESKTOP)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         LED_MATRIX_DATA_DIR="/var/lib/led-matrix"
         LED_MATRIX_SHARE_DIR="/usr/share/led-matrix"
