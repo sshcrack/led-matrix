@@ -1,47 +1,27 @@
 #pragma once
 
 #include <vector>
+#include <mutex>
+#include "shared/common/plugin_loader/PluginLoader.h"
 #include "shared/matrix/plugin/main.h"
 #include "shared/matrix/config/image_providers/general.h"
 #include "shared/matrix/config/shader_providers/general.h"
-#include <mutex>
 
 namespace Plugins {
-    struct PluginInfo {
-        void* handle;
-        std::string destroyFnName;
-
-        BasicPlugin* plugin;
-
-        std::vector<std::shared_ptr<SceneWrapper>> sceneWrappers;
-        std::vector<std::shared_ptr<ImageProviderWrapper>> imageProviderWrappers;
-        std::vector<std::shared_ptr<ShaderProviderWrapper>> shaderProviderWrappers;
-    };
-
-    class PluginManager {
-    protected:
-        static PluginManager *instance_;
-
+    class PluginManager : public PluginLoader<BasicPlugin> {
     private:
-        /// Handle, DestroyFunction, Plugin
-        std::vector<PluginInfo> loaded_plugins;
+        static PluginManager *instance_;
         std::vector<std::shared_ptr<SceneWrapper>> all_scenes;
         std::mutex scenes_mutex;
         bool scenes_initialized = false;
 
-        bool initialized = false;
-
         explicit PluginManager();
 
     public:
-
         PluginManager(PluginManager &other) = delete;
         void operator=(const PluginManager &) = delete;
 
         static PluginManager *instance();
-        void initialize();
-        void delete_references();
-        void destroy_plugins();
 
         std::vector<Plugins::BasicPlugin*> get_plugins();
 
@@ -50,5 +30,7 @@ namespace Plugins {
         void remove_scene(const std::string& name);
         std::vector<std::shared_ptr<Plugins::ImageProviderWrapper>> get_image_providers();
         std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> get_shader_providers();
+
+        void delete_references();
     };
 }
