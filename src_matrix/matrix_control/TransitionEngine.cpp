@@ -1,10 +1,8 @@
 #include "TransitionEngine.h"
 
 #include "spdlog/spdlog.h"
-#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
-#include "shared/matrix/utils/utils.h"
 
 #ifdef ENABLE_EMULATOR
 #include "emulator.h"
@@ -12,8 +10,14 @@
 
 using namespace spdlog;
 
-TransitionEngine::TransitionEngine(RGBMatrixBase *matrix)
+TransitionEngine::TransitionEngine(RGBMatrixBase *matrix,
+                                    TimeSource *time_source,
+                                    PostProcessor *post_processor,
+                                    TransitionManager *transition_manager)
     : matrix_(matrix)
+    , time_source_(time_source)
+    , post_processor_(post_processor)
+    , transition_manager_(transition_manager)
 {
 }
 
@@ -38,10 +42,10 @@ void TransitionEngine::apply_transition_frame(
     const std::string &transition_name)
 {
     TransitionEffect *transition_effect = nullptr;
-    if (auto *tm = Constants::global_transition_manager) {
-        transition_effect = tm->get_transition(transition_name);
+    if (transition_manager_) {
+        transition_effect = transition_manager_->get_transition(transition_name);
         if (transition_effect == nullptr)
-            transition_effect = tm->get_transition("blend");
+            transition_effect = transition_manager_->get_transition("blend");
     }
 
     if (transition_effect != nullptr) {
@@ -78,7 +82,7 @@ void TransitionEngine::render_transition_phase(
     scene->before_transition_stop();
 
     constexpr tmillis_t max_transition_ms = 10000;
-    tmillis_t transition_start_ms = GetTimeInMillis();
+    tmillis_t transition_start_ms = time_source_->now_ms();
     tmillis_t last_current_render_ms = transition_start_ms;
     tmillis_t last_next_render_ms = transition_start_ms;
 
@@ -86,7 +90,7 @@ void TransitionEngine::render_transition_phase(
     auto next_continue = next_scene->render(second_offscreen_canvas);
 
     while (true) {
-        const auto now_ms = GetTimeInMillis();
+        const auto now_ms = time_source_->now_ms();
         if (now_ms - transition_start_ms > max_transition_ms) {
             apply_transition_frame(composite_offscreen_canvas,
                                    first_offscreen_canvas,
@@ -132,8 +136,8 @@ void TransitionEngine::render_transition_phase(
                                matrix_height,
                                transition_name);
 
-        if (auto *pp = Constants::global_post_processor)
-            pp->apply_effects(composite_offscreen_canvas);
+        if (post_processor_)
+            post_processor_->apply_effects(composite_offscreen_canvas);
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 

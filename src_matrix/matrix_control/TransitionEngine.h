@@ -4,7 +4,9 @@
 #include <string>
 
 #include "led-matrix.h"
+#include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/Scene.h"
+#include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
 
 using rgb_matrix::FrameCanvas;
@@ -12,7 +14,10 @@ using rgb_matrix::RGBMatrixBase;
 
 class TransitionEngine {
 public:
-    explicit TransitionEngine(RGBMatrixBase *matrix);
+    TransitionEngine(RGBMatrixBase *matrix,
+                     TimeSource *time_source,
+                     PostProcessor *post_processor,
+                     TransitionManager *transition_manager);
 
     void render_transition_phase(
         std::shared_ptr<Scenes::Scene> scene,
@@ -28,6 +33,9 @@ public:
 
 private:
     RGBMatrixBase *matrix_;
+    TimeSource *time_source_;
+    PostProcessor *post_processor_;
+    TransitionManager *transition_manager_;
 
     void apply_transition_frame(
         FrameCanvas *dst,
