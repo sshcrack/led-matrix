@@ -8,13 +8,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT GameScenes *createGameScenes() {
-    return new GameScenes();
-}
-
-extern "C" PLUGIN_EXPORT void destroyGameScenes(GameScenes *c) {
-    delete c;
-}
+REGISTER_PLUGIN(GameScenes, GameScenes)
 
 vector<std::unique_ptr<ImageProviderWrapper>> GameScenes::create_image_providers() {
     return {};

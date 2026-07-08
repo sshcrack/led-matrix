@@ -17,6 +17,3 @@ public:
 
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
 };
-
-extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview();
-extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c);

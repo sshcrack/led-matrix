@@ -4,13 +4,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT GithubScenes *createGithubScenes() {
-    return new GithubScenes();
-}
-
-extern "C" PLUGIN_EXPORT void destroyGithubScenes(GithubScenes *c) {
-    delete c;
-}
+REGISTER_PLUGIN(GithubScenes, GithubScenes)
 
 vector<std::unique_ptr<ImageProviderWrapper>> GithubScenes::create_image_providers() {
     return {};

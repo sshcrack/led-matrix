@@ -10,14 +10,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT SpotifyScenes *createSpotifyScenes() {
-    return new SpotifyScenes();
-}
-
-extern "C" PLUGIN_EXPORT void destroySpotifyScenes(SpotifyScenes *c) {
-    delete c;
-    delete spotify; // The destructor will handle termination
-}
+REGISTER_PLUGIN_CUSTOM_DESTROY(SpotifyScenes, SpotifyScenes, delete c; delete spotify;)
 
 vector<std::unique_ptr<ImageProviderWrapper> >
 SpotifyScenes::create_image_providers() {

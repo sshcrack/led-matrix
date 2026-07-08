@@ -4,11 +4,7 @@
 
 using namespace Plugins;
 
-extern "C" PLUGIN_EXPORT SpotifyMVPlugin* createSpotifyMV() {
-  return new SpotifyMVPlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVPlugin* c) { delete c; }
+REGISTER_PLUGIN(SpotifyMV, SpotifyMVPlugin)
 
 std::vector<std::unique_ptr<SceneWrapper>>
 SpotifyMVPlugin::create_scenes() {
