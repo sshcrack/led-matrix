@@ -1,18 +1,32 @@
 #pragma once
 
-#include "led-matrix.h"
-#include "shared/matrix/post_processor.h"
-#include "shared/matrix/utils/utils.h"
-#include "shared/matrix/Scene.h"
-#include <vector>
+#include <memory>
 
-using rgb_matrix::Canvas;
+#include "led-matrix.h"
+#include "shared/matrix/Scene.h"
+
+#include "SceneScheduler.h"
+#include "SceneRenderer.h"
+#include "TransitionEngine.h"
+
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
 
-// Global post-processor instance
+class CanvasCoordinator {
+public:
+    explicit CanvasCoordinator(RGBMatrixBase *matrix);
+    ~CanvasCoordinator();
 
-void update_canvas(RGBMatrixBase * matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas,  FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene, std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);
+    void run(std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);
 
-bool render_scene_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> scene, FrameCanvas*& composite_offscreen_canvas, tmillis_t end_ms);
-void render_transition_phase(RGBMatrixBase* matrix, std::shared_ptr<Scenes::Scene> scene, std::shared_ptr<Scenes::Scene> next_scene, FrameCanvas* first_offscreen_canvas, FrameCanvas* second_offscreen_canvas, FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height, tmillis_t transition_duration, const std::string& transition_name, std::shared_ptr<Scenes::Scene>& forced_scene);
+private:
+    RGBMatrixBase *matrix_;
+    FrameCanvas *first_offscreen_canvas_ = nullptr;
+    FrameCanvas *second_offscreen_canvas_ = nullptr;
+    FrameCanvas *composite_offscreen_canvas_ = nullptr;
+    std::shared_ptr<Scenes::Scene> forced_scene_;
+
+    SceneScheduler scheduler_;
+    SceneRenderer renderer_;
+    TransitionEngine transition_engine_;
+};
