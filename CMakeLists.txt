@@ -132,6 +132,9 @@ else()
         src_matrix/daemon.cpp
         src_matrix/matrix_control/canvas.cpp
         src_matrix/matrix_control/hardware.cpp
+        src_matrix/matrix_control/SceneScheduler.cpp
+        src_matrix/matrix_control/SceneRenderer.cpp
+        src_matrix/matrix_control/TransitionEngine.cpp
         src_matrix/server/canvas_status.cpp
         src_matrix/server/custom_assets_management.cpp
         src_matrix/server/desktop_ws.cpp
