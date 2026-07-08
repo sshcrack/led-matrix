@@ -4,11 +4,7 @@
 
 using namespace Plugins;
 
-extern "C" PLUGIN_EXPORT BasicPlugin *createVideo() {
-  return new VideoPlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroyVideo(BasicPlugin *c) { delete c; }
+REGISTER_PLUGIN(Video, VideoPlugin)
 
 vector<std::unique_ptr<SceneWrapper>>
 VideoPlugin::create_scenes() {

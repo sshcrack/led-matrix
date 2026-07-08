@@ -13,11 +13,7 @@
 #include <fcntl.h>
 #endif
 
-extern "C" PLUGIN_EXPORT VideoDesktop *createVideo() {
-  return new VideoDesktop();
-}
-
-extern "C" PLUGIN_EXPORT void destroyVideo(VideoDesktop *c) { delete c; }
+REGISTER_PLUGIN(Video, VideoDesktop)
 
 VideoDesktop::~VideoDesktop() {
   stop_audio();

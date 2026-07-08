@@ -81,6 +81,3 @@ private:
     long compute_video_seek(const std::string& url, long spotify_progress_ms,
                             long spotify_duration_ms);
 };
-
-extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV();
-extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVDesktop*);

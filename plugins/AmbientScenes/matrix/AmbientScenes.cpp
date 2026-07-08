@@ -12,13 +12,7 @@
 using namespace Scenes;
 using namespace AmbientScenes;
 
-extern "C" PLUGIN_EXPORT AmbientPlugin *createAmbientScenes() {
-    return new AmbientPlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroyAmbientScenes(AmbientPlugin *c) {
-    delete c;
-}
+REGISTER_PLUGIN(AmbientScenes, AmbientPlugin)
 
 vector<std::unique_ptr<SceneWrapper>> AmbientPlugin::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> scenes;

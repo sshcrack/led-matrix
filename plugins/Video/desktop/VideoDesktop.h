@@ -63,6 +63,3 @@ private:
 
   std::unique_ptr<Shared::VideoStreamEngine> engine_;
 };
-
-extern "C" PLUGIN_EXPORT VideoDesktop *createVideo();
-extern "C" PLUGIN_EXPORT void destroyVideo(VideoDesktop *c);
