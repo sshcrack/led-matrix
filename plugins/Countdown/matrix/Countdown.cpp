@@ -34,14 +34,25 @@ std::optional<string> Countdown::before_server_init() {
 
     spdlog::debug("Loading Countdown fonts from {}", font_dir.string());
 
-    if (!HEADER_FONT.LoadFont(HEADER_FONT_FILE.c_str()))
-        return std::string("Could not load header font at ") + HEADER_FONT_FILE;
+    HEADER_FONT.emplace();
+    BODY_FONT.emplace();
+    SMALL_FONT.emplace();
 
-    if (!BODY_FONT.LoadFont(BODY_FONT_FILE.c_str()))
-        return std::string("Could not load body font at ") + BODY_FONT_FILE;
+    if (!HEADER_FONT->LoadFont(HEADER_FONT_FILE.c_str()))
+        return "Could not load header font at " + HEADER_FONT_FILE;
 
-    if (!SMALL_FONT.LoadFont(SMALL_FONT_FILE.c_str()))
-        return std::string("Could not load small font at ") + SMALL_FONT_FILE;
+    if (!BODY_FONT->LoadFont(BODY_FONT_FILE.c_str()))
+        return "Could not load body font at " + BODY_FONT_FILE;
+
+    if (!SMALL_FONT->LoadFont(SMALL_FONT_FILE.c_str()))
+        return "Could not load small font at " + SMALL_FONT_FILE;
 
     return BasicPlugin::before_server_init();
+}
+
+std::optional<string> Countdown::pre_exit() {
+    HEADER_FONT.reset();
+    BODY_FONT.reset();
+    SMALL_FONT.reset();
+    return BasicPlugin::pre_exit();
 }

@@ -30,31 +30,31 @@ void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas,
 
     constexpr int temp_x = MAIN_ICON_SIZE + 6;
     constexpr int temp_y = 20;
-    DrawText(canvas, HEADER_FONT, temp_x, temp_y,
+    DrawText(canvas, *HEADER_FONT, temp_x, temp_y,
              {255, 255, 255}, data.temperature.c_str());
 
     const std::string desc = data.description;
     const int desc_y = temp_y + 14;
 
-    DrawText(canvas, BODY_FONT, temp_x, desc_y,
+    DrawText(canvas, *BODY_FONT, temp_x, desc_y,
              {220, 220, 255}, desc.c_str());
 
     constexpr int add_info_y = desc_y + 10;
     const std::string humidity_info = "Humidity: " + data.humidity;
-    DrawText(canvas, SMALL_FONT, temp_x, add_info_y,
+    DrawText(canvas, *SMALL_FONT, temp_x, add_info_y,
              {200, 200, 255}, humidity_info.c_str());
 
     const std::string wind_info = "Wind: " + data.wind_speed;
-    DrawText(canvas, SMALL_FONT, temp_x, add_info_y + 7,
+    DrawText(canvas, *SMALL_FONT, temp_x, add_info_y + 7,
              {200, 200, 255}, wind_info.c_str());
 
     float indoor = indoor_temperature.load();
     if (show_indoor_temperature->get() && indoor > -100.0f) {
         std::string indoor_str = std::to_string(static_cast<int>(std::round(indoor))) + "C";
-        int indoor_x = matrix_width - 2 - SMALL_FONT.CharacterWidth('A') * indoor_str.length();
-        DrawText(canvas, SMALL_FONT, indoor_x, temp_y + 2,
+        int indoor_x = matrix_width - 2 - SMALL_FONT->CharacterWidth('A') * indoor_str.length();
+        DrawText(canvas, *SMALL_FONT, indoor_x, temp_y + 2,
                  {255, 200, 100}, indoor_str.c_str());
-        DrawText(canvas, SMALL_FONT, indoor_x - SMALL_FONT.CharacterWidth('A') * 5 - 1, temp_y + 2,
+        DrawText(canvas, *SMALL_FONT, indoor_x - SMALL_FONT->CharacterWidth('A') * 5 - 1, temp_y + 2,
                  {200, 200, 200}, "Ind:");
     }
 }
@@ -63,7 +63,7 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
 {
     int base_offset_x = 5;
 
-    DrawText(canvas, SMALL_FONT, base_offset_x, 65,
+    DrawText(canvas, *SMALL_FONT, base_offset_x, 65,
              {255, 255, 255}, "3-Day Forecast:");
 
     if (data.forecast.size() >= 3 && images.has_value())
@@ -75,7 +75,7 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
             const auto &day = data.forecast[i];
             const int base_x = i * forecast_width + base_offset_x;
 
-            DrawText(canvas, SMALL_FONT, base_x + 2, 78,
+            DrawText(canvas, *SMALL_FONT, base_x + 2, 78,
                      {255, 255, 255}, day.day_name.c_str());
 
             if (i < images->forecastIcons.size())
@@ -85,8 +85,8 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
             }
 
             std::string temp = day.temperature_min + "/" + day.temperature_max;
-            const int temp_width = SMALL_FONT.CharacterWidth('A') * temp.length();
-            DrawText(canvas, SMALL_FONT, base_x + (forecast_width - temp_width) / 2, 100,
+            const int temp_width = SMALL_FONT->CharacterWidth('A') * temp.length();
+            DrawText(canvas, *SMALL_FONT, base_x + (forecast_width - temp_width) / 2, 100,
                      {220, 220, 255}, temp.c_str());
 
             if (day.precipitation_chance > 0.1f)
@@ -97,7 +97,7 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
                 drawPrecipitationIndicator(canvas, day.precipitation_chance, indicator_x, indicator_y);
 
                 std::string prob = std::to_string(static_cast<int>(day.precipitation_chance * 100)) + "%";
-                DrawText(canvas, SMALL_FONT, base_x + 10, 110,
+                DrawText(canvas, *SMALL_FONT, base_x + 10, 110,
                          {150, 200, 255}, prob.c_str());
             }
         }
@@ -128,7 +128,7 @@ void Scenes::WeatherScene::renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, 
     canvas->SetPixel(base_x, base_y, 255, 220, 100);
 
     std::string sunrise_text = "\u2191 " + data.sunrise;
-    DrawText(canvas, SMALL_FONT, base_x + icon_size + 2, base_y + 2,
+    DrawText(canvas, *SMALL_FONT, base_x + icon_size + 2, base_y + 2,
              {255, 220, 100}, sunrise_text.c_str());
 
     const int sunset_x = matrix_width / 2 + 20;
@@ -145,7 +145,7 @@ void Scenes::WeatherScene::renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, 
     canvas->SetPixel(sunset_x, base_y, 255, 180, 80);
 
     std::string sunset_text = "\u2193 " + data.sunset;
-    DrawText(canvas, SMALL_FONT, sunset_x + icon_size + 2, base_y + 2,
+    DrawText(canvas, *SMALL_FONT, sunset_x + icon_size + 2, base_y + 2,
              {255, 180, 80}, sunset_text.c_str());
 }
 
@@ -158,7 +158,7 @@ void Scenes::WeatherScene::renderClock(rgb_matrix::FrameCanvas *canvas) const
     char output[50];
     strftime(output, 50, "%H:%M", &datetime);
 
-    rgb_matrix::DrawText(canvas, BODY_FONT, 98, 11, {255, 255, 255}, output);
+    rgb_matrix::DrawText(canvas, *BODY_FONT, 98, 11, {255, 255, 255}, output);
 }
 
 void Scenes::WeatherScene::renderAnimations(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
@@ -190,9 +190,9 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
         {
             spdlog::warn("Could not get weather data: {}", data_res.error());
             canvas->Clear();
-            DrawText(canvas, BODY_FONT, 2, BODY_FONT.baseline() + 5,
+            DrawText(canvas, *BODY_FONT, 2, BODY_FONT->baseline() + 5,
                      {255, 100, 100}, "Weather data error");
-            DrawText(canvas, SMALL_FONT, 2, BODY_FONT.baseline() + 15,
+            DrawText(canvas, *SMALL_FONT, 2, BODY_FONT->baseline() + 15,
                      {200, 200, 200}, data_res.error().c_str());
 
             SleepMillis(1000);
