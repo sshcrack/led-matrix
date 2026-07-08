@@ -3,21 +3,21 @@
 #include <filesystem>
 
 #include "spdlog/spdlog.h"
-#include "shared/matrix/interrupt.h"
-#include "shared/matrix/utils/shared.h"
-
-#ifdef ENABLE_EMULATOR
-#include "emulator.h"
-#endif
 
 using namespace spdlog;
 
 SceneRenderer::SceneRenderer(RGBMatrixBase *matrix,
                               TimeSource *time_source,
-                              PostProcessor *post_processor)
+                              PostProcessor *post_processor,
+                              MatrixPresenter *presenter,
+                              const std::atomic<bool> *exit_flag,
+                              const std::atomic<bool> *interrupt_flag)
     : matrix_(matrix)
     , time_source_(time_source)
     , post_processor_(post_processor)
+    , presenter_(presenter)
+    , exit_flag_(exit_flag)
+    , interrupt_flag_(interrupt_flag)
 {
 }
 
@@ -34,11 +34,9 @@ bool SceneRenderer::render_scene_phase(
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 
-#ifdef ENABLE_EMULATOR
-        static_cast<rgb_matrix::EmulatorMatrix *>(matrix_)->Render();
-#endif
+        presenter_->present();
 
-        if (!cont || interrupt_received || exit_canvas_update) {
+        if (!cont || *interrupt_flag_ || *exit_flag_) {
             trace("Exiting scene early.");
             return true;
         }
