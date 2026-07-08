@@ -3,13 +3,7 @@
 
 using namespace GenerativeScenes;
 
-extern "C" PLUGIN_EXPORT GenerativePlugin *createGenerativeScenes() {
-    return new GenerativePlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroyGenerativeScenes(GenerativePlugin *c) {
-    delete c;
-}
+REGISTER_PLUGIN(GenerativeScenes, GenerativePlugin)
 
 vector<std::unique_ptr<SceneWrapper>> GenerativePlugin::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> scenes;

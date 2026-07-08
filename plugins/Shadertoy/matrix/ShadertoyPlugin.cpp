@@ -24,15 +24,7 @@ fs::path custom_shader_dir() {
 }
 }
 
-extern "C" PLUGIN_EXPORT ShadertoyPlugin *createShadertoy()
-{
-    return new ShadertoyPlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyPlugin *c)
-{
-    delete c;
-}
+REGISTER_PLUGIN(Shadertoy, ShadertoyPlugin)
 
 vector<std::unique_ptr<ImageProviderWrapper>>
 ShadertoyPlugin::create_image_providers()

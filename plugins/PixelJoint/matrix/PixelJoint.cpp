@@ -33,13 +33,7 @@ vector<std::unique_ptr<SceneWrapper>> PixelJoint::create_scenes() {
 
 PixelJoint::PixelJoint() = default;
 
-extern "C" PLUGIN_EXPORT PixelJoint *createPixelJoint() {
-    return new PixelJoint();
-}
-
-extern "C" PLUGIN_EXPORT void destroyPixelJoint(PixelJoint *c) {
-    delete c;
-}
+REGISTER_PLUGIN(PixelJoint, PixelJoint)
 
 
 restinio::request_handling_status_t

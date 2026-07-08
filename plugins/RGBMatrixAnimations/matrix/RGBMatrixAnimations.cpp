@@ -4,13 +4,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT RGBMatrixAnimations *createRGBMatrixAnimations() {
-    return new RGBMatrixAnimations();
-}
-
-extern "C" PLUGIN_EXPORT void destroyRGBMatrixAnimations(RGBMatrixAnimations *c) {
-    delete c;
-}
+REGISTER_PLUGIN(RGBMatrixAnimations, RGBMatrixAnimations)
 
 vector<std::unique_ptr<ImageProviderWrapper>>
 RGBMatrixAnimations::create_image_providers() {

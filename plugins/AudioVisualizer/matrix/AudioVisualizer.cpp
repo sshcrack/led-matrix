@@ -8,15 +8,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT AudioVisualizer *createAudioVisualizer()
-{
-    return new AudioVisualizer();
-}
-
-extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizer *c)
-{
-    delete c;
-}
+REGISTER_PLUGIN(AudioVisualizer, AudioVisualizer)
 
 vector<std::unique_ptr<ImageProviderWrapper>> AudioVisualizer::create_image_providers()
 {

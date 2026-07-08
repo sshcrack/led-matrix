@@ -9,13 +9,7 @@
 using namespace Scenes;
 using json = nlohmann::json;
 
-extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview() {
-    return new WeatherOverview();
-}
-
-extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c) {
-    delete c;
-}
+REGISTER_PLUGIN(WeatherOverview, WeatherOverview)
 
 vector<std::unique_ptr<ImageProviderWrapper> >
 WeatherOverview::create_image_providers() {

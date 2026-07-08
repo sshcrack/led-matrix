@@ -7,13 +7,7 @@
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT FractalScenes *createFractalScenes() {
-    return new FractalScenes();
-}
-
-extern "C" PLUGIN_EXPORT void destroyFractalScenes(FractalScenes *c) {
-    delete c;
-}
+REGISTER_PLUGIN(FractalScenes, FractalScenes)
 
 vector<std::unique_ptr<ImageProviderWrapper>> FractalScenes::create_image_providers() {
     return {};

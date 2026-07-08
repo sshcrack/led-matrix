@@ -12,15 +12,7 @@
 
 #include "CanvasPacket.h"
 
-extern "C" PLUGIN_EXPORT ShadertoyDesktop *createShadertoy()
-{
-    return new ShadertoyDesktop();
-}
-
-extern "C" PLUGIN_EXPORT void destroyShadertoy(ShadertoyDesktop *c)
-{
-    delete c;
-}
+REGISTER_PLUGIN(Shadertoy, ShadertoyDesktop)
 
 ShadertoyDesktop::~ShadertoyDesktop()
 {

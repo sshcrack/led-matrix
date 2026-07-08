@@ -5,13 +5,7 @@
 
 using namespace std;
 
-extern "C" PLUGIN_EXPORT Countdown *createCountdown() {
-    return new Countdown();
-}
-
-extern "C" PLUGIN_EXPORT void destroyCountdown(Countdown *c) {
-    delete c;
-}
+REGISTER_PLUGIN(Countdown, Countdown)
 
 vector<std::unique_ptr<ImageProviderWrapper>> Countdown::create_image_providers() {
     return {};

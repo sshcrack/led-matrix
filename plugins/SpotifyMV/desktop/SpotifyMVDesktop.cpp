@@ -42,11 +42,7 @@ void draw_engine_status(Shared::VideoStreamEngine::State state,
 
 } // anonymous namespace
 
-extern "C" PLUGIN_EXPORT SpotifyMVDesktop* createSpotifyMV() {
-    return new SpotifyMVDesktop();
-}
-
-extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVDesktop* c) { delete c; }
+REGISTER_PLUGIN(SpotifyMV, SpotifyMVDesktop)
 
 SpotifyMVDesktop::~SpotifyMVDesktop() {
     if (search_thread_.joinable()) search_thread_.join();

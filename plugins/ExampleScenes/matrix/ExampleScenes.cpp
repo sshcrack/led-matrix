@@ -3,13 +3,7 @@
 #include "scenes/PropertyDemoScene.h"
 #include "scenes/RenderingDemoScene.h"
 
-extern "C" PLUGIN_EXPORT ExampleScenes *createExampleScenes() {
-    return new ExampleScenes();
-}
-
-extern "C" PLUGIN_EXPORT void destroyExampleScenes(ExampleScenes *c) {
-    delete c;
-}
+REGISTER_PLUGIN(ExampleScenes, ExampleScenes)
 
 vector<std::unique_ptr<ImageProviderWrapper>> ExampleScenes::create_image_providers() {
     return {};

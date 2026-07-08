@@ -198,12 +198,4 @@ namespace Plugins
     }
 }
 
-extern "C" PLUGIN_EXPORT Plugins::Transitions *createTransitions()
-{
-    return new Plugins::Transitions();
-}
-
-extern "C" PLUGIN_EXPORT void destroyTransitions(Plugins::Transitions *p)
-{
-    delete p;
-}
+REGISTER_PLUGIN(Transitions, Plugins::Transitions)

@@ -9,15 +9,7 @@
 
 using namespace Plugins;
 
-extern "C" PLUGIN_EXPORT BasicEffects *createBasicEffects()
-{
-    return new BasicEffects();
-}
-
-extern "C" PLUGIN_EXPORT void destroyBasicEffects(BasicEffects *c)
-{
-    delete c;
-}
+REGISTER_PLUGIN(BasicEffects, BasicEffects)
 
 BasicEffects::BasicEffects()
 {

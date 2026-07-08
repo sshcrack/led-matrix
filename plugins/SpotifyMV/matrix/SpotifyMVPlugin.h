@@ -52,6 +52,3 @@ private:
   std::mutex track_msg_mutex_;
   std::string last_track_message_;
 };
-
-extern "C" PLUGIN_EXPORT SpotifyMVPlugin* createSpotifyMV();
-extern "C" PLUGIN_EXPORT void destroySpotifyMV(SpotifyMVPlugin*);

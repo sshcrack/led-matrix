@@ -5,13 +5,7 @@
 #include "udpBandsPacket.h"
 #include <chrono>
 
-extern "C" PLUGIN_EXPORT AudioVisualizerDesktop *createAudioVisualizer() {
-    return new AudioVisualizerDesktop();
-}
-
-extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizerDesktop *c) {
-    delete c;
-}
+REGISTER_PLUGIN(AudioVisualizer, AudioVisualizerDesktop)
 
 AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false), beatDetector(std::make_unique<BeatDetector>()) {
 }
