@@ -5,7 +5,6 @@
 
 #include <shared/matrix/server/common.h>
 #include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/plugin_loader/loader.h"
@@ -18,10 +17,14 @@
 using namespace std;
 using namespace spdlog;
 
-CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix)
+CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
+                                      TimeSource *time_source,
+                                      PostProcessor *post_processor,
+                                      TransitionManager *transition_manager)
     : matrix_(matrix)
-    , renderer_(matrix)
-    , transition_engine_(matrix)
+    , time_source_(time_source)
+    , renderer_(matrix, time_source, post_processor)
+    , transition_engine_(matrix, time_source, post_processor, transition_manager)
 {
     first_offscreen_canvas_ = matrix->CreateFrameCanvas();
     second_offscreen_canvas_ = matrix->CreateFrameCanvas();
@@ -82,7 +85,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         }
 
         no_scene_count = 0;
-        const tmillis_t end_ms = GetTimeInMillis() + scene->get_duration();
+        const tmillis_t end_ms = time_source_->now_ms() + scene->get_duration();
 
         {
             unique_lock lock(Server::currSceneMutex);

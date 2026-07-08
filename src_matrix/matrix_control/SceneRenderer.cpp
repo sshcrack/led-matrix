@@ -3,10 +3,8 @@
 #include <filesystem>
 
 #include "spdlog/spdlog.h"
-#include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/utils/shared.h"
-#include "shared/matrix/utils/utils.h"
 
 #ifdef ENABLE_EMULATOR
 #include "emulator.h"
@@ -14,8 +12,12 @@
 
 using namespace spdlog;
 
-SceneRenderer::SceneRenderer(RGBMatrixBase *matrix)
+SceneRenderer::SceneRenderer(RGBMatrixBase *matrix,
+                              TimeSource *time_source,
+                              PostProcessor *post_processor)
     : matrix_(matrix)
+    , time_source_(time_source)
+    , post_processor_(post_processor)
 {
 }
 
@@ -24,11 +26,11 @@ bool SceneRenderer::render_scene_phase(
     FrameCanvas *&composite_offscreen_canvas,
     tmillis_t end_ms)
 {
-    while (GetTimeInMillis() < end_ms) {
+    while (time_source_->now_ms() < end_ms) {
         bool cont = scene->render(composite_offscreen_canvas);
 
-        if (auto *pp = Constants::global_post_processor)
-            pp->apply_effects(composite_offscreen_canvas);
+        if (post_processor_)
+            post_processor_->apply_effects(composite_offscreen_canvas);
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 
