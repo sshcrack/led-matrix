@@ -2,6 +2,7 @@
 
 #include "led-matrix.h"
 #include <filesystem>
+#include <optional>
 
 // Fonts used by the Countdown scene
 extern std::optional<rgb_matrix::Font> HEADER_FONT;
