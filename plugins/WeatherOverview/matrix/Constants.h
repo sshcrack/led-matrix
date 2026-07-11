@@ -3,6 +3,7 @@
 #include <string>
 #include <atomic>
 #include <filesystem>
+#include <optional>
 #include "shared/matrix/utils/consts.h"
 
 #include "led-matrix.h"
