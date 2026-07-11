@@ -1,7 +1,9 @@
 #include "daemon.h"
 
-#include <CLI/CLI.hpp>
 #include <Magick++.h>
+#ifdef ENABLE_EMULATOR
+#include <CLI/CLI.hpp>
+#endif
 
 #include "spdlog/spdlog.h"
 #include "spdlog/cfg/env.h"
