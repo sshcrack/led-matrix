@@ -95,11 +95,13 @@ void render_overlay(rgb_matrix::FrameCanvas *canvas, int frame,
       px = 0;
       py = height - 1 - (pos - 2 * width - height);
     }
-    float fade = 1.0f - (float)i / tail_len;
+    float alpha = 1.0f - (float)i / tail_len;
+    uint8_t cr, cg, cb;
+    canvas->GetPixel(px, py, &cr, &cg, &cb);
     canvas->SetPixel(px, py,
-                     (uint8_t)(r * fade),
-                     (uint8_t)(g * fade),
-                     (uint8_t)(b * fade));
+                     (uint8_t)(r * alpha + cr * (1.0f - alpha)),
+                     (uint8_t)(g * alpha + cg * (1.0f - alpha)),
+                     (uint8_t)(b * alpha + cb * (1.0f - alpha)));
   }
 }
 
