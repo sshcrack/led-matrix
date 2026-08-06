@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Trash2, ArrowRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, ArrowRight, ImageOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
-import { Badge } from '~/components/ui/badge'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -15,6 +14,7 @@ import type { Scene as SceneType } from '~/apiTypes/list_presets'
 import type { ListScenes, ListProviders } from '~/apiTypes/list_scenes'
 import { useSceneContext } from './SceneContext'
 import PropertyList from './property_list'
+import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 
 interface SceneProps {
   scene: SceneType
@@ -28,6 +28,7 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { deleteScene, updateScene } = useSceneContext()
   const navigate = useNavigate()
+  const apiUrl = useApiUrl()
 
   const def = sceneDefinitions.find(s => s.name === scene.type)
 
@@ -55,10 +56,11 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
           <CollapsibleTrigger asChild>
             <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className={`font-mono text-xs ${(def || sceneDefinitions.length === 0) ? 'bg-secondary text-secondary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
-                    {scene.type}
-                  </Badge>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-black text-white/35">
+                    {def?.has_preview ? <img src={`${apiUrl}/scene_preview?name=${encodeURIComponent(scene.type)}`} alt="" className="h-full w-full object-contain [image-rendering:pixelated]" /> : <ImageOff className="h-4 w-4" />}
+                  </div>
+                  <div className="min-w-0"><div className="truncate font-semibold">{scene.type}</div><div className="text-xs text-muted-foreground">{def?.category ?? 'Unknown'} · {def?.properties.length ?? 0} settings</div></div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -93,7 +95,7 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
                   className="gap-2 w-full"
                   onClick={handleProviderEdit}
                 >
-                  Edit Providers
+                  Configure sources
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )}

@@ -87,24 +87,13 @@ void drawGlowingBorder(rgb_matrix::FrameCanvas *canvas, int x, int y, int width,
 
 void CoverOnlyScene::update_beat_simulation()
 {
-    // Get the current time
-    auto current_time = std::chrono::steady_clock::now();
-
-    // Calculate elapsed time since last update
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_beat_time).count();
-
-    // If we have a BPM value, use it to simulate beats
-    if (curr_bpm > 0)
-    {
-        float beat_interval_ms = 60000.0f / curr_bpm;
-
-        // Calculate phase within the beat (0.0 to 1.0)
-        float phase = (float)elapsed / beat_interval_ms;
-        target_beat_intensity = std::max(0.0f, 1.0f - phase * 2.0f);
-    }
-
-    // Smooth the current intensity towards the target
-    current_beat_intensity = current_beat_intensity * 0.7f + target_beat_intensity * 0.3f;
+    const auto now = std::chrono::steady_clock::now();
+    const float elapsed_ms = std::chrono::duration<float, std::milli>(now - last_beat_time).count();
+    const float interval_ms = 60000.0f / std::max(curr_bpm, 30.0f);
+    const float phase = std::fmod(elapsed_ms, interval_ms) / interval_ms;
+    const float attack = std::max(0.0f, 1.0f - phase * 5.5f);
+    target_beat_intensity = attack * attack;
+    current_beat_intensity += (target_beat_intensity - current_beat_intensity) * 0.28f;
 }
 
 bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
@@ -175,94 +164,53 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
     }
 
     auto progress_opt = curr_state->get_progress();
-    if (!progress_opt.has_value())
-    {
+    if (!progress_opt.has_value()) {
         error("Could not get progress");
         return false;
     }
 
-    // Update beat simulation
     update_beat_simulation();
-    float beat_intensity = get_beat_intensity();
+    const float beat = get_beat_intensity();
+    const float progress = std::clamp(progress_opt.value(), 0.0f, 1.0f);
+    const int width = canvas->width();
+    const int height = canvas->height();
 
-    auto progress = progress_opt.value();
-    int max_x = matrix_width;
-    int max_y = matrix_height;
-
-    // Calculate pulsing effect based on progress and beat
-    float pulse_intensity = 0.3f + 0.7f * beat_intensity;
-
-    // Draw a glowing border around the entire image with beat-reactive intensity
-    int border_margin = 1;
-    rgb_matrix::Color border_color = getProgressColor(progress);
-
-    // Enhance border color based on beat intensity
-    border_color.r = std::min(255, (int)(border_color.r * (1.0f + beat_intensity * 0.5f)));
-    border_color.g = std::min(255, (int)(border_color.g * (1.0f + beat_intensity * 0.5f)));
-    border_color.b = std::min(255, (int)(border_color.b * (1.0f + beat_intensity * 0.5f)));
-
-    /* I don't like the glowing border, disabled for now
-        drawGlowingBorder(canvas, border_margin, border_margin,
-                          max_x - 2 * border_margin, max_y - 2 * border_margin,
-                          border_color, pulse_intensity * border_intensity_prop->get());
-    */
-
-    // Draw progress indicators with a continuous gradient around the entire perimeter
-    // Calculate total perimeter length
-    int perimeter = 2 * max_x + 2 * max_y - 4; // -4 to account for corners
-
-    // Calculate how many pixels to fill based on progress
-    int pixels_to_fill = static_cast<int>(perimeter * progress);
-    int pixels_filled = 0;
-
-    // Draw a black border first
-    for (int x = 0; x < max_x; x++)
-    {
-        canvas->SetPixel(x, 0, 0, 0, 0);
-    }
-    for (int y = 1; y < max_y; y++)
-    {
-        canvas->SetPixel(max_x - 1, y, 0, 0, 0);
-    }
-    for (int x = max_x - 2; x >= 0; x--)
-    {
-        canvas->SetPixel(x, max_y - 1, 0, 0, 0);
-    }
-    for (int y = max_y - 2; y >= 1; y--)
-    {
-        canvas->SetPixel(0, y, 0, 0, 0);
+    // A restrained beat-reactive halo keeps the artwork alive without obscuring it.
+    const float halo = cover_border_glow_intensity->get() + beat * beat_pulse_strength->get();
+    const auto accent = getProgressColor(progress);
+    if (halo > 0.01f) {
+        const uint8_t r = static_cast<uint8_t>(accent.r * std::min(halo, 1.0f));
+        const uint8_t g = static_cast<uint8_t>(accent.g * std::min(halo, 1.0f));
+        const uint8_t b = static_cast<uint8_t>(accent.b * std::min(halo, 1.0f));
+        for (int x = 1; x < width - 1; ++x) {
+            canvas->SetPixel(x, 1, r, g, b);
+            canvas->SetPixel(x, height - 2, r, g, b);
+        }
+        for (int y = 2; y < height - 2; ++y) {
+            canvas->SetPixel(1, y, r, g, b);
+            canvas->SetPixel(width - 2, y, r, g, b);
+        }
     }
 
-    // Top edge (left to right)
-    for (int x = 0; x < max_x && pixels_filled < pixels_to_fill; x++)
-    {
-        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-        canvas->SetPixel(x, 0, color.r, color.g, color.b);
-        pixels_filled++;
-    }
-
-    // Right edge (top to bottom)
-    for (int y = 1; y < max_y && pixels_filled < pixels_to_fill; y++)
-    {
-        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-        canvas->SetPixel(max_x - 1, y, color.r, color.g, color.b);
-        pixels_filled++;
-    }
-
-    // Bottom edge (right to left)
-    for (int x = max_x - 2; x >= 0 && pixels_filled < pixels_to_fill; x--)
-    {
-        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-        canvas->SetPixel(x, max_y - 1, color.r, color.g, color.b);
-        pixels_filled++;
-    }
-
-    // Left edge (bottom to top)
-    for (int y = max_y - 2; y >= 1 && pixels_filled < pixels_to_fill; y--)
-    {
-        rgb_matrix::Color color = getProgressColor((float)pixels_filled / perimeter);
-        canvas->SetPixel(0, y, color.r, color.g, color.b);
-        pixels_filled++;
+    // A conventional bottom progress bar reads much better than a racing perimeter.
+    if (show_progress->get()) {
+        const int bar_height = std::clamp(progress_bar_height->get(), 1, std::max(1, height / 8));
+        const int y0 = height - bar_height;
+        const int filled = static_cast<int>(std::round(progress * width));
+        for (int y = y0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                if (x < filled) {
+                    const auto color = getProgressColor(width > 1 ? static_cast<float>(x) / (width - 1) : 0.0f);
+                    const float highlight = y == y0 ? 1.0f : 0.72f;
+                    canvas->SetPixel(x, y,
+                        static_cast<uint8_t>(color.r * highlight),
+                        static_cast<uint8_t>(color.g * highlight),
+                        static_cast<uint8_t>(color.b * highlight));
+                } else {
+                    canvas->SetPixel(x, y, 3, 5, 9);
+                }
+            }
+        }
     }
 
     wait_until_next_frame();
@@ -408,29 +356,39 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
     }
 
     vector<Magick::Image> frames = std::move(res.value());
+    Magick::Image source = frames[0];
     Magick::Image cover_img(Magick::Geometry(width, height), Magick::Color("black"));
 
-    // Apply a subtle enhancement to the cover
-    Magick::Image enhanced_cover = frames[0];
+    try {
+        // Fill the complete matrix with a dark, blurred version of the artwork.
+        Magick::Image background = source;
+        background.resize(Magick::Geometry(width, height, 0, 0));
+        background.crop(Magick::Geometry(width, height,
+            std::max(0L, static_cast<long>(background.columns() - width) / 2),
+            std::max(0L, static_cast<long>(background.rows() - height) / 2)));
+        if (background_blur->get() > 0)
+            background.blur(0.0, static_cast<double>(background_blur->get()));
+        background.modulate(static_cast<double>(background_brightness->get()), 112.0, 100.0);
+        cover_img.composite(background, 0, 0, Magick::OverCompositeOp);
 
-    try
-    {
-        // Try to enhance the image with all three required parameters
-        // modulate(brightness, saturation, hue)
-        enhanced_cover.modulate(105.0, 110.0, 100.0);
-        // Slightly increase brightness and saturation, keep hue unchanged
-    }
-    catch (const std::exception &e)
-    {
-        trace("Failed to modulate image: {}", e.what());
-        // Just use the original cover if modulate fails
-        enhanced_cover = frames[0];
-    }
+        // Put a crisp, slightly inset square cover above the atmospheric background.
+        const int cover_size = std::clamp(
+            std::min(width, height) * cover_size_percent->get() / 100,
+            8, std::min(width, height));
+        Magick::Image foreground = source;
+        foreground.resize(Magick::Geometry(cover_size, cover_size));
+        foreground.modulate(104.0, 112.0, 100.0);
+        const int x = (width - cover_size) / 2;
+        const int y = (height - cover_size) / 2 - std::max(0, progress_bar_height->get() / 2);
 
-    cover_img.draw(Magick::DrawableCompositeImage(0, 0,
-                                                  width,
-                                                  height,
-                                                  enhanced_cover));
+        // Two dark pixels of separation preserve the cover edge on bright artwork.
+        Magick::Image shadow(Magick::Geometry(cover_size + 4, cover_size + 4), Magick::Color("#05070a"));
+        cover_img.composite(shadow, x - 2, y - 2, Magick::OverCompositeOp);
+        cover_img.composite(foreground, x, y, Magick::OverCompositeOp);
+    } catch (const std::exception &e) {
+        trace("Failed to compose Spotify artwork: {}", e.what());
+        cover_img.draw(Magick::DrawableCompositeImage(0, 0, width, height, source));
+    }
 
     state_lock.lock();
     if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id)
@@ -545,6 +503,12 @@ std::unique_ptr<Scene> CoverOnlySceneWrapper::create()
 void CoverOnlyScene::register_properties()
 {
     add_property(cover_border_glow_intensity);
+    add_property(cover_size_percent);
+    add_property(background_blur);
+    add_property(background_brightness);
+    add_property(progress_bar_height);
+    add_property(beat_pulse_strength);
+    add_property(show_progress);
     add_property(wait_on_final_cover);
     add_property(zoom_transition_frame_wait);
     add_property(final_cover_wait);
@@ -554,6 +518,7 @@ void CoverOnlyScene::register_properties()
     add_property(bpm_slowdown_factor);
     add_property(bpm_slowdown_threshold);
     add_property(cover_transition_steps);
+    add_property(disable_cover_animation);
 }
 
 CoverOnlyScene::~CoverOnlyScene()
