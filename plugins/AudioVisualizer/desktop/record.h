@@ -5,7 +5,12 @@
 #include <mutex>
 #include <optional>
 #include <deque>
+#include <thread>
 #include <portaudio.h>
+
+#ifndef _WIN32
+#include <sys/types.h>
+#endif
 
 static constexpr size_t BUFFER_SIZE = 2048;
 static constexpr size_t FFT_SIZE = 1024;
@@ -31,8 +36,14 @@ namespace AudioRecorder
         // List all output devices
         static std::vector<DeviceInfo> listDevices();
 
-        // Start recording from selected device
+        // Start recording from selected PortAudio input device
         bool startRecording(int deviceIndex);
+
+        // Capture the current desktop output. On Windows this resolves a WASAPI
+        // loopback device; on Linux this records PipeWire/PulseAudio's default
+        // sink monitor through parec.
+        bool startDefaultOutputLoopback();
+        static bool isDefaultOutputLoopbackAvailable();
 
         // Find the loopback device index corresponding to the current default output device.
         // Returns -1 if not found or not on Windows/WASAPI.
@@ -56,6 +67,15 @@ namespace AudioRecorder
         std::atomic<bool> recording;
         int currentDeviceIndex;
         PaStream *stream;
+
+#ifndef _WIN32
+        int loopbackPipeFd = -1;
+        pid_t loopbackPid = -1;
+        std::thread loopbackThread;
+        std::atomic<bool> stopLoopbackThread{false};
+
+        void linuxLoopbackReadLoop();
+#endif
 
         std::mutex audioBufferMutex;
         std::deque<float> audioBuffer;

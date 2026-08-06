@@ -9,7 +9,49 @@
 
 #endif
 
+#ifndef _WIN32
+#include <cerrno>
+#include <csignal>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
+#include <algorithm>
+#include <array>
+#include <filesystem>
 #include <spdlog/spdlog.h>
+
+
+#ifndef _WIN32
+namespace
+{
+    bool executableOnPath(const char *name)
+    {
+        const char *path = std::getenv("PATH");
+        if (!path || !*path)
+            return false;
+
+        std::string paths(path);
+        size_t begin = 0;
+        while (begin <= paths.size())
+        {
+            const size_t end = paths.find(':', begin);
+            const std::string dir = paths.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
+            const std::filesystem::path candidate = (dir.empty() ? std::filesystem::path(".") : std::filesystem::path(dir)) / name;
+            if (::access(candidate.c_str(), X_OK) == 0)
+                return true;
+            if (end == std::string::npos)
+                break;
+            begin = end + 1;
+        }
+        return false;
+    }
+}
+#endif
 
 namespace AudioRecorder
 {
@@ -174,9 +216,142 @@ namespace AudioRecorder
         return true;
     }
 
+    bool Recorder::isDefaultOutputLoopbackAvailable()
+    {
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        return getDefaultOutputLoopbackIndex() >= 0;
+#elif defined(__linux__)
+        // GNOME on modern distributions normally runs PipeWire with its
+        // PulseAudio compatibility server. parec understands the special
+        // @DEFAULT_MONITOR@ source and follows the active default sink.
+        return executableOnPath("parec");
+#else
+        return false;
+#endif
+    }
+
+    bool Recorder::startDefaultOutputLoopback()
+    {
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        const int index = getDefaultOutputLoopbackIndex();
+        return index >= 0 && startRecording(index);
+#elif defined(__linux__)
+        bool expected = false;
+        if (!recording.compare_exchange_strong(expected, true))
+        {
+            spdlog::warn("Already recording. Aborting...");
+            return false;
+        }
+
+        if (!isDefaultOutputLoopbackAvailable())
+        {
+            spdlog::error("Linux desktop loopback requires 'parec' (usually provided by pulseaudio-utils). PipeWire's PulseAudio compatibility service must also be running.");
+            recording = false;
+            return false;
+        }
+
+        int pipeFds[2] = {-1, -1};
+        if (::pipe2(pipeFds, O_CLOEXEC) != 0)
+        {
+            spdlog::error("Failed to create loopback pipe: {}", std::strerror(errno));
+            recording = false;
+            return false;
+        }
+
+        const pid_t pid = ::fork();
+        if (pid < 0)
+        {
+            spdlog::error("Failed to start parec: {}", std::strerror(errno));
+            ::close(pipeFds[0]);
+            ::close(pipeFds[1]);
+            recording = false;
+            return false;
+        }
+
+        if (pid == 0)
+        {
+            ::dup2(pipeFds[1], STDOUT_FILENO);
+            ::close(pipeFds[0]);
+            ::close(pipeFds[1]);
+            ::execlp("parec", "parec",
+                     "--device=@DEFAULT_MONITOR@",
+                     "--format=float32le",
+                     "--rate=44100",
+                     "--channels=1",
+                     "--raw",
+                     static_cast<char *>(nullptr));
+            _exit(127);
+        }
+
+        ::close(pipeFds[1]);
+        loopbackPipeFd = pipeFds[0];
+        loopbackPid = pid;
+        currentDeviceIndex = -2;
+        sampleRate = 44100.0;
+        stopLoopbackThread = false;
+        {
+            std::lock_guard lock(audioBufferMutex);
+            audioBuffer.clear();
+        }
+        loopbackThread = std::thread(&Recorder::linuxLoopbackReadLoop, this);
+        spdlog::info("Recording Linux desktop output through PipeWire/PulseAudio default monitor");
+        return true;
+#else
+        return false;
+#endif
+    }
+
+#ifndef _WIN32
+    void Recorder::linuxLoopbackReadLoop()
+    {
+        std::array<float, 2048> samples{};
+        while (!stopLoopbackThread)
+        {
+            pollfd descriptor{loopbackPipeFd, POLLIN, 0};
+            const int ready = ::poll(&descriptor, 1, 200);
+            if (ready < 0)
+            {
+                if (errno == EINTR)
+                    continue;
+                break;
+            }
+            if (ready == 0)
+                continue;
+            if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) && !(descriptor.revents & POLLIN))
+                break;
+
+            const ssize_t bytes = ::read(loopbackPipeFd, samples.data(), sizeof(samples));
+            if (bytes <= 0)
+            {
+                if (bytes < 0 && (errno == EINTR || errno == EAGAIN))
+                    continue;
+                break;
+            }
+
+            const size_t count = static_cast<size_t>(bytes) / sizeof(float);
+            std::lock_guard lock(audioBufferMutex);
+            audioBuffer.insert(audioBuffer.end(), samples.begin(), samples.begin() + static_cast<std::ptrdiff_t>(count));
+            while (audioBuffer.size() > MAX_BUFFER_SIZE)
+                audioBuffer.pop_front();
+        }
+
+        // An unexpected EOF usually means parec could not connect to the
+        // PipeWire/PulseAudio server or the server disappeared.
+        if (!stopLoopbackThread)
+        {
+            spdlog::error("Linux desktop loopback capture stopped unexpectedly");
+            recording = false;
+        }
+    }
+#endif
+
     void Recorder::stopRecording()
     {
-        if (!recording)
+        if (!recording && !stream
+#ifndef _WIN32
+            && loopbackPid <= 0 && !loopbackThread.joinable()
+#endif
+        )
             return;
         if (stream)
         {
@@ -184,6 +359,24 @@ namespace AudioRecorder
             Pa_CloseStream(stream);
             stream = nullptr;
         }
+#ifndef _WIN32
+        stopLoopbackThread = true;
+        if (loopbackPid > 0)
+            ::kill(loopbackPid, SIGTERM);
+        if (loopbackThread.joinable())
+            loopbackThread.join();
+        if (loopbackPipeFd >= 0)
+        {
+            ::close(loopbackPipeFd);
+            loopbackPipeFd = -1;
+        }
+        if (loopbackPid > 0)
+        {
+            int status = 0;
+            ::waitpid(loopbackPid, &status, 0);
+            loopbackPid = -1;
+        }
+#endif
         spdlog::info("Recording stopped");
         recording = false;
         currentDeviceIndex = -1;
