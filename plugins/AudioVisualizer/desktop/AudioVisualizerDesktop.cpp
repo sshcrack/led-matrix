@@ -137,12 +137,18 @@ void AudioVisualizerDesktop::addAudioSettings() {
 void AudioVisualizerDesktop::addDeviceSettings() {
     ImGui::SeparatorText("Audio Device Settings");
     static auto devices = AudioRecorder::Recorder::listDevices();
-    if (cfg.deviceName.empty() && !devices.empty()) {
-        cfg.deviceName = devices[0].name; // Default to first device
+    if (cfg.deviceName.empty()) {
+#if defined(_WIN32) || defined(__linux__)
+        if (AudioRecorder::Recorder::isDefaultOutputLoopbackAvailable())
+            cfg.deviceName = DEFAULT_LOOPBACK_DEVICE_NAME;
+        else
+#endif
+        if (!devices.empty())
+            cfg.deviceName = devices[0].name;
     }
 
     if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
         // Special entry: follow the default output device as loopback
         {
             bool isSelected = (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME);
@@ -157,11 +163,6 @@ void AudioVisualizerDesktop::addDeviceSettings() {
 
         for (const auto &device: devices) {
             std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
-            #ifndef _WIN32
-                if(device.name == "pipewire") {
-                    deviceNameWithId = "PipeWire (causes audio issues, not recommended)##" + std::to_string(device.index);
-                }
-            #endif
             if (ImGui::Selectable(deviceNameWithId.c_str())) {
                 cfg.deviceName = device.name;
             }
@@ -347,7 +348,8 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGu
 
 std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
-    if (sceneName != "audio_spectrum")
+    if (sceneName != "audio_spectrum" && sceneName != "audio_particles" &&
+        sceneName != "audio_pulse_tunnel")
         return std::nullopt;
 
     std::lock_guard<std::mutex> stateLock(stateMutex);
@@ -362,6 +364,7 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
         currentDeviceName = cfg.deviceName;
     }
 
+#ifdef _WIN32
     if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME) {
         const auto now = std::chrono::steady_clock::now();
 
@@ -385,6 +388,7 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
             recorder->stopRecording();
         }
     }
+#endif
 
     if (!recorder->isRecording())
     {
@@ -392,13 +396,13 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
 
         if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
         {
-            // Use cached loopback index (should have been refreshed above); fallback-refresh if unknown
+#ifdef _WIN32
+            // Use cached WASAPI loopback index.
             const auto now = std::chrono::steady_clock::now();
             if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > loopbackRefreshInterval) {
                 cachedLoopbackIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
                 lastLoopbackCheck = now;
             }
-
             deviceIndex = cachedLoopbackIndex;
             if (deviceIndex == -1)
             {
@@ -406,6 +410,14 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
                 lastError = "No loopback device found for the default output device.";
                 return std::nullopt;
             }
+#else
+            if (!recorder->startDefaultOutputLoopback())
+            {
+                std::unique_lock lock(lastErrorMutex);
+                lastError = "Desktop output capture failed. Install pulseaudio-utils (parec) and ensure PipeWire-Pulse is running.";
+                return std::nullopt;
+            }
+#endif
         }
         else
         {
@@ -431,7 +443,12 @@ std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_
             std::unique_lock lock(lastErrorMutex);
             lastError.clear();
         }
+#ifdef _WIN32
         recorder->startRecording(deviceIndex);
+#else
+        if (cfg.deviceName != DEFAULT_LOOPBACK_DEVICE_NAME)
+            recorder->startRecording(deviceIndex);
+#endif
     }
 
     auto samplesOpt = recorder->getLastSamples();
