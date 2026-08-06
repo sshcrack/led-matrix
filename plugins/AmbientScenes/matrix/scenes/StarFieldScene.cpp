@@ -1,6 +1,7 @@
 #include "StarFieldScene.h"
 #include <algorithm>
 #include <cmath>
+#include <shared/matrix/audio_state.h>
 
 namespace AmbientScenes {
     void StarFieldScene::Star::respawn(float max_depth, std::mt19937& rng) {
@@ -71,6 +72,15 @@ namespace AmbientScenes {
         const float dt = std::min(0.10f, std::chrono::duration<float>(now - last_update).count());
         last_update = now;
         time += dt;
+        if (audio_reactive->get()) {
+            const auto audio = AudioState::snapshot();
+            const float response = 1.0f - std::exp(-dt * 9.0f);
+            audio_bass += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass) * response;
+            audio_mids += (AudioState::average_band(audio, 0.18f, 0.62f) - audio_mids) * response;
+            audio_treble += (AudioState::average_band(audio, 0.62f, 1.0f) - audio_treble) * response;
+            if (audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_flash = 1.0f; }
+        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+        beat_flash = std::max(0.0f, beat_flash - dt * 3.5f);
         const float depth = std::max(0.2f, max_depth->get());
 
         const std::size_t wanted_stars = static_cast<std::size_t>(std::max(1, num_stars->get()));
@@ -84,7 +94,8 @@ namespace AmbientScenes {
         const float scale = static_cast<float>(std::min(matrix_width, matrix_height)) * 0.48f;
 
         for (auto& star : stars) {
-            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f;
+            const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 2.2f + beat_flash * 0.7f : 1.0f;
+            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp;
             star.update(movement);
             if (star.z <= 0.025f) star.respawn(depth, gen);
 
@@ -102,6 +113,7 @@ namespace AmbientScenes {
 
             float brightness = std::clamp((depth - star.z) / depth, 0.05f, 1.0f);
             brightness = std::sqrt(brightness);
+            if (audio_reactive->get()) brightness *= 1.0f + audio_treble * audio_strength->get() * 0.65f + beat_flash * 0.25f;
             if (enable_twinkle->get()) brightness *= 0.82f + 0.18f * std::sin(time * 7.0f + star.hue * 31.0f);
 
             uint8_t r, g, b;
@@ -139,6 +151,8 @@ namespace AmbientScenes {
         add_property(max_depth);
         add_property(colored_stars);
         add_property(streak_length);
+        add_property(audio_reactive);
+        add_property(audio_strength);
         add_property(drifting_center);
     }
 

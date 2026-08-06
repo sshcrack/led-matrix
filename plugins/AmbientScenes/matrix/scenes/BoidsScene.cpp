@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <shared/matrix/audio_state.h>
 
 namespace {
 constexpr float PI = 3.14159265358979323846f;
@@ -23,7 +24,7 @@ using namespace GenerativeScenes;
 
 void BoidsScene::register_properties() {
     add_property(count_); add_property(speed_); add_property(perception_);
-    add_property(trail_fade_); add_property(rainbow_); add_property(color_);
+    add_property(trail_fade_); add_property(audio_reactive_); add_property(audio_strength_); add_property(rainbow_); add_property(color_);
 }
 
 void BoidsScene::initialize(int width, int height) {
@@ -51,7 +52,8 @@ void BoidsScene::reset_boids() {
 void BoidsScene::simulate_step() {
     const float perception = std::clamp(perception_->get(), 4.0f, 48.0f);
     const float p2 = perception * perception;
-    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f;
+    const float audio_motion = audio_reactive_->get() ? (1.0f + audio_bass_ * audio_strength_->get() * 1.4f) : 1.0f;
+    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f * audio_motion;
     std::vector<Boid> next = boids_;
 
     for (size_t i=0;i<boids_.size();++i) {
@@ -72,8 +74,10 @@ void BoidsScene::simulate_step() {
         float vx=boids_[i].vx, vy=boids_[i].vy;
         if (neighbours>0) {
             ax/=neighbours; ay/=neighbours; cx/=neighbours; cy/=neighbours;
-            vx += ax*0.035f + cx*0.0025f + sx*0.22f;
-            vy += ay*0.035f + cy*0.0025f + sy*0.22f;
+            const float cohesion = 0.0025f * (1.0f + audio_mids_ * audio_strength_->get());
+            const float separation = 0.22f * (1.0f + audio_treble_ * audio_strength_->get() * 1.6f);
+            vx += ax*0.035f + cx*cohesion + sx*separation;
+            vy += ay*0.035f + cy*cohesion + sy*separation;
         }
         const float len=std::sqrt(vx*vx+vy*vy);
         if (len>0.001f) { vx=vx/len*max_speed; vy=vy/len*max_speed; }
@@ -94,6 +98,18 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
     last_update_ = now;
     elapsed = std::clamp(elapsed, 0.0f, 0.20f);
     simulation_accumulator_ += elapsed;
+
+    if (audio_reactive_->get()) {
+        const auto audio = AudioState::snapshot();
+        const float response = 1.0f - std::exp(-elapsed * 9.0f);
+        audio_bass_ += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass_) * response;
+        audio_mids_ += (AudioState::average_band(audio, 0.18f, 0.60f) - audio_mids_) * response;
+        audio_treble_ += (AudioState::average_band(audio, 0.60f, 1.0f) - audio_treble_) * response;
+        if (audio.beat_counter != last_beat_counter_) {
+            last_beat_counter_ = audio.beat_counter;
+            for (auto &boid : boids_) { boid.vx *= 1.18f; boid.vy *= 1.18f; }
+        }
+    } else { audio_bass_ = audio_mids_ = audio_treble_ = 0.0f; }
 
     constexpr float simulation_step = 1.0f / 30.0f;
     int steps = 0;

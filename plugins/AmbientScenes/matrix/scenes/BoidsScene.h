@@ -13,11 +13,15 @@ class BoidsScene final : public Scenes::Scene {
     std::mt19937 rng_{std::random_device{}()};
     std::chrono::steady_clock::time_point last_update_{};
     float simulation_accumulator_ = 0.0f;
+    float audio_bass_ = 0.0f, audio_mids_ = 0.0f, audio_treble_ = 0.0f;
+    uint64_t last_beat_counter_ = 0;
 
     PropertyPointer<int> count_ = MAKE_PROPERTY("count", int, 48);
     PropertyPointer<float> speed_ = MAKE_PROPERTY("speed", float, 0.75f);
     PropertyPointer<float> perception_ = MAKE_PROPERTY("perception", float, 18.0f);
     PropertyPointer<float> trail_fade_ = MAKE_PROPERTY("trail_fade", float, 0.78f);
+    PropertyPointer<bool> audio_reactive_ = MAKE_PROPERTY("audio_reactive", bool, false);
+    PropertyPointer<float> audio_strength_ = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.65f, 0.0f, 2.0f);
     PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
     PropertyPointer<rgb_matrix::Color> color_ = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(80, 210, 255));
 
