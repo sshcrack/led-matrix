@@ -39,11 +39,12 @@ namespace AmbientScenes {
 
         if (audio_reactive->get()) {
             const auto audio = AudioState::snapshot();
+            const bool has_audio = audio.fresh();
             const float response = 1.0f - std::exp(-dt * 9.0f);
-            audio_bass += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass) * response;
-            audio_mids += (AudioState::average_band(audio, 0.18f, 0.62f) - audio_mids) * response;
-            audio_treble += (AudioState::average_band(audio, 0.62f, 1.0f) - audio_treble) * response;
-            if (audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_pulse = 1.0f; }
+            audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
+            audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
+            audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
+            if (has_audio && audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_pulse = 1.0f; }
         } else { audio_bass = audio_mids = audio_treble = 0.0f; }
         beat_pulse = std::max(0.0f, beat_pulse - dt * 2.8f);
 

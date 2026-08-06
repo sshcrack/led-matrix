@@ -1,84 +1,72 @@
 #pragma once
 
-#include "shared/matrix/Scene.h"
-#include "shared/matrix/wrappers.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "../AudioVisualizer.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/utils/FrameTimer.h"
+#include "shared/matrix/wrappers.h"
+#include <deque>
 
 namespace Scenes {
-    // Enum for different audio spectrum visualization modes
-    enum class DisplayMode {
-        NORMAL = 0,         // Standard spectrum bars from bottom
-        CENTER_OUT = 1,     // Bars emanate from center outward
-        EDGES_TO_CENTER = 2,// Bars move from edges to center
-        CIRCLE = 3,         // Circular spectrum visualization
-        SPIRAL = 4          // Spiral pattern visualization
-    };
+enum class DisplayMode {
+    NORMAL = 0,
+    CENTER_OUT = 1,
+    EDGES_TO_CENTER = 2,
+    CIRCLE = 3,
+    SPIRAL = 4,
+    WAVEFORM = 5,
+    SPECTROGRAM = 6
+};
 
-    class AudioSpectrumScene : public Scene {
-    private:
-        FrameTimer frameTimer;
-        AudioVisualizer* plugin;
-        uint32_t last_timestamp;
+class AudioSpectrumScene final : public Scene {
+    FrameTimer timer_;
+    AudioVisualizer *plugin_ = nullptr;
+    std::vector<float> smoothed_;
+    std::vector<float> peaks_;
+    std::deque<std::vector<float>> history_;
+    uint64_t lastBeat_ = 0;
+    float beatPulse_ = 0.0f;
+    float rotation_ = 0.0f;
 
-        // Properties for the scene
-        PropertyPointer<int> bar_width = MAKE_PROPERTY_MINMAX("bar_width", int, 2, 1, 10);
-        PropertyPointer<int> gap_width = MAKE_PROPERTY_MINMAX("gap_width", int, 1, 0, 5);
-        PropertyPointer<bool> mirror_display = MAKE_PROPERTY("mirror_display", bool, true);
-        PropertyPointer<bool> rainbow_colors = MAKE_PROPERTY("rainbow_colors", bool, true);
-        //TODO: This may cause a memory leak
-        PropertyPointer<rgb_matrix::Color> base_color = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(0x00, 0xFF, 0x00)); // Default green
-        PropertyPointer<bool> falling_dots = MAKE_PROPERTY("falling_dots", bool, true);
-        PropertyPointer<float> dot_fall_speed = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.15f, 0.01f, 1.0f);
-        PropertyPointer<Plugins::EnumProperty<DisplayMode>> display_mode = MAKE_ENUM_PROPERTY("display_mode", DisplayMode, DisplayMode::NORMAL);
-        PropertyPointer<bool> gradient_mode = MAKE_PROPERTY("gradient_mode", bool, false);
-        PropertyPointer<rgb_matrix::Color> gradient_color1 = MAKE_PROPERTY("gradient_color1", rgb_matrix::Color, rgb_matrix::Color(0xFF, 0x00, 0x00)); // Red
-        PropertyPointer<rgb_matrix::Color> gradient_color2 = MAKE_PROPERTY("gradient_color2", rgb_matrix::Color, rgb_matrix::Color(0x00, 0x00, 0xFF)); // Blue
-        PropertyPointer<bool> smooth_gradient = MAKE_PROPERTY("smooth_gradient", bool, true);
-        PropertyPointer<float> circle_radius = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.8f, 0.3f, 1.0f);
-        PropertyPointer<bool> rotate_visualization = MAKE_PROPERTY("rotate_visualization", bool, false);
-        PropertyPointer<float> rotation_speed = MAKE_PROPERTY_MINMAX("rotation_speed", float, 1.0f, 0.1f, 5.0f);
-        PropertyPointer<float> sensitivity = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.2f, 0.25f, 4.0f);
-        PropertyPointer<float> smoothing = MAKE_PROPERTY_MINMAX("smoothing", float, 0.68f, 0.0f, 0.95f);
-        PropertyPointer<float> release_speed = MAKE_PROPERTY_MINMAX("release_speed", float, 3.5f, 0.5f, 12.0f);
+    PropertyPointer<int> barWidth_ = MAKE_PROPERTY_MINMAX("bar_width", int, 2, 1, 10);
+    PropertyPointer<int> gapWidth_ = MAKE_PROPERTY_MINMAX("gap_width", int, 1, 0, 5);
+    PropertyPointer<bool> mirror_ = MAKE_PROPERTY("mirror_display", bool, true);
+    PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow_colors", bool, true);
+    PropertyPointer<bool> musicalColor_ = MAKE_PROPERTY("musical_color", bool, true);
+    PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(0, 255, 160));
+    PropertyPointer<bool> fallingDots_ = MAKE_PROPERTY("falling_dots", bool, true);
+    PropertyPointer<float> dotFallSpeed_ = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.35f, 0.02f, 2.0f);
+    PropertyPointer<Plugins::EnumProperty<DisplayMode>> displayMode_ = MAKE_ENUM_PROPERTY("display_mode", DisplayMode, DisplayMode::NORMAL);
+    PropertyPointer<float> circleRadius_ = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.72f, 0.25f, 1.0f);
+    PropertyPointer<bool> rotate_ = MAKE_PROPERTY("rotate_visualization", bool, true);
+    PropertyPointer<float> rotationSpeed_ = MAKE_PROPERTY_MINMAX("rotation_speed", float, 0.6f, 0.0f, 5.0f);
+    PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.25f, 4.0f);
+    PropertyPointer<float> smoothing_ = MAKE_PROPERTY_MINMAX("smoothing", float, 0.62f, 0.0f, 0.96f);
+    PropertyPointer<float> releaseSpeed_ = MAKE_PROPERTY_MINMAX("release_speed", float, 3.8f, 0.5f, 14.0f);
+    PropertyPointer<bool> beatPulseEnabled_ = MAKE_PROPERTY("beat_pulse", bool, true);
+    PropertyPointer<bool> showWaveform_ = MAKE_PROPERTY("waveform_overlay", bool, false);
 
-        std::vector<float> peak_positions;
-        std::vector<float> smoothed_bands;
-        float frame_dt = 1.0f / 60.0f;
-        float rotation_angle = 0.0f;
+    void findPlugin();
+    void updateSpectrum(const AudioState::Snapshot &audio, float dt);
+    void colorFor(float position, float intensity, const AudioState::Snapshot &audio,
+                  uint8_t &r, uint8_t &g, uint8_t &b) const;
+    void renderBars(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
+    void renderCircle(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio, bool spiral);
+    void renderWaveform(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
+    void renderSpectrogram(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
 
-        // Helper methods
-        void initialize_if_needed(int num_bands);
-        uint32_t get_bar_color(int band_index, float intensity, int num_bands) const;
-        uint32_t get_gradient_color(float position, float intensity) const;
-        void render_circle_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data);
-        void render_spiral_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data);
-        std::pair<int, int> polar_to_cartesian(float radius, float angle, int center_x, int center_y) const;
+public:
+    AudioSpectrumScene();
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    std::string get_name() const override { return "audio_spectrum"; }
+    std::string get_category() const override { return "Audio Reactive"; }
+    void register_properties() override;
+    tmillis_t get_default_duration() override { return 30000; }
+    int get_default_weight() override { return 5; }
+    bool needs_desktop_app() override { return true; }
+};
 
-    public:
-        AudioSpectrumScene();
-        ~AudioSpectrumScene() override = default;
-
-        bool render(rgb_matrix::FrameCanvas *canvas) override;
-        string get_name() const override;
-        std::string get_category() const override { return "Audio Reactive"; }
-        void register_properties() override;
-
-        tmillis_t get_default_duration() override {
-            return 20000;
-        }
-
-        int get_default_weight() override {
-            return 5;
-        }
-
-        [[nodiscard]] bool needs_desktop_app() override {
-            return true; // This scene requires audio data from the desktop application
-        }
-    };
-
-    class AudioSpectrumSceneWrapper : public Plugins::SceneWrapper {
-    public:
-        std::unique_ptr<Scenes::Scene> create() override;
-    };
+class AudioSpectrumSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
 }

@@ -104,24 +104,20 @@ namespace AudioRecorder
                                 void *userData)
     {
         const auto recorder = static_cast<Recorder *>(userData);
-        std::unique_lock<std::mutex> lock(recorder->audioBufferMutex);
-
-        spdlog::trace("Audio callback called with {} frames", framesPerBuffer);
         if (const auto input = static_cast<const float *>(inputBuffer))
         {
-            // Add new samples to buffer
-            for (unsigned long i = 0; i < framesPerBuffer; ++i)
+            std::lock_guard lock(recorder->audioBufferMutex);
+            const int channels = std::max(1, recorder->channelCount);
+            for (unsigned long frame = 0; frame < framesPerBuffer; ++frame)
             {
-                recorder->audioBuffer.push_back(input[i]);
+                const float left = input[frame * channels];
+                const float right = channels > 1 ? input[frame * channels + 1] : left;
+                recorder->audioBuffer.push_back({left, right});
+                ++recorder->capturedFrameSequence;
             }
-
-            // Keep buffer size manageable
-            while (recorder->audioBuffer.size() > MAX_BUFFER_SIZE)
-            {
+            while (recorder->audioBuffer.size() > MAX_BUFFER_FRAMES)
                 recorder->audioBuffer.pop_front();
-            }
         }
-
         return paContinue;
     }
 
@@ -135,7 +131,12 @@ namespace AudioRecorder
             return false;
         }
 
-        this->audioBuffer.clear();
+        {
+            std::lock_guard lock(audioBufferMutex);
+            audioBuffer.clear();
+            capturedFrameSequence = 0;
+            lastDeliveredSequence = 0;
+        }
 
         const PaDeviceInfo *info = Pa_GetDeviceInfo(deviceIndex);
         if (!info)
@@ -152,7 +153,8 @@ namespace AudioRecorder
 
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = 1;
+        channelCount = std::clamp(info->maxInputChannels, 1, 2);
+        inputParams.channelCount = channelCount;
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
@@ -277,7 +279,7 @@ namespace AudioRecorder
                      "--device=@DEFAULT_MONITOR@",
                      "--format=float32le",
                      "--rate=44100",
-                     "--channels=1",
+                     "--channels=2",
                      "--latency-msec=10",
                      "--process-time-msec=5",
                      "--raw",
@@ -290,10 +292,13 @@ namespace AudioRecorder
         loopbackPid = pid;
         currentDeviceIndex = -2;
         sampleRate = 44100.0;
+        channelCount = 2;
         stopLoopbackThread = false;
         {
             std::lock_guard lock(audioBufferMutex);
             audioBuffer.clear();
+            capturedFrameSequence = 0;
+            lastDeliveredSequence = 0;
         }
         loopbackThread = std::thread(&Recorder::linuxLoopbackReadLoop, this);
         spdlog::info("Recording Linux desktop output through PipeWire/PulseAudio default monitor");
@@ -306,11 +311,13 @@ namespace AudioRecorder
 #ifndef _WIN32
     void Recorder::linuxLoopbackReadLoop()
     {
-        std::array<float, 256> samples{};
+        // 128 stereo frames (256 floats) keeps the pipe responsive without
+        // waking for every tiny server fragment.
+        std::array<float, 256> interleaved{};
         while (!stopLoopbackThread)
         {
             pollfd descriptor{loopbackPipeFd, POLLIN, 0};
-            const int ready = ::poll(&descriptor, 1, 200);
+            const int ready = ::poll(&descriptor, 1, 100);
             if (ready < 0)
             {
                 if (errno == EINTR)
@@ -322,7 +329,7 @@ namespace AudioRecorder
             if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) && !(descriptor.revents & POLLIN))
                 break;
 
-            const ssize_t bytes = ::read(loopbackPipeFd, samples.data(), sizeof(samples));
+            const ssize_t bytes = ::read(loopbackPipeFd, interleaved.data(), sizeof(interleaved));
             if (bytes <= 0)
             {
                 if (bytes < 0 && (errno == EINTR || errno == EAGAIN))
@@ -330,21 +337,25 @@ namespace AudioRecorder
                 break;
             }
 
-            const size_t count = static_cast<size_t>(bytes) / sizeof(float);
+            const size_t floatCount = static_cast<size_t>(bytes) / sizeof(float);
+            const size_t frameCount = floatCount / 2;
             std::lock_guard lock(audioBufferMutex);
-            audioBuffer.insert(audioBuffer.end(), samples.begin(), samples.begin() + static_cast<std::ptrdiff_t>(count));
-            while (audioBuffer.size() > MAX_BUFFER_SIZE)
+            for (size_t frame = 0; frame < frameCount; ++frame)
+            {
+                audioBuffer.push_back({interleaved[frame * 2], interleaved[frame * 2 + 1]});
+                ++capturedFrameSequence;
+            }
+            while (audioBuffer.size() > MAX_BUFFER_FRAMES)
                 audioBuffer.pop_front();
         }
 
-        // An unexpected EOF usually means parec could not connect to the
-        // PipeWire/PulseAudio server or the server disappeared.
         if (!stopLoopbackThread)
         {
             spdlog::error("Linux desktop loopback capture stopped unexpectedly");
             recording = false;
         }
     }
+
 #endif
 
     void Recorder::stopRecording()
@@ -444,24 +455,29 @@ spdlog::info("Checking for default output loopback device...");
         return -1;
     }
 
-    std::optional<std::vector<float>> Recorder::getLastSamples()
+    std::optional<CapturedAudioFrame> Recorder::getLastSamples()
     {
-        std::unique_lock<std::mutex> lock(audioBufferMutex);
-        if (audioBuffer.size() < FFT_SIZE)
+        std::lock_guard lock(audioBufferMutex);
+        if (audioBuffer.size() < MUSIC_ANALYSIS_WINDOW_SIZE)
+            return std::nullopt;
+        if (capturedFrameSequence - lastDeliveredSequence < FFT_HOP_SIZE)
             return std::nullopt;
 
+        CapturedAudioFrame result;
+        result.sampleRate = sampleRate;
+        result.sequence = capturedFrameSequence;
+        result.mono.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
+        result.left.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
+        result.right.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
 
-        // Always analyze the newest window. The previous implementation removed
-        // the newest samples but kept older queued audio, so subsequent calls
-        // replayed stale chunks and made loopback capture feel delayed/bursty.
-        std::vector<float> samples(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
-
-        // Keep only a small overlap for the next FFT window and discard all
-        // backlog. This bounds latency even when packet generation briefly
-        // falls behind the audio capture rate.
-        const size_t retained = std::min(FFT_HOP_SIZE, audioBuffer.size());
-        audioBuffer.erase(audioBuffer.begin(), audioBuffer.end() - static_cast<std::ptrdiff_t>(retained));
-
-        return samples;
+        auto it = audioBuffer.end() - static_cast<std::ptrdiff_t>(MUSIC_ANALYSIS_WINDOW_SIZE);
+        for (size_t i = 0; i < MUSIC_ANALYSIS_WINDOW_SIZE; ++i, ++it)
+        {
+            result.left[i] = it->left;
+            result.right[i] = it->right;
+            result.mono[i] = 0.5f * (it->left + it->right);
+        }
+        lastDeliveredSequence = capturedFrameSequence;
+        return result;
     }
 }

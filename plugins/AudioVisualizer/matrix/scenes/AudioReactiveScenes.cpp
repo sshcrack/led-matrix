@@ -1,165 +1,350 @@
 #include "AudioReactiveScenes.h"
-#include "shared/matrix/plugin_loader/loader.h"
-#include "shared/matrix/utils/color.h"
+
 #include <algorithm>
 #include <cmath>
+#include <shared/matrix/plugin/main.h>
+#include <shared/matrix/utils/color.h>
 
-using namespace Scenes;
-
+namespace Scenes {
 namespace {
-float average_range(const std::vector<uint8_t>& data, size_t begin, size_t end) {
-    if (data.empty() || begin >= data.size()) return 0.0f;
-    end = std::min(end, data.size());
-    float sum = 0.0f;
-    for (size_t i = begin; i < end; ++i) sum += data[i] / 255.0f;
-    return end > begin ? sum / static_cast<float>(end - begin) : 0.0f;
+constexpr float Pi = 3.14159265358979323846f;
+float feature(const AudioState::Snapshot &audio, AudioProtocol::Feature id, float gain = 1.0f) {
+    return std::clamp(audio.feature(id) * gain, 0.0f, 1.0f);
 }
-
-void set_additive(rgb_matrix::FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+void hsv(float hue, float saturation, float value, uint8_t &r, uint8_t &g, uint8_t &b) {
+    color::hsv_to_rgb(hue, saturation, std::clamp(value, 0.0f, 1.0f), r, g, b);
+}
+void addPixel(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     if (x < 0 || y < 0 || x >= canvas->width() || y >= canvas->height()) return;
-    canvas->SetPixel(x, y, r, g, b);
+    uint8_t oldR = 0, oldG = 0, oldB = 0;
+    canvas->GetPixel(x, y, &oldR, &oldG, &oldB);
+    canvas->SetPixel(x, y, std::min(255, static_cast<int>(oldR) + r),
+                      std::min(255, static_cast<int>(oldG) + g),
+                      std::min(255, static_cast<int>(oldB) + b));
+}
+float wrapped(float value) {
+    value -= std::floor(value);
+    return std::min(value, 1.0f - value);
+}
+bool consumeEvent(uint64_t current, uint64_t &seen, bool packetFlag) {
+    const bool advanced = seen != 0 && current > seen;
+    seen = current;
+    return packetFlag || advanced;
+}
 }
 
-void hsv(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
-    while (h < 0.0f) h += 360.0f;
-    while (h >= 360.0f) h -= 360.0f;
-    color::hsv_to_rgb(h, std::clamp(s, 0.0f, 1.0f), std::clamp(v, 0.0f, 1.0f), r, g, b);
-}
-}
-
-std::unique_ptr<Scenes::Scene> AudioParticleFieldSceneWrapper::create() { return std::make_unique<AudioParticleFieldScene>(); }
-std::unique_ptr<Scenes::Scene> AudioPulseTunnelSceneWrapper::create() { return std::make_unique<AudioPulseTunnelScene>(); }
-
-AudioParticleFieldScene::AudioParticleFieldScene() { find_plugin(); }
-void AudioParticleFieldScene::find_plugin() {
-    for (auto& p : Plugins::PluginManager::instance()->get_plugins()) {
-        if (auto* av = dynamic_cast<AudioVisualizer*>(p)) { plugin = av; break; }
-    }
+AudioParticleFieldScene::AudioParticleFieldScene() { findPlugin(); }
+void AudioParticleFieldScene::findPlugin() {
+    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
+        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
 }
 void AudioParticleFieldScene::register_properties() {
-    add_property(sensitivity); add_property(particle_limit); add_property(trail_strength);
-    add_property(gravity); add_property(rainbow); add_property(base_color); add_property(beat_bursts);
+    add_property(sensitivity_); add_property(particleLimit_); add_property(persistence_);
+    add_property(gravity_); add_property(rainbow_); add_property(baseColor_);
+    add_property(percussionBursts_); add_property(dropExplosion_);
 }
 
-void AudioParticleFieldScene::spawn_particle(float bass, float mids, float treble, bool burst) {
-    if (particles.size() >= static_cast<size_t>(particle_limit->get())) return;
+void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count,
+                                    bool radial, float strength) {
     std::uniform_real_distribution<float> unit(0.0f, 1.0f);
-    const float angle = burst ? unit(rng) * 6.2831853f : (-2.72f + unit(rng) * 2.30f);
-    const float power = burst ? 35.0f + bass * 90.0f : 14.0f + bass * 46.0f;
-    Particle p;
-    p.x = burst ? matrix_width * 0.5f : unit(rng) * matrix_width;
-    p.y = burst ? matrix_height * 0.55f : matrix_height - 2.0f;
-    p.vx = std::cos(angle) * power + (mids - 0.5f) * 15.0f;
-    p.vy = std::sin(angle) * power - (burst ? 0.0f : 18.0f + bass * 35.0f);
-    const float persistence = 0.45f + trail_strength->get() * 1.8f;
-    p.max_life = p.life = persistence + unit(rng) * (0.55f + treble * 1.2f);
-    p.hue = hue_time * 38.0f + unit(rng) * 80.0f + treble * 120.0f;
-    p.size = 1.0f + (burst ? bass * 2.0f : treble);
-    particles.push_back(p);
+    const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
+    const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
+    const float centroid = feature(audio, AudioProtocol::Feature::SpectralCentroid);
+    for (int i = 0; i < count && static_cast<int>(particles_.size()) < particleLimit_->get(); ++i) {
+        Particle p{};
+        p.x = std::clamp(matrix_width * (0.5f + balance * 0.28f + (unit(rng_) - 0.5f) * (0.18f + width * 0.72f)),
+                         0.0f, static_cast<float>(matrix_width - 1));
+        p.y = radial ? matrix_height * (0.46f + (unit(rng_) - 0.5f) * 0.12f)
+                     : static_cast<float>(matrix_height - 1);
+        const float angle = radial ? unit(rng_) * 2.0f * Pi
+                                   : -Pi * (0.18f + unit(rng_) * 0.64f);
+        const float speed = (18.0f + unit(rng_) * 55.0f) * (0.45f + strength * 1.55f);
+        p.vx = std::cos(angle) * speed + balance * 18.0f;
+        p.vy = std::sin(angle) * speed;
+        p.life = p.maxLife = persistence_->get() * (0.45f + unit(rng_) * 1.25f);
+        p.hue = centroid * 180.0f + unit(rng_) * 110.0f;
+        p.size = 1.0f + strength * 2.2f + unit(rng_);
+        particles_.push_back(p);
+    }
 }
 
-bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas* canvas) {
-    if (!plugin) find_plugin();
-    if (!plugin) return false;
-    const auto ft = timer.tick();
-    const float dt = std::clamp(static_cast<float>(ft.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin->get_audio_data();
-    if (audio.empty()) { canvas->Clear(); return false; }
+bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
+    if (!plugin_) findPlugin();
+    if (!plugin_) return false;
+    const auto tick = timer_.tick();
+    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const auto audio = plugin_->get_audio_state();
+    canvas->Clear();
+    if (!audio.fresh()) return false;
 
-    const size_t n = audio.size();
-    const float gain = sensitivity->get();
-    const float bass = std::clamp(average_range(audio, 0, std::max<size_t>(2, n / 8)) * gain, 0.0f, 1.0f);
-    const float mids = std::clamp(average_range(audio, n / 8, std::max<size_t>(n / 8 + 1, n * 5 / 8)) * gain, 0.0f, 1.0f);
-    const float treble = std::clamp(average_range(audio, n * 5 / 8, n) * gain, 0.0f, 1.0f);
-    hue_time += dt;
+    const float gain = sensitivity_->get();
+    const float bass = feature(audio, AudioProtocol::Feature::Bass, gain);
+    const float kick = feature(audio, AudioProtocol::Feature::Kick, gain);
+    const float snare = feature(audio, AudioProtocol::Feature::Snare, gain);
+    const float hihat = feature(audio, AudioProtocol::Feature::Hihat, gain);
+    const float loudness = feature(audio, AudioProtocol::Feature::LoudnessFast, gain);
+    hueTime_ += dt;
 
-    canvas->Fill(0, 0, 0);
-
-    const uint64_t beat = plugin->get_beat_counter();
-    if (beat_bursts->get() && beat != seen_beat_counter) {
-        seen_beat_counter = beat;
-        const int burst_count = 30 + static_cast<int>(bass * 110.0f);
-        for (int i = 0; i < burst_count; ++i) spawn_particle(bass, mids, treble, true);
+    if (percussionBursts_->get() && consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) {
+        spawn(audio, 25 + static_cast<int>(kick * 120.0f), true, std::max(kick, 0.35f));
+    }
+    if (percussionBursts_->get() && consumeEvent(audio.onset_counter, onsetSeen_, audio.event(AudioProtocol::OnsetEvent))) {
+        spawn(audio, 5 + static_cast<int>((snare + hihat) * 35.0f), snare > hihat, std::max(snare, hihat));
+    }
+    if (dropExplosion_->get() && consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) {
+        spawn(audio, std::min(600, particleLimit_->get()), true, 1.0f);
     }
 
-    spawn_accumulator += dt * (10.0f + bass * 95.0f + treble * 45.0f);
-    while (spawn_accumulator >= 1.0f) { spawn_particle(bass, mids, treble, false); spawn_accumulator -= 1.0f; }
+    spawnAccumulator_ += dt * (6.0f + loudness * 80.0f + hihat * 75.0f);
+    while (spawnAccumulator_ >= 1.0f) {
+        spawn(audio, 1, false, 0.15f + bass * 0.65f + hihat * 0.30f);
+        spawnAccumulator_ -= 1.0f;
+    }
 
-    for (auto& p : particles) {
+    const float sideFlow = audio.feature(AudioProtocol::Feature::StereoBalance) * 28.0f;
+    const float midFlow = feature(audio, AudioProtocol::Feature::Mid) * 15.0f;
+    for (auto &p : particles_) {
         p.life -= dt;
-        p.vy += gravity->get() * dt;
-        p.vx += std::sin(hue_time * 1.7f + p.y * 0.08f) * mids * 12.0f * dt;
+        p.vy += gravity_->get() * dt;
+        p.vx += (std::sin(hueTime_ * 1.7f + p.y * 0.07f) * midFlow + sideFlow) * dt;
         p.x += p.vx * dt; p.y += p.vy * dt;
-        if (p.x < 0) p.x += matrix_width; if (p.x >= matrix_width) p.x -= matrix_width;
-
-        const float life = std::clamp(p.life / p.max_life, 0.0f, 1.0f);
+        if (p.x < 0.0f) p.x += matrix_width;
+        if (p.x >= matrix_width) p.x -= matrix_width;
+        const float life = std::clamp(p.life / p.maxLife, 0.0f, 1.0f);
         uint8_t r, g, b;
-        if (rainbow->get()) hsv(p.hue + hue_time * 20.0f, 0.75f, life, r, g, b);
-        else { auto c = base_color->get(); r = c.r * life; g = c.g * life; b = c.b * life; }
+        if (rainbow_->get()) hsv(p.hue + hueTime_ * 24.0f, 0.78f, life, r, g, b);
+        else { const auto c = baseColor_->get(); r = c.r * life; g = c.g * life; b = c.b * life; }
         const int x = static_cast<int>(std::round(p.x));
         const int y = static_cast<int>(std::round(p.y));
-        set_additive(canvas, x, y, r, g, b);
-        if (p.size > 1.6f) { set_additive(canvas, x + 1, y, r / 2, g / 2, b / 2); set_additive(canvas, x, y + 1, r / 2, g / 2, b / 2); }
+        addPixel(canvas, x, y, r, g, b);
+        if (p.size > 1.4f) {
+            addPixel(canvas, x + 1, y, r / 2, g / 2, b / 2);
+            addPixel(canvas, x - 1, y, r / 2, g / 2, b / 2);
+            addPixel(canvas, x, y + 1, r / 2, g / 2, b / 2);
+        }
     }
-    std::erase_if(particles, [&](const Particle& p) { return p.life <= 0.0f || p.y > matrix_height + 4.0f; });
+    std::erase_if(particles_, [&](const Particle &p) {
+        return p.life <= 0.0f || p.y > matrix_height + 8.0f || p.y < -matrix_height;
+    });
     return true;
 }
 
-AudioPulseTunnelScene::AudioPulseTunnelScene() { find_plugin(); }
-void AudioPulseTunnelScene::find_plugin() {
-    for (auto& p : Plugins::PluginManager::instance()->get_plugins()) {
-        if (auto* av = dynamic_cast<AudioVisualizer*>(p)) { plugin = av; break; }
-    }
+AudioPulseTunnelScene::AudioPulseTunnelScene() { findPlugin(); }
+void AudioPulseTunnelScene::findPlugin() {
+    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
+        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
 }
 void AudioPulseTunnelScene::register_properties() {
-    add_property(sensitivity); add_property(speed); add_property(ring_count); add_property(twist);
-    add_property(rainbow); add_property(base_color); add_property(show_spectrum_ribs);
+    add_property(sensitivity_); add_property(speed_); add_property(ringCount_);
+    add_property(twist_); add_property(rainbow_); add_property(baseColor_);
+    add_property(spectrumRibs_); add_property(tempoLock_);
 }
 
-bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas* canvas) {
-    if (!plugin) find_plugin();
-    if (!plugin) return false;
-    const auto ft = timer.tick();
-    const float dt = std::clamp(static_cast<float>(ft.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin->get_audio_data();
-    if (audio.empty()) { canvas->Clear(); return false; }
-    const size_t n = audio.size();
-    const float gain = sensitivity->get();
-    const float bass = std::clamp(average_range(audio, 0, std::max<size_t>(2, n / 8)) * gain, 0.0f, 1.0f);
-    const float mids = std::clamp(average_range(audio, n / 8, std::max<size_t>(n / 8 + 1, n * 5 / 8)) * gain, 0.0f, 1.0f);
-    const float highs = std::clamp(average_range(audio, n * 5 / 8, n) * gain, 0.0f, 1.0f);
-
-    const uint64_t beat = plugin->get_beat_counter();
-    if (beat != seen_beat_counter) { seen_beat_counter = beat; beat_pulse = 1.0f; }
-    beat_pulse = std::max(0.0f, beat_pulse - dt * 3.2f);
-    travel = std::fmod(travel + dt * speed->get() * (0.65f + bass * 1.5f), 1.0f);
-    rotation += dt * (0.15f + mids * 0.8f) * twist->get();
-
+bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
+    if (!plugin_) findPlugin();
+    if (!plugin_) return false;
+    const auto tick = timer_.tick();
+    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const auto audio = plugin_->get_audio_state();
     canvas->Clear();
-    const float cx = matrix_width * 0.5f + std::sin(ft.t * 0.37f) * matrix_width * 0.055f * mids;
-    const float cy = matrix_height * 0.5f + std::cos(ft.t * 0.29f) * matrix_height * 0.045f * mids;
-    const float max_r = std::hypot(matrix_width, matrix_height) * 0.72f;
-    const int rings = ring_count->get();
+    if (!audio.fresh()) return false;
+    const float gain = sensitivity_->get();
+    const float bass = feature(audio, AudioProtocol::Feature::Bass, gain);
+    const float kick = feature(audio, AudioProtocol::Feature::Kick, gain);
+    const float snare = feature(audio, AudioProtocol::Feature::Snare, gain);
+    const float hihat = feature(audio, AudioProtocol::Feature::Hihat, gain);
+    const float phase = audio.feature(AudioProtocol::Feature::BeatPhase);
+    const float bpm = audio.feature(AudioProtocol::Feature::Bpm);
+
+    if (consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) beatPulse_ = 1.0f;
+    if (consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) dropPulse_ = 1.0f;
+    if (consumeEvent(audio.section_counter, sectionSeen_, audio.event(AudioProtocol::SectionEvent))) paletteOffset_ += 73.0f;
+    beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.0f);
+    dropPulse_ = std::max(0.0f, dropPulse_ - dt * 1.35f);
+
+    const float tempoSpeed = tempoLock_->get() && bpm > 40.0f ? bpm / 120.0f : 1.0f;
+    travel_ = std::fmod(travel_ + dt * speed_->get() * tempoSpeed * (0.45f + bass * 1.4f), 1.0f);
+    rotation_ += dt * twist_->get() * (0.12f + snare * 1.25f);
+    const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
+    const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
+    const float cx = matrix_width * (0.5f + balance * 0.15f);
+    const float cy = matrix_height * 0.5f;
+    const float maxRadius = std::hypot(matrix_width, matrix_height) * 0.72f;
 
     for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
         const float dx = x - cx, dy = y - cy;
         const float radius = std::sqrt(dx * dx + dy * dy);
-        const float angle = std::atan2(dy, dx) + rotation;
-        const float normalized = radius / max_r;
-        const float warped = normalized + std::sin(angle * 5.0f + ft.t * 1.2f) * mids * 0.018f;
-        const float phase = std::fmod(warped * rings - travel * rings + 100.0f, 1.0f);
-        const float ring_line = std::exp(-std::pow((phase - 0.5f) / (0.045f + beat_pulse * 0.018f), 2.0f));
-        float rib = 0.0f;
-        if (show_spectrum_ribs->get()) {
-            const float rib_phase = std::abs(std::sin(angle * (6.0f + highs * 10.0f)));
-            rib = std::pow(std::max(0.0f, 1.0f - rib_phase), 12.0f) * (0.12f + highs * 0.7f);
+        const float angle = std::atan2(dy, dx) + rotation_;
+        const float normalized = radius / maxRadius;
+        const float deformation = std::sin(angle * (4.0f + width * 4.0f) + tick.t * 0.8f) * snare * 0.035f;
+        const float ringPhase = std::fmod((normalized + deformation) * ringCount_->get() -
+                                         travel_ * ringCount_->get() + 100.0f, 1.0f);
+        const float beatWave = std::exp(-std::pow((ringPhase - phase) / (0.055f + dropPulse_ * 0.08f), 2.0f));
+        const float line = std::exp(-std::pow((ringPhase - 0.5f) / (0.045f + beatPulse_ * 0.025f), 2.0f));
+        float ribs = 0.0f;
+        if (spectrumRibs_->get()) {
+            const float ribCount = 6.0f + hihat * 18.0f;
+            ribs = std::pow(std::max(0.0f, 1.0f - std::abs(std::sin(angle * ribCount))), 12.0f) *
+                   (0.08f + hihat * 0.82f);
         }
-        float value = std::clamp((ring_line * (0.42f + bass * 0.75f + beat_pulse * 0.6f) + rib) * (0.35f + normalized), 0.0f, 1.0f);
-        if (value < 0.025f) continue;
+        const float value = std::clamp((line * (0.35f + bass * 0.75f) + beatWave * 0.55f + ribs +
+                                         dropPulse_ * std::max(0.0f, 1.0f - normalized) * 0.45f) *
+                                        (0.3f + normalized), 0.0f, 1.0f);
+        if (value < 0.02f) continue;
         uint8_t r, g, b;
-        if (rainbow->get()) hsv(angle * 57.2958f + normalized * 210.0f + ft.t * 24.0f, 0.82f, value, r, g, b);
-        else { auto c = base_color->get(); r = c.r * value; g = c.g * value; b = c.b * value; }
+        if (rainbow_->get()) hsv(paletteOffset_ + angle * 57.3f + normalized * 230.0f + tick.t * 20.0f,
+                                  0.84f, value, r, g, b);
+        else { const auto c = baseColor_->get(); r = c.r * value; g = c.g * value; b = c.b * value; }
         canvas->SetPixel(x, y, r, g, b);
     }
     return true;
 }
+
+AudioAuroraScene::AudioAuroraScene() { findPlugin(); }
+void AudioAuroraScene::findPlugin() {
+    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
+        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
+}
+void AudioAuroraScene::register_properties() {
+    add_property(ribbonCount_); add_property(flowSpeed_); add_property(sensitivity_);
+    add_property(glow_); add_property(stars_);
+}
+
+bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
+    if (!plugin_) findPlugin();
+    if (!plugin_) return false;
+    const auto tick = timer_.tick();
+    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const auto audio = plugin_->get_audio_state();
+    canvas->Clear();
+    if (!audio.fresh()) return false;
+    time_ += dt * flowSpeed_->get();
+    if (consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) beatGlow_ = 1.0f;
+    if (consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) dropGlow_ = 1.0f;
+    if (consumeEvent(audio.section_counter, sectionSeen_, audio.event(AudioProtocol::SectionEvent))) palette_ += 61.0f;
+    beatGlow_ = std::max(0.0f, beatGlow_ - dt * 3.6f);
+    dropGlow_ = std::max(0.0f, dropGlow_ - dt * 0.85f);
+
+    const float gain = sensitivity_->get();
+    const float bass = feature(audio, AudioProtocol::Feature::Bass, gain);
+    const float mid = feature(audio, AudioProtocol::Feature::Mid, gain);
+    const float treble = feature(audio, AudioProtocol::Feature::Treble, gain);
+    const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
+    const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
+    const int ribbons = ribbonCount_->get();
+
+    for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
+        const float nx = static_cast<float>(x) / std::max(1, matrix_width - 1);
+        const float ny = static_cast<float>(y) / std::max(1, matrix_height - 1);
+        float value = 0.0f;
+        float hueMix = 0.0f;
+        for (int ribbon = 0; ribbon < ribbons; ++ribbon) {
+            const float offset = static_cast<float>(ribbon) / ribbons;
+            const float center = 0.18f + offset * 0.64f + balance * 0.08f +
+                std::sin(nx * (4.0f + mid * 3.0f) + time_ * (0.7f + offset) + ribbon * 1.7f) *
+                (0.035f + bass * 0.11f + width * 0.045f);
+            const float thickness = 0.012f + treble * 0.018f + beatGlow_ * 0.01f;
+            const float distance = std::abs(ny - center);
+            const float ribbonValue = std::exp(-distance * distance / std::max(0.0001f, thickness * thickness));
+            value += ribbonValue * (0.18f + bass * 0.25f + glow_->get() * 0.22f);
+            hueMix += ribbonValue * offset;
+        }
+        const float verticalGlow = std::max(0.0f, 1.0f - ny) * dropGlow_ * 0.22f;
+        value = std::clamp(value + verticalGlow, 0.0f, 1.0f);
+        if (value < 0.015f) continue;
+        uint8_t r, g, b;
+        hsv(palette_ + hueMix * 250.0f + nx * 45.0f + time_ * 8.0f,
+            0.72f + treble * 0.2f, value, r, g, b);
+        canvas->SetPixel(x, y, r, g, b);
+    }
+
+    if (stars_->get() && treble > 0.08f) {
+        const int count = static_cast<int>(treble * 55.0f);
+        for (int i = 0; i < count; ++i) {
+            const uint32_t hash = static_cast<uint32_t>(i * 2654435761U + audio.sequence * 97U);
+            const int x = hash % std::max(1, matrix_width);
+            const int y = (hash >> 12U) % std::max(1, matrix_height);
+            const float sparkle = treble * (0.35f + 0.65f * ((hash >> 24U) / 255.0f));
+            addPixel(canvas, x, y, 180 * sparkle, 220 * sparkle, 255 * sparkle);
+        }
+    }
+    return true;
+}
+
+AudioKaleidoscopeScene::AudioKaleidoscopeScene() { findPlugin(); }
+void AudioKaleidoscopeScene::findPlugin() {
+    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
+        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
+}
+void AudioKaleidoscopeScene::register_properties() {
+    add_property(symmetry_); add_property(sensitivity_); add_property(rotationSpeed_);
+    add_property(detail_); add_property(waveformCore_);
+}
+
+bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
+    if (!plugin_) findPlugin();
+    if (!plugin_) return false;
+    const auto tick = timer_.tick();
+    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const auto audio = plugin_->get_audio_state();
+    canvas->Clear();
+    if (!audio.fresh() || audio.spectrum.empty()) return false;
+    if (consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) beatPulse_ = 1.0f;
+    if (consumeEvent(audio.onset_counter, onsetSeen_, audio.event(AudioProtocol::OnsetEvent))) onsetPulse_ = 1.0f;
+    if (consumeEvent(audio.section_counter, sectionSeen_, audio.event(AudioProtocol::SectionEvent))) palette_ += 79.0f;
+    beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.2f);
+    onsetPulse_ = std::max(0.0f, onsetPulse_ - dt * 8.0f);
+    rotation_ += dt * rotationSpeed_->get() *
+        (0.4f + audio.feature(AudioProtocol::Feature::Bpm) / 120.0f);
+
+    const float cx = matrix_width * (0.5f + audio.feature(AudioProtocol::Feature::StereoBalance) * 0.08f);
+    const float cy = matrix_height * 0.5f;
+    const float maxRadius = std::min(matrix_width, matrix_height) * 0.52f;
+    const int symmetry = symmetry_->get();
+    const float sector = 2.0f * Pi / symmetry;
+    const float gain = sensitivity_->get();
+    const float bass = feature(audio, AudioProtocol::Feature::Bass, gain);
+    const float hihat = feature(audio, AudioProtocol::Feature::Hihat, gain);
+
+    for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
+        const float dx = x - cx, dy = y - cy;
+        const float radius = std::sqrt(dx * dx + dy * dy);
+        if (radius > maxRadius * 1.4f) continue;
+        float angle = std::fmod(std::atan2(dy, dx) + rotation_ + 10.0f * Pi, sector);
+        if (angle > sector * 0.5f) angle = sector - angle;
+        const float radial = radius / maxRadius;
+        const float spectrumPosition = std::clamp(radial * 0.72f + angle / (sector * 0.5f) * 0.28f, 0.0f, 1.0f);
+        const size_t index = std::min(audio.spectrum.size() - 1,
+            static_cast<size_t>(spectrumPosition * (audio.spectrum.size() - 1)));
+        const float band = std::clamp(audio.spectrum[index] * gain, 0.0f, 1.0f);
+        const float lattice = std::pow(std::max(0.0f,
+            std::sin((radial * 16.0f * detail_->get() - band * 7.0f + beatPulse_ * 2.0f) * Pi)),
+            5.0f - hihat * 2.5f);
+        const float edge = std::pow(std::max(0.0f, 1.0f - angle / (sector * 0.5f)), 8.0f) * onsetPulse_;
+        const float value = std::clamp((lattice * (0.12f + band * 0.85f) + edge * 0.55f) *
+                                       (1.0f - std::max(0.0f, radial - 1.0f)), 0.0f, 1.0f);
+        if (value < 0.02f) continue;
+        uint8_t r, g, b;
+        hsv(palette_ + spectrumPosition * 290.0f + bass * 60.0f + tick.t * 10.0f,
+            0.86f, value, r, g, b);
+        canvas->SetPixel(x, y, r, g, b);
+    }
+
+    if (waveformCore_->get() && !audio.waveform.empty()) {
+        for (size_t i = 0; i < audio.waveform.size(); ++i) {
+            const float angle = static_cast<float>(i) / audio.waveform.size() * 2.0f * Pi + rotation_;
+            const float radius = maxRadius * (0.10f + std::abs(audio.waveform[i]) * 0.22f);
+            const int x = static_cast<int>(std::round(cx + std::cos(angle) * radius));
+            const int y = static_cast<int>(std::round(cy + std::sin(angle) * radius));
+            addPixel(canvas, x, y, 220, 240, 255);
+        }
+    }
+    return true;
+}
+
+std::unique_ptr<Scenes::Scene> AudioParticleFieldSceneWrapper::create() { return std::make_unique<AudioParticleFieldScene>(); }
+std::unique_ptr<Scenes::Scene> AudioPulseTunnelSceneWrapper::create() { return std::make_unique<AudioPulseTunnelScene>(); }
+std::unique_ptr<Scenes::Scene> AudioAuroraSceneWrapper::create() { return std::make_unique<AudioAuroraScene>(); }
+std::unique_ptr<Scenes::Scene> AudioKaleidoscopeSceneWrapper::create() { return std::make_unique<AudioKaleidoscopeScene>(); }
+
+} // namespace Scenes

@@ -1,92 +1,128 @@
 #pragma once
 
-#include "shared/matrix/Scene.h"
-#include "shared/matrix/wrappers.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "../AudioVisualizer.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/utils/FrameTimer.h"
+#include "shared/matrix/wrappers.h"
 #include <random>
 
 namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
-    struct Particle {
-        float x{};
-        float y{};
-        float vx{};
-        float vy{};
-        float life{};
-        float max_life{};
-        float hue{};
-        float size{};
-    };
+    struct Particle { float x, y, vx, vy, life, maxLife, hue, size; };
+    AudioVisualizer *plugin_ = nullptr;
+    FrameTimer timer_;
+    std::vector<Particle> particles_;
+    std::mt19937 rng_{std::random_device{}()};
+    uint64_t beatSeen_ = 0, onsetSeen_ = 0, dropSeen_ = 0;
+    float spawnAccumulator_ = 0.0f;
+    float hueTime_ = 0.0f;
 
-    AudioVisualizer* plugin{};
-    FrameTimer timer;
-    std::vector<Particle> particles;
-    std::mt19937 rng{std::random_device{}()};
-    uint64_t seen_beat_counter{};
-    float spawn_accumulator{};
-    float hue_time{};
+    PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
+    PropertyPointer<int> particleLimit_ = MAKE_PROPERTY_MINMAX("particle_limit", int, 900, 100, 3000);
+    PropertyPointer<float> persistence_ = MAKE_PROPERTY_MINMAX("persistence", float, 1.0f, 0.2f, 3.0f);
+    PropertyPointer<float> gravity_ = MAKE_PROPERTY_MINMAX("gravity", float, 18.0f, -30.0f, 60.0f);
+    PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
+    PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(50, 210, 255));
+    PropertyPointer<bool> percussionBursts_ = MAKE_PROPERTY("percussion_bursts", bool, true);
+    PropertyPointer<bool> dropExplosion_ = MAKE_PROPERTY("drop_explosion", bool, true);
 
-    PropertyPointer<float> sensitivity = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.25f, 0.25f, 4.0f);
-    PropertyPointer<int> particle_limit = MAKE_PROPERTY_MINMAX("particle_limit", int, 420, 40, 1500);
-    PropertyPointer<float> trail_strength = MAKE_PROPERTY_MINMAX("trail_strength", float, 0.78f, 0.0f, 0.96f);
-    PropertyPointer<float> gravity = MAKE_PROPERTY_MINMAX("gravity", float, 14.0f, -30.0f, 60.0f);
-    PropertyPointer<bool> rainbow = MAKE_PROPERTY("rainbow", bool, true);
-    PropertyPointer<rgb_matrix::Color> base_color = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(40, 180, 255));
-    PropertyPointer<bool> beat_bursts = MAKE_PROPERTY("beat_bursts", bool, true);
-
-    void spawn_particle(float bass, float mids, float treble, bool burst);
-    void find_plugin();
+    void findPlugin();
+    void spawn(const AudioState::Snapshot &audio, int count, bool radial, float strength);
 
 public:
     AudioParticleFieldScene();
-    bool render(rgb_matrix::FrameCanvas* canvas) override;
-    string get_name() const override { return "audio_particles"; }
-    std::string get_category() const override { return "Audio Reactive"; }
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
-    tmillis_t get_default_duration() override { return 25000; }
-    int get_default_weight() override { return 4; }
-    [[nodiscard]] bool needs_desktop_app() override { return true; }
-};
-
-class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper {
-public:
-    std::unique_ptr<Scenes::Scene> create() override;
+    std::string get_name() const override { return "audio_particles"; }
+    std::string get_category() const override { return "Audio Reactive"; }
+    tmillis_t get_default_duration() override { return 30000; }
+    int get_default_weight() override { return 5; }
+    bool needs_desktop_app() override { return true; }
 };
 
 class AudioPulseTunnelScene final : public Scene {
-    AudioVisualizer* plugin{};
-    FrameTimer timer;
-    float travel{};
-    float rotation{};
-    float beat_pulse{};
-    uint64_t seen_beat_counter{};
+    AudioVisualizer *plugin_ = nullptr;
+    FrameTimer timer_;
+    uint64_t beatSeen_ = 0, dropSeen_ = 0, sectionSeen_ = 0;
+    float travel_ = 0.0f, rotation_ = 0.0f, beatPulse_ = 0.0f, dropPulse_ = 0.0f;
+    float paletteOffset_ = 0.0f;
 
-    PropertyPointer<float> sensitivity = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.2f, 0.25f, 4.0f);
-    PropertyPointer<float> speed = MAKE_PROPERTY_MINMAX("speed", float, 0.34f, 0.05f, 1.5f);
-    PropertyPointer<int> ring_count = MAKE_PROPERTY_MINMAX("ring_count", int, 14, 5, 30);
-    PropertyPointer<float> twist = MAKE_PROPERTY_MINMAX("twist", float, 0.7f, -3.0f, 3.0f);
-    PropertyPointer<bool> rainbow = MAKE_PROPERTY("rainbow", bool, true);
-    PropertyPointer<rgb_matrix::Color> base_color = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(80, 80, 255));
-    PropertyPointer<bool> show_spectrum_ribs = MAKE_PROPERTY("show_spectrum_ribs", bool, true);
+    PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
+    PropertyPointer<float> speed_ = MAKE_PROPERTY_MINMAX("speed", float, 1.0f, 0.1f, 4.0f);
+    PropertyPointer<int> ringCount_ = MAKE_PROPERTY_MINMAX("ring_count", int, 13, 4, 28);
+    PropertyPointer<float> twist_ = MAKE_PROPERTY_MINMAX("twist", float, 1.0f, -3.0f, 3.0f);
+    PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
+    PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(50, 80, 255));
+    PropertyPointer<bool> spectrumRibs_ = MAKE_PROPERTY("spectrum_ribs", bool, true);
+    PropertyPointer<bool> tempoLock_ = MAKE_PROPERTY("tempo_lock", bool, true);
 
-    void find_plugin();
+    void findPlugin();
 
 public:
     AudioPulseTunnelScene();
-    bool render(rgb_matrix::FrameCanvas* canvas) override;
-    string get_name() const override { return "audio_pulse_tunnel"; }
-    std::string get_category() const override { return "Audio Reactive"; }
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
-    tmillis_t get_default_duration() override { return 25000; }
-    int get_default_weight() override { return 4; }
-    [[nodiscard]] bool needs_desktop_app() override { return true; }
+    std::string get_name() const override { return "audio_pulse_tunnel"; }
+    std::string get_category() const override { return "Audio Reactive"; }
+    tmillis_t get_default_duration() override { return 30000; }
+    int get_default_weight() override { return 5; }
+    bool needs_desktop_app() override { return true; }
 };
 
-class AudioPulseTunnelSceneWrapper final : public Plugins::SceneWrapper {
+class AudioAuroraScene final : public Scene {
+    AudioVisualizer *plugin_ = nullptr;
+    FrameTimer timer_;
+    uint64_t beatSeen_ = 0, sectionSeen_ = 0, dropSeen_ = 0;
+    float time_ = 0.0f, beatGlow_ = 0.0f, dropGlow_ = 0.0f, palette_ = 0.0f;
+
+    PropertyPointer<int> ribbonCount_ = MAKE_PROPERTY_MINMAX("ribbon_count", int, 6, 3, 12);
+    PropertyPointer<float> flowSpeed_ = MAKE_PROPERTY_MINMAX("flow_speed", float, 1.0f, 0.1f, 3.0f);
+    PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
+    PropertyPointer<float> glow_ = MAKE_PROPERTY_MINMAX("glow", float, 0.8f, 0.0f, 2.0f);
+    PropertyPointer<bool> stars_ = MAKE_PROPERTY("high_frequency_stars", bool, true);
+
+    void findPlugin();
+
 public:
-    std::unique_ptr<Scenes::Scene> create() override;
+    AudioAuroraScene();
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    void register_properties() override;
+    std::string get_name() const override { return "audio_aurora"; }
+    std::string get_category() const override { return "Audio Reactive"; }
+    tmillis_t get_default_duration() override { return 35000; }
+    int get_default_weight() override { return 6; }
+    bool needs_desktop_app() override { return true; }
 };
 
-}
+class AudioKaleidoscopeScene final : public Scene {
+    AudioVisualizer *plugin_ = nullptr;
+    FrameTimer timer_;
+    uint64_t beatSeen_ = 0, onsetSeen_ = 0, sectionSeen_ = 0;
+    float rotation_ = 0.0f, beatPulse_ = 0.0f, onsetPulse_ = 0.0f, palette_ = 0.0f;
+
+    PropertyPointer<int> symmetry_ = MAKE_PROPERTY_MINMAX("symmetry", int, 8, 4, 16);
+    PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
+    PropertyPointer<float> rotationSpeed_ = MAKE_PROPERTY_MINMAX("rotation_speed", float, 0.45f, -2.0f, 2.0f);
+    PropertyPointer<float> detail_ = MAKE_PROPERTY_MINMAX("detail", float, 1.0f, 0.3f, 2.5f);
+    PropertyPointer<bool> waveformCore_ = MAKE_PROPERTY("waveform_core", bool, true);
+
+    void findPlugin();
+
+public:
+    AudioKaleidoscopeScene();
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    void register_properties() override;
+    std::string get_name() const override { return "audio_kaleidoscope"; }
+    std::string get_category() const override { return "Audio Reactive"; }
+    tmillis_t get_default_duration() override { return 30000; }
+    int get_default_weight() override { return 5; }
+    bool needs_desktop_app() override { return true; }
+};
+
+class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
+class AudioPulseTunnelSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
+class AudioAuroraSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
+class AudioKaleidoscopeSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
+
+} // namespace Scenes
