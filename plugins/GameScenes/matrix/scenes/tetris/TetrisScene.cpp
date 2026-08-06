@@ -5,8 +5,51 @@
 #include "utils/neuralNetwork.hpp"
 #include "spdlog/spdlog.h"
 #include <chrono>
+#include <array>
+#include <algorithm>
 
 using namespace std;
+
+namespace {
+const std::array<uint8_t, 5> &glyph3x5(char c) {
+    static const std::array<uint8_t, 5> blank{0,0,0,0,0};
+    static const std::array<uint8_t, 5> zero {7,5,5,5,7};
+    static const std::array<uint8_t, 5> one  {2,6,2,2,7};
+    static const std::array<uint8_t, 5> two  {7,1,7,4,7};
+    static const std::array<uint8_t, 5> three{7,1,7,1,7};
+    static const std::array<uint8_t, 5> four {5,5,7,1,1};
+    static const std::array<uint8_t, 5> five {7,4,7,1,7};
+    static const std::array<uint8_t, 5> six  {7,4,7,5,7};
+    static const std::array<uint8_t, 5> seven{7,1,1,1,1};
+    static const std::array<uint8_t, 5> eight{7,5,7,5,7};
+    static const std::array<uint8_t, 5> nine {7,5,7,1,7};
+    static const std::array<uint8_t, 5> S{7,4,7,1,7};
+    static const std::array<uint8_t, 5> C{7,4,4,4,7};
+    static const std::array<uint8_t, 5> O{7,5,5,5,7};
+    static const std::array<uint8_t, 5> R{6,5,6,5,5};
+    static const std::array<uint8_t, 5> E{7,4,6,4,7};
+    switch(c) {
+        case '0': return zero; case '1': return one; case '2': return two; case '3': return three; case '4': return four;
+        case '5': return five; case '6': return six; case '7': return seven; case '8': return eight; case '9': return nine;
+        case 'S': return S; case 'C': return C; case 'O': return O; case 'R': return R; case 'E': return E;
+        default: return blank;
+    }
+}
+
+void draw3x5(rgb_matrix::FrameCanvas *canvas, int x, int y, const std::string &text,
+             uint8_t r, uint8_t g, uint8_t b, int scale = 1) {
+    int cursor = x;
+    for (char c : text) {
+        const auto &rows = glyph3x5(c);
+        for (int gy = 0; gy < 5; ++gy) for (int gx = 0; gx < 3; ++gx) {
+            if ((rows[gy] & (1 << (2 - gx))) == 0) continue;
+            for (int sy = 0; sy < scale; ++sy) for (int sx = 0; sx < scale; ++sx)
+                canvas->SetPixel(cursor + gx * scale + sx, y + gy * scale + sy, r, g, b);
+        }
+        cursor += 4 * scale;
+    }
+}
+}
 
 namespace Scenes {
     TetrisScene::TetrisScene() :
@@ -93,6 +136,24 @@ namespace Scenes {
         for (int y = offset_y - 1; y <= offset_y + (20 * block_size); y++) {
             canvas->SetPixel(offset_x - 1, y, 50, 50, 50);  // left
             canvas->SetPixel(offset_x + (10 * block_size), y, 50, 50, 50);  // right
+        }
+
+
+        // Score panel. On the 128x128 matrix the board leaves enough room for
+        // a permanent, readable HUD; on narrow matrices we use a compact overlay.
+        const int board_right = offset_x + 10 * block_size;
+        const int right_space = matrix_width - board_right - 2;
+        const std::string score_text = std::to_string(grid.score);
+        if (right_space >= 20) {
+            const int panel_x = board_right + std::max(3, (right_space - 19) / 2);
+            const int panel_y = std::max(2, offset_y + 4);
+            draw3x5(canvas, panel_x, panel_y, "SCORE", 105, 105, 105);
+            draw3x5(canvas, panel_x, panel_y + 8, score_text, 255, 255, 255,
+                    score_text.size() <= 2 && right_space >= 28 ? 2 : 1);
+        } else {
+            const int text_width = static_cast<int>(score_text.size()) * 4 - 1;
+            draw3x5(canvas, std::max(offset_x + 1, board_right - text_width - 1), offset_y + 1,
+                    score_text, 255, 255, 255);
         }
 
         for (int j = 4; j < 24; j++) {

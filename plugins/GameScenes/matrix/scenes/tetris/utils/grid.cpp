@@ -1,168 +1,175 @@
-#include <algorithm>
 #include "grid.hpp"
 
+#include <algorithm>
+#include <array>
 
-bool inRange(int n, int a, int b) {
-    return (a <= n && n < b);
+namespace {
+bool isSettled(int value) {
+    return value >= 2 && value <= 9;
 }
 
-bool contains(int n, vector<int> mat) {
-    return (find(mat.begin(), mat.end(), n) != mat.end());
+bool canPlace(const Grid &grid, const std::string &shape, int row, int col) {
+    for (int index = 0; index < 16; ++index) {
+        if (shape[index] != 'o') continue;
+        const int y = row + index / 4;
+        const int x = col + index % 4;
+        if (x < 0 || x >= 10 || y >= 24) return false;
+        if (y >= 0 && isSettled(grid.matrix[y][x])) return false;
+    }
+    return true;
+}
+
+void removeActiveCells(Grid &grid) {
+    for (auto &row : grid.matrix) {
+        for (int &cell : row) {
+            if (cell == 1) cell = 0;
+        }
+    }
+}
 }
 
 Grid::Grid() {
     gameOver = false;
-    clearedLines = 0.0;
+    clearedLines = 0.0f;
     score = 0;
     isAnimating = false;
     animationStep = 0;
-    for (int i = 0; i < 24; i++) matrix.push_back({0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+    last_anim_time = std::chrono::steady_clock::now();
+    matrix.assign(24, std::vector<int>(10, 0));
 }
 
 void Grid::clearLine() {
+    if (isAnimating || piece.fixed == false) return;
+
     animatingLines.clear();
-    for (int j = 4; j < 24; j++) {
-        if (!contains(0, matrix[j]) && !contains(1, matrix[j])) {
-            animatingLines.push_back(j);
-        }
+    for (int row = 4; row < 24; ++row) {
+        const bool full = std::all_of(matrix[row].begin(), matrix[row].end(), [](int value) {
+            return isSettled(value);
+        });
+        if (full) animatingLines.push_back(row);
     }
 
     if (!animatingLines.empty()) {
         isAnimating = true;
         animationStep = 0;
+        last_anim_time = std::chrono::steady_clock::now();
     }
 }
 
 void Grid::updateAnimation() {
     if (!isAnimating) return;
 
-    auto current_time = std::chrono::steady_clock::now();
-    auto time_since_last_fall = std::chrono::duration_cast<std::chrono::milliseconds>(
-            current_time - last_anim_time).count();
-
-    if (time_since_last_fall < 75)
-        return;
+    const auto current_time = std::chrono::steady_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_anim_time).count();
+    if (elapsed < 75) return;
 
     last_anim_time = current_time;
-    animationStep++;
-    if (animationStep >= 6) { // Animation complete after 6 steps
-        isAnimating = false;
-        animationStep = 0;
+    ++animationStep;
 
-        // Actually clear the lines
-        int nLines = animatingLines.size();
-        for (int j: animatingLines) {
-            for (int k = 1; k <= j; k++) {
-                matrix[j - k + 1] = matrix[j - k];
-            }
-            matrix[0] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-            piece.position[0]++;
-            clearedLines++;
+    if (animationStep < 6) {
+        for (int row : animatingLines) {
+            for (int col = 0; col < 10; ++col) matrix[row][col] = (animationStep % 2 == 0) ? 0 : 9;
         }
-
-        // Update score
-        if (nLines == 1) score += 1;
-        else if (nLines == 2) score += 3;
-        else if (nLines == 3) score += 5;
-        else if (nLines == 4) score += 8;
-    } else {
-        // During animation, flash the lines
-        for (int j: animatingLines) {
-            for (int i = 0; i < 10; i++) {
-                matrix[j][i] = (animationStep % 2 == 0) ? 0 : 9;
-            }
-        }
+        return;
     }
+
+    const int line_count = static_cast<int>(animatingLines.size());
+    std::array<bool, 24> remove{};
+    for (int row : animatingLines) remove[row] = true;
+
+    int write_row = 23;
+    for (int read_row = 23; read_row >= 0; --read_row) {
+        if (!remove[read_row]) matrix[write_row--] = matrix[read_row];
+    }
+    while (write_row >= 0) matrix[write_row--].assign(10, 0);
+
+    clearedLines += static_cast<float>(line_count);
+    static constexpr std::array<int, 5> line_scores{0, 1, 3, 5, 8};
+    score += line_scores[std::clamp(line_count, 0, 4)];
+
+    animatingLines.clear();
+    animationStep = 0;
+    isAnimating = false;
 }
 
 void Grid::rotatePiece() {
-    int a, b, t = 0;
-    bool possible = true;
+    if (piece.fixed) return;
+    const int next_rotation = (piece.m + 1) % 4;
+    const std::string &next_shape = piece.shapeList[piece.n][next_rotation];
 
-    while (t++ < 16 && possible) {
-        a = piece.position[0] + (t / 4) + 1;
-        b = piece.position[1] + (t % 4);
-
-        if (piece.shapeList[piece.n][(piece.m + 1) % 4][t] == 'o' &&
-            (a > 23 || b < 0 || b > 9 || inRange(matrix[a][b], 2, 9)))
-            possible = false;
-    }
-
-    if (possible) {
-        piece.m = (piece.m + 1) % 4;
-        piece.shape = piece.shapeList[piece.n][piece.m];
+    // Small wall kicks keep rotations legal near either edge.
+    static constexpr std::array<int, 5> kicks{0, -1, 1, -2, 2};
+    for (int kick : kicks) {
+        if (canPlace(*this, next_shape, piece.position[0], piece.position[1] + kick)) {
+            piece.position[1] += kick;
+            piece.m = next_rotation;
+            piece.shape = next_shape;
+            update();
+            return;
+        }
     }
 }
 
-void Grid::movePiece(int dir, int ind) {
-    int a, b, t = 0;
-    bool limit = false;
-
-    while (t++ < 16 && !limit) {
-        a = piece.position[0] + (t / 4);
-        b = piece.position[1] + (t % 4);
-
-        if (piece.shape[t] == 'o') {
-            if (b == ind) limit = true;
-            else if (0 <= b + dir && b + dir <= 9 && 0 <= a && a <= 23) {
-                if ((a + 1 <= 23 && inRange(matrix[a + 1][b + dir], 2, 9)) || inRange(matrix[a][b + dir], 2, 9))
-                    limit = true;
-            }
-        }
+void Grid::movePiece(int dir, int /*ind*/) {
+    if (piece.fixed || dir == 0) return;
+    if (canPlace(*this, piece.shape, piece.position[0], piece.position[1] + dir)) {
+        piece.position[1] += dir;
+        update();
     }
-    if (!limit) piece.position[1] += dir;
 }
 
 void Grid::gravity(int val) {
-    if (val == 1) piece.position[0]++;
-    else if (val == 2) {
+    if (piece.fixed) return;
+
+    if (val == 2) {
         gravity(1);
+        if (!piece.fixed) gravity(1);
+        return;
+    }
+
+    if (val == 3) {
+        while (!piece.fixed) gravity(1);
+        return;
+    }
+
+    if (canPlace(*this, piece.shape, piece.position[0] + 1, piece.position[1])) {
+        ++piece.position[0];
         update();
-        gravity(1);
     } else {
-        while (!piece.fixed) {
-            gravity(1);
-            update();
-        }
+        fixPiece();
     }
 }
 
 void Grid::fixPiece() {
-    int a, b;
-    piece.fixed = true;
-    for (int k = 0; k < 16; k++) {
-        a = piece.position[0] + (k / 4);
-        b = piece.position[1] + (k % 4);
+    if (piece.fixed) return;
+    removeActiveCells(*this);
 
-        if (piece.shape[k] == 'o') {
-            if (a < 4) gameOver = true;
-            else if (a < 24) matrix[a][b] = piece.n + 2;
-        }
+    bool above_visible_board = false;
+    for (int index = 0; index < 16; ++index) {
+        if (piece.shape[index] != 'o') continue;
+        const int y = piece.position[0] + index / 4;
+        const int x = piece.position[1] + index % 4;
+        if (y < 4) above_visible_board = true;
+        if (y >= 0 && y < 24 && x >= 0 && x < 10) matrix[y][x] = piece.n + 2;
     }
-    if (a < 4) gameOver = true;
+
+    piece.fixed = true;
+    gameOver = above_visible_board;
 }
 
 void Grid::update() {
-    int a, b, i = 0;
-    bool fixed = false;
+    removeActiveCells(*this);
+    if (piece.fixed) return;
 
-    for (int j = 0; j < 24; j++) {
-        for (int l = 0; l < 10; l++) {
-            if (matrix[j][l] == 1) matrix[j][l] = 0;
-        }
+    if (!canPlace(*this, piece.shape, piece.position[0], piece.position[1])) {
+        gameOver = true;
+        return;
     }
 
-    while (i++ < 16 && !fixed) {
-        a = piece.position[0] + (i / 4);
-        b = piece.position[1] + (i % 4);
-
-        if (piece.shape[i] == 'o' && 0 <= a && a < 24 && 0 <= b && b < 10) {
-            if (a == 23 || inRange(matrix[a + 1][b], 2, 9)) {
-                fixed = true;
-                fixPiece();
-            } else {
-                matrix[a][b] = 1;
-            }
-        }
+    for (int index = 0; index < 16; ++index) {
+        if (piece.shape[index] != 'o') continue;
+        const int y = piece.position[0] + index / 4;
+        const int x = piece.position[1] + index % 4;
+        if (y >= 0 && y < 24 && x >= 0 && x < 10) matrix[y][x] = 1;
     }
 }

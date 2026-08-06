@@ -5,6 +5,7 @@
 #include "scenes/tetris/TetrisScene.h"
 #include "scenes/MazeGameScene.h"
 #include "scenes/SnakeGameScene.h"
+#include "scenes/PacmanGameScene.h"
 
 using namespace Scenes;
 
@@ -20,6 +21,7 @@ vector<std::unique_ptr<SceneWrapper>> GameScenes::create_scenes() {
     scenes.push_back(std::make_unique<TetrisSceneWrapper>());
     scenes.push_back(std::make_unique<MazeGameSceneWrapper>());
     scenes.push_back(std::make_unique<SnakeGameSceneWrapper>());
+    scenes.push_back(std::make_unique<PacmanGameSceneWrapper>());
     return scenes;
 }
 
