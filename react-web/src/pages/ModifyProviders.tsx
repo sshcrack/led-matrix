@@ -103,8 +103,8 @@ export default function ModifyProviders() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="font-semibold text-sm">Image Providers</h1>
-            <p className="text-xs text-muted-foreground">{presetId}</p>
+            <h1 className="font-semibold text-sm">Scene sources</h1>
+            <p className="text-xs text-muted-foreground">Choose and combine the content inputs for this scene</p>
           </div>
         </div>
         <Button
@@ -118,17 +118,17 @@ export default function ModifyProviders() {
         </Button>
       </header>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-5">
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-40 w-full" />
           </div>
         ) : (
           <>
-            <ImageProviders
+            <div className="rounded-2xl border border-border bg-card/80 p-4 sm:p-5"><div className="mb-4"><h2 className="font-semibold">Active sources</h2><p className="text-sm text-muted-foreground">Sources are used in order. Add several to create a richer rotation.</p></div><ImageProviders
               providers={providers}
               onChange={handleProvidersChange}
-            />
+            /></div>
             <AddProviderButton
               providerDefinitions={providerDefs ?? []}
               providerType="image"
