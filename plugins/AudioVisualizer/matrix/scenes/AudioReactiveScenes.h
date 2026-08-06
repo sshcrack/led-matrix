@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../AudioVisualizer.h"
+#include <shared/matrix/audio_state.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/utils/FrameTimer.h"
 #include "shared/matrix/wrappers.h"
@@ -10,7 +10,6 @@ namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
     struct Particle { float x, y, vx, vy, life, maxLife, hue, size; };
-    AudioVisualizer *plugin_ = nullptr;
     FrameTimer timer_;
     std::vector<Particle> particles_;
     std::mt19937 rng_{std::random_device{}()};
@@ -27,11 +26,10 @@ class AudioParticleFieldScene final : public Scene {
     PropertyPointer<bool> percussionBursts_ = MAKE_PROPERTY("percussion_bursts", bool, true);
     PropertyPointer<bool> dropExplosion_ = MAKE_PROPERTY("drop_explosion", bool, true);
 
-    void findPlugin();
     void spawn(const AudioState::Snapshot &audio, int count, bool radial, float strength);
 
 public:
-    AudioParticleFieldScene();
+    AudioParticleFieldScene() = default;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_particles"; }
@@ -42,7 +40,6 @@ public:
 };
 
 class AudioPulseTunnelScene final : public Scene {
-    AudioVisualizer *plugin_ = nullptr;
     FrameTimer timer_;
     uint64_t beatSeen_ = 0, dropSeen_ = 0, sectionSeen_ = 0;
     float travel_ = 0.0f, rotation_ = 0.0f, beatPulse_ = 0.0f, dropPulse_ = 0.0f;
@@ -57,10 +54,8 @@ class AudioPulseTunnelScene final : public Scene {
     PropertyPointer<bool> spectrumRibs_ = MAKE_PROPERTY("spectrum_ribs", bool, true);
     PropertyPointer<bool> tempoLock_ = MAKE_PROPERTY("tempo_lock", bool, true);
 
-    void findPlugin();
-
 public:
-    AudioPulseTunnelScene();
+    AudioPulseTunnelScene() = default;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_pulse_tunnel"; }
@@ -71,7 +66,6 @@ public:
 };
 
 class AudioAuroraScene final : public Scene {
-    AudioVisualizer *plugin_ = nullptr;
     FrameTimer timer_;
     uint64_t beatSeen_ = 0, sectionSeen_ = 0, dropSeen_ = 0;
     float time_ = 0.0f, beatGlow_ = 0.0f, dropGlow_ = 0.0f, palette_ = 0.0f;
@@ -82,10 +76,8 @@ class AudioAuroraScene final : public Scene {
     PropertyPointer<float> glow_ = MAKE_PROPERTY_MINMAX("glow", float, 0.8f, 0.0f, 2.0f);
     PropertyPointer<bool> stars_ = MAKE_PROPERTY("high_frequency_stars", bool, true);
 
-    void findPlugin();
-
 public:
-    AudioAuroraScene();
+    AudioAuroraScene() = default;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_aurora"; }
@@ -96,7 +88,6 @@ public:
 };
 
 class AudioKaleidoscopeScene final : public Scene {
-    AudioVisualizer *plugin_ = nullptr;
     FrameTimer timer_;
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, sectionSeen_ = 0;
     float rotation_ = 0.0f, beatPulse_ = 0.0f, onsetPulse_ = 0.0f, palette_ = 0.0f;
@@ -107,10 +98,8 @@ class AudioKaleidoscopeScene final : public Scene {
     PropertyPointer<float> detail_ = MAKE_PROPERTY_MINMAX("detail", float, 1.0f, 0.3f, 2.5f);
     PropertyPointer<bool> waveformCore_ = MAKE_PROPERTY("waveform_core", bool, true);
 
-    void findPlugin();
-
 public:
-    AudioKaleidoscopeScene();
+    AudioKaleidoscopeScene() = default;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_kaleidoscope"; }

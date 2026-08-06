@@ -16,13 +16,6 @@ void addPixel(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t 
 }
 }
 
-AudioSpectrumScene::AudioSpectrumScene() { findPlugin(); }
-
-void AudioSpectrumScene::findPlugin() {
-    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
-        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
-}
-
 void AudioSpectrumScene::register_properties() {
     add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
     add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_);
@@ -157,11 +150,9 @@ void AudioSpectrumScene::renderSpectrogram(rgb_matrix::FrameCanvas *canvas,
 }
 
 bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!plugin_) findPlugin();
-    if (!plugin_) return false;
     const auto tick = timer_.tick();
     const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin_->get_audio_state();
+    const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh() || audio.spectrum.empty()) return false;
 

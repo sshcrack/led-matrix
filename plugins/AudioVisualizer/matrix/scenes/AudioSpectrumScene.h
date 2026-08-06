@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../AudioVisualizer.h"
+#include <shared/matrix/audio_state.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/utils/FrameTimer.h"
 #include "shared/matrix/wrappers.h"
@@ -19,7 +19,6 @@ enum class DisplayMode {
 
 class AudioSpectrumScene final : public Scene {
     FrameTimer timer_;
-    AudioVisualizer *plugin_ = nullptr;
     std::vector<float> smoothed_;
     std::vector<float> peaks_;
     std::deque<std::vector<float>> history_;
@@ -45,7 +44,6 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<bool> beatPulseEnabled_ = MAKE_PROPERTY("beat_pulse", bool, true);
     PropertyPointer<bool> showWaveform_ = MAKE_PROPERTY("waveform_overlay", bool, false);
 
-    void findPlugin();
     void updateSpectrum(const AudioState::Snapshot &audio, float dt);
     void colorFor(float position, float intensity, const AudioState::Snapshot &audio,
                   uint8_t &r, uint8_t &g, uint8_t &b) const;
@@ -55,7 +53,7 @@ class AudioSpectrumScene final : public Scene {
     void renderSpectrogram(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
 
 public:
-    AudioSpectrumScene();
+    AudioSpectrumScene() = default;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     std::string get_name() const override { return "audio_spectrum"; }
     std::string get_category() const override { return "Audio Reactive"; }
