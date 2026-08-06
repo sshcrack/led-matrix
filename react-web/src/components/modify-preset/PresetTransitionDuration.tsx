@@ -1,5 +1,4 @@
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
+import DurationInput from '~/components/ui/duration-input'
 
 interface PresetTransitionDurationProps {
   value: number
@@ -8,15 +7,15 @@ interface PresetTransitionDurationProps {
 
 export default function PresetTransitionDuration({ value, onChange }: PresetTransitionDurationProps) {
   return (
-    <div className="space-y-1.5">
-      <Label>Transition Duration (ms)</Label>
-      <Input
-        type="number"
-        min={0}
-        max={10000}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </div>
+    <DurationInput
+      id="preset-transition-duration"
+      label="Transition duration"
+      value={value}
+      min={0}
+      max={10_000}
+      presets={[150, 250, 500, 750, 1000, 2000]}
+      description="How long the blend between scenes lasts. Type 0s to switch immediately."
+      onChange={onChange}
+    />
   )
 }

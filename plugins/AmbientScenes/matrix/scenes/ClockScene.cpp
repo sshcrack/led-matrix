@@ -53,9 +53,19 @@ namespace AmbientScenes
             current_second = second;
         }
 
-        // Clear the canvas
-        auto bg = bg_color->get();
-        canvas->Fill(bg.r, bg.g, bg.b);
+        // Calm vertical ambient gradient. This reads much better on a physical matrix
+        // than a single flat near-black fill.
+        const auto bg = bg_color->get();
+        for (int y = 0; y < matrix_height; ++y)
+        {
+            const float t = matrix_height > 1 ? static_cast<float>(y) / (matrix_height - 1) : 0.0f;
+            const float glow = 1.0f + 0.55f * (1.0f - std::abs(t * 2.0f - 1.0f));
+            const uint8_t r = static_cast<uint8_t>(std::min(255.0f, bg.r * glow));
+            const uint8_t g = static_cast<uint8_t>(std::min(255.0f, bg.g * glow));
+            const uint8_t b = static_cast<uint8_t>(std::min(255.0f, bg.b * glow + 8.0f * (1.0f - t)));
+            for (int x = 0; x < matrix_width; ++x)
+                canvas->SetPixel(x, y, r, g, b);
+        }
 
         // Calculate center and radius for analog clock
         int center_x = matrix_width / 2;
@@ -253,58 +263,42 @@ namespace AmbientScenes
 
     void ClockScene::draw_digital_clock(rgb_matrix::FrameCanvas *canvas, int y_position)
     {
-        auto now = std::time(nullptr);
+        const auto now = std::time(nullptr);
         std::tm local_time_storage{};
-        std::tm *local_time = localtime_r(&now, &local_time_storage);
+        const std::tm *local_time = localtime_r(&now, &local_time_storage);
 
-        int hour = local_time->tm_hour;
-        int minute = local_time->tm_min;
-        int second = local_time->tm_sec;
+        const int hour = local_time->tm_hour;
+        const int minute = local_time->tm_min;
+        const int second = local_time->tm_sec;
 
-        bool is_pm = hour >= 12;
-        hour = hour % 12;
-        if (hour == 0)
-            hour = 12; // 12-hour format
+        // Scale the 3x5 pixel font to the available matrix. 128x128 gets a
+        // prominent 9-pixel scale while smaller matrices degrade gracefully.
+        const int scale = std::max(2, std::min(matrix_width / 18, matrix_height / 12));
+        const int digit_w = 3 * scale;
+        const int spacing = scale;
+        const int colon_w = scale;
+        const int total_w = digit_w * 4 + spacing * 3 + colon_w;
+        const int x_start = (matrix_width - total_w) / 2;
+        const int y = show_analog->get() ? y_position : (matrix_height - 5 * scale) / 2 - (show_date->get() ? scale : 0);
 
-        // Calculate horizontal centering based on matrix width
-        int x_start = (matrix_width - 24) / 2; // Adjust as needed for digit spacing
+        const auto hc = hour_color->get();
+        const auto mc = minute_color->get();
+        int x = x_start;
+        draw_scaled_digit(canvas, hour / 10, x, y, scale, hc.r, hc.g, hc.b); x += digit_w + spacing;
+        draw_scaled_digit(canvas, hour % 10, x, y, scale, hc.r, hc.g, hc.b); x += digit_w + spacing;
 
-        // Draw hour digits
-        auto h_color = hour_color->get();
-        draw_small_digit(canvas, hour / 10, x_start, y_position,
-                         h_color.r, h_color.g, h_color.b);
-        draw_small_digit(canvas, hour % 10, x_start + 5, y_position,
-                         h_color.r, h_color.g, h_color.b);
-
-        // Draw colon (blinking)
-        if (second % 2 == 0 || !show_seconds->get())
+        const bool colon_on = !show_seconds->get() || (second % 2 == 0);
+        if (colon_on)
         {
-            canvas->SetPixel(x_start + 9, y_position + 1, 255, 255, 255);
-            canvas->SetPixel(x_start + 9, y_position + 3, 255, 255, 255);
+            for (int py : {scale, 3 * scale})
+                for (int yy = 0; yy < scale; ++yy)
+                    for (int xx = 0; xx < scale; ++xx)
+                        canvas->SetPixel(x + xx, y + py + yy, 180, 210, 235);
         }
+        x += colon_w + spacing;
 
-        auto m_color = minute_color->get();
-        // Draw minute digits
-        draw_small_digit(canvas, minute / 10, x_start + 11, y_position,
-                         m_color.r, m_color.g, m_color.b);
-        draw_small_digit(canvas, minute % 10, x_start + 16, y_position,
-                         m_color.r, m_color.g, m_color.b);
-
-        // Draw AM/PM indicator
-        if (is_pm)
-        {
-            canvas->SetPixel(x_start + 22, y_position, 255, 255, 255);
-            canvas->SetPixel(x_start + 22, y_position + 1, 255, 255, 255);
-            canvas->SetPixel(x_start + 23, y_position, 255, 255, 255);
-            canvas->SetPixel(x_start + 23, y_position + 1, 255, 255, 255);
-        }
-        else
-        {
-            canvas->SetPixel(x_start + 22, y_position + 3, 255, 255, 255);
-            canvas->SetPixel(x_start + 22, y_position + 4, 255, 255, 255);
-            canvas->SetPixel(x_start + 23, y_position + 3, 255, 255, 255);
-            canvas->SetPixel(x_start + 23, y_position + 4, 255, 255, 255);
-        }
+        draw_scaled_digit(canvas, minute / 10, x, y, scale, mc.r, mc.g, mc.b); x += digit_w + spacing;
+        draw_scaled_digit(canvas, minute % 10, x, y, scale, mc.r, mc.g, mc.b);
     }
 
     void ClockScene::draw_small_digit(rgb_matrix::FrameCanvas *canvas, int digit, int x, int y,
@@ -398,6 +392,31 @@ namespace AmbientScenes
                 }
             }
         }
+    }
+
+    void ClockScene::draw_scaled_digit(rgb_matrix::FrameCanvas *canvas, int digit, int x, int y, int scale,
+                                       uint8_t r, uint8_t g, uint8_t b)
+    {
+        static const bool patterns[10][5][3] = {
+            {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
+            {{0,1,0},{1,1,0},{0,1,0},{0,1,0},{1,1,1}},
+            {{1,1,1},{0,0,1},{1,1,1},{1,0,0},{1,1,1}},
+            {{1,1,1},{0,0,1},{1,1,1},{0,0,1},{1,1,1}},
+            {{1,0,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1}},
+            {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1}},
+            {{1,1,1},{1,0,0},{1,1,1},{1,0,1},{1,1,1}},
+            {{1,1,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1}},
+            {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,1,1}},
+            {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{1,1,1}}
+        };
+        digit = std::clamp(digit, 0, 9);
+        for (int row = 0; row < 5; ++row)
+            for (int col = 0; col < 3; ++col)
+                if (patterns[digit][row][col])
+                    for (int yy = 0; yy < scale; ++yy)
+                        for (int xx = 0; xx < scale; ++xx)
+                            set_pixel_with_brightness(canvas, x + col * scale + xx, y + row * scale + yy,
+                                                      r, g, b, 0.82f + 0.18f * (1.0f - yy / float(std::max(1, scale))));
     }
 
     void ClockScene::draw_clock_face(rgb_matrix::FrameCanvas *canvas, int center_x, int center_y, int radius)
