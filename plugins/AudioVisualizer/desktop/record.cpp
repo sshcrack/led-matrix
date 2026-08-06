@@ -278,6 +278,8 @@ namespace AudioRecorder
                      "--format=float32le",
                      "--rate=44100",
                      "--channels=1",
+                     "--latency-msec=10",
+                     "--process-time-msec=5",
                      "--raw",
                      static_cast<char *>(nullptr));
             _exit(127);
@@ -304,7 +306,7 @@ namespace AudioRecorder
 #ifndef _WIN32
     void Recorder::linuxLoopbackReadLoop()
     {
-        std::array<float, 2048> samples{};
+        std::array<float, 256> samples{};
         while (!stopLoopbackThread)
         {
             pollfd descriptor{loopbackPipeFd, POLLIN, 0};
@@ -449,8 +451,16 @@ spdlog::info("Checking for default output loopback device...");
             return std::nullopt;
 
 
+        // Always analyze the newest window. The previous implementation removed
+        // the newest samples but kept older queued audio, so subsequent calls
+        // replayed stale chunks and made loopback capture feel delayed/bursty.
         std::vector<float> samples(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
-        audioBuffer.erase(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
+
+        // Keep only a small overlap for the next FFT window and discard all
+        // backlog. This bounds latency even when packet generation briefly
+        // falls behind the audio capture rate.
+        const size_t retained = std::min(FFT_HOP_SIZE, audioBuffer.size());
+        audioBuffer.erase(audioBuffer.begin(), audioBuffer.end() - static_cast<std::ptrdiff_t>(retained));
 
         return samples;
     }
