@@ -15,15 +15,15 @@ namespace AmbientScenes {
 class ClockScene : public Scenes::Scene {
 private:
     PropertyPointer<bool> show_digital = MAKE_PROPERTY("show_digital", bool, true);
-    PropertyPointer<bool> show_analog = MAKE_PROPERTY("show_analog", bool, true);
-    PropertyPointer<bool> show_seconds = MAKE_PROPERTY("show_seconds", bool, true);
-    PropertyPointer<bool> show_date = MAKE_PROPERTY("show_date", bool, false);
-    PropertyPointer<rgb_matrix::Color> hour_color = MAKE_PROPERTY("hour_color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
-    PropertyPointer<rgb_matrix::Color> minute_color = MAKE_PROPERTY("minute_color", rgb_matrix::Color, rgb_matrix::Color(0, 255, 0));
-    PropertyPointer<rgb_matrix::Color> second_color = MAKE_PROPERTY("second_color", rgb_matrix::Color, rgb_matrix::Color(0, 0, 255));
-    PropertyPointer<rgb_matrix::Color> bg_color = MAKE_PROPERTY("bg_color", rgb_matrix::Color, rgb_matrix::Color(0, 0, 10));
+    PropertyPointer<bool> show_analog = MAKE_PROPERTY("show_analog", bool, false);
+    PropertyPointer<bool> show_seconds = MAKE_PROPERTY("show_seconds", bool, false);
+    PropertyPointer<bool> show_date = MAKE_PROPERTY("show_date", bool, true);
+    PropertyPointer<rgb_matrix::Color> hour_color = MAKE_PROPERTY("hour_color", rgb_matrix::Color, rgb_matrix::Color(90, 220, 255));
+    PropertyPointer<rgb_matrix::Color> minute_color = MAKE_PROPERTY("minute_color", rgb_matrix::Color, rgb_matrix::Color(235, 245, 255));
+    PropertyPointer<rgb_matrix::Color> second_color = MAKE_PROPERTY("second_color", rgb_matrix::Color, rgb_matrix::Color(255, 120, 170));
+    PropertyPointer<rgb_matrix::Color> bg_color = MAKE_PROPERTY("bg_color", rgb_matrix::Color, rgb_matrix::Color(2, 7, 18));
     PropertyPointer<bool> smooth_motion = MAKE_PROPERTY("smooth_motion", bool, true);
-    PropertyPointer<Plugins::EnumProperty<ClockStyle>> clock_style = MAKE_ENUM_PROPERTY("clock_style", ClockStyle, ClockStyle::CLASSIC);
+    PropertyPointer<Plugins::EnumProperty<ClockStyle>> clock_style = MAKE_ENUM_PROPERTY("clock_style", ClockStyle, ClockStyle::MINIMAL);
     PropertyPointer<bool> use_glow_effect = MAKE_PROPERTY("use_glow_effect", bool, true);
     PropertyPointer<bool> use_antialiasing = MAKE_PROPERTY("use_antialiasing", bool, true);
 
@@ -43,6 +43,8 @@ private:
                         uint8_t r, uint8_t g, uint8_t b, bool apply_glow = false);
     void draw_small_digit(rgb_matrix::FrameCanvas *matrix, int digit, int x, int y, 
                         uint8_t r, uint8_t g, uint8_t b);
+    void draw_scaled_digit(rgb_matrix::FrameCanvas *matrix, int digit, int x, int y, int scale,
+                           uint8_t r, uint8_t g, uint8_t b);
     void set_pixel_with_brightness(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness);
     void apply_glow(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float intensity);
     void draw_clock_face(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, int radius);
