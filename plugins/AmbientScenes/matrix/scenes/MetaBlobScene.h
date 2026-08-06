@@ -13,10 +13,14 @@ namespace AmbientScenes {
         PropertyPointer<float> threshold = MAKE_PROPERTY("threshold", float, 0.0003f);
         PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.25f);
         PropertyPointer<float> move_range = MAKE_PROPERTY("move_range", float, 0.5f);
+        PropertyPointer<bool> audio_reactive = MAKE_PROPERTY("audio_reactive", bool, false);
+        PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.75f, 0.0f, 2.0f);
         PropertyPointer<float> color_speed = MAKE_PROPERTY("color_speed", float, 0.033f);
 
         float time;
         std::chrono::steady_clock::time_point last_update;
+        float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
+        uint64_t last_beat_counter = 0;
 
         struct Blob {
             float x, y;

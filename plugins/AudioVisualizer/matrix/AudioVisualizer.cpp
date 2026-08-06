@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <shared/matrix/canvas_consts.h>
+#include <shared/matrix/audio_state.h>
 
 using namespace Scenes;
 
@@ -112,6 +113,7 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
             ++beat_counter;
             Constants::global_post_processor->add_effect("flash", 0.4f, 0.8f);
         }
+        AudioState::update(current_audio_data, last_timestamp, beat_counter);
     }
 
     return true;
