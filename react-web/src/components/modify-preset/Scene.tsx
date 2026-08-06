@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Trash2, ArrowRight, ImageOff } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, ArrowRight, ImageOff, SlidersHorizontal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
@@ -77,7 +77,19 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="pt-0 pb-4 px-4 space-y-3">
+            <CardContent className="space-y-4 border-t border-border/60 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">Scene settings</h3>
+                    <p className="text-xs text-muted-foreground">Changes are kept as drafts until you save the preset.</p>
+                  </div>
+                </div>
+                <Badge variant="secondary">{def?.properties.length ?? 0}</Badge>
+              </div>
               {def ? (
                 <PropertyList
                   properties={def.properties}

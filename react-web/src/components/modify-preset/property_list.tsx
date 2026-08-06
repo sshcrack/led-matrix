@@ -26,8 +26,8 @@ export default function PropertyList({ properties, arguments: args, providers, o
   }
 
   return (
-    <div className="space-y-3">
-      {properties.map((prop) => {
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-background/45">
+      {properties.map((prop, index) => {
         const value = args[prop.name] ?? prop.default_value
         const commonProps = {
           property: prop,
@@ -35,28 +35,28 @@ export default function PropertyList({ properties, arguments: args, providers, o
           onChange: (v: any) => update(prop.name, v),
         }
 
-        switch (prop.type_id) {
+        const content = (() => {
+          switch (prop.type_id) {
           case 'bool':
-            return <BooleanProperty key={prop.name} {...commonProps} />
+            return <BooleanProperty {...commonProps} />
           case 'color':
-            return <ColorProperty key={prop.name} {...commonProps} />
+            return <ColorProperty {...commonProps} />
           case 'enum':
-            return <EnumProperty key={prop.name} {...commonProps} />
+            return <EnumProperty {...commonProps} />
           case 'int':
           case 'double':
           case 'float':
           case 'int16_t':
           case 'uint8_t':
           case 'millis':
-            return <NumberProperty key={prop.name} {...commonProps} />
+            return <NumberProperty {...commonProps} />
           case 'string':
-            return <StringProperty key={prop.name} {...commonProps} />
+            return <StringProperty {...commonProps} />
           case 'string[]':
-            return <StringListProperty key={prop.name} {...commonProps} />
+            return <StringListProperty {...commonProps} />
           case 'json':
             return (
               <ProvidersProperty
-                key={prop.name}
                 property={prop}
                 value={value}
                 providers={providers}
@@ -64,8 +64,18 @@ export default function PropertyList({ properties, arguments: args, providers, o
               />
             )
           default:
-            return <GeneralProperty key={prop.name} {...commonProps} />
-        }
+            return <GeneralProperty {...commonProps} />
+          }
+        })()
+
+        return (
+          <div
+            key={prop.name}
+            className={`p-4 sm:p-5 ${index > 0 ? 'border-t border-border/60' : ''}`}
+          >
+            {content}
+          </div>
+        )
       })}
     </div>
   )
