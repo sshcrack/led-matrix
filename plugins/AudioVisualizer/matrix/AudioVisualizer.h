@@ -15,6 +15,7 @@ class AudioVisualizer : public BasicPlugin {
     std::vector<uint8_t> current_audio_data;
     uint32_t last_timestamp;
     bool interpolated_log;
+    uint64_t beat_counter = 0;
     
     // Beat detection members
     std::deque<float> energy_history;
@@ -34,6 +35,8 @@ public:
     std::vector<uint8_t> get_audio_data();
 
     uint32_t get_last_timestamp();
+
+    uint64_t get_beat_counter();
 
     bool on_udp_packet(uint8_t pluginId, const uint8_t *data,
                        size_t size) override;

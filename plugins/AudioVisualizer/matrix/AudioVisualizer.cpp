@@ -1,5 +1,6 @@
 #include "AudioVisualizer.h"
 #include "scenes/AudioSpectrumScene.h"
+#include "scenes/AudioReactiveScenes.h"
 #include "spdlog/spdlog.h"
 #include <cstring>
 #include <thread>
@@ -20,6 +21,8 @@ vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
     auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
     scenes.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioPulseTunnelSceneWrapper>());
 
     return scenes;
 }
@@ -53,6 +56,12 @@ uint32_t AudioVisualizer::get_last_timestamp()
 {
     std::lock_guard<std::mutex> lock(audio_data_mutex);
     return last_timestamp;
+}
+
+uint64_t AudioVisualizer::get_beat_counter()
+{
+    std::lock_guard<std::mutex> lock(audio_data_mutex);
+    return beat_counter;
 }
 
 bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data, const size_t size)
@@ -100,6 +109,7 @@ bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data,
         
         // Set beat detection flag from desktop application
         if (is_beat_detected) {
+            ++beat_counter;
             Constants::global_post_processor->add_effect("flash", 0.4f, 0.8f);
         }
     }

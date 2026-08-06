@@ -38,8 +38,13 @@ namespace Scenes {
         PropertyPointer<float> circle_radius = MAKE_PROPERTY_MINMAX("circle_radius", float, 0.8f, 0.3f, 1.0f);
         PropertyPointer<bool> rotate_visualization = MAKE_PROPERTY("rotate_visualization", bool, false);
         PropertyPointer<float> rotation_speed = MAKE_PROPERTY_MINMAX("rotation_speed", float, 1.0f, 0.1f, 5.0f);
+        PropertyPointer<float> sensitivity = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.2f, 0.25f, 4.0f);
+        PropertyPointer<float> smoothing = MAKE_PROPERTY_MINMAX("smoothing", float, 0.68f, 0.0f, 0.95f);
+        PropertyPointer<float> release_speed = MAKE_PROPERTY_MINMAX("release_speed", float, 3.5f, 0.5f, 12.0f);
 
         std::vector<float> peak_positions;
+        std::vector<float> smoothed_bands;
+        float frame_dt = 1.0f / 60.0f;
         float rotation_angle = 0.0f;
 
         // Helper methods
