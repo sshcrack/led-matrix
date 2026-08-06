@@ -162,7 +162,7 @@ done
 
 # Check if emulator build exists
 BUILD_INSTALL_DIR="$BUILD_DIR/install"
-PREVIEW_GEN="$BUILD_INSTALL_DIR/preview_gen"
+PREVIEW_GEN="$BUILD_INSTALL_DIR/bin/preview_gen"
 if [[ ! -f "$PREVIEW_GEN" ]]; then
     if [[ $SKIP_VALIDATION -eq 0 ]]; then
         print_error "preview_gen binary not found at: $PREVIEW_GEN"
@@ -222,7 +222,7 @@ fi
 # Build command
 # ---------------------------------------------------------------------------
 
-PREVIEW_GEN="$BUILD_INSTALL_DIR/preview_gen"
+PREVIEW_GEN="$BUILD_INSTALL_DIR/bin/preview_gen"
 PLUGIN_DIR="$BUILD_INSTALL_DIR/plugins"
 
 CMD="$PREVIEW_GEN"
