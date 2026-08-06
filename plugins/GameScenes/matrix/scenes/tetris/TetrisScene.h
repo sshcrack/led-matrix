@@ -51,7 +51,10 @@ namespace Scenes {
         int offset_y = 0;   // Vertical centering offset
 
         PropertyPointer<int> fall_speed_ms = MAKE_PROPERTY("fall_speed_ms", int, 100);
-        std::chrono::steady_clock::time_point last_fall_time;
+        std::chrono::steady_clock::time_point last_update_time;
+        float fall_accumulator_ms = 0.0f;
+        float move_accumulator = 0.0f;
+        static constexpr float move_interval = 1.0f / 30.0f;
 
     public:
         explicit TetrisScene();

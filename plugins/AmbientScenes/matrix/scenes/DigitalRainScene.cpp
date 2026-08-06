@@ -1,101 +1,142 @@
 #include "DigitalRainScene.h"
+#include <algorithm>
 #include <cmath>
 
 namespace AmbientScenes {
-    DigitalRainScene::DigitalRainScene() :
-            Scene(),
-            gen(rd()) {
-    }
+    DigitalRainScene::DigitalRainScene() : Scene(), gen(rd()) {}
 
     void DigitalRainScene::reset_drop(Drop& drop) {
         if (!matrix_width || !matrix_height) return;
         drop.x = dis_x(gen);
-        drop.y = -(float)(dis_length(gen)); // Start slightly above the screen
-        drop.speed = base_speed->get() * (0.5f + (float)dis_speed(gen));
         drop.length = dis_length(gen);
+        drop.y = -static_cast<float>(drop.length + (gen() % std::max(1, matrix_height / 2)));
+        drop.depth = 0.45f + static_cast<float>(dis_speed(gen)) * 0.55f;
+        drop.speed = base_speed->get() * (0.45f + drop.depth * 1.25f);
+        drop.seed = gen();
     }
 
     void DigitalRainScene::initialize(int width, int height) {
         Scene::initialize(width, height);
-        
-        matrix_brightness.resize(width, std::vector<float>(height, 0.0f));
-        drops.resize(num_drops->get());
-        
-        dis_speed = std::uniform_real_distribution<>(0.0, 1.0);
-        dis_length = std::uniform_int_distribution<>(5, height / 2);
-        dis_x = std::uniform_int_distribution<>(0, width - 1);
+        matrix_brightness.assign(width, std::vector<float>(height, 0.0f));
+        matrix_symbols.assign(width, std::vector<uint8_t>(height, 0));
+        drops.resize(std::max(1, num_drops->get()));
 
-        for (auto &drop : drops) {
+        dis_speed = std::uniform_real_distribution<>(0.0, 1.0);
+        dis_length = std::uniform_int_distribution<>(std::max(4, height / 14), std::max(6, height / 2));
+        dis_x = std::uniform_int_distribution<>(0, std::max(0, width - 1));
+
+        for (auto& drop : drops) {
             reset_drop(drop);
-            // Randomize initial positions so they don't all start at the top at once
-            drop.y = (float)(std::uniform_real_distribution<>(-height, height)(gen));
+            drop.y = std::uniform_real_distribution<float>(-static_cast<float>(height), static_cast<float>(height))(gen);
         }
+        simulation_tick = 0;
+        simulation_accumulator = 0.0f;
+        last_update = std::chrono::steady_clock::now();
+    }
+
+    void DigitalRainScene::draw_symbol(rgb_matrix::FrameCanvas* canvas, int x, int y, uint8_t symbol,
+                                       uint8_t r, uint8_t g, uint8_t b) const {
+        if (x < 0 || x >= matrix_width || y < 0 || y >= matrix_height) return;
+        canvas->SetPixel(x, y, r, g, b);
+        if (!symbol_mode->get()) return;
+
+        // Tiny pseudo-glyph accents make the streams look like changing characters
+        // while remaining readable on a dense physical matrix.
+        const int side = (symbol & 1u) ? 1 : -1;
+        if ((symbol & 2u) && x + side >= 0 && x + side < matrix_width)
+            canvas->SetPixel(x + side, y, r / 2, g / 2, b / 2);
+        if ((symbol & 4u) && y + 1 < matrix_height)
+            canvas->SetPixel(x, y + 1, r / 3, g / 3, b / 3);
     }
 
     bool DigitalRainScene::render(rgb_matrix::FrameCanvas *canvas) {
         canvas->Clear();
 
-        // Fade existing matrix brightness
-        for (int x = 0; x < matrix_width; ++x) {
-            for (int y = 0; y < matrix_height; ++y) {
-                matrix_brightness[x][y] *= fade_factor->get();
-            }
+        const auto now = std::chrono::steady_clock::now();
+        const float elapsed = std::min(0.25f, std::chrono::duration<float>(now - last_update).count());
+        last_update = now;
+        simulation_accumulator += elapsed;
+
+        const std::size_t wanted_drops = static_cast<std::size_t>(std::max(1, num_drops->get()));
+        if (drops.size() != wanted_drops) {
+            const std::size_t old_size = drops.size();
+            drops.resize(wanted_drops);
+            for (std::size_t i = old_size; i < drops.size(); ++i) reset_drop(drops[i]);
         }
 
-        // Update and draw drops
-        for (auto &drop : drops) {
-            int old_y = (int)drop.y;
-            drop.y += drop.speed;
-            int new_y = (int)drop.y;
+        int updates = 0;
+        while (simulation_accumulator >= simulation_step && updates < 4) {
+            simulation_accumulator -= simulation_step;
+            ++updates;
+            ++simulation_tick;
 
-            // Mark the new head brightness to maximum (1.0)
-            if (new_y >= 0 && new_y < matrix_height && drop.x >= 0 && drop.x < matrix_width) {
-                // To make the trails fuller, we can set everything from old_y to new_y to 1.0
+            // fade_factor historically described one 60 FPS frame. Exponentiation preserves
+            // that visual decay while making it independent of the actual render frequency.
+            const float fade_per_60hz_frame = std::clamp(fade_factor->get(), 0.0f, 0.999f);
+            const float fade = std::pow(fade_per_60hz_frame, simulation_step * 60.0f);
+            for (int x = 0; x < matrix_width; ++x) {
+                for (int y = 0; y < matrix_height; ++y) {
+                    matrix_brightness[x][y] *= fade;
+                    if (matrix_brightness[x][y] < 0.015f) matrix_brightness[x][y] = 0.0f;
+                }
+            }
+
+            for (auto& drop : drops) {
+                const int old_y = static_cast<int>(drop.y);
+                // Existing speed values were pixels per 60 Hz frame.
+                drop.y += drop.speed * simulation_step * 60.0f;
+                const int new_y = static_cast<int>(drop.y);
+
                 for (int y = std::max(0, old_y); y <= new_y && y < matrix_height; ++y) {
-                    matrix_brightness[drop.x][y] = 1.0f;
+                    if (y < 0) continue;
+                    matrix_brightness[drop.x][y] = std::max(matrix_brightness[drop.x][y], drop.depth);
+                    matrix_symbols[drop.x][y] = static_cast<uint8_t>((drop.seed + y * 17u + simulation_tick / 2u) & 7u);
                 }
-            }
 
-            if (drop.y - drop.length > matrix_height) {
-                reset_drop(drop);
+                if (glitch_effect->get() && (drop.seed + simulation_tick) % 97u == 0u && new_y >= 0 && new_y < matrix_height) {
+                    const int gx = std::clamp(drop.x + ((drop.seed & 1u) ? 1 : -1), 0, matrix_width - 1);
+                    matrix_brightness[gx][new_y] = drop.depth * 0.65f;
+                    matrix_symbols[gx][new_y] = static_cast<uint8_t>(drop.seed & 7u);
+                }
+
+                if (drop.y - drop.length > matrix_height) reset_drop(drop);
             }
         }
+        if (updates == 4) simulation_accumulator = 0.0f;
 
-        // Render to canvas
-        rgb_matrix::Color c = color->get();
+        const rgb_matrix::Color base = color->get();
         for (int x = 0; x < matrix_width; ++x) {
             for (int y = 0; y < matrix_height; ++y) {
-                float brightness = matrix_brightness[x][y];
-                if (brightness > 0.01f) {
-                    canvas->SetPixel(x, y, 
-                        static_cast<uint8_t>(c.r * brightness), 
-                        static_cast<uint8_t>(c.g * brightness), 
-                        static_cast<uint8_t>(c.b * brightness));
-                }
+                const float v = matrix_brightness[x][y];
+                if (v <= 0.0f) continue;
+                const float shaped = std::sqrt(v);
+                draw_symbol(canvas, x, y, matrix_symbols[x][y],
+                            static_cast<uint8_t>(base.r * shaped),
+                            static_cast<uint8_t>(base.g * shaped),
+                            static_cast<uint8_t>(base.b * shaped));
             }
         }
 
-        // Draw white heads for drops (optional classic matrix look)
-        for (auto &drop : drops) {
-            int head_y = (int)drop.y;
-            if (head_y >= 0 && head_y < matrix_height && drop.x >= 0 && drop.x < matrix_width) {
-                canvas->SetPixel(drop.x, head_y, 255, 255, 255);
-            }
+        for (const auto& drop : drops) {
+            const int y = static_cast<int>(drop.y);
+            if (y < 0 || y >= matrix_height) continue;
+            canvas->SetPixel(drop.x, y, 235, 255, 245);
+            if (y > 0) canvas->SetPixel(drop.x, y - 1, 120, 255, 175);
         }
 
         wait_until_next_frame();
         return true;
     }
 
-    std::string DigitalRainScene::get_name() const {
-        return "digitalrain";
-    }
+    std::string DigitalRainScene::get_name() const { return "digitalrain"; }
 
     void DigitalRainScene::register_properties() {
         add_property(num_drops);
         add_property(base_speed);
         add_property(fade_factor);
         add_property(color);
+        add_property(symbol_mode);
+        add_property(glitch_effect);
     }
 
     std::unique_ptr<Scenes::Scene> DigitalRainSceneWrapper::create() {

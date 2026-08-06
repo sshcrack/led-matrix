@@ -1,5 +1,6 @@
 #include "BoidsScene.h"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace {
@@ -30,6 +31,8 @@ void BoidsScene::initialize(int width, int height) {
     set_target_fps(60);
     ensure_buffers();
     reset_boids();
+    last_update_ = std::chrono::steady_clock::now();
+    simulation_accumulator_ = 0.0f;
 }
 
 void BoidsScene::ensure_buffers() {
@@ -45,13 +48,10 @@ void BoidsScene::reset_boids() {
     for (int i=0;i<n;++i) { const float a=angle(rng_); boids_.push_back({px(rng_),py(rng_),std::cos(a),std::sin(a)}); }
 }
 
-bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const int wanted = std::clamp(count_->get(), 8, 180);
-    if (static_cast<int>(boids_.size()) != wanted) reset_boids();
-
+void BoidsScene::simulate_step() {
     const float perception = std::clamp(perception_->get(), 4.0f, 48.0f);
     const float p2 = perception * perception;
-    const float max_speed = std::clamp(speed_->get(), 0.25f, 4.0f);
+    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f;
     std::vector<Boid> next = boids_;
 
     for (size_t i=0;i<boids_.size();++i) {
@@ -83,13 +83,37 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
     }
     boids_.swap(next);
 
-    const float fade=std::clamp(trail_fade_->get(),0.0f,0.96f);
-    for (auto &v: framebuffer_) v=static_cast<uint8_t>(v*fade);
+}
+
+bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
+    const int wanted = std::clamp(count_->get(), 8, 180);
+    if (static_cast<int>(boids_.size()) != wanted) reset_boids();
+
+    const auto now = std::chrono::steady_clock::now();
+    float elapsed = std::chrono::duration<float>(now - last_update_).count();
+    last_update_ = now;
+    elapsed = std::clamp(elapsed, 0.0f, 0.20f);
+    simulation_accumulator_ += elapsed;
+
+    constexpr float simulation_step = 1.0f / 30.0f;
+    int steps = 0;
+    while (simulation_accumulator_ >= simulation_step && steps < 3) {
+        simulate_step();
+        simulation_accumulator_ -= simulation_step;
+        ++steps;
+    }
+    if (steps == 3 && simulation_accumulator_ >= simulation_step)
+        simulation_accumulator_ = std::fmod(simulation_accumulator_, simulation_step);
+
+    // Trail decay is based on elapsed real time, not the number of display frames.
+    const float configured_fade = std::clamp(trail_fade_->get(), 0.0f, 0.96f);
+    const float fade = std::pow(configured_fade, elapsed * 30.0f);
+    for (auto &v : framebuffer_) v = static_cast<uint8_t>(v * fade);
 
     for (const auto &b: boids_) {
         uint8_t r,g,bl;
         if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,1.0f,r,g,bl);
-        else { const auto c=color_->get(); r=c.r(); g=c.g(); bl=c.b(); }
+        else { const auto c=color_->get(); r=c.r; g=c.g; bl=c.b; }
         const int x=static_cast<int>(std::round(b.x)), y=static_cast<int>(std::round(b.y));
         for (int oy=-1;oy<=1;++oy) for (int ox=-1;ox<=1;++ox) {
             const int px=(x+ox+matrix_width)%matrix_width, py=(y+oy+matrix_height)%matrix_height;

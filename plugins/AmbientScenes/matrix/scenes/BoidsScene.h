@@ -2,101 +2,42 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <vector>
+#include <chrono>
 #include <random>
+#include <vector>
 
-namespace AmbientScenes {
-    class BoidsScene : public Scenes::Scene {
-    private:
-        struct Vector2 {
-            float x, y;
+namespace GenerativeScenes {
+class BoidsScene final : public Scenes::Scene {
+    struct Boid { float x, y, vx, vy; };
+    std::vector<Boid> boids_;
+    std::mt19937 rng_{std::random_device{}()};
+    std::chrono::steady_clock::time_point last_update_{};
+    float simulation_accumulator_ = 0.0f;
 
-            Vector2() : x(0), y(0) {}
-            Vector2(float _x, float _y) : x(_x), y(_y) {}
+    PropertyPointer<int> count_ = MAKE_PROPERTY("count", int, 48);
+    PropertyPointer<float> speed_ = MAKE_PROPERTY("speed", float, 0.75f);
+    PropertyPointer<float> perception_ = MAKE_PROPERTY("perception", float, 18.0f);
+    PropertyPointer<float> trail_fade_ = MAKE_PROPERTY("trail_fade", float, 0.78f);
+    PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
+    PropertyPointer<rgb_matrix::Color> color_ = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(80, 210, 255));
 
-            Vector2 operator+(const Vector2& v) const { return {x + v.x, y + v.y}; }
-            Vector2 operator-(const Vector2& v) const { return {x - v.x, y - v.y}; }
-            Vector2 operator*(float s) const { return {x * s, y * s}; }
-            Vector2 operator/(float s) const { return {x / s, y / s}; }
+    std::vector<uint8_t> framebuffer_;
+    void reset_boids();
+    void ensure_buffers();
+    void simulate_step();
 
-            Vector2& operator+=(const Vector2& v) { x += v.x; y += v.y; return *this; }
-            Vector2& operator-=(const Vector2& v) { x -= v.x; y -= v.y; return *this; }
-            Vector2& operator*=(float s) { x *= s; y *= s; return *this; }
-            Vector2& operator/=(float s) { x /= s; y /= s; return *this; }
+public:
+    void initialize(int width, int height) override;
+    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    void register_properties() override;
+    [[nodiscard]] std::string get_name() const override { return "boids"; }
+    [[nodiscard]] std::string get_category() const override { return "Generative"; }
+    tmillis_t get_default_duration() override { return 30000; }
+    int get_default_weight() override { return 6; }
+};
 
-            float magSq() const { return x * x + y * y; }
-            float mag() const { return std::sqrt(magSq()); }
-
-            void normalize() {
-                float m = mag();
-                if (m > 0.0001f) {
-                    x /= m;
-                    y /= m;
-                }
-            }
-
-            void limit(float max) {
-                if (magSq() > max * max) {
-                    normalize();
-                    x *= max;
-                    y *= max;
-                }
-            }
-        };
-
-        struct Boid {
-            Vector2 position;
-            Vector2 velocity;
-            Vector2 acceleration;
-            uint8_t r, g, b;
-
-            Boid(float x, float y, std::mt19937& rng) : position(x, y) {
-                acceleration = Vector2(0, 0);
-                std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-                velocity = Vector2(dist(rng), dist(rng));
-            }
-        };
-
-        std::vector<Boid> flock;
-        std::mt19937 rng{std::random_device{}()};
-
-        PropertyPointer<int> num_boids = MAKE_PROPERTY("num_boids", int, 100);
-        PropertyPointer<float> max_speed = MAKE_PROPERTY("max_speed", float, 1.0f);
-        PropertyPointer<float> max_force = MAKE_PROPERTY("max_force", float, 0.05f);
-        PropertyPointer<rgb_matrix::Color> boid_color = MAKE_PROPERTY("boid_color", rgb_matrix::Color, rgb_matrix::Color(255, 255, 255));
-        PropertyPointer<bool> use_random_colors = MAKE_PROPERTY("use_random_colors", bool, true);
-        PropertyPointer<float> sep_dist = MAKE_PROPERTY("sep_dist", float, 10.0f);
-        PropertyPointer<float> ali_dist = MAKE_PROPERTY("ali_dist", float, 25.0f);
-        PropertyPointer<float> coh_dist = MAKE_PROPERTY("coh_dist", float, 25.0f);
-        PropertyPointer<float> sep_weight = MAKE_PROPERTY("sep_weight", float, 1.5f);
-        PropertyPointer<float> ali_weight = MAKE_PROPERTY("ali_weight", float, 1.0f);
-        PropertyPointer<float> coh_weight = MAKE_PROPERTY("coh_weight", float, 1.0f);
-        PropertyPointer<bool> wraparound = MAKE_PROPERTY("wraparound", bool, true);
-
-        void run_boids();
-        void edges(Boid& b);
-        void flock_boid(Boid& boid);
-
-        Vector2 separate(Boid& boid);
-        Vector2 align(Boid& boid);
-        Vector2 cohesion(Boid& boid);
-
-    public:
-        explicit BoidsScene();
-        ~BoidsScene() override = default;
-
-        void register_properties() override;
-        bool render(rgb_matrix::FrameCanvas *canvas) override;
-        void initialize(int width, int height) override;
-
-        tmillis_t get_default_duration() override { return 30000; }
-        int get_default_weight() override { return 1; }
-        [[nodiscard]] std::string get_name() const override;
-
-        using Scene::Scene;
-    };
-
-    class BoidsSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene> create() override;
-    };
+class BoidsSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
 }
