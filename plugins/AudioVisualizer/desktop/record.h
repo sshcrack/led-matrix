@@ -14,6 +14,7 @@
 
 static constexpr size_t BUFFER_SIZE = 2048;
 static constexpr size_t FFT_SIZE = 1024;
+static constexpr size_t FFT_HOP_SIZE = 256; // 5.8 ms at 44.1 kHz; retain overlap for responsive updates
 
 // Sentinel device name for "follow the default output device" loopback mode
 static const std::string DEFAULT_LOOPBACK_DEVICE_NAME = "Default Output Device (Loopback)";
@@ -81,7 +82,7 @@ namespace AudioRecorder
         std::deque<float> audioBuffer;
 
         double sampleRate;
-        static constexpr size_t MAX_BUFFER_SIZE = 2048; // Maximum buffer size to prevent memory issues
+        static constexpr size_t MAX_BUFFER_SIZE = 4096; // Small bounded rolling buffer; stale backlog is discarded
 
         static int audioCallback(const void *inputBuffer, void *outputBuffer,
                                  unsigned long framesPerBuffer,
