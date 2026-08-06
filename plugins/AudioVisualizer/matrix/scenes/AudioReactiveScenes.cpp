@@ -33,11 +33,6 @@ bool consumeEvent(uint64_t current, uint64_t &seen, bool packetFlag) {
 }
 }
 
-AudioParticleFieldScene::AudioParticleFieldScene() { findPlugin(); }
-void AudioParticleFieldScene::findPlugin() {
-    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
-        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
-}
 void AudioParticleFieldScene::register_properties() {
     add_property(sensitivity_); add_property(particleLimit_); add_property(persistence_);
     add_property(gravity_); add_property(rainbow_); add_property(baseColor_);
@@ -69,11 +64,9 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
 }
 
 bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!plugin_) findPlugin();
-    if (!plugin_) return false;
     const auto tick = timer_.tick();
     const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin_->get_audio_state();
+    const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
 
@@ -129,11 +122,6 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
     return true;
 }
 
-AudioPulseTunnelScene::AudioPulseTunnelScene() { findPlugin(); }
-void AudioPulseTunnelScene::findPlugin() {
-    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
-        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
-}
 void AudioPulseTunnelScene::register_properties() {
     add_property(sensitivity_); add_property(speed_); add_property(ringCount_);
     add_property(twist_); add_property(rainbow_); add_property(baseColor_);
@@ -141,11 +129,9 @@ void AudioPulseTunnelScene::register_properties() {
 }
 
 bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!plugin_) findPlugin();
-    if (!plugin_) return false;
     const auto tick = timer_.tick();
     const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin_->get_audio_state();
+    const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
     const float gain = sensitivity_->get();
@@ -200,22 +186,15 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
     return true;
 }
 
-AudioAuroraScene::AudioAuroraScene() { findPlugin(); }
-void AudioAuroraScene::findPlugin() {
-    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
-        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
-}
 void AudioAuroraScene::register_properties() {
     add_property(ribbonCount_); add_property(flowSpeed_); add_property(sensitivity_);
     add_property(glow_); add_property(stars_);
 }
 
 bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!plugin_) findPlugin();
-    if (!plugin_) return false;
     const auto tick = timer_.tick();
     const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin_->get_audio_state();
+    const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
     time_ += dt * flowSpeed_->get();
@@ -271,22 +250,15 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
     return true;
 }
 
-AudioKaleidoscopeScene::AudioKaleidoscopeScene() { findPlugin(); }
-void AudioKaleidoscopeScene::findPlugin() {
-    for (auto &candidate : Plugins::PluginManager::instance()->get_plugins())
-        if (auto *audio = dynamic_cast<AudioVisualizer *>(candidate)) { plugin_ = audio; break; }
-}
 void AudioKaleidoscopeScene::register_properties() {
     add_property(symmetry_); add_property(sensitivity_); add_property(rotationSpeed_);
     add_property(detail_); add_property(waveformCore_);
 }
 
 bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!plugin_) findPlugin();
-    if (!plugin_) return false;
     const auto tick = timer_.tick();
     const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
-    const auto audio = plugin_->get_audio_state();
+    const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh() || audio.spectrum.empty()) return false;
     if (consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) beatPulse_ = 1.0f;
