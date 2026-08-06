@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <tuple>
+#include <shared/matrix/audio_state.h>
 
 namespace AmbientScenes {
     namespace {
@@ -47,7 +48,7 @@ namespace AmbientScenes {
 
     MetaBlobScene::Blob MetaBlobScene::get_blob(int i, float current_time) const {
         const float phase = static_cast<float>(i) * 1.731f;
-        const float speed_scale = speed->get();
+        const float speed_scale = speed->get() * (1.0f + (audio_reactive->get() ? audio_mids * audio_strength->get() * 0.9f : 0.0f));
         const float range = move_range->get();
 
         // Several incommensurate oscillations keep the blobs from visibly looping together.
@@ -62,7 +63,8 @@ namespace AmbientScenes {
         y = std::clamp(y, -0.15f, 1.15f);
 
         const float min_dimension = static_cast<float>(std::min(matrix_width, matrix_height));
-        const float radius_wave = 0.88f + 0.20f * std::sin(current_time * speed_scale * 0.9f + phase);
+        const float audio_radius = audio_reactive->get() ? audio_bass * audio_strength->get() * 0.42f : 0.0f;
+        const float radius_wave = 0.88f + audio_radius + 0.20f * std::sin(current_time * speed_scale * 0.9f + phase);
         const float radius = min_dimension * (0.075f + 0.022f * static_cast<float>(i % 4)) * radius_wave;
 
         return Blob(x * static_cast<float>(matrix_width),
@@ -96,6 +98,15 @@ namespace AmbientScenes {
         const float dt = std::min(0.10f, std::chrono::duration<float>(now - last_update).count());
         last_update = now;
 
+        if (audio_reactive->get()) {
+            const auto audio = AudioState::snapshot();
+            const float response = 1.0f - std::exp(-dt * 8.0f);
+            audio_bass += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass) * response;
+            audio_mids += (AudioState::average_band(audio, 0.18f, 0.62f) - audio_mids) * response;
+            audio_treble += (AudioState::average_band(audio, 0.62f, 1.0f) - audio_treble) * response;
+            if (audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; audio_bass = std::max(audio_bass, 0.85f); }
+        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+
         blobs.clear();
         const int blob_count = std::max(1, num_blobs->get());
         if (static_cast<int>(blobs.capacity()) < blob_count) {
@@ -127,7 +138,8 @@ namespace AmbientScenes {
                 const float body = smoothstep(surface * 0.76f, surface * 1.20f, field);
                 const float aura = smoothstep(surface * 0.18f, surface * 0.82f, field) * (1.0f - body * 0.72f);
                 const float rim_distance = std::abs(field - surface) / surface;
-                const float rim = 1.0f - smoothstep(0.0f, 0.22f, rim_distance);
+                const float rim_width = 0.22f + (audio_reactive->get() ? audio_treble * audio_strength->get() * 0.12f : 0.0f);
+                const float rim = 1.0f - smoothstep(0.0f, rim_width, rim_distance);
 
                 if (body <= 0.001f && rim <= 0.001f && aura <= 0.001f) {
                     continue;
@@ -171,6 +183,8 @@ namespace AmbientScenes {
         add_property(threshold);
         add_property(speed);
         add_property(move_range);
+        add_property(audio_reactive);
+        add_property(audio_strength);
         add_property(color_speed);
     }
 

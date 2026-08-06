@@ -23,6 +23,9 @@ namespace AmbientScenes {
         std::uniform_real_distribution<> dis;
         float time = 0.0f;
         std::chrono::steady_clock::time_point last_update;
+        float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
+        uint64_t last_beat_counter = 0;
+        float beat_flash = 0.0f;
 
         PropertyPointer<int> num_stars = MAKE_PROPERTY("num_stars", int, 90);
         PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.025f);
@@ -30,6 +33,8 @@ namespace AmbientScenes {
         PropertyPointer<float> max_depth = MAKE_PROPERTY("max_depth", float, 3.0f);
         PropertyPointer<bool> colored_stars = MAKE_PROPERTY("colored_stars", bool, true);
         PropertyPointer<float> streak_length = MAKE_PROPERTY_MINMAX("streak_length", float, 0.7f, 0.0f, 2.0f);
+        PropertyPointer<bool> audio_reactive = MAKE_PROPERTY("audio_reactive", bool, false);
+        PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.8f, 0.0f, 2.0f);
         PropertyPointer<bool> drifting_center = MAKE_PROPERTY("drifting_center", bool, true);
 
         static void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);

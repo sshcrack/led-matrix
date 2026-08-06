@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <shared/matrix/audio_state.h>
 
 namespace AmbientScenes {
     namespace {
@@ -36,6 +37,16 @@ namespace AmbientScenes {
         last_update = now;
         time_counter += dt;
 
+        if (audio_reactive->get()) {
+            const auto audio = AudioState::snapshot();
+            const float response = 1.0f - std::exp(-dt * 9.0f);
+            audio_bass += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass) * response;
+            audio_mids += (AudioState::average_band(audio, 0.18f, 0.62f) - audio_mids) * response;
+            audio_treble += (AudioState::average_band(audio, 0.62f, 1.0f) - audio_treble) * response;
+            if (audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_pulse = 1.0f; }
+        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+        beat_pulse = std::max(0.0f, beat_pulse - dt * 2.8f);
+
         const float center_x = static_cast<float>(matrix_width) * 0.5f;
         const float center_y = static_cast<float>(matrix_height) * 0.5f;
         const float min_dimension = static_cast<float>(std::max(1, std::min(matrix_width, matrix_height)));
@@ -51,8 +62,9 @@ namespace AmbientScenes {
         const float cos_roll = std::cos(roll);
         const float sin_roll = std::sin(roll);
 
-        const float travel = time_counter * std::max(0.05f, speed->get()) * 0.42f;
-        const float angular_frequency = std::max(1.0f, angle_factor->get());
+        const float reactive_speed = 1.0f + (audio_reactive->get() ? audio_bass * audio_strength->get() * 1.5f : 0.0f);
+        const float travel = time_counter * std::max(0.05f, speed->get()) * 0.42f * reactive_speed;
+        const float angular_frequency = std::max(1.0f, angle_factor->get()) + (audio_reactive->get() ? audio_treble * audio_strength->get() * 5.0f : 0.0f);
         const float depth_scale = std::max(1.0f, distance_factor->get()) / min_dimension;
 
         for (int y = 0; y < matrix_height; ++y) {
@@ -72,7 +84,7 @@ namespace AmbientScenes {
                 const float ring_line = 1.0f - smoothstep(0.025f, 0.115f, ring_distance);
 
                 const float radial_coordinate = angle / (2.0f * PI) * angular_frequency
-                                              + 0.11f * std::sin(depth_coordinate * 1.7f - time_counter * 0.8f);
+                                              + (0.11f + audio_mids * audio_strength->get() * 0.10f) * std::sin(depth_coordinate * 1.7f - time_counter * 0.8f);
                 const float rib_distance = wrapped_distance(radial_coordinate);
                 const float rib_line = 1.0f - smoothstep(0.018f, 0.095f, rib_distance);
 
@@ -89,6 +101,7 @@ namespace AmbientScenes {
                 const float pulse = 0.82f + 0.18f * std::sin(depth_coordinate * 3.0f - time_counter * 1.7f);
 
                 float brightness = (grid * 0.62f + glow * 0.20f + crossing * 0.42f) * edge_fade * center_fade * pulse;
+                brightness *= 1.0f + audio_bass * audio_strength->get() * 0.55f + beat_pulse * 0.35f;
                 brightness = std::clamp(brightness, 0.0f, 1.0f);
 
                 // Give the vanishing point a restrained bloom rather than leaving a black singularity.
@@ -133,6 +146,8 @@ namespace AmbientScenes {
         add_property(speed);
         add_property(distance_factor);
         add_property(angle_factor);
+        add_property(audio_reactive);
+        add_property(audio_strength);
         add_property(hue_shift_speed);
     }
 
