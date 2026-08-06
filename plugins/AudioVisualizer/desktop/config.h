@@ -82,12 +82,21 @@ public:
     // ----- Audio Device Settings -----
     std::string deviceName;
     
-    // ----- Beat Detection Settings -----
+    // ----- Deep music analysis -----
+    double musicAnalysisGain;
+    double transientSensitivity;
+    double beatSensitivity;
+    double waveformGain;
+    bool streamContinuously;
+
+    // Retained in config files only so old user settings can still be read.
     BeatDetectionConfig beatDetection;
 
     AudioVisualizerConfig() : numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
                               analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic),
-                              skipMissingBandsFromOutput(true), linearAmplitudeScaling(false), interpolateMissingBands(false) {}
+                              skipMissingBandsFromOutput(true), linearAmplitudeScaling(false), interpolateMissingBands(false),
+                              musicAnalysisGain(1.0), transientSensitivity(1.0), beatSensitivity(1.0),
+                              waveformGain(3.0), streamContinuously(true) {}
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
@@ -142,6 +151,11 @@ static void from_json(const json &j, AudioVisualizerConfig &config)
     config.interpolateMissingBands = j.value("interpolateMissingBands", defaults.interpolateMissingBands);
     config.skipMissingBandsFromOutput = j.value("skipMissingBandsFromOutput", defaults.skipMissingBandsFromOutput);
     config.deviceName = j.value("deviceName", defaults.deviceName);
+    config.musicAnalysisGain = j.value("musicAnalysisGain", defaults.musicAnalysisGain);
+    config.transientSensitivity = j.value("transientSensitivity", defaults.transientSensitivity);
+    config.beatSensitivity = j.value("beatSensitivity", defaults.beatSensitivity);
+    config.waveformGain = j.value("waveformGain", defaults.waveformGain);
+    config.streamContinuously = j.value("streamContinuously", defaults.streamContinuously);
     config.beatDetection = j.value("beatDetection", defaults.beatDetection);
 }
 
@@ -159,5 +173,10 @@ static void to_json(json &j, const AudioVisualizerConfig &config)
         {"interpolateMissingBands", config.interpolateMissingBands},
         {"skipMissingBandsFromOutput", config.skipMissingBandsFromOutput},
         {"deviceName", config.deviceName},
+        {"musicAnalysisGain", config.musicAnalysisGain},
+        {"transientSensitivity", config.transientSensitivity},
+        {"beatSensitivity", config.beatSensitivity},
+        {"waveformGain", config.waveformGain},
+        {"streamContinuously", config.streamContinuously},
         {"beatDetection", config.beatDetection}};
 }

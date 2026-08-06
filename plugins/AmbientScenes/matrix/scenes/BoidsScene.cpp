@@ -71,7 +71,7 @@ void BoidsScene::simulate_step() {
                 ++neighbours;
             }
         }
-        float vx=boids_[i].vx, vy=boids_[i].vy;
+        float vx=boids_[i].vx + audio_balance_ * 0.012f, vy=boids_[i].vy;
         if (neighbours>0) {
             ax/=neighbours; ay/=neighbours; cx/=neighbours; cy/=neighbours;
             const float cohesion = 0.0025f * (1.0f + audio_mids_ * audio_strength_->get());
@@ -101,15 +101,27 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
 
     if (audio_reactive_->get()) {
         const auto audio = AudioState::snapshot();
+        const bool has_audio = audio.fresh();
         const float response = 1.0f - std::exp(-elapsed * 9.0f);
-        audio_bass_ += (AudioState::average_band(audio, 0.0f, 0.18f) - audio_bass_) * response;
-        audio_mids_ += (AudioState::average_band(audio, 0.18f, 0.60f) - audio_mids_) * response;
-        audio_treble_ += (AudioState::average_band(audio, 0.60f, 1.0f) - audio_treble_) * response;
-        if (audio.beat_counter != last_beat_counter_) {
+        audio_bass_ += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass_) * response;
+        audio_mids_ += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids_) * response;
+        audio_treble_ += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble_) * response;
+        audio_balance_ += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance_) * response;
+        if (has_audio && audio.beat_counter != last_beat_counter_) {
             last_beat_counter_ = audio.beat_counter;
-            for (auto &boid : boids_) { boid.vx *= 1.18f; boid.vy *= 1.18f; }
+            const float impulse = 0.08f + audio.feature(AudioProtocol::Feature::Kick) * 0.28f;
+            const float cx = matrix_width * 0.5f, cy = matrix_height * 0.5f;
+            for (auto &boid : boids_) {
+                float dx = boid.x - cx, dy = boid.y - cy;
+                const float length = std::max(1.0f, std::sqrt(dx * dx + dy * dy));
+                boid.vx += dx / length * impulse; boid.vy += dy / length * impulse;
+            }
         }
-    } else { audio_bass_ = audio_mids_ = audio_treble_ = 0.0f; }
+        if (has_audio && audio.drop_counter != last_drop_counter_) {
+            last_drop_counter_ = audio.drop_counter;
+            for (auto &boid : boids_) { boid.vx *= 1.8f; boid.vy *= 1.8f; }
+        }
+    } else { audio_bass_ = audio_mids_ = audio_treble_ = audio_balance_ = 0.0f; }
 
     constexpr float simulation_step = 1.0f / 30.0f;
     int steps = 0;

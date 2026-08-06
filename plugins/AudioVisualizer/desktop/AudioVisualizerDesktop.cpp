@@ -1,488 +1,281 @@
 #include "AudioVisualizerDesktop.h"
-#include <fstream>
-#include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
 #include "udpBandsPacket.h"
+
+#include <algorithm>
+#include <array>
 #include <chrono>
+#include <spdlog/spdlog.h>
 
 REGISTER_PLUGIN(AudioVisualizer, AudioVisualizerDesktop)
 
-AudioVisualizerDesktop::AudioVisualizerDesktop() : beat_detected(false), beatDetector(std::make_unique<BeatDetector>()) {
-}
-AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
+namespace {
+constexpr std::array<const char *, 7> MusicalBandNames{
+    "Sub", "Bass", "Low mid", "Mid", "High mid", "Treble", "Air"};
+constexpr double GainMin = 0.1;
+constexpr double GainMax = 10.0;
+constexpr double SmoothMin = 0.0;
+constexpr double SmoothMax = 0.97;
+constexpr double MinFrequencyMin = 20.0;
+constexpr double MinFrequencyMax = 1000.0;
+constexpr double MaxFrequencyMax = 22000.0;
+constexpr double AnalysisGainMin = 0.25;
+constexpr double AnalysisGainMax = 4.0;
+constexpr double SensitivityMin = 0.35;
+constexpr double SensitivityMax = 2.5;
+constexpr double WaveformGainMin = 0.5;
+constexpr double WaveformGainMax = 8.0;
 
+constexpr std::array<AudioProtocol::Feature, 7> MusicalBandFeatures{
+    AudioProtocol::Feature::SubBass, AudioProtocol::Feature::Bass,
+    AudioProtocol::Feature::LowMid, AudioProtocol::Feature::Mid,
+    AudioProtocol::Feature::HighMid, AudioProtocol::Feature::Treble,
+    AudioProtocol::Feature::Air};
+
+bool isDedicatedAudioScene(const std::string &name) {
+    return name == "audio_spectrum" || name == "audio_particles" ||
+           name == "audio_pulse_tunnel" || name == "audio_aurora" ||
+           name == "audio_kaleidoscope";
+}
+}
+
+AudioVisualizerDesktop::AudioVisualizerDesktop() = default;
+AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
 
 void AudioVisualizerDesktop::render() {
     if (!stateMutex.try_lock()) return;
-    std::lock_guard<std::mutex> lock(stateMutex, std::adopt_lock);
-    
+    std::lock_guard lock(stateMutex, std::adopt_lock);
     ImPlot::SetCurrentContext(implotContext);
-
     addConnectionSettings();
+    addDeviceSettings();
     addAudioSettings();
     addAnalysisSettings();
-    addDeviceSettings();
-    addBeatDetectionSettings();
-
+    addMusicAnalysisSettings();
     addVisualizer();
 }
 
 void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> config) {
-    if (config.has_value() && !config.value().is_null())
-        cfg = config.value();
-
-    if (audioProcessor == nullptr)
-        audioProcessor = std::make_unique<AudioProcessor>(cfg);
-
-    if (recorder == nullptr)
-        recorder = std::make_unique<AudioRecorder::Recorder>();
-
-    // Configure beat detector with loaded config
-    if (beatDetector) {
-        beatDetector->configure(cfg.beatDetection);
-    }
+    if (config.has_value() && !config->is_null()) cfg = *config;
+    if (!audioProcessor) audioProcessor = std::make_unique<AudioProcessor>(cfg);
+    if (!musicAnalyzer) musicAnalyzer = std::make_unique<MusicAnalyzer>(cfg);
+    if (!recorder) recorder = std::make_unique<AudioRecorder::Recorder>();
 }
 
 void AudioVisualizerDesktop::before_exit() {
-    ImPlot::DestroyContext();
+    if (recorder) recorder->stopRecording();
+    if (implotContext) {
+        ImPlot::DestroyContext(implotContext);
+        implotContext = nullptr;
+    }
 }
 
-void AudioVisualizerDesktop::post_init() {
-    implotContext = ImPlot::CreateContext();
-}
+void AudioVisualizerDesktop::post_init() { implotContext = ImPlot::CreateContext(); }
 
 void AudioVisualizerDesktop::addConnectionSettings() {
-    const bool isProcessingRunning = recorder->isRecording();
-
+    const bool running = recorder && recorder->isRecording();
     std::shared_lock lock(lastErrorMutex);
-    if (!lastError.empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
-    } else {
-        ImGui::Text("Status: %s", isProcessingRunning ? "Processing" : "Idle");
-    }
+    if (!lastError.empty())
+        ImGui::TextColored(ImVec4(1.0f, 0.22f, 0.22f, 1.0f), "Error: %s", lastError.c_str());
+    else
+        ImGui::TextColored(running ? ImVec4(0.25f, 1.0f, 0.50f, 1.0f)
+                                  : ImVec4(0.75f, 0.75f, 0.75f, 1.0f),
+                           "%s", running ? "Streaming deep music analysis" : "Waiting for an active matrix connection");
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings() {
-    ImGui::SeparatorText("Analysis Settings");
-
-    int selectedModeIdx = static_cast<int>(cfg.analysisMode);
-    const std::string &modePreview = analysisModes[selectedModeIdx];
-    if (ImGui::BeginCombo("Mode", modePreview.c_str())) {
-        for (int n = 0; n < analysisModes.size(); n++) {
-            const bool is_selected = (selectedModeIdx == n);
-            if (ImGui::Selectable(analysisModes[n].c_str(), is_selected)) {
-                cfg.analysisMode = static_cast<AnalysisMode>(n);
+    ImGui::SeparatorText("Display spectrum");
+    const int currentMode = static_cast<int>(cfg.analysisMode);
+    if (ImGui::BeginCombo("Band layout", analysisModes[currentMode].c_str())) {
+        for (int i = 0; i < static_cast<int>(analysisModes.size()); ++i) {
+            const bool selected = i == currentMode;
+            if (ImGui::Selectable(analysisModes[i].c_str(), selected)) {
+                cfg.analysisMode = static_cast<AnalysisMode>(i);
                 audioProcessor->updateAnalyzer();
             }
-
-            if (is_selected)
-                ImGui::SetItemDefaultFocus();
+            if (selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
-
-    int selectedFreqIdx = static_cast<int>(cfg.frequencyScale);
-    const std::string &frequencyPreview = frequencyScales[selectedFreqIdx];
-    if (ImGui::BeginCombo("Frequency Scale", frequencyPreview.c_str())) {
-        for (int n = 0; n < frequencyScales.size(); n++) {
-            const bool is_selected = (selectedFreqIdx == n);
-            if (ImGui::Selectable(frequencyScales[n].c_str(), is_selected)) {
-                cfg.frequencyScale = static_cast<FrequencyScale>(n);
+    const int currentScale = static_cast<int>(cfg.frequencyScale);
+    if (ImGui::BeginCombo("Frequency scale", frequencyScales[currentScale].c_str())) {
+        for (int i = 0; i < static_cast<int>(frequencyScales.size()); ++i) {
+            const bool selected = i == currentScale;
+            if (ImGui::Selectable(frequencyScales[i].c_str(), selected)) {
+                cfg.frequencyScale = static_cast<FrequencyScale>(i);
                 audioProcessor->updateAnalyzer();
             }
-
-            if (is_selected)
-                ImGui::SetItemDefaultFocus();
+            if (selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
-
-    bool linearAmplitudeScaling = cfg.linearAmplitudeScaling;
-    if (ImGui::Checkbox("Linear Amplitude Scaling", &linearAmplitudeScaling))
-        cfg.linearAmplitudeScaling = linearAmplitudeScaling;
-
-    bool interpolateMissingBands = cfg.interpolateMissingBands;
-    if (ImGui::Checkbox("Interpolate Missing Bands", &interpolateMissingBands))
-        cfg.interpolateMissingBands = interpolateMissingBands;
-
-    bool skipMissingBandsFromOutput = cfg.skipMissingBandsFromOutput;
-    if (ImGui::Checkbox("Skip Missing Bands from Output", &skipMissingBandsFromOutput))
-        cfg.skipMissingBandsFromOutput = skipMissingBandsFromOutput;
+    ImGui::SliderInt("Spectrum bins", &cfg.numBands, 16, 128);
+    ImGui::SliderScalar("Spectrum gain", ImGuiDataType_Double, &cfg.gain,
+                        &GainMin, &GainMax, "%.2fx");
+    ImGui::SliderScalar("Spectrum smoothing", ImGuiDataType_Double, &cfg.smoothing,
+                        &SmoothMin, &SmoothMax, "%.2f");
+    ImGui::Checkbox("Interpolate sparse logarithmic bins", &cfg.interpolateMissingBands);
 }
 
 void AudioVisualizerDesktop::addAudioSettings() {
-    ImGui::SeparatorText("Audio Settings");
-
-    static uint16_t numBandsMin = 1;
-    static uint16_t numBandsMax = 256;
-
-    ImGui::DragScalar("Number of Bands", ImGuiDataType_U16, &cfg.numBands, 1, &numBandsMin, &numBandsMax, "%d");
-
-    static double gainMin = 0.1;
-    static double gainMax = 10.0;
-    ImGui::DragScalar("Gain", ImGuiDataType_Double, &cfg.gain, 1, &gainMin, &gainMax, "%.1f");
-
-    static double smoothingMin = 0.0;
-    static double smoothingMax = 1.0;
-    ImGui::DragScalar("Smoothing", ImGuiDataType_Double, &cfg.smoothing, 1, &smoothingMin, &smoothingMax, "%.2f");
-
-    static double minFreqMin = 20.0;
-    static double minFreqMax = 1000.0;
-    static double maxFreqMax = 22000.0;
-
-    ImGui::DragScalar("Min Frequency", ImGuiDataType_Double, &cfg.minFreq, 1, &minFreqMin, &minFreqMax, "%.1f Hz");
-    ImGui::DragScalar("Max Frequency", ImGuiDataType_Double, &cfg.maxFreq, 1, &cfg.minFreq, &maxFreqMax, "%.1f Hz");
+    ImGui::SeparatorText("Frequency range");
+    ImGui::SliderScalar("Minimum", ImGuiDataType_Double, &cfg.minFreq,
+                        &MinFrequencyMin, &MinFrequencyMax, "%.0f Hz");
+    ImGui::SliderScalar("Maximum", ImGuiDataType_Double, &cfg.maxFreq,
+                        &cfg.minFreq, &MaxFrequencyMax, "%.0f Hz");
 }
 
 void AudioVisualizerDesktop::addDeviceSettings() {
-    ImGui::SeparatorText("Audio Device Settings");
+    ImGui::SeparatorText("Audio source");
     static auto devices = AudioRecorder::Recorder::listDevices();
     if (cfg.deviceName.empty()) {
-#if defined(_WIN32) || defined(__linux__)
         if (AudioRecorder::Recorder::isDefaultOutputLoopbackAvailable())
             cfg.deviceName = DEFAULT_LOOPBACK_DEVICE_NAME;
-        else
-#endif
-        if (!devices.empty())
-            cfg.deviceName = devices[0].name;
+        else if (!devices.empty())
+            cfg.deviceName = devices.front().name;
     }
 
-    if (ImGui::BeginCombo("Select Device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
-#if defined(_WIN32) || defined(__linux__)
-        // Special entry: follow the default output device as loopback
-        {
-            bool isSelected = (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME);
-            if (ImGui::Selectable((DEFAULT_LOOPBACK_DEVICE_NAME + "##default_loopback").c_str(), isSelected)) {
+    if (ImGui::BeginCombo("Capture device", cfg.deviceName.empty() ? "None" : cfg.deviceName.c_str())) {
+        if (AudioRecorder::Recorder::isDefaultOutputLoopbackAvailable()) {
+            const bool selected = cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME;
+            if (ImGui::Selectable(DEFAULT_LOOPBACK_DEVICE_NAME.c_str(), selected))
                 cfg.deviceName = DEFAULT_LOOPBACK_DEVICE_NAME;
-            }
-            if (isSelected)
-                ImGui::SetItemDefaultFocus();
+            if (selected) ImGui::SetItemDefaultFocus();
+            ImGui::Separator();
         }
-        ImGui::Separator();
-#endif
-
-        for (const auto &device: devices) {
-            std::string deviceNameWithId = device.name + "##" + std::to_string(device.index);
-            if (ImGui::Selectable(deviceNameWithId.c_str())) {
-                cfg.deviceName = device.name;
-            }
-
-            if (cfg.deviceName == device.name)
-                ImGui::SetItemDefaultFocus();
+        for (const auto &device : devices) {
+            const bool selected = cfg.deviceName == device.name;
+            const std::string label = device.name + "##" + std::to_string(device.index);
+            if (ImGui::Selectable(label.c_str(), selected)) cfg.deviceName = device.name;
+            if (selected) ImGui::SetItemDefaultFocus();
         }
-        ImGui::SetItemTooltip("You'll need to reconnect to apply the new device.");
         ImGui::EndCombo();
     }
-
     ImGui::SameLine();
-    if (ImGui::Button("Refresh Devices")) {
-        devices = AudioRecorder::Recorder::listDevices();
-    }
+    if (ImGui::Button("Refresh")) devices = AudioRecorder::Recorder::listDevices();
+    ImGui::Checkbox("Analyze continuously", &cfg.streamContinuously);
+    ImGui::SetItemTooltip("Required for audio-reactive modes inside non-audio scenes such as Boids or Starfield.");
 }
 
-void AudioVisualizerDesktop::addBeatDetectionSettings() {
-    ImGui::SeparatorText("Beat Detection Settings");
-    
-    // Algorithm selection
-    const char* algorithmNames[] = {"Energy", "Spectral Flux", "High Frequency Content", "Complex Domain"};
-    int currentAlgorithm = static_cast<int>(cfg.beatDetection.algorithm);
-    if (ImGui::Combo("Algorithm", &currentAlgorithm, algorithmNames, IM_ARRAYSIZE(algorithmNames))) {
-        cfg.beatDetection.algorithm = static_cast<BeatDetectionAlgorithm>(currentAlgorithm);
-        if (beatDetector) {
-            beatDetector->configure(cfg.beatDetection);
-        }
-    }
-    ImGui::SetItemTooltip("Choose the beat detection algorithm:\n"
-                         "- Energy: Simple energy-based detection (fastest)\n"
-                         "- Spectral Flux: Detects changes in frequency content\n"
-                         "- High Frequency Content: Focuses on high-frequency changes\n"
-                         "- Complex Domain: Combines multiple features (most accurate)");
-    
-    // Energy threshold (for Energy and Complex Domain algorithms)
-    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::Energy || 
-        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
-        if (ImGui::SliderFloat("Energy Threshold", &cfg.beatDetection.energyThreshold, 1.0f, 3.0f, "%.1f")) {
-            if (beatDetector) {
-                beatDetector->configure(cfg.beatDetection);
-            }
-        }
-        ImGui::SetItemTooltip("How much higher than average energy must be for a beat (higher = fewer beats)");
-    }
-    
-    // Spectral flux threshold (for Spectral Flux and Complex Domain algorithms)
-    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::SpectralFlux || 
-        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
-        if (ImGui::SliderFloat("Spectral Flux Threshold", &cfg.beatDetection.spectralFluxThreshold, 0.001f, 0.1f, "%.3f")) {
-            if (beatDetector) {
-                beatDetector->configure(cfg.beatDetection);
-            }
-        }
-        ImGui::SetItemTooltip("Threshold for spectral change detection (higher = fewer beats)");
-    }
-    
-    // HFC threshold (for HFC and Complex Domain algorithms)
-    if (cfg.beatDetection.algorithm == BeatDetectionAlgorithm::HighFrequencyContent || 
-        cfg.beatDetection.algorithm == BeatDetectionAlgorithm::ComplexDomain) {
-        if (ImGui::SliderFloat("HFC Threshold", &cfg.beatDetection.hfcThreshold, 0.1f, 2.0f, "%.1f")) {
-            if (beatDetector) {
-                beatDetector->configure(cfg.beatDetection);
-            }
-        }
-        ImGui::SetItemTooltip("High frequency content threshold (higher = fewer beats)");
-    }
-    
-    // Minimum time between beats
-    if (ImGui::SliderFloat("Min Time Between Beats", &cfg.beatDetection.minTimeBetweenBeats, 0.1f, 1.0f, "%.1f s")) {
-        if (beatDetector) {
-            beatDetector->configure(cfg.beatDetection);
-        }
-    }
-    ImGui::SetItemTooltip("Minimum time between detected beats in seconds");
-    
-    // Focus bands (number of low-frequency bands to analyze)
-    if (ImGui::SliderInt("Focus Bands", &cfg.beatDetection.focusBands, 4, 32)) {
-        if (beatDetector) {
-            beatDetector->configure(cfg.beatDetection);
-        }
-    }
-    ImGui::SetItemTooltip("Number of low-frequency bands to focus on for beat detection");
-    
-    // History size
-    if (ImGui::SliderInt("History Size", &cfg.beatDetection.historySize, 20, 100)) {
-        if (beatDetector) {
-            beatDetector->configure(cfg.beatDetection);
-        }
-    }
-    ImGui::SetItemTooltip("Number of frames to keep in history for averaging");
-    
-    // Reset button
-    if (ImGui::Button("Reset to Defaults")) {
-        cfg.beatDetection = BeatDetectionConfig{};
-        if (beatDetector) {
-            beatDetector->configure(cfg.beatDetection);
-        }
-    }
+void AudioVisualizerDesktop::addMusicAnalysisSettings() {
+    ImGui::SeparatorText("Musical intelligence");
+    ImGui::SliderScalar("Analysis input gain", ImGuiDataType_Double, &cfg.musicAnalysisGain,
+                        &AnalysisGainMin, &AnalysisGainMax, "%.2fx");
+    ImGui::SliderScalar("Transient sensitivity", ImGuiDataType_Double, &cfg.transientSensitivity,
+                        &SensitivityMin, &SensitivityMax, "%.2f");
+    ImGui::SliderScalar("Beat sensitivity", ImGuiDataType_Double, &cfg.beatSensitivity,
+                        &SensitivityMin, &SensitivityMax, "%.2f");
+    ImGui::SliderScalar("Waveform gain", ImGuiDataType_Double, &cfg.waveformGain,
+                        &WaveformGainMin, &WaveformGainMax, "%.2fx");
+    if (ImGui::Button("Reset analyzer history") && musicAnalyzer) musicAnalyzer->reset();
+
+    if (!hasLatestAnalysis) return;
+    const auto f = [&](AudioProtocol::Feature id) { return latestAnalysis.feature(id); };
+    ImGui::Spacing();
+    ImGui::Text("Tempo  %.1f BPM", f(AudioProtocol::Feature::Bpm));
     ImGui::SameLine();
-    
-    // Reset history button
-    if (ImGui::Button("Reset History")) {
-        if (beatDetector) {
-            beatDetector->reset();
-        }
-    }
-    ImGui::SetItemTooltip("Clear detection history (useful when switching songs)");
+    ImGui::TextDisabled("confidence %.0f%%", f(AudioProtocol::Feature::BeatConfidence) * 100.0f);
+    ImGui::ProgressBar(f(AudioProtocol::Feature::BeatPhase), ImVec2(-1, 5), "");
+    ImGui::Text("Kick %.2f   Snare %.2f   Hi-hat %.2f",
+                f(AudioProtocol::Feature::Kick), f(AudioProtocol::Feature::Snare),
+                f(AudioProtocol::Feature::Hihat));
+    ImGui::Text("Width %.2f   Balance %+.2f   Brightness %.2f",
+                f(AudioProtocol::Feature::StereoWidth), f(AudioProtocol::Feature::StereoBalance),
+                f(AudioProtocol::Feature::SpectralCentroid));
 }
 
-static bool showPreview = false;
+static bool showPreview = true;
 
 void AudioVisualizerDesktop::addVisualizer() {
-    ImGui::SeparatorText("Audio Spectrum");
-    ImGui::Checkbox("Live Preview (may cause stutters on the LED Matrix)", &showPreview);
+    ImGui::SeparatorText("Live analysis");
+    ImGui::Checkbox("Show diagnostics", &showPreview);
+    if (!showPreview || !hasLatestAnalysis || latestBands.empty()) return;
 
-    if (!showPreview)
-        return;
-
-    if (latestBands.empty()) {
-        ImGui::Text("Waiting for audio data...");
-        return;
-    }
-
-    if (ImPlot::BeginPlot("Spectrum", ImVec2(-1, 0),
-                          ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotAxisFlags_Lock |
-                          ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoMenus | ImPlotAxisFlags_NoDecorations)) {
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, cfg.numBands);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 1.0);
-
-        // Cache x-axis data to avoid recomputation
+    if (ImPlot::BeginPlot("##spectrum", ImVec2(-1, 190),
+                          ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotFlags_NoMenus)) {
+        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, static_cast<double>(latestBands.size()), ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 1.0, ImGuiCond_Always);
         static std::vector<float> x;
         if (x.size() != latestBands.size()) {
             x.resize(latestBands.size());
-            for (size_t i = 0; i < x.size(); ++i)
-                x[i] = static_cast<float>(i);
+            for (size_t i = 0; i < x.size(); ++i) x[i] = static_cast<float>(i);
         }
-
-        // Use indices to avoid frequent memory allocation
-        static std::vector<size_t> defaultIndices, yellowIndices, redIndices;
-        defaultIndices.clear();
-        yellowIndices.clear();
-        redIndices.clear();
-
-        for (size_t i = 0; i < latestBands.size(); ++i) {
-            if (latestBands[i] < 0.5f) {
-                defaultIndices.push_back(i);
-            } else if (latestBands[i] < 0.8f) {
-                yellowIndices.push_back(i);
-            } else {
-                redIndices.push_back(i);
-            }
-        }
-
-        // Render default bars
-        for (const auto idx: defaultIndices) {
-            ImPlot::PlotBars("Default", &x[idx], &latestBands[idx], 1, 1);
-        }
-
-        // Render yellow bars
-        ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 255, 0, 255)); // Yellow
-        for (const auto idx: yellowIndices) {
-            ImPlot::PlotBars("Yellow", &x[idx], &latestBands[idx], 1, 1);
-        }
-        ImPlot::PopStyleColor();
-
-        // Render red bars
-        ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(255, 0, 0, 255)); // Red
-        for (const auto idx: redIndices) {
-            ImPlot::PlotBars("Red", &x[idx], &latestBands[idx], 1, 1);
-        }
-        ImPlot::PopStyleColor();
-
+        ImPlot::PlotBars("Spectrum", x.data(), latestBands.data(), static_cast<int>(latestBands.size()), 0.9);
         ImPlot::EndPlot();
+    }
+
+    for (size_t i = 0; i < MusicalBandFeatures.size(); ++i) {
+        const float value = latestAnalysis.feature(MusicalBandFeatures[i]);
+        ImGui::TextUnformatted(MusicalBandNames[i]);
+        ImGui::SameLine(70.0f);
+        ImGui::ProgressBar(value, ImVec2(-1, 10), "");
     }
 }
 
-void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn,
-    ImGuiMemFreeFunc*free_fn, void **user_data) {
-    ImGui::SetCurrentContext(im_gui_context);
-    ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
+void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *context, ImGuiMemAllocFunc *alloc,
+                                               ImGuiMemFreeFunc *free, void **userData) {
+    ImGui::SetCurrentContext(context);
+    ImGui::GetAllocatorFunctions(alloc, free, userData);
 }
 
-std::optional<std::unique_ptr<UdpPacket> > AudioVisualizerDesktop::compute_next_packet(
+std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(
     const std::string sceneName) {
-    if (sceneName != "audio_spectrum" && sceneName != "audio_particles" &&
-        sceneName != "audio_pulse_tunnel")
-        return std::nullopt;
-
-    std::lock_guard<std::mutex> stateLock(stateMutex);
-    // Shared cached loopback index to avoid frequent WASAPI queries
-    static bool loggedLoopbackWarning = false;
-    static int cachedLoopbackIndex = -2; // -2 = unknown, -1 = not found, >=0 = device index
-    static std::chrono::steady_clock::time_point lastLoopbackCheck = std::chrono::steady_clock::time_point::min();
-    const auto loopbackRefreshInterval = std::chrono::milliseconds(2000);
+    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return std::nullopt;
+    std::lock_guard stateLock(stateMutex);
 
     if (cfg.deviceName != currentDeviceName) {
-        recorder->stopRecording();
+        if (recorder) recorder->stopRecording();
         currentDeviceName = cfg.deviceName;
+        if (musicAnalyzer) musicAnalyzer->reset();
     }
 
 #ifdef _WIN32
+    static int cachedLoopbackIndex = -2;
+    static auto lastLoopbackCheck = std::chrono::steady_clock::time_point::min();
     if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME) {
         const auto now = std::chrono::steady_clock::now();
-
-        if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > loopbackRefreshInterval) {
+        if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > std::chrono::seconds(2)) {
             cachedLoopbackIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
             lastLoopbackCheck = now;
         }
-
-        int expectedLoopback = cachedLoopbackIndex;
-        if (expectedLoopback == -1) {
-            if (!loggedLoopbackWarning) {
-                spdlog::warn("Default output loopback device not found. Make sure you're on Windows with WASAPI and have a default output device set.");
-                loggedLoopbackWarning = true;
-            }
-        } else {
-            loggedLoopbackWarning = false; // device available again
-        }
-
-        if (recorder->isRecording() && expectedLoopback >= 0 && expectedLoopback != recorder->getCurrentDeviceIndex()) {
-            spdlog::info("Default output device changed, switching loopback to device {}", expectedLoopback);
+        if (recorder->isRecording() && cachedLoopbackIndex >= 0 &&
+            recorder->getCurrentDeviceIndex() != cachedLoopbackIndex)
             recorder->stopRecording();
-        }
     }
 #endif
 
-    if (!recorder->isRecording())
-    {
-        int deviceIndex = -1;
-
-        if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME)
-        {
+    if (!recorder->isRecording()) {
+        bool started = false;
+        if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME) {
 #ifdef _WIN32
-            // Use cached WASAPI loopback index.
-            const auto now = std::chrono::steady_clock::now();
-            if (cachedLoopbackIndex == -2 || now - lastLoopbackCheck > loopbackRefreshInterval) {
-                cachedLoopbackIndex = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
-                lastLoopbackCheck = now;
-            }
-            deviceIndex = cachedLoopbackIndex;
-            if (deviceIndex == -1)
-            {
-                std::unique_lock lock(lastErrorMutex);
-                lastError = "No loopback device found for the default output device.";
-                return std::nullopt;
-            }
+            const int index = AudioRecorder::Recorder::getDefaultOutputLoopbackIndex();
+            started = index >= 0 && recorder->startRecording(index);
 #else
-            if (!recorder->startDefaultOutputLoopback())
-            {
-                std::unique_lock lock(lastErrorMutex);
-                lastError = "Desktop output capture failed. Install pulseaudio-utils (parec) and ensure PipeWire-Pulse is running.";
-                return std::nullopt;
-            }
+            started = recorder->startDefaultOutputLoopback();
 #endif
+        } else {
+            const auto devices = AudioRecorder::Recorder::listDevices();
+            const auto found = std::find_if(devices.begin(), devices.end(), [&](const auto &device) {
+                return device.name == cfg.deviceName;
+            });
+            started = found != devices.end() && recorder->startRecording(found->index);
         }
-        else
-        {
-            auto devices = AudioRecorder::Recorder::listDevices();
-            for (const auto &device : devices)
-            {
-                if (device.name == cfg.deviceName)
-                {
-                    deviceIndex = device.index;
-                    break;
-                }
-            }
-
-            if (deviceIndex == -1)
-            {
-                std::unique_lock lock(lastErrorMutex);
-                lastError = "Device not found: '" + cfg.deviceName + "'. Please select another device in the settings.";
-                return std::nullopt;
-            }
-        }
-
-        {
+        if (!started) {
             std::unique_lock lock(lastErrorMutex);
-            lastError.clear();
+            lastError = "Could not start audio capture for '" + cfg.deviceName + "'.";
+            return std::nullopt;
         }
-#ifdef _WIN32
-        recorder->startRecording(deviceIndex);
-#else
-        if (cfg.deviceName != DEFAULT_LOOPBACK_DEVICE_NAME)
-            recorder->startRecording(deviceIndex);
-#endif
+        std::unique_lock lock(lastErrorMutex);
+        lastError.clear();
     }
 
-    auto samplesOpt = recorder->getLastSamples();
-    if (!samplesOpt.has_value())
-        return std::nullopt;
+    const auto captured = recorder->getLastSamples();
+    if (!captured) return std::nullopt;
+    auto bands = audioProcessor->computeBands(captured->mono, captured->sampleRate);
+    if (bands.empty()) return std::nullopt;
+    auto analysis = musicAnalyzer->analyze(*captured, bands);
 
-    auto bands = audioProcessor->computeBands(samplesOpt.value(), recorder->getSampleRate());
-    if (bands.empty())
-        return std::nullopt;
-
-    if (showPreview)
-    {
-        std::unique_lock lock(latestBandsMutex);
-        latestBands = bands;
-    }
-    
-    // Perform beat detection on the processed bands
-    bool beat_detected_now = false;
-    if (beatDetector) {
-        beat_detected_now = beatDetector->detect_beat(bands);
-        if (beat_detected_now) {
-            std::lock_guard<std::mutex> lock(beat_mutex);
-            beat_detected = true;
-        }
-    }
-    
-    // Check and clear beat flag
-    bool send_beat_flag = false;
-    {
-        std::lock_guard<std::mutex> lock(beat_mutex);
-        send_beat_flag = beat_detected;
-        beat_detected = false; // Clear flag after reading
-    }
-
-    bool interpolatedLog = audioProcessor->getInterpolatedLog();
-    return std::make_unique<CompactAudioPacket>(bands, interpolatedLog, send_beat_flag);
+    latestBands = bands;
+    latestAnalysis = analysis;
+    hasLatestAnalysis = true;
+    return std::make_unique<MusicAnalysisPacket>(std::move(analysis));
 }

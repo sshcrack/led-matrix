@@ -1,26 +1,45 @@
 #pragma once
-#include <vector>
-#include <string>
+
 #include <atomic>
+#include <cstdint>
+#include <deque>
 #include <mutex>
 #include <optional>
-#include <deque>
+#include <string>
 #include <thread>
+#include <vector>
 #include <portaudio.h>
 
 #ifndef _WIN32
 #include <sys/types.h>
 #endif
 
-static constexpr size_t BUFFER_SIZE = 2048;
+// The music analyzer uses a long window for bass resolution, but advances in
+// small hops. Keeping a rolling window avoids the old bursty behaviour where
+// stale chunks were replayed after the UI/render thread fell behind.
 static constexpr size_t FFT_SIZE = 1024;
-static constexpr size_t FFT_HOP_SIZE = 256; // 5.8 ms at 44.1 kHz; retain overlap for responsive updates
+static constexpr size_t MUSIC_ANALYSIS_WINDOW_SIZE = 4096;
+static constexpr size_t FFT_HOP_SIZE = 256;
 
-// Sentinel device name for "follow the default output device" loopback mode
+// Sentinel device name for "follow the default output device" loopback mode.
 static const std::string DEFAULT_LOOPBACK_DEVICE_NAME = "Default Output Device (Loopback)";
 
 namespace AudioRecorder
 {
+    struct CapturedAudioFrame
+    {
+        std::vector<float> mono;
+        std::vector<float> left;
+        std::vector<float> right;
+        double sampleRate = 44100.0;
+        uint64_t sequence = 0;
+
+        [[nodiscard]] bool stereo() const
+        {
+            return !left.empty() && left.size() == right.size();
+        }
+    };
+
     class Recorder
     {
     public:
@@ -34,55 +53,47 @@ namespace AudioRecorder
         Recorder();
         ~Recorder();
 
-        // List all output devices
         static std::vector<DeviceInfo> listDevices();
-
-        // Start recording from selected PortAudio input device
         bool startRecording(int deviceIndex);
-
-        // Capture the current desktop output. On Windows this resolves a WASAPI
-        // loopback device; on Linux this records PipeWire/PulseAudio's default
-        // sink monitor through parec.
         bool startDefaultOutputLoopback();
         static bool isDefaultOutputLoopbackAvailable();
-
-        // Find the loopback device index corresponding to the current default output device.
-        // Returns -1 if not found or not on Windows/WASAPI.
         static int getDefaultOutputLoopbackIndex();
-
-        // Stop recording
         void stopRecording();
+        [[nodiscard]] bool isRecording() const;
+        [[nodiscard]] double getSampleRate() const;
+        [[nodiscard]] int getCurrentDeviceIndex() const { return currentDeviceIndex; }
 
-        // Is currently recording
-        bool isRecording() const;
-
-        // Get the current sample rate
-        double getSampleRate() const;
-
-        // Get the current device index being recorded from (-1 if not recording)
-        int getCurrentDeviceIndex() const { return currentDeviceIndex; }
-
-        std::optional<std::vector<float>> getLastSamples();
+        // Returns the newest rolling analysis window after at least one hop of
+        // fresh audio has arrived. No queued/stale audio is replayed.
+        std::optional<CapturedAudioFrame> getLastSamples();
 
     private:
+        struct StereoFrame
+        {
+            float left = 0.0f;
+            float right = 0.0f;
+        };
+
         std::atomic<bool> recording;
         int currentDeviceIndex;
         PaStream *stream;
+        int channelCount = 1;
 
 #ifndef _WIN32
         int loopbackPipeFd = -1;
         pid_t loopbackPid = -1;
         std::thread loopbackThread;
         std::atomic<bool> stopLoopbackThread{false};
-
         void linuxLoopbackReadLoop();
 #endif
 
         std::mutex audioBufferMutex;
-        std::deque<float> audioBuffer;
+        std::deque<StereoFrame> audioBuffer;
+        uint64_t capturedFrameSequence = 0;
+        uint64_t lastDeliveredSequence = 0;
 
         double sampleRate;
-        static constexpr size_t MAX_BUFFER_SIZE = 4096; // Small bounded rolling buffer; stale backlog is discarded
+        static constexpr size_t MAX_BUFFER_FRAMES = MUSIC_ANALYSIS_WINDOW_SIZE * 3;
 
         static int audioCallback(const void *inputBuffer, void *outputBuffer,
                                  unsigned long framesPerBuffer,

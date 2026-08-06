@@ -9,10 +9,10 @@ register_plugin(AudioVisualizer
         desktop/config.h
         desktop/AudioVisualizerDesktop.cpp
         desktop/AudioVisualizerDesktop.h
-        desktop/BeatDetector.cpp
-        desktop/BeatDetector.h
         desktop/record.cpp
         desktop/record.h
+        desktop/MusicAnalyzer.cpp
+        desktop/MusicAnalyzer.h
         desktop/udpBandsPacket.cpp
         desktop/udpBandsPacket.h
         desktop/AudioProcessor.h

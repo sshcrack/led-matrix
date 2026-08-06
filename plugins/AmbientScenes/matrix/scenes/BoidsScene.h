@@ -14,7 +14,9 @@ class BoidsScene final : public Scenes::Scene {
     std::chrono::steady_clock::time_point last_update_{};
     float simulation_accumulator_ = 0.0f;
     float audio_bass_ = 0.0f, audio_mids_ = 0.0f, audio_treble_ = 0.0f;
+    float audio_balance_ = 0.0f;
     uint64_t last_beat_counter_ = 0;
+    uint64_t last_drop_counter_ = 0;
 
     PropertyPointer<int> count_ = MAKE_PROPERTY("count", int, 48);
     PropertyPointer<float> speed_ = MAKE_PROPERTY("speed", float, 0.75f);
