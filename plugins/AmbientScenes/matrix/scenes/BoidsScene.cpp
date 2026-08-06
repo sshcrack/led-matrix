@@ -1,210 +1,133 @@
 #include "BoidsScene.h"
-#include <shared/matrix/utils/color.h>
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 
-namespace AmbientScenes {
-    BoidsScene::BoidsScene() : Scene() {
-    }
+namespace {
+constexpr float PI = 3.14159265358979323846f;
 
-    void BoidsScene::initialize(int width, int height) {
-        Scene::initialize(width, height);
-
-        flock.clear();
-        std::uniform_int_distribution<int> x_dist(0, matrix_width - 1);
-        std::uniform_int_distribution<int> y_dist(0, matrix_height - 1);
-        std::uniform_int_distribution<int> h_dist(0, 359);
-        for (int i = 0; i < num_boids->get(); i++) {
-            Boid b(x_dist(rng), y_dist(rng), rng);
-            
-            // Random color 
-            float h = h_dist(rng);
-            color::hsl_to_rgb(h, 1.0f, 0.5f, b.r, b.g, b.b);
-
-            flock.push_back(b);
-        }
-    }
-
-    bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
-        canvas->Clear();
-
-        run_boids();
-
-        for (auto& b : flock) {
-            b.position += b.velocity;
-            
-            // Draw
-            int px = (int)std::round(b.position.x);
-            int py = (int)std::round(b.position.y);
-            
-            if (px >= 0 && px < matrix_width && py >= 0 && py < matrix_height) {
-                if (use_random_colors->get()) {
-                    canvas->SetPixel(px, py, b.r, b.g, b.b);
-                } else {
-                    auto col = boid_color->get();
-                    canvas->SetPixel(px, py, col.r, col.g, col.b);
-                }
-            }
-        }
-
-        wait_until_next_frame();
-        return true;
-    }
-
-    void BoidsScene::run_boids() {
-        // Need to calculate flocking for all first, then apply
-        for (auto& b : flock) {
-            flock_boid(b);
-        }
-        for (auto& b : flock) {
-            b.velocity += b.acceleration;
-            b.velocity.limit(max_speed->get());
-            b.acceleration *= 0.0f; // Reset acceleration to 0 each cycle
-            edges(b);
-        }
-    }
-
-    void BoidsScene::flock_boid(Boid& boid) {
-        Vector2 sep = separate(boid);   // Separation
-        Vector2 ali = align(boid);      // Alignment
-        Vector2 coh = cohesion(boid);   // Cohesion
-
-        // Arbitrarily weight these forces
-        sep *= sep_weight->get();
-        ali *= ali_weight->get();
-        coh *= coh_weight->get();
-
-        // Add the force vectors to acceleration
-        boid.acceleration += sep;
-        boid.acceleration += ali;
-        boid.acceleration += coh;
-    }
-
-    void BoidsScene::edges(Boid& b) {
-        if (wraparound->get()) {
-            if (b.position.x > matrix_width) b.position.x = 0;
-            else if (b.position.x < 0) b.position.x = (float)matrix_width;
-
-            if (b.position.y > matrix_height) b.position.y = 0;
-            else if (b.position.y < 0) b.position.y = (float)matrix_height;
-        } else {
-            // Bounce
-            if (b.position.x >= matrix_width) {
-                b.position.x = (float)matrix_width - 1;
-                b.velocity.x *= -1;
-            } else if (b.position.x < 0) {
-                b.position.x = 0;
-                b.velocity.x *= -1;
-            }
-
-            if (b.position.y >= matrix_height) {
-                b.position.y = (float)matrix_height - 1;
-                b.velocity.y *= -1;
-            } else if (b.position.y < 0) {
-                b.position.y = 0;
-                b.velocity.y *= -1;
-            }
-        }
-    }
-
-    BoidsScene::Vector2 BoidsScene::separate(Boid& boid) {
-        float desiredseparation = sep_dist->get();
-        Vector2 steer(0, 0);
-        int count = 0;
-
-        for (auto& other : flock) {
-            float d = (boid.position - other.position).mag();
-            const float epsilon = 0.0001f; // Prevent division by zero
-            if ((d > 0) && (d < desiredseparation)) {
-                Vector2 diff = boid.position - other.position;
-                diff.normalize();
-                diff /= (d + epsilon);
-                steer += diff;
-                count++;
-            }
-        }
-        
-        if (count > 0) {
-            steer /= (float)count;
-            if (steer.magSq() > 0) {
-                steer.normalize();
-                steer *= max_speed->get();
-                steer -= boid.velocity;
-                steer.limit(max_force->get());
-            }
-        }
-        return steer;
-    }
-
-    BoidsScene::Vector2 BoidsScene::align(Boid& boid) {
-        float neighbordist = ali_dist->get();
-        Vector2 sum(0, 0);
-        int count = 0;
-
-        for (auto& other : flock) {
-            float d = (boid.position - other.position).mag();
-            if ((d > 0) && (d < neighbordist)) {
-                sum += other.velocity;
-                count++;
-            }
-        }
-        if (count > 0) {
-            sum /= (float)count;
-            sum.normalize();
-            sum *= max_speed->get();
-            Vector2 steer = sum - boid.velocity;
-            steer.limit(max_force->get());
-            return steer;
-        }
-        return Vector2(0, 0);
-    }
-
-    BoidsScene::Vector2 BoidsScene::cohesion(Boid& boid) {
-        float neighbordist = coh_dist->get();
-        Vector2 sum(0, 0);
-        int count = 0;
-
-        for (auto& other : flock) {
-            float d = (boid.position - other.position).mag();
-            if ((d > 0) && (d < neighbordist)) {
-                sum += other.position;
-                count++;
-            }
-        }
-        if (count > 0) {
-            sum /= (float)count;
-            
-            // steer towards the target
-            Vector2 desired = sum - boid.position;
-            desired.normalize();
-            desired *= max_speed->get();
-            Vector2 steer = desired - boid.velocity;
-            steer.limit(max_force->get());
-            return steer;
-        }
-        return Vector2(0, 0);
-    }
-
-    std::string BoidsScene::get_name() const {
-        return "boids";
-    }
-
-    void BoidsScene::register_properties() {
-        add_property(num_boids);
-        add_property(boid_color);
-        add_property(use_random_colors);
-        // We could register others, but these are fine to adjust
-        add_property(max_speed);
-        add_property(max_force);
-        add_property(sep_dist);
-        add_property(ali_dist);
-        add_property(coh_dist);
-        add_property(sep_weight);
-        add_property(ali_weight);
-        add_property(coh_weight);
-        add_property(wraparound); 
-    }
-
-    std::unique_ptr<Scenes::Scene> BoidsSceneWrapper::create() {
-        return std::make_unique<BoidsScene>();
-    }
+void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
+    h = std::fmod(h, 360.0f); if (h < 0) h += 360.0f;
+    const float c = v * s;
+    const float x = c * (1.0f - std::fabs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
+    const float m = v - c;
+    float rf=0,gf=0,bf=0;
+    if (h < 60) { rf=c; gf=x; } else if (h < 120) { rf=x; gf=c; }
+    else if (h < 180) { gf=c; bf=x; } else if (h < 240) { gf=x; bf=c; }
+    else if (h < 300) { rf=x; bf=c; } else { rf=c; bf=x; }
+    r = static_cast<uint8_t>((rf+m)*255); g = static_cast<uint8_t>((gf+m)*255); b = static_cast<uint8_t>((bf+m)*255);
 }
+}
+
+using namespace GenerativeScenes;
+
+void BoidsScene::register_properties() {
+    add_property(count_); add_property(speed_); add_property(perception_);
+    add_property(trail_fade_); add_property(rainbow_); add_property(color_);
+}
+
+void BoidsScene::initialize(int width, int height) {
+    Scene::initialize(width, height);
+    set_target_fps(60);
+    ensure_buffers();
+    reset_boids();
+    last_update_ = std::chrono::steady_clock::now();
+    simulation_accumulator_ = 0.0f;
+}
+
+void BoidsScene::ensure_buffers() {
+    framebuffer_.assign(static_cast<size_t>(matrix_width * matrix_height * 3), 0);
+}
+
+void BoidsScene::reset_boids() {
+    const int n = std::clamp(count_->get(), 8, 180);
+    std::uniform_real_distribution<float> px(0.0f, static_cast<float>(std::max(1, matrix_width - 1)));
+    std::uniform_real_distribution<float> py(0.0f, static_cast<float>(std::max(1, matrix_height - 1)));
+    std::uniform_real_distribution<float> angle(0.0f, 2.0f * PI);
+    boids_.clear(); boids_.reserve(n);
+    for (int i=0;i<n;++i) { const float a=angle(rng_); boids_.push_back({px(rng_),py(rng_),std::cos(a),std::sin(a)}); }
+}
+
+void BoidsScene::simulate_step() {
+    const float perception = std::clamp(perception_->get(), 4.0f, 48.0f);
+    const float p2 = perception * perception;
+    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f;
+    std::vector<Boid> next = boids_;
+
+    for (size_t i=0;i<boids_.size();++i) {
+        float ax=0, ay=0, cx=0, cy=0, sx=0, sy=0; int neighbours=0;
+        for (size_t j=0;j<boids_.size();++j) {
+            if (i==j) continue;
+            float dx=boids_[j].x-boids_[i].x, dy=boids_[j].y-boids_[i].y;
+            if (dx > matrix_width/2.0f) dx -= matrix_width; if (dx < -matrix_width/2.0f) dx += matrix_width;
+            if (dy > matrix_height/2.0f) dy -= matrix_height; if (dy < -matrix_height/2.0f) dy += matrix_height;
+            const float d2=dx*dx+dy*dy;
+            if (d2>0.01f && d2<p2) {
+                ax += boids_[j].vx; ay += boids_[j].vy;
+                cx += dx; cy += dy;
+                if (d2 < 36.0f) { sx -= dx / d2; sy -= dy / d2; }
+                ++neighbours;
+            }
+        }
+        float vx=boids_[i].vx, vy=boids_[i].vy;
+        if (neighbours>0) {
+            ax/=neighbours; ay/=neighbours; cx/=neighbours; cy/=neighbours;
+            vx += ax*0.035f + cx*0.0025f + sx*0.22f;
+            vy += ay*0.035f + cy*0.0025f + sy*0.22f;
+        }
+        const float len=std::sqrt(vx*vx+vy*vy);
+        if (len>0.001f) { vx=vx/len*max_speed; vy=vy/len*max_speed; }
+        next[i].vx=vx; next[i].vy=vy; next[i].x=boids_[i].x+vx; next[i].y=boids_[i].y+vy;
+        if (next[i].x<0) next[i].x+=matrix_width; if (next[i].x>=matrix_width) next[i].x-=matrix_width;
+        if (next[i].y<0) next[i].y+=matrix_height; if (next[i].y>=matrix_height) next[i].y-=matrix_height;
+    }
+    boids_.swap(next);
+
+}
+
+bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
+    const int wanted = std::clamp(count_->get(), 8, 180);
+    if (static_cast<int>(boids_.size()) != wanted) reset_boids();
+
+    const auto now = std::chrono::steady_clock::now();
+    float elapsed = std::chrono::duration<float>(now - last_update_).count();
+    last_update_ = now;
+    elapsed = std::clamp(elapsed, 0.0f, 0.20f);
+    simulation_accumulator_ += elapsed;
+
+    constexpr float simulation_step = 1.0f / 30.0f;
+    int steps = 0;
+    while (simulation_accumulator_ >= simulation_step && steps < 3) {
+        simulate_step();
+        simulation_accumulator_ -= simulation_step;
+        ++steps;
+    }
+    if (steps == 3 && simulation_accumulator_ >= simulation_step)
+        simulation_accumulator_ = std::fmod(simulation_accumulator_, simulation_step);
+
+    // Trail decay is based on elapsed real time, not the number of display frames.
+    const float configured_fade = std::clamp(trail_fade_->get(), 0.0f, 0.96f);
+    const float fade = std::pow(configured_fade, elapsed * 30.0f);
+    for (auto &v : framebuffer_) v = static_cast<uint8_t>(v * fade);
+
+    for (const auto &b: boids_) {
+        uint8_t r,g,bl;
+        if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,1.0f,r,g,bl);
+        else { const auto c=color_->get(); r=c.r; g=c.g; bl=c.b; }
+        const int x=static_cast<int>(std::round(b.x)), y=static_cast<int>(std::round(b.y));
+        for (int oy=-1;oy<=1;++oy) for (int ox=-1;ox<=1;++ox) {
+            const int px=(x+ox+matrix_width)%matrix_width, py=(y+oy+matrix_height)%matrix_height;
+            const float gain=(ox==0&&oy==0)?1.0f:0.35f; const size_t idx=static_cast<size_t>((py*matrix_width+px)*3);
+            framebuffer_[idx]=std::max(framebuffer_[idx],static_cast<uint8_t>(r*gain));
+            framebuffer_[idx+1]=std::max(framebuffer_[idx+1],static_cast<uint8_t>(g*gain));
+            framebuffer_[idx+2]=std::max(framebuffer_[idx+2],static_cast<uint8_t>(bl*gain));
+        }
+    }
+    for (int y=0;y<matrix_height;++y) for (int x=0;x<matrix_width;++x) {
+        const size_t idx=static_cast<size_t>((y*matrix_width+x)*3);
+        canvas->SetPixel(x,y,framebuffer_[idx],framebuffer_[idx+1],framebuffer_[idx+2]);
+    }
+    wait_until_next_frame(); return true;
+}
+
+std::unique_ptr<Scenes::Scene> BoidsSceneWrapper::create() { return std::make_unique<BoidsScene>(); }

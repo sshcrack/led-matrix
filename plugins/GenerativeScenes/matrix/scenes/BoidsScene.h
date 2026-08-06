@@ -1,6 +1,8 @@
 #pragma once
 
 #include "shared/matrix/Scene.h"
+#include "shared/matrix/plugin/main.h"
+#include <chrono>
 #include <random>
 #include <vector>
 
@@ -9,9 +11,11 @@ class BoidsScene final : public Scenes::Scene {
     struct Boid { float x, y, vx, vy; };
     std::vector<Boid> boids_;
     std::mt19937 rng_{std::random_device{}()};
+    std::chrono::steady_clock::time_point last_update_{};
+    float simulation_accumulator_ = 0.0f;
 
     PropertyPointer<int> count_ = MAKE_PROPERTY("count", int, 48);
-    PropertyPointer<float> speed_ = MAKE_PROPERTY("speed", float, 1.25f);
+    PropertyPointer<float> speed_ = MAKE_PROPERTY("speed", float, 0.75f);
     PropertyPointer<float> perception_ = MAKE_PROPERTY("perception", float, 18.0f);
     PropertyPointer<float> trail_fade_ = MAKE_PROPERTY("trail_fade", float, 0.78f);
     PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
@@ -20,6 +24,7 @@ class BoidsScene final : public Scenes::Scene {
     std::vector<uint8_t> framebuffer_;
     void reset_boids();
     void ensure_buffers();
+    void simulate_step();
 
 public:
     void initialize(int width, int height) override;
@@ -32,6 +37,7 @@ public:
 };
 
 class BoidsSceneWrapper final : public Plugins::SceneWrapper {
+public:
     std::unique_ptr<Scenes::Scene> create() override;
 };
 }

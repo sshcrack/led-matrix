@@ -4,6 +4,7 @@
 #include "shared/matrix/plugin/main.h"
 #include <vector>
 #include <random>
+#include <chrono>
 
 namespace AmbientScenes {
     class MetaBlobScene : public Scenes::Scene {
@@ -15,6 +16,7 @@ namespace AmbientScenes {
         PropertyPointer<float> color_speed = MAKE_PROPERTY("color_speed", float, 0.033f);
 
         float time;
+        std::chrono::steady_clock::time_point last_update;
 
         struct Blob {
             float x, y;

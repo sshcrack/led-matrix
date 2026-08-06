@@ -2,6 +2,7 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
+#include <chrono>
 
 namespace AmbientScenes {
     class NeonTunnelScene : public Scenes::Scene {
@@ -12,6 +13,7 @@ namespace AmbientScenes {
         PropertyPointer<float> hue_shift_speed = MAKE_PROPERTY("hue_shift_speed", float, 1.0f);
         
         float time_counter = 0.0f;
+        std::chrono::steady_clock::time_point last_update;
 
     public:
         explicit NeonTunnelScene();
