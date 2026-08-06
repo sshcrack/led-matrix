@@ -53,6 +53,9 @@ void AudioSpectrumScene::register_properties()
     add_property(circle_radius);
     add_property(rotate_visualization);
     add_property(rotation_speed);
+    add_property(sensitivity);
+    add_property(smoothing);
+    add_property(release_speed);
 }
 
 void AudioSpectrumScene::initialize_if_needed(int num_bands)
@@ -60,6 +63,7 @@ void AudioSpectrumScene::initialize_if_needed(int num_bands)
     if (peak_positions.size() != num_bands)
     {
         peak_positions.resize(num_bands, 0.0f);
+        smoothed_bands.resize(num_bands, 0.0f);
     }
 }
 
@@ -133,6 +137,7 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
     }
 
     auto frame_time = frameTimer.tick();
+    frame_dt = std::clamp(static_cast<float>(frame_time.deltaFrame.count()), 0.0f, 0.05f);
     auto audio_data = plugin->get_audio_data();
 
     if (audio_data.empty())
@@ -159,7 +164,7 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
     // Update rotation angle if rotation is enabled
     if (rotate_visualization->get())
     {
-        rotation_angle += 0.001f * rotation_speed->get();
+        rotation_angle += frame_dt * 0.55f * rotation_speed->get();
         if (rotation_angle > 2 * M_PI)
             rotation_angle -= 2 * M_PI;
     }
@@ -183,10 +188,16 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
     const int max_bands = width / total_width_per_band;
     const int num_bands = std::min(static_cast<int>(audio_data.size()), max_bands);
 
+    for (int i = 0; i < num_bands; ++i) {
+        const float target = std::clamp((audio_data[i] / 255.0f) * sensitivity->get(), 0.0f, 1.0f);
+        if (target >= smoothed_bands[i]) smoothed_bands[i] += (target - smoothed_bands[i]) * (1.0f - smoothing->get());
+        else smoothed_bands[i] = std::max(target, smoothed_bands[i] - release_speed->get() * frame_dt * 0.18f);
+    }
+
     // Update peak positions (falling dots)
     for (int i = 0; i < num_bands; i++)
     {
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = smoothed_bands[i];
 
         // Update peak positions (falling dots)
         if (band_value > peak_positions[i])
@@ -204,7 +215,7 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
     for (int i = 0; i < num_bands; i++)
     {
         int x;
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = smoothed_bands[i];
 
         // Calculate bar height based on band value
         int bar_height = static_cast<int>(band_value * height);
@@ -327,7 +338,7 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::FrameCanvas *ca
     // Update peak positions
     for (int i = 0; i < num_bands; i++)
     {
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = std::clamp((audio_data[i] / 255.0f) * sensitivity->get(), 0.0f, 1.0f);
 
         if (band_value > peak_positions[i])
         {
@@ -335,7 +346,7 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::FrameCanvas *ca
         }
         else if (falling_dots->get())
         {
-            peak_positions[i] -= dot_fall_speed->get() * 0.016f; // Assume 60 FPS
+            peak_positions[i] -= dot_fall_speed->get() * frame_dt; // Assume 60 FPS
             peak_positions[i] = std::max(0.0f, peak_positions[i]);
         }
     }
@@ -344,7 +355,7 @@ void AudioSpectrumScene::render_circle_visualization(rgb_matrix::FrameCanvas *ca
     for (int i = 0; i < num_bands; i++)
     {
         float angle = i * angle_step + rotation_angle;
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = std::clamp((audio_data[i] / 255.0f) * sensitivity->get(), 0.0f, 1.0f);
 
         // Draw expanding radial line from center outward
         float line_length = band_value * max_radius;
@@ -412,7 +423,7 @@ void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::FrameCanvas *ca
     // Update peak positions
     for (int i = 0; i < num_bands; i++)
     {
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = std::clamp((audio_data[i] / 255.0f) * sensitivity->get(), 0.0f, 1.0f);
 
         if (band_value > peak_positions[i])
         {
@@ -420,7 +431,7 @@ void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::FrameCanvas *ca
         }
         else if (falling_dots->get())
         {
-            peak_positions[i] -= dot_fall_speed->get() * 0.016f;
+            peak_positions[i] -= dot_fall_speed->get() * frame_dt;
             peak_positions[i] = std::max(0.0f, peak_positions[i]);
         }
     }
@@ -430,7 +441,7 @@ void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::FrameCanvas *ca
     {
         float angle = i * angle_step + rotation_angle;
         float base_radius = (static_cast<float>(i) / num_bands) * max_radius;
-        float band_value = audio_data[i] / 255.0f;
+        float band_value = std::clamp((audio_data[i] / 255.0f) * sensitivity->get(), 0.0f, 1.0f);
 
         // Draw line outward from spiral path
         float line_length = band_value * max_radius * 0.3f; // Shorter lines for spiral
