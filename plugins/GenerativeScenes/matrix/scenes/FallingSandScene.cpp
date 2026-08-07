@@ -49,8 +49,7 @@ void FallingSandScene::initialize(int width, int height) {
     Scene::initialize(width, height);
     set_target_fps(45);
     reset();
-    last_update_ = std::chrono::steady_clock::now();
-    simulation_accumulator_ = 0.0f;
+    simulation_.reset();
 }
 
 void FallingSandScene::reset() {
@@ -479,24 +478,9 @@ void FallingSandScene::draw(rgb_matrix::FrameCanvas *canvas) {
 bool FallingSandScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (cells_.size() != static_cast<size_t>(matrix_width * matrix_height)) reset();
 
-    const auto now = std::chrono::steady_clock::now();
-    float elapsed = std::chrono::duration<float>(now - last_update_).count();
-    last_update_ = now;
-    elapsed = std::clamp(elapsed, 0.0f, 0.25f);
-    simulation_accumulator_ += elapsed;
-
-    // Physics runs at a fixed real-world rate on both the Pi and desktop.
-    // 26 Hz keeps the simulation lively while remaining identical on the Pi and emulator.
-    constexpr float simulation_step = 1.0f / 26.0f;
-    int steps = 0;
-    while (simulation_accumulator_ >= simulation_step && steps < 3) {
-        simulate_step();
-        simulation_accumulator_ -= simulation_step;
-        ++steps;
-    }
-    // Never enter an expensive catch-up spiral after a temporary stall.
-    if (steps == 3 && simulation_accumulator_ >= simulation_step)
-        simulation_accumulator_ = std::fmod(simulation_accumulator_, simulation_step);
+    // Fixed-step physics uses the renderer-provided real-time delta, so the
+    // Pi and emulator advance identically even when their render FPS differs.
+    simulation_.advance(frame_context().delta_seconds, [&](double) { simulate_step(); });
 
     draw(canvas);
     wait_until_next_frame();

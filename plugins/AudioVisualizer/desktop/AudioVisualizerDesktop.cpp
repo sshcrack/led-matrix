@@ -34,12 +34,14 @@ constexpr std::array<AudioProtocol::Feature, 7> MusicalBandFeatures{
 bool isDedicatedAudioScene(const std::string &name) {
     return name == "audio_spectrum" || name == "audio_particles" ||
            name == "audio_pulse_tunnel" || name == "audio_aurora" ||
-           name == "audio_kaleidoscope";
+           name == "audio_kaleidoscope" || name == "music_director";
 }
 }
 
 AudioVisualizerDesktop::AudioVisualizerDesktop() = default;
-AudioVisualizerDesktop::~AudioVisualizerDesktop() = default;
+AudioVisualizerDesktop::~AudioVisualizerDesktop() {
+    if (recorder) recorder->stopRecording();
+}
 
 void AudioVisualizerDesktop::render() {
     if (!stateMutex.try_lock()) return;
@@ -165,7 +167,7 @@ void AudioVisualizerDesktop::addMusicAnalysisSettings() {
                         &SensitivityMin, &SensitivityMax, "%.2f");
     ImGui::SliderScalar("Waveform gain", ImGuiDataType_Double, &cfg.waveformGain,
                         &WaveformGainMin, &WaveformGainMax, "%.2fx");
-    if (ImGui::Button("Reset analyzer history") && musicAnalyzer) musicAnalyzer->reset();
+    if (ImGui::Button("Reset analyzer history") && musicAnalyzer) { musicAnalyzer->reset(); diagnosticHistory.clear(); }
 
     if (!hasLatestAnalysis) return;
     const auto f = [&](AudioProtocol::Feature id) { return latestAnalysis.feature(id); };
@@ -180,16 +182,26 @@ void AudioVisualizerDesktop::addMusicAnalysisSettings() {
     ImGui::Text("Width %.2f   Balance %+.2f   Brightness %.2f",
                 f(AudioProtocol::Feature::StereoWidth), f(AudioProtocol::Feature::StereoBalance),
                 f(AudioProtocol::Feature::SpectralCentroid));
+    ImGui::Text("Flux %.2f   Energy trend %+.2f   Drop %.2f   Section %.2f",
+                f(AudioProtocol::Feature::SpectralFlux), f(AudioProtocol::Feature::EnergyTrend),
+                f(AudioProtocol::Feature::Drop), f(AudioProtocol::Feature::SectionChange));
 }
 
 static bool showPreview = true;
 
 void AudioVisualizerDesktop::addVisualizer() {
-    ImGui::SeparatorText("Live analysis");
+    ImGui::SeparatorText("Live analyzer diagnostics");
     ImGui::Checkbox("Show diagnostics", &showPreview);
     if (!showPreview || !hasLatestAnalysis || latestBands.empty()) return;
 
-    if (ImPlot::BeginPlot("##spectrum", ImVec2(-1, 190),
+    if (recorder) {
+        ImGui::Text("Capture buffer  %zu frames  /  %.1f ms",
+                    recorder->getBufferedFrameCount(), recorder->getBufferedLatencyMs());
+        ImGui::SameLine();
+        ImGui::TextDisabled("hop %.1f ms", 1000.0 * FFT_HOP_SIZE / std::max(1.0, recorder->getSampleRate()));
+    }
+
+    if (ImPlot::BeginPlot("Spectrum##music_debug", ImVec2(-1, 180),
                           ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotFlags_NoMenus)) {
         ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, static_cast<double>(latestBands.size()), ImGuiCond_Always);
@@ -203,11 +215,59 @@ void AudioVisualizerDesktop::addVisualizer() {
         ImPlot::EndPlot();
     }
 
+    if (!latestAnalysis.waveform.empty() && ImPlot::BeginPlot("Waveform##music_debug", ImVec2(-1, 120),
+        ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotFlags_NoMenus)) {
+        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, static_cast<double>(latestAnalysis.waveform.size()), ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1.0, 1.0, ImGuiCond_Always);
+        ImPlot::PlotLine("Waveform", latestAnalysis.waveform.data(), static_cast<int>(latestAnalysis.waveform.size()));
+        ImPlot::EndPlot();
+    }
+
     for (size_t i = 0; i < MusicalBandFeatures.size(); ++i) {
         const float value = latestAnalysis.feature(MusicalBandFeatures[i]);
         ImGui::TextUnformatted(MusicalBandNames[i]);
         ImGui::SameLine(70.0f);
         ImGui::ProgressBar(value, ImVec2(-1, 10), "");
+    }
+
+    if (diagnosticHistory.size() >= 2) {
+        const size_t n = diagnosticHistory.size();
+        std::vector<float> x(n), loudness(n), kick(n), snare(n), hihat(n), onset(n), bpm(n), confidence(n), width(n), balance(n);
+        for (size_t i = 0; i < n; ++i) {
+            const auto &d = diagnosticHistory[i];
+            x[i] = d.time; loudness[i] = d.loudness; kick[i] = d.kick; snare[i] = d.snare;
+            hihat[i] = d.hihat; onset[i] = d.onset; bpm[i] = d.bpm; confidence[i] = d.beatConfidence;
+            width[i] = d.stereoWidth; balance[i] = d.stereoBalance;
+        }
+
+        const double xmin = x.front(), xmax = std::max<double>(x.back(), x.front() + 0.001f);
+        if (ImPlot::BeginPlot("Dynamics / transients##music_debug", ImVec2(-1, 160), ImPlotFlags_NoMenus)) {
+            ImPlot::SetupAxes("seconds", "strength", ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxisLimits(ImAxis_X1, xmin, xmax, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 1.05, ImGuiCond_Always);
+            ImPlot::PlotLine("Loudness", x.data(), loudness.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Kick", x.data(), kick.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Snare", x.data(), snare.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Hi-hat", x.data(), hihat.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Onset", x.data(), onset.data(), static_cast<int>(n));
+            ImPlot::EndPlot();
+        }
+        if (ImPlot::BeginPlot("Tempo tracking##music_debug", ImVec2(-1, 145), ImPlotFlags_NoMenus)) {
+            ImPlot::SetupAxes("seconds", "BPM", ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxisLimits(ImAxis_X1, xmin, xmax, ImGuiCond_Always);
+            ImPlot::PlotLine("BPM", x.data(), bpm.data(), static_cast<int>(n));
+            ImPlot::EndPlot();
+        }
+        if (ImPlot::BeginPlot("Stereo field##music_debug", ImVec2(-1, 145), ImPlotFlags_NoMenus)) {
+            ImPlot::SetupAxes("seconds", nullptr, ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxisLimits(ImAxis_X1, xmin, xmax, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.05, 1.05, ImGuiCond_Always);
+            ImPlot::PlotLine("Balance", x.data(), balance.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Width", x.data(), width.data(), static_cast<int>(n));
+            ImPlot::EndPlot();
+        }
+        ImGui::ProgressBar(latestAnalysis.feature(AudioProtocol::Feature::BeatConfidence), ImVec2(-1, 8), "beat confidence");
     }
 }
 
@@ -226,6 +286,7 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
         if (recorder) recorder->stopRecording();
         currentDeviceName = cfg.deviceName;
         if (musicAnalyzer) musicAnalyzer->reset();
+        diagnosticHistory.clear();
     }
 
 #ifdef _WIN32
@@ -277,5 +338,18 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
     latestBands = bands;
     latestAnalysis = analysis;
     hasLatestAnalysis = true;
+    DiagnosticSample sample;
+    sample.time = static_cast<float>(analysis.timestamp_ms) / 1000.0f;
+    sample.loudness = analysis.feature(AudioProtocol::Feature::LoudnessFast);
+    sample.kick = analysis.feature(AudioProtocol::Feature::Kick);
+    sample.snare = analysis.feature(AudioProtocol::Feature::Snare);
+    sample.hihat = analysis.feature(AudioProtocol::Feature::Hihat);
+    sample.onset = analysis.feature(AudioProtocol::Feature::OnsetStrength);
+    sample.bpm = analysis.feature(AudioProtocol::Feature::Bpm);
+    sample.beatConfidence = analysis.feature(AudioProtocol::Feature::BeatConfidence);
+    sample.stereoWidth = analysis.feature(AudioProtocol::Feature::StereoWidth);
+    sample.stereoBalance = analysis.feature(AudioProtocol::Feature::StereoBalance);
+    diagnosticHistory.push_back(sample);
+    while (diagnosticHistory.size() > MaxDiagnosticHistory) diagnosticHistory.pop_front();
     return std::make_unique<MusicAnalysisPacket>(std::move(analysis));
 }

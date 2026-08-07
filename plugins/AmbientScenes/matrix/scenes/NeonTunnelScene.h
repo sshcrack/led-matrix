@@ -24,6 +24,7 @@ namespace AmbientScenes {
         explicit NeonTunnelScene();
         ~NeonTunnelScene() override = default;
 
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
         void register_properties() override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         void initialize(int width, int height) override;

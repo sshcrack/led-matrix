@@ -2,7 +2,6 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <chrono>
 #include <random>
 #include <vector>
 
@@ -11,8 +10,7 @@ class BoidsScene final : public Scenes::Scene {
     struct Boid { float x, y, vx, vy; };
     std::vector<Boid> boids_;
     std::mt19937 rng_{std::random_device{}()};
-    std::chrono::steady_clock::time_point last_update_{};
-    float simulation_accumulator_ = 0.0f;
+    Scenes::FixedStepAccumulator simulation_{30.0, 3};
     float audio_bass_ = 0.0f, audio_mids_ = 0.0f, audio_treble_ = 0.0f;
     float audio_balance_ = 0.0f;
     uint64_t last_beat_counter_ = 0;
@@ -38,6 +36,7 @@ public:
     void register_properties() override;
     [[nodiscard]] std::string get_name() const override { return "boids"; }
     [[nodiscard]] std::string get_category() const override { return "Generative"; }
+    Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; caps.deterministic_preview = true; return caps; }
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 6; }
 };

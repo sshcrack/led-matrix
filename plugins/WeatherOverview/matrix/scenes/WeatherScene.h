@@ -241,6 +241,12 @@ namespace Scenes {
         int get_default_weight() override {
             return 6;
         }
+
+        SceneCapabilities get_capabilities() const override {
+            auto caps = Scene::get_capabilities();
+            caps.requires_network = true;
+            return caps;
+        }
     };
 
     class WeatherSceneWrapper final : public Plugins::SceneWrapper {

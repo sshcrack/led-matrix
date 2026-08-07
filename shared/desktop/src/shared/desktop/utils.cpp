@@ -9,6 +9,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <commdlg.h>
 #else
 #include <fcntl.h>
 #include <signal.h>
@@ -185,4 +186,46 @@ std::string run_command_and_get_output(const std::string& cmd) {
     pclose(pipe);
 #endif
     return result;
+}
+
+namespace {
+inline std::string trim_whitespace(std::string s) {
+    s.erase(0, s.find_first_not_of(" \t\r\n"));
+    s.erase(s.find_last_not_of(" \t\r\n") + 1);
+    return s;
+}
+} // anonymous namespace
+
+std::string open_file_dialog(const std::string& title) {
+#ifdef _WIN32
+    char buffer[MAX_PATH] = {};
+    OPENFILENAMEA ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.lpstrTitle = title.c_str();
+    ofn.lpstrFilter = "All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = buffer;
+    ofn.nMaxFile = sizeof(buffer);
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+    if (GetOpenFileNameA(&ofn))
+        return std::string(buffer);
+    return "";
+#else
+    // Escape the title for the shell
+    std::string quotedTitle = title;
+    {
+        std::size_t pos = 0;
+        while ((pos = quotedTitle.find('"', pos)) != std::string::npos) {
+            quotedTitle.replace(pos, 1, "\\\"");
+            pos += 2;
+        }
+    }
+    std::string zenity = "zenity --file-selection --title=\"" + quotedTitle + "\" 2>/dev/null";
+    std::string result = trim_whitespace(run_command_and_get_output(zenity));
+    if (!result.empty())
+        return result;
+
+    std::string kdialog = "kdialog --getopenfilename . --title=\"" + quotedTitle + "\" 2>/dev/null";
+    result = trim_whitespace(run_command_and_get_output(kdialog));
+    return result;
+#endif
 }

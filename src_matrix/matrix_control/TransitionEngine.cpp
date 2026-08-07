@@ -2,6 +2,7 @@
 
 #include "spdlog/spdlog.h"
 #include "shared/matrix/utils/shared.h"
+#include "shared/matrix/diagnostics.h"
 
 using namespace spdlog;
 
@@ -87,8 +88,24 @@ void TransitionEngine::render_transition_phase(
     tmillis_t last_current_render_ms = transition_start_ms;
     tmillis_t last_next_render_ms = transition_start_ms;
 
-    auto current_continue = scene->render(first_offscreen_canvas);
-    auto next_continue = next_scene->render(second_offscreen_canvas);
+    auto safe_render = [](const std::shared_ptr<Scenes::Scene> &candidate, FrameCanvas *canvas) {
+        try {
+            return candidate->render_frame(canvas);
+        } catch (const std::exception &e) {
+            Diagnostics::RuntimeDiagnostics::instance().record_scene_error(candidate->get_name(), e.what());
+            spdlog::error("Scene '{}' threw during transition: {}", candidate->get_name(), e.what());
+            canvas->Clear();
+            return false;
+        } catch (...) {
+            Diagnostics::RuntimeDiagnostics::instance().record_scene_error(candidate->get_name(), "unknown exception");
+            spdlog::error("Scene '{}' threw an unknown exception during transition", candidate->get_name());
+            canvas->Clear();
+            return false;
+        }
+    };
+
+    auto current_continue = safe_render(scene, first_offscreen_canvas);
+    auto next_continue = safe_render(next_scene, second_offscreen_canvas);
 
     while (true) {
         const auto now_ms = time_source_->now_ms();
@@ -114,12 +131,12 @@ void TransitionEngine::render_transition_phase(
         const auto next_visibility = alpha;
 
         if ((now_ms - last_current_render_ms) >= render_interval_ms_from_visibility(current_visibility)) {
-            current_continue = scene->render(first_offscreen_canvas);
+            current_continue = safe_render(scene, first_offscreen_canvas);
             last_current_render_ms = now_ms;
         }
 
         if ((now_ms - last_next_render_ms) >= render_interval_ms_from_visibility(next_visibility)) {
-            next_continue = next_scene->render(second_offscreen_canvas);
+            next_continue = safe_render(next_scene, second_offscreen_canvas);
             last_next_render_ms = now_ms;
         }
 

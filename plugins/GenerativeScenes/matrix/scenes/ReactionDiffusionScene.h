@@ -22,6 +22,7 @@ namespace GenerativeScenes {
 
         std::string get_name() const override { return "reaction_diffusion"; }
         std::string get_category() const override { return "Generative"; }
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
         tmillis_t get_default_duration() override { return 60000; }
         int get_default_weight() override { return 3; }
 

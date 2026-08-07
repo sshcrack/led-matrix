@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import DurationInput from '~/components/ui/duration-input'
-import { titleCase } from '~/lib/utils'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property, TypeId } from '~/apiTypes/list_scenes'
 
 interface NumberPropertyProps {
@@ -49,10 +49,11 @@ export default function NumberProperty({ property, value, onChange }: NumberProp
     return (
       <DurationInput
         id={`property-${property.name}`}
-        label={titleCase(property.name)}
+        label={propertyLabel(property)}
         value={numericValue}
         onChange={onChange}
-        presets={presets}
+        presets={(property.additional?.presets as number[] | undefined) ?? presets}
+        description={propertyDescription(property)}
       />
     )
   }
@@ -70,8 +71,11 @@ function DraftNumberInput({ property, value, onChange }: NumberPropertyProps) {
   const [draft, setDraft] = useState(String(value))
   const [error, setError] = useState<string | null>(null)
   const focused = useRef(false)
-  const min = getMin(property.type_id)
-  const max = getMax(property.type_id)
+  const min = typeof property.additional?.min === 'number' ? property.additional.min : getMin(property.type_id)
+  const max = typeof property.additional?.max === 'number' ? property.additional.max : getMax(property.type_id)
+  const step = typeof property.additional?.step === 'number' ? property.additional.step : getStep(property.type_id)
+  const description = propertyDescription(property)
+  const unit = property.additional?.unit
 
   useEffect(() => {
     if (!focused.current) setDraft(String(value))
@@ -102,7 +106,7 @@ function DraftNumberInput({ property, value, onChange }: NumberPropertyProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3">
-        <Label htmlFor={`property-${property.name}`}>{titleCase(property.name)}</Label>
+        <Label htmlFor={`property-${property.name}`}>{propertyLabel(property)}</Label>
         {(min !== undefined || max !== undefined) && (
           <span className="text-[11px] text-muted-foreground">
             {min !== undefined ? min : '−∞'} – {max !== undefined ? max : '∞'}
@@ -115,7 +119,7 @@ function DraftNumberInput({ property, value, onChange }: NumberPropertyProps) {
         inputMode={isIntegerType(property.type_id) ? 'numeric' : 'decimal'}
         value={draft}
         aria-invalid={Boolean(error)}
-        step={getStep(property.type_id)}
+        step={step}
         className={error ? 'border-destructive focus-visible:ring-destructive' : undefined}
         onFocus={() => { focused.current = true }}
         onChange={(event) => {
@@ -138,7 +142,8 @@ function DraftNumberInput({ property, value, onChange }: NumberPropertyProps) {
           }
         }}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? <p className="text-xs text-destructive">{error}</p> : description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+      {unit && <p className="text-[11px] text-muted-foreground">Unit: {unit}</p>}
     </div>
   )
 }

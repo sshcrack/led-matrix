@@ -16,7 +16,8 @@ SceneScheduler::build_weighted_scenes(
             continue;
         if (item->get_name() == exclude_name)
             continue;
-        if (item->needs_desktop_app() && !is_desktop_connected)
+        const auto capabilities = item->get_capabilities();
+        if (capabilities.requires_desktop && !is_desktop_connected)
             continue;
         weighted_scenes.emplace_back(item->get_weight(), item);
     }

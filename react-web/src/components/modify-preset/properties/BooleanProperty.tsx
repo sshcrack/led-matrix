@@ -1,6 +1,6 @@
 import { Switch } from '~/components/ui/switch'
 import { Label } from '~/components/ui/label'
-import { titleCase } from '~/lib/utils'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface BooleanPropertyProps {
@@ -11,8 +11,11 @@ interface BooleanPropertyProps {
 
 export default function BooleanProperty({ property, value, onChange }: BooleanPropertyProps) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <Label className="cursor-pointer">{titleCase(property.name)}</Label>
+    <div className="flex items-start justify-between gap-4 py-1">
+      <div className="space-y-1">
+        <Label className="cursor-pointer">{propertyLabel(property)}</Label>
+        {propertyDescription(property) && <p className="text-xs leading-relaxed text-muted-foreground">{propertyDescription(property)}</p>}
+      </div>
       <Switch checked={!!value} onCheckedChange={onChange} />
     </div>
   )

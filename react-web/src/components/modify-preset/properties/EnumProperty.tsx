@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Label } from '~/components/ui/label'
-import { titleCase } from '~/lib/utils'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property } from '~/apiTypes/list_scenes'
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -48,7 +48,8 @@ export default function EnumProperty({ property, value, onChange }: EnumProperty
 
   return (
     <div className="space-y-1.5">
-      <Label>{titleCase(property.name)}</Label>
+      <Label>{propertyLabel(property)}</Label>
+      {propertyDescription(property) && <p className="text-xs leading-relaxed text-muted-foreground">{propertyDescription(property)}</p>}
       <Select value={normalizedValue} onValueChange={onChange}>
         <SelectTrigger>
           <SelectValue placeholder="Select..." />

@@ -17,6 +17,15 @@ public:
   void register_properties() override;
   void after_render_stop() override;
   bool needs_desktop_app() override { return true; }
+  SceneCapabilities get_capabilities() const override {
+    auto caps = Scene::get_capabilities();
+    caps.requires_network = true;
+    caps.interactive = true;
+    caps.previewable = false;
+    caps.deterministic_preview = false;
+    caps.music_director_eligible = false;
+    return caps;
+  }
   tmillis_t get_default_duration() override { return 210000; }
   int get_default_weight() override { return 5; }
 
