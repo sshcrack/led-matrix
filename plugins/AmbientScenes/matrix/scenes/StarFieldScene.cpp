@@ -18,7 +18,7 @@ namespace AmbientScenes {
         z -= amount;
     }
 
-    StarFieldScene::StarFieldScene() : Scene(), gen(rd()), dis(0.0, 1.0) {}
+    StarFieldScene::StarFieldScene() : Scene() {}
 
     void StarFieldScene::initialize(int width, int height) {
         Scene::initialize(width, height);
@@ -31,7 +31,6 @@ namespace AmbientScenes {
             star.previous_z = std::min(depth, star.z + speed->get());
         }
         time = 0.0f;
-        last_update = std::chrono::steady_clock::now();
     }
 
     void StarFieldScene::hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -68,9 +67,7 @@ namespace AmbientScenes {
 
     bool StarFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         canvas->Clear();
-        const auto now = std::chrono::steady_clock::now();
-        const float dt = std::min(0.10f, std::chrono::duration<float>(now - last_update).count());
-        last_update = now;
+        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
         time += dt;
         if (audio_reactive->get()) {
             const auto audio = AudioState::snapshot();
@@ -146,6 +143,16 @@ namespace AmbientScenes {
     std::string StarFieldScene::get_name() const { return "starfield"; }
 
     void StarFieldScene::register_properties() {
+        num_stars->label("Star count").description("Number of stars flying through the field.").group("Field");
+        speed->label("Flight speed").description("Base forward travel speed.").group("Motion").step(0.005);
+        max_depth->label("Depth").description("Depth of the star volume before stars reach the viewer.").group("Field").step(0.1);
+        streak_length->label("Streak length").description("Length of motion trails behind fast stars.").group("Appearance").step(0.05);
+        enable_twinkle->label("Twinkle").description("Add subtle independent brightness variation.").group("Appearance");
+        colored_stars->label("Colored stars").description("Use cool blue/cyan tint variation instead of pure white.").group("Appearance");
+        drifting_center->label("Drifting vanishing point").description("Slowly move the flight center for a less mechanical camera path.").group("Motion");
+        audio_reactive->label("Audio reactive").description("Let bass accelerate the flight, beats punch forward and treble brighten stars.").group("Audio");
+        audio_strength->label("Audio strength").description("Overall amount of music-driven modulation.").group("Audio").visible_if("audio_reactive", true).step(0.05);
+
         add_property(num_stars);
         add_property(speed);
         add_property(enable_twinkle);

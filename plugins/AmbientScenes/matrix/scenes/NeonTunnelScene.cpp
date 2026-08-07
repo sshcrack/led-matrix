@@ -28,13 +28,10 @@ namespace AmbientScenes {
     void NeonTunnelScene::initialize(int width, int height) {
         Scene::initialize(width, height);
         time_counter = 0.0f;
-        last_update = std::chrono::steady_clock::now();
     }
 
     bool NeonTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-        const auto now = std::chrono::steady_clock::now();
-        const float dt = std::min(0.10f, std::chrono::duration<float>(now - last_update).count());
-        last_update = now;
+        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
         time_counter += dt;
 
         if (audio_reactive->get()) {
@@ -144,6 +141,13 @@ namespace AmbientScenes {
     }
 
     void NeonTunnelScene::register_properties() {
+        speed->label("Flight speed").description("Base forward speed through the tunnel.").group("Motion").step(0.1);
+        distance_factor->label("Depth density").description("Controls perspective spacing between tunnel rings.").group("Geometry").step(5.0);
+        angle_factor->label("Radial ribs").description("Number of radial divisions around the tunnel.").group("Geometry").step(1.0);
+        hue_shift_speed->label("Color drift").description("Speed of the neon palette rotation.").group("Appearance").step(0.1);
+        audio_reactive->label("Audio reactive").description("Let bass drive forward motion, mids bend ribs and treble add detail.").group("Audio");
+        audio_strength->label("Audio strength").description("Overall amount of music-driven modulation.").group("Audio").visible_if("audio_reactive", true).step(0.05);
+
         add_property(speed);
         add_property(distance_factor);
         add_property(angle_factor);

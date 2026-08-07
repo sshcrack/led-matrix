@@ -54,14 +54,14 @@ class FallingSandScene final : public Scenes::Scene {
     uint32_t flash_started_ = 0;
     float flash_x_ = 0.0f, flash_y_ = 0.0f, flash_radius_ = 0.0f;
 
-    PropertyPointer<int> emitters_ = MAKE_PROPERTY("emitters", int, 3);
-    PropertyPointer<int> spawn_rate_ = MAKE_PROPERTY("spawn_rate", int, 1);
+    PropertyPointer<int> emitters_ = MAKE_PROPERTY_MINMAX("emitters", int, 3, 1, 16);
+    PropertyPointer<int> spawn_rate_ = MAKE_PROPERTY_MINMAX("spawn_rate", int, 1, 1, 12);
     PropertyPointer<bool> water_ = MAKE_PROPERTY("water", bool, true);
-    PropertyPointer<int> reset_fill_percent_ = MAKE_PROPERTY("reset_fill_percent", int, 72);
+    PropertyPointer<int> reset_fill_percent_ = MAKE_PROPERTY_MINMAX("reset_fill_percent", int, 72, 25, 95);
     PropertyPointer<bool> wind_enabled_ = MAKE_PROPERTY("wind", bool, true);
-    PropertyPointer<int> wind_strength_ = MAKE_PROPERTY("wind_strength", int, 55);
+    PropertyPointer<int> wind_strength_ = MAKE_PROPERTY_MINMAX("wind_strength", int, 55, 0, 100);
     PropertyPointer<bool> explosions_enabled_ = MAKE_PROPERTY("explosions", bool, true);
-    PropertyPointer<int> explosion_frequency_ = MAKE_PROPERTY("explosion_frequency", int, 10);
+    PropertyPointer<int> explosion_frequency_ = MAKE_PROPERTY_MINMAX("explosion_frequency", int, 10, 0, 100);
 
     int index(int x, int y) const { return y * matrix_width + x; }
     bool inside(int x, int y) const { return x >= 0 && y >= 0 && x < matrix_width && y < matrix_height; }
