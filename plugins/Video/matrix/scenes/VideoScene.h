@@ -25,6 +25,7 @@ public:
   bool render(rgb_matrix::FrameCanvas *canvas) override;
 
   string get_name() const override;
+  std::string get_category() const override { return "Media"; }
 
   void register_properties() override;
 

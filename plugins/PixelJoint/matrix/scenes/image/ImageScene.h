@@ -102,6 +102,13 @@ public:
 
     [[nodiscard]] string get_name() const override;
 
+    std::string get_category() const override { return "Images"; }
+    Scenes::SceneCapabilities get_capabilities() const override {
+        auto caps = Scenes::Scene::get_capabilities();
+        caps.requires_network = true;
+        return caps;
+    }
+
     void register_properties() override {
         add_property(image_display_duration);
         add_property(json_providers);

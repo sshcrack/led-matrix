@@ -14,6 +14,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
+        std::string get_category() const override { return "Generative"; }
 
         void register_properties() override {}
 

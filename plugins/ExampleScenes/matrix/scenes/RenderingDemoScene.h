@@ -48,6 +48,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "rendering_demo"; }
+        std::string get_category() const override { return "Examples"; }
         void register_properties() override;
         void initialize(int width, int height) override;
         
