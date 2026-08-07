@@ -50,6 +50,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "property_demo"; }
+        std::string get_category() const override { return "Examples"; }
         void register_properties() override;
         
         tmillis_t get_default_duration() override { return 15000; }

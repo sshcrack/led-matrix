@@ -17,6 +17,7 @@ namespace Scenes {
         ~ColorPulseScene() override = default;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
+        std::string get_category() const override { return "Examples"; }
         void register_properties() override;
 
         tmillis_t get_default_duration() override;
