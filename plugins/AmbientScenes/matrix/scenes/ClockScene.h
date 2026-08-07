@@ -56,6 +56,7 @@ public:
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     void initialize(int width, int height) override;
     [[nodiscard]] std::string get_name() const override;
+    [[nodiscard]] std::string get_category() const override { return "Ambient"; }
     void register_properties() override;
 
     tmillis_t get_default_duration() override {

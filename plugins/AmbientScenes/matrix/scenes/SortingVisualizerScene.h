@@ -105,6 +105,7 @@ namespace AmbientScenes {
         tmillis_t get_default_duration() override { return 30000; }
         int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;
+        [[nodiscard]] std::string get_category() const override { return "Ambient"; }
     };
 
     class SortingVisualizerSceneWrapper : public Plugins::SceneWrapper {

@@ -30,6 +30,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
+        std::string get_category() const override { return "Generative"; }
 
         void register_properties() override {}
 

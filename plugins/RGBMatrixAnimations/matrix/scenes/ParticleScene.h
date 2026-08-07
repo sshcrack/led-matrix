@@ -91,6 +91,8 @@ namespace Scenes {
 
         void initialize(int width, int height) override;
 
+        std::string get_category() const override { return "Particles"; }
+
         virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
         {
 
