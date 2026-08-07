@@ -4,21 +4,19 @@
 #include "shared/matrix/plugin/main.h"
 #include <vector>
 #include <random>
-#include <chrono>
 
 namespace AmbientScenes {
     class MetaBlobScene : public Scenes::Scene {
     private:
-        PropertyPointer<int> num_blobs = MAKE_PROPERTY("num_blobs", int, 10);
-        PropertyPointer<float> threshold = MAKE_PROPERTY("threshold", float, 0.0003f);
-        PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.25f);
-        PropertyPointer<float> move_range = MAKE_PROPERTY("move_range", float, 0.5f);
+        PropertyPointer<int> num_blobs = MAKE_PROPERTY_MINMAX("num_blobs", int, 10, 1, 24);
+        PropertyPointer<float> threshold = MAKE_PROPERTY_MINMAX("threshold", float, 0.0003f, 0.00003f, 0.0012f);
+        PropertyPointer<float> speed = MAKE_PROPERTY_MINMAX("speed", float, 0.25f, 0.03f, 1.5f);
+        PropertyPointer<float> move_range = MAKE_PROPERTY_MINMAX("move_range", float, 0.5f, 0.05f, 1.0f);
         PropertyPointer<bool> audio_reactive = MAKE_PROPERTY("audio_reactive", bool, false);
         PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.75f, 0.0f, 2.0f);
-        PropertyPointer<float> color_speed = MAKE_PROPERTY("color_speed", float, 0.033f);
+        PropertyPointer<float> color_speed = MAKE_PROPERTY_MINMAX("color_speed", float, 0.033f, 0.0f, 0.25f);
 
         float time;
-        std::chrono::steady_clock::time_point last_update;
         float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
         uint64_t last_beat_counter = 0;
 
@@ -57,8 +55,9 @@ namespace AmbientScenes {
         }
 
         [[nodiscard]] std::string get_name() const override;
+        [[nodiscard]] std::string get_category() const override { return "Ambient"; }
 
-        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; caps.deterministic_preview = true; return caps; }
         void register_properties() override;
 
         using Scene::Scene;
