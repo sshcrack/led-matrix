@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <shared/matrix/audio_state.h>
 
 namespace {
 constexpr float PI = 3.14159265358979323846f;
@@ -23,7 +24,7 @@ using namespace GenerativeScenes;
 
 void BoidsScene::register_properties() {
     add_property(count_); add_property(speed_); add_property(perception_);
-    add_property(trail_fade_); add_property(rainbow_); add_property(color_);
+    add_property(trail_fade_); add_property(audio_reactive_); add_property(audio_strength_); add_property(rainbow_); add_property(color_);
 }
 
 void BoidsScene::initialize(int width, int height) {
@@ -51,7 +52,8 @@ void BoidsScene::reset_boids() {
 void BoidsScene::simulate_step() {
     const float perception = std::clamp(perception_->get(), 4.0f, 48.0f);
     const float p2 = perception * perception;
-    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f;
+    const float audio_motion = audio_reactive_->get() ? (1.0f + audio_bass_ * audio_strength_->get() * 1.4f) : 1.0f;
+    const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f * audio_motion;
     std::vector<Boid> next = boids_;
 
     for (size_t i=0;i<boids_.size();++i) {
@@ -69,11 +71,13 @@ void BoidsScene::simulate_step() {
                 ++neighbours;
             }
         }
-        float vx=boids_[i].vx, vy=boids_[i].vy;
+        float vx=boids_[i].vx + audio_balance_ * 0.012f, vy=boids_[i].vy;
         if (neighbours>0) {
             ax/=neighbours; ay/=neighbours; cx/=neighbours; cy/=neighbours;
-            vx += ax*0.035f + cx*0.0025f + sx*0.22f;
-            vy += ay*0.035f + cy*0.0025f + sy*0.22f;
+            const float cohesion = 0.0025f * (1.0f + audio_mids_ * audio_strength_->get());
+            const float separation = 0.22f * (1.0f + audio_treble_ * audio_strength_->get() * 1.6f);
+            vx += ax*0.035f + cx*cohesion + sx*separation;
+            vy += ay*0.035f + cy*cohesion + sy*separation;
         }
         const float len=std::sqrt(vx*vx+vy*vy);
         if (len>0.001f) { vx=vx/len*max_speed; vy=vy/len*max_speed; }
@@ -94,6 +98,30 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
     last_update_ = now;
     elapsed = std::clamp(elapsed, 0.0f, 0.20f);
     simulation_accumulator_ += elapsed;
+
+    if (audio_reactive_->get()) {
+        const auto audio = AudioState::snapshot();
+        const bool has_audio = audio.fresh();
+        const float response = 1.0f - std::exp(-elapsed * 9.0f);
+        audio_bass_ += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass_) * response;
+        audio_mids_ += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids_) * response;
+        audio_treble_ += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble_) * response;
+        audio_balance_ += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance_) * response;
+        if (has_audio && audio.beat_counter != last_beat_counter_) {
+            last_beat_counter_ = audio.beat_counter;
+            const float impulse = 0.08f + audio.feature(AudioProtocol::Feature::Kick) * 0.28f;
+            const float cx = matrix_width * 0.5f, cy = matrix_height * 0.5f;
+            for (auto &boid : boids_) {
+                float dx = boid.x - cx, dy = boid.y - cy;
+                const float length = std::max(1.0f, std::sqrt(dx * dx + dy * dy));
+                boid.vx += dx / length * impulse; boid.vy += dy / length * impulse;
+            }
+        }
+        if (has_audio && audio.drop_counter != last_drop_counter_) {
+            last_drop_counter_ = audio.drop_counter;
+            for (auto &boid : boids_) { boid.vx *= 1.8f; boid.vy *= 1.8f; }
+        }
+    } else { audio_bass_ = audio_mids_ = audio_treble_ = audio_balance_ = 0.0f; }
 
     constexpr float simulation_step = 1.0f / 30.0f;
     int steps = 0;

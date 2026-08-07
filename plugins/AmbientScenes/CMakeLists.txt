@@ -11,12 +11,8 @@ register_plugin(AmbientScenes
         matrix/scenes/SortingVisualizerScene.h
         matrix/scenes/sorting_simple.cpp
         matrix/scenes/sorting_complex.cpp
-        matrix/scenes/BoidsScene.cpp
-        matrix/scenes/BoidsScene.h
         matrix/scenes/BouncingLogoScene.cpp
         matrix/scenes/BouncingLogoScene.h
-        matrix/scenes/FallingSandScene.cpp
-        matrix/scenes/FallingSandScene.h
         matrix/scenes/NeonTunnelScene.cpp
         matrix/scenes/NeonTunnelScene.h
         matrix/scenes/DigitalRainScene.cpp
