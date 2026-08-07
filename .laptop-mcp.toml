@@ -1,0 +1,32 @@
+version = 1
+
+[sandbox]
+memory = "16g"
+
+[image]
+apt_packages = [
+  "autoconf-archive",
+  "extra-cmake-modules",
+  "libasound2-dev",
+  "libayatana-appindicator3-dev",
+  "libegl1-mesa-dev",
+  "libglu1-mesa-dev",
+  "libgtk-3-dev",
+  "libibus-1.0-dev",
+  "libltdl-dev",
+  "libwayland-dev",
+  "libx11-dev",
+  "libxcursor-dev",
+  "libxext-dev",
+  "libxft-dev",
+  "libxi-dev",
+  "libxinerama-dev",
+  "libxkbcommon-dev",
+  "libxrandr-dev",
+  "pkg-config",
+  "python3-jinja2",
+  "wayland-protocols",
+]
+
+[workspace]
+submodules = "recursive"
