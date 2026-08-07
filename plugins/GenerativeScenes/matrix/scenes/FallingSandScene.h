@@ -2,7 +2,6 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <chrono>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -41,8 +40,7 @@ class FallingSandScene final : public Scenes::Scene {
     std::vector<Dust> dust_;
     std::mt19937 rng_{std::random_device{}()};
     uint32_t frame_ = 0;
-    std::chrono::steady_clock::time_point last_update_{};
-    float simulation_accumulator_ = 0.0f;
+    Scenes::FixedStepAccumulator simulation_{26.0, 3};
     bool draining_ = false;
     uint32_t drain_frames_ = 0;
     float wind_ = 0.0f;
@@ -82,6 +80,11 @@ public:
     void register_properties() override;
     [[nodiscard]] std::string get_name() const override { return "falling_sand"; }
     [[nodiscard]] std::string get_category() const override { return "Generative"; }
+    Scenes::SceneCapabilities get_capabilities() const override {
+        auto caps = Scenes::Scene::get_capabilities();
+        caps.deterministic_preview = true;
+        return caps;
+    }
     tmillis_t get_default_duration() override { return 90000; }
     int get_default_weight() override { return 6; }
 };

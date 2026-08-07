@@ -2,7 +2,6 @@
 
 #include <shared/matrix/audio_state.h>
 #include "shared/matrix/Scene.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "shared/matrix/wrappers.h"
 #include <deque>
 
@@ -18,7 +17,6 @@ enum class DisplayMode {
 };
 
 class AudioSpectrumScene final : public Scene {
-    FrameTimer timer_;
     std::vector<float> smoothed_;
     std::vector<float> peaks_;
     std::deque<std::vector<float>> history_;
@@ -61,6 +59,14 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    SceneCapabilities get_capabilities() const override {
+        auto caps = Scene::get_capabilities();
+        caps.requires_audio = true;
+        caps.supports_audio = true;
+        caps.previewable = false;
+        caps.deterministic_preview = false;
+        return caps;
+    }
 };
 
 class AudioSpectrumSceneWrapper final : public Plugins::SceneWrapper {

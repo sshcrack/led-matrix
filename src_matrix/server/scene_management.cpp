@@ -48,7 +48,7 @@ namespace {
             auto properties = default_item->get_properties();
             j.push_back({
                 {"name", item->get_name()},
-                {"properties", serialize_properties(properties, false)}
+                {"properties", serialize_properties(properties, true)}
             });
         }
         return j;
@@ -62,12 +62,23 @@ namespace {
             if (!default_item) continue;
             auto properties = default_item->get_properties();
             auto properties_json = serialize_properties(properties, true);
+            const auto caps = default_item->get_capabilities();
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
                 {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
-                {"needs_desktop", default_item->needs_desktop_app()},
-                {"category", default_item->get_category()}
+                {"needs_desktop", caps.requires_desktop},
+                {"category", default_item->get_category()},
+                {"capabilities", {
+                    {"requires_desktop", caps.requires_desktop},
+                    {"requires_audio", caps.requires_audio},
+                    {"requires_network", caps.requires_network},
+                    {"interactive", caps.interactive},
+                    {"previewable", caps.previewable},
+                    {"deterministic_preview", caps.deterministic_preview},
+                    {"supports_audio", caps.supports_audio},
+                    {"music_director_eligible", caps.music_director_eligible}
+                }}
             });
         }
         return j;

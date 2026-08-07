@@ -12,6 +12,9 @@
 #include <spdlog/spdlog.h>
 
 #include "shared/matrix/interrupt.h"
+#include "shared/matrix/diagnostics.h"
+#include "shared/matrix/audio_state.h"
+#include "shared/matrix/server/common.h"
 
 using json = nlohmann::json;
 
@@ -64,6 +67,57 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             .append_header(restinio::http_field::content_type, content_type);
         Server::add_cors_headers(response);
         return response.set_body(restinio::sendfile(file_path)).done(); });
+
+    router->http_get("/diagnostics", [](auto req, auto)
+                     {
+        auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();
+        result["desktop_connections"] = Server::desktop_connection_count.load();
+
+        const auto audio = AudioState::snapshot();
+        result["audio"] = {
+            {"available", audio.available},
+            {"fresh", audio.fresh()},
+            {"age_seconds", audio.age_seconds},
+            {"sequence", audio.sequence},
+            {"timestamp_ms", audio.timestamp_ms},
+            {"bpm", audio.feature(AudioProtocol::Feature::Bpm)},
+            {"beat_phase", audio.feature(AudioProtocol::Feature::BeatPhase)},
+            {"beat_confidence", audio.feature(AudioProtocol::Feature::BeatConfidence)},
+            {"beat_strength", audio.feature(AudioProtocol::Feature::BeatStrength)},
+            {"loudness", audio.feature(AudioProtocol::Feature::Loudness)},
+            {"rms", audio.feature(AudioProtocol::Feature::Rms)},
+            {"kick", audio.feature(AudioProtocol::Feature::Kick)},
+            {"snare", audio.feature(AudioProtocol::Feature::Snare)},
+            {"hihat", audio.feature(AudioProtocol::Feature::Hihat)},
+            {"onset", audio.feature(AudioProtocol::Feature::OnsetStrength)},
+            {"stereo_width", audio.feature(AudioProtocol::Feature::StereoWidth)},
+            {"stereo_balance", audio.feature(AudioProtocol::Feature::StereoBalance)},
+            {"spectral_centroid", audio.feature(AudioProtocol::Feature::SpectralCentroid)},
+            {"energy_trend", audio.feature(AudioProtocol::Feature::EnergyTrend)},
+            {"drop", audio.feature(AudioProtocol::Feature::Drop)},
+            {"section_change", audio.feature(AudioProtocol::Feature::SectionChange)},
+            {"bands", {
+                {"sub_bass", audio.feature(AudioProtocol::Feature::SubBass)},
+                {"bass", audio.feature(AudioProtocol::Feature::Bass)},
+                {"low_mid", audio.feature(AudioProtocol::Feature::LowMid)},
+                {"mid", audio.feature(AudioProtocol::Feature::Mid)},
+                {"high_mid", audio.feature(AudioProtocol::Feature::HighMid)},
+                {"treble", audio.feature(AudioProtocol::Feature::Treble)},
+                {"air", audio.feature(AudioProtocol::Feature::Air)}
+            }}
+        };
+
+        auto *plugin_manager = Plugins::PluginManager::instance();
+        result["registry"] = plugin_manager->get_validation_report().to_json();
+        result["plugins"] = json::array();
+        for (const auto *plugin : plugin_manager->get_plugins()) {
+            result["plugins"].push_back({
+                {"name", plugin->get_plugin_name()},
+                {"location", plugin->get_plugin_location()}
+            });
+        }
+
+        return reply_with_json(req, result); });
 
     router->http_get("/list", [](auto req, auto)
                      {

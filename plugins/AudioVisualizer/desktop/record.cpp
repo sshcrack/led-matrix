@@ -407,6 +407,19 @@ namespace AudioRecorder
         return sampleRate;
     }
 
+    size_t Recorder::getBufferedFrameCount() const
+    {
+        std::lock_guard lock(audioBufferMutex);
+        return audioBuffer.size();
+    }
+
+    double Recorder::getBufferedLatencyMs() const
+    {
+        std::lock_guard lock(audioBufferMutex);
+        if (sampleRate <= 0.0) return 0.0;
+        return static_cast<double>(audioBuffer.size()) * 1000.0 / sampleRate;
+    }
+
     int Recorder::getDefaultOutputLoopbackIndex()
     {
 #if defined(_WIN32) && defined(PA_USE_WASAPI)

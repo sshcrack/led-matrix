@@ -267,8 +267,7 @@ void AudioSpectrumScene::renderSpectrogram(rgb_matrix::FrameCanvas *canvas,
 }
 
 bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const auto tick = timer_.tick();
-    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
     const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh() || audio.spectrum.empty()) return false;

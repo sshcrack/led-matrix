@@ -7,6 +7,7 @@
 #include "frequency_analyzer/factory.h"
 #include "record.h"
 #include <implot.h>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -40,6 +41,21 @@ private:
     std::vector<float> latestBands;
     AudioProtocol::Frame latestAnalysis;
     bool hasLatestAnalysis = false;
+
+    struct DiagnosticSample {
+        float time = 0.0f;
+        float loudness = 0.0f;
+        float kick = 0.0f;
+        float snare = 0.0f;
+        float hihat = 0.0f;
+        float onset = 0.0f;
+        float bpm = 0.0f;
+        float beatConfidence = 0.0f;
+        float stereoWidth = 0.0f;
+        float stereoBalance = 0.0f;
+    };
+    std::deque<DiagnosticSample> diagnosticHistory;
+    static constexpr size_t MaxDiagnosticHistory = 600;
 
     mutable std::shared_mutex lastErrorMutex;
     std::string lastError;

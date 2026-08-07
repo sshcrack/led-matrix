@@ -1,9 +1,11 @@
 #pragma once
 
 #include <vector>
+#include <algorithm>
 #include <string>
 #include <filesystem>
 #include <iostream>
+#include <stdexcept>
 #include "spdlog/spdlog.h"
 #include "shared/common/plugin_loader/lib_name.h"
 #include "shared/common/utils/utils.h"
@@ -56,6 +58,12 @@ public:
             plugin_dir = std::filesystem::is_directory(fhs) ? fhs : exec_dir.parent_path() / "plugins";
         }
 
+        if (!std::filesystem::is_directory(plugin_dir)) {
+            spdlog::warn("Plugin directory '{}' does not exist", plugin_dir.string());
+            initialized = true;
+            return;
+        }
+
         std::vector<std::filesystem::path> libPaths;
         for (const auto& entry : std::filesystem::directory_iterator(plugin_dir)) {
             if (!entry.is_directory())
@@ -70,6 +78,7 @@ public:
                 continue;
             libPaths.push_back(std::filesystem::absolute(plugin_path));
         }
+        std::sort(libPaths.begin(), libPaths.end());
 
 #ifdef _WIN32
         auto dllDirCookie = AddDllDirectory(get_exec_dir().wstring().c_str());
@@ -163,6 +172,8 @@ public:
 
             try {
                 PluginBase* p = create();
+                if (p == nullptr)
+                    throw std::runtime_error("plugin factory returned null");
 
 #ifdef _WIN32
                 p->_plugin_location = plPath.string();
@@ -203,26 +214,56 @@ public:
     }
 
     void destroy_plugins() {
-        spdlog::info("Destroying plugins...");
+        if (loaded_plugins.empty()) {
+            initialized = false;
+            return;
+        }
+
+        spdlog::info("Destroying {} plugins...", loaded_plugins.size());
         std::flush(std::cout);
 
-        for (const auto& item : loaded_plugins) {
+        // Reverse load order mirrors normal C++ object teardown and prevents
+        // dependencies loaded later from disappearing underneath earlier ones.
+        for (auto it = loaded_plugins.rbegin(); it != loaded_plugins.rend(); ++it) {
+            auto &item = *it;
             using DestroyFn = void (*)(PluginBase*);
             DestroyFn destroy = nullptr;
 
 #ifdef _WIN32
             destroy = (DestroyFn)GetProcAddress((HMODULE)item.handle, item.destroyFnName.c_str());
 #else
+            dlerror();
             destroy = (DestroyFn)dlsym(item.handle, item.destroyFnName.c_str());
 #endif
 
-            if (destroy)
-                destroy(item.plugin);
+            if (destroy && item.plugin) {
+                try {
+                    destroy(item.plugin);
+                } catch (const std::exception &e) {
+                    spdlog::error("Plugin '{}' threw while being destroyed: {}", item.name, e.what());
+                } catch (...) {
+                    spdlog::error("Plugin '{}' threw an unknown exception while being destroyed", item.name);
+                }
+                item.plugin = nullptr;
+            }
+
+#ifdef _WIN32
+            if (item.handle) FreeLibrary((HMODULE)item.handle);
+#else
+            if (item.handle) dlclose(item.handle);
+#endif
+            item.handle = nullptr;
         }
+
+        loaded_plugins.clear();
+        initialized = false;
     }
 
+    // Kept for callers that only need to forget loader bookkeeping. Normal
+    // shutdown should call destroy_plugins(); clearing live handles leaks DSOs.
     void delete_references() {
-        loaded_plugins.clear();
+        if (!loaded_plugins.empty())
+            spdlog::warn("PluginLoader::delete_references called with live plugins; use destroy_plugins instead");
     }
 
 protected:

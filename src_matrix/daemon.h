@@ -52,4 +52,7 @@ private:
     std::thread control_thread_;
 
     std::unique_ptr<UdpServer> udp_server_;
+    bool shutdown_started_ = false;
+
+    void shutdown(bool persist_config) noexcept;
 };
