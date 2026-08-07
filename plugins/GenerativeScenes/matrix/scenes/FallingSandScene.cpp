@@ -486,16 +486,16 @@ bool FallingSandScene::render(rgb_matrix::FrameCanvas *canvas) {
     simulation_accumulator_ += elapsed;
 
     // Physics runs at a fixed real-world rate on both the Pi and desktop.
-    // 18 Hz matches the Pi comfortably and prevents the emulator from racing ahead.
-    constexpr float simulation_step = 1.0f / 18.0f;
+    // 26 Hz keeps the simulation lively while remaining identical on the Pi and emulator.
+    constexpr float simulation_step = 1.0f / 26.0f;
     int steps = 0;
-    while (simulation_accumulator_ >= simulation_step && steps < 2) {
+    while (simulation_accumulator_ >= simulation_step && steps < 3) {
         simulate_step();
         simulation_accumulator_ -= simulation_step;
         ++steps;
     }
     // Never enter an expensive catch-up spiral after a temporary stall.
-    if (steps == 2 && simulation_accumulator_ >= simulation_step)
+    if (steps == 3 && simulation_accumulator_ >= simulation_step)
         simulation_accumulator_ = std::fmod(simulation_accumulator_, simulation_step);
 
     draw(canvas);

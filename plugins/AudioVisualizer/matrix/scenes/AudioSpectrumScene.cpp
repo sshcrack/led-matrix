@@ -64,38 +64,125 @@ void AudioSpectrumScene::colorFor(float position, float intensity,
 
 void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
                                     const AudioState::Snapshot &audio) {
-    const int stride = barWidth_->get() + gapWidth_->get();
-    const int count = std::min<int>(smoothed_.size(), std::max(1, matrix_width / std::max(1, stride)));
+    const int barWidth = std::max(1, barWidth_->get());
+    const int stride = std::max(1, barWidth + gapWidth_->get());
+    const int count = std::min<int>(smoothed_.size(),
+                                    std::max(1, matrix_width / stride));
+    const auto mode = displayMode_->get().get();
+    const int centerTop = (matrix_height - 1) / 2;
+    const int centerBottom = matrix_height / 2;
+    const int centerReach = std::max(1, std::min(centerTop + 1,
+                                                 matrix_height - centerBottom));
+
+    auto sourceIndexFor = [&](int displayIndex) -> size_t {
+        if (count <= 1 || smoothed_.size() <= 1) return 0;
+        return std::min(smoothed_.size() - 1,
+            static_cast<size_t>(std::lround(
+                static_cast<double>(displayIndex) *
+                static_cast<double>(smoothed_.size() - 1) /
+                static_cast<double>(count - 1))));
+    };
+
+    auto xFor = [&](int displayIndex) {
+        if (mode != DisplayMode::EDGES_TO_CENTER)
+            return displayIndex * stride;
+
+        // Lay the first half inwards from the left edge and the second half
+        // inwards from the right edge. Keep the actual bar flush to the edge;
+        // the gap remains on its inward side.
+        const int leftCount = (count + 1) / 2;
+        if (displayIndex < leftCount)
+            return displayIndex * stride;
+        return matrix_width - barWidth - (displayIndex - leftCount) * stride;
+    };
+
     for (int i = 0; i < count; ++i) {
-        int x = i * stride;
-        if (displayMode_->get().get() == DisplayMode::EDGES_TO_CENTER) {
-            const int half = count / 2;
-            x = i < half ? i * stride : matrix_width - (i - half + 1) * stride;
-        }
-        const float value = smoothed_[i];
-        const int barHeight = std::clamp(static_cast<int>(value * matrix_height), 0, matrix_height);
-        for (int w = 0; w < barWidth_->get(); ++w) {
-            if (displayMode_->get().get() == DisplayMode::CENTER_OUT) {
-                const int halfHeight = static_cast<int>(value * matrix_height * 0.5f);
-                for (int dy = -halfHeight; dy <= halfHeight; ++dy) {
-                    uint8_t r, g, b; colorFor(static_cast<float>(i) / count,
-                        0.35f + 0.65f * std::abs(dy) / std::max(1, halfHeight), audio, r, g, b);
-                    canvas->SetPixel(x + w, matrix_height / 2 + dy, r, g, b);
-                }
-            } else {
-                for (int y = matrix_height - 1; y >= matrix_height - barHeight; --y) {
-                    uint8_t r, g, b; colorFor(static_cast<float>(i) / count,
-                        0.4f + 0.6f * static_cast<float>(matrix_height - y) / matrix_height,
-                        audio, r, g, b);
-                    canvas->SetPixel(x + w, y, r, g, b);
-                    if (mirror_->get()) canvas->SetPixel(matrix_width - 1 - x - w, y, r, g, b);
+        const size_t sourceIndex = sourceIndexFor(i);
+        const float value = std::clamp(smoothed_[sourceIndex], 0.0f, 1.0f);
+        const float peak = std::clamp(peaks_[sourceIndex], 0.0f, 1.0f);
+        const float colorPosition = count <= 1 ? 0.0f
+            : static_cast<float>(i) / static_cast<float>(count - 1);
+        const int x = xFor(i);
+
+        if (mode == DisplayMode::CENTER_OUT) {
+            const int extent = std::clamp(
+                static_cast<int>(std::lround(value * centerReach)),
+                0, centerReach);
+
+            for (int distance = 0; distance < extent; ++distance) {
+                const float intensity = 0.35f + 0.65f *
+                    static_cast<float>(distance + 1) /
+                    static_cast<float>(std::max(1, extent));
+                uint8_t r, g, b;
+                colorFor(colorPosition, intensity, audio, r, g, b);
+
+                const int upperY = centerTop - distance;
+                const int lowerY = centerBottom + distance;
+                for (int w = 0; w < barWidth; ++w) {
+                    const int px = x + w;
+                    if (px < 0 || px >= matrix_width) continue;
+                    if (upperY >= 0) canvas->SetPixel(px, upperY, r, g, b);
+                    if (lowerY < matrix_height) canvas->SetPixel(px, lowerY, r, g, b);
                 }
             }
+
+            // In center-out mode the falling marker must track both outward
+            // ends of the bar, not fall from the bottom like a normal bar.
+            if (fallingDots_->get() && peak > 0.001f) {
+                const int peakDistance = std::clamp(
+                    static_cast<int>(std::lround(peak * (centerReach - 1))),
+                    0, centerReach - 1);
+                const int upperY = centerTop - peakDistance;
+                const int lowerY = centerBottom + peakDistance;
+                uint8_t r, g, b;
+                colorFor(colorPosition, 1.0f, audio, r, g, b);
+                for (int w = 0; w < barWidth; ++w) {
+                    const int px = x + w;
+                    if (px < 0 || px >= matrix_width) continue;
+                    canvas->SetPixel(px, upperY, r, g, b);
+                    canvas->SetPixel(px, lowerY, r, g, b);
+                }
+            }
+            continue;
         }
-        if (fallingDots_->get()) {
-            const int y = matrix_height - 1 - static_cast<int>(peaks_[i] * (matrix_height - 1));
-            uint8_t r, g, b; colorFor(static_cast<float>(i) / count, 1.0f, audio, r, g, b);
-            canvas->SetPixel(x, y, r, g, b);
+
+        const int barHeight = std::clamp(
+            static_cast<int>(std::lround(value * matrix_height)),
+            0, matrix_height);
+        for (int row = 0; row < barHeight; ++row) {
+            const int y = matrix_height - 1 - row;
+            const float intensity = 0.4f + 0.6f *
+                static_cast<float>(row + 1) /
+                static_cast<float>(std::max(1, barHeight));
+            uint8_t r, g, b;
+            colorFor(colorPosition, intensity, audio, r, g, b);
+
+            for (int w = 0; w < barWidth; ++w) {
+                const int px = x + w;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, y, r, g, b);
+
+                // Mirroring is meaningful for the normal left-to-right mode.
+                // Applying it to edges-to-center duplicates and overlaps bars.
+                if (mirror_->get() && mode == DisplayMode::NORMAL)
+                    canvas->SetPixel(matrix_width - 1 - px, y, r, g, b);
+            }
+        }
+
+        if (fallingDots_->get() && peak > 0.001f) {
+            const int peakY = std::clamp(
+                matrix_height - 1 - static_cast<int>(std::lround(
+                    peak * (matrix_height - 1))),
+                0, matrix_height - 1);
+            uint8_t r, g, b;
+            colorFor(colorPosition, 1.0f, audio, r, g, b);
+            for (int w = 0; w < barWidth; ++w) {
+                const int px = x + w;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, peakY, r, g, b);
+                if (mirror_->get() && mode == DisplayMode::NORMAL)
+                    canvas->SetPixel(matrix_width - 1 - px, peakY, r, g, b);
+            }
         }
     }
 }
@@ -104,17 +191,47 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
                                       const AudioState::Snapshot &audio, bool spiral) {
     const float cx = matrix_width * 0.5f;
     const float cy = matrix_height * 0.5f;
-    const float baseRadius = std::min(matrix_width, matrix_height) * 0.21f * circleRadius_->get();
+    const float size = static_cast<float>(std::min(matrix_width, matrix_height));
+    const float baseRadius = size * 0.21f * circleRadius_->get();
+    const float maxLength = size * 0.30f;
+
     for (size_t i = 0; i < smoothed_.size(); ++i) {
-        const float t = static_cast<float>(i) / std::max<size_t>(1, smoothed_.size());
-        const float angle = rotation_ + t * 2.0f * Pi * (spiral ? 2.4f : 1.0f);
-        const float radius = baseRadius * (spiral ? 0.35f + t * 1.5f : 1.0f);
-        const float length = smoothed_[i] * std::min(matrix_width, matrix_height) * 0.30f;
-        for (float d = 0.0f; d <= length; d += 0.7f) {
-            const int x = static_cast<int>(std::round(cx + std::cos(angle) * (radius + d)));
-            const int y = static_cast<int>(std::round(cy + std::sin(angle) * (radius + d)));
-            uint8_t r, g, b; colorFor(t, 0.28f + 0.72f * d / std::max(1.0f, length), audio, r, g, b);
+        const float t = static_cast<float>(i) /
+            static_cast<float>(std::max<size_t>(1, smoothed_.size() - 1));
+        const float angle = rotation_ + t * 2.0f * Pi *
+            (spiral ? 2.4f : 1.0f);
+        const float radius = baseRadius *
+            (spiral ? 0.35f + t * 1.5f : 1.0f);
+        const float length = std::clamp(smoothed_[i], 0.0f, 1.0f) * maxLength;
+
+        for (float distance = 0.0f; distance <= length; distance += 0.7f) {
+            const int x = static_cast<int>(std::round(
+                cx + std::cos(angle) * (radius + distance)));
+            const int y = static_cast<int>(std::round(
+                cy + std::sin(angle) * (radius + distance)));
+            uint8_t r, g, b;
+            colorFor(t, 0.28f + 0.72f * distance /
+                std::max(1.0f, length), audio, r, g, b);
             addPixel(canvas, x, y, r, g, b);
+        }
+
+        // Falling markers follow the same polar/spiral path as their bar.
+        // Previously these modes had no mode-aware peak marker at all.
+        if (fallingDots_->get() && i < peaks_.size() && peaks_[i] > 0.001f) {
+            const float peakRadius = radius +
+                std::clamp(peaks_[i], 0.0f, 1.0f) * maxLength;
+            const float tangentX = -std::sin(angle);
+            const float tangentY = std::cos(angle);
+            uint8_t r, g, b;
+            colorFor(t, 1.0f, audio, r, g, b);
+
+            for (int width = -1; width <= 1; ++width) {
+                const int x = static_cast<int>(std::round(
+                    cx + std::cos(angle) * peakRadius + tangentX * width));
+                const int y = static_cast<int>(std::round(
+                    cy + std::sin(angle) * peakRadius + tangentY * width));
+                addPixel(canvas, x, y, r, g, b);
+            }
         }
     }
 }
