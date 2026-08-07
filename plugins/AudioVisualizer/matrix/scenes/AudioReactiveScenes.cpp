@@ -64,8 +64,8 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
 }
 
 bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const auto tick = timer_.tick();
-    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
+    const float sceneTime = static_cast<float>(frame_context().elapsed_seconds);
     const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
@@ -129,8 +129,8 @@ void AudioPulseTunnelScene::register_properties() {
 }
 
 bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const auto tick = timer_.tick();
-    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
+    const float sceneTime = static_cast<float>(frame_context().elapsed_seconds);
     const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
@@ -162,7 +162,7 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float radius = std::sqrt(dx * dx + dy * dy);
         const float angle = std::atan2(dy, dx) + rotation_;
         const float normalized = radius / maxRadius;
-        const float deformation = std::sin(angle * (4.0f + width * 4.0f) + tick.t * 0.8f) * snare * 0.035f;
+        const float deformation = std::sin(angle * (4.0f + width * 4.0f) + sceneTime * 0.8f) * snare * 0.035f;
         const float ringPhase = std::fmod((normalized + deformation) * ringCount_->get() -
                                          travel_ * ringCount_->get() + 100.0f, 1.0f);
         const float beatWave = std::exp(-std::pow((ringPhase - phase) / (0.055f + dropPulse_ * 0.08f), 2.0f));
@@ -178,7 +178,7 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
                                         (0.3f + normalized), 0.0f, 1.0f);
         if (value < 0.02f) continue;
         uint8_t r, g, b;
-        if (rainbow_->get()) hsv(paletteOffset_ + angle * 57.3f + normalized * 230.0f + tick.t * 20.0f,
+        if (rainbow_->get()) hsv(paletteOffset_ + angle * 57.3f + normalized * 230.0f + sceneTime * 20.0f,
                                   0.84f, value, r, g, b);
         else { const auto c = baseColor_->get(); r = c.r * value; g = c.g * value; b = c.b * value; }
         canvas->SetPixel(x, y, r, g, b);
@@ -192,8 +192,8 @@ void AudioAuroraScene::register_properties() {
 }
 
 bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const auto tick = timer_.tick();
-    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
+    const float sceneTime = static_cast<float>(frame_context().elapsed_seconds);
     const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh()) return false;
@@ -256,8 +256,8 @@ void AudioKaleidoscopeScene::register_properties() {
 }
 
 bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
-    const auto tick = timer_.tick();
-    const float dt = std::clamp(static_cast<float>(tick.deltaFrame.count()), 0.0f, 0.05f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
+    const float sceneTime = static_cast<float>(frame_context().elapsed_seconds);
     const auto audio = AudioState::snapshot();
     canvas->Clear();
     if (!audio.fresh() || audio.spectrum.empty()) return false;
@@ -297,7 +297,7 @@ bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
                                        (1.0f - std::max(0.0f, radial - 1.0f)), 0.0f, 1.0f);
         if (value < 0.02f) continue;
         uint8_t r, g, b;
-        hsv(palette_ + spectrumPosition * 290.0f + bass * 60.0f + tick.t * 10.0f,
+        hsv(palette_ + spectrumPosition * 290.0f + bass * 60.0f + sceneTime * 10.0f,
             0.86f, value, r, g, b);
         canvas->SetPixel(x, y, r, g, b);
     }

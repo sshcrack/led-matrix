@@ -111,6 +111,7 @@ Daemon::build_pinned_scene()
 // ---------------------------------------------------------------------------
 Daemon::Daemon(int argc, char* argv[])
 {
+    try {
     // -------------------------------------------------------------------
     // 1. Magick
     // -------------------------------------------------------------------
@@ -303,60 +304,100 @@ Daemon::Daemon(int argc, char* argv[])
     // -------------------------------------------------------------------
     debug("Starting UDP server on port {}", port_);
     udp_server_ = make_unique<UdpServer>(port_);
+    } catch (...) {
+        // Constructors do not invoke ~Daemon() when they throw. Tear down any
+        // plugin threads, HTTP/UDP workers and globals established so far.
+        shutdown(false);
+        throw;
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Destructor — teardown in safe order
 // ---------------------------------------------------------------------------
-Daemon::~Daemon()
+void Daemon::shutdown(bool persist_config) noexcept
 {
-    // 1. Signal HTTP server to stop (lets the control thread exit)
-    if (http_server_)
-        initiate_shutdown(*http_server_);
+    if (shutdown_started_)
+        return;
+    shutdown_started_ = true;
 
-    // 2. Delete UDP server (its destructor joins the internal thread)
-    udp_server_.reset();
-
-    // 3. Plugin pre-exit notifications
-    auto* pl = PluginManager::instance();
-    for (const auto &plugin : pl->get_plugins()) {
-        if (auto err = plugin->pre_exit(); err.has_value())
-            error(err.value());
+    try {
+        if (http_server_)
+            initiate_shutdown(*http_server_);
+    } catch (const std::exception &e) {
+        error("HTTP shutdown failed: {}", e.what());
+    } catch (...) {
+        error("HTTP shutdown failed with unknown exception");
     }
 
-    // 4. Persist config
-    if (config_)
-        config_->save();
+    // UdpServer owns a worker thread; resetting it joins that worker first.
+    try { udp_server_.reset(); }
+    catch (...) { error("UDP shutdown failed"); }
 
-    // 5. Join HTTP control thread (now that shutdown was signalled)
-    if (control_thread_.joinable())
-        control_thread_.join();
+    auto *pl = PluginManager::instance();
+    for (const auto &plugin : pl->get_plugins()) {
+        if (!plugin) continue;
+        try {
+            if (auto err = plugin->pre_exit(); err.has_value()) error(err.value());
+        } catch (const std::exception &e) {
+            error("Plugin '{}' pre_exit failed: {}", plugin->get_plugin_name(), e.what());
+        } catch (...) {
+            error("Plugin pre_exit failed with unknown exception");
+        }
+    }
 
-    // 6. Destroy plugins (config and globals still alive here)
-    pl->destroy_plugins();
-    pl->delete_references();
+    if (persist_config && config_) {
+        try { config_->save(); }
+        catch (const std::exception &e) { error("Saving config during shutdown failed: {}", e.what()); }
+        catch (...) { error("Saving config during shutdown failed"); }
+    }
 
-    // 7. Stop update manager
+    if (control_thread_.joinable()) {
+        try { control_thread_.join(); }
+        catch (...) { error("Joining HTTP control thread failed"); }
+    }
+
+    // Routers contain callbacks/lambdas supplied by plugins. Destroy the HTTP
+    // server and those closures before unloading any plugin DSO.
+    http_server_.reset();
+
     if (update_manager_) {
-        update_manager_->stop();
+        try { update_manager_->stop(); }
+        catch (...) { error("Stopping update manager failed"); }
         update_manager_.reset();
     }
 
-    // 8. Clear global pointers (owned memory freed by member destructors)
+#ifdef ENABLE_EMULATOR
+    // A pinned scene is a plugin object too; release it before dlclose.
+    pinned_scene_.reset();
+#endif
+    if (config_) {
+        try { config_->release_scene_references(); }
+        catch (...) { error("Releasing configured scene references failed"); }
+    }
+
+    // Post-processing and transition managers may own polymorphic objects
+    // implemented inside plugin DSOs. Destroy those objects while the code is
+    // still loaded, then clear their global aliases.
     Constants::global_post_processor = nullptr;
     Constants::global_transition_manager = nullptr;
+    post_processor_.reset();
+    transition_manager_.reset();
+
+    // External wrappers and configured scene instances must disappear before
+    // their plugin DSOs are unloaded.
+    try { pl->delete_references(); }
+    catch (...) { error("Releasing scene wrapper references failed"); }
+    try { pl->destroy_plugins(); }
+    catch (...) { error("Destroying plugins failed"); }
+
     Constants::global_update_manager.reset();
     ::config = nullptr;
+}
 
-    // 9. Member destructors fire in reverse declaration order:
-    //    udp_server_           (already reset — no-op)
-    //    control_thread_       (already joined — no-op)
-    //    http_server_          (unique_ptr deletes server_t)
-    //    update_manager_       (shared_ptr, already reset — no-op)
-    //    config_               (unique_ptr deletes MainConfig)
-    //    transition_manager_   (unique_ptr deletes TransitionManager)
-    //    post_processor_       (unique_ptr deletes PostProcessor)
-    //    matrix_               (unique_ptr deletes RGBMatrixBase)
+Daemon::~Daemon()
+{
+    shutdown(true);
 }
 
 // ---------------------------------------------------------------------------

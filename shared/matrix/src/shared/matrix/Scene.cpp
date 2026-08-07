@@ -7,6 +7,8 @@
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/property.h"
 #include "shared/matrix/FallbackScene.h"
+#include <algorithm>
+#include <chrono>
 
 using namespace spdlog;
 
@@ -61,6 +63,7 @@ void Scenes::Scene::initialize(int width, int height)
     matrix_width = width;
     matrix_height = height;
     initialized = true;
+    reset_frame_clock();
 }
 
 bool Scenes::Scene::is_initialized() const
@@ -101,6 +104,8 @@ int Scenes::Scene::get_weight() const
 
 void Scenes::Scene::wait_until_next_frame()
 {
+    if (suppress_internal_wait_)
+        return;
     tmillis_t step = 1000 / target_fps;
     tmillis_t current_time = GetTimeInMillis();
 
@@ -114,8 +119,71 @@ void Scenes::Scene::wait_until_next_frame()
     last_render_time = current_time;
 }
 
+
+void Scenes::Scene::reset_frame_clock()
+{
+    frame_context_ = {};
+    frame_clock_started_ = false;
+    last_render_time = 0;
+}
+
+bool Scenes::Scene::render_frame(FrameCanvas *canvas,
+                                 std::optional<double> forced_delta_seconds,
+                                 bool suppress_internal_wait)
+{
+    using clock = std::chrono::steady_clock;
+    const auto now = clock::now();
+
+    double delta = 0.0;
+    bool deterministic = forced_delta_seconds.has_value();
+    if (forced_delta_seconds.has_value()) {
+        delta = std::clamp(*forced_delta_seconds, 0.0, 0.25);
+        if (!frame_clock_started_) {
+            frame_clock_start_ = now;
+            frame_clock_last_ = now;
+            frame_clock_started_ = true;
+        }
+    } else if (!frame_clock_started_) {
+        frame_clock_start_ = now;
+        frame_clock_last_ = now;
+        frame_clock_started_ = true;
+        delta = 1.0 / static_cast<double>(std::max(1, target_fps));
+    } else {
+        delta = std::clamp(std::chrono::duration<double>(now - frame_clock_last_).count(), 0.0, 0.25);
+        frame_clock_last_ = now;
+    }
+
+    frame_context_.delta_seconds = delta;
+    frame_context_.elapsed_seconds += delta;
+    frame_context_.frame_index += 1;
+    frame_context_.now_ms = static_cast<std::uint64_t>(frame_context_.elapsed_seconds * 1000.0);
+    frame_context_.deterministic = deterministic;
+
+    const bool previous_suppress = suppress_internal_wait_;
+    suppress_internal_wait_ = suppress_internal_wait || deterministic;
+    try {
+        const bool result = render(canvas);
+        suppress_internal_wait_ = previous_suppress;
+        return result;
+    } catch (...) {
+        suppress_internal_wait_ = previous_suppress;
+        throw;
+    }
+}
+
 Scenes::Scene::Scene()
 {
+    weight->label("Playlist weight").description("Relative probability of this scene being selected from a preset.")
+        .group("Playback").step(1).control("number").advanced();
+    duration->label("Scene duration").description("How long this scene remains active before the playlist advances.")
+        .group("Playback").unit("duration").control("duration")
+        .presets(nlohmann::json::array({5000, 15000, 30000, 60000, 120000}));
+    transition_duration->label("Transition duration").description("Blend time into the next scene. Use 0 for an immediate switch.")
+        .group("Transition").unit("duration").control("duration")
+        .presets(nlohmann::json::array({0, 150, 250, 500, 750, 1000, 2000}));
+    transition_name->label("Transition style").description("Transition effect used when this scene ends.")
+        .group("Transition").control("select");
+
     add_property(weight);
     add_property(duration);
     add_property(transition_duration);

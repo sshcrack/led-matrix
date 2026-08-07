@@ -9,6 +9,9 @@
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/plugin/PropertyMacros.h>
 #include <shared/matrix/plugin/TransitionNameProperty.h>
+#include <shared/matrix/scene_runtime.h>
+#include <chrono>
+#include <optional>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -27,6 +30,11 @@ namespace Scenes {
         int matrix_height;
         int target_fps = 60;
         tmillis_t last_render_time = 0;
+        SceneFrameContext frame_context_{};
+        std::chrono::steady_clock::time_point frame_clock_start_{};
+        std::chrono::steady_clock::time_point frame_clock_last_{};
+        bool frame_clock_started_ = false;
+        bool suppress_internal_wait_ = false;
 
         virtual int get_default_weight() = 0;
         virtual tmillis_t get_default_duration() = 0;
@@ -48,6 +56,13 @@ namespace Scenes {
         }
 
         virtual void wait_until_next_frame();
+
+        /// Current render-frame timing. Prefer this over reading wall clock time
+        /// inside a scene. The matrix renderer and preview generator populate it.
+        [[nodiscard]] const SceneFrameContext &frame_context() const { return frame_context_; }
+
+        /// Reset timing when a scene is reinitialized or reused.
+        void reset_frame_clock();
 
         void add_property(const std::shared_ptr<Plugins::PropertyBase> &property) {
             std::string name = property->getName();
@@ -77,6 +92,8 @@ namespace Scenes {
             duration->set_value(get_default_duration());
         }
 
+        [[nodiscard]] int get_declared_target_fps() const { return target_fps; }
+
         [[nodiscard]] virtual int get_weight() const;
 
         [[nodiscard]] virtual tmillis_t get_duration() const;
@@ -89,6 +106,15 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
         [[nodiscard]] virtual std::string get_category() const { return "General"; }
+
+        /// Machine-readable scene capabilities used by the web app, preview
+        /// generator and Music Director. Existing needs_desktop_app() overrides
+        /// remain honored automatically.
+        [[nodiscard]] virtual SceneCapabilities get_capabilities() const {
+            SceneCapabilities caps;
+            caps.requires_desktop = const_cast<Scene *>(this)->needs_desktop_app();
+            return caps;
+        }
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.
@@ -108,6 +134,12 @@ namespace Scenes {
 
         /// Returns true if the scene should continue rendering, false if not
         virtual bool render(FrameCanvas *canvas) = 0;
+
+        /// Canonical render entrypoint. A deterministic delta is supplied by
+        /// preview_gen and nested scenes; otherwise steady_clock drives dt.
+        bool render_frame(FrameCanvas *canvas,
+                          std::optional<double> forced_delta_seconds = std::nullopt,
+                          bool suppress_internal_wait = false);
 
         static std::unique_ptr<Scene> from_json(const nlohmann::json &j);
 

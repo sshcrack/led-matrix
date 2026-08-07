@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
         plugin->after_server_init();
     }
 
-    const auto& wrappers = pl->get_scenes();
+    auto wrappers = pl->get_scenes();
     if (wrappers.empty())
     {
         spdlog::warn("No scenes found. Make sure PLUGIN_DIR points to the "
@@ -267,7 +267,8 @@ int main(int argc, char* argv[])
         for (const auto& wrapper : wrappers)
         {
             const std::string scene_name = wrapper->get_name();
-            const bool needs_desktop = wrapper->get_default()->needs_desktop_app();
+            const auto capabilities = wrapper->get_default()->get_capabilities();
+            const bool needs_desktop = capabilities.requires_desktop;
             std::string plugin_name;
             std::string plugin_path;
 
@@ -292,6 +293,16 @@ int main(int argc, char* argv[])
                 {"plugin_name", plugin_name},
                 {"plugin_path", plugin_path},
                 {"needs_desktop", needs_desktop},
+                {"capabilities", {
+                    {"requires_desktop", capabilities.requires_desktop},
+                    {"requires_audio", capabilities.requires_audio},
+                    {"requires_network", capabilities.requires_network},
+                    {"interactive", capabilities.interactive},
+                    {"previewable", capabilities.previewable},
+                    {"deterministic_preview", capabilities.deterministic_preview},
+                    {"supports_audio", capabilities.supports_audio},
+                    {"music_director_eligible", capabilities.music_director_eligible}
+                }},
             });
         }
 
@@ -313,7 +324,11 @@ int main(int argc, char* argv[])
             spdlog::info("Scene manifest written to {}", args.manifest_out);
         }
 
-        // Cleanup and exit without rendering
+        // Cleanup and exit without rendering. Release all wrapper references
+        // before plugin DSOs are unloaded.
+        for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
+        wrappers.clear();
+        config->release_scene_references();
         pl->delete_references();
         pl->destroy_plugins();
         delete config;
@@ -326,8 +341,9 @@ int main(int argc, char* argv[])
     rgb_matrix::FrameCanvas* canvas = matrix->CreateFrameCanvas();
     canvas->Clear();
 
-    // Timing constants
-    const int frame_delay_ms = 1000 / args.fps;
+    // Legacy scenes may still read wall clock time. Deterministic-capable
+    // scenes use virtual time; legacy ones retain real-time preview pacing.
+    const int frame_delay_ms = 1000 / std::max(1, args.fps);
     const size_t frame_delay_cs =
         static_cast<size_t>(std::max(1, 100 / args.fps)); // centiseconds
 
@@ -342,10 +358,11 @@ int main(int argc, char* argv[])
         // Skip scenes that require the desktop app - they cannot be rendered
         // headlessly and need a running desktop connection.  Use
         // scripts/capture_desktop_preview.sh to capture them manually.
-        if (wrapper->get_default()->needs_desktop_app())
+        const auto capabilities = wrapper->get_default()->get_capabilities();
+        if (!capabilities.previewable || capabilities.requires_desktop)
         {
-            spdlog::info("Skipping '{}': requires desktop app (use capture_desktop_preview.sh).",
-                         scene_name);
+            spdlog::info("Skipping '{}': {}.", scene_name,
+                         !capabilities.previewable ? "scene is marked non-previewable" : "requires desktop app");
             continue;
         }
 
@@ -388,15 +405,19 @@ int main(int argc, char* argv[])
             std::vector<Magick::Image> frames;
             frames.reserve(static_cast<size_t>(args.total_frames));
 
+            const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
             for (int f = 0; f < args.total_frames; ++f)
             {
-                // Sleep so that time-based animations (FrameTimer) advance at the
-                // intended rate.  Most scenes use real wall-clock time, so without
-                // this sleep the entire animation would appear as a single instant.
-                std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
-
                 canvas->Clear();
-                const bool keep_going = scene->render(canvas);
+                bool keep_going = true;
+                if (capabilities.deterministic_preview) {
+                    // Migrated scenes can use fast, repeatable virtual time.
+                    keep_going = scene->render_frame(canvas, preview_dt, true);
+                } else {
+                    // Preserve correct animation for legacy wall-clock scenes.
+                    std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
+                    keep_going = scene->render_frame(canvas);
+                }
 
                 const auto rgb = capture_canvas(canvas, args.matrix_width,
                                                 args.matrix_height);
@@ -444,6 +465,9 @@ int main(int argc, char* argv[])
     spdlog::info("Done. Generated: {}  Skipped: {}", generated, skipped);
 
     // ---- cleanup ----------------------------------------------------------
+    for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
+    wrappers.clear();
+    config->release_scene_references();
     pl->delete_references();
     pl->destroy_plugins();
 

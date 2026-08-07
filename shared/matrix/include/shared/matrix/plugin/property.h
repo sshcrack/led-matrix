@@ -5,6 +5,9 @@
 #include <optional>
 #include <vector>
 #include <type_traits>
+#include <cmath>
+#include <sstream>
+#include <stdexcept>
 
 #include "graphics.h"
 #include "shared/matrix/utils/utils.h"
@@ -14,6 +17,18 @@
 using json = nlohmann::json;
 
 namespace Plugins {
+    struct PropertyUiMetadata {
+        std::string label;
+        std::string description;
+        std::string group;
+        std::string unit;
+        std::string control;
+        std::optional<double> step;
+        nlohmann::json presets = nlohmann::json::array();
+        bool advanced = false;
+        std::string visible_if_property;
+        nlohmann::json visible_if_value;
+    };
     // Base class for all enum types used in properties
     class EnumBase {
     public:
@@ -119,6 +134,24 @@ namespace Plugins {
     {
     protected:
         std::string name;
+        PropertyUiMetadata ui_metadata_{};
+
+        void append_ui_metadata(nlohmann::json &j) const {
+            if (!ui_metadata_.label.empty()) j["label"] = ui_metadata_.label;
+            if (!ui_metadata_.description.empty()) j["description"] = ui_metadata_.description;
+            if (!ui_metadata_.group.empty()) j["group"] = ui_metadata_.group;
+            if (!ui_metadata_.unit.empty()) j["unit"] = ui_metadata_.unit;
+            if (!ui_metadata_.control.empty()) j["control"] = ui_metadata_.control;
+            if (ui_metadata_.step.has_value()) j["step"] = *ui_metadata_.step;
+            if (ui_metadata_.presets.is_array() && !ui_metadata_.presets.empty()) j["presets"] = ui_metadata_.presets;
+            if (ui_metadata_.advanced) j["advanced"] = true;
+            if (!ui_metadata_.visible_if_property.empty()) {
+                j["visible_if"] = {
+                    {"property", ui_metadata_.visible_if_property},
+                    {"equals", ui_metadata_.visible_if_value}
+                };
+            }
+        }
 
     public:
         explicit PropertyBase(std::string propertyName) : name(std::move(propertyName))
@@ -134,6 +167,23 @@ namespace Plugins {
         virtual void add_additional_data(nlohmann::json &j) const = 0;
 
         [[nodiscard]] virtual std::string get_type_id() const = 0;
+        [[nodiscard]] virtual std::vector<std::string> validate_schema() const = 0;
+        [[nodiscard]] virtual bool is_required() const = 0;
+
+        PropertyBase &label(std::string value) { ui_metadata_.label = std::move(value); return *this; }
+        PropertyBase &description(std::string value) { ui_metadata_.description = std::move(value); return *this; }
+        PropertyBase &group(std::string value) { ui_metadata_.group = std::move(value); return *this; }
+        PropertyBase &unit(std::string value) { ui_metadata_.unit = std::move(value); return *this; }
+        PropertyBase &control(std::string value) { ui_metadata_.control = std::move(value); return *this; }
+        PropertyBase &step(double value) { ui_metadata_.step = value; return *this; }
+        PropertyBase &presets(nlohmann::json value) { ui_metadata_.presets = std::move(value); return *this; }
+        PropertyBase &advanced(bool value = true) { ui_metadata_.advanced = value; return *this; }
+        PropertyBase &visible_if(std::string property, nlohmann::json value) {
+            ui_metadata_.visible_if_property = std::move(property);
+            ui_metadata_.visible_if_value = std::move(value);
+            return *this;
+        }
+        [[nodiscard]] const PropertyUiMetadata &ui_metadata() const { return ui_metadata_; }
 
         [[nodiscard]] const std::string &getName() const
         {
@@ -214,7 +264,10 @@ namespace Plugins {
                         if (j.at(name).is_string()) {
                             std::string enum_str = j.at(name).get<std::string>();
                             if (!value.set_from_string(enum_str)) {
+                                throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
                             }
+                        } else {
+                            throw std::runtime_error("Enum property '" + name + "' must be a string");
                         }
                     } else {
                         value = j.at(name).get<T>();
@@ -266,6 +319,7 @@ namespace Plugins {
                     j["max"] = max_value.value();
                 }
             }
+            append_ui_metadata(j);
         }
 
         void dump_to_json(nlohmann::json &j) const override
@@ -276,6 +330,56 @@ namespace Plugins {
             } else {
                 j[name] = value;
             }
+        }
+
+        [[nodiscard]] bool is_required() const override { return required; }
+
+        [[nodiscard]] std::vector<std::string> validate_schema() const override
+        {
+            std::vector<std::string> issues;
+            if (name.empty())
+                issues.emplace_back("property name is empty");
+            if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+                issues.emplace_back("property name contains a path separator");
+            for (unsigned char c : name) {
+                if (c < 0x20) {
+                    issues.emplace_back("property name contains a control character");
+                    break;
+                }
+            }
+
+            if constexpr (std::is_arithmetic_v<T>) {
+                if (min_value && max_value && *min_value > *max_value)
+                    issues.emplace_back("minimum is greater than maximum");
+                if (min_value && value < *min_value)
+                    issues.emplace_back("default value is below minimum");
+                if (max_value && value > *max_value)
+                    issues.emplace_back("default value is above maximum");
+                if constexpr (std::is_floating_point_v<T>) {
+                    if (!std::isfinite(value)) issues.emplace_back("default value is not finite");
+                    if (min_value && !std::isfinite(*min_value)) issues.emplace_back("minimum is not finite");
+                    if (max_value && !std::isfinite(*max_value)) issues.emplace_back("maximum is not finite");
+                }
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                if (min_value && max_value && *min_value > *max_value)
+                    issues.emplace_back("minimum string is greater than maximum string");
+                if (min_value && value < *min_value)
+                    issues.emplace_back("default value is below minimum");
+                if (max_value && value > *max_value)
+                    issues.emplace_back("default value is above maximum");
+            } else if constexpr (std::is_base_of_v<EnumBase, T>) {
+                const auto values = value.get_all_values();
+                if (values.empty()) issues.emplace_back("enum has no values");
+                if (value.get_value_string().empty()) issues.emplace_back("enum default is not a valid enumerator");
+            }
+
+            if (ui_metadata_.step.has_value() && *ui_metadata_.step <= 0.0)
+                issues.emplace_back("UI step must be greater than zero");
+            if (!ui_metadata_.presets.is_array())
+                issues.emplace_back("UI presets must be an array");
+            if (!ui_metadata_.visible_if_property.empty() && ui_metadata_.visible_if_property == name)
+                issues.emplace_back("visibility condition references the property itself");
+            return issues;
         }
 
         [[nodiscard]] std::string get_type_id() const override

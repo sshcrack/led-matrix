@@ -1,10 +1,46 @@
-export interface ListScenes { name: string; properties: Property<unknown>[]; has_preview?: boolean; category: string; }
+export interface SceneCapabilities {
+  requires_desktop: boolean
+  requires_audio: boolean
+  requires_network: boolean
+  interactive: boolean
+  previewable: boolean
+  deterministic_preview: boolean
+  supports_audio: boolean
+  music_director_eligible: boolean
+}
+
+export interface PropertyUiMetadata {
+  label?: string
+  description?: string
+  group?: string
+  unit?: string
+  control?: string
+  step?: number
+  presets?: unknown[]
+  advanced?: boolean
+  visible_if?: { property: string; equals: unknown }
+  min?: number
+  max?: number
+  enum_name?: string
+  enum_values?: Array<{ value: string; display_name?: string }>
+  values?: unknown[]
+  [key: string]: unknown
+}
+
+export interface ListScenes {
+  name: string
+  properties: Property<unknown>[]
+  has_preview?: boolean
+  needs_desktop?: boolean
+  category: string
+  capabilities?: SceneCapabilities
+}
 
 export interface Property<T = unknown> {
-  default_value: T;
-  name: string;
-  additional?: Record<string, unknown>;
-  type_id: TypeId;
+  default_value: T
+  name: string
+  additional?: PropertyUiMetadata
+  type_id: TypeId
 }
 
 export type CollectionProvider = {

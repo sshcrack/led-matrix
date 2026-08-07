@@ -44,8 +44,10 @@ std::string VideoStreamEngine::check_tools() {
         if (run_command(fmt::format("ffmpeg -version > {} 2>&1", null_device())) != 0) {
             return "ffmpeg not found in PATH.";
         }
-        if (run_command(fmt::format("yt-dlp --version > {} 2>&1", null_device())) != 0) {
-            return "yt-dlp not found in PATH.";
+        if (run_command(fmt::format("{} --version > {} 2>&1", ytdlp_cmd(), null_device())) != 0) {
+            return ytdlp_path_.empty()
+                       ? "yt-dlp not found in PATH."
+                       : "yt-dlp not found at \"" + ytdlp_path_ + "\".";
         }
         spdlog::info("ffmpeg and yt-dlp found.");
         return "";
@@ -521,13 +523,19 @@ void VideoStreamEngine::stop() {
 }
 
 // ---- Command construction helpers ----
+std::string VideoStreamEngine::ytdlp_cmd() const {
+    if (ytdlp_path_.empty())
+        return "yt-dlp";
+    return "\"" + ytdlp_path_ + "\"";
+}
+
 std::string VideoStreamEngine::build_ytdlp_command(
     const std::filesystem::path& output_path, int start_sec, int end_sec) const
 {
     return fmt::format(
-        "yt-dlp -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "{} -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
         "--force-overwrites -o \"{}\" \"{}\"",
-        start_sec, end_sec, output_path.string(), current_url_);
+        ytdlp_cmd(), start_sec, end_sec, output_path.string(), current_url_);
 }
 
 std::string VideoStreamEngine::build_ffmpeg_command(

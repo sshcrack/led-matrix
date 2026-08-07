@@ -94,6 +94,12 @@ namespace Scenes {
         int get_default_weight() override {
             return 3;
         }
+
+        SceneCapabilities get_capabilities() const override {
+            auto caps = Scene::get_capabilities();
+            caps.requires_network = true;
+            return caps;
+        }
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {

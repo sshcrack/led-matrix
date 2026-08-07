@@ -58,6 +58,7 @@ namespace AmbientScenes {
 
         [[nodiscard]] std::string get_name() const override;
 
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
         void register_properties() override;
 
         using Scene::Scene;

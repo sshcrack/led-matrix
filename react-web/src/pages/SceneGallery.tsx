@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ImageOff, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { Activity, Check, Cloud, Headphones, ImageOff, Monitor, Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -74,7 +74,13 @@ export default function SceneGallery() {
         <MatrixPreview apiUrl={apiUrl ?? ''} sceneName={selected?.name} hasPreview={selected?.has_preview} />
         <div className="glass-panel rounded-2xl p-4">
           {selected ? <><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold">{selected.name}</h2><p className="text-xs text-muted-foreground">{selected.category}</p></div><Badge>{selected.properties.length} settings</Badge></div>
-          <div className="mt-4 flex flex-wrap gap-1.5">{selected.properties.slice(0,10).map(p => <Badge key={p.name} variant="outline" className="font-normal">{p.name.replaceAll('_',' ')}</Badge>)}</div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {selected.capabilities?.requires_audio && <Badge variant="secondary" className="gap-1"><Headphones className="h-3 w-3" />Audio</Badge>}
+            {selected.capabilities?.requires_desktop && <Badge variant="secondary" className="gap-1"><Monitor className="h-3 w-3" />Desktop</Badge>}
+            {selected.capabilities?.requires_network && <Badge variant="secondary" className="gap-1"><Cloud className="h-3 w-3" />Network</Badge>}
+            {selected.capabilities?.supports_audio && !selected.capabilities?.requires_audio && <Badge variant="outline" className="gap-1"><Activity className="h-3 w-3" />Audio reactive</Badge>}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-1.5">{selected.properties.slice(0,10).map(p => <Badge key={p.name} variant="outline" className="font-normal">{p.additional?.label ?? p.name.replaceAll('_',' ')}</Badge>)}</div>
           <div className="mt-5 space-y-2"><label className="text-xs font-medium text-muted-foreground">Add to preset</label><select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={targetPreset} onChange={e => setTargetPreset(e.target.value)}><option value="">Choose a preset…</option>{Object.entries(presets ?? {}).map(([id,p]) => <option key={id} value={id}>{p.display_name ?? id}</option>)}</select><Button className="w-full gap-2" disabled={!targetPreset} onClick={addToPreset}><Plus className="h-4 w-4" />Add and configure</Button></div></> : <p className="text-sm text-muted-foreground">No scenes match this filter.</p>}
         </div>
       </aside>

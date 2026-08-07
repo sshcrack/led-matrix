@@ -62,6 +62,8 @@ namespace AudioRecorder
         [[nodiscard]] bool isRecording() const;
         [[nodiscard]] double getSampleRate() const;
         [[nodiscard]] int getCurrentDeviceIndex() const { return currentDeviceIndex; }
+        [[nodiscard]] size_t getBufferedFrameCount() const;
+        [[nodiscard]] double getBufferedLatencyMs() const;
 
         // Returns the newest rolling analysis window after at least one hop of
         // fresh audio has arrived. No queued/stale audio is replayed.
@@ -87,7 +89,7 @@ namespace AudioRecorder
         void linuxLoopbackReadLoop();
 #endif
 
-        std::mutex audioBufferMutex;
+        mutable std::mutex audioBufferMutex;
         std::deque<StereoFrame> audioBuffer;
         uint64_t capturedFrameSequence = 0;
         uint64_t lastDeliveredSequence = 0;

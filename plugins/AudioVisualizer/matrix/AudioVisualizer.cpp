@@ -1,9 +1,11 @@
 #include "AudioVisualizer.h"
 #include "scenes/AudioReactiveScenes.h"
 #include "scenes/AudioSpectrumScene.h"
+#include "scenes/MusicDirectorScene.h"
 
 #include <shared/common/audio_protocol.h>
 #include <shared/matrix/canvas_consts.h>
+#include <shared/matrix/diagnostics.h>
 #include <spdlog/spdlog.h>
 
 using namespace Scenes;
@@ -21,6 +23,7 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes() {
     scenes.push_back(std::make_unique<AudioPulseTunnelSceneWrapper>());
     scenes.push_back(std::make_unique<AudioAuroraSceneWrapper>());
     scenes.push_back(std::make_unique<AudioKaleidoscopeSceneWrapper>());
+    scenes.push_back(std::make_unique<MusicDirectorSceneWrapper>());
     return scenes;
 }
 
@@ -44,10 +47,12 @@ bool AudioVisualizer::on_udp_packet(uint8_t pluginId, const uint8_t *data, size_
     AudioProtocol::Frame frame;
     std::string error;
     if (!AudioProtocol::decode(std::span<const uint8_t>(data, size), frame, &error)) {
+        Diagnostics::RuntimeDiagnostics::instance().record_audio_decode_error();
         spdlog::warn("Rejected music-analysis packet: {}", error);
         return false;
     }
 
+    Diagnostics::RuntimeDiagnostics::instance().record_audio_packet(frame.sequence);
     AudioState::update(frame);
 
     if (frame.event(AudioProtocol::DropEvent) && Constants::global_post_processor)

@@ -1,6 +1,5 @@
 #include "BoidsScene.h"
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <shared/matrix/audio_state.h>
 
@@ -32,8 +31,7 @@ void BoidsScene::initialize(int width, int height) {
     set_target_fps(60);
     ensure_buffers();
     reset_boids();
-    last_update_ = std::chrono::steady_clock::now();
-    simulation_accumulator_ = 0.0f;
+    simulation_.reset();
 }
 
 void BoidsScene::ensure_buffers() {
@@ -93,11 +91,7 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
     const int wanted = std::clamp(count_->get(), 8, 180);
     if (static_cast<int>(boids_.size()) != wanted) reset_boids();
 
-    const auto now = std::chrono::steady_clock::now();
-    float elapsed = std::chrono::duration<float>(now - last_update_).count();
-    last_update_ = now;
-    elapsed = std::clamp(elapsed, 0.0f, 0.20f);
-    simulation_accumulator_ += elapsed;
+    const float elapsed = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.20f);
 
     if (audio_reactive_->get()) {
         const auto audio = AudioState::snapshot();
@@ -123,15 +117,7 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
         }
     } else { audio_bass_ = audio_mids_ = audio_treble_ = audio_balance_ = 0.0f; }
 
-    constexpr float simulation_step = 1.0f / 30.0f;
-    int steps = 0;
-    while (simulation_accumulator_ >= simulation_step && steps < 3) {
-        simulate_step();
-        simulation_accumulator_ -= simulation_step;
-        ++steps;
-    }
-    if (steps == 3 && simulation_accumulator_ >= simulation_step)
-        simulation_accumulator_ = std::fmod(simulation_accumulator_, simulation_step);
+    simulation_.advance(elapsed, [&](double) { simulate_step(); });
 
     // Trail decay is based on elapsed real time, not the number of display frames.
     const float configured_fade = std::clamp(trail_fade_->get(), 0.0f, 0.96f);

@@ -3,6 +3,8 @@
 #include <filesystem>
 
 #include "spdlog/spdlog.h"
+#include "shared/matrix/diagnostics.h"
+#include <chrono>
 
 using namespace spdlog;
 
@@ -26,8 +28,27 @@ bool SceneRenderer::render_scene_phase(
     FrameCanvas *&composite_offscreen_canvas,
     tmillis_t end_ms)
 {
+    Diagnostics::RuntimeDiagnostics::instance().set_active_scene(scene->get_name());
     while (time_source_->now_ms() < end_ms) {
-        bool cont = scene->render(composite_offscreen_canvas);
+        bool cont = false;
+        const auto render_start = std::chrono::steady_clock::now();
+        try {
+            cont = scene->render_frame(composite_offscreen_canvas);
+        } catch (const std::exception &e) {
+            Diagnostics::RuntimeDiagnostics::instance().record_scene_error(scene->get_name(), e.what());
+            spdlog::error("Scene '{}' threw while rendering: {}", scene->get_name(), e.what());
+            composite_offscreen_canvas->Clear();
+            return true;
+        } catch (...) {
+            Diagnostics::RuntimeDiagnostics::instance().record_scene_error(scene->get_name(), "unknown exception");
+            spdlog::error("Scene '{}' threw an unknown exception while rendering", scene->get_name());
+            composite_offscreen_canvas->Clear();
+            return true;
+        }
+        const double render_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - render_start).count();
+        Diagnostics::RuntimeDiagnostics::instance().record_render(
+            scene->get_name(), render_ms, scene->get_declared_target_fps());
 
         if (post_processor_)
             post_processor_->apply_effects(composite_offscreen_canvas);

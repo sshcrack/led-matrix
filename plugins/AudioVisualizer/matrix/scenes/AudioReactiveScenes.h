@@ -2,7 +2,6 @@
 
 #include <shared/matrix/audio_state.h>
 #include "shared/matrix/Scene.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "shared/matrix/wrappers.h"
 #include <random>
 
@@ -10,7 +9,6 @@ namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
     struct Particle { float x, y, vx, vy, life, maxLife, hue, size; };
-    FrameTimer timer_;
     std::vector<Particle> particles_;
     std::mt19937 rng_{std::random_device{}()};
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, dropSeen_ = 0;
@@ -37,10 +35,15 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    SceneCapabilities get_capabilities() const override {
+        auto caps = Scene::get_capabilities();
+        caps.requires_audio = true; caps.supports_audio = true;
+        caps.previewable = false; caps.deterministic_preview = false;
+        return caps;
+    }
 };
 
 class AudioPulseTunnelScene final : public Scene {
-    FrameTimer timer_;
     uint64_t beatSeen_ = 0, dropSeen_ = 0, sectionSeen_ = 0;
     float travel_ = 0.0f, rotation_ = 0.0f, beatPulse_ = 0.0f, dropPulse_ = 0.0f;
     float paletteOffset_ = 0.0f;
@@ -63,10 +66,15 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    SceneCapabilities get_capabilities() const override {
+        auto caps = Scene::get_capabilities();
+        caps.requires_audio = true; caps.supports_audio = true;
+        caps.previewable = false; caps.deterministic_preview = false;
+        return caps;
+    }
 };
 
 class AudioAuroraScene final : public Scene {
-    FrameTimer timer_;
     uint64_t beatSeen_ = 0, sectionSeen_ = 0, dropSeen_ = 0;
     float time_ = 0.0f, beatGlow_ = 0.0f, dropGlow_ = 0.0f, palette_ = 0.0f;
 
@@ -85,10 +93,15 @@ public:
     tmillis_t get_default_duration() override { return 35000; }
     int get_default_weight() override { return 6; }
     bool needs_desktop_app() override { return true; }
+    SceneCapabilities get_capabilities() const override {
+        auto caps = Scene::get_capabilities();
+        caps.requires_audio = true; caps.supports_audio = true;
+        caps.previewable = false; caps.deterministic_preview = false;
+        return caps;
+    }
 };
 
 class AudioKaleidoscopeScene final : public Scene {
-    FrameTimer timer_;
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, sectionSeen_ = 0;
     float rotation_ = 0.0f, beatPulse_ = 0.0f, onsetPulse_ = 0.0f, palette_ = 0.0f;
 
@@ -107,6 +120,12 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    SceneCapabilities get_capabilities() const override {
+        auto caps = Scene::get_capabilities();
+        caps.requires_audio = true; caps.supports_audio = true;
+        caps.previewable = false; caps.deterministic_preview = false;
+        return caps;
+    }
 };
 
 class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };

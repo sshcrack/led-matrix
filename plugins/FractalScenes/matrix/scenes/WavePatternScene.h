@@ -20,6 +20,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
         std::string get_category() const override { return "Fractals"; }
+        SceneCapabilities get_capabilities() const override { auto caps = Scene::get_capabilities(); caps.supports_audio = true; return caps; }
 
         tmillis_t get_default_duration() override {
             return 20000;

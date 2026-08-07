@@ -53,11 +53,9 @@ export function parseDuration(input: string): number | null {
   const token = /(\d*\.?\d+)\s*(ms|milliseconds?|s|sec(?:ond)?s?|m|min(?:ute)?s?)/g
   let total = 0
   let matched = false
-  let consumed = ''
 
   for (const match of normalized.matchAll(token)) {
     matched = true
-    consumed += match[0]
     const amount = Number(match[1])
     if (!Number.isFinite(amount)) return null
 

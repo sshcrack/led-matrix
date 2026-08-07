@@ -236,6 +236,13 @@ spdlog::info("Setting preset {}", id);
         this->dirty = false;
     }
 
+    void MainConfig::release_scene_references() {
+        unique_lock lock(data_mutex);
+        for (auto &[id, preset] : data.presets) {
+            if (preset) preset->scenes.clear();
+        }
+    }
+
     string MainConfig::get_filename() const {
         return this->file_name;
     }

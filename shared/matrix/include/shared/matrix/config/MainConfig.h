@@ -66,6 +66,9 @@ namespace Config {
         void set_last_check_time(tmillis_t time);
         
         bool save();
+        /// Release plugin-owned scene instances after configuration has been
+        /// persisted and before plugin DSOs are unloaded.
+        void release_scene_references();
         string get_filename() const;
     };
 }
