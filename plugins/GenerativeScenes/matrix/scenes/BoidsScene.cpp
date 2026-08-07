@@ -22,6 +22,15 @@ void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
 using namespace GenerativeScenes;
 
 void BoidsScene::register_properties() {
+    count_->label("Boid count").description("Number of flock members. Higher values make the flock denser but cost more CPU.").group("Flock");
+    speed_->label("Cruise speed").description("Base movement speed before audio modulation.").group("Flock").step(0.05);
+    perception_->label("Perception radius").description("How far each boid can see nearby flock members.").group("Flock").unit("px").step(1.0);
+    trail_fade_->label("Trail persistence").description("How long motion trails remain visible.").group("Appearance").step(0.02);
+    rainbow_->label("Direction colors").description("Color boids by travel direction instead of using one fixed color.").group("Appearance");
+    color_->label("Boid color").description("Fixed boid color when direction colors are disabled.").group("Appearance").visible_if("rainbow", false);
+    audio_reactive_->label("Audio reactive").description("Let bass, beats, stereo balance and high frequencies steer the flock.").group("Audio");
+    audio_strength_->label("Audio strength").description("Overall amount of music-driven motion.").group("Audio").visible_if("audio_reactive", true).step(0.05);
+
     add_property(count_); add_property(speed_); add_property(perception_);
     add_property(trail_fade_); add_property(audio_reactive_); add_property(audio_strength_); add_property(rainbow_); add_property(color_);
 }
@@ -50,7 +59,12 @@ void BoidsScene::reset_boids() {
 void BoidsScene::simulate_step() {
     const float perception = std::clamp(perception_->get(), 4.0f, 48.0f);
     const float p2 = perception * perception;
-    const float audio_motion = audio_reactive_->get() ? (1.0f + audio_bass_ * audio_strength_->get() * 1.4f) : 1.0f;
+    const float audio_motion = audio_reactive_->get()
+        ? std::clamp(1.0f + audio_bass_ * audio_strength_->get() * 1.15f
+                     + beat_pulse_ * audio_strength_->get() * 0.42f
+                     + drop_pulse_ * audio_strength_->get() * 0.95f,
+                     1.0f, 2.75f)
+        : 1.0f;
     const float max_speed = std::clamp(speed_->get(), 0.12f, 2.0f) * 0.55f * audio_motion;
     std::vector<Boid> next = boids_;
 
@@ -103,6 +117,7 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
         audio_balance_ += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance_) * response;
         if (has_audio && audio.beat_counter != last_beat_counter_) {
             last_beat_counter_ = audio.beat_counter;
+            beat_pulse_ = std::max(beat_pulse_, 0.65f + audio.feature(AudioProtocol::Feature::Kick) * 0.35f);
             const float impulse = 0.08f + audio.feature(AudioProtocol::Feature::Kick) * 0.28f;
             const float cx = matrix_width * 0.5f, cy = matrix_height * 0.5f;
             for (auto &boid : boids_) {
@@ -113,9 +128,24 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
         }
         if (has_audio && audio.drop_counter != last_drop_counter_) {
             last_drop_counter_ = audio.drop_counter;
-            for (auto &boid : boids_) { boid.vx *= 1.8f; boid.vy *= 1.8f; }
+            drop_pulse_ = 1.0f;
+            const float cx = matrix_width * 0.5f, cy = matrix_height * 0.5f;
+            for (auto &boid : boids_) {
+                const float dx = boid.x - cx, dy = boid.y - cy;
+                const float tangent_x = -dy;
+                const float tangent_y = dx;
+                const float length = std::max(1.0f, std::sqrt(tangent_x * tangent_x + tangent_y * tangent_y));
+                boid.vx += tangent_x / length * 0.55f;
+                boid.vy += tangent_y / length * 0.55f;
+            }
         }
-    } else { audio_bass_ = audio_mids_ = audio_treble_ = audio_balance_ = 0.0f; }
+    } else {
+        audio_bass_ = audio_mids_ = audio_treble_ = audio_balance_ = 0.0f;
+        beat_pulse_ = drop_pulse_ = 0.0f;
+    }
+
+    beat_pulse_ = std::max(0.0f, beat_pulse_ - elapsed * 2.8f);
+    drop_pulse_ = std::max(0.0f, drop_pulse_ - elapsed * 1.35f);
 
     simulation_.advance(elapsed, [&](double) { simulate_step(); });
 
@@ -126,8 +156,16 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
 
     for (const auto &b: boids_) {
         uint8_t r,g,bl;
-        if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,1.0f,r,g,bl);
-        else { const auto c=color_->get(); r=c.r; g=c.g; bl=c.b; }
+        const float audio_glow = audio_reactive_->get()
+            ? std::clamp(0.82f + audio_treble_ * audio_strength_->get() * 0.32f + beat_pulse_ * 0.22f, 0.65f, 1.0f)
+            : 1.0f;
+        if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,audio_glow,r,g,bl);
+        else {
+            const auto c=color_->get();
+            r=static_cast<uint8_t>(c.r * audio_glow);
+            g=static_cast<uint8_t>(c.g * audio_glow);
+            bl=static_cast<uint8_t>(c.b * audio_glow);
+        }
         const int x=static_cast<int>(std::round(b.x)), y=static_cast<int>(std::round(b.y));
         for (int oy=-1;oy<=1;++oy) for (int ox=-1;ox<=1;++ox) {
             const int px=(x+ox+matrix_width)%matrix_width, py=(y+oy+matrix_height)%matrix_height;

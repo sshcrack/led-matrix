@@ -35,6 +35,15 @@ float triangle_wave(float value) {
 using namespace GenerativeScenes;
 
 void FallingSandScene::register_properties() {
+    emitters_->label("Emitters").description("Number of moving material nozzles across the top edge.").group("Material");
+    spawn_rate_->label("Spawn rate").description("Particles emitted by each nozzle per simulation step.").group("Material");
+    water_->label("Mix in water").description("Occasionally emit fluid particles alongside sand.").group("Material");
+    reset_fill_percent_->label("Drain threshold").description("Start draining once this percentage of the matrix is occupied.").group("Cycle").unit("%");
+    wind_enabled_->label("Wind gusts").description("Enable occasional directional gusts that push loose material and debris.").group("Events");
+    wind_strength_->label("Wind strength").description("Maximum intensity of random wind gusts.").group("Events").visible_if("wind", true).unit("%");
+    explosions_enabled_->label("Explosions").description("Enable occasional impacts that excavate the pile and throw debris and dust.").group("Events");
+    explosion_frequency_->label("Explosion frequency").description("How often explosion opportunities occur; higher values shorten the average delay.").group("Events").visible_if("explosions", true).unit("%");
+
     add_property(emitters_);
     add_property(spawn_rate_);
     add_property(water_);

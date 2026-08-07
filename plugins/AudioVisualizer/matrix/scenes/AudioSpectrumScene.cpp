@@ -17,6 +17,26 @@ void addPixel(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t 
 }
 
 void AudioSpectrumScene::register_properties() {
+    displayMode_->label("Display mode")
+        .description("Choose bars, radial layouts, waveform or scrolling spectrogram.")
+        .group("Layout");
+    barWidth_->label("Bar width").description("Width of spectrum bars.").group("Bars").unit("px");
+    gapWidth_->label("Bar gap").description("Space between adjacent spectrum bars.").group("Bars").unit("px");
+    mirror_->label("Mirror bars").description("Mirror the normal bar layout across the matrix centerline.").group("Bars");
+    fallingDots_->label("Peak markers").description("Show falling or outward-moving peak markers.").group("Bars");
+    dotFallSpeed_->label("Peak fall speed").description("How quickly peak markers return after a transient.").group("Bars").visible_if("falling_dots", true).step(0.05);
+    circleRadius_->label("Radial radius").description("Base radius used by circle and spiral layouts.").group("Radial").step(0.05);
+    rotate_->label("Rotate radial layouts").description("Continuously rotate circle and spiral visualizations.").group("Radial");
+    rotationSpeed_->label("Rotation speed").description("Speed of radial layout rotation.").group("Radial").visible_if("rotate_visualization", true).step(0.05);
+    rainbow_->label("Rainbow palette").description("Color bands by frequency instead of using one base color.").group("Color");
+    musicalColor_->label("Musical color shifts").description("Shift hue with spectral centroid, stereo balance and song sections.").group("Color").visible_if("rainbow_colors", true);
+    baseColor_->label("Base color").description("Color used when rainbow mode is disabled.").group("Color").visible_if("rainbow_colors", false);
+    sensitivity_->label("Sensitivity").description("Input gain applied before drawing the spectrum.").group("Response").step(0.05);
+    smoothing_->label("Attack smoothing").description("Higher values soften fast upward changes.").group("Response").step(0.02);
+    releaseSpeed_->label("Release speed").description("How quickly bars fall after energy disappears.").group("Response").step(0.1);
+    beatPulseEnabled_->label("Beat pulse").description("Briefly brighten the visualization on detected beats.").group("Response");
+    showWaveform_->label("Waveform overlay").description("Draw the compact waveform over spectrum modes.").group("Overlay");
+
     add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
     add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_);
     add_property(fallingDots_); add_property(dotFallSpeed_); add_property(displayMode_);
@@ -273,9 +293,14 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (!audio.fresh() || audio.spectrum.empty()) return false;
 
     updateSpectrum(audio, dt);
-    if (audio.event(AudioProtocol::BeatEvent) || (lastBeat_ != 0 && audio.beat_counter > lastBeat_)) beatPulse_ = 1.0f;
+    if (beatPulseEnabled_->get()) {
+        if (audio.event(AudioProtocol::BeatEvent) || (lastBeat_ != 0 && audio.beat_counter > lastBeat_))
+            beatPulse_ = 1.0f;
+        beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.5f);
+    } else {
+        beatPulse_ = 0.0f;
+    }
     lastBeat_ = audio.beat_counter;
-    beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.5f);
     if (rotate_->get()) rotation_ += dt * rotationSpeed_->get() *
         (0.35f + audio.feature(AudioProtocol::Feature::Bpm) / 140.0f);
 

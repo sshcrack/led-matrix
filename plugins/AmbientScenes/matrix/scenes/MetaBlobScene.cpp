@@ -89,14 +89,11 @@ namespace AmbientScenes {
         blobs.clear();
         blobs.reserve(std::max(1, num_blobs->get()));
         time = 0.0f;
-        last_update = std::chrono::steady_clock::now();
     }
 
     bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas) {
         canvas->Clear();
-        const auto now = std::chrono::steady_clock::now();
-        const float dt = std::min(0.10f, std::chrono::duration<float>(now - last_update).count());
-        last_update = now;
+        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
 
         if (audio_reactive->get()) {
             const auto audio = AudioState::snapshot();
@@ -180,6 +177,14 @@ namespace AmbientScenes {
     }
 
     void MetaBlobScene::register_properties() {
+        num_blobs->label("Blob count").description("Number of metaballs contributing to the liquid field.").group("Pattern");
+        threshold->label("Surface threshold").description("Controls how strongly nearby blobs merge into one surface.").group("Pattern").step(0.00001);
+        speed->label("Motion speed").description("Base drift speed of the metaballs.").group("Motion").step(0.01);
+        move_range->label("Travel range").description("How far blobs wander from the center of the matrix.").group("Motion").step(0.05);
+        color_speed->label("Color drift").description("Speed of the iridescent palette rotation.").group("Appearance").step(0.005);
+        audio_reactive->label("Audio reactive").description("Let bass expand blobs, mids accelerate them and treble sharpen the rim.").group("Audio");
+        audio_strength->label("Audio strength").description("Overall amount of music-driven modulation.").group("Audio").visible_if("audio_reactive", true).step(0.05);
+
         add_property(num_blobs);
         add_property(threshold);
         add_property(speed);
