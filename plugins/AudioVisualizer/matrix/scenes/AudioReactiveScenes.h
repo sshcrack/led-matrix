@@ -38,9 +38,10 @@ public:
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.previewable = false; caps.deterministic_preview = false;
+        caps.can_generate_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
 class AudioPulseTunnelScene final : public Scene {
@@ -69,9 +70,10 @@ public:
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.previewable = false; caps.deterministic_preview = false;
+        caps.can_generate_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
 class AudioAuroraScene final : public Scene {
@@ -96,9 +98,10 @@ public:
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.previewable = false; caps.deterministic_preview = false;
+        caps.can_generate_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
 class AudioKaleidoscopeScene final : public Scene {
@@ -123,9 +126,10 @@ public:
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.previewable = false; caps.deterministic_preview = false;
+        caps.can_generate_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
 class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };

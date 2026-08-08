@@ -82,9 +82,9 @@ public:
     [[nodiscard]] std::string get_category() const override { return "Generative"; }
     Scenes::SceneCapabilities get_capabilities() const override {
         auto caps = Scenes::Scene::get_capabilities();
-        caps.deterministic_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
     tmillis_t get_default_duration() override { return 90000; }
     int get_default_weight() override { return 6; }
 };

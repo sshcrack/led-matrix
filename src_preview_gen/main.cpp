@@ -5,6 +5,7 @@
  *   preview_gen [--output <dir>] [--scene <name>] [--scenes <n1,n2,...>]
  *               [--frames <n>] [--fps <n>] [--width <n>] [--height <n>]
  *               [--dump-manifest] [--manifest-out <file>]
+ *               [--virtual-time-only] [--strict]
  *
  * Defaults:
  *   --output    ./previews
@@ -19,6 +20,7 @@
  *   (defaults to stdout).
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -26,6 +28,7 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
@@ -38,6 +41,7 @@
 #endif
 
 #include "led-matrix.h"
+#include "shared/matrix/audio_state.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/canvas_consts.h"
@@ -71,6 +75,8 @@ struct Args
     int matrix_width = 128;
     int matrix_height = 128;
     bool dump_manifest = false;
+    bool strict = false;
+    bool virtual_time_only = false;
     std::string manifest_out; // path for --manifest-out; empty = stdout
 };
 
@@ -105,6 +111,10 @@ static Args parse_args(int argc, char* argv[])
             parse_int(argv[++i], a.matrix_height);
         else if (std::string(argv[i]) == "--dump-manifest")
             a.dump_manifest = true;
+        else if (std::string(argv[i]) == "--strict")
+            a.strict = true;
+        else if (std::string(argv[i]) == "--virtual-time-only")
+            a.virtual_time_only = true;
         else if (std::string(argv[i]) == "--manifest-out" && i + 1 < argc)
             a.manifest_out = argv[++i];
     }
@@ -177,6 +187,86 @@ static Magick::Image make_frame(const std::vector<uint8_t>& rgb,
     img.animationDelay(delay_centiseconds);
     img.animationIterations(0); // loop forever
     return img;
+}
+
+// ---------------------------------------------------------------------------
+// Synthetic audio used for previewing scenes whose only desktop dependency is
+// the live AudioState feed. This keeps previews self-contained and also drives
+// optional audio-reactive scenes through their music-aware code paths.
+// ---------------------------------------------------------------------------
+static AudioProtocol::Frame make_preview_audio(int frame_index, int fps)
+{
+    AudioProtocol::Frame audio;
+    const float t = static_cast<float>(frame_index) / static_cast<float>(std::max(1, fps));
+    const float beat_period = 0.5f; // 120 BPM
+    const float beat_position = t / beat_period;
+    const auto beat_index = static_cast<uint64_t>(std::floor(beat_position));
+    const float beat_phase = beat_position - std::floor(beat_position);
+    const float kick = std::exp(-beat_phase * 9.0f);
+    const float groove = 0.5f + 0.5f * std::sin(t * 1.7f);
+    const float shimmer = 0.5f + 0.5f * std::sin(t * 4.1f + 0.7f);
+
+    audio.sequence = static_cast<uint32_t>(frame_index + 1);
+    audio.timestamp_ms = static_cast<uint32_t>(t * 1000.0f);
+    audio.beat_counter = beat_index + 1;
+    audio.onset_counter = static_cast<uint64_t>(std::floor(t * 4.0f)) + 1;
+    audio.drop_counter = beat_index / 8;
+    audio.section_counter = static_cast<uint64_t>(t / 4.0f);
+    if (frame_index == 0 || beat_phase < 1.0f / static_cast<float>(std::max(1, fps)))
+        audio.flags |= AudioProtocol::BeatEvent | AudioProtocol::KickEvent;
+    if (frame_index % std::max(1, fps / 4) == 0)
+        audio.flags |= AudioProtocol::OnsetEvent | AudioProtocol::HihatEvent;
+    if (beat_index > 0 && beat_index % 8 == 0 && beat_phase < 1.0f / static_cast<float>(std::max(1, fps)))
+        audio.flags |= AudioProtocol::DropEvent;
+
+    audio.set(AudioProtocol::Feature::Rms, 0.35f + groove * 0.35f);
+    audio.set(AudioProtocol::Feature::Peak, 0.55f + kick * 0.40f);
+    audio.set(AudioProtocol::Feature::Loudness, 0.35f + groove * 0.40f);
+    audio.set(AudioProtocol::Feature::LoudnessFast, 0.35f + groove * 0.42f);
+    audio.set(AudioProtocol::Feature::LoudnessSlow, 0.42f + groove * 0.25f);
+    audio.set(AudioProtocol::Feature::SubBass, 0.25f + kick * 0.70f);
+    audio.set(AudioProtocol::Feature::Bass, 0.32f + kick * 0.62f);
+    audio.set(AudioProtocol::Feature::LowMid, 0.30f + groove * 0.45f);
+    audio.set(AudioProtocol::Feature::Mid, 0.28f + groove * 0.40f);
+    audio.set(AudioProtocol::Feature::HighMid, 0.22f + shimmer * 0.45f);
+    audio.set(AudioProtocol::Feature::Treble, 0.20f + shimmer * 0.60f);
+    audio.set(AudioProtocol::Feature::Air, 0.18f + shimmer * 0.50f);
+    audio.set(AudioProtocol::Feature::SpectralCentroid, 0.42f + shimmer * 0.28f);
+    audio.set(AudioProtocol::Feature::SpectralFlux, 0.18f + kick * 0.65f);
+    audio.set(AudioProtocol::Feature::OnsetStrength, 0.18f + kick * 0.72f);
+    audio.set(AudioProtocol::Feature::Kick, kick);
+    audio.set(AudioProtocol::Feature::Snare, 0.25f + (1.0f - kick) * groove * 0.45f);
+    audio.set(AudioProtocol::Feature::Hihat, 0.25f + shimmer * 0.65f);
+    audio.set(AudioProtocol::Feature::StereoWidth, 0.58f);
+    audio.set(AudioProtocol::Feature::StereoBalance, std::sin(t * 0.73f) * 0.55f);
+    audio.set(AudioProtocol::Feature::StereoCorrelation, 0.45f);
+    audio.set(AudioProtocol::Feature::EnergyTrend, std::sin(t * 0.55f) * 0.22f);
+    audio.set(AudioProtocol::Feature::Drop, (audio.flags & AudioProtocol::DropEvent) ? 1.0f : 0.0f);
+    audio.set(AudioProtocol::Feature::Bpm, 120.0f);
+    audio.set(AudioProtocol::Feature::BeatPhase, beat_phase);
+    audio.set(AudioProtocol::Feature::BeatConfidence, 0.92f);
+    audio.set(AudioProtocol::Feature::BeatStrength, 0.55f + kick * 0.45f);
+    audio.set(AudioProtocol::Feature::TempoStability, 0.95f);
+
+    constexpr int spectrum_bins = 96;
+    audio.spectrum.resize(spectrum_bins);
+    for (int i = 0; i < spectrum_bins; ++i) {
+        const float x = static_cast<float>(i) / static_cast<float>(spectrum_bins - 1);
+        const float bass = std::exp(-std::pow((x - 0.08f) / 0.10f, 2.0f)) * (0.25f + kick * 0.75f);
+        const float mids = std::exp(-std::pow((x - 0.38f) / 0.22f, 2.0f)) * (0.20f + groove * 0.55f);
+        const float highs = std::exp(-std::pow((x - 0.76f) / 0.18f, 2.0f)) * (0.12f + shimmer * 0.48f);
+        audio.spectrum[static_cast<size_t>(i)] = std::clamp(0.025f + bass + mids + highs, 0.0f, 1.0f);
+    }
+
+    constexpr int waveform_points = 128;
+    audio.waveform.resize(waveform_points);
+    for (int i = 0; i < waveform_points; ++i) {
+        const float phase = static_cast<float>(i) / waveform_points;
+        audio.waveform[static_cast<size_t>(i)] =
+            std::sin((phase * 5.0f + t * 1.8f) * 6.2831853f) * (0.28f + groove * 0.22f) +
+            std::sin((phase * 11.0f + t * 3.1f) * 6.2831853f) * 0.12f;
+    }
+    return audio;
 }
 
 // ---------------------------------------------------------------------------
@@ -298,8 +388,7 @@ int main(int argc, char* argv[])
                     {"requires_audio", capabilities.requires_audio},
                     {"requires_network", capabilities.requires_network},
                     {"interactive", capabilities.interactive},
-                    {"previewable", capabilities.previewable},
-                    {"deterministic_preview", capabilities.deterministic_preview},
+                    {"can_generate_preview", capabilities.can_generate_preview},
                     {"supports_audio", capabilities.supports_audio},
                     {"music_director_eligible", capabilities.music_director_eligible}
                 }},
@@ -341,30 +430,33 @@ int main(int argc, char* argv[])
     rgb_matrix::FrameCanvas* canvas = matrix->CreateFrameCanvas();
     canvas->Clear();
 
-    // Legacy scenes may still read wall clock time. Deterministic-capable
-    // scenes use virtual time; legacy ones retain real-time preview pacing.
+    // Legacy scenes may still read wall clock time. Scenes that explicitly
+    // support virtual time can be generated quickly; legacy ones retain
+    // real-time preview pacing.
     const int frame_delay_ms = 1000 / std::max(1, args.fps);
     const size_t frame_delay_cs =
         static_cast<size_t>(std::max(1, 100 / args.fps)); // centiseconds
 
     int generated = 0;
     int skipped = 0;
+    int attempted = 0;
 
     // ---- iterate scenes ---------------------------------------------------
     for (const auto& wrapper : wrappers)
     {
         const std::string scene_name = wrapper->get_name();
 
-        // Skip scenes that require the desktop app - they cannot be rendered
-        // headlessly and need a running desktop connection.  Use
-        // scripts/capture_desktop_preview.sh to capture them manually.
-        const auto capabilities = wrapper->get_default()->get_capabilities();
-        if (!capabilities.previewable || capabilities.requires_desktop)
+        // SceneCapabilities answers only whether preview_gen can generate the
+        // scene. Timing strategy remains an internal Scene implementation detail.
+        const auto default_scene = wrapper->get_default();
+        const auto capabilities = default_scene->get_capabilities();
+        if (!capabilities.can_generate_preview)
         {
-            spdlog::info("Skipping '{}': {}.", scene_name,
-                         !capabilities.previewable ? "scene is marked non-previewable" : "requires desktop app");
+            spdlog::info("Skipping '{}': scene cannot generate a preview.", scene_name);
             continue;
         }
+        if (args.virtual_time_only && !default_scene->supports_virtual_time())
+            continue;
 
         // Apply scene filter (--scene or --scenes)
         if (!args.filter_scenes.empty())
@@ -380,6 +472,7 @@ int main(int argc, char* argv[])
                 continue;
         }
 
+        ++attempted;
         spdlog::info("Rendering preview for '{}' ({} frames @ {} fps)…",
                      scene_name, args.total_frames, args.fps);
 
@@ -398,20 +491,28 @@ int main(int argc, char* argv[])
             nlohmann::json default_props = nlohmann::json::object();
             for (const auto& prop : scene->get_properties())
                 prop->dump_to_json(default_props);
+            if (capabilities.supports_audio) {
+                if (default_props.contains("audio_reactive")) default_props["audio_reactive"] = true;
+                if (default_props.contains("audio_strength")) default_props["audio_strength"] = 1.0f;
+            }
 
             scene->load_properties(default_props);
             scene->initialize(args.matrix_width, args.matrix_height);
 
             std::vector<Magick::Image> frames;
             frames.reserve(static_cast<size_t>(args.total_frames));
+            std::vector<uint8_t> previous_rgb;
+            int identical_tail_frames = 0;
 
             const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
             for (int f = 0; f < args.total_frames; ++f)
             {
+                if (capabilities.requires_audio || capabilities.supports_audio)
+                    AudioState::update(make_preview_audio(f, args.fps));
                 canvas->Clear();
                 bool keep_going = true;
-                if (capabilities.deterministic_preview) {
-                    // Migrated scenes can use fast, repeatable virtual time.
+                if (scene->supports_virtual_time()) {
+                    // Migrated scenes can use fast virtual frame time.
                     keep_going = scene->render_frame(canvas, preview_dt, true);
                 } else {
                     // Preserve correct animation for legacy wall-clock scenes.
@@ -421,6 +522,11 @@ int main(int argc, char* argv[])
 
                 const auto rgb = capture_canvas(canvas, args.matrix_width,
                                                 args.matrix_height);
+                if (!previous_rgb.empty() && rgb == previous_rgb)
+                    ++identical_tail_frames;
+                else
+                    identical_tail_frames = 0;
+                previous_rgb = rgb;
                 frames.push_back(make_frame(rgb, args.matrix_width,
                                             args.matrix_height, frame_delay_cs));
 
@@ -428,6 +534,8 @@ int main(int argc, char* argv[])
                 {
                     spdlog::debug("Scene '{}' stopped at frame {}/{}", scene_name,
                                   f + 1, args.total_frames);
+                    if (args.strict && f + 1 < args.total_frames)
+                        ++skipped;
                     break;
                 }
             }
@@ -437,6 +545,12 @@ int main(int argc, char* argv[])
                 spdlog::warn("No frames captured for '{}', skipping.", scene_name);
                 ++skipped;
                 continue;
+            }
+            if (args.strict && frames.size() >= 6 && identical_tail_frames >= 5)
+            {
+                spdlog::warn("Scene '{}' stopped changing during its final {} frames.",
+                             scene_name, identical_tail_frames + 1);
+                ++skipped;
             }
 
             // Quantise colours (required for GIF palette, 256 colours max)
@@ -476,6 +590,8 @@ int main(int argc, char* argv[])
 
     delete matrix;
 
+    if (args.strict && (skipped > 0 || attempted == 0))
+        return 1;
     return (skipped > 0 && generated == 0) ? 1 : 0;
 #endif
 }
