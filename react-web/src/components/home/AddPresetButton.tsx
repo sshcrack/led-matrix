@@ -36,7 +36,7 @@ export default function AddPresetButton({ onCreated }: AddPresetButtonProps) {
       setName('')
       setOpen(false)
       onCreated()
-    } catch (e) {
+    } catch {
       toast.error('Failed to create preset')
     } finally {
       setLoading(false)
