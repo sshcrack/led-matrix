@@ -46,6 +46,7 @@ namespace AmbientScenes {
 
         void initialize(int width, int height) override;
 
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
         tmillis_t get_default_duration() override {
             return 20000;
         }
@@ -57,7 +58,7 @@ namespace AmbientScenes {
         [[nodiscard]] std::string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Ambient"; }
 
-        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; caps.deterministic_preview = true; return caps; }
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
         void register_properties() override;
 
         using Scene::Scene;

@@ -74,8 +74,7 @@ namespace {
                     {"requires_audio", caps.requires_audio},
                     {"requires_network", caps.requires_network},
                     {"interactive", caps.interactive},
-                    {"previewable", caps.previewable},
-                    {"deterministic_preview", caps.deterministic_preview},
+                    {"can_generate_preview", caps.can_generate_preview},
                     {"supports_audio", caps.supports_audio},
                     {"music_director_eligible", caps.music_director_eligible}
                 }}

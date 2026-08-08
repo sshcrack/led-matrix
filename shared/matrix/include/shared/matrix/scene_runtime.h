@@ -62,8 +62,7 @@ struct SceneCapabilities {
     bool requires_audio = false;
     bool requires_network = false;
     bool interactive = false;
-    bool previewable = true;
-    bool deterministic_preview = false;
+    bool can_generate_preview = true;
     bool supports_audio = false;
     bool music_director_eligible = true;
 };

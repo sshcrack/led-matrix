@@ -106,17 +106,18 @@ void Scenes::Scene::wait_until_next_frame()
 {
     if (suppress_internal_wait_)
         return;
-    tmillis_t step = 1000 / target_fps;
-    tmillis_t current_time = GetTimeInMillis();
 
-    if (last_render_time + step < current_time)
+    const tmillis_t step = std::max<tmillis_t>(1, 1000 / std::max(1, target_fps));
+    const tmillis_t current_time = GetTimeInMillis();
+    if (last_render_time == 0 || last_render_time + step <= current_time)
     {
         last_render_time = current_time;
         return;
     }
 
-    SleepMillis(last_render_time + step - current_time);
-    last_render_time = current_time;
+    const tmillis_t deadline = last_render_time + step;
+    SleepMillis(deadline - current_time);
+    last_render_time = deadline;
 }
 
 

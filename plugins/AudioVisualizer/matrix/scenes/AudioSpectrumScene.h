@@ -63,10 +63,10 @@ public:
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true;
         caps.supports_audio = true;
-        caps.previewable = false;
-        caps.deterministic_preview = false;
+        caps.can_generate_preview = true;
         return caps;
     }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
 class AudioSpectrumSceneWrapper final : public Plugins::SceneWrapper {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <optional>
@@ -134,6 +135,7 @@ namespace Plugins {
     {
     protected:
         std::string name;
+        std::vector<std::string> legacy_names_;
         PropertyUiMetadata ui_metadata_{};
 
         void append_ui_metadata(nlohmann::json &j) const {
@@ -183,7 +185,12 @@ namespace Plugins {
             ui_metadata_.visible_if_value = std::move(value);
             return *this;
         }
+        PropertyBase &legacy_name(std::string value) {
+            legacy_names_.push_back(std::move(value));
+            return *this;
+        }
         [[nodiscard]] const PropertyUiMetadata &ui_metadata() const { return ui_metadata_; }
+        [[nodiscard]] const std::vector<std::string> &legacy_names() const { return legacy_names_; }
 
         [[nodiscard]] const std::string &getName() const
         {
@@ -232,63 +239,34 @@ namespace Plugins {
 
         void load_from_json(const nlohmann::json &j) override
         {
-            if (required)
-            {
-                if (j.contains(name))
-                {
-                    if constexpr (std::is_base_of_v<EnumBase, T>) {
-                        // Handle enum types
-                        if (j.at(name).is_string()) {
-                            std::string enum_str = j.at(name).get<std::string>();
-                            if (!value.set_from_string(enum_str)) {
-                                throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
-                            }
-                        } else {
-                            throw std::runtime_error("Enum property '" + name + "' must be a string");
-                        }
-                    } else {
-                        value = j.at(name).get<T>();
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("Required property '" + name + "' not found in JSON");
-                }
-            }
+            const nlohmann::json *input = nullptr;
+            if (j.contains(name))
+                input = &j.at(name);
             else
+                for (const auto &legacy_name : legacy_names_)
+                    if (j.contains(legacy_name)) { input = &j.at(legacy_name); break; }
+
+            if (input != nullptr)
             {
-                if (j.contains(name))
-                {
-                    if constexpr (std::is_base_of_v<EnumBase, T>) {
-                        // Handle enum types
-                        if (j.at(name).is_string()) {
-                            std::string enum_str = j.at(name).get<std::string>();
-                            if (!value.set_from_string(enum_str)) {
-                                throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
-                            }
-                        } else {
-                            throw std::runtime_error("Enum property '" + name + "' must be a string");
-                        }
-                    } else {
-                        value = j.at(name).get<T>();
-                    }
+                if constexpr (std::is_base_of_v<EnumBase, T>) {
+                    if (!input->is_string())
+                        throw std::runtime_error("Enum property '" + name + "' must be a string");
+                    const std::string enum_str = input->get<std::string>();
+                    if (!value.set_from_string(enum_str))
+                        throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
+                } else {
+                    value = input->get<T>();
                 }
-                // If key doesn't exist, keep the default value
             }
+            else if (required)
+                throw std::runtime_error("Required property '" + name + "' not found in JSON");
 
             // Validate against min/max constraints (only for comparable non-enum types)
             if constexpr (std::is_arithmetic_v<T> || std::is_same_v<T, std::string>)
             {
                 if constexpr (!std::is_base_of_v<EnumBase, T>) {
-                    if (min_value.has_value() && value < min_value.value())
-                    {
-                        value = min_value.value();
-                    }
-
-                    if (max_value.has_value() && value > max_value.value())
-                    {
-                        value = max_value.value();
-                    }
+                    if (min_value.has_value() && value < min_value.value()) value = min_value.value();
+                    if (max_value.has_value() && value > max_value.value()) value = max_value.value();
                 }
             }
 
@@ -379,6 +357,14 @@ namespace Plugins {
                 issues.emplace_back("UI presets must be an array");
             if (!ui_metadata_.visible_if_property.empty() && ui_metadata_.visible_if_property == name)
                 issues.emplace_back("visibility condition references the property itself");
+            std::vector<std::string> seen_legacy_names;
+            for (const auto &legacy_name : legacy_names_) {
+                if (legacy_name.empty()) issues.emplace_back("legacy property name is empty");
+                if (legacy_name == name) issues.emplace_back("legacy property name duplicates the canonical name");
+                if (std::find(seen_legacy_names.begin(), seen_legacy_names.end(), legacy_name) != seen_legacy_names.end())
+                    issues.emplace_back("legacy property name is registered more than once");
+                seen_legacy_names.push_back(legacy_name);
+            }
             return issues;
         }
 

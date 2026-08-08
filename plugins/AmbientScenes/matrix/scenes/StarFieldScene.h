@@ -40,10 +40,11 @@ namespace AmbientScenes {
     public:
         explicit StarFieldScene();
         ~StarFieldScene() override = default;
-        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; caps.deterministic_preview = true; return caps; }
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
         void register_properties() override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         void initialize(int width, int height) override;
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
         tmillis_t get_default_duration() override { return 20000; }
         int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;

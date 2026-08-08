@@ -27,10 +27,10 @@ public:
     {
         auto caps = Scene::get_capabilities();
         caps.supports_audio = true;
-        caps.deterministic_preview = true;
         return caps;
     }
 
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 2; }
 

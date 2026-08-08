@@ -176,11 +176,10 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         const auto caps = scene->get_capabilities();
         if (caps.requires_audio && !caps.requires_desktop)
             report.warnings.emplace_back(fmt::format("Scene '{}' requires audio but does not declare requires_desktop", scene_name));
-        if (!caps.previewable && caps.deterministic_preview)
-            report.warnings.emplace_back(fmt::format("Scene '{}' is not previewable but declares deterministic_preview", scene_name));
 
         const auto properties = scene->get_properties();
         std::unordered_set<std::string> property_names;
+        std::unordered_set<std::string> property_input_names;
         for (const auto &property : properties) {
             if (!property) {
                 report.errors.emplace_back(fmt::format("Scene '{}' contains a null property", scene_name));
@@ -189,6 +188,11 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
             const auto &property_name = property->getName();
             if (!property_names.insert(property_name).second)
                 report.errors.emplace_back(fmt::format("Scene '{}' registers property '{}' more than once", scene_name, property_name));
+            if (!property_input_names.insert(property_name).second)
+                report.errors.emplace_back(fmt::format("Scene '{}' property input name '{}' is ambiguous", scene_name, property_name));
+            for (const auto &legacy_name : property->legacy_names())
+                if (!property_input_names.insert(legacy_name).second)
+                    report.errors.emplace_back(fmt::format("Scene '{}' legacy property input name '{}' is ambiguous", scene_name, legacy_name));
             if (!snake_caseish(property_name))
                 report.warnings.emplace_back(fmt::format("Scene '{}' property '{}' is not snake_case", scene_name, property_name));
             for (const auto &issue : property->validate_schema())

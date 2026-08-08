@@ -51,22 +51,18 @@ namespace Scenes {
     private:
         std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
         std::optional<std::shared_ptr<GravityParticles> > animation;
+        FixedStepAccumulator simulation_{100.0, 8};
 
         void after_render_stop() override;
     protected:
-        PropertyPointer<int> numParticles = MAKE_PROPERTY("numParticles", int, 40);
-        PropertyPointer<int16_t> velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
-        PropertyPointer<int> accel = MAKE_PROPERTY("acceleration", int, 1);
-        PropertyPointer<int> shake = MAKE_PROPERTY("shake", int, 5);
-        PropertyPointer<int> bounce = MAKE_PROPERTY("bounce", int, 250);
-        PropertyPointer<int> delay_ms = MAKE_PROPERTY("delay_ms", int, 10);
+        PropertyPointer<int> num_particles = MAKE_PROPERTY_MINMAX("num_particles", int, 40, 1, 12000);
+        PropertyPointer<int16_t> velocity = MAKE_PROPERTY_MINMAX("velocity", int16_t, 6000, 100, 16000);
+        PropertyPointer<int> accel = MAKE_PROPERTY_MINMAX("acceleration", int, 1, 0, 100);
+        PropertyPointer<int> shake = MAKE_PROPERTY_MINMAX("shake", int, 5, 0, 100);
+        PropertyPointer<int> bounce = MAKE_PROPERTY_MINMAX("bounce", int, 250, 0, 255);
+        PropertyPointer<int> delay_ms = MAKE_PROPERTY_MINMAX("delay_ms", int, 10, 4, 50);
 
-        uint64_t prevTime;
-        uint64_t lastFpsLog;
-        uint32_t frameCount;
         std::mt19937 scene_rng{std::random_device{}()};
-
-        static uint64_t micros();
 
         int16_t random_int16(int16_t a, int16_t b) {
             // Added helper function
@@ -92,6 +88,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         std::string get_category() const override { return "Particles"; }
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
 
         virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
         {
