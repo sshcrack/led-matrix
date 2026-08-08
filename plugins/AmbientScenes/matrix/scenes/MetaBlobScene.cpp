@@ -59,11 +59,13 @@ namespace AmbientScenes {
                 + range * 0.38f * std::cos(current_time * speed_scale * (0.61f + 0.05f * (i % 7)) + phase * 0.83f)
                 + range * 0.13f * std::sin(current_time * speed_scale * 1.37f + phase * 0.51f);
 
+        if (audio_reactive->get()) x += audio_balance * audio_strength->get() * 0.10f;
         x = std::clamp(x, -0.15f, 1.15f);
         y = std::clamp(y, -0.15f, 1.15f);
 
         const float min_dimension = static_cast<float>(std::min(matrix_width, matrix_height));
-        const float audio_radius = audio_reactive->get() ? audio_bass * audio_strength->get() * 0.42f : 0.0f;
+        const float audio_radius = audio_reactive->get() ?
+            (audio_bass * 0.30f + beat_pulse * 0.16f + drop_pulse * 0.34f) * audio_strength->get() : 0.0f;
         const float radius_wave = 0.88f + audio_radius + 0.20f * std::sin(current_time * speed_scale * 0.9f + phase);
         const float radius = min_dimension * (0.075f + 0.022f * static_cast<float>(i % 4)) * radius_wave;
 
@@ -102,8 +104,15 @@ namespace AmbientScenes {
             audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
             audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
             audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
-            if (has_audio && audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; audio_bass = std::max(audio_bass, 0.85f); }
-        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+            audio_balance += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance) * response;
+            if (has_audio && audio.beat_counter != last_beat_counter) {
+                last_beat_counter = audio.beat_counter; beat_pulse = std::max(beat_pulse, 0.55f + audio.feature(AudioProtocol::Feature::Kick) * 0.45f);
+            }
+            if (has_audio && audio.drop_counter != last_drop_counter) { last_drop_counter = audio.drop_counter; drop_pulse = 1.0f; }
+            if (has_audio && audio.section_counter != last_section_counter) { last_section_counter = audio.section_counter; section_hue += 0.17f; }
+        } else { audio_bass = audio_mids = audio_treble = audio_balance = 0.0f; }
+        beat_pulse = std::max(0.0f, beat_pulse - dt * 3.0f);
+        drop_pulse = std::max(0.0f, drop_pulse - dt * 0.95f);
 
         blobs.clear();
         const int blob_count = std::max(1, num_blobs->get());
@@ -117,7 +126,7 @@ namespace AmbientScenes {
         const float user_threshold = std::max(0.000001f, threshold->get());
         // Preserve the old threshold control while mapping its historical default to a useful field level.
         const float surface = std::clamp(user_threshold / 0.0003f, 0.15f, 4.0f) * 1.18f;
-        const float base_hue = std::fmod(time * color_speed->get(), 1.0f);
+        const float base_hue = std::fmod(time * color_speed->get() + section_hue + drop_pulse * 0.06f, 1.0f);
         const float inv_width = 1.0f / std::max(1, matrix_width);
         const float inv_height = 1.0f / std::max(1, matrix_height);
 
