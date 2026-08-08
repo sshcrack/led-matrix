@@ -370,9 +370,12 @@ if(ENABLE_EMULATOR)
         SharedToolsMatrix
         nlohmann_json::nlohmann_json
         magic_enum::magic_enum
+        fmt::fmt
+        spdlog::spdlog
         PkgConfig::GraphicsMagick
     )
     add_test(NAME property_compat_smoke COMMAND $<TARGET_FILE:property_compat_smoke>)
+    set_tests_properties(property_compat_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_test(NAME scene_registry_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
@@ -389,6 +392,14 @@ if(ENABLE_EMULATOR)
             --virtual-time-only
             --strict
     )
+    add_test(NAME visual_regression_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DPREVIEW_GEN=$<TARGET_FILE:preview_gen>
+            -DOUTPUT_DIR=${CMAKE_BINARY_DIR}/visual-regression-smoke
+            -DBASELINE=${CMAKE_CURRENT_SOURCE_DIR}/tests/visual_regression_baselines.json
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/visual_regression_smoke.cmake
+    )
+    set_tests_properties(visual_regression_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
     if(SKIP_WEB_BUILD)
         add_test(NAME install_without_web_smoke
             COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}

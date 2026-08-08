@@ -1,11 +1,14 @@
 #pragma once
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/media_artwork_state.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include <deque>
 
 namespace Scenes {
+enum class WaveformStyle { TRACE = 0, MIRRORED = 1, FILLED = 2 };
+
 enum class DisplayMode {
     NORMAL = 0,
     CENTER_OUT = 1,
@@ -43,7 +46,12 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<float> releaseSpeed_ = MAKE_PROPERTY_MINMAX("release_speed", float, 3.8f, 0.5f, 14.0f);
     PropertyPointer<bool> beatPulseEnabled_ = MAKE_PROPERTY("beat_pulse", bool, true);
     PropertyPointer<bool> showWaveform_ = MAKE_PROPERTY("waveform_overlay", bool, false);
+    PropertyPointer<Plugins::EnumProperty<WaveformStyle>> waveformStyle_ = MAKE_ENUM_PROPERTY("waveform_style", WaveformStyle, WaveformStyle::TRACE);
+    PropertyPointer<float> waveformGain_ = MAKE_PROPERTY_MINMAX("waveform_gain", float, 1.0f, 0.25f, 3.0f);
+    PropertyPointer<int> waveformThickness_ = MAKE_PROPERTY_MINMAX("waveform_thickness", int, 1, 1, 3);
     PropertyPointer<bool> stereoMotion_ = MAKE_PROPERTY("stereo_motion", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
+    MediaArtworkState::Snapshot artworkSnapshot_{};
 
     void updateSpectrum(const AudioState::Snapshot &audio, float dt);
     void colorFor(float position, float intensity, const AudioState::Snapshot &audio,

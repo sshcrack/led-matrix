@@ -45,10 +45,13 @@ bool SceneRenderer::render_scene_phase(
             composite_offscreen_canvas->Clear();
             return true;
         }
-        const double render_ms = std::chrono::duration<double, std::milli>(
+        const double wall_render_ms = std::chrono::duration<double, std::milli>(
             std::chrono::steady_clock::now() - render_start).count();
+        const double active_render_ms = std::max(0.0, wall_render_ms - scene->get_last_frame_wait_ms());
+        scene->report_render_cost(active_render_ms);
         Diagnostics::RuntimeDiagnostics::instance().record_render(
-            scene->get_name(), render_ms, scene->get_declared_target_fps());
+            scene->get_name(), active_render_ms, scene->get_declared_target_fps(),
+            scene->get_render_quality_scale());
 
         if (post_processor_)
             post_processor_->apply_effects(composite_offscreen_canvas);

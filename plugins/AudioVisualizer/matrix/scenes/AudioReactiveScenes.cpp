@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <shared/matrix/plugin/main.h>
+#include <shared/matrix/media_artwork_state.h>
 #include <shared/matrix/utils/color.h>
 
 namespace Scenes {
@@ -45,9 +46,10 @@ bool consumeEvent(uint64_t current, uint64_t &seen, bool packetFlag) {
 }
 
 void AudioParticleFieldScene::register_properties() {
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Use current Spotify cover colors when available.").group("Appearance");
     add_property(sensitivity_); add_property(particleLimit_); add_property(persistence_);
     add_property(gravity_); add_property(rainbow_); add_property(baseColor_);
-    add_property(percussionBursts_); add_property(dropExplosion_);
+    add_property(percussionBursts_); add_property(dropExplosion_); add_property(useSpotifyArtwork_);
 }
 
 void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count,
@@ -56,7 +58,10 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
     const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
     const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
     const float centroid = feature(audio, AudioProtocol::Feature::SpectralCentroid);
-    for (int i = 0; i < count && static_cast<int>(particles_.size()) < particleLimit_->get(); ++i) {
+    const int effective_limit = std::max(100, static_cast<int>(std::lround(
+        particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+    particles_.set_limit(static_cast<size_t>(effective_limit));
+    for (int i = 0; i < count && static_cast<int>(particles_.size()) < effective_limit; ++i) {
         Particle p{};
         p.x = std::clamp(matrix_width * (0.5f + balance * 0.28f + (unit(rng_) - 0.5f) * (0.18f + width * 0.72f)),
                          0.0f, static_cast<float>(matrix_width - 1));
@@ -70,7 +75,7 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
         p.life = p.maxLife = persistence_->get() * (0.45f + unit(rng_) * 1.25f);
         p.hue = centroid * 180.0f + unit(rng_) * 110.0f;
         p.size = 1.0f + strength * 2.2f + unit(rng_);
-        particles_.push_back(p);
+        particles_.try_push(std::move(p));
     }
 }
 
@@ -96,7 +101,9 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         spawn(audio, 5 + static_cast<int>((snare + hihat) * 35.0f), snare > hihat, std::max(snare, hihat));
     }
     if (dropExplosion_->get() && consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) {
-        spawn(audio, std::min(600, particleLimit_->get()), true, 1.0f);
+        const int effective_limit = std::max(100, static_cast<int>(std::lround(
+            particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+        spawn(audio, std::min(600, effective_limit), true, 1.0f);
     }
 
     spawnAccumulator_ += dt * (6.0f + loudness * 80.0f + hihat * 75.0f);
@@ -105,18 +112,24 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         spawnAccumulator_ -= 1.0f;
     }
 
+    const int effective_limit = std::max(100, static_cast<int>(std::lround(
+        particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+    particles_.set_limit(static_cast<size_t>(effective_limit));
+
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
     const float sideFlow = audio.feature(AudioProtocol::Feature::StereoBalance) * 28.0f;
     const float midFlow = feature(audio, AudioProtocol::Feature::Mid) * 15.0f;
     for (auto &p : particles_) {
-        p.life -= dt;
-        p.vy += gravity_->get() * dt;
-        p.vx += (std::sin(hueTime_ * 1.7f + p.y * 0.07f) * midFlow + sideFlow) * dt;
-        p.x += p.vx * dt; p.y += p.vy * dt;
+        const float flow_acceleration = std::sin(hueTime_ * 1.7f + p.y * 0.07f) * midFlow + sideFlow;
+        Particles::integrate(p, dt, flow_acceleration, gravity_->get());
         if (p.x < 0.0f) p.x += matrix_width;
         if (p.x >= matrix_width) p.x -= matrix_width;
-        const float life = std::clamp(p.life / p.maxLife, 0.0f, 1.0f);
+        const float life = Particles::life_ratio(p);
         uint8_t r, g, b;
-        if (rainbow_->get()) hsv(p.hue + hueTime_ * 24.0f, 0.78f, life, r, g, b);
+        if (artwork.valid) {
+            const auto c = MediaArtworkState::sample(artwork, p.hue / 360.0f + hueTime_ * 0.025f);
+            r = static_cast<uint8_t>(c.r * life); g = static_cast<uint8_t>(c.g * life); b = static_cast<uint8_t>(c.b * life);
+        } else if (rainbow_->get()) hsv(p.hue + hueTime_ * 24.0f, 0.78f, life, r, g, b);
         else { const auto c = baseColor_->get(); r = c.r * life; g = c.g * life; b = c.b * life; }
         const int x = static_cast<int>(std::round(p.x));
         const int y = static_cast<int>(std::round(p.y));
@@ -127,16 +140,17 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
             addPixel(canvas, x, y + 1, r / 2, g / 2, b / 2);
         }
     }
-    std::erase_if(particles_, [&](const Particle &p) {
+    particles_.erase_if([&](const Particle &p) {
         return p.life <= 0.0f || p.y > matrix_height + 8.0f || p.y < -matrix_height;
     });
     return true;
 }
 
 void AudioPulseTunnelScene::register_properties() {
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Use current Spotify cover colors when available.").group("Appearance");
     add_property(sensitivity_); add_property(speed_); add_property(ringCount_);
     add_property(twist_); add_property(rainbow_); add_property(baseColor_);
-    add_property(spectrumRibs_); add_property(tempoLock_);
+    add_property(spectrumRibs_); add_property(tempoLock_); add_property(useSpotifyArtwork_);
 }
 
 bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
@@ -169,6 +183,7 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float cx = matrix_width * (0.5f + balance * 0.15f);
     const float cy = matrix_height * 0.5f;
     const float maxRadius = std::hypot(matrix_width, matrix_height) * 0.72f;
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
 
     for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
         const float dx = x - cx, dy = y - cy;
@@ -191,7 +206,10 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
                                         (0.3f + normalized), 0.0f, 1.0f);
         if (value < 0.02f) continue;
         uint8_t r, g, b;
-        if (rainbow_->get()) hsv(paletteOffset_ + angle * 57.3f + normalized * 230.0f + sceneTime * 20.0f,
+        if (artwork.valid) {
+            const auto c = MediaArtworkState::sample(artwork, normalized * 0.72f + angle / (2.0f * Pi) + sceneTime * 0.018f);
+            r = static_cast<uint8_t>(c.r * value); g = static_cast<uint8_t>(c.g * value); b = static_cast<uint8_t>(c.b * value);
+        } else if (rainbow_->get()) hsv(paletteOffset_ + angle * 57.3f + normalized * 230.0f + sceneTime * 20.0f,
                                   0.84f, value, r, g, b);
         else { const auto c = baseColor_->get(); r = c.r * value; g = c.g * value; b = c.b * value; }
         canvas->SetPixel(x, y, r, g, b);
@@ -200,8 +218,9 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
 }
 
 void AudioAuroraScene::register_properties() {
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Use current Spotify cover colors when available.").group("Appearance");
     add_property(ribbonCount_); add_property(flowSpeed_); add_property(sensitivity_);
-    add_property(glow_); add_property(stars_);
+    add_property(glow_); add_property(stars_); add_property(useSpotifyArtwork_);
 }
 
 bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
@@ -227,6 +246,7 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float phaseBreath = tempoTrust(audio) * (0.5f + 0.5f *
         std::cos(audio.feature(AudioProtocol::Feature::BeatPhase) * 2.0f * Pi));
     const int ribbons = ribbonCount_->get();
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
 
     for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
         const float nx = static_cast<float>(x) / std::max(1, matrix_width - 1);
@@ -249,8 +269,13 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
         value = std::clamp(value + verticalGlow, 0.0f, 1.0f);
         if (value < 0.015f) continue;
         uint8_t r, g, b;
-        hsv(palette_ + hueMix * 250.0f + nx * 45.0f + time_ * 8.0f,
-            0.72f + treble * 0.2f, value, r, g, b);
+        if (artwork.valid) {
+            const auto c = MediaArtworkState::sample(artwork, hueMix + nx * 0.22f + time_ * 0.012f);
+            r = static_cast<uint8_t>(c.r * value); g = static_cast<uint8_t>(c.g * value); b = static_cast<uint8_t>(c.b * value);
+        } else {
+            hsv(palette_ + hueMix * 250.0f + nx * 45.0f + time_ * 8.0f,
+                0.72f + treble * 0.2f, value, r, g, b);
+        }
         canvas->SetPixel(x, y, r, g, b);
     }
 
@@ -268,8 +293,9 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
 }
 
 void AudioKaleidoscopeScene::register_properties() {
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Use current Spotify cover colors when available.").group("Appearance");
     add_property(symmetry_); add_property(sensitivity_); add_property(rotationSpeed_);
-    add_property(detail_); add_property(waveformCore_);
+    add_property(detail_); add_property(waveformCore_); add_property(useSpotifyArtwork_);
 }
 
 bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
@@ -294,6 +320,7 @@ bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float gain = sensitivity_->get();
     const float bass = feature(audio, AudioProtocol::Feature::Bass, gain);
     const float hihat = feature(audio, AudioProtocol::Feature::Hihat, gain);
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
 
     for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
         const float dx = x - cx, dy = y - cy;
@@ -314,8 +341,13 @@ bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
                                        (1.0f - std::max(0.0f, radial - 1.0f)), 0.0f, 1.0f);
         if (value < 0.02f) continue;
         uint8_t r, g, b;
-        hsv(palette_ + spectrumPosition * 290.0f + bass * 60.0f + sceneTime * 10.0f,
-            0.86f, value, r, g, b);
+        if (artwork.valid) {
+            const auto c = MediaArtworkState::sample(artwork, spectrumPosition + sceneTime * 0.015f + bass * 0.12f);
+            r = static_cast<uint8_t>(c.r * value); g = static_cast<uint8_t>(c.g * value); b = static_cast<uint8_t>(c.b * value);
+        } else {
+            hsv(palette_ + spectrumPosition * 290.0f + bass * 60.0f + sceneTime * 10.0f,
+                0.86f, value, r, g, b);
+        }
         canvas->SetPixel(x, y, r, g, b);
     }
 
