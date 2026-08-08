@@ -12,6 +12,7 @@ namespace Scenes {
 
 class MusicDirectorScene final : public Scene {
     enum class MusicalState { Calm, Groove, Build, Peak };
+    enum class BeatQuantization { BEAT = 1, TWO_BEATS = 2, BAR = 4, TWO_BARS = 8 };
 
     PropertyPointer<std::vector<std::string>> scene_pool_ = MAKE_STRING_LIST_PROPERTY(
         "scene_pool", std::vector<std::string>({
@@ -21,10 +22,12 @@ class MusicDirectorScene final : public Scene {
     PropertyPointer<tmillis_t> minimum_dwell_ = MAKE_PROPERTY_MINMAX("minimum_dwell", tmillis_t, 9000, 2000, 60000);
     PropertyPointer<tmillis_t> maximum_dwell_ = MAKE_PROPERTY_MINMAX("maximum_dwell", tmillis_t, 26000, 6000, 120000);
     PropertyPointer<bool> beat_sync_ = MAKE_PROPERTY("beat_sync", bool, true);
+    PropertyPointer<Plugins::EnumProperty<BeatQuantization>> beat_quantization_ = MAKE_ENUM_PROPERTY("beat_quantization", BeatQuantization, BeatQuantization::BAR);
     PropertyPointer<bool> react_on_sections_ = MAKE_PROPERTY("react_on_sections", bool, true);
     PropertyPointer<bool> react_on_drops_ = MAKE_PROPERTY("react_on_drops", bool, true);
     PropertyPointer<bool> configure_child_audio_ = MAKE_PROPERTY("configure_child_audio", bool, true);
     PropertyPointer<float> child_audio_strength_ = MAKE_PROPERTY_MINMAX("child_audio_strength", float, 1.0f, 0.0f, 3.0f);
+    PropertyPointer<bool> switch_effects_ = MAKE_PROPERTY("switch_effects", bool, true);
 
     std::unique_ptr<Scene> child_;
     std::string child_name_;
