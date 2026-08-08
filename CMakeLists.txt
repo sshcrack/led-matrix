@@ -370,9 +370,12 @@ if(ENABLE_EMULATOR)
         SharedToolsMatrix
         nlohmann_json::nlohmann_json
         magic_enum::magic_enum
+        fmt::fmt
+        spdlog::spdlog
         PkgConfig::GraphicsMagick
     )
     add_test(NAME property_compat_smoke COMMAND $<TARGET_FILE:property_compat_smoke>)
+    set_tests_properties(property_compat_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_test(NAME scene_registry_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
