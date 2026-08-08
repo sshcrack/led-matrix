@@ -1,7 +1,7 @@
 version = 1
 
 [sandbox]
-memory = "16g"
+memory = "8g"
 
 [image]
 apt_packages = [
