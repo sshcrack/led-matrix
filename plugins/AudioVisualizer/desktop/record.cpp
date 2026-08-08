@@ -1,3 +1,9 @@
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#endif
+
 #include "record.h"
 
 #ifdef _WIN32
