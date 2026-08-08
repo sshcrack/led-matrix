@@ -4,18 +4,131 @@
 #include "../manager/shared_spotify.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include "shared/matrix/utils/image_fetch.h"
+#include "shared/matrix/media_artwork_state.h"
 #include "led-matrix.h"
 #include <cmath>
+#include <array>
 #include <chrono>
 #include <exception>
 #include <shared_mutex>
 #include <vector>
+#include <numeric>
 
 #include "../manager/song_bpm_getter.h"
 
 using namespace spdlog;
 using namespace std;
 using namespace Scenes;
+
+namespace {
+struct PaletteBin {
+    uint32_t count = 0;
+    uint32_t r = 0;
+    uint32_t g = 0;
+    uint32_t b = 0;
+    float saturation_sum = 0.0f;
+};
+
+float color_hue(const rgb_matrix::Color &color)
+{
+    const float r = color.r / 255.0f;
+    const float g = color.g / 255.0f;
+    const float b = color.b / 255.0f;
+    const float hi = std::max({r, g, b});
+    const float lo = std::min({r, g, b});
+    const float delta = hi - lo;
+    if (delta < 0.0001f) return 0.0f;
+    float hue = 0.0f;
+    if (hi == r) hue = std::fmod((g - b) / delta, 6.0f);
+    else if (hi == g) hue = (b - r) / delta + 2.0f;
+    else hue = (r - g) / delta + 4.0f;
+    hue /= 6.0f;
+    if (hue < 0.0f) hue += 1.0f;
+    return hue;
+}
+
+MediaArtworkState::Palette extract_artwork_palette(const Magick::Image &image)
+{
+    MediaArtworkState::Palette fallback{
+        rgb_matrix::Color(44, 90, 210), rgb_matrix::Color(35, 190, 210),
+        rgb_matrix::Color(95, 210, 115), rgb_matrix::Color(235, 170, 65),
+        rgb_matrix::Color(215, 70, 155)};
+    if (image.columns() == 0 || image.rows() == 0) return fallback;
+
+    constexpr int QuantizedLevels = 16;
+    constexpr int BinCount = QuantizedLevels * QuantizedLevels * QuantizedLevels;
+    std::array<PaletteBin, BinCount> bins{};
+    const auto *pixels = image.getConstPixels(0, 0, image.columns(), image.rows());
+    if (!pixels) return fallback;
+
+    const size_t step_x = std::max<size_t>(1, image.columns() / 32);
+    const size_t step_y = std::max<size_t>(1, image.rows() / 32);
+    for (size_t y = 0; y < image.rows(); y += step_y) {
+        for (size_t x = 0; x < image.columns(); x += step_x) {
+            const auto &pixel = pixels[y * image.columns() + x];
+            if (pixel.opacity == MaxRGB) continue;
+            const uint8_t r = ScaleQuantumToChar(pixel.red);
+            const uint8_t g = ScaleQuantumToChar(pixel.green);
+            const uint8_t b = ScaleQuantumToChar(pixel.blue);
+            const uint8_t hi = std::max({r, g, b});
+            const uint8_t lo = std::min({r, g, b});
+            const float luma = (0.2126f * r + 0.7152f * g + 0.0722f * b) / 255.0f;
+            const float saturation = hi > 0 ? static_cast<float>(hi - lo) / hi : 0.0f;
+            if (luma < 0.035f || luma > 0.97f) continue;
+
+            const int index = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+            auto &bin = bins[static_cast<size_t>(index)];
+            ++bin.count;
+            bin.r += r; bin.g += g; bin.b += b;
+            bin.saturation_sum += saturation;
+        }
+    }
+
+    std::array<int, BinCount> order{};
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](int lhs, int rhs) {
+        const auto score = [&](int index) {
+            const auto &bin = bins[static_cast<size_t>(index)];
+            if (bin.count == 0) return 0.0f;
+            const float saturation = bin.saturation_sum / bin.count;
+            return bin.count * (0.58f + saturation * 1.35f);
+        };
+        return score(lhs) > score(rhs);
+    });
+
+    std::vector<rgb_matrix::Color> selected;
+    selected.reserve(MediaArtworkState::PaletteSize);
+    for (const int index : order) {
+        const auto &bin = bins[static_cast<size_t>(index)];
+        if (bin.count == 0) break;
+        const rgb_matrix::Color candidate(
+            static_cast<uint8_t>(bin.r / bin.count),
+            static_cast<uint8_t>(bin.g / bin.count),
+            static_cast<uint8_t>(bin.b / bin.count));
+        bool distinct = true;
+        for (const auto &existing : selected) {
+            const int dr = static_cast<int>(candidate.r) - existing.r;
+            const int dg = static_cast<int>(candidate.g) - existing.g;
+            const int db = static_cast<int>(candidate.b) - existing.b;
+            if (dr * dr + dg * dg + db * db < 34 * 34) { distinct = false; break; }
+        }
+        if (!distinct) continue;
+        selected.push_back(candidate);
+        if (selected.size() == MediaArtworkState::PaletteSize) break;
+    }
+
+    if (selected.empty()) return fallback;
+    const size_t discovered = selected.size();
+    while (selected.size() < MediaArtworkState::PaletteSize)
+        selected.push_back(selected[selected.size() % discovered]);
+    std::sort(selected.begin(), selected.end(), [](const auto &lhs, const auto &rhs) {
+        return color_hue(lhs) < color_hue(rhs);
+    });
+    MediaArtworkState::Palette result{};
+    std::copy_n(selected.begin(), MediaArtworkState::PaletteSize, result.begin());
+    return result;
+}
+}
 
 // Helper function to create a color based on progress
 rgb_matrix::Color getProgressColor(float progress)
@@ -357,6 +470,7 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
 
     vector<Magick::Image> frames = std::move(res.value());
     Magick::Image source = frames[0];
+    MediaArtworkState::update(track_id, extract_artwork_palette(source));
     Magick::Image cover_img(Magick::Geometry(width, height), Magick::Color("black"));
 
     try {

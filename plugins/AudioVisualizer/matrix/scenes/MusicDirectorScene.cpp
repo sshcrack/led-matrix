@@ -27,6 +27,7 @@ void MusicDirectorScene::register_properties() {
     configure_child_audio_->label("Configure child audio reactivity").description("Automatically enable audio_reactive/audio_strength properties on compatible scenes.").group("Child scenes");
     child_audio_strength_->label("Child audio strength").description("Audio-reactive strength applied to compatible child scenes.").group("Child scenes").visible_if("configure_child_audio", true).step(0.05);
     switch_effects_->label("Musical switch effects").description("Use lightweight post-processing accents when Music Director changes visual energy state.").group("Musical intelligence");
+    spotify_artwork_colors_->label("Spotify artwork colors").description("When Spotify has published current cover colors, let compatible child scenes use them. Track changes cross-fade without restarting the scene.").group("Child scenes");
 
     add_property(scene_pool_);
     add_property(minimum_dwell_);
@@ -38,6 +39,7 @@ void MusicDirectorScene::register_properties() {
     add_property(configure_child_audio_);
     add_property(child_audio_strength_);
     add_property(switch_effects_);
+    add_property(spotify_artwork_colors_);
 }
 
 void MusicDirectorScene::initialize(int width, int height) {
@@ -129,12 +131,14 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
             next->register_properties();
 
             nlohmann::json arguments = nlohmann::json::object();
-            if (configure_child_audio_->get()) {
-                for (const auto &property : next->get_properties()) {
-                    if (!property) continue;
+            for (const auto &property : next->get_properties()) {
+                if (!property) continue;
+                if (configure_child_audio_->get()) {
                     if (property->getName() == "audio_reactive") arguments["audio_reactive"] = true;
                     if (property->getName() == "audio_strength") arguments["audio_strength"] = child_audio_strength_->get();
                 }
+                if (property->getName() == "use_spotify_artwork" && spotify_artwork_colors_->get())
+                    arguments["use_spotify_artwork"] = true;
             }
             next->load_properties(arguments);
             next->initialize(matrix_width, matrix_height);
