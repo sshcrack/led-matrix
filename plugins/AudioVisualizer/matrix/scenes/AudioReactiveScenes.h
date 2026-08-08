@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/particles.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include <random>
@@ -8,8 +9,8 @@
 namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
-    struct Particle { float x, y, vx, vy, life, maxLife, hue, size; };
-    std::vector<Particle> particles_;
+    struct Particle : Particles::KinematicParticle { float hue = 0.0f; };
+    Particles::ParticlePool<Particle> particles_{3000};
     std::mt19937 rng_{std::random_device{}()};
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, dropSeen_ = 0;
     float spawnAccumulator_ = 0.0f;

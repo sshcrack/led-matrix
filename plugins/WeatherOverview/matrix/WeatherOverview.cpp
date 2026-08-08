@@ -1,6 +1,7 @@
 #include <iostream>
 #include "WeatherOverview.h"
 #include "scenes/WeatherScene.h"
+#include "scenes/WeatherAmbienceScene.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "spdlog/spdlog.h"
@@ -19,6 +20,7 @@ WeatherOverview::create_image_providers() {
 vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> scenes;
     scenes.push_back(std::make_unique<WeatherSceneWrapper>());
+    scenes.push_back(std::make_unique<WeatherAmbienceSceneWrapper>());
     return scenes;
 }
 
