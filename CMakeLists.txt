@@ -8,6 +8,7 @@ set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
+option(SKIP_WEB_BUILD "Skip building and installing the React web application" OFF)
 
 if(ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
@@ -337,10 +338,57 @@ if(ENABLE_EMULATOR)
         ${CMAKE_DL_LIBS}
     )
 
+    # preview_gen loads plugins dynamically at runtime, so make the dependency
+    # explicit when building this target (and the CTest smoke tests) directly.
+    get_property(MATRIX_PLUGIN_TARGETS GLOBAL PROPERTY MATRIX_PLUGIN_TARGETS)
+    if(MATRIX_PLUGIN_TARGETS)
+        add_dependencies(preview_gen ${MATRIX_PLUGIN_TARGETS})
+    endif()
+
     # Install the binary itself so users can manually generate/regenerate previews
     install(TARGETS preview_gen
         DESTINATION bin
     )
+
+    enable_testing()
+    set(PREVIEW_TEST_ENV
+        "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+    )
+    add_executable(property_compat_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
+    )
+    target_compile_features(property_compat_smoke PRIVATE cxx_std_23)
+    target_link_libraries(property_compat_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        nlohmann_json::nlohmann_json
+        magic_enum::magic_enum
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME property_compat_smoke COMMAND $<TARGET_FILE:property_compat_smoke>)
+
+    add_test(NAME scene_registry_smoke
+        COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+            $<TARGET_FILE:preview_gen>
+            --dump-manifest
+            --manifest-out ${CMAKE_BINARY_DIR}/scene-manifest-test.json
+    )
+    add_test(NAME virtual_scene_preview_smoke
+        COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+            $<TARGET_FILE:preview_gen>
+            --output ${CMAKE_BINARY_DIR}/preview-smoke
+            --frames 30
+            --fps 30
+            --virtual-time-only
+            --strict
+    )
+    if(SKIP_WEB_BUILD)
+        add_test(NAME install_without_web_smoke
+            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}
+                --prefix ${CMAKE_BINARY_DIR}/install-smoke
+        )
+    endif()
 endif()
 
 if(NOT ENABLE_DESKTOP)
@@ -421,10 +469,12 @@ else()
 endif()
 
 if(NOT ENABLE_DESKTOP)
-    # Install web files
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
-        DESTINATION share/led-matrix/web
-    )
+    if(NOT SKIP_WEB_BUILD)
+        # Install web files only when this configuration actually builds them.
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
+            DESTINATION share/led-matrix/web
+        )
+    endif()
 
     # Add sync to RPI if enabled
     option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)
