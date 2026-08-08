@@ -1,6 +1,7 @@
 #include "ReactionDiffusionScene.h"
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/media_artwork_state.h>
 
 #include <algorithm>
 #include <cmath>
@@ -21,6 +22,7 @@ void ReactionDiffusionScene::register_properties()
         .group("Appearance")
         .step(0.05);
     audio_reactive_->label("Audio reactive").description("Let music reshape, accelerate and recolor the reaction pattern.").group("Audio");
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Color the chemical pattern with the current Spotify cover when available.").group("Appearance");
     audio_strength_->label("Audio strength")
         .description("Overall amount of music-driven modulation and beat seeding.")
         .group("Audio")
@@ -32,6 +34,7 @@ void ReactionDiffusionScene::register_properties()
     add_property(contrast_);
     add_property(audio_reactive_);
     add_property(audio_strength_);
+    add_property(useSpotifyArtwork_);
 }
 
 void ReactionDiffusionScene::initialize(int width, int height)
@@ -259,9 +262,11 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
     const float feed = std::clamp(preset.feed + (audio_mids_ - 0.35f) * strength * 0.0028f, 0.015f, 0.075f);
     const float kill = std::clamp(preset.kill + audio_treble_ * strength * 0.0014f - audio_bass_ * strength * 0.0010f, 0.045f, 0.072f);
 
+    const int quality_steps = std::max(1, static_cast<int>(std::lround(
+        SIM_STEPS_PER_TICK * (0.45f + 0.55f * render_quality_scale()))));
     simulation_.advance(dt, [&](double) {
-        for (int step = 0; step < SIM_STEPS_PER_TICK; ++step) simulation_step(feed, kill);
-        step_count_ += SIM_STEPS_PER_TICK;
+        for (int step = 0; step < quality_steps; ++step) simulation_step(feed, kill);
+        step_count_ += quality_steps;
     });
 
     if (step_count_ >= STEPS_PER_PRESET)
@@ -270,11 +275,24 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
     global_hue_ = std::fmod(global_hue_ + dt * (0.0075f * color_speed_->get() + audio_treble_ * strength * 0.012f), 1.0f);
 
     const float visual_boost = 1.0f + beat_pulse_ * strength * 0.10f + drop_pulse_ * strength * 0.16f;
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
     for (int y = 0; y < matrix_height; ++y) {
         for (int x = 0; x < matrix_width; ++x) {
             const float value = std::clamp(v_cur_[index(x, y)] * visual_boost, 0.0f, 1.0f);
-            auto [r, g, b] = palette(value, global_hue_, contrast_->get());
-            canvas->SetPixel(x, y, r, g, b);
+            if (artwork.valid && value >= 0.025f) {
+                float t = std::clamp(value * 2.65f, 0.0f, 1.0f);
+                t = t * t * (3.0f - 2.0f * t);
+                t = std::pow(t, 1.0f / std::clamp(contrast_->get(), 0.5f, 2.0f));
+                const auto c = MediaArtworkState::sample(artwork, global_hue_ + t * 0.82f);
+                const float brightness = 0.10f + t * 0.90f;
+                canvas->SetPixel(x, y,
+                    static_cast<uint8_t>(c.r * brightness),
+                    static_cast<uint8_t>(c.g * brightness),
+                    static_cast<uint8_t>(c.b * brightness));
+            } else {
+                auto [r, g, b] = palette(value, global_hue_, contrast_->get());
+                canvas->SetPixel(x, y, r, g, b);
+            }
         }
     }
 

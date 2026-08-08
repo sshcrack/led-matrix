@@ -1,0 +1,27 @@
+{
+  "audio_spectrum": {
+    "lit_fraction_average": {"min": 0.32, "max": 0.48},
+    "mean_luma_average": {"min": 0.13, "max": 0.22},
+    "temporal_change_average": {"min": 0.07, "max": 0.16}
+  },
+  "audio_pulse_tunnel": {
+    "lit_fraction_average": {"min": 0.32, "max": 0.50},
+    "mean_luma_average": {"min": 0.038, "max": 0.073},
+    "temporal_change_average": {"min": 0.46, "max": 0.70}
+  },
+  "audio_aurora": {
+    "lit_fraction_average": {"min": 0.30, "max": 0.50},
+    "mean_luma_average": {"min": 0.062, "max": 0.12},
+    "temporal_change_average": {"min": 0.17, "max": 0.33}
+  },
+  "audio_kaleidoscope": {
+    "lit_fraction_average": {"min": 0.32, "max": 0.52},
+    "mean_luma_average": {"min": 0.043, "max": 0.083},
+    "temporal_change_average": {"min": 0.32, "max": 0.54}
+  },
+  "wave_pattern": {
+    "lit_fraction_average": {"min": 0.16, "max": 0.24},
+    "mean_luma_average": {"min": 0.024, "max": 0.047},
+    "temporal_change_average": {"min": 0.055, "max": 0.19}
+  }
+}
