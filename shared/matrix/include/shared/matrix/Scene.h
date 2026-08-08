@@ -48,7 +48,7 @@ namespace Scenes {
         std::string uuid;
 
         void set_target_fps(int fps) {
-            target_fps = fps;
+            target_fps = fps > 0 ? fps : 1;
         }
 
         [[nodiscard]] int get_target_fps() const {
@@ -113,8 +113,15 @@ namespace Scenes {
         [[nodiscard]] virtual SceneCapabilities get_capabilities() const {
             SceneCapabilities caps;
             caps.requires_desktop = const_cast<Scene *>(this)->needs_desktop_app();
+            caps.can_generate_preview = !caps.requires_desktop;
             return caps;
         }
+
+        /// Internal preview timing hint. This is deliberately not part of
+        /// SceneCapabilities: capabilities only answer whether preview_gen can
+        /// generate this scene, while this controls whether it may use virtual
+        /// frame time instead of waiting for wall-clock time.
+        [[nodiscard]] virtual bool supports_virtual_time() const { return false; }
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.

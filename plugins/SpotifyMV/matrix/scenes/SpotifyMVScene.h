@@ -22,8 +22,7 @@ public:
     auto caps = Scene::get_capabilities();
     caps.requires_network = true;
     caps.interactive = true;
-    caps.previewable = false;
-    caps.deterministic_preview = false;
+    caps.can_generate_preview = false;
     caps.music_director_eligible = false;
     return caps;
   }

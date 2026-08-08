@@ -3,8 +3,7 @@ export interface SceneCapabilities {
   requires_audio: boolean
   requires_network: boolean
   interactive: boolean
-  previewable: boolean
-  deterministic_preview: boolean
+  can_generate_preview: boolean
   supports_audio: boolean
   music_director_eligible: boolean
 }

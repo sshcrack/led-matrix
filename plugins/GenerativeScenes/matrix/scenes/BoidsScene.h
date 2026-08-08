@@ -38,7 +38,8 @@ public:
     void register_properties() override;
     [[nodiscard]] std::string get_name() const override { return "boids"; }
     [[nodiscard]] std::string get_category() const override { return "Generative"; }
-    Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; caps.deterministic_preview = true; return caps; }
+    Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 6; }
 };

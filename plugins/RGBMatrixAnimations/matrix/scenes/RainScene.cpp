@@ -13,10 +13,11 @@ RainScene::RainScene()
           currentColorId(1),
           totalColors(0) {
 
-    numParticles = MAKE_PROPERTY("numParticles", int, 4000);
-    velocity = MAKE_PROPERTY("velocity", int16_t, 6000);
-    shake = MAKE_PROPERTY("shake", int, 0);
-    bounce = MAKE_PROPERTY("bounce", int, 0);
+    num_particles = MAKE_PROPERTY_MINMAX("num_particles", int, 4000, 1, 12000);
+    num_particles->legacy_name("numParticles");
+    velocity = MAKE_PROPERTY_MINMAX("velocity", int16_t, 6000, 100, 16000);
+    shake = MAKE_PROPERTY_MINMAX("shake", int, 0, 0, 100);
+    bounce = MAKE_PROPERTY_MINMAX("bounce", int, 0, 0, 255);
 }
 
 RainScene::~RainScene() {
@@ -135,7 +136,7 @@ void RainScene::preRender(std::shared_ptr<ParticleMatrixRenderer> renderer, std:
 
 void RainScene::addNewParticles(std::shared_ptr<ParticleMatrixRenderer> ren, std::shared_ptr<GravityParticles> animation) {
     const uint16_t stepSize = 1;
-    if (animation->getParticleCount() >= numParticles->get()) return;
+    if (animation->getParticleCount() >= num_particles->get()) return;
     float v = velocity->get();
 
     counter++;
@@ -170,14 +171,11 @@ void RainScene::addNewParticles(std::shared_ptr<ParticleMatrixRenderer> ren, std
 }
 
 void RainScene::removeOldParticles(std::shared_ptr<GravityParticles> anim) {
-    uint16_t removeNum = std::min((uint16_t) (numParticles->get() - 1), (uint16_t) matrix_width);
-    if (anim->getParticleCount() > removeNum) {
-        for (uint16_t i = 0; i < removeNum; i++) {
-            auto particle = anim->getParticle(removeNum - 1 - i);
-            if (particle.y == 0) {
-                anim->deleteParticle(removeNum - 1 - i);
-            }
-        }
+    // Walk backwards so deleting an entry cannot invalidate later indices.
+    for (uint16_t i = anim->getParticleCount(); i > 0; --i) {
+        const uint16_t index = static_cast<uint16_t>(i - 1);
+        if (anim->getParticle(index).y == 0)
+            anim->deleteParticle(index);
     }
 }
 
