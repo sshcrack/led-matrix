@@ -58,6 +58,7 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
     const float centroid = feature(audio, AudioProtocol::Feature::SpectralCentroid);
     const int effective_limit = std::max(100, static_cast<int>(std::lround(
         particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+    particles_.set_limit(static_cast<size_t>(effective_limit));
     for (int i = 0; i < count && static_cast<int>(particles_.size()) < effective_limit; ++i) {
         Particle p{};
         p.x = std::clamp(matrix_width * (0.5f + balance * 0.28f + (unit(rng_) - 0.5f) * (0.18f + width * 0.72f)),
@@ -72,7 +73,7 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
         p.life = p.maxLife = persistence_->get() * (0.45f + unit(rng_) * 1.25f);
         p.hue = centroid * 180.0f + unit(rng_) * 110.0f;
         p.size = 1.0f + strength * 2.2f + unit(rng_);
-        particles_.push_back(p);
+        particles_.try_push(std::move(p));
     }
 }
 
@@ -111,19 +112,16 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
 
     const int effective_limit = std::max(100, static_cast<int>(std::lround(
         particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
-    if (static_cast<int>(particles_.size()) > effective_limit)
-        particles_.resize(static_cast<size_t>(effective_limit));
+    particles_.set_limit(static_cast<size_t>(effective_limit));
 
     const float sideFlow = audio.feature(AudioProtocol::Feature::StereoBalance) * 28.0f;
     const float midFlow = feature(audio, AudioProtocol::Feature::Mid) * 15.0f;
     for (auto &p : particles_) {
-        p.life -= dt;
-        p.vy += gravity_->get() * dt;
-        p.vx += (std::sin(hueTime_ * 1.7f + p.y * 0.07f) * midFlow + sideFlow) * dt;
-        p.x += p.vx * dt; p.y += p.vy * dt;
+        const float flow_acceleration = std::sin(hueTime_ * 1.7f + p.y * 0.07f) * midFlow + sideFlow;
+        Particles::integrate(p, dt, flow_acceleration, gravity_->get());
         if (p.x < 0.0f) p.x += matrix_width;
         if (p.x >= matrix_width) p.x -= matrix_width;
-        const float life = std::clamp(p.life / p.maxLife, 0.0f, 1.0f);
+        const float life = Particles::life_ratio(p);
         uint8_t r, g, b;
         if (rainbow_->get()) hsv(p.hue + hueTime_ * 24.0f, 0.78f, life, r, g, b);
         else { const auto c = baseColor_->get(); r = c.r * life; g = c.g * life; b = c.b * life; }
@@ -136,7 +134,7 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
             addPixel(canvas, x, y + 1, r / 2, g / 2, b / 2);
         }
     }
-    std::erase_if(particles_, [&](const Particle &p) {
+    particles_.erase_if([&](const Particle &p) {
         return p.life <= 0.0f || p.y > matrix_height + 8.0f || p.y < -matrix_height;
     });
     return true;

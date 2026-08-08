@@ -18,9 +18,13 @@ static std::string get_api_url(const std::string& lat, const std::string& lon) {
 }
 
 std::expected<std::string, std::string> WeatherParser::fetch_api(const std::string& lat, const std::string& lon) {
-    cpr::Response r = cpr::Get(cpr::Url{get_api_url(lat, lon)});
+    cpr::Response r = cpr::Get(
+        cpr::Url{get_api_url(lat, lon)},
+        cpr::Timeout{5000L});
     if (r.status_code != 200) {
-        return std::unexpected("Could not fetch api: " + r.text);
+        const std::string detail = !r.error.message.empty() ? r.error.message : r.text;
+        return std::unexpected("Could not fetch weather API (HTTP " +
+            std::to_string(r.status_code) + "): " + detail);
     }
 
     return r.text;
@@ -122,7 +126,8 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         if (!curr.contains("temperature_2m")) {
             return std::unexpected("Missing temperature data");
         }
-        auto temperature = std::to_string(curr["temperature_2m"].get<int>()) + temp_unit;
+        const float temperature_value = curr["temperature_2m"].get<float>();
+        auto temperature = std::to_string(static_cast<int>(std::round(temperature_value))) + temp_unit;
 
         // Get additional weather data
         std::string humidity = curr.contains("relative_humidity_2m")
@@ -227,6 +232,10 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         data.temperature = temperature;
         data.humidity = humidity;
         data.wind_speed = wind_speed;
+        data.temperature_value = temperature_value;
+        data.humidity_percent = curr.value("relative_humidity_2m", 0.0f);
+        data.wind_speed_value = curr.value("wind_speed_10m", 0.0f);
+        data.cloud_cover = std::clamp(curr.value("cloud_cover", 0.0f) / 100.0f, 0.0f, 1.0f);
         data.icon_url = icon_url;
         data.weatherCode = code;
         data.forecast = forecast;
