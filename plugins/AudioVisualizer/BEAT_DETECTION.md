@@ -1,132 +1,71 @@
-# Beat Detection and Post-Processing
+# Music analysis and beat tracking
 
-This document describes the beat detection and post-processing features added to the LED Matrix Controller.
+The AudioVisualizer desktop plugin performs the music analysis for both dedicated audio scenes and audio-reactive scenes in other plugins. The matrix receives the resulting feature frame over the shared audio UDP protocol; it does not re-run tempo analysis.
 
-## Overview
+## Analysis pipeline
 
-The system now includes:
-- Real-time beat detection from audio input
-- Post-processing effects that can be triggered by beats or manually
-- Cross-platform support (Windows and Linux)
-- REST API for manual control
+Each captured audio window produces:
 
-## Beat Detection
+- adaptive loudness and RMS/peak levels
+- seven musical bands from sub-bass through air
+- spectral centroid, rolloff, flatness and spectral flux
+- onset strength and kick/snare/hi-hat envelopes
+- BPM, beat phase, beat confidence and tempo stability
+- stereo width, balance and correlation
+- drop and section-change events
+- a compact waveform and display spectrum
 
-### How It Works
-The beat detection algorithm analyzes incoming audio spectrum data to identify beats using an energy-based approach:
+Timing is derived from the capture sample sequence rather than the desktop render clock. This keeps onset intervals and BPM estimation stable when rendering or packet production jitters.
 
-1. **Energy Calculation**: Focuses on lower frequency bands (bass) where beats are most prominent
-2. **History Tracking**: Maintains a sliding window of recent energy values
-3. **Threshold Detection**: Triggers when current energy exceeds average energy by a configurable multiplier
-4. **Temporal Filtering**: Enforces minimum time between beats to prevent false positives
+## Tempo tracking
 
-### Configuration
-Beat detection parameters can be adjusted in `AudioVisualizer.h`:
+Tempo tracking uses the spectral-flux onset stream, but the raw onset stream is not treated as a sequence of beats:
 
-```cpp
-struct BeatDetectionParams {
-    float energy_threshold_multiplier = 1.5f;  // Energy must be 1.5x average to trigger
-    int energy_history_size = 43;              // Number of frames for rolling average
-    float min_beat_interval = 0.3f;            // Minimum 300ms between beats
-    float decay_factor = 0.95f;                // Future use for energy decay
-};
-```
+1. Nearby novelty peaks are clustered in a 220 ms tempo-only window. If a stronger transient arrives after a weak precursor, the stronger transient replaces it.
+2. A rolling 12 second window scores candidates from 60 to 180 BPM in 0.5 BPM steps.
+3. Each candidate is tested against several following transient intervals and against a stronger-accent subset. This allows quarter-note tempo to survive busy eighth-note activity and missed beats.
+4. The winning period is cross-checked against progressively stronger transient subsets. A tempo that remains periodic when weaker novelty events are removed receives more confidence.
+5. Recent winning estimates are tracked with a median/MAD stability measure instead of treating one histogram bin as the entire confidence value.
+6. 170-180 BPM candidates receive a conservative half-tempo check for the common 85-90 BPM double-time ambiguity. The correction needs repeated independent support and never fires for a strongly-supported genuine fast tempo.
 
-## Post-Processing Effects
+`BeatConfidence` describes how strongly the current periodic evidence supports the BPM. `TempoStability` describes how consistently the tracker has returned the same tempo recently. They are intentionally separate: an ambiguous groove may have a stable candidate while still having low confidence.
 
-### Flash Effect
-- Quick brightness ramp-up (0.1s) followed by exponential decay
-- Brightens all pixels based on intensity parameter
-- Default duration: 0.4s, intensity: 0.8
+When transients disappear, confidence and stability decay instead of leaving a stale locked tempo behind.
 
-### Rotate Effect
-- Rotates the entire image around the center point
-- Supports partial and multiple rotations via intensity parameter
-- Default duration: 1.0s, intensity: 1.0 (360 degrees)
+## Beat events and phase
 
-### Integration
-Post-processing effects are applied automatically when beats are detected, or can be triggered manually via REST API.
+Before a tempo is locked, percussive onsets can produce beat events so scenes remain responsive during acquisition. Once confidence and stability are high enough, beat scheduling follows the tracked period and uses tighter minimum spacing so subdivisions do not create extra beat events.
 
-## REST API Endpoints
+Scenes should not use BPM unconditionally. Tempo-driven motion should blend toward BPM only when both `BeatConfidence` and `TempoStability` indicate a useful lock; otherwise use onset, percussion and energy features directly.
 
-### Trigger Flash Effect
-```
-GET /post_processing/flash?duration=0.5&intensity=0.8
-```
+## Diagnostics
 
-### Trigger Rotate Effect
-```
-GET /post_processing/rotate?duration=1.0&intensity=1.5
-```
+The desktop AudioVisualizer panel shows:
 
-### Clear All Effects
-```
-GET /post_processing/clear
-```
+- BPM plus `LEARNING`, `TRACKING` or `LOCKED` state
+- beat confidence and tempo stability
+- beat phase
+- kick, snare and hi-hat strengths
+- spectral and stereo diagnostics
+- history plots for dynamics, tempo and tempo quality
 
-### Get Status
-```
-GET /post_processing/status
-```
+The matrix `/diagnostics` endpoint also exposes BPM, beat confidence, tempo stability, percussion, bands, stereo features and transport health. The web diagnostics page surfaces confidence and stability together.
 
-## Cross-Platform Support
+## Regression benchmark
 
-### Matrix Version (Raspberry Pi)
-- Receives UDP packets with audio spectrum data
-- Performs beat detection on spectrum data
-- Triggers post-processing effects
+Desktop builds provide `audio_analyzer_benchmark`, which links the same `MusicAnalyzer.cpp` used by the plugin.
 
-### Desktop Version (Windows/Linux)
-- Records audio directly (Windows) or receives external data (Linux)  
-- Includes same beat detection algorithm
-- Currently for development/testing (beat effects are logged)
+With no arguments it validates synthetic drum material across slow and fast tempos, silence rejection, beat-event cadence, and stale-tempo decay:
 
-## Usage Examples
-
-### Automatic Beat Response
-1. Start the LED matrix controller
-2. Connect an audio source (using the AudioVisualizer client)
-3. Play music - the display will flash on detected beats
-
-### Manual Control
 ```bash
-# Trigger a flash effect
-curl "http://your-matrix-ip:8080/post_processing/flash?intensity=1.0"
-
-# Trigger a rotation effect  
-curl "http://your-matrix-ip:8080/post_processing/rotate?duration=2.0&intensity=2.0"
-
-# Clear all effects
-curl "http://your-matrix-ip:8080/post_processing/clear"
+cmake --build --preset desktop-linux --target audio_analyzer_benchmark
+./desktop_build/plugins/AudioVisualizer/audio_analyzer_benchmark
 ```
 
-## Technical Details
+A PCM 16-bit WAV can be analyzed directly. Supplying an expected BPM turns it into a validation check:
 
-### Audio Processing Pipeline
-1. Audio data arrives via UDP (from external client)
-2. AudioVisualizer plugin processes spectrum data
-3. Beat detection algorithm analyzes energy patterns
-4. On beat detection, plugin sets internal flag
-5. Matrix controller polls plugins each frame
-6. Post-processing effects are applied before canvas swap
+```bash
+./desktop_build/plugins/AudioVisualizer/audio_analyzer_benchmark sample.wav 120
+```
 
-### Performance Considerations
-- Beat detection runs once per audio packet (typically 20-60 Hz)
-- Post-processing effects use efficient pixel manipulation
-- Rotation effect uses temporary canvas to avoid artifacts
-- All effects have limited duration to prevent accumulation
-
-### Thread Safety
-- Beat detection flags use mutex protection
-- Post-processing effects are applied on main rendering thread
-- Energy history is protected during updates
-
-## Future Enhancements
-
-Potential improvements for the beat detection and post-processing system:
-
-1. **Configurable Effects**: Allow users to choose between flash/rotate/both
-2. **Beat Sensitivity**: Runtime adjustment of detection parameters
-3. **Advanced Effects**: Add more post-processing options (blur, color shift, etc.)
-4. **WebSocket Notifications**: Real-time beat events to connected clients
-5. **Machine Learning**: More sophisticated beat detection using trained models
+The optional `AUDIO_BENCH_TRACE=1` environment variable prints detected onset events for analyzer development and debugging.

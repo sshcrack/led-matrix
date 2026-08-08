@@ -20,8 +20,9 @@ namespace AmbientScenes {
         std::mt19937 gen{std::random_device{}()};
         float time = 0.0f;
         float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
-        uint64_t last_beat_counter = 0;
-        float beat_flash = 0.0f;
+        float audio_balance = 0.0f, audio_width = 0.0f, hihat_detail = 0.0f;
+        uint64_t last_beat_counter = 0, last_drop_counter = 0, last_section_counter = 0;
+        float beat_flash = 0.0f, drop_flash = 0.0f, section_hue = 0.0f;
 
         PropertyPointer<int> num_stars = MAKE_PROPERTY_MINMAX("num_stars", int, 90, 16, 240);
         PropertyPointer<float> speed = MAKE_PROPERTY_MINMAX("speed", float, 0.025f, 0.003f, 0.12f);

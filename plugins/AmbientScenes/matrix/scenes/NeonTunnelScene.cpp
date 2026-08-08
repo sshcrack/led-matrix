@@ -41,28 +41,37 @@ namespace AmbientScenes {
             audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
             audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
             audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
-            if (has_audio && audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_pulse = 1.0f; }
-        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+            audio_balance += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance) * response;
+            audio_width += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoWidth) : 0.0f) - audio_width) * response;
+            snare_detail += ((has_audio ? audio.feature(AudioProtocol::Feature::Snare) : 0.0f) - snare_detail) * response;
+            hihat_detail += ((has_audio ? audio.feature(AudioProtocol::Feature::Hihat) : 0.0f) - hihat_detail) * response;
+            if (has_audio && audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_pulse = std::max(beat_pulse, 0.6f + audio.feature(AudioProtocol::Feature::Kick) * 0.4f); }
+            if (has_audio && audio.drop_counter != last_drop_counter) { last_drop_counter = audio.drop_counter; drop_pulse = 1.0f; }
+            if (has_audio && audio.section_counter != last_section_counter) { last_section_counter = audio.section_counter; section_hue += 67.0f; }
+        } else { audio_bass = audio_mids = audio_treble = audio_balance = audio_width = snare_detail = hihat_detail = 0.0f; }
         beat_pulse = std::max(0.0f, beat_pulse - dt * 2.8f);
+        drop_pulse = std::max(0.0f, drop_pulse - dt * 1.0f);
 
         const float center_x = static_cast<float>(matrix_width) * 0.5f;
         const float center_y = static_cast<float>(matrix_height) * 0.5f;
         const float min_dimension = static_cast<float>(std::max(1, std::min(matrix_width, matrix_height)));
 
         // A slowly wandering vanishing point and camera roll make the flight feel less synthetic.
-        const float osc_x = center_x
+        const float osc_x = center_x + audio_balance * audio_strength->get() * static_cast<float>(matrix_width) * 0.11f
                           + std::sin(time_counter * 0.31f) * static_cast<float>(matrix_width) * 0.16f
                           + std::sin(time_counter * 0.087f) * static_cast<float>(matrix_width) * 0.06f;
         const float osc_y = center_y
                           + std::cos(time_counter * 0.27f) * static_cast<float>(matrix_height) * 0.14f
                           + std::sin(time_counter * 0.113f) * static_cast<float>(matrix_height) * 0.05f;
-        const float roll = std::sin(time_counter * 0.19f) * 0.42f;
+        const float roll = std::sin(time_counter * 0.19f) * 0.42f + snare_detail * audio_strength->get() * 0.10f;
         const float cos_roll = std::cos(roll);
         const float sin_roll = std::sin(roll);
 
-        const float reactive_speed = 1.0f + (audio_reactive->get() ? audio_bass * audio_strength->get() * 1.5f : 0.0f);
+        const float reactive_speed = 1.0f + (audio_reactive->get() ?
+            (audio_bass * 1.25f + beat_pulse * 0.38f + drop_pulse * 0.85f) * audio_strength->get() : 0.0f);
         const float travel = time_counter * std::max(0.05f, speed->get()) * 0.42f * reactive_speed;
-        const float angular_frequency = std::max(1.0f, angle_factor->get()) + (audio_reactive->get() ? audio_treble * audio_strength->get() * 5.0f : 0.0f);
+        const float angular_frequency = std::max(1.0f, angle_factor->get()) +
+            (audio_reactive->get() ? (audio_treble * 3.0f + hihat_detail * 3.0f + audio_width * 1.5f) * audio_strength->get() : 0.0f);
         const float depth_scale = std::max(1.0f, distance_factor->get()) / min_dimension;
 
         for (int y = 0; y < matrix_height; ++y) {
@@ -99,7 +108,8 @@ namespace AmbientScenes {
                 const float pulse = 0.82f + 0.18f * std::sin(depth_coordinate * 3.0f - time_counter * 1.7f);
 
                 float brightness = (grid * 0.62f + glow * 0.20f + crossing * 0.42f) * edge_fade * center_fade * pulse;
-                brightness *= 1.0f + audio_bass * audio_strength->get() * 0.55f + beat_pulse * 0.35f;
+                brightness *= 1.0f + audio_bass * audio_strength->get() * 0.42f + beat_pulse * 0.32f +
+                    hihat_detail * audio_strength->get() * 0.12f + drop_pulse * 0.35f;
                 brightness = std::clamp(brightness, 0.0f, 1.0f);
 
                 // Give the vanishing point a restrained bloom rather than leaving a black singularity.
@@ -107,7 +117,7 @@ namespace AmbientScenes {
                 brightness = std::max(brightness, core);
 
                 const float hue = std::fmod(
-                    time_counter * hue_shift_speed->get() * 38.0f
+                    time_counter * hue_shift_speed->get() * 38.0f + section_hue + drop_pulse * 45.0f
                     + depth_coordinate * 31.0f
                     + angle * 18.0f / PI,
                     360.0f

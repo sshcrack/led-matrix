@@ -172,9 +172,13 @@ void AudioVisualizerDesktop::addMusicAnalysisSettings() {
     if (!hasLatestAnalysis) return;
     const auto f = [&](AudioProtocol::Feature id) { return latestAnalysis.feature(id); };
     ImGui::Spacing();
+    const float confidence = f(AudioProtocol::Feature::BeatConfidence);
+    const float stability = f(AudioProtocol::Feature::TempoStability);
+    const float tempoTrust = std::clamp((confidence - 0.28f) / 0.52f, 0.0f, 1.0f) * stability;
+    const char *tempoState = tempoTrust >= 0.55f ? "LOCKED" : tempoTrust >= 0.20f ? "TRACKING" : "LEARNING";
     ImGui::Text("Tempo  %.1f BPM", f(AudioProtocol::Feature::Bpm));
     ImGui::SameLine();
-    ImGui::TextDisabled("confidence %.0f%%", f(AudioProtocol::Feature::BeatConfidence) * 100.0f);
+    ImGui::TextDisabled("%s  confidence %.0f%%  stability %.0f%%", tempoState, confidence * 100.0f, stability * 100.0f);
     ImGui::ProgressBar(f(AudioProtocol::Feature::BeatPhase), ImVec2(-1, 5), "");
     ImGui::Text("Kick %.2f   Snare %.2f   Hi-hat %.2f",
                 f(AudioProtocol::Feature::Kick), f(AudioProtocol::Feature::Snare),
@@ -233,12 +237,12 @@ void AudioVisualizerDesktop::addVisualizer() {
 
     if (diagnosticHistory.size() >= 2) {
         const size_t n = diagnosticHistory.size();
-        std::vector<float> x(n), loudness(n), kick(n), snare(n), hihat(n), onset(n), bpm(n), confidence(n), width(n), balance(n);
+        std::vector<float> x(n), loudness(n), kick(n), snare(n), hihat(n), onset(n), bpm(n), confidence(n), stability(n), width(n), balance(n);
         for (size_t i = 0; i < n; ++i) {
             const auto &d = diagnosticHistory[i];
             x[i] = d.time; loudness[i] = d.loudness; kick[i] = d.kick; snare[i] = d.snare;
             hihat[i] = d.hihat; onset[i] = d.onset; bpm[i] = d.bpm; confidence[i] = d.beatConfidence;
-            width[i] = d.stereoWidth; balance[i] = d.stereoBalance;
+            stability[i] = d.tempoStability; width[i] = d.stereoWidth; balance[i] = d.stereoBalance;
         }
 
         const double xmin = x.front(), xmax = std::max<double>(x.back(), x.front() + 0.001f);
@@ -257,6 +261,14 @@ void AudioVisualizerDesktop::addVisualizer() {
             ImPlot::SetupAxes("seconds", "BPM", ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
             ImPlot::SetupAxisLimits(ImAxis_X1, xmin, xmax, ImGuiCond_Always);
             ImPlot::PlotLine("BPM", x.data(), bpm.data(), static_cast<int>(n));
+            ImPlot::EndPlot();
+        }
+        if (ImPlot::BeginPlot("Tempo quality##music_debug", ImVec2(-1, 125), ImPlotFlags_NoMenus)) {
+            ImPlot::SetupAxes("seconds", "quality", ImPlotAxisFlags_None, ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxisLimits(ImAxis_X1, xmin, xmax, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 1.05, ImGuiCond_Always);
+            ImPlot::PlotLine("Confidence", x.data(), confidence.data(), static_cast<int>(n));
+            ImPlot::PlotLine("Stability", x.data(), stability.data(), static_cast<int>(n));
             ImPlot::EndPlot();
         }
         if (ImPlot::BeginPlot("Stereo field##music_debug", ImVec2(-1, 145), ImPlotFlags_NoMenus)) {
@@ -347,6 +359,7 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
     sample.onset = analysis.feature(AudioProtocol::Feature::OnsetStrength);
     sample.bpm = analysis.feature(AudioProtocol::Feature::Bpm);
     sample.beatConfidence = analysis.feature(AudioProtocol::Feature::BeatConfidence);
+    sample.tempoStability = analysis.feature(AudioProtocol::Feature::TempoStability);
     sample.stereoWidth = analysis.feature(AudioProtocol::Feature::StereoWidth);
     sample.stereoBalance = analysis.feature(AudioProtocol::Feature::StereoBalance);
     diagnosticHistory.push_back(sample);

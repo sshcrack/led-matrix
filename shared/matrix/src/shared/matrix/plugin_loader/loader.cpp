@@ -53,12 +53,19 @@ std::vector<BasicPlugin *> PluginManager::get_plugins() {
 
 std::vector<std::shared_ptr<SceneWrapper>> PluginManager::get_scenes() {
     std::lock_guard<std::mutex> lock(scenes_mutex);
-    if (!scenes_initialized) {
-        for (auto &item : get_plugins()) {
+    const auto plugins = get_plugins();
+    // get_scenes() can be queried while configuration is being constructed,
+    // before PluginLoader::initialize() has discovered any DSOs. Do not let
+    // that empty early query permanently poison the scene cache. Rebuild when
+    // the loaded plugin set changes (notably 0 -> N during preview_gen startup).
+    if (!scenes_initialized || scenes_plugin_count_ != plugins.size()) {
+        all_scenes.clear();
+        for (auto *item : plugins) {
             auto pl_scenes = item->get_scenes();
             all_scenes.insert(all_scenes.end(), pl_scenes.begin(), pl_scenes.end());
         }
         scenes_initialized = true;
+        scenes_plugin_count_ = plugins.size();
         validation_report_ = validate_registry(false);
         if (!validation_report_.ok()) {
             for (const auto &error : validation_report_.errors)
@@ -218,5 +225,6 @@ void PluginManager::delete_references() {
     std::lock_guard<std::mutex> lock(scenes_mutex);
     all_scenes.clear();
     scenes_initialized = false;
+    scenes_plugin_count_ = 0;
     validation_report_ = {};
 }

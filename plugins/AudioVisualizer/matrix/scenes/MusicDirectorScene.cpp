@@ -173,7 +173,8 @@ bool MusicDirectorScene::request_switch(const AudioState::Snapshot &audio, Music
 
     if (!pending_switch_) return false;
 
-    const bool confidentTempo = feature(audio, AudioProtocol::Feature::BeatConfidence) >= 0.48f;
+    const bool confidentTempo = feature(audio, AudioProtocol::Feature::BeatConfidence) >= 0.52f &&
+                                feature(audio, AudioProtocol::Feature::TempoStability) >= 0.45f;
     const bool newBeat = audio.beat_counter != seen_beat_;
     seen_beat_ = audio.beat_counter;
     if (beat_sync_->get() && confidentTempo && child_ && !newBeat && !drop) return false;

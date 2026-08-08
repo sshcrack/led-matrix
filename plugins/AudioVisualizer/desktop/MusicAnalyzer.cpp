@@ -49,14 +49,19 @@ void MusicAnalyzer::reset() {
     fluxHistory_.clear();
     onsetTimes_.clear();
     onsetStrengths_.clear();
+    recentTempoEstimates_.clear();
     tempoHistogram_.fill(0.0f);
     fastLoudness_ = slowLoudness_ = 0.0f;
     kickEnvelope_ = snareEnvelope_ = hihatEnvelope_ = 0.0f;
     dropEnvelope_ = sectionEnvelope_ = 0.0f;
     smoothedBpm_ = beatConfidence_ = tempoStability_ = 0.0f;
     quietSeconds_ = 0.0f;
+    octaveCorrectionStreak_ = 0;
+    tempoChangeStreak_ = 0;
     dropArmed_ = false;
     lastBeatTime_ = lastOnsetTime_ = lastDropTime_ = lastSectionTime_ = -1000.0;
+    audioClockOriginSequence_ = lastAudioSequence_ = 0;
+    hasAudioClock_ = false;
     startTime_ = lastAnalyzeTime_ = std::chrono::steady_clock::now();
 }
 
@@ -125,54 +130,213 @@ std::array<float, MusicAnalyzer::FeatureBandCount> MusicAnalyzer::computeRawFeat
 }
 
 void MusicAnalyzer::updateTempo(double nowSeconds, float onsetStrength) {
-    const float decay = std::exp(-1.0f / 650.0f);
-    for (float &bin : tempoHistogram_) bin *= decay;
-
-    while (!onsetTimes_.empty() && nowSeconds - onsetTimes_.front() > 10.0) {
+    while (!onsetTimes_.empty() && nowSeconds - onsetTimes_.front() > 12.0) {
         onsetTimes_.pop_front();
         onsetStrengths_.pop_front();
     }
 
-    for (size_t i = 0; i < onsetTimes_.size(); ++i) {
-        const double interval = nowSeconds - onsetTimes_[i];
-        if (interval < 0.24 || interval > 2.0) continue;
-        float bpm = static_cast<float>(60.0 / interval);
-        while (bpm < 60.0f) bpm *= 2.0f;
-        while (bpm > 170.0f) bpm *= 0.5f;
-        const float ageWeight = std::exp(-static_cast<float>(interval) * 0.18f);
-        const float weight = onsetStrength * onsetStrengths_[i] * ageWeight;
-        const int index = std::clamp(static_cast<int>(std::round((bpm - 60.0f) * 2.0f)),
-                                     0, static_cast<int>(tempoHistogram_.size() - 1));
-        for (int offset = -2; offset <= 2; ++offset) {
-            const int target = index + offset;
-            if (target >= 0 && target < static_cast<int>(tempoHistogram_.size()))
-                tempoHistogram_[target] += weight * std::exp(-0.55f * offset * offset);
-        }
+    // Cluster nearby novelty peaks into one musical transient, keeping the
+    // strongest member rather than the first. Codec ringing and FFT-window
+    // motion can create a weak precursor shortly before the actual click;
+    // first-hit refractory logic would discard the real beat in that case.
+    bool replacedPulse = false;
+    if (!onsetTimes_.empty() && nowSeconds - onsetTimes_.back() < 0.22) {
+        if (onsetStrength <= onsetStrengths_.back()) return;
+        onsetTimes_.back() = nowSeconds;
+        onsetStrengths_.back() = onsetStrength;
+        replacedPulse = true;
+    } else {
+        onsetTimes_.push_back(nowSeconds);
+        onsetStrengths_.push_back(onsetStrength);
+    }
+    if (onsetTimes_.size() < 3) return;
+
+    const float strongThreshold = std::max(0.52f, percentile(onsetStrengths_, 0.72f));
+    std::vector<size_t> strongIndices;
+    strongIndices.reserve(onsetTimes_.size());
+    for (size_t i = 0; i < onsetStrengths_.size(); ++i) {
+        if (onsetStrengths_[i] >= strongThreshold) strongIndices.push_back(i);
     }
 
-    onsetTimes_.push_back(nowSeconds);
-    onsetStrengths_.push_back(onsetStrength);
+    auto intervalFit = [](double interval, float period) {
+        if (interval <= 0.0 || period <= 0.0f) return 0.0f;
+        const int beats = std::max(1, static_cast<int>(std::lround(interval / period)));
+        const float error = std::abs(static_cast<float>(interval) - period * beats) / period;
+        constexpr float sigma = 0.115f;
+        return std::exp(-0.5f * (error / sigma) * (error / sigma));
+    };
+
+    for (size_t bin = 0; bin < tempoHistogram_.size(); ++bin) {
+        const float bpm = 60.0f + static_cast<float>(bin) * 0.5f;
+        const float period = 60.0f / bpm;
+
+        float adjacentScore = 0.0f, adjacentWeight = 0.0f;
+        // Compare several following transient pairs, not just immediate
+        // neighbors. Busy eighth-note patterns otherwise look like double the
+        // musical tempo; second/third-neighbor intervals carry the fundamental.
+        constexpr size_t MaxTempoLag = 6;
+        for (size_t i = 0; i < onsetTimes_.size(); ++i) {
+            const size_t end = std::min(onsetTimes_.size(), i + MaxTempoLag + 1);
+            for (size_t j = i + 1; j < end; ++j) {
+                const double interval = onsetTimes_[j] - onsetTimes_[i];
+                if (interval < 0.20 || interval > 3.5) continue;
+                const float strength = std::sqrt(std::max(0.01f,
+                    onsetStrengths_[i] * onsetStrengths_[j]));
+                const float lag = static_cast<float>(j - i);
+                const float weight = (0.30f + 0.70f * strength) / std::sqrt(lag);
+                adjacentScore += intervalFit(interval, period) * weight;
+                adjacentWeight += weight;
+            }
+        }
+        adjacentScore /= std::max(adjacentWeight, 0.001f);
+
+        float accentScore = 0.0f, accentWeight = 0.0f;
+        for (size_t n = 1; n < strongIndices.size(); ++n) {
+            const size_t a = strongIndices[n - 1], b = strongIndices[n];
+            const double interval = onsetTimes_[b] - onsetTimes_[a];
+            if (interval < 0.28 || interval > 4.5) continue;
+            const float strength = std::sqrt(std::max(0.01f,
+                onsetStrengths_[a] * onsetStrengths_[b]));
+            const float weight = 0.35f + 0.65f * strength;
+            accentScore += intervalFit(interval, period) * weight;
+            accentWeight += weight;
+        }
+        accentScore = accentWeight > 0.001f ? accentScore / accentWeight : adjacentScore;
+
+        // Strong accent periodicity rejects codec/decay artifacts; the full
+        // transient stream disambiguates how many beats lie between accents.
+        // Both have to agree for a candidate to achieve a high score.
+        const float agreement = std::sqrt(std::max(0.0f, adjacentScore * accentScore));
+        tempoHistogram_[bin] = agreement * (0.35f + 0.65f * accentScore);
+    }
 
     const auto peakIt = std::max_element(tempoHistogram_.begin(), tempoHistogram_.end());
-    const float peak = *peakIt;
-    const float total = std::accumulate(tempoHistogram_.begin(), tempoHistogram_.end(), 0.0f);
-    if (peak > 0.001f) {
-        const size_t index = static_cast<size_t>(std::distance(tempoHistogram_.begin(), peakIt));
-        const float bpm = 60.0f + static_cast<float>(index) * 0.5f;
-        smoothedBpm_ = smoothedBpm_ <= 1.0f ? bpm : smoothedBpm_ * 0.88f + bpm * 0.12f;
-        beatConfidence_ = clamp01((peak / std::max(total, 0.001f)) * 6.0f);
+    if (peakIt == tempoHistogram_.end() || *peakIt <= 0.05f) return;
+    int peakIndex = static_cast<int>(std::distance(tempoHistogram_.begin(), peakIt));
+    float peakScore = *peakIt;
+    float bpm = 60.0f + static_cast<float>(peakIndex) * 0.5f;
 
-        float weightedVariance = 0.0f;
-        float localWeight = 0.0f;
-        for (size_t i = 0; i < tempoHistogram_.size(); ++i) {
-            const float candidate = 60.0f + static_cast<float>(i) * 0.5f;
-            const float distance = candidate - bpm;
-            const float weight = tempoHistogram_[i] * std::exp(-distance * distance / 72.0f);
-            weightedVariance += weight * distance * distance;
-            localWeight += weight;
+    // Resolve the common 170..180 double-time ambiguity conservatively.
+    // Busy 85..90 BPM grooves often generate strong eighth-note onsets near
+    // 170..180 BPM. Require repeated support for the half-tempo family before
+    // switching, then rebase stale recent estimates so an earlier double-time
+    // lock cannot keep dragging the smoothed tempo back up.
+    bool octaveCorrected = false;
+    if (bpm >= 170.0f) {
+        const float halfBpm = bpm * 0.5f;
+        const int halfIndex = std::clamp(static_cast<int>(std::lround((halfBpm - 60.0f) * 2.0f)),
+                                         0, static_cast<int>(tempoHistogram_.size() - 1));
+        const float halfScore = tempoHistogram_[static_cast<size_t>(halfIndex)];
+        const float halfRatio = halfScore / std::max(peakScore, 0.001f);
+        if (halfScore >= 0.22f && halfRatio >= 0.38f)
+            octaveCorrectionStreak_ = std::min(octaveCorrectionStreak_ + 1, 12);
+        else
+            octaveCorrectionStreak_ = std::max(0, octaveCorrectionStreak_ - 1);
+
+        if (octaveCorrectionStreak_ >= 3) {
+            peakIndex = halfIndex;
+            peakScore = halfScore;
+            bpm = 60.0f + static_cast<float>(peakIndex) * 0.5f;
+            octaveCorrected = true;
         }
-        tempoStability_ = clamp01(1.0f - std::sqrt(weightedVariance /
-            std::max(localWeight, 0.001f)) / 12.0f);
+    } else {
+        octaveCorrectionStreak_ = std::max(0, octaveCorrectionStreak_ - 2);
+    }
+
+    // A real song/section tempo change should not have to wait for the entire
+    // recent-estimate median to age out. Require several consecutive strong
+    // candidates far from the current lock, then discard stale tempo history.
+    // The octave-correction path above is handled separately so double-time
+    // ambiguity cannot masquerade as a song tempo change.
+    const float tempoJump = smoothedBpm_ > 1.0f ? std::abs(bpm - smoothedBpm_) : 0.0f;
+    if (!octaveCorrected && tempoJump > 16.0f && peakScore >= 0.58f)
+        tempoChangeStreak_ = std::min(tempoChangeStreak_ + 1, 10);
+    else
+        tempoChangeStreak_ = std::max(0, tempoChangeStreak_ - 1);
+    const bool confirmedTempoChange = tempoChangeStreak_ >= 4;
+    if (confirmedTempoChange) {
+        recentTempoEstimates_.clear();
+        tempoChangeStreak_ = 0;
+    }
+
+    float second = 0.0f;
+    for (int i = 0; i < static_cast<int>(tempoHistogram_.size()); ++i) {
+        if (std::abs(i - peakIndex) <= 12) continue;
+        second = std::max(second, tempoHistogram_[static_cast<size_t>(i)]);
+    }
+    const float prominence = clamp01((peakScore - second) / std::max(peakScore, 0.001f));
+
+    if (octaveCorrected && !recentTempoEstimates_.empty() &&
+        percentile(recentTempoEstimates_, 0.50f) > bpm * 1.65f)
+        recentTempoEstimates_.clear();
+    if (replacedPulse && !recentTempoEstimates_.empty()) recentTempoEstimates_.back() = bpm;
+    else recentTempoEstimates_.push_back(bpm);
+    while (recentTempoEstimates_.size() > 40) recentTempoEstimates_.pop_front();
+    const float recentCenter = percentile(recentTempoEstimates_, 0.50f);
+    std::deque<float> deviations;
+    for (float estimate : recentTempoEstimates_) deviations.push_back(std::abs(estimate - recentCenter));
+    const float tempoMad = percentile(deviations, 0.50f);
+    const float consistency = clamp01(1.0f - tempoMad / 4.5f);
+    const float maturity = clamp01((static_cast<float>(recentTempoEstimates_.size()) - 2.0f) / 12.0f);
+
+    // Cross-check the winning period against progressively stronger transient
+    // subsets. This is inspired by multi-threshold peak trackers: a tempo that
+    // is still periodic when only the strongest accents remain deserves more
+    // confidence than one supported only by low-level novelty noise.
+    const std::array<float, 3> thresholdQuantiles{0.45f, 0.65f, 0.82f};
+    float thresholdAgreement = 0.0f;
+    float thresholdWeight = 0.0f;
+    const float winningPeriod = 60.0f / bpm;
+    for (size_t level = 0; level < thresholdQuantiles.size(); ++level) {
+        const float gate = std::max(0.18f, percentile(onsetStrengths_, thresholdQuantiles[level]));
+        std::vector<size_t> indices;
+        indices.reserve(onsetTimes_.size());
+        for (size_t i = 0; i < onsetStrengths_.size(); ++i)
+            if (onsetStrengths_[i] >= gate) indices.push_back(i);
+        if (indices.size() < 3) continue;
+
+        float score = 0.0f, weight = 0.0f;
+        for (size_t i = 1; i < indices.size(); ++i) {
+            const size_t a = indices[i - 1], b = indices[i];
+            const double interval = onsetTimes_[b] - onsetTimes_[a];
+            if (interval < 0.25 || interval > 4.5) continue;
+            const float pairStrength = std::sqrt(std::max(0.01f,
+                onsetStrengths_[a] * onsetStrengths_[b]));
+            const float pairWeight = 0.35f + 0.65f * pairStrength;
+            score += intervalFit(interval, winningPeriod) * pairWeight;
+            weight += pairWeight;
+        }
+        if (weight <= 0.001f) continue;
+        const float levelWeight = 1.0f + static_cast<float>(level) * 0.30f;
+        thresholdAgreement += (score / weight) * levelWeight;
+        thresholdWeight += levelWeight;
+    }
+    thresholdAgreement = thresholdWeight > 0.001f
+        ? clamp01(thresholdAgreement / thresholdWeight) : 0.0f;
+
+    const float periodicity = clamp01((peakScore - 0.32f) / 0.58f);
+    const float targetStability = maturity * consistency * (0.82f + 0.18f * thresholdAgreement);
+    const float targetConfidence = maturity * periodicity *
+        (0.62f + 0.38f * consistency) * (0.72f + 0.28f * prominence) *
+        (0.72f + 0.28f * thresholdAgreement);
+    const float updateSeconds = onsetTimes_.size() >= 2
+        ? std::clamp(static_cast<float>(nowSeconds - onsetTimes_[onsetTimes_.size() - 2]), 0.01f, 0.5f)
+        : 0.1f;
+    beatConfidence_ = smooth(beatConfidence_, targetConfidence, 0.20f, 0.85f, updateSeconds);
+    tempoStability_ = smooth(tempoStability_, targetStability, 0.25f, 0.95f, updateSeconds);
+
+    if (smoothedBpm_ <= 1.0f) {
+        smoothedBpm_ = bpm;
+    } else {
+        // A stable run of recent window estimates is stronger evidence than an
+        // early lock. Allow it to recover from the wrong harmonic instead of
+        // freezing solely because the correction is >18 BPM.
+        const float target = (octaveCorrected || confirmedTempoChange) ? bpm :
+            (maturity > 0.55f && consistency > 0.78f ? recentCenter : bpm);
+        const float alpha = ((octaveCorrected || confirmedTempoChange) ? 0.34f : 0.08f) +
+                            beatConfidence_ * 0.24f +
+                            (maturity > 0.75f && consistency > 0.90f ? 0.08f : 0.0f);
+        smoothedBpm_ += (target - smoothedBpm_) * std::clamp(alpha, 0.06f, 0.48f);
     }
 }
 
@@ -183,9 +347,25 @@ AudioProtocol::Frame MusicAnalyzer::analyze(
     if (audio.mono.size() < LongFftSize) return frame;
 
     const auto now = std::chrono::steady_clock::now();
-    const float dt = std::clamp(std::chrono::duration<float>(now - lastAnalyzeTime_).count(),
-                                0.001f, 0.10f);
-    const double nowSeconds = std::chrono::duration<double>(now - startTime_).count();
+    float dt = 0.0f;
+    double nowSeconds = 0.0;
+    if (audio.sequence > 0 && audio.sampleRate > 1.0) {
+        if (!hasAudioClock_ || audio.sequence < lastAudioSequence_) {
+            audioClockOriginSequence_ = audio.sequence;
+            lastAudioSequence_ = audio.sequence;
+            hasAudioClock_ = true;
+            dt = static_cast<float>(FFT_HOP_SIZE / audio.sampleRate);
+        } else {
+            const uint64_t deltaSamples = audio.sequence - lastAudioSequence_;
+            dt = static_cast<float>(static_cast<double>(std::max<uint64_t>(1, deltaSamples)) / audio.sampleRate);
+            lastAudioSequence_ = audio.sequence;
+        }
+        nowSeconds = static_cast<double>(audio.sequence - audioClockOriginSequence_) / audio.sampleRate;
+    } else {
+        dt = std::chrono::duration<float>(now - lastAnalyzeTime_).count();
+        nowSeconds = std::chrono::duration<double>(now - startTime_).count();
+    }
+    dt = std::clamp(dt, 0.001f, 0.10f);
     lastAnalyzeTime_ = now;
 
     frame.sequence = ++sequence_;
@@ -294,20 +474,37 @@ AudioProtocol::Frame MusicAnalyzer::analyze(
         lastOnsetTime_ = nowSeconds;
         ++onsetCounter_;
         frame.flags |= AudioProtocol::OnsetEvent;
-        updateTempo(nowSeconds, std::max(onsetStrength, 0.2f));
+
+        // Keep all transients for visual effects. The tempo tracker clusters
+        // nearby novelty peaks itself so a later, stronger true beat can
+        // replace a weak precursor instead of being hidden by a refractory gate.
+        if (onsetStrength > 0.15f)
+            updateTempo(nowSeconds, std::max(onsetStrength, 0.2f));
     }
 
     const float period = smoothedBpm_ > 1.0f ? 60.0f / smoothedBpm_ : 0.5f;
+    const float staleTempoAfter = std::max(1.25f, period * 2.75f);
+    if (!onsetEvent && lastOnsetTime_ > -100.0 &&
+        nowSeconds - lastOnsetTime_ > staleTempoAfter) {
+        beatConfidence_ = smooth(beatConfidence_, 0.0f, 0.05f, 1.1f, dt);
+        tempoStability_ = smooth(tempoStability_, 0.0f, 0.05f, 1.6f, dt);
+    }
+
     const double sinceBeat = nowSeconds - lastBeatTime_;
     const float predictedPhase = period > 0.0f ?
         std::fmod(static_cast<float>(std::max(0.0, sinceBeat)) / period, 1.0f) : 0.0f;
     const bool strongPercussiveOnset = onsetEvent &&
         std::max(kickTarget, snareTarget * 0.72f) >
         0.14f / std::max(0.3f, static_cast<float>(config_.beatSensitivity));
-    const bool alignedOnset = strongPercussiveOnset && sinceBeat > period * 0.48 &&
-        (sinceBeat < period * 1.35 || beatConfidence_ < 0.35f);
-    const bool predictedBeat = beatConfidence_ > 0.72f && tempoStability_ > 0.55f &&
-        loudness > 0.08f && sinceBeat >= period * 0.98 && sinceBeat < period * 1.18;
+    const bool tempoLocked = beatConfidence_ > 0.55f && tempoStability_ > 0.50f;
+    const float onsetBeatSpacing = tempoLocked ? 0.84f : 0.48f;
+    const bool alignedOnset = strongPercussiveOnset && sinceBeat > period * onsetBeatSpacing &&
+        (sinceBeat < period * 1.35f || beatConfidence_ < 0.35f || sinceBeat > period * 1.75f);
+    // Once tempo is locked, schedule from the last accepted beat. Do not use a
+    // narrow upper window: one delayed desktop/audio-processing frame must not
+    // permanently strand the scheduler past its next-beat window.
+    const bool predictedBeat = beatConfidence_ > 0.62f && tempoStability_ > 0.50f &&
+        loudness > 0.08f && sinceBeat >= period * 0.98;
     const bool beatEvent = alignedOnset || predictedBeat;
     const float beatStrength = clamp01(std::max({kickEnvelope_, onsetStrength * 0.72f,
                                                  predictedBeat ? beatConfidence_ * 0.5f : 0.0f}));

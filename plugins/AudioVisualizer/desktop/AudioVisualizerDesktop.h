@@ -51,6 +51,7 @@ private:
         float onset = 0.0f;
         float bpm = 0.0f;
         float beatConfidence = 0.0f;
+        float tempoStability = 0.0f;
         float stereoWidth = 0.0f;
         float stereoBalance = 0.0f;
     };

@@ -77,4 +77,22 @@ if(ENABLE_DESKTOP)
 
 
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
+
+        # Deterministic regression/validation executable for the exact music
+        # analyzer used by the desktop plugin. With no arguments it exercises
+        # slow/fast tempos, silence/noise rejection, tempo changes and stale
+        # lock decay; pass a PCM16 WAV and optional expected BPM for real audio.
+        add_executable(audio_analyzer_benchmark
+                ${CMAKE_SOURCE_DIR}/tests/audio_analyzer_benchmark.cpp
+                desktop/MusicAnalyzer.cpp
+        )
+        target_compile_features(audio_analyzer_benchmark PRIVATE cxx_std_23)
+        target_include_directories(audio_analyzer_benchmark PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/desktop
+        )
+        target_link_libraries(audio_analyzer_benchmark PRIVATE
+                SharedToolsCommon
+                FFTW3::fftw3f
+        )
+        add_test(NAME audio_analyzer_benchmark COMMAND audio_analyzer_benchmark)
 endif()

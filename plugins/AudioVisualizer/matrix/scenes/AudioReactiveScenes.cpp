@@ -26,6 +26,17 @@ float wrapped(float value) {
     value -= std::floor(value);
     return std::min(value, 1.0f - value);
 }
+float tempoTrust(const AudioState::Snapshot &audio) {
+    const float confidence = feature(audio, AudioProtocol::Feature::BeatConfidence);
+    const float stability = feature(audio, AudioProtocol::Feature::TempoStability);
+    return std::clamp((confidence - 0.28f) / 0.52f, 0.0f, 1.0f) * stability;
+}
+float tempoRate(const AudioState::Snapshot &audio) {
+    const float bpm = audio.feature(AudioProtocol::Feature::Bpm);
+    if (bpm < 40.0f) return 1.0f;
+    const float target = std::clamp(bpm / 120.0f, 0.55f, 1.65f);
+    return 1.0f + (target - 1.0f) * tempoTrust(audio);
+}
 bool consumeEvent(uint64_t current, uint64_t &seen, bool packetFlag) {
     const bool advanced = seen != 0 && current > seen;
     seen = current;
@@ -139,8 +150,8 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float kick = feature(audio, AudioProtocol::Feature::Kick, gain);
     const float snare = feature(audio, AudioProtocol::Feature::Snare, gain);
     const float hihat = feature(audio, AudioProtocol::Feature::Hihat, gain);
-    const float phase = audio.feature(AudioProtocol::Feature::BeatPhase);
-    const float bpm = audio.feature(AudioProtocol::Feature::Bpm);
+    const float trust = tempoTrust(audio);
+    const float phase = trust > 0.15f ? audio.feature(AudioProtocol::Feature::BeatPhase) : travel_;
 
     if (consumeEvent(audio.beat_counter, beatSeen_, audio.event(AudioProtocol::BeatEvent))) beatPulse_ = 1.0f;
     if (consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) dropPulse_ = 1.0f;
@@ -148,8 +159,10 @@ bool AudioPulseTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
     beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.0f);
     dropPulse_ = std::max(0.0f, dropPulse_ - dt * 1.35f);
 
-    const float tempoSpeed = tempoLock_->get() && bpm > 40.0f ? bpm / 120.0f : 1.0f;
-    travel_ = std::fmod(travel_ + dt * speed_->get() * tempoSpeed * (0.45f + bass * 1.4f), 1.0f);
+    const float tempoSpeed = tempoLock_->get() ? tempoRate(audio) : 1.0f;
+    const float kickSurge = kick * (0.45f + trust * 0.35f);
+    travel_ = std::fmod(travel_ + dt * speed_->get() * tempoSpeed *
+                        (0.42f + bass * 1.15f + kickSurge), 1.0f);
     rotation_ += dt * twist_->get() * (0.12f + snare * 1.25f);
     const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
     const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
@@ -210,6 +223,9 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float treble = feature(audio, AudioProtocol::Feature::Treble, gain);
     const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
     const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
+    const float correlation = std::clamp(audio.feature(AudioProtocol::Feature::StereoCorrelation), -1.0f, 1.0f);
+    const float phaseBreath = tempoTrust(audio) * (0.5f + 0.5f *
+        std::cos(audio.feature(AudioProtocol::Feature::BeatPhase) * 2.0f * Pi));
     const int ribbons = ribbonCount_->get();
 
     for (int y = 0; y < matrix_height; ++y) for (int x = 0; x < matrix_width; ++x) {
@@ -222,7 +238,8 @@ bool AudioAuroraScene::render(rgb_matrix::FrameCanvas *canvas) {
             const float center = 0.18f + offset * 0.64f + balance * 0.08f +
                 std::sin(nx * (4.0f + mid * 3.0f) + time_ * (0.7f + offset) + ribbon * 1.7f) *
                 (0.035f + bass * 0.11f + width * 0.045f);
-            const float thickness = 0.012f + treble * 0.018f + beatGlow_ * 0.01f;
+            const float thickness = 0.010f + treble * 0.016f + beatGlow_ * 0.010f +
+                                    phaseBreath * 0.006f + (1.0f - std::max(0.0f, correlation)) * 0.004f;
             const float distance = std::abs(ny - center);
             const float ribbonValue = std::exp(-distance * distance / std::max(0.0001f, thickness * thickness));
             value += ribbonValue * (0.18f + bass * 0.25f + glow_->get() * 0.22f);
@@ -266,8 +283,8 @@ bool AudioKaleidoscopeScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (consumeEvent(audio.section_counter, sectionSeen_, audio.event(AudioProtocol::SectionEvent))) palette_ += 79.0f;
     beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.2f);
     onsetPulse_ = std::max(0.0f, onsetPulse_ - dt * 8.0f);
-    rotation_ += dt * rotationSpeed_->get() *
-        (0.4f + audio.feature(AudioProtocol::Feature::Bpm) / 120.0f);
+    rotation_ += dt * rotationSpeed_->get() * (0.72f + tempoRate(audio) * 0.55f +
+        feature(audio, AudioProtocol::Feature::Snare) * 0.32f);
 
     const float cx = matrix_width * (0.5f + audio.feature(AudioProtocol::Feature::StereoBalance) * 0.08f);
     const float cy = matrix_height * 0.5f;

@@ -67,6 +67,12 @@ if(ENABLE_DESKTOP)
 else()
     project(led-matrix VERSION ${VERSION})
 endif()
+
+# Keep CTest discovery available for every build flavor. Desktop-only plugin
+# regression tests live in subdirectories and otherwise are invisible when
+# ctest is run from the build root.
+enable_testing()
+
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")

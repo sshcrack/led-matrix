@@ -17,8 +17,9 @@ namespace AmbientScenes {
         PropertyPointer<float> color_speed = MAKE_PROPERTY_MINMAX("color_speed", float, 0.033f, 0.0f, 0.25f);
 
         float time;
-        float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
-        uint64_t last_beat_counter = 0;
+        float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f, audio_balance = 0.0f;
+        float beat_pulse = 0.0f, drop_pulse = 0.0f, section_hue = 0.0f;
+        uint64_t last_beat_counter = 0, last_drop_counter = 0, last_section_counter = 0;
 
         struct Blob {
             float x, y;

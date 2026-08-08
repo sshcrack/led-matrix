@@ -28,6 +28,7 @@ namespace Plugins {
         std::vector<std::shared_ptr<SceneWrapper>> all_scenes;
         std::mutex scenes_mutex;
         bool scenes_initialized = false;
+        size_t scenes_plugin_count_ = 0;
         RegistryValidationReport validation_report_;
 
         explicit PluginManager();
