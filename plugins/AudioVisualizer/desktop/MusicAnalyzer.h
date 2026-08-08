@@ -43,7 +43,8 @@ private:
     std::deque<float> fluxHistory_;
     std::deque<double> onsetTimes_;
     std::deque<float> onsetStrengths_;
-    std::array<float, 221> tempoHistogram_{}; // 60..170 BPM, 0.5 BPM bins.
+    std::deque<float> recentTempoEstimates_;
+    std::array<float, 241> tempoHistogram_{}; // 60..180 BPM, 0.5 BPM bins.
 
     float fastLoudness_ = 0.0f;
     float slowLoudness_ = 0.0f;
@@ -56,6 +57,8 @@ private:
     float beatConfidence_ = 0.0f;
     float tempoStability_ = 0.0f;
     float quietSeconds_ = 0.0f;
+    int octaveCorrectionStreak_ = 0;
+    int tempoChangeStreak_ = 0;
     bool dropArmed_ = false;
 
     double lastBeatTime_ = -1000.0;
@@ -67,6 +70,14 @@ private:
     uint64_t onsetCounter_ = 0;
     uint64_t dropCounter_ = 0;
     uint64_t sectionCounter_ = 0;
+
+    // Prefer the capture sample clock over render-loop wall time. The desktop
+    // loop may jitter or skip frames while the audio callback remains stable;
+    // using sample positions keeps onset intervals and BPM estimation tied to
+    // the actual audio timeline.
+    uint64_t audioClockOriginSequence_ = 0;
+    uint64_t lastAudioSequence_ = 0;
+    bool hasAudioClock_ = false;
 
     std::chrono::steady_clock::time_point startTime_;
     std::chrono::steady_clock::time_point lastAnalyzeTime_;

@@ -76,9 +76,18 @@ namespace AmbientScenes {
             audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
             audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
             audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
-            if (has_audio && audio.beat_counter != last_beat_counter) { last_beat_counter = audio.beat_counter; beat_flash = 1.0f; }
-        } else { audio_bass = audio_mids = audio_treble = 0.0f; }
+            audio_balance += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoBalance) : 0.0f) - audio_balance) * response;
+            audio_width += ((has_audio ? audio.feature(AudioProtocol::Feature::StereoWidth) : 0.0f) - audio_width) * response;
+            hihat_detail += ((has_audio ? audio.feature(AudioProtocol::Feature::Hihat) : 0.0f) - hihat_detail) * response;
+            if (has_audio && audio.beat_counter != last_beat_counter) {
+                last_beat_counter = audio.beat_counter;
+                beat_flash = std::max(beat_flash, 0.65f + audio.feature(AudioProtocol::Feature::Kick) * 0.35f);
+            }
+            if (has_audio && audio.drop_counter != last_drop_counter) { last_drop_counter = audio.drop_counter; drop_flash = 1.0f; }
+            if (has_audio && audio.section_counter != last_section_counter) { last_section_counter = audio.section_counter; section_hue += 0.13f; }
+        } else { audio_bass = audio_mids = audio_treble = audio_balance = audio_width = hihat_detail = 0.0f; }
         beat_flash = std::max(0.0f, beat_flash - dt * 3.5f);
+        drop_flash = std::max(0.0f, drop_flash - dt * 1.15f);
         const float depth = std::max(0.2f, max_depth->get());
 
         const std::size_t wanted_stars = static_cast<std::size_t>(std::max(1, num_stars->get()));
@@ -87,12 +96,15 @@ namespace AmbientScenes {
             stars.resize(wanted_stars);
             for (std::size_t i = old_size; i < stars.size(); ++i) stars[i].respawn(depth, gen);
         }
-        const float cx = matrix_width * 0.5f + (drifting_center->get() ? std::sin(time * 0.63f) * matrix_width * 0.075f : 0.0f);
+        const float spatialStrength = audio_reactive->get() ? audio_strength->get() : 0.0f;
+        const float cx = matrix_width * (0.5f + audio_balance * spatialStrength * 0.10f) +
+            (drifting_center->get() ? std::sin(time * 0.63f) * matrix_width * 0.075f : 0.0f);
         const float cy = matrix_height * 0.5f + (drifting_center->get() ? std::cos(time * 0.47f) * matrix_height * 0.06f : 0.0f);
-        const float scale = static_cast<float>(std::min(matrix_width, matrix_height)) * 0.48f;
+        const float scale = static_cast<float>(std::min(matrix_width, matrix_height)) *
+            (0.48f + audio_width * spatialStrength * 0.055f);
 
         for (auto& star : stars) {
-            const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 2.2f + beat_flash * 0.7f : 1.0f;
+            const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 1.8f + beat_flash * 0.62f + drop_flash * 1.25f : 1.0f;
             const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp;
             star.update(movement);
             if (star.z <= 0.025f) star.respawn(depth, gen);
@@ -111,12 +123,14 @@ namespace AmbientScenes {
 
             float brightness = std::clamp((depth - star.z) / depth, 0.05f, 1.0f);
             brightness = std::sqrt(brightness);
-            if (audio_reactive->get()) brightness *= 1.0f + audio_treble * audio_strength->get() * 0.65f + beat_flash * 0.25f;
-            if (enable_twinkle->get()) brightness *= 0.82f + 0.18f * std::sin(time * 7.0f + star.hue * 31.0f);
+            if (audio_reactive->get()) brightness *= 1.0f + audio_treble * audio_strength->get() * 0.48f +
+                beat_flash * 0.22f + hihat_detail * audio_strength->get() * 0.20f + drop_flash * 0.20f;
+            if (enable_twinkle->get()) brightness *= 0.82f + (0.18f + hihat_detail * 0.12f) *
+                std::sin(time * (7.0f + hihat_detail * 9.0f) + star.hue * 31.0f);
 
             uint8_t r, g, b;
             if (colored_stars->get()) {
-                const float hue = 0.55f + (star.hue - 0.5f) * 0.18f;
+                const float hue = 0.55f + section_hue + (star.hue - 0.5f) * 0.18f + hihat_detail * 0.025f;
                 hsv_to_rgb(hue, 0.28f, std::clamp(brightness, 0.0f, 1.0f), r, g, b);
             } else {
                 r = g = b = static_cast<uint8_t>(255.0f * std::clamp(brightness, 0.0f, 1.0f));

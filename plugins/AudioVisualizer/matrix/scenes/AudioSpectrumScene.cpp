@@ -8,6 +8,18 @@
 namespace Scenes {
 namespace {
 constexpr float Pi = 3.14159265358979323846f;
+float tempoTrust(const AudioState::Snapshot &audio) {
+    const float confidence = std::clamp(audio.feature(AudioProtocol::Feature::BeatConfidence), 0.0f, 1.0f);
+    const float stability = std::clamp(audio.feature(AudioProtocol::Feature::TempoStability), 0.0f, 1.0f);
+    return std::clamp((confidence - 0.28f) / 0.52f, 0.0f, 1.0f) * stability;
+}
+float tempoRate(const AudioState::Snapshot &audio) {
+    const float bpm = audio.feature(AudioProtocol::Feature::Bpm);
+    if (bpm < 40.0f) return 1.0f;
+    const float target = std::clamp(bpm / 120.0f, 0.55f, 1.65f);
+    const float trust = tempoTrust(audio);
+    return 1.0f + (target - 1.0f) * trust;
+}
 void addPixel(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b) {
     if (x < 0 || y < 0 || x >= canvas->width() || y >= canvas->height()) return;
     uint8_t oldR = 0, oldG = 0, oldB = 0;
@@ -30,19 +42,22 @@ void AudioSpectrumScene::register_properties() {
     rotationSpeed_->label("Rotation speed").description("Speed of radial layout rotation.").group("Radial").visible_if("rotate_visualization", true).step(0.05);
     rainbow_->label("Rainbow palette").description("Color bands by frequency instead of using one base color.").group("Color");
     musicalColor_->label("Musical color shifts").description("Shift hue with spectral centroid, stereo balance and song sections.").group("Color").visible_if("rainbow_colors", true);
-    baseColor_->label("Base color").description("Color used when rainbow mode is disabled.").group("Color").visible_if("rainbow_colors", false);
+    baseColor_->label("Base color").description("Low-frequency/base color when rainbow mode is disabled.").group("Color").visible_if("rainbow_colors", false);
+    accentColor_->label("Accent color").description("High-frequency and transient accent color; keeps layered bars readable even with a white base.").group("Color").visible_if("rainbow_colors", false);
+    percussionColor_->label("Percussion color accents").description("Let kick, snare and hi-hat subtly shift color emphasis instead of only changing brightness.").group("Color");
     sensitivity_->label("Sensitivity").description("Input gain applied before drawing the spectrum.").group("Response").step(0.05);
     smoothing_->label("Attack smoothing").description("Higher values soften fast upward changes.").group("Response").step(0.02);
     releaseSpeed_->label("Release speed").description("How quickly bars fall after energy disappears.").group("Response").step(0.1);
     beatPulseEnabled_->label("Beat pulse").description("Briefly brighten the visualization on detected beats.").group("Response");
     showWaveform_->label("Waveform overlay").description("Draw the compact waveform over spectrum modes.").group("Overlay");
+    stereoMotion_->label("Stereo motion").description("Let stereo balance move radial centers and width open the geometry.").group("Response");
 
     add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
-    add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_);
+    add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_); add_property(accentColor_); add_property(percussionColor_);
     add_property(fallingDots_); add_property(dotFallSpeed_); add_property(displayMode_);
     add_property(circleRadius_); add_property(rotate_); add_property(rotationSpeed_);
     add_property(sensitivity_); add_property(smoothing_); add_property(releaseSpeed_);
-    add_property(beatPulseEnabled_); add_property(showWaveform_);
+    add_property(beatPulseEnabled_); add_property(showWaveform_); add_property(stereoMotion_);
 }
 
 void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float dt) {
@@ -65,21 +80,37 @@ void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float
 void AudioSpectrumScene::colorFor(float position, float intensity,
                                   const AudioState::Snapshot &audio,
                                   uint8_t &r, uint8_t &g, uint8_t &b) const {
-    intensity = std::clamp(intensity * (1.0f + beatPulse_ * 0.28f), 0.0f, 1.0f);
+    const float kick = std::clamp(audio.feature(AudioProtocol::Feature::Kick), 0.0f, 1.0f);
+    const float snare = std::clamp(audio.feature(AudioProtocol::Feature::Snare), 0.0f, 1.0f);
+    const float hihat = std::clamp(audio.feature(AudioProtocol::Feature::Hihat), 0.0f, 1.0f);
+    const float transientLift = percussionColor_->get()
+        ? kick * (1.0f - position) * 0.18f + snare * 0.12f + hihat * position * 0.20f
+        : 0.0f;
+    intensity = std::clamp(intensity * (1.0f + beatPulse_ * 0.24f) + transientLift, 0.0f, 1.0f);
+
     if (!rainbow_->get()) {
         const auto base = baseColor_->get();
-        r = static_cast<uint8_t>(base.r * intensity);
-        g = static_cast<uint8_t>(base.g * intensity);
-        b = static_cast<uint8_t>(base.b * intensity);
+        const auto accent = accentColor_->get();
+        // The frequency blend deliberately remains visible when the base is
+        // white. This gives foreground/high-frequency detail a distinct tint
+        // instead of flattening all layered modes into indistinguishable white.
+        float mix = std::clamp(0.10f + position * 0.72f, 0.0f, 1.0f);
+        if (percussionColor_->get()) mix = std::clamp(mix + snare * 0.10f + hihat * 0.12f, 0.0f, 1.0f);
+        r = static_cast<uint8_t>((base.r * (1.0f - mix) + accent.r * mix) * intensity);
+        g = static_cast<uint8_t>((base.g * (1.0f - mix) + accent.g * mix) * intensity);
+        b = static_cast<uint8_t>((base.b * (1.0f - mix) + accent.b * mix) * intensity);
         return;
     }
+
     float hue = position * 285.0f;
     if (musicalColor_->get()) {
         hue += audio.feature(AudioProtocol::Feature::SpectralCentroid) * 100.0f;
         hue += audio.feature(AudioProtocol::Feature::StereoBalance) * 24.0f;
         hue += audio.section_counter % 6 * 36.0f;
+        if (percussionColor_->get()) hue += kick * -18.0f + snare * 22.0f + hihat * 34.0f;
     }
-    color::hsv_to_rgb(hue, 0.84f, intensity, r, g, b);
+    const float saturation = std::clamp(0.78f + hihat * 0.14f - kick * 0.05f, 0.55f, 0.96f);
+    color::hsv_to_rgb(hue, saturation, intensity, r, g, b);
 }
 
 void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
@@ -209,10 +240,15 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
 
 void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
                                       const AudioState::Snapshot &audio, bool spiral) {
-    const float cx = matrix_width * 0.5f;
+    const float stereoBalance = stereoMotion_->get() ?
+        std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f) : 0.0f;
+    const float stereoWidth = stereoMotion_->get() ?
+        std::clamp(audio.feature(AudioProtocol::Feature::StereoWidth), 0.0f, 1.0f) : 0.0f;
+    const float kick = std::clamp(audio.feature(AudioProtocol::Feature::Kick), 0.0f, 1.0f);
+    const float cx = matrix_width * (0.5f + stereoBalance * 0.11f);
     const float cy = matrix_height * 0.5f;
     const float size = static_cast<float>(std::min(matrix_width, matrix_height));
-    const float baseRadius = size * 0.21f * circleRadius_->get();
+    const float baseRadius = size * 0.21f * circleRadius_->get() * (1.0f + kick * 0.10f);
     const float maxLength = size * 0.30f;
 
     for (size_t i = 0; i < smoothed_.size(); ++i) {
@@ -221,7 +257,7 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
         const float angle = rotation_ + t * 2.0f * Pi *
             (spiral ? 2.4f : 1.0f);
         const float radius = baseRadius *
-            (spiral ? 0.35f + t * 1.5f : 1.0f);
+            (spiral ? 0.35f + t * (1.5f + stereoWidth * 0.28f) : 1.0f + stereoWidth * 0.08f);
         const float length = std::clamp(smoothed_[i], 0.0f, 1.0f) * maxLength;
 
         for (float distance = 0.0f; distance <= length; distance += 0.7f) {
@@ -259,11 +295,14 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
 void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas *canvas,
                                         const AudioState::Snapshot &audio) {
     if (audio.waveform.empty()) return;
-    int previousY = matrix_height / 2;
+    const float balance = stereoMotion_->get() ?
+        std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f) : 0.0f;
+    int previousY = static_cast<int>(matrix_height * (0.5f + balance * 0.035f));
     for (int x = 0; x < matrix_width; ++x) {
         const size_t index = std::min(audio.waveform.size() - 1,
             static_cast<size_t>(static_cast<float>(x) / std::max(1, matrix_width - 1) * (audio.waveform.size() - 1)));
-        const int y = static_cast<int>(matrix_height * 0.5f - audio.waveform[index] * matrix_height * 0.42f);
+        const int y = static_cast<int>(matrix_height * (0.5f + balance * 0.035f) -
+            audio.waveform[index] * matrix_height * 0.42f);
         const int from = std::min(previousY, y), to = std::max(previousY, y);
         uint8_t r, g, b; colorFor(static_cast<float>(x) / matrix_width, 0.9f, audio, r, g, b);
         for (int py = from; py <= to; ++py) addPixel(canvas, x, py, r, g, b);
@@ -301,8 +340,10 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
         beatPulse_ = 0.0f;
     }
     lastBeat_ = audio.beat_counter;
-    if (rotate_->get()) rotation_ += dt * rotationSpeed_->get() *
-        (0.35f + audio.feature(AudioProtocol::Feature::Bpm) / 140.0f);
+    if (rotate_->get()) {
+        const float snare = std::clamp(audio.feature(AudioProtocol::Feature::Snare), 0.0f, 1.0f);
+        rotation_ += dt * rotationSpeed_->get() * (0.45f + tempoRate(audio) * 0.55f + snare * 0.18f);
+    }
 
     switch (displayMode_->get().get()) {
     case DisplayMode::CIRCLE: renderCircle(canvas, audio, false); break;

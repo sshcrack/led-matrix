@@ -30,6 +30,8 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow_colors", bool, true);
     PropertyPointer<bool> musicalColor_ = MAKE_PROPERTY("musical_color", bool, true);
     PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(0, 255, 160));
+    PropertyPointer<rgb_matrix::Color> accentColor_ = MAKE_PROPERTY("accent_color", rgb_matrix::Color, rgb_matrix::Color(255, 70, 190));
+    PropertyPointer<bool> percussionColor_ = MAKE_PROPERTY("percussion_color", bool, true);
     PropertyPointer<bool> fallingDots_ = MAKE_PROPERTY("falling_dots", bool, true);
     PropertyPointer<float> dotFallSpeed_ = MAKE_PROPERTY_MINMAX("dot_fall_speed", float, 0.35f, 0.02f, 2.0f);
     PropertyPointer<Plugins::EnumProperty<DisplayMode>> displayMode_ = MAKE_ENUM_PROPERTY("display_mode", DisplayMode, DisplayMode::NORMAL);
@@ -41,6 +43,7 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<float> releaseSpeed_ = MAKE_PROPERTY_MINMAX("release_speed", float, 3.8f, 0.5f, 14.0f);
     PropertyPointer<bool> beatPulseEnabled_ = MAKE_PROPERTY("beat_pulse", bool, true);
     PropertyPointer<bool> showWaveform_ = MAKE_PROPERTY("waveform_overlay", bool, false);
+    PropertyPointer<bool> stereoMotion_ = MAKE_PROPERTY("stereo_motion", bool, true);
 
     void updateSpectrum(const AudioState::Snapshot &audio, float dt);
     void colorFor(float position, float intensity, const AudioState::Snapshot &audio,

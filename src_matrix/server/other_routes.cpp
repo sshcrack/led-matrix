@@ -84,6 +84,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             {"beat_phase", audio.feature(AudioProtocol::Feature::BeatPhase)},
             {"beat_confidence", audio.feature(AudioProtocol::Feature::BeatConfidence)},
             {"beat_strength", audio.feature(AudioProtocol::Feature::BeatStrength)},
+            {"tempo_stability", audio.feature(AudioProtocol::Feature::TempoStability)},
             {"loudness", audio.feature(AudioProtocol::Feature::Loudness)},
             {"rms", audio.feature(AudioProtocol::Feature::Rms)},
             {"kick", audio.feature(AudioProtocol::Feature::Kick)},

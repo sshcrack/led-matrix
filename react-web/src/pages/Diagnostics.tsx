@@ -35,6 +35,7 @@ interface DiagnosticsData {
     beat_phase: number
     beat_confidence: number
     beat_strength: number
+    tempo_stability: number
     loudness: number
     rms: number
     kick: number
@@ -125,7 +126,7 @@ export default function Diagnostics() {
         <div className="glass-panel rounded-2xl p-5">
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2 font-semibold"><AudioLines className="h-4 w-4 text-primary" />Music analysis</div><Badge variant={data.audio.fresh ? 'secondary' : 'outline'}>{data.audio.fresh ? 'Live' : data.audio.available ? 'Stale' : 'No signal'}</Badge></div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Metric label="Tempo" value={`${number(data.audio.bpm)} BPM`} detail={`${number(data.audio.beat_confidence * 100, 0)}% confidence`} />
+            <Metric label="Tempo" value={`${number(data.audio.bpm)} BPM`} detail={`${number(data.audio.beat_confidence * 100, 0)}% confidence · ${number(data.audio.tempo_stability * 100, 0)}% stable`} />
             <Metric label="Beat phase" value={`${number(data.audio.beat_phase * 100, 0)}%`} detail={`strength ${number(data.audio.beat_strength, 2)}`} />
             <Metric label="Audio age" value={`${number(data.audio.age_seconds * 1000, 0)} ms`} detail={`seq ${data.audio.sequence}`} />
           </div>
