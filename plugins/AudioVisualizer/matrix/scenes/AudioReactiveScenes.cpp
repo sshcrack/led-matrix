@@ -56,7 +56,9 @@ void AudioParticleFieldScene::spawn(const AudioState::Snapshot &audio, int count
     const float balance = audio.feature(AudioProtocol::Feature::StereoBalance);
     const float width = feature(audio, AudioProtocol::Feature::StereoWidth);
     const float centroid = feature(audio, AudioProtocol::Feature::SpectralCentroid);
-    for (int i = 0; i < count && static_cast<int>(particles_.size()) < particleLimit_->get(); ++i) {
+    const int effective_limit = std::max(100, static_cast<int>(std::lround(
+        particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+    for (int i = 0; i < count && static_cast<int>(particles_.size()) < effective_limit; ++i) {
         Particle p{};
         p.x = std::clamp(matrix_width * (0.5f + balance * 0.28f + (unit(rng_) - 0.5f) * (0.18f + width * 0.72f)),
                          0.0f, static_cast<float>(matrix_width - 1));
@@ -96,7 +98,9 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         spawn(audio, 5 + static_cast<int>((snare + hihat) * 35.0f), snare > hihat, std::max(snare, hihat));
     }
     if (dropExplosion_->get() && consumeEvent(audio.drop_counter, dropSeen_, audio.event(AudioProtocol::DropEvent))) {
-        spawn(audio, std::min(600, particleLimit_->get()), true, 1.0f);
+        const int effective_limit = std::max(100, static_cast<int>(std::lround(
+            particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+        spawn(audio, std::min(600, effective_limit), true, 1.0f);
     }
 
     spawnAccumulator_ += dt * (6.0f + loudness * 80.0f + hihat * 75.0f);
@@ -104,6 +108,11 @@ bool AudioParticleFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         spawn(audio, 1, false, 0.15f + bass * 0.65f + hihat * 0.30f);
         spawnAccumulator_ -= 1.0f;
     }
+
+    const int effective_limit = std::max(100, static_cast<int>(std::lround(
+        particleLimit_->get() * (0.45f + 0.55f * render_quality_scale()))));
+    if (static_cast<int>(particles_.size()) > effective_limit)
+        particles_.resize(static_cast<size_t>(effective_limit));
 
     const float sideFlow = audio.feature(AudioProtocol::Feature::StereoBalance) * 28.0f;
     const float midFlow = feature(audio, AudioProtocol::Feature::Mid) * 15.0f;

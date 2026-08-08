@@ -35,6 +35,10 @@ namespace Scenes {
         std::chrono::steady_clock::time_point frame_clock_last_{};
         bool frame_clock_started_ = false;
         bool suppress_internal_wait_ = false;
+        double frame_wait_ms_ = 0.0;
+        float render_quality_scale_ = 1.0f;
+        unsigned render_over_budget_streak_ = 0;
+        unsigned render_under_budget_streak_ = 0;
 
         virtual int get_default_weight() = 0;
         virtual tmillis_t get_default_duration() = 0;
@@ -60,6 +64,10 @@ namespace Scenes {
         /// Current render-frame timing. Prefer this over reading wall clock time
         /// inside a scene. The matrix renderer and preview generator populate it.
         [[nodiscard]] const SceneFrameContext &frame_context() const { return frame_context_; }
+
+        /// Adaptive quality scale for scenes with optional expensive detail.
+        /// 1.0 means full quality. Values below 1.0 indicate sustained CPU pressure.
+        [[nodiscard]] float render_quality_scale() const { return render_quality_scale_; }
 
         /// Reset timing when a scene is reinitialized or reused.
         void reset_frame_clock();
@@ -93,6 +101,9 @@ namespace Scenes {
         }
 
         [[nodiscard]] int get_declared_target_fps() const { return target_fps; }
+        [[nodiscard]] double get_last_frame_wait_ms() const { return frame_wait_ms_; }
+        [[nodiscard]] float get_render_quality_scale() const { return render_quality_scale_; }
+        void report_render_cost(double active_render_ms);
 
         [[nodiscard]] virtual int get_weight() const;
 

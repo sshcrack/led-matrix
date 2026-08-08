@@ -50,6 +50,9 @@ void AudioSpectrumScene::register_properties() {
     releaseSpeed_->label("Release speed").description("How quickly bars fall after energy disappears.").group("Response").step(0.1);
     beatPulseEnabled_->label("Beat pulse").description("Briefly brighten the visualization on detected beats.").group("Response");
     showWaveform_->label("Waveform overlay").description("Draw the compact waveform over spectrum modes.").group("Overlay");
+    waveformStyle_->label("Waveform style").description("Trace, mirrored scope, or filled waveform rendering.").group("Waveform");
+    waveformGain_->label("Waveform gain").description("Vertical gain for the waveform without changing spectrum sensitivity.").group("Waveform").step(0.05);
+    waveformThickness_->label("Waveform thickness").description("Trace thickness in pixels. Higher values are brighter but cost slightly more fill work.").group("Waveform");
     stereoMotion_->label("Stereo motion").description("Let stereo balance move radial centers and width open the geometry.").group("Response");
 
     add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
@@ -57,7 +60,8 @@ void AudioSpectrumScene::register_properties() {
     add_property(fallingDots_); add_property(dotFallSpeed_); add_property(displayMode_);
     add_property(circleRadius_); add_property(rotate_); add_property(rotationSpeed_);
     add_property(sensitivity_); add_property(smoothing_); add_property(releaseSpeed_);
-    add_property(beatPulseEnabled_); add_property(showWaveform_); add_property(stereoMotion_);
+    add_property(beatPulseEnabled_); add_property(showWaveform_);
+    add_property(waveformStyle_); add_property(waveformGain_); add_property(waveformThickness_); add_property(stereoMotion_);
 }
 
 void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float dt) {
@@ -295,17 +299,81 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
 void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas *canvas,
                                         const AudioState::Snapshot &audio) {
     if (audio.waveform.empty()) return;
-    const float balance = stereoMotion_->get() ?
-        std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f) : 0.0f;
-    int previousY = static_cast<int>(matrix_height * (0.5f + balance * 0.035f));
+
+    const bool standalone = displayMode_->get().get() == DisplayMode::WAVEFORM;
+    const float balance = stereoMotion_->get()
+        ? std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f)
+        : 0.0f;
+    const float loudness = std::clamp(audio.feature(AudioProtocol::Feature::LoudnessFast), 0.0f, 1.0f);
+    const float center = matrix_height * (0.5f + balance * 0.035f);
+    const float amplitude = matrix_height * (standalone ? 0.44f : 0.31f) * waveformGain_->get()
+        * (0.86f + loudness * 0.10f + beatPulse_ * 0.08f);
+    const int thickness = std::clamp(waveformThickness_->get(), 1, 3);
+    const auto style = waveformStyle_->get().get();
+
+    auto sampleForX = [&](int x) {
+        const size_t n = audio.waveform.size();
+        const size_t begin = std::min(n - 1, static_cast<size_t>(x) * n / static_cast<size_t>(std::max(1, matrix_width)));
+        const size_t end = std::max(begin + 1,
+            std::min(n, static_cast<size_t>(x + 1) * n / static_cast<size_t>(std::max(1, matrix_width))));
+        float selected = audio.waveform[begin];
+        for (size_t i = begin + 1; i < end; ++i)
+            if (std::abs(audio.waveform[i]) > std::abs(selected)) selected = audio.waveform[i];
+        return std::clamp(selected, -1.0f, 1.0f);
+    };
+
+    auto drawTracePoint = [&](int x, int y, float position, float intensity) {
+        uint8_t r = 0, g = 0, b = 0;
+        colorFor(position, std::clamp(intensity, 0.0f, 1.0f), audio, r, g, b);
+        for (int offset = -(thickness - 1); offset <= thickness - 1; ++offset) {
+            const float falloff = offset == 0 ? 1.0f : 0.42f;
+            addPixel(canvas, x, y + offset,
+                static_cast<uint8_t>(r * falloff),
+                static_cast<uint8_t>(g * falloff),
+                static_cast<uint8_t>(b * falloff));
+        }
+    };
+
+    if (style == WaveformStyle::MIRRORED) {
+        int previousUpper = static_cast<int>(std::lround(center));
+        int previousLower = previousUpper;
+        for (int x = 0; x < matrix_width; ++x) {
+            const float sample = std::abs(sampleForX(x));
+            const int upper = std::clamp(static_cast<int>(std::lround(center - sample * amplitude)), 0, matrix_height - 1);
+            const int lower = std::clamp(static_cast<int>(std::lround(center + sample * amplitude)), 0, matrix_height - 1);
+            const float position = static_cast<float>(x) / static_cast<float>(std::max(1, matrix_width - 1));
+            for (int y = std::min(previousUpper, upper); y <= std::max(previousUpper, upper); ++y)
+                drawTracePoint(x, y, position, standalone ? 0.95f : 0.68f);
+            for (int y = std::min(previousLower, lower); y <= std::max(previousLower, lower); ++y)
+                drawTracePoint(x, y, position, standalone ? 0.95f : 0.68f);
+            previousUpper = upper;
+            previousLower = lower;
+        }
+        return;
+    }
+
+    int previousY = static_cast<int>(std::lround(center));
     for (int x = 0; x < matrix_width; ++x) {
-        const size_t index = std::min(audio.waveform.size() - 1,
-            static_cast<size_t>(static_cast<float>(x) / std::max(1, matrix_width - 1) * (audio.waveform.size() - 1)));
-        const int y = static_cast<int>(matrix_height * (0.5f + balance * 0.035f) -
-            audio.waveform[index] * matrix_height * 0.42f);
-        const int from = std::min(previousY, y), to = std::max(previousY, y);
-        uint8_t r, g, b; colorFor(static_cast<float>(x) / matrix_width, 0.9f, audio, r, g, b);
-        for (int py = from; py <= to; ++py) addPixel(canvas, x, py, r, g, b);
+        const float sample = sampleForX(x);
+        const int y = std::clamp(static_cast<int>(std::lround(center - sample * amplitude)), 0, matrix_height - 1);
+        const float position = static_cast<float>(x) / static_cast<float>(std::max(1, matrix_width - 1));
+
+        if (style == WaveformStyle::FILLED) {
+            const int mid = std::clamp(static_cast<int>(std::lround(center)), 0, matrix_height - 1);
+            const int from = std::min(mid, y), to = std::max(mid, y);
+            const int span = std::max(1, to - from);
+            for (int py = from; py <= to; ++py) {
+                const float edge = std::abs(static_cast<float>(py - mid)) / static_cast<float>(span);
+                uint8_t r = 0, g = 0, b = 0;
+                colorFor(position, (standalone ? 0.26f : 0.15f) + edge * (standalone ? 0.62f : 0.40f), audio, r, g, b);
+                addPixel(canvas, x, py, r, g, b);
+            }
+            drawTracePoint(x, y, position, standalone ? 1.0f : 0.72f);
+        } else {
+            const int from = std::min(previousY, y), to = std::max(previousY, y);
+            for (int py = from; py <= to; ++py)
+                drawTracePoint(x, py, position, standalone ? 0.96f : 0.68f);
+        }
         previousY = y;
     }
 }

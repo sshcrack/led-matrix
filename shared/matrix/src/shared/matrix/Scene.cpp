@@ -116,7 +116,10 @@ void Scenes::Scene::wait_until_next_frame()
     }
 
     const tmillis_t deadline = last_render_time + step;
+    const auto wait_start = std::chrono::steady_clock::now();
     SleepMillis(deadline - current_time);
+    frame_wait_ms_ += std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - wait_start).count();
     last_render_time = deadline;
 }
 
@@ -126,6 +129,33 @@ void Scenes::Scene::reset_frame_clock()
     frame_context_ = {};
     frame_clock_started_ = false;
     last_render_time = 0;
+    frame_wait_ms_ = 0.0;
+    render_quality_scale_ = 1.0f;
+    render_over_budget_streak_ = 0;
+    render_under_budget_streak_ = 0;
+}
+
+void Scenes::Scene::report_render_cost(double active_render_ms)
+{
+    const double budget_ms = 1000.0 / static_cast<double>(std::max(1, target_fps));
+    if (active_render_ms > budget_ms * 0.92) {
+        ++render_over_budget_streak_;
+        render_under_budget_streak_ = 0;
+        if (render_over_budget_streak_ >= 4) {
+            render_quality_scale_ = std::max(0.50f, render_quality_scale_ - 0.06f);
+            render_over_budget_streak_ = 0;
+        }
+    } else if (active_render_ms < budget_ms * 0.58) {
+        ++render_under_budget_streak_;
+        render_over_budget_streak_ = 0;
+        if (render_under_budget_streak_ >= 75) {
+            render_quality_scale_ = std::min(1.0f, render_quality_scale_ + 0.03f);
+            render_under_budget_streak_ = 0;
+        }
+    } else {
+        render_over_budget_streak_ = 0;
+        render_under_budget_streak_ = 0;
+    }
 }
 
 bool Scenes::Scene::render_frame(FrameCanvas *canvas,
@@ -160,6 +190,7 @@ bool Scenes::Scene::render_frame(FrameCanvas *canvas,
     frame_context_.now_ms = static_cast<std::uint64_t>(frame_context_.elapsed_seconds * 1000.0);
     frame_context_.deterministic = deterministic;
 
+    frame_wait_ms_ = 0.0;
     const bool previous_suppress = suppress_internal_wait_;
     suppress_internal_wait_ = suppress_internal_wait || deterministic;
     try {
