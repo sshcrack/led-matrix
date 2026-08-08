@@ -259,9 +259,11 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
     const float feed = std::clamp(preset.feed + (audio_mids_ - 0.35f) * strength * 0.0028f, 0.015f, 0.075f);
     const float kill = std::clamp(preset.kill + audio_treble_ * strength * 0.0014f - audio_bass_ * strength * 0.0010f, 0.045f, 0.072f);
 
+    const int quality_steps = std::max(1, static_cast<int>(std::lround(
+        SIM_STEPS_PER_TICK * (0.45f + 0.55f * render_quality_scale()))));
     simulation_.advance(dt, [&](double) {
-        for (int step = 0; step < SIM_STEPS_PER_TICK; ++step) simulation_step(feed, kill);
-        step_count_ += SIM_STEPS_PER_TICK;
+        for (int step = 0; step < quality_steps; ++step) simulation_step(feed, kill);
+        step_count_ += quality_steps;
     });
 
     if (step_count_ >= STEPS_PER_PRESET)

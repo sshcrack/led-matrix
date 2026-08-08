@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <vector>
 
 namespace {
 std::uint64_t monotonic_ms() {
@@ -23,7 +24,7 @@ void RuntimeDiagnostics::set_active_scene(const std::string &scene) {
     active_scene_ = scene;
 }
 
-void RuntimeDiagnostics::record_render(const std::string &scene, double render_ms, int target_fps) {
+void RuntimeDiagnostics::record_render(const std::string &scene, double render_ms, int target_fps, float quality_scale) {
     std::lock_guard lock(mutex_);
     active_scene_ = scene;
     ++render_frames_;
@@ -38,7 +39,18 @@ void RuntimeDiagnostics::record_render(const std::string &scene, double render_m
     last_render_ms_ = now;
 
     const double budget_ms = 1000.0 / static_cast<double>(std::max(1, target_fps));
-    if (render_ms > budget_ms * 1.15) ++dropped_render_frames_;
+    const bool slow = render_ms > budget_ms * 1.15;
+    if (slow) ++dropped_render_frames_;
+
+    auto &stats = scene_render_stats_[scene];
+    ++stats.frames;
+    if (slow) ++stats.slow_frames;
+    stats.render_ms_max = std::max(stats.render_ms_max, render_ms);
+    stats.render_ms_ema = stats.frames == 1 ? render_ms : stats.render_ms_ema * 0.92 + render_ms * 0.08;
+    stats.quality_scale = quality_scale;
+    stats.recent_ms[stats.recent_next] = render_ms;
+    stats.recent_next = (stats.recent_next + 1) % stats.recent_ms.size();
+    stats.recent_count = std::min(stats.recent_count + 1, stats.recent_ms.size());
 }
 
 void RuntimeDiagnostics::record_scene_error(const std::string &scene, const std::string &message) {
@@ -91,6 +103,28 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
         };
     }
 
+    nlohmann::json scene_performance = nlohmann::json::object();
+    for (const auto &[scene, stats] : scene_render_stats_) {
+        std::vector<double> samples(stats.recent_ms.begin(), stats.recent_ms.begin() + stats.recent_count);
+        std::sort(samples.begin(), samples.end());
+        auto percentile = [&](double p) {
+            if (samples.empty()) return 0.0;
+            const std::size_t index = std::min(samples.size() - 1,
+                static_cast<std::size_t>(std::floor((samples.size() - 1) * p)));
+            return samples[index];
+        };
+        scene_performance[scene] = {
+            {"frames", stats.frames},
+            {"render_ms_average", stats.render_ms_ema},
+            {"render_ms_p50", percentile(0.50)},
+            {"render_ms_p95", percentile(0.95)},
+            {"render_ms_p99", percentile(0.99)},
+            {"render_ms_max", stats.render_ms_max},
+            {"slow_frames", stats.slow_frames},
+            {"quality_scale", stats.quality_scale}
+        };
+    }
+
     return {
         {"uptime_seconds", uptime_seconds},
         {"renderer", {
@@ -100,7 +134,8 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
             {"render_ms_average", render_ms_ema_},
             {"render_ms_max", render_ms_max_},
             {"slow_frames", dropped_render_frames_},
-            {"scene_errors", errors}
+            {"scene_errors", errors},
+            {"scene_performance", scene_performance}
         }},
         {"udp", {
             {"datagrams", udp_datagrams_},
