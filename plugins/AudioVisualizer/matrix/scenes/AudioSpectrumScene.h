@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/media_artwork_state.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include <deque>
@@ -49,6 +50,8 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<float> waveformGain_ = MAKE_PROPERTY_MINMAX("waveform_gain", float, 1.0f, 0.25f, 3.0f);
     PropertyPointer<int> waveformThickness_ = MAKE_PROPERTY_MINMAX("waveform_thickness", int, 1, 1, 3);
     PropertyPointer<bool> stereoMotion_ = MAKE_PROPERTY("stereo_motion", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
+    MediaArtworkState::Snapshot artworkSnapshot_{};
 
     void updateSpectrum(const AudioState::Snapshot &audio, float dt);
     void colorFor(float position, float intensity, const AudioState::Snapshot &audio,

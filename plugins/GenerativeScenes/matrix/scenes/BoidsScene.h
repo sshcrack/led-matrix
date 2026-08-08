@@ -26,6 +26,7 @@ class BoidsScene final : public Scenes::Scene {
     PropertyPointer<float> audio_strength_ = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.65f, 0.0f, 2.0f);
     PropertyPointer<bool> rainbow_ = MAKE_PROPERTY("rainbow", bool, true);
     PropertyPointer<rgb_matrix::Color> color_ = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(80, 210, 255));
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
     std::vector<uint8_t> framebuffer_;
     void reset_boids();

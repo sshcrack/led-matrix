@@ -28,6 +28,7 @@ class MusicDirectorScene final : public Scene {
     PropertyPointer<bool> configure_child_audio_ = MAKE_PROPERTY("configure_child_audio", bool, true);
     PropertyPointer<float> child_audio_strength_ = MAKE_PROPERTY_MINMAX("child_audio_strength", float, 1.0f, 0.0f, 3.0f);
     PropertyPointer<bool> switch_effects_ = MAKE_PROPERTY("switch_effects", bool, true);
+    PropertyPointer<bool> spotify_artwork_colors_ = MAKE_PROPERTY("spotify_artwork_colors", bool, true);
 
     std::unique_ptr<Scene> child_;
     std::string child_name_;

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/media_artwork_state.h>
 
 namespace {
 constexpr float PI = 3.14159265358979323846f;
@@ -28,11 +29,12 @@ void BoidsScene::register_properties() {
     trail_fade_->label("Trail persistence").description("How long motion trails remain visible.").group("Appearance").step(0.02);
     rainbow_->label("Direction colors").description("Color boids by travel direction instead of using one fixed color.").group("Appearance");
     color_->label("Boid color").description("Fixed boid color when direction colors are disabled.").group("Appearance").visible_if("rainbow", false);
+    useSpotifyArtwork_->label("Use Spotify artwork colors").description("Use the current Spotify cover colors when artwork has been published by the Spotify scene.").group("Appearance");
     audio_reactive_->label("Audio reactive").description("Let bass, beats, stereo balance and high frequencies steer the flock.").group("Audio");
     audio_strength_->label("Audio strength").description("Overall amount of music-driven motion.").group("Audio").visible_if("audio_reactive", true).step(0.05);
 
     add_property(count_); add_property(speed_); add_property(perception_);
-    add_property(trail_fade_); add_property(audio_reactive_); add_property(audio_strength_); add_property(rainbow_); add_property(color_);
+    add_property(trail_fade_); add_property(audio_reactive_); add_property(audio_strength_); add_property(rainbow_); add_property(color_); add_property(useSpotifyArtwork_);
 }
 
 void BoidsScene::initialize(int width, int height) {
@@ -154,12 +156,17 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float fade = std::pow(configured_fade, elapsed * 30.0f);
     for (auto &v : framebuffer_) v = static_cast<uint8_t>(v * fade);
 
+    const auto artwork = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
     for (const auto &b: boids_) {
         uint8_t r,g,bl;
         const float audio_glow = audio_reactive_->get()
             ? std::clamp(0.82f + audio_treble_ * audio_strength_->get() * 0.32f + beat_pulse_ * 0.22f, 0.65f, 1.0f)
             : 1.0f;
-        if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,audio_glow,r,g,bl);
+        if (artwork.valid) {
+            const float direction = std::atan2(b.vy, b.vx) / (2.0f * PI) + 0.5f;
+            const auto c = MediaArtworkState::sample(artwork, direction);
+            r = static_cast<uint8_t>(c.r * audio_glow); g = static_cast<uint8_t>(c.g * audio_glow); bl = static_cast<uint8_t>(c.b * audio_glow);
+        } else if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,audio_glow,r,g,bl);
         else {
             const auto c=color_->get();
             r=static_cast<uint8_t>(c.r * audio_glow);

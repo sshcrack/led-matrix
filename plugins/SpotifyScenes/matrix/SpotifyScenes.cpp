@@ -7,6 +7,7 @@
 #include "spdlog/spdlog.h"
 #include "cpr/cpr.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/media_artwork_state.h"
 
 using namespace Scenes;
 
@@ -38,6 +39,11 @@ std::optional<string> SpotifyScenes::after_server_init() {
 
     config->save();
     return std::nullopt;
+}
+
+std::optional<string> SpotifyScenes::pre_exit() {
+    MediaArtworkState::clear();
+    return BasicPlugin::pre_exit();
 }
 
 std::unique_ptr<router_t> SpotifyScenes::

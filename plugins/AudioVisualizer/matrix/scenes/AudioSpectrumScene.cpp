@@ -62,6 +62,7 @@ void AudioSpectrumScene::register_properties() {
     add_property(sensitivity_); add_property(smoothing_); add_property(releaseSpeed_);
     add_property(beatPulseEnabled_); add_property(showWaveform_);
     add_property(waveformStyle_); add_property(waveformGain_); add_property(waveformThickness_); add_property(stereoMotion_);
+    add_property(useSpotifyArtwork_);
 }
 
 void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float dt) {
@@ -91,6 +92,14 @@ void AudioSpectrumScene::colorFor(float position, float intensity,
         ? kick * (1.0f - position) * 0.18f + snare * 0.12f + hihat * position * 0.20f
         : 0.0f;
     intensity = std::clamp(intensity * (1.0f + beatPulse_ * 0.24f) + transientLift, 0.0f, 1.0f);
+
+    if (artworkSnapshot_.valid) {
+        const auto c = MediaArtworkState::sample(artworkSnapshot_, position + audio.section_counter * 0.07f);
+        r = static_cast<uint8_t>(c.r * intensity);
+        g = static_cast<uint8_t>(c.g * intensity);
+        b = static_cast<uint8_t>(c.b * intensity);
+        return;
+    }
 
     if (!rainbow_->get()) {
         const auto base = baseColor_->get();
@@ -396,6 +405,7 @@ void AudioSpectrumScene::renderSpectrogram(rgb_matrix::FrameCanvas *canvas,
 bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
     const auto audio = AudioState::snapshot();
+    artworkSnapshot_ = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
     canvas->Clear();
     if (!audio.fresh() || audio.spectrum.empty()) return false;
 
