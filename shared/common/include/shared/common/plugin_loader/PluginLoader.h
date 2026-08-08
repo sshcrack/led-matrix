@@ -31,10 +31,16 @@ protected:
     std::vector<Data> loaded_plugins;
     bool initialized = false;
 
+#ifdef _WIN32
+    explicit PluginLoader(std::string fhs_dir_name)
+        : fhs_plugin_dir_name_(std::move(fhs_dir_name))
+    {}
+#else
     explicit PluginLoader(std::string fhs_dir_name, int dlopen_flags = RTLD_LAZY)
         : fhs_plugin_dir_name_(std::move(fhs_dir_name))
         , dlopen_flags_(dlopen_flags)
     {}
+#endif
 
 public:
     PluginLoader(const PluginLoader&) = delete;
@@ -268,7 +274,9 @@ public:
 
 protected:
     std::string fhs_plugin_dir_name_;
+#ifndef _WIN32
     int dlopen_flags_ = RTLD_LAZY;
+#endif
 };
 
 }
