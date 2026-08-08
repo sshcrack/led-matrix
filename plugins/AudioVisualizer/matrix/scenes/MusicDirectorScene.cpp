@@ -5,6 +5,7 @@
 #include <cmath>
 #include <nlohmann/json.hpp>
 #include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/diagnostics.h>
 #include <spdlog/spdlog.h>
 
@@ -20,19 +21,25 @@ void MusicDirectorScene::register_properties() {
     minimum_dwell_->label("Minimum scene time").description("Do not switch again before this much time has passed.").group("Timing").control("duration");
     maximum_dwell_->label("Maximum scene time").description("Force fresh visual variety after this time even without a section change.").group("Timing").control("duration");
     beat_sync_->label("Beat-synchronised changes").description("When tempo tracking is confident, wait for a beat before changing scenes.").group("Timing");
+    beat_quantization_->label("Beat quantization").description("When beat sync is reliable, align ordinary scene changes to a beat, 2 beats, a 4-beat bar, or two bars.").group("Timing").visible_if("beat_sync", true);
     react_on_sections_->label("React to section changes").description("Use detected structural changes as scene-change opportunities.").group("Musical intelligence");
     react_on_drops_->label("React to drops").description("Move into a high-energy visual immediately around detected drops.").group("Musical intelligence");
     configure_child_audio_->label("Configure child audio reactivity").description("Automatically enable audio_reactive/audio_strength properties on compatible scenes.").group("Child scenes");
     child_audio_strength_->label("Child audio strength").description("Audio-reactive strength applied to compatible child scenes.").group("Child scenes").visible_if("configure_child_audio", true).step(0.05);
+    switch_effects_->label("Musical switch effects").description("Use lightweight post-processing accents when Music Director changes visual energy state.").group("Musical intelligence");
+    spotify_artwork_colors_->label("Spotify artwork colors").description("When Spotify has published current cover colors, let compatible child scenes use them. Track changes cross-fade without restarting the scene.").group("Child scenes");
 
     add_property(scene_pool_);
     add_property(minimum_dwell_);
     add_property(maximum_dwell_);
     add_property(beat_sync_);
+    add_property(beat_quantization_);
     add_property(react_on_sections_);
     add_property(react_on_drops_);
     add_property(configure_child_audio_);
     add_property(child_audio_strength_);
+    add_property(switch_effects_);
+    add_property(spotify_artwork_colors_);
 }
 
 void MusicDirectorScene::initialize(int width, int height) {
@@ -124,12 +131,14 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
             next->register_properties();
 
             nlohmann::json arguments = nlohmann::json::object();
-            if (configure_child_audio_->get()) {
-                for (const auto &property : next->get_properties()) {
-                    if (!property) continue;
+            for (const auto &property : next->get_properties()) {
+                if (!property) continue;
+                if (configure_child_audio_->get()) {
                     if (property->getName() == "audio_reactive") arguments["audio_reactive"] = true;
                     if (property->getName() == "audio_strength") arguments["audio_strength"] = child_audio_strength_->get();
                 }
+                if (property->getName() == "use_spotify_artwork" && spotify_artwork_colors_->get())
+                    arguments["use_spotify_artwork"] = true;
             }
             next->load_properties(arguments);
             next->initialize(matrix_width, matrix_height);
@@ -141,6 +150,22 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
             switched_at_ = frame_context().elapsed_seconds;
             pending_switch_ = false;
             selection_cursor_ = (idx + 1) % candidates.size();
+            if (switch_effects_->get() && Constants::global_post_processor) {
+                switch (state) {
+                    case MusicalState::Calm:
+                        Constants::global_post_processor->add_effect("glow", 0.30f, 0.16f);
+                        break;
+                    case MusicalState::Groove:
+                        Constants::global_post_processor->add_effect("rgb_split", 0.18f, 0.20f);
+                        break;
+                    case MusicalState::Build:
+                        Constants::global_post_processor->add_effect("glitch", 0.16f, 0.22f);
+                        break;
+                    case MusicalState::Peak:
+                        Constants::global_post_processor->add_effect("shockwave", 0.42f, 0.48f);
+                        break;
+                }
+            }
             spdlog::info("Music Director selected '{}'", child_name_);
             return true;
         } catch (const std::exception &e) {
@@ -177,7 +202,12 @@ bool MusicDirectorScene::request_switch(const AudioState::Snapshot &audio, Music
                                 feature(audio, AudioProtocol::Feature::TempoStability) >= 0.45f;
     const bool newBeat = audio.beat_counter != seen_beat_;
     seen_beat_ = audio.beat_counter;
-    if (beat_sync_->get() && confidentTempo && child_ && !newBeat && !drop) return false;
+    if (beat_sync_->get() && confidentTempo && child_ && !drop) {
+        if (!newBeat) return false;
+        const auto quantization = beat_quantization_->get().get();
+        const uint64_t beats = std::max<uint64_t>(1, static_cast<uint64_t>(quantization));
+        if ((audio.beat_counter % beats) != 0) return false;
+    }
     return switch_child(pending_state_);
 }
 

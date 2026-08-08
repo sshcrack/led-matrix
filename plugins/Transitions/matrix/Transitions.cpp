@@ -172,6 +172,85 @@ void ZoomBlendTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas
     }
 }
 
+
+
+// ─── Glitch Cut ──────────────────────────────────────────────────────────────
+void GlitchTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+                             float alpha, int width, int height)
+{
+    const float a = std::clamp(alpha, 0.0f, 1.0f);
+    const int phase = static_cast<int>(a * 31.0f);
+    for (int y = 0; y < height; ++y)
+    {
+        const uint32_t row_hash = static_cast<uint32_t>((y + 17) * 2654435761U) ^ static_cast<uint32_t>(phase * 2246822519U);
+        const int jitter = ((row_hash >> 8) & 7U) < 3U
+            ? static_cast<int>(row_hash % 9U) - 4
+            : 0;
+        for (int x = 0; x < width; ++x)
+        {
+            const float threshold = hash01(x >> 2, y >> 2);
+            const bool incoming = a >= threshold;
+            FrameCanvas *src = incoming ? to : from;
+            const int sx = std::clamp(x + (incoming ? -jitter : jitter), 0, width - 1);
+            uint8_t r = 0, g = 0, b = 0;
+            src->GetPixel(sx, y, &r, &g, &b);
+            if (jitter != 0) {
+                uint8_t rr = 0, rg = 0, rb = 0;
+                src->GetPixel(std::clamp(sx - 1, 0, width - 1), y, &rr, &rg, &rb);
+                r = rr;
+                src->GetPixel(std::clamp(sx + 1, 0, width - 1), y, &rr, &rg, &rb);
+                b = rb;
+            }
+            dst->SetPixel(x, y, r, g, b);
+        }
+    }
+}
+
+// ─── CRT Collapse ────────────────────────────────────────────────────────────
+void CrtCollapseTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+                                  float alpha, int width, int height)
+{
+    const float a = std::clamp(alpha, 0.0f, 1.0f);
+    const float half_h = std::max(1.0f, (height - 1) * 0.5f);
+    const float cy = (height - 1) * 0.5f;
+    const bool incoming = a >= 0.5f;
+    const float local = incoming ? (a - 0.5f) * 2.0f : a * 2.0f;
+    const float scale = incoming ? std::max(0.01f, local) : std::max(0.01f, 1.0f - local);
+    FrameCanvas *src = incoming ? to : from;
+
+    dst->Clear();
+    for (int y = 0; y < height; ++y)
+    {
+        const float normalized_y = (static_cast<float>(y) - cy) / half_h;
+        if (std::abs(normalized_y) > scale) continue;
+        const float source_normalized = normalized_y / scale;
+        const int sy = std::clamp(static_cast<int>(std::lround(cy + source_normalized * half_h)), 0, height - 1);
+        const float edge = 1.0f - std::clamp(std::abs(normalized_y) / scale, 0.0f, 1.0f);
+        const float line_glow = std::clamp((0.16f - scale) / 0.16f, 0.0f, 1.0f) * edge;
+        for (int x = 0; x < width; ++x)
+        {
+            uint8_t r = 0, g = 0, b = 0;
+            src->GetPixel(x, sy, &r, &g, &b);
+            r = static_cast<uint8_t>(std::min(255.0f, r + line_glow * (255.0f - r)));
+            g = static_cast<uint8_t>(std::min(255.0f, g + line_glow * (255.0f - g)));
+            b = static_cast<uint8_t>(std::min(255.0f, b + line_glow * (255.0f - b)));
+            dst->SetPixel(x, y, r, g, b);
+        }
+    }
+}
+
+// ─── Block Dissolve ──────────────────────────────────────────────────────────
+void BlockDissolveTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+                                    float alpha, int width, int height)
+{
+    const float a = std::clamp(alpha, 0.0f, 1.0f);
+    apply_pixel_loop(dst, from, to, a, width, height,
+        [](int x, int y, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, float progress) {
+            const float threshold = hash01(x >> 3, y >> 3);
+            return progress >= threshold ? 1.0f : 0.0f;
+        });
+}
+
 // ─── Factory ─────────────────────────────────────────────────────────────────
 namespace Plugins
 {
@@ -193,6 +272,9 @@ namespace Plugins
         add.template operator()<OrderedDissolveTransition>();
         add.template operator()<RandomDissolveTransition>();
         add.template operator()<ZoomBlendTransition>();
+        add.template operator()<GlitchTransition>();
+        add.template operator()<CrtCollapseTransition>();
+        add.template operator()<BlockDissolveTransition>();
 
         return transitions;
     }

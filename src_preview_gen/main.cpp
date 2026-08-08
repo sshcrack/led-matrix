@@ -5,7 +5,7 @@
  *   preview_gen [--output <dir>] [--scene <name>] [--scenes <n1,n2,...>]
  *               [--frames <n>] [--fps <n>] [--width <n>] [--height <n>]
  *               [--dump-manifest] [--manifest-out <file>]
- *               [--virtual-time-only] [--strict]
+ *               [--metrics-out <file>] [--virtual-time-only] [--strict]
  *
  * Defaults:
  *   --output    ./previews
@@ -78,6 +78,7 @@ struct Args
     bool strict = false;
     bool virtual_time_only = false;
     std::string manifest_out; // path for --manifest-out; empty = stdout
+    std::string metrics_out;  // optional perceptual metrics JSON for regression tests
 };
 
 static Args parse_args(int argc, char* argv[])
@@ -117,6 +118,8 @@ static Args parse_args(int argc, char* argv[])
             a.virtual_time_only = true;
         else if (std::string(argv[i]) == "--manifest-out" && i + 1 < argc)
             a.manifest_out = argv[++i];
+        else if (std::string(argv[i]) == "--metrics-out" && i + 1 < argc)
+            a.metrics_out = argv[++i];
     }
     // Normalise: merge --scene into filter_scenes
     if (!a.filter_scene.empty())
@@ -134,6 +137,63 @@ static Args parse_args(int argc, char* argv[])
 // ---------------------------------------------------------------------------
 // Read all pixels from a FrameCanvas into a flat RGB byte vector
 // ---------------------------------------------------------------------------
+struct VisualMetricAccumulator
+{
+    int frames = 0;
+    int temporal_samples = 0;
+    double lit_fraction_sum = 0.0;
+    double lit_fraction_min = 1.0;
+    double lit_fraction_max = 0.0;
+    double mean_luma_sum = 0.0;
+    double temporal_change_sum = 0.0;
+
+    void add(const std::vector<uint8_t> &rgb, const std::vector<uint8_t> &previous)
+    {
+        const size_t pixels = rgb.size() / 3;
+        if (pixels == 0) return;
+        size_t lit = 0;
+        size_t changed = 0;
+        double luma = 0.0;
+        for (size_t i = 0; i < pixels; ++i) {
+            const int r = rgb[i * 3];
+            const int g = rgb[i * 3 + 1];
+            const int b = rgb[i * 3 + 2];
+            if (std::max({r, g, b}) > 5) ++lit;
+            luma += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+            if (previous.size() == rgb.size()) {
+                const int delta = std::abs(r - static_cast<int>(previous[i * 3])) +
+                                  std::abs(g - static_cast<int>(previous[i * 3 + 1])) +
+                                  std::abs(b - static_cast<int>(previous[i * 3 + 2]));
+                if (delta >= 24) ++changed;
+            }
+        }
+        const double lit_fraction = static_cast<double>(lit) / static_cast<double>(pixels);
+        lit_fraction_sum += lit_fraction;
+        lit_fraction_min = std::min(lit_fraction_min, lit_fraction);
+        lit_fraction_max = std::max(lit_fraction_max, lit_fraction);
+        mean_luma_sum += luma / static_cast<double>(pixels);
+        if (previous.size() == rgb.size()) {
+            temporal_change_sum += static_cast<double>(changed) / static_cast<double>(pixels);
+            ++temporal_samples;
+        }
+        ++frames;
+    }
+
+    [[nodiscard]] nlohmann::json json() const
+    {
+        const double frame_count = static_cast<double>(std::max(1, frames));
+        return {
+            {"frames", frames},
+            {"lit_fraction_average", lit_fraction_sum / frame_count},
+            {"lit_fraction_min", frames > 0 ? lit_fraction_min : 0.0},
+            {"lit_fraction_max", lit_fraction_max},
+            {"mean_luma_average", mean_luma_sum / frame_count},
+            {"temporal_change_average", temporal_samples > 0
+                ? temporal_change_sum / static_cast<double>(temporal_samples) : 0.0}
+        };
+    }
+};
+
 static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas* canvas,
                                            int w, int h)
 {
@@ -440,6 +500,7 @@ int main(int argc, char* argv[])
     int generated = 0;
     int skipped = 0;
     int attempted = 0;
+    nlohmann::json visual_metrics = nlohmann::json::object();
 
     // ---- iterate scenes ---------------------------------------------------
     for (const auto& wrapper : wrappers)
@@ -502,6 +563,7 @@ int main(int argc, char* argv[])
             std::vector<Magick::Image> frames;
             frames.reserve(static_cast<size_t>(args.total_frames));
             std::vector<uint8_t> previous_rgb;
+            VisualMetricAccumulator metric_accumulator;
             int identical_tail_frames = 0;
 
             const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
@@ -526,6 +588,7 @@ int main(int argc, char* argv[])
                     ++identical_tail_frames;
                 else
                     identical_tail_frames = 0;
+                metric_accumulator.add(rgb, previous_rgb);
                 previous_rgb = rgb;
                 frames.push_back(make_frame(rgb, args.matrix_width,
                                             args.matrix_height, frame_delay_cs));
@@ -553,6 +616,8 @@ int main(int argc, char* argv[])
                 ++skipped;
             }
 
+            visual_metrics[scene_name] = metric_accumulator.json();
+
             // Quantise colours (required for GIF palette, 256 colours max)
             Magick::quantizeImages(frames.begin(), frames.end());
 
@@ -573,6 +638,16 @@ int main(int argc, char* argv[])
         {
             spdlog::warn("Scene '{}' threw an unknown exception; skipping.", scene_name);
             ++skipped;
+        }
+    }
+
+    if (!args.metrics_out.empty()) {
+        std::ofstream metrics_file(args.metrics_out);
+        if (!metrics_file) {
+            spdlog::error("Cannot write visual metrics to '{}'", args.metrics_out);
+            ++skipped;
+        } else {
+            metrics_file << visual_metrics.dump(2) << "\n";
         }
     }
 

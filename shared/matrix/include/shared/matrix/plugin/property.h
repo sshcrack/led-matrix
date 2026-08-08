@@ -172,6 +172,15 @@ namespace Plugins {
         [[nodiscard]] virtual std::vector<std::string> validate_schema() const = 0;
         [[nodiscard]] virtual bool is_required() const = 0;
 
+        // Runtime numeric access is intentionally opt-in. It powers generic
+        // audio modulation without exposing type-erased mutation for colors,
+        // enums, booleans or structured properties.
+        [[nodiscard]] virtual bool supports_runtime_numeric() const { return false; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_value() const { return std::nullopt; }
+        virtual bool set_runtime_numeric_value(double) { return false; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_min() const { return std::nullopt; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_max() const { return std::nullopt; }
+
         PropertyBase &label(std::string value) { ui_metadata_.label = std::move(value); return *this; }
         PropertyBase &description(std::string value) { ui_metadata_.description = std::move(value); return *this; }
         PropertyBase &group(std::string value) { ui_metadata_.group = std::move(value); return *this; }
@@ -311,6 +320,47 @@ namespace Plugins {
         }
 
         [[nodiscard]] bool is_required() const override { return required; }
+
+        [[nodiscard]] bool supports_runtime_numeric() const override
+        {
+            return std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_value() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
+                return static_cast<double>(value);
+            return std::nullopt;
+        }
+
+        bool set_runtime_numeric_value(double input) override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (!std::isfinite(input)) return false;
+                if (min_value.has_value()) input = std::max(input, static_cast<double>(*min_value));
+                if (max_value.has_value()) input = std::min(input, static_cast<double>(*max_value));
+                if constexpr (std::is_integral_v<T>) input = std::round(input);
+                value = static_cast<T>(input);
+                return true;
+            }
+            return false;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_min() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (min_value.has_value()) return static_cast<double>(*min_value);
+            }
+            return std::nullopt;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_max() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (max_value.has_value()) return static_cast<double>(*max_value);
+            }
+            return std::nullopt;
+        }
 
         [[nodiscard]] std::vector<std::string> validate_schema() const override
         {

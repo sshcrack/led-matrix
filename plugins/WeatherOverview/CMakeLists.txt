@@ -7,6 +7,8 @@ register_plugin(WeatherOverview
     matrix/Constants.h
     matrix/scenes/WeatherScene.cpp
     matrix/scenes/WeatherScene.h
+    matrix/scenes/WeatherAmbienceScene.cpp
+    matrix/scenes/WeatherAmbienceScene.h
     matrix/scenes/weather_rendering.cpp
     matrix/scenes/weather_particles.cpp
     matrix/scenes/weather_cache.cpp

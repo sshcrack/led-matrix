@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/particles.h>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include <random>
@@ -8,8 +9,8 @@
 namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
-    struct Particle { float x, y, vx, vy, life, maxLife, hue, size; };
-    std::vector<Particle> particles_;
+    struct Particle : Particles::KinematicParticle { float hue = 0.0f; };
+    Particles::ParticlePool<Particle> particles_{3000};
     std::mt19937 rng_{std::random_device{}()};
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, dropSeen_ = 0;
     float spawnAccumulator_ = 0.0f;
@@ -23,6 +24,7 @@ class AudioParticleFieldScene final : public Scene {
     PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(50, 210, 255));
     PropertyPointer<bool> percussionBursts_ = MAKE_PROPERTY("percussion_bursts", bool, true);
     PropertyPointer<bool> dropExplosion_ = MAKE_PROPERTY("drop_explosion", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
     void spawn(const AudioState::Snapshot &audio, int count, bool radial, float strength);
 
@@ -57,6 +59,7 @@ class AudioPulseTunnelScene final : public Scene {
     PropertyPointer<rgb_matrix::Color> baseColor_ = MAKE_PROPERTY("base_color", rgb_matrix::Color, rgb_matrix::Color(50, 80, 255));
     PropertyPointer<bool> spectrumRibs_ = MAKE_PROPERTY("spectrum_ribs", bool, true);
     PropertyPointer<bool> tempoLock_ = MAKE_PROPERTY("tempo_lock", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
 public:
     AudioPulseTunnelScene() = default;
@@ -85,6 +88,7 @@ class AudioAuroraScene final : public Scene {
     PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
     PropertyPointer<float> glow_ = MAKE_PROPERTY_MINMAX("glow", float, 0.8f, 0.0f, 2.0f);
     PropertyPointer<bool> stars_ = MAKE_PROPERTY("high_frequency_stars", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
 public:
     AudioAuroraScene() = default;
@@ -113,6 +117,7 @@ class AudioKaleidoscopeScene final : public Scene {
     PropertyPointer<float> rotationSpeed_ = MAKE_PROPERTY_MINMAX("rotation_speed", float, 0.45f, -2.0f, 2.0f);
     PropertyPointer<float> detail_ = MAKE_PROPERTY_MINMAX("detail", float, 1.0f, 0.3f, 2.5f);
     PropertyPointer<bool> waveformCore_ = MAKE_PROPERTY("waveform_core", bool, true);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
 public:
     AudioKaleidoscopeScene() = default;

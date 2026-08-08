@@ -15,6 +15,16 @@ interface DiagnosticsData {
     render_ms_max: number
     slow_frames: number
     scene_errors: Record<string, { count: number; last_error: string }>
+    scene_performance: Record<string, {
+      frames: number
+      render_ms_average: number
+      render_ms_p50: number
+      render_ms_p95: number
+      render_ms_p99: number
+      render_ms_max: number
+      slow_frames: number
+      quality_scale: number
+    }>
   }
   udp: {
     datagrams: number
@@ -98,6 +108,9 @@ export default function Diagnostics() {
   }, [apiUrl, paused])
 
   const sceneErrors = useMemo(() => data ? Object.entries(data.renderer.scene_errors) : [], [data])
+  const scenePerformance = useMemo(() => data
+    ? Object.entries(data.renderer.scene_performance ?? {}).sort(([, a], [, b]) => b.render_ms_p95 - a.render_ms_p95)
+    : [], [data])
 
   return <div className="space-y-6 pb-24 lg:pb-8">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -121,6 +134,28 @@ export default function Diagnostics() {
         <Metric label="UDP" value={`${number(data.udp.datagrams_per_second)} pkt/s`} detail={`${bytes(data.udp.bytes_per_second)} · ${data.udp.malformed} malformed`} />
         <Metric label="Desktop" value={`${data.desktop_connections} client${data.desktop_connections === 1 ? '' : 's'}`} detail={`${number(data.uptime_seconds / 60, 1)} min uptime`} />
       </section>
+
+      {scenePerformance.length > 0 && <section className="glass-panel rounded-2xl p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="font-semibold">Scene performance</div>
+          <div className="text-xs text-muted-foreground">Active CPU time only; intentional frame pacing is excluded.</div>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px] space-y-1 text-xs">
+            <div className="grid grid-cols-[1.5fr_repeat(5,.7fr)] gap-3 px-3 py-1 font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              <span>Scene</span><span>P50</span><span>P95</span><span>P99</span><span>Max</span><span>Quality</span>
+            </div>
+            {scenePerformance.map(([scene, stats]) => <div key={scene} className="grid grid-cols-[1.5fr_repeat(5,.7fr)] gap-3 rounded-lg bg-secondary/50 px-3 py-2 tabular-nums">
+              <span className="truncate font-medium" title={scene}>{scene}</span>
+              <span>{number(stats.render_ms_p50, 2)} ms</span>
+              <span>{number(stats.render_ms_p95, 2)} ms</span>
+              <span>{number(stats.render_ms_p99, 2)} ms</span>
+              <span>{number(stats.render_ms_max, 2)} ms</span>
+              <span>{number(stats.quality_scale * 100, 0)}%{stats.slow_frames > 0 ? ` · ${stats.slow_frames} slow` : ''}</span>
+            </div>)}
+          </div>
+        </div>
+      </section>}
 
       <section className="grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
         <div className="glass-panel rounded-2xl p-5">

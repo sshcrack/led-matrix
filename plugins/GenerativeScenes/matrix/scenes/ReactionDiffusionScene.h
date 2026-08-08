@@ -79,6 +79,7 @@ private:
     PropertyPointer<float> contrast_ = MAKE_PROPERTY_MINMAX("contrast", float, 1.0f, 0.5f, 2.0f);
     PropertyPointer<bool> audio_reactive_ = MAKE_PROPERTY("audio_reactive", bool, false);
     PropertyPointer<float> audio_strength_ = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.85f, 0.0f, 2.0f);
+    PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
     [[nodiscard]] int index(int x, int y) const { return y * matrix_width + x; }
     void reset_pattern(bool advance_preset);
