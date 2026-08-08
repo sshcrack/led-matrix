@@ -16,7 +16,7 @@ interface EnumPropertyProps {
 
 export default function EnumProperty({ property, value, onChange }: EnumPropertyProps) {
   let options: string[] = [];
-  let displayNames: Record<string, string> = {};
+  const displayNames: Record<string, string> = {};
   const additional = property.additional;
   if (isRecord(additional)) {
     const enumValues = 'enum_values' in additional ? additional.enum_values : undefined;
