@@ -12,6 +12,7 @@
 #include <shared/matrix/scene_runtime.h>
 #include <chrono>
 #include <optional>
+#include <unordered_map>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -48,6 +49,17 @@ namespace Scenes {
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
         PropertyPointer<tmillis_t> transition_duration = MAKE_PROPERTY("transition_duration", tmillis_t, 0);
         std::shared_ptr<Plugins::TransitionNameProperty> transition_name = std::make_shared<Plugins::TransitionNameProperty>();
+        PropertyPointer<nlohmann::json> audio_modulations_ = MAKE_PROPERTY(
+            "audio_modulations", nlohmann::json, nlohmann::json::array());
+
+        struct AudioModulationState {
+            double base_value = 0.0;
+            double smoothed_value = 0.0;
+        };
+        std::unordered_map<std::string, AudioModulationState> audio_modulation_state_;
+
+        void apply_audio_modulations(double dt);
+        void restore_audio_modulations();
 
         std::string uuid;
 

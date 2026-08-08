@@ -10,6 +10,7 @@ import StringProperty from './properties/StringProperty'
 import StringListProperty from './properties/StringListProperty'
 import ProvidersProperty from './properties/ProvidersProperty'
 import GeneralProperty from './properties/GeneralProperty'
+import AudioModulationProperty from './properties/AudioModulationProperty'
 import { propertyGroup, propertyVisible } from './propertyUi'
 
 interface PropertyListProps {
@@ -41,6 +42,14 @@ export default function PropertyList({ properties, arguments: args, providers, o
   const renderProperty = (prop: Property<any>) => {
     const value = args[prop.name] ?? prop.default_value
     const commonProps = { property: prop, value, onChange: (v: any) => update(prop.name, v) }
+    if (prop.type_id === 'json' && prop.additional?.control === 'audio_modulations') {
+      return <AudioModulationProperty
+        property={prop}
+        value={value}
+        properties={properties}
+        onChange={(next) => update(prop.name, next)}
+      />
+    }
     switch (prop.type_id) {
       case 'bool': return <BooleanProperty {...commonProps} />
       case 'color': return <ColorProperty {...commonProps} />
