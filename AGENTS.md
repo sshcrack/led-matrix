@@ -192,7 +192,7 @@ Usage after building the emulator preset:
 ./emulator_build/install/bin/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
 ```
 
-Scenes that require the desktop app (`needs_desktop` = true) are skipped automatically. Use `scripts/capture_desktop_preview.sh` to capture them manually.
+Preview eligibility is controlled by `SceneCapabilities::can_generate_preview`, not by `needs_desktop` alone. Audio-reactive scenes set `can_generate_preview = true`; `preview_gen` injects synthetic music-analysis data so they render headlessly. Use `--audio-bpm` and `--audio-profile balanced|bass|percussion|ambient` to vary that fixture. Only scenes with `can_generate_preview = false` require `scripts/capture_desktop_preview.sh`.
 
 ## CI
 
