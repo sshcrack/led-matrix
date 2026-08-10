@@ -1,16 +1,11 @@
 #include "LiveFrameSnapshot.h"
 
-#include <chrono>
 #include <limits>
 #include <utility>
 
 #include "led-matrix.h"
 
 namespace LiveFrame {
-namespace {
-constexpr std::int64_t capture_lease_ms = 1500;
-constexpr std::int64_t capture_interval_ms = 67; // ~15 FPS max.
-}
 
 SnapshotStore &SnapshotStore::instance()
 {
@@ -18,43 +13,39 @@ SnapshotStore &SnapshotStore::instance()
     return store;
 }
 
-std::int64_t SnapshotStore::steady_now_ms()
-{
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
 void SnapshotStore::request_capture()
 {
-    capture_until_ms_.store(steady_now_ms() + capture_lease_ms,
-                            std::memory_order_relaxed);
+    demand_generation_.fetch_add(1, std::memory_order_relaxed);
 }
 
-bool SnapshotStore::claim_capture_slot(const std::int64_t now_ms)
+std::uint64_t SnapshotStore::requested_generation() const
 {
-    if (now_ms > capture_until_ms_.load(std::memory_order_relaxed))
-        return false;
+    return demand_generation_.load(std::memory_order_relaxed);
+}
 
-    auto next = next_capture_ms_.load(std::memory_order_relaxed);
-    if (now_ms < next)
-        return false;
+bool SnapshotStore::capture_requested(const std::uint64_t generation) const
+{
+    return generation != served_generation_.load(std::memory_order_relaxed);
+}
 
-    return next_capture_ms_.compare_exchange_strong(
-        next, now_ms + capture_interval_ms,
-        std::memory_order_relaxed, std::memory_order_relaxed);
+void SnapshotStore::mark_demand_served(const std::uint64_t generation)
+{
+    // Only satisfy demand observed before the copy started. Requests that race
+    // in while pixels are being copied retain a newer generation and therefore
+    // trigger another capture on the next rendered frame.
+    served_generation_.store(generation, std::memory_order_relaxed);
 }
 
 void SnapshotStore::capture_if_requested(rgb_matrix::FrameCanvas *canvas,
                                          const int width,
                                          const int height)
 {
+    const auto generation = requested_generation();
+    if (!capture_requested(generation))
+        return;
     if (canvas == nullptr || width <= 0 || height <= 0 ||
         width > std::numeric_limits<std::uint16_t>::max() ||
         height > std::numeric_limits<std::uint16_t>::max())
-        return;
-
-    const auto now_ms = steady_now_ms();
-    if (!claim_capture_slot(now_ms))
         return;
 
     std::vector<std::uint8_t> rgb(static_cast<std::size_t>(width) * height * 3);
@@ -69,6 +60,7 @@ void SnapshotStore::capture_if_requested(rgb_matrix::FrameCanvas *canvas,
         }
     }
     publish(width, height, std::move(rgb));
+    mark_demand_served(generation);
 }
 
 void SnapshotStore::publish_solid_if_requested(const int width,
@@ -77,13 +69,12 @@ void SnapshotStore::publish_solid_if_requested(const int width,
                                                const std::uint8_t g,
                                                const std::uint8_t b)
 {
+    const auto generation = requested_generation();
+    if (!capture_requested(generation))
+        return;
     if (width <= 0 || height <= 0 ||
         width > std::numeric_limits<std::uint16_t>::max() ||
         height > std::numeric_limits<std::uint16_t>::max())
-        return;
-
-    const auto now_ms = steady_now_ms();
-    if (!claim_capture_slot(now_ms))
         return;
 
     std::vector<std::uint8_t> rgb(static_cast<std::size_t>(width) * height * 3);
@@ -93,6 +84,7 @@ void SnapshotStore::publish_solid_if_requested(const int width,
         rgb[i + 2] = b;
     }
     publish(width, height, std::move(rgb));
+    mark_demand_served(generation);
 }
 
 void SnapshotStore::publish(const int width,

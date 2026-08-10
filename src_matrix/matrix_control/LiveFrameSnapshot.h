@@ -24,35 +24,35 @@ struct Snapshot {
     }
 };
 
-/// Stores a throttled copy of the composed matrix frame while a web client is
-/// actively polling for it. With no client, render loops only pay two atomic
-/// reads and do not copy any pixels.
+/// Stores the composed matrix frame strictly on demand. Every /live_frame HTTP
+/// request asks for at most one future capture. With no outstanding request,
+/// render loops perform only two relaxed atomic reads and never touch pixels,
+/// allocate frame memory, lock the snapshot mutex, or run a timer.
 class SnapshotStore {
 public:
     static SnapshotStore &instance();
 
-    /// Keep frame capture enabled briefly. Every /live_frame request renews
-    /// this lease so capture automatically shuts off when the page is closed.
+    /// Request one future composed frame. Multiple requests that arrive before
+    /// the next render are coalesced into that single capture.
     void request_capture();
 
-    /// Copy the current composed frame when a client lease is active and the
-    /// capture-rate throttle allows it.
+    /// Capture exactly once when there is outstanding demand.
     void capture_if_requested(rgb_matrix::FrameCanvas *canvas, int width, int height);
 
-    /// Publish a solid frame without touching the hardware canvas. Used while
-    /// the matrix is disabled so browser previews do not freeze on stale data.
+    /// Publish a solid frame only when demanded. Used while the matrix is off.
     void publish_solid_if_requested(int width, int height,
                                     std::uint8_t r, std::uint8_t g, std::uint8_t b);
 
     [[nodiscard]] Snapshot snapshot() const;
 
 private:
-    static std::int64_t steady_now_ms();
-    bool claim_capture_slot(std::int64_t now_ms);
+    [[nodiscard]] std::uint64_t requested_generation() const;
+    [[nodiscard]] bool capture_requested(std::uint64_t generation) const;
+    void mark_demand_served(std::uint64_t generation);
     void publish(int width, int height, std::vector<std::uint8_t> rgb);
 
-    std::atomic<std::int64_t> capture_until_ms_{0};
-    std::atomic<std::int64_t> next_capture_ms_{0};
+    std::atomic<std::uint64_t> demand_generation_{0};
+    std::atomic<std::uint64_t> served_generation_{0};
     mutable std::mutex snapshot_mutex_;
     Snapshot snapshot_;
 };

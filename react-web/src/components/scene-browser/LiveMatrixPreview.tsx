@@ -64,7 +64,15 @@ export default function LiveMatrixPreview({
     const poll = async () => {
       let failures = 0
       while (!cancelled) {
-        if (document.visibilityState === 'hidden') {
+        const shell = shellRef.current
+        const rect = shell?.getBoundingClientRect()
+        const visible = document.visibilityState !== 'hidden' && Boolean(
+          rect && rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth,
+        )
+        if (!visible) {
+          // No HTTP request means no matrix-frame copy on the Pi. This also
+          // stops captures when the browser tab is hidden or the preview has
+          // been scrolled completely off screen.
           await delay(500)
           continue
         }
