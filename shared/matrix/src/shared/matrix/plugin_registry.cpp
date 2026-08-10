@@ -20,3 +20,8 @@ bool PluginRegistry::contains(const std::string& key) {
     std::lock_guard<std::mutex> lock(s_mutex);
     return s_registry.contains(key);
 }
+
+void PluginRegistry::clear() {
+    std::lock_guard lock(s_mutex);
+    s_registry.clear();
+}

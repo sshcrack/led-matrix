@@ -1,4 +1,6 @@
 register_plugin(AudioVisualizer
+        matrix/AudioPreviewProvider.cpp
+        matrix/AudioPreviewProvider.h
         matrix/AudioVisualizer.cpp
         matrix/AudioVisualizer.h
         matrix/scenes/AudioSpectrumScene.cpp

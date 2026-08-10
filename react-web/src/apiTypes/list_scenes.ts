@@ -1,3 +1,9 @@
+export interface ScenePreviewSpec {
+  enabled: boolean
+  inputs: string[]
+  property_overrides: Record<string, unknown>
+}
+
 export interface SceneCapabilities {
   requires_desktop: boolean
   requires_audio: boolean
@@ -33,6 +39,7 @@ export interface ListScenes {
   needs_desktop?: boolean
   category: string
   capabilities?: SceneCapabilities
+  preview?: ScenePreviewSpec
 }
 
 export interface Property<T = unknown> {

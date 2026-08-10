@@ -42,6 +42,11 @@ namespace AmbientScenes {
         explicit StarFieldScene();
         ~StarFieldScene() override = default;
         Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        auto spec = Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+        spec.set_property("audio_reactive", true).set_property("audio_strength", 1.0f);
+        return spec;
+    }
         void register_properties() override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         void initialize(int width, int height) override;

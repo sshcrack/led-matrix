@@ -1,4 +1,5 @@
 #include "AudioVisualizer.h"
+#include "AudioPreviewProvider.h"
 #include "scenes/AudioReactiveScenes.h"
 #include "scenes/AudioSpectrumScene.h"
 #include "scenes/MusicDirectorScene.h"
@@ -14,6 +15,12 @@ REGISTER_PLUGIN(AudioVisualizer, AudioVisualizer)
 
 std::vector<std::unique_ptr<ImageProviderWrapper>> AudioVisualizer::create_image_providers() {
     return {};
+}
+
+std::vector<std::unique_ptr<Previews::DataProvider>> AudioVisualizer::create_preview_data_providers() {
+    std::vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(std::make_unique<AudioPreviewProvider>());
+    return providers;
 }
 
 std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes() {

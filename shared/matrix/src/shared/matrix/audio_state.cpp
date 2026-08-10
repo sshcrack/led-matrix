@@ -18,6 +18,13 @@ void update(const AudioProtocol::Frame &frame) {
     hasFrame = true;
 }
 
+void clear() {
+    std::lock_guard lock(stateMutex);
+    currentFrame = {};
+    receivedAt = {};
+    hasFrame = false;
+}
+
 Snapshot snapshot() {
     std::lock_guard lock(stateMutex);
     Snapshot result;
