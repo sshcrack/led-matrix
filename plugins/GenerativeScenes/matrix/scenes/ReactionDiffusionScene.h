@@ -29,6 +29,11 @@ public:
         caps.supports_audio = true;
         return caps;
     }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        auto spec = Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+        spec.set_property("audio_reactive", true).set_property("audio_strength", 1.0f);
+        return spec;
+    }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
     tmillis_t get_default_duration() override { return 60000; }
     int get_default_weight() override { return 3; }

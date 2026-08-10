@@ -10,6 +10,7 @@
 #include <shared/matrix/plugin/PropertyMacros.h>
 #include <shared/matrix/plugin/TransitionNameProperty.h>
 #include <shared/matrix/scene_runtime.h>
+#include <shared/matrix/preview.h>
 #include <chrono>
 #include <optional>
 #include <unordered_map>
@@ -130,13 +131,22 @@ namespace Scenes {
         [[nodiscard]] virtual string get_name() const = 0;
         [[nodiscard]] virtual std::string get_category() const { return "General"; }
 
-        /// Machine-readable scene capabilities used by the web app, preview
-        /// generator and Music Director. Existing needs_desktop_app() overrides
-        /// remain honored automatically.
+        /// Declarative preview contract. Desktop-dependent scenes are disabled
+        /// by default, but may opt in by requesting fixture inputs supplied by
+        /// plugin-owned preview data providers.
+        [[nodiscard]] virtual Previews::SceneSpec get_preview_spec() const {
+            return const_cast<Scene *>(this)->needs_desktop_app()
+                ? Previews::SceneSpec::disabled()
+                : Previews::SceneSpec{};
+        }
+
+        /// Machine-readable scene capabilities used by the web app and Music
+        /// Director. Preview eligibility is derived from get_preview_spec() so
+        /// there is a single source of truth.
         [[nodiscard]] virtual SceneCapabilities get_capabilities() const {
             SceneCapabilities caps;
             caps.requires_desktop = const_cast<Scene *>(this)->needs_desktop_app();
-            caps.can_generate_preview = !caps.requires_desktop;
+            caps.can_generate_preview = get_preview_spec().enabled;
             return caps;
         }
 

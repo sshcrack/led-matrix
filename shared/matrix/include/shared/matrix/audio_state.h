@@ -15,6 +15,7 @@ struct Snapshot : AudioProtocol::Frame {
 };
 
 void update(const AudioProtocol::Frame &frame);
+void clear();
 Snapshot snapshot();
 float average_spectrum(const Snapshot &state, float start_fraction, float end_fraction);
 

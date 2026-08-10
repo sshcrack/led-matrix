@@ -1,4 +1,5 @@
 #include "SpotifyScenes.h"
+#include "SpotifyPreviewProvider.h"
 #include <random>
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/plugin_registry.h"
@@ -8,6 +9,7 @@
 #include "cpr/cpr.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/media_artwork_state.h"
+#include "shared/matrix/preview.h"
 
 using namespace Scenes;
 
@@ -16,6 +18,13 @@ REGISTER_PLUGIN_CUSTOM_DESTROY(SpotifyScenes, SpotifyScenes, delete c; delete sp
 vector<std::unique_ptr<ImageProviderWrapper> >
 SpotifyScenes::create_image_providers() {
     return {};
+}
+
+vector<std::unique_ptr<Previews::DataProvider>>
+SpotifyScenes::create_preview_data_providers() {
+    vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(std::make_unique<SpotifyPreviewProvider>());
+    return providers;
 }
 
 vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
@@ -33,11 +42,13 @@ std::optional<string> SpotifyScenes::after_server_init() {
 
     spdlog::debug("Initializing SpotifyScenes");
 
-    spotify = new Spotify();
-    spotify->initialize();
+    spotify = new Spotify(Previews::Runtime::active());
+    if (!Previews::Runtime::active())
+        spotify->initialize();
     PluginRegistry::set("spotify", spotify);
 
-    config->save();
+    if (!Previews::Runtime::active())
+        config->save();
     return std::nullopt;
 }
 
@@ -131,7 +142,7 @@ SpotifyScenes::SpotifyScenes() {
     auto id = std::getenv("SPOTIFY_CLIENT_ID");
     auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
 
-    is_disabled = !id || !secret;
+    is_disabled = (!id || !secret) && !Previews::Runtime::active();
     if (is_disabled)
         spdlog::warn("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
 };

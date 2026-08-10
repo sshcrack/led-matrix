@@ -63,11 +63,13 @@ public:
     tmillis_t get_default_duration() override { return 120000; }
     int get_default_weight() override { return 7; }
     bool needs_desktop_app() override { return true; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true;
         caps.supports_audio = true;
-        caps.can_generate_preview = true;
         caps.music_director_eligible = false;
         return caps;
     }

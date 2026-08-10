@@ -20,6 +20,7 @@
 #   --height <n>             Matrix height in pixels (default: 128)
 #   --audio-bpm <n>          Synthetic preview tempo (default: 120)
 #   --audio-profile <name>   balanced, bass, percussion, or ambient (default: balanced)
+#   --preview-option <spec>   Provider option, e.g. audio:bpm=132 (repeatable)
 #   --build-dir <dir>        Build directory (default: emulator_build)
 #   --skip-validation        Skip checking if emulator binary exists
 #   --dry-run                Show what would be done without executing
@@ -76,6 +77,7 @@ WIDTH=128
 HEIGHT=128
 AUDIO_BPM=120
 AUDIO_PROFILE="balanced"
+PREVIEW_OPTIONS=()
 SKIP_VALIDATION=0
 DRY_RUN=0
 
@@ -145,6 +147,10 @@ while [[ $# -gt 0 ]]; do
         ;;
     --audio-profile)
         AUDIO_PROFILE="$2"
+        shift 2
+        ;;
+    --preview-option)
+        PREVIEW_OPTIONS+=("$2")
         shift 2
         ;;
     --build-dir)
@@ -248,6 +254,9 @@ CMD="$CMD --width $WIDTH"
 CMD="$CMD --height $HEIGHT"
 CMD="$CMD --audio-bpm $AUDIO_BPM"
 CMD="$CMD --audio-profile '$AUDIO_PROFILE'"
+for option in "${PREVIEW_OPTIONS[@]}"; do
+    CMD="$CMD --preview-option $(printf '%q' "$option")"
+done
 
 if [[ -n "$SCENES_CSV" ]]; then
     CMD="$CMD --scenes '$SCENES_CSV'"
@@ -262,6 +271,9 @@ echo "  FPS:           $FPS"
 echo "  Frames:        $FRAMES"
 echo "  Resolution:    ${WIDTH}x${HEIGHT}"
 echo "  Audio fixture: ${AUDIO_BPM} BPM / ${AUDIO_PROFILE}"
+if [[ ${#PREVIEW_OPTIONS[@]} -gt 0 ]]; then
+    echo "  Provider opts: ${PREVIEW_OPTIONS[*]}"
+fi
 echo "  Output:        $OUTPUT_DIR"
 echo "  Runtime dir:   $BUILD_INSTALL_DIR"
 echo ""
@@ -277,8 +289,8 @@ fi
 print_info "Starting preview generation..."
 echo ""
 
-# Unsetting Spotify secret because it needs manual rendering
-unset SPOTIFY_CLIENT_SECRET
+# Preview providers are isolated from live credentials/network sources, so the
+# caller's normal environment can stay intact.
 if eval "$CMD"; then
     echo ""
     print_success "Preview generation completed successfully!"
