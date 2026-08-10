@@ -18,6 +18,8 @@
 #   --frames <n>             Total frames per GIF (default: 90 = 6s @ 15fps)
 #   --width <n>              Matrix width in pixels (default: 128)
 #   --height <n>             Matrix height in pixels (default: 128)
+#   --audio-bpm <n>          Synthetic preview tempo (default: 120)
+#   --audio-profile <name>   balanced, bass, percussion, or ambient (default: balanced)
 #   --build-dir <dir>        Build directory (default: emulator_build)
 #   --skip-validation        Skip checking if emulator binary exists
 #   --dry-run                Show what would be done without executing
@@ -35,6 +37,9 @@
 #
 #   # Custom settings
 #   ./generate_scene_previews.sh --all --fps 20 --frames 120 --output ./custom_previews
+#
+#   # Preview audio-reactive scenes against a bass-heavy 128 BPM fixture
+#   ./generate_scene_previews.sh --scenes "audio_spectrum,audio_particles" --audio-bpm 128 --audio-profile bass
 #
 
 set -euo pipefail
@@ -69,6 +74,8 @@ FPS=15
 FRAMES=90
 WIDTH=128
 HEIGHT=128
+AUDIO_BPM=120
+AUDIO_PROFILE="balanced"
 SKIP_VALIDATION=0
 DRY_RUN=0
 
@@ -130,6 +137,14 @@ while [[ $# -gt 0 ]]; do
         ;;
     --height)
         HEIGHT="$2"
+        shift 2
+        ;;
+    --audio-bpm)
+        AUDIO_BPM="$2"
+        shift 2
+        ;;
+    --audio-profile)
+        AUDIO_PROFILE="$2"
         shift 2
         ;;
     --build-dir)
@@ -231,6 +246,8 @@ CMD="$CMD --fps $FPS"
 CMD="$CMD --frames $FRAMES"
 CMD="$CMD --width $WIDTH"
 CMD="$CMD --height $HEIGHT"
+CMD="$CMD --audio-bpm $AUDIO_BPM"
+CMD="$CMD --audio-profile '$AUDIO_PROFILE'"
 
 if [[ -n "$SCENES_CSV" ]]; then
     CMD="$CMD --scenes '$SCENES_CSV'"
@@ -244,6 +261,7 @@ print_info "Configuration:"
 echo "  FPS:           $FPS"
 echo "  Frames:        $FRAMES"
 echo "  Resolution:    ${WIDTH}x${HEIGHT}"
+echo "  Audio fixture: ${AUDIO_BPM} BPM / ${AUDIO_PROFILE}"
 echo "  Output:        $OUTPUT_DIR"
 echo "  Runtime dir:   $BUILD_INSTALL_DIR"
 echo ""
