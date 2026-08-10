@@ -5,7 +5,7 @@ import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import StatusCard from '~/components/home/StatusCard'
 import PresetsSection from '~/components/home/PresetsSection'
 import ErrorCard from '~/components/home/ErrorCard'
-import MatrixPreview from '~/components/scene-browser/MatrixPreview'
+import LiveMatrixPreview from '~/components/scene-browser/LiveMatrixPreview'
 import { Badge } from '~/components/ui/badge'
 import type { Status } from '~/apiTypes/status'
 import type { ListPresets } from '~/apiTypes/list_presets'
@@ -45,7 +45,7 @@ export default function Home() {
           <div className="glass-panel rounded-2xl p-4"><Activity className="mb-3 h-5 w-5 text-sky-500" /><div className="text-2xl font-bold">{presets ? Object.keys(presets).length : 0}</div><div className="text-xs text-muted-foreground">Available presets</div></div>
         </div>
       </div>
-      <MatrixPreview apiUrl={apiUrl ?? ''} sceneName={activeScene?.type} hasPreview={activeDefinition?.has_preview} label={activeLabel ? `Now playing · ${activeLabel}` : 'Matrix preview'} />
+      <LiveMatrixPreview apiUrl={apiUrl ?? ''} fallbackSceneName={activeScene?.type} fallbackHasPreview={activeDefinition?.has_preview} label={activeLabel ? `Now playing · ${activeLabel}` : 'Live matrix'} />
     </div>
 
     <section className="glass-panel rounded-2xl p-4 sm:p-5">{presetsError ? <ErrorCard error={presetsError} onRetry={() => retryPresets(r => r + 1)} /> : <PresetsSection presets={presets} isLoading={presetsLoading} activePresetId={status?.current ?? null} onActivate={handleActivate} onDelete={handleDelete} onRename={handleRename} onCreated={() => retryPresets(r => r + 1)} />}</section>

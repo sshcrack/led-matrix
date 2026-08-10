@@ -370,19 +370,24 @@ git add scene_previews/
 git commit -m "Update scene previews"
 ```
 
-**Desktop-dependent scenes** (VideoScene, AudioSpectrumScene, ShadertoyScene, etc.) cannot be generated headlessly and must be captured manually:
+**Audio-reactive scenes can be generated headlessly.** `preview_gen` injects a deterministic synthetic music-analysis feed (spectrum, waveform, beat/percussion events, BPM, stereo features, drops, and sections) so the matrix-side visualizers do not need a running desktop capture app:
 ```bash
-# 1. Start the emulator (non-headless) and the desktop app
+./scripts/generate_scene_previews.sh \
+  --scenes "audio_spectrum,audio_particles,audio_pulse_tunnel,audio_aurora,audio_kaleidoscope,music_director" \
+  --audio-bpm 128 \
+  --audio-profile percussion
+
+# Available fixture profiles: balanced, bass, percussion, ambient
+```
+
+Scenes whose capabilities explicitly report `can_generate_preview = false` (for example live video/desktop-only sources) still require manual capture:
+```bash
+# 1. Start the emulator (non-headless) and any desktop source the scene needs
 ./scripts/run_emulator.sh &
 ./desktop_build/bin/led-matrix-desktop &
 
-# 2. Capture desktop-dependent scene previews
+# 2. Capture only scenes preview_gen cannot render
 ./scripts/capture_desktop_preview.sh --api-url http://localhost:8080
-
-# Options:
-#   --scenes AudioSpectrumScene,ShadertoyScene   # specific scenes only
-#   --duration 8                                 # capture 8 seconds per scene
-#   --output ./scene_previews                    # output directory
 ```
 
 **Full deploy workflow:**
@@ -402,6 +407,24 @@ cmake --build <build_dir> --target install
 # Or use the build_upload.sh helper script
 ./scripts/build_upload.sh
 ```
+
+### 📱 **Headless web emulator (phone-friendly)**
+
+The emulator can run without opening an SDL window and stream the **actual composed 128×128 frame** into the web control page. This is useful when the browser is on another device, including a phone:
+
+```bash
+./scripts/run_web_emulator.sh
+```
+
+The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). The frame endpoint is demand-driven and capped at roughly 15 FPS; when no browser is watching, the renderer does not copy frames for web streaming.
+
+You can pin a scene while testing:
+
+```bash
+./scripts/run_web_emulator.sh --scene audio_spectrum
+```
+
+Set a different HTTP port with `PORT=18080 ./scripts/run_web_emulator.sh`. The same live preview also works when the web UI is served by the real matrix daemon, so it can mirror physical Pi output as well as the emulator.
 
 ### 🌐 **Web App Development**
 

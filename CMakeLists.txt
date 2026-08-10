@@ -142,6 +142,7 @@ else()
         src_matrix/matrix_control/SceneScheduler.cpp
         src_matrix/matrix_control/SceneRenderer.cpp
         src_matrix/matrix_control/TransitionEngine.cpp
+        src_matrix/matrix_control/LiveFrameSnapshot.cpp
         src_matrix/server/canvas_status.cpp
         src_matrix/server/custom_assets_management.cpp
         src_matrix/server/desktop_ws.cpp
@@ -389,6 +390,18 @@ if(ENABLE_EMULATOR)
             --output ${CMAKE_BINARY_DIR}/preview-smoke
             --frames 30
             --fps 30
+            --virtual-time-only
+            --strict
+    )
+    add_test(NAME audio_scene_preview_smoke
+        COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+            $<TARGET_FILE:preview_gen>
+            --output ${CMAKE_BINARY_DIR}/audio-preview-smoke
+            --scenes audio_spectrum,audio_particles,audio_pulse_tunnel,audio_aurora,audio_kaleidoscope,music_director
+            --frames 36
+            --fps 18
+            --audio-bpm 132
+            --audio-profile percussion
             --virtual-time-only
             --strict
     )

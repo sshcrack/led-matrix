@@ -3,6 +3,7 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/diagnostics.h"
+#include "LiveFrameSnapshot.h"
 
 using namespace spdlog;
 
@@ -156,6 +157,9 @@ void TransitionEngine::render_transition_phase(
 
         if (post_processor_)
             post_processor_->apply_effects(composite_offscreen_canvas);
+
+        LiveFrame::SnapshotStore::instance().capture_if_requested(
+            composite_offscreen_canvas, matrix_width, matrix_height);
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 

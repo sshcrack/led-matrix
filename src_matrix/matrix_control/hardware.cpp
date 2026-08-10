@@ -3,6 +3,7 @@
 #include "led-matrix.h"
 #include "canvas.h"
 #include "MatrixPresenter.h"
+#include "LiveFrameSnapshot.h"
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/config/MainConfig.h"
@@ -91,6 +92,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
         }
 
         matrix->Clear();
+        LiveFrame::SnapshotStore::instance().publish_solid_if_requested(
+            matrix->width(), matrix->height(), 0, 0, 0);
         SleepMillis(1000);
     }
 

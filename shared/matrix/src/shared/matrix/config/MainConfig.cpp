@@ -150,17 +150,33 @@ spdlog::info("Setting preset {}", id);
     }
 
     void MainConfig::load_from_file() {
-        if (!filesystem::exists(file_name)) {
-            debug("Writing default config at '{}'...", file_name);
-            ofstream file;
-            file.open(file_name);
-            file << "{}";
-            file.close();
+        const filesystem::path config_path(file_name);
+        const auto parent = config_path.parent_path();
+        if (!parent.empty()) {
+            std::error_code directory_error;
+            filesystem::create_directories(parent, directory_error);
+            if (directory_error) {
+                throw runtime_error(fmt::format(
+                    "Could not create config directory '{}': {}",
+                    parent.string(), directory_error.message()));
+            }
         }
 
-        ifstream f(file_name);
+        if (!filesystem::exists(config_path)) {
+            debug("Writing default config at '{}'...", file_name);
+            ofstream file(config_path);
+            if (!file || !(file << "{}")) {
+                throw runtime_error(fmt::format(
+                    "Could not write default config at '{}'", file_name));
+            }
+        }
+
+        ifstream f(config_path);
+        if (!f) {
+            throw runtime_error(fmt::format(
+                "Could not open config at '{}'", file_name));
+        }
         json temp = json::parse(f);
-        f.close();
 
         this->data = std::move(temp.get<ConfigData::Root>());
     }
