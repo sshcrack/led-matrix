@@ -405,6 +405,19 @@ if(ENABLE_EMULATOR)
             --virtual-time-only
             --strict
     )
+    add_test(NAME declared_preview_provider_smoke
+        COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+            $<TARGET_FILE:preview_gen>
+            --output ${CMAKE_BINARY_DIR}/declared-preview-provider-smoke
+            --scenes audio_spectrum,spotify
+            --frames 24
+            --fps 12
+            --preview-option audio:bpm=132
+            --preview-option audio:profile=percussion
+            --preview-option spotify.playback:duration_ms=30000
+            --strict
+    )
+
     add_test(NAME visual_regression_smoke
         COMMAND ${CMAKE_COMMAND}
             -DPREVIEW_GEN=$<TARGET_FILE:preview_gen>

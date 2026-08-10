@@ -32,6 +32,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/diagnostics.cpp
         src/shared/matrix/transition_manager.cpp
         src/shared/matrix/plugin_registry.cpp
+        src/shared/matrix/preview.cpp
 )
 
 # Main Target Compile

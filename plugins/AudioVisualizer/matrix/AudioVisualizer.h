@@ -13,6 +13,7 @@ public:
 
     std::vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
     std::vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
+    std::vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() override;
     std::optional<std::string> before_server_init() override;
     std::optional<std::string> pre_exit() override;
     bool on_udp_packet(uint8_t pluginId, const uint8_t *data, size_t size) override;

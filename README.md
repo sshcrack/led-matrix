@@ -370,17 +370,29 @@ git add scene_previews/
 git commit -m "Update scene previews"
 ```
 
-**Audio-reactive scenes can be generated headlessly.** `preview_gen` injects a deterministic synthetic music-analysis feed (spectrum, waveform, beat/percussion events, BPM, stereo features, drops, and sections) so the matrix-side visualizers do not need a running desktop capture app:
-```bash
-./scripts/generate_scene_previews.sh \
-  --scenes "audio_spectrum,audio_particles,audio_pulse_tunnel,audio_aurora,audio_kaleidoscope,music_director" \
-  --audio-bpm 128 \
-  --audio-profile percussion
+**Preview dependencies are scene-declared and plugin-provided.** `preview_gen` does not know how AudioVisualizer, Spotify, or future plugins obtain their runtime data. A scene declares the named fixture inputs it needs with `get_preview_spec()`, and the owning plugin registers a `Previews::DataProvider` that feeds the same shared state used in production. `preview_gen` only resolves providers and calls `begin()`, `update()` once per preview frame, and `end()`.
 
-# Available fixture profiles: balanced, bass, percussion, ambient
+For example, an audio scene declares:
+```cpp
+Previews::SceneSpec get_preview_spec() const override {
+    return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+}
 ```
 
-Scenes whose capabilities explicitly report `can_generate_preview = false` (for example live video/desktop-only sources) still require manual capture:
+The AudioVisualizer plugin owns the deterministic music-analysis fixture (spectrum, waveform, percussion events, BPM, stereo features, drops, sections, etc.). Spotify likewise owns a deterministic playback/artwork fixture, so the `spotify` scene can be generated without credentials or network access. New plugins can add their own input IDs/providers without editing `preview_gen`.
+
+Provider options are generic and repeatable:
+```bash
+./scripts/generate_scene_previews.sh \
+  --scenes "audio_spectrum,spotify" \
+  --preview-option audio:bpm=128 \
+  --preview-option audio:profile=percussion \
+  --preview-option spotify.playback:duration_ms=30000
+```
+
+The older `--audio-bpm` and `--audio-profile balanced|bass|percussion|ambient` options remain as convenience aliases for the `audio` provider. A scene can also declare preview-only property overrides, such as enabling its optional `audio_reactive` mode, without teaching the generator about those properties.
+
+Desktop-dependent scenes default to generated previews being disabled until they explicitly declare a satisfiable preview contract. Scenes whose preview spec is disabled (for example live video/desktop-only sources without a fixture provider) still require manual capture:
 ```bash
 # 1. Start the emulator (non-headless) and any desktop source the scene needs
 ./scripts/run_emulator.sh &
@@ -416,7 +428,7 @@ The emulator can run without opening an SDL window and stream the **actual compo
 ./scripts/run_web_emulator.sh
 ```
 
-The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). The frame endpoint is demand-driven and capped at roughly 15 FPS; when no browser is watching, the renderer does not copy frames for web streaming.
+The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). Frame capture is **strictly request-driven**: each `/live_frame` request can cause at most one future composed-frame copy, and multiple requests arriving before a render are coalesced. With no outstanding request the render loop only performs relaxed atomic checks—no pixel reads, allocation, snapshot lock, timer, or background capture. The web UI also stops requesting frames while the tab is hidden or the preview is completely off-screen; its normal visible polling rate is roughly 13–15 FPS.
 
 You can pin a scene while testing:
 

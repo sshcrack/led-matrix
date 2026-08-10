@@ -37,10 +37,12 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.can_generate_preview = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -70,10 +72,12 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.can_generate_preview = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -99,10 +103,12 @@ public:
     tmillis_t get_default_duration() override { return 35000; }
     int get_default_weight() override { return 6; }
     bool needs_desktop_app() override { return true; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.can_generate_preview = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -128,10 +134,12 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
     SceneCapabilities get_capabilities() const override {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true; caps.supports_audio = true;
-        caps.can_generate_preview = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }

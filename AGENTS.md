@@ -192,7 +192,23 @@ Usage after building the emulator preset:
 ./emulator_build/install/bin/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
 ```
 
-Preview eligibility is controlled by `SceneCapabilities::can_generate_preview`, not by `needs_desktop` alone. Audio-reactive scenes set `can_generate_preview = true`; `preview_gen` injects synthetic music-analysis data so they render headlessly. Use `--audio-bpm` and `--audio-profile balanced|bass|percussion|ambient` to vary that fixture. Only scenes with `can_generate_preview = false` require `scripts/capture_desktop_preview.sh`.
+Preview eligibility and dependencies are declared by `Scene::get_preview_spec()`. Non-desktop scenes are previewable by default; desktop-dependent scenes default to disabled until they explicitly opt in. A scene can request named fixture inputs and preview-only property overrides:
+
+```cpp
+[[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    auto spec = Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    spec.set_property("audio_reactive", true);
+    return spec;
+}
+```
+
+Plugins own fixture implementations by overriding `BasicPlugin::create_preview_data_providers()` and returning `Previews::DataProvider` adapters. Providers should update the same shared/plugin state the production source updates; `preview_gen` is deliberately unaware of the provider's payload. It discovers providers, resolves the scene's input IDs, calls `begin()`, `update(SceneFrameContext)` for every preview frame, then `end()`. Registry validation rejects duplicate/missing provider IDs and invalid preview property overrides.
+
+Current providers include `audio` (owned by AudioVisualizer) and `spotify.playback` (owned by SpotifyScenes). The Spotify provider supplies deterministic playback + local synthetic artwork, so `spotify` previews need no credentials/network. Generic fixture tuning uses repeatable `--preview-option <provider>:<key>=<json>`, e.g. `--preview-option audio:bpm=132 --preview-option spotify.playback:duration_ms=30000`. `--audio-bpm` / `--audio-profile` remain compatibility aliases. Only scenes whose preview spec remains disabled require `scripts/capture_desktop_preview.sh`.
+
+### Live web matrix capture performance
+
+`/live_frame` is strict pull/on-demand capture. One HTTP request marks one future composed frame as needed; requests that arrive before the next render are coalesced. When there is no outstanding request, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the snapshot mutex, or run a lease/timer. Keep this invariant when changing live preview behavior. The React live preview also stops polling while hidden/off-screen.
 
 ## CI
 

@@ -102,6 +102,10 @@ namespace Scenes {
             caps.requires_network = true;
             return caps;
         }
+
+        [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+            return Previews::SceneSpec::with_inputs({Previews::Inputs::SpotifyPlayback});
+        }
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {

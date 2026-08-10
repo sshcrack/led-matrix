@@ -63,6 +63,7 @@ namespace {
             auto properties = default_item->get_properties();
             auto properties_json = serialize_properties(properties, true);
             const auto caps = default_item->get_capabilities();
+            const auto preview_spec = default_item->get_preview_spec();
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
@@ -77,6 +78,11 @@ namespace {
                     {"can_generate_preview", caps.can_generate_preview},
                     {"supports_audio", caps.supports_audio},
                     {"music_director_eligible", caps.music_director_eligible}
+                }},
+                {"preview", {
+                    {"enabled", preview_spec.enabled},
+                    {"inputs", preview_spec.inputs},
+                    {"property_overrides", preview_spec.property_overrides}
                 }}
             });
         }

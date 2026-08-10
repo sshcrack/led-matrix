@@ -1,4 +1,5 @@
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/plugin_registry.h"
 
 #include <algorithm>
 #include <cctype>
@@ -150,6 +151,29 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         }
     }
 
+    std::unordered_map<std::string, std::string> preview_provider_owners;
+    for (const auto &item : loaded_plugins) {
+        if (!item.plugin) continue;
+        for (const auto &provider : item.plugin->get_preview_data_providers()) {
+            if (!provider) {
+                report.errors.emplace_back(fmt::format(
+                    "Plugin '{}' contains a null preview data provider", item.plugin->get_plugin_name()));
+                continue;
+            }
+            const std::string provider_id(provider->id());
+            if (provider_id.empty()) {
+                report.errors.emplace_back(fmt::format(
+                    "Plugin '{}' contains a preview data provider with an empty id", item.plugin->get_plugin_name()));
+                continue;
+            }
+            if (auto [it, inserted] = preview_provider_owners.emplace(provider_id, item.plugin->get_plugin_name()); !inserted) {
+                report.errors.emplace_back(fmt::format(
+                    "Duplicate preview data provider '{}' from plugins '{}' and '{}'",
+                    provider_id, it->second, item.plugin->get_plugin_name()));
+            }
+        }
+    }
+
     std::unordered_map<std::string, size_t> scene_names;
     for (size_t index = 0; index < all_scenes.size(); ++index) {
         const auto &wrapper = all_scenes[index];
@@ -184,6 +208,22 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         if (caps.requires_audio && !caps.requires_desktop)
             report.warnings.emplace_back(fmt::format("Scene '{}' requires audio but does not declare requires_desktop", scene_name));
 
+        const auto preview_spec = scene->get_preview_spec();
+        if (preview_spec.enabled) {
+            std::unordered_set<std::string> requested_inputs;
+            for (const auto &input : preview_spec.inputs) {
+                if (input.empty()) {
+                    report.errors.emplace_back(fmt::format("Scene '{}' requests an empty preview input id", scene_name));
+                    continue;
+                }
+                if (!requested_inputs.insert(input).second)
+                    report.errors.emplace_back(fmt::format("Scene '{}' requests preview input '{}' more than once", scene_name, input));
+                if (!preview_provider_owners.contains(input))
+                    report.errors.emplace_back(fmt::format(
+                        "Scene '{}' requests preview input '{}' but no plugin provides it", scene_name, input));
+            }
+        }
+
         const auto properties = scene->get_properties();
         std::unordered_set<std::string> property_names;
         std::unordered_set<std::string> property_input_names;
@@ -204,6 +244,13 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
                 report.warnings.emplace_back(fmt::format("Scene '{}' property '{}' is not snake_case", scene_name, property_name));
             for (const auto &issue : property->validate_schema())
                 report.errors.emplace_back(fmt::format("Scene '{}' property '{}': {}", scene_name, property_name, issue));
+        }
+        if (preview_spec.enabled && preview_spec.property_overrides.is_object()) {
+            for (const auto &[property_name, _] : preview_spec.property_overrides.items()) {
+                if (!property_names.contains(property_name))
+                    report.errors.emplace_back(fmt::format(
+                        "Scene '{}' preview overrides unknown property '{}'", scene_name, property_name));
+            }
         }
         for (const auto &property : properties) {
             if (!property) continue;
@@ -227,4 +274,9 @@ void PluginManager::delete_references() {
     scenes_initialized = false;
     scenes_plugin_count_ = 0;
     validation_report_ = {};
+
+    // std::any type-erasure managers can be emitted into the plugin DSO that
+    // stored the value. Destroy registry values before PluginLoader dlcloses
+    // those DSOs, otherwise process teardown may call code that is unloaded.
+    PluginRegistry::clear();
 }

@@ -7,6 +7,7 @@
  *               [--dump-manifest] [--manifest-out <file>]
  *               [--metrics-out <file>] [--audio-bpm <n>]
  *               [--audio-profile <balanced|bass|percussion|ambient>]
+ *               [--preview-option <provider>:<key>=<json>]
  *               [--virtual-time-only] [--strict]
  *
  * Defaults:
@@ -28,6 +29,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <memory>
 #include <thread>
 #include <chrono>
 #include <cmath>
@@ -43,7 +46,7 @@
 #endif
 
 #include "led-matrix.h"
-#include "shared/matrix/audio_state.h"
+#include "shared/matrix/preview.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/canvas_consts.h"
@@ -96,6 +99,7 @@ struct Args
     std::string metrics_out;  // optional perceptual metrics JSON for regression tests
     float audio_bpm = 120.0f;
     std::string audio_profile = "balanced";
+    nlohmann::json preview_options = nlohmann::json::object();
 };
 
 static Args parse_args(int argc, char* argv[])
@@ -141,6 +145,23 @@ static Args parse_args(int argc, char* argv[])
             parse_float(argv[++i], a.audio_bpm);
         else if (std::string(argv[i]) == "--audio-profile" && i + 1 < argc)
             a.audio_profile = argv[++i];
+        else if (std::string(argv[i]) == "--preview-option" && i + 1 < argc)
+        {
+            const std::string raw = argv[++i];
+            const auto colon = raw.find(':');
+            const auto equals = raw.find('=', colon == std::string::npos ? 0 : colon + 1);
+            if (colon != std::string::npos && equals != std::string::npos && colon > 0 && equals > colon + 1)
+            {
+                const auto provider = raw.substr(0, colon);
+                const auto key = raw.substr(colon + 1, equals - colon - 1);
+                const auto value = raw.substr(equals + 1);
+                try {
+                    a.preview_options[provider][key] = nlohmann::json::parse(value);
+                } catch (const nlohmann::json::parse_error &) {
+                    a.preview_options[provider][key] = value;
+                }
+            }
+        }
     }
     // Normalise: merge --scene into filter_scenes
     if (!a.filter_scene.empty())
@@ -156,6 +177,11 @@ static Args parse_args(int argc, char* argv[])
     if (a.audio_profile != "balanced" && a.audio_profile != "bass" &&
         a.audio_profile != "percussion" && a.audio_profile != "ambient")
         a.audio_profile = "balanced";
+    // Legacy convenience flags map onto the generic provider option bag.
+    // Explicit --preview-option values win.
+    auto &audio_options = a.preview_options[std::string(Previews::Inputs::Audio)];
+    if (!audio_options.contains("bpm")) audio_options["bpm"] = a.audio_bpm;
+    if (!audio_options.contains("profile")) audio_options["profile"] = a.audio_profile;
     return a;
 }
 
@@ -275,110 +301,6 @@ static Magick::Image make_frame(const std::vector<uint8_t>& rgb,
 }
 
 // ---------------------------------------------------------------------------
-// Synthetic audio used for previewing scenes whose only desktop dependency is
-// the live AudioState feed. This keeps previews self-contained and also drives
-// optional audio-reactive scenes through their music-aware code paths.
-// ---------------------------------------------------------------------------
-static AudioProtocol::Frame make_preview_audio(int frame_index, int fps,
-                                               float bpm, const std::string &profile)
-{
-    AudioProtocol::Frame audio;
-    const float t = static_cast<float>(frame_index) / static_cast<float>(std::max(1, fps));
-    const float beat_period = 60.0f / std::clamp(bpm, 40.0f, 240.0f);
-    const float beat_position = t / beat_period;
-    const auto beat_index = static_cast<uint64_t>(std::floor(beat_position));
-    const float beat_phase = beat_position - std::floor(beat_position);
-    float kick = std::exp(-beat_phase * 9.0f);
-    float groove = 0.5f + 0.5f * std::sin(t * 1.7f);
-    float shimmer = 0.5f + 0.5f * std::sin(t * 4.1f + 0.7f);
-    float low_gain = 1.0f;
-    float mid_gain = 1.0f;
-    float high_gain = 1.0f;
-    float transient_gain = 1.0f;
-    if (profile == "bass") {
-        low_gain = 1.28f;
-        mid_gain = 0.82f;
-        high_gain = 0.58f;
-        transient_gain = 0.9f;
-    } else if (profile == "percussion") {
-        low_gain = 1.08f;
-        mid_gain = 0.92f;
-        high_gain = 1.18f;
-        transient_gain = 1.30f;
-    } else if (profile == "ambient") {
-        kick *= 0.35f;
-        groove = 0.55f + 0.28f * std::sin(t * 0.75f);
-        shimmer = 0.55f + 0.32f * std::sin(t * 1.25f + 0.7f);
-        low_gain = 0.78f;
-        mid_gain = 1.05f;
-        high_gain = 0.82f;
-        transient_gain = 0.45f;
-    }
-
-    audio.sequence = static_cast<uint32_t>(frame_index + 1);
-    audio.timestamp_ms = static_cast<uint32_t>(t * 1000.0f);
-    audio.beat_counter = beat_index + 1;
-    audio.onset_counter = static_cast<uint64_t>(std::floor(t * 4.0f)) + 1;
-    audio.drop_counter = beat_index / 8;
-    audio.section_counter = static_cast<uint64_t>(t / 4.0f);
-    if (frame_index == 0 || beat_phase < 1.0f / static_cast<float>(std::max(1, fps)))
-        audio.flags |= AudioProtocol::BeatEvent | AudioProtocol::KickEvent;
-    if (frame_index % std::max(1, fps / 4) == 0)
-        audio.flags |= AudioProtocol::OnsetEvent | AudioProtocol::HihatEvent;
-    if (beat_index > 0 && beat_index % 8 == 0 && beat_phase < 1.0f / static_cast<float>(std::max(1, fps)))
-        audio.flags |= AudioProtocol::DropEvent;
-
-    audio.set(AudioProtocol::Feature::Rms, 0.35f + groove * 0.35f);
-    audio.set(AudioProtocol::Feature::Peak, 0.55f + kick * 0.40f);
-    audio.set(AudioProtocol::Feature::Loudness, 0.35f + groove * 0.40f);
-    audio.set(AudioProtocol::Feature::LoudnessFast, 0.35f + groove * 0.42f);
-    audio.set(AudioProtocol::Feature::LoudnessSlow, 0.42f + groove * 0.25f);
-    audio.set(AudioProtocol::Feature::SubBass, std::clamp((0.25f + kick * 0.70f) * low_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Bass, std::clamp((0.32f + kick * 0.62f) * low_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::LowMid, std::clamp((0.30f + groove * 0.45f) * mid_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Mid, std::clamp((0.28f + groove * 0.40f) * mid_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::HighMid, std::clamp((0.22f + shimmer * 0.45f) * high_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Treble, std::clamp((0.20f + shimmer * 0.60f) * high_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Air, std::clamp((0.18f + shimmer * 0.50f) * high_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::SpectralCentroid, 0.42f + shimmer * 0.28f);
-    audio.set(AudioProtocol::Feature::SpectralFlux, std::clamp((0.18f + kick * 0.65f) * transient_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::OnsetStrength, std::clamp((0.18f + kick * 0.72f) * transient_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Kick, std::clamp(kick * transient_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::Snare, 0.25f + (1.0f - kick) * groove * 0.45f);
-    audio.set(AudioProtocol::Feature::Hihat, std::clamp((0.25f + shimmer * 0.65f) * high_gain * transient_gain, 0.0f, 1.0f));
-    audio.set(AudioProtocol::Feature::StereoWidth, 0.58f);
-    audio.set(AudioProtocol::Feature::StereoBalance, std::sin(t * 0.73f) * 0.55f);
-    audio.set(AudioProtocol::Feature::StereoCorrelation, 0.45f);
-    audio.set(AudioProtocol::Feature::EnergyTrend, std::sin(t * 0.55f) * 0.22f);
-    audio.set(AudioProtocol::Feature::Drop, (audio.flags & AudioProtocol::DropEvent) ? 1.0f : 0.0f);
-    audio.set(AudioProtocol::Feature::Bpm, bpm);
-    audio.set(AudioProtocol::Feature::BeatPhase, beat_phase);
-    audio.set(AudioProtocol::Feature::BeatConfidence, 0.92f);
-    audio.set(AudioProtocol::Feature::BeatStrength, 0.55f + kick * 0.45f);
-    audio.set(AudioProtocol::Feature::TempoStability, 0.95f);
-
-    constexpr int spectrum_bins = 96;
-    audio.spectrum.resize(spectrum_bins);
-    for (int i = 0; i < spectrum_bins; ++i) {
-        const float x = static_cast<float>(i) / static_cast<float>(spectrum_bins - 1);
-        const float bass = std::exp(-std::pow((x - 0.08f) / 0.10f, 2.0f)) * (0.25f + kick * 0.75f) * low_gain;
-        const float mids = std::exp(-std::pow((x - 0.38f) / 0.22f, 2.0f)) * (0.20f + groove * 0.55f) * mid_gain;
-        const float highs = std::exp(-std::pow((x - 0.76f) / 0.18f, 2.0f)) * (0.12f + shimmer * 0.48f) * high_gain;
-        audio.spectrum[static_cast<size_t>(i)] = std::clamp(0.025f + bass + mids + highs, 0.0f, 1.0f);
-    }
-
-    constexpr int waveform_points = 128;
-    audio.waveform.resize(waveform_points);
-    for (int i = 0; i < waveform_points; ++i) {
-        const float phase = static_cast<float>(i) / waveform_points;
-        audio.waveform[static_cast<size_t>(i)] =
-            std::sin((phase * 5.0f + t * 1.8f) * 6.2831853f) * (0.28f + groove * 0.22f) +
-            std::sin((phase * 11.0f + t * 3.1f) * 6.2831853f) * 0.12f;
-    }
-    return audio;
-}
-
-// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -386,6 +308,7 @@ int main(int argc, char* argv[])
     spdlog::cfg::load_env_levels();
 
     const Args args = parse_args(argc, argv);
+    Previews::RuntimeScope preview_runtime;
 
     // ---- initialise GraphicsMagick ----------------------------------------
     Magick::InitializeMagick(*argv);
@@ -451,6 +374,27 @@ int main(int argc, char* argv[])
         plugin->after_server_init();
     }
 
+    std::unordered_map<std::string, std::shared_ptr<Previews::DataProvider>> preview_providers;
+    for (auto *plugin : pl->get_plugins())
+    {
+        for (auto &provider : plugin->get_preview_data_providers())
+        {
+            if (!provider) continue;
+            const std::string provider_id(provider->id());
+            if (provider_id.empty()) continue;
+            if (!preview_providers.emplace(provider_id, provider).second)
+                spdlog::warn("Duplicate preview data provider '{}'; keeping the first one.", provider_id);
+        }
+    }
+
+    const Previews::RunContext preview_run_context{
+        .width = args.matrix_width,
+        .height = args.matrix_height,
+        .fps = args.fps,
+        .total_frames = args.total_frames,
+        .options = args.preview_options,
+    };
+
     auto wrappers = pl->get_scenes();
     if (wrappers.empty())
     {
@@ -466,7 +410,9 @@ int main(int argc, char* argv[])
         for (const auto& wrapper : wrappers)
         {
             const std::string scene_name = wrapper->get_name();
-            const auto capabilities = wrapper->get_default()->get_capabilities();
+            const auto default_scene = wrapper->get_default();
+            const auto capabilities = default_scene->get_capabilities();
+            const auto preview_spec = default_scene->get_preview_spec();
             const bool needs_desktop = capabilities.requires_desktop;
             std::string plugin_name;
             std::string plugin_path;
@@ -497,9 +443,14 @@ int main(int argc, char* argv[])
                     {"requires_audio", capabilities.requires_audio},
                     {"requires_network", capabilities.requires_network},
                     {"interactive", capabilities.interactive},
-                    {"can_generate_preview", capabilities.can_generate_preview},
+                    {"can_generate_preview", preview_spec.enabled},
                     {"supports_audio", capabilities.supports_audio},
                     {"music_director_eligible", capabilities.music_director_eligible}
+                }},
+                {"preview", {
+                    {"enabled", preview_spec.enabled},
+                    {"inputs", preview_spec.inputs},
+                    {"property_overrides", preview_spec.property_overrides}
                 }},
             });
         }
@@ -526,6 +477,7 @@ int main(int argc, char* argv[])
         // before plugin DSOs are unloaded.
         for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
         wrappers.clear();
+        preview_providers.clear();
         config->release_scene_references();
         pl->delete_references();
         pl->destroy_plugins();
@@ -559,10 +511,30 @@ int main(int argc, char* argv[])
         // SceneCapabilities answers only whether preview_gen can generate the
         // scene. Timing strategy remains an internal Scene implementation detail.
         const auto default_scene = wrapper->get_default();
-        const auto capabilities = default_scene->get_capabilities();
-        if (!capabilities.can_generate_preview)
+        const auto preview_spec = default_scene->get_preview_spec();
+        if (!preview_spec.enabled)
         {
-            spdlog::info("Skipping '{}': scene cannot generate a preview.", scene_name);
+            spdlog::info("Skipping '{}': scene did not opt into generated previews.", scene_name);
+            continue;
+        }
+
+        std::vector<std::shared_ptr<Previews::DataProvider>> scene_preview_providers;
+        bool missing_provider = false;
+        for (const auto &input : preview_spec.inputs)
+        {
+            const auto it = preview_providers.find(input);
+            if (it == preview_providers.end())
+            {
+                spdlog::warn("Skipping '{}': preview input '{}' has no registered provider.",
+                             scene_name, input);
+                missing_provider = true;
+                break;
+            }
+            scene_preview_providers.push_back(it->second);
+        }
+        if (missing_provider)
+        {
+            if (args.strict) ++skipped;
             continue;
         }
         if (args.virtual_time_only && !default_scene->supports_virtual_time())
@@ -601,12 +573,24 @@ int main(int argc, char* argv[])
             nlohmann::json default_props = nlohmann::json::object();
             for (const auto& prop : scene->get_properties())
                 prop->dump_to_json(default_props);
-            if (capabilities.supports_audio) {
-                if (default_props.contains("audio_reactive")) default_props["audio_reactive"] = true;
-                if (default_props.contains("audio_strength")) default_props["audio_strength"] = 1.0f;
-            }
+            for (const auto &[name, value] : preview_spec.property_overrides.items())
+                default_props[name] = value;
 
             scene->load_properties(default_props);
+
+            struct ProviderSession {
+                std::vector<std::shared_ptr<Previews::DataProvider>> started;
+                ~ProviderSession() {
+                    for (auto it = started.rbegin(); it != started.rend(); ++it)
+                        (*it)->end();
+                }
+            } provider_session;
+            for (const auto &provider : scene_preview_providers)
+            {
+                provider_session.started.push_back(provider);
+                provider->begin(preview_run_context);
+            }
+
             scene->initialize(args.matrix_width, args.matrix_height);
 
             std::vector<Magick::Image> frames;
@@ -618,8 +602,15 @@ int main(int argc, char* argv[])
             const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
             for (int f = 0; f < args.total_frames; ++f)
             {
-                if (capabilities.requires_audio || capabilities.supports_audio)
-                    AudioState::update(make_preview_audio(f, args.fps, args.audio_bpm, args.audio_profile));
+                const Scenes::SceneFrameContext preview_frame{
+                    .delta_seconds = preview_dt,
+                    .elapsed_seconds = static_cast<double>(f) * preview_dt,
+                    .frame_index = static_cast<std::uint64_t>(f),
+                    .now_ms = static_cast<std::uint64_t>(static_cast<double>(f) * preview_dt * 1000.0),
+                    .deterministic = true,
+                };
+                for (const auto &provider : scene_preview_providers)
+                    provider->update(preview_frame);
                 canvas->Clear();
                 bool keep_going = true;
                 if (scene->supports_virtual_time()) {
@@ -705,6 +696,7 @@ int main(int argc, char* argv[])
     // ---- cleanup ----------------------------------------------------------
     for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
     wrappers.clear();
+    preview_providers.clear();
     config->release_scene_references();
     pl->delete_references();
     pl->destroy_plugins();
