@@ -97,4 +97,32 @@ if(ENABLE_DESKTOP)
                 FFTW3::fftw3f
         )
         add_test(NAME audio_analyzer_benchmark COMMAND audio_analyzer_benchmark)
+
+        if(NOT WIN32)
+            # Regression for a desktop-only flicker where render() used to skip an
+            # entire ImGui frame whenever the audio sender held stateMutex. The
+            # plugin host then briefly lost its vertical scrollbar and its content
+            # width changed, producing a visible flash/zoom reset. This white-box
+            # harness links the plugin DSO directly, so keep it on ELF platforms;
+            # the production fix itself is platform-independent and is compiled by
+            # the normal Windows desktop target.
+            add_executable(audio_visualizer_render_regression
+                    ${CMAKE_SOURCE_DIR}/tests/audio_visualizer_render_regression.cpp
+            )
+            target_compile_features(audio_visualizer_render_regression PRIVATE cxx_std_23)
+            target_compile_definitions(audio_visualizer_render_regression PRIVATE PLUGIN_NAME="AudioVisualizer")
+            target_link_libraries(audio_visualizer_render_regression PRIVATE
+                    AudioVisualizer
+                    SharedToolsCommon
+                    SharedToolsDesktop
+                    hello-imgui::hello_imgui
+                    implot::implot
+                    portaudio
+            )
+            add_test(NAME audio_visualizer_render_regression
+                    COMMAND ${CMAKE_COMMAND} -E env
+                            "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:AudioVisualizer>:$<TARGET_FILE_DIR:SharedToolsCommon>:$<TARGET_FILE_DIR:SharedToolsDesktop>:$ENV{LD_LIBRARY_PATH}"
+                            $<TARGET_FILE:audio_visualizer_render_regression>
+            )
+        endif()
 endif()
