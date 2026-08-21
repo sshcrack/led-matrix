@@ -98,6 +98,8 @@ jobs:
     uses: ./.github/workflows/build-matrix.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
   create-release:
     runs-on: ubuntu-latest
