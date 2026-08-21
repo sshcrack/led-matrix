@@ -9,52 +9,57 @@ namespace AmbientScenes {
     class StarFieldScene : public Scenes::Scene {
     private:
         struct Star {
-            float x, y, z;
-            uint8_t brightness;
-
-            Star() : x(0), y(0), z(0), brightness(255) {
-            }
-
-            void respawn(float max_depth);
-
+            float x = 0.0f, y = 0.0f, z = 1.0f;
+            float previous_z = 1.0f;
+            float hue = 0.0f;
+            void respawn(float max_depth, std::mt19937& rng);
             void update(float speed);
         };
 
         std::vector<Star> stars;
-        std::random_device rd;
-        std::mt19937 gen;
-        std::uniform_real_distribution<> dis;
+        std::mt19937 gen{std::random_device{}()};
+        float time = 0.0f;
+        float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
+        float audio_balance = 0.0f, audio_width = 0.0f, hihat_detail = 0.0f;
+        uint64_t last_beat_counter = 0, last_drop_counter = 0, last_section_counter = 0;
+        float beat_flash = 0.0f, drop_flash = 0.0f, section_hue = 0.0f;
 
-        PropertyPointer<int> num_stars = MAKE_PROPERTY("num_stars", int, 50);
-        PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 0.02f);
+        PropertyPointer<int> num_stars = MAKE_PROPERTY_MINMAX("num_stars", int, 90, 16, 240);
+        PropertyPointer<float> speed = MAKE_PROPERTY_MINMAX("speed", float, 0.025f, 0.003f, 0.12f);
         PropertyPointer<bool> enable_twinkle = MAKE_PROPERTY("enable_twinkle", bool, true);
-        PropertyPointer<float> max_depth = MAKE_PROPERTY("max_depth", float, 3.0f);
+        PropertyPointer<float> max_depth = MAKE_PROPERTY_MINMAX("max_depth", float, 3.0f, 0.5f, 6.0f);
+        PropertyPointer<bool> colored_stars = MAKE_PROPERTY("colored_stars", bool, true);
+        PropertyPointer<float> streak_length = MAKE_PROPERTY_MINMAX("streak_length", float, 0.7f, 0.0f, 2.0f);
+        PropertyPointer<bool> audio_reactive = MAKE_PROPERTY("audio_reactive", bool, false);
+        PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.8f, 0.0f, 2.0f);
+        PropertyPointer<bool> drifting_center = MAKE_PROPERTY("drifting_center", bool, true);
+
+        static void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
+        static void draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
+                              uint8_t r, uint8_t g, uint8_t b, int width, int height);
 
     public:
         explicit StarFieldScene();
-
         ~StarFieldScene() override = default;
-
+        Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+        auto spec = Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+        spec.set_property("audio_reactive", true).set_property("audio_strength", 1.0f);
+        return spec;
+    }
         void register_properties() override;
-
         bool render(rgb_matrix::FrameCanvas *canvas) override;
-
         void initialize(int width, int height) override;
-
-        tmillis_t get_default_duration() override {
-            return 20000;
-        }
-
-        int get_default_weight() override {
-            return 1;
-        }
-
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
+        tmillis_t get_default_duration() override { return 20000; }
+        int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;
-
+        [[nodiscard]] std::string get_category() const override { return "Ambient"; }
         using Scene::Scene;
     };
 
     class StarFieldSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+    public:
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

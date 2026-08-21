@@ -4,7 +4,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
-import { titleCase } from '~/lib/utils'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface StringListPropertyProps {
@@ -32,7 +32,8 @@ export default function StringListProperty({ property, value, onChange }: String
 
   return (
     <div className="space-y-1.5">
-      <Label>{titleCase(property.name)}</Label>
+      <Label>{propertyLabel(property)}</Label>
+      {propertyDescription(property) && <p className="text-xs leading-relaxed text-muted-foreground">{propertyDescription(property)}</p>}
       <div className="flex gap-2">
         <Input
           value={input}

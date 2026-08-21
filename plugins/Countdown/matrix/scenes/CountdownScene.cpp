@@ -158,7 +158,6 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
 
     // Build a display string like DD:HH:MM or HH:MM:SS depending on space
     // We'll render big digits centered horizontally
-    std::string left = std::to_string(days);
     // For simplicity, show HH:MM:SS if days==0 or if show_seconds enabled
     char buffer[64];
     if (days > 0)
@@ -182,24 +181,24 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
     if (big_digits->get())
     {
         // Use HEADER_FONT as large font; draw centered horizontally
-        int baseline = HEADER_FONT.baseline();
+        int baseline = HEADER_FONT->baseline();
         // Compute text width using CharacterWidth per character (handles variable width fonts)
         int text_width = 0;
         for (char c : disp)
-            text_width += HEADER_FONT.CharacterWidth(static_cast<uint32_t>(c));
+            text_width += HEADER_FONT->CharacterWidth(static_cast<uint32_t>(c));
         int text_x = (width - text_width) / 2;
         int text_y = (height + baseline) / 2;
-        rgb_matrix::DrawText(canvas, HEADER_FONT, text_x, text_y, text_color, disp.c_str());
+        rgb_matrix::DrawText(canvas, *HEADER_FONT, text_x, text_y, text_color, disp.c_str());
     }
     else
     {
-        int baseline = BODY_FONT.baseline();
+        int baseline = BODY_FONT->baseline();
         int text_width = 0;
         for (char c : disp)
-            text_width += BODY_FONT.CharacterWidth(static_cast<uint32_t>(c));
+            text_width += BODY_FONT->CharacterWidth(static_cast<uint32_t>(c));
         int text_x = (width - text_width) / 2;
         int text_y = (height + baseline) / 2;
-        rgb_matrix::DrawText(canvas, BODY_FONT, text_x, text_y, text_color, disp.c_str());
+        rgb_matrix::DrawText(canvas, *BODY_FONT, text_x, text_y, text_color, disp.c_str());
     }
 
     // Particle effects
@@ -351,8 +350,7 @@ int CountdownScene::get_weight() const
 #endif
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> CountdownSceneWrapper::create()
+std::unique_ptr<Scene> CountdownSceneWrapper::create()
 {
-    return {new CountdownScene(), [](Scene *scene)
-            { delete scene; }};
+    return std::make_unique<CountdownScene>();
 }

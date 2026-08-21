@@ -15,19 +15,20 @@ namespace AmbientScenes {
     }
 
     void BouncingLogoScene::change_color() {
-        int r = rand() % 3;
+        std::uniform_int_distribution<int> dist3(0, 2);
+        int r = dist3(rng);
         if (r == 0) {
-            color_r = rand() % 155 + 100;
-            color_g = rand() % 100 + 50;
-            color_b = rand() % 100 + 50;
+            color_r = std::uniform_int_distribution<int>(100, 254)(rng);
+            color_g = std::uniform_int_distribution<int>(50, 149)(rng);
+            color_b = std::uniform_int_distribution<int>(50, 149)(rng);
         } else if (r == 1) {
-            color_r = rand() % 100 + 50;
-            color_g = rand() % 155 + 100;
-            color_b = rand() % 100 + 50;
+            color_r = std::uniform_int_distribution<int>(50, 149)(rng);
+            color_g = std::uniform_int_distribution<int>(100, 254)(rng);
+            color_b = std::uniform_int_distribution<int>(50, 149)(rng);
         } else {
-            color_r = rand() % 100 + 50;
-            color_g = rand() % 100 + 50;
-            color_b = rand() % 155 + 100;
+            color_r = std::uniform_int_distribution<int>(50, 149)(rng);
+            color_g = std::uniform_int_distribution<int>(50, 149)(rng);
+            color_b = std::uniform_int_distribution<int>(100, 254)(rng);
         }
     }
 
@@ -58,8 +59,8 @@ namespace AmbientScenes {
         logo_width = logo_height * 2; // Aspect ratio ~ 2:1
 
         // Start somewhere safe
-        pos_x = (float)(rand() % (matrix_width - logo_width));
-        pos_y = (float)(rand() % (matrix_height - logo_height));
+        pos_x = std::uniform_int_distribution<int>(0, std::max(0, matrix_width - logo_width))(rng);
+        pos_y = std::uniform_int_distribution<int>(0, std::max(0, matrix_height - logo_height))(rng);
 
         vel_x = speed->get();
         vel_y = speed->get();
@@ -117,9 +118,7 @@ namespace AmbientScenes {
         add_property(size);
     }
 
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> BouncingLogoSceneWrapper::create() {
-        return {new BouncingLogoScene(), [](Scenes::Scene *scene) {
-            delete dynamic_cast<BouncingLogoScene *>(scene);
-        }};
+    std::unique_ptr<Scenes::Scene> BouncingLogoSceneWrapper::create() {
+        return std::make_unique<BouncingLogoScene>();
     }
 }

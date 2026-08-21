@@ -1,5 +1,11 @@
 # 🌈 LED Matrix Controller
 
+**One‑line install on a Raspberry Pi (arm64):**
+```bash
+curl -sSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
+```
+Downloads the latest `.deb` from GitHub Releases, presents an interactive config dialog (matrix dimensions, Spotify, auto‑updates), and installs the systemd service.
+
 > [!TIP]
 > This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
 
@@ -211,7 +217,7 @@ The easiest way to install and configure the LED Matrix Controller is with the p
 - Download the latest release for your platform
 - Guide you through hardware configuration (matrix size, chain, parallel, etc.)
 - Optionally set up Spotify integration
-- Install the binary to `/opt/led-matrix`
+- Install the binary via DEB package to `/usr/bin/led-matrix`
 - Set up a systemd service for automatic startup
 
 **To get started, simply run:**
@@ -364,19 +370,36 @@ git add scene_previews/
 git commit -m "Update scene previews"
 ```
 
-**Desktop-dependent scenes** (VideoScene, AudioSpectrumScene, ShadertoyScene, etc.) cannot be generated headlessly and must be captured manually:
+**Preview dependencies are scene-declared and plugin-provided.** `preview_gen` does not know how AudioVisualizer, Spotify, or future plugins obtain their runtime data. A scene declares the named fixture inputs it needs with `get_preview_spec()`, and the owning plugin registers a `Previews::DataProvider` that feeds the same shared state used in production. `preview_gen` only resolves providers and calls `begin()`, `update()` once per preview frame, and `end()`.
+
+For example, an audio scene declares:
+```cpp
+Previews::SceneSpec get_preview_spec() const override {
+    return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+}
+```
+
+The AudioVisualizer plugin owns the deterministic music-analysis fixture (spectrum, waveform, percussion events, BPM, stereo features, drops, sections, etc.). Spotify likewise owns a deterministic playback/artwork fixture, so the `spotify` scene can be generated without credentials or network access. New plugins can add their own input IDs/providers without editing `preview_gen`.
+
+Provider options are generic and repeatable:
 ```bash
-# 1. Start the emulator (non-headless) and the desktop app
+./scripts/generate_scene_previews.sh \
+  --scenes "audio_spectrum,spotify" \
+  --preview-option audio:bpm=128 \
+  --preview-option audio:profile=percussion \
+  --preview-option spotify.playback:duration_ms=30000
+```
+
+The older `--audio-bpm` and `--audio-profile balanced|bass|percussion|ambient` options remain as convenience aliases for the `audio` provider. A scene can also declare preview-only property overrides, such as enabling its optional `audio_reactive` mode, without teaching the generator about those properties.
+
+Desktop-dependent scenes default to generated previews being disabled until they explicitly declare a satisfiable preview contract. Scenes whose preview spec is disabled (for example live video/desktop-only sources without a fixture provider) still require manual capture:
+```bash
+# 1. Start the emulator (non-headless) and any desktop source the scene needs
 ./scripts/run_emulator.sh &
 ./desktop_build/bin/led-matrix-desktop &
 
-# 2. Capture desktop-dependent scene previews
+# 2. Capture only scenes preview_gen cannot render
 ./scripts/capture_desktop_preview.sh --api-url http://localhost:8080
-
-# Options:
-#   --scenes AudioSpectrumScene,ShadertoyScene   # specific scenes only
-#   --duration 8                                 # capture 8 seconds per scene
-#   --output ./scene_previews                    # output directory
 ```
 
 **Full deploy workflow:**
@@ -396,6 +419,24 @@ cmake --build <build_dir> --target install
 # Or use the build_upload.sh helper script
 ./scripts/build_upload.sh
 ```
+
+### 📱 **Headless web emulator (phone-friendly)**
+
+The emulator can run without opening an SDL window and stream the **actual composed 128×128 frame** into the web control page. This is useful when the browser is on another device, including a phone:
+
+```bash
+./scripts/run_web_emulator.sh
+```
+
+The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). Frame capture is **strictly request-driven**: each `/live_frame` request can cause at most one future composed-frame copy, and multiple requests arriving before a render are coalesced. With no outstanding request the render loop only performs relaxed atomic checks—no pixel reads, allocation, snapshot lock, timer, or background capture. The web UI also stops requesting frames while the tab is hidden or the preview is completely off-screen; its normal visible polling rate is roughly 13–15 FPS.
+
+You can pin a scene while testing:
+
+```bash
+./scripts/run_web_emulator.sh --scene audio_spectrum
+```
+
+Set a different HTTP port with `PORT=18080 ./scripts/run_web_emulator.sh`. The same live preview also works when the web UI is served by the real matrix daemon, so it can mirror physical Pi output as well as the emulator.
 
 ### 🌐 **Web App Development**
 
@@ -420,10 +461,17 @@ Run the development server in minutes:
 
 ### 🐌 **Manual Installation**
 
-Download the built binary from GitHub releases (`led-matrix-arm64.tar.gz` for RPI 3 64-bit) and extract it at `/opt/led-matrix`
+Download the built binary from GitHub releases (`led-matrix-*-arm64.deb` or `led-matrix-*-arm64.tar.gz` for RPI 3 64-bit).
 
+For DEB:
 ```bash
-sudo ./main [options]
+sudo dpkg -i led-matrix-*.deb
+```
+
+For tarball (extract to FHS-like layout):
+```bash
+sudo tar -xzf led-matrix-*-arm64.tar.gz -C /usr/
+sudo led-matrix [options]
 ```
 
 > **🔑 Note:** `sudo` is required for GPIO access on Raspberry Pi.
@@ -464,7 +512,7 @@ Fine-tune logging for development and debugging:
 
 ```bash
 # Set log level via environment variable
-SPDLOG_LEVEL=debug ./main
+SPDLOG_LEVEL=debug ./led-matrix
 
 # Available levels: trace, debug, info, warn, error, critical, off
 ```

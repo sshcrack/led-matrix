@@ -35,16 +35,20 @@ struct WeatherData {
     std::string temperature{"N/A"};
     std::string humidity{"N/A"};
     std::string wind_speed{"N/A"};
+    float temperature_value{0.0f};
+    float humidity_percent{0.0f};
+    float wind_speed_value{0.0f};
+    float cloud_cover{0.0f};
     std::string last_updated_time{"N/A"}; // New field for display timestamp
     std::string sunrise{"N/A"};           // Sunrise time
     std::string sunset{"N/A"};            // Sunset time
     float precipitation{0.0f};            // Current precipitation value
     int weatherCode{0};
-    bool is_day;
+    bool is_day{true};
     std::vector<ForecastDay> forecast;
 };
 
-static long CACHE_INVALIDATION = 1000 * 60 * 15;
+static constexpr long CACHE_INVALIDATION = 1000 * 60 * 15;
 
 class WeatherParser {
 private:

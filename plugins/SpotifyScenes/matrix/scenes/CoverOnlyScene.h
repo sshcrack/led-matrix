@@ -19,7 +19,13 @@ namespace Scenes {
     class CoverOnlyScene final : public Scene {
     private:
         PropertyPointer<float> cover_border_glow_intensity =
-                MAKE_PROPERTY_MINMAX("cover_border_glow_intensity", float, 0.6f, 0.0f, 1.0f);
+                MAKE_PROPERTY_MINMAX("cover_border_glow_intensity", float, 0.35f, 0.0f, 1.0f);
+        PropertyPointer<int> cover_size_percent = MAKE_PROPERTY_MINMAX("cover_size_percent", int, 78, 45, 94);
+        PropertyPointer<int> background_blur = MAKE_PROPERTY_MINMAX("background_blur", int, 8, 0, 20);
+        PropertyPointer<int> background_brightness = MAKE_PROPERTY_MINMAX("background_brightness", int, 42, 10, 85);
+        PropertyPointer<int> progress_bar_height = MAKE_PROPERTY_MINMAX("progress_bar_height", int, 3, 1, 8);
+        PropertyPointer<float> beat_pulse_strength = MAKE_PROPERTY_MINMAX("beat_pulse_strength", float, 0.18f, 0.0f, 0.5f);
+        PropertyPointer<bool> show_progress = MAKE_PROPERTY("show_progress", bool, true);
         PropertyPointer<bool> wait_on_final_cover = MAKE_PROPERTY("wait_on_final_cover", bool, true);
         PropertyPointer<tmillis_t> zoom_transition_frame_wait = MAKE_PROPERTY("zoom_transition_frame_wait", tmillis_t, 40);
         PropertyPointer<tmillis_t> final_cover_wait = MAKE_PROPERTY("final_cover_wait", tmillis_t, 1000);
@@ -78,6 +84,8 @@ namespace Scenes {
 
         [[nodiscard]] string get_name() const override;
 
+        std::string get_category() const override { return "Media"; }
+
         void register_properties() override;
 
 
@@ -88,9 +96,19 @@ namespace Scenes {
         int get_default_weight() override {
             return 3;
         }
+
+        SceneCapabilities get_capabilities() const override {
+            auto caps = Scene::get_capabilities();
+            caps.requires_network = true;
+            return caps;
+        }
+
+        [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+            return Previews::SceneSpec::with_inputs({Previews::Inputs::SpotifyPlayback});
+        }
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

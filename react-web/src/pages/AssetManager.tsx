@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Download, Trash2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
@@ -28,6 +29,12 @@ export default function AssetManager() {
     setLoading(true)
     try {
       const res = await fetch(`${apiUrl}/api/custom-assets/shader`)
+      if (!res.ok) {
+        const err = await res.text().catch(() => 'Unknown error')
+        toast.error(`Failed to fetch assets: ${err}`)
+        setAssets([])
+        return
+      }
       const data = await res.json()
       setAssets(Array.isArray(data) ? data : [])
       if (Array.isArray(data) && data.length > 0 && !selectedShader) {
@@ -36,6 +43,8 @@ export default function AssetManager() {
       if (Array.isArray(data) && data.length === 0) {
         setSelectedShader(null)
       }
+    } catch (err) {
+      toast.error(`Failed to fetch assets: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -61,9 +70,9 @@ export default function AssetManager() {
       setPreviewScript(text)
       setShowUploadDialog(true)
     } catch (err) {
-      // fallback: clear selection
       setPendingFile(null)
       e.target.value = ''
+      toast.error(`Failed to read file: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -80,25 +89,44 @@ export default function AssetManager() {
     if (!pendingFile || !apiUrl) return
     const formData = new FormData()
     formData.append('file', pendingFile)
-    await fetch(`${apiUrl}/api/custom-assets/shader`, {
-      method: 'POST',
-      body: formData,
-    })
-    handleDialogOpenChange(false)
-    // cleanup handled by handleDialogOpenChange when dialog closes
-    await fetchAssets()
+    try {
+      const res = await fetch(`${apiUrl}/api/custom-assets/shader`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        toast.error(`Upload failed: ${err}`)
+        return
+      }
+      toast.success('Shader uploaded successfully')
+      handleDialogOpenChange(false)
+      await fetchAssets()
+    } catch (err) {
+      toast.error(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
   }
 
   const onDelete = async (filename: string) => {
     if (!apiUrl) return
     if (!window.confirm(`Delete ${filename}?`)) return
-    await fetch(`${apiUrl}/api/custom-assets/shader/${encodeURIComponent(filename)}`, {
-      method: 'DELETE',
-    })
-    if (selectedShader === filename) {
-      setSelectedShader(null)
+    try {
+      const res = await fetch(`${apiUrl}/api/custom-assets/shader/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        toast.error(`Delete failed: ${err}`)
+        return
+      }
+      toast.success(`Deleted ${filename}`)
+      if (selectedShader === filename) {
+        setSelectedShader(null)
+      }
+      await fetchAssets()
+    } catch (err) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
-    await fetchAssets()
   }
 
   return (

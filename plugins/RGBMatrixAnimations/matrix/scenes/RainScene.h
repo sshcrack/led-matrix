@@ -50,6 +50,6 @@ namespace Scenes {
     };
 
     class RainSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
 }

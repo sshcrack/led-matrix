@@ -50,6 +50,7 @@ namespace Scenes {
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         std::string get_name() const override { return "property_demo"; }
+        std::string get_category() const override { return "Examples"; }
         void register_properties() override;
         
         tmillis_t get_default_duration() override { return 15000; }
@@ -58,6 +59,6 @@ namespace Scenes {
 
     class PropertyDemoSceneWrapper : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

@@ -48,8 +48,6 @@ int ColorPulseScene::get_default_weight() {
 }
 
 
-std::unique_ptr<Scene, void (*)(Scene *)> ColorPulseSceneWrapper::create() {
-    return {new ColorPulseScene(), [](Scene *scene) {
-        delete scene;
-    }};
+std::unique_ptr<Scene> ColorPulseSceneWrapper::create() {
+    return std::make_unique<ColorPulseScene>();
 }

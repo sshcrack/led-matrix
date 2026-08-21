@@ -75,7 +75,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Games"; }
+        [[nodiscard]] std::string get_category() const override { return "Games"; }
 
         void register_properties() override {}
 
@@ -93,6 +93,6 @@ namespace Scenes {
     };
 
     class MazeGameSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

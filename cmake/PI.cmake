@@ -4,14 +4,14 @@
 set(LED_MATRIX_BUILD_DIR "${CMAKE_CURRENT_LIST_DIR}/../build")
 set(CROSS_COMPILE_DIR "${LED_MATRIX_BUILD_DIR}/cross-compile")
 
-if(DEFINED $ENV{CROSS_COMPILE_ROOT})
+if(NOT "$ENV{CROSS_COMPILE_ROOT}" STREQUAL "")
   set(CROSS_COMPILE_DIR $ENV{CROSS_COMPILE_ROOT})
 endif()
 
 # Check if the cross-compile directory exists
 if(NOT EXISTS "${CROSS_COMPILE_DIR}")
-  if(DEFINED $ENV{CROSS_COMPILE_ROOT})
-    message(FATAL_ERROR "CROSS_COMPILE_DIR was defined in env but does not exist.")
+if(NOT "$ENV{CROSS_COMPILE_ROOT}" STREQUAL "")
+    message(FATAL_ERROR "CROSS_COMPILE_ROOT was defined in env but does not exist.")
   endif()
 
   message(STATUS "Cross-compile directory not found. Downloading and extracting...")
@@ -19,6 +19,7 @@ if(NOT EXISTS "${CROSS_COMPILE_DIR}")
     "https://github.com/sshcrack/led-matrix/releases/download/v0.0.1-beta/cross-compile.tar.xz"
     "${LED_MATRIX_BUILD_DIR}/cross-compile.tar.xz"
     SHOW_PROGRESS
+    INACTIVITY_TIMEOUT 60
   )
 
   file(MAKE_DIRECTORY "${CROSS_COMPILE_DIR}")

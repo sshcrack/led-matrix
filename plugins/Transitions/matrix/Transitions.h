@@ -11,15 +11,15 @@ namespace Plugins
         Transitions() = default;
         ~Transitions() override = default;
 
-        vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+        vector<std::unique_ptr<ImageProviderWrapper>>
         create_image_providers() override { return {}; }
 
-        vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>
+        vector<std::unique_ptr<SceneWrapper>>
         create_scenes() override { return {}; }
 
         std::string get_plugin_name() const override { return "Transitions"; }
 
-        vector<std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>>
+        vector<std::unique_ptr<TransitionEffect>>
         create_transitions() override;
     };
 }
@@ -90,6 +90,37 @@ class RandomDissolveTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "random_dissolve"; }
+    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+               float alpha, int width, int height) override;
+};
+
+
+// ─── Glitch Cut ──────────────────────────────────────────────────────────────
+/// Scanline/block displacement with RGB-tinted hard cuts. Cheap and deterministic.
+class GlitchTransition : public TransitionEffect
+{
+public:
+    std::string get_name() const override { return "glitch_cut"; }
+    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+               float alpha, int width, int height) override;
+};
+
+// ─── CRT Collapse ────────────────────────────────────────────────────────────
+/// Collapses the outgoing image into a bright center line, then expands the incoming image.
+class CrtCollapseTransition : public TransitionEffect
+{
+public:
+    std::string get_name() const override { return "crt_collapse"; }
+    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+               float alpha, int width, int height) override;
+};
+
+// ─── Block Dissolve ──────────────────────────────────────────────────────────
+/// Coarse hash-based dissolve that reads clearly on low-resolution matrices.
+class BlockDissolveTransition : public TransitionEffect
+{
+public:
+    std::string get_name() const override { return "block_dissolve"; }
     void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
                float alpha, int width, int height) override;
 };

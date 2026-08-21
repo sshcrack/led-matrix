@@ -5,18 +5,26 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <memory>
 #include <unordered_map>
 #include <spdlog/spdlog.h>
 
-class SHARED_DESKTOP_API WebsocketClient
+class SHARED_DESKTOP_API WebsocketClient : public std::enable_shared_from_this<WebsocketClient>
 {
 public:
-    WebsocketClient();
+    static std::shared_ptr<WebsocketClient> create();
     ~WebsocketClient();
 
     static WebsocketClient *instance();
 
     static void setInstance(WebsocketClient *instance);
+
+    static std::atomic<int>& net_refs()
+    {
+        static std::atomic<int> refs{0};
+        return refs;
+    }
 
     ix::ReadyState getReadyState() const
     {
@@ -51,6 +59,8 @@ public:
         spdlog::info("Setting WebSocket URL to: {}", url);
         webSocket.setUrl(url);
     }
+
+    void setup_callback();
 
     void start()
     {
@@ -87,6 +97,7 @@ public:
     ix::WebSocket webSocket;
 
 private:
+    WebsocketClient();
     UdpSender udpSender;
 
     std::thread senderThread;
@@ -100,6 +111,7 @@ private:
     void threadLoop();
 
     bool senderRunning = false;
+    int consecutiveError_ = 0;
 };
 
 SHARED_DESKTOP_API extern WebsocketClient *websocketClientInstance;

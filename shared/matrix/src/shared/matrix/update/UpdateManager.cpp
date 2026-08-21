@@ -84,7 +84,7 @@ namespace Update
             return;
 #endif
 
-            std::filesystem::path script_path = get_exec_dir() / "update_service.sh";
+            std::filesystem::path script_path = "/usr/lib/led-matrix/update_service.sh";
             string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
             int result = system(command.c_str());
             if (result != 0)
@@ -187,7 +187,7 @@ namespace Update
 
             Common::Version latest_version = Common::Version::fromString(latest_version_str);
 
-            // Find the led-matrix arm64 tar.gz asset
+            // Find the led-matrix arm64 deb asset
             string download_url = "";
             bool found_asset = false;
 
@@ -198,7 +198,7 @@ namespace Update
                     string asset_name = asset["name"];
                     if (asset_name.find("led-matrix") != string::npos &&
                         asset_name.find("arm64") != string::npos &&
-                        asset_name.ends_with(".tar.gz"))
+                        asset_name.ends_with(".deb"))
                     {
                         download_url = asset["browser_download_url"];
                         found_asset = true;
@@ -329,7 +329,7 @@ namespace Update
     {
         try
         {
-            string filename = "/tmp/led-matrix-update.tar.gz";
+            string filename = "/tmp/led-matrix-update.deb";
 
             auto download_res = download_update(update_info.download_url, filename);
             if (!download_res.has_value())
@@ -424,10 +424,7 @@ namespace Update
 #endif
 
 #ifdef __linux__
-        if (get_exec_dir() != std::filesystem::path("/opt/led-matrix/"))
-            return false;
-
-        // Check if running on ARM64 and Raspberry Pi
+        // Check if running on ARM64
         struct utsname system_info;
         if (uname(&system_info) == 0)
         {
@@ -458,9 +455,9 @@ namespace Update
 #ifdef ENABLE_UPDATE_TESTING
         filesystem::path success_flag = get_exec_dir() / ".update_test_success";
 #else
-        filesystem::path success_flag = "/opt/led-matrix/.update_success";
+        filesystem::path success_flag = "/var/lib/led-matrix/.update_success";
 #endif
-        filesystem::path error_flag = "/opt/led-matrix/.update_error";
+        filesystem::path error_flag = "/var/lib/led-matrix/.update_error";
 
         // Check for update success flag
         if (filesystem::exists(success_flag))

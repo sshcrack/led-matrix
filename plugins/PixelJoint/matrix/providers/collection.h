@@ -10,7 +10,7 @@ namespace ImageProviders {
 
         PropertyPointer<std::vector<string>> images_raw = MAKE_PROPERTY("images", std::vector<string>, {});
     public:
-        std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post>>>, string>
+        std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post>>>, string>
         get_next_image() override;
 
         ~Collection() override = default;
@@ -27,7 +27,7 @@ namespace ImageProviders {
 
 
     class CollectionWrapper final : public Plugins::ImageProviderWrapper {
-        std::unique_ptr<General, void (*)(General *)>
+        std::unique_ptr<General>
         create() override;
     };
 }

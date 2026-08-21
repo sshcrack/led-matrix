@@ -92,7 +92,7 @@ void Config::General::setAutostartEnabled(bool enabled)
     }
 }
 
-const uint16_t &Config::General::getPort() const
+uint16_t Config::General::getPort() const
 {
     std::shared_lock lock(mutex_);
     return port;
@@ -105,7 +105,7 @@ void Config::General::setPort(uint16_t newPort)
     spdlog::info("Port set to {}", port);
 }
 
-const std::string &Config::General::getHostname() const
+std::string Config::General::getHostname() const
 {
     std::shared_lock lock(mutex_);
     return hostname;
@@ -173,6 +173,7 @@ void Config::General::setTurnMatrixOnOnStart(bool value)
 
 void Config::from_json(const json &j, General &p)
 {
+    std::unique_lock lock(p.mutex_);
     if (j.contains("hostname"))
         j.at("hostname").get_to(p.hostname);
 
@@ -197,6 +198,7 @@ void Config::from_json(const json &j, General &p)
 
 void Config::to_json(json &j, const General &p)
 {
+    std::shared_lock lock(p.mutex_);
     j = {
         {"hostname", p.hostname},
         {"port", p.port},

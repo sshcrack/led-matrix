@@ -42,10 +42,15 @@ export function CollectionProviderComponent({ provider, onChange }: CollectionPr
     for (const file of Array.from(files)) {
       try {
         const formData = new FormData()
-        formData.append('file', file)
-        const res = await fetch(`${apiUrl}/upload`, { method: 'POST', body: formData })
+        formData.append('photo', file)
+        const res = await fetch(`${apiUrl}/pixeljoint/upload_img`, { method: 'POST', body: formData })
+        if (!res.ok) {
+          const err = await res.text().catch(() => 'Unknown error')
+          toast.error(`Upload failed for ${file.name}: ${err}`)
+          continue
+        }
         const data = await res.json()
-        if (data.url) newUrls.push(data.url)
+        if (data.path) newUrls.push(`${apiUrl}/uploads/${data.path}`)
       } catch {
         toast.error(`Failed to upload ${file.name}`)
       }

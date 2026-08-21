@@ -7,36 +7,96 @@
 
 using json = nlohmann::json;
 
+namespace {
+    // Flash effect defaults and clamp ranges
+    constexpr float flash_default_duration = 0.5f;
+    constexpr float flash_default_intensity = 1.0f;
+    constexpr float flash_duration_min = 0.1f;
+    constexpr float flash_duration_max = 5.0f;
+    constexpr float flash_intensity_min = 0.0f;
+    constexpr float flash_intensity_max = 1.0f;
+
+    // Rotate effect defaults and clamp ranges
+    constexpr float rotate_default_duration = 1.0f;
+    constexpr float rotate_default_intensity = 1.0f;
+    constexpr float rotate_duration_min = 0.5f;
+    constexpr float rotate_duration_max = 10.0f;
+    constexpr float rotate_intensity_min = 0.0f;
+    constexpr float rotate_intensity_max = 2.0f;
+
+    // Generic effect defaults and clamp ranges
+    constexpr float generic_default_duration = 1.0f;
+    constexpr float generic_default_intensity = 1.0f;
+    constexpr float generic_duration_min = 0.1f;
+    constexpr float generic_duration_max = 10.0f;
+    constexpr float generic_intensity_min = 0.0f;
+    constexpr float generic_intensity_max = 2.0f;
+    struct DurationIntensity {
+        float duration;
+        float intensity;
+    };
+
+    template<typename Req>
+    DurationIntensity parse_duration_intensity(const Req& req, float default_duration, float default_intensity,
+                                               float duration_min, float duration_max,
+                                               float intensity_min, float intensity_max) {
+        float duration = default_duration;
+        float intensity = default_intensity;
+
+        std::string body = req->body();
+        if (!body.empty()) {
+            try {
+                auto j = nlohmann::json::parse(body);
+                if (j.contains("duration")) {
+                    duration = j["duration"].get<float>();
+                    duration = std::clamp(duration, duration_min, duration_max);
+                }
+                if (j.contains("intensity")) {
+                    intensity = j["intensity"].get<float>();
+                    intensity = std::clamp(intensity, intensity_min, intensity_max);
+                }
+                return {duration, intensity};
+            } catch (const nlohmann::json::parse_error&) {
+                // Not JSON, fall through to query-param parsing
+            }
+        }
+
+        if (body.empty()) {
+            body = req->header().query();
+        }
+        auto query_params = restinio::parse_query(body);
+
+        if (query_params.has("duration")) {
+            try {
+                duration = std::stof(std::string(query_params["duration"]));
+                duration = std::clamp(duration, duration_min, duration_max);
+            } catch (const std::exception& e) {
+                spdlog::warn("Invalid duration parameter: {}", e.what());
+            }
+        }
+
+        if (query_params.has("intensity")) {
+            try {
+                intensity = std::stof(std::string(query_params["intensity"]));
+                intensity = std::clamp(intensity, intensity_min, intensity_max);
+            } catch (const std::exception& e) {
+                spdlog::warn("Invalid intensity parameter: {}", e.what());
+            }
+        }
+
+        return {duration, intensity};
+    }
+}
+
 std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router) {
     
     // Trigger flash effect
-    router->http_get("/post_processing/flash", [](const auto& req, auto) {
-        if (Constants::global_post_processor) {
-            // Parse query parameters for duration and intensity
-            auto query_params = restinio::parse_query(req->header().query());
+    router->http_post("/post_processing/flash", [](const auto& req, auto) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
+            auto [duration, intensity] = parse_duration_intensity(req, flash_default_duration, flash_default_intensity, flash_duration_min, flash_duration_max, flash_intensity_min, flash_intensity_max);
             
-            float duration = 0.5f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.1f, 5.0f); // Limit duration
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 1.0f); // Limit intensity
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
-            
-            Constants::global_post_processor->add_effect("flash", duration, intensity);
+            pp->add_effect("flash", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -51,33 +111,12 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Trigger rotate effect
-    router->http_get("/post_processing/rotate", [](const auto&  req, auto) {
-        if (Constants::global_post_processor) {
-            // Parse query parameters for duration and intensity
-            auto query_params = restinio::parse_query(req->header().query());
+    router->http_post("/post_processing/rotate", [](const auto&  req, auto) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
+            auto [duration, intensity] = parse_duration_intensity(req, rotate_default_duration, rotate_default_intensity, rotate_duration_min, rotate_duration_max, rotate_intensity_min, rotate_intensity_max);
             
-            float duration = 1.0f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.5f, 10.0f); // Limit duration
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 2.0f); // Limit intensity (can be > 1 for multiple rotations)
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
-            
-            Constants::global_post_processor->add_effect("rotate", duration, intensity);
+            pp->add_effect("rotate", duration, intensity);
             
             json response;
             response["status"] = "success";
@@ -92,9 +131,10 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Clear all post-processing effects
-    router->http_get("/post_processing/clear", [](const auto&  req, auto) {
-        if (Constants::global_post_processor) {
-            Constants::global_post_processor->clear_effects();
+    router->http_post("/post_processing/clear", [](const auto&  req, auto) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
+            pp->clear_effects();
             
             json response;
             response["status"] = "success";
@@ -108,45 +148,26 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     
     // Get post-processing status
     router->http_get("/post_processing/status", [](const auto& req, auto) {
+        auto* pp = Constants::global_post_processor;
         json response;
-        response["post_processor_available"] = (Constants::global_post_processor != nullptr);
+        response["post_processor_available"] = (pp != nullptr);
         
-        if (Constants::global_post_processor) {
-            response["has_active_effects"] = Constants::global_post_processor->has_active_effects();
-            response["registered_effects"] = Constants::global_post_processor->get_registered_effects();
+        if (pp) {
+            response["has_active_effects"] = pp->has_active_effects();
+            response["registered_effects"] = pp->get_registered_effects();
         }
         
         return reply_with_json(req, response);
     });
 
     // Generic endpoint to trigger any registered effect
-    router->http_get("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
-        if (Constants::global_post_processor) {
+    router->http_post("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
+        auto* pp = Constants::global_post_processor;
+        if (pp) {
             auto effect_name = std::string(params["effect_name"]);
-            auto query_params = restinio::parse_query(req->header().query());
+            auto [duration, intensity] = parse_duration_intensity(req, generic_default_duration, generic_default_intensity, generic_duration_min, generic_duration_max, generic_intensity_min, generic_intensity_max);
             
-            float duration = 1.0f;
-            float intensity = 1.0f;
-            
-            if (query_params.has("duration")) {
-                try {
-                    duration = std::stof(std::string(query_params["duration"]));
-                    duration = std::clamp(duration, 0.1f, 10.0f);
-                } catch (...) {
-                    // Invalid duration, use default
-                }
-            }
-            
-            if (query_params.has("intensity")) {
-                try {
-                    intensity = std::stof(std::string(query_params["intensity"]));
-                    intensity = std::clamp(intensity, 0.0f, 2.0f);
-                } catch (...) {
-                    // Invalid intensity, use default
-                }
-            }
-            
-            if (Constants::global_post_processor->add_effect(effect_name, duration, intensity)) {
+            if (pp->add_effect(effect_name, duration, intensity)) {
                 json response;
                 response["status"] = "success";
                 response["message"] = "Effect '" + effect_name + "' triggered";

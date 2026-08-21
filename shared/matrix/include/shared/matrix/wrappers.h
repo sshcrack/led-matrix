@@ -12,7 +12,7 @@ namespace Plugins {
     public:
         virtual ~ImageProviderWrapper() = default;
 
-        virtual std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> create() = 0;
+        virtual std::unique_ptr<ImageProviders::General> create() = 0;
 
         virtual string get_name() {
             return get_default()->get_name();
@@ -34,7 +34,7 @@ namespace Plugins {
     public:
         virtual ~ShaderProviderWrapper() = default;
 
-        virtual std::unique_ptr<ShaderProviders::General, void (*)(ShaderProviders::General *)> create() = 0;
+        virtual std::unique_ptr<ShaderProviders::General> create() = 0;
 
         virtual string get_name() {
             return get_default()->get_name();
@@ -54,7 +54,7 @@ namespace Plugins {
         std::shared_ptr<Scenes::Scene> default_scene;
 
     public:
-        virtual std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() = 0;
+        virtual std::unique_ptr<Scenes::Scene> create() = 0;
 
         virtual ~SceneWrapper() = default;
 

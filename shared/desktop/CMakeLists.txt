@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.21)
 project(SharedToolsDesktop)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -40,6 +40,9 @@ find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(hello-imgui CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE hello-imgui::hello_imgui nlohmann_json::nlohmann_json)
+
+include(GNUInstallDirs)
+
 target_include_directories(${PROJECT_NAME}
         PRIVATE
         # where the library itself will look for its internal headers

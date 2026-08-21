@@ -1,4 +1,5 @@
 #include "update_routes.h"
+#include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/common/Version.h"
@@ -84,17 +85,18 @@ namespace Server
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
                 
                 auto parsed_version = Common::Version::fromString(version);
-                if(parsed_version.isInvalid())
+                if(parsed_version.is_invalid())
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
                 // Start installation in background thread
-                std::thread([update_manager, parsed_version]() {
-                    auto update = update_manager->get_update_info(parsed_version);
+                auto update_manager_sp = Constants::global_update_manager;
+                std::thread([update_manager_sp, parsed_version]() {
+                    auto update = update_manager_sp->get_update_info(parsed_version);
                     if(!update) {
                         spdlog::error("Failed to get update info: {}", update.error());
                         return;
                     }
-                    auto res = update_manager->manual_download_and_install(update.value());
+                    auto res = update_manager_sp->manual_download_and_install(update.value());
                     if (!res) {
                         spdlog::error("Update installation failed: {}", res.error());
                     }
@@ -185,7 +187,7 @@ namespace Server
                         std::string asset_name = asset["name"];
                         if (asset_name.find("led-matrix") != std::string::npos && 
                             asset_name.find("arm64") != std::string::npos &&
-                            asset_name.ends_with(".tar.gz")) {
+                            (asset_name.ends_with(".tar.gz") || asset_name.ends_with(".deb"))) {
                             simplified["download_url"] = asset["browser_download_url"];
                             simplified["download_size"] = asset["size"];
                             break;

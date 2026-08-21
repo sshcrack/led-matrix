@@ -3,6 +3,16 @@
 #include "shared/desktop/macro.h"
 #include <filesystem>
 #include <shared/common/utils/utils.h>
+#include <atomic>
+#include <string>
 
 SHARED_DESKTOP_API bool isWritableExistingFile(const std::filesystem::path &path);
 SHARED_DESKTOP_API std::filesystem::path get_data_dir();
+SHARED_DESKTOP_API int run_command(const std::string& cmd,
+                                    const std::atomic<bool>* running = nullptr);
+SHARED_DESKTOP_API std::string run_command_and_get_output(const std::string& cmd);
+
+/// Opens a native file-open dialog (Windows: GetOpenFileNameA;
+/// Linux: zenity, falling back to kdialog). Returns the selected path, or an
+/// empty string if cancelled or no dialog tool is available.
+SHARED_DESKTOP_API std::string open_file_dialog(const std::string& title);

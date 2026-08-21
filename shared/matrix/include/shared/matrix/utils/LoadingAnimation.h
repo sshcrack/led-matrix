@@ -11,4 +11,7 @@ namespace LoadingAnimation {
 void render(rgb_matrix::FrameCanvas *canvas, int frame,
             uint8_t r, uint8_t g, uint8_t b);
 
+void render_overlay(rgb_matrix::FrameCanvas *canvas, int frame,
+                    uint8_t r, uint8_t g, uint8_t b);
+
 }

@@ -57,7 +57,60 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+@layer components {
+  .app-surface {
+    background:
+      radial-gradient(circle at 12% 0%, rgb(var(--primary) / 0.10), transparent 32rem),
+      radial-gradient(circle at 90% 18%, 56 189 248 / 0.08, transparent 28rem),
+      rgb(var(--background));
+  }
+
+  .glass-panel {
+    @apply border border-white/10 bg-card/80 shadow-xl shadow-slate-950/5 backdrop-blur-xl dark:shadow-black/20;
+  }
+
+  .matrix-shell {
+    @apply overflow-hidden rounded-2xl border border-white/10 bg-[#05070b] shadow-2xl shadow-black/30;
+  }
+
+  .matrix-toolbar {
+    @apply flex h-11 items-center justify-between border-b border-white/10 px-4 text-xs font-medium text-white/70;
+  }
+
+  .matrix-live-dot {
+    @apply h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)];
+  }
+
+  .matrix-stage {
+    @apply relative aspect-square overflow-hidden bg-black;
+    image-rendering: pixelated;
+  }
+
+  .matrix-grid-overlay {
+    @apply pointer-events-none absolute inset-0 z-20 opacity-30;
+    background-image:
+      linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px);
+    background-size: 4px 4px;
+    mix-blend-mode: soft-light;
+  }
+
+  .matrix-preview-image {
+    @apply relative z-10 h-full w-full object-contain;
+    image-rendering: pixelated;
+  }
+
+  .scene-tile {
+    @apply relative overflow-hidden rounded-xl border border-border bg-card text-left transition-all duration-200;
+  }
+
+  .scene-tile:hover,
+  .scene-tile[data-selected='true'] {
+    @apply -translate-y-0.5 border-primary/60 shadow-lg shadow-primary/10;
   }
 }

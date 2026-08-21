@@ -1,533 +1,441 @@
 #include "AudioSpectrumScene.h"
-#include "spdlog/spdlog.h"
-#include <cmath>
+
 #include <algorithm>
-#include "shared/matrix/plugin_loader/loader.h"
+#include <cmath>
+#include <shared/matrix/plugin/main.h>
+#include <shared/matrix/utils/color.h>
 
-using namespace Scenes;
+namespace Scenes {
+namespace {
+constexpr float Pi = 3.14159265358979323846f;
+float tempoTrust(const AudioState::Snapshot &audio) {
+    const float confidence = std::clamp(audio.feature(AudioProtocol::Feature::BeatConfidence), 0.0f, 1.0f);
+    const float stability = std::clamp(audio.feature(AudioProtocol::Feature::TempoStability), 0.0f, 1.0f);
+    return std::clamp((confidence - 0.28f) / 0.52f, 0.0f, 1.0f) * stability;
+}
+float tempoRate(const AudioState::Snapshot &audio) {
+    const float bpm = audio.feature(AudioProtocol::Feature::Bpm);
+    if (bpm < 40.0f) return 1.0f;
+    const float target = std::clamp(bpm / 120.0f, 0.55f, 1.65f);
+    const float trust = tempoTrust(audio);
+    return 1.0f + (target - 1.0f) * trust;
+}
+void addPixel(rgb_matrix::FrameCanvas *canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+    if (x < 0 || y < 0 || x >= canvas->width() || y >= canvas->height()) return;
+    uint8_t oldR = 0, oldG = 0, oldB = 0;
+    canvas->GetPixel(x, y, &oldR, &oldG, &oldB);
+    canvas->SetPixel(x, y, std::min(255, oldR + r), std::min(255, oldG + g), std::min(255, oldB + b));
+}
+}
 
-// Helper function to convert HSV to RGB
-void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b)
-{
-    if (s <= 0.0f)
-    {
-        r = g = b = static_cast<uint8_t>(v * 255);
+void AudioSpectrumScene::register_properties() {
+    displayMode_->label("Display mode")
+        .description("Choose bars, radial layouts, waveform or scrolling spectrogram.")
+        .group("Layout");
+    barWidth_->label("Bar width").description("Width of spectrum bars.").group("Bars").unit("px");
+    gapWidth_->label("Bar gap").description("Space between adjacent spectrum bars.").group("Bars").unit("px");
+    mirror_->label("Mirror bars").description("Mirror the normal bar layout across the matrix centerline.").group("Bars");
+    fallingDots_->label("Peak markers").description("Show falling or outward-moving peak markers.").group("Bars");
+    dotFallSpeed_->label("Peak fall speed").description("How quickly peak markers return after a transient.").group("Bars").visible_if("falling_dots", true).step(0.05);
+    circleRadius_->label("Radial radius").description("Base radius used by circle and spiral layouts.").group("Radial").step(0.05);
+    rotate_->label("Rotate radial layouts").description("Continuously rotate circle and spiral visualizations.").group("Radial");
+    rotationSpeed_->label("Rotation speed").description("Speed of radial layout rotation.").group("Radial").visible_if("rotate_visualization", true).step(0.05);
+    rainbow_->label("Rainbow palette").description("Color bands by frequency instead of using one base color.").group("Color");
+    musicalColor_->label("Musical color shifts").description("Shift hue with spectral centroid, stereo balance and song sections.").group("Color").visible_if("rainbow_colors", true);
+    baseColor_->label("Base color").description("Low-frequency/base color when rainbow mode is disabled.").group("Color").visible_if("rainbow_colors", false);
+    accentColor_->label("Accent color").description("High-frequency and transient accent color; keeps layered bars readable even with a white base.").group("Color").visible_if("rainbow_colors", false);
+    percussionColor_->label("Percussion color accents").description("Let kick, snare and hi-hat subtly shift color emphasis instead of only changing brightness.").group("Color");
+    sensitivity_->label("Sensitivity").description("Input gain applied before drawing the spectrum.").group("Response").step(0.05);
+    smoothing_->label("Attack smoothing").description("Higher values soften fast upward changes.").group("Response").step(0.02);
+    releaseSpeed_->label("Release speed").description("How quickly bars fall after energy disappears.").group("Response").step(0.1);
+    beatPulseEnabled_->label("Beat pulse").description("Briefly brighten the visualization on detected beats.").group("Response");
+    showWaveform_->label("Waveform overlay").description("Draw the compact waveform over spectrum modes.").group("Overlay");
+    waveformStyle_->label("Waveform style").description("Trace, mirrored scope, or filled waveform rendering.").group("Waveform");
+    waveformGain_->label("Waveform gain").description("Vertical gain for the waveform without changing spectrum sensitivity.").group("Waveform").step(0.05);
+    waveformThickness_->label("Waveform thickness").description("Trace thickness in pixels. Higher values are brighter but cost slightly more fill work.").group("Waveform");
+    stereoMotion_->label("Stereo motion").description("Let stereo balance move radial centers and width open the geometry.").group("Response");
+
+    add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
+    add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_); add_property(accentColor_); add_property(percussionColor_);
+    add_property(fallingDots_); add_property(dotFallSpeed_); add_property(displayMode_);
+    add_property(circleRadius_); add_property(rotate_); add_property(rotationSpeed_);
+    add_property(sensitivity_); add_property(smoothing_); add_property(releaseSpeed_);
+    add_property(beatPulseEnabled_); add_property(showWaveform_);
+    add_property(waveformStyle_); add_property(waveformGain_); add_property(waveformThickness_); add_property(stereoMotion_);
+    add_property(useSpotifyArtwork_);
+}
+
+void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float dt) {
+    if (smoothed_.size() != audio.spectrum.size()) {
+        smoothed_.assign(audio.spectrum.size(), 0.0f);
+        peaks_.assign(audio.spectrum.size(), 0.0f);
+        history_.clear();
+    }
+    const float attack = 1.0f - std::pow(std::clamp(smoothing_->get(), 0.0f, 0.99f), dt * 60.0f);
+    for (size_t i = 0; i < audio.spectrum.size(); ++i) {
+        const float target = std::clamp(audio.spectrum[i] * sensitivity_->get(), 0.0f, 1.0f);
+        if (target > smoothed_[i]) smoothed_[i] += (target - smoothed_[i]) * attack;
+        else smoothed_[i] = std::max(target, smoothed_[i] - releaseSpeed_->get() * dt * 0.16f);
+        peaks_[i] = target > peaks_[i] ? target : std::max(0.0f, peaks_[i] - dotFallSpeed_->get() * dt);
+    }
+    history_.push_front(smoothed_);
+    while (history_.size() > static_cast<size_t>(std::max(matrix_width, matrix_height))) history_.pop_back();
+}
+
+void AudioSpectrumScene::colorFor(float position, float intensity,
+                                  const AudioState::Snapshot &audio,
+                                  uint8_t &r, uint8_t &g, uint8_t &b) const {
+    const float kick = std::clamp(audio.feature(AudioProtocol::Feature::Kick), 0.0f, 1.0f);
+    const float snare = std::clamp(audio.feature(AudioProtocol::Feature::Snare), 0.0f, 1.0f);
+    const float hihat = std::clamp(audio.feature(AudioProtocol::Feature::Hihat), 0.0f, 1.0f);
+    const float transientLift = percussionColor_->get()
+        ? kick * (1.0f - position) * 0.18f + snare * 0.12f + hihat * position * 0.20f
+        : 0.0f;
+    intensity = std::clamp(intensity * (1.0f + beatPulse_ * 0.24f) + transientLift, 0.0f, 1.0f);
+
+    if (artworkSnapshot_.valid) {
+        const auto c = MediaArtworkState::sample(artworkSnapshot_, position + audio.section_counter * 0.07f);
+        r = static_cast<uint8_t>(c.r * intensity);
+        g = static_cast<uint8_t>(c.g * intensity);
+        b = static_cast<uint8_t>(c.b * intensity);
         return;
     }
 
-    h = fmod(h, 360.0f) / 60.0f;
-    int hi = static_cast<int>(h);
-    float f = h - hi;
-    float p = v * (1.0f - s);
-    float q = v * (1.0f - s * f);
-    float t = v * (1.0f - s * (1.0f - f));
-
-    switch (hi)
-    {
-    case 0:
-        r = v * 255;
-        g = t * 255;
-        b = p * 255;
-        break;
-    case 1:
-        r = q * 255;
-        g = v * 255;
-        b = p * 255;
-        break;
-    case 2:
-        r = p * 255;
-        g = v * 255;
-        b = t * 255;
-        break;
-    case 3:
-        r = p * 255;
-        g = q * 255;
-        b = v * 255;
-        break;
-    case 4:
-        r = t * 255;
-        g = p * 255;
-        b = v * 255;
-        break;
-    default:
-        r = v * 255;
-        g = p * 255;
-        b = q * 255;
-        break;
+    if (!rainbow_->get()) {
+        const auto base = baseColor_->get();
+        const auto accent = accentColor_->get();
+        // The frequency blend deliberately remains visible when the base is
+        // white. This gives foreground/high-frequency detail a distinct tint
+        // instead of flattening all layered modes into indistinguishable white.
+        float mix = std::clamp(0.10f + position * 0.72f, 0.0f, 1.0f);
+        if (percussionColor_->get()) mix = std::clamp(mix + snare * 0.10f + hihat * 0.12f, 0.0f, 1.0f);
+        r = static_cast<uint8_t>((base.r * (1.0f - mix) + accent.r * mix) * intensity);
+        g = static_cast<uint8_t>((base.g * (1.0f - mix) + accent.g * mix) * intensity);
+        b = static_cast<uint8_t>((base.b * (1.0f - mix) + accent.b * mix) * intensity);
+        return;
     }
+
+    float hue = position * 285.0f;
+    if (musicalColor_->get()) {
+        hue += audio.feature(AudioProtocol::Feature::SpectralCentroid) * 100.0f;
+        hue += audio.feature(AudioProtocol::Feature::StereoBalance) * 24.0f;
+        hue += audio.section_counter % 6 * 36.0f;
+        if (percussionColor_->get()) hue += kick * -18.0f + snare * 22.0f + hihat * 34.0f;
+    }
+    const float saturation = std::clamp(0.78f + hihat * 0.14f - kick * 0.05f, 0.55f, 0.96f);
+    color::hsv_to_rgb(hue, saturation, intensity, r, g, b);
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> AudioSpectrumSceneWrapper::create()
-{
-    return {
-        new AudioSpectrumScene(), [](Scenes::Scene *scene)
-        {
-            delete scene;
-        }};
-}
+void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
+                                    const AudioState::Snapshot &audio) {
+    const int barWidth = std::max(1, barWidth_->get());
+    const int stride = std::max(1, barWidth + gapWidth_->get());
+    const int count = std::min<int>(smoothed_.size(),
+                                    std::max(1, matrix_width / stride));
+    const auto mode = displayMode_->get().get();
+    const int centerTop = (matrix_height - 1) / 2;
+    const int centerBottom = matrix_height / 2;
+    const int centerReach = std::max(1, std::min(centerTop + 1,
+                                                 matrix_height - centerBottom));
 
-AudioSpectrumScene::AudioSpectrumScene() : plugin(nullptr), last_timestamp(0)
-{
-    // Find the AudioVisualizer plugin
-    auto plugins = Plugins::PluginManager::instance()->get_plugins();
-    for (auto &p : plugins)
-    {
-        if (auto av = dynamic_cast<AudioVisualizer *>(p))
-        {
-            plugin = av;
-            break;
+    auto sourceIndexFor = [&](int displayIndex) -> size_t {
+        if (count <= 1 || smoothed_.size() <= 1) return 0;
+        return std::min(smoothed_.size() - 1,
+            static_cast<size_t>(std::lround(
+                static_cast<double>(displayIndex) *
+                static_cast<double>(smoothed_.size() - 1) /
+                static_cast<double>(count - 1))));
+    };
+
+    auto xFor = [&](int displayIndex) {
+        if (mode != DisplayMode::EDGES_TO_CENTER)
+            return displayIndex * stride;
+
+        // Lay the first half inwards from the left edge and the second half
+        // inwards from the right edge. Keep the actual bar flush to the edge;
+        // the gap remains on its inward side.
+        const int leftCount = (count + 1) / 2;
+        if (displayIndex < leftCount)
+            return displayIndex * stride;
+        return matrix_width - barWidth - (displayIndex - leftCount) * stride;
+    };
+
+    for (int i = 0; i < count; ++i) {
+        const size_t sourceIndex = sourceIndexFor(i);
+        const float value = std::clamp(smoothed_[sourceIndex], 0.0f, 1.0f);
+        const float peak = std::clamp(peaks_[sourceIndex], 0.0f, 1.0f);
+        const float colorPosition = count <= 1 ? 0.0f
+            : static_cast<float>(i) / static_cast<float>(count - 1);
+        const int x = xFor(i);
+
+        if (mode == DisplayMode::CENTER_OUT) {
+            const int extent = std::clamp(
+                static_cast<int>(std::lround(value * centerReach)),
+                0, centerReach);
+
+            for (int distance = 0; distance < extent; ++distance) {
+                const float intensity = 0.35f + 0.65f *
+                    static_cast<float>(distance + 1) /
+                    static_cast<float>(std::max(1, extent));
+                uint8_t r, g, b;
+                colorFor(colorPosition, intensity, audio, r, g, b);
+
+                const int upperY = centerTop - distance;
+                const int lowerY = centerBottom + distance;
+                for (int w = 0; w < barWidth; ++w) {
+                    const int px = x + w;
+                    if (px < 0 || px >= matrix_width) continue;
+                    if (upperY >= 0) canvas->SetPixel(px, upperY, r, g, b);
+                    if (lowerY < matrix_height) canvas->SetPixel(px, lowerY, r, g, b);
+                }
+            }
+
+            // In center-out mode the falling marker must track both outward
+            // ends of the bar, not fall from the bottom like a normal bar.
+            if (fallingDots_->get() && peak > 0.001f) {
+                const int peakDistance = std::clamp(
+                    static_cast<int>(std::lround(peak * (centerReach - 1))),
+                    0, centerReach - 1);
+                const int upperY = centerTop - peakDistance;
+                const int lowerY = centerBottom + peakDistance;
+                uint8_t r, g, b;
+                colorFor(colorPosition, 1.0f, audio, r, g, b);
+                for (int w = 0; w < barWidth; ++w) {
+                    const int px = x + w;
+                    if (px < 0 || px >= matrix_width) continue;
+                    canvas->SetPixel(px, upperY, r, g, b);
+                    canvas->SetPixel(px, lowerY, r, g, b);
+                }
+            }
+            continue;
+        }
+
+        const int barHeight = std::clamp(
+            static_cast<int>(std::lround(value * matrix_height)),
+            0, matrix_height);
+        for (int row = 0; row < barHeight; ++row) {
+            const int y = matrix_height - 1 - row;
+            const float intensity = 0.4f + 0.6f *
+                static_cast<float>(row + 1) /
+                static_cast<float>(std::max(1, barHeight));
+            uint8_t r, g, b;
+            colorFor(colorPosition, intensity, audio, r, g, b);
+
+            for (int w = 0; w < barWidth; ++w) {
+                const int px = x + w;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, y, r, g, b);
+
+                // Mirroring is meaningful for the normal left-to-right mode.
+                // Applying it to edges-to-center duplicates and overlaps bars.
+                if (mirror_->get() && mode == DisplayMode::NORMAL)
+                    canvas->SetPixel(matrix_width - 1 - px, y, r, g, b);
+            }
+        }
+
+        if (fallingDots_->get() && peak > 0.001f) {
+            const int peakY = std::clamp(
+                matrix_height - 1 - static_cast<int>(std::lround(
+                    peak * (matrix_height - 1))),
+                0, matrix_height - 1);
+            uint8_t r, g, b;
+            colorFor(colorPosition, 1.0f, audio, r, g, b);
+            for (int w = 0; w < barWidth; ++w) {
+                const int px = x + w;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, peakY, r, g, b);
+                if (mirror_->get() && mode == DisplayMode::NORMAL)
+                    canvas->SetPixel(matrix_width - 1 - px, peakY, r, g, b);
+            }
         }
     }
-
-    if (!plugin)
-    {
-        spdlog::error("AudioSpectrumScene: Failed to find AudioVisualizer plugin");
-    }
 }
 
-string AudioSpectrumScene::get_name() const
-{
-    return "audio_spectrum";
-}
+void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
+                                      const AudioState::Snapshot &audio, bool spiral) {
+    const float stereoBalance = stereoMotion_->get() ?
+        std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f) : 0.0f;
+    const float stereoWidth = stereoMotion_->get() ?
+        std::clamp(audio.feature(AudioProtocol::Feature::StereoWidth), 0.0f, 1.0f) : 0.0f;
+    const float kick = std::clamp(audio.feature(AudioProtocol::Feature::Kick), 0.0f, 1.0f);
+    const float cx = matrix_width * (0.5f + stereoBalance * 0.11f);
+    const float cy = matrix_height * 0.5f;
+    const float size = static_cast<float>(std::min(matrix_width, matrix_height));
+    const float baseRadius = size * 0.21f * circleRadius_->get() * (1.0f + kick * 0.10f);
+    const float maxLength = size * 0.30f;
 
-void AudioSpectrumScene::register_properties()
-{
-    add_property(bar_width);
-    add_property(gap_width);
-    add_property(mirror_display);
-    add_property(rainbow_colors);
-    add_property(base_color);
-    add_property(falling_dots);
-    add_property(dot_fall_speed);
-    add_property(display_mode);
-    add_property(gradient_mode);
-    add_property(gradient_color1);
-    add_property(gradient_color2);
-    add_property(smooth_gradient);
-    add_property(circle_radius);
-    add_property(rotate_visualization);
-    add_property(rotation_speed);
-}
+    for (size_t i = 0; i < smoothed_.size(); ++i) {
+        const float t = static_cast<float>(i) /
+            static_cast<float>(std::max<size_t>(1, smoothed_.size() - 1));
+        const float angle = rotation_ + t * 2.0f * Pi *
+            (spiral ? 2.4f : 1.0f);
+        const float radius = baseRadius *
+            (spiral ? 0.35f + t * (1.5f + stereoWidth * 0.28f) : 1.0f + stereoWidth * 0.08f);
+        const float length = std::clamp(smoothed_[i], 0.0f, 1.0f) * maxLength;
 
-void AudioSpectrumScene::initialize_if_needed(int num_bands)
-{
-    if (peak_positions.size() != num_bands)
-    {
-        peak_positions.resize(num_bands, 0.0f);
-    }
-}
-
-uint32_t AudioSpectrumScene::get_bar_color(const int band_index, const float intensity, const int num_bands) const
-{
-    if (gradient_mode->get())
-    {
-        // Use gradient coloring
-        float position = static_cast<float>(band_index) / num_bands;
-        return get_gradient_color(position, intensity);
-    }
-    else if (rainbow_colors->get())
-    {
-        // Generate rainbow color based on band index
-        const float hue = static_cast<float>(band_index) / num_bands * 360.0f;
-        uint8_t r, g, b;
-        hsv_to_rgb(hue, 1.0f, intensity, r, g, b);
-        return (r << 16) | (g << 8) | b;
-    }
-    else
-    {
-        // Use base color with intensity
-        const rgb_matrix::Color color = base_color->get();
-        const uint8_t r = color.r * intensity;
-        const uint8_t g = color.g * intensity;
-        const uint8_t b = color.b * intensity;
-        return (r << 16) | (g << 8) | b;
-    }
-}
-
-uint32_t AudioSpectrumScene::get_gradient_color(float position, float intensity) const
-{
-    const auto color1 = gradient_color1->get();
-    const auto color2 = gradient_color2->get();
-
-    uint8_t r, g, b;
-
-    if (smooth_gradient->get())
-    {
-        // Smooth interpolation between colors
-        r = static_cast<uint8_t>((color1.r * (1.0f - position) + color2.r * position) * intensity);
-        g = static_cast<uint8_t>((color1.g * (1.0f - position) + color2.g * position) * intensity);
-        b = static_cast<uint8_t>((color1.b * (1.0f - position) + color2.b * position) * intensity);
-    }
-    else
-    {
-        // Hard transition at midpoint
-        if (position < 0.5f)
-        {
-            r = color1.r * intensity;
-            g = color1.g * intensity;
-            b = color1.b * intensity;
+        for (float distance = 0.0f; distance <= length; distance += 0.7f) {
+            const int x = static_cast<int>(std::round(
+                cx + std::cos(angle) * (radius + distance)));
+            const int y = static_cast<int>(std::round(
+                cy + std::sin(angle) * (radius + distance)));
+            uint8_t r, g, b;
+            colorFor(t, 0.28f + 0.72f * distance /
+                std::max(1.0f, length), audio, r, g, b);
+            addPixel(canvas, x, y, r, g, b);
         }
-        else
-        {
-            r = color2.r * intensity;
-            g = color2.g * intensity;
-            b = color2.b * intensity;
+
+        // Falling markers follow the same polar/spiral path as their bar.
+        // Previously these modes had no mode-aware peak marker at all.
+        if (fallingDots_->get() && i < peaks_.size() && peaks_[i] > 0.001f) {
+            const float peakRadius = radius +
+                std::clamp(peaks_[i], 0.0f, 1.0f) * maxLength;
+            const float tangentX = -std::sin(angle);
+            const float tangentY = std::cos(angle);
+            uint8_t r, g, b;
+            colorFor(t, 1.0f, audio, r, g, b);
+
+            for (int width = -1; width <= 1; ++width) {
+                const int x = static_cast<int>(std::round(
+                    cx + std::cos(angle) * peakRadius + tangentX * width));
+                const int y = static_cast<int>(std::round(
+                    cy + std::sin(angle) * peakRadius + tangentY * width));
+                addPixel(canvas, x, y, r, g, b);
+            }
         }
     }
-
-    return (r << 16) | (g << 8) | b;
 }
 
-bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas)
-{
-    if (!plugin)
-    {
-        spdlog::info("AudioSpectrumScene: Plugin not found, cannot render");
-        return false;
+void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas *canvas,
+                                        const AudioState::Snapshot &audio) {
+    if (audio.waveform.empty()) return;
+
+    const bool standalone = displayMode_->get().get() == DisplayMode::WAVEFORM;
+    const float balance = stereoMotion_->get()
+        ? std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f)
+        : 0.0f;
+    const float loudness = std::clamp(audio.feature(AudioProtocol::Feature::LoudnessFast), 0.0f, 1.0f);
+    const float center = matrix_height * (0.5f + balance * 0.035f);
+    const float amplitude = matrix_height * (standalone ? 0.44f : 0.31f) * waveformGain_->get()
+        * (0.86f + loudness * 0.10f + beatPulse_ * 0.08f);
+    const int thickness = std::clamp(waveformThickness_->get(), 1, 3);
+    const auto style = waveformStyle_->get().get();
+
+    auto sampleForX = [&](int x) {
+        const size_t n = audio.waveform.size();
+        const size_t begin = std::min(n - 1, static_cast<size_t>(x) * n / static_cast<size_t>(std::max(1, matrix_width)));
+        const size_t end = std::max(begin + 1,
+            std::min(n, static_cast<size_t>(x + 1) * n / static_cast<size_t>(std::max(1, matrix_width))));
+        float selected = audio.waveform[begin];
+        for (size_t i = begin + 1; i < end; ++i)
+            if (std::abs(audio.waveform[i]) > std::abs(selected)) selected = audio.waveform[i];
+        return std::clamp(selected, -1.0f, 1.0f);
+    };
+
+    auto drawTracePoint = [&](int x, int y, float position, float intensity) {
+        uint8_t r = 0, g = 0, b = 0;
+        colorFor(position, std::clamp(intensity, 0.0f, 1.0f), audio, r, g, b);
+        for (int offset = -(thickness - 1); offset <= thickness - 1; ++offset) {
+            const float falloff = offset == 0 ? 1.0f : 0.42f;
+            addPixel(canvas, x, y + offset,
+                static_cast<uint8_t>(r * falloff),
+                static_cast<uint8_t>(g * falloff),
+                static_cast<uint8_t>(b * falloff));
+        }
+    };
+
+    if (style == WaveformStyle::MIRRORED) {
+        int previousUpper = static_cast<int>(std::lround(center));
+        int previousLower = previousUpper;
+        for (int x = 0; x < matrix_width; ++x) {
+            const float sample = std::abs(sampleForX(x));
+            const int upper = std::clamp(static_cast<int>(std::lround(center - sample * amplitude)), 0, matrix_height - 1);
+            const int lower = std::clamp(static_cast<int>(std::lround(center + sample * amplitude)), 0, matrix_height - 1);
+            const float position = static_cast<float>(x) / static_cast<float>(std::max(1, matrix_width - 1));
+            for (int y = std::min(previousUpper, upper); y <= std::max(previousUpper, upper); ++y)
+                drawTracePoint(x, y, position, standalone ? 0.95f : 0.68f);
+            for (int y = std::min(previousLower, lower); y <= std::max(previousLower, lower); ++y)
+                drawTracePoint(x, y, position, standalone ? 0.95f : 0.68f);
+            previousUpper = upper;
+            previousLower = lower;
+        }
+        return;
     }
 
-    auto frame_time = frameTimer.tick();
-    auto audio_data = plugin->get_audio_data();
+    int previousY = static_cast<int>(std::lround(center));
+    for (int x = 0; x < matrix_width; ++x) {
+        const float sample = sampleForX(x);
+        const int y = std::clamp(static_cast<int>(std::lround(center - sample * amplitude)), 0, matrix_height - 1);
+        const float position = static_cast<float>(x) / static_cast<float>(std::max(1, matrix_width - 1));
 
-    if (audio_data.empty())
-    {
-        // No audio data yet, clear the display
-        spdlog::error("AudioSpectrumScene: Audio Data is empty, cannot render");
-        canvas->Clear();
-        return false;
+        if (style == WaveformStyle::FILLED) {
+            const int mid = std::clamp(static_cast<int>(std::lround(center)), 0, matrix_height - 1);
+            const int from = std::min(mid, y), to = std::max(mid, y);
+            const int span = std::max(1, to - from);
+            for (int py = from; py <= to; ++py) {
+                const float edge = std::abs(static_cast<float>(py - mid)) / static_cast<float>(span);
+                uint8_t r = 0, g = 0, b = 0;
+                colorFor(position, (standalone ? 0.26f : 0.15f) + edge * (standalone ? 0.62f : 0.40f), audio, r, g, b);
+                addPixel(canvas, x, py, r, g, b);
+            }
+            drawTracePoint(x, y, position, standalone ? 1.0f : 0.72f);
+        } else {
+            const int from = std::min(previousY, y), to = std::max(previousY, y);
+            for (int py = from; py <= to; ++py)
+                drawTracePoint(x, py, position, standalone ? 0.96f : 0.68f);
+        }
+        previousY = y;
     }
+}
 
-    initialize_if_needed(audio_data.size());
+void AudioSpectrumScene::renderSpectrogram(rgb_matrix::FrameCanvas *canvas,
+                                           const AudioState::Snapshot &audio) {
+    for (int x = 0; x < matrix_width && x < static_cast<int>(history_.size()); ++x) {
+        const auto &column = history_[x];
+        for (int y = 0; y < matrix_height; ++y) {
+            const size_t index = std::min(column.size() - 1,
+                static_cast<size_t>((1.0f - static_cast<float>(y) / matrix_height) * (column.size() - 1)));
+            const float value = std::clamp(column[index] * (1.0f - x / static_cast<float>(matrix_width) * 0.45f), 0.0f, 1.0f);
+            if (value < 0.025f) continue;
+            uint8_t r, g, b; colorFor(static_cast<float>(index) / column.size(), value, audio, r, g, b);
+            canvas->SetPixel(matrix_width - 1 - x, y, r, g, b);
+        }
+    }
+}
 
-    // Get new timestamp to check if the data has been updated
-    uint32_t current_timestamp = plugin->get_last_timestamp();
-    bool new_data = (current_timestamp != last_timestamp);
-    last_timestamp = current_timestamp;
-
-    // Clear the display
+bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.05f);
+    const auto audio = AudioState::snapshot();
+    artworkSnapshot_ = useSpotifyArtwork_->get() ? MediaArtworkState::snapshot() : MediaArtworkState::Snapshot{};
     canvas->Clear();
+    if (!audio.fresh() || audio.spectrum.empty()) return false;
 
-    const int width = matrix_width;
-    const int height = matrix_height;
-
-    // Update rotation angle if rotation is enabled
-    if (rotate_visualization->get())
-    {
-        rotation_angle += 0.001f * rotation_speed->get();
-        if (rotation_angle > 2 * M_PI)
-            rotation_angle -= 2 * M_PI;
+    updateSpectrum(audio, dt);
+    if (beatPulseEnabled_->get()) {
+        if (audio.event(AudioProtocol::BeatEvent) || (lastBeat_ != 0 && audio.beat_counter > lastBeat_))
+            beatPulse_ = 1.0f;
+        beatPulse_ = std::max(0.0f, beatPulse_ - dt * 4.5f);
+    } else {
+        beatPulse_ = 0.0f;
+    }
+    lastBeat_ = audio.beat_counter;
+    if (rotate_->get()) {
+        const float snare = std::clamp(audio.feature(AudioProtocol::Feature::Snare), 0.0f, 1.0f);
+        rotation_ += dt * rotationSpeed_->get() * (0.45f + tempoRate(audio) * 0.55f + snare * 0.18f);
     }
 
-    // Handle special visualization modes
-    DisplayMode mode = display_mode->get().get();
-    if (mode == DisplayMode::CIRCLE)
-    {
-        render_circle_visualization(canvas, audio_data);
-        return true;
+    switch (displayMode_->get().get()) {
+    case DisplayMode::CIRCLE: renderCircle(canvas, audio, false); break;
+    case DisplayMode::SPIRAL: renderCircle(canvas, audio, true); break;
+    case DisplayMode::WAVEFORM: renderWaveform(canvas, audio); break;
+    case DisplayMode::SPECTROGRAM: renderSpectrogram(canvas, audio); break;
+    default: renderBars(canvas, audio); break;
     }
-    else if (mode == DisplayMode::SPIRAL)
-    {
-        render_spiral_visualization(canvas, audio_data);
-        return true;
-    }
-
-    // Continue with standard bar visualizations for modes 0, 1, 2
-    // Determine how many bands we can fit on the display
-    const int total_width_per_band = bar_width->get() + gap_width->get();
-    const int max_bands = width / total_width_per_band;
-    const int num_bands = std::min(static_cast<int>(audio_data.size()), max_bands);
-
-    // Update peak positions (falling dots)
-    for (int i = 0; i < num_bands; i++)
-    {
-        float band_value = audio_data[i] / 255.0f;
-
-        // Update peak positions (falling dots)
-        if (band_value > peak_positions[i])
-        {
-            peak_positions[i] = band_value;
-        }
-        else if (falling_dots->get())
-        {
-            peak_positions[i] -= dot_fall_speed->get() * frame_time.deltaFrame.count();
-            peak_positions[i] = std::max(0.0f, peak_positions[i]);
-        }
-    }
-
-    // Draw the spectrum
-    for (int i = 0; i < num_bands; i++)
-    {
-        int x;
-        float band_value = audio_data[i] / 255.0f;
-
-        // Calculate bar height based on band value
-        int bar_height = static_cast<int>(band_value * height);
-        bar_height = std::min(bar_height, height);
-
-        auto display_mode = this->display_mode->get().get();
-
-        // Calculate x position based on display mode
-        switch (display_mode)
-        {
-        case DisplayMode::EDGES_TO_CENTER:
-        {
-            int half_bands = num_bands / 2;
-            if (i < half_bands)
-            {
-                // Left side (starting from edge)
-                x = i * total_width_per_band;
-            }
-            else
-            {
-                // Right side (starting from edge)
-                x = width - 1 - ((i - half_bands) + 1) * total_width_per_band;
-            }
-        }
-        break;
-
-        case DisplayMode::CENTER_OUT:
-        case DisplayMode::NORMAL: // Normal (left to right)
-        default:
-            x = i * total_width_per_band;
-            break;
-        }
-
-        auto draw_bar = [&](int y_start, int y_end, int step)
-        {
-            for (int y = y_start; y != y_end; y += step)
-            {
-                if (y < 0 || y >= height)
-                    continue;
-
-                float intensity = static_cast<float>(height - y) / height;
-                uint32_t color = get_bar_color(i, intensity, num_bands);
-
-                uint8_t r = (color >> 16) & 0xFF;
-                uint8_t g = (color >> 8) & 0xFF;
-                uint8_t b = color & 0xFF;
-
-                for (int w = 0; w < bar_width->get(); w++)
-                {
-                    canvas->SetPixel(x + w, height - 1 - y, r, g, b);
-
-                    // Mirror if enabled, but only in normal mode
-                    if (mirror_display->get() && display_mode == DisplayMode::NORMAL)
-                    {
-                        canvas->SetPixel(width - 1 - (x + w), height - 1 - y, r, g, b);
-                    }
-                }
-            }
-        };
-
-        if (display_mode != DisplayMode::CENTER_OUT)
-        {
-            draw_bar(0, bar_height, 1);
-        }
-        else
-        {
-            bar_height /= 2;
-            int half_height = height / 2;
-            draw_bar(half_height, half_height + bar_height, 1);
-            draw_bar(half_height - 1, half_height - bar_height - 1, -1);
-        }
-
-        // Draw the peak dot
-        if (falling_dots->get())
-        {
-            int peak_y = static_cast<int>(peak_positions[i] * height);
-            peak_y = std::min(peak_y, height - 1);
-
-            if(display_mode == DisplayMode::CENTER_OUT)
-                peak_y /= 2;
-
-            uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
-            uint8_t r = (peak_color >> 16) & 0xFF;
-            uint8_t g = (peak_color >> 8) & 0xFF;
-            uint8_t b = peak_color & 0xFF;
-
-            int half_height = height / 2;
-            for (int w = 0; w < bar_width->get(); w++)
-            {
-                if(display_mode == DisplayMode::CENTER_OUT)
-                {
-                    // Center out mode, draw peak at center
-                    canvas->SetPixel(x + w, half_height - 1 - peak_y, r, g, b);
-                    canvas->SetPixel(x + w, half_height - 1 + peak_y, r, g, b);
-                }
-                else
-                    canvas->SetPixel(x + w, height - 1 - peak_y, r, g, b);
-            }
-        }
-    }
-
+    if (showWaveform_->get() && displayMode_->get().get() != DisplayMode::WAVEFORM)
+        renderWaveform(canvas, audio);
     return true;
 }
 
-void AudioSpectrumScene::render_circle_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data)
-{
-    const int width = matrix_width;
-    const int height = matrix_height;
-    const int center_x = width / 2;
-    const int center_y = height / 2;
-    const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
-
-    const int num_bands = std::min(static_cast<int>(audio_data.size()), 64); // Limit for performance
-    const float angle_step = 2 * M_PI / num_bands;
-
-    initialize_if_needed(num_bands);
-
-    // Update peak positions
-    for (int i = 0; i < num_bands; i++)
-    {
-        float band_value = audio_data[i] / 255.0f;
-
-        if (band_value > peak_positions[i])
-        {
-            peak_positions[i] = band_value;
-        }
-        else if (falling_dots->get())
-        {
-            peak_positions[i] -= dot_fall_speed->get() * 0.016f; // Assume 60 FPS
-            peak_positions[i] = std::max(0.0f, peak_positions[i]);
-        }
-    }
-
-    // Draw circular spectrum
-    for (int i = 0; i < num_bands; i++)
-    {
-        float angle = i * angle_step + rotation_angle;
-        float band_value = audio_data[i] / 255.0f;
-
-        // Draw expanding radial line from center outward
-        float line_length = band_value * max_radius;
-        int steps = static_cast<int>(line_length);
-
-        for (int step = 0; step < steps; step++)
-        {
-            float radius = static_cast<float>(step);
-            // Calculate line width that expands outward to reduce empty space
-            float width_factor = 1.0f + (radius / max_radius) * 2.0f; // Expands from 1 to 3 pixels wide
-            int line_width = static_cast<int>(width_factor);
-
-            for (int w = -line_width / 2; w <= line_width / 2; w++)
-            {
-                float offset_angle = angle + (w * 0.05f); // Small angular offset for width
-                auto [x, y] = polar_to_cartesian(radius, offset_angle, center_x, center_y);
-
-                if (x >= 0 && x < width && y >= 0 && y < height)
-                {
-                    float intensity = 1.0f - (radius / max_radius) * 0.3f; // Less fade for better visibility
-                    uint32_t color = get_bar_color(i, intensity, num_bands);
-
-                    uint8_t r = (color >> 16) & 0xFF;
-                    uint8_t g = (color >> 8) & 0xFF;
-                    uint8_t b = color & 0xFF;
-
-                    canvas->SetPixel(x, y, r, g, b);
-                }
-            }
-        }
-
-        // Draw peak dot
-        if (falling_dots->get())
-        {
-            float peak_radius = peak_positions[i] * max_radius;
-            auto [peak_x, peak_y] = polar_to_cartesian(peak_radius, angle, center_x, center_y);
-
-            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height)
-            {
-                uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
-                uint8_t r = (peak_color >> 16) & 0xFF;
-                uint8_t g = (peak_color >> 8) & 0xFF;
-                uint8_t b = peak_color & 0xFF;
-
-                canvas->SetPixel(peak_x, peak_y, r, g, b);
-            }
-        }
-    }
+std::unique_ptr<Scenes::Scene> AudioSpectrumSceneWrapper::create() {
+    return std::make_unique<AudioSpectrumScene>();
 }
-
-void AudioSpectrumScene::render_spiral_visualization(rgb_matrix::FrameCanvas *canvas, const std::vector<uint8_t> &audio_data)
-{
-    const int width = matrix_width;
-    const int height = matrix_height;
-    const int center_x = width / 2;
-    const int center_y = height / 2;
-    const float max_radius = std::min(width, height) / 2.0f * circle_radius->get();
-
-    const int num_bands = std::min(static_cast<int>(audio_data.size()), 128);
-    const float spiral_turns = 3.0f; // Number of spiral turns
-    const float angle_step = (2 * M_PI * spiral_turns) / num_bands;
-
-    initialize_if_needed(num_bands);
-
-    // Update peak positions
-    for (int i = 0; i < num_bands; i++)
-    {
-        float band_value = audio_data[i] / 255.0f;
-
-        if (band_value > peak_positions[i])
-        {
-            peak_positions[i] = band_value;
-        }
-        else if (falling_dots->get())
-        {
-            peak_positions[i] -= dot_fall_speed->get() * 0.016f;
-            peak_positions[i] = std::max(0.0f, peak_positions[i]);
-        }
-    }
-
-    // Draw spiral spectrum
-    for (int i = 0; i < num_bands; i++)
-    {
-        float angle = i * angle_step + rotation_angle;
-        float base_radius = (static_cast<float>(i) / num_bands) * max_radius;
-        float band_value = audio_data[i] / 255.0f;
-
-        // Draw line outward from spiral path
-        float line_length = band_value * max_radius * 0.3f; // Shorter lines for spiral
-        int steps = static_cast<int>(line_length);
-
-        for (int step = 0; step < steps; step++)
-        {
-            float radius = base_radius + static_cast<float>(step);
-            auto [x, y] = polar_to_cartesian(radius, angle, center_x, center_y);
-
-            if (x >= 0 && x < width && y >= 0 && y < height)
-            {
-                float intensity = 1.0f - (static_cast<float>(step) / line_length) * 0.3f;
-                uint32_t color = get_bar_color(i, intensity, num_bands);
-
-                uint8_t r = (color >> 16) & 0xFF;
-                uint8_t g = (color >> 8) & 0xFF;
-                uint8_t b = color & 0xFF;
-
-                canvas->SetPixel(x, y, r, g, b);
-            }
-        }
-
-        // Draw peak dot
-        if (falling_dots->get())
-        {
-            float peak_radius = base_radius + peak_positions[i] * max_radius * 0.3f;
-            auto [peak_x, peak_y] = polar_to_cartesian(peak_radius, angle, center_x, center_y);
-
-            if (peak_x >= 0 && peak_x < width && peak_y >= 0 && peak_y < height)
-            {
-                uint32_t peak_color = get_bar_color(i, 1.0f, num_bands);
-                uint8_t r = (peak_color >> 16) & 0xFF;
-                uint8_t g = (peak_color >> 8) & 0xFF;
-                uint8_t b = peak_color & 0xFF;
-
-                canvas->SetPixel(peak_x, peak_y, r, g, b);
-            }
-        }
-    }
-}
-
-std::pair<int, int> AudioSpectrumScene::polar_to_cartesian(float radius, float angle, int center_x, int center_y) const
-{
-    int x = static_cast<int>(center_x + radius * cos(angle));
-    int y = static_cast<int>(center_y + radius * sin(angle));
-    return {x, y};
 }
