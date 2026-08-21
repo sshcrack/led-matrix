@@ -34,7 +34,10 @@ void AudioSpectrumScene::register_properties() {
         .group("Layout");
     barWidth_->label("Bar width").description("Width of spectrum bars.").group("Bars").unit("px");
     gapWidth_->label("Bar gap").description("Space between adjacent spectrum bars.").group("Bars").unit("px");
-    mirror_->label("Mirror bars").description("Mirror the normal bar layout across the matrix centerline.").group("Bars");
+    mirror_->label("Mirror bars").description("Layer a horizontally mirrored spectrum behind the primary bars.").group("Bars");
+    mirrorLayerBrightness_->label("Mirror backdrop brightness")
+        .description("Brightness of the mirrored rear layer. Lower values keep overlapping bars readable with monochrome palettes such as white-on-white.")
+        .group("Bars").visible_if("mirror_display", true).step(0.05);
     fallingDots_->label("Peak markers").description("Show falling or outward-moving peak markers.").group("Bars");
     dotFallSpeed_->label("Peak fall speed").description("How quickly peak markers return after a transient.").group("Bars").visible_if("falling_dots", true).step(0.05);
     circleRadius_->label("Radial radius").description("Base radius used by circle and spiral layouts.").group("Radial").step(0.05);
@@ -52,16 +55,22 @@ void AudioSpectrumScene::register_properties() {
     showWaveform_->label("Waveform overlay").description("Draw the compact waveform over spectrum modes.").group("Overlay");
     waveformStyle_->label("Waveform style").description("Trace, mirrored scope, or filled waveform rendering.").group("Waveform");
     waveformGain_->label("Waveform gain").description("Vertical gain for the waveform without changing spectrum sensitivity.").group("Waveform").step(0.05);
+    waveformStabilization_->label("Stabilize waveform")
+        .description("Phase-align consecutive audio blocks so the scope morphs smoothly instead of jumping at capture-block boundaries.")
+        .group("Waveform");
+    waveformSmoothing_->label("Waveform motion smoothing")
+        .description("Temporal smoothing applied after phase stabilization. Higher values make the waveform flow more slowly.")
+        .group("Waveform").step(0.02);
     waveformThickness_->label("Waveform thickness").description("Trace thickness in pixels. Higher values are brighter but cost slightly more fill work.").group("Waveform");
     stereoMotion_->label("Stereo motion").description("Let stereo balance move radial centers and width open the geometry.").group("Response");
 
-    add_property(barWidth_); add_property(gapWidth_); add_property(mirror_);
+    add_property(barWidth_); add_property(gapWidth_); add_property(mirror_); add_property(mirrorLayerBrightness_);
     add_property(rainbow_); add_property(musicalColor_); add_property(baseColor_); add_property(accentColor_); add_property(percussionColor_);
     add_property(fallingDots_); add_property(dotFallSpeed_); add_property(displayMode_);
     add_property(circleRadius_); add_property(rotate_); add_property(rotationSpeed_);
     add_property(sensitivity_); add_property(smoothing_); add_property(releaseSpeed_);
     add_property(beatPulseEnabled_); add_property(showWaveform_);
-    add_property(waveformStyle_); add_property(waveformGain_); add_property(waveformThickness_); add_property(stereoMotion_);
+    add_property(waveformStyle_); add_property(waveformGain_); add_property(waveformStabilization_); add_property(waveformSmoothing_); add_property(waveformThickness_); add_property(stereoMotion_);
     add_property(useSpotifyArtwork_);
 }
 
@@ -80,6 +89,90 @@ void AudioSpectrumScene::updateSpectrum(const AudioState::Snapshot &audio, float
     }
     history_.push_front(smoothed_);
     while (history_.size() > static_cast<size_t>(std::max(matrix_width, matrix_height))) history_.pop_back();
+}
+
+void AudioSpectrumScene::updateWaveform(const AudioState::Snapshot &audio, float dt) {
+    if (audio.waveform.empty() || matrix_width <= 0) {
+        waveformSmoothed_.clear();
+        waveformTarget_.clear();
+        waveformScratch_.clear();
+        return;
+    }
+
+    const size_t width = static_cast<size_t>(matrix_width);
+    waveformTarget_.resize(width);
+    waveformScratch_.resize(width);
+
+    // Resample continuously instead of selecting the strongest signed sample in
+    // each display column. Peak-picking makes tiny capture-boundary shifts look
+    // like completely different scope shapes.
+    const size_t sourceCount = audio.waveform.size();
+    for (size_t x = 0; x < width; ++x) {
+        const float sourcePosition = width <= 1 || sourceCount <= 1
+            ? 0.0f
+            : static_cast<float>(x) * static_cast<float>(sourceCount - 1) /
+              static_cast<float>(width - 1);
+        const size_t lo = std::min(sourceCount - 1, static_cast<size_t>(sourcePosition));
+        const size_t hi = std::min(sourceCount - 1, lo + 1);
+        const float fraction = sourcePosition - static_cast<float>(lo);
+        waveformScratch_[x] = std::clamp(
+            audio.waveform[lo] + (audio.waveform[hi] - audio.waveform[lo]) * fraction,
+            -1.0f, 1.0f);
+    }
+
+    // A small spatial low-pass removes one-pixel saw teeth while retaining the
+    // musical shape. It is applied to the target only, so it cannot accumulate
+    // and flatten a stationary waveform over time.
+    for (size_t x = 0; x < width; ++x) {
+        const float left = waveformScratch_[x == 0 ? x : x - 1];
+        const float center = waveformScratch_[x];
+        const float right = waveformScratch_[x + 1 < width ? x + 1 : x];
+        waveformTarget_[x] = left * 0.15f + center * 0.70f + right * 0.15f;
+    }
+
+    if (waveformSmoothed_.size() != width) {
+        waveformSmoothed_ = waveformTarget_;
+        return;
+    }
+
+    if (waveformStabilization_->get() && width > 3) {
+        float previousEnergy = 0.0f;
+        float targetEnergy = 0.0f;
+        for (size_t x = 0; x < width; ++x) {
+            previousEnergy += waveformSmoothed_[x] * waveformSmoothed_[x];
+            targetEnergy += waveformTarget_[x] * waveformTarget_[x];
+        }
+
+        if (previousEnergy > 0.0001f && targetEnergy > 0.0001f) {
+            size_t bestShift = 0;
+            float bestCorrelation = -2.0f;
+            const float denominator = std::sqrt(previousEnergy * targetEnergy);
+            for (size_t shift = 0; shift < width; ++shift) {
+                float dot = 0.0f;
+                for (size_t x = 0; x < width; ++x)
+                    dot += waveformSmoothed_[x] * waveformTarget_[(x + shift) % width];
+                const float correlation = dot / denominator;
+                if (correlation > bestCorrelation) {
+                    bestCorrelation = correlation;
+                    bestShift = shift;
+                }
+            }
+
+            // Only phase-lock when there is real similarity. Percussive/noisy
+            // blocks should morph naturally instead of being forced into an
+            // arbitrary cyclic alignment.
+            if (bestCorrelation > 0.18f && bestShift != 0) {
+                waveformScratch_ = waveformTarget_;
+                for (size_t x = 0; x < width; ++x)
+                    waveformTarget_[x] = waveformScratch_[(x + bestShift) % width];
+            }
+        }
+    }
+
+    const float retention = std::clamp(waveformSmoothing_->get(), 0.0f, 0.995f);
+    const float blend = 1.0f - std::pow(retention, std::max(0.0f, dt) * 60.0f);
+    for (size_t x = 0; x < width; ++x)
+        waveformSmoothed_[x] += (waveformTarget_[x] - waveformSmoothed_[x]) * blend;
 }
 
 void AudioSpectrumScene::colorFor(float position, float intensity,
@@ -160,6 +253,69 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
         return matrix_width - barWidth - (displayIndex - leftCount) * stride;
     };
 
+    auto drawNormalLayerBar = [&](int i, bool mirrored, float brightness) {
+        const size_t sourceIndex = sourceIndexFor(i);
+        const float value = std::clamp(smoothed_[sourceIndex], 0.0f, 1.0f);
+        const float peak = std::clamp(peaks_[sourceIndex], 0.0f, 1.0f);
+        const float colorPosition = count <= 1 ? 0.0f
+            : static_cast<float>(i) / static_cast<float>(count - 1);
+        const int x = i * stride;
+        const int barHeight = std::clamp(
+            static_cast<int>(std::lround(value * matrix_height)),
+            0, matrix_height);
+
+        for (int row = 0; row < barHeight; ++row) {
+            const int y = matrix_height - 1 - row;
+            const float intensity = 0.4f + 0.6f *
+                static_cast<float>(row + 1) /
+                static_cast<float>(std::max(1, barHeight));
+            uint8_t r, g, b;
+            colorFor(colorPosition, intensity, audio, r, g, b);
+            r = static_cast<uint8_t>(static_cast<float>(r) * brightness);
+            g = static_cast<uint8_t>(static_cast<float>(g) * brightness);
+            b = static_cast<uint8_t>(static_cast<float>(b) * brightness);
+
+            for (int w = 0; w < barWidth; ++w) {
+                const int sourceX = x + w;
+                const int px = mirrored ? matrix_width - 1 - sourceX : sourceX;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, y, r, g, b);
+            }
+        }
+
+        if (fallingDots_->get() && peak > 0.001f) {
+            const int peakY = std::clamp(
+                matrix_height - 1 - static_cast<int>(std::lround(
+                    peak * (matrix_height - 1))),
+                0, matrix_height - 1);
+            uint8_t r, g, b;
+            colorFor(colorPosition, 1.0f, audio, r, g, b);
+            r = static_cast<uint8_t>(static_cast<float>(r) * brightness);
+            g = static_cast<uint8_t>(static_cast<float>(g) * brightness);
+            b = static_cast<uint8_t>(static_cast<float>(b) * brightness);
+            for (int w = 0; w < barWidth; ++w) {
+                const int sourceX = x + w;
+                const int px = mirrored ? matrix_width - 1 - sourceX : sourceX;
+                if (px < 0 || px >= matrix_width) continue;
+                canvas->SetPixel(px, peakY, r, g, b);
+            }
+        }
+    };
+
+    if (mode == DisplayMode::NORMAL) {
+        // Treat mirroring as a real rear layer, not as interleaved writes while
+        // each foreground bar is drawn. This gives deterministic z-order and
+        // lets monochrome configurations use luminance for separation.
+        if (mirror_->get()) {
+            const float rearBrightness = std::clamp(mirrorLayerBrightness_->get(), 0.0f, 1.0f);
+            for (int i = 0; i < count; ++i)
+                drawNormalLayerBar(i, true, rearBrightness);
+        }
+        for (int i = 0; i < count; ++i)
+            drawNormalLayerBar(i, false, 1.0f);
+        return;
+    }
+
     for (int i = 0; i < count; ++i) {
         const size_t sourceIndex = sourceIndexFor(i);
         const float value = std::clamp(smoothed_[sourceIndex], 0.0f, 1.0f);
@@ -190,8 +346,6 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
                 }
             }
 
-            // In center-out mode the falling marker must track both outward
-            // ends of the bar, not fall from the bottom like a normal bar.
             if (fallingDots_->get() && peak > 0.001f) {
                 const int peakDistance = std::clamp(
                     static_cast<int>(std::lround(peak * (centerReach - 1))),
@@ -210,6 +364,8 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
             continue;
         }
 
+        // EDGES_TO_CENTER is intentionally a single layer. Mirroring it would
+        // duplicate and overlap bars that are already laid out symmetrically.
         const int barHeight = std::clamp(
             static_cast<int>(std::lround(value * matrix_height)),
             0, matrix_height);
@@ -220,16 +376,10 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
                 static_cast<float>(std::max(1, barHeight));
             uint8_t r, g, b;
             colorFor(colorPosition, intensity, audio, r, g, b);
-
             for (int w = 0; w < barWidth; ++w) {
                 const int px = x + w;
                 if (px < 0 || px >= matrix_width) continue;
                 canvas->SetPixel(px, y, r, g, b);
-
-                // Mirroring is meaningful for the normal left-to-right mode.
-                // Applying it to edges-to-center duplicates and overlaps bars.
-                if (mirror_->get() && mode == DisplayMode::NORMAL)
-                    canvas->SetPixel(matrix_width - 1 - px, y, r, g, b);
             }
         }
 
@@ -244,8 +394,6 @@ void AudioSpectrumScene::renderBars(rgb_matrix::FrameCanvas *canvas,
                 const int px = x + w;
                 if (px < 0 || px >= matrix_width) continue;
                 canvas->SetPixel(px, peakY, r, g, b);
-                if (mirror_->get() && mode == DisplayMode::NORMAL)
-                    canvas->SetPixel(matrix_width - 1 - px, peakY, r, g, b);
             }
         }
     }
@@ -307,7 +455,7 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas *canvas,
 
 void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas *canvas,
                                         const AudioState::Snapshot &audio) {
-    if (audio.waveform.empty()) return;
+    if (waveformSmoothed_.empty()) return;
 
     const bool standalone = displayMode_->get().get() == DisplayMode::WAVEFORM;
     const float balance = stereoMotion_->get()
@@ -321,14 +469,10 @@ void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas *canvas,
     const auto style = waveformStyle_->get().get();
 
     auto sampleForX = [&](int x) {
-        const size_t n = audio.waveform.size();
-        const size_t begin = std::min(n - 1, static_cast<size_t>(x) * n / static_cast<size_t>(std::max(1, matrix_width)));
-        const size_t end = std::max(begin + 1,
-            std::min(n, static_cast<size_t>(x + 1) * n / static_cast<size_t>(std::max(1, matrix_width))));
-        float selected = audio.waveform[begin];
-        for (size_t i = begin + 1; i < end; ++i)
-            if (std::abs(audio.waveform[i]) > std::abs(selected)) selected = audio.waveform[i];
-        return std::clamp(selected, -1.0f, 1.0f);
+        const size_t index = std::min(
+            waveformSmoothed_.size() - 1,
+            static_cast<size_t>(std::max(0, x)));
+        return std::clamp(waveformSmoothed_[index], -1.0f, 1.0f);
     };
 
     auto drawTracePoint = [&](int x, int y, float position, float intensity) {
@@ -410,6 +554,14 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas *canvas) {
     if (!audio.fresh() || audio.spectrum.empty()) return false;
 
     updateSpectrum(audio, dt);
+    const auto mode = displayMode_->get().get();
+    if (mode == DisplayMode::WAVEFORM || showWaveform_->get())
+        updateWaveform(audio, dt);
+    else {
+        waveformSmoothed_.clear();
+        waveformTarget_.clear();
+        waveformScratch_.clear();
+    }
     if (beatPulseEnabled_->get()) {
         if (audio.event(AudioProtocol::BeatEvent) || (lastBeat_ != 0 && audio.beat_counter > lastBeat_))
             beatPulse_ = 1.0f;
