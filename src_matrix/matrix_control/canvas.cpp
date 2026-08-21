@@ -107,9 +107,22 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 next_scene->initialize(matrix_width, matrix_height);
         }
 
-        bool early_exit = renderer_.render_scene_phase(scene, composite, end_ms);
+        std::function<bool()> inputs_still_available;
+        if (!pinned_scene) {
+            const auto input_spec = scene->get_effective_runtime_inputs();
+            if (!input_spec.required.empty()) {
+                inputs_still_available = [this, input_spec] {
+                    return RuntimeInputs::satisfies(input_spec, runtime_inputs_fn_());
+                };
+            }
+        }
 
-        if (!early_exit && next_scene != nullptr) {
+        bool early_exit = renderer_.render_scene_phase(
+            scene, composite, end_ms, std::move(inputs_still_available));
+
+        if (!early_exit && next_scene != nullptr
+            && RuntimeInputs::satisfies(
+                next_scene->get_effective_runtime_inputs(), runtime_inputs_fn_())) {
             transition_engine_.render_transition_phase(
                 scene, next_scene,
                 first, second, composite,

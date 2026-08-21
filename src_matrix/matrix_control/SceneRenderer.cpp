@@ -27,10 +27,20 @@ SceneRenderer::SceneRenderer(RGBMatrixBase *matrix,
 bool SceneRenderer::render_scene_phase(
     std::shared_ptr<Scenes::Scene> scene,
     FrameCanvas *&composite_offscreen_canvas,
-    tmillis_t end_ms)
+    tmillis_t end_ms,
+    std::function<bool()> inputs_still_available)
 {
     Diagnostics::RuntimeDiagnostics::instance().set_active_scene(scene->get_name());
+    tmillis_t next_input_check_ms = time_source_->now_ms();
     while (time_source_->now_ms() < end_ms) {
+        const auto now_ms = time_source_->now_ms();
+        if (inputs_still_available && now_ms >= next_input_check_ms) {
+            next_input_check_ms = now_ms + 250;
+            if (!inputs_still_available()) {
+                spdlog::debug("Scene '{}' lost a required Runtime Input; selecting a replacement", scene->get_name());
+                return true;
+            }
+        }
         bool cont = false;
         const auto render_start = std::chrono::steady_clock::now();
         try {
