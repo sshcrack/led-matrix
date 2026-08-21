@@ -16,7 +16,7 @@ permissions:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
 
 jobs:
   prepare:
