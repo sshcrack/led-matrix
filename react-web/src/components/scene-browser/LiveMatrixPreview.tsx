@@ -10,9 +10,7 @@ interface LiveMatrixPreviewProps {
   label?: string
 }
 
-type LiveState = 'connecting' | 'live' | 'fallback'
-
-const delay = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
+type LiveState = 'connecting' | 'live' | 'unavailable'
 
 function drawFrame(canvas: HTMLCanvasElement, buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer)
@@ -58,58 +56,115 @@ export default function LiveMatrixPreview({
   useEffect(() => {
     if (!apiUrl) return
 
-    let cancelled = false
-    let controller: AbortController | null = null
+    let disposed = false
+    let socket: WebSocket | null = null
+    let frameTimer: number | null = null
+    let reconnectTimer: number | null = null
+    let intersectsViewport = false
+    let requestPending = false
 
-    const poll = async () => {
-      let failures = 0
-      while (!cancelled) {
-        const shell = shellRef.current
-        const rect = shell?.getBoundingClientRect()
-        const visible = document.visibilityState !== 'hidden' && Boolean(
-          rect && rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth,
-        )
-        if (!visible) {
-          // No HTTP request means no matrix-frame copy on the Pi. This also
-          // stops captures when the browser tab is hidden or the preview has
-          // been scrolled completely off screen.
-          await delay(500)
-          continue
-        }
+    const canRequestFrame = () =>
+      !disposed && document.visibilityState !== 'hidden' && intersectsViewport
 
-        controller = new AbortController()
-        try {
-          const response = await fetch(`${apiUrl}/live_frame`, {
-            cache: 'no-store',
-            signal: controller.signal,
-          })
-          if (response.status === 204) {
-            if (failures === 0) setState('connecting')
-            await delay(90)
-            continue
-          }
-          if (!response.ok) throw new Error(`Live frame request failed (${response.status})`)
-
-          const buffer = await response.arrayBuffer()
-          if (!canvasRef.current) return
-          const frame = drawFrame(canvasRef.current, buffer)
-          failures = 0
-          setDimensions({ width: frame.width, height: frame.height })
-          setState('live')
-          await delay(75)
-        } catch (error) {
-          if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return
-          failures += 1
-          setState('fallback')
-          await delay(Math.min(2500, 500 + failures * 350))
-        }
+    const clearFrameTimer = () => {
+      if (frameTimer !== null) {
+        window.clearTimeout(frameTimer)
+        frameTimer = null
       }
     }
 
-    void poll()
+    const requestNextFrame = () => {
+      clearFrameTimer()
+      if (!canRequestFrame() || requestPending || socket?.readyState !== WebSocket.OPEN) return
+      requestPending = true
+      socket.send('next')
+    }
+
+    const scheduleNextFrame = () => {
+      clearFrameTimer()
+      if (!canRequestFrame()) return
+      frameTimer = window.setTimeout(requestNextFrame, 75)
+    }
+
+    const applyFrame = (buffer: ArrayBuffer) => {
+      if (!canvasRef.current) return
+      const frame = drawFrame(canvasRef.current, buffer)
+      setDimensions({ width: frame.width, height: frame.height })
+      setState('live')
+    }
+
+    const connect = () => {
+      if (disposed) return
+
+      let url: URL
+      try {
+        url = new URL(apiUrl)
+      } catch {
+        setState('unavailable')
+        return
+      }
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+      url.pathname = `${url.pathname.replace(/\/$/, '')}/live_frame`
+      url.search = ''
+      url.hash = ''
+
+      const nextSocket = new WebSocket(url)
+      nextSocket.binaryType = 'arraybuffer'
+      socket = nextSocket
+      requestPending = false
+      setState(current => current === 'live' ? current : 'connecting')
+
+      nextSocket.onopen = () => {
+        if (disposed || socket !== nextSocket) return
+        requestPending = false
+        requestNextFrame()
+      }
+
+      nextSocket.onmessage = event => {
+        if (disposed || socket !== nextSocket || !(event.data instanceof ArrayBuffer)) return
+        requestPending = false
+        try {
+          applyFrame(event.data)
+          scheduleNextFrame()
+        } catch {
+          nextSocket.close()
+        }
+      }
+
+      nextSocket.onerror = () => nextSocket.close()
+      nextSocket.onclose = () => {
+        if (disposed || socket !== nextSocket) return
+        socket = null
+        requestPending = false
+        clearFrameTimer()
+        setState('unavailable')
+        reconnectTimer = window.setTimeout(connect, 5000)
+      }
+    }
+
+    const shell = shellRef.current
+    const observer = new IntersectionObserver(entries => {
+      const entry = entries[0]
+      intersectsViewport = Boolean(entry?.isIntersecting)
+      if (canRequestFrame()) requestNextFrame()
+      else clearFrameTimer()
+    })
+    if (shell) observer.observe(shell)
+
+    const onVisibilityChange = () => {
+      if (canRequestFrame()) requestNextFrame()
+      else clearFrameTimer()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    connect()
     return () => {
-      cancelled = true
-      controller?.abort()
+      disposed = true
+      clearFrameTimer()
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      observer.disconnect()
+      socket?.close()
     }
   }, [apiUrl])
 
@@ -121,7 +176,11 @@ export default function LiveMatrixPreview({
   }
 
   const fallbackAvailable = Boolean(fallbackSceneName && fallbackHasPreview)
-  const statusLabel = state === 'live' ? 'Live' : state === 'connecting' ? 'Connecting' : 'Generated preview'
+  const statusLabel = state === 'live'
+    ? 'Live'
+    : state === 'connecting'
+      ? 'Connecting'
+      : fallbackAvailable ? 'Generated preview' : 'Unavailable'
 
   return (
     <div ref={shellRef} className={cn('matrix-shell', className)}>
@@ -131,7 +190,7 @@ export default function LiveMatrixPreview({
             'h-2 w-2 shrink-0 rounded-full',
             state === 'live' && 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]',
             state === 'connecting' && 'animate-pulse bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.7)]',
-            state === 'fallback' && 'bg-white/25',
+            state === 'unavailable' && 'bg-white/25',
           )} />
           <span className="truncate">{label ?? 'Live matrix'}</span>
           <span className="hidden rounded-full bg-white/5 px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] text-white/45 sm:inline">{statusLabel}</span>
@@ -147,7 +206,7 @@ export default function LiveMatrixPreview({
         <div className="matrix-grid-overlay" />
         <canvas ref={canvasRef} className={cn('relative z-10 h-full w-full [image-rendering:pixelated]', state !== 'live' && 'invisible')} />
 
-        {state === 'fallback' && fallbackAvailable && (
+        {state === 'unavailable' && fallbackAvailable && (
           <img
             src={`${apiUrl}/scene_preview?name=${encodeURIComponent(fallbackSceneName!)}`}
             alt={`${fallbackSceneName} generated scene preview`}
@@ -155,13 +214,13 @@ export default function LiveMatrixPreview({
           />
         )}
 
-        {state !== 'live' && !fallbackAvailable && (
+        {state !== 'live' && !(state === 'unavailable' && fallbackAvailable) && (
           <div className="absolute inset-0 z-10 flex h-full flex-col items-center justify-center gap-3 text-white/45">
             {state === 'connecting' ? <MonitorPlay className="h-9 w-9 animate-pulse" /> : <ImageOff className="h-8 w-8" />}
             <div className="max-w-56 text-center text-xs leading-relaxed">
               {state === 'connecting'
                 ? 'Waiting for the first rendered matrix frame…'
-                : 'Live frame streaming is unavailable on this controller.'}
+                : 'Live matrix preview is unavailable on this controller.'}
             </div>
           </div>
         )}

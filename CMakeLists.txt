@@ -146,6 +146,7 @@ else()
         src_matrix/server/canvas_status.cpp
         src_matrix/server/custom_assets_management.cpp
         src_matrix/server/desktop_ws.cpp
+        src_matrix/server/live_frame_ws.cpp
         src_matrix/server/other_routes.cpp
         src_matrix/server/post_processing_routes.cpp
         src_matrix/server/preset_management.cpp
@@ -362,6 +363,19 @@ if(ENABLE_EMULATOR)
         "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
         "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
     )
+    add_executable(live_frame_snapshot_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/live_frame_snapshot_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(live_frame_snapshot_smoke PRIVATE cxx_std_23)
+    target_include_directories(live_frame_snapshot_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(live_frame_snapshot_smoke PRIVATE
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+    )
+    add_test(NAME live_frame_snapshot_smoke COMMAND $<TARGET_FILE:live_frame_snapshot_smoke>)
+
     add_executable(property_compat_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
     )

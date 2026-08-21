@@ -18,6 +18,7 @@
 #include "shared/matrix/config/MainConfig.h"
 #include "matrix-factory.h"
 #include "server/server.h"
+#include "server/live_frame_ws.h"
 #include "udp.h"
 #include "matrix_control/hardware.h"
 
@@ -274,8 +275,11 @@ Daemon::Daemon(int argc, char* argv[])
             settings.write_http_response_timelimit(30s);
             settings.cleanup_func([]
             {
-                unique_lock lock(Server::registryMutex);
-                Server::registry.clear();
+                {
+                    unique_lock lock(Server::registryMutex);
+                    Server::registry.clear();
+                }
+                Server::clear_live_frame_connections();
             });
         });
 
