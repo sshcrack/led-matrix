@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <functional>
 
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
@@ -24,7 +25,8 @@ public:
     bool render_scene_phase(
         std::shared_ptr<Scenes::Scene> scene,
         FrameCanvas *&composite_offscreen_canvas,
-        tmillis_t end_ms);
+        tmillis_t end_ms,
+        std::function<bool()> inputs_still_available = {});
 
     void render_fallback();
 
