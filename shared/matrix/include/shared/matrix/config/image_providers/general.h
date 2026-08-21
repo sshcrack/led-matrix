@@ -39,7 +39,7 @@ namespace ImageProviders {
             return properties;
         }
 
-        virtual std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<
+        virtual std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<
             Post> > >, string>
         get_next_image() = 0;
 
@@ -49,6 +49,6 @@ namespace ImageProviders {
 
         [[nodiscard]] virtual json to_json() const;
 
-        static std::unique_ptr<General, void (*)(General *)> from_json(const json &j);
+        static std::unique_ptr<General> from_json(const json &j);
     };
 }

@@ -1,10 +1,52 @@
-export interface ListScenes { name: string; properties: Property<any>[]; has_preview?: boolean; category: string; }
+export interface ScenePreviewSpec {
+  enabled: boolean
+  inputs: string[]
+  property_overrides: Record<string, unknown>
+}
 
-export interface Property<T> {
-  default_value: T;
-  name: string;
-  additional?: any;
-  type_id: TypeId;
+export interface SceneCapabilities {
+  requires_desktop: boolean
+  requires_audio: boolean
+  requires_network: boolean
+  interactive: boolean
+  can_generate_preview: boolean
+  supports_audio: boolean
+  music_director_eligible: boolean
+}
+
+export interface PropertyUiMetadata {
+  label?: string
+  description?: string
+  group?: string
+  unit?: string
+  control?: string
+  step?: number
+  presets?: unknown[]
+  advanced?: boolean
+  visible_if?: { property: string; equals: unknown }
+  min?: number
+  max?: number
+  enum_name?: string
+  enum_values?: Array<{ value: string; display_name?: string }>
+  values?: unknown[]
+  [key: string]: unknown
+}
+
+export interface ListScenes {
+  name: string
+  properties: Property<unknown>[]
+  has_preview?: boolean
+  needs_desktop?: boolean
+  category: string
+  capabilities?: SceneCapabilities
+  preview?: ScenePreviewSpec
+}
+
+export interface Property<T = unknown> {
+  default_value: T
+  name: string
+  additional?: PropertyUiMetadata
+  type_id: TypeId
 }
 
 export type CollectionProvider = {
@@ -38,7 +80,7 @@ export type ProviderValue =
   | PagesProvider
   | RandomShaderProvider
   | CollectionShaderProvider
-  | { type: string; uuid: string; arguments: { [key: string]: any } };
+  | { type: string; uuid: string; arguments: Record<string, unknown> };
 
 export type TypeId =
   | "string" | "int" | "double" | "bool" | "float" | "millis"

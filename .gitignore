@@ -16,5 +16,22 @@ desktop_build
 __pycache__
 LED_Matrix_Controller.ini
 desktop_build*
-.cachereact-web/node_modules
+.cache
+react-web/node_modules
 react-web/dist
+
+# Editor / IDE temp files
+*.swp
+*.swo
+*.swn
+
+# Python
+*.pyc
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Install-directory artifacts
+install/lib/led-matrix/*.so
+install/lib/led-matrix/plugins/*.so

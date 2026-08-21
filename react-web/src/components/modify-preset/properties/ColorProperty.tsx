@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { HexColorPicker } from 'react-colorful'
 import { Label } from '~/components/ui/label'
 import { Input } from '~/components/ui/input'
-import { titleCase } from '~/lib/utils'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface ColorPropertyProps {
@@ -39,7 +39,8 @@ export default function ColorProperty({ property, value, onChange }: ColorProper
 
   return (
     <div className="space-y-1.5">
-      <Label>{titleCase(property.name)}</Label>
+      <Label>{propertyLabel(property)}</Label>
+      {propertyDescription(property) && <p className="text-xs leading-relaxed text-muted-foreground">{propertyDescription(property)}</p>}
       <div className="flex items-center gap-2">
         <button
           type="button"

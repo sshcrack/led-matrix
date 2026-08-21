@@ -52,7 +52,7 @@ namespace Plugins
         [[nodiscard]] virtual bool is_large_payload_plugin() const { return false; }
 
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet
-        [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket, void (*)(UdpPacket *)>> compute_next_packet(const std::string sceneName)
+        [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(const std::string sceneName)
         {
             return std::nullopt;
         }

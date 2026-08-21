@@ -11,12 +11,15 @@ using json = nlohmann::json;
 
 namespace Config {
     class MainConfig {
-        shared_mutex data_mutex;
+        mutable shared_mutex data_mutex;
         ConfigData::Root data;
 
         shared_mutex update_mutex;
         bool dirty;
         const string file_name;
+
+        void load_from_file();
+        void migrate_presets();
     public:
         explicit MainConfig(string filename);
 
@@ -63,6 +66,9 @@ namespace Config {
         void set_last_check_time(tmillis_t time);
         
         bool save();
+        /// Release plugin-owned scene instances after configuration has been
+        /// persisted and before plugin DSOs are unloaded.
+        void release_scene_references();
         string get_filename() const;
     };
 }

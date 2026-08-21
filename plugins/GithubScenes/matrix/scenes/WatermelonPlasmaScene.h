@@ -14,6 +14,7 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         string get_name() const override;
+        std::string get_category() const override { return "Generative"; }
 
         void register_properties() override {}
 
@@ -30,6 +31,6 @@ namespace Scenes {
 
     class WatermelonPlasmaSceneWrapper : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

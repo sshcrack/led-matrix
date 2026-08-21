@@ -1,4 +1,6 @@
 register_plugin(SpotifyScenes
+        matrix/SpotifyPreviewProvider.cpp
+        matrix/SpotifyPreviewProvider.h
         matrix/SpotifyScenes.cpp
         matrix/SpotifyScenes.h
         matrix/scenes/CoverOnlyScene.cpp

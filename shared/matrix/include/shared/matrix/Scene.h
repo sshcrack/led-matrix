@@ -9,6 +9,11 @@
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/plugin/PropertyMacros.h>
 #include <shared/matrix/plugin/TransitionNameProperty.h>
+#include <shared/matrix/scene_runtime.h>
+#include <shared/matrix/preview.h>
+#include <chrono>
+#include <optional>
+#include <unordered_map>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrix;
@@ -27,8 +32,16 @@ namespace Scenes {
         int matrix_height;
         int target_fps = 60;
         tmillis_t last_render_time = 0;
+        SceneFrameContext frame_context_{};
+        std::chrono::steady_clock::time_point frame_clock_start_{};
+        std::chrono::steady_clock::time_point frame_clock_last_{};
+        bool frame_clock_started_ = false;
+        bool suppress_internal_wait_ = false;
+        double frame_wait_ms_ = 0.0;
+        float render_quality_scale_ = 1.0f;
+        unsigned render_over_budget_streak_ = 0;
+        unsigned render_under_budget_streak_ = 0;
 
-        // Pure virtual methods remain unchanged
         virtual int get_default_weight() = 0;
         virtual tmillis_t get_default_duration() = 0;
 
@@ -37,11 +50,22 @@ namespace Scenes {
         PropertyPointer<tmillis_t> duration = MAKE_PROPERTY("duration", tmillis_t, 5000);
         PropertyPointer<tmillis_t> transition_duration = MAKE_PROPERTY("transition_duration", tmillis_t, 0);
         std::shared_ptr<Plugins::TransitionNameProperty> transition_name = std::make_shared<Plugins::TransitionNameProperty>();
+        PropertyPointer<nlohmann::json> audio_modulations_ = MAKE_PROPERTY(
+            "audio_modulations", nlohmann::json, nlohmann::json::array());
+
+        struct AudioModulationState {
+            double base_value = 0.0;
+            double smoothed_value = 0.0;
+        };
+        std::unordered_map<std::string, AudioModulationState> audio_modulation_state_;
+
+        void apply_audio_modulations(double dt);
+        void restore_audio_modulations();
 
         std::string uuid;
 
         void set_target_fps(int fps) {
-            target_fps = fps;
+            target_fps = fps > 0 ? fps : 1;
         }
 
         [[nodiscard]] int get_target_fps() const {
@@ -49,6 +73,17 @@ namespace Scenes {
         }
 
         virtual void wait_until_next_frame();
+
+        /// Current render-frame timing. Prefer this over reading wall clock time
+        /// inside a scene. The matrix renderer and preview generator populate it.
+        [[nodiscard]] const SceneFrameContext &frame_context() const { return frame_context_; }
+
+        /// Adaptive quality scale for scenes with optional expensive detail.
+        /// 1.0 means full quality. Values below 1.0 indicate sustained CPU pressure.
+        [[nodiscard]] float render_quality_scale() const { return render_quality_scale_; }
+
+        /// Reset timing when a scene is reinitialized or reused.
+        void reset_frame_clock();
 
         void add_property(const std::shared_ptr<Plugins::PropertyBase> &property) {
             std::string name = property->getName();
@@ -78,6 +113,11 @@ namespace Scenes {
             duration->set_value(get_default_duration());
         }
 
+        [[nodiscard]] int get_declared_target_fps() const { return target_fps; }
+        [[nodiscard]] double get_last_frame_wait_ms() const { return frame_wait_ms_; }
+        [[nodiscard]] float get_render_quality_scale() const { return render_quality_scale_; }
+        void report_render_cost(double active_render_ms);
+
         [[nodiscard]] virtual int get_weight() const;
 
         [[nodiscard]] virtual tmillis_t get_duration() const;
@@ -89,7 +129,32 @@ namespace Scenes {
         [[nodiscard]] virtual nlohmann::json to_json() const;
 
         [[nodiscard]] virtual string get_name() const = 0;
-        [[nodiscard]] virtual std::string getCategory() const { return "General"; }
+        [[nodiscard]] virtual std::string get_category() const { return "General"; }
+
+        /// Declarative preview contract. Desktop-dependent scenes are disabled
+        /// by default, but may opt in by requesting fixture inputs supplied by
+        /// plugin-owned preview data providers.
+        [[nodiscard]] virtual Previews::SceneSpec get_preview_spec() const {
+            return const_cast<Scene *>(this)->needs_desktop_app()
+                ? Previews::SceneSpec::disabled()
+                : Previews::SceneSpec{};
+        }
+
+        /// Machine-readable scene capabilities used by the web app and Music
+        /// Director. Preview eligibility is derived from get_preview_spec() so
+        /// there is a single source of truth.
+        [[nodiscard]] virtual SceneCapabilities get_capabilities() const {
+            SceneCapabilities caps;
+            caps.requires_desktop = const_cast<Scene *>(this)->needs_desktop_app();
+            caps.can_generate_preview = get_preview_spec().enabled;
+            return caps;
+        }
+
+        /// Internal preview timing hint. This is deliberately not part of
+        /// SceneCapabilities: capabilities only answer whether preview_gen can
+        /// generate this scene, while this controls whether it may use virtual
+        /// frame time instead of waiting for wall-clock time.
+        [[nodiscard]] virtual bool supports_virtual_time() const { return false; }
 
         /// Return true if the scene is dependent on udp packets / websocket messages from the desktop application, false if it can be rendered on the matrix directly.
         /// If this is true, the scene will only be rendered if the desktop application is running.
@@ -110,7 +175,13 @@ namespace Scenes {
         /// Returns true if the scene should continue rendering, false if not
         virtual bool render(FrameCanvas *canvas) = 0;
 
-        static std::unique_ptr<Scene, void (*)(Scene *)> from_json(const nlohmann::json &j);
+        /// Canonical render entrypoint. A deterministic delta is supplied by
+        /// preview_gen and nested scenes; otherwise steady_clock drives dt.
+        bool render_frame(FrameCanvas *canvas,
+                          std::optional<double> forced_delta_seconds = std::nullopt,
+                          bool suppress_internal_wait = false);
+
+        static std::unique_ptr<Scene> from_json(const nlohmann::json &j);
 
         virtual void register_properties() = 0;
 

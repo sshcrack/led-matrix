@@ -1,27 +1,23 @@
 #include "GenerativeScenes.h"
 #include "scenes/ReactionDiffusionScene.h"
+#include "scenes/BoidsScene.h"
+#include "scenes/FallingSandScene.h"
 
 using namespace GenerativeScenes;
 
-extern "C" PLUGIN_EXPORT GenerativePlugin *createGenerativeScenes() {
-    return new GenerativePlugin();
-}
+REGISTER_PLUGIN(GenerativeScenes, GenerativePlugin)
 
-extern "C" PLUGIN_EXPORT void destroyGenerativeScenes(GenerativePlugin *c) {
-    delete c;
-}
+vector<std::unique_ptr<SceneWrapper>> GenerativePlugin::create_scenes() {
+    vector<std::unique_ptr<SceneWrapper>> scenes;
 
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> GenerativePlugin::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> scenes;
-
-    scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(
-            new ReactionDiffusionSceneWrapper(),
-            [](SceneWrapper *s) { delete (ReactionDiffusionSceneWrapper *) s; }));
+    scenes.push_back(std::make_unique<ReactionDiffusionSceneWrapper>());
+    scenes.push_back(std::make_unique<BoidsSceneWrapper>());
+    scenes.push_back(std::make_unique<FallingSandSceneWrapper>());
 
     return scenes;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> GenerativePlugin::create_image_providers() {
+vector<std::unique_ptr<ImageProviderWrapper>> GenerativePlugin::create_image_providers() {
     return {};
 }
 

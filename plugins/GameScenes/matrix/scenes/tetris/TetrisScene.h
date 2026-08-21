@@ -51,7 +51,10 @@ namespace Scenes {
         int offset_y = 0;   // Vertical centering offset
 
         PropertyPointer<int> fall_speed_ms = MAKE_PROPERTY("fall_speed_ms", int, 100);
-        std::chrono::steady_clock::time_point last_fall_time;
+        std::chrono::steady_clock::time_point last_update_time;
+        float fall_accumulator_ms = 0.0f;
+        float move_accumulator = 0.0f;
+        static constexpr float move_interval = 1.0f / 30.0f;
 
     public:
         explicit TetrisScene();
@@ -63,7 +66,7 @@ namespace Scenes {
         void after_render_stop() override;
 
         [[nodiscard]] std::string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Games"; }
+        [[nodiscard]] std::string get_category() const override { return "Games"; }
 
         void register_properties() override {
             add_property(fall_speed_ms);
@@ -80,6 +83,6 @@ namespace Scenes {
     };
 
     class TetrisSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

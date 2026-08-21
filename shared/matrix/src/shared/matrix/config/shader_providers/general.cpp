@@ -29,7 +29,7 @@ nlohmann::json ShaderProviders::General::to_json() const {
     return j;
 }
 
-std::unique_ptr<ShaderProviders::General, void (*)(ShaderProviders::General *)> ShaderProviders::General::from_json(const json &j) {
+std::unique_ptr<ShaderProviders::General> ShaderProviders::General::from_json(const json &j) {
     spdlog::debug("From json serialization for shader provider");
     if(!j.contains("type"))
         throw std::runtime_error(fmt::format("No shader provider type given for '{}'", j.dump()));

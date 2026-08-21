@@ -1,4 +1,4 @@
 #pragma once
 #include <imgui.h>
 
-int HostnameFilter(ImGuiInputTextCallbackData* data);
+int hostname_filter(ImGuiInputTextCallbackData* data);

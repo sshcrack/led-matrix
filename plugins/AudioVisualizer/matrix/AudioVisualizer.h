@@ -1,42 +1,23 @@
 #pragma once
 
 #include "shared/matrix/plugin/main.h"
-#include <mutex>
-#include <vector>
-#include <deque>
-#include <chrono>
+#include <shared/matrix/audio_state.h>
 
-using Plugins::SceneWrapper;
-using Plugins::ImageProviderWrapper;
 using Plugins::BasicPlugin;
+using Plugins::ImageProviderWrapper;
+using Plugins::SceneWrapper;
 
 class AudioVisualizer : public BasicPlugin {
-    std::mutex audio_data_mutex;
-    std::vector<uint8_t> current_audio_data;
-    uint32_t last_timestamp;
-    bool interpolated_log;
-    
-    // Beat detection members
-    std::deque<float> energy_history;
-    std::chrono::steady_clock::time_point last_beat_time;
 public:
-    AudioVisualizer();
+    AudioVisualizer() = default;
 
-    vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)> > create_scenes() override;
-
-    vector<std::unique_ptr<ImageProviderWrapper, void(*)(ImageProviderWrapper *)> > create_image_providers() override;
-
-    std::optional<string> before_server_init() override;
-
-    std::optional<string> pre_exit() override;
-
-    // Method to get audio data for scenes
-    std::vector<uint8_t> get_audio_data();
-
-    uint32_t get_last_timestamp();
-
-    bool on_udp_packet(uint8_t pluginId, const uint8_t *data,
-                       size_t size) override;
-
+    std::vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
+    std::vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
+    std::vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() override;
+    std::optional<std::string> before_server_init() override;
+    std::optional<std::string> pre_exit() override;
+    bool on_udp_packet(uint8_t pluginId, const uint8_t *data, size_t size) override;
+    AudioState::Snapshot get_audio_state() const;
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
+
 };

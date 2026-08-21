@@ -2,7 +2,7 @@
 #include <algorithm>
 #include "spdlog/spdlog.h"
 
-void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)> effect) {
+void PostProcessor::register_effect(std::unique_ptr<PostProcessingEffect> effect) {
     std::lock_guard<std::mutex> lock(effectsMutex);
     if (effect) {
         std::string name = effect->get_name();

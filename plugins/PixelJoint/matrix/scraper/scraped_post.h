@@ -24,7 +24,7 @@ public:
     const std::string& get_post_url() const { return post_url; }
     const std::string& get_thumbnail() const { return thumbnail; }
 
-    static std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)>> get_posts(int page);
+    static std::vector<std::unique_ptr<ScrapedPost>> get_posts(int page);
     static std::optional<int> get_pages();
 };
 

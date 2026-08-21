@@ -5,6 +5,7 @@
 #include <future>
 #include <mutex>
 #include <shared_mutex>
+#include <random>
 #include <spdlog/spdlog.h>
 
 class Scraper
@@ -46,4 +47,5 @@ private:
     std::shared_mutex mtx;
     bool fetchInProgress = false;
     std::string fetchError;
+    std::mt19937 rng{std::random_device{}()};
 };

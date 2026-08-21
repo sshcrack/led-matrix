@@ -4,7 +4,7 @@ export interface RawPreset { scenes: Scene[]; transition_duration?: number; tran
 export interface ImageArguments { begin: number; end: number; }
 
 export interface Scene { arguments: SceneArguments; type: string; uuid: string; }
-export interface SceneArguments { [key: string]: any; }
+export interface SceneArguments { [key: string]: unknown; }
 
 export interface Preset {
   transition_duration: number;

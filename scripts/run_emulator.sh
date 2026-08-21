@@ -4,7 +4,7 @@ set -e
 
 script_dir=$(dirname "$(readlink -f "$0")")
 (
-    cd $script_dir/..
+    cd "$script_dir"/..
     if [  -f ".env" ]; then
         echo "Environment file found at '.env'. Sourcing..."
         set -a && source .env && set +a
@@ -20,6 +20,6 @@ script_dir=$(dirname "$(readlink -f "$0")")
     fi
 
     echo "Build successful. Running the emulator..."
-    ./emulator_build/install/main --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
+    ./emulator_build/install/bin/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-scale=4
 
 )

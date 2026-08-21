@@ -29,7 +29,7 @@ private:
 public:
     std::optional<std::string> spotify_callback;
 
-    explicit Spotify();
+    explicit Spotify(bool allow_missing_credentials = false);
     ~Spotify();  // Add destructor declaration
 
     void start_control_thread();
@@ -44,6 +44,8 @@ public:
         return client_secret;
     }
     std::optional<SpotifyState> get_currently_playing();
+    void set_preview_currently_playing(nlohmann::json state_json);
+    void clear_preview_currently_playing();
 
     bool has_changed(bool update_dirty);
 };

@@ -93,45 +93,5 @@
             "configurePreset": "desktop-windows-debug"
         }
     ],
-    "packagePresets": [
-        {
-            "name": "emulator",
-            "configurePreset": "emulator",
-            "generators": [
-                "TGZ"
-            ],
-            "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
-        },
-        {
-            "name": "cross-compile",
-            "configurePreset": "cross-compile",
-            "generators": [
-                "TGZ"
-            ],
-            "packageName": "led-matrix-v$cache{CMAKE_PROJECT_VERSION}"
-        },
-        {
-            "name": "desktop-linux",
-            "configurePreset": "desktop-linux",
-            "generators": [
-                "TGZ",
-                "DEB"
-            ],
-            "packageName": "led-matrix-desktop"
-        },
-        {
-            "name": "desktop-windows",
-            "configurePreset": "desktop-windows",
-            "generators": [
-                "ZIP",
-                "NSIS64"
-            ],
-            "packageName": "led-matrix-desktop"
-        },
-        {
-            "name": "desktop-windows-debug",
-            "inherits": "desktop-windows",
-            "configurePreset": "desktop-windows-debug"
-        }
-    ]
+    "packagePresets": []
 }

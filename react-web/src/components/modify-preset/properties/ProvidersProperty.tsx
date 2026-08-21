@@ -4,14 +4,15 @@ import { titleCase } from '~/lib/utils'
 import type { Property, ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 
 interface ProvidersPropertyProps {
-  property: Property<any>
+  property: Property<unknown>
   value: ProviderValue | null
   providers: ListProviders[]
-  onChange: (value: any) => void
+  onChange: (value: unknown) => void
 }
 
 export default function ProvidersProperty({ property, value }: ProvidersPropertyProps) {
-  const providerType = property.additional?.provider_type ?? 'unknown'
+  const additional = property.additional as Record<string, unknown> | undefined;
+  const providerType = (additional?.provider_type as string | undefined) ?? 'unknown'
   const hasValue = value && typeof value === 'object' && 'type' in value
 
   return (

@@ -10,12 +10,11 @@ class WeatherOverview final : public BasicPlugin {
 public:
     using BasicPlugin::BasicPlugin;
 
-    vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() override;
-    vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> create_image_providers() override;
+    vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
+    vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
     std::optional<string> before_server_init() override;
+    std::optional<string> pre_exit() override;
+    std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
 
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
 };
-
-extern "C" PLUGIN_EXPORT WeatherOverview *createWeatherOverview();
-extern "C" PLUGIN_EXPORT void destroyWeatherOverview(WeatherOverview *c);

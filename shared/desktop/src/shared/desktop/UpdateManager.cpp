@@ -5,7 +5,6 @@
 #include <shared/desktop/config.h>
 #include <chrono>
 
-#include "hello_imgui/hello_imgui.h"
 
 namespace UpdateChecker
 {

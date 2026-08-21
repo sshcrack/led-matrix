@@ -5,6 +5,10 @@
  *   preview_gen [--output <dir>] [--scene <name>] [--scenes <n1,n2,...>]
  *               [--frames <n>] [--fps <n>] [--width <n>] [--height <n>]
  *               [--dump-manifest] [--manifest-out <file>]
+ *               [--metrics-out <file>] [--audio-bpm <n>]
+ *               [--audio-profile <balanced|bass|percussion|ambient>]
+ *               [--preview-option <provider>:<key>=<json>]
+ *               [--virtual-time-only] [--strict]
  *
  * Defaults:
  *   --output    ./previews
@@ -19,13 +23,17 @@
  *   (defaults to stdout).
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <memory>
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
@@ -38,6 +46,7 @@
 #endif
 
 #include "led-matrix.h"
+#include "shared/matrix/preview.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/canvas_consts.h"
@@ -61,6 +70,19 @@ static bool parse_int(const char* str, int& out)
     }
 }
 
+static bool parse_float(const char* str, float& out)
+{
+    try
+    {
+        out = std::stof(str);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 struct Args
 {
     std::string output_dir = "./previews";
@@ -71,7 +93,13 @@ struct Args
     int matrix_width = 128;
     int matrix_height = 128;
     bool dump_manifest = false;
+    bool strict = false;
+    bool virtual_time_only = false;
     std::string manifest_out; // path for --manifest-out; empty = stdout
+    std::string metrics_out;  // optional perceptual metrics JSON for regression tests
+    float audio_bpm = 120.0f;
+    std::string audio_profile = "balanced";
+    nlohmann::json preview_options = nlohmann::json::object();
 };
 
 static Args parse_args(int argc, char* argv[])
@@ -105,8 +133,35 @@ static Args parse_args(int argc, char* argv[])
             parse_int(argv[++i], a.matrix_height);
         else if (std::string(argv[i]) == "--dump-manifest")
             a.dump_manifest = true;
+        else if (std::string(argv[i]) == "--strict")
+            a.strict = true;
+        else if (std::string(argv[i]) == "--virtual-time-only")
+            a.virtual_time_only = true;
         else if (std::string(argv[i]) == "--manifest-out" && i + 1 < argc)
             a.manifest_out = argv[++i];
+        else if (std::string(argv[i]) == "--metrics-out" && i + 1 < argc)
+            a.metrics_out = argv[++i];
+        else if (std::string(argv[i]) == "--audio-bpm" && i + 1 < argc)
+            parse_float(argv[++i], a.audio_bpm);
+        else if (std::string(argv[i]) == "--audio-profile" && i + 1 < argc)
+            a.audio_profile = argv[++i];
+        else if (std::string(argv[i]) == "--preview-option" && i + 1 < argc)
+        {
+            const std::string raw = argv[++i];
+            const auto colon = raw.find(':');
+            const auto equals = raw.find('=', colon == std::string::npos ? 0 : colon + 1);
+            if (colon != std::string::npos && equals != std::string::npos && colon > 0 && equals > colon + 1)
+            {
+                const auto provider = raw.substr(0, colon);
+                const auto key = raw.substr(colon + 1, equals - colon - 1);
+                const auto value = raw.substr(equals + 1);
+                try {
+                    a.preview_options[provider][key] = nlohmann::json::parse(value);
+                } catch (const nlohmann::json::parse_error &) {
+                    a.preview_options[provider][key] = value;
+                }
+            }
+        }
     }
     // Normalise: merge --scene into filter_scenes
     if (!a.filter_scene.empty())
@@ -118,12 +173,78 @@ static Args parse_args(int argc, char* argv[])
         a.fps = 60;
     if (a.total_frames < 1)
         a.total_frames = 1;
+    a.audio_bpm = std::clamp(a.audio_bpm, 40.0f, 240.0f);
+    if (a.audio_profile != "balanced" && a.audio_profile != "bass" &&
+        a.audio_profile != "percussion" && a.audio_profile != "ambient")
+        a.audio_profile = "balanced";
+    // Legacy convenience flags map onto the generic provider option bag.
+    // Explicit --preview-option values win.
+    auto &audio_options = a.preview_options[std::string(Previews::Inputs::Audio)];
+    if (!audio_options.contains("bpm")) audio_options["bpm"] = a.audio_bpm;
+    if (!audio_options.contains("profile")) audio_options["profile"] = a.audio_profile;
     return a;
 }
 
 // ---------------------------------------------------------------------------
 // Read all pixels from a FrameCanvas into a flat RGB byte vector
 // ---------------------------------------------------------------------------
+struct VisualMetricAccumulator
+{
+    int frames = 0;
+    int temporal_samples = 0;
+    double lit_fraction_sum = 0.0;
+    double lit_fraction_min = 1.0;
+    double lit_fraction_max = 0.0;
+    double mean_luma_sum = 0.0;
+    double temporal_change_sum = 0.0;
+
+    void add(const std::vector<uint8_t> &rgb, const std::vector<uint8_t> &previous)
+    {
+        const size_t pixels = rgb.size() / 3;
+        if (pixels == 0) return;
+        size_t lit = 0;
+        size_t changed = 0;
+        double luma = 0.0;
+        for (size_t i = 0; i < pixels; ++i) {
+            const int r = rgb[i * 3];
+            const int g = rgb[i * 3 + 1];
+            const int b = rgb[i * 3 + 2];
+            if (std::max({r, g, b}) > 5) ++lit;
+            luma += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+            if (previous.size() == rgb.size()) {
+                const int delta = std::abs(r - static_cast<int>(previous[i * 3])) +
+                                  std::abs(g - static_cast<int>(previous[i * 3 + 1])) +
+                                  std::abs(b - static_cast<int>(previous[i * 3 + 2]));
+                if (delta >= 24) ++changed;
+            }
+        }
+        const double lit_fraction = static_cast<double>(lit) / static_cast<double>(pixels);
+        lit_fraction_sum += lit_fraction;
+        lit_fraction_min = std::min(lit_fraction_min, lit_fraction);
+        lit_fraction_max = std::max(lit_fraction_max, lit_fraction);
+        mean_luma_sum += luma / static_cast<double>(pixels);
+        if (previous.size() == rgb.size()) {
+            temporal_change_sum += static_cast<double>(changed) / static_cast<double>(pixels);
+            ++temporal_samples;
+        }
+        ++frames;
+    }
+
+    [[nodiscard]] nlohmann::json json() const
+    {
+        const double frame_count = static_cast<double>(std::max(1, frames));
+        return {
+            {"frames", frames},
+            {"lit_fraction_average", lit_fraction_sum / frame_count},
+            {"lit_fraction_min", frames > 0 ? lit_fraction_min : 0.0},
+            {"lit_fraction_max", lit_fraction_max},
+            {"mean_luma_average", mean_luma_sum / frame_count},
+            {"temporal_change_average", temporal_samples > 0
+                ? temporal_change_sum / static_cast<double>(temporal_samples) : 0.0}
+        };
+    }
+};
+
 static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas* canvas,
                                            int w, int h)
 {
@@ -187,6 +308,7 @@ int main(int argc, char* argv[])
     spdlog::cfg::load_env_levels();
 
     const Args args = parse_args(argc, argv);
+    Previews::RuntimeScope preview_runtime;
 
     // ---- initialise GraphicsMagick ----------------------------------------
     Magick::InitializeMagick(*argv);
@@ -252,7 +374,28 @@ int main(int argc, char* argv[])
         plugin->after_server_init();
     }
 
-    const auto& wrappers = pl->get_scenes();
+    std::unordered_map<std::string, std::shared_ptr<Previews::DataProvider>> preview_providers;
+    for (auto *plugin : pl->get_plugins())
+    {
+        for (auto &provider : plugin->get_preview_data_providers())
+        {
+            if (!provider) continue;
+            const std::string provider_id(provider->id());
+            if (provider_id.empty()) continue;
+            if (!preview_providers.emplace(provider_id, provider).second)
+                spdlog::warn("Duplicate preview data provider '{}'; keeping the first one.", provider_id);
+        }
+    }
+
+    const Previews::RunContext preview_run_context{
+        .width = args.matrix_width,
+        .height = args.matrix_height,
+        .fps = args.fps,
+        .total_frames = args.total_frames,
+        .options = args.preview_options,
+    };
+
+    auto wrappers = pl->get_scenes();
     if (wrappers.empty())
     {
         spdlog::warn("No scenes found. Make sure PLUGIN_DIR points to the "
@@ -267,7 +410,10 @@ int main(int argc, char* argv[])
         for (const auto& wrapper : wrappers)
         {
             const std::string scene_name = wrapper->get_name();
-            const bool needs_desktop = wrapper->get_default()->needs_desktop_app();
+            const auto default_scene = wrapper->get_default();
+            const auto capabilities = default_scene->get_capabilities();
+            const auto preview_spec = default_scene->get_preview_spec();
+            const bool needs_desktop = capabilities.requires_desktop;
             std::string plugin_name;
             std::string plugin_path;
 
@@ -292,6 +438,20 @@ int main(int argc, char* argv[])
                 {"plugin_name", plugin_name},
                 {"plugin_path", plugin_path},
                 {"needs_desktop", needs_desktop},
+                {"capabilities", {
+                    {"requires_desktop", capabilities.requires_desktop},
+                    {"requires_audio", capabilities.requires_audio},
+                    {"requires_network", capabilities.requires_network},
+                    {"interactive", capabilities.interactive},
+                    {"can_generate_preview", preview_spec.enabled},
+                    {"supports_audio", capabilities.supports_audio},
+                    {"music_director_eligible", capabilities.music_director_eligible}
+                }},
+                {"preview", {
+                    {"enabled", preview_spec.enabled},
+                    {"inputs", preview_spec.inputs},
+                    {"property_overrides", preview_spec.property_overrides}
+                }},
             });
         }
 
@@ -313,7 +473,12 @@ int main(int argc, char* argv[])
             spdlog::info("Scene manifest written to {}", args.manifest_out);
         }
 
-        // Cleanup and exit without rendering
+        // Cleanup and exit without rendering. Release all wrapper references
+        // before plugin DSOs are unloaded.
+        for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
+        wrappers.clear();
+        preview_providers.clear();
+        config->release_scene_references();
         pl->delete_references();
         pl->destroy_plugins();
         delete config;
@@ -326,28 +491,54 @@ int main(int argc, char* argv[])
     rgb_matrix::FrameCanvas* canvas = matrix->CreateFrameCanvas();
     canvas->Clear();
 
-    // Timing constants
-    const int frame_delay_ms = 1000 / args.fps;
+    // Legacy scenes may still read wall clock time. Scenes that explicitly
+    // support virtual time can be generated quickly; legacy ones retain
+    // real-time preview pacing.
+    const int frame_delay_ms = 1000 / std::max(1, args.fps);
     const size_t frame_delay_cs =
         static_cast<size_t>(std::max(1, 100 / args.fps)); // centiseconds
 
     int generated = 0;
     int skipped = 0;
+    int attempted = 0;
+    nlohmann::json visual_metrics = nlohmann::json::object();
 
     // ---- iterate scenes ---------------------------------------------------
     for (const auto& wrapper : wrappers)
     {
         const std::string scene_name = wrapper->get_name();
 
-        // Skip scenes that require the desktop app - they cannot be rendered
-        // headlessly and need a running desktop connection.  Use
-        // scripts/capture_desktop_preview.sh to capture them manually.
-        if (wrapper->get_default()->needs_desktop_app())
+        // SceneCapabilities answers only whether preview_gen can generate the
+        // scene. Timing strategy remains an internal Scene implementation detail.
+        const auto default_scene = wrapper->get_default();
+        const auto preview_spec = default_scene->get_preview_spec();
+        if (!preview_spec.enabled)
         {
-            spdlog::info("Skipping '{}': requires desktop app (use capture_desktop_preview.sh).",
-                         scene_name);
+            spdlog::info("Skipping '{}': scene did not opt into generated previews.", scene_name);
             continue;
         }
+
+        std::vector<std::shared_ptr<Previews::DataProvider>> scene_preview_providers;
+        bool missing_provider = false;
+        for (const auto &input : preview_spec.inputs)
+        {
+            const auto it = preview_providers.find(input);
+            if (it == preview_providers.end())
+            {
+                spdlog::warn("Skipping '{}': preview input '{}' has no registered provider.",
+                             scene_name, input);
+                missing_provider = true;
+                break;
+            }
+            scene_preview_providers.push_back(it->second);
+        }
+        if (missing_provider)
+        {
+            if (args.strict) ++skipped;
+            continue;
+        }
+        if (args.virtual_time_only && !default_scene->supports_virtual_time())
+            continue;
 
         // Apply scene filter (--scene or --scenes)
         if (!args.filter_scenes.empty())
@@ -363,6 +554,7 @@ int main(int argc, char* argv[])
                 continue;
         }
 
+        ++attempted;
         spdlog::info("Rendering preview for '{}' ({} frames @ {} fps)…",
                      scene_name, args.total_frames, args.fps);
 
@@ -381,25 +573,63 @@ int main(int argc, char* argv[])
             nlohmann::json default_props = nlohmann::json::object();
             for (const auto& prop : scene->get_properties())
                 prop->dump_to_json(default_props);
+            for (const auto &[name, value] : preview_spec.property_overrides.items())
+                default_props[name] = value;
 
             scene->load_properties(default_props);
+
+            struct ProviderSession {
+                std::vector<std::shared_ptr<Previews::DataProvider>> started;
+                ~ProviderSession() {
+                    for (auto it = started.rbegin(); it != started.rend(); ++it)
+                        (*it)->end();
+                }
+            } provider_session;
+            for (const auto &provider : scene_preview_providers)
+            {
+                provider_session.started.push_back(provider);
+                provider->begin(preview_run_context);
+            }
+
             scene->initialize(args.matrix_width, args.matrix_height);
 
             std::vector<Magick::Image> frames;
             frames.reserve(static_cast<size_t>(args.total_frames));
+            std::vector<uint8_t> previous_rgb;
+            VisualMetricAccumulator metric_accumulator;
+            int identical_tail_frames = 0;
 
+            const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
             for (int f = 0; f < args.total_frames; ++f)
             {
-                // Sleep so that time-based animations (FrameTimer) advance at the
-                // intended rate.  Most scenes use real wall-clock time, so without
-                // this sleep the entire animation would appear as a single instant.
-                std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
-
+                const Scenes::SceneFrameContext preview_frame{
+                    .delta_seconds = preview_dt,
+                    .elapsed_seconds = static_cast<double>(f) * preview_dt,
+                    .frame_index = static_cast<std::uint64_t>(f),
+                    .now_ms = static_cast<std::uint64_t>(static_cast<double>(f) * preview_dt * 1000.0),
+                    .deterministic = true,
+                };
+                for (const auto &provider : scene_preview_providers)
+                    provider->update(preview_frame);
                 canvas->Clear();
-                const bool keep_going = scene->render(canvas);
+                bool keep_going = true;
+                if (scene->supports_virtual_time()) {
+                    // Migrated scenes can use fast virtual frame time.
+                    keep_going = scene->render_frame(canvas, preview_dt, true);
+                } else {
+                    // Preserve correct animation for legacy wall-clock scenes.
+                    std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
+                    keep_going = scene->render_frame(canvas);
+                }
 
                 const auto rgb = capture_canvas(canvas, args.matrix_width,
                                                 args.matrix_height);
+                if (!previous_rgb.empty() && rgb == previous_rgb)
+                    ++identical_tail_frames;
+                else
+                    identical_tail_frames = 0;
+                metric_accumulator.add(rgb, previous_rgb);
+                previous_rgb = rgb;
                 frames.push_back(make_frame(rgb, args.matrix_width,
                                             args.matrix_height, frame_delay_cs));
 
@@ -407,6 +637,8 @@ int main(int argc, char* argv[])
                 {
                     spdlog::debug("Scene '{}' stopped at frame {}/{}", scene_name,
                                   f + 1, args.total_frames);
+                    if (args.strict && f + 1 < args.total_frames)
+                        ++skipped;
                     break;
                 }
             }
@@ -417,6 +649,14 @@ int main(int argc, char* argv[])
                 ++skipped;
                 continue;
             }
+            if (args.strict && frames.size() >= 6 && identical_tail_frames >= 5)
+            {
+                spdlog::warn("Scene '{}' stopped changing during its final {} frames.",
+                             scene_name, identical_tail_frames + 1);
+                ++skipped;
+            }
+
+            visual_metrics[scene_name] = metric_accumulator.json();
 
             // Quantise colours (required for GIF palette, 256 colours max)
             Magick::quantizeImages(frames.begin(), frames.end());
@@ -441,9 +681,23 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (!args.metrics_out.empty()) {
+        std::ofstream metrics_file(args.metrics_out);
+        if (!metrics_file) {
+            spdlog::error("Cannot write visual metrics to '{}'", args.metrics_out);
+            ++skipped;
+        } else {
+            metrics_file << visual_metrics.dump(2) << "\n";
+        }
+    }
+
     spdlog::info("Done. Generated: {}  Skipped: {}", generated, skipped);
 
     // ---- cleanup ----------------------------------------------------------
+    for (auto *plugin : pl->get_plugins()) plugin->pre_exit();
+    wrappers.clear();
+    preview_providers.clear();
+    config->release_scene_references();
     pl->delete_references();
     pl->destroy_plugins();
 
@@ -452,6 +706,8 @@ int main(int argc, char* argv[])
 
     delete matrix;
 
+    if (args.strict && (skipped > 0 || attempted == 0))
+        return 1;
     return (skipped > 0 && generated == 0) ? 1 : 0;
 #endif
 }

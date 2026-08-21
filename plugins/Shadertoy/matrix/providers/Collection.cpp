@@ -65,11 +65,7 @@ string ShaderProviders::Collection::get_name() const {
     return "shader_collection";
 }
 
-std::unique_ptr<ShaderProviders::General, void (*)(ShaderProviders::General *)>
+std::unique_ptr<ShaderProviders::General>
 ShaderProviders::CollectionWrapper::create() {
-    return {
-        new Collection(), [](General *p) {
-            delete p;
-        }
-    };
+    return std::make_unique<Collection>();
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <memory>
 
 // Forward declaration
 namespace Update {
@@ -12,5 +13,5 @@ namespace Constants {
     const static std::filesystem::path upload_dir = root_dir / "uploads";
     
     // Global UpdateManager instance (defined in main.cpp)
-    extern Update::UpdateManager* global_update_manager;
+    extern std::shared_ptr<Update::UpdateManager> global_update_manager;
 }

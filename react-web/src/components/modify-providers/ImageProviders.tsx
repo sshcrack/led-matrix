@@ -4,15 +4,14 @@ import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { CollectionProviderComponent } from './collection/CollectionProvider'
 import PagesProvider from './PagesProvider'
-import type { ProviderValue, ListProviders, CollectionProvider, PagesProvider as PagesProviderType } from '~/apiTypes/list_scenes'
+import type { ProviderValue, CollectionProvider, PagesProvider as PagesProviderType } from '~/apiTypes/list_scenes'
 
 interface ImageProvidersProps {
   providers: ProviderValue[]
-  providerDefinitions: ListProviders[]
   onChange: (providers: ProviderValue[]) => void
 }
 
-export default function ImageProviders({ providers, providerDefinitions, onChange }: ImageProvidersProps) {
+export default function ImageProviders({ providers, onChange }: ImageProvidersProps) {
   const updateProvider = (index: number, updated: ProviderValue) => {
     const newProviders = [...providers]
     newProviders[index] = updated

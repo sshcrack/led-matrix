@@ -9,6 +9,7 @@
 #include "shared/common/plugin_macros.h"
 #include "shared/matrix/post_processing_effect.h"
 #include "shared/matrix/transition_effect.h"
+#include "shared/matrix/preview.h"
 
 using std::string;
 using std::vector;
@@ -21,24 +22,28 @@ namespace Plugins
         vector<std::shared_ptr<ImageProviderWrapper>> image_providers;
         vector<std::shared_ptr<ShaderProviderWrapper>> shader_providers;
         vector<std::shared_ptr<SceneWrapper>> scenes;
+        vector<std::shared_ptr<Previews::DataProvider>> preview_data_providers;
 
-        virtual vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+        virtual vector<std::unique_ptr<ImageProviderWrapper>>
         create_image_providers() = 0;
 
-        virtual vector<std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+        virtual vector<std::unique_ptr<ShaderProviderWrapper>>
         create_shader_providers() {
             return {};
         }
 
-        virtual vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> create_scenes() = 0;
+        virtual vector<std::unique_ptr<SceneWrapper>> create_scenes() = 0;
 
-        
-    public:
-        virtual vector<std::unique_ptr<PostProcessingEffect, void (*)(PostProcessingEffect *)>> create_effects() {
+        virtual vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() {
             return {};
         }
 
-        virtual vector<std::unique_ptr<TransitionEffect, void (*)(TransitionEffect *)>> create_transitions() {
+    public:
+        virtual vector<std::unique_ptr<PostProcessingEffect>> create_effects() {
+            return {};
+        }
+
+        virtual vector<std::unique_ptr<TransitionEffect>> create_transitions() {
             return {};
         }
         std::string _plugin_location;
@@ -93,6 +98,19 @@ namespace Plugins
             }
 
             return scenes;
+        }
+
+
+        vector<std::shared_ptr<Previews::DataProvider>> get_preview_data_providers()
+        {
+            if (preview_data_providers.empty())
+            {
+                auto providers = create_preview_data_providers();
+                preview_data_providers.reserve(providers.size());
+                for (auto &item : providers)
+                    preview_data_providers.push_back(std::move(item));
+            }
+            return preview_data_providers;
         }
 
         virtual std::optional<string> before_server_init()

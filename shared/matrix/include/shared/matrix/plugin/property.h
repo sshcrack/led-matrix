@@ -1,10 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <optional>
 #include <vector>
 #include <type_traits>
+#include <cmath>
+#include <sstream>
+#include <stdexcept>
 
 #include "graphics.h"
 #include "shared/matrix/utils/utils.h"
@@ -14,6 +18,18 @@
 using json = nlohmann::json;
 
 namespace Plugins {
+    struct PropertyUiMetadata {
+        std::string label;
+        std::string description;
+        std::string group;
+        std::string unit;
+        std::string control;
+        std::optional<double> step;
+        nlohmann::json presets = nlohmann::json::array();
+        bool advanced = false;
+        std::string visible_if_property;
+        nlohmann::json visible_if_value;
+    };
     // Base class for all enum types used in properties
     class EnumBase {
     public:
@@ -119,6 +135,25 @@ namespace Plugins {
     {
     protected:
         std::string name;
+        std::vector<std::string> legacy_names_;
+        PropertyUiMetadata ui_metadata_{};
+
+        void append_ui_metadata(nlohmann::json &j) const {
+            if (!ui_metadata_.label.empty()) j["label"] = ui_metadata_.label;
+            if (!ui_metadata_.description.empty()) j["description"] = ui_metadata_.description;
+            if (!ui_metadata_.group.empty()) j["group"] = ui_metadata_.group;
+            if (!ui_metadata_.unit.empty()) j["unit"] = ui_metadata_.unit;
+            if (!ui_metadata_.control.empty()) j["control"] = ui_metadata_.control;
+            if (ui_metadata_.step.has_value()) j["step"] = *ui_metadata_.step;
+            if (ui_metadata_.presets.is_array() && !ui_metadata_.presets.empty()) j["presets"] = ui_metadata_.presets;
+            if (ui_metadata_.advanced) j["advanced"] = true;
+            if (!ui_metadata_.visible_if_property.empty()) {
+                j["visible_if"] = {
+                    {"property", ui_metadata_.visible_if_property},
+                    {"equals", ui_metadata_.visible_if_value}
+                };
+            }
+        }
 
     public:
         explicit PropertyBase(std::string propertyName) : name(std::move(propertyName))
@@ -134,6 +169,37 @@ namespace Plugins {
         virtual void add_additional_data(nlohmann::json &j) const = 0;
 
         [[nodiscard]] virtual std::string get_type_id() const = 0;
+        [[nodiscard]] virtual std::vector<std::string> validate_schema() const = 0;
+        [[nodiscard]] virtual bool is_required() const = 0;
+
+        // Runtime numeric access is intentionally opt-in. It powers generic
+        // audio modulation without exposing type-erased mutation for colors,
+        // enums, booleans or structured properties.
+        [[nodiscard]] virtual bool supports_runtime_numeric() const { return false; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_value() const { return std::nullopt; }
+        virtual bool set_runtime_numeric_value(double) { return false; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_min() const { return std::nullopt; }
+        [[nodiscard]] virtual std::optional<double> runtime_numeric_max() const { return std::nullopt; }
+
+        PropertyBase &label(std::string value) { ui_metadata_.label = std::move(value); return *this; }
+        PropertyBase &description(std::string value) { ui_metadata_.description = std::move(value); return *this; }
+        PropertyBase &group(std::string value) { ui_metadata_.group = std::move(value); return *this; }
+        PropertyBase &unit(std::string value) { ui_metadata_.unit = std::move(value); return *this; }
+        PropertyBase &control(std::string value) { ui_metadata_.control = std::move(value); return *this; }
+        PropertyBase &step(double value) { ui_metadata_.step = value; return *this; }
+        PropertyBase &presets(nlohmann::json value) { ui_metadata_.presets = std::move(value); return *this; }
+        PropertyBase &advanced(bool value = true) { ui_metadata_.advanced = value; return *this; }
+        PropertyBase &visible_if(std::string property, nlohmann::json value) {
+            ui_metadata_.visible_if_property = std::move(property);
+            ui_metadata_.visible_if_value = std::move(value);
+            return *this;
+        }
+        PropertyBase &legacy_name(std::string value) {
+            legacy_names_.push_back(std::move(value));
+            return *this;
+        }
+        [[nodiscard]] const PropertyUiMetadata &ui_metadata() const { return ui_metadata_; }
+        [[nodiscard]] const std::vector<std::string> &legacy_names() const { return legacy_names_; }
 
         [[nodiscard]] const std::string &getName() const
         {
@@ -182,61 +248,34 @@ namespace Plugins {
 
         void load_from_json(const nlohmann::json &j) override
         {
-            if (required)
-            {
-                if (j.contains(name))
-                {
-                    if constexpr (std::is_base_of_v<EnumBase, T>) {
-                        // Handle enum types
-                        if (j.at(name).is_string()) {
-                            std::string enum_str = j.at(name).get<std::string>();
-                            if (!value.set_from_string(enum_str)) {
-                                throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
-                            }
-                        } else {
-                            throw std::runtime_error("Enum property '" + name + "' must be a string");
-                        }
-                    } else {
-                        value = j.at(name).get<T>();
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("Required property '" + name + "' not found in JSON");
-                }
-            }
+            const nlohmann::json *input = nullptr;
+            if (j.contains(name))
+                input = &j.at(name);
             else
+                for (const auto &legacy_name : legacy_names_)
+                    if (j.contains(legacy_name)) { input = &j.at(legacy_name); break; }
+
+            if (input != nullptr)
             {
-                if (j.contains(name))
-                {
-                    if constexpr (std::is_base_of_v<EnumBase, T>) {
-                        // Handle enum types
-                        if (j.at(name).is_string()) {
-                            std::string enum_str = j.at(name).get<std::string>();
-                            if (!value.set_from_string(enum_str)) {
-                                // If invalid, keep default value and log warning (could add logging here)
-                            }
-                        }
-                    } else {
-                        value = j.at(name).get<T>();
-                    }
+                if constexpr (std::is_base_of_v<EnumBase, T>) {
+                    if (!input->is_string())
+                        throw std::runtime_error("Enum property '" + name + "' must be a string");
+                    const std::string enum_str = input->get<std::string>();
+                    if (!value.set_from_string(enum_str))
+                        throw std::runtime_error("Invalid enum value '" + enum_str + "' for property '" + name + "'");
+                } else {
+                    value = input->get<T>();
                 }
-                // If key doesn't exist, keep the default value
             }
+            else if (required)
+                throw std::runtime_error("Required property '" + name + "' not found in JSON");
 
             // Validate against min/max constraints (only for comparable non-enum types)
             if constexpr (std::is_arithmetic_v<T> || std::is_same_v<T, std::string>)
             {
                 if constexpr (!std::is_base_of_v<EnumBase, T>) {
-                    if (min_value.has_value() && value < min_value.value())
-                    {
-                        value = min_value.value();
-                    }
-
-                    if (max_value.has_value() && value > max_value.value())
-                    {
-                        value = max_value.value();
-                    }
+                    if (min_value.has_value() && value < min_value.value()) value = min_value.value();
+                    if (max_value.has_value() && value > max_value.value()) value = max_value.value();
                 }
             }
 
@@ -267,6 +306,7 @@ namespace Plugins {
                     j["max"] = max_value.value();
                 }
             }
+            append_ui_metadata(j);
         }
 
         void dump_to_json(nlohmann::json &j) const override
@@ -277,6 +317,105 @@ namespace Plugins {
             } else {
                 j[name] = value;
             }
+        }
+
+        [[nodiscard]] bool is_required() const override { return required; }
+
+        [[nodiscard]] bool supports_runtime_numeric() const override
+        {
+            return std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_value() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
+                return static_cast<double>(value);
+            return std::nullopt;
+        }
+
+        bool set_runtime_numeric_value(double input) override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (!std::isfinite(input)) return false;
+                if (min_value.has_value()) input = std::max(input, static_cast<double>(*min_value));
+                if (max_value.has_value()) input = std::min(input, static_cast<double>(*max_value));
+                if constexpr (std::is_integral_v<T>) input = std::round(input);
+                value = static_cast<T>(input);
+                return true;
+            }
+            return false;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_min() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (min_value.has_value()) return static_cast<double>(*min_value);
+            }
+            return std::nullopt;
+        }
+
+        [[nodiscard]] std::optional<double> runtime_numeric_max() const override
+        {
+            if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
+                if (max_value.has_value()) return static_cast<double>(*max_value);
+            }
+            return std::nullopt;
+        }
+
+        [[nodiscard]] std::vector<std::string> validate_schema() const override
+        {
+            std::vector<std::string> issues;
+            if (name.empty())
+                issues.emplace_back("property name is empty");
+            if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+                issues.emplace_back("property name contains a path separator");
+            for (unsigned char c : name) {
+                if (c < 0x20) {
+                    issues.emplace_back("property name contains a control character");
+                    break;
+                }
+            }
+
+            if constexpr (std::is_arithmetic_v<T>) {
+                if (min_value && max_value && *min_value > *max_value)
+                    issues.emplace_back("minimum is greater than maximum");
+                if (min_value && value < *min_value)
+                    issues.emplace_back("default value is below minimum");
+                if (max_value && value > *max_value)
+                    issues.emplace_back("default value is above maximum");
+                if constexpr (std::is_floating_point_v<T>) {
+                    if (!std::isfinite(value)) issues.emplace_back("default value is not finite");
+                    if (min_value && !std::isfinite(*min_value)) issues.emplace_back("minimum is not finite");
+                    if (max_value && !std::isfinite(*max_value)) issues.emplace_back("maximum is not finite");
+                }
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                if (min_value && max_value && *min_value > *max_value)
+                    issues.emplace_back("minimum string is greater than maximum string");
+                if (min_value && value < *min_value)
+                    issues.emplace_back("default value is below minimum");
+                if (max_value && value > *max_value)
+                    issues.emplace_back("default value is above maximum");
+            } else if constexpr (std::is_base_of_v<EnumBase, T>) {
+                const auto values = value.get_all_values();
+                if (values.empty()) issues.emplace_back("enum has no values");
+                if (value.get_value_string().empty()) issues.emplace_back("enum default is not a valid enumerator");
+            }
+
+            if (ui_metadata_.step.has_value() && *ui_metadata_.step <= 0.0)
+                issues.emplace_back("UI step must be greater than zero");
+            if (!ui_metadata_.presets.is_array())
+                issues.emplace_back("UI presets must be an array");
+            if (!ui_metadata_.visible_if_property.empty() && ui_metadata_.visible_if_property == name)
+                issues.emplace_back("visibility condition references the property itself");
+            std::vector<std::string> seen_legacy_names;
+            for (const auto &legacy_name : legacy_names_) {
+                if (legacy_name.empty()) issues.emplace_back("legacy property name is empty");
+                if (legacy_name == name) issues.emplace_back("legacy property name duplicates the canonical name");
+                if (std::find(seen_legacy_names.begin(), seen_legacy_names.end(), legacy_name) != seen_legacy_names.end())
+                    issues.emplace_back("legacy property name is registered more than once");
+                seen_legacy_names.push_back(legacy_name);
+            }
+            return issues;
         }
 
         [[nodiscard]] std::string get_type_id() const override

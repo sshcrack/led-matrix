@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Blend, Layers3 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import useFetch from '~/useFetch'
@@ -71,7 +71,7 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
             </Button>
             <div>
               <h1 className="font-semibold text-sm">{rawPreset?.display_name ?? presetId}</h1>
-              <p className="text-xs text-muted-foreground">Edit preset</p>
+              <p className="text-xs text-muted-foreground">Scenes, timing and sources</p>
             </div>
           </div>
           <SaveButton />
@@ -80,8 +80,17 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
         <div className="max-w-2xl mx-auto p-4 space-y-6">
           {/* Transition settings */}
           {preset && (
-            <div className="space-y-3 p-4 rounded-xl border border-border bg-card">
-              <h2 className="font-medium text-sm">Transition</h2>
+            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="flex items-center gap-3 border-b border-border/70 bg-secondary/20 p-4 sm:p-5">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <Blend className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold">Scene transitions</h2>
+                  <p className="text-xs text-muted-foreground">Choose how scenes blend and enter the duration naturally.</p>
+                </div>
+              </div>
+              <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
               {transitions && (
                 <TransitionPicker
                   value={preset.transition_name}
@@ -93,12 +102,20 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
                 value={preset.transition_duration}
                 onChange={(v) => setPreset(p => p ? { ...p, transition_duration: v } : p)}
               />
-            </div>
+              </div>
+            </section>
           )}
 
           {/* Scenes */}
-          <div className="space-y-3">
-            <h2 className="font-medium text-sm">Scenes ({Object.keys(preset?.scenes ?? {}).length})</h2>
+          <section className="space-y-3">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <div className="mb-1 flex items-center gap-2 text-primary"><Layers3 className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-wider">Preset stack</span></div>
+                <h2 className="text-lg font-semibold">Scenes</h2>
+                <p className="text-sm text-muted-foreground">Expand a scene to edit its behavior and sources.</p>
+              </div>
+              <span className="rounded-full border border-border bg-card px-3 py-1 text-sm font-medium tabular-nums">{Object.keys(preset?.scenes ?? {}).length}</span>
+            </div>
             {preset && Object.values(preset.scenes).map(scene => (
               <Scene
                 key={scene.uuid}
@@ -112,7 +129,7 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
               sceneDefinitions={sceneDefinitions ?? []}
               onAdd={handleAddScene}
             />
-          </div>
+          </section>
 
           <div className="flex justify-center pb-4">
             <ResetApiUrl />

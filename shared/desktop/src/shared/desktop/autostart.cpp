@@ -23,6 +23,14 @@ namespace Autostart
         return wstrTo;
     }
 
+    std::string ws2s(const std::wstring &wstr)
+    {
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), NULL, 0, NULL, NULL);
+        std::string strTo(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+        return strTo;
+    }
+
     std::string getStartupFolder()
     {
         PWSTR path = nullptr;
@@ -30,7 +38,7 @@ namespace Autostart
         {
             std::wstring ws(path);
             CoTaskMemFree(path);
-            return std::string(ws.begin(), ws.end());
+            return ws2s(ws);
         }
 
         return "";

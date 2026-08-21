@@ -98,8 +98,8 @@ namespace pixeljoint {
         }
     }
 
-    std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)> > ScrapedPost::get_posts(int page) {
-        std::vector<std::unique_ptr<ScrapedPost, void(*)(ScrapedPost *)> > posts;
+    std::vector<std::unique_ptr<ScrapedPost>> ScrapedPost::get_posts(int page) {
+        std::vector<std::unique_ptr<ScrapedPost>> posts;
 
         const std::string url = SEARCH_URL + std::string("&pg=") + std::to_string(page);
         const auto doc_opt = utils::fetch_page(url, BASE_URL);
@@ -141,10 +141,7 @@ namespace pixeljoint {
             if (src && href) {
                 std::string src_str(reinterpret_cast<char *>(src));
                 std::string href_str(reinterpret_cast<char *>(href));
-                posts.push_back({
-                    new ScrapedPost(src_str, href_str),
-                    [](ScrapedPost *post) { delete post; }
-                });
+                posts.push_back(std::make_unique<ScrapedPost>(src_str, href_str));
             }
 
             xmlXPathFreeObject(image_result);

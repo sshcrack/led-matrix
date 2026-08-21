@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.21)
 project(SharedToolsMatrix)
 
 set(CMAKE_CXX_STANDARD 23)
 
+include(GNUInstallDirs)
 
 add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/data.cpp
@@ -26,8 +27,12 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/server/MimeTypes.cpp
         src/shared/matrix/server/common.cpp
         src/shared/matrix/canvas_consts.cpp
+        src/shared/matrix/audio_state.cpp
+        src/shared/matrix/media_artwork_state.cpp
+        src/shared/matrix/diagnostics.cpp
         src/shared/matrix/transition_manager.cpp
         src/shared/matrix/plugin_registry.cpp
+        src/shared/matrix/preview.cpp
 )
 
 # Main Target Compile
@@ -83,9 +88,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
-include(GNUInstallDirs)
 
-# Installation
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION "."
-)

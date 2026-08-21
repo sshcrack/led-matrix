@@ -1,6 +1,7 @@
 #include "GameOfLifeScene.h"
 #include <random>
 #include <algorithm>
+#include <cmath>
 
 using namespace Scenes;
 
@@ -9,20 +10,22 @@ GameOfLifeScene::GameOfLifeScene() : Scene() {
 
 void GameOfLifeScene::initialize(int width, int height) {
     Scene::initialize(width, height);
-    width = matrix_width;
-    height = matrix_height;
+    this->width = matrix_width;
+    this->height = matrix_height;
     
     // Setup grid sizes
     current_grid.resize(width * height);
     next_grid.resize(width * height);
     cell_ages.resize(width * height);
+    afterglow.resize(width * height);
     
     last_update = std::chrono::steady_clock::now();
     accumulated_time = 0.0f;
     steps_since_reset = 0;
     steps_since_change = 0;
     has_changed = false;
-    
+    previous_population = 0;
+
     reset_simulation();
 }
 
@@ -31,33 +34,46 @@ bool GameOfLifeScene::render(rgb_matrix::FrameCanvas *canvas) {
     float delta_time = std::chrono::duration<float>(current_time - last_update).count();
     last_update = current_time;
     
+    delta_time = std::min(delta_time, 0.25f);
     accumulated_time += delta_time;
     update_interval = 1.0f / update_rate->get();
     
-    if (accumulated_time >= update_interval) {
+    int updates = 0;
+    while (accumulated_time >= update_interval && updates < 4) {
         accumulated_time -= update_interval;
         update_simulation();
-        
-        steps_since_reset++;
-        
-        // Check if we need to reset based on stability or max steps
-        if ((steps_since_change > 10 && is_stable()) || 
+        ++updates;
+        ++steps_since_reset;
+
+        if ((steps_since_change > 10 && is_stable()) ||
             (auto_reset->get() > 0 && steps_since_reset >= auto_reset->get())) {
             reset_simulation();
+            accumulated_time = 0.0f;
+            break;
         }
     }
+    if (updates == 4) accumulated_time = 0.0f;
+
+    const float glow_decay = std::pow(std::clamp(afterglow_decay->get(), 0.0f, 1.0f), delta_time * 60.0f);
     
-    // Render the current state
+    // Render living cells plus a fading history of recently dead generations.
     canvas->Clear();
-    
+
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            int idx = y * width + x;
+            const int idx = y * width + x;
+            uint8_t r = 0, g = 0, b = 0;
             if (current_grid[idx]) {
-                uint8_t r, g, b;
                 get_cell_color(cell_ages[idx], r, g, b);
-                canvas->SetPixel(x, y, r, g, b);
+                afterglow[idx] = 1.0f;
+            } else if (afterglow_enabled->get() && afterglow[idx] > 0.015f) {
+                const float glow = afterglow[idx];
+                r = static_cast<uint8_t>(45.0f * glow);
+                g = static_cast<uint8_t>(85.0f * glow);
+                b = static_cast<uint8_t>(255.0f * glow);
+                afterglow[idx] *= glow_decay;
             }
+            if (r || g || b) canvas->SetPixel(x, y, r, g, b);
         }
     }
     
@@ -100,12 +116,32 @@ void GameOfLifeScene::update_simulation() {
     
     // Swap grids
     current_grid.swap(next_grid);
-    
-    if (has_changed) {
-        steps_since_change = 0;
-    } else {
-        steps_since_change++;
+
+    // Occasionally inject a compact moving pattern into long-running worlds.
+    // The pattern and orientation vary, preventing a 128x128 board from
+    // becoming a static collection of blocks and blinkers.
+    const int injection_rate = std::max(20, pattern_injection_rate->get());
+    if (inject_patterns->get() && steps_since_reset > 30 &&
+        steps_since_reset % injection_rate == 0 && width > 8 && height > 8) {
+        std::uniform_int_distribution<int> xdist(3, width - 4);
+        std::uniform_int_distribution<int> ydist(3, height - 4);
+        std::uniform_int_distribution<int> pattern_dist(0, 2);
+        const int x = xdist(rng);
+        const int y = ydist(rng);
+        switch (pattern_dist(rng)) {
+            case 0: inject_glider(x, y, static_cast<int>(rng() % 4)); break;
+            case 1: inject_r_pentomino(x, y); break;
+            default: inject_acorn(x, y); break;
+        }
+        has_changed = true;
     }
+
+    int population = 0;
+    for (bool alive : current_grid) population += alive ? 1 : 0;
+    if (population == previous_population && !has_changed) ++steps_since_change;
+    else steps_since_change = 0;
+    previous_population = population;
+    
 }
 
 int GameOfLifeScene::count_neighbors(int x, int y) {
@@ -133,19 +169,26 @@ void GameOfLifeScene::reset_simulation(bool randomize) {
     std::fill(current_grid.begin(), current_grid.end(), false);
     std::fill(next_grid.begin(), next_grid.end(), false);
     std::fill(cell_ages.begin(), cell_ages.end(), 0);
+    std::fill(afterglow.begin(), afterglow.end(), 0.0f);
     
-    if (randomize) {
+    if (randomize && seeded_resets->get() && (rng() % 3u == 0u)) {
+        // Structured seeds create recognizable expanding organisms among the
+        // fully random resets.
+        if (width > 16 && height > 16) {
+            inject_r_pentomino(width / 3, height / 2);
+            inject_acorn(2 * width / 3, height / 2);
+            inject_glider(width / 2, height / 4, static_cast<int>(rng() % 4));
+        }
+    } else if (randomize) {
         // Randomly seed the grid
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dis(0.0, 1.0);
+        std::uniform_real_distribution<float> dis(0.0f, 1.0f);
         
         float fill_probability = random_fill->get();
         
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int idx = y * width + x;
-                if (dis(gen) < fill_probability) {
+                if (dis(rng) < fill_probability) {
                     current_grid[idx] = true;
                 }
             }
@@ -203,6 +246,43 @@ void GameOfLifeScene::get_cell_color(int age, uint8_t& r, uint8_t& g, uint8_t& b
     }
 }
 
+
+void GameOfLifeScene::inject_glider(int x, int y, int rotation) {
+    static constexpr int points[4][5][2] = {
+        {{0,-1},{1,0},{-1,1},{0,1},{1,1}},
+        {{-1,-1},{-1,0},{-1,1},{0,-1},{1,0}},
+        {{-1,-1},{0,-1},{1,-1},{-1,0},{0,1}},
+        {{-1,0},{0,1},{1,-1},{1,0},{1,1}}
+    };
+    rotation &= 3;
+    for (const auto& point : points[rotation]) {
+        const int px = (x + point[0] + width) % width;
+        const int py = (y + point[1] + height) % height;
+        current_grid[py * width + px] = true;
+        cell_ages[py * width + px] = 0;
+    }
+}
+
+void GameOfLifeScene::inject_r_pentomino(int x, int y) {
+    static constexpr int points[5][2] = {{0,-1},{1,-1},{-1,0},{0,0},{0,1}};
+    for (const auto& point : points) {
+        const int px = (x + point[0] + width) % width;
+        const int py = (y + point[1] + height) % height;
+        current_grid[py * width + px] = true;
+        cell_ages[py * width + px] = 0;
+    }
+}
+
+void GameOfLifeScene::inject_acorn(int x, int y) {
+    static constexpr int points[7][2] = {{-3,0},{-2,0},{-2,-2},{0,-1},{1,0},{2,0},{3,0}};
+    for (const auto& point : points) {
+        const int px = (x + point[0] + width) % width;
+        const int py = (y + point[1] + height) % height;
+        current_grid[py * width + px] = true;
+        cell_ages[py * width + px] = 0;
+    }
+}
+
 string GameOfLifeScene::get_name() const {
     return "game_of_life";
 }
@@ -212,6 +292,11 @@ void GameOfLifeScene::register_properties() {
     add_property(random_fill);
     add_property(auto_reset);
     add_property(age_coloring);
+    add_property(afterglow_enabled);
+    add_property(afterglow_decay);
+    add_property(inject_patterns);
+    add_property(seeded_resets);
+    add_property(pattern_injection_rate);
 }
 
 void GameOfLifeScene::load_properties(const json &j) {
@@ -219,10 +304,6 @@ void GameOfLifeScene::load_properties(const json &j) {
     reset_simulation();
 }
 
-std::unique_ptr<Scene, void (*)(Scene *)> GameOfLifeSceneWrapper::create() {
-    return {
-        new GameOfLifeScene(), [](Scene *scene) {
-            delete dynamic_cast<GameOfLifeScene*>(scene);
-        }
-    };
+std::unique_ptr<Scene> GameOfLifeSceneWrapper::create() {
+    return std::make_unique<GameOfLifeScene>();
 }

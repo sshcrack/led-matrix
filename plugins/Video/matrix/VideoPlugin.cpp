@@ -4,27 +4,22 @@
 
 using namespace Plugins;
 
-extern "C" PLUGIN_EXPORT BasicPlugin *createVideo() {
-  return new VideoPlugin();
-}
+REGISTER_PLUGIN(Video, VideoPlugin)
 
-extern "C" PLUGIN_EXPORT void destroyVideo(BasicPlugin *c) { delete c; }
-
-vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>>
+vector<std::unique_ptr<SceneWrapper>>
 VideoPlugin::create_scenes() {
-  vector<std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>> scenes;
-  scenes.push_back(std::unique_ptr<SceneWrapper, void (*)(SceneWrapper *)>(
-      new Scenes::VideoSceneWrapper(), [](SceneWrapper *s) { delete s; }));
+  vector<std::unique_ptr<SceneWrapper>> scenes;
+  scenes.push_back(std::make_unique<Scenes::VideoSceneWrapper>());
   return scenes;
 }
 
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>>
+vector<std::unique_ptr<ImageProviderWrapper>>
 VideoPlugin::create_image_providers() {
   return {};
 }
 
 vector<
-    std::unique_ptr<ShaderProviderWrapper, void (*)(ShaderProviderWrapper *)>>
+    std::unique_ptr<ShaderProviderWrapper>>
 VideoPlugin::create_shader_providers() {
   return {};
 }
