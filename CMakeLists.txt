@@ -392,6 +392,21 @@ if(ENABLE_EMULATOR)
     add_test(NAME property_compat_smoke COMMAND $<TARGET_FILE:property_compat_smoke>)
     set_tests_properties(property_compat_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(runtime_inputs_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_inputs_smoke.cpp
+    )
+    target_compile_features(runtime_inputs_smoke PRIVATE cxx_std_23)
+    target_link_libraries(runtime_inputs_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        spdlog::spdlog
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME runtime_inputs_smoke COMMAND $<TARGET_FILE:runtime_inputs_smoke>)
+    set_tests_properties(runtime_inputs_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_test(NAME scene_registry_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>

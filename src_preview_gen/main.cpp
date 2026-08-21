@@ -413,6 +413,7 @@ int main(int argc, char* argv[])
             const auto default_scene = wrapper->get_default();
             const auto capabilities = default_scene->get_capabilities();
             const auto preview_spec = default_scene->get_preview_spec();
+            const auto runtime_spec = default_scene->get_effective_runtime_inputs();
             const bool needs_desktop = capabilities.requires_desktop;
             std::string plugin_name;
             std::string plugin_path;
@@ -438,6 +439,10 @@ int main(int argc, char* argv[])
                 {"plugin_name", plugin_name},
                 {"plugin_path", plugin_path},
                 {"needs_desktop", needs_desktop},
+                {"runtime_inputs", {
+                    {"required", runtime_spec.required},
+                    {"optional", runtime_spec.optional}
+                }},
                 {"capabilities", {
                     {"requires_desktop", capabilities.requires_desktop},
                     {"requires_audio", capabilities.requires_audio},

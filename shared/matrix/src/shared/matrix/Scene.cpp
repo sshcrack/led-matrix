@@ -124,6 +124,19 @@ nlohmann::json Scenes::Scene::to_json() const
     return j;
 }
 
+Scenes::SceneInputSpec Scenes::Scene::get_effective_runtime_inputs() const
+{
+    auto spec = get_runtime_input_spec();
+    const auto caps = get_capabilities();
+    if (caps.requires_desktop)
+        spec.require(RuntimeInputIds::Desktop);
+    if (caps.requires_audio)
+        spec.require(RuntimeInputIds::Audio);
+    else if (caps.supports_audio)
+        spec.accept(RuntimeInputIds::Audio);
+    return spec;
+}
+
 tmillis_t Scenes::Scene::get_duration() const
 {
     return duration->get();

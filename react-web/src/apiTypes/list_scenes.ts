@@ -1,3 +1,10 @@
+export interface SceneRuntimeInputs {
+  required: string[]
+  optional: string[]
+  eligible: boolean
+  missing_required: string[]
+}
+
 export interface ScenePreviewSpec {
   enabled: boolean
   inputs: string[]
@@ -39,6 +46,7 @@ export interface ListScenes {
   needs_desktop?: boolean
   category: string
   capabilities?: SceneCapabilities
+  runtime_inputs?: SceneRuntimeInputs
   preview?: ScenePreviewSpec
 }
 

@@ -28,6 +28,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/server/common.cpp
         src/shared/matrix/canvas_consts.cpp
         src/shared/matrix/audio_state.cpp
+        src/shared/matrix/runtime_inputs.cpp
         src/shared/matrix/media_artwork_state.cpp
         src/shared/matrix/diagnostics.cpp
         src/shared/matrix/transition_manager.cpp
