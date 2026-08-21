@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
 #include "shared/matrix/utils/FrameTimer.h"
+#include <random>
 
 using namespace Scenes;
 
@@ -11,8 +12,14 @@ namespace Scenes {
     private:
         float *map = nullptr;
         FrameTimer frameTimer;
+        std::mt19937 rng{std::random_device{}()};
 
         void drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap);
+
+        WaveScene(WaveScene&&) = delete;
+        WaveScene& operator=(WaveScene&&) = delete;
+        WaveScene(const WaveScene&) = delete;
+        WaveScene& operator=(const WaveScene&) = delete;
 
     public:
         bool render(rgb_matrix::FrameCanvas *canvas) override;
@@ -23,6 +30,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
+        std::string get_category() const override { return "Generative"; }
 
         void register_properties() override {}
 
@@ -40,6 +48,6 @@ namespace Scenes {
     class WaveSceneWrapper : public Plugins::SceneWrapper {
     public:
 
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

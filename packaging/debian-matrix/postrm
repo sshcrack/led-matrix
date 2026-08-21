@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ]; then
+    rm -rf /var/lib/led-matrix
+    # Remove debconf answers on purge
+    if [ -f /usr/share/debconf/confmodule ]; then
+        . /usr/share/debconf/confmodule 2>/dev/null || true
+        db_purge 2>/dev/null || true
+    fi
+fi
+
+exit 0

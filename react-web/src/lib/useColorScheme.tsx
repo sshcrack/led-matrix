@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 type ColorScheme = 'light' | 'dark'
 
 export function useColorScheme(): ColorScheme {
-  const [scheme, setScheme] = useState<ColorScheme>(() => {
+  const [scheme] = useState<ColorScheme>(() => {
     const stored = localStorage.getItem('colorScheme')
     if (stored === 'dark' || stored === 'light') return stored
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'

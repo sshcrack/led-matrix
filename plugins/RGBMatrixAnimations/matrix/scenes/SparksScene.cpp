@@ -7,9 +7,10 @@ SparksScene::SparksScene()
     : ParticleScene(), ax(0), ay(0)
 {
     // Sparks-specific defaults
-    numParticles = MAKE_PROPERTY("numParticles", int, 40);
-    shake = MAKE_PROPERTY("shake", int, 5);
-    bounce = MAKE_PROPERTY("bounce", int, 250);
+    num_particles = MAKE_PROPERTY_MINMAX("num_particles", int, 40, 1, 12000);
+    num_particles->legacy_name("numParticles");
+    shake = MAKE_PROPERTY_MINMAX("shake", int, 5, 0, 100);
+    bounce = MAKE_PROPERTY_MINMAX("bounce", int, 250, 0, 255);
 }
 
 void SparksScene::initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer,
@@ -18,7 +19,7 @@ void SparksScene::initializeParticles(std::shared_ptr<ParticleMatrixRenderer> re
     RGB_color yellow = {255, 200, 120};
     int16_t maxVel = 10000;
 
-    for (int i = 0; i < numParticles->get(); i++)
+    for (int i = 0; i < num_particles->get(); i++)
     {
         int16_t vx = renderer->random_int16(-maxVel, maxVel + 1);
         int16_t vy = renderer->random_int16(-maxVel, maxVel + 1);
@@ -62,12 +63,7 @@ string SparksScene::get_name() const
     return "sparks";
 }
 
-std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene*)> SparksSceneWrapper::create()
+std::unique_ptr<Scenes::Scene> SparksSceneWrapper::create()
 {
-    return {
-        new SparksScene(), [](Scenes::Scene* scene)
-        {
-            delete scene;
-        }
-    };
+    return std::make_unique<SparksScene>();
 }

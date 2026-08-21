@@ -4,7 +4,7 @@
 
 using std::nullopt;
 
-std::expected<std::optional<std::variant<std::unique_ptr<Post, void(*)(Post *)>, std::shared_ptr<Post> > >, string>
+std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > >, string>
 ImageProviders::Collection::get_next_image() {
     if (images.empty()) {
         return nullopt;
@@ -52,11 +52,7 @@ string ImageProviders::Collection::get_name() const {
     return "collection";
 }
 
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)>
+std::unique_ptr<ImageProviders::General>
 ImageProviders::CollectionWrapper::create() {
-    return {
-        new Collection(), [](General *p) {
-            delete p;
-        }
-    };
+    return std::make_unique<Collection>();
 }

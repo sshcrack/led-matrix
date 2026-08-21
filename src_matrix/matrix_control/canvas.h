@@ -1,19 +1,58 @@
 #pragma once
 
-#include "led-matrix.h"
-#include "shared/matrix/post.h"
-#include "shared/matrix/post_processor.h"
-#include "content-streamer.h"
-#include "shared/matrix/utils/utils.h"
-#include "shared/matrix/Scene.h"
-#include "shared/matrix/utils/canvas_image.h"
-#include <vector>
+#include <atomic>
+#include <functional>
+#include <memory>
 
-using rgb_matrix::Canvas;
+#include "led-matrix.h"
+#include "shared/common/timesource/TimeSource.h"
+#include "shared/matrix/Scene.h"
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/post_processor.h"
+#include "shared/matrix/transition_manager.h"
+
+#include "MatrixPresenter.h"
+#include "SceneScheduler.h"
+#include "SceneRenderer.h"
+#include "TransitionEngine.h"
+
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
-using rgb_matrix::StreamReader;
 
-// Global post-processor instance
+class CanvasCoordinator {
+public:
+    CanvasCoordinator(RGBMatrixBase *matrix,
+                      TimeSource *time_source,
+                      PostProcessor *post_processor,
+                      TransitionManager *transition_manager,
+                      MatrixPresenter *presenter,
+                      Config::MainConfig *cfg,
+                      const std::atomic<bool> *exit_flag,
+                      const std::atomic<bool> *interrupt_flag,
+                      std::function<bool()> is_desktop_connected,
+                      std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
+                      std::function<void(const std::string &)> broadcast);
+    ~CanvasCoordinator();
 
-void update_canvas(RGBMatrixBase * matrix, FrameCanvas *&first_offscreen_canvas, FrameCanvas *&second_offscreen_canvas,  FrameCanvas *&composite_offscreen_canvas, std::shared_ptr<Scenes::Scene> &forced_scene, std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);
+    void run(std::shared_ptr<Scenes::Scene> pinned_scene = nullptr);
+
+private:
+    RGBMatrixBase *matrix_;
+    TimeSource *time_source_;
+    MatrixPresenter *presenter_;
+    Config::MainConfig *config_;
+    const std::atomic<bool> *exit_flag_;
+    const std::atomic<bool> *interrupt_flag_;
+    FrameCanvas *first_offscreen_canvas_ = nullptr;
+    FrameCanvas *second_offscreen_canvas_ = nullptr;
+    FrameCanvas *composite_offscreen_canvas_ = nullptr;
+    std::shared_ptr<Scenes::Scene> forced_scene_;
+
+    std::function<bool()> is_desktop_connected_fn_;
+    std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene_fn_;
+    std::function<void(const std::string &)> broadcast_fn_;
+
+    SceneScheduler scheduler_;
+    SceneRenderer renderer_;
+    TransitionEngine transition_engine_;
+};

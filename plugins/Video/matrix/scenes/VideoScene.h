@@ -25,6 +25,7 @@ public:
   bool render(rgb_matrix::FrameCanvas *canvas) override;
 
   string get_name() const override;
+  std::string get_category() const override { return "Media"; }
 
   void register_properties() override;
 
@@ -49,6 +50,6 @@ public:
 
 class VideoSceneWrapper : public Plugins::SceneWrapper {
 public:
-  std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override;
+  std::unique_ptr<Scenes::Scene> create() override;
 };
 } // namespace Scenes

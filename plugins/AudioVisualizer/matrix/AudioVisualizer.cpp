@@ -1,120 +1,68 @@
 #include "AudioVisualizer.h"
+#include "AudioPreviewProvider.h"
+#include "scenes/AudioReactiveScenes.h"
 #include "scenes/AudioSpectrumScene.h"
-#include "spdlog/spdlog.h"
-#include <cstring>
-#include <thread>
-#include <chrono>
+#include "scenes/MusicDirectorScene.h"
+
+#include <shared/common/audio_protocol.h>
 #include <shared/matrix/canvas_consts.h>
+#include <shared/matrix/diagnostics.h>
+#include <spdlog/spdlog.h>
 
 using namespace Scenes;
 
-extern "C" PLUGIN_EXPORT AudioVisualizer *createAudioVisualizer()
-{
-    return new AudioVisualizer();
-}
+REGISTER_PLUGIN(AudioVisualizer, AudioVisualizer)
 
-extern "C" PLUGIN_EXPORT void destroyAudioVisualizer(AudioVisualizer *c)
-{
-    delete c;
-}
-
-vector<std::unique_ptr<ImageProviderWrapper, void (*)(ImageProviderWrapper *)>> AudioVisualizer::create_image_providers()
-{
+std::vector<std::unique_ptr<ImageProviderWrapper>> AudioVisualizer::create_image_providers() {
     return {};
 }
 
-vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>> AudioVisualizer::create_scenes()
-{
-    auto scenes = vector<std::unique_ptr<SceneWrapper, void (*)(Plugins::SceneWrapper *)>>();
-    auto deleteScene = [](SceneWrapper *scene)
-    {
-        delete scene;
-    };
+std::vector<std::unique_ptr<Previews::DataProvider>> AudioVisualizer::create_preview_data_providers() {
+    std::vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(std::make_unique<AudioPreviewProvider>());
+    return providers;
+}
 
-    scenes.push_back({new AudioSpectrumSceneWrapper(), deleteScene});
-
+std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes() {
+    std::vector<std::unique_ptr<SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioPulseTunnelSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioAuroraSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioKaleidoscopeSceneWrapper>());
+    scenes.push_back(std::make_unique<MusicDirectorSceneWrapper>());
     return scenes;
 }
 
-AudioVisualizer::AudioVisualizer() : last_timestamp(0), interpolated_log(false)
-{
-    current_audio_data.resize(64);
-    std::ranges::fill(current_audio_data, 0);
-    last_beat_time = std::chrono::steady_clock::now();
-}
-
-std::optional<string> AudioVisualizer::before_server_init()
-{
-    spdlog::debug("Starting UDP server for audio visualization");
+std::optional<std::string> AudioVisualizer::before_server_init() {
+    spdlog::debug("Starting rich music-analysis UDP receiver");
     return std::nullopt;
 }
 
-std::optional<string> AudioVisualizer::pre_exit()
-{
-    spdlog::debug("Stopping UDP server for audio visualization");
+std::optional<std::string> AudioVisualizer::pre_exit() {
+    spdlog::debug("Stopping rich music-analysis UDP receiver");
     return std::nullopt;
 }
 
-std::vector<uint8_t> AudioVisualizer::get_audio_data()
-{
-    std::lock_guard<std::mutex> lock(audio_data_mutex);
-    return current_audio_data;
+AudioState::Snapshot AudioVisualizer::get_audio_state() const {
+    return AudioState::snapshot();
 }
 
-uint32_t AudioVisualizer::get_last_timestamp()
-{
-    std::lock_guard<std::mutex> lock(audio_data_mutex);
-    return last_timestamp;
-}
+bool AudioVisualizer::on_udp_packet(uint8_t pluginId, const uint8_t *data, size_t size) {
+    if (pluginId != 0x01) return false;
 
-bool AudioVisualizer::on_udp_packet(const uint8_t pluginId, const uint8_t *data, const size_t size)
-{
-    // Process received packet
-    // Check packet format based on the Rust code (previous implementation):
-    // - Number of bands (1 byte)
-    // - Flags (1 byte)
-    // - Timestamp (4 bytes)
-    // - Bands data (num_bands bytes)
-    if(pluginId != 0x01)
-        return false; // Not destined for this plugin
-
-    if (size < 6)
-        return false;
-
-    uint8_t num_bands = data[0];
-    uint8_t flags = data[1];
-
-    // Extract timestamp (little endian)
-    uint32_t timestamp =
-        static_cast<uint32_t>(data[2]) |
-        (static_cast<uint32_t>(data[3]) << 8) |
-        (static_cast<uint32_t>(data[4]) << 16) |
-        (static_cast<uint32_t>(data[5]) << 24);
-
-    // Check if packet size matches expected size
-    if (size != 6 + num_bands)
-    {
-        // Invalid packet size
+    AudioProtocol::Frame frame;
+    std::string error;
+    if (!AudioProtocol::decode(std::span<const uint8_t>(data, size), frame, &error)) {
+        Diagnostics::RuntimeDiagnostics::instance().record_audio_decode_error();
+        spdlog::warn("Rejected music-analysis packet: {}", error);
         return false;
     }
 
-    // Extract bit 0 of flags which indicates if interpolated_log is enabled
-    bool is_interpolated_log = (flags & 0x01) != 0;
-    // Extract bit 1 of flags which indicates if beat was detected
-    bool is_beat_detected = (flags & 0x02) != 0;
+    Diagnostics::RuntimeDiagnostics::instance().record_audio_packet(frame.sequence);
+    AudioState::update(frame);
 
-    // Update audio data
-    {
-        std::lock_guard<std::mutex> lock(audio_data_mutex);
-        current_audio_data.assign(data + 6, data + 6 + num_bands);
-        last_timestamp = timestamp;
-        interpolated_log = is_interpolated_log;
-        
-        // Set beat detection flag from desktop application
-        if (is_beat_detected) {
-            Constants::global_post_processor->add_effect("flash", 0.4f, 0.8f);
-        }
-    }
-
+    if (frame.event(AudioProtocol::DropEvent) && Constants::global_post_processor)
+        Constants::global_post_processor->add_effect("flash", 0.28f, 0.55f);
     return true;
 }

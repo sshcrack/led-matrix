@@ -8,7 +8,7 @@
 namespace Scenes {
     class JuliaSetSceneWrapper final : public Plugins::SceneWrapper {
     public:
-        std::unique_ptr<Scene, void (*)(Scene *)> create() override;
+        std::unique_ptr<Scene> create() override;
     };
 
     class JuliaSetScene final : public Scene {
@@ -19,7 +19,7 @@ namespace Scenes {
         void initialize(int width, int height) override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         [[nodiscard]] string get_name() const override;
-        [[nodiscard]] std::string getCategory() const override { return "Fractals"; }
+        [[nodiscard]] std::string get_category() const override { return "Fractals"; }
 
         tmillis_t get_default_duration() override {
             return 20000;
@@ -47,6 +47,6 @@ namespace Scenes {
         PropertyPointer<float> color_shift = MAKE_PROPERTY_MINMAX("color_shift", float, 0.0f, 0.0f, 1.0f);
         
         // Color mapping
-        void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) const;
+
     };
 }

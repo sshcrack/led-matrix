@@ -107,14 +107,14 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     return config->save();
 }
 
-Spotify::Spotify() {
+Spotify::Spotify(const bool allow_missing_credentials) {
     auto id = std::getenv("SPOTIFY_CLIENT_ID");
     auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
 
     if (id && secret) {
         client_id = id;
         client_secret = secret;
-    } else {
+    } else if (!allow_missing_credentials) {
         throw std::runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
     }
 }
@@ -313,6 +313,24 @@ void Spotify::terminate() {
 std::optional<SpotifyState> Spotify::get_currently_playing() {
     std::lock_guard lock(mtx);
     return this->currently_playing;
+}
+
+void Spotify::set_preview_currently_playing(nlohmann::json state_json) {
+    std::lock_guard lock(mtx);
+    if (currently_playing.has_value())
+        last_playing.emplace(currently_playing.value());
+    else
+        last_playing.reset();
+    currently_playing.emplace(std::move(state_json));
+    is_dirty = true;
+}
+
+void Spotify::clear_preview_currently_playing() {
+    std::lock_guard lock(mtx);
+    if (currently_playing.has_value())
+        last_playing.emplace(currently_playing.value());
+    currently_playing.reset();
+    is_dirty = true;
 }
 
 /**

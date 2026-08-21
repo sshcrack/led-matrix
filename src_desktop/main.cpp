@@ -22,8 +22,9 @@
 #include <shared/desktop/glfw.h>
 #include "spdlog/cfg/env.h"
 #include <csignal>
-#include <future>
+#include <thread>
 #include <chrono>
+#include <atomic>
 
 // Third-party includes
 #include <fmt/format.h>
@@ -61,64 +62,20 @@ std::string get_noto_color_emoji_path() {
 #endif
 
 // ---- Global/static variables ----
-static bool shouldExit = false;
+static volatile sig_atomic_t shouldExit{0};
 static auto DISPLAY_APP_NAME = "LED Matrix Controller";
-static bool showMainWindow = false;
+static std::atomic<bool> showMainWindow{false};
+// g_pending_http removed — async HTTP calls use detached threads
 
 #ifdef _WIN32
-// Global variables for shutdown handling on Windows
-static std::string g_shutdown_hostname;
-static uint16_t g_shutdown_port = 0;
-static bool g_should_turn_off_on_exit = false;
-
-// Console control handler for Windows
+// Console control handler for Windows — must be async-signal-safe
 static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
-    // Request graceful shutdown
-    shouldExit = true;
-    // Attempt to turn off matrix during shutdown on Windows
-    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
-        spdlog::info("Received shutdown signal, turning Matrix OFF.");
-        try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
-            if (response.error) {
-                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
-            } else {
-                spdlog::info("Matrix turned OFF during shutdown.");
-            }
-        } catch (const std::exception &e) {
-            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
-        }
-    }
-    // Indicate we've handled the event so the process isn't terminated immediately
+    shouldExit = 1;
     return TRUE;
 }
 #else
-// Global variables for shutdown handling on Linux
-static std::string g_shutdown_hostname;
-static uint16_t g_shutdown_port = 0;
-static bool g_should_turn_off_on_exit = false;
-// Use sig_atomic_t for async-signal-safety
-static volatile sig_atomic_t signalReceived = 0;
-
 static void signal_handler(int /*signum*/) {
-    signalReceived = 1;
-    shouldExit = true;
-    // Attempt to turn off matrix during shutdown on Linux
-    if (g_should_turn_off_on_exit && !g_shutdown_hostname.empty() && g_shutdown_port > 0) {
-        spdlog::info("Received shutdown signal, turning Matrix OFF.");
-        try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled=false", g_shutdown_hostname, g_shutdown_port);
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{3000L}); // 3 second timeout
-            if (response.error) {
-                spdlog::error("Failed to turn off matrix during shutdown: {}", response.error.message);
-            } else {
-                spdlog::info("Matrix turned OFF during shutdown.");
-            }
-        } catch (const std::exception &e) {
-            spdlog::error("Exception while turning off matrix during shutdown: {}", e.what());
-        }
-    }
+    shouldExit = 1;
 }
 #endif
 
@@ -137,10 +94,9 @@ static void window_iconify_callback(GLFWwindow *window, const int iconified) {
 static void change_matrix_status(const std::string &hostname, uint16_t port, bool turnOn, bool waitForCompletion = false) {
     auto task = [hostname, port, turnOn]() {
         try {
-            auto url = fmt::format("http://{}:{}/set_enabled?enabled={}", hostname, port,
-                                   turnOn ? "true" : "false");
+            auto url = fmt::format("http://{}:{}/set_enabled", hostname, port);
 
-            cpr::Response response = cpr::Get(cpr::Url(url), cpr::Timeout{5000L}); // 5 second timeout
+            cpr::Response response = cpr::Post(cpr::Url(url), cpr::Payload{{"enabled", turnOn ? "true" : "false"}}, cpr::Timeout{5000L});
             if (response.error) {
                 spdlog::error("Failed to change matrix status: {}", response.error.message);
             } else {
@@ -155,7 +111,7 @@ static void change_matrix_status(const std::string &hostname, uint16_t port, boo
         // Synchronous call for shutdown scenarios
         task();
     } else {
-        // Asynchronous call for normal operation
+        // Asynchronous call for normal operation (self-contained lambda, safe to detach)
         std::thread(task).detach();
     }
 }
@@ -165,16 +121,23 @@ static void setup_tray(Tray::Tray &tray) {
     tray.addEntry(
         Tray::Button(
             "Show Window",
-            [&] { showMainWindow = true; }));
+            [&] { showMainWindow.store(true); }));
     tray.addEntry(
         Tray::Button(
             "Exit",
-            [&] { shouldExit = true; }));
+            [&] { shouldExit = 1; }));
 }
 
-// ---- Main application logic ----
-int run_app(int argc, char *argv[]) {
-    // Logging setup
+// ---- File-scope state used by GUI and callbacks ----
+static std::shared_ptr<WebsocketClient> ws_sp;
+static WebsocketClient *ws = nullptr;
+static UpdateChecker::UpdateManager updateManager;
+static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
+static bool startMinimized = false;
+static int startupFrameCounter = 0;
+
+// ---- Extracted helpers ----
+static void setup_logging() {
     fs::path logDir = get_data_dir() / "logs";
     if (!fs::exists(logDir))
         fs::create_directories(logDir);
@@ -190,66 +153,72 @@ int run_app(int argc, char *argv[]) {
     spdlog::logger logger("multi_sink", {console_sink, file_sink});
     auto sharedLogger = std::make_shared<spdlog::logger>(logger);
     spdlog::set_default_logger(sharedLogger);
-    // Prefer the FHS path for DEB installations, fall back to relative dev layout
     auto assets_dir = get_exec_dir() / ".." / "share" / "led-matrix-desktop" / "assets";
     if (!fs::is_directory(assets_dir)) {
         assets_dir = get_exec_dir() / ".." / "assets";
     }
     HelloImGui::SetAssetsFolder(assets_dir.string());
+}
 
-    // Single instance manager
-    SingleInstanceManager *instanceManager = nullptr;
-    try {
-        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
-            spdlog::info("Focus request received, showing main window.");
-            showMainWindow = true;
-        });
-    } catch ([[maybe_unused]] const std::exception &e) {
-        // Already running, exit
-        return 0;
-    }
-
+static void init_plugins() {
     auto pl = Plugins::PluginManager::instance();
     auto cfg = ConfigManager::instance();
     pl->initialize();
     for (const auto &[plName, plugin]: pl->get_plugins()) {
         plugin->load_config(cfg->getPluginSetting(plName));
     }
+}
 
-    // Store shutdown configuration in global variables for signal handlers
-    General &generalCfgRef = cfg->getGeneralConfig();
-    g_shutdown_hostname = generalCfgRef.getHostnameCopy();
-    g_shutdown_port = generalCfgRef.getPort();
-    g_should_turn_off_on_exit = generalCfgRef.isTurnMatrixOffOnExit();
 
-    static WebsocketClient *ws;
-    static UpdateChecker::UpdateManager updateManager;
-    static MatrixVersionChecker::MatrixVersionManager matrixVersionManager;
 
-    static bool startMinimized = false;
-    // somehow because portaudio is bugged or idk, we need to have like 10 frames of the program and then we can hide it so there's your counter
-    static int startupFrameCounter = 0;
+// ---- Main application logic ----
+int run_app(int argc, char *argv[]) {
+    setup_logging();
+
+    SingleInstanceManager *instanceManager = nullptr;
+    try {
+        instanceManager = new SingleInstanceManager("LedMatrixController", [] {
+            spdlog::info("Focus request received, showing main window.");
+            showMainWindow.store(true);
+        });
+    } catch ([[maybe_unused]] const std::exception &e) {
+        return 0;
+    }
+
+    auto pl = Plugins::PluginManager::instance();
+    auto cfg = ConfigManager::instance();
+    init_plugins();
+
+    // UI state variables (non-static, persist via lambda captures)
+    bool initialConnect = true;
+    std::string hostname = cfg->getGeneralConfig().getHostname();
+    int port = cfg->getGeneralConfig().getPort();
+    int fpsLimit = cfg->getGeneralConfig().getFpsLimit();
+    int udpFpsLimit = cfg->getGeneralConfig().getUdpFpsLimit();
+    bool matrixOnOnStart = cfg->getGeneralConfig().isTurnMatrixOnOnStart();
+    bool matrixOffOnExit = cfg->getGeneralConfig().isTurnMatrixOffOnExit();
 
     if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
         spdlog::info("Starting minimized.");
         startMinimized = true;
     }
 
-    // ---- GUI function ----
-    auto guiFunction = [pl, cfg] {
-        static bool initialConnect = true;
+    const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
+    Tray::Tray tray(DISPLAY_APP_NAME, trayIco);
+    setup_tray(tray);
+
+    HelloImGui::RunnerParams runnerParams;
+    runnerParams.callbacks.ShowGui = [&] {
         if (shouldExit) {
             HelloImGui::GetRunnerParams()->appShallExit = true;
-            shouldExit = false;
+            shouldExit = 0;
         }
 
-        if (showMainWindow) {
+        if (showMainWindow.load()) {
             spdlog::info("Showing main window.");
-            showMainWindow = false;
+            showMainWindow.store(false);
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = false;
-            auto window = (GLFWwindow *) HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
-
-            // Restore the window if it was minimized or hidden
+            auto window = (GLFWwindow *)HelloImGui::GetRunnerParams()->backendPointers.glfwWindow;
             glfwRestoreWindow(window);
             glfwShowWindow(window);
             glfwFocusWindow(window);
@@ -258,9 +227,8 @@ int run_app(int argc, char *argv[]) {
         General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
 
-        static std::string hostname = generalCfg.getHostname();
         if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname,
-                                     ImGuiInputTextFlags_CallbackCharFilter, HostnameFilter)) {
+                                     ImGuiInputTextFlags_CallbackCharFilter, hostname_filter)) {
             std::cout << "Hostname changed to: " << hostname << std::endl;
             generalCfg.setHostname(hostname);
             ws->stop();
@@ -271,12 +239,10 @@ int run_app(int argc, char *argv[]) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
             somethingInvalid = true;
         }
 
-        static int port = generalCfg.getPort();
         if (ImGui::InputScalar("Port", ImGuiDataType_U16, &port, nullptr, nullptr, "%u", ImGuiInputTextFlags_None)) {
             std::cout << "Port changed to: " << port << std::endl;
             generalCfg.setPort(port);
@@ -286,17 +252,13 @@ int run_app(int argc, char *argv[]) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f); // 2.0f = thickness
+            draw_list->AddRect(min, max, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
             somethingInvalid = true;
         }
 
-        static int fpsLimit = generalCfg.getFpsLimit();
         if (ImGui::InputInt("FPS Limit", &fpsLimit, 1, 5, ImGuiInputFlags_None)) {
-            if (fpsLimit < 1)
-                fpsLimit = 1;
-            if (fpsLimit > 360)
-                fpsLimit = 360;
+            if (fpsLimit < 1) fpsLimit = 1;
+            if (fpsLimit > 360) fpsLimit = 360;
             generalCfg.setFpsLimit(fpsLimit);
             HelloImGui::GetRunnerParams()->fpsIdling.fpsIdle = fpsLimit;
         }
@@ -308,12 +270,9 @@ int run_app(int argc, char *argv[]) {
             somethingInvalid = true;
         }
 
-        static int udpFpsLimit = generalCfg.getUdpFpsLimit();
         if (ImGui::SliderInt("UDP Send FPS", &udpFpsLimit, 1, 120, "%d FPS")) {
-            if (udpFpsLimit < 1)
-                udpFpsLimit = 1;
-            if (udpFpsLimit > 120)
-                udpFpsLimit = 120;
+            if (udpFpsLimit < 1) udpFpsLimit = 1;
+            if (udpFpsLimit > 120) udpFpsLimit = 120;
             generalCfg.setUdpFpsLimit(udpFpsLimit);
         }
         ImGui::SetItemTooltip("Limits the rate at which frames are sent to the Pi. "
@@ -324,12 +283,8 @@ int run_app(int argc, char *argv[]) {
         } else if (initialConnect) {
             ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
             ws->start();
-
-            // Check matrix version when connecting
             matrixVersionManager.checkMatrixVersionAsync(hostname, port);
-
             initialConnect = false;
-
             if (generalCfg.isTurnMatrixOnOnStart()) {
                 spdlog::info("Turning Matrix ON on start.");
                 change_matrix_status(hostname, port, true);
@@ -337,8 +292,6 @@ int run_app(int argc, char *argv[]) {
         }
 
         if (HelloImGui::GetRunnerParams()->appWindowParams.hidden) {
-            // We are just returning here, because waiting is handled in the AfterSwap method.
-            // (Its this late so we connect to the websocket)
             return;
         }
 
@@ -353,33 +306,26 @@ int run_app(int argc, char *argv[]) {
             return;
         }
 
-        static bool matrixOnOnStart = generalCfg.isTurnMatrixOnOnStart();
         if (ImGui::Checkbox("Turn Matrix On on Start", &matrixOnOnStart)) {
             generalCfg.setTurnMatrixOnOnStart(matrixOnOnStart);
         }
         ImGui::SameLine();
-        static bool matrixOffOnExit = generalCfg.isTurnMatrixOffOnExit();
         if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
             generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
         }
 
         auto state = ws->getReadyState();
         const std::string stateStr = ws->getReadyStateString();
-        std::string statusText = "WebSocket is currently: " + stateStr;
+        ImGui::Text("WebSocket is currently: %s", stateStr.c_str());
 
-        ImGui::Text(statusText.c_str());
         if (state != ix::ReadyState::Open) {
             if (ImGui::Button("Connect", ImVec2(0, 0))) {
                 ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
                 ws->start();
                 ws->webSocket.enableAutomaticReconnection();
-
-                // Check matrix version when manually connecting
                 matrixVersionManager.checkMatrixVersionAsync(hostname, port);
-
                 spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
             }
-
             return;
         } else {
             if (ImGui::Button("Disconnect", ImVec2(0, 0))) {
@@ -389,7 +335,7 @@ int run_app(int argc, char *argv[]) {
             }
         }
 
-        ImGui::Text(("Active Scene: " + ws->getActiveScene()).c_str());
+        ImGui::Text("Active Scene: %s", ws->getActiveScene().c_str());
         auto last = ws->getLastError();
         if (!last.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last Error: %s", last.c_str());
@@ -402,25 +348,21 @@ int run_app(int argc, char *argv[]) {
             return;
         }
 
-        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0]; {
+        static std::pair<std::string, Plugins::DesktopPlugin *> selected = plugins[0];
+        {
             ImGui::BeginChild("Plugin Selector Pane", ImVec2(150, 0),
                               ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-            for (const auto &currPair: plugins) {
-                std::string currName = currPair.first;
-                if (ImGui::Selectable(currName.c_str(), selected.first == currName))
+            for (const auto &currPair : plugins) {
+                if (ImGui::Selectable(currPair.first.c_str(), selected.first == currPair.first))
                     selected = currPair;
             }
-
             ImGui::EndChild();
         }
 
         ImGui::SameLine();
         ImGui::BeginGroup();
         ImGui::BeginChild(selected.first.c_str(), ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
-        // Leave room for 1 line below us
-
         selected.second->render();
-
         ImGui::EndChild();
         ImGui::EndGroup();
 
@@ -429,15 +371,6 @@ int run_app(int argc, char *argv[]) {
         if (updateManager.shallAppExit())
             HelloImGui::GetRunnerParams()->appShallExit = true;
     };
-
-    // ---- Tray setup ----
-    const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
-    Tray::Tray tray(DISPLAY_APP_NAME, trayIco);
-    setup_tray(tray);
-
-    // ---- HelloImGui runner setup ----
-    HelloImGui::RunnerParams runnerParams;
-    runnerParams.callbacks.ShowGui = guiFunction;
     runnerParams.callbacks.PreNewFrame = [&] {
         tray.pump();
 #ifndef _WIN32
@@ -592,18 +525,15 @@ int run_app(int argc, char *argv[]) {
         for (auto &[name, plugin]: pl->get_plugins()) {
             plugin->post_init();
         }
-        // Only now create the WebsocketClient, so the UDP thread starts after the window is set
-        ws = new WebsocketClient();
+        ws_sp = WebsocketClient::create();
+        ws = ws_sp.get();
         WebsocketClient::setInstance(ws);
-        // Check for updates on startup
         updateManager.checkForUpdatesAsync();
     };
 
     runnerParams.appWindowParams.restorePreviousGeometry = true;
 
-    // Register signal/console handlers so the application can request a graceful shutdown
 #ifdef _WIN32
-    // Install console control handler to catch Ctrl+C / console close events
     SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
 #else
     std::signal(SIGINT, signal_handler);
@@ -612,19 +542,23 @@ int run_app(int argc, char *argv[]) {
 
     HelloImGui::Run(runnerParams);
     spdlog::info("Exiting tray thread...");
-    tray.exit(); // Ensure tray.exit() is called after HelloImGui::Run
-    WebsocketClient::setInstance(nullptr); {
+    ws->stop();
+    tray.exit();
+    WebsocketClient::setInstance(nullptr);
+    {
         auto generalCfg = cfg->getGeneralConfig();
         auto hostname = generalCfg.getHostnameCopy();
         auto port = generalCfg.getPort();
         if (generalCfg.isTurnMatrixOffOnExit()) {
             spdlog::info("Turning Matrix OFF on exit.");
-            // Use synchronous call on exit to ensure completion before shutdown
             change_matrix_status(hostname, port, false, true);
         }
     }
 
-    delete ws;
+    ws = nullptr;
+    ws_sp.reset();
+    // Destroy config BEFORE plugins: ~ConfigManager saveConfig()
+    // iterates plugins — they must still be alive.
     delete cfg;
     pl->destroy_plugins();
     delete instanceManager;

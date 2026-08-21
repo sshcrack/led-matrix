@@ -59,8 +59,14 @@ public:
                 {"display_name", "blend"}
             });
         }
+        append_ui_metadata(j);
     }
 
+    [[nodiscard]] std::vector<std::string> validate_schema() const override {
+        if (name.empty()) return {"property name is empty"};
+        return {};
+    }
+    [[nodiscard]] bool is_required() const override { return false; }
     [[nodiscard]] std::string get_type_id() const override { return "enum"; }
 };
 

@@ -27,7 +27,7 @@ namespace ConfigData
     {
         optional<string> access_token;
         optional<string> refresh_token;
-        tmillis_t expires_at;
+        tmillis_t expires_at = 0;
 
         [[nodiscard]] bool is_expired() const;
 
@@ -135,7 +135,4 @@ namespace ConfigData
 
     void from_json(const json &j, SpotifyData &p);
 
-    void from_json(const json &j, ImageProviders::General *&p);
-
-    void from_json(const json &j, Scenes::Scene *&p);
 }

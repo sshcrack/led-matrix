@@ -1,7 +1,8 @@
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Button } from '~/components/ui/button'
-import { titleCase } from '~/lib/utils'
+import DurationInput from '~/components/ui/duration-input'
+import { propertyDescription, propertyLabel } from '../propertyUi'
 import type { Property, TypeId } from '~/apiTypes/list_scenes'
 
 interface NumberPropertyProps {
@@ -33,71 +34,116 @@ function getMax(typeId: TypeId): number | undefined {
   return undefined
 }
 
+function isIntegerType(typeId: TypeId) {
+  return typeId === 'int' || typeId === 'int16_t' || typeId === 'uint8_t'
+}
+
 export default function NumberProperty({ property, value, onChange }: NumberPropertyProps) {
   const numericValue = Number.isFinite(value) ? value : 0
 
   if (property.type_id === 'millis') {
-    const defaultPresetDurations = [1000, 1000 * 10, 1000 * 30, 1000 * 60];
-    const transitionDurationPresets = [250, 500, 750, 1000, 2000, 5000];
-
-    const presets = property.name === 'transition_duration' ? transitionDurationPresets : defaultPresetDurations
+    const presets = property.name === 'transition_duration'
+      ? [150, 250, 500, 750, 1000, 2000]
+      : [1000, 5000, 10_000, 30_000, 60_000]
 
     return (
-      <div className="space-y-2">
-        <Label>{titleCase(property.name)}</Label>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Seconds</Label>
-            <Input
-              type="number"
-              min={0}
-              step={0.1}
-              value={(numericValue / 1000).toFixed(2)}
-              onChange={(e) => {
-                const seconds = Number(e.target.value)
-                onChange(Number.isFinite(seconds) ? Math.max(0, Math.round(seconds * 1000)) : 0)
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Milliseconds</Label>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              value={numericValue}
-              onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {presets.map((preset) => (
-            <Button
-              key={preset}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onChange(preset)}
-            >
-              {preset >= 1000 ? `${preset / 1000}s` : `${preset}ms`}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <DurationInput
+        id={`property-${property.name}`}
+        label={propertyLabel(property)}
+        value={numericValue}
+        onChange={onChange}
+        presets={(property.additional?.presets as number[] | undefined) ?? presets}
+        description={propertyDescription(property)}
+      />
     )
   }
 
   return (
+    <DraftNumberInput
+      property={property}
+      value={numericValue}
+      onChange={onChange}
+    />
+  )
+}
+
+function DraftNumberInput({ property, value, onChange }: NumberPropertyProps) {
+  const [draft, setDraft] = useState(String(value))
+  const [error, setError] = useState<string | null>(null)
+  const focused = useRef(false)
+  const min = typeof property.additional?.min === 'number' ? property.additional.min : getMin(property.type_id)
+  const max = typeof property.additional?.max === 'number' ? property.additional.max : getMax(property.type_id)
+  const step = typeof property.additional?.step === 'number' ? property.additional.step : getStep(property.type_id)
+  const description = propertyDescription(property)
+  const unit = property.additional?.unit
+
+  useEffect(() => {
+    if (!focused.current) setDraft(String(value))
+  }, [value])
+
+  const commit = () => {
+    if (draft.trim() === '') {
+      setError('Enter a number.')
+      return false
+    }
+
+    let next = Number(draft.replace(',', '.'))
+    if (!Number.isFinite(next)) {
+      setError('Enter a valid number.')
+      return false
+    }
+
+    if (isIntegerType(property.type_id)) next = Math.round(next)
+    if (min !== undefined) next = Math.max(min, next)
+    if (max !== undefined) next = Math.min(max, next)
+
+    onChange(next)
+    setDraft(String(next))
+    setError(null)
+    return true
+  }
+
+  return (
     <div className="space-y-1.5">
-      <Label>{titleCase(property.name)}</Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={`property-${property.name}`}>{propertyLabel(property)}</Label>
+        {(min !== undefined || max !== undefined) && (
+          <span className="text-[11px] text-muted-foreground">
+            {min !== undefined ? min : '−∞'} – {max !== undefined ? max : '∞'}
+          </span>
+        )}
+      </div>
       <Input
-        type="number"
-        value={numericValue}
-        step={getStep(property.type_id)}
-        min={getMin(property.type_id)}
-        max={getMax(property.type_id)}
-        onChange={(e) => onChange(Number(e.target.value))}
+        id={`property-${property.name}`}
+        type="text"
+        inputMode={isIntegerType(property.type_id) ? 'numeric' : 'decimal'}
+        value={draft}
+        aria-invalid={Boolean(error)}
+        step={step}
+        className={error ? 'border-destructive focus-visible:ring-destructive' : undefined}
+        onFocus={() => { focused.current = true }}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          if (error) setError(null)
+        }}
+        onBlur={() => {
+          focused.current = false
+          if (!commit()) setDraft(String(value))
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            commit()
+            event.currentTarget.blur()
+          } else if (event.key === 'Escape') {
+            setDraft(String(value))
+            setError(null)
+            event.currentTarget.blur()
+          }
+        }}
       />
+      {error ? <p className="text-xs text-destructive">{error}</p> : description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+      {unit && <p className="text-[11px] text-muted-foreground">Unit: {unit}</p>}
     </div>
   )
 }

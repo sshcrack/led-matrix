@@ -24,7 +24,7 @@ nlohmann::json ImageProviders::General::to_json() const {
     return j;
 }
 
-std::unique_ptr<ImageProviders::General, void (*)(ImageProviders::General *)> ImageProviders::General::from_json(const json &j) {
+std::unique_ptr<ImageProviders::General> ImageProviders::General::from_json(const json &j) {
             spdlog::debug("From json serialization");
     if(!j.contains("type"))
         throw std::runtime_error(fmt::format("No image provider type given for '{}'", j.dump()));

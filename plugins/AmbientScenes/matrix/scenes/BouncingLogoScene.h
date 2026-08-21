@@ -3,6 +3,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
 #include <vector>
+#include <random>
 
 namespace AmbientScenes {
     class BouncingLogoScene : public Scenes::Scene {
@@ -17,6 +18,7 @@ namespace AmbientScenes {
 
         void change_color();
         void draw_logo(rgb_matrix::FrameCanvas *canvas, int x, int y);
+        std::mt19937 rng{std::random_device{}()};
 
     public:
         explicit BouncingLogoScene();
@@ -29,11 +31,12 @@ namespace AmbientScenes {
         tmillis_t get_default_duration() override { return 30000; }
         int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;
+        [[nodiscard]] std::string get_category() const override { return "Ambient"; }
 
         using Scene::Scene;
     };
 
     class BouncingLogoSceneWrapper : public Plugins::SceneWrapper {
-        std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create();
+        std::unique_ptr<Scenes::Scene> create() override;
     };
 }

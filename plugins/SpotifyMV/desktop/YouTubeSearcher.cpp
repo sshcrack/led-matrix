@@ -1,11 +1,6 @@
 #include "YouTubeSearcher.h"
-#include <cstdio>
+#include "shared/desktop/utils.h"
 #include <spdlog/spdlog.h>
-
-#ifdef _WIN32
-#define popen _popen
-#define pclose _pclose
-#endif
 
 namespace {
 std::string sanitize_query(const std::string& raw) {
@@ -24,31 +19,26 @@ std::string sanitize_query(const std::string& raw) {
 }
 } // anonymous namespace
 
-std::string YouTubeSearcher::search(const std::string& query) {
+std::string YouTubeSearcher::search(const std::string& query,
+                                    const std::string& ytdlp_path) {
   std::string safe = sanitize_query(query);
   if (safe.empty()) {
     spdlog::warn("YouTubeSearcher: query empty after sanitization");
     return "";
   }
+  std::string ytdlp = ytdlp_path.empty() ? "yt-dlp" : "\"" + ytdlp_path + "\"";
+  std::string cmd = ytdlp + " \"ytsearch1:" + safe + "\" "
+                    "--flat-playlist --print webpage_url --no-warnings 2>"
 #ifdef _WIN32
-  std::string cmd = "yt-dlp \"ytsearch1:" + safe + "\" "
-                    "--flat-playlist --print webpage_url --no-warnings 2>nul";
+                    "nul"
 #else
-  std::string cmd = "yt-dlp \"ytsearch1:" + safe + "\" "
-                    "--flat-playlist --print webpage_url --no-warnings 2>/dev/null";
+                    "/dev/null"
 #endif
+                    ;
   spdlog::info("YouTubeSearcher: running {}", cmd);
-  FILE* pipe = popen(cmd.c_str(), "r");
-  if (!pipe) {
-    spdlog::error("YouTubeSearcher: popen failed");
-    return "";
-  }
-  char buf[512];
-  std::string result;
-  while (fgets(buf, sizeof(buf), pipe)) result += buf;
-  int status = pclose(pipe);
-  if (status != 0) {
-    spdlog::warn("YouTubeSearcher: yt-dlp exited with code {}", status);
+  std::string result = run_command_and_get_output(cmd);
+  if (result.empty()) {
+    spdlog::warn("YouTubeSearcher: no results for '{}'", query);
     return "";
   }
   result.erase(result.find_last_not_of(" \n\r\t") + 1);

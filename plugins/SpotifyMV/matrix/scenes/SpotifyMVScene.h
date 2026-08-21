@@ -14,9 +14,18 @@ public:
 
   bool render(rgb_matrix::FrameCanvas* canvas) override;
   std::string get_name() const override { return "spotifymv"; }
+  std::string get_category() const override { return "Media"; }
   void register_properties() override;
   void after_render_stop() override;
   bool needs_desktop_app() override { return true; }
+  SceneCapabilities get_capabilities() const override {
+    auto caps = Scene::get_capabilities();
+    caps.requires_network = true;
+    caps.interactive = true;
+    caps.can_generate_preview = false;
+    caps.music_director_eligible = false;
+    return caps;
+  }
   tmillis_t get_default_duration() override { return 210000; }
   int get_default_weight() override { return 5; }
 
@@ -35,7 +44,7 @@ private:
 
 class SpotifyMVSceneWrapper : public Plugins::SceneWrapper {
 public:
-  std::unique_ptr<Scenes::Scene, void(*)(Scenes::Scene*)> create() override;
+  std::unique_ptr<Scenes::Scene> create() override;
 };
 
 } // namespace Scenes

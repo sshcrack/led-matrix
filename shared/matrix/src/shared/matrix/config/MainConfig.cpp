@@ -58,7 +58,11 @@ namespace Config {
     std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
         shared_lock lock(this->data_mutex);
 
-        return this->data.presets[data.curr];
+        auto it = this->data.presets.find(data.curr);
+        if (it == this->data.presets.end()) {
+            return nullptr;
+        }
+        return it->second;
     }
 
     ConfigData::SpotifyData MainConfig::get_spotify() {
@@ -145,21 +149,39 @@ spdlog::info("Setting preset {}", id);
         return true;
     }
 
-    MainConfig::MainConfig(const string filename) : file_name(filename) {
-        if (!filesystem::exists(filename)) {
-            debug("Writing default config at '{}'...", filename);
-            ofstream file;
-            file.open(filename);
-            file << "{}";
-            file.close();
+    void MainConfig::load_from_file() {
+        const filesystem::path config_path(file_name);
+        const auto parent = config_path.parent_path();
+        if (!parent.empty()) {
+            std::error_code directory_error;
+            filesystem::create_directories(parent, directory_error);
+            if (directory_error) {
+                throw runtime_error(fmt::format(
+                    "Could not create config directory '{}': {}",
+                    parent.string(), directory_error.message()));
+            }
         }
 
-        ifstream f(filename);
+        if (!filesystem::exists(config_path)) {
+            debug("Writing default config at '{}'...", file_name);
+            ofstream file(config_path);
+            if (!file || !(file << "{}")) {
+                throw runtime_error(fmt::format(
+                    "Could not write default config at '{}'", file_name));
+            }
+        }
+
+        ifstream f(config_path);
+        if (!f) {
+            throw runtime_error(fmt::format(
+                "Could not open config at '{}'", file_name));
+        }
         json temp = json::parse(f);
 
-        f.close();
-
         this->data = std::move(temp.get<ConfigData::Root>());
+    }
+
+    void MainConfig::migrate_presets() {
         bool migrated = false;
 
         if (this->data.presets.empty()) {
@@ -222,8 +244,19 @@ spdlog::info("Setting preset {}", id);
             info("Migrated preset IDs to UUID keys and persisted updated config");
             this->save();
         }
+    }
 
+    MainConfig::MainConfig(const string filename) : file_name(filename) {
+        load_from_file();
+        migrate_presets();
         this->dirty = false;
+    }
+
+    void MainConfig::release_scene_references() {
+        unique_lock lock(data_mutex);
+        for (auto &[id, preset] : data.presets) {
+            if (preset) preset->scenes.clear();
+        }
     }
 
     string MainConfig::get_filename() const {
@@ -231,6 +264,7 @@ spdlog::info("Setting preset {}", id);
     }
 
     map<string, string> MainConfig::get_plugin_configs() const {
+        shared_lock lock(this->data_mutex);
         return this->data.pluginConfigs;
     }
 

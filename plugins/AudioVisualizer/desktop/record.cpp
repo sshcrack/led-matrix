@@ -1,3 +1,9 @@
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#endif
+
 #include "record.h"
 
 #ifdef _WIN32
@@ -9,7 +15,49 @@
 
 #endif
 
+#ifndef _WIN32
+#include <cerrno>
+#include <csignal>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
+#include <algorithm>
+#include <array>
+#include <filesystem>
 #include <spdlog/spdlog.h>
+
+
+#ifndef _WIN32
+namespace
+{
+    bool executableOnPath(const char *name)
+    {
+        const char *path = std::getenv("PATH");
+        if (!path || !*path)
+            return false;
+
+        std::string paths(path);
+        size_t begin = 0;
+        while (begin <= paths.size())
+        {
+            const size_t end = paths.find(':', begin);
+            const std::string dir = paths.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
+            const std::filesystem::path candidate = (dir.empty() ? std::filesystem::path(".") : std::filesystem::path(dir)) / name;
+            if (::access(candidate.c_str(), X_OK) == 0)
+                return true;
+            if (end == std::string::npos)
+                break;
+            begin = end + 1;
+        }
+        return false;
+    }
+}
+#endif
 
 namespace AudioRecorder
 {
@@ -62,24 +110,20 @@ namespace AudioRecorder
                                 void *userData)
     {
         const auto recorder = static_cast<Recorder *>(userData);
-        std::unique_lock<std::mutex> lock(recorder->audioBufferMutex);
-
-        spdlog::trace("Audio callback called with {} frames", framesPerBuffer);
         if (const auto input = static_cast<const float *>(inputBuffer))
         {
-            // Add new samples to buffer
-            for (unsigned long i = 0; i < framesPerBuffer; ++i)
+            std::lock_guard lock(recorder->audioBufferMutex);
+            const int channels = std::max(1, recorder->channelCount);
+            for (unsigned long frame = 0; frame < framesPerBuffer; ++frame)
             {
-                recorder->audioBuffer.push_back(input[i]);
+                const float left = input[frame * channels];
+                const float right = channels > 1 ? input[frame * channels + 1] : left;
+                recorder->audioBuffer.push_back({left, right});
+                ++recorder->capturedFrameSequence;
             }
-
-            // Keep buffer size manageable
-            while (recorder->audioBuffer.size() > MAX_BUFFER_SIZE)
-            {
+            while (recorder->audioBuffer.size() > MAX_BUFFER_FRAMES)
                 recorder->audioBuffer.pop_front();
-            }
         }
-
         return paContinue;
     }
 
@@ -93,7 +137,12 @@ namespace AudioRecorder
             return false;
         }
 
-        this->audioBuffer.clear();
+        {
+            std::lock_guard lock(audioBufferMutex);
+            audioBuffer.clear();
+            capturedFrameSequence = 0;
+            lastDeliveredSequence = 0;
+        }
 
         const PaDeviceInfo *info = Pa_GetDeviceInfo(deviceIndex);
         if (!info)
@@ -110,7 +159,8 @@ namespace AudioRecorder
 
         PaStreamParameters inputParams;
         inputParams.device = deviceIndex;
-        inputParams.channelCount = 1;
+        channelCount = std::clamp(info->maxInputChannels, 1, 2);
+        inputParams.channelCount = channelCount;
         inputParams.sampleFormat = paFloat32;
         inputParams.suggestedLatency = info->defaultLowInputLatency;
         inputParams.hostApiSpecificStreamInfo = nullptr;
@@ -174,9 +224,153 @@ namespace AudioRecorder
         return true;
     }
 
+    bool Recorder::isDefaultOutputLoopbackAvailable()
+    {
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        return getDefaultOutputLoopbackIndex() >= 0;
+#elif defined(__linux__)
+        // GNOME on modern distributions normally runs PipeWire with its
+        // PulseAudio compatibility server. parec understands the special
+        // @DEFAULT_MONITOR@ source and follows the active default sink.
+        return executableOnPath("parec");
+#else
+        return false;
+#endif
+    }
+
+    bool Recorder::startDefaultOutputLoopback()
+    {
+#if defined(_WIN32) && defined(PA_USE_WASAPI)
+        const int index = getDefaultOutputLoopbackIndex();
+        return index >= 0 && startRecording(index);
+#elif defined(__linux__)
+        bool expected = false;
+        if (!recording.compare_exchange_strong(expected, true))
+        {
+            spdlog::warn("Already recording. Aborting...");
+            return false;
+        }
+
+        if (!isDefaultOutputLoopbackAvailable())
+        {
+            spdlog::error("Linux desktop loopback requires 'parec' (usually provided by pulseaudio-utils). PipeWire's PulseAudio compatibility service must also be running.");
+            recording = false;
+            return false;
+        }
+
+        int pipeFds[2] = {-1, -1};
+        if (::pipe2(pipeFds, O_CLOEXEC) != 0)
+        {
+            spdlog::error("Failed to create loopback pipe: {}", std::strerror(errno));
+            recording = false;
+            return false;
+        }
+
+        const pid_t pid = ::fork();
+        if (pid < 0)
+        {
+            spdlog::error("Failed to start parec: {}", std::strerror(errno));
+            ::close(pipeFds[0]);
+            ::close(pipeFds[1]);
+            recording = false;
+            return false;
+        }
+
+        if (pid == 0)
+        {
+            ::dup2(pipeFds[1], STDOUT_FILENO);
+            ::close(pipeFds[0]);
+            ::close(pipeFds[1]);
+            ::execlp("parec", "parec",
+                     "--device=@DEFAULT_MONITOR@",
+                     "--format=float32le",
+                     "--rate=44100",
+                     "--channels=2",
+                     "--latency-msec=10",
+                     "--process-time-msec=5",
+                     "--raw",
+                     static_cast<char *>(nullptr));
+            _exit(127);
+        }
+
+        ::close(pipeFds[1]);
+        loopbackPipeFd = pipeFds[0];
+        loopbackPid = pid;
+        currentDeviceIndex = -2;
+        sampleRate = 44100.0;
+        channelCount = 2;
+        stopLoopbackThread = false;
+        {
+            std::lock_guard lock(audioBufferMutex);
+            audioBuffer.clear();
+            capturedFrameSequence = 0;
+            lastDeliveredSequence = 0;
+        }
+        loopbackThread = std::thread(&Recorder::linuxLoopbackReadLoop, this);
+        spdlog::info("Recording Linux desktop output through PipeWire/PulseAudio default monitor");
+        return true;
+#else
+        return false;
+#endif
+    }
+
+#ifndef _WIN32
+    void Recorder::linuxLoopbackReadLoop()
+    {
+        // 128 stereo frames (256 floats) keeps the pipe responsive without
+        // waking for every tiny server fragment.
+        std::array<float, 256> interleaved{};
+        while (!stopLoopbackThread)
+        {
+            pollfd descriptor{loopbackPipeFd, POLLIN, 0};
+            const int ready = ::poll(&descriptor, 1, 100);
+            if (ready < 0)
+            {
+                if (errno == EINTR)
+                    continue;
+                break;
+            }
+            if (ready == 0)
+                continue;
+            if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) && !(descriptor.revents & POLLIN))
+                break;
+
+            const ssize_t bytes = ::read(loopbackPipeFd, interleaved.data(), sizeof(interleaved));
+            if (bytes <= 0)
+            {
+                if (bytes < 0 && (errno == EINTR || errno == EAGAIN))
+                    continue;
+                break;
+            }
+
+            const size_t floatCount = static_cast<size_t>(bytes) / sizeof(float);
+            const size_t frameCount = floatCount / 2;
+            std::lock_guard lock(audioBufferMutex);
+            for (size_t frame = 0; frame < frameCount; ++frame)
+            {
+                audioBuffer.push_back({interleaved[frame * 2], interleaved[frame * 2 + 1]});
+                ++capturedFrameSequence;
+            }
+            while (audioBuffer.size() > MAX_BUFFER_FRAMES)
+                audioBuffer.pop_front();
+        }
+
+        if (!stopLoopbackThread)
+        {
+            spdlog::error("Linux desktop loopback capture stopped unexpectedly");
+            recording = false;
+        }
+    }
+
+#endif
+
     void Recorder::stopRecording()
     {
-        if (!recording)
+        if (!recording && !stream
+#ifndef _WIN32
+            && loopbackPid <= 0 && !loopbackThread.joinable()
+#endif
+        )
             return;
         if (stream)
         {
@@ -184,6 +378,24 @@ namespace AudioRecorder
             Pa_CloseStream(stream);
             stream = nullptr;
         }
+#ifndef _WIN32
+        stopLoopbackThread = true;
+        if (loopbackPid > 0)
+            ::kill(loopbackPid, SIGTERM);
+        if (loopbackThread.joinable())
+            loopbackThread.join();
+        if (loopbackPipeFd >= 0)
+        {
+            ::close(loopbackPipeFd);
+            loopbackPipeFd = -1;
+        }
+        if (loopbackPid > 0)
+        {
+            int status = 0;
+            ::waitpid(loopbackPid, &status, 0);
+            loopbackPid = -1;
+        }
+#endif
         spdlog::info("Recording stopped");
         recording = false;
         currentDeviceIndex = -1;
@@ -199,6 +411,19 @@ namespace AudioRecorder
     double Recorder::getSampleRate() const
     {
         return sampleRate;
+    }
+
+    size_t Recorder::getBufferedFrameCount() const
+    {
+        std::lock_guard lock(audioBufferMutex);
+        return audioBuffer.size();
+    }
+
+    double Recorder::getBufferedLatencyMs() const
+    {
+        std::lock_guard lock(audioBufferMutex);
+        if (sampleRate <= 0.0) return 0.0;
+        return static_cast<double>(audioBuffer.size()) * 1000.0 / sampleRate;
     }
 
     int Recorder::getDefaultOutputLoopbackIndex()
@@ -249,16 +474,29 @@ spdlog::info("Checking for default output loopback device...");
         return -1;
     }
 
-    std::optional<std::vector<float>> Recorder::getLastSamples()
+    std::optional<CapturedAudioFrame> Recorder::getLastSamples()
     {
-        std::unique_lock<std::mutex> lock(audioBufferMutex);
-        if (audioBuffer.size() < FFT_SIZE)
+        std::lock_guard lock(audioBufferMutex);
+        if (audioBuffer.size() < MUSIC_ANALYSIS_WINDOW_SIZE)
+            return std::nullopt;
+        if (capturedFrameSequence - lastDeliveredSequence < FFT_HOP_SIZE)
             return std::nullopt;
 
+        CapturedAudioFrame result;
+        result.sampleRate = sampleRate;
+        result.sequence = capturedFrameSequence;
+        result.mono.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
+        result.left.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
+        result.right.resize(MUSIC_ANALYSIS_WINDOW_SIZE);
 
-        std::vector<float> samples(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
-        audioBuffer.erase(audioBuffer.end() - FFT_SIZE, audioBuffer.end());
-
-        return samples;
+        auto it = audioBuffer.end() - static_cast<std::ptrdiff_t>(MUSIC_ANALYSIS_WINDOW_SIZE);
+        for (size_t i = 0; i < MUSIC_ANALYSIS_WINDOW_SIZE; ++i, ++it)
+        {
+            result.left[i] = it->left;
+            result.right[i] = it->right;
+            result.mono[i] = 0.5f * (it->left + it->right);
+        }
+        lastDeliveredSequence = capturedFrameSequence;
+        return result;
     }
 }

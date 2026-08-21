@@ -25,6 +25,6 @@ namespace ShaderProviders {
     };
 
     class CollectionWrapper final : public Plugins::ShaderProviderWrapper {
-        std::unique_ptr<General, void (*)(General *)> create() override;
+        std::unique_ptr<General> create() override;
     };
 }
