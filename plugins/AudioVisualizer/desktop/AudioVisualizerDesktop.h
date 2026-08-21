@@ -32,6 +32,8 @@ public:
                           ImGuiMemFreeFunc *free_fn, void **user_data) override;
 
 private:
+    friend struct AudioVisualizerDesktopTestAccess;
+
     ImPlotContext *implotContext = nullptr;
     AudioVisualizerConfig cfg;
     std::unique_ptr<AudioProcessor> audioProcessor;
