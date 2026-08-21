@@ -51,8 +51,6 @@ jobs:
   build:
     needs: react-web
     uses: ./.github/workflows/build-matrix.yml
-    secrets:
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
   artifact-comment:
     runs-on: ubuntu-latest
