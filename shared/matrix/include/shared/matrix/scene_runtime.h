@@ -4,6 +4,9 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace Scenes {
 
@@ -55,6 +58,38 @@ private:
     double step_seconds_ = 1.0 / 60.0;
     double accumulator_ = 0.0;
     int max_steps_ = 4;
+};
+
+struct SceneInputSpec {
+    std::vector<std::string> required;
+    std::vector<std::string> optional;
+
+    SceneInputSpec &require(std::string_view id) {
+        const std::string value(id);
+        if (value.empty()) return *this;
+        if (std::find(required.begin(), required.end(), value) == required.end())
+            required.push_back(value);
+        std::erase(optional, value);
+        return *this;
+    }
+
+    SceneInputSpec &accept(std::string_view id) {
+        const std::string value(id);
+        if (value.empty()) return *this;
+        if (std::find(required.begin(), required.end(), value) != required.end())
+            return *this;
+        if (std::find(optional.begin(), optional.end(), value) == optional.end())
+            optional.push_back(value);
+        return *this;
+    }
+
+    [[nodiscard]] bool is_required(std::string_view id) const {
+        return std::find(required.begin(), required.end(), id) != required.end();
+    }
+
+    [[nodiscard]] bool accepts(std::string_view id) const {
+        return is_required(id) || std::find(optional.begin(), optional.end(), id) != optional.end();
+    }
 };
 
 struct SceneCapabilities {

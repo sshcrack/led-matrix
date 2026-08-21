@@ -9,6 +9,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/post_processor.h"
+#include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/transition_manager.h"
 
 #include "MatrixPresenter.h"
@@ -29,7 +30,7 @@ public:
                       Config::MainConfig *cfg,
                       const std::atomic<bool> *exit_flag,
                       const std::atomic<bool> *interrupt_flag,
-                      std::function<bool()> is_desktop_connected,
+                      std::function<RuntimeInputs::Snapshot()> runtime_inputs,
                       std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
                       std::function<void(const std::string &)> broadcast);
     ~CanvasCoordinator();
@@ -48,7 +49,7 @@ private:
     FrameCanvas *composite_offscreen_canvas_ = nullptr;
     std::shared_ptr<Scenes::Scene> forced_scene_;
 
-    std::function<bool()> is_desktop_connected_fn_;
+    std::function<RuntimeInputs::Snapshot()> runtime_inputs_fn_;
     std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene_fn_;
     std::function<void(const std::string &)> broadcast_fn_;
 

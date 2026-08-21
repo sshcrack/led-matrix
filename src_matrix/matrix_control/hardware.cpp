@@ -11,6 +11,7 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/runtime_inputs.h"
 
 #include <csignal>
 #include <functional>
@@ -57,7 +58,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
         Constants::global_transition_manager,
         presenter.get(), config,
         &exit_canvas_update, &interrupt_received,
-        Server::is_desktop_connected,
+        RuntimeInputs::snapshot,
         set_curr_scene, broadcast);
 
     string last_scheduled_preset = "";

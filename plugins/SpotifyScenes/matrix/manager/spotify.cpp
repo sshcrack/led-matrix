@@ -6,9 +6,42 @@
 #include <cstdlib>
 
 #include "shared/matrix/utils/shared.h"
+#include "shared/matrix/input_ids.h"
+#include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/utils.h"
 
 using namespace spdlog;
+
+namespace {
+void publish_spotify_runtime_input(std::optional<SpotifyState> state)
+{
+    if (!state.has_value() || !state->is_playing()) {
+        RuntimeInputs::set_available(RuntimeInputIds::SpotifyPlayback, false);
+        return;
+    }
+
+    auto track = state->get_track();
+    RuntimeInputs::Signals signals{
+        {"playing", true},
+        {"progress_ms", static_cast<std::int64_t>(state->get_progress_ms())}
+    };
+    if (const auto progress = state->get_progress(); progress.has_value())
+        signals.emplace("progress", static_cast<double>(*progress));
+    if (const auto duration = track.get_duration(); duration.has_value())
+        signals.emplace("duration_ms", static_cast<std::int64_t>(*duration));
+    if (const auto id = track.get_id(); id.has_value())
+        signals.emplace("track_id", *id);
+    if (const auto song = track.get_song_name(); song.has_value())
+        signals.emplace("track", *song);
+    if (const auto artist = track.get_artist_name(); artist.has_value())
+        signals.emplace("artist", *artist);
+
+    RuntimeInputs::publish(
+        RuntimeInputIds::SpotifyPlayback,
+        std::move(signals),
+        std::chrono::seconds(30));
+}
+} // namespace
 
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *out) {
     const size_t totalSize(size * nmemb);
@@ -287,12 +320,14 @@ void Spotify::start_control_thread() {
 
                 this->is_dirty = true;
                 lock.unlock();
+                publish_spotify_runtime_input(get_currently_playing());
                 busy_wait(10);
             } else {
                 this->currently_playing.reset();
 
                 this->is_dirty = true;
                 lock.unlock();
+                publish_spotify_runtime_input(std::nullopt);
                 busy_wait(15);
             }
 
@@ -308,6 +343,7 @@ void Spotify::terminate() {
     this->should_terminate.store(true);
     if (this->control_thread.joinable())
         this->control_thread.join();
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyPlayback, false);
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {
@@ -316,21 +352,27 @@ std::optional<SpotifyState> Spotify::get_currently_playing() {
 }
 
 void Spotify::set_preview_currently_playing(nlohmann::json state_json) {
-    std::lock_guard lock(mtx);
-    if (currently_playing.has_value())
-        last_playing.emplace(currently_playing.value());
-    else
-        last_playing.reset();
-    currently_playing.emplace(std::move(state_json));
-    is_dirty = true;
+    {
+        std::lock_guard lock(mtx);
+        if (currently_playing.has_value())
+            last_playing.emplace(currently_playing.value());
+        else
+            last_playing.reset();
+        currently_playing.emplace(std::move(state_json));
+        is_dirty = true;
+    }
+    publish_spotify_runtime_input(get_currently_playing());
 }
 
 void Spotify::clear_preview_currently_playing() {
-    std::lock_guard lock(mtx);
-    if (currently_playing.has_value())
-        last_playing.emplace(currently_playing.value());
-    currently_playing.reset();
-    is_dirty = true;
+    {
+        std::lock_guard lock(mtx);
+        if (currently_playing.has_value())
+            last_playing.emplace(currently_playing.value());
+        currently_playing.reset();
+        is_dirty = true;
+    }
+    publish_spotify_runtime_input(std::nullopt);
 }
 
 /**

@@ -1,14 +1,32 @@
 #include "desktop_ws.h"
+#include <algorithm>
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 #include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/input_ids.h>
+#include <shared/matrix/runtime_inputs.h>
 
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
 
+namespace {
+void publish_desktop_runtime_input(bool availability_changed)
+{
+    const auto connections = std::max(0, Server::desktop_connection_count.load());
+    RuntimeInputs::set_available(
+        RuntimeInputIds::Desktop,
+        connections > 0,
+        {{"connected", connections > 0},
+         {"connections", static_cast<std::int64_t>(connections)}});
+    if (availability_changed)
+        exit_canvas_update.store(true);
+}
+} // namespace
+
 std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry)
 {
+    publish_desktop_runtime_input(false);
     router->http_get("/desktopWebsocket", [&registry](auto req, auto)
                      {
         spdlog::info("WebSocket connection request received.");
@@ -40,8 +58,12 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                                 wsh->send_message(resp);
                             } else if (rws::opcode_t::connection_close_frame == m->opcode()) {
                                 std::unique_lock lock(registryMutex);
-                                registry.erase(wsh->connection_id());   
-                                desktop_connection_count--;
+                                if (registry.erase(wsh->connection_id()) > 0) {
+                                    const int previous = desktop_connection_count.fetch_sub(1);
+                                    if (previous <= 1)
+                                        desktop_connection_count.store(0);
+                                    publish_desktop_runtime_input(previous == 1);
+                                }
                             }
                         });
             // Store websocket handle to registry object to prevent closing of the websocket
@@ -49,8 +71,11 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
 
             {
                 std::unique_lock lock(registryMutex);
-                registry.emplace(wsh->connection_id(), wsh);
-                desktop_connection_count++;
+                const auto [_, inserted] = registry.emplace(wsh->connection_id(), wsh);
+                if (inserted) {
+                    const int previous = desktop_connection_count.fetch_add(1);
+                    publish_desktop_runtime_input(previous == 0);
+                }
             } // Release registryMutex here
 
             std::string sceneName;

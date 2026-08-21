@@ -208,6 +208,27 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         if (caps.requires_audio && !caps.requires_desktop)
             report.warnings.emplace_back(fmt::format("Scene '{}' requires audio but does not declare requires_desktop", scene_name));
 
+        const auto runtime_spec = scene->get_effective_runtime_inputs();
+        std::unordered_set<std::string> runtime_input_ids;
+        for (const auto &input : runtime_spec.required) {
+            if (input.empty()) {
+                report.errors.emplace_back(fmt::format("Scene '{}' requires an empty Runtime Input id", scene_name));
+                continue;
+            }
+            if (!runtime_input_ids.insert(input).second)
+                report.errors.emplace_back(fmt::format("Scene '{}' declares Runtime Input '{}' more than once", scene_name, input));
+        }
+        for (const auto &input : runtime_spec.optional) {
+            if (input.empty()) {
+                report.errors.emplace_back(fmt::format("Scene '{}' accepts an empty Runtime Input id", scene_name));
+                continue;
+            }
+            if (!runtime_input_ids.insert(input).second)
+                report.errors.emplace_back(fmt::format(
+                    "Scene '{}' declares Runtime Input '{}' as both required and optional",
+                    scene_name, input));
+        }
+
         const auto preview_spec = scene->get_preview_spec();
         if (preview_spec.enabled) {
             std::unordered_set<std::string> requested_inputs;

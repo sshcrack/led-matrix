@@ -35,11 +35,13 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes() {
 }
 
 std::optional<std::string> AudioVisualizer::before_server_init() {
+    AudioState::clear();
     spdlog::debug("Starting rich music-analysis UDP receiver");
     return std::nullopt;
 }
 
 std::optional<std::string> AudioVisualizer::pre_exit() {
+    AudioState::clear();
     spdlog::debug("Stopping rich music-analysis UDP receiver");
     return std::nullopt;
 }

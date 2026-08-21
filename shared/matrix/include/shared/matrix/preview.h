@@ -11,12 +11,13 @@
 #include <nlohmann/json.hpp>
 
 #include "shared/matrix/scene_runtime.h"
+#include "shared/matrix/input_ids.h"
 
 namespace Previews {
 
 namespace Inputs {
-inline constexpr std::string_view Audio = "audio";
-inline constexpr std::string_view SpotifyPlayback = "spotify.playback";
+inline constexpr std::string_view Audio = RuntimeInputIds::Audio;
+inline constexpr std::string_view SpotifyPlayback = RuntimeInputIds::SpotifyPlayback;
 } // namespace Inputs
 
 /// Declarative preview contract for a scene. A scene only names the fixture

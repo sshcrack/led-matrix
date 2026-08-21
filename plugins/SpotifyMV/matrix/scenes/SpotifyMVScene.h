@@ -18,6 +18,11 @@ public:
   void register_properties() override;
   void after_render_stop() override;
   bool needs_desktop_app() override { return true; }
+  [[nodiscard]] SceneInputSpec get_runtime_input_spec() const override {
+    SceneInputSpec spec;
+    spec.require(RuntimeInputIds::SpotifyPlayback);
+    return spec;
+  }
   SceneCapabilities get_capabilities() const override {
     auto caps = Scene::get_capabilities();
     caps.requires_network = true;
