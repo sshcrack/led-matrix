@@ -46,6 +46,13 @@ namespace Plugins
         virtual vector<std::unique_ptr<TransitionEffect>> create_transitions() {
             return {};
         }
+
+        /// Runtime Input ids this plugin can publish in production. Registry
+        /// validation uses these declarations to reject misspelled or orphaned
+        /// scene requirements before playback starts.
+        [[nodiscard]] virtual vector<std::string> get_runtime_input_ids() const {
+            return {};
+        }
         std::string _plugin_location;
 
         [[nodiscard]] std::string get_plugin_location() const

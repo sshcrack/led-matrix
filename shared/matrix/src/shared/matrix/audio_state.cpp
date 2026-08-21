@@ -10,40 +10,52 @@ namespace {
 std::mutex stateMutex;
 AudioProtocol::Frame currentFrame;
 std::chrono::steady_clock::time_point receivedAt{};
+std::chrono::steady_clock::time_point runtimeInputPublishedAt{};
 bool hasFrame = false;
+
+constexpr auto RuntimeInputPublishInterval = std::chrono::milliseconds(200);
+constexpr auto RuntimeInputTtl = std::chrono::milliseconds(750);
 }
 
 namespace AudioState {
 void update(const AudioProtocol::Frame &frame) {
+    const auto now = std::chrono::steady_clock::now();
+    bool publish_runtime_input = false;
     {
         std::lock_guard lock(stateMutex);
         currentFrame = frame;
-        receivedAt = std::chrono::steady_clock::now();
+        receivedAt = now;
         hasFrame = true;
+        if (runtimeInputPublishedAt == std::chrono::steady_clock::time_point{}
+            || now - runtimeInputPublishedAt >= RuntimeInputPublishInterval) {
+            runtimeInputPublishedAt = now;
+            publish_runtime_input = true;
+        }
     }
 
-    RuntimeInputs::publish(
-        RuntimeInputIds::Audio,
-        {
-            {"rms", static_cast<double>(frame.feature(AudioProtocol::Feature::Rms))},
-            {"loudness", static_cast<double>(frame.feature(AudioProtocol::Feature::Loudness))},
-            {"sub_bass", static_cast<double>(frame.feature(AudioProtocol::Feature::SubBass))},
-            {"bass", static_cast<double>(frame.feature(AudioProtocol::Feature::Bass))},
-            {"mid", static_cast<double>(frame.feature(AudioProtocol::Feature::Mid))},
-            {"treble", static_cast<double>(frame.feature(AudioProtocol::Feature::Treble))},
-            {"energy_trend", static_cast<double>(frame.feature(AudioProtocol::Feature::EnergyTrend))},
-            {"bpm", static_cast<double>(frame.feature(AudioProtocol::Feature::Bpm))},
-            {"beat_phase", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatPhase))},
-            {"beat_confidence", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatConfidence))},
-            {"beat_strength", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatStrength))},
-            {"stereo_width", static_cast<double>(frame.feature(AudioProtocol::Feature::StereoWidth))},
-            {"stereo_balance", static_cast<double>(frame.feature(AudioProtocol::Feature::StereoBalance))},
-            {"silence", frame.event(AudioProtocol::Silent)},
-            {"beat_counter", static_cast<std::int64_t>(frame.beat_counter)},
-            {"drop_counter", static_cast<std::int64_t>(frame.drop_counter)},
-            {"section_counter", static_cast<std::int64_t>(frame.section_counter)}
-        },
-        std::chrono::milliseconds(750));
+    // Runtime Inputs are intentionally coarse context for directors, eligibility,
+    // and diagnostics. High-frequency visual consumers must read AudioState
+    // directly instead of paying for string-keyed generic signal publication at
+    // the desktop stream's 60 Hz packet rate.
+    if (publish_runtime_input) {
+        RuntimeInputs::publish(
+            RuntimeInputIds::Audio,
+            {
+                {"loudness", static_cast<double>(frame.feature(AudioProtocol::Feature::Loudness))},
+                {"sub_bass", static_cast<double>(frame.feature(AudioProtocol::Feature::SubBass))},
+                {"bass", static_cast<double>(frame.feature(AudioProtocol::Feature::Bass))},
+                {"mid", static_cast<double>(frame.feature(AudioProtocol::Feature::Mid))},
+                {"treble", static_cast<double>(frame.feature(AudioProtocol::Feature::Treble))},
+                {"energy_trend", static_cast<double>(frame.feature(AudioProtocol::Feature::EnergyTrend))},
+                {"bpm", static_cast<double>(frame.feature(AudioProtocol::Feature::Bpm))},
+                {"beat_confidence", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatConfidence))},
+                {"silence", frame.event(AudioProtocol::Silent)},
+                {"beat_counter", static_cast<std::int64_t>(frame.beat_counter)},
+                {"drop_counter", static_cast<std::int64_t>(frame.drop_counter)},
+                {"section_counter", static_cast<std::int64_t>(frame.section_counter)}
+            },
+            RuntimeInputTtl);
+    }
 }
 
 void clear() {
@@ -51,6 +63,7 @@ void clear() {
         std::lock_guard lock(stateMutex);
         currentFrame = {};
         receivedAt = {};
+        runtimeInputPublishedAt = {};
         hasFrame = false;
     }
     RuntimeInputs::set_available(RuntimeInputIds::Audio, false);

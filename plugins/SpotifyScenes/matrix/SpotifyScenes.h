@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shared/matrix/plugin/main.h"
+#include <shared/matrix/input_ids.h>
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
@@ -14,6 +15,9 @@ public:
 
     vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
     vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() override;
+    [[nodiscard]] vector<std::string> get_runtime_input_ids() const override {
+        return {std::string(RuntimeInputIds::SpotifyPlayback)};
+    }
 
     std::optional<string> after_server_init() override;
     std::optional<string> pre_exit() override;
