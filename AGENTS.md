@@ -166,7 +166,7 @@ See `FEATURES.md` for the authoritative list. Summary:
 - **No readable text** — no tickers, scores, headlines, or anything requiring active reading
 - **Visually interesting** — ambient/aesthetic purpose only
 
-Ideas already explicitly rejected: Home Assistant/MQTT, WebSocket live preview, RSS/news/sports/crypto tickers, scrolling text, web paint canvas, emoji signals. Check `FEATURES.md` before implementing anything in these areas.
+Ideas already explicitly rejected: Home Assistant/MQTT, continuously pushed/always-on live preview, RSS/news/sports/crypto tickers, scrolling text, web paint canvas, emoji signals. Check `FEATURES.md` before implementing anything in these areas.
 
 ## Environment quirks
 
@@ -208,7 +208,7 @@ Current providers include `audio` (owned by AudioVisualizer) and `spotify.playba
 
 ### Live web matrix capture performance
 
-`/live_frame` is strict pull/on-demand capture. One HTTP request marks one future composed frame as needed; requests that arrive before the next render are coalesced. When there is no outstanding request, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the snapshot mutex, or run a lease/timer. Keep this invariant when changing live preview behavior. The React live preview also stops polling while hidden/off-screen.
+Live matrix capture is strict pull/on-demand. The React UI normally keeps one `/live_frame` WebSocket open and sends a `next` message only when it wants one future composed frame; simultaneous viewers are coalesced into one capture and all viewers whose request preceded that capture receive the same binary `LMF1` frame. When there is no outstanding demand, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the publish mutex, or run a lease/timer. A connected WebSocket by itself is **not** demand. The React preview stops requesting frames while hidden/off-screen.
 
 ## CI
 

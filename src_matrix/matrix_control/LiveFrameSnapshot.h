@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <vector>
 
@@ -18,23 +19,22 @@ struct Snapshot {
     std::uint32_t sequence = 0;
     std::vector<std::uint8_t> rgb;
 
-    [[nodiscard]] bool available() const {
-        return width > 0 && height > 0 &&
-            rgb.size() == static_cast<std::size_t>(width) * height * 3;
-    }
 };
 
-/// Stores the composed matrix frame strictly on demand. Every /live_frame HTTP
-/// request asks for at most one future capture. With no outstanding request,
-/// render loops perform only two relaxed atomic reads and never touch pixels,
-/// allocate frame memory, lock the snapshot mutex, or run a timer.
+/// Captures the composed matrix strictly on demand. A connected live-preview
+/// WebSocket is inert until its client requests a frame. With no outstanding
+/// request render loops perform only relaxed atomic reads: no pixel reads,
+/// allocation, mutex acquisition, timer, or background capture.
 class SnapshotStore {
 public:
+    using PublishCallback = std::function<void(const Snapshot &, std::uint64_t capture_generation)>;
+
     static SnapshotStore &instance();
 
-    /// Request one future composed frame. Multiple requests that arrive before
-    /// the next render are coalesced into that single capture.
-    void request_capture();
+    /// Request one future composed frame and return the generation that must be
+    /// reached before this request can be satisfied. Requests observed before
+    /// the same render are coalesced into one physical matrix copy.
+    [[nodiscard]] std::uint64_t request_capture();
 
     /// Capture exactly once when there is outstanding demand.
     void capture_if_requested(rgb_matrix::FrameCanvas *canvas, int width, int height);
@@ -43,18 +43,24 @@ public:
     void publish_solid_if_requested(int width, int height,
                                     std::uint8_t r, std::uint8_t g, std::uint8_t b);
 
-    [[nodiscard]] Snapshot snapshot() const;
+    /// Install the transport sink that receives only frames captured because
+    /// demand was outstanding. capture_generation identifies the newest request
+    /// already present when the pixel copy began, so requests racing with that
+    /// copy can wait for the following frame instead of receiving stale data.
+    void set_publish_callback(PublishCallback callback);
 
 private:
     [[nodiscard]] std::uint64_t requested_generation() const;
     [[nodiscard]] bool capture_requested(std::uint64_t generation) const;
     void mark_demand_served(std::uint64_t generation);
-    void publish(int width, int height, std::vector<std::uint8_t> rgb);
+    void publish(int width, int height, std::vector<std::uint8_t> rgb,
+                 std::uint64_t capture_generation);
 
     std::atomic<std::uint64_t> demand_generation_{0};
     std::atomic<std::uint64_t> served_generation_{0};
-    mutable std::mutex snapshot_mutex_;
-    Snapshot snapshot_;
+    std::atomic<std::uint32_t> frame_sequence_{0};
+    std::mutex callback_mutex_;
+    PublishCallback publish_callback_;
 };
 
 } // namespace LiveFrame
