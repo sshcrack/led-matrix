@@ -66,7 +66,6 @@ struct SceneInputSpec {
 
     SceneInputSpec &require(std::string_view id) {
         const std::string value(id);
-        if (value.empty()) return *this;
         if (std::find(required.begin(), required.end(), value) == required.end())
             required.push_back(value);
         std::erase(optional, value);
@@ -75,7 +74,6 @@ struct SceneInputSpec {
 
     SceneInputSpec &accept(std::string_view id) {
         const std::string value(id);
-        if (value.empty()) return *this;
         if (std::find(required.begin(), required.end(), value) != required.end())
             return *this;
         if (std::find(optional.begin(), optional.end(), value) == optional.end())

@@ -407,6 +407,28 @@ if(ENABLE_EMULATOR)
     add_test(NAME runtime_inputs_smoke COMMAND $<TARGET_FILE:runtime_inputs_smoke>)
     set_tests_properties(runtime_inputs_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(runtime_selection_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_selection_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneScheduler.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(runtime_selection_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(runtime_selection_smoke PRIVATE ENABLE_EMULATOR)
+    target_include_directories(runtime_selection_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(runtime_selection_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog
+        fmt::fmt
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME runtime_selection_smoke COMMAND $<TARGET_FILE:runtime_selection_smoke>)
+    set_tests_properties(runtime_selection_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_test(NAME scene_registry_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>

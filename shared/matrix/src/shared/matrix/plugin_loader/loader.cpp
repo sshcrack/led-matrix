@@ -1,5 +1,6 @@
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin_registry.h"
+#include <shared/matrix/input_ids.h>
 
 #include <algorithm>
 #include <cctype>
@@ -151,6 +152,31 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         }
     }
 
+    std::unordered_map<std::string, std::string> runtime_input_owners{
+        {std::string(RuntimeInputIds::Desktop), "matrix runtime"}
+    };
+    for (const auto &item : loaded_plugins) {
+        if (!item.plugin) continue;
+        for (const auto &input_id : item.plugin->get_runtime_input_ids()) {
+            if (input_id.empty()) {
+                report.errors.emplace_back(fmt::format(
+                    "Plugin '{}' declares an empty Runtime Input id", item.plugin->get_plugin_name()));
+                continue;
+            }
+            if (has_control_or_path_separator(input_id)) {
+                report.errors.emplace_back(fmt::format(
+                    "Plugin '{}' declares invalid Runtime Input id '{}'",
+                    item.plugin->get_plugin_name(), input_id));
+                continue;
+            }
+            if (auto [it, inserted] = runtime_input_owners.emplace(input_id, item.plugin->get_plugin_name()); !inserted) {
+                report.errors.emplace_back(fmt::format(
+                    "Duplicate Runtime Input producer '{}' from '{}' and '{}'",
+                    input_id, it->second, item.plugin->get_plugin_name()));
+            }
+        }
+    }
+
     std::unordered_map<std::string, std::string> preview_provider_owners;
     for (const auto &item : loaded_plugins) {
         if (!item.plugin) continue;
@@ -217,6 +243,9 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
             }
             if (!runtime_input_ids.insert(input).second)
                 report.errors.emplace_back(fmt::format("Scene '{}' declares Runtime Input '{}' more than once", scene_name, input));
+            if (!input.empty() && !runtime_input_owners.contains(input))
+                report.errors.emplace_back(fmt::format(
+                    "Scene '{}' requires Runtime Input '{}' but no producer declares it", scene_name, input));
         }
         for (const auto &input : runtime_spec.optional) {
             if (input.empty()) {
@@ -227,6 +256,9 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
                 report.errors.emplace_back(fmt::format(
                     "Scene '{}' declares Runtime Input '{}' as both required and optional",
                     scene_name, input));
+            if (!input.empty() && !runtime_input_owners.contains(input))
+                report.errors.emplace_back(fmt::format(
+                    "Scene '{}' accepts Runtime Input '{}' but no producer declares it", scene_name, input));
         }
 
         const auto preview_spec = scene->get_preview_spec();
