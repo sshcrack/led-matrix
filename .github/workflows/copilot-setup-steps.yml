@@ -12,10 +12,8 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  USERNAME: sshcrack
   VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-  FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
 
 jobs:
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
@@ -60,24 +58,6 @@ jobs:
           vcpkgDirectory: '${{ github.workspace }}/../vcpkg'
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
-      - name: Add NuGet sources (Linux)
-        shell: bash
-        env:
-          VCPKG_EXE: ${{ github.workspace }}/../vcpkg/vcpkg
-          USERNAME: sshcrack
-          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-        run: |
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            sources add \
-            -Source "${{ env.FEED_URL }}" \
-            -StorePasswordInClearText \
-            -Name GitHubPackages \
-            -UserName "${{ env.USERNAME }}" \
-            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
-            -Source "${{ env.FEED_URL }}"
-
       - name: Cache cross-compile toolchain
         id: cache-toolchain
         uses: actions/cache@v4
@@ -119,7 +99,7 @@ jobs:
       - name: Configure emulator
         uses: lukka/run-cmake@v10
         env:
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
         with:
           configurePreset: emulator
           configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
@@ -127,6 +107,6 @@ jobs:
       - name: Configure desktop-linux
         uses: lukka/run-cmake@v10
         env:
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
         with:
           configurePreset: desktop-linux

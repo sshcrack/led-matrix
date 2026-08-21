@@ -171,7 +171,7 @@ Ideas already explicitly rejected: Home Assistant/MQTT, WebSocket live preview, 
 ## Environment quirks
 
 - Cross-compile toolchain is downloaded automatically by `cmake/PI.cmake` on first configure if `CROSS_COMPILE_ROOT` env var isn't set and `build/cross-compile/` doesn't exist.
-- vcpkg binary cache for CI uses a private NuGet feed (`nuget.pkg.github.com/sshcrack`) requiring `GH_PACKAGES_TOKEN`. Locally, vcpkg builds from source.
+- vcpkg binary cache for CI reads from `https://nuget.sshcrack.me/v3/index.json`. Locally, vcpkg builds from source.
 - A `.env` file in the repo root is sourced by `scripts/run_emulator.sh` if present (useful for `SPOTIFY_CLIENT_ID` etc.).
 - The devcontainer (`postCreateCommand`) runs `git submodule update --init --recursive` — submodules are required.
 - WSL users: see `scripts/WSL_SYNC_README.md` for the file-watch sync setup between Windows and WSL.

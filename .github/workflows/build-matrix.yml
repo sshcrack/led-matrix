@@ -7,9 +7,6 @@ on:
         required: false
         type: string
         default: ''
-    secrets:
-      GH_PACKAGES_TOKEN:
-        required: true
 
 jobs:
   build:
@@ -74,44 +71,6 @@ jobs:
         with:
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
-      - name: Add NuGet sources (Linux)
-        if: runner.os != 'Windows'
-        shell: bash
-        env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-          USERNAME: sshcrack
-          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-        run: |
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            sources add \
-            -Source "${{ env.FEED_URL }}" \
-            -StorePasswordInClearText \
-            -Name GitHubPackages \
-            -UserName "${{ env.USERNAME }}" \
-            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
-          mono `${{ env.VCPKG_EXE }} fetch nuget | tail -n 1` \
-            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" \
-            -Source "${{ env.FEED_URL }}"
-
-      - name: Add NuGet sources (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
-          USERNAME: sshcrack
-          FEED_URL: https://nuget.pkg.github.com/sshcrack/index.json
-        run: |
-          .$(${{ env.VCPKG_EXE }} fetch nuget) `
-            sources add `
-            -Source "${{ env.FEED_URL }}" `
-            -StorePasswordInClearText `
-            -Name GitHubPackages `
-            -UserName "${{ env.USERNAME }}" `
-            -Password "${{ secrets.GH_PACKAGES_TOKEN }}"
-          .$(${{ env.VCPKG_EXE }} fetch nuget) `
-            setapikey "${{ secrets.GH_PACKAGES_TOKEN }}" `
-            -Source "${{ env.FEED_URL }}"
-
       - name: Cache cross-compile toolchain
         if: matrix.requires-toolchain
         id: cache-toolchain
@@ -137,7 +96,7 @@ jobs:
           buildPreset: ${{ matrix.preset }}
           buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
         env:
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/sshcrack/index.json,readwrite"
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
       - name: Upload ${{ matrix.name }} artifacts
