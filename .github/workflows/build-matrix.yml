@@ -7,6 +7,9 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      NUGET_API_KEY:
+        required: true
 
 jobs:
   build:
@@ -70,6 +73,28 @@ jobs:
       - uses: lukka/run-vcpkg@v11
         with:
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
+
+      - name: Configure NuGet publishing key (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          FEED_URL: https://nuget.sshcrack.me/v3/index.json
+        run: |
+          NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
+          mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
+
+      - name: Configure NuGet publishing key (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          FEED_URL: https://nuget.sshcrack.me/v3/index.json
+        run: |
+          $nuget = & $env:VCPKG_EXE fetch nuget
+          & $nuget setapikey $env:NUGET_API_KEY -Source $env:FEED_URL
 
       - name: Cache cross-compile toolchain
         if: matrix.requires-toolchain

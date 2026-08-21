@@ -51,6 +51,8 @@ jobs:
   build:
     needs: react-web
     uses: ./.github/workflows/build-matrix.yml
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
   artifact-comment:
     runs-on: ubuntu-latest
