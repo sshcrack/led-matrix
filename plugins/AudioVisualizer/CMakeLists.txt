@@ -40,6 +40,30 @@ register_plugin(AudioVisualizer
         desktop/frequency_analyzer/utils.cpp
 )
 
+if(ENABLE_EMULATOR)
+        add_executable(audio_spectrum_visual_regression
+                ${CMAKE_SOURCE_DIR}/tests/audio_spectrum_visual_regression.cpp
+        )
+        target_compile_features(audio_spectrum_visual_regression PRIVATE cxx_std_23)
+        target_include_directories(audio_spectrum_visual_regression PRIVATE
+                ${CMAKE_SOURCE_DIR}
+        )
+        target_link_libraries(audio_spectrum_visual_regression PRIVATE
+                AudioVisualizer
+                SharedToolsCommon
+                SharedToolsMatrix
+                PkgConfig::GraphicsMagick
+                magic_enum::magic_enum
+                restinio::restinio
+                rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        )
+        add_test(NAME audio_spectrum_visual_regression
+                COMMAND ${CMAKE_COMMAND} -E env
+                        "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:AudioVisualizer>:$<TARGET_FILE_DIR:SharedToolsCommon>:$<TARGET_FILE_DIR:SharedToolsMatrix>:$<TARGET_FILE_DIR:rpi_rgb_led_matrix::rpi-rgb-led-matrix>:$ENV{LD_LIBRARY_PATH}"
+                        $<TARGET_FILE:audio_spectrum_visual_regression>
+        )
+endif()
+
 if(ENABLE_DESKTOP)
         set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
         set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
