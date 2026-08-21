@@ -44,8 +44,12 @@ AudioVisualizerDesktop::~AudioVisualizerDesktop() {
 }
 
 void AudioVisualizerDesktop::render() {
-    if (!stateMutex.try_lock()) return;
-    std::lock_guard lock(stateMutex, std::adopt_lock);
+    // Never skip an ImGui frame when the audio worker is updating state. An
+    // empty frame changes the child window's content height, which can remove
+    // its scrollbar for one frame and visibly resize/flash the whole panel.
+    // The worker holds stateMutex only for one audio update, so waiting here
+    // keeps the immediate-mode UI structurally stable instead.
+    std::lock_guard lock(stateMutex);
     ImPlot::SetCurrentContext(implotContext);
     addConnectionSettings();
     addDeviceSettings();
