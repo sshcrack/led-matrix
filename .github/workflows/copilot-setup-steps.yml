@@ -58,6 +58,16 @@ jobs:
           vcpkgDirectory: '${{ github.workspace }}/../vcpkg'
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
+      - name: Configure NuGet publishing key
+        shell: bash
+        env:
+          VCPKG_EXE: ${{ github.workspace }}/../vcpkg/vcpkg
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          FEED_URL: https://nuget.sshcrack.me/v3/index.json
+        run: |
+          NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
+          mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
+
       - name: Cache cross-compile toolchain
         id: cache-toolchain
         uses: actions/cache@v4
