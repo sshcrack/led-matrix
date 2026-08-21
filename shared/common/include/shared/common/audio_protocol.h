@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "shared/common/macro.h"
+
 namespace AudioProtocol {
 
 constexpr uint32_t Magic = 0x3153554dU; // "MUS1" in little endian.
@@ -90,7 +92,8 @@ struct Frame {
     }
 };
 
-std::vector<uint8_t> encode(const Frame &frame);
-bool decode(std::span<const uint8_t> bytes, Frame &frame, std::string *error = nullptr);
+SHARED_COMMON_API std::vector<uint8_t> encode(const Frame &frame);
+SHARED_COMMON_API bool decode(std::span<const uint8_t> bytes, Frame &frame,
+                              std::string *error = nullptr);
 
 } // namespace AudioProtocol
