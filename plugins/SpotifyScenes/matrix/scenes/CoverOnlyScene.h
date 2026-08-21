@@ -106,6 +106,12 @@ namespace Scenes {
         [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
             return Previews::SceneSpec::with_inputs({Previews::Inputs::SpotifyPlayback});
         }
+
+        [[nodiscard]] SceneInputSpec get_runtime_input_spec() const override {
+            SceneInputSpec spec;
+            spec.require(RuntimeInputIds::SpotifyPlayback);
+            return spec;
+        }
     };
 
     class CoverOnlySceneWrapper : public Plugins::SceneWrapper {

@@ -14,7 +14,7 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
                                       Config::MainConfig *cfg,
                                       const std::atomic<bool> *exit_flag,
                                       const std::atomic<bool> *interrupt_flag,
-                                      std::function<bool()> is_desktop_connected,
+                                      std::function<RuntimeInputs::Snapshot()> runtime_inputs,
                                       std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
                                       std::function<void(const std::string &)> broadcast)
     : matrix_(matrix)
@@ -23,7 +23,7 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
     , config_(cfg)
     , exit_flag_(exit_flag)
     , interrupt_flag_(interrupt_flag)
-    , is_desktop_connected_fn_(std::move(is_desktop_connected))
+    , runtime_inputs_fn_(std::move(runtime_inputs))
     , set_curr_scene_fn_(std::move(set_curr_scene))
     , broadcast_fn_(std::move(broadcast))
     , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag)
@@ -59,7 +59,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
     int no_scene_count = 0;
     while (!*exit_flag_) {
-        bool connected = is_desktop_connected_fn_();
+        const auto runtime_inputs = runtime_inputs_fn_();
 
         std::shared_ptr<Scenes::Scene> scene =
             pinned_scene ? pinned_scene : forced_scene_;
@@ -67,7 +67,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         forced_scene_ = nullptr;
 
         if (scene == nullptr) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, connected, exclude_name);
+            auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs, exclude_name);
             scene = scheduler_.select_scene(weighted);
         }
 
@@ -100,7 +100,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             scheduler_.resolve_transition_name(preset, scene);
         if (scheduler_.should_schedule_transition(transition_duration, scene->get_duration())
             && !pinned_scene) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, connected,
+            auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
                 scene != nullptr ? scene->get_name() : "");
             next_scene = scheduler_.select_scene(weighted);
             if (next_scene != nullptr && !next_scene->is_initialized())

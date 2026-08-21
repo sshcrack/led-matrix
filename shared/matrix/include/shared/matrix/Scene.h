@@ -10,6 +10,7 @@
 #include <shared/matrix/plugin/PropertyMacros.h>
 #include <shared/matrix/plugin/TransitionNameProperty.h>
 #include <shared/matrix/scene_runtime.h>
+#include <shared/matrix/input_ids.h>
 #include <shared/matrix/preview.h>
 #include <chrono>
 #include <optional>
@@ -139,6 +140,14 @@ namespace Scenes {
                 ? Previews::SceneSpec::disabled()
                 : Previews::SceneSpec{};
         }
+
+        /// Runtime Inputs are production machine state published by plugins/runtime.
+        /// Scenes only declare what they need; producers and directors own the wiring.
+        /// Existing capability flags are folded into get_effective_runtime_inputs()
+        /// so older scenes migrate without bespoke scheduler checks.
+        [[nodiscard]] virtual SceneInputSpec get_runtime_input_spec() const { return {}; }
+
+        [[nodiscard]] SceneInputSpec get_effective_runtime_inputs() const;
 
         /// Machine-readable scene capabilities used by the web app and Music
         /// Director. Preview eligibility is derived from get_preview_spec() so

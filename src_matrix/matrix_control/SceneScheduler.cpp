@@ -7,7 +7,7 @@ using namespace std;
 vector<SceneScheduler::WeightedScene>
 SceneScheduler::build_weighted_scenes(
     const vector<shared_ptr<Scenes::Scene>> &scenes,
-    bool is_desktop_connected,
+    const RuntimeInputs::Snapshot &runtime_inputs,
     string exclude_name) const
 {
     vector<WeightedScene> weighted_scenes;
@@ -16,8 +16,8 @@ SceneScheduler::build_weighted_scenes(
             continue;
         if (item->get_name() == exclude_name)
             continue;
-        const auto capabilities = item->get_capabilities();
-        if (capabilities.requires_desktop && !is_desktop_connected)
+        const auto input_spec = item->get_effective_runtime_inputs();
+        if (!RuntimeInputs::satisfies(input_spec, runtime_inputs))
             continue;
         weighted_scenes.emplace_back(item->get_weight(), item);
     }

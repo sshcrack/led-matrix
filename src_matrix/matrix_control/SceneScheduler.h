@@ -6,6 +6,7 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/config/data.h"
+#include "shared/matrix/runtime_inputs.h"
 
 class SceneScheduler {
 public:
@@ -16,7 +17,7 @@ public:
 
     std::vector<WeightedScene> build_weighted_scenes(
         const std::vector<std::shared_ptr<Scenes::Scene>> &scenes,
-        bool is_desktop_connected,
+        const RuntimeInputs::Snapshot &runtime_inputs,
         std::string exclude_name = "") const;
 
     std::shared_ptr<Scenes::Scene> select_scene(

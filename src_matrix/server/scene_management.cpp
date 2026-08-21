@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/MimeTypes.h"
 #include "shared/common/utils/utils.h"
 #include <filesystem>
@@ -57,6 +58,7 @@ namespace {
     json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes) {
         std::vector<json> j;
         j.reserve(scenes.size());
+        const auto runtime_snapshot = RuntimeInputs::snapshot();
         for (const auto& scene : scenes) {
             auto default_item = scene->get_default();
             if (!default_item) continue;
@@ -64,12 +66,20 @@ namespace {
             auto properties_json = serialize_properties(properties, true);
             const auto caps = default_item->get_capabilities();
             const auto preview_spec = default_item->get_preview_spec();
+            const auto runtime_spec = default_item->get_effective_runtime_inputs();
+            const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
                 {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
                 {"needs_desktop", caps.requires_desktop},
                 {"category", default_item->get_category()},
+                {"runtime_inputs", {
+                    {"required", runtime_spec.required},
+                    {"optional", runtime_spec.optional},
+                    {"eligible", missing_inputs.empty()},
+                    {"missing_required", missing_inputs}
+                }},
                 {"capabilities", {
                     {"requires_desktop", caps.requires_desktop},
                     {"requires_audio", caps.requires_audio},

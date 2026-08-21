@@ -15,6 +15,7 @@
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/server/common.h"
+#include "shared/matrix/runtime_inputs.h"
 
 using json = nlohmann::json;
 
@@ -74,6 +75,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                      {
         auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();
         result["desktop_connections"] = Server::desktop_connection_count.load();
+        result["runtime_inputs"] = RuntimeInputs::to_json(RuntimeInputs::snapshot());
 
         const auto audio = AudioState::snapshot();
         result["audio"] = {
@@ -121,6 +123,9 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
 
         return reply_with_json(req, result); });
+
+    router->http_get("/runtime_inputs", [](auto req, auto)
+                     { return reply_with_json(req, RuntimeInputs::to_json(RuntimeInputs::snapshot())); });
 
     router->http_get("/list", [](auto req, auto)
                      {
