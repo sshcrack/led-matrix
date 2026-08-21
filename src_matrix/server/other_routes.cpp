@@ -15,35 +15,9 @@
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/server/common.h"
-#include "matrix_control/LiveFrameSnapshot.h"
 
 using json = nlohmann::json;
 
-namespace {
-void append_u16_le(std::string &out, const std::uint16_t value)
-{
-    out.push_back(static_cast<char>(value & 0xffU));
-    out.push_back(static_cast<char>((value >> 8U) & 0xffU));
-}
-
-void append_u32_le(std::string &out, const std::uint32_t value)
-{
-    for (int shift = 0; shift < 32; shift += 8)
-        out.push_back(static_cast<char>((value >> shift) & 0xffU));
-}
-
-std::string encode_live_frame(const LiveFrame::Snapshot &snapshot)
-{
-    std::string body;
-    body.reserve(12 + snapshot.rgb.size());
-    body.append("LMF1", 4);
-    append_u16_le(body, snapshot.width);
-    append_u16_le(body, snapshot.height);
-    append_u32_le(body, snapshot.sequence);
-    body.append(reinterpret_cast<const char *>(snapshot.rgb.data()), snapshot.rgb.size());
-    return body;
-}
-}
 
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router)
 {
@@ -95,26 +69,6 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         return response.set_body(restinio::sendfile(file_path)).done(); });
 
-    router->http_get("/live_frame", [](auto req, auto)
-                     {
-        auto &store = LiveFrame::SnapshotStore::instance();
-        store.request_capture();
-        const auto snapshot = store.snapshot();
-        if (!snapshot.available()) {
-            auto response = req->create_response(restinio::status_no_content())
-                .append_header_date_field()
-                .append_header(restinio::http_field::cache_control, "no-store");
-            Server::add_cors_headers(response);
-            return response.done();
-        }
-
-        auto response = req->create_response(restinio::status_ok())
-            .append_header_date_field()
-            .append_header(restinio::http_field::content_type, "application/octet-stream")
-            .append_header(restinio::http_field::cache_control, "no-store, max-age=0")
-            .append_header("X-Led-Matrix-Frame", "LMF1");
-        Server::add_cors_headers(response);
-        return response.set_body(encode_live_frame(snapshot)).done(); });
 
     router->http_get("/diagnostics", [](auto req, auto)
                      {

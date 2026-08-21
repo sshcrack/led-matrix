@@ -13,9 +13,9 @@ SnapshotStore &SnapshotStore::instance()
     return store;
 }
 
-void SnapshotStore::request_capture()
+std::uint64_t SnapshotStore::request_capture()
 {
-    demand_generation_.fetch_add(1, std::memory_order_relaxed);
+    return demand_generation_.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 std::uint64_t SnapshotStore::requested_generation() const
@@ -25,15 +25,19 @@ std::uint64_t SnapshotStore::requested_generation() const
 
 bool SnapshotStore::capture_requested(const std::uint64_t generation) const
 {
-    return generation != served_generation_.load(std::memory_order_relaxed);
+    return generation > served_generation_.load(std::memory_order_relaxed);
 }
 
 void SnapshotStore::mark_demand_served(const std::uint64_t generation)
 {
-    // Only satisfy demand observed before the copy started. Requests that race
-    // in while pixels are being copied retain a newer generation and therefore
-    // trigger another capture on the next rendered frame.
-    served_generation_.store(generation, std::memory_order_relaxed);
+    // Never move the served watermark backwards if capture paths ever overlap.
+    // Requests that race in while pixels are being copied retain a newer
+    // generation and therefore trigger another capture on the next frame.
+    auto served = served_generation_.load(std::memory_order_relaxed);
+    while (served < generation &&
+           !served_generation_.compare_exchange_weak(
+               served, generation, std::memory_order_relaxed, std::memory_order_relaxed)) {
+    }
 }
 
 void SnapshotStore::capture_if_requested(rgb_matrix::FrameCanvas *canvas,
@@ -59,7 +63,7 @@ void SnapshotStore::capture_if_requested(rgb_matrix::FrameCanvas *canvas,
             rgb[offset + 2] = b;
         }
     }
-    publish(width, height, std::move(rgb));
+    publish(width, height, std::move(rgb), generation);
     mark_demand_served(generation);
 }
 
@@ -83,25 +87,35 @@ void SnapshotStore::publish_solid_if_requested(const int width,
         rgb[i + 1] = g;
         rgb[i + 2] = b;
     }
-    publish(width, height, std::move(rgb));
+    publish(width, height, std::move(rgb), generation);
     mark_demand_served(generation);
 }
 
 void SnapshotStore::publish(const int width,
                             const int height,
-                            std::vector<std::uint8_t> rgb)
+                            std::vector<std::uint8_t> rgb,
+                            const std::uint64_t capture_generation)
 {
-    std::lock_guard lock(snapshot_mutex_);
-    snapshot_.width = static_cast<std::uint16_t>(width);
-    snapshot_.height = static_cast<std::uint16_t>(height);
-    ++snapshot_.sequence;
-    snapshot_.rgb = std::move(rgb);
+    Snapshot published;
+    published.width = static_cast<std::uint16_t>(width);
+    published.height = static_cast<std::uint16_t>(height);
+    published.sequence = frame_sequence_.fetch_add(1, std::memory_order_relaxed) + 1;
+    published.rgb = std::move(rgb);
+
+    PublishCallback callback;
+    {
+        std::lock_guard lock(callback_mutex_);
+        callback = publish_callback_;
+    }
+
+    if (callback)
+        callback(published, capture_generation);
 }
 
-Snapshot SnapshotStore::snapshot() const
+void SnapshotStore::set_publish_callback(PublishCallback callback)
 {
-    std::lock_guard lock(snapshot_mutex_);
-    return snapshot_;
+    std::lock_guard lock(callback_mutex_);
+    publish_callback_ = std::move(callback);
 }
 
 } // namespace LiveFrame

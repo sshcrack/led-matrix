@@ -16,7 +16,7 @@ The LED matrix is a **passive prop** in a room. It must:
 | Idea | Reason |
 |------|--------|
 | Home Assistant / MQTT | Not needed |
-| WebSocket live preview | Too heavy on the RPi |
+| Continuously pushed / always-on live preview | Too heavy on the RPi; live capture must remain viewer-demand-driven |
 | RSS / News Feed | Not used; also violates no-text rule |
 | Sports Scores | Not needed; violates no-text rule |
 | Crypto / Stock Ticker | Not needed; violates no-text rule |
@@ -30,3 +30,4 @@ The LED matrix is a **passive prop** in a room. It must:
 
 - **2026-06-01**: Initial decisions. Constraints set: low compute, non-interactive, no text, prop use case.
 - **2026-06-15**: SpotifyMV plugin added. Standalone plugin (not extending SpotifyScenes) that auto-plays YouTube music videos when a Spotify track changes. Audio intentionally disabled (Spotify handles audio). YouTube search, download, and decode all happen on the desktop via yt-dlp + ffmpeg; Pi only copies UDP pixels to canvas. `VideoStreamEngine` extracted from VideoDesktop into `SharedToolsDesktop` to deduplicate the streaming pipeline. Cache keyed by Spotify track_id for stable replays.
+- **2026-08-22**: Live web preview transport switched from repeated HTTP polling to a persistent pull-based WebSocket. A WebSocket connection alone does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting. `/live_frame` is WebSocket-only; the pre-release HTTP polling transport was removed.

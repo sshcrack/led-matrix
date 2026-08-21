@@ -428,7 +428,7 @@ The emulator can run without opening an SDL window and stream the **actual compo
 ./scripts/run_web_emulator.sh
 ```
 
-The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). Frame capture is **strictly request-driven**: each `/live_frame` request can cause at most one future composed-frame copy, and multiple requests arriving before a render are coalesced. With no outstanding request the render loop only performs relaxed atomic checks—no pixel reads, allocation, snapshot lock, timer, or background capture. The web UI also stops requesting frames while the tab is hidden or the preview is completely off-screen; its normal visible polling rate is roughly 13–15 FPS.
+The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). Frame capture is **strictly request-driven**: the browser keeps one `/live_frame` WebSocket open and sends `next` only when it wants one future composed frame. Multiple viewers waiting before a render are coalesced into one matrix copy and receive the same raw `LMF1` frame. With no outstanding demand the render loop only performs relaxed atomic checks—no pixel reads, allocation, publish lock, timer, or background capture. The web UI also stops requesting frames while the tab is hidden or the preview is completely off-screen. `/live_frame` is WebSocket-only; there is no HTTP polling fallback.
 
 You can pin a scene while testing:
 
