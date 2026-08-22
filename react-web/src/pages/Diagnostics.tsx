@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AudioLines, CircleAlert, Network, PlugZap, RefreshCw } from 'lucide-react'
+import { Activity, AudioLines, BrainCircuit, CircleAlert, Network, PlugZap, RefreshCw, Shuffle } from 'lucide-react'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { Input } from '~/components/ui/input'
+import { toast } from 'sonner'
 
 interface DiagnosticsData {
   uptime_seconds: number
@@ -62,6 +64,40 @@ interface DiagnosticsData {
   }
   registry: { ok: boolean; errors: string[]; warnings: string[] }
   plugins: { name: string; location: string }[]
+  operation_mode: string
+  automatic_mode: boolean
+  configured_director_seed: string
+  director?: {
+    seed: string
+    decision_count: number
+    render_quality: number
+    last_scene: string
+    last_variant: string
+    last_score: number
+    last_reasons: string[]
+    context: {
+      audio_available: boolean
+      spotify_available: boolean
+      loudness: number
+      target_intensity: number
+      performance_budget: number
+      excluded_scene: string
+    }
+    history: Array<{ scene: string; family: string; variant: string }>
+    candidates: Array<{ scene: string; variant: string; score: number; reasons: string[] }>
+  }
+  transition?: {
+    from?: string
+    from_variant?: string
+    to?: string
+    to_variant?: string
+    name?: string
+    duration_ms?: number
+    start_delay_ms?: number
+    beat_synchronized?: boolean
+    reason?: string
+  }
+  scene_lab?: { active: boolean; scene: string; variant: string; fps: number; missing_inputs: string[] }
 }
 
 function number(value: number | undefined, digits = 1) {
@@ -86,6 +122,12 @@ export default function Diagnostics() {
   const [data, setData] = useState<DiagnosticsData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paused, setPaused] = useState(false)
+  const [seedInput, setSeedInput] = useState('')
+  const [seedEdited, setSeedEdited] = useState(false)
+
+  useEffect(() => {
+    if (data?.configured_director_seed && !seedEdited) setSeedInput(data.configured_director_seed)
+  }, [data?.configured_director_seed, seedEdited])
 
   useEffect(() => {
     if (!apiUrl || paused) return
@@ -112,6 +154,20 @@ export default function Diagnostics() {
     ? Object.entries(data.renderer.scene_performance ?? {}).sort(([, a], [, b]) => b.render_ms_p95 - a.render_ms_p95)
     : [], [data])
 
+  const setDirectorSeed = async (seed?: string) => {
+    if (!apiUrl) return
+    try {
+      const response = await fetch(`${apiUrl}/automatic_director/seed`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(seed ? { seed } : {}),
+      })
+      const body = await response.json() as { seed?: string; error?: string }
+      if (!response.ok || !body.seed) throw new Error(body.error || `HTTP ${response.status}`)
+      setSeedInput(body.seed); setSeedEdited(false)
+      toast.success(seed ? 'Director seed applied' : 'New Director seed generated')
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not update Director seed') }
+  }
+
   return <div className="space-y-6 pb-24 lg:pb-8">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -133,6 +189,43 @@ export default function Diagnostics() {
         <Metric label="Active scene" value={data.renderer.active_scene || 'None'} detail={`${data.renderer.slow_frames} slow frames`} />
         <Metric label="UDP" value={`${number(data.udp.datagrams_per_second)} pkt/s`} detail={`${bytes(data.udp.bytes_per_second)} · ${data.udp.malformed} malformed`} />
         <Metric label="Desktop" value={`${data.desktop_connections} client${data.desktop_connections === 1 ? '' : 's'}`} detail={`${number(data.uptime_seconds / 60, 1)} min uptime`} />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
+        <div className="glass-panel rounded-2xl p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-semibold"><BrainCircuit className="h-4 w-4 text-primary" />Automatic Director</div>
+            <Badge variant={data.scene_lab?.active ? 'outline' : data.automatic_mode ? 'secondary' : 'outline'}>{data.scene_lab?.active ? 'Scene Lab override' : data.automatic_mode ? 'Directing' : data.operation_mode === 'manual' ? 'Manual mode' : 'Paused by explicit automation'}</Badge>
+          </div>
+          {data.director?.seed ? <>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Metric label="Last choice" value={data.director.last_scene || 'None'} detail={data.director.last_variant || 'scene defaults'} />
+              <Metric label="Decision score" value={number(data.director.last_score, 2)} detail={`${data.director.decision_count} seeded decisions`} />
+              <Metric label="Pi headroom" value={`${number(data.director.render_quality * 100, 0)}%`} detail={`budget ${number(data.director.context?.performance_budget * 100, 0)}%`} />
+            </div>
+            {data.director.last_reasons?.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{data.director.last_reasons.map(reason => <Badge key={reason} variant="outline">{reason}</Badge>)}</div>}
+            <div className="mt-4 overflow-x-auto">
+              <div className="min-w-[620px] space-y-1 text-xs">
+                <div className="grid grid-cols-[1.2fr_.9fr_.55fr_2fr] gap-3 px-3 py-1 font-medium uppercase tracking-[0.08em] text-muted-foreground"><span>Candidate</span><span>Variant</span><span>Score</span><span>Why</span></div>
+                {(data.director.candidates ?? []).slice(0, 6).map(candidate => <div key={`${candidate.scene}:${candidate.variant}`} className="grid grid-cols-[1.2fr_.9fr_.55fr_2fr] gap-3 rounded-lg bg-secondary/50 px-3 py-2"><span className="font-medium">{candidate.scene}</span><span>{candidate.variant || 'default'}</span><span className="tabular-nums">{number(candidate.score, 2)}</span><span className="truncate text-muted-foreground" title={candidate.reasons.join(' · ')}>{candidate.reasons.join(' · ')}</span></div>)}
+              </div>
+            </div>
+          </> : <div className="text-sm text-muted-foreground">No Automatic Director decision has been made in this process yet.</div>}
+        </div>
+
+        <div className="space-y-4">
+          <div className="glass-panel rounded-2xl p-5">
+            <div className="mb-3 flex items-center gap-2 font-semibold"><Shuffle className="h-4 w-4 text-primary" />Reproduce sequence</div>
+            <p className="mb-3 text-xs text-muted-foreground">The seed is persisted. Reusing it resets the Director to the same random sequence for the same runtime context.</p>
+            <Input value={seedInput} inputMode="numeric" onChange={event => { setSeedInput(event.target.value.replace(/\D/g, '')); setSeedEdited(true) }} aria-label="Automatic Director seed" />
+            <div className="mt-2 grid grid-cols-2 gap-2"><Button size="sm" variant="outline" disabled={!seedInput || seedInput === '0'} onClick={() => void setDirectorSeed(seedInput)}>Apply seed</Button><Button size="sm" variant="outline" onClick={() => void setDirectorSeed()}><Shuffle className="mr-1.5 h-3.5 w-3.5" />New seed</Button></div>
+          </div>
+          <div className="glass-panel rounded-2xl p-5 text-sm">
+            <div className="mb-3 font-semibold">Last handoff</div>
+            {data.transition?.name ? <div className="space-y-2"><div><span className="font-medium">{data.transition.from}{data.transition.from_variant ? ` · ${data.transition.from_variant}` : ''}</span><span className="text-muted-foreground"> → </span><span className="font-medium">{data.transition.to}{data.transition.to_variant ? ` · ${data.transition.to_variant}` : ''}</span></div><div className="text-muted-foreground">{data.transition.name} · {data.transition.duration_ms} ms{data.transition.start_delay_ms ? ` · ${data.transition.start_delay_ms} ms beat wait` : ''}</div><div className="text-xs text-muted-foreground">{data.transition.reason}</div></div> : <div className="text-muted-foreground">No automatic transition recorded yet.</div>}
+            {data.scene_lab?.active && <div className="mt-4 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs">Scene Lab owns playback: {data.scene_lab.scene}{data.scene_lab.variant ? ` · ${data.scene_lab.variant}` : ''} at {data.scene_lab.fps} FPS.</div>}
+          </div>
+        </div>
       </section>
 
       {scenePerformance.length > 0 && <section className="glass-panel rounded-2xl p-5">

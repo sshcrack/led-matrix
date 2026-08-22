@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <random>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/utils/shared.h>
 #include <shared/matrix/utils/uuid.h>
@@ -73,6 +74,25 @@ namespace Config {
         unique_lock lock(this->data_mutex);
         if (this->data.operation_mode == mode) return;
         this->data.operation_mode = mode;
+        this->mark_dirty();
+    }
+
+    std::uint64_t MainConfig::get_automatic_director_seed() {
+        shared_lock lock(this->data_mutex);
+        return this->data.automatic_director_seed;
+    }
+
+    std::uint64_t MainConfig::get_automatic_director_generation() const {
+        return automatic_director_generation_.load(std::memory_order_relaxed);
+    }
+
+    void MainConfig::set_automatic_director_seed(std::uint64_t seed) {
+        if (seed == 0) throw std::invalid_argument("automatic director seed must be non-zero");
+        {
+            unique_lock lock(this->data_mutex);
+            this->data.automatic_director_seed = seed;
+        }
+        automatic_director_generation_.fetch_add(1, std::memory_order_relaxed);
         this->mark_dirty();
     }
 
@@ -270,6 +290,14 @@ spdlog::info("Setting preset {}", id);
     MainConfig::MainConfig(const string filename) : file_name(filename) {
         load_from_file();
         migrate_presets();
+        if (this->data.automatic_director_seed == 0) {
+            std::random_device random;
+            this->data.automatic_director_seed =
+                (static_cast<std::uint64_t>(random()) << 32U) ^ static_cast<std::uint64_t>(random());
+            if (this->data.automatic_director_seed == 0) this->data.automatic_director_seed = 1;
+            info("Generated persistent Automatic Director seed {}", this->data.automatic_director_seed);
+            this->save();
+        }
         this->dirty = false;
     }
 

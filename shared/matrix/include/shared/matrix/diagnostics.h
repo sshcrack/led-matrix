@@ -26,6 +26,9 @@ public:
     void record_audio_packet(std::uint32_t sequence);
     void record_audio_decode_error();
 
+    void set_director_state(nlohmann::json state);
+    void set_transition_state(nlohmann::json state);
+
     [[nodiscard]] nlohmann::json snapshot() const;
 
 private:
@@ -67,6 +70,8 @@ private:
     std::uint64_t audio_decode_errors_ = 0;
     std::uint32_t last_audio_sequence_ = 0;
     bool have_audio_sequence_ = false;
+    nlohmann::json director_state_ = nlohmann::json::object();
+    nlohmann::json transition_state_ = nlohmann::json::object();
 };
 
 } // namespace Diagnostics

@@ -41,6 +41,7 @@ public:
 
     void record_played(const std::shared_ptr<Scenes::Scene> &scene);
     void report_render_quality(float quality_scale);
+    void reseed(std::uint64_t seed);
 
     [[nodiscard]] std::uint64_t seed() const { return seed_; }
     [[nodiscard]] nlohmann::json diagnostics() const;
@@ -61,6 +62,13 @@ private:
     float last_score_ = 0.0f;
     std::vector<std::string> last_reasons_;
     std::vector<Candidate> last_ranked_;
+    std::uint64_t decision_count_ = 0;
+    bool last_audio_available_ = false;
+    bool last_spotify_available_ = false;
+    float last_loudness_ = 0.0f;
+    float last_target_intensity_ = 0.42f;
+    float last_performance_budget_ = 0.88f;
+    std::string last_exclude_name_;
 
     [[nodiscard]] float history_multiplier(
         const std::string &scene, const std::string &family) const;

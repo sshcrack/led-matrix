@@ -115,6 +115,16 @@ AutomaticDirector::Decision AutomaticDirector::choose(
     const std::string &exclude_name)
 {
     Decision decision;
+    last_audio_available_ = runtime_inputs.available(RuntimeInputIds::Audio);
+    last_spotify_available_ = runtime_inputs.available(RuntimeInputIds::SpotifyPlayback);
+    last_loudness_ = std::clamp(
+        signal_number(runtime_inputs, RuntimeInputIds::Audio, "loudness", 0.35f), 0.0f, 1.0f);
+    last_target_intensity_ = last_audio_available_
+        ? std::clamp(0.28f + last_loudness_ * 0.72f, 0.2f, 1.0f)
+        : 0.42f;
+    last_performance_budget_ = render_quality_ < 0.82f ? 0.48f : (render_quality_ < 0.94f ? 0.68f : 0.88f);
+    last_exclude_name_ = exclude_name;
+    ++decision_count_;
     decision.ranked = rank(scenes, runtime_inputs, exclude_name);
     if (decision.ranked.empty()) {
         last_scene_.clear(); last_variant_.clear(); last_score_ = 0.0f;
@@ -153,6 +163,27 @@ void AutomaticDirector::report_render_quality(float quality_scale)
     render_quality_ = std::clamp(quality_scale, 0.0f, 1.0f);
 }
 
+void AutomaticDirector::reseed(std::uint64_t seed)
+{
+    if (seed == 0) seed = 1;
+    seed_ = seed;
+    rng_.seed(seed_);
+    history_.clear();
+    render_quality_ = 1.0f;
+    last_scene_.clear();
+    last_variant_.clear();
+    last_score_ = 0.0f;
+    last_reasons_.clear();
+    last_ranked_.clear();
+    decision_count_ = 0;
+    last_audio_available_ = false;
+    last_spotify_available_ = false;
+    last_loudness_ = 0.0f;
+    last_target_intensity_ = 0.42f;
+    last_performance_budget_ = 0.88f;
+    last_exclude_name_.clear();
+}
+
 nlohmann::json AutomaticDirector::diagnostics() const
 {
     nlohmann::json history = nlohmann::json::array();
@@ -169,8 +200,17 @@ nlohmann::json AutomaticDirector::diagnostics() const
         });
     }
     return {
-        {"seed", seed_},
+        {"seed", std::to_string(seed_)},
+        {"decision_count", decision_count_},
         {"render_quality", render_quality_},
+        {"context", {
+            {"audio_available", last_audio_available_},
+            {"spotify_available", last_spotify_available_},
+            {"loudness", last_loudness_},
+            {"target_intensity", last_target_intensity_},
+            {"performance_budget", last_performance_budget_},
+            {"excluded_scene", last_exclude_name_}
+        }},
         {"last_scene", last_scene_},
         {"last_variant", last_variant_},
         {"last_score", last_score_},

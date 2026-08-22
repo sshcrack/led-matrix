@@ -26,4 +26,4 @@ _Avoid_: Editor, compositor
 
 ## Current roadmap state
 
-Phases 1–5 of the simple-operation roadmap are complete in sandbox `auto-director-rebased`: Runtime Inputs, Scene descriptors/variants, default Automatic Mode, music-aware transitions, and Pi-authoritative Scene Lab. The final phase is runtime observability + deterministic/seeded repeatability. A future agent told to “continue with the next phase” should start `07-observability-and-seeded-runtime.md` rather than revisiting earlier architecture.
+The six-phase simple-operation roadmap is complete in sandbox `auto-director-rebased`: Runtime Inputs, scene descriptors/curated Scene Variants, default Automatic Mode, music-aware transition intelligence, Pi-authoritative Scene Lab, and seeded runtime observability/repeatability are implemented and review-polished. Do not redo those foundations when continuing. The global palette/color-system pass remains intentionally deferred.
