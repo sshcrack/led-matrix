@@ -32,6 +32,7 @@ class MusicDirectorScene final : public Scene {
 
     std::unique_ptr<Scene> child_;
     std::string child_name_;
+    std::string child_variant_;
     MusicalState child_state_ = MusicalState::Calm;
     double switched_at_ = 0.0;
     bool pending_switch_ = false;
