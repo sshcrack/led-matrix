@@ -16,6 +16,7 @@
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/runtime_inputs.h"
+#include "shared/matrix/remote_render.h"
 #include "matrix_control/SceneLabRuntime.h"
 #include <random>
 #include <algorithm>
@@ -85,6 +86,16 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         result["automatic_mode"] = config->is_automatic_mode();
         result["configured_director_seed"] = std::to_string(config->get_automatic_director_seed());
         result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
+        const auto remote = RemoteRender::status();
+        result["remote_render"] = {
+            {"requested", remote.requested},
+            {"frame_fresh", remote.frame_fresh},
+            {"session", remote.session},
+            {"last_sequence", remote.last_sequence},
+            {"frame_age_ms", remote.frame_age_ms},
+            {"scene", remote.scene},
+            {"renderer", remote.renderer}
+        };
 
         const auto audio = AudioState::snapshot();
         result["audio"] = {
