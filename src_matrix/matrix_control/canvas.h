@@ -14,6 +14,7 @@
 
 #include "MatrixPresenter.h"
 #include "AutomaticDirector.h"
+#include "TransitionPlanner.h"
 #include "SceneScheduler.h"
 #include "SceneRenderer.h"
 #include "TransitionEngine.h"
@@ -56,6 +57,7 @@ private:
 
     SceneScheduler scheduler_;
     AutomaticDirector automatic_director_;
+    TransitionPlanner transition_planner_;
     std::vector<std::shared_ptr<Scenes::Scene>> automatic_scenes_;
     std::shared_ptr<ConfigData::Preset> automatic_preset_;
 

@@ -34,7 +34,8 @@ public:
         int matrix_height,
         tmillis_t transition_duration,
         const std::string &transition_name,
-        std::shared_ptr<Scenes::Scene> &forced_scene);
+        std::shared_ptr<Scenes::Scene> &forced_scene,
+        tmillis_t start_delay_ms = 0);
 
 private:
     RGBMatrixBase *matrix_;

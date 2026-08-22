@@ -80,8 +80,26 @@ void TransitionEngine::render_transition_phase(
     int matrix_height,
     tmillis_t transition_duration,
     const std::string &transition_name,
-    std::shared_ptr<Scenes::Scene> &forced_scene)
+    std::shared_ptr<Scenes::Scene> &forced_scene,
+    tmillis_t start_delay_ms)
 {
+    if (start_delay_ms > 0) {
+        const auto hold_start = time_source_->now_ms();
+        while (time_source_->now_ms() - hold_start < start_delay_ms) {
+            if (*interrupt_flag_ || *exit_flag_) return;
+            try {
+                if (!scene->render_frame(composite_offscreen_canvas)) break;
+            } catch (...) {
+                break;
+            }
+            if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
+            LiveFrame::SnapshotStore::instance().capture_if_requested(
+                composite_offscreen_canvas, matrix_width, matrix_height);
+            composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
+            presenter_->present();
+        }
+    }
+
     scene->before_transition_stop();
 
     constexpr tmillis_t max_transition_ms = 10000;

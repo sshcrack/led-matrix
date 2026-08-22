@@ -141,6 +141,7 @@ else()
         src_matrix/matrix_control/hardware.cpp
         src_matrix/matrix_control/SceneScheduler.cpp
         src_matrix/matrix_control/AutomaticDirector.cpp
+        src_matrix/matrix_control/TransitionPlanner.cpp
         src_matrix/matrix_control/SceneRenderer.cpp
         src_matrix/matrix_control/TransitionEngine.cpp
         src_matrix/matrix_control/LiveFrameSnapshot.cpp
@@ -407,6 +408,18 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME runtime_inputs_smoke COMMAND $<TARGET_FILE:runtime_inputs_smoke>)
     set_tests_properties(runtime_inputs_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(transition_planner_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/transition_planner_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionPlanner.cpp
+    )
+    target_compile_features(transition_planner_smoke PRIVATE cxx_std_23)
+    target_include_directories(transition_planner_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(transition_planner_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME transition_planner_smoke COMMAND $<TARGET_FILE:transition_planner_smoke>)
+    set_tests_properties(transition_planner_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(automatic_director_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic_director_smoke.cpp

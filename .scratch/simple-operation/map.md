@@ -21,8 +21,9 @@ The matrix can be configured once and then operate beautifully on its own: scene
 - Phase 1 — Runtime Inputs + eligibility foundation: **complete and review-polished**.
 - Phase 2 — Scene descriptors, curated Scene Variants, and manifest/UI exposure: **complete and review-polished**.
 - Phase 3 — Automatic/Ambient Director policy + default Automatic Mode UX: **complete and review-polished**.
-- Next phase: **Music Director + transition intelligence** (`issues/05-music-director-and-transitions.md`).
-- After that: Scene Lab, then observability/repeatability.
+- Phase 4 — Music Director + transition intelligence: **complete and review-polished**.
+- Next phase: **Scene Lab runtime and preview policy** (`issues/06-scene-lab-runtime-policy.md`).
+- After that: observability/repeatability.
 - Do not turn the compositor into user-facing configuration. If composition is added later, directors should own it automatically.
 - Do not start the global palette/color-system pass yet.
 
