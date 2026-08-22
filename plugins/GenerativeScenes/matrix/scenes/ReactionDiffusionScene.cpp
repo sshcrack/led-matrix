@@ -303,7 +303,7 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
 }  // namespace GenerativeScenes
 
 Scenes::SceneDescriptor GenerativeScenes::ReactionDiffusionScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "organic";
     d.tags = {"generative", "organic", "simulation", "texture", "audio-reactive"};
     d.intensity = 0.35f; d.motion = 0.30f; d.music_affinity = 0.52f; d.performance_cost = 0.90f;

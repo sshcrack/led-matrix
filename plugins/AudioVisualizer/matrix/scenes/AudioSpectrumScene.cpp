@@ -593,7 +593,7 @@ std::unique_ptr<Scenes::Scene> AudioSpectrumSceneWrapper::create() {
 }
 
 Scenes::SceneDescriptor Scenes::AudioSpectrumScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "spectrum";
     d.tags = {"music", "spectrum", "bars", "waveform", "audio-reactive"};
     d.intensity = 0.78f; d.motion = 0.72f; d.music_affinity = 1.0f; d.performance_cost = 0.58f;

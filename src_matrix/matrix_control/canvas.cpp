@@ -1,6 +1,7 @@
 #include "canvas.h"
 
 #include "shared/matrix/utils/utils.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "spdlog/spdlog.h"
 
 using namespace std;
@@ -36,22 +37,63 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
 
 CanvasCoordinator::~CanvasCoordinator() = default;
 
+void CanvasCoordinator::ensure_automatic_catalog()
+{
+    if (!automatic_scenes_.empty()) return;
+
+    automatic_preset_ = std::make_shared<ConfigData::Preset>();
+    automatic_preset_->transition_duration = 750;
+    automatic_preset_->transition_name = "blend";
+    automatic_preset_->display_name = "Automatic";
+
+    for (const auto &wrapper : Plugins::PluginManager::instance()->get_scenes()) {
+        if (!wrapper) continue;
+        const auto descriptor = wrapper->get_default()->get_descriptor();
+        if (!descriptor.automatic_eligible) continue;
+
+        auto create_instance = [&](const std::string &variant_id) {
+            auto instance = wrapper->create();
+            instance->update_default_properties();
+            instance->register_properties();
+            if (!variant_id.empty()) instance->apply_variant(variant_id);
+            else instance->load_properties(nlohmann::json::object());
+            automatic_scenes_.push_back(std::shared_ptr<Scenes::Scene>(std::move(instance)));
+        };
+
+        if (descriptor.variants.empty()) {
+            create_instance("");
+        } else {
+            for (const auto &variant : descriptor.variants) create_instance(variant.id);
+        }
+    }
+    info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
+}
+
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    std::shared_ptr<ConfigData::Preset> preset = config_->get_curr();
-    if (!preset) {
-        error("config->get_curr() returned null, using fallback preset");
-        preset = ConfigData::Preset::create_default();
+    const bool automatic_mode = !pinned_scene && config_->is_automatic_mode();
+    std::shared_ptr<ConfigData::Preset> preset;
+    const std::vector<std::shared_ptr<Scenes::Scene>> *scene_source = nullptr;
+    if (automatic_mode) {
+        ensure_automatic_catalog();
+        preset = automatic_preset_;
+        scene_source = &automatic_scenes_;
+    } else {
+        preset = config_->get_curr();
+        if (!preset) {
+            error("config->get_curr() returned null, using fallback preset");
+            preset = ConfigData::Preset::create_default();
+        }
+        scene_source = &preset->scenes;
     }
 
-    const auto &scenes = preset->scenes;
+    // A coordinator run restarts when configuration/runtime mode changes.
+    // Never carry a transition-preselected scene across that mode boundary.
+    forced_scene_.reset();
+
+    const auto &scenes = *scene_source;
     const int matrix_width = matrix_->width();
     const int matrix_height = matrix_->height();
-
-    for (const auto &item : scenes) {
-        if (!item->is_initialized())
-            item->initialize(matrix_width, matrix_height);
-    }
 
     auto &first = first_offscreen_canvas_;
     auto &second = second_offscreen_canvas_;
@@ -67,8 +109,12 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         forced_scene_ = nullptr;
 
         if (scene == nullptr) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs, exclude_name);
-            scene = scheduler_.select_scene(weighted);
+            if (automatic_mode) {
+                scene = automatic_director_.choose(scenes, runtime_inputs, exclude_name).scene;
+            } else {
+                auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs, exclude_name);
+                scene = scheduler_.select_scene(weighted);
+            }
         }
 
         if (scene == nullptr) {
@@ -86,6 +132,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         }
 
         no_scene_count = 0;
+        if (!scene->is_initialized()) scene->initialize(matrix_width, matrix_height);
+        if (automatic_mode) automatic_director_.record_played(scene);
         const tmillis_t end_ms = time_source_->now_ms() + scene->get_duration();
 
         set_curr_scene_fn_(scene);
@@ -100,9 +148,14 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             scheduler_.resolve_transition_name(preset, scene);
         if (scheduler_.should_schedule_transition(transition_duration, scene->get_duration())
             && !pinned_scene) {
-            auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
-                scene != nullptr ? scene->get_name() : "");
-            next_scene = scheduler_.select_scene(weighted);
+            if (automatic_mode) {
+                next_scene = automatic_director_.choose(
+                    scenes, runtime_inputs, scene != nullptr ? scene->get_name() : "").scene;
+            } else {
+                auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
+                    scene != nullptr ? scene->get_name() : "");
+                next_scene = scheduler_.select_scene(weighted);
+            }
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }
@@ -130,6 +183,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 transition_duration, transition_name, forced_scene_);
         }
 
+        if (automatic_mode) automatic_director_.report_render_quality(scene->get_render_quality_scale());
         scene->after_render_stop();
     }
 }

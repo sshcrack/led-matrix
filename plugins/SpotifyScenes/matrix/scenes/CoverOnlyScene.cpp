@@ -649,7 +649,7 @@ CoverOnlyScene::~CoverOnlyScene()
 }
 
 Scenes::SceneDescriptor Scenes::CoverOnlyScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "album-art";
     d.tags = {"music", "media", "album-art", "spotify"};
     d.intensity = 0.36f; d.motion = 0.28f; d.music_affinity = 1.0f; d.performance_cost = 0.68f;

@@ -172,7 +172,7 @@ namespace AmbientScenes {
 }
 
 Scenes::SceneDescriptor AmbientScenes::NeonTunnelScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "tunnel";
     d.tags = {"ambient", "neon", "depth", "geometric", "audio-reactive"};
     d.intensity = 0.68f; d.motion = 0.88f; d.music_affinity = 0.78f; d.performance_cost = 0.45f;

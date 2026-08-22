@@ -21,6 +21,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         }
 
         config->set_curr(id);
+        config->set_operation_mode("manual");
+        config->save();
         return reply_success(req);
     });
 
