@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <functional>
 #include <string>
 
 #include "led-matrix.h"
@@ -35,7 +36,8 @@ public:
         tmillis_t transition_duration,
         const std::string &transition_name,
         std::shared_ptr<Scenes::Scene> &forced_scene,
-        tmillis_t start_delay_ms = 0);
+        tmillis_t start_delay_ms = 0,
+        std::function<bool()> inputs_still_available = {});
 
 private:
     RGBMatrixBase *matrix_;

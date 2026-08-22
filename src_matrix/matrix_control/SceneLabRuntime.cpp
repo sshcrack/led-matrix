@@ -69,15 +69,39 @@ SceneLabRuntime::Snapshot SceneLabRuntime::start(
 
 SceneLabRuntime::Snapshot SceneLabRuntime::update(
     const std::string &variant, const nlohmann::json &properties, int fps,
-    const RuntimeInputs::Snapshot &runtime_inputs)
+    const RuntimeInputs::Snapshot &runtime_inputs,
+    std::optional<std::uint64_t> expected_generation)
 {
     std::string scene_name;
+    std::uint64_t base_generation = 0;
     {
         std::lock_guard lock(mutex_);
         if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+        if (expected_generation.has_value() && *expected_generation != state_.generation)
+            throw std::runtime_error("Scene Lab update is stale");
         scene_name = state_.scene_name;
+        base_generation = state_.generation;
     }
-    return start(scene_name, variant, properties, fps, runtime_inputs);
+
+    auto scene = build_scene(scene_name, variant, properties, fps);
+    Snapshot next;
+    next.active = true;
+    next.scene = std::move(scene);
+    next.scene_name = scene_name;
+    next.variant = variant;
+    next.properties = next.scene->to_json();
+    next.fps = std::clamp(fps, 10, 30);
+    next.missing_inputs = RuntimeInputs::missing_required(
+        next.scene->get_effective_runtime_inputs(), runtime_inputs);
+
+    std::lock_guard lock(mutex_);
+    if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+    if (state_.generation != base_generation)
+        throw std::runtime_error("Scene Lab update is stale");
+    next.generation = state_.generation + 1;
+    state_ = next;
+    lease_expires_at_ = std::chrono::steady_clock::now() + LeaseDuration;
+    return state_;
 }
 
 void SceneLabRuntime::stop()

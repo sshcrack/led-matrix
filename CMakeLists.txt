@@ -439,6 +439,7 @@ if(ENABLE_EMULATOR)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_selection_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneScheduler.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
     )
     target_compile_features(runtime_selection_smoke PRIVATE cxx_std_23)
@@ -456,6 +457,22 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME runtime_selection_smoke COMMAND $<TARGET_FILE:runtime_selection_smoke>)
     set_tests_properties(runtime_selection_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(scene_lab_runtime_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_lab_runtime_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneLabRuntime.cpp
+    )
+    target_compile_features(scene_lab_runtime_smoke PRIVATE cxx_std_23)
+    target_include_directories(scene_lab_runtime_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(scene_lab_runtime_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog
+        PkgConfig::GraphicsMagick ${CMAKE_DL_LIBS}
+    )
+    if(MATRIX_PLUGIN_TARGETS)
+        add_dependencies(scene_lab_runtime_smoke ${MATRIX_PLUGIN_TARGETS})
+    endif()
+    add_test(NAME scene_lab_runtime_smoke COMMAND $<TARGET_FILE:scene_lab_runtime_smoke>)
+    set_tests_properties(scene_lab_runtime_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(scene_descriptor_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_descriptor_smoke.cpp

@@ -41,6 +41,7 @@ class MusicDirectorScene final : public Scene {
     uint64_t seen_drop_ = 0;
     uint64_t seen_section_ = 0;
     size_t selection_cursor_ = 0;
+    double next_runtime_input_check_ = 0.0;
 
     MusicalState classify(const AudioState::Snapshot &audio) const;
     bool request_switch(const AudioState::Snapshot &audio, MusicalState state);

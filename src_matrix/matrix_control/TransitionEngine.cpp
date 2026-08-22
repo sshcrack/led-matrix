@@ -81,12 +81,25 @@ void TransitionEngine::render_transition_phase(
     tmillis_t transition_duration,
     const std::string &transition_name,
     std::shared_ptr<Scenes::Scene> &forced_scene,
-    tmillis_t start_delay_ms)
+    tmillis_t start_delay_ms,
+    std::function<bool()> inputs_still_available)
 {
+    tmillis_t next_input_check_ms = time_source_->now_ms();
+    const auto runtime_inputs_valid = [&]() {
+        if (!inputs_still_available) return true;
+        const auto now_ms = time_source_->now_ms();
+        if (now_ms < next_input_check_ms) return true;
+        next_input_check_ms = now_ms + 250;
+        if (inputs_still_available()) return true;
+        spdlog::debug("Transition aborted because a required Runtime Input disappeared");
+        forced_scene.reset();
+        return false;
+    };
+
     if (start_delay_ms > 0) {
         const auto hold_start = time_source_->now_ms();
         while (time_source_->now_ms() - hold_start < start_delay_ms) {
-            if (*interrupt_flag_ || *exit_flag_) return;
+            if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid()) return;
             try {
                 if (!scene->render_frame(composite_offscreen_canvas)) break;
             } catch (...) {
@@ -123,11 +136,13 @@ void TransitionEngine::render_transition_phase(
         }
     };
 
+    if (!runtime_inputs_valid()) return;
     auto current_continue = safe_render(scene, first_offscreen_canvas);
     auto next_continue = safe_render(next_scene, second_offscreen_canvas);
 
     while (true) {
         const auto now_ms = time_source_->now_ms();
+        if (!runtime_inputs_valid()) return;
         if (now_ms - transition_start_ms > max_transition_ms) {
             apply_transition_frame(composite_offscreen_canvas,
                                    first_offscreen_canvas,

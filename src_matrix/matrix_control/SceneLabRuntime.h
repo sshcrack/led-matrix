@@ -4,6 +4,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 
 #include <nlohmann/json.hpp>
@@ -34,7 +35,8 @@ public:
     Snapshot update(const std::string &variant,
                     const nlohmann::json &properties,
                     int fps,
-                    const RuntimeInputs::Snapshot &runtime_inputs);
+                    const RuntimeInputs::Snapshot &runtime_inputs,
+                    std::optional<std::uint64_t> expected_generation = std::nullopt);
     void stop();
     void heartbeat();
     [[nodiscard]] bool lease_active(std::uint64_t generation) const;

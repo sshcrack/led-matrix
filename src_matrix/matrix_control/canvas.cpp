@@ -245,11 +245,22 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                     scene->get_name(), next_scene->get_name(), transition_duration, transition_name,
                     transition_delay, plan.reason);
             }
+            const auto current_input_spec = scene->get_effective_runtime_inputs();
+            const auto next_input_spec = next_scene->get_effective_runtime_inputs();
+            std::function<bool()> transition_inputs_still_available;
+            if (!current_input_spec.required.empty() || !next_input_spec.required.empty()) {
+                transition_inputs_still_available = [this, current_input_spec, next_input_spec] {
+                    const auto snapshot = runtime_inputs_fn_();
+                    return RuntimeInputs::satisfies(current_input_spec, snapshot)
+                        && RuntimeInputs::satisfies(next_input_spec, snapshot);
+                };
+            }
             transition_engine_.render_transition_phase(
                 scene, next_scene,
                 first, second, composite,
                 matrix_width, matrix_height,
-                transition_duration, transition_name, forced_scene_, transition_delay);
+                transition_duration, transition_name, forced_scene_, transition_delay,
+                std::move(transition_inputs_still_available));
         }
 
         if (automatic_mode) {

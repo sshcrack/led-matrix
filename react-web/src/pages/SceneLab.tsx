@@ -35,11 +35,17 @@ export default function SceneLab() {
   const [variantLabel, setVariantLabel] = useState('My look')
   const [presetLabel, setPresetLabel] = useState('Scene Lab look')
   const updateReady = useRef(false)
+  const activeRef = useRef(false)
+  const generationRef = useRef(0)
+  const updateRevision = useRef(0)
+  const updateChain = useRef<Promise<void>>(Promise.resolve())
 
   const definition = useMemo(() => scenes?.find(scene => scene.name === sceneName) ?? null, [scenes, sceneName])
 
   useEffect(() => {
     if (!initialStatus) return
+    activeRef.current = initialStatus.active
+    generationRef.current = initialStatus.generation ?? 0
     setActive(initialStatus.active)
     setMissing(initialStatus.missing_inputs ?? [])
     if (initialStatus.active) {
@@ -73,10 +79,9 @@ export default function SceneLab() {
 
   const selectVariant = (id: string) => {
     if (!definition) return
-    updateReady.current = false
+    updateReady.current = true
     setVariant(id)
     setArgs(sceneArgumentsForVariant(definition, id))
-    queueMicrotask(() => { updateReady.current = true })
   }
 
   const post = async (path: string, body: Record<string, unknown> = {}) => {
@@ -92,6 +97,8 @@ export default function SceneLab() {
     if (!definition) return
     try {
       const state = await post('/scene_lab/start', { scene: definition.name, variant, properties: args, fps }) as LabStatus
+      activeRef.current = true
+      generationRef.current = state.generation
       setActive(true); setMissing(state.missing_inputs ?? []); updateReady.current = true
       toast.success('Scene Lab is live on the matrix')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not start Scene Lab') }
@@ -100,6 +107,8 @@ export default function SceneLab() {
   const stop = async () => {
     try {
       await post('/scene_lab/stop')
+      activeRef.current = false
+      updateRevision.current += 1
       setActive(false); setMissing([]); updateReady.current = false
       toast.success('Normal playback resumed')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not stop Scene Lab') }
@@ -107,28 +116,52 @@ export default function SceneLab() {
 
   useEffect(() => {
     if (!active || !definition || !updateReady.current) return
-    const timer = window.setTimeout(async () => {
-      try {
-        const state = await post('/scene_lab/update', { variant, properties: args, fps }) as LabStatus
-        setMissing(state.missing_inputs ?? [])
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Temporary scene update failed')
-      }
+    const revision = ++updateRevision.current
+    const timer = window.setTimeout(() => {
+      updateChain.current = updateChain.current.then(async () => {
+        if (!activeRef.current || revision !== updateRevision.current) return
+        try {
+          const state = await post('/scene_lab/update', {
+            variant, properties: args, fps, expected_generation: generationRef.current,
+          }) as LabStatus
+          generationRef.current = state.generation
+          if (activeRef.current) setMissing(state.missing_inputs ?? [])
+        } catch (error) {
+          if (activeRef.current && revision === updateRevision.current)
+            toast.error(error instanceof Error ? error.message : 'Temporary scene update failed')
+        }
+      })
     }, 250)
     return () => window.clearTimeout(timer)
   }, [active, definition, variant, args, fps])
 
   useEffect(() => {
     if (!active || !apiUrl) return
-    const heartbeat = () => void fetch(`${apiUrl}/scene_lab/heartbeat`, { method: 'POST' }).catch(() => undefined)
-    heartbeat()
-    const interval = window.setInterval(heartbeat, 15000)
+    const heartbeat = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/scene_lab/heartbeat`, { method: 'POST' })
+        if (!response.ok) return
+        const state = await response.json() as LabStatus
+        generationRef.current = state.generation ?? generationRef.current
+        setMissing(state.missing_inputs ?? [])
+        if (!state.active) {
+          activeRef.current = false
+          updateRevision.current += 1
+          updateReady.current = false
+          setActive(false)
+          toast.info('Scene Lab session expired; normal playback resumed')
+        }
+      } catch { /* A transient connection loss should not end the local session early. */ }
+    }
+    void heartbeat()
+    const interval = window.setInterval(() => void heartbeat(), 15000)
     return () => window.clearInterval(interval)
   }, [active, apiUrl])
 
   const saveVariant = async () => {
     try {
-      const result = await post('/scene_lab/save_variant', { label: variantLabel }) as { variant?: { id?: string } }
+      const result = await post('/scene_lab/save_variant', { label: variantLabel }) as { generation?: number; variant?: { id?: string } }
+      if (result.generation) generationRef.current = result.generation
       toast.success('Saved as a reusable curated look')
       retryScenes(value => value + 1)
       if (result.variant?.id) setVariant(result.variant.id)
