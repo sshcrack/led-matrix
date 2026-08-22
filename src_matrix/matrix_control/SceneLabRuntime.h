@@ -16,6 +16,7 @@ class SceneLabRuntime {
 public:
     struct Snapshot {
         bool active = false;
+        std::uint64_t session_id = 0;
         std::uint64_t generation = 0;
         std::shared_ptr<Scenes::Scene> scene;
         std::string scene_name;
@@ -36,9 +37,10 @@ public:
                     const nlohmann::json &properties,
                     int fps,
                     const RuntimeInputs::Snapshot &runtime_inputs,
-                    std::optional<std::uint64_t> expected_generation = std::nullopt);
-    void stop();
-    void heartbeat();
+                    std::optional<std::uint64_t> expected_generation = std::nullopt,
+                    std::optional<std::uint64_t> expected_session_id = std::nullopt);
+    void stop(std::optional<std::uint64_t> expected_session_id = std::nullopt);
+    void heartbeat(std::optional<std::uint64_t> expected_session_id = std::nullopt);
     [[nodiscard]] bool lease_active(std::uint64_t generation) const;
     [[nodiscard]] Snapshot snapshot(const RuntimeInputs::Snapshot &runtime_inputs = {}) const;
     [[nodiscard]] nlohmann::json status_json(const RuntimeInputs::Snapshot &runtime_inputs = {}) const;
@@ -51,6 +53,7 @@ private:
 
     mutable std::mutex mutex_;
     Snapshot state_;
+    std::uint64_t next_session_id_ = 1;
     std::chrono::steady_clock::time_point lease_expires_at_{};
     static constexpr auto LeaseDuration = std::chrono::seconds(45);
 };

@@ -61,6 +61,8 @@ SceneLabRuntime::Snapshot SceneLabRuntime::start(
     next.missing_inputs = RuntimeInputs::missing_required(next.scene->get_effective_runtime_inputs(), runtime_inputs);
 
     std::lock_guard lock(mutex_);
+    next.session_id = next_session_id_++;
+    if (next_session_id_ == 0) next_session_id_ = 1;
     next.generation = state_.generation + 1;
     state_ = next;
     lease_expires_at_ = std::chrono::steady_clock::now() + LeaseDuration;
@@ -70,17 +72,22 @@ SceneLabRuntime::Snapshot SceneLabRuntime::start(
 SceneLabRuntime::Snapshot SceneLabRuntime::update(
     const std::string &variant, const nlohmann::json &properties, int fps,
     const RuntimeInputs::Snapshot &runtime_inputs,
-    std::optional<std::uint64_t> expected_generation)
+    std::optional<std::uint64_t> expected_generation,
+    std::optional<std::uint64_t> expected_session_id)
 {
     std::string scene_name;
     std::uint64_t base_generation = 0;
+    std::uint64_t base_session_id = 0;
     {
         std::lock_guard lock(mutex_);
         if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+        if (expected_session_id.has_value() && *expected_session_id != state_.session_id)
+            throw std::runtime_error("Scene Lab session is stale");
         if (expected_generation.has_value() && *expected_generation != state_.generation)
             throw std::runtime_error("Scene Lab update is stale");
         scene_name = state_.scene_name;
         base_generation = state_.generation;
+        base_session_id = state_.session_id;
     }
 
     auto scene = build_scene(scene_name, variant, properties, fps);
@@ -88,6 +95,7 @@ SceneLabRuntime::Snapshot SceneLabRuntime::update(
     next.active = true;
     next.scene = std::move(scene);
     next.scene_name = scene_name;
+    next.session_id = base_session_id;
     next.variant = variant;
     next.properties = next.scene->to_json();
     next.fps = std::clamp(fps, 10, 30);
@@ -96,6 +104,8 @@ SceneLabRuntime::Snapshot SceneLabRuntime::update(
 
     std::lock_guard lock(mutex_);
     if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+    if (state_.session_id != base_session_id)
+        throw std::runtime_error("Scene Lab session is stale");
     if (state_.generation != base_generation)
         throw std::runtime_error("Scene Lab update is stale");
     next.generation = state_.generation + 1;
@@ -104,18 +114,28 @@ SceneLabRuntime::Snapshot SceneLabRuntime::update(
     return state_;
 }
 
-void SceneLabRuntime::stop()
+void SceneLabRuntime::stop(std::optional<std::uint64_t> expected_session_id)
 {
     std::lock_guard lock(mutex_);
+    if (expected_session_id.has_value()) {
+        if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+        if (*expected_session_id != state_.session_id)
+            throw std::runtime_error("Scene Lab session is stale");
+    }
     const auto generation = state_.generation + 1;
     state_ = {};
     state_.generation = generation;
     lease_expires_at_ = {};
 }
 
-void SceneLabRuntime::heartbeat()
+void SceneLabRuntime::heartbeat(std::optional<std::uint64_t> expected_session_id)
 {
     std::lock_guard lock(mutex_);
+    if (expected_session_id.has_value()) {
+        if (!state_.active) throw std::runtime_error("Scene Lab is not active");
+        if (*expected_session_id != state_.session_id)
+            throw std::runtime_error("Scene Lab session is stale");
+    }
     if (!state_.active) return;
     const auto now = std::chrono::steady_clock::now();
     if (now >= lease_expires_at_) {
@@ -151,7 +171,7 @@ nlohmann::json SceneLabRuntime::status_json(const RuntimeInputs::Snapshot &runti
 {
     const auto value = snapshot(runtime_inputs);
     return {
-        {"active", value.active}, {"generation", value.generation},
+        {"active", value.active}, {"session_id", value.session_id}, {"generation", value.generation},
         {"scene", value.scene_name}, {"variant", value.variant},
         {"properties", value.properties}, {"fps", value.fps},
         {"missing_inputs", value.missing_inputs}
