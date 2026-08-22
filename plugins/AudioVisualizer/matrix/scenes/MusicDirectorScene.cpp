@@ -7,6 +7,7 @@
 #include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/diagnostics.h>
+#include <shared/matrix/runtime_inputs.h>
 #include <spdlog/spdlog.h>
 
 namespace Scenes {
@@ -92,7 +93,9 @@ bool MusicDirectorScene::child_allowed(const std::string &name) const {
         // The outer active scene remains music_director, so desktop-dependent
         // scenes that require their own plugin packets cannot be nested safely.
         if (caps.requires_desktop && !caps.requires_audio) return false;
-        return caps.music_director_eligible && !caps.interactive;
+        if (!caps.music_director_eligible || caps.interactive) return false;
+        return RuntimeInputs::satisfies(
+            scene->get_effective_runtime_inputs(), RuntimeInputs::snapshot());
     }
     return false;
 }
@@ -238,6 +241,16 @@ bool MusicDirectorScene::render(rgb_matrix::FrameCanvas *canvas) {
     }
 
     const auto state = classify(audio);
+    if (child_ && frame_context().elapsed_seconds >= next_runtime_input_check_) {
+        next_runtime_input_check_ = frame_context().elapsed_seconds + 0.25;
+        if (!RuntimeInputs::satisfies(
+                child_->get_effective_runtime_inputs(), RuntimeInputs::snapshot())) {
+            spdlog::debug("Music Director child '{}' lost a required Runtime Input; selecting a replacement", child_name_);
+            stop_child();
+            pending_switch_ = true;
+            pending_state_ = state;
+        }
+    }
     request_switch(audio, state);
     if (!child_ && !switch_child(state)) {
         canvas->Clear();
