@@ -14,6 +14,7 @@ import useFetch from '~/useFetch'
 
 type LabStatus = {
   active: boolean
+  session_id: number
   generation: number
   scene: string
   variant: string
@@ -36,6 +37,7 @@ export default function SceneLab() {
   const [presetLabel, setPresetLabel] = useState('Scene Lab look')
   const updateReady = useRef(false)
   const activeRef = useRef(false)
+  const sessionIdRef = useRef(0)
   const generationRef = useRef(0)
   const updateRevision = useRef(0)
   const updateChain = useRef<Promise<void>>(Promise.resolve())
@@ -45,6 +47,7 @@ export default function SceneLab() {
   useEffect(() => {
     if (!initialStatus) return
     activeRef.current = initialStatus.active
+    sessionIdRef.current = initialStatus.session_id ?? 0
     generationRef.current = initialStatus.generation ?? 0
     setActive(initialStatus.active)
     setMissing(initialStatus.missing_inputs ?? [])
@@ -98,6 +101,7 @@ export default function SceneLab() {
     try {
       const state = await post('/scene_lab/start', { scene: definition.name, variant, properties: args, fps }) as LabStatus
       activeRef.current = true
+      sessionIdRef.current = state.session_id
       generationRef.current = state.generation
       setActive(true); setMissing(state.missing_inputs ?? []); updateReady.current = true
       toast.success('Scene Lab is live on the matrix')
@@ -106,7 +110,7 @@ export default function SceneLab() {
 
   const stop = async () => {
     try {
-      await post('/scene_lab/stop')
+      await post('/scene_lab/stop', { session_id: sessionIdRef.current })
       activeRef.current = false
       updateRevision.current += 1
       setActive(false); setMissing([]); updateReady.current = false
@@ -122,7 +126,8 @@ export default function SceneLab() {
         if (!activeRef.current || revision !== updateRevision.current) return
         try {
           const state = await post('/scene_lab/update', {
-            variant, properties: args, fps, expected_generation: generationRef.current,
+            variant, properties: args, fps, session_id: sessionIdRef.current,
+            expected_generation: generationRef.current,
           }) as LabStatus
           generationRef.current = Math.max(generationRef.current, state.generation ?? 0)
           if (activeRef.current) setMissing(state.missing_inputs ?? [])
@@ -139,7 +144,18 @@ export default function SceneLab() {
     if (!active || !apiUrl) return
     const heartbeat = async () => {
       try {
-        const response = await fetch(`${apiUrl}/scene_lab/heartbeat`, { method: 'POST' })
+        const response = await fetch(`${apiUrl}/scene_lab/heartbeat`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionIdRef.current }),
+        })
+        if (response.status === 409) {
+          activeRef.current = false
+          updateRevision.current += 1
+          updateReady.current = false
+          setActive(false)
+          toast.info('Scene Lab was replaced by another session')
+          return
+        }
         if (!response.ok) return
         const state = await response.json() as LabStatus
         // Heartbeats and debounced updates can cross in flight. Generation is
@@ -163,7 +179,7 @@ export default function SceneLab() {
 
   const saveVariant = async () => {
     try {
-      const result = await post('/scene_lab/save_variant', { label: variantLabel }) as { generation?: number; variant?: { id?: string } }
+      const result = await post('/scene_lab/save_variant', { label: variantLabel, session_id: sessionIdRef.current }) as { generation?: number; variant?: { id?: string } }
       if (result.generation) generationRef.current = Math.max(generationRef.current, result.generation)
       toast.success('Saved as a reusable curated look')
       retryScenes(value => value + 1)
@@ -173,7 +189,7 @@ export default function SceneLab() {
 
   const savePreset = async () => {
     try {
-      await post('/scene_lab/save_preset', { display_name: presetLabel })
+      await post('/scene_lab/save_preset', { display_name: presetLabel, session_id: sessionIdRef.current })
       toast.success('Saved as a manual preset')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save preset') }
   }
