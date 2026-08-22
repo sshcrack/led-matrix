@@ -16,6 +16,10 @@
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/runtime_inputs.h"
+#include "matrix_control/SceneLabRuntime.h"
+#include <random>
+#include <algorithm>
+#include <cctype>
 
 using json = nlohmann::json;
 
@@ -75,7 +79,12 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                      {
         auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();
         result["desktop_connections"] = Server::desktop_connection_count.load();
-        result["runtime_inputs"] = RuntimeInputs::to_json(RuntimeInputs::snapshot());
+        const auto runtime_inputs = RuntimeInputs::snapshot();
+        result["runtime_inputs"] = RuntimeInputs::to_json(runtime_inputs);
+        result["operation_mode"] = config->get_operation_mode();
+        result["automatic_mode"] = config->is_automatic_mode();
+        result["configured_director_seed"] = std::to_string(config->get_automatic_director_seed());
+        result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
 
         const auto audio = AudioState::snapshot();
         result["audio"] = {
@@ -126,6 +135,53 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
 
     router->http_get("/runtime_inputs", [](auto req, auto)
                      { return reply_with_json(req, RuntimeInputs::to_json(RuntimeInputs::snapshot())); });
+
+    router->http_post("/automatic_director/seed", [](auto req, auto) {
+        try {
+            std::uint64_t seed = 0;
+            bool seed_supplied = false;
+            if (!req->body().empty()) {
+                const auto body = json::parse(req->body());
+                if (body.contains("seed")) {
+                    seed_supplied = true;
+                    if (body["seed"].is_string()) {
+                        const auto text = body["seed"].template get<std::string>();
+                        if (text.empty() || !std::all_of(text.begin(), text.end(), [](unsigned char c) { return std::isdigit(c); }))
+                            return reply_with_error(req, "seed must contain decimal digits only");
+                        try {
+                            std::size_t parsed = 0;
+                            seed = std::stoull(text, &parsed, 10);
+                            if (parsed != text.size()) return reply_with_error(req, "seed contains non-digits");
+                        } catch (const std::out_of_range &) {
+                            return reply_with_error(req, "seed exceeds the 64-bit unsigned integer range");
+                        } catch (const std::invalid_argument &) {
+                            return reply_with_error(req, "seed must contain decimal digits only");
+                        }
+                    } else if (body["seed"].is_number_unsigned()) {
+                        seed = body["seed"].template get<std::uint64_t>();
+                    } else if (body["seed"].is_number_integer()) {
+                        const auto signed_seed = body["seed"].template get<std::int64_t>();
+                        if (signed_seed <= 0) return reply_with_error(req, "seed must be greater than zero");
+                        seed = static_cast<std::uint64_t>(signed_seed);
+                    } else {
+                        return reply_with_error(req, "seed must be an unsigned integer or decimal string");
+                    }
+                    if (seed == 0) return reply_with_error(req, "seed must be greater than zero");
+                }
+            }
+            if (!seed_supplied) {
+                std::random_device random;
+                seed = (static_cast<std::uint64_t>(random()) << 32U) ^ static_cast<std::uint64_t>(random());
+                if (seed == 0) seed = 1;
+            }
+            config->set_automatic_director_seed(seed);
+            if (!config->save())
+                return reply_with_error(req, "Could not persist Automatic Director seed", restinio::status_internal_server_error());
+            return reply_with_json(req, {{"success", true}, {"seed", std::to_string(seed)}});
+        } catch (const std::exception &e) {
+            return reply_with_error(req, e.what());
+        }
+    });
 
     router->http_get("/list", [](auto req, auto)
                      {

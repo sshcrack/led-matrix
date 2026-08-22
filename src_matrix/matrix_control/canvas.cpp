@@ -2,6 +2,7 @@
 
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/diagnostics.h"
 #include "SceneLabRuntime.h"
 #include "spdlog/spdlog.h"
 
@@ -28,6 +29,7 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
     , runtime_inputs_fn_(std::move(runtime_inputs))
     , set_curr_scene_fn_(std::move(set_curr_scene))
     , broadcast_fn_(std::move(broadcast))
+    , automatic_director_(cfg->get_automatic_director_seed())
     , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag)
     , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag)
 {
@@ -72,6 +74,16 @@ void CanvasCoordinator::ensure_automatic_catalog()
 
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
+    const auto configured_seed = config_->get_automatic_director_seed();
+    const auto configured_generation = config_->get_automatic_director_generation();
+    if (automatic_director_.seed() != configured_seed
+        || automatic_director_generation_ != configured_generation) {
+        automatic_director_.reseed(configured_seed);
+        automatic_director_generation_ = configured_generation;
+        info("Automatic Director reseeded with {}", configured_seed);
+    }
+    Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+
     const auto lab_snapshot = SceneLabRuntime::instance().snapshot(runtime_inputs_fn_());
     const bool lab_mode = !pinned_scene && lab_snapshot.active && lab_snapshot.scene;
     const bool automatic_mode = !lab_mode && !pinned_scene && config_->is_automatic_mode();
@@ -124,7 +136,9 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         if (scene == nullptr) {
             if (automatic_mode) {
-                scene = automatic_director_.choose(scenes, runtime_inputs, exclude_name).scene;
+                const auto decision = automatic_director_.choose(scenes, runtime_inputs, exclude_name);
+                scene = decision.scene;
+                Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
             } else {
                 auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs, exclude_name);
                 scene = scheduler_.select_scene(weighted);
@@ -203,7 +217,9 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         if (!early_exit && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, scene->get_duration())) {
             const auto latest_inputs = runtime_inputs_fn_();
-            next_scene = automatic_director_.choose(scenes, latest_inputs, scene->get_name()).scene;
+            const auto decision = automatic_director_.choose(scenes, latest_inputs, scene->get_name());
+            next_scene = decision.scene;
+            Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }
@@ -218,6 +234,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 transition_duration = plan.duration_ms;
                 transition_name = plan.name;
                 transition_delay = plan.start_delay_ms;
+                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
+                    {"from", scene->get_name()}, {"from_variant", scene->get_variant_id()},
+                    {"to", next_scene->get_name()}, {"to_variant", next_scene->get_variant_id()},
+                    {"name", plan.name}, {"duration_ms", plan.duration_ms},
+                    {"start_delay_ms", plan.start_delay_ms},
+                    {"beat_synchronized", plan.beat_synchronized}, {"reason", plan.reason}
+                });
                 debug("Automatic transition {} -> {}: {} ms {}, delay {} ms ({})",
                     scene->get_name(), next_scene->get_name(), transition_duration, transition_name,
                     transition_delay, plan.reason);
@@ -229,7 +252,10 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 transition_duration, transition_name, forced_scene_, transition_delay);
         }
 
-        if (automatic_mode) automatic_director_.report_render_quality(scene->get_render_quality_scale());
+        if (automatic_mode) {
+            automatic_director_.report_render_quality(scene->get_render_quality_scale());
+            Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+        }
         scene->after_render_stop();
     }
 }

@@ -3,6 +3,7 @@
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
 #include <atomic>
+#include <cstdint>
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
@@ -78,6 +79,7 @@ namespace ConfigData
         bool scheduling_enabled;
         std::atomic<bool> turned_off;
         string operation_mode = "automatic";
+        std::uint64_t automatic_director_seed = 0;
         string curr;
         UpdateSettings update_settings;
 
@@ -94,6 +96,7 @@ namespace ConfigData
                 scheduling_enabled = other.scheduling_enabled;
                 turned_off.store(other.turned_off.load());
                 operation_mode = std::move(other.operation_mode);
+                automatic_director_seed = other.automatic_director_seed;
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
             }
@@ -110,6 +113,7 @@ namespace ConfigData
               scheduling_enabled(other.scheduling_enabled),
               turned_off(other.turned_off.load()),
               operation_mode(std::move(other.operation_mode)),
+              automatic_director_seed(other.automatic_director_seed),
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings))
         {
