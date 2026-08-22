@@ -6,32 +6,30 @@
 #include "shared/matrix/scene_descriptor.h"
 
 namespace {
-float feature(const AudioState::Snapshot &audio, AudioProtocol::Feature id)
+float feature(const AudioState::Snapshot& audio, AudioProtocol::Feature id)
 {
     return std::clamp(audio.feature(id), 0.0f, 1.0f);
 }
 
-Scenes::EffectiveSceneProfile profile(const std::shared_ptr<Scenes::Scene> &scene)
+Scenes::EffectiveSceneProfile profile(const std::shared_ptr<Scenes::Scene>& scene)
 {
-    if (!scene) return {};
+    if (!scene)
+        return {};
     const auto descriptor = scene->get_descriptor();
-    return Scenes::effective_profile(
-        descriptor, Scenes::find_variant(descriptor, scene->get_variant_id()));
+    return Scenes::effective_profile(descriptor, Scenes::find_variant(descriptor, scene->get_variant_id()));
 }
-}
+}  // namespace
 
-TransitionPlan TransitionPlanner::plan(
-    const std::shared_ptr<Scenes::Scene> &from,
-    const std::shared_ptr<Scenes::Scene> &to,
-    tmillis_t fallback_duration,
-    const std::string &fallback_name,
-    const AudioState::Snapshot &audio) const
+TransitionPlan TransitionPlanner::plan(const std::shared_ptr<Scenes::Scene>& from, const std::shared_ptr<Scenes::Scene>& to,
+                                       tmillis_t fallback_duration, const std::string& fallback_name,
+                                       const AudioState::Snapshot& audio) const
 {
     TransitionPlan result;
     result.duration_ms = std::max<tmillis_t>(1, fallback_duration);
     result.name = fallback_name.empty() ? "blend" : fallback_name;
     result.reason = "configured fallback";
-    if (!from || !to) return result;
+    if (!from || !to)
+        return result;
 
     const auto from_descriptor = from->get_descriptor();
     const auto to_descriptor = to->get_descriptor();
@@ -43,13 +41,16 @@ TransitionPlan TransitionPlanner::plan(
     if (from_descriptor.family == to_descriptor.family) {
         result.name = "morph";
         result.reason = "same visual family";
-    } else if (motion > 0.72f) {
+    }
+    else if (motion > 0.72f) {
         result.name = "zoom_blend";
         result.reason = "high-motion handoff";
-    } else if (intensity_delta < 0.22f) {
+    }
+    else if (intensity_delta < 0.22f) {
         result.name = "ordered_dissolve";
         result.reason = "similar visual energy";
-    } else {
+    }
+    else {
         result.name = "radial_reveal";
         result.reason = "energy-state change";
     }
@@ -66,10 +67,13 @@ TransitionPlan TransitionPlanner::plan(
     const bool drop = feature(audio, AudioProtocol::Feature::Drop) >= 0.45f || audio.event(AudioProtocol::DropEvent);
 
     if (drop && b.intensity >= a.intensity) {
-        result.name = "glitch_cut";
-        result.duration_ms = 260;
+        // A drop should feel decisive without becoming a scanline/RGB flicker.
+        // The eased radial reveal changes composition quickly while preserving
+        // continuous luminance and geometry.
+        result.name = "radial_reveal";
+        result.duration_ms = 360;
         result.start_delay_ms = 0;
-        result.reason = "drop accent into higher energy";
+        result.reason = "smooth drop accent into higher energy";
         return result;
     }
 
@@ -82,13 +86,13 @@ TransitionPlan TransitionPlanner::plan(
     const float beat_ms = 60000.0f / bpm;
     const float phase = feature(audio, AudioProtocol::Feature::BeatPhase);
     float until_beat = (1.0f - phase) * beat_ms;
-    if (until_beat < 45.0f || until_beat > 700.0f) until_beat = 0.0f;
+    if (until_beat < 45.0f || until_beat > 700.0f)
+        until_beat = 0.0f;
     result.start_delay_ms = static_cast<tmillis_t>(std::lround(until_beat));
     result.beat_synchronized = true;
 
     const float beat_count = (intensity_delta > 0.34f || motion > 0.78f) ? 1.0f : 2.0f;
-    result.duration_ms = std::clamp<tmillis_t>(
-        static_cast<tmillis_t>(std::lround(beat_ms * beat_count)), 280, 1600);
+    result.duration_ms = std::clamp<tmillis_t>(static_cast<tmillis_t>(std::lround(beat_ms * beat_count)), 280, 1600);
     result.reason += "; beat-aligned";
     return result;
 }

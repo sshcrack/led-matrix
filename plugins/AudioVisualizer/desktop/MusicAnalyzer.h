@@ -1,24 +1,24 @@
 #pragma once
 
-#include "config.h"
-#include "record.h"
+#include <fftw3.h>
 #include <shared/common/audio_protocol.h>
 
 #include <array>
 #include <chrono>
 #include <cstdint>
 #include <deque>
-#include <fftw3.h>
 #include <memory>
 #include <vector>
 
+#include "config.h"
+#include "record.h"
+
 class MusicAnalyzer {
 public:
-    explicit MusicAnalyzer(AudioVisualizerConfig &config);
+    explicit MusicAnalyzer(AudioVisualizerConfig& config);
     ~MusicAnalyzer();
 
-    AudioProtocol::Frame analyze(const AudioRecorder::CapturedAudioFrame &audio,
-                                 const std::vector<float> &displayBands);
+    AudioProtocol::Frame analyze(const AudioRecorder::CapturedAudioFrame& audio, const std::vector<float>& displayBands);
     void reset();
 
 private:
@@ -26,7 +26,7 @@ private:
     static constexpr size_t FeatureBandCount = 7;
     static constexpr size_t WaveformPoints = 64;
 
-    AudioVisualizerConfig &config_;
+    AudioVisualizerConfig& config_;
     std::unique_ptr<fftwf_complex[]> fftInput_;
     std::unique_ptr<fftwf_complex[]> fftOutput_;
     fftwf_plan fftPlan_{};
@@ -44,7 +44,7 @@ private:
     std::deque<double> onsetTimes_;
     std::deque<float> onsetStrengths_;
     std::deque<float> recentTempoEstimates_;
-    std::array<float, 241> tempoHistogram_{}; // 60..180 BPM, 0.5 BPM bins.
+    std::array<float, 241> tempoHistogram_{};  // 60..180 BPM, 0.5 BPM bins.
 
     float fastLoudness_ = 0.0f;
     float slowLoudness_ = 0.0f;
@@ -57,9 +57,12 @@ private:
     float beatConfidence_ = 0.0f;
     float tempoStability_ = 0.0f;
     float quietSeconds_ = 0.0f;
+    float hardSilenceSeconds_ = 0.0f;
+    float resumeGraceSeconds_ = 0.0f;
     int octaveCorrectionStreak_ = 0;
     int tempoChangeStreak_ = 0;
     bool dropArmed_ = false;
+    bool wasSustainedSilence_ = false;
 
     double lastBeatTime_ = -1000.0;
     double lastOnsetTime_ = -1000.0;
@@ -82,15 +85,13 @@ private:
     std::chrono::steady_clock::time_point startTime_;
     std::chrono::steady_clock::time_point lastAnalyzeTime_;
 
-    std::vector<float> computeLongPowerSpectrum(const std::vector<float> &mono);
-    std::array<float, FeatureBandCount> computeRawFeatureBands(
-        const std::vector<float> &powerSpectrum, double sampleRate) const;
+    std::vector<float> computeLongPowerSpectrum(const std::vector<float>& mono);
+    std::array<float, FeatureBandCount> computeRawFeatureBands(const std::vector<float>& powerSpectrum, double sampleRate) const;
     void updateTempo(double nowSeconds, float onsetStrength);
 
     static float percentile(std::deque<float> values, float p);
     static float clamp01(float value);
     static float dbAmplitude(float amplitude);
-    static float smooth(float previous, float target, float attackSeconds,
-                        float releaseSeconds, float dt);
+    static float smooth(float previous, float target, float attackSeconds, float releaseSeconds, float dt);
     static float normalizedFrequency(float hz);
 };
