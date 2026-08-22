@@ -1,30 +1,26 @@
 #include "TransitionEngine.h"
 
-#include "spdlog/spdlog.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/diagnostics.h"
 #include "LiveFrameSnapshot.h"
+#include "shared/matrix/diagnostics.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/spdlog.h"
 
 using namespace spdlog;
 
-TransitionEngine::TransitionEngine(RGBMatrixBase *matrix,
-                                    TimeSource *time_source,
-                                    PostProcessor *post_processor,
-                                    TransitionManager *transition_manager,
-                                    MatrixPresenter *presenter,
-                                    const std::atomic<bool> *exit_flag,
-                                    const std::atomic<bool> *interrupt_flag)
-    : matrix_(matrix)
-    , time_source_(time_source)
-    , post_processor_(post_processor)
-    , transition_manager_(transition_manager)
-    , presenter_(presenter)
-    , exit_flag_(exit_flag)
-    , interrupt_flag_(interrupt_flag)
+TransitionEngine::TransitionEngine(RGBMatrixBase* matrix, TimeSource* time_source, PostProcessor* post_processor,
+                                   TransitionManager* transition_manager, MatrixPresenter* presenter, const std::atomic<bool>* exit_flag,
+                                   const std::atomic<bool>* interrupt_flag)
+    : matrix_(matrix),
+      time_source_(time_source),
+      post_processor_(post_processor),
+      transition_manager_(transition_manager),
+      presenter_(presenter),
+      exit_flag_(exit_flag),
+      interrupt_flag_(interrupt_flag)
 {
 }
 
-void TransitionEngine::copy_canvas(FrameCanvas *dst, FrameCanvas *src, int width, int height)
+void TransitionEngine::copy_canvas(FrameCanvas* dst, FrameCanvas* src, int width, int height)
 {
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -35,16 +31,10 @@ void TransitionEngine::copy_canvas(FrameCanvas *dst, FrameCanvas *src, int width
     }
 }
 
-void TransitionEngine::apply_transition_frame(
-    FrameCanvas *dst,
-    FrameCanvas *from,
-    FrameCanvas *to,
-    float alpha_progress,
-    int width,
-    int height,
-    const std::string &transition_name)
+void TransitionEngine::apply_transition_frame(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* to, float alpha_progress, int width,
+                                              int height, const std::string& transition_name)
 {
-    TransitionEffect *transition_effect = nullptr;
+    TransitionEffect* transition_effect = nullptr;
     if (transition_manager_) {
         transition_effect = transition_manager_->get_transition(transition_name);
         if (transition_effect == nullptr)
@@ -65,32 +55,27 @@ tmillis_t TransitionEngine::render_interval_ms_from_visibility(float visibility)
     constexpr tmillis_t min_interval_ms = 33;
     constexpr tmillis_t max_interval_ms = 140;
     const auto range = max_interval_ms - min_interval_ms;
-    const auto interval = max_interval_ms -
-        static_cast<tmillis_t>(clamped * static_cast<float>(range));
+    const auto interval = max_interval_ms - static_cast<tmillis_t>(clamped * static_cast<float>(range));
     return std::clamp(interval, min_interval_ms, max_interval_ms);
 }
 
-void TransitionEngine::render_transition_phase(
-    std::shared_ptr<Scenes::Scene> scene,
-    std::shared_ptr<Scenes::Scene> next_scene,
-    FrameCanvas *first_offscreen_canvas,
-    FrameCanvas *second_offscreen_canvas,
-    FrameCanvas *&composite_offscreen_canvas,
-    int matrix_width,
-    int matrix_height,
-    tmillis_t transition_duration,
-    const std::string &transition_name,
-    std::shared_ptr<Scenes::Scene> &forced_scene,
-    tmillis_t start_delay_ms,
-    std::function<bool()> inputs_still_available)
+void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> scene, std::shared_ptr<Scenes::Scene> next_scene,
+                                               FrameCanvas* first_offscreen_canvas, FrameCanvas* second_offscreen_canvas,
+                                               FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
+                                               tmillis_t transition_duration, const std::string& transition_name,
+                                               std::shared_ptr<Scenes::Scene>& forced_scene, tmillis_t start_delay_ms,
+                                               std::function<bool()> inputs_still_available)
 {
     tmillis_t next_input_check_ms = time_source_->now_ms();
     const auto runtime_inputs_valid = [&]() {
-        if (!inputs_still_available) return true;
+        if (!inputs_still_available)
+            return true;
         const auto now_ms = time_source_->now_ms();
-        if (now_ms < next_input_check_ms) return true;
+        if (now_ms < next_input_check_ms)
+            return true;
         next_input_check_ms = now_ms + 250;
-        if (inputs_still_available()) return true;
+        if (inputs_still_available())
+            return true;
         spdlog::debug("Transition aborted because a required Runtime Input disappeared");
         forced_scene.reset();
         return false;
@@ -99,15 +84,18 @@ void TransitionEngine::render_transition_phase(
     if (start_delay_ms > 0) {
         const auto hold_start = time_source_->now_ms();
         while (time_source_->now_ms() - hold_start < start_delay_ms) {
-            if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid()) return;
+            if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid())
+                return;
             try {
-                if (!scene->render_frame(composite_offscreen_canvas)) break;
-            } catch (...) {
+                if (!scene->render_frame(composite_offscreen_canvas))
+                    break;
+            }
+            catch (...) {
                 break;
             }
-            if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
-            LiveFrame::SnapshotStore::instance().capture_if_requested(
-                composite_offscreen_canvas, matrix_width, matrix_height);
+            if (post_processor_)
+                post_processor_->apply_effects(composite_offscreen_canvas);
+            LiveFrame::SnapshotStore::instance().capture_if_requested(composite_offscreen_canvas, matrix_width, matrix_height);
             composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
             presenter_->present();
         }
@@ -120,15 +108,17 @@ void TransitionEngine::render_transition_phase(
     tmillis_t last_current_render_ms = transition_start_ms;
     tmillis_t last_next_render_ms = transition_start_ms;
 
-    auto safe_render = [](const std::shared_ptr<Scenes::Scene> &candidate, FrameCanvas *canvas) {
+    auto safe_render = [](const std::shared_ptr<Scenes::Scene>& candidate, FrameCanvas* canvas) {
         try {
             return candidate->render_frame(canvas);
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             Diagnostics::RuntimeDiagnostics::instance().record_scene_error(candidate->get_name(), e.what());
             spdlog::error("Scene '{}' threw during transition: {}", candidate->get_name(), e.what());
             canvas->Clear();
             return false;
-        } catch (...) {
+        }
+        catch (...) {
             Diagnostics::RuntimeDiagnostics::instance().record_scene_error(candidate->get_name(), "unknown exception");
             spdlog::error("Scene '{}' threw an unknown exception during transition", candidate->get_name());
             canvas->Clear();
@@ -136,33 +126,31 @@ void TransitionEngine::render_transition_phase(
         }
     };
 
-    if (!runtime_inputs_valid()) return;
+    if (!runtime_inputs_valid())
+        return;
     auto current_continue = safe_render(scene, first_offscreen_canvas);
     auto next_continue = safe_render(next_scene, second_offscreen_canvas);
 
     while (true) {
         const auto now_ms = time_source_->now_ms();
-        if (!runtime_inputs_valid()) return;
+        if (!runtime_inputs_valid())
+            return;
         if (now_ms - transition_start_ms > max_transition_ms) {
-            apply_transition_frame(composite_offscreen_canvas,
-                                   first_offscreen_canvas,
-                                   second_offscreen_canvas,
-                                   1.0f,
-                                   matrix_width,
-                                   matrix_height,
-                                   transition_name);
+            apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, 1.0f, matrix_width,
+                                   matrix_height, transition_name);
             forced_scene = next_scene;
             break;
         }
 
         const auto elapsed = now_ms - transition_start_ms;
-        const auto alpha = std::clamp(
-            static_cast<float>(elapsed) /
-                static_cast<float>(std::max<tmillis_t>(1, transition_duration)),
-            0.0f, 1.0f);
+        const auto alpha =
+            std::clamp(static_cast<float>(elapsed) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)), 0.0f, 1.0f);
 
-        const auto current_visibility = 1.0f - alpha;
-        const auto next_visibility = alpha;
+        // Ease scene handoffs in and out. Linear alpha makes the first few
+        // frames of high-contrast scenes read as a luminance pop on LEDs.
+        const float eased_alpha = alpha * alpha * (3.0f - 2.0f * alpha);
+        const auto current_visibility = 1.0f - eased_alpha;
+        const auto next_visibility = eased_alpha;
 
         if ((now_ms - last_current_render_ms) >= render_interval_ms_from_visibility(current_visibility)) {
             current_continue = safe_render(scene, first_offscreen_canvas);
@@ -180,19 +168,13 @@ void TransitionEngine::render_transition_phase(
             break;
         }
 
-        apply_transition_frame(composite_offscreen_canvas,
-                               first_offscreen_canvas,
-                               second_offscreen_canvas,
-                               alpha,
-                               matrix_width,
-                               matrix_height,
-                               transition_name);
+        apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, eased_alpha, matrix_width,
+                               matrix_height, transition_name);
 
         if (post_processor_)
             post_processor_->apply_effects(composite_offscreen_canvas);
 
-        LiveFrame::SnapshotStore::instance().capture_if_requested(
-            composite_offscreen_canvas, matrix_width, matrix_height);
+        LiveFrame::SnapshotStore::instance().capture_if_requested(composite_offscreen_canvas, matrix_width, matrix_height);
 
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 
