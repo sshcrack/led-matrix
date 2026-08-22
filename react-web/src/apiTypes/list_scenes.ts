@@ -42,6 +42,8 @@ export interface SceneCapabilities {
   can_generate_preview: boolean
   supports_audio: boolean
   music_director_eligible: boolean
+  supports_remote_rendering?: boolean
+  remote_renderer?: string
 }
 
 export interface PropertyUiMetadata {

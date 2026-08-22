@@ -2,6 +2,9 @@
 
 #include "LiveFrameSnapshot.h"
 #include "shared/matrix/diagnostics.h"
+#include "shared/matrix/input_ids.h"
+#include "shared/matrix/remote_render.h"
+#include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 
@@ -52,8 +55,8 @@ void TransitionEngine::apply_transition_frame(FrameCanvas* dst, FrameCanvas* fro
 tmillis_t TransitionEngine::render_interval_ms_from_visibility(float visibility)
 {
     const auto clamped = std::clamp(visibility, 0.0f, 1.0f);
-    constexpr tmillis_t min_interval_ms = 33;
-    constexpr tmillis_t max_interval_ms = 140;
+    constexpr tmillis_t min_interval_ms = 16;
+    constexpr tmillis_t max_interval_ms = 100;
     const auto range = max_interval_ms - min_interval_ms;
     const auto interval = max_interval_ms - static_cast<tmillis_t>(clamped * static_cast<float>(range));
     return std::clamp(interval, min_interval_ms, max_interval_ms);
@@ -87,7 +90,15 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid())
                 return;
             try {
-                if (!scene->render_frame(composite_offscreen_canvas))
+                bool rendered = false;
+                const auto remote_status = RemoteRender::status();
+                if (remote_status.requested && remote_status.scene == scene->get_name()) {
+                    RemoteRender::publish_audio(remote_status.session);
+                    rendered = RemoteRender::copy_latest(
+                        remote_status.session, composite_offscreen_canvas,
+                        matrix_width, matrix_height);
+                }
+                if (!rendered && !scene->render_frame(composite_offscreen_canvas, std::nullopt, true))
                     break;
             }
             catch (...) {
@@ -105,12 +116,11 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
     constexpr tmillis_t max_transition_ms = 10000;
     tmillis_t transition_start_ms = time_source_->now_ms();
-    tmillis_t last_current_render_ms = transition_start_ms;
     tmillis_t last_next_render_ms = transition_start_ms;
 
     auto safe_render = [](const std::shared_ptr<Scenes::Scene>& candidate, FrameCanvas* canvas) {
         try {
-            return candidate->render_frame(canvas);
+            return candidate->render_frame(canvas, std::nullopt, true);
         }
         catch (const std::exception& e) {
             Diagnostics::RuntimeDiagnostics::instance().record_scene_error(candidate->get_name(), e.what());
@@ -128,8 +138,45 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
     if (!runtime_inputs_valid())
         return;
-    auto current_continue = safe_render(scene, first_offscreen_canvas);
-    auto next_continue = safe_render(next_scene, second_offscreen_canvas);
+
+    // Snapshot the outgoing frame before changing any remote session. This is
+    // especially important when the current scene is already desktop-rendered:
+    // its local simulation may have intentionally stopped advancing.
+    bool current_continue = true;
+    const auto current_remote = RemoteRender::status();
+    if (!(current_remote.requested && current_remote.scene == scene->get_name()
+          && RemoteRender::copy_latest(current_remote.session, first_offscreen_canvas,
+                                       matrix_width, matrix_height))) {
+        current_continue = safe_render(scene, first_offscreen_canvas);
+    }
+
+    std::optional<std::uint32_t> next_remote_session;
+    const auto next_caps = next_scene->get_capabilities();
+    const bool desktop_available = RuntimeInputs::snapshot().available(RuntimeInputIds::Desktop);
+    const double next_budget_ms = 1000.0 / static_cast<double>(
+        std::max(1, next_scene->get_declared_target_fps()));
+    if (next_caps.supports_remote_rendering && desktop_available) {
+        const auto p95 = Diagnostics::RuntimeDiagnostics::instance().scene_render_p95(next_scene->get_name());
+        if (p95.has_value() && *p95 > next_budget_ms * 0.72) {
+            next_remote_session = RemoteRender::request_scene(
+                *next_scene, matrix_width, matrix_height, next_scene->get_declared_target_fps());
+        }
+    }
+    if (!next_remote_session.has_value() && current_remote.requested)
+        RemoteRender::stop();
+
+    const auto render_next = [&]() {
+        if (next_remote_session.has_value()) {
+            RemoteRender::publish_audio(*next_remote_session);
+            if (RemoteRender::copy_latest(
+                    *next_remote_session, second_offscreen_canvas,
+                    matrix_width, matrix_height))
+                return true;
+        }
+        return safe_render(next_scene, second_offscreen_canvas);
+    };
+
+    auto next_continue = render_next();
 
     while (true) {
         const auto now_ms = time_source_->now_ms();
@@ -152,13 +199,13 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         const auto current_visibility = 1.0f - eased_alpha;
         const auto next_visibility = eased_alpha;
 
-        if ((now_ms - last_current_render_ms) >= render_interval_ms_from_visibility(current_visibility)) {
-            current_continue = safe_render(scene, first_offscreen_canvas);
-            last_current_render_ms = now_ms;
-        }
+        // The outgoing scene is intentionally a frozen snapshot. Rendering both
+        // scenes throughout a transition doubles the worst-case Pi workload for
+        // almost no perceptual benefit once the old scene is fading away.
+        (void)current_visibility;
 
         if ((now_ms - last_next_render_ms) >= render_interval_ms_from_visibility(next_visibility)) {
-            next_continue = safe_render(next_scene, second_offscreen_canvas);
+            next_continue = render_next();
             last_next_render_ms = now_ms;
         }
 

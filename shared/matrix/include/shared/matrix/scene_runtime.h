@@ -98,6 +98,8 @@ struct SceneCapabilities {
     bool can_generate_preview = true;
     bool supports_audio = false;
     bool music_director_eligible = true;
+    bool supports_remote_rendering = false;
+    std::string remote_renderer;
 };
 
 } // namespace Scenes

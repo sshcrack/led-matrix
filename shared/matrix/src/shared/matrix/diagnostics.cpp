@@ -48,6 +48,7 @@ void RuntimeDiagnostics::record_render(const std::string &scene, double render_m
     stats.render_ms_max = std::max(stats.render_ms_max, render_ms);
     stats.render_ms_ema = stats.frames == 1 ? render_ms : stats.render_ms_ema * 0.92 + render_ms * 0.08;
     stats.quality_scale = quality_scale;
+    stats.target_fps = std::max(1, target_fps);
     stats.recent_ms[stats.recent_next] = render_ms;
     stats.recent_next = (stats.recent_next + 1) % stats.recent_ms.size();
     stats.recent_count = std::min(stats.recent_count + 1, stats.recent_ms.size());
@@ -100,6 +101,24 @@ void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
     transition_state_ = std::move(state);
 }
 
+void RuntimeDiagnostics::set_render_placement(nlohmann::json state) {
+    std::lock_guard lock(mutex_);
+    render_placement_state_ = std::move(state);
+}
+
+std::optional<double> RuntimeDiagnostics::scene_render_p95(const std::string &scene) const {
+    std::lock_guard lock(mutex_);
+    const auto it = scene_render_stats_.find(scene);
+    if (it == scene_render_stats_.end() || it->second.recent_count < 4)
+        return std::nullopt;
+    const auto &stats = it->second;
+    std::vector<double> samples(stats.recent_ms.begin(), stats.recent_ms.begin() + stats.recent_count);
+    std::sort(samples.begin(), samples.end());
+    const std::size_t index = std::min(samples.size() - 1,
+        static_cast<std::size_t>(std::floor((samples.size() - 1) * 0.95)));
+    return samples[index];
+}
+
 nlohmann::json RuntimeDiagnostics::snapshot() const {
     std::lock_guard lock(mutex_);
     const auto now = monotonic_ms();
@@ -123,13 +142,19 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
                 static_cast<std::size_t>(std::floor((samples.size() - 1) * p)));
             return samples[index];
         };
+        const double frame_budget_ms = 1000.0 / static_cast<double>(std::max(1, stats.target_fps));
+        const double p95 = percentile(0.95);
         scene_performance[scene] = {
             {"frames", stats.frames},
+            {"target_fps", stats.target_fps},
+            {"frame_budget_ms", frame_budget_ms},
             {"render_ms_average", stats.render_ms_ema},
             {"render_ms_p50", percentile(0.50)},
-            {"render_ms_p95", percentile(0.95)},
+            {"render_ms_p95", p95},
             {"render_ms_p99", percentile(0.99)},
             {"render_ms_max", stats.render_ms_max},
+            {"p95_budget_ratio", p95 / frame_budget_ms},
+            {"offload_pressure", p95 > frame_budget_ms * 0.72},
             {"slow_frames", stats.slow_frames},
             {"quality_scale", stats.quality_scale}
         };
@@ -163,7 +188,8 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
             {"last_sequence", have_audio_sequence_ ? nlohmann::json(last_audio_sequence_) : nlohmann::json(nullptr)}
         }},
         {"director", director_state_},
-        {"transition", transition_state_}
+        {"transition", transition_state_},
+        {"render_placement", render_placement_state_}
     };
 }
 }

@@ -9,6 +9,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/udp/packet.cpp
         src/shared/common/Version.cpp
         src/shared/common/audio_protocol.cpp
+        src/shared/common/render/metaball_renderer.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 

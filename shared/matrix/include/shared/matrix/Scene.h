@@ -85,6 +85,13 @@ namespace Scenes {
         /// 1.0 means full quality. Values below 1.0 indicate sustained CPU pressure.
         [[nodiscard]] float render_quality_scale() const { return render_quality_scale_; }
 
+        /// Give expensive scenes a conservative startup quality. The adaptive
+        /// controller can still recover all the way to 1.0 when the device has
+        /// enough headroom.
+        void set_render_quality_hint(float scale) {
+            render_quality_scale_ = std::clamp(scale, 0.45f, 1.0f);
+        }
+
         /// Reset timing when a scene is reinitialized or reused.
         void reset_frame_clock();
 
