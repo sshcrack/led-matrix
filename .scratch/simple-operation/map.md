@@ -22,14 +22,14 @@ The matrix can be configured once and then operate beautifully on its own: scene
 - Phase 2 — Scene descriptors, curated Scene Variants, and manifest/UI exposure: **complete and review-polished**.
 - Phase 3 — Automatic/Ambient Director policy + default Automatic Mode UX: **complete and review-polished**.
 - Phase 4 — Music Director + transition intelligence: **complete and review-polished**.
-- Next phase: **Scene Lab runtime and preview policy** (`issues/06-scene-lab-runtime-policy.md`).
-- After that: observability/repeatability.
+- Phase 5 — Scene Lab Pi-authoritative runtime + custom looks: **complete and review-polished**.
+- Next/final phase: **runtime observability and repeatability** (`issues/07-observability-and-seeded-runtime.md`).
 - Do not turn the compositor into user-facing configuration. If composition is added later, directors should own it automatically.
 - Do not start the global palette/color-system pass yet.
 
 ### “Continue with the next phase” instruction
 
-When asked to continue with the next phase, resume this map, inspect the completed Runtime Input foundation rather than redesigning it, and start `04-scene-descriptors-and-variants.md`. Use the existing scene/property/preview/plugin metadata as migration inputs. Prefer a small extensible descriptor contract plus a few curated variants across representative scene families, then wire it into the manifest/API and web UI before expanding coverage.
+When asked to continue with the next phase, start `07-observability-and-seeded-runtime.md`. Phases 1–5 are implemented and review-polished; do not redesign Runtime Inputs, descriptors, Automatic Mode, transition intelligence, or Scene Lab. Add explainability and reproducibility around the existing Director seams, then run the complete emulator/web/Pi gate and leave the sandbox clean and ready.
 
 ## Decisions so far
 

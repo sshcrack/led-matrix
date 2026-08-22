@@ -74,8 +74,15 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
         scene->update_default_properties();
         scene->register_properties();
 
-        if (const auto variant = j.value("variant", std::string{}); !variant.empty())
-            scene->apply_variant(variant);
+        if (const auto variant = j.value("variant", std::string{}); !variant.empty()) {
+            const auto descriptor = scene->get_descriptor();
+            if (find_variant(descriptor, variant) != nullptr)
+                scene->apply_variant(variant);
+            else if (arguments.is_object())
+                scene->variant_id_ = variant; // saved/user variant; complete arguments remain authoritative
+            else
+                throw std::runtime_error(fmt::format("Unknown variant '{}' for scene '{}'", variant, t));
+        }
 
         spdlog::debug("Loading properties for scene '{}'", t);
         scene->load_properties(arguments);

@@ -142,6 +142,7 @@ else()
         src_matrix/matrix_control/SceneScheduler.cpp
         src_matrix/matrix_control/AutomaticDirector.cpp
         src_matrix/matrix_control/TransitionPlanner.cpp
+        src_matrix/matrix_control/SceneLabRuntime.cpp
         src_matrix/matrix_control/SceneRenderer.cpp
         src_matrix/matrix_control/TransitionEngine.cpp
         src_matrix/matrix_control/LiveFrameSnapshot.cpp
@@ -153,6 +154,7 @@ else()
         src_matrix/server/post_processing_routes.cpp
         src_matrix/server/preset_management.cpp
         src_matrix/server/scene_management.cpp
+        src_matrix/server/scene_lab.cpp
         src_matrix/server/schedule_management.cpp
         src_matrix/server/server.cpp
         src_matrix/server/update_routes.cpp

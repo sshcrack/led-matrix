@@ -139,6 +139,8 @@ namespace Scenes {
         [[nodiscard]] virtual SceneDescriptor get_descriptor() const;
         [[nodiscard]] const std::string &get_variant_id() const { return variant_id_; }
         void apply_variant(std::string_view id);
+        void set_external_variant_id(std::string id) { variant_id_ = std::move(id); }
+        void set_runtime_target_fps(int fps) { set_target_fps(fps); }
 
         /// Declarative preview contract. Desktop-dependent scenes are disabled
         /// by default, but may opt in by requesting fixture inputs supplied by

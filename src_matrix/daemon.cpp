@@ -21,6 +21,7 @@
 #include "server/live_frame_ws.h"
 #include "udp.h"
 #include "matrix_control/hardware.h"
+#include "matrix_control/SceneLabRuntime.h"
 
 using namespace spdlog;
 using namespace std;
@@ -375,6 +376,7 @@ void Daemon::shutdown(bool persist_config) noexcept
     // A pinned scene is a plugin object too; release it before dlclose.
     pinned_scene_.reset();
 #endif
+    SceneLabRuntime::instance().stop();
     if (config_) {
         try { config_->release_scene_references(); }
         catch (...) { error("Releasing configured scene references failed"); }
