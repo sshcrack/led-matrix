@@ -371,7 +371,7 @@ std::unique_ptr<Scenes::Scene> AudioKaleidoscopeSceneWrapper::create() { return 
 } // namespace Scenes
 
 Scenes::SceneDescriptor Scenes::AudioParticleFieldScene::get_descriptor() const {
-    auto d = Scene::get_descriptor(); d.family = "particles";
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true; d.family = "particles";
     d.tags = {"music", "particles", "bursts", "audio-reactive"};
     d.intensity = 0.82f; d.motion = 0.86f; d.music_affinity = 1.0f; d.performance_cost = 0.62f;
     d.variants = {
@@ -386,7 +386,7 @@ Scenes::SceneDescriptor Scenes::AudioParticleFieldScene::get_descriptor() const 
 }
 
 Scenes::SceneDescriptor Scenes::AudioPulseTunnelScene::get_descriptor() const {
-    auto d = Scene::get_descriptor(); d.family = "tunnel";
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true; d.family = "tunnel";
     d.tags = {"music", "tunnel", "depth", "geometric", "audio-reactive"};
     d.intensity = 0.86f; d.motion = 0.94f; d.music_affinity = 1.0f; d.performance_cost = 0.52f;
     d.variants = {
@@ -401,7 +401,7 @@ Scenes::SceneDescriptor Scenes::AudioPulseTunnelScene::get_descriptor() const {
 }
 
 Scenes::SceneDescriptor Scenes::AudioAuroraScene::get_descriptor() const {
-    auto d = Scene::get_descriptor(); d.family = "aurora";
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true; d.family = "aurora";
     d.tags = {"music", "aurora", "ribbons", "flow", "audio-reactive"};
     d.intensity = 0.60f; d.motion = 0.58f; d.music_affinity = 1.0f; d.performance_cost = 0.58f;
     d.variants = {
@@ -416,7 +416,7 @@ Scenes::SceneDescriptor Scenes::AudioAuroraScene::get_descriptor() const {
 }
 
 Scenes::SceneDescriptor Scenes::AudioKaleidoscopeScene::get_descriptor() const {
-    auto d = Scene::get_descriptor(); d.family = "kaleidoscope";
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true; d.family = "kaleidoscope";
     d.tags = {"music", "kaleidoscope", "symmetry", "geometric", "audio-reactive"};
     d.intensity = 0.84f; d.motion = 0.76f; d.music_affinity = 1.0f; d.performance_cost = 0.76f;
     d.variants = {

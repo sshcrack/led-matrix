@@ -46,11 +46,26 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
         return reply_with_json(req, {{"turned_off", config->is_turned_off()}});
     });
 
+
+    router->http_get("/operation_mode", [](auto req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
+        if (!qp.has("mode")) return reply_with_error(req, "No mode given");
+        const std::string mode{qp["mode"]};
+        if (mode != "automatic" && mode != "manual")
+            return reply_with_error(req, "Mode must be automatic or manual");
+        config->set_operation_mode(mode);
+        config->save();
+        exit_canvas_update.store(true);
+        return reply_with_json(req, {{"operation_mode", config->get_operation_mode()}});
+    });
+
     router->http_get("/status", [](auto req, auto) {
         return reply_with_json(req, {
                                    {"turned_off", config->is_turned_off()},
                                    {"turned_on", !config->is_turned_off()},
-                                   {"current", config->get_curr_id()}
+                                   {"current", config->get_curr_id()},
+                                   {"operation_mode", config->get_operation_mode()},
+                                   {"automatic_active", config->is_automatic_mode()}
                                }
         );
     });

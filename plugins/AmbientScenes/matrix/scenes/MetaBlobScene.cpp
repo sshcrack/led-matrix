@@ -209,7 +209,7 @@ namespace AmbientScenes {
 }
 
 Scenes::SceneDescriptor AmbientScenes::MetaBlobScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "organic";
     d.tags = {"ambient", "organic", "fluid", "abstract", "audio-reactive"};
     d.intensity = 0.34f; d.motion = 0.38f; d.music_affinity = 0.58f; d.performance_cost = 0.55f;

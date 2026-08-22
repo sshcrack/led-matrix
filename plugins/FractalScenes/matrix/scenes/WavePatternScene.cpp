@@ -218,7 +218,7 @@ std::unique_ptr<Scene> WavePatternSceneWrapper::create()
 }
 
 Scenes::SceneDescriptor Scenes::WavePatternScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "waves";
     d.tags = {"ambient", "waves", "ribbons", "flow", "audio-reactive"};
     d.intensity = 0.44f; d.motion = 0.52f; d.music_affinity = 0.64f; d.performance_cost = 0.56f;

@@ -146,7 +146,7 @@ Scenes::SceneDescriptor Scenes::Scene::get_descriptor() const
     descriptor.family = get_category();
     const auto caps = get_capabilities();
     descriptor.music_affinity = caps.requires_audio ? 1.0f : (caps.supports_audio ? 0.65f : 0.1f);
-    descriptor.automatic_eligible = !caps.interactive;
+    descriptor.automatic_eligible = false;
     if (caps.supports_audio)
         descriptor.tags.emplace_back("audio-reactive");
     if (caps.requires_network)

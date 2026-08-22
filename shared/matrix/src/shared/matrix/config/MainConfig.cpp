@@ -55,6 +55,27 @@ namespace Config {
         return this->data.curr;
     }
 
+    string MainConfig::get_operation_mode() {
+        shared_lock lock(this->data_mutex);
+        return this->data.operation_mode;
+    }
+
+    bool MainConfig::is_automatic_mode() {
+        shared_lock lock(this->data_mutex);
+        // Schedules are explicit user-authored playback intent and therefore
+        // temporarily take precedence over the normal automatic director.
+        return this->data.operation_mode == "automatic" && !this->data.scheduling_enabled;
+    }
+
+    void MainConfig::set_operation_mode(const string &mode) {
+        if (mode != "automatic" && mode != "manual")
+            throw std::invalid_argument("operation mode must be 'automatic' or 'manual'");
+        unique_lock lock(this->data_mutex);
+        if (this->data.operation_mode == mode) return;
+        this->data.operation_mode = mode;
+        this->mark_dirty();
+    }
+
     std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
         shared_lock lock(this->data_mutex);
 
