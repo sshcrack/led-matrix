@@ -69,10 +69,13 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             const auto current = SceneLabRuntime::instance().snapshot(RuntimeInputs::snapshot());
             if (!current.active) return reply_with_error(req, "Scene Lab is not active");
             const auto body = parse_body(req);
+            std::optional<std::uint64_t> expected_generation;
+            if (body.contains("expected_generation"))
+                expected_generation = body.at("expected_generation").template get<std::uint64_t>();
             SceneLabRuntime::instance().update(
                 body.value("variant", current.variant),
                 body.value("properties", current.properties),
-                body.value("fps", current.fps), RuntimeInputs::snapshot());
+                body.value("fps", current.fps), RuntimeInputs::snapshot(), expected_generation);
             exit_canvas_update.store(true);
             return reply_with_json(req, session_payload());
         } catch (const std::exception &e) {
@@ -104,13 +107,17 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             if (!variant.id.starts_with("custom.")) variant.id = "custom." + variant_slug(variant.id).substr(7);
             variant.label = label;
             variant.description = body.value("description", std::string("Saved from Scene Lab"));
-            variant.properties = state.properties;
+            const auto updated = SceneLabRuntime::instance().update(
+                variant.id, state.properties, state.fps, RuntimeInputs::snapshot(), state.generation);
+            variant.properties = updated.properties;
             config->set_custom_scene_variant(state.scene_name, variant);
-            config->save();
-            SceneLabRuntime::instance().update(
-                variant.id, state.properties, state.fps, RuntimeInputs::snapshot());
+            if (!config->save())
+                return reply_with_error(req, "Could not persist Scene Lab variant", restinio::status_internal_server_error());
             exit_canvas_update.store(true);
-            return reply_with_json(req, {{"success", true}, {"scene", state.scene_name}, {"variant", variant}});
+            return reply_with_json(req, {
+                {"success", true}, {"scene", state.scene_name}, {"variant", variant},
+                {"generation", updated.generation}
+            });
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
         }
