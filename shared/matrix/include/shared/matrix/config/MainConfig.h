@@ -13,6 +13,7 @@ namespace Config {
     class MainConfig {
         mutable shared_mutex data_mutex;
         ConfigData::Root data;
+        std::atomic<std::uint64_t> automatic_director_generation_{0};
 
         shared_mutex update_mutex;
         bool dirty;
@@ -30,6 +31,9 @@ namespace Config {
         string get_operation_mode();
         bool is_automatic_mode();
         void set_operation_mode(const string &mode);
+        std::uint64_t get_automatic_director_seed();
+        std::uint64_t get_automatic_director_generation() const;
+        void set_automatic_director_seed(std::uint64_t seed);
         ConfigData::SpotifyData get_spotify();
 
         std::shared_ptr<ConfigData::Preset> get_curr();

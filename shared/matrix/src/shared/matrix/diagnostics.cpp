@@ -90,6 +90,16 @@ void RuntimeDiagnostics::record_audio_decode_error() {
     ++audio_decode_errors_;
 }
 
+void RuntimeDiagnostics::set_director_state(nlohmann::json state) {
+    std::lock_guard lock(mutex_);
+    director_state_ = std::move(state);
+}
+
+void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
+    std::lock_guard lock(mutex_);
+    transition_state_ = std::move(state);
+}
+
 nlohmann::json RuntimeDiagnostics::snapshot() const {
     std::lock_guard lock(mutex_);
     const auto now = monotonic_ms();
@@ -151,7 +161,9 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
             {"sequence_gaps", audio_sequence_gaps_},
             {"decode_errors", audio_decode_errors_},
             {"last_sequence", have_audio_sequence_ ? nlohmann::json(last_audio_sequence_) : nlohmann::json(nullptr)}
-        }}
+        }},
+        {"director", director_state_},
+        {"transition", transition_state_}
     };
 }
 }

@@ -57,6 +57,7 @@ private:
 
     SceneScheduler scheduler_;
     AutomaticDirector automatic_director_;
+    std::uint64_t automatic_director_generation_ = 0;
     TransitionPlanner transition_planner_;
     std::vector<std::shared_ptr<Scenes::Scene>> automatic_scenes_;
     std::shared_ptr<ConfigData::Preset> automatic_preset_;

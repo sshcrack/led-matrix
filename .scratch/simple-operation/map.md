@@ -23,13 +23,13 @@ The matrix can be configured once and then operate beautifully on its own: scene
 - Phase 3 — Automatic/Ambient Director policy + default Automatic Mode UX: **complete and review-polished**.
 - Phase 4 — Music Director + transition intelligence: **complete and review-polished**.
 - Phase 5 — Scene Lab Pi-authoritative runtime + custom looks: **complete and review-polished**.
-- Next/final phase: **runtime observability and repeatability** (`issues/07-observability-and-seeded-runtime.md`).
+- Phase 6 — Runtime observability + seeded repeatability: **complete and review-polished**.
 - Do not turn the compositor into user-facing configuration. If composition is added later, directors should own it automatically.
 - Do not start the global palette/color-system pass yet.
 
-### “Continue with the next phase” instruction
+### Roadmap completion
 
-When asked to continue with the next phase, start `07-observability-and-seeded-runtime.md`. Phases 1–5 are implemented and review-polished; do not redesign Runtime Inputs, descriptors, Automatic Mode, transition intelligence, or Scene Lab. Add explainability and reproducibility around the existing Director seams, then run the complete emulator/web/Pi gate and leave the sandbox clean and ready.
+All six phases in this simple-operation roadmap are implemented and review-polished. A future continuation should treat Runtime Inputs, descriptors/Scene Variants, Automatic Mode, music-aware transitions, Pi-authoritative Scene Lab, and seeded diagnostics as the completed foundation rather than restarting this roadmap. The intentionally deferred next major pass is the global palette/color system.
 
 ## Decisions so far
 
