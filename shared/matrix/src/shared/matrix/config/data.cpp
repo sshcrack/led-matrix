@@ -64,6 +64,7 @@ namespace ConfigData {
             {"pluginConfigs", p.pluginConfigs},
             {"schedules", p.schedules},
             {"scheduling_enabled", p.scheduling_enabled},
+            {"operation_mode", p.operation_mode},
             {"update_settings", p.update_settings},
             {"turned_off", p.turned_off.load()}
         };
@@ -95,6 +96,8 @@ namespace ConfigData {
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
         p.schedules = j.value("schedules", std::map<string, Schedule>());
         p.scheduling_enabled = j.value("scheduling_enabled", false);
+        p.operation_mode = j.value("operation_mode", std::string("automatic"));
+        if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
         p.update_settings = j.value("update_settings", UpdateSettings());
     }
 

@@ -13,6 +13,7 @@
 #include "shared/matrix/transition_manager.h"
 
 #include "MatrixPresenter.h"
+#include "AutomaticDirector.h"
 #include "SceneScheduler.h"
 #include "SceneRenderer.h"
 #include "TransitionEngine.h"
@@ -54,6 +55,11 @@ private:
     std::function<void(const std::string &)> broadcast_fn_;
 
     SceneScheduler scheduler_;
+    AutomaticDirector automatic_director_;
+    std::vector<std::shared_ptr<Scenes::Scene>> automatic_scenes_;
+    std::shared_ptr<ConfigData::Preset> automatic_preset_;
+
+    void ensure_automatic_catalog();
     SceneRenderer renderer_;
     TransitionEngine transition_engine_;
 };

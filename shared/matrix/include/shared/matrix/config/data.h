@@ -68,6 +68,7 @@ namespace ConfigData
         map<string, Schedule> schedules;
         bool scheduling_enabled;
         std::atomic<bool> turned_off;
+        string operation_mode = "automatic";
         string curr;
         UpdateSettings update_settings;
 
@@ -82,6 +83,7 @@ namespace ConfigData
                 schedules = std::move(other.schedules);
                 scheduling_enabled = other.scheduling_enabled;
                 turned_off.store(other.turned_off.load());
+                operation_mode = std::move(other.operation_mode);
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
             }
@@ -96,6 +98,7 @@ namespace ConfigData
               schedules(std::move(other.schedules)),
               scheduling_enabled(other.scheduling_enabled),
               turned_off(other.turned_off.load()),
+              operation_mode(std::move(other.operation_mode)),
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings))
         {

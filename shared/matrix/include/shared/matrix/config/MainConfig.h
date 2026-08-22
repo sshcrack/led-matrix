@@ -27,6 +27,9 @@ namespace Config {
         bool is_dirty();
 
         string get_curr_id();
+        string get_operation_mode();
+        bool is_automatic_mode();
+        void set_operation_mode(const string &mode);
         ConfigData::SpotifyData get_spotify();
 
         std::shared_ptr<ConfigData::Preset> get_curr();

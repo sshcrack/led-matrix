@@ -184,7 +184,7 @@ namespace AmbientScenes {
 }
 
 Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "space";
     d.tags = {"ambient", "space", "depth", "particles", "audio-reactive"};
     d.intensity = 0.45f; d.motion = 0.72f; d.music_affinity = 0.68f; d.performance_cost = 0.30f;

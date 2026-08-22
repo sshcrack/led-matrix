@@ -192,7 +192,7 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
 std::unique_ptr<Scenes::Scene> BoidsSceneWrapper::create() { return std::make_unique<BoidsScene>(); }
 
 Scenes::SceneDescriptor GenerativeScenes::BoidsScene::get_descriptor() const {
-    auto d = Scene::get_descriptor();
+    auto d = Scene::get_descriptor(); d.automatic_eligible = true;
     d.family = "flocking";
     d.tags = {"generative", "particles", "flocking", "organic", "audio-reactive"};
     d.intensity = 0.52f; d.motion = 0.66f; d.music_affinity = 0.68f; d.performance_cost = 0.62f;
