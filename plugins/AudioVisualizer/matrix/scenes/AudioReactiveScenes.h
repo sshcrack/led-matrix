@@ -2,17 +2,22 @@
 
 #include <shared/matrix/audio_state.h>
 #include <shared/matrix/particles.h>
+
+#include <random>
+
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
-#include <random>
 
 namespace Scenes {
 
 class AudioParticleFieldScene final : public Scene {
-    struct Particle : Particles::KinematicParticle { float hue = 0.0f; };
+    struct Particle : Particles::KinematicParticle {
+        float hue = 0.0f;
+    };
     Particles::ParticlePool<Particle> particles_{3000};
     std::mt19937 rng_{std::random_device{}()};
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, dropSeen_ = 0;
+    bool eventsPrimed_ = false;
     float spawnAccumulator_ = 0.0f;
     float hueTime_ = 0.0f;
 
@@ -26,11 +31,11 @@ class AudioParticleFieldScene final : public Scene {
     PropertyPointer<bool> dropExplosion_ = MAKE_PROPERTY("drop_explosion", bool, true);
     PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
 
-    void spawn(const AudioState::Snapshot &audio, int count, bool radial, float strength);
+    void spawn(const AudioState::Snapshot& audio, int count, bool radial, float strength);
 
 public:
     AudioParticleFieldScene() = default;
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_particles"; }
     std::string get_category() const override { return "Audio Reactive"; }
@@ -38,12 +43,15 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
-        caps.requires_audio = true; caps.supports_audio = true;
+        caps.requires_audio = true;
+        caps.supports_audio = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -51,7 +59,11 @@ public:
 
 class AudioPulseTunnelScene final : public Scene {
     uint64_t beatSeen_ = 0, dropSeen_ = 0, sectionSeen_ = 0;
+    bool eventsPrimed_ = false;
     float travel_ = 0.0f, rotation_ = 0.0f, beatPulse_ = 0.0f, dropPulse_ = 0.0f;
+    float bassResponse_ = 0.0f, kickResponse_ = 0.0f, snareResponse_ = 0.0f, hihatResponse_ = 0.0f;
+    float stereoBalanceResponse_ = 0.0f, stereoWidthResponse_ = 0.0f;
+    float tempoRateResponse_ = 1.0f;
     float paletteOffset_ = 0.0f;
 
     PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
@@ -66,7 +78,7 @@ class AudioPulseTunnelScene final : public Scene {
 
 public:
     AudioPulseTunnelScene() = default;
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_pulse_tunnel"; }
     std::string get_category() const override { return "Audio Reactive"; }
@@ -74,12 +86,15 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
-        caps.requires_audio = true; caps.supports_audio = true;
+        caps.requires_audio = true;
+        caps.supports_audio = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -87,6 +102,7 @@ public:
 
 class AudioAuroraScene final : public Scene {
     uint64_t beatSeen_ = 0, sectionSeen_ = 0, dropSeen_ = 0;
+    bool eventsPrimed_ = false;
     float time_ = 0.0f, beatGlow_ = 0.0f, dropGlow_ = 0.0f, palette_ = 0.0f;
 
     PropertyPointer<int> ribbonCount_ = MAKE_PROPERTY_MINMAX("ribbon_count", int, 6, 3, 12);
@@ -98,7 +114,7 @@ class AudioAuroraScene final : public Scene {
 
 public:
     AudioAuroraScene() = default;
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_aurora"; }
     std::string get_category() const override { return "Audio Reactive"; }
@@ -106,12 +122,15 @@ public:
     tmillis_t get_default_duration() override { return 35000; }
     int get_default_weight() override { return 6; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
-        caps.requires_audio = true; caps.supports_audio = true;
+        caps.requires_audio = true;
+        caps.supports_audio = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
@@ -119,7 +138,9 @@ public:
 
 class AudioKaleidoscopeScene final : public Scene {
     uint64_t beatSeen_ = 0, onsetSeen_ = 0, sectionSeen_ = 0;
+    bool eventsPrimed_ = false;
     float rotation_ = 0.0f, beatPulse_ = 0.0f, onsetPulse_ = 0.0f, palette_ = 0.0f;
+    float tempoRateResponse_ = 1.0f;
 
     PropertyPointer<int> symmetry_ = MAKE_PROPERTY_MINMAX("symmetry", int, 8, 4, 16);
     PropertyPointer<float> sensitivity_ = MAKE_PROPERTY_MINMAX("sensitivity", float, 1.0f, 0.2f, 3.0f);
@@ -130,7 +151,7 @@ class AudioKaleidoscopeScene final : public Scene {
 
 public:
     AudioKaleidoscopeScene() = default;
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_kaleidoscope"; }
     std::string get_category() const override { return "Audio Reactive"; }
@@ -138,20 +159,35 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
-        caps.requires_audio = true; caps.supports_audio = true;
+        caps.requires_audio = true;
+        caps.supports_audio = true;
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
 };
 
-class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
-class AudioPulseTunnelSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
-class AudioAuroraSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
-class AudioKaleidoscopeSceneWrapper final : public Plugins::SceneWrapper { public: std::unique_ptr<Scenes::Scene> create() override; };
+class AudioParticleFieldSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
+class AudioPulseTunnelSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
+class AudioAuroraSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
+class AudioKaleidoscopeSceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
 
-} // namespace Scenes
+}  // namespace Scenes

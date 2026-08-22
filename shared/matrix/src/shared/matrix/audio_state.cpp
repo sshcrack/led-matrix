@@ -15,10 +15,11 @@ bool hasFrame = false;
 
 constexpr auto RuntimeInputPublishInterval = std::chrono::milliseconds(200);
 constexpr auto RuntimeInputTtl = std::chrono::milliseconds(750);
-}
+}  // namespace
 
 namespace AudioState {
-void update(const AudioProtocol::Frame &frame) {
+void update(const AudioProtocol::Frame& frame)
+{
     const auto now = std::chrono::steady_clock::now();
     bool publish_runtime_input = false;
     {
@@ -26,8 +27,8 @@ void update(const AudioProtocol::Frame &frame) {
         currentFrame = frame;
         receivedAt = now;
         hasFrame = true;
-        if (runtimeInputPublishedAt == std::chrono::steady_clock::time_point{}
-            || now - runtimeInputPublishedAt >= RuntimeInputPublishInterval) {
+        if (runtimeInputPublishedAt == std::chrono::steady_clock::time_point{} ||
+            now - runtimeInputPublishedAt >= RuntimeInputPublishInterval) {
             runtimeInputPublishedAt = now;
             publish_runtime_input = true;
         }
@@ -38,27 +39,36 @@ void update(const AudioProtocol::Frame &frame) {
     // directly instead of paying for string-keyed generic signal publication at
     // the desktop stream's 60 Hz packet rate.
     if (publish_runtime_input) {
-        RuntimeInputs::publish(
-            RuntimeInputIds::Audio,
-            {
-                {"loudness", static_cast<double>(frame.feature(AudioProtocol::Feature::Loudness))},
-                {"sub_bass", static_cast<double>(frame.feature(AudioProtocol::Feature::SubBass))},
-                {"bass", static_cast<double>(frame.feature(AudioProtocol::Feature::Bass))},
-                {"mid", static_cast<double>(frame.feature(AudioProtocol::Feature::Mid))},
-                {"treble", static_cast<double>(frame.feature(AudioProtocol::Feature::Treble))},
-                {"energy_trend", static_cast<double>(frame.feature(AudioProtocol::Feature::EnergyTrend))},
-                {"bpm", static_cast<double>(frame.feature(AudioProtocol::Feature::Bpm))},
-                {"beat_confidence", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatConfidence))},
-                {"silence", frame.event(AudioProtocol::Silent)},
-                {"beat_counter", static_cast<std::int64_t>(frame.beat_counter)},
-                {"drop_counter", static_cast<std::int64_t>(frame.drop_counter)},
-                {"section_counter", static_cast<std::int64_t>(frame.section_counter)}
-            },
-            RuntimeInputTtl);
+        RuntimeInputs::publish(RuntimeInputIds::Audio,
+                               {{"loudness", static_cast<double>(frame.feature(AudioProtocol::Feature::Loudness))},
+                                {"loudness_fast", static_cast<double>(frame.feature(AudioProtocol::Feature::LoudnessFast))},
+                                {"loudness_slow", static_cast<double>(frame.feature(AudioProtocol::Feature::LoudnessSlow))},
+                                {"sub_bass", static_cast<double>(frame.feature(AudioProtocol::Feature::SubBass))},
+                                {"bass", static_cast<double>(frame.feature(AudioProtocol::Feature::Bass))},
+                                {"mid", static_cast<double>(frame.feature(AudioProtocol::Feature::Mid))},
+                                {"treble", static_cast<double>(frame.feature(AudioProtocol::Feature::Treble))},
+                                {"spectral_centroid", static_cast<double>(frame.feature(AudioProtocol::Feature::SpectralCentroid))},
+                                {"onset_strength", static_cast<double>(frame.feature(AudioProtocol::Feature::OnsetStrength))},
+                                {"kick", static_cast<double>(frame.feature(AudioProtocol::Feature::Kick))},
+                                {"snare", static_cast<double>(frame.feature(AudioProtocol::Feature::Snare))},
+                                {"hihat", static_cast<double>(frame.feature(AudioProtocol::Feature::Hihat))},
+                                {"energy_trend", static_cast<double>(frame.feature(AudioProtocol::Feature::EnergyTrend))},
+                                {"drop", static_cast<double>(frame.feature(AudioProtocol::Feature::Drop))},
+                                {"section_change", static_cast<double>(frame.feature(AudioProtocol::Feature::SectionChange))},
+                                {"bpm", static_cast<double>(frame.feature(AudioProtocol::Feature::Bpm))},
+                                {"beat_confidence", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatConfidence))},
+                                {"beat_strength", static_cast<double>(frame.feature(AudioProtocol::Feature::BeatStrength))},
+                                {"tempo_stability", static_cast<double>(frame.feature(AudioProtocol::Feature::TempoStability))},
+                                {"silence", frame.event(AudioProtocol::Silent)},
+                                {"beat_counter", static_cast<std::int64_t>(frame.beat_counter)},
+                                {"drop_counter", static_cast<std::int64_t>(frame.drop_counter)},
+                                {"section_counter", static_cast<std::int64_t>(frame.section_counter)}},
+                               RuntimeInputTtl);
     }
 }
 
-void clear() {
+void clear()
+{
     {
         std::lock_guard lock(stateMutex);
         currentFrame = {};
@@ -69,27 +79,29 @@ void clear() {
     RuntimeInputs::set_available(RuntimeInputIds::Audio, false);
 }
 
-Snapshot snapshot() {
+Snapshot snapshot()
+{
     std::lock_guard lock(stateMutex);
     Snapshot result;
-    static_cast<AudioProtocol::Frame &>(result) = currentFrame;
+    static_cast<AudioProtocol::Frame&>(result) = currentFrame;
     result.available = hasFrame;
     if (hasFrame)
-        result.age_seconds = std::chrono::duration<float>(
-            std::chrono::steady_clock::now() - receivedAt).count();
+        result.age_seconds = std::chrono::duration<float>(std::chrono::steady_clock::now() - receivedAt).count();
     return result;
 }
 
-float average_spectrum(const Snapshot &state, float start_fraction, float end_fraction) {
-    if (state.spectrum.empty()) return 0.0f;
+float average_spectrum(const Snapshot& state, float start_fraction, float end_fraction)
+{
+    if (state.spectrum.empty())
+        return 0.0f;
     start_fraction = std::clamp(start_fraction, 0.0f, 1.0f);
     end_fraction = std::clamp(end_fraction, start_fraction, 1.0f);
-    const size_t begin = std::min(state.spectrum.size() - 1,
-        static_cast<size_t>(start_fraction * static_cast<float>(state.spectrum.size())));
-    const size_t end = std::max(begin + 1, std::min(state.spectrum.size(),
-        static_cast<size_t>(end_fraction * static_cast<float>(state.spectrum.size()))));
+    const size_t begin =
+        std::min(state.spectrum.size() - 1, static_cast<size_t>(start_fraction * static_cast<float>(state.spectrum.size())));
+    const size_t end =
+        std::max(begin + 1, std::min(state.spectrum.size(), static_cast<size_t>(end_fraction * static_cast<float>(state.spectrum.size()))));
     float sum = 0.0f;
     for (size_t i = begin; i < end; ++i) sum += state.spectrum[i];
     return sum / static_cast<float>(end - begin);
 }
-}
+}  // namespace AudioState

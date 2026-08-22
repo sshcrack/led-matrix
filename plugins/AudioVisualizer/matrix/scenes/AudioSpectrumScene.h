@@ -2,22 +2,16 @@
 
 #include <shared/matrix/audio_state.h>
 #include <shared/matrix/media_artwork_state.h>
+
+#include <deque>
+
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
-#include <deque>
 
 namespace Scenes {
 enum class WaveformStyle { TRACE = 0, MIRRORED = 1, FILLED = 2 };
 
-enum class DisplayMode {
-    NORMAL = 0,
-    CENTER_OUT = 1,
-    EDGES_TO_CENTER = 2,
-    CIRCLE = 3,
-    SPIRAL = 4,
-    WAVEFORM = 5,
-    SPECTROGRAM = 6
-};
+enum class DisplayMode { NORMAL = 0, CENTER_OUT = 1, EDGES_TO_CENTER = 2, CIRCLE = 3, SPIRAL = 4, WAVEFORM = 5, SPECTROGRAM = 6 };
 
 class AudioSpectrumScene final : public Scene {
     std::vector<float> smoothed_;
@@ -27,7 +21,12 @@ class AudioSpectrumScene final : public Scene {
     std::vector<float> waveformTarget_;
     std::vector<float> waveformScratch_;
     uint64_t lastBeat_ = 0;
+    bool beatPrimed_ = false;
     float beatPulse_ = 0.0f;
+    float radialKick_ = 0.0f;
+    float tempoRateResponse_ = 1.0f;
+    float stereoBalanceResponse_ = 0.0f;
+    float stereoWidthResponse_ = 0.0f;
     float rotation_ = 0.0f;
 
     PropertyPointer<int> barWidth_ = MAKE_PROPERTY_MINMAX("bar_width", int, 2, 1, 10);
@@ -50,7 +49,8 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<float> releaseSpeed_ = MAKE_PROPERTY_MINMAX("release_speed", float, 3.8f, 0.5f, 14.0f);
     PropertyPointer<bool> beatPulseEnabled_ = MAKE_PROPERTY("beat_pulse", bool, true);
     PropertyPointer<bool> showWaveform_ = MAKE_PROPERTY("waveform_overlay", bool, false);
-    PropertyPointer<Plugins::EnumProperty<WaveformStyle>> waveformStyle_ = MAKE_ENUM_PROPERTY("waveform_style", WaveformStyle, WaveformStyle::TRACE);
+    PropertyPointer<Plugins::EnumProperty<WaveformStyle>> waveformStyle_ =
+        MAKE_ENUM_PROPERTY("waveform_style", WaveformStyle, WaveformStyle::TRACE);
     PropertyPointer<float> waveformGain_ = MAKE_PROPERTY_MINMAX("waveform_gain", float, 1.0f, 0.25f, 3.0f);
     PropertyPointer<bool> waveformStabilization_ = MAKE_PROPERTY("waveform_stabilization", bool, true);
     PropertyPointer<float> waveformSmoothing_ = MAKE_PROPERTY_MINMAX("waveform_smoothing", float, 0.84f, 0.0f, 0.98f);
@@ -59,18 +59,17 @@ class AudioSpectrumScene final : public Scene {
     PropertyPointer<bool> useSpotifyArtwork_ = MAKE_PROPERTY("use_spotify_artwork", bool, false);
     MediaArtworkState::Snapshot artworkSnapshot_{};
 
-    void updateSpectrum(const AudioState::Snapshot &audio, float dt);
-    void updateWaveform(const AudioState::Snapshot &audio, float dt);
-    void colorFor(float position, float intensity, const AudioState::Snapshot &audio,
-                  uint8_t &r, uint8_t &g, uint8_t &b) const;
-    void renderBars(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
-    void renderCircle(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio, bool spiral);
-    void renderWaveform(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
-    void renderSpectrogram(rgb_matrix::FrameCanvas *canvas, const AudioState::Snapshot &audio);
+    void updateSpectrum(const AudioState::Snapshot& audio, float dt);
+    void updateWaveform(const AudioState::Snapshot& audio, float dt);
+    void colorFor(float position, float intensity, const AudioState::Snapshot& audio, uint8_t& r, uint8_t& g, uint8_t& b) const;
+    void renderBars(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
+    void renderCircle(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio, bool spiral);
+    void renderWaveform(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
+    void renderSpectrogram(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
 
 public:
     AudioSpectrumScene() = default;
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     std::string get_name() const override { return "audio_spectrum"; }
     std::string get_category() const override { return "Audio Reactive"; }
     [[nodiscard]] SceneDescriptor get_descriptor() const override;
@@ -78,10 +77,12 @@ public:
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true;
         caps.supports_audio = true;
@@ -94,4 +95,4 @@ class AudioSpectrumSceneWrapper final : public Plugins::SceneWrapper {
 public:
     std::unique_ptr<Scenes::Scene> create() override;
 };
-}
+}  // namespace Scenes

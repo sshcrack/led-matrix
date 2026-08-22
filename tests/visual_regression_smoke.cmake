@@ -27,7 +27,9 @@ endif()
 file(READ "${METRICS}" ACTUAL_JSON)
 file(READ "${BASELINE}" BASELINE_JSON)
 set(SCENE_NAMES audio_spectrum audio_pulse_tunnel audio_aurora audio_kaleidoscope wave_pattern)
-set(METRIC_NAMES lit_fraction_average mean_luma_average temporal_change_average)
+# Average metrics catch broad regressions; max metrics catch the one-frame
+# blowouts/flicker that motivated the audio-visual polish pass.
+set(METRIC_NAMES lit_fraction_average mean_luma_average temporal_change_average lit_fraction_max temporal_change_max)
 
 foreach(SCENE IN LISTS SCENE_NAMES)
     string(JSON FRAME_COUNT ERROR_VARIABLE FRAME_ERROR GET "${ACTUAL_JSON}" "${SCENE}" "frames")

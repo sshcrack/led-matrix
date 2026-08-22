@@ -1,5 +1,3 @@
-#include "../plugins/AudioVisualizer/desktop/MusicAnalyzer.h"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -15,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "../plugins/AudioVisualizer/desktop/MusicAnalyzer.h"
+
 namespace {
 constexpr double Pi = 3.14159265358979323846;
 
@@ -29,19 +29,23 @@ struct Result {
     float stability = 0.0f;
     float onsetRate = 0.0f;
     float beatRate = 0.0f;
+    float dropRate = 0.0f;
     float meanKick = 0.0f;
     float meanSnare = 0.0f;
     float meanHihat = 0.0f;
 };
 
-float median(std::vector<float> values) {
-    if (values.empty()) return 0.0f;
+float median(std::vector<float> values)
+{
+    if (values.empty())
+        return 0.0f;
     const size_t middle = values.size() / 2;
     std::nth_element(values.begin(), values.begin() + static_cast<std::ptrdiff_t>(middle), values.end());
     return values[middle];
 }
 
-Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0) {
+Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0)
+{
     const size_t count = static_cast<size_t>(seconds * sampleRate);
     Track track{std::vector<float>(count, 0.0f), sampleRate};
     const double beatPeriod = 60.0 / bpm;
@@ -52,15 +56,15 @@ Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0) {
     // realistic floor without creating transients of its own.
     for (size_t i = 0; i < count; ++i) {
         const double t = static_cast<double>(i) / sampleRate;
-        track.mono[i] = 0.018f * std::sin(2.0 * Pi * 196.0 * t)
-                      + 0.012f * std::sin(2.0 * Pi * 293.66 * t);
+        track.mono[i] = 0.018f * std::sin(2.0 * Pi * 196.0 * t) + 0.012f * std::sin(2.0 * Pi * 293.66 * t);
     }
 
     const int beats = static_cast<int>(seconds / beatPeriod) + 1;
     for (int beat = 0; beat < beats; ++beat) {
         const double beatTime = 0.35 + beat * beatPeriod;
         const size_t start = static_cast<size_t>(beatTime * sampleRate);
-        if (start >= count) break;
+        if (start >= count)
+            break;
 
         // Kick on every quarter note: a decaying sine sweep plus a tiny click.
         const size_t kickLength = static_cast<size_t>(0.13 * sampleRate);
@@ -70,8 +74,7 @@ Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0) {
             const float env = static_cast<float>(std::exp(-24.0 * t));
             track.mono[start + j] += 0.72f * env * static_cast<float>(std::sin(phase));
         }
-        for (size_t j = 0; j < 48 && start + j < count; ++j)
-            track.mono[start + j] += 0.22f * (1.0f - static_cast<float>(j) / 48.0f);
+        for (size_t j = 0; j < 48 && start + j < count; ++j) track.mono[start + j] += 0.22f * (1.0f - static_cast<float>(j) / 48.0f);
 
         // Snare on 2/4. Keeping this on the quarter grid exercises extra
         // spectral content without changing the target tempo.
@@ -85,25 +88,23 @@ Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0) {
         }
     }
 
-    for (float &sample : track.mono) sample = std::clamp(sample, -1.0f, 1.0f);
+    for (float& sample : track.mono) sample = std::clamp(sample, -1.0f, 1.0f);
     return track;
 }
 
-std::optional<Track> loadPcm16Wav(const std::string &path) {
+std::optional<Track> loadPcm16Wav(const std::string& path)
+{
     std::ifstream in(path, std::ios::binary);
-    if (!in) return std::nullopt;
+    if (!in)
+        return std::nullopt;
     std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)), {});
-    if (bytes.size() < 44 || std::memcmp(bytes.data(), "RIFF", 4) != 0 ||
-        std::memcmp(bytes.data() + 8, "WAVE", 4) != 0) return std::nullopt;
+    if (bytes.size() < 44 || std::memcmp(bytes.data(), "RIFF", 4) != 0 || std::memcmp(bytes.data() + 8, "WAVE", 4) != 0)
+        return std::nullopt;
 
-    auto u16 = [&](size_t p) -> uint16_t {
-        return static_cast<uint16_t>(bytes[p]) | static_cast<uint16_t>(bytes[p + 1] << 8U);
-    };
+    auto u16 = [&](size_t p) -> uint16_t { return static_cast<uint16_t>(bytes[p]) | static_cast<uint16_t>(bytes[p + 1] << 8U); };
     auto u32 = [&](size_t p) -> uint32_t {
-        return static_cast<uint32_t>(bytes[p]) |
-               (static_cast<uint32_t>(bytes[p + 1]) << 8U) |
-               (static_cast<uint32_t>(bytes[p + 2]) << 16U) |
-               (static_cast<uint32_t>(bytes[p + 3]) << 24U);
+        return static_cast<uint32_t>(bytes[p]) | (static_cast<uint32_t>(bytes[p + 1]) << 8U) |
+               (static_cast<uint32_t>(bytes[p + 2]) << 16U) | (static_cast<uint32_t>(bytes[p + 3]) << 24U);
     };
 
     uint16_t format = 0, channels = 0, bits = 0;
@@ -112,13 +113,15 @@ std::optional<Track> loadPcm16Wav(const std::string &path) {
     for (size_t p = 12; p + 8 <= bytes.size();) {
         const uint32_t size = u32(p + 4);
         const size_t payload = p + 8;
-        if (payload + size > bytes.size()) break;
+        if (payload + size > bytes.size())
+            break;
         if (std::memcmp(bytes.data() + p, "fmt ", 4) == 0 && size >= 16) {
             format = u16(payload);
             channels = u16(payload + 2);
             sampleRate = u32(payload + 4);
             bits = u16(payload + 14);
-        } else if (std::memcmp(bytes.data() + p, "data", 4) == 0) {
+        }
+        else if (std::memcmp(bytes.data() + p, "data", 4) == 0) {
             dataOffset = payload;
             dataSize = size;
         }
@@ -142,7 +145,8 @@ std::optional<Track> loadPcm16Wav(const std::string &path) {
     return result;
 }
 
-Result analyzeTrack(const Track &track, float collectAfterSeconds = 8.0f) {
+Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
+{
     AudioVisualizerConfig config;
     config.musicAnalysisGain = 1.0;
     config.transientSensitivity = 1.0;
@@ -150,7 +154,7 @@ Result analyzeTrack(const Track &track, float collectAfterSeconds = 8.0f) {
     MusicAnalyzer analyzer(config);
 
     std::vector<float> bpms, confidences, stabilities, kicks, snares, hihats;
-    uint64_t firstOnset = 0, lastOnset = 0, firstBeat = 0, lastBeat = 0;
+    uint64_t firstOnset = 0, lastOnset = 0, firstBeat = 0, lastBeat = 0, firstDrop = 0, lastDrop = 0;
     double firstCollected = 0.0, lastCollected = 0.0;
     std::vector<float> displayBands(64, 0.0f);
 
@@ -165,24 +169,25 @@ Result analyzeTrack(const Track &track, float collectAfterSeconds = 8.0f) {
         const auto result = analyzer.analyze(frame, displayBands);
         const double seconds = static_cast<double>(end) / track.sampleRate;
         if (std::getenv("AUDIO_BENCH_TRACE") && result.event(AudioProtocol::OnsetEvent)) {
-            std::cout << "TRACE t=" << seconds
-                      << " onset=" << result.feature(AudioProtocol::Feature::OnsetStrength)
+            std::cout << "TRACE t=" << seconds << " onset=" << result.feature(AudioProtocol::Feature::OnsetStrength)
                       << " kick=" << result.feature(AudioProtocol::Feature::Kick)
                       << " snare=" << result.feature(AudioProtocol::Feature::Snare)
                       << " hihat=" << result.feature(AudioProtocol::Feature::Hihat)
                       << " bpm=" << result.feature(AudioProtocol::Feature::Bpm)
                       << " conf=" << result.feature(AudioProtocol::Feature::BeatConfidence)
-                      << " beat=" << result.event(AudioProtocol::BeatEvent)
-                      << " beat_counter=" << result.beat_counter << '\n';
+                      << " beat=" << result.event(AudioProtocol::BeatEvent) << " beat_counter=" << result.beat_counter << '\n';
         }
-        if (seconds < collectAfterSeconds) continue;
+        if (seconds < collectAfterSeconds)
+            continue;
         if (bpms.empty()) {
             firstOnset = result.onset_counter;
             firstBeat = result.beat_counter;
+            firstDrop = result.drop_counter;
             firstCollected = seconds;
         }
         lastOnset = result.onset_counter;
         lastBeat = result.beat_counter;
+        lastDrop = result.drop_counter;
         lastCollected = seconds;
         if (result.feature(AudioProtocol::Feature::Bpm) > 1.0f)
             bpms.push_back(result.feature(AudioProtocol::Feature::Bpm));
@@ -194,31 +199,30 @@ Result analyzeTrack(const Track &track, float collectAfterSeconds = 8.0f) {
     }
 
     const float duration = static_cast<float>(std::max(0.001, lastCollected - firstCollected));
-    auto mean = [](const std::vector<float> &values) {
-        return values.empty() ? 0.0f : std::accumulate(values.begin(), values.end(), 0.0f) /
-            static_cast<float>(values.size());
+    auto mean = [](const std::vector<float>& values) {
+        return values.empty() ? 0.0f : std::accumulate(values.begin(), values.end(), 0.0f) / static_cast<float>(values.size());
     };
-    return {
-        median(bpms), median(confidences), median(stabilities),
-        static_cast<float>(lastOnset - firstOnset) / duration,
-        static_cast<float>(lastBeat - firstBeat) / duration,
-        mean(kicks), mean(snares), mean(hihats)
-    };
+    return {median(bpms),
+            median(confidences),
+            median(stabilities),
+            static_cast<float>(lastOnset - firstOnset) / duration,
+            static_cast<float>(lastBeat - firstBeat) / duration,
+            static_cast<float>(lastDrop - firstDrop) / duration,
+            mean(kicks),
+            mean(snares),
+            mean(hihats)};
 }
 
-void printResult(const std::string &name, const Result &r) {
-    std::cout << name << ": bpm=" << r.bpm
-              << " confidence=" << r.confidence
-              << " stability=" << r.stability
-              << " onsets/s=" << r.onsetRate
-              << " beats/s=" << r.beatRate
-              << " kick=" << r.meanKick
-              << " snare=" << r.meanSnare
+void printResult(const std::string& name, const Result& r)
+{
+    std::cout << name << ": bpm=" << r.bpm << " confidence=" << r.confidence << " stability=" << r.stability << " onsets/s=" << r.onsetRate
+              << " beats/s=" << r.beatRate << " drops/s=" << r.dropRate << " kick=" << r.meanKick << " snare=" << r.meanSnare
               << " hihat=" << r.meanHihat << '\n';
 }
-}
+}  // namespace
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     if (argc >= 2) {
         const auto track = loadPcm16Wav(argv[1]);
         if (!track) {
@@ -231,8 +235,7 @@ int main(int argc, char **argv) {
             const float expected = std::stof(argv[2]);
             const float error = std::abs(result.bpm - expected);
             if (error > 4.0f || result.confidence < 0.40f) {
-                std::cerr << "tempo validation failed: expected " << expected
-                          << " BPM, error=" << error
+                std::cerr << "tempo validation failed: expected " << expected << " BPM, error=" << error
                           << ", confidence=" << result.confidence << '\n';
                 return 1;
             }
@@ -247,12 +250,10 @@ int main(int argc, char **argv) {
         const float error = std::abs(result.bpm - expected);
         const float expectedBeatRate = expected / 60.0f;
         const float beatRateError = std::abs(result.beatRate - expectedBeatRate);
-        if (error > 2.5f || result.confidence < 0.55f || result.stability < 0.50f ||
-            result.onsetRate < 0.7f || beatRateError > std::max(0.16f, expectedBeatRate * 0.10f)) {
-            std::cerr << "FAILED " << expected << " BPM: error=" << error
-                      << ", confidence=" << result.confidence
-                      << ", stability=" << result.stability
-                      << ", onsetRate=" << result.onsetRate
+        if (error > 2.5f || result.confidence < 0.55f || result.stability < 0.50f || result.onsetRate < 0.7f || result.dropRate > 0.03f ||
+            beatRateError > std::max(0.16f, expectedBeatRate * 0.10f)) {
+            std::cerr << "FAILED " << expected << " BPM: error=" << error << ", confidence=" << result.confidence
+                      << ", stability=" << result.stability << ", onsetRate=" << result.onsetRate << ", dropRate=" << result.dropRate
                       << ", beatRateError=" << beatRateError << '\n';
             ok = false;
         }
@@ -278,11 +279,25 @@ int main(int argc, char **argv) {
     Track noise{std::vector<float>(static_cast<size_t>(16.0 * 44100.0)), 44100.0};
     std::mt19937 noiseRng(0xA11D10U);
     std::uniform_real_distribution<float> randomSample(-0.08f, 0.08f);
-    for (float &sample : noise.mono) sample = randomSample(noiseRng);
+    for (float& sample : noise.mono) sample = randomSample(noiseRng);
     const Result randomNoise = analyzeTrack(noise, 6.0f);
     printResult("aperiodic noise", randomNoise);
     if (randomNoise.confidence > 0.22f || randomNoise.beatRate > 0.40f) {
         std::cerr << "FAILED aperiodic-noise rejection\n";
+        ok = false;
+    }
+
+    // A transport pause is not a musical breakdown/drop. The first transient
+    // after sustained digital silence used to arm and fire DropEvent, causing
+    // tunnel/particle visuals to explode exactly when playback resumed.
+    Track pauseResume = syntheticDrums(120.0f, 8.0f);
+    pauseResume.mono.resize(static_cast<size_t>(11.0 * pauseResume.sampleRate), 0.0f);
+    const Track resumed = syntheticDrums(120.0f, 8.0f, pauseResume.sampleRate);
+    pauseResume.mono.insert(pauseResume.mono.end(), resumed.mono.begin(), resumed.mono.end());
+    const Result afterPauseResume = analyzeTrack(pauseResume, 7.0f);
+    printResult("120 BPM pause/resume", afterPauseResume);
+    if (afterPauseResume.dropRate > 0.02f || afterPauseResume.confidence < 0.35f || std::abs(afterPauseResume.bpm - 120.0f) > 4.0f) {
+        std::cerr << "FAILED pause/resume stability: false drop or tempo did not recover\n";
         ok = false;
     }
 
@@ -291,8 +306,7 @@ int main(int argc, char **argv) {
     transition.mono.insert(transition.mono.end(), faster.mono.begin(), faster.mono.end());
     const Result afterChange = analyzeTrack(transition, 24.0f);
     printResult("90 to 150 BPM transition", afterChange);
-    if (std::abs(afterChange.bpm - 150.0f) > 3.0f || afterChange.confidence < 0.45f ||
-        afterChange.stability < 0.45f) {
+    if (std::abs(afterChange.bpm - 150.0f) > 3.0f || afterChange.confidence < 0.45f || afterChange.stability < 0.45f) {
         std::cerr << "FAILED tempo-change recovery\n";
         ok = false;
     }
