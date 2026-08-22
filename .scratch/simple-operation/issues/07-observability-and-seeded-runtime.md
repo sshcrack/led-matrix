@@ -1,7 +1,7 @@
 # Runtime observability and repeatability
 
 Type: task
-Status: open
+Status: next
 Blocked by: 02
 
 ## Question

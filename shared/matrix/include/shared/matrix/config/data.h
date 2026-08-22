@@ -23,6 +23,14 @@ namespace ConfigData
         ~Preset() = default; // Add explicit destructor
     };
 
+    struct CustomSceneVariant
+    {
+        string id;
+        string label;
+        string description;
+        json properties = json::object();
+    };
+
     struct SpotifyData
     {
         optional<string> access_token;
@@ -66,6 +74,7 @@ namespace ConfigData
         map<string, string> pluginConfigs;
         SpotifyData spotify;
         map<string, Schedule> schedules;
+        map<string, vector<CustomSceneVariant>> custom_scene_variants;
         bool scheduling_enabled;
         std::atomic<bool> turned_off;
         string operation_mode = "automatic";
@@ -81,6 +90,7 @@ namespace ConfigData
                 pluginConfigs = std::move(other.pluginConfigs);
                 spotify = std::move(other.spotify);
                 schedules = std::move(other.schedules);
+                custom_scene_variants = std::move(other.custom_scene_variants);
                 scheduling_enabled = other.scheduling_enabled;
                 turned_off.store(other.turned_off.load());
                 operation_mode = std::move(other.operation_mode);
@@ -96,6 +106,7 @@ namespace ConfigData
               pluginConfigs(std::move(other.pluginConfigs)),
               spotify(std::move(other.spotify)),
               schedules(std::move(other.schedules)),
+              custom_scene_variants(std::move(other.custom_scene_variants)),
               scheduling_enabled(other.scheduling_enabled),
               turned_off(other.turned_off.load()),
               operation_mode(std::move(other.operation_mode)),
@@ -113,6 +124,9 @@ namespace ConfigData
 
         ~Root() = default;
     };
+
+    void to_json(json &j, const CustomSceneVariant &p);
+    void from_json(const json &j, CustomSceneVariant &p);
 
     void to_json(json &j, const UpdateSettings &p);
 

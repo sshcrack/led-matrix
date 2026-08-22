@@ -52,6 +52,9 @@ namespace Config {
 
         // Schedule management methods
         map<string, ConfigData::Schedule> get_schedules();
+        vector<ConfigData::CustomSceneVariant> get_custom_scene_variants(const string &scene_name);
+        void set_custom_scene_variant(const string &scene_name, const ConfigData::CustomSceneVariant &variant);
+        bool delete_custom_scene_variant(const string &scene_name, const string &variant_id);
         void set_schedule(const string& id, const ConfigData::Schedule& schedule);
         bool delete_schedule(const string& id);
         bool is_scheduling_enabled();

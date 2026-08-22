@@ -1,5 +1,5 @@
 import { Link, useLocation, useMatch } from 'react-router-dom'
-import { Grid3x3, Calendar, Download, Moon, Sun, Images, FolderCode, Menu, X, Sparkles, Activity } from 'lucide-react'
+import { Grid3x3, Calendar, Download, Moon, Sun, Images, FolderCode, Menu, X, Sparkles, Activity, FlaskConical } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import { useState, useEffect } from 'react'
 
@@ -7,6 +7,7 @@ interface NavItem { to: string; label: string; description: string; icon: React.
 const navItems: NavItem[] = [
   { to: '/', label: 'Control', description: 'Power and presets', icon: <Grid3x3 className="h-5 w-5" /> },
   { to: '/gallery', label: 'Scenes', description: 'Browse and preview', icon: <Images className="h-5 w-5" /> },
+  { to: '/scene-lab', label: 'Lab', description: 'Tune on the Pi', icon: <FlaskConical className="h-5 w-5" /> },
   { to: '/schedules', label: 'Automation', description: 'Schedules', icon: <Calendar className="h-5 w-5" /> },
   { to: '/assets', label: 'Assets', description: 'Shaders and media', icon: <FolderCode className="h-5 w-5" /> },
   { to: '/updates', label: 'Updates', description: 'System updates', icon: <Download className="h-5 w-5" /> },
@@ -71,7 +72,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</div>
     </main>
 
-    <nav className="glass-panel fixed bottom-3 left-3 right-3 z-30 grid grid-cols-6 rounded-2xl p-1.5 lg:hidden">
+    <nav className="glass-panel fixed bottom-3 left-3 right-3 z-30 grid grid-cols-7 rounded-2xl p-1.5 lg:hidden">
       {navItems.map(item => {
         const active = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
         return <Link key={item.to} to={item.to} className={cn('flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] font-medium', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}><span>{item.icon}</span><span className="truncate">{item.label}</span></Link>
