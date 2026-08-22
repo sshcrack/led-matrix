@@ -458,6 +458,18 @@ if(ENABLE_EMULATOR)
     add_test(NAME runtime_selection_smoke COMMAND $<TARGET_FILE:runtime_selection_smoke>)
     set_tests_properties(runtime_selection_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(remote_render_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_render_smoke.cpp
+    )
+    target_compile_features(remote_render_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(remote_render_smoke PRIVATE ENABLE_EMULATOR)
+    target_link_libraries(remote_render_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME remote_render_smoke COMMAND $<TARGET_FILE:remote_render_smoke>)
+    set_tests_properties(remote_render_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(scene_lab_runtime_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_lab_runtime_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneLabRuntime.cpp

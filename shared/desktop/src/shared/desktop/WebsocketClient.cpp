@@ -127,21 +127,30 @@ void WebsocketClient::threadLoop()
                     continue;
             }
 
-            auto packet = pl->compute_next_packet(scene);
-            if (!packet.has_value())
+            auto packets = pl->compute_next_packets(scene);
+            if (packets.empty())
                 continue;
 
             lastLargePayloadSend[name] = clock::now();
 
-            auto res = this->udpSender.sendPacket(std::move(packet.value()), hostname, port);
-            if (!res.has_value())
+            bool batch_ok = true;
+            std::string batch_error;
+            for (auto &packet : packets) {
+                auto res = this->udpSender.sendPacket(std::move(packet), hostname, port);
+                if (!res.has_value()) {
+                    batch_ok = false;
+                    batch_error = res.error();
+                    break;
+                }
+            }
+            if (!batch_ok)
             {
                 std::unique_lock<std::mutex> lock(lastErrorMutex);
-                lastError = res.error();
+                lastError = std::move(batch_error);
                 consecutiveError_++;
 
                 if (consecutiveError_ < 3)
-                    spdlog::error("Failed to send packet: {}", lastError);
+                    spdlog::error("Failed to send packet batch: {}", lastError);
             }
             else
             {

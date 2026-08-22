@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -28,6 +29,8 @@ public:
 
     void set_director_state(nlohmann::json state);
     void set_transition_state(nlohmann::json state);
+    void set_render_placement(nlohmann::json state);
+    [[nodiscard]] std::optional<double> scene_render_p95(const std::string &scene) const;
 
     [[nodiscard]] nlohmann::json snapshot() const;
 
@@ -50,6 +53,7 @@ private:
         double render_ms_ema = 0.0;
         double render_ms_max = 0.0;
         float quality_scale = 1.0f;
+        int target_fps = 60;
         std::array<double, 128> recent_ms{};
         std::size_t recent_count = 0;
         std::size_t recent_next = 0;
@@ -72,6 +76,7 @@ private:
     bool have_audio_sequence_ = false;
     nlohmann::json director_state_ = nlohmann::json::object();
     nlohmann::json transition_state_ = nlohmann::json::object();
+    nlohmann::json render_placement_state_ = nlohmann::json::object();
 };
 
 } // namespace Diagnostics

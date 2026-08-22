@@ -24,6 +24,10 @@ interface DiagnosticsData {
       render_ms_p95: number
       render_ms_p99: number
       render_ms_max: number
+      target_fps: number
+      frame_budget_ms: number
+      p95_budget_ratio: number
+      offload_pressure: boolean
       slow_frames: number
       quality_scale: number
     }>
@@ -85,6 +89,23 @@ interface DiagnosticsData {
     }
     history: Array<{ scene: string; family: string; variant: string }>
     candidates: Array<{ scene: string; variant: string; score: number; reasons: string[] }>
+  }
+  render_placement?: {
+    scene?: string
+    placement?: 'local' | 'desktop_pending' | 'desktop' | 'local_fallback' | string
+    reason?: string
+    frame_budget_ms?: number
+    local_render_ms?: number
+    quality_scale?: number
+  }
+  remote_render?: {
+    requested: boolean
+    frame_fresh: boolean
+    session: number
+    last_sequence: number
+    frame_age_ms: number
+    scene: string
+    renderer: string
   }
   transition?: {
     from?: string
@@ -186,7 +207,7 @@ export default function Diagnostics() {
     {data && <>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Renderer" value={`${number(data.renderer.fps)} FPS`} detail={`${number(data.renderer.render_ms_average, 2)} ms avg · ${number(data.renderer.render_ms_max, 2)} ms max`} />
-        <Metric label="Active scene" value={data.renderer.active_scene || 'None'} detail={`${data.renderer.slow_frames} slow frames`} />
+        <Metric label="Active scene" value={data.renderer.active_scene || 'None'} detail={`${data.render_placement?.placement?.replace('_', ' ') ?? 'local'} · ${data.renderer.slow_frames} slow frames`} />
         <Metric label="UDP" value={`${number(data.udp.datagrams_per_second)} pkt/s`} detail={`${bytes(data.udp.bytes_per_second)} · ${data.udp.malformed} malformed`} />
         <Metric label="Desktop" value={`${data.desktop_connections} client${data.desktop_connections === 1 ? '' : 's'}`} detail={`${number(data.uptime_seconds / 60, 1)} min uptime`} />
       </section>
@@ -228,22 +249,41 @@ export default function Diagnostics() {
         </div>
       </section>
 
+      <section className="glass-panel rounded-2xl p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-semibold">Render placement</div>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{data.render_placement?.reason ?? 'Waiting for the renderer to make a placement decision.'}</p>
+          </div>
+          <Badge variant={data.render_placement?.placement === 'desktop' ? 'secondary' : 'outline'}>
+            {data.render_placement?.placement?.replace('_', ' ') ?? 'local'}
+          </Badge>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric label="Frame budget" value={`${number(data.render_placement?.frame_budget_ms, 2)} ms`} detail="Auto offload starts at sustained 72% pressure" />
+          <Metric label="Local quality" value={`${number((data.render_placement?.quality_scale ?? 1) * 100, 0)}%`} detail="Adaptive before/while desktop warms" />
+          <Metric label="Remote frame" value={data.remote_render?.requested ? (data.remote_render.frame_fresh ? 'Fresh' : 'Waiting') : 'Inactive'} detail={data.remote_render?.requested ? `${number(data.remote_render.frame_age_ms, 0)} ms old · seq ${data.remote_render.last_sequence}` : 'Latest-frame-wins, no queued latency'} />
+          <Metric label="Remote renderer" value={data.remote_render?.renderer || 'None'} detail={data.remote_render?.scene ? `Scene ${data.remote_render.scene} · session ${data.remote_render.session}` : 'Desktop is used only when measured load warrants it'} />
+        </div>
+      </section>
+
       {scenePerformance.length > 0 && <section className="glass-panel rounded-2xl p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="font-semibold">Scene performance</div>
-          <div className="text-xs text-muted-foreground">Active CPU time only; intentional frame pacing is excluded.</div>
+          <div className="text-xs text-muted-foreground">Sorted by measured Pi p95; orange pressure means Auto may offload when a desktop is connected.</div>
         </div>
         <div className="overflow-x-auto">
           <div className="min-w-[640px] space-y-1 text-xs">
-            <div className="grid grid-cols-[1.5fr_repeat(5,.7fr)] gap-3 px-3 py-1 font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              <span>Scene</span><span>P50</span><span>P95</span><span>P99</span><span>Max</span><span>Quality</span>
+            <div className="grid grid-cols-[1.5fr_repeat(6,.7fr)] gap-3 px-3 py-1 font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              <span>Scene</span><span>P50</span><span>P95</span><span>P99</span><span>Max</span><span>Budget load</span><span>Quality</span>
             </div>
-            {scenePerformance.map(([scene, stats]) => <div key={scene} className="grid grid-cols-[1.5fr_repeat(5,.7fr)] gap-3 rounded-lg bg-secondary/50 px-3 py-2 tabular-nums">
+            {scenePerformance.map(([scene, stats]) => <div key={scene} className={`grid grid-cols-[1.5fr_repeat(6,.7fr)] gap-3 rounded-lg px-3 py-2 tabular-nums ${stats.offload_pressure ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/20' : 'bg-secondary/50'}`}>
               <span className="truncate font-medium" title={scene}>{scene}</span>
               <span>{number(stats.render_ms_p50, 2)} ms</span>
               <span>{number(stats.render_ms_p95, 2)} ms</span>
               <span>{number(stats.render_ms_p99, 2)} ms</span>
               <span>{number(stats.render_ms_max, 2)} ms</span>
+              <span title={`${number(stats.frame_budget_ms, 2)} ms budget @ ${stats.target_fps} FPS`}>{number(stats.p95_budget_ratio * 100, 0)}%{stats.offload_pressure ? ' · pressure' : ''}</span>
               <span>{number(stats.quality_scale * 100, 0)}%{stats.slow_frames > 0 ? ` · ${stats.slow_frames} slow` : ''}</span>
             </div>)}
           </div>

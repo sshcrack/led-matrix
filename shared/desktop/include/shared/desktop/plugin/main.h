@@ -57,6 +57,17 @@ namespace Plugins
             return std::nullopt;
         }
 
+        /// Multi-datagram hook for latency-sensitive payloads that should avoid
+        /// IP fragmentation. Existing plugins keep implementing the single-
+        /// packet API; the default adapter preserves that behavior.
+        [[nodiscard]] virtual std::vector<std::unique_ptr<UdpPacket>> compute_next_packets(const std::string &sceneName)
+        {
+            std::vector<std::unique_ptr<UdpPacket>> packets;
+            if (auto packet = compute_next_packet(sceneName); packet.has_value())
+                packets.push_back(std::move(packet.value()));
+            return packets;
+        }
+
         virtual void initialize_imgui(ImGuiContext * im_gui_context, ImGuiMemAllocFunc* alloc_fn, ImGuiMemFreeFunc* free_fn, void** user_data) = 0;
     };
 }
