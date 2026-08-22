@@ -216,3 +216,22 @@ std::unique_ptr<Scene> WavePatternSceneWrapper::create()
 {
     return std::make_unique<WavePatternScene>();
 }
+
+Scenes::SceneDescriptor Scenes::WavePatternScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "waves";
+    d.tags = {"ambient", "waves", "ribbons", "flow", "audio-reactive"};
+    d.intensity = 0.44f; d.motion = 0.52f; d.music_affinity = 0.64f; d.performance_cost = 0.56f;
+    d.variants = {
+        {"silk", "Silk ribbons", "Fewer slow layers for a soft ambient look",
+         {{"num_waves", 3}, {"speed", 0.42f}, {"color_speed", 0.28f}, {"wave_height", 0.65f}, {"ribbon_layers", 4}, {"glow_radius", 1}, {"audio_reactive", false}},
+         {"calm", "soft"}, 0.22f, 0.30f, 0.16f, 0.44f},
+        {"layered", "Layered waves", "Dense bright ribbons with faster movement",
+         {{"num_waves", 6}, {"speed", 1.2f}, {"color_speed", 0.85f}, {"wave_height", 1.2f}, {"ribbon_layers", 7}, {"glow_radius", 3}},
+         {"dense", "vivid"}, 0.70f, 0.72f, 0.45f, 0.72f},
+        {"music", "Music ribbons", "Flowing ribbons shaped by the current track",
+         {{"num_waves", 4}, {"speed", 0.85f}, {"audio_reactive", true}, {"audio_strength", 1.1f}},
+         {"music", "beat-driven"}, 0.64f, 0.68f, 1.0f, 0.62f},
+    };
+    return d;
+}

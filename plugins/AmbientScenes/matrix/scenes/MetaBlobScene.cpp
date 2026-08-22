@@ -207,3 +207,22 @@ namespace AmbientScenes {
         return std::make_unique<MetaBlobScene>();
     }
 }
+
+Scenes::SceneDescriptor AmbientScenes::MetaBlobScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "organic";
+    d.tags = {"ambient", "organic", "fluid", "abstract", "audio-reactive"};
+    d.intensity = 0.34f; d.motion = 0.38f; d.music_affinity = 0.58f; d.performance_cost = 0.55f;
+    d.variants = {
+        {"calm", "Slow liquid", "Large relaxed blobs with gentle color motion",
+         {{"num_blobs", 7}, {"speed", 0.12f}, {"move_range", 0.34f}, {"color_speed", 0.015f}, {"audio_reactive", false}},
+         {"calm", "organic"}, 0.20f, 0.25f, 0.15f, 0.48f},
+        {"dense", "Liquid field", "More blobs, faster mixing and richer color movement",
+         {{"num_blobs", 15}, {"speed", 0.42f}, {"move_range", 0.72f}, {"color_speed", 0.060f}},
+         {"dense", "fluid"}, 0.58f, 0.58f, 0.40f, 0.64f},
+        {"music", "Music liquid", "Organic shapes breathe and push with the track",
+         {{"num_blobs", 11}, {"speed", 0.28f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
+         {"music", "beat-driven"}, 0.62f, 0.60f, 1.0f, 0.60f},
+    };
+    return d;
+}

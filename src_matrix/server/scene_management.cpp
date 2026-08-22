@@ -66,6 +66,7 @@ namespace {
             auto properties_json = serialize_properties(properties, true);
             const auto caps = default_item->get_capabilities();
             const auto preview_spec = default_item->get_preview_spec();
+            const auto descriptor = default_item->get_descriptor();
             const auto runtime_spec = default_item->get_effective_runtime_inputs();
             const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
             j.push_back({
@@ -74,6 +75,7 @@ namespace {
                 {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
                 {"needs_desktop", caps.requires_desktop},
                 {"category", default_item->get_category()},
+                {"descriptor", Scenes::descriptor_to_json(descriptor)},
                 {"runtime_inputs", {
                     {"required", runtime_spec.required},
                     {"optional", runtime_spec.optional},

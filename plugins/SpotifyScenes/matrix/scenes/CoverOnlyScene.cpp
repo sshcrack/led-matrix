@@ -647,3 +647,19 @@ CoverOnlyScene::~CoverOnlyScene()
     if (curr_content_stream.has_value())
         delete curr_content_stream.value();
 }
+
+Scenes::SceneDescriptor Scenes::CoverOnlyScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "album-art";
+    d.tags = {"music", "media", "album-art", "spotify"};
+    d.intensity = 0.36f; d.motion = 0.28f; d.music_affinity = 1.0f; d.performance_cost = 0.68f;
+    d.variants = {
+        {"focus", "Cover focus", "Large crisp artwork with a restrained background",
+         {{"cover_size_percent", 86}, {"background_blur", 5}, {"background_brightness", 34}, {"cover_border_glow_intensity", 0.24f}, {"progress_bar_height", 2}},
+         {"minimal", "album-art"}, 0.28f, 0.20f, 1.0f, 0.62f},
+        {"ambient", "Ambient cover", "Smaller artwork with a broader blurred glow around it",
+         {{"cover_size_percent", 68}, {"background_blur", 13}, {"background_brightness", 38}, {"cover_border_glow_intensity", 0.52f}, {"beat_pulse_strength", 0.24f}},
+         {"ambient", "glow"}, 0.42f, 0.34f, 1.0f, 0.70f},
+    };
+    return d;
+}

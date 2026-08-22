@@ -58,6 +58,7 @@ namespace AmbientScenes {
 
         [[nodiscard]] std::string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Ambient"; }
+        [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
 
         Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
     [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {

@@ -182,3 +182,22 @@ namespace AmbientScenes {
         return std::make_unique<StarFieldScene>();
     }
 }
+
+Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "space";
+    d.tags = {"ambient", "space", "depth", "particles", "audio-reactive"};
+    d.intensity = 0.45f; d.motion = 0.72f; d.music_affinity = 0.68f; d.performance_cost = 0.30f;
+    d.variants = {
+        {"calm", "Calm drift", "Sparse, slow stars for a quiet background",
+         {{"num_stars", 68}, {"speed", 0.012f}, {"streak_length", 0.30f}, {"drifting_center", true}, {"audio_reactive", false}},
+         {"calm", "minimal"}, 0.22f, 0.35f, 0.20f, 0.24f},
+        {"warp", "Warp drive", "Dense fast streaks with a strong sense of depth",
+         {{"num_stars", 155}, {"speed", 0.072f}, {"streak_length", 1.35f}, {"enable_twinkle", false}},
+         {"energetic", "depth"}, 0.88f, 0.96f, 0.55f, 0.42f},
+        {"music", "Music flight", "Balanced starfield with beat-driven acceleration",
+         {{"num_stars", 112}, {"speed", 0.030f}, {"streak_length", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
+         {"music", "beat-driven"}, 0.72f, 0.86f, 1.0f, 0.36f},
+    };
+    return d;
+}

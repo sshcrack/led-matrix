@@ -11,6 +11,7 @@ import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import MatrixPreview from '~/components/scene-browser/MatrixPreview'
+import { sceneArgumentsForVariant, sceneDisplayName } from '~/lib/sceneVariants'
 
 
 interface AddSceneProps {
@@ -21,6 +22,7 @@ interface AddSceneProps {
 export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string>('')
+  const [selectedVariant, setSelectedVariant] = useState<string>('')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const apiUrl = useApiUrl()
@@ -28,17 +30,19 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
   const selectedDef = sceneDefinitions.find(s => s.name === selected)
   const categories = useMemo(() => ['All', ...Array.from(new Set(sceneDefinitions.map(s => s.category ?? 'General'))).sort()], [sceneDefinitions])
   const filtered = useMemo(() => sceneDefinitions.filter(scene => {
-    const matchesQuery = scene.name.toLowerCase().includes(query.trim().toLowerCase())
+    const search = query.trim().toLowerCase()
+    const descriptorText = [scene.descriptor?.family, ...(scene.descriptor?.tags ?? [])].join(' ').toLowerCase()
+    const matchesQuery = scene.name.toLowerCase().includes(search) || descriptorText.includes(search)
     const matchesCategory = category === 'All' || (scene.category ?? 'General') === category
     return matchesQuery && matchesCategory
   }), [sceneDefinitions, query, category])
 
   const handleAdd = () => {
     if (!selectedDef) return
-    const args: Record<string, any> = {}
-    for (const prop of selectedDef.properties) args[prop.name] = prop.default_value
-    onAdd({ uuid: uuidv4(), type: selectedDef.name, arguments: args })
+    const args = sceneArgumentsForVariant(selectedDef, selectedVariant)
+    onAdd({ uuid: uuidv4(), type: selectedDef.name, arguments: args, variant: selectedVariant || undefined })
     setSelected('')
+    setSelectedVariant('')
     setQuery('')
     setOpen(false)
   }
@@ -78,7 +82,7 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
                   {filtered.map(scene => {
                     const active = scene.name === selected
                     return (
-                      <button key={scene.name} data-selected={active} className="scene-tile" onClick={() => setSelected(scene.name)}>
+                      <button key={scene.name} data-selected={active} className="scene-tile" onClick={() => { setSelected(scene.name); setSelectedVariant('') }}>
                         <div className="relative aspect-square bg-black">
                           {scene.has_preview ? (
                             <img src={`${apiUrl}/scene_preview?name=${encodeURIComponent(scene.name)}`} className="h-full w-full object-contain [image-rendering:pixelated]" alt="" />
@@ -88,9 +92,9 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
                           {active && <span className="absolute right-2 top-2 rounded-full bg-primary p-1.5 text-primary-foreground"><Check className="h-3.5 w-3.5" /></span>}
                         </div>
                         <div className="p-3">
-                          <div className="truncate text-sm font-semibold">{scene.name}</div>
+                          <div className="truncate text-sm font-semibold">{sceneDisplayName(scene.name)}</div>
                           <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                            <span>{scene.category ?? 'General'}</span>
+                            <span>{scene.descriptor?.family ?? scene.category ?? 'General'}</span>
                             <span className="flex items-center gap-1"><SlidersHorizontal className="h-3 w-3" />{scene.properties.length}</span>
                           </div>
                         </div>
@@ -106,19 +110,30 @@ export default function AddScene({ sceneDefinitions, onAdd }: AddSceneProps) {
               {selectedDef ? (
                 <div className="mt-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div><h3 className="font-semibold">{selectedDef.name}</h3><p className="text-xs text-muted-foreground">{selectedDef.category ?? 'General'}</p></div>
-                    <Badge variant="secondary">{selectedDef.properties.length} settings</Badge>
+                    <div><h3 className="font-semibold">{sceneDisplayName(selectedDef.name)}</h3><p className="text-xs text-muted-foreground">{selectedDef.descriptor?.family ?? selectedDef.category ?? 'General'}</p></div>
+                    <Badge variant="secondary">{selectedDef.descriptor?.variants.length ?? 0} looks</Badge>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedDef.properties.slice(0, 8).map(prop => <Badge key={prop.name} variant="outline" className="font-normal">{prop.name.replaceAll('_', ' ')}</Badge>)}
+                    {(selectedDef.descriptor?.tags ?? []).slice(0, 6).map(tag => <Badge key={tag} variant="outline" className="font-normal">{tag}</Badge>)}
                   </div>
+                  {(selectedDef.descriptor?.variants.length ?? 0) > 0 && <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Curated look</label>
+                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)}>
+                      <option value="">Original</option>
+                      {selectedDef.descriptor?.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.label}</option>)}
+                    </select>
+                    {selectedVariant && <p className="text-xs text-muted-foreground">{selectedDef.descriptor?.variants.find(v => v.id === selectedVariant)?.description}</p>}
+                  </div>}
                 </div>
               ) : <p className="mt-4 text-sm text-muted-foreground">Select a scene to inspect it.</p>}
             </aside>
           </div>
 
           <DialogFooter className="border-t border-border px-5 py-4">
-            <div className="mr-auto truncate text-sm text-muted-foreground">{selectedDef ? `${selectedDef.name} selected` : `${filtered.length} scenes`}</div>
+            <div className="mr-auto truncate text-sm text-muted-foreground">{selectedDef ? `${sceneDisplayName(selectedDef.name)} selected` : `${filtered.length} scenes`}</div>
+            {selectedDef && (selectedDef.descriptor?.variants.length ?? 0) > 0 && <select aria-label="Curated look" className="h-9 max-w-44 rounded-md border border-input bg-background px-2 text-sm lg:hidden" value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)}>
+              <option value="">Original</option>{selectedDef.descriptor?.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.label}</option>)}
+            </select>}
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!selectedDef}>Add scene</Button>
           </DialogFooter>

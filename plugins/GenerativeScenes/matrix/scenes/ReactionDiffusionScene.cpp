@@ -301,3 +301,22 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
 }
 
 }  // namespace GenerativeScenes
+
+Scenes::SceneDescriptor GenerativeScenes::ReactionDiffusionScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "organic";
+    d.tags = {"generative", "organic", "simulation", "texture", "audio-reactive"};
+    d.intensity = 0.35f; d.motion = 0.30f; d.music_affinity = 0.52f; d.performance_cost = 0.90f;
+    d.variants = {
+        {"calm", "Slow coral", "Slowly evolving reaction patterns with restrained color motion",
+         {{"simulation_speed", 0.55f}, {"color_speed", 0.45f}, {"contrast", 1.0f}, {"audio_reactive", false}},
+         {"calm", "texture"}, 0.20f, 0.18f, 0.12f, 0.78f},
+        {"vivid", "Vivid growth", "Faster evolution with stronger contrast and color cycling",
+         {{"simulation_speed", 1.45f}, {"color_speed", 1.8f}, {"contrast", 1.55f}},
+         {"vivid", "dense"}, 0.66f, 0.52f, 0.35f, 0.96f},
+        {"music", "Reactive chemistry", "Music injects energy into the evolving pattern",
+         {{"simulation_speed", 1.0f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
+         {"music", "beat-driven"}, 0.62f, 0.52f, 1.0f, 0.94f},
+    };
+    return d;
+}

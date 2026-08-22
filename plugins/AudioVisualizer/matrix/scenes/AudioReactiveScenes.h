@@ -34,6 +34,7 @@ public:
     void register_properties() override;
     std::string get_name() const override { return "audio_particles"; }
     std::string get_category() const override { return "Audio Reactive"; }
+    [[nodiscard]] SceneDescriptor get_descriptor() const override;
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
@@ -69,6 +70,7 @@ public:
     void register_properties() override;
     std::string get_name() const override { return "audio_pulse_tunnel"; }
     std::string get_category() const override { return "Audio Reactive"; }
+    [[nodiscard]] SceneDescriptor get_descriptor() const override;
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }
@@ -100,6 +102,7 @@ public:
     void register_properties() override;
     std::string get_name() const override { return "audio_aurora"; }
     std::string get_category() const override { return "Audio Reactive"; }
+    [[nodiscard]] SceneDescriptor get_descriptor() const override;
     tmillis_t get_default_duration() override { return 35000; }
     int get_default_weight() override { return 6; }
     bool needs_desktop_app() override { return true; }
@@ -131,6 +134,7 @@ public:
     void register_properties() override;
     std::string get_name() const override { return "audio_kaleidoscope"; }
     std::string get_category() const override { return "Audio Reactive"; }
+    [[nodiscard]] SceneDescriptor get_descriptor() const override;
     tmillis_t get_default_duration() override { return 30000; }
     int get_default_weight() override { return 5; }
     bool needs_desktop_app() override { return true; }

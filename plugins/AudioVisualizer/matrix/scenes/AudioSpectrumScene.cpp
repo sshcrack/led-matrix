@@ -591,3 +591,25 @@ std::unique_ptr<Scenes::Scene> AudioSpectrumSceneWrapper::create() {
     return std::make_unique<AudioSpectrumScene>();
 }
 }
+
+Scenes::SceneDescriptor Scenes::AudioSpectrumScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "spectrum";
+    d.tags = {"music", "spectrum", "bars", "waveform", "audio-reactive"};
+    d.intensity = 0.78f; d.motion = 0.72f; d.music_affinity = 1.0f; d.performance_cost = 0.58f;
+    d.variants = {
+        {"bars", "Layered bars", "Balanced spectrum bars with mirrored depth and peak motion",
+         {{"display_mode", "NORMAL"}, {"mirror_display", true}, {"musical_color", true}, {"falling_dots", true}, {"smoothing", 0.70f}},
+         {"music", "bars"}, 0.72f, 0.68f, 1.0f, 0.52f},
+        {"waveform", "Smooth waveform", "A clean stabilized trace instead of individual spectrum bars",
+         {{"display_mode", "WAVEFORM"}, {"waveform_style", "TRACE"}, {"waveform_stabilization", true}, {"waveform_smoothing", 0.90f}, {"waveform_thickness", 1}, {"stereo_motion", true}},
+         {"music", "waveform", "minimal"}, 0.52f, 0.56f, 1.0f, 0.42f},
+        {"radial", "Radial spectrum", "Circular spectrum with slow rotation and beat pulse",
+         {{"display_mode", "CIRCLE"}, {"circle_radius", 0.70f}, {"rotate_visualization", true}, {"rotation_speed", 0.45f}, {"beat_pulse", true}},
+         {"music", "radial"}, 0.80f, 0.78f, 1.0f, 0.64f},
+        {"spectrogram", "Spectrogram", "Scrolling frequency history for a denser analytical texture",
+         {{"display_mode", "SPECTROGRAM"}, {"mirror_display", false}, {"falling_dots", false}, {"musical_color", true}},
+         {"music", "texture", "dense"}, 0.68f, 0.60f, 1.0f, 0.72f},
+    };
+    return d;
+}

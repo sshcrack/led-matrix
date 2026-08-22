@@ -17,6 +17,8 @@ namespace ConfigData {
             {"arguments", p->to_json()},
             {"uuid", p->get_uuid()}
         };
+        if (!p->get_variant_id().empty())
+            j["variant"] = p->get_variant_id();
     }
 
     void to_json(json &j, const ImageProviders::General *&p) {

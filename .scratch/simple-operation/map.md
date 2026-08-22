@@ -19,8 +19,9 @@ The matrix can be configured once and then operate beautifully on its own: scene
 - Active sandbox: `auto-director-rebased`.
 - Base includes `c974928 smooth audio waveform and separate mirror layers`.
 - Phase 1 — Runtime Inputs + eligibility foundation: **complete and review-polished**.
-- Next phase: **Scene descriptors, curated Scene Variants, and plugin/scene manifests** (`issues/04-scene-descriptors-and-variants.md`).
-- After that: Automatic/Ambient Director policy (`issues/03-automatic-director-policy.md`), Music Director + transition intelligence, then Scene Lab.
+- Phase 2 — Scene descriptors, curated Scene Variants, and manifest/UI exposure: **complete and review-polished**.
+- Next phase: **Automatic/Ambient Director policy** (`issues/03-automatic-director-policy.md`).
+- After that: Music Director + transition intelligence, Scene Lab, then observability/repeatability.
 - Do not turn the compositor into user-facing configuration. If composition is added later, directors should own it automatically.
 - Do not start the global palette/color-system pass yet.
 

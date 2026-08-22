@@ -1,7 +1,7 @@
 # Scene descriptors and curated variants
 
 Type: prototype
-Status: next
+Status: complete
 Blocked by: 02
 
 ## Question

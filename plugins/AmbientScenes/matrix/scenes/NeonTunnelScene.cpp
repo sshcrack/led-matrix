@@ -170,3 +170,22 @@ namespace AmbientScenes {
         return std::make_unique<NeonTunnelScene>();
     }
 }
+
+Scenes::SceneDescriptor AmbientScenes::NeonTunnelScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "tunnel";
+    d.tags = {"ambient", "neon", "depth", "geometric", "audio-reactive"};
+    d.intensity = 0.68f; d.motion = 0.88f; d.music_affinity = 0.78f; d.performance_cost = 0.45f;
+    d.variants = {
+        {"cruise", "Neon cruise", "A slower deep tunnel that stays readable from across the room",
+         {{"speed", 0.9f}, {"distance_factor", 135.0f}, {"angle_factor", 6.0f}, {"hue_shift_speed", 0.45f}, {"audio_reactive", false}},
+         {"calm", "depth"}, 0.38f, 0.58f, 0.20f, 0.40f},
+        {"hyperspace", "Hyperspace", "Fast, tight geometry for high-energy moments",
+         {{"speed", 4.2f}, {"distance_factor", 78.0f}, {"angle_factor", 11.5f}, {"hue_shift_speed", 2.1f}},
+         {"energetic", "neon"}, 0.94f, 1.0f, 0.65f, 0.52f},
+        {"music", "Beat tunnel", "Music drives speed, flashes and spatial motion",
+         {{"speed", 1.8f}, {"audio_reactive", true}, {"audio_strength", 1.25f}, {"hue_shift_speed", 1.2f}},
+         {"music", "beat-driven"}, 0.82f, 0.94f, 1.0f, 0.50f},
+    };
+    return d;
+}

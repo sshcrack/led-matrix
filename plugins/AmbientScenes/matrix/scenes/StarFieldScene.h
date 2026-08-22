@@ -55,6 +55,7 @@ namespace AmbientScenes {
         int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Ambient"; }
+        [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
         using Scene::Scene;
     };
 
