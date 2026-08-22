@@ -256,3 +256,12 @@ void MusicDirectorScene::before_transition_stop() {
 }
 
 } // namespace Scenes
+
+Scenes::SceneDescriptor Scenes::MusicDirectorScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "music-director";
+    d.tags = {"music", "director", "adaptive", "audio-reactive"};
+    d.intensity = 0.70f; d.motion = 0.72f; d.music_affinity = 1.0f; d.performance_cost = 0.62f;
+    d.automatic_eligible = true;
+    return d;
+}

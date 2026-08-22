@@ -1,3 +1,26 @@
+export interface SceneVariant {
+  id: string
+  label: string
+  description: string
+  properties: Record<string, unknown>
+  tags: string[]
+  intensity?: number
+  motion?: number
+  music_affinity?: number
+  performance_cost?: number
+}
+
+export interface SceneDescriptor {
+  family: string
+  tags: string[]
+  intensity: number
+  motion: number
+  music_affinity: number
+  performance_cost: number
+  automatic_eligible: boolean
+  variants: SceneVariant[]
+}
+
 export interface SceneRuntimeInputs {
   required: string[]
   optional: string[]
@@ -45,6 +68,7 @@ export interface ListScenes {
   has_preview?: boolean
   needs_desktop?: boolean
   category: string
+  descriptor?: SceneDescriptor
   capabilities?: SceneCapabilities
   runtime_inputs?: SceneRuntimeInputs
   preview?: ScenePreviewSpec

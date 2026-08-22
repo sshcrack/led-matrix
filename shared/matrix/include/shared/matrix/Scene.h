@@ -10,6 +10,7 @@
 #include <shared/matrix/plugin/PropertyMacros.h>
 #include <shared/matrix/plugin/TransitionNameProperty.h>
 #include <shared/matrix/scene_runtime.h>
+#include <shared/matrix/scene_descriptor.h>
 #include <shared/matrix/input_ids.h>
 #include <shared/matrix/preview.h>
 #include <chrono>
@@ -64,6 +65,7 @@ namespace Scenes {
         void restore_audio_modulations();
 
         std::string uuid;
+        std::string variant_id_;
 
         void set_target_fps(int fps) {
             target_fps = fps > 0 ? fps : 1;
@@ -131,6 +133,12 @@ namespace Scenes {
 
         [[nodiscard]] virtual string get_name() const = 0;
         [[nodiscard]] virtual std::string get_category() const { return "General"; }
+
+        /// Stable high-level metadata consumed by directors and the default UI.
+        /// Scene-specific rendering knobs intentionally do not leak through here.
+        [[nodiscard]] virtual SceneDescriptor get_descriptor() const;
+        [[nodiscard]] const std::string &get_variant_id() const { return variant_id_; }
+        void apply_variant(std::string_view id);
 
         /// Declarative preview contract. Desktop-dependent scenes are disabled
         /// by default, but may opt in by requesting fixture inputs supplied by

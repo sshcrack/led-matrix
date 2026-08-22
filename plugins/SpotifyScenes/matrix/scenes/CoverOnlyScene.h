@@ -85,6 +85,7 @@ namespace Scenes {
         [[nodiscard]] string get_name() const override;
 
         std::string get_category() const override { return "Media"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
         void register_properties() override;
 

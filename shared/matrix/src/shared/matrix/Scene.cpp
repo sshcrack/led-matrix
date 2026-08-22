@@ -74,6 +74,9 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
         scene->update_default_properties();
         scene->register_properties();
 
+        if (const auto variant = j.value("variant", std::string{}); !variant.empty())
+            scene->apply_variant(variant);
+
         spdlog::debug("Loading properties for scene '{}'", t);
         scene->load_properties(arguments);
         if (j.contains("uuid"))
@@ -135,6 +138,34 @@ Scenes::SceneInputSpec Scenes::Scene::get_effective_runtime_inputs() const
     else if (caps.supports_audio)
         spec.accept(RuntimeInputIds::Audio);
     return spec;
+}
+
+Scenes::SceneDescriptor Scenes::Scene::get_descriptor() const
+{
+    SceneDescriptor descriptor;
+    descriptor.family = get_category();
+    const auto caps = get_capabilities();
+    descriptor.music_affinity = caps.requires_audio ? 1.0f : (caps.supports_audio ? 0.65f : 0.1f);
+    descriptor.automatic_eligible = !caps.interactive;
+    if (caps.supports_audio)
+        descriptor.tags.emplace_back("audio-reactive");
+    if (caps.requires_network)
+        descriptor.tags.emplace_back("network");
+    return descriptor;
+}
+
+void Scenes::Scene::apply_variant(std::string_view id)
+{
+    if (id.empty()) {
+        variant_id_.clear();
+        return;
+    }
+    const auto descriptor = get_descriptor();
+    const auto *variant = find_variant(descriptor, id);
+    if (variant == nullptr)
+        throw std::runtime_error(fmt::format("Unknown variant '{}' for scene '{}'", id, get_name()));
+    load_properties(variant->properties);
+    variant_id_ = variant->id;
 }
 
 tmillis_t Scenes::Scene::get_duration() const

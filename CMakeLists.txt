@@ -429,6 +429,20 @@ if(ENABLE_EMULATOR)
     add_test(NAME runtime_selection_smoke COMMAND $<TARGET_FILE:runtime_selection_smoke>)
     set_tests_properties(runtime_selection_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(scene_descriptor_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_descriptor_smoke.cpp
+    )
+    target_compile_features(scene_descriptor_smoke PRIVATE cxx_std_23)
+    target_link_libraries(scene_descriptor_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        fmt::fmt
+        spdlog::spdlog
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME scene_descriptor_smoke COMMAND $<TARGET_FILE:scene_descriptor_smoke>)
+    set_tests_properties(scene_descriptor_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_test(NAME scene_registry_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>

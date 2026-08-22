@@ -190,3 +190,22 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
 }
 
 std::unique_ptr<Scenes::Scene> BoidsSceneWrapper::create() { return std::make_unique<BoidsScene>(); }
+
+Scenes::SceneDescriptor GenerativeScenes::BoidsScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.family = "flocking";
+    d.tags = {"generative", "particles", "flocking", "organic", "audio-reactive"};
+    d.intensity = 0.52f; d.motion = 0.66f; d.music_affinity = 0.68f; d.performance_cost = 0.62f;
+    d.variants = {
+        {"calm", "Calm flock", "A smaller relaxed school with long soft trails",
+         {{"count", 34}, {"speed", 0.48f}, {"perception", 25.0f}, {"trail_fade", 0.86f}, {"audio_reactive", false}},
+         {"calm", "organic"}, 0.26f, 0.42f, 0.18f, 0.46f},
+        {"swarm", "Dense swarm", "Busy flocking motion with many independent agents",
+         {{"count", 92}, {"speed", 1.12f}, {"perception", 14.0f}, {"trail_fade", 0.70f}},
+         {"dense", "energetic"}, 0.78f, 0.84f, 0.50f, 0.78f},
+        {"music", "Music flock", "A balanced flock that expands and accelerates with music",
+         {{"count", 58}, {"speed", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.05f}},
+         {"music", "beat-driven"}, 0.68f, 0.78f, 1.0f, 0.66f},
+    };
+    return d;
+}

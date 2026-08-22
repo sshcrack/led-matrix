@@ -369,3 +369,63 @@ std::unique_ptr<Scenes::Scene> AudioAuroraSceneWrapper::create() { return std::m
 std::unique_ptr<Scenes::Scene> AudioKaleidoscopeSceneWrapper::create() { return std::make_unique<AudioKaleidoscopeScene>(); }
 
 } // namespace Scenes
+
+Scenes::SceneDescriptor Scenes::AudioParticleFieldScene::get_descriptor() const {
+    auto d = Scene::get_descriptor(); d.family = "particles";
+    d.tags = {"music", "particles", "bursts", "audio-reactive"};
+    d.intensity = 0.82f; d.motion = 0.86f; d.music_affinity = 1.0f; d.performance_cost = 0.62f;
+    d.variants = {
+        {"airy", "Airy particles", "Lower-density trails with restrained gravity",
+         {{"particle_limit", 520}, {"persistence", 1.35f}, {"gravity", 8.0f}, {"sensitivity", 0.85f}},
+         {"airy", "music"}, 0.58f, 0.70f, 1.0f, 0.48f},
+        {"explosive", "Explosive particles", "Dense percussion bursts and strong drop explosions",
+         {{"particle_limit", 1500}, {"persistence", 0.8f}, {"gravity", 22.0f}, {"sensitivity", 1.25f}, {"percussion_bursts", true}, {"drop_explosion", true}},
+         {"energetic", "music"}, 0.96f, 0.98f, 1.0f, 0.78f},
+    };
+    return d;
+}
+
+Scenes::SceneDescriptor Scenes::AudioPulseTunnelScene::get_descriptor() const {
+    auto d = Scene::get_descriptor(); d.family = "tunnel";
+    d.tags = {"music", "tunnel", "depth", "geometric", "audio-reactive"};
+    d.intensity = 0.86f; d.motion = 0.94f; d.music_affinity = 1.0f; d.performance_cost = 0.52f;
+    d.variants = {
+        {"deep", "Deep pulse", "Slower rings with a spacious tunnel feel",
+         {{"speed", 0.62f}, {"ring_count", 11}, {"twist", 0.55f}, {"sensitivity", 0.9f}},
+         {"deep", "music"}, 0.62f, 0.74f, 1.0f, 0.46f},
+        {"drive", "Pulse drive", "Fast twisting rings locked tightly to tempo",
+         {{"speed", 1.65f}, {"ring_count", 17}, {"twist", 1.55f}, {"sensitivity", 1.18f}, {"tempo_lock", true}},
+         {"energetic", "music"}, 0.96f, 1.0f, 1.0f, 0.60f},
+    };
+    return d;
+}
+
+Scenes::SceneDescriptor Scenes::AudioAuroraScene::get_descriptor() const {
+    auto d = Scene::get_descriptor(); d.family = "aurora";
+    d.tags = {"music", "aurora", "ribbons", "flow", "audio-reactive"};
+    d.intensity = 0.60f; d.motion = 0.58f; d.music_affinity = 1.0f; d.performance_cost = 0.58f;
+    d.variants = {
+        {"soft", "Soft aurora", "Broad flowing ribbons with subtle high-frequency sparkle",
+         {{"ribbon_count", 5}, {"flow_speed", 0.62f}, {"sensitivity", 0.85f}, {"glow", 0.72f}},
+         {"calm", "music"}, 0.40f, 0.44f, 1.0f, 0.50f},
+        {"bright", "Bright aurora", "More ribbons and stronger glow for choruses and drops",
+         {{"ribbon_count", 9}, {"flow_speed", 1.45f}, {"sensitivity", 1.18f}, {"glow", 1.25f}},
+         {"vivid", "music"}, 0.82f, 0.72f, 1.0f, 0.68f},
+    };
+    return d;
+}
+
+Scenes::SceneDescriptor Scenes::AudioKaleidoscopeScene::get_descriptor() const {
+    auto d = Scene::get_descriptor(); d.family = "kaleidoscope";
+    d.tags = {"music", "kaleidoscope", "symmetry", "geometric", "audio-reactive"};
+    d.intensity = 0.84f; d.motion = 0.76f; d.music_affinity = 1.0f; d.performance_cost = 0.76f;
+    d.variants = {
+        {"clean", "Clean symmetry", "Lower detail and broad symmetry for a calmer geometric look",
+         {{"symmetry", 6}, {"rotation_speed", 0.28f}, {"detail", 0.72f}, {"sensitivity", 0.90f}},
+         {"clean", "music"}, 0.58f, 0.54f, 1.0f, 0.66f},
+        {"prism", "Prism", "Dense rotating symmetry with a detailed waveform core",
+         {{"symmetry", 12}, {"rotation_speed", 0.68f}, {"detail", 1.55f}, {"sensitivity", 1.14f}, {"waveform_core", true}},
+         {"dense", "music"}, 0.96f, 0.88f, 1.0f, 0.88f},
+    };
+    return d;
+}
