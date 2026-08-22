@@ -124,7 +124,7 @@ export default function SceneLab() {
           const state = await post('/scene_lab/update', {
             variant, properties: args, fps, expected_generation: generationRef.current,
           }) as LabStatus
-          generationRef.current = state.generation
+          generationRef.current = Math.max(generationRef.current, state.generation ?? 0)
           if (activeRef.current) setMissing(state.missing_inputs ?? [])
         } catch (error) {
           if (activeRef.current && revision === updateRevision.current)
@@ -142,7 +142,10 @@ export default function SceneLab() {
         const response = await fetch(`${apiUrl}/scene_lab/heartbeat`, { method: 'POST' })
         if (!response.ok) return
         const state = await response.json() as LabStatus
-        generationRef.current = state.generation ?? generationRef.current
+        // Heartbeats and debounced updates can cross in flight. Generation is
+        // monotonic, so an older heartbeat response must never roll the client
+        // back and make the next update look stale.
+        generationRef.current = Math.max(generationRef.current, state.generation ?? 0)
         setMissing(state.missing_inputs ?? [])
         if (!state.active) {
           activeRef.current = false
@@ -161,7 +164,7 @@ export default function SceneLab() {
   const saveVariant = async () => {
     try {
       const result = await post('/scene_lab/save_variant', { label: variantLabel }) as { generation?: number; variant?: { id?: string } }
-      if (result.generation) generationRef.current = result.generation
+      if (result.generation) generationRef.current = Math.max(generationRef.current, result.generation)
       toast.success('Saved as a reusable curated look')
       retryScenes(value => value + 1)
       if (result.variant?.id) setVariant(result.variant.id)

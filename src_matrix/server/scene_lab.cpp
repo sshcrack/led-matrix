@@ -142,7 +142,12 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             std::string id;
             do { id = uuid::generate_uuid_v4(); } while (config->get_presets().contains(id));
             config->set_presets(id, preset);
-            config->save();
+            if (!config->save()) {
+                config->delete_preset(id);
+                return reply_with_error(
+                    req, "Could not persist Scene Lab preset",
+                    restinio::status_internal_server_error());
+            }
             return reply_with_json(req, {{"success", true}, {"id", id}, {"display_name", label}});
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
