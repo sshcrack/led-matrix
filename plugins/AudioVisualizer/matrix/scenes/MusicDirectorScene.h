@@ -1,12 +1,13 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/audio_state.h>
 #include <shared/matrix/wrappers.h>
+
+#include <deque>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace Scenes {
 
@@ -15,14 +16,14 @@ class MusicDirectorScene final : public Scene {
     enum class BeatQuantization { BEAT = 1, TWO_BEATS = 2, BAR = 4, TWO_BARS = 8 };
 
     PropertyPointer<std::vector<std::string>> scene_pool_ = MAKE_STRING_LIST_PROPERTY(
-        "scene_pool", std::vector<std::string>({
-            "audio_aurora", "starfield", "metablob", "boids", "wave_pattern",
-            "reaction_diffusion", "neontunnel", "audio_pulse_tunnel",
-            "audio_kaleidoscope", "audio_particles"}));
+        "scene_pool",
+        std::vector<std::string>({"audio_aurora", "starfield", "metablob", "boids", "wave_pattern", "reaction_diffusion", "neontunnel",
+                                  "audio_pulse_tunnel", "audio_kaleidoscope", "audio_particles", "audio_spectrum"}));
     PropertyPointer<tmillis_t> minimum_dwell_ = MAKE_PROPERTY_MINMAX("minimum_dwell", tmillis_t, 9000, 2000, 60000);
     PropertyPointer<tmillis_t> maximum_dwell_ = MAKE_PROPERTY_MINMAX("maximum_dwell", tmillis_t, 26000, 6000, 120000);
     PropertyPointer<bool> beat_sync_ = MAKE_PROPERTY("beat_sync", bool, true);
-    PropertyPointer<Plugins::EnumProperty<BeatQuantization>> beat_quantization_ = MAKE_ENUM_PROPERTY("beat_quantization", BeatQuantization, BeatQuantization::BAR);
+    PropertyPointer<Plugins::EnumProperty<BeatQuantization>> beat_quantization_ =
+        MAKE_ENUM_PROPERTY("beat_quantization", BeatQuantization, BeatQuantization::BAR);
     PropertyPointer<bool> react_on_sections_ = MAKE_PROPERTY("react_on_sections", bool, true);
     PropertyPointer<bool> react_on_drops_ = MAKE_PROPERTY("react_on_drops", bool, true);
     PropertyPointer<bool> configure_child_audio_ = MAKE_PROPERTY("configure_child_audio", bool, true);
@@ -40,21 +41,31 @@ class MusicDirectorScene final : public Scene {
     uint64_t seen_beat_ = 0;
     uint64_t seen_drop_ = 0;
     uint64_t seen_section_ = 0;
+    bool events_primed_ = false;
     size_t selection_cursor_ = 0;
     double next_runtime_input_check_ = 0.0;
+    float state_energy_ = 0.25f;
+    std::deque<std::string> recent_children_;
+    std::vector<rgb_matrix::Color> last_frame_;
+    std::vector<rgb_matrix::Color> transition_from_frame_;
+    double child_transition_started_at_ = -1.0;
+    double child_transition_duration_ = 0.0;
 
-    MusicalState classify(const AudioState::Snapshot &audio) const;
-    bool request_switch(const AudioState::Snapshot &audio, MusicalState state);
-    bool switch_child(MusicalState state);
+    MusicalState classify(const AudioState::Snapshot& audio);
+    bool request_switch(const AudioState::Snapshot& audio, MusicalState state);
+    bool switch_child(MusicalState state, const AudioState::Snapshot& audio);
     std::vector<std::string> preferred(MusicalState state) const;
-    bool child_allowed(const std::string &name) const;
+    bool child_allowed(const std::string& name) const;
     void stop_child() noexcept;
+    void capture_frame(rgb_matrix::FrameCanvas* canvas, std::vector<rgb_matrix::Color>& target) const;
+    void restore_frame(rgb_matrix::FrameCanvas* canvas, const std::vector<rgb_matrix::Color>& source) const;
+    void blend_child_transition(rgb_matrix::FrameCanvas* canvas);
 
 public:
     MusicDirectorScene() = default;
     ~MusicDirectorScene() override { stop_child(); }
 
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void initialize(int width, int height) override;
     void register_properties() override;
     void after_render_stop() override;
@@ -66,10 +77,12 @@ public:
     tmillis_t get_default_duration() override { return 120000; }
     int get_default_weight() override { return 7; }
     bool needs_desktop_app() override { return true; }
-    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
         return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
     }
-    SceneCapabilities get_capabilities() const override {
+    SceneCapabilities get_capabilities() const override
+    {
         auto caps = Scene::get_capabilities();
         caps.requires_audio = true;
         caps.supports_audio = true;
@@ -84,4 +97,4 @@ public:
     std::unique_ptr<Scenes::Scene> create() override { return std::make_unique<MusicDirectorScene>(); }
 };
 
-} // namespace Scenes
+}  // namespace Scenes
