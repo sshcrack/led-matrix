@@ -67,6 +67,14 @@ namespace {
             const auto caps = default_item->get_capabilities();
             const auto preview_spec = default_item->get_preview_spec();
             const auto descriptor = default_item->get_descriptor();
+            auto descriptor_json = Scenes::descriptor_to_json(descriptor);
+            for (const auto &custom : config->get_custom_scene_variants(scene->get_name())) {
+                descriptor_json["variants"].push_back({
+                    {"id", custom.id}, {"label", custom.label},
+                    {"description", custom.description}, {"properties", custom.properties},
+                    {"tags", json::array({"custom"})}
+                });
+            }
             const auto runtime_spec = default_item->get_effective_runtime_inputs();
             const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
             j.push_back({
@@ -75,7 +83,7 @@ namespace {
                 {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
                 {"needs_desktop", caps.requires_desktop},
                 {"category", default_item->get_category()},
-                {"descriptor", Scenes::descriptor_to_json(descriptor)},
+                {"descriptor", std::move(descriptor_json)},
                 {"runtime_inputs", {
                     {"required", runtime_spec.required},
                     {"optional", runtime_spec.optional},

@@ -11,6 +11,18 @@ using namespace spdlog;
 using json = nlohmann::json;
 
 namespace ConfigData {
+    void to_json(json &j, const CustomSceneVariant &p) {
+        j = {{"id", p.id}, {"label", p.label}, {"description", p.description}, {"properties", p.properties}};
+    }
+
+    void from_json(const json &j, CustomSceneVariant &p) {
+        p.id = j.value("id", std::string{});
+        p.label = j.value("label", p.id);
+        p.description = j.value("description", std::string{});
+        p.properties = j.value("properties", json::object());
+        if (!p.properties.is_object()) p.properties = json::object();
+    }
+
     void to_json(json &j, const Scenes::Scene *&p) {
         j = {
             {"type", p->get_name()},
@@ -63,6 +75,7 @@ namespace ConfigData {
             {"spotify", p.spotify},
             {"pluginConfigs", p.pluginConfigs},
             {"schedules", p.schedules},
+            {"custom_scene_variants", p.custom_scene_variants},
             {"scheduling_enabled", p.scheduling_enabled},
             {"operation_mode", p.operation_mode},
             {"update_settings", p.update_settings},
@@ -95,6 +108,7 @@ namespace ConfigData {
         p.spotify = j.value("spotify", SpotifyData());
         p.pluginConfigs = j.value("pluginConfigs", std::map<string, string>());
         p.schedules = j.value("schedules", std::map<string, Schedule>());
+        p.custom_scene_variants = j.value("custom_scene_variants", std::map<string, vector<CustomSceneVariant>>());
         p.scheduling_enabled = j.value("scheduling_enabled", false);
         p.operation_mode = j.value("operation_mode", std::string("automatic"));
         if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
@@ -177,9 +191,14 @@ namespace ConfigData {
             scene->update_default_properties();
             scene->register_properties();
 
-            // Pass no json to default initialize
+            // Initialize from registered defaults, including required properties.
+            // Loading an empty object makes required demo/plugin properties reject
+            // an otherwise valid fresh-install default configuration.
             spdlog::debug("Creating default scene: {}", scene->get_name());
-            scene->load_properties(nlohmann::json::object());
+            nlohmann::json defaults = nlohmann::json::object();
+            for (const auto &property : scene->get_properties())
+                if (property) property->dump_to_json(defaults);
+            scene->load_properties(defaults);
 
             scenes.push_back(std::move(scene));
         }

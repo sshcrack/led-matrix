@@ -310,6 +310,33 @@ spdlog::info("Setting preset {}", id);
         return this->data.schedules;
     }
 
+    vector<ConfigData::CustomSceneVariant> MainConfig::get_custom_scene_variants(const string &scene_name) {
+        shared_lock lock(this->data_mutex);
+        const auto it = this->data.custom_scene_variants.find(scene_name);
+        return it == this->data.custom_scene_variants.end() ? vector<ConfigData::CustomSceneVariant>{} : it->second;
+    }
+
+    void MainConfig::set_custom_scene_variant(const string &scene_name, const ConfigData::CustomSceneVariant &variant) {
+        unique_lock lock(this->data_mutex);
+        auto &variants = this->data.custom_scene_variants[scene_name];
+        const auto it = std::find_if(variants.begin(), variants.end(), [&](const auto &item) { return item.id == variant.id; });
+        if (it == variants.end()) variants.push_back(variant); else *it = variant;
+        this->mark_dirty();
+    }
+
+    bool MainConfig::delete_custom_scene_variant(const string &scene_name, const string &variant_id) {
+        unique_lock lock(this->data_mutex);
+        auto entry = this->data.custom_scene_variants.find(scene_name);
+        if (entry == this->data.custom_scene_variants.end()) return false;
+        const auto before = entry->second.size();
+        std::erase_if(entry->second, [&](const auto &item) { return item.id == variant_id; });
+        const bool removed = entry->second.size() != before;
+        if (!removed) return false;
+        if (entry->second.empty()) this->data.custom_scene_variants.erase(entry);
+        this->mark_dirty();
+        return true;
+    }
+
     void MainConfig::set_schedule(const string& id, const ConfigData::Schedule& schedule) {
         unique_lock lock(this->data_mutex);
         this->data.schedules[id] = schedule;

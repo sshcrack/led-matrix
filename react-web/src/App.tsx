@@ -12,6 +12,7 @@ const ModifyPreset = lazy(() => import('./pages/ModifyPreset'))
 const ModifyProviders = lazy(() => import('./pages/ModifyProviders'))
 const ModifyShaderProviders = lazy(() => import('./pages/ModifyShaderProviders'))
 const SceneGallery = lazy(() => import('./pages/SceneGallery'))
+const SceneLab = lazy(() => import('./pages/SceneLab'))
 const AssetManager = lazy(() => import('./pages/AssetManager'))
 const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 
@@ -25,6 +26,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/gallery" element={<SceneGallery />} />
+                  <Route path="/scene-lab" element={<SceneLab />} />
                   <Route path="/assets" element={<AssetManager />} />
                   <Route path="/schedules" element={<Schedules />} />
                   <Route path="/updates" element={<Updates />} />

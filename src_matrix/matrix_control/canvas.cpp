@@ -2,6 +2,7 @@
 
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "SceneLabRuntime.h"
 #include "spdlog/spdlog.h"
 
 using namespace std;
@@ -71,10 +72,20 @@ void CanvasCoordinator::ensure_automatic_catalog()
 
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    const bool automatic_mode = !pinned_scene && config_->is_automatic_mode();
+    const auto lab_snapshot = SceneLabRuntime::instance().snapshot(runtime_inputs_fn_());
+    const bool lab_mode = !pinned_scene && lab_snapshot.active && lab_snapshot.scene;
+    const bool automatic_mode = !lab_mode && !pinned_scene && config_->is_automatic_mode();
     std::shared_ptr<ConfigData::Preset> preset;
+    std::vector<std::shared_ptr<Scenes::Scene>> lab_scenes;
     const std::vector<std::shared_ptr<Scenes::Scene>> *scene_source = nullptr;
-    if (automatic_mode) {
+    if (lab_mode) {
+        lab_scenes = {lab_snapshot.scene};
+        preset = std::make_shared<ConfigData::Preset>();
+        preset->display_name = "Scene Lab";
+        preset->transition_duration = 0;
+        preset->transition_name = "blend";
+        scene_source = &lab_scenes;
+    } else if (automatic_mode) {
         ensure_automatic_catalog();
         preset = automatic_preset_;
         scene_source = &automatic_scenes_;
@@ -101,10 +112,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
     int no_scene_count = 0;
     while (!*exit_flag_) {
+        if (lab_mode && !SceneLabRuntime::instance().lease_active(lab_snapshot.generation))
+            return;
         const auto runtime_inputs = runtime_inputs_fn_();
 
-        std::shared_ptr<Scenes::Scene> scene =
-            pinned_scene ? pinned_scene : forced_scene_;
+        std::shared_ptr<Scenes::Scene> scene = lab_mode
+            ? lab_snapshot.scene
+            : (pinned_scene ? pinned_scene : forced_scene_);
         std::string exclude_name = scene ? scene->get_name() : "";
         forced_scene_ = nullptr;
 
@@ -131,10 +145,22 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             continue;
         }
 
+        if (lab_mode) {
+            const auto missing = RuntimeInputs::missing_required(
+                scene->get_effective_runtime_inputs(), runtime_inputs_fn_());
+            if (!missing.empty()) {
+                set_curr_scene_fn_(nullptr);
+                renderer_.render_fallback();
+                presenter_->present();
+                SleepMillis(250);
+                continue;
+            }
+        }
+
         no_scene_count = 0;
         if (!scene->is_initialized()) scene->initialize(matrix_width, matrix_height);
         if (automatic_mode) automatic_director_.record_played(scene);
-        const tmillis_t end_ms = time_source_->now_ms() + scene->get_duration();
+        const tmillis_t end_ms = time_source_->now_ms() + (lab_mode ? 3600000 : scene->get_duration());
 
         set_curr_scene_fn_(scene);
 
@@ -147,7 +173,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         auto transition_name =
             scheduler_.resolve_transition_name(preset, scene);
         if (scheduler_.should_schedule_transition(transition_duration, scene->get_duration())
-            && !pinned_scene && !automatic_mode) {
+            && !pinned_scene && !automatic_mode && !lab_mode) {
             auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
                 scene != nullptr ? scene->get_name() : "");
             next_scene = scheduler_.select_scene(weighted);
@@ -158,7 +184,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         std::function<bool()> inputs_still_available;
         if (!pinned_scene) {
             const auto input_spec = scene->get_effective_runtime_inputs();
-            if (!input_spec.required.empty()) {
+            if (lab_mode) {
+                const auto generation = lab_snapshot.generation;
+                inputs_still_available = [this, input_spec, generation] {
+                    return SceneLabRuntime::instance().lease_active(generation)
+                        && RuntimeInputs::satisfies(input_spec, runtime_inputs_fn_());
+                };
+            } else if (!input_spec.required.empty()) {
                 inputs_still_available = [this, input_spec] {
                     return RuntimeInputs::satisfies(input_spec, runtime_inputs_fn_());
                 };
@@ -168,7 +200,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         bool early_exit = renderer_.render_scene_phase(
             scene, composite, end_ms, std::move(inputs_still_available));
 
-        if (!early_exit && automatic_mode
+        if (!early_exit && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, scene->get_duration())) {
             const auto latest_inputs = runtime_inputs_fn_();
             next_scene = automatic_director_.choose(scenes, latest_inputs, scene->get_name()).scene;
@@ -176,7 +208,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 next_scene->initialize(matrix_width, matrix_height);
         }
 
-        if (!early_exit && next_scene != nullptr
+        if (!early_exit && !lab_mode && next_scene != nullptr
             && RuntimeInputs::satisfies(
                 next_scene->get_effective_runtime_inputs(), runtime_inputs_fn_())) {
             tmillis_t transition_delay = 0;

@@ -26,4 +26,4 @@ _Avoid_: Editor, compositor
 
 ## Current roadmap state
 
-Phase 1 (Runtime Inputs and automatic eligibility) is complete in sandbox `auto-director-rebased`. The next phase is Scene descriptors + curated Scene Variants + richer plugin/scene manifests. A future agent told to “continue with the next phase” should start there, not redo Runtime Inputs.
+Phases 1–5 of the simple-operation roadmap are complete in sandbox `auto-director-rebased`: Runtime Inputs, Scene descriptors/variants, default Automatic Mode, music-aware transitions, and Pi-authoritative Scene Lab. The final phase is runtime observability + deterministic/seeded repeatability. A future agent told to “continue with the next phase” should start `07-observability-and-seeded-runtime.md` rather than revisiting earlier architecture.
