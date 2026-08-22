@@ -23,6 +23,7 @@ public:
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     string get_name() const override;
     std::string get_category() const override { return "Fractals"; }
+    [[nodiscard]] SceneDescriptor get_descriptor() const override;
     SceneCapabilities get_capabilities() const override
     {
         auto caps = Scene::get_capabilities();

@@ -16,6 +16,7 @@ import { useSceneContext } from './SceneContext'
 import PropertyList from './property_list'
 import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
 import { Badge } from '../ui/badge'
+import { sceneArgumentsForVariant, sceneVariant } from '~/lib/sceneVariants'
 
 interface SceneProps {
   scene: SceneType
@@ -91,6 +92,12 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
                 </div>
                 <Badge variant="secondary">{def?.properties.length ?? 0}</Badge>
               </div>
+              {def && (def.descriptor?.variants.length ?? 0) > 0 && <div className="rounded-xl border border-border/70 bg-secondary/20 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3"><div><div className="text-sm font-medium">Curated look</div><div className="text-xs text-muted-foreground">Switching looks resets this scene's settings to that curated baseline.</div></div>{scene.variant && <Badge variant="outline">{sceneVariant(def, scene.variant)?.label ?? scene.variant}</Badge>}</div>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={scene.variant ?? ''} onChange={e => { const variant = e.target.value; updateScene(scene.uuid, { ...scene, variant: variant || undefined, arguments: sceneArgumentsForVariant(def, variant) }) }}>
+                  <option value="">Original</option>{def.descriptor?.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.label}</option>)}
+                </select>
+              </div>}
               {def ? (
                 <PropertyList
                   properties={def.properties}

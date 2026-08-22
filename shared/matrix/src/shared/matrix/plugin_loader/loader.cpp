@@ -3,6 +3,8 @@
 #include <shared/matrix/input_ids.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cctype>
 #include <regex>
 #include <stdexcept>
@@ -298,6 +300,64 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
             for (const auto &issue : property->validate_schema())
                 report.errors.emplace_back(fmt::format("Scene '{}' property '{}': {}", scene_name, property_name, issue));
         }
+        const auto descriptor = scene->get_descriptor();
+        const auto score_valid = [](float value) {
+            return std::isfinite(value) && value >= 0.0f && value <= 1.0f;
+        };
+        if (descriptor.family.empty())
+            report.errors.emplace_back(fmt::format("Scene '{}' descriptor has an empty family", scene_name));
+        for (const auto [label, value] : std::array<std::pair<std::string_view, float>, 4>{
+                 {{"intensity", descriptor.intensity}, {"motion", descriptor.motion},
+                  {"music_affinity", descriptor.music_affinity}, {"performance_cost", descriptor.performance_cost}}}) {
+            if (!score_valid(value))
+                report.errors.emplace_back(fmt::format(
+                    "Scene '{}' descriptor {} must be in the range 0..1", scene_name, label));
+        }
+        std::unordered_set<std::string> descriptor_tags;
+        for (const auto &tag : descriptor.tags) {
+            if (tag.empty())
+                report.errors.emplace_back(fmt::format("Scene '{}' descriptor contains an empty tag", scene_name));
+            else if (!descriptor_tags.insert(tag).second)
+                report.errors.emplace_back(fmt::format("Scene '{}' descriptor repeats tag '{}'", scene_name, tag));
+        }
+        std::unordered_set<std::string> variant_ids;
+        for (const auto &variant : descriptor.variants) {
+            if (variant.id.empty() || !snake_caseish(variant.id))
+                report.errors.emplace_back(fmt::format(
+                    "Scene '{}' variant id '{}' must be non-empty snake_case", scene_name, variant.id));
+            if (!variant_ids.insert(variant.id).second)
+                report.errors.emplace_back(fmt::format("Scene '{}' repeats variant id '{}'", scene_name, variant.id));
+            if (variant.label.empty())
+                report.errors.emplace_back(fmt::format("Scene '{}' variant '{}' has no label", scene_name, variant.id));
+            if (!variant.properties.is_object())
+                report.errors.emplace_back(fmt::format("Scene '{}' variant '{}' properties must be an object", scene_name, variant.id));
+            else
+                for (const auto &[property_name, _] : variant.properties.items())
+                    if (!property_names.contains(property_name))
+                        report.errors.emplace_back(fmt::format(
+                            "Scene '{}' variant '{}' overrides unknown property '{}'",
+                            scene_name, variant.id, property_name));
+            for (const auto &[label, value] : std::array<std::pair<std::string_view, std::optional<float>>, 4>{
+                     {{"intensity", variant.intensity}, {"motion", variant.motion},
+                      {"music_affinity", variant.music_affinity}, {"performance_cost", variant.performance_cost}}}) {
+                if (value.has_value() && !score_valid(*value))
+                    report.errors.emplace_back(fmt::format(
+                        "Scene '{}' variant '{}' {} must be in the range 0..1",
+                        scene_name, variant.id, label));
+            }
+            if (!variant.id.empty() && variant.properties.is_object()) {
+                try {
+                    auto configured = wrapper->create();
+                    configured->update_default_properties();
+                    configured->register_properties();
+                    configured->apply_variant(variant.id);
+                } catch (const std::exception &e) {
+                    report.errors.emplace_back(fmt::format(
+                        "Scene '{}' variant '{}' cannot be applied: {}", scene_name, variant.id, e.what()));
+                }
+            }
+        }
+
         if (preview_spec.enabled && preview_spec.property_overrides.is_object()) {
             for (const auto &[property_name, _] : preview_spec.property_overrides.items()) {
                 if (!property_names.contains(property_name))
