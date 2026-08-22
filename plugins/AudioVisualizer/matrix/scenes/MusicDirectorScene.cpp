@@ -104,6 +104,7 @@ void MusicDirectorScene::stop_child() noexcept {
     catch (...) { spdlog::warn("Music Director child '{}' cleanup failed with unknown exception", child_name_); }
     child_.reset();
     child_name_.clear();
+    child_variant_.clear();
 }
 
 bool MusicDirectorScene::switch_child(MusicalState state) {
@@ -130,6 +131,23 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
             next->update_default_properties();
             next->register_properties();
 
+            // Scene Variants are the Director-facing control surface. Pick the
+            // curated look whose declared energy best matches the musical state
+            // instead of teaching Music Director scene-specific property names.
+            const float target_intensity = state == MusicalState::Calm ? 0.28f
+                : state == MusicalState::Groove ? 0.52f
+                : state == MusicalState::Build ? 0.72f : 0.92f;
+            const auto descriptor = next->get_descriptor();
+            const Scenes::SceneVariant *best_variant = nullptr;
+            float best_distance = 100.0f;
+            for (const auto &variant : descriptor.variants) {
+                const auto profile = Scenes::effective_profile(descriptor, &variant);
+                const float distance = std::abs(profile.intensity - target_intensity)
+                    - profile.music_affinity * 0.08f + profile.performance_cost * 0.04f;
+                if (distance < best_distance) { best_distance = distance; best_variant = &variant; }
+            }
+            if (best_variant) next->apply_variant(best_variant->id);
+
             nlohmann::json arguments = nlohmann::json::object();
             for (const auto &property : next->get_properties()) {
                 if (!property) continue;
@@ -144,6 +162,7 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
             next->initialize(matrix_width, matrix_height);
 
             stop_child();
+            child_variant_ = next->get_variant_id();
             child_ = std::move(next);
             child_name_ = name;
             child_state_ = state;
@@ -166,7 +185,7 @@ bool MusicDirectorScene::switch_child(MusicalState state) {
                         break;
                 }
             }
-            spdlog::info("Music Director selected '{}'", child_name_);
+            spdlog::info("Music Director selected '{}' variant '{}'", child_name_, child_variant_);
             return true;
         } catch (const std::exception &e) {
             spdlog::warn("Music Director could not start '{}': {}", name, e.what());
