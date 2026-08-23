@@ -173,8 +173,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         no_scene_count = 0;
         if (!scene->is_initialized()) scene->initialize(matrix_width, matrix_height);
+        const tmillis_t presentation_duration = lab_mode
+            ? 3600000
+            : (automatic_mode
+                ? automatic_director_.presentation_duration(scene, runtime_inputs)
+                : scene->get_duration());
         if (automatic_mode) automatic_director_.record_played(scene);
-        const tmillis_t end_ms = time_source_->now_ms() + (lab_mode ? 3600000 : scene->get_duration());
+        const tmillis_t end_ms = time_source_->now_ms() + presentation_duration;
 
         set_curr_scene_fn_(scene);
 
@@ -186,7 +191,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             scheduler_.resolve_transition_duration(preset, scene);
         auto transition_name =
             scheduler_.resolve_transition_name(preset, scene);
-        if (scheduler_.should_schedule_transition(transition_duration, scene->get_duration())
+        if (scheduler_.should_schedule_transition(transition_duration, presentation_duration)
             && !pinned_scene && !automatic_mode && !lab_mode) {
             auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
                 scene != nullptr ? scene->get_name() : "");
@@ -215,7 +220,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             scene, composite, end_ms, std::move(inputs_still_available));
 
         if (!early_exit && automatic_mode && !lab_mode
-            && scheduler_.should_schedule_transition(transition_duration, scene->get_duration())) {
+            && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
             const auto latest_inputs = runtime_inputs_fn_();
             const auto decision = automatic_director_.choose(scenes, latest_inputs, scene->get_name());
             next_scene = decision.scene;

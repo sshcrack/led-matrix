@@ -287,6 +287,29 @@ string GameOfLifeScene::get_name() const {
     return "game_of_life";
 }
 
+Scenes::SceneDescriptor GameOfLifeScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "cellular";
+    d.tags = {"generative", "cellular", "organic", "texture"};
+    d.intensity = 0.42f;
+    d.motion = 0.38f;
+    d.music_affinity = 0.12f;
+    d.performance_cost = 0.50f;
+    d.variants = {
+        {"embers", "Slow colony", "Sparse slowly evolving cells with long afterglow",
+         {{"update_rate", 3}, {"random_fill", 0.16f}, {"afterglow", true}, {"afterglow_decay", 0.92f}, {"inject_patterns", true}, {"pattern_injection_rate", 120}},
+         {"calm", "texture", "minimal"}, 0.24f, 0.24f, 0.06f, 0.42f},
+        {"colony", "Living colony", "Balanced cellular motion with recognizable injected patterns",
+         {{"update_rate", 6}, {"random_fill", 0.25f}, {"afterglow", true}, {"afterglow_decay", 0.84f}, {"inject_patterns", true}, {"pattern_injection_rate", 73}},
+         {"organic", "generative"}, 0.46f, 0.44f, 0.10f, 0.50f},
+        {"chaos", "Cellular bloom", "Faster denser evolution for vivid ambient sections",
+         {{"update_rate", 11}, {"random_fill", 0.34f}, {"afterglow", true}, {"afterglow_decay", 0.72f}, {"inject_patterns", true}, {"pattern_injection_rate", 40}},
+         {"dense", "energetic", "texture"}, 0.72f, 0.68f, 0.16f, 0.62f},
+    };
+    return d;
+}
+
 void GameOfLifeScene::register_properties() {
     add_property(update_rate);
     add_property(random_fill);

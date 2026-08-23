@@ -56,6 +56,21 @@ void SpotifyMVScene::register_properties()
   add_property(fallback_to_lyric_video);
 }
 
+Scenes::SceneDescriptor SpotifyMVScene::get_descriptor() const
+{
+  auto d = Scene::get_descriptor();
+  d.automatic_eligible = true;
+  d.family = "spotify-video";
+  d.tags = {"music", "media", "spotify", "spotify-video", "cinematic", "motion"};
+  d.intensity = 0.70f;
+  d.motion = 0.86f;
+  d.music_affinity = 1.0f;
+  // The Pi only copies already-decoded RGB frames. Downloading/decoding is
+  // deliberately paid by the desktop plugin, so this is a cheap Pi scene.
+  d.performance_cost = 0.18f;
+  return d;
+}
+
 void SpotifyMVScene::after_render_stop()
 {
   if (plugin_)
