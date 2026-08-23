@@ -122,6 +122,11 @@ namespace Scenes {
         float rainbow_time = 0.0f;
         float aurora_continuous_time = 0.0f;
 
+        // Static horizontal gradient modulation. The old renderer evaluated
+        // sin(x * 0.1) for every pixel every frame even though it only depends
+        // on x. Cache the matrix-width-sized lookup instead.
+        std::vector<float> background_x_variation_;
+
         struct Images {
             Magick::Image currentIcon;
             std::vector<Magick::Image> forecastIcons;
@@ -134,8 +139,8 @@ namespace Scenes {
         static RGB getThemeColor(ColorTheme theme, const WeatherData &data);
 
         // Rendering methods
-        void renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data);
-        void renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const;
+        void renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data, const RGB &theme_color);
+        void renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data, const RGB &theme_color) const;
         void renderSunriseSunset(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const;
         void renderClock(rgb_matrix::FrameCanvas *canvas) const;
         void resetStars();

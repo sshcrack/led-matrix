@@ -78,7 +78,12 @@ bool SceneRenderer::render_scene_phase(
     });
 
     tmillis_t next_input_check_ms = time_source_->now_ms();
-    tmillis_t last_present_ms = 0;
+    // Pace from the previous render start, not from the previous completed
+    // SwapOnVSync(). SwapOnVSync() already waits for the next matrix refresh.
+    // Pacing from the completed swap adds a second full frame interval at
+    // 60 FPS (sleep ~16 ms, then wait for VSync again), which can reduce local
+    // presentation to roughly half rate on a healthy renderer.
+    tmillis_t last_frame_start_ms = 0;
     const tmillis_t target_step_ms = std::max<tmillis_t>(
         1, 1000 / std::max(1, scene->get_declared_target_fps()));
     unsigned local_pressure_streak = 0;
@@ -86,11 +91,14 @@ bool SceneRenderer::render_scene_phase(
 
     while (time_source_->now_ms() < end_ms) {
         auto now_ms = time_source_->now_ms();
-        // SwapOnVSync is the authoritative 60 Hz pacing source. Only add an
-        // extra delay for scenes that deliberately target a lower update rate;
-        // do not also let Scene::wait_until_next_frame() sleep inside render().
-        if (last_present_ms != 0 && now_ms < last_present_ms + target_step_ms) {
-            SleepMillis(last_present_ms + target_step_ms - now_ms);
+        // SwapOnVSync below supplies the unavoidable hardware VSync wait. This
+        // time-based limiter only fills the remainder for scenes targeting a
+        // lower update rate. Anchoring it to render start means a 60 FPS scene
+        // normally reaches this point after its target interval has already
+        // elapsed while waiting for the previous VSync, so no second sleep is
+        // introduced.
+        if (last_frame_start_ms != 0 && now_ms < last_frame_start_ms + target_step_ms) {
+            SleepMillis(last_frame_start_ms + target_step_ms - now_ms);
             now_ms = time_source_->now_ms();
         }
         if (inputs_still_available && now_ms >= next_input_check_ms) {
@@ -100,9 +108,11 @@ bool SceneRenderer::render_scene_phase(
                 return true;
             }
         }
+        const tmillis_t frame_start_ms = time_source_->now_ms();
 
         bool cont = true;
         bool used_remote_frame = false;
+        bool local_frame_updated = false;
         if (remote_session.has_value()) {
             if (!desktop_available()) {
                 remote_session.reset();
@@ -136,6 +146,7 @@ bool SceneRenderer::render_scene_phase(
             const auto render_start = std::chrono::steady_clock::now();
             try {
                 cont = scene->render_frame(composite_offscreen_canvas, std::nullopt, true);
+                local_frame_updated = scene->frame_was_updated();
             } catch (const std::exception &e) {
                 diagnostics.record_scene_error(scene->get_name(), e.what());
                 spdlog::error("Scene '{}' threw while rendering: {}", scene->get_name(), e.what());
@@ -194,15 +205,21 @@ bool SceneRenderer::render_scene_phase(
             }
         }
 
-        if (post_processor_)
-            post_processor_->apply_effects(composite_offscreen_canvas);
+        const bool frame_updated = used_remote_frame || local_frame_updated;
+        if (frame_updated) {
+            if (post_processor_)
+                post_processor_->apply_effects(composite_offscreen_canvas);
 
-        LiveFrame::SnapshotStore::instance().capture_if_requested(
-            composite_offscreen_canvas, matrix_->width(), matrix_->height());
+            LiveFrame::SnapshotStore::instance().capture_if_requested(
+                composite_offscreen_canvas, matrix_->width(), matrix_->height());
 
-        composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
-        last_present_ms = time_source_->now_ms();
-        presenter_->present();
+            composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
+            presenter_->present();
+        }
+
+        // A held frame skips SwapOnVSync, so retain software pacing instead of
+        // busy-looping while the scene waits for new state.
+        last_frame_start_ms = frame_start_ms;
 
         if (!cont || *interrupt_flag_ || *exit_flag_) {
             trace("Exiting scene early.");
