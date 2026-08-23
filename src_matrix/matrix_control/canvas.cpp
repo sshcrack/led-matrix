@@ -260,7 +260,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 first, second, composite,
                 matrix_width, matrix_height,
                 transition_duration, transition_name, forced_scene_, transition_delay,
-                std::move(transition_inputs_still_available));
+                std::move(transition_inputs_still_available), renderer_.last_presented_canvas());
         }
 
         if (automatic_mode) {

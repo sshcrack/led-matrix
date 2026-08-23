@@ -213,7 +213,9 @@ bool SceneRenderer::render_scene_phase(
             LiveFrame::SnapshotStore::instance().capture_if_requested(
                 composite_offscreen_canvas, matrix_->width(), matrix_->height());
 
+            auto *presented_canvas = composite_offscreen_canvas;
             composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
+            last_presented_canvas_ = presented_canvas;
             presenter_->present();
         }
 
