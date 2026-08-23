@@ -7,7 +7,15 @@ endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
-option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
+if(WIN32)
+    # The headless rpi-rgb-led-matrix emulator used by the worker depends on
+    # POSIX headers (pthread.h, sys/mman.h, ...), so it cannot be built with
+    # the native Windows toolchain. Windows desktop builds still include the
+    # dedicated desktop plugins and can use their existing render paths.
+    option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" OFF)
+else()
+    option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
+endif()
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
 option(SKIP_WEB_BUILD "Skip building and installing the React web application" OFF)
 
@@ -1026,4 +1034,3 @@ else()
 
     include(CPack)
 endif()
-

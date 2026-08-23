@@ -163,7 +163,7 @@ Remote offload and adaptive local quality complement each other: local quality p
 
 ## Desktop scene worker
 
-Desktop builds include `led-matrix-scene-worker` by default (`ENABLE_SCENE_WORKER=ON`). The process is supervised by the desktop `RenderOffload` plugin.
+Linux desktop builds include `led-matrix-scene-worker` by default (`ENABLE_SCENE_WORKER=ON`). The process is supervised by the desktop `RenderOffload` plugin. Windows desktop builds omit it because the headless `rpi-rgb-led-matrix` emulator depends on POSIX headers that are not available in the native Windows toolchain.
 
 The worker:
 
