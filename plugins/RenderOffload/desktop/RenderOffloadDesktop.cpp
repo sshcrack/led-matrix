@@ -1,25 +1,46 @@
 #include "RenderOffloadDesktop.h"
 
-#include <algorithm>
-#include <cmath>
+#include <filesystem>
+#include <vector>
+#include <thread>
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
-#include "RenderFramePacket.h"
+#include <shared/common/utils/utils.h>
+#include <shared/desktop/config.h>
+
+#ifndef _WIN32
+#include <cerrno>
+#include <csignal>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 REGISTER_PLUGIN(RenderOffload, RenderOffloadDesktop)
 
+namespace fs = std::filesystem;
+
 namespace {
-template <typename T>
-T value_or(const nlohmann::json &j, const char *key, T fallback)
+fs::path worker_executable()
 {
-    if (!j.contains(key))
-        return fallback;
-    try { return j.at(key).get<T>(); }
-    catch (...) { return fallback; }
+#ifdef _WIN32
+    constexpr const char *name = "led-matrix-scene-worker.exe";
+#else
+    constexpr const char *name = "led-matrix-scene-worker";
+#endif
+    const auto local = get_exec_dir() / name;
+    if (fs::is_regular_file(local)) return local;
+    const auto sibling = get_exec_dir().parent_path() / "bin" / name;
+    if (fs::is_regular_file(sibling)) return sibling;
+    return local;
 }
 } // namespace
+
+RenderOffloadDesktop::~RenderOffloadDesktop()
+{
+    stop_worker();
+}
 
 void RenderOffloadDesktop::initialize_imgui(
     ImGuiContext *context, ImGuiMemAllocFunc *alloc_fn,
@@ -29,149 +50,197 @@ void RenderOffloadDesktop::initialize_imgui(
     ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
 }
 
+void RenderOffloadDesktop::post_init()
+{
+    ensure_worker();
+}
+
+void RenderOffloadDesktop::pre_new_frame()
+{
+    ensure_worker();
+}
+
+void RenderOffloadDesktop::before_exit()
+{
+    stop_worker();
+}
+
 void RenderOffloadDesktop::render()
 {
     std::lock_guard lock(mutex_);
     ImGui::TextUnformatted("Automatic render offload");
-    ImGui::Text("State: %s", active_ ? "rendering on desktop" : "idle");
-    if (active_) {
-        ImGui::Text("Renderer: %s", renderer_id_.c_str());
-        ImGui::Text("Target: %dx%d @ %d FPS", metaball_params_.width, metaball_params_.height, target_fps_);
-        ImGui::Text("Session: %u", session_);
+    ImGui::Text("Scene worker: %s", worker_running_ ? "running" : "stopped");
+    if (!worker_host_.empty())
+        ImGui::Text("Matrix: %s:%u", worker_host_.c_str(), worker_port_);
+    if (requested_session_ != 0) {
+        ImGui::Text("Requested scene: %s", requested_scene_.c_str());
+        ImGui::Text("Session: %u", requested_session_);
+    } else {
+        ImGui::TextUnformatted("Requested scene: none");
     }
-    ImGui::TextWrapped("The Pi requests this automatically only when a scene exceeds its measured frame budget.");
+    if (!worker_error_.empty())
+        ImGui::TextWrapped("Worker: %s", worker_error_.c_str());
+    ImGui::TextWrapped(
+        "The worker runs the same plugin scene code as the Pi. New portable scenes are automatically eligible for offload; no desktop renderer implementation is required.");
 }
 
 void RenderOffloadDesktop::on_websocket_message(std::string message)
 {
     try {
         const auto command = nlohmann::json::parse(message);
-        const auto op = value_or<std::string>(command, "op", "");
-        const auto session = value_or<std::uint32_t>(command, "session", 0);
-        if (session == 0)
-            return;
-
+        const auto op = command.value("op", std::string{});
+        const auto session = command.value("session", 0U);
         std::lock_guard lock(mutex_);
-        if (op == "start") {
-            const auto renderer = value_or<std::string>(command, "renderer", "");
-            if (renderer != "metablob") {
-                spdlog::warn("RenderOffload does not support desktop renderer '{}'", renderer);
-                return;
-            }
-
-            session_ = session;
-            sequence_ = 0;
-            renderer_id_ = renderer;
-            target_fps_ = std::clamp(value_or<int>(command, "target_fps", 60), 1, 60);
-            metaball_params_.width = std::clamp(value_or<int>(command, "width", 128), 1, 512);
-            metaball_params_.height = std::clamp(value_or<int>(command, "height", 128), 1, 512);
-
-            const auto arguments = command.value("arguments", nlohmann::json::object());
-            metaball_params_.blob_count = std::clamp(value_or<int>(arguments, "num_blobs", 10), 1, 24);
-            metaball_params_.threshold = value_or<float>(arguments, "threshold", 0.0003f);
-            metaball_params_.speed = value_or<float>(arguments, "speed", 0.25f);
-            metaball_params_.move_range = value_or<float>(arguments, "move_range", 0.5f);
-            metaball_params_.color_speed = value_or<float>(arguments, "color_speed", 0.033f);
-            metaball_params_.audio_reactive = value_or<bool>(arguments, "audio_reactive", false);
-            metaball_params_.audio_strength = value_or<float>(arguments, "audio_strength", 0.75f);
-
-            metaball_audio_ = {};
-            time_seconds_ = 0.0f;
-            last_render_ = {};
-            audio_fresh_ = false;
-            audio_bass_target_ = audio_mids_target_ = audio_treble_target_ = audio_balance_target_ = 0.0f;
-            audio_kick_ = 0.0f;
-            beat_counter_ = drop_counter_ = section_counter_ = 0;
-            active_ = true;
-            spdlog::debug("Desktop render offload started session {} for {}", session_, renderer_id_);
-            return;
+        if (op == "start" && session != 0) {
+            requested_session_ = session;
+            requested_scene_ = command.value("scene", std::string{});
+        } else if (op == "stop" && session == requested_session_) {
+            requested_session_ = 0;
+            requested_scene_.clear();
         }
-
-        if (session != session_)
-            return;
-
-        if (op == "stop") {
-            active_ = false;
-            renderer_id_.clear();
-            return;
-        }
-
-        if (op == "audio") {
-            audio_fresh_ = value_or<bool>(command, "fresh", false);
-            audio_bass_target_ = value_or<float>(command, "bass", 0.0f);
-            audio_mids_target_ = value_or<float>(command, "mids", 0.0f);
-            audio_treble_target_ = value_or<float>(command, "treble", 0.0f);
-            audio_balance_target_ = value_or<float>(command, "balance", 0.0f);
-            audio_kick_ = value_or<float>(command, "kick", 0.0f);
-
-            const auto beat = value_or<std::uint64_t>(command, "beat_counter", beat_counter_);
-            const auto drop = value_or<std::uint64_t>(command, "drop_counter", drop_counter_);
-            const auto section = value_or<std::uint64_t>(command, "section_counter", section_counter_);
-            if (audio_fresh_ && beat != beat_counter_)
-                metaball_audio_.beat_pulse = std::max(metaball_audio_.beat_pulse, 0.55f + audio_kick_ * 0.45f);
-            if (audio_fresh_ && drop != drop_counter_)
-                metaball_audio_.drop_pulse = 1.0f;
-            if (audio_fresh_ && section != section_counter_)
-                metaball_audio_.section_hue += 0.17f;
-            beat_counter_ = beat;
-            drop_counter_ = drop;
-            section_counter_ = section;
-        }
-    } catch (const std::exception &e) {
-        spdlog::warn("Rejected RenderOffload command: {}", e.what());
+    } catch (...) {
+        // Worker heartbeats and malformed commands are not UI state.
     }
 }
 
-std::vector<std::unique_ptr<UdpPacket>>
-RenderOffloadDesktop::compute_next_packets(const std::string &)
+bool RenderOffloadDesktop::worker_alive()
 {
-    std::lock_guard lock(mutex_);
-    if (!active_ || session_ == 0 || renderer_id_ != "metablob")
-        return {};
+#ifdef _WIN32
+    if (!worker_process_.hProcess) return false;
+    DWORD code = 0;
+    if (!GetExitCodeProcess(worker_process_.hProcess, &code) || code != STILL_ACTIVE) {
+        CloseHandle(worker_process_.hProcess);
+        CloseHandle(worker_process_.hThread);
+        worker_process_ = {};
+        return false;
+    }
+    return true;
+#else
+    if (worker_pid_ <= 0) return false;
+    int status = 0;
+    const pid_t result = waitpid(worker_pid_, &status, WNOHANG);
+    if (result == 0) return true;
+    if (result == worker_pid_ || (result < 0 && errno == ECHILD)) {
+        worker_pid_ = -1;
+        return false;
+    }
+    return true;
+#endif
+}
+
+void RenderOffloadDesktop::ensure_worker()
+{
+    const auto &general = Config::ConfigManager::instance()->getGeneralConfig();
+    const auto host = general.getHostnameCopy();
+    const auto port = general.getPort();
+
+    bool alive = worker_alive();
+    if (alive && (host != worker_host_ || port != worker_port_)) {
+        stop_worker();
+        alive = false;
+    }
+
+    {
+        std::lock_guard lock(mutex_);
+        worker_running_ = alive;
+    }
+    if (host.empty() || alive)
+        return;
 
     const auto now = Clock::now();
-    const auto min_interval = std::chrono::duration<double>(1.0 / static_cast<double>(target_fps_));
-    if (last_render_ != Clock::time_point{} && now - last_render_ < min_interval)
-        return {};
+    if (last_launch_attempt_ != Clock::time_point{}
+        && now - last_launch_attempt_ < std::chrono::seconds(2))
+        return;
+    last_launch_attempt_ = now;
+    start_worker(host, port);
+}
 
-    float dt = 1.0f / static_cast<float>(target_fps_);
-    if (last_render_ != Clock::time_point{})
-        dt = static_cast<float>(std::chrono::duration<double>(now - last_render_).count());
-    dt = std::clamp(dt, 0.0f, 0.10f);
-    last_render_ = now;
-
-    const float response = 1.0f - std::exp(-dt * 8.0f);
-    const float bass = audio_fresh_ ? audio_bass_target_ : 0.0f;
-    const float mids = audio_fresh_ ? audio_mids_target_ : 0.0f;
-    const float treble = audio_fresh_ ? audio_treble_target_ : 0.0f;
-    const float balance = audio_fresh_ ? audio_balance_target_ : 0.0f;
-    metaball_audio_.bass += (bass - metaball_audio_.bass) * response;
-    metaball_audio_.mids += (mids - metaball_audio_.mids) * response;
-    metaball_audio_.treble += (treble - metaball_audio_.treble) * response;
-    metaball_audio_.balance += (balance - metaball_audio_.balance) * response;
-    metaball_audio_.beat_pulse = std::max(0.0f, metaball_audio_.beat_pulse - dt * 3.0f);
-    metaball_audio_.drop_pulse = std::max(0.0f, metaball_audio_.drop_pulse - dt * 0.95f);
-
-    const auto &rgb = metaball_renderer_.render(
-        metaball_params_, metaball_audio_, time_seconds_, 1.0f);
-    time_seconds_ += dt;
-
-    constexpr std::size_t ChunkBytes = 1200;
-    const auto frame_sequence = ++sequence_;
-    const auto chunk_count = static_cast<std::uint16_t>((rgb.size() + ChunkBytes - 1) / ChunkBytes);
-    std::vector<std::unique_ptr<UdpPacket>> packets;
-    packets.reserve(chunk_count);
-    for (std::uint16_t chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
-        const std::size_t offset = static_cast<std::size_t>(chunk_index) * ChunkBytes;
-        const std::size_t count = std::min(ChunkBytes, rgb.size() - offset);
-        std::vector<std::uint8_t> chunk(rgb.begin() + static_cast<std::ptrdiff_t>(offset),
-                                        rgb.begin() + static_cast<std::ptrdiff_t>(offset + count));
-        packets.push_back(std::make_unique<RenderFramePacket>(
-            session_, frame_sequence,
-            static_cast<std::uint16_t>(metaball_params_.width),
-            static_cast<std::uint16_t>(metaball_params_.height),
-            chunk_index, chunk_count, static_cast<std::uint32_t>(offset),
-            std::move(chunk)));
+bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t port)
+{
+    const auto executable = worker_executable();
+    if (!fs::is_regular_file(executable)) {
+        std::lock_guard lock(mutex_);
+        worker_error_ = "led-matrix-scene-worker is missing from the desktop installation";
+        worker_running_ = false;
+        return false;
     }
-    return packets;
+
+#ifdef _WIN32
+    std::string command = "\"" + executable.string() + "\" --host \"" + host
+        + "\" --port " + std::to_string(port);
+    std::vector<char> cmdline(command.begin(), command.end());
+    cmdline.push_back('\0');
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESHOWWINDOW;
+    startup.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION process{};
+    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
+        std::lock_guard lock(mutex_);
+        worker_error_ = "failed to start scene worker (Windows error " + std::to_string(GetLastError()) + ")";
+        worker_running_ = false;
+        return false;
+    }
+    worker_process_ = process;
+#else
+    const pid_t pid = fork();
+    if (pid < 0) {
+        std::lock_guard lock(mutex_);
+        worker_error_ = "failed to fork scene worker";
+        worker_running_ = false;
+        return false;
+    }
+    if (pid == 0) {
+        const auto port_string = std::to_string(port);
+        execl(executable.c_str(), executable.c_str(), "--host", host.c_str(),
+              "--port", port_string.c_str(), static_cast<char *>(nullptr));
+        _exit(127);
+    }
+    worker_pid_ = pid;
+#endif
+
+    worker_host_ = host;
+    worker_port_ = port;
+    {
+        std::lock_guard lock(mutex_);
+        worker_error_.clear();
+        worker_running_ = true;
+    }
+    spdlog::info("Started generic scene worker for {}:{}", host, port);
+    return true;
+}
+
+void RenderOffloadDesktop::stop_worker()
+{
+#ifdef _WIN32
+    if (worker_process_.hProcess) {
+        if (WaitForSingleObject(worker_process_.hProcess, 0) == WAIT_TIMEOUT) {
+            TerminateProcess(worker_process_.hProcess, 0);
+            WaitForSingleObject(worker_process_.hProcess, 2000);
+        }
+        CloseHandle(worker_process_.hProcess);
+        CloseHandle(worker_process_.hThread);
+        worker_process_ = {};
+    }
+#else
+    if (worker_pid_ > 0) {
+        kill(worker_pid_, SIGTERM);
+        int status = 0;
+        for (int i = 0; i < 10; ++i) {
+            if (waitpid(worker_pid_, &status, WNOHANG) == worker_pid_) {
+                worker_pid_ = -1;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        if (worker_pid_ > 0) {
+            kill(worker_pid_, SIGKILL);
+            waitpid(worker_pid_, &status, 0);
+            worker_pid_ = -1;
+        }
+    }
+#endif
+    std::lock_guard lock(mutex_);
+    worker_running_ = false;
 }

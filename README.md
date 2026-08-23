@@ -680,7 +680,7 @@ curl "http://matrix-ip:8080/api/update/releases?per_page=3"
 |---------|----------|
 | **Matrix flickering** | Check power supply amperage - LEDs need significant current. Flickering can also be caused because the RPi has not enough performance |
 | **Permission errors** | Run with `sudo` for GPIO access |
-| **Slow performance** | Try upgrading your Pi to a newer model or reduce `--led-pwm-bits` |
+| **Slow performance** | Check Diagnostics for per-scene p95/frame-budget pressure. Portable heavy scenes can automatically move to the desktop scene worker; local adaptive quality also reduces load. |
 | **Can't connect to API** | Check firewall and ensure port 8080 is open |
 | **Panels not lighting up** | Verify `--led-panel-type` setting |
 | **Colors look wrong** | Adjust `--led-multiplexing` settings (try values 0-17) |
@@ -694,7 +694,9 @@ Extend the matrix with your own custom scenes and effects! Create powerful plugi
 
 ### 📖 **Comprehensive Documentation**
 
-For detailed plugin development, check out our **[Complete Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**!
+For detailed plugin development, check out the **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**. The **[Scene Execution Guide](docs/SCENE_EXECUTION.md)** explains previews, Runtime Inputs, adaptive quality, and automatic desktop render offload.
+
+Scene implementations now live in `plugins/<Plugin>/scenes/` and are compiled once for the Pi, previews, and the generic desktop scene worker. A normal portable scene does not need a separate desktop renderer.
 
 This comprehensive guide covers:
 - 🏗️ **Plugin Architecture** - Understanding the modular system
@@ -706,8 +708,9 @@ This comprehensive guide covers:
 - 🎭 **Post-Processing Effects** - Screen-wide effects and transformations
 - 🌐 **REST API Integration** - Custom endpoints and remote control
 - 💬 **Desktop Communication** - WebSocket messaging and data streaming
-- 🔧 **Advanced Features** - Resource loading, lifecycle hooks, and more
-- 📦 **Building and Testing** - CMake configuration and emulator testing
+- 🔧 **Advanced Features** - Runtime Inputs, resource loading, lifecycle hooks, and state migration
+- 🖥️ **Hybrid Rendering** - Automatic Pi/desktop placement without duplicate scene renderers
+- 📦 **Building and Testing** - Matrix, emulator, scene-worker, and web validation
 - 🎯 **Best Practices** - Performance, error handling, and code organization
 
 ### ⚙️ **Advanced Plugin Features**

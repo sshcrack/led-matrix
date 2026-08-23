@@ -1,8 +1,8 @@
 register_plugin(SpotifyMV
     matrix/SpotifyMVPlugin.cpp
     matrix/SpotifyMVPlugin.h
-    matrix/scenes/SpotifyMVScene.cpp
-    matrix/scenes/SpotifyMVScene.h
+    scenes/SpotifyMVScene.cpp
+    scenes/SpotifyMVScene.h
     DESKTOP
     desktop/SpotifyMVDesktop.cpp
     desktop/SpotifyMVDesktop.h

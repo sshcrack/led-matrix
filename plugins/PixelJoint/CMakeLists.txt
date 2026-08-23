@@ -2,8 +2,8 @@
 register_plugin(PixelJoint
         matrix/PixelJoint.cpp
         matrix/PixelJoint.h
-        matrix/scenes/image/ImageScene.cpp
-        matrix/scenes/image/ImageScene.h
+        scenes/image/ImageScene.cpp
+        scenes/image/ImageScene.h
         matrix/providers/collection.cpp
         matrix/providers/collection.h
         matrix/providers/pages.cpp
@@ -30,3 +30,9 @@ if(NOT ENABLE_DESKTOP)
         target_link_libraries(PixelJoint PRIVATE LibXml2::LibXml2)
 endif()
 
+if(TARGET PixelJointSceneWorker)
+        find_package(CURL REQUIRED)
+        find_package(cpr CONFIG REQUIRED)
+        find_package(LibXml2 REQUIRED)
+        target_link_libraries(PixelJointSceneWorker PRIVATE ${CURL_LIBRARIES} cpr::cpr LibXml2::LibXml2)
+endif()

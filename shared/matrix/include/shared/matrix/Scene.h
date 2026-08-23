@@ -115,6 +115,13 @@ namespace Scenes {
             return this->uuid;
         }
 
+        [[nodiscard]] const SceneFrameContext &get_frame_context() const { return frame_context_; }
+        void restore_frame_timeline(double elapsed_seconds) {
+            frame_context_.elapsed_seconds = std::max(0.0, elapsed_seconds);
+            frame_context_.now_ms = static_cast<std::uint64_t>(frame_context_.elapsed_seconds * 1000.0);
+            frame_clock_started_ = false;
+        }
+
 
         /// This method is used to update the default of properties dynamically. It is called before a property has been registered.
         virtual void update_default_properties() {
@@ -137,6 +144,14 @@ namespace Scenes {
         [[nodiscard]] virtual std::string get_transition_name() const;
 
         [[nodiscard]] virtual nlohmann::json to_json() const;
+
+        /// Optional transient state used when placement migrates between the
+        /// Pi and desktop worker. Most deterministic scenes need no override;
+        /// stateful scenes can opt in without changing the transport protocol.
+        [[nodiscard]] virtual nlohmann::json snapshot_runtime_state() const {
+            return nlohmann::json::object();
+        }
+        virtual void restore_runtime_state(const nlohmann::json &) {}
 
         [[nodiscard]] virtual string get_name() const = 0;
         [[nodiscard]] virtual std::string get_category() const { return "General"; }

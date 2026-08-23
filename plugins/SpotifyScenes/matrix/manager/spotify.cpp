@@ -35,6 +35,8 @@ void publish_spotify_runtime_input(std::optional<SpotifyState> state)
         signals.emplace("track", *song);
     if (const auto artist = track.get_artist_name(); artist.has_value())
         signals.emplace("artist", *artist);
+    if (const auto cover = track.get_cover(); cover.has_value())
+        signals.emplace("cover_url", *cover);
 
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,

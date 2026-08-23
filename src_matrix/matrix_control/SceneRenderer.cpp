@@ -39,8 +39,8 @@ bool SceneRenderer::render_scene_phase(
     const auto caps = scene->get_capabilities();
     const double budget_ms = 1000.0 / static_cast<double>(
         std::max(1, scene->get_declared_target_fps()));
-    const auto desktop_available = [] {
-        return RuntimeInputs::snapshot().available(RuntimeInputIds::Desktop);
+    const auto desktop_available = [&scene] {
+        return RemoteRender::worker_available(scene->get_name());
     };
 
     std::optional<std::uint32_t> remote_session;
@@ -64,9 +64,9 @@ bool SceneRenderer::render_scene_phase(
         if (remote_status.requested)
             RemoteRender::stop();
         if (!caps.supports_remote_rendering)
-            placement_reason = "scene has no desktop renderer; adaptive local quality is active";
+            placement_reason = "scene explicitly opted out of generic desktop execution; adaptive local quality is active";
         else
-            placement_reason = "desktop is disconnected; rendering locally";
+            placement_reason = "desktop scene worker is unavailable; rendering locally";
     }
 
     diagnostics.set_render_placement({
@@ -110,12 +110,12 @@ bool SceneRenderer::render_scene_phase(
                 diagnostics.set_render_placement({
                     {"scene", scene->get_name()},
                     {"placement", "local"},
-                    {"reason", "desktop disconnected; immediate local fallback"},
+                    {"reason", "desktop scene worker became unavailable; immediate local fallback"},
                     {"frame_budget_ms", budget_ms},
                     {"quality_scale", scene->get_render_quality_scale()},
                 });
             } else {
-                RemoteRender::publish_audio(*remote_session);
+                RemoteRender::publish_runtime_state(*remote_session);
                 used_remote_frame = RemoteRender::copy_latest(
                     *remote_session, composite_offscreen_canvas,
                     matrix_->width(), matrix_->height());
