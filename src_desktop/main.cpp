@@ -197,6 +197,8 @@ int run_app(int argc, char *argv[]) {
     int udpFpsLimit = cfg->getGeneralConfig().getUdpFpsLimit();
     bool matrixOnOnStart = cfg->getGeneralConfig().isTurnMatrixOnOnStart();
     bool matrixOffOnExit = cfg->getGeneralConfig().isTurnMatrixOffOnExit();
+    std::string ytdlpPathInput = cfg->getGeneralConfig().getYtDlpPath();
+    std::string ytdlpStatusError = check_ytdlp_available();
 
     if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
         spdlog::info("Starting minimized.");
@@ -313,6 +315,46 @@ int run_app(int argc, char *argv[]) {
         if (ImGui::Checkbox("Turn Matrix Off on Exit", &matrixOffOnExit)) {
             generalCfg.setTurnMatrixOffOnExit(matrixOffOnExit);
         }
+
+        ImGui::SeparatorText("External Tools");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##ytdlpPath", "yt-dlp binary path (empty = use PATH)", &ytdlpPathInput);
+
+        auto applyYtDlpPath = [&] {
+            generalCfg.setYtDlpPath(ytdlpPathInput);
+            ytdlpStatusError = check_ytdlp_available();
+            cfg->saveConfig();
+        };
+
+        if (ImGui::Button("Apply yt-dlp Path")) {
+            applyYtDlpPath();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Browse...")) {
+            const auto selectedPath = open_file_dialog("Select yt-dlp binary");
+            if (!selectedPath.empty()) {
+                ytdlpPathInput = selectedPath;
+                applyYtDlpPath();
+            }
+        }
+        if (!ytdlpPathInput.empty()) {
+            ImGui::SameLine();
+            if (ImGui::Button("Use PATH")) {
+                ytdlpPathInput.clear();
+                applyYtDlpPath();
+            }
+        }
+
+        if (ytdlpStatusError.empty()) {
+            const auto configured = generalCfg.getYtDlpPath();
+            if (configured.empty())
+                ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.3f, 1.0f), "yt-dlp: found in PATH");
+            else
+                ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.3f, 1.0f), "yt-dlp: configured binary is available");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f), "%s", ytdlpStatusError.c_str());
+        }
+        ImGui::TextDisabled("Shared by Video and SpotifyMV. You can change this at any time.");
 
         auto state = ws->getReadyState();
         const std::string stateStr = ws->getReadyStateString();

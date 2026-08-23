@@ -19,15 +19,13 @@ std::string sanitize_query(const std::string& raw) {
 }
 } // anonymous namespace
 
-std::string YouTubeSearcher::search(const std::string& query,
-                                    const std::string& ytdlp_path) {
+std::string YouTubeSearcher::search(const std::string& query) {
   std::string safe = sanitize_query(query);
   if (safe.empty()) {
     spdlog::warn("YouTubeSearcher: query empty after sanitization");
     return "";
   }
-  std::string ytdlp = ytdlp_path.empty() ? "yt-dlp" : "\"" + ytdlp_path + "\"";
-  std::string cmd = ytdlp + " \"ytsearch1:" + safe + "\" "
+  std::string cmd = get_ytdlp_command() + " \"ytsearch1:" + safe + "\" "
                     "--flat-playlist --print webpage_url --no-warnings 2>"
 #ifdef _WIN32
                     "nul"

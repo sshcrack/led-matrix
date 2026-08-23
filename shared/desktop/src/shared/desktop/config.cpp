@@ -18,6 +18,7 @@ Config::General::General(const General &other)
     udpFpsLimit = other.udpFpsLimit;
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
+    ytdlpPath = other.ytdlpPath;
 }
 
 Config::General &Config::General::operator=(const General &other)
@@ -35,6 +36,7 @@ Config::General &Config::General::operator=(const General &other)
         udpFpsLimit = other.udpFpsLimit;
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
+        ytdlpPath = other.ytdlpPath;
     }
     return *this;
 }
@@ -49,6 +51,7 @@ Config::General::General(General &&other) noexcept
     udpFpsLimit = other.udpFpsLimit;
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
+    ytdlpPath = std::move(other.ytdlpPath);
 }
 
 Config::General &Config::General::operator=(General &&other) noexcept
@@ -66,6 +69,7 @@ Config::General &Config::General::operator=(General &&other) noexcept
         udpFpsLimit = other.udpFpsLimit;
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
+        ytdlpPath = std::move(other.ytdlpPath);
     }
     return *this;
 }
@@ -171,6 +175,18 @@ void Config::General::setTurnMatrixOnOnStart(bool value)
     turnMatrixOnOnStart = value;
 }
 
+std::string Config::General::getYtDlpPath() const
+{
+    std::shared_lock lock(mutex_);
+    return ytdlpPath;
+}
+
+void Config::General::setYtDlpPath(const std::string &path)
+{
+    std::unique_lock lock(mutex_);
+    ytdlpPath = path;
+}
+
 void Config::from_json(const json &j, General &p)
 {
     std::unique_lock lock(p.mutex_);
@@ -194,6 +210,11 @@ void Config::from_json(const json &j, General &p)
         j.at("turnMatrixOnOnStart").get_to(p.turnMatrixOnOnStart);
     else
         p.turnMatrixOnOnStart = true; // Default value if not specified
+
+    if (j.contains("ytdlpPath"))
+        j.at("ytdlpPath").get_to(p.ytdlpPath);
+    else
+        p.ytdlpPath.clear(); // Empty = discover from PATH.
 }
 
 void Config::to_json(json &j, const General &p)
@@ -205,7 +226,8 @@ void Config::to_json(json &j, const General &p)
         {"fpsLimit", p.fpsLimit},
         {"udpFpsLimit", p.udpFpsLimit},
         {"turnMatrixOffOnExit", p.turnMatrixOffOnExit},
-        {"turnMatrixOnOnStart", p.turnMatrixOnOnStart} //
+        {"turnMatrixOnOnStart", p.turnMatrixOnOnStart},
+        {"ytdlpPath", p.ytdlpPath}
     };
 }
 

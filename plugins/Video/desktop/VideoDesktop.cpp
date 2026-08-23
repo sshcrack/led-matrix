@@ -23,12 +23,7 @@ void VideoDesktop::post_init() {
   auto cacheRoot = get_data_dir() / "cache" / "video";
   std::filesystem::create_directories(cacheRoot);
   engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, matrix_width, matrix_height, fps);
-  auto err = engine_->check_tools();
-  tools_available = err.empty();
-  if (!err.empty()) {
-    tools_error_msg = err;
-    spdlog::error(tools_error_msg);
-  }
+  refresh_tools_status(true);
   engine_->on_status_change = [this](const std::string& s) {
     send_websocket_message("status:" + s);
     if (s == "playing")      state = State::Playing;
@@ -59,8 +54,14 @@ void VideoDesktop::initialize_imgui(ImGuiContext *im_gui_context,
 }
 
 void VideoDesktop::render() {
-  if (!tools_available) {
-    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", tools_error_msg.c_str());
+  if (!tools_available.load()) {
+    std::string error;
+    {
+      std::lock_guard<std::mutex> lock(tools_status_mutex_);
+      error = tools_error_msg;
+    }
+    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", error.c_str());
+    ImGui::TextDisabled("Configure the shared yt-dlp binary under External Tools.");
     return;
   }
   render_status_ui();
@@ -86,11 +87,32 @@ void VideoDesktop::render_status_ui() {
     ImGui::TextColored(ImVec4(1, 0, 0, 1), "Last Error: %s", last_error.c_str());
 }
 
-void VideoDesktop::pre_new_frame() {}
+void VideoDesktop::refresh_tools_status(bool force) {
+  const auto configured_path = Config::ConfigManager::instance()->getGeneralConfig().getYtDlpPath();
+  {
+    std::lock_guard<std::mutex> lock(tools_status_mutex_);
+    if (!force && configured_path == last_checked_ytdlp_path_)
+      return;
+    last_checked_ytdlp_path_ = configured_path;
+  }
+
+  const auto error = check_video_tools_available();
+  tools_available.store(error.empty());
+  {
+    std::lock_guard<std::mutex> lock(tools_status_mutex_);
+    tools_error_msg = error;
+  }
+  if (!error.empty())
+    spdlog::error("Video desktop tools unavailable: {}", error);
+}
+
+void VideoDesktop::pre_new_frame() {
+  refresh_tools_status();
+}
 
 std::optional<std::unique_ptr<UdpPacket>>
 VideoDesktop::compute_next_packet(const std::string sceneName) {
-  if (sceneName != "video" || !tools_available || !allow_sending_packets.load())
+  if (sceneName != "video" || !tools_available.load() || !allow_sending_packets.load())
     return std::nullopt;
   if (engine_->get_state() != Shared::VideoStreamEngine::State::Playing)
     return std::nullopt;
@@ -114,7 +136,8 @@ void VideoDesktop::on_websocket_message(const std::string message) {
     return;
   }
   if (message.starts_with("url:")) {
-    if (!tools_available) {
+    refresh_tools_status(true);
+    if (!tools_available.load()) {
       send_websocket_message("status:error");
       return;
     }

@@ -30,11 +30,6 @@ public:
 
     std::string check_tools();
 
-    // Overrides the yt-dlp binary used for downloads. If empty (default),
-    // "yt-dlp" is looked up in PATH.
-    void set_ytdlp_path(const std::string& path) { ytdlp_path_ = path; }
-    const std::string& ytdlp_path() const { return ytdlp_path_; }
-
     void start(const std::string& url, const std::string& cache_key = "", long seek_ms = 0);
     void stop();
 
@@ -67,7 +62,6 @@ private:
     double fps_;
     std::string current_url_;
     std::string cache_key_;
-    std::string ytdlp_path_;
 
     std::atomic<State> state_{State::Idle};
     mutable std::mutex error_mutex_;
@@ -95,8 +89,6 @@ private:
     std::string build_ytdlp_command(const std::filesystem::path& output_path, int start_sec, int end_sec) const;
     std::string build_ffmpeg_command(const std::filesystem::path& input_path, const std::filesystem::path& output_path) const;
     std::string build_ffmpeg_pipe_command(const std::filesystem::path& input_path) const;
-    // Shell-safe token for invoking yt-dlp (quoted full path, or "yt-dlp").
-    std::string ytdlp_cmd() const;
 
     bool download_and_process_chunk(int chunk_index, bool set_error_on_fail = true,
                                      int start_sec_override = -1);

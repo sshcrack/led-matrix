@@ -16,7 +16,7 @@ public:
 
     void render() override;
     void initialize_imgui(ImGuiContext*, ImGuiMemAllocFunc*, ImGuiMemFreeFunc*, void**) override;
-    void pre_new_frame() override {}
+    void pre_new_frame() override;
     void post_init() override;
     void load_config(std::optional<const nlohmann::json>) override;
     void save_config(nlohmann::json&) const override;
@@ -30,8 +30,10 @@ public:
 private:
     [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
 
-    bool tools_available_ = false;
+    std::atomic<bool> tools_available_{false};
+    std::mutex tools_status_mutex_;
     std::string tools_error_msg_;
+    std::string last_checked_ytdlp_path_;
     std::mutex track_id_mutex_;
     std::string current_track_id_;
     std::string pending_track_id_;
@@ -67,6 +69,7 @@ private:
     std::atomic<int> total_errors_{0};
     std::atomic<int> total_swaps_{0};
 
+    void refresh_tools_status(bool force = false);
     void on_pending_first_frame();
 
     void search_and_play(Shared::VideoStreamEngine* engine,
