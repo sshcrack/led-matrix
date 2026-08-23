@@ -4,16 +4,17 @@
 #include <cstring>
 #include <span>
 
+#include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/remote_render.h>
 #include <spdlog/spdlog.h>
 
 namespace {
-constexpr std::uint8_t PacketId = 0x05;
-constexpr std::uint8_t ProtocolVersion = 1;
-constexpr std::size_t HeaderSize = 21;
+constexpr std::uint8_t PacketId = RemoteRenderProtocol::PluginId;
+constexpr std::uint8_t ProtocolVersion = RemoteRenderProtocol::Version;
+constexpr std::size_t HeaderSize = RemoteRenderProtocol::HeaderBytes;
 constexpr std::size_t MaxFrameBytes = 4U * 1024U * 1024U;
 constexpr std::uint16_t MaxChunks = 4096;
-constexpr std::size_t ChunkBytes = 1200;
+constexpr std::size_t ChunkBytes = RemoteRenderProtocol::ChunkBytes;
 
 std::uint16_t read_u16(const std::uint8_t *p)
 {
@@ -51,6 +52,20 @@ std::optional<std::vector<std::string>> RenderOffloadPlugin::on_websocket_open()
     if (const auto command = RemoteRender::reconnect_command(); command.has_value())
         return std::vector<std::string>{command->dump()};
     return std::nullopt;
+}
+
+void RenderOffloadPlugin::on_websocket_message(const std::string &message)
+{
+    try {
+        const auto command = nlohmann::json::parse(message);
+        if (command.value("op", std::string{}) != "worker_heartbeat")
+            return;
+        RemoteRender::report_worker_heartbeat(
+            command.value("protocol", 0),
+            command.value("scenes", std::vector<std::string>{}));
+    } catch (const std::exception &e) {
+        spdlog::debug("Ignoring invalid RenderOffload worker message: {}", e.what());
+    }
 }
 
 bool RenderOffloadPlugin::on_udp_packet(uint8_t plugin_id, const uint8_t *data, size_t size)

@@ -1,608 +1,506 @@
-# 🔌 Plugin Development Guide
+# Plugin development guide
 
-Welcome to the LED Matrix Plugin Development Guide! This comprehensive documentation will help you create amazing plugins for the LED Matrix system.
+Plugins can contribute scenes, Runtime Inputs, image/shader providers, post-processing effects, transitions, REST/WebSocket handlers, and optional desktop UI/input logic.
 
-## 📋 Table of Contents
+The most important architectural rule is:
 
-- [🏗️ Plugin Architecture](#️-plugin-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [📚 Core APIs](#-core-apis)
-- [🎨 Scene Development](#-scene-development)
-- [🖼️ Image Providers](#️-image-providers)
-- [🎭 Post-Processing Effects](#-post-processing-effects)
-- [🌐 REST API Integration](#-rest-api-integration)
-- [💬 Desktop Communication](#-desktop-communication)
-- [⚙️ Properties System](#️-properties-system)
-- [🔧 Advanced Features](#-advanced-features)
-- [📦 Building and Testing](#-building-and-testing)
-- [🎯 Best Practices](#-best-practices)
-- [🔍 Examples](#-examples)
+> **Write a scene renderer once, under `plugins/<Plugin>/scenes/`.**
+>
+> The same scene implementation is used on the Raspberry Pi, by `preview_gen`, and by the desktop scene worker for automatic render offload.
 
-## 🏗️ Plugin Architecture
+See [Scene execution, previews, and desktop offload](SCENE_EXECUTION.md) for the execution model in detail.
 
-The LED Matrix system uses a modular plugin architecture that supports both **matrix** (Raspberry Pi) and **desktop** applications. These matrix plugin can provide
-- **Scenes**: Visual effects and animations
-- **Image Providers**: Custom image sources and processing
-- **Post-Processing Effects**: Screen-wide effects like flash and rotation
-- **REST API Routes**: Custom endpoints for remote control
-- **WebSocket Handlers**: Real-time communication with desktop clients
+## Plugin layout
 
-The desktop plugin on the other hand can provide:
-**UDP Packets**: these are sent to the matrix, processed and displayed
-**Options**: Used for desktop specific options like audio devices
-**Websocket Handlers**: Communication with the led matrix server
-
-### Plugin Types
-
-| Type | Description | Platform |
-|------|-------------|----------|
-| **Matrix Plugins** | Run on the Raspberry Pi controlling the LED matrix | Matrix |
-| **Desktop Plugins** | Run on the desktop application for development/control | Desktop |
-
-## 🚀 Quick Start
-
-### 1. Plugin Structure
-
-Create your plugin directory under `plugins/`:
-
-```
-plugins/
-└── MyAwesomePlugin/
-    ├── CMakeLists.txt
-    ├── matrix/
-    │   ├── MyAwesomePlugin.cpp
-    │   ├── MyAwesomePlugin.h
-    │   └── scenes/
-    │       ├── MyScene.cpp
-    │       └── MyScene.h
-    └── desktop/        # Optional: Desktop-specific implementation
-        ├── MyAwesomePlugin.cpp
-        ├── MyAwesomePlugin.h
-        └── scenes/
-            ├── MyScene.cpp
-            └── MyScene.h
+```text
+plugins/MyPlugin/
+├── CMakeLists.txt
+├── scenes/
+│   ├── MyScene.cpp
+│   └── MyScene.h
+├── matrix/
+│   ├── MyPlugin.cpp
+│   └── MyPlugin.h
+└── desktop/                    # optional
+    ├── MyDesktopPlugin.cpp
+    └── MyDesktopPlugin.h
 ```
 
-### 2. Plugin Class
+Use the directories as follows:
 
-Create your main plugin class inheriting from `BasicPlugin`:
+- `scenes/`: portable scene implementations. Do not put these below `matrix/` or duplicate them below `desktop/`.
+- `matrix/`: plugin registration, matrix-side data producers, REST routes, UDP/WebSocket handlers, providers, and other Pi integration.
+- `desktop/`: only desktop-specific UI/input/control code such as ImGui panels, audio capture, or a desktop-only data producer.
+
+A desktop build automatically compiles worker copies of matrix plugin sources when `ENABLE_SCENE_WORKER=ON` (the default). New portable scenes therefore become eligible for remote execution without a second renderer implementation.
+
+## Minimal scene plugin
+
+### `scenes/MyScene.h`
 
 ```cpp
-// MyAwesomePlugin.h
 #pragma once
-#include "shared/matrix/plugin/main.h"
 
-class MyAwesomePlugin : public Plugins::BasicPlugin {
-public:
-    std::string get_plugin_name() const override {
-        // This macror is automatically set by CMake
-        return PLUGIN_NAME;
-    }
-
-protected:
-    std::vector<std::unique_ptr<Plugins::SceneWrapper, void (*)(Plugins::SceneWrapper *)>> 
-        create_scenes() override;
-    
-    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper, void (*)(Plugins::ImageProviderWrapper *)>> 
-        create_image_providers() override;
-};
-```
-
-```cpp
-// MyAwesomePlugin.cpp
-
-#include "MyAwesomePlugin.h"
-
-// These functions are extremely important! The function names (after `create` and `destroy`) MUST match your plugin name
-extern "C" PLUGIN_EXPORT AwesomePlugin *createAwesomePlugin() {
-    return new AmbientPlugin();
-}
-
-extern "C" PLUGIN_EXPORT void destroyAwesomePlugin(AwesomePlugin *c) {
-    delete c;
-}
-```
-
-### 3. CMakeLists.txt
-
-```cmake
-register_plugin(
-    MyAwesomePlugin
-    matrix/MyAwesomePlugin.cpp
-    matrix/scenes/MyScene.cpp
-    DESKTOP
-# Desktop source files here
-)
-```
-
-## 📚 Core APIs
-
-### Shared Libraries
-
-The system provides three shared libraries with extensive APIs:
-
-#### `shared/common` - Core Functionality
-- **Plugin Loading**: Dynamic library loading and management
-- **Utilities**: Common helper functions and data structures
-- **Macros**: Plugin creation and registration macros
-
-#### `shared/matrix` - Matrix-Specific APIs
-- **Scene Framework**: Base classes for visual effects
-- **Canvas API**: Direct pixel manipulation
-- **Properties System**: Configurable parameters with automatic serialization
-- **Server Integration**: REST API and WebSocket support
-- **Post-Processing**: Screen-wide effects and transformations
-- **Resource Management**: Font, image, and configuration handling
-
-#### `shared/desktop` - Desktop Application APIs
-- **WebSocket Client**: Communication with matrix controller
-- **UDP Sender**: High-performance data streaming
-- **ImGui Integration**: User interface components
-- **Update Management**: Automatic updates and version checking
-
-### Key Include Paths
-
-```cpp
-// Core scene framework
-#include "shared/matrix/Scene.h"
-#include "shared/matrix/wrappers.h"
-
-// Properties and configuration
-#include "shared/matrix/plugin/property.h"
-#include "shared/matrix/plugin/PropertyMacros.h"
-#include "shared/matrix/plugin/color.h"
-
-// Utilities
-#include "shared/matrix/utils/FrameTimer.h"
-#include "shared/matrix/utils/utils.h"
-
-// Plugin framework
-#include "shared/matrix/plugin/main.h"
-#include "shared/common/plugin_macros.h"
-```
-
-## 🎨 Scene Development
-
-Scenes are the core visual components that render animations and effects on the matrix.
-
-### Basic Scene Structure
-
-```cpp
-// MyScene.h
-#pragma once
-#include "shared/matrix/Scene.h"
-#include "graphics.h"
-#include "shared/matrix/utils/FrameTimer.h"
+#include <shared/matrix/Scene.h>
+#include <shared/matrix/wrappers.h>
 
 namespace Scenes {
-    class MyScene : public Scene {
-    private:
-        FrameTimer frameTimer;
-        
-        // Configurable properties
-        PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 1.0f);
-        PropertyPointer<rgb_matrix::Color> color = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
-        PropertyPointer<bool> rainbow_mode = MAKE_PROPERTY("rainbow_mode", bool, false);
-        
-    public:
-        MyScene() = default;
-        ~MyScene() override = default;
 
-        bool render(rgb_matrix::RGBMatrixBase *matrix) override;
-        std::string get_name() const override { return "my_scene"; }
-        void register_properties() override;
-        
-        tmillis_t get_default_duration() override { return 15000; }
-        int get_default_weight() override { return 10; }
-    };
-}
+class MyScene final : public Scene {
+public:
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
+    std::string get_name() const override { return "my_scene"; }
+    std::string get_category() const override { return "Examples"; }
+    void register_properties() override;
+
+protected:
+    tmillis_t get_default_duration() override { return 15000; }
+    int get_default_weight() override { return 10; }
+
+private:
+    PropertyPointer<float> speed =
+        MAKE_PROPERTY_MINMAX("speed", float, 1.0f, 0.05f, 5.0f);
+};
+
+class MySceneWrapper final : public Plugins::SceneWrapper {
+public:
+    std::unique_ptr<Scenes::Scene> create() override;
+};
+
+} // namespace Scenes
 ```
 
-### Scene Implementation
+### `scenes/MyScene.cpp`
 
 ```cpp
-// MyScene.cpp
 #include "MyScene.h"
+
+#include <algorithm>
 #include <cmath>
 
 using namespace Scenes;
 
-bool MyScene::render(rgb_matrix::RGBMatrixBase *matrix) {
-    auto frameTime = frameTimer.tick();
-    float t = frameTime.t * speed->get();
-    
-    // Clear the canvas
-    offscreen_canvas->Clear();
-    
-    // Get matrix dimensions
-    int width = matrix->width();
-    int height = matrix->height();
-    
-    // Render your effect
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            uint8_t r, g, b;
-            
-            if (rainbow_mode->get()) {
-                // Rainbow effect
-                float hue = (x + y + t * 50) / (width + height) * 360.0f;
-                hsv_to_rgb(hue, 1.0f, 1.0f, r, g, b);
-            } else {
-                // Use configured color
-                auto col = color->get();
-                r = col.r();
-                g = col.g();
-                b = col.b();
-            }
-            
-            offscreen_canvas->SetPixel(x, y, r, g, b);
-        }
-    }
-    
-    return true; // Continue rendering
+bool MyScene::render(rgb_matrix::FrameCanvas* canvas)
+{
+    const double t = frame_context().elapsed_seconds * speed->get();
+    const auto level = static_cast<std::uint8_t>(
+        std::clamp((std::sin(t) * 0.5 + 0.5) * 255.0, 0.0, 255.0));
+
+    for (int y = 0; y < matrix_height; ++y)
+        for (int x = 0; x < matrix_width; ++x)
+            canvas->SetPixel(x, y, level, 32, 255 - level);
+
+    return true;
 }
 
-void MyScene::register_properties() {
+void MyScene::register_properties()
+{
     add_property(speed);
-    add_property(color);
-    add_property(rainbow_mode);
+}
+
+std::unique_ptr<Scenes::Scene> MySceneWrapper::create()
+{
+    return std::make_unique<MyScene>();
 }
 ```
 
-### Scene Wrapper
+Prefer `frame_context().delta_seconds` and `frame_context().elapsed_seconds` over reading `steady_clock` directly. This keeps matrix, preview, and remote-worker animation timing consistent.
+
+## Matrix plugin class
+
+`BasicPlugin` owns the integration points. A small scene-only plugin can look like this:
 
 ```cpp
-// In plugin main file
-class MySceneWrapper : public Plugins::SceneWrapper {
+#pragma once
+
+#include <shared/matrix/plugin/main.h>
+
+class MyPlugin final : public Plugins::BasicPlugin {
 public:
-    std::unique_ptr<Scenes::Scene, void (*)(Scenes::Scene *)> create() override {
-        return {new MyScene(), [](Scenes::Scene *scene) {
-            delete scene;
-        }};
+    std::string get_plugin_name() const override { return PLUGIN_NAME; }
+
+private:
+    std::vector<std::unique_ptr<Plugins::SceneWrapper>> create_scenes() override;
+    std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> create_image_providers() override {
+        return {};
     }
 };
+```
 
-std::vector<std::unique_ptr<Plugins::SceneWrapper, void (*)(Plugins::SceneWrapper *)>> 
-MyAwesomePlugin::create_scenes() {
-    std::vector<std::unique_ptr<Plugins::SceneWrapper, void (*)(Plugins::SceneWrapper *)>> scenes;
-    
-    scenes.emplace_back(
-        new MySceneWrapper(),
-        [](Plugins::SceneWrapper *wrapper) { delete wrapper; }
-    );
-    
+```cpp
+#include "MyPlugin.h"
+#include "scenes/MyScene.h"
+
+REGISTER_PLUGIN(MyPlugin, MyPlugin)
+
+std::vector<std::unique_ptr<Plugins::SceneWrapper>> MyPlugin::create_scenes()
+{
+    std::vector<std::unique_ptr<Plugins::SceneWrapper>> scenes;
+    scenes.push_back(std::make_unique<Scenes::MySceneWrapper>());
     return scenes;
 }
 ```
 
-## ⚙️ Properties System
+Use `REGISTER_PLUGIN`/`REGISTER_PLUGIN_CUSTOM_DESTROY`; do not hand-write obsolete `createFoo`/`destroyFoo` exports.
 
-The properties system provides automatic serialization, validation, and remote configuration.
+## CMake registration
 
-### Property Types
+A scene-only plugin:
+
+```cmake
+register_plugin(MyPlugin
+    matrix/MyPlugin.cpp
+    matrix/MyPlugin.h
+    scenes/MyScene.cpp
+    scenes/MyScene.h
+)
+```
+
+A plugin with optional desktop UI/input code:
+
+```cmake
+register_plugin(MyPlugin
+    matrix/MyPlugin.cpp
+    matrix/MyPlugin.h
+    scenes/MyScene.cpp
+    scenes/MyScene.h
+    DESKTOP
+    desktop/MyDesktopPlugin.cpp
+    desktop/MyDesktopPlugin.h
+)
+```
+
+Everything before `DESKTOP` is the matrix/scene side and is also compiled into the worker copy for desktop builds. Everything after `DESKTOP` belongs only to the normal desktop plugin.
+
+When a worker copy needs an extra dependency, link its generated `<Plugin>SceneWorker` target:
+
+```cmake
+if(TARGET MyPluginSceneWorker)
+    target_link_libraries(MyPluginSceneWorker PRIVATE my_dependency)
+endif()
+```
+
+If a scene loads resource files relative to its plugin DSO, install/copy those resources for both matrix and worker layouts. See `Countdown` and `WeatherOverview` for examples.
+
+## Properties
+
+Properties are serialized automatically and travel with a scene when it is offloaded.
 
 ```cpp
-// Basic properties
 PropertyPointer<int> count = MAKE_PROPERTY("count", int, 10);
 PropertyPointer<float> speed = MAKE_PROPERTY("speed", float, 1.0f);
 PropertyPointer<bool> enabled = MAKE_PROPERTY("enabled", bool, true);
-PropertyPointer<std::string> text = MAKE_PROPERTY("text", std::string, "Hello");
+PropertyPointer<std::string> label = MAKE_PROPERTY("label", std::string, "hello");
 
-// Color properties
-PropertyPointer<rgb_matrix::Color> color = MAKE_PROPERTY("color", rgb_matrix::Color, rgb_matrix::Color(255, 0, 0));
-
-// Properties with constraints
-PropertyPointer<int> brightness = MAKE_PROPERTY_MINMAX("brightness", int, 50, 0, 100);
-PropertyPointer<float> angle = MAKE_PROPERTY_MINMAX("angle", float, 0.0f, -180.0f, 180.0f);
-
-// Required properties (must be set by user)
-PropertyPointer<std::string> api_key = MAKE_PROPERTY_REQ("api_key", std::string, "");
+PropertyPointer<int> brightness =
+    MAKE_PROPERTY_MINMAX("brightness", int, 50, 0, 100);
 ```
 
-### Property Registration
+Register each property once:
 
 ```cpp
-void MyScene::register_properties() {
-    add_property(speed);      // Register for automatic handling
-    add_property(color);
+void MyScene::register_properties()
+{
+    add_property(count);
+    add_property(speed);
+    add_property(enabled);
+    add_property(label);
     add_property(brightness);
-    // Properties are automatically exposed via REST API
 }
 ```
 
-### Accessing Property Values
+Do not maintain a separate property/config format for the desktop worker. `Scene::to_json()` is the canonical scene-property payload.
+
+## Scene metadata and variants
+
+`SceneDescriptor` is consumed by automatic selection and the web UI. Override `get_descriptor()` when useful:
 
 ```cpp
-bool MyScene::render(rgb_matrix::RGBMatrixBase *matrix) {
-    float current_speed = speed->get();           // Get current value
-    auto current_color = color->get();            // Get color object
-    uint8_t r = current_color.r();               // Extract RGB components
-    
-    // Use values in rendering...
-    return true;
+Scenes::SceneDescriptor MyScene::get_descriptor() const
+{
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "ambient";
+    d.tags = {"procedural", "calm"};
+    d.intensity = 0.35f;
+    d.motion = 0.45f;
+    d.performance_cost = 0.55f;
+    return d;
 }
 ```
 
-## 🖼️ Image Providers
-Image Providers used (for now) in the ImageScene, where the user can specify if they want images to be displayed from for example a collection of pictures or from PixelJoint. By registering ImageProviders, you are able to add a new source of images to the led matrix.
-A example for a image provider can be found [here](https://github.com/sshcrack/led-matrix/blob/master/plugins/PixelJoint/matrix/providers/collection.cpp). If you want to add a image provider yourself, you'll also need to edit the react-web app to support that provider.
+`performance_cost` is a scheduling hint, not a hardcoded offload flag. The Pi profiler measures actual runtime cost and decides placement from real device timings.
 
-## 🎭 Post-Processing Effects
+Variants can provide named property bundles through the descriptor. The same variant ID and resulting properties are transferred to the worker.
 
-Create screen-wide effects that modify the entire display.
+## Runtime Inputs
 
-```cpp
-class FlashEffect : public Plugins::PostProcessingEffect {
-    float intensity;
-    float duration;
-    float elapsed;
-    
-public:
-    FlashEffect(float intensity, float duration) 
-        : intensity(intensity), duration(duration), elapsed(0) {}
-    
-    bool process(rgb_matrix::RGBMatrixBase* matrix, 
-                rgb_matrix::FrameCanvas* canvas) override {
-        elapsed += 1.0f / 60.0f; // Assume 60 FPS
-        
-        if (elapsed >= duration) {
-            return false; // Effect finished
-        }
-        
-        // Apply flash effect
-        float flash_amount = intensity * (1.0f - elapsed / duration);
-        
-        for (int y = 0; y < canvas->height(); y++) {
-            for (int x = 0; x < canvas->width(); x++) {
-                // Brighten pixels
-                auto pixel = canvas->GetPixel(x, y);
-                uint8_t r = std::min(255, (int)(pixel.r + flash_amount * 255));
-                uint8_t g = std::min(255, (int)(pixel.g + flash_amount * 255));
-                uint8_t b = std::min(255, (int)(pixel.b + flash_amount * 255));
-                canvas->SetPixel(x, y, r, g, b);
-            }
-        }
-        
-        return true; // Continue effect
-    }
-    
-    std::string get_name() const override {
-        return "flash";
-    }
-};
-```
+Use Runtime Inputs for external state that a scene consumes. This avoids coupling render code to the process that originally acquired the data and makes the same scene usable in previews and remote execution.
 
-## 🌐 REST API Integration
-
-Add custom REST endpoints to your plugin.
+A producer declares the IDs it owns:
 
 ```cpp
-std::unique_ptr<router_t> MyAwesomePlugin::register_routes(std::unique_ptr<router_t> router) {
-    // Add custom route
-    router->http_get("/my_plugin/status", 
-        [this](restinio::request_handle_t req, auto params) {
-            auto resp = req->create_response();
-            resp.set_body(R"({"status": "active", "version": "1.0"})");
-            resp.header().content_type("application/json");
-            return resp.done();
-        });
-    
-    router->http_post("/my_plugin/trigger",
-        [this](restinio::request_handle_t req, auto params) {
-            // Handle POST request
-            std::string body = req->body();
-            // Process request...
-            
-            auto resp = req->create_response();
-            resp.set_body(R"({"result": "success"})");
-            resp.header().content_type("application/json");
-            return resp.done();
-        });
-    
-    return std::move(router);
+std::vector<std::string> MyPlugin::get_runtime_input_ids() const override
+{
+    return {"my.input"};
 }
 ```
 
-## 💬 Desktop Communication
-
-Communicate with the desktop application via WebSocket.
+Publish data:
 
 ```cpp
-// Handle WebSocket messages from desktop
-void MyAwesomePlugin::on_websocket_message(const std::string &message) {
-    if (message.starts_with("trigger:")) {
-        // Handle trigger command
-        send_msg_to_desktop("triggered");
-    }
-}
+RuntimeInputs::publish(
+    "my.input",
+    {
+        {"temperature", 21.5},
+        {"label", std::string("office")},
+        {"active", true}
+    },
+    std::chrono::seconds(5));
+```
 
-// Send initial message when desktop connects
-std::optional<std::vector<std::string>> MyAwesomePlugin::on_websocket_open() {
-    return std::vector<std::string>{"plugin_ready", "version:1.0"};
-}
+A scene declares requirements:
 
-// Send data to desktop application
-void MyAwesomePlugin::send_status_update() {
-    nlohmann::json status;
-    status["timestamp"] = get_current_time();
-    status["active_scenes"] = get_active_scene_count();
-    
-    send_msg_to_desktop(status.dump());
+```cpp
+Scenes::SceneInputSpec MyScene::get_runtime_input_spec() const override
+{
+    Scenes::SceneInputSpec spec;
+    spec.require("my.input");
+    spec.accept(RuntimeInputIds::Audio);
+    return spec;
 }
 ```
 
-## 🔧 Advanced Features
-
-### Frame Timing
+and reads a snapshot:
 
 ```cpp
-class AnimatedScene : public Scene {
-    FrameTimer frameTimer;
-    
-public:
-    bool render(rgb_matrix::RGBMatrixBase *matrix) override {
-        auto frame = frameTimer.tick();
-        
-        float dt = frame.dt;        // Delta time since last frame
-        float t = frame.t;          // Total time since scene start
-        uint32_t frame_num = frame.frame; // Frame counter
-        
-        // Use timing for smooth animations
-        float phase = t * 2.0f * M_PI; // Complete cycle every second
-        uint8_t brightness = (sin(phase) + 1.0f) * 127;
-        
-        // Render with timing...
-        return true;
-    }
-};
+const auto inputs = RuntimeInputs::snapshot();
+const double temp = inputs.number("my.input", "temperature").value_or(0.0);
 ```
 
-### Resource Loading
+Required inputs participate in scene eligibility. If a required input disappears while a scene is running, the scheduler can replace that scene.
+
+The worker receives mirrored Runtime Inputs automatically. Do not create a worker-specific socket or duplicated data model unless the data fundamentally cannot be represented as Runtime Inputs.
+
+## Audio-reactive scenes
+
+Audio state is available through `AudioState::snapshot()` and is mirrored to the remote worker as the full rich audio frame. Scenes may declare audio capability in `get_capabilities()`:
 
 ```cpp
-class ResourceScene : public Scene {
-    std::string font_path;
-    
-public:
-    void initialize(rgb_matrix::RGBMatrixBase *matrix, 
-                   rgb_matrix::FrameCanvas *canvas) override {
-        Scene::initialize(matrix, canvas);
-        
-        // Load plugin resources
-        font_path = get_plugin_location() + "/fonts/my_font.bdf";
-        
-        // Initialize resources...
-    }
-};
+Scenes::SceneCapabilities MyScene::get_capabilities() const override
+{
+    auto caps = Scene::get_capabilities();
+    caps.supports_audio = true;
+    return caps;
+}
 ```
 
-### Lifecycle Hooks
+Use `requires_audio = true` only when the scene is unusable without audio. Use `supports_audio = true` when audio merely enhances it.
+
+## Automatic desktop offload
+
+Portable scenes are offloadable by default:
 
 ```cpp
-class LifecyclePlugin : public Plugins::BasicPlugin {
-public:
-    std::optional<std::string> before_server_init() override {
-        // Initialize before server starts
-        
-    
-    std::optional<std::string> after_server_init() override {
-        // Called after server is ready
-        start_background_tasks();
-        return std::nullopt;
-    }
-    
-    std::optional<std::string> pre_exit() override {
-        // Cleanup before application exit
-        cleanup_resources();
-        return std::nullopt;
-    }
-};
+SceneCapabilities::supports_remote_rendering == true
 ```
 
-## 📦 Building and Testing
+You normally do nothing. The desktop build packages a `led-matrix-scene-worker` process containing worker copies of the same matrix plugins. The Pi asks it to render only when the real Pi measurements show sustained pressure and the worker says that scene is available.
 
-### CMake Configuration
+Opt out only for a genuinely non-portable renderer:
 
-```cmake
-# Basic plugin
-register_plugin(
-    MyPlugin
-    matrix/MyPlugin.cpp
-    matrix/scenes/Scene1.cpp
-    matrix/scenes/Scene2.cpp
-)
-
-# Plugin with external dependencies and desktop sources (after the DESKTOP keyword)
-register_plugin(
-    AdvancedPlugin
-    matrix/AdvancedPlugin.cpp
-    matrix/scenes/AdvancedScene.cpp
-    DESKTOP
-    desktop/MyPlugin.cpp
-    desktop/scenes/DesktopScene.cpp
-    
-)
-target_link_libraries(AdvancedPlugin external_lib)
+```cpp
+Scenes::SceneCapabilities MyHardwareScene::get_capabilities() const override
+{
+    auto caps = Scene::get_capabilities();
+    caps.supports_remote_rendering = false;
+    return caps;
+}
 ```
 
-### Testing Your Plugin
+Do **not** create `MySceneDesktopRenderer`. The worker exists specifically to remove that duplication.
 
-1. **Build with emulator preset**:
-   ```bash
-   cmake --preset emulator
-   cmake --preset emulator --build
-   ```
+A useful exception is a scene that is already only a thin proxy for desktop-rendered pixels. `Video`, `Shadertoy`, and `SpotifyMV` intentionally set `supports_remote_rendering = false`: their expensive work is already performed by a dedicated desktop plugin, so worker offload would add a redundant second hop.
 
-2. **Run emulator**:
-   ```bash
-   ./run_emulator.sh
-   ```
+### Migrating transient simulation state
 
-3. **Test REST API**:
-   ```bash
-   curl http://localhost:8080/list_scenes
-   curl http://localhost:8080/my_plugin/status
-   # You can also visit http://localhost:8080 in your web browser
-   ```
+The worker automatically receives properties, UUID, variant, target FPS, elapsed scene time, Runtime Inputs, and audio state. Most deterministic scenes need nothing more.
 
-## 🎯 Best Practices
+If a visible simulation reset would still occur, override:
 
-### Performance
-- Use `FrameTimer` for consistent animations (you can also use `wait_until_next_frame()` for rendering at a constant 60fps and use `set_target_fps` for modifying the FPS)
-- Minimize memory allocations in render loops
-- Cache expensive calculations
-- Use efficient pixel access patterns
+```cpp
+nlohmann::json snapshot_runtime_state() const override;
+void restore_runtime_state(const nlohmann::json& state) override;
+```
 
-### Error Handling
-- Validate property values in setters
-- Handle missing resources gracefully
-- Return meaningful error messages from lifecycle hooks
+Keep the state compact and version-tolerant.
 
-### Code Organization
-- Keep scenes focused on single effects
-- Use composition over inheritance
-- Separate rendering logic from business logic
-- Document public APIs thoroughly
+## Adaptive rendering and performance
 
-### Configuration
-- Provide sensible defaults for all properties
-- Use appropriate min/max constraints
-- Group related properties logically
-- Consider user experience in property naming
+The Pi records per-scene render p50/p95/p99 and the target frame budget. A scene may reduce optional work by reading:
 
-## 🔍 Examples
+```cpp
+const float quality = render_quality_scale();
+```
 
-### Study These Plugins
+A known-heavy scene may start with a conservative hint:
 
-1. **[ExampleScenes](../plugins/ExampleScenes)** - Simple template and basic patterns
-2. **[AudioVisualizer](../plugins/AudioVisualizer)** - Real-time data processing and visualization
-3. **[WeatherOverview](../plugins/WeatherOverview)** - External API integration and data display
-4. **[GameScenes](../plugins/GameScenes)** - Interactive content and game logic
-5. **[FractalScenes](../plugins/FractalScenes)** - Mathematical visualizations and complex algorithms
-6. **[SpotifyScenes](../plugins/SpotifyScenes)** - OAuth integration and music visualization
-7. **[AmbientScenes](../plugins/AmbientScenes)** - Atmospheric effects and procedural generation
-8. **[Shadertoy](../plugins/Shadertoy)** - Matrix & Desktop communication, pixel data streaming and custom UDP packet sending
+```cpp
+MyScene::MyScene()
+{
+    set_render_quality_hint(0.8f);
+}
+```
 
-### Quick Examples
+Good render-loop practices:
 
-See the [Examples section](#-examples) in the main documentation for complete working examples of:
-- Basic color animation scenes
-- Data-driven visualizations  
-- Interactive game scenes
-- External API integration
-- Real-time audio processing
+- avoid allocations every frame;
+- cache invariant calculations;
+- avoid unnecessary `sqrt`, `pow`, and trigonometry in per-pixel inner loops;
+- use squared distance when possible;
+- make optional detail respond to `render_quality_scale()`;
+- use `FixedStepAccumulator` for physics that should not depend on render FPS;
+- do not sleep inside the main render path. Central rendering owns pacing.
 
----
+Diagnostics on the actual Pi are the authoritative performance signal. Emulator/x86 timings are useful for regressions, not for estimating absolute Pi speed.
 
-## 🆘 Getting Help
+## Previews
 
-- **Documentation**: Check the main README and existing plugin code
-- **Examples**: Study the included plugins for patterns and best practices
-- **Community**: Join the project discussions and issue tracker
-- **Debugging**: Use the emulator for development and testing
+Portable scenes are previewable by default. A scene needing fixture data declares it:
 
----
+```cpp
+Previews::SceneSpec MyScene::get_preview_spec() const override
+{
+    return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+}
+```
 
-**Happy Plugin Development! 🚀**
+The plugin can register `Previews::DataProvider` instances via `create_preview_data_providers()`. Providers should publish/update the same state the real producer uses, so the render implementation remains identical.
 
-Create amazing visual experiences and share them with the LED Matrix community!
+Prefer `frame_context()` timing if you want deterministic `--virtual-time-only` previews.
+
+Useful commands:
+
+```bash
+cmake --preset emulator -DSKIP_WEB_BUILD=ON
+cmake --build --preset emulator -j4
+
+./emulator_build/preview_gen \
+  --scene my_scene \
+  --frames 60 \
+  --fps 30 \
+  --virtual-time-only \
+  --strict
+```
+
+## Desktop plugins
+
+Desktop plugins derive from `Plugins::DesktopPlugin`. They are for real desktop-only functionality, such as audio capture or a configuration UI.
+
+Common hooks include:
+
+```cpp
+void render() override;             // ImGui content
+void post_init() override;
+void pre_new_frame() override;
+void before_exit() override;
+void on_websocket_message(std::string message) override;
+```
+
+For UDP output, existing plugins may implement `compute_next_packet()`. Multi-datagram producers can implement `compute_next_packets()`.
+
+The generic RenderOffload desktop plugin is different: it supervises the scene worker; it does not contain individual scene renderers.
+
+## Matrix plugin lifecycle and communication
+
+Available matrix-side hooks include:
+
+```cpp
+std::optional<std::string> before_server_init() override;
+std::optional<std::string> after_server_init() override;
+std::optional<std::string> pre_exit() override;
+std::optional<std::vector<std::string>> on_websocket_open() override;
+void on_websocket_message(const std::string& message) override;
+bool on_udp_packet(uint8_t plugin_id, const uint8_t* data, size_t size) override;
+std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
+```
+
+Use `send_msg_to_desktop()` for plugin-scoped WebSocket messages.
+
+Worker execution is marked by `SceneExecution::Mode::RemoteWorker`; preview execution uses `SceneExecution::Mode::Preview`. Plugins that normally start network/background services can use `SceneExecution::is_headless_fixture_host()` to suppress those services while still initializing scene-required state/resources.
+
+## Image/shader providers, effects, and transitions
+
+A matrix plugin can additionally override:
+
+```cpp
+create_image_providers();
+create_shader_providers();
+create_effects();
+create_transitions();
+```
+
+Keep providers and integration code under `matrix/` unless they are part of the portable scene renderer itself.
+
+Post-processing remains on the Pi even when a scene is remotely rendered. The worker renders the scene frame; the Pi remains responsible for transitions/post-processing/final matrix presentation.
+
+## Building and testing
+
+### Matrix/emulator
+
+```bash
+cmake --preset emulator -DSKIP_WEB_BUILD=ON
+cmake --build --preset emulator -j4
+ctest --test-dir emulator_build --output-on-failure
+```
+
+### Desktop + worker
+
+```bash
+cmake --preset desktop-linux -DSKIP_WEB_BUILD=ON
+cmake --build --preset desktop-linux -j4
+
+./desktop_build/led-matrix-scene-worker \
+  --list-scenes \
+  --plugin-dir ./desktop_build/scene_plugins
+```
+
+`--list-scenes` outputs one JSON array. Confirm your scene ID is present unless it intentionally sets `supports_remote_rendering = false`.
+
+### Web
+
+```bash
+pnpm --dir react-web build
+```
+
+### Before committing a scene change
+
+At minimum:
+
+1. build the matrix/emulator target;
+2. generate a strict preview for the scene;
+3. run relevant CTest regressions;
+4. build the desktop worker copy;
+5. check `--list-scenes` contains the scene;
+6. for performance-sensitive changes, inspect Pi Diagnostics rather than relying only on desktop timings.
+
+## Current examples worth studying
+
+- `plugins/ExampleScenes/` — minimal scene/plugin patterns.
+- `plugins/AmbientScenes/` — procedural scenes and adaptive MetaBlob rendering.
+- `plugins/GenerativeScenes/` — stateful/heavier simulations such as Boids and Reaction Diffusion.
+- `plugins/AudioVisualizer/` — rich audio Runtime Input/state consumption.
+- `plugins/SpotifyScenes/` — preview fixtures and mirrored network-backed runtime state.
+- `plugins/Countdown/` and `plugins/WeatherOverview/` — plugin-local resources used by both matrix and worker builds.
+- `plugins/RenderOffload/` — generic worker supervision and matrix-side transport.
+
+## Common mistakes
+
+- Putting new scene code in `matrix/scenes/` instead of `scenes/`.
+- Writing a second desktop renderer for a portable scene.
+- Making offload depend on a manually assigned `heavy=true` flag instead of measured Pi cost.
+- Reading external data only through a process-local global when a Runtime Input would work.
+- Using wall-clock timing for ordinary animations, causing preview/worker divergence.
+- Adding a second frame sleep when the central renderer already owns pacing.
+- Forgetting to package plugin-local fonts/images/assets for the worker plugin path.
+- Opting out of remote rendering just because a scene is CPU-heavy.

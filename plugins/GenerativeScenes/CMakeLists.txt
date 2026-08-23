@@ -1,10 +1,10 @@
 register_plugin(GenerativeScenes
         matrix/GenerativeScenes.cpp
         matrix/GenerativeScenes.h
-        matrix/scenes/ReactionDiffusionScene.cpp
-        matrix/scenes/ReactionDiffusionScene.h
-        matrix/scenes/BoidsScene.cpp
-        matrix/scenes/BoidsScene.h
-        matrix/scenes/FallingSandScene.cpp
-        matrix/scenes/FallingSandScene.h
+        scenes/ReactionDiffusionScene.cpp
+        scenes/ReactionDiffusionScene.h
+        scenes/BoidsScene.cpp
+        scenes/BoidsScene.h
+        scenes/FallingSandScene.cpp
+        scenes/FallingSandScene.h
 )

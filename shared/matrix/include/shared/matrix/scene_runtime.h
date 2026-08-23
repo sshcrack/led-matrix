@@ -98,8 +98,11 @@ struct SceneCapabilities {
     bool can_generate_preview = true;
     bool supports_audio = false;
     bool music_director_eligible = true;
-    bool supports_remote_rendering = false;
-    std::string remote_renderer;
+    // Portable/offloadable is the default. A scene should opt out only when its
+    // renderer fundamentally depends on matrix-local hardware or process state.
+    // The desktop worker loads the same scene implementation, so no separate
+    // renderer registration is required.
+    bool supports_remote_rendering = true;
 };
 
 } // namespace Scenes

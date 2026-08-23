@@ -1,8 +1,8 @@
 register_plugin(Video
         matrix/VideoPlugin.cpp
         matrix/VideoPlugin.h
-        matrix/scenes/VideoScene.cpp
-        matrix/scenes/VideoScene.h
+        scenes/VideoScene.cpp
+        scenes/VideoScene.h
         DESKTOP
         desktop/VideoDesktop.cpp
         desktop/VideoDesktop.h

@@ -93,7 +93,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                 bool rendered = false;
                 const auto remote_status = RemoteRender::status();
                 if (remote_status.requested && remote_status.scene == scene->get_name()) {
-                    RemoteRender::publish_audio(remote_status.session);
+                    RemoteRender::publish_runtime_state(remote_status.session);
                     rendered = RemoteRender::copy_latest(
                         remote_status.session, composite_offscreen_canvas,
                         matrix_width, matrix_height);
@@ -152,7 +152,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
     std::optional<std::uint32_t> next_remote_session;
     const auto next_caps = next_scene->get_capabilities();
-    const bool desktop_available = RuntimeInputs::snapshot().available(RuntimeInputIds::Desktop);
+    const bool desktop_available = RemoteRender::worker_available(next_scene->get_name());
     const double next_budget_ms = 1000.0 / static_cast<double>(
         std::max(1, next_scene->get_declared_target_fps()));
     if (next_caps.supports_remote_rendering && desktop_available) {
@@ -167,7 +167,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
     const auto render_next = [&]() {
         if (next_remote_session.has_value()) {
-            RemoteRender::publish_audio(*next_remote_session);
+            RemoteRender::publish_runtime_state(*next_remote_session);
             if (RemoteRender::copy_latest(
                     *next_remote_session, second_offscreen_canvas,
                     matrix_width, matrix_height))

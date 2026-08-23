@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <nlohmann/json.hpp>
+
 namespace MediaArtworkState {
 namespace {
 std::mutex mutex;
@@ -69,6 +71,55 @@ Snapshot snapshot()
     for (std::size_t i = 0; i < PaletteSize; ++i)
         result.colors[i] = blend(previous[i], current[i], amount);
     return result;
+}
+
+nlohmann::json to_json(const Snapshot &artwork)
+{
+    nlohmann::json colors = nlohmann::json::array();
+    if (artwork.valid) {
+        for (const auto &color : artwork.colors)
+            colors.push_back({color.r, color.g, color.b});
+    }
+    return {
+        {"valid", artwork.valid},
+        {"generation", artwork.generation},
+        {"transition", artwork.transition},
+        {"colors", std::move(colors)},
+    };
+}
+
+void replace_from_json(const nlohmann::json &snapshot_json)
+{
+    if (!snapshot_json.is_object() || !snapshot_json.value("valid", false)) {
+        clear();
+        return;
+    }
+
+    const auto colors_it = snapshot_json.find("colors");
+    if (colors_it == snapshot_json.end() || !colors_it->is_array()
+        || colors_it->size() != PaletteSize)
+        return;
+
+    Palette restored{};
+    for (std::size_t i = 0; i < PaletteSize; ++i) {
+        const auto &item = (*colors_it)[i];
+        if (!item.is_array() || item.size() != 3
+            || !item[0].is_number_integer() || !item[1].is_number_integer()
+            || !item[2].is_number_integer())
+            return;
+        restored[i] = {
+            static_cast<std::uint8_t>(std::clamp(item[0].get<int>(), 0, 255)),
+            static_cast<std::uint8_t>(std::clamp(item[1].get<int>(), 0, 255)),
+            static_cast<std::uint8_t>(std::clamp(item[2].get<int>(), 0, 255)),
+        };
+    }
+
+    std::lock_guard lock(mutex);
+    current = previous = restored;
+    current_key = "remote";
+    generation = snapshot_json.value("generation", generation);
+    valid = true;
+    changed_at = std::chrono::steady_clock::now();
 }
 
 rgb_matrix::Color sample(const Snapshot &artwork, float position)

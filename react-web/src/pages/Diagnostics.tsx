@@ -105,7 +105,8 @@ interface DiagnosticsData {
     last_sequence: number
     frame_age_ms: number
     scene: string
-    renderer: string
+    worker_available: boolean
+    worker_scene_count: number
   }
   transition?: {
     from?: string
@@ -263,7 +264,7 @@ export default function Diagnostics() {
           <Metric label="Frame budget" value={`${number(data.render_placement?.frame_budget_ms, 2)} ms`} detail="Auto offload starts at sustained 72% pressure" />
           <Metric label="Local quality" value={`${number((data.render_placement?.quality_scale ?? 1) * 100, 0)}%`} detail="Adaptive before/while desktop warms" />
           <Metric label="Remote frame" value={data.remote_render?.requested ? (data.remote_render.frame_fresh ? 'Fresh' : 'Waiting') : 'Inactive'} detail={data.remote_render?.requested ? `${number(data.remote_render.frame_age_ms, 0)} ms old · seq ${data.remote_render.last_sequence}` : 'Latest-frame-wins, no queued latency'} />
-          <Metric label="Remote renderer" value={data.remote_render?.renderer || 'None'} detail={data.remote_render?.scene ? `Scene ${data.remote_render.scene} · session ${data.remote_render.session}` : 'Desktop is used only when measured load warrants it'} />
+          <Metric label="Scene worker" value={data.remote_render?.worker_available ? 'Ready' : 'Unavailable'} detail={data.remote_render?.worker_available ? `${data.remote_render?.worker_scene_count ?? 0} scenes available for automatic offload` : 'Start the connected desktop app to enable automatic offload'} />
         </div>
       </section>
 

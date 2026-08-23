@@ -177,4 +177,39 @@ nlohmann::json to_json(const Snapshot &snapshot)
     return result;
 }
 
+void replace_from_json(const nlohmann::json &snapshot_json)
+{
+    if (!snapshot_json.is_object())
+        return;
+
+    std::unordered_map<std::string, StoredInput> replacement;
+    const auto now = Clock::now();
+    for (const auto &[id, item] : snapshot_json.items()) {
+        if (!item.is_object() || id.empty())
+            continue;
+        StoredInput stored;
+        stored.available = item.value("available", false);
+        stored.updated_at = now;
+        if (item.contains("ttl_seconds") && item.at("ttl_seconds").is_number()) {
+            const double seconds = std::max(0.0, item.at("ttl_seconds").get<double>());
+            stored.ttl = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::duration<double>(seconds));
+        }
+        const auto signals_it = item.find("signals");
+        if (signals_it != item.end() && signals_it->is_object()) {
+            for (const auto &[name, value] : signals_it->items()) {
+                if (value.is_boolean()) stored.signals.emplace(name, value.get<bool>());
+                else if (value.is_number_integer() || value.is_number_unsigned())
+                    stored.signals.emplace(name, value.get<std::int64_t>());
+                else if (value.is_number_float()) stored.signals.emplace(name, value.get<double>());
+                else if (value.is_string()) stored.signals.emplace(name, value.get<std::string>());
+            }
+        }
+        replacement.emplace(id, std::move(stored));
+    }
+
+    std::lock_guard lock(inputs_mutex);
+    inputs = std::move(replacement);
+}
+
 } // namespace RuntimeInputs

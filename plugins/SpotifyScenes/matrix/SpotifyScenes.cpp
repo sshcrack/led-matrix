@@ -10,6 +10,7 @@
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/media_artwork_state.h"
 #include "shared/matrix/preview.h"
+#include "shared/matrix/execution_mode.h"
 
 using namespace Scenes;
 
@@ -42,12 +43,12 @@ std::optional<string> SpotifyScenes::after_server_init() {
 
     spdlog::debug("Initializing SpotifyScenes");
 
-    spotify = new Spotify(Previews::Runtime::active());
-    if (!Previews::Runtime::active())
+    spotify = new Spotify(SceneExecution::is_headless_fixture_host());
+    if (!SceneExecution::is_headless_fixture_host())
         spotify->initialize();
     PluginRegistry::set("spotify", spotify);
 
-    if (!Previews::Runtime::active())
+    if (!SceneExecution::is_headless_fixture_host())
         config->save();
     return std::nullopt;
 }
@@ -142,7 +143,7 @@ SpotifyScenes::SpotifyScenes() {
     auto id = std::getenv("SPOTIFY_CLIENT_ID");
     auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
 
-    is_disabled = (!id || !secret) && !Previews::Runtime::active();
+    is_disabled = (!id || !secret) && !SceneExecution::is_headless_fixture_host();
     if (is_disabled)
         spdlog::warn("SpotifyScenes is disabled: SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
 };
