@@ -80,6 +80,7 @@ public:
     void register_properties() override;
     [[nodiscard]] std::string get_name() const override { return "falling_sand"; }
     [[nodiscard]] std::string get_category() const override { return "Generative"; }
+    [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
     Scenes::SceneCapabilities get_capabilities() const override {
         auto caps = Scenes::Scene::get_capabilities();
         return caps;

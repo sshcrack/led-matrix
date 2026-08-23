@@ -496,6 +496,29 @@ bool FallingSandScene::render(rgb_matrix::FrameCanvas *canvas) {
     return true;
 }
 
+Scenes::SceneDescriptor FallingSandScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "particle-physics";
+    d.tags = {"generative", "organic", "particles", "physics", "flow"};
+    d.intensity = 0.50f;
+    d.motion = 0.48f;
+    d.music_affinity = 0.18f;
+    d.performance_cost = 0.68f;
+    d.variants = {
+        {"zen", "Zen sand", "Gentle sand and water settling without sudden effects",
+         {{"emitters", 2}, {"spawn_rate", 1}, {"water", true}, {"wind", false}, {"explosions", false}, {"reset_fill_percent", 68}},
+         {"calm", "organic", "minimal"}, 0.28f, 0.30f, 0.08f, 0.55f},
+        {"tide", "Particle tide", "Flowing sand and water with a restrained changing wind",
+         {{"emitters", 3}, {"spawn_rate", 2}, {"water", true}, {"wind", true}, {"wind_strength", 35}, {"explosions", false}},
+         {"flow", "organic"}, 0.48f, 0.52f, 0.14f, 0.66f},
+        {"storm", "Particle storm", "Busy particle motion with stronger wind and occasional impacts",
+         {{"emitters", 5}, {"spawn_rate", 3}, {"water", true}, {"wind", true}, {"wind_strength", 78}, {"explosions", true}, {"explosion_frequency", 18}},
+         {"energetic", "particles", "dense"}, 0.78f, 0.80f, 0.22f, 0.78f},
+    };
+    return d;
+}
+
 std::unique_ptr<Scenes::Scene> FallingSandSceneWrapper::create() {
     return std::make_unique<FallingSandScene>();
 }

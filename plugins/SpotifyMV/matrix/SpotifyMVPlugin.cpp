@@ -1,5 +1,7 @@
 #include "SpotifyMVPlugin.h"
 #include "scenes/SpotifyMVScene.h"
+#include <shared/matrix/input_ids.h>
+#include <shared/matrix/runtime_inputs.h>
 #include <spdlog/spdlog.h>
 
 using namespace Plugins;
@@ -29,6 +31,11 @@ bool SpotifyMVPlugin::on_udp_packet(uint8_t pluginId, const uint8_t* data, size_
 std::optional<std::vector<std::string>> SpotifyMVPlugin::on_websocket_open() {
   std::vector<std::string> msgs;
 
+  // Ask desktop clients to prove that the external video toolchain is usable.
+  // Do not clear readiness here: scene-worker websocket connections use this same
+  // route and must not invalidate the main desktop client's capability heartbeat.
+  msgs.push_back("tools:probe");
+
   {
     std::lock_guard<std::mutex> lock(status_mutex_);
     if (status_ != "idle") {
@@ -49,6 +56,16 @@ std::optional<std::vector<std::string>> SpotifyMVPlugin::on_websocket_open() {
 }
 
 void SpotifyMVPlugin::on_websocket_message(const std::string& message) {
+  if (message == "tools:ready") {
+    RuntimeInputs::publish(
+        RuntimeInputIds::SpotifyMVReady, {{"ready", true}}, std::chrono::seconds(5));
+    return;
+  }
+  if (message == "tools:error") {
+    RuntimeInputs::set_available(
+        RuntimeInputIds::SpotifyMVReady, false, {{"ready", false}});
+    return;
+  }
   if (message.starts_with("status:")) {
     std::lock_guard<std::mutex> lock(status_mutex_);
     status_ = message.substr(7);

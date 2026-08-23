@@ -34,6 +34,7 @@ private:
     std::mutex tools_status_mutex_;
     std::string tools_error_msg_;
     std::string last_checked_ytdlp_path_;
+    std::chrono::steady_clock::time_point last_tools_report_{};
     std::mutex track_id_mutex_;
     std::string current_track_id_;
     std::string pending_track_id_;
@@ -69,7 +70,8 @@ private:
     std::atomic<int> total_errors_{0};
     std::atomic<int> total_swaps_{0};
 
-    void refresh_tools_status(bool force = false);
+    bool refresh_tools_status(bool force = false);
+    void report_tools_status();
     void on_pending_first_frame();
 
     void search_and_play(Shared::VideoStreamEngine* engine,
