@@ -63,7 +63,10 @@ void VideoScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
 bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
 {
   if (!plugin)
+  {
+    hold_current_frame();
     return false;
+  }
 
   if (!streaming_enabled)
   {
@@ -84,7 +87,8 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
 
   if (status == "finished")
   {
-    // Video is done, allow scene to change
+    // Keep the final decoded frame latched while the coordinator changes scenes.
+    hold_current_frame();
     return false;
   }
 

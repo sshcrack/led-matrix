@@ -84,6 +84,7 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
   if (!plugin_)
   {
     spdlog::warn("[SpotifyMVScene] No plugin instance — SpotifyMVScene will not render");
+    hold_current_frame();
     return false;
   }
 

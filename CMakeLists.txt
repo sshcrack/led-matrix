@@ -595,6 +595,27 @@ if(ENABLE_EMULATOR)
     add_test(NAME scene_renderer_frame_hold_smoke COMMAND $<TARGET_FILE:scene_renderer_frame_hold_smoke>)
     set_tests_properties(scene_renderer_frame_hold_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(transition_frame_hold_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/transition_frame_hold_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(transition_frame_hold_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(transition_frame_hold_smoke PRIVATE ENABLE_EMULATOR)
+    target_include_directories(transition_frame_hold_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(transition_frame_hold_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog
+        fmt::fmt
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME transition_frame_hold_smoke COMMAND $<TARGET_FILE:transition_frame_hold_smoke>)
+    set_tests_properties(transition_frame_hold_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(remote_render_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_render_smoke.cpp
     )

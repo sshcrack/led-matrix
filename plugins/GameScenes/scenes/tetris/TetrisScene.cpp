@@ -78,7 +78,10 @@ namespace Scenes {
     }
 
     bool TetrisScene::render(rgb_matrix::FrameCanvas *canvas) {
-        if (gameOver) return false;
+        if (gameOver) {
+            hold_current_frame();
+            return false;
+        }
 
         const auto current_time = std::chrono::steady_clock::now();
         const float delta_seconds = std::min(0.25f, std::chrono::duration<float>(current_time - last_update_time).count());
@@ -129,6 +132,7 @@ namespace Scenes {
 
         if (grid.gameOver) {
             gameOver = true;
+            hold_current_frame();
             return false;
         }
 

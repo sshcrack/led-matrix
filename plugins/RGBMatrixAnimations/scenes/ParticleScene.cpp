@@ -47,6 +47,7 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
         spdlog::warn("Particle scene renderer or animation was unexpectedly null, reinitializing on next frame.");
         renderer.reset();
         animation.reset();
+        hold_current_frame();
         return true;
     }
 

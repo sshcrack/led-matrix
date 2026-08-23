@@ -18,6 +18,7 @@ using rgb_matrix::StreamReader;
 bool ImageScene::DisplayAnimation(rgb_matrix::FrameCanvas *canvas) {
     if (skip_image || GetTimeInMillis() > curr_animation->get()->end_time_ms) {
         this->curr_animation.reset();
+        hold_current_frame();
         return true;
     }
 
@@ -60,6 +61,7 @@ bool ImageScene::render(rgb_matrix::FrameCanvas *canvas) {
         auto res = get_next_anim(canvas, 0);
         if (!res.has_value()) {
             error("Error getting next animation: {}", res.error());
+            hold_current_frame();
             return false;
         }
 

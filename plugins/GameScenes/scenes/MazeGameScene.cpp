@@ -56,6 +56,7 @@ namespace Scenes {
 
     bool MazeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
         if(solving_complete && GetTimeInMillis() - finished_maze_at_ms > delay_solution_found * 1000) {
+            hold_current_frame();
             return false;
         }
 
