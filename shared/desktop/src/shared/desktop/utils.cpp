@@ -1,4 +1,5 @@
 #include "shared/desktop/utils.h"
+#include "shared/desktop/config.h"
 #include <array>
 #include <cerrno>
 #include <fstream>
@@ -189,12 +190,65 @@ std::string run_command_and_get_output(const std::string& cmd) {
 }
 
 namespace {
+std::string quote_command_path(const std::string& path) {
+#ifdef _WIN32
+    std::string quoted = "\"";
+    for (char c : path) {
+        if (c == '\"') quoted += "\\\"";
+        else quoted += c;
+    }
+    quoted += "\"";
+    return quoted;
+#else
+    // POSIX shell single-quote escaping: ' becomes '\'' .
+    std::string quoted = "'";
+    for (char c : path) {
+        if (c == '\'') quoted += "'\\''";
+        else quoted += c;
+    }
+    quoted += "'";
+    return quoted;
+#endif
+}
+
 inline std::string trim_whitespace(std::string s) {
     s.erase(0, s.find_first_not_of(" \t\r\n"));
     s.erase(s.find_last_not_of(" \t\r\n") + 1);
     return s;
 }
 } // anonymous namespace
+
+std::string get_ytdlp_command() {
+    const auto path = Config::ConfigManager::instance()->getGeneralConfig().getYtDlpPath();
+    return path.empty() ? "yt-dlp" : quote_command_path(path);
+}
+
+std::string check_ytdlp_available() {
+    const auto configured = Config::ConfigManager::instance()->getGeneralConfig().getYtDlpPath();
+    const std::string command = get_ytdlp_command();
+#ifdef _WIN32
+    const char* null_device = "nul";
+#else
+    const char* null_device = "/dev/null";
+#endif
+    if (run_command(command + " --version > " + null_device + " 2>&1") == 0)
+        return {};
+
+    if (configured.empty())
+        return "yt-dlp was not found in PATH. Choose the yt-dlp binary in Desktop Settings.";
+    return "yt-dlp could not be started from \"" + configured + "\".";
+}
+
+std::string check_video_tools_available() {
+#ifdef _WIN32
+    const char* null_device = "nul";
+#else
+    const char* null_device = "/dev/null";
+#endif
+    if (run_command(std::string("ffmpeg -version > ") + null_device + " 2>&1") != 0)
+        return "ffmpeg not found in PATH.";
+    return check_ytdlp_available();
+}
 
 std::string open_file_dialog(const std::string& title) {
 #ifdef _WIN32

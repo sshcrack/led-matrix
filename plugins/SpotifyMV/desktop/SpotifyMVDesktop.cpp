@@ -68,12 +68,7 @@ void SpotifyMVDesktop::post_init() {
     auto cacheRoot = get_data_dir() / "cache" / "spotifymv";
     std::filesystem::create_directories(cacheRoot);
     current_engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, kWidth, kHeight);
-    auto err = current_engine_->check_tools();
-    tools_available_ = err.empty();
-    if (!err.empty()) {
-        tools_error_msg_ = err;
-        spdlog::error(tools_error_msg_);
-    }
+    refresh_tools_status(true);
     current_engine_->on_status_change = [this](const std::string& s) {
         spdlog::info("Status change " + s);
         send_websocket_message("status:" + s);
@@ -104,9 +99,38 @@ void SpotifyMVDesktop::initialize_imgui(ImGuiContext* ctx,
     ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
 }
 
+void SpotifyMVDesktop::refresh_tools_status(bool force) {
+    const auto configured_path = Config::ConfigManager::instance()->getGeneralConfig().getYtDlpPath();
+    {
+        std::lock_guard<std::mutex> lock(tools_status_mutex_);
+        if (!force && configured_path == last_checked_ytdlp_path_)
+            return;
+        last_checked_ytdlp_path_ = configured_path;
+    }
+
+    const auto error = check_video_tools_available();
+    tools_available_.store(error.empty());
+    {
+        std::lock_guard<std::mutex> lock(tools_status_mutex_);
+        tools_error_msg_ = error;
+    }
+    if (!error.empty())
+        spdlog::error("SpotifyMV desktop tools unavailable: {}", error);
+}
+
+void SpotifyMVDesktop::pre_new_frame() {
+    refresh_tools_status();
+}
+
 void SpotifyMVDesktop::render() {
-    if (!tools_available_) {
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", tools_error_msg_.c_str());
+    if (!tools_available_.load()) {
+        std::string error;
+        {
+            std::lock_guard<std::mutex> lock(tools_status_mutex_);
+            error = tools_error_msg_;
+        }
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", error.c_str());
+        ImGui::TextDisabled("Configure the shared yt-dlp binary under External Tools.");
         return;
     }
 
@@ -302,7 +326,7 @@ std::optional<std::unique_ptr<UdpPacket>>
 SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
     if (sceneName != "spotifymv")
         return std::nullopt;
-    if (!tools_available_)
+    if (!tools_available_.load())
         return std::nullopt;
 
     std::lock_guard<std::mutex> lk(engine_mutex_);
@@ -358,6 +382,12 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
     if (message.starts_with("track:")) {
+        refresh_tools_status(true);
+        if (!tools_available_.load()) {
+            send_websocket_message("status:error");
+            return;
+        }
+
         std::string remainder = message.substr(6);
 
         auto colon_pos = remainder.find(':');
@@ -607,7 +637,7 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
-    std::string durCmd = "yt-dlp --no-warnings --print duration \"" + url + "\" 2>"
+    std::string durCmd = get_ytdlp_command() + " --no-warnings --print duration \"" + url + "\" 2>"
 #ifdef _WIN32
                          "nul";
 #else
