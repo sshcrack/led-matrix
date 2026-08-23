@@ -32,7 +32,7 @@ Use the directories as follows:
 - `matrix/`: plugin registration, matrix-side data producers, REST routes, UDP/WebSocket handlers, providers, and other Pi integration.
 - `desktop/`: only desktop-specific UI/input/control code such as ImGui panels, audio capture, or a desktop-only data producer.
 
-A desktop build automatically compiles worker copies of matrix plugin sources when `ENABLE_SCENE_WORKER=ON` (the default). New portable scenes therefore become eligible for remote execution without a second renderer implementation.
+A Linux desktop build automatically compiles worker copies of matrix plugin sources when `ENABLE_SCENE_WORKER=ON` (the default). New portable scenes therefore become eligible for remote execution without a second renderer implementation. Native Windows desktop builds do not include the worker because its headless matrix emulator requires POSIX headers.
 
 ## Minimal scene plugin
 
