@@ -40,6 +40,18 @@ string Scenes::WatermelonPlasmaScene::get_name() const {
     return "watermelon_plasma";
 }
 
+Scenes::SceneDescriptor Scenes::WatermelonPlasmaScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "plasma";
+    d.tags = {"ambient", "generative", "plasma", "flow", "vivid"};
+    d.intensity = 0.58f;
+    d.motion = 0.64f;
+    d.music_affinity = 0.28f;
+    d.performance_cost = 0.46f;
+    return d;
+}
+
 
 std::unique_ptr<Scenes::Scene> Scenes::WatermelonPlasmaSceneWrapper::create() {
     return std::make_unique<WatermelonPlasmaScene>();

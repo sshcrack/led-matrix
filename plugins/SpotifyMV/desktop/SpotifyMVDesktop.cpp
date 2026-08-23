@@ -99,12 +99,12 @@ void SpotifyMVDesktop::initialize_imgui(ImGuiContext* ctx,
     ImGui::GetAllocatorFunctions(alloc_fn, free_fn, user_data);
 }
 
-void SpotifyMVDesktop::refresh_tools_status(bool force) {
+bool SpotifyMVDesktop::refresh_tools_status(bool force) {
     const auto configured_path = Config::ConfigManager::instance()->getGeneralConfig().getYtDlpPath();
     {
         std::lock_guard<std::mutex> lock(tools_status_mutex_);
         if (!force && configured_path == last_checked_ytdlp_path_)
-            return;
+            return false;
         last_checked_ytdlp_path_ = configured_path;
     }
 
@@ -116,10 +116,21 @@ void SpotifyMVDesktop::refresh_tools_status(bool force) {
     }
     if (!error.empty())
         spdlog::error("SpotifyMV desktop tools unavailable: {}", error);
+    return true;
+}
+
+void SpotifyMVDesktop::report_tools_status() {
+    send_websocket_message(tools_available_.load() ? "tools:ready" : "tools:error");
+    last_tools_report_ = std::chrono::steady_clock::now();
 }
 
 void SpotifyMVDesktop::pre_new_frame() {
-    refresh_tools_status();
+    const bool changed = refresh_tools_status();
+    const auto now = std::chrono::steady_clock::now();
+    if (changed || last_tools_report_ == std::chrono::steady_clock::time_point{}
+        || now - last_tools_report_ >= std::chrono::seconds(2)) {
+        report_tools_status();
+    }
 }
 
 void SpotifyMVDesktop::render() {
@@ -381,8 +392,14 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 }
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
+    if (message == "tools:probe") {
+        refresh_tools_status(true);
+        report_tools_status();
+        return;
+    }
     if (message.starts_with("track:")) {
         refresh_tools_status(true);
+        report_tools_status();
         if (!tools_available_.load()) {
             send_websocket_message("status:error");
             return;

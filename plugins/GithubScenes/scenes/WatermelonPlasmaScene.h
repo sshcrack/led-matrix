@@ -15,6 +15,7 @@ namespace Scenes {
 
         string get_name() const override;
         std::string get_category() const override { return "Generative"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
         void register_properties() override {}
 

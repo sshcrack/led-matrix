@@ -24,6 +24,7 @@ namespace Scenes {
 
         string get_name() const override;
         std::string get_category() const override { return "Fractals"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
         tmillis_t get_default_duration() override {
             return 30000;

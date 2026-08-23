@@ -1,5 +1,6 @@
 #pragma once
 #include "shared/matrix/plugin/main.h"
+#include "shared/matrix/input_ids.h"
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -16,6 +17,9 @@ public:
   std::optional<std::vector<std::string>> on_websocket_open() override;
   void on_websocket_message(const std::string& message) override;
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
+  [[nodiscard]] std::vector<std::string> get_runtime_input_ids() const override {
+    return {std::string(RuntimeInputIds::SpotifyMVReady)};
+  }
 
   std::vector<uint8_t> get_frame() {
     std::lock_guard<std::mutex> lock(frame_mutex_);

@@ -130,6 +130,29 @@ namespace AmbientScenes {
 
     std::string DigitalRainScene::get_name() const { return "digitalrain"; }
 
+    Scenes::SceneDescriptor DigitalRainScene::get_descriptor() const {
+        auto d = Scene::get_descriptor();
+        d.automatic_eligible = true;
+        d.family = "digital-rain";
+        d.tags = {"ambient", "geometric", "rain", "depth", "texture"};
+        d.intensity = 0.46f;
+        d.motion = 0.62f;
+        d.music_affinity = 0.18f;
+        d.performance_cost = 0.44f;
+        d.variants = {
+            {"drizzle", "Soft code rain", "Sparse slow trails for quiet ambient periods",
+             {{"num_drops", 24}, {"base_speed", 0.62f}, {"fade_factor", 0.94f}, {"glitch_effect", false}},
+             {"calm", "minimal", "depth"}, 0.24f, 0.34f, 0.08f, 0.36f},
+            {"classic", "Digital rain", "Balanced falling symbols with subtle glitches",
+             {{"num_drops", 42}, {"base_speed", 1.0f}, {"fade_factor", 0.90f}, {"symbol_mode", true}, {"glitch_effect", true}},
+             {"ambient", "geometric"}, 0.48f, 0.62f, 0.16f, 0.44f},
+            {"storm", "Data storm", "Dense fast rain for higher-energy ambient moments",
+             {{"num_drops", 70}, {"base_speed", 1.65f}, {"fade_factor", 0.86f}, {"glitch_effect", true}},
+             {"dense", "energetic", "geometric"}, 0.78f, 0.88f, 0.24f, 0.58f},
+        };
+        return d;
+    }
+
     void DigitalRainScene::register_properties() {
         add_property(num_drops);
         add_property(base_speed);

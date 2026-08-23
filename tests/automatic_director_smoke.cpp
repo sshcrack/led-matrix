@@ -11,7 +11,7 @@ namespace {
 class TestScene final : public Scenes::Scene {
 public:
     TestScene(std::string name, float intensity, float music, float cost, bool needs_audio, std::string family, float motion = .5f,
-              std::vector<std::string> tags = {})
+              std::vector<std::string> tags = {}, std::vector<std::string> required_inputs = {}, tmillis_t duration = 1000)
         : name_(std::move(name)),
           intensity_(intensity),
           music_(music),
@@ -19,7 +19,9 @@ public:
           needs_audio_(needs_audio),
           family_(std::move(family)),
           motion_(motion),
-          tags_(std::move(tags))
+          tags_(std::move(tags)),
+          required_inputs_(std::move(required_inputs)),
+          duration_(duration)
     {
         update_default_properties();
         register_properties();
@@ -45,9 +47,11 @@ public:
         Scenes::SceneInputSpec s;
         if (needs_audio_)
             s.require(RuntimeInputIds::Audio);
+        for (const auto& input : required_inputs_)
+            s.require(input);
         return s;
     }
-    tmillis_t get_default_duration() override { return 1000; }
+    tmillis_t get_default_duration() override { return duration_; }
     int get_default_weight() override { return 1; }
 
 private:
@@ -57,6 +61,8 @@ private:
     std::string family_;
     float motion_;
     std::vector<std::string> tags_;
+    std::vector<std::string> required_inputs_;
+    tmillis_t duration_;
 };
 }  // namespace
 
@@ -115,7 +121,72 @@ int main()
         return 12;
     }
 
+    // Spotify media should follow the track lifecycle rather than monopolizing
+    // every music decision. Album art introduces/closes a track, while SpotifyMV
+    // becomes attractive only once the track is underway and its desktop
+    // toolchain has explicitly reported ready.
+    std::vector<std::shared_ptr<Scenes::Scene>> spotify_scenes{
+        std::make_shared<TestScene>(
+            "cover", .36f, 1.0f, .68f, false, "album-art", .28f,
+            std::vector<std::string>{"music", "media", "album-art", "spotify"},
+            std::vector<std::string>{std::string(RuntimeInputIds::SpotifyPlayback)}),
+        std::make_shared<TestScene>(
+            "spotifymv", .70f, 1.0f, .18f, false, "spotify-video", .86f,
+            std::vector<std::string>{"music", "media", "spotify", "spotify-video", "cinematic"},
+            std::vector<std::string>{std::string(RuntimeInputIds::Desktop),
+                                     std::string(RuntimeInputIds::SpotifyPlayback),
+                                     std::string(RuntimeInputIds::SpotifyMVReady)},
+            210000),
+    };
+    RuntimeInputs::clear_all();
+    RuntimeInputs::set_available(RuntimeInputIds::Desktop, true, {{"connected", true}});
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, true, {{"ready", true}});
+    RuntimeInputs::publish(
+        RuntimeInputIds::SpotifyPlayback,
+        {{"playing", true}, {"progress_ms", std::int64_t{10000}}, {"duration_ms", std::int64_t{200000}}},
+        std::chrono::seconds(1));
+    AutomaticDirector spotify_director(23);
+    ranked = spotify_director.rank(spotify_scenes, RuntimeInputs::snapshot());
+    if (ranked.size() != 2 || ranked.front().scene->get_name() != "cover") {
+        std::cerr << "Spotify track intro did not prefer album art\n";
+        return 13;
+    }
+
+    RuntimeInputs::publish(
+        RuntimeInputIds::SpotifyPlayback,
+        {{"playing", true}, {"progress_ms", std::int64_t{90000}}, {"duration_ms", std::int64_t{200000}}},
+        std::chrono::seconds(1));
+    const auto mid_track = RuntimeInputs::snapshot();
+    ranked = spotify_director.rank(spotify_scenes, mid_track);
+    if (ranked.size() != 2 || ranked.front().scene->get_name() != "spotifymv") {
+        std::cerr << "mid-track Spotify playback did not prioritize SpotifyMV\n";
+        return 14;
+    }
+    const auto mv_duration = spotify_director.presentation_duration(ranked.front().scene, mid_track);
+    if (mv_duration < 30000 || mv_duration > 45000) {
+        std::cerr << "Automatic Mode did not clamp SpotifyMV to a sensible presentation duration\n";
+        return 15;
+    }
+
+    RuntimeInputs::publish(
+        RuntimeInputIds::SpotifyPlayback,
+        {{"playing", true}, {"progress_ms", std::int64_t{190000}}, {"duration_ms", std::int64_t{200000}}},
+        std::chrono::seconds(1));
+    ranked = spotify_director.rank(spotify_scenes, RuntimeInputs::snapshot());
+    if (ranked.empty() || ranked.front().scene->get_name() != "cover") {
+        std::cerr << "end-of-track Spotify playback still tried to start a music video\n";
+        return 16;
+    }
+
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, false, {{"ready", false}});
+    ranked = spotify_director.rank(spotify_scenes, RuntimeInputs::snapshot());
+    if (ranked.size() != 1 || ranked.front().scene->get_name() != "cover") {
+        std::cerr << "SpotifyMV remained eligible after desktop toolchain became unavailable\n";
+        return 17;
+    }
+
     // Restore active music for deterministic sequence/reseed checks below.
+    RuntimeInputs::clear_all();
     RuntimeInputs::publish(RuntimeInputIds::Audio,
                            {{"loudness", 0.7},
                             {"loudness_fast", 0.72},
