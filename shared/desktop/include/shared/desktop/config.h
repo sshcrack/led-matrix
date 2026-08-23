@@ -26,6 +26,9 @@ namespace Config
         int udpFpsLimit = 30; // Default UDP send FPS limit
         bool turnMatrixOffOnExit;
         bool turnMatrixOnOnStart;
+        // Empty means "auto-detect yt-dlp from PATH". A non-empty value is
+        // the user-selected binary shared by all desktop plugins.
+        std::string ytdlpPath;
 
         bool autostart = Autostart::isEnabled(APP_NAME);
 
@@ -62,6 +65,9 @@ namespace Config
 
         bool isTurnMatrixOnOnStart() const;
         void setTurnMatrixOnOnStart(bool value);
+
+        std::string getYtDlpPath() const;
+        void setYtDlpPath(const std::string &path);
     };
 
     SHARED_DESKTOP_API void to_json(json &j, const General &p);

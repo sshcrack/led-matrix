@@ -3,6 +3,7 @@
 #include "shared/desktop/VideoStreamEngine.h"
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #ifdef _WIN32
@@ -36,12 +37,15 @@ public:
 
 private:
   void render_status_ui();
+  void refresh_tools_status(bool force = false);
   void start_audio(const std::string &path);
   void stop_audio();
 
   // State
-  bool tools_available = false;
+  std::atomic<bool> tools_available{false};
+  std::mutex tools_status_mutex_;
   std::string tools_error_msg;
+  std::string last_checked_ytdlp_path_;
   std::string current_url;
   bool enable_audio = true;
   int matrix_width = 128;

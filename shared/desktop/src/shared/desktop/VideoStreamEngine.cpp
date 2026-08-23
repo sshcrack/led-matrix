@@ -40,20 +40,10 @@ VideoStreamEngine::~VideoStreamEngine() {
 }
 
 std::string VideoStreamEngine::check_tools() {
-    try {
-        if (run_command(fmt::format("ffmpeg -version > {} 2>&1", null_device())) != 0) {
-            return "ffmpeg not found in PATH.";
-        }
-        if (run_command(fmt::format("{} --version > {} 2>&1", ytdlp_cmd(), null_device())) != 0) {
-            return ytdlp_path_.empty()
-                       ? "yt-dlp not found in PATH."
-                       : "yt-dlp not found at \"" + ytdlp_path_ + "\".";
-        }
+    auto error = check_video_tools_available();
+    if (error.empty())
         spdlog::info("ffmpeg and yt-dlp found.");
-        return "";
-    } catch (const std::exception& e) {
-        return std::string("Error checking tools: ") + e.what();
-    }
+    return error;
 }
 
 void VideoStreamEngine::start(const std::string& url, const std::string& cache_key, long seek_ms) {
@@ -523,19 +513,13 @@ void VideoStreamEngine::stop() {
 }
 
 // ---- Command construction helpers ----
-std::string VideoStreamEngine::ytdlp_cmd() const {
-    if (ytdlp_path_.empty())
-        return "yt-dlp";
-    return "\"" + ytdlp_path_ + "\"";
-}
-
 std::string VideoStreamEngine::build_ytdlp_command(
     const std::filesystem::path& output_path, int start_sec, int end_sec) const
 {
     return fmt::format(
         "{} -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
         "--force-overwrites -o \"{}\" \"{}\"",
-        ytdlp_cmd(), start_sec, end_sec, output_path.string(), current_url_);
+        get_ytdlp_command(), start_sec, end_sec, output_path.string(), current_url_);
 }
 
 std::string VideoStreamEngine::build_ffmpeg_command(
