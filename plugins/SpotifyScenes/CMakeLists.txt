@@ -3,8 +3,8 @@ register_plugin(SpotifyScenes
         matrix/SpotifyPreviewProvider.h
         matrix/SpotifyScenes.cpp
         matrix/SpotifyScenes.h
-        matrix/scenes/CoverOnlyScene.cpp
-        matrix/scenes/CoverOnlyScene.h
+        scenes/CoverOnlyScene.cpp
+        scenes/CoverOnlyScene.h
         matrix/manager/shared_spotify.cpp
         matrix/manager/shared_spotify.h
         matrix/manager/song_bpm_getter.cpp
@@ -28,4 +28,10 @@ if(NOT ENABLE_DESKTOP)
 
         find_package(cpr CONFIG REQUIRED)
         target_link_libraries(SpotifyScenes PRIVATE cpr::cpr)
+endif()
+
+if(TARGET SpotifyScenesSceneWorker)
+        find_package(CURL REQUIRED)
+        find_package(cpr CONFIG REQUIRED)
+        target_link_libraries(SpotifyScenesSceneWorker PRIVATE ${CURL_LIBRARIES} cpr::cpr)
 endif()

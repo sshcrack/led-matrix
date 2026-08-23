@@ -3,15 +3,20 @@
 #include <algorithm>
 #include <chrono>
 #include <mutex>
+#include <unordered_set>
 #include <vector>
 
 #include "led-matrix.h"
+#include "shared/common/remote_render_protocol.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/audio_state.h"
+#include "shared/matrix/media_artwork_state.h"
+#include "shared/matrix/runtime_inputs.h"
 
 namespace RemoteRender {
 namespace {
 using Clock = std::chrono::steady_clock;
+constexpr auto WorkerHeartbeatTimeout = std::chrono::milliseconds(2800);
 
 struct State {
     std::mutex mutex;
@@ -21,14 +26,15 @@ struct State {
     std::uint32_t last_sequence = 0;
     std::string scene;
     std::string scene_uuid;
-    std::string renderer;
     int width = 0;
     int height = 0;
     int target_fps = 60;
     nlohmann::json start_command;
     std::vector<std::uint8_t> frame;
     Clock::time_point frame_time{};
-    Clock::time_point last_audio_publish{};
+    Clock::time_point last_state_publish{};
+    Clock::time_point worker_heartbeat{};
+    std::unordered_set<std::string> worker_scenes;
 };
 
 State &state()
@@ -42,6 +48,38 @@ double age_ms(Clock::time_point then)
     if (then == Clock::time_point{})
         return 1.0e9;
     return std::chrono::duration<double, std::milli>(Clock::now() - then).count();
+}
+
+bool worker_alive(const State &s)
+{
+    return s.worker_heartbeat != Clock::time_point{}
+        && Clock::now() - s.worker_heartbeat <= WorkerHeartbeatTimeout;
+}
+
+bool worker_supports(const State &s, std::string_view scene)
+{
+    if (!worker_alive(s))
+        return false;
+    return scene.empty() || s.worker_scenes.contains(std::string(scene));
+}
+
+nlohmann::json audio_snapshot_json()
+{
+    const auto audio = AudioState::snapshot();
+    return {
+        {"available", audio.available},
+        {"fresh", audio.fresh()},
+        {"sequence", audio.sequence},
+        {"timestamp_ms", audio.timestamp_ms},
+        {"flags", audio.flags},
+        {"beat_counter", audio.beat_counter},
+        {"onset_counter", audio.onset_counter},
+        {"drop_counter", audio.drop_counter},
+        {"section_counter", audio.section_counter},
+        {"features", audio.features},
+        {"spectrum", audio.spectrum},
+        {"waveform", audio.waveform},
+    };
 }
 
 std::uint32_t allocate_session(State &s)
@@ -65,26 +103,48 @@ void clear_command_sender()
     state().sender = {};
 }
 
+void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes)
+{
+    if (protocol_version != RemoteRenderProtocol::Version)
+        return;
+    auto &s = state();
+    std::lock_guard lock(s.mutex);
+    s.worker_heartbeat = Clock::now();
+    s.worker_scenes.clear();
+    s.worker_scenes.reserve(scenes.size());
+    for (const auto &scene : scenes)
+        if (!scene.empty()) s.worker_scenes.insert(scene);
+}
+
+bool worker_available(std::string_view scene)
+{
+    auto &s = state();
+    std::lock_guard lock(s.mutex);
+    return worker_supports(s, scene);
+}
+
 std::optional<std::uint32_t> request_scene(
     const Scenes::Scene &scene, int width, int height, int target_fps)
 {
     const auto caps = scene.get_capabilities();
-    if (!caps.supports_remote_rendering || caps.remote_renderer.empty())
+    if (!caps.supports_remote_rendering)
         return std::nullopt;
 
+    const auto input_snapshot = RuntimeInputs::to_json(RuntimeInputs::snapshot());
+    const auto audio_snapshot = audio_snapshot_json();
     CommandSender sender;
     nlohmann::json command;
     std::uint32_t session = 0;
     {
         auto &s = state();
         std::lock_guard lock(s.mutex);
-        if (!s.sender)
+        if (!s.sender || !worker_supports(s, scene.get_name()))
             return std::nullopt;
 
         const auto uuid = scene.get_uuid();
         const auto arguments = scene.to_json();
         if (s.session != 0 && s.scene == scene.get_name() && s.scene_uuid == uuid
-            && s.renderer == caps.remote_renderer && s.width == width && s.height == height
+            && s.width == width && s.height == height
             && s.start_command.value("arguments", nlohmann::json::object()) == arguments) {
             return s.session;
         }
@@ -93,23 +153,28 @@ std::optional<std::uint32_t> request_scene(
         s.last_sequence = 0;
         s.scene = scene.get_name();
         s.scene_uuid = uuid;
-        s.renderer = caps.remote_renderer;
         s.width = width;
         s.height = height;
         s.target_fps = std::clamp(target_fps, 1, 60);
         s.frame.clear();
         s.frame_time = {};
-        s.last_audio_publish = {};
+        s.last_state_publish = {};
         s.start_command = {
             {"op", "start"},
+            {"protocol", RemoteRenderProtocol::Version},
             {"session", s.session},
             {"scene", s.scene},
-            {"renderer", s.renderer},
+            {"uuid", uuid},
             {"width", s.width},
             {"height", s.height},
             {"target_fps", s.target_fps},
             {"variant", scene.get_variant_id()},
             {"arguments", arguments},
+            {"runtime_state", scene.snapshot_runtime_state()},
+            {"elapsed_seconds", scene.get_frame_context().elapsed_seconds},
+            {"inputs", input_snapshot},
+            {"audio", audio_snapshot},
+            {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
         };
         session = s.session;
         command = s.start_command;
@@ -120,42 +185,30 @@ std::optional<std::uint32_t> request_scene(
     return session;
 }
 
-void publish_audio(std::uint32_t session)
+void publish_runtime_state(std::uint32_t session)
 {
     CommandSender sender;
-    nlohmann::json command;
     {
         auto &s = state();
         std::lock_guard lock(s.mutex);
         if (!s.sender || session == 0 || session != s.session)
             return;
         const auto now = Clock::now();
-        if (s.last_audio_publish != Clock::time_point{}
-            && now - s.last_audio_publish < std::chrono::milliseconds(40))
+        if (s.last_state_publish != Clock::time_point{}
+            && now - s.last_state_publish < std::chrono::milliseconds(40))
             return;
-        s.last_audio_publish = now;
+        s.last_state_publish = now;
         sender = s.sender;
     }
 
-    const auto audio = AudioState::snapshot();
-    command = {
-        {"op", "audio"},
+    sender({
+        {"op", "state"},
+        {"protocol", RemoteRenderProtocol::Version},
         {"session", session},
-        {"fresh", audio.fresh()},
-        {"bass", 0.5f * (audio.feature(AudioProtocol::Feature::SubBass)
-                         + audio.feature(AudioProtocol::Feature::Bass))},
-        {"mids", (audio.feature(AudioProtocol::Feature::LowMid)
-                  + audio.feature(AudioProtocol::Feature::Mid)
-                  + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f},
-        {"treble", 0.5f * (audio.feature(AudioProtocol::Feature::Treble)
-                           + audio.feature(AudioProtocol::Feature::Air))},
-        {"balance", audio.feature(AudioProtocol::Feature::StereoBalance)},
-        {"kick", audio.feature(AudioProtocol::Feature::Kick)},
-        {"beat_counter", audio.beat_counter},
-        {"drop_counter", audio.drop_counter},
-        {"section_counter", audio.section_counter},
-    };
-    sender(command);
+        {"audio", audio_snapshot_json()},
+        {"inputs", RuntimeInputs::to_json(RuntimeInputs::snapshot())},
+        {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
+    });
 }
 
 bool submit_frame(std::uint32_t session, std::uint32_t sequence,
@@ -221,7 +274,8 @@ Status status()
     result.last_sequence = s.last_sequence;
     result.frame_age_ms = age_ms(s.frame_time);
     result.scene = s.scene;
-    result.renderer = s.renderer;
+    result.worker_available = worker_alive(s);
+    result.worker_scene_count = s.worker_scenes.size();
     return result;
 }
 
@@ -234,13 +288,12 @@ void stop()
         std::lock_guard lock(s.mutex);
         if (s.session == 0)
             return;
-        command = {{"op", "stop"}, {"session", s.session}};
+        command = {{"op", "stop"}, {"protocol", RemoteRenderProtocol::Version}, {"session", s.session}};
         sender = s.sender;
         s.session = 0;
         s.last_sequence = 0;
         s.scene.clear();
         s.scene_uuid.clear();
-        s.renderer.clear();
         s.frame.clear();
         s.frame_time = {};
         s.start_command = {};

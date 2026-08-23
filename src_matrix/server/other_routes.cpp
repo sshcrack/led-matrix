@@ -94,7 +94,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             {"last_sequence", remote.last_sequence},
             {"frame_age_ms", remote.frame_age_ms},
             {"scene", remote.scene},
-            {"renderer", remote.renderer}
+            {"worker_available", remote.worker_available},
+            {"worker_scene_count", remote.worker_scene_count}
         };
 
         const auto audio = AudioState::snapshot();

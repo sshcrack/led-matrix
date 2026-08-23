@@ -1,5 +1,7 @@
+#include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/remote_render.h>
+#include <shared/matrix/media_artwork_state.h>
 
 #include <emulator.h>
 #include <led-matrix.h>
@@ -18,7 +20,6 @@ public:
     Scenes::SceneCapabilities get_capabilities() const override {
         auto caps = Scenes::Scene::get_capabilities();
         caps.supports_remote_rendering = true;
-        caps.remote_renderer = "probe";
         return caps;
     }
 protected:
@@ -40,10 +41,38 @@ int main()
     scene.load_properties(nlohmann::json::object());
     scene.initialize(32, 32);
 
+    if (RemoteRender::request_scene(scene, 32, 32, 60).has_value()) {
+        std::cerr << "remote scene started before a capable worker advertised itself\n";
+        return 1;
+    }
+
+    RemoteRender::report_worker_heartbeat(
+        RemoteRenderProtocol::Version, {"remote_probe", "another_scene"});
+    if (!RemoteRender::worker_available("remote_probe")
+        || RemoteRender::worker_available("missing_scene")) {
+        std::cerr << "worker scene capability advertisement was not respected\n";
+        return 2;
+    }
+
+    MediaArtworkState::Palette palette{};
+    palette[0] = {12, 34, 56};
+    palette[1] = {78, 90, 123};
+    palette[2] = {145, 167, 189};
+    palette[3] = {210, 45, 67};
+    palette[4] = {89, 210, 34};
+    MediaArtworkState::update("remote-render-smoke", palette);
+
     const auto session = RemoteRender::request_scene(scene, 32, 32, 60);
     if (!session.has_value() || commands.size() != 1 || commands.back().value("op", "") != "start") {
         std::cerr << "remote scene did not emit a start command\n";
-        return 1;
+        return 3;
+    }
+    if (commands.back().value("protocol", 0) != RemoteRenderProtocol::Version
+        || commands.back().value("scene", std::string{}) != "remote_probe"
+        || commands.back().contains("renderer")
+        || !commands.back().value("artwork", nlohmann::json::object()).value("valid", false)) {
+        std::cerr << "start command still depends on a per-scene desktop renderer\n";
+        return 4;
     }
 
     // Identical requests reuse the active session rather than resetting the

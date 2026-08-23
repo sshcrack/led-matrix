@@ -1,10 +1,10 @@
 register_plugin(ExampleScenes
         matrix/ExampleScenes.cpp
         matrix/ExampleScenes.h
-        matrix/scenes/ColorPulseScene.cpp
-        matrix/scenes/ColorPulseScene.h
-        matrix/scenes/PropertyDemoScene.cpp
-        matrix/scenes/PropertyDemoScene.h
-        matrix/scenes/RenderingDemoScene.cpp
-        matrix/scenes/RenderingDemoScene.h
+        scenes/ColorPulseScene.cpp
+        scenes/ColorPulseScene.h
+        scenes/PropertyDemoScene.cpp
+        scenes/PropertyDemoScene.h
+        scenes/RenderingDemoScene.cpp
+        scenes/RenderingDemoScene.h
 )

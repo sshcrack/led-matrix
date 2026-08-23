@@ -98,8 +98,7 @@ namespace {
                     {"can_generate_preview", caps.can_generate_preview},
                     {"supports_audio", caps.supports_audio},
                     {"music_director_eligible", caps.music_director_eligible},
-                    {"supports_remote_rendering", caps.supports_remote_rendering},
-                    {"remote_renderer", caps.remote_renderer}
+                    {"supports_remote_rendering", caps.supports_remote_rendering}
                 }},
                 {"preview", {
                     {"enabled", preview_spec.enabled},

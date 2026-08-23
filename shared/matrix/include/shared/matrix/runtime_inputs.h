@@ -76,4 +76,9 @@ void clear_all();
     const Scenes::SceneInputSpec &spec, const Snapshot &snapshot);
 [[nodiscard]] nlohmann::json to_json(const Snapshot &snapshot);
 
+/// Replace this process' generic input mirror from a serialized snapshot. Used
+/// by the desktop scene worker so scene code reads the same RuntimeInputs API
+/// regardless of where it is executing.
+void replace_from_json(const nlohmann::json &snapshot_json);
+
 } // namespace RuntimeInputs

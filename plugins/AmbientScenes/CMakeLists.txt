@@ -1,20 +1,22 @@
 register_plugin(AmbientScenes
         matrix/AmbientScenes.cpp
         matrix/AmbientScenes.h
-        matrix/scenes/ClockScene.cpp
-        matrix/scenes/ClockScene.h
-        matrix/scenes/MetaBlobScene.cpp
-        matrix/scenes/MetaBlobScene.h
-        matrix/scenes/StarFieldScene.cpp
-        matrix/scenes/StarFieldScene.h
-        matrix/scenes/SortingVisualizerScene.cpp
-        matrix/scenes/SortingVisualizerScene.h
-        matrix/scenes/sorting_simple.cpp
-        matrix/scenes/sorting_complex.cpp
-        matrix/scenes/BouncingLogoScene.cpp
-        matrix/scenes/BouncingLogoScene.h
-        matrix/scenes/NeonTunnelScene.cpp
-        matrix/scenes/NeonTunnelScene.h
-        matrix/scenes/DigitalRainScene.cpp
-        matrix/scenes/DigitalRainScene.h
+        scenes/ClockScene.cpp
+        scenes/ClockScene.h
+        scenes/MetaBlobScene.cpp
+        scenes/MetaBlobScene.h
+        scenes/MetaballRenderer.cpp
+        scenes/MetaballRenderer.h
+        scenes/StarFieldScene.cpp
+        scenes/StarFieldScene.h
+        scenes/SortingVisualizerScene.cpp
+        scenes/SortingVisualizerScene.h
+        scenes/sorting_simple.cpp
+        scenes/sorting_complex.cpp
+        scenes/BouncingLogoScene.cpp
+        scenes/BouncingLogoScene.h
+        scenes/NeonTunnelScene.cpp
+        scenes/NeonTunnelScene.h
+        scenes/DigitalRainScene.cpp
+        scenes/DigitalRainScene.h
 )

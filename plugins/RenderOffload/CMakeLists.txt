@@ -4,6 +4,4 @@ register_plugin(RenderOffload
     DESKTOP
     desktop/RenderOffloadDesktop.cpp
     desktop/RenderOffloadDesktop.h
-    desktop/RenderFramePacket.cpp
-    desktop/RenderFramePacket.h
 )

@@ -1,8 +1,8 @@
 register_plugin(Shadertoy
         matrix/ShadertoyPlugin.cpp
         matrix/ShadertoyPlugin.h
-        matrix/scenes/ShadertoyScene.cpp
-        matrix/scenes/ShadertoyScene.h
+        scenes/ShadertoyScene.cpp
+        scenes/ShadertoyScene.h
         matrix/providers/Random.cpp
         matrix/providers/Random.h
         matrix/providers/Collection.cpp
@@ -27,4 +27,9 @@ if(ENABLE_DESKTOP)
 else()
         find_package(cpr CONFIG REQUIRED)
         target_link_libraries(Shadertoy PRIVATE cpr::cpr)
+endif()
+
+if(TARGET ShadertoySceneWorker)
+        find_package(cpr CONFIG REQUIRED)
+        target_link_libraries(ShadertoySceneWorker PRIVATE cpr::cpr)
 endif()

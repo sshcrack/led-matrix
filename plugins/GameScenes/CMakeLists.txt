@@ -1,25 +1,25 @@
 register_plugin(GameScenes
         matrix/GameScenes.cpp
         matrix/GameScenes.h
-        matrix/scenes/PingPongGameScene.cpp
-        matrix/scenes/PingPongGameScene.h
-        matrix/scenes/MazeGameScene.cpp
-        matrix/scenes/MazeGameScene.h
-        matrix/scenes/SnakeGameScene.cpp
-        matrix/scenes/SnakeGameScene.h
-        matrix/scenes/PacmanGameScene.cpp
-        matrix/scenes/PacmanGameScene.h
-        matrix/scenes/tetris/TetrisScene.cpp
-        matrix/scenes/tetris/TetrisScene.h
+        scenes/PingPongGameScene.cpp
+        scenes/PingPongGameScene.h
+        scenes/MazeGameScene.cpp
+        scenes/MazeGameScene.h
+        scenes/SnakeGameScene.cpp
+        scenes/SnakeGameScene.h
+        scenes/PacmanGameScene.cpp
+        scenes/PacmanGameScene.h
+        scenes/tetris/TetrisScene.cpp
+        scenes/tetris/TetrisScene.h
 
-        matrix/scenes/tetris/utils/brain.cpp
-        matrix/scenes/tetris/utils/brain.hpp
-        matrix/scenes/tetris/utils/grid.cpp
-        matrix/scenes/tetris/utils/grid.hpp
-        matrix/scenes/tetris/utils/neuralNetwork.cpp
-        matrix/scenes/tetris/utils/neuralNetwork.hpp
-        matrix/scenes/tetris/utils/piece.cpp
-        matrix/scenes/tetris/utils/piece.hpp
-        matrix/scenes/tetris/utils/population.cpp
-        matrix/scenes/tetris/utils/population.hpp
+        scenes/tetris/utils/brain.cpp
+        scenes/tetris/utils/brain.hpp
+        scenes/tetris/utils/grid.cpp
+        scenes/tetris/utils/grid.hpp
+        scenes/tetris/utils/neuralNetwork.cpp
+        scenes/tetris/utils/neuralNetwork.hpp
+        scenes/tetris/utils/piece.cpp
+        scenes/tetris/utils/piece.hpp
+        scenes/tetris/utils/population.cpp
+        scenes/tetris/utils/population.hpp
 )

@@ -12,6 +12,7 @@
 
 #include "shared/matrix/scene_runtime.h"
 #include "shared/matrix/input_ids.h"
+#include "shared/matrix/execution_mode.h"
 
 namespace Previews {
 
@@ -89,11 +90,13 @@ public:
 
 class RuntimeScope {
 public:
-    RuntimeScope() { Runtime::set_active(true); }
+    RuntimeScope() : execution_scope_(SceneExecution::Mode::Preview) { Runtime::set_active(true); }
     ~RuntimeScope() { Runtime::set_active(false); }
 
     RuntimeScope(const RuntimeScope &) = delete;
     RuntimeScope &operator=(const RuntimeScope &) = delete;
+private:
+    SceneExecution::Scope execution_scope_;
 };
 
 } // namespace Previews

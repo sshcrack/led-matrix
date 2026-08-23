@@ -1,10 +1,10 @@
 register_plugin(FractalScenes
         matrix/FractalScenes.cpp
         matrix/FractalScenes.h
-        matrix/scenes/GameOfLifeScene.cpp
-        matrix/scenes/GameOfLifeScene.h
-        matrix/scenes/JuliaSetScene.cpp
-        matrix/scenes/JuliaSetScene.h
-        matrix/scenes/WavePatternScene.cpp
-        matrix/scenes/WavePatternScene.h
+        scenes/GameOfLifeScene.cpp
+        scenes/GameOfLifeScene.h
+        scenes/JuliaSetScene.cpp
+        scenes/JuliaSetScene.h
+        scenes/WavePatternScene.cpp
+        scenes/WavePatternScene.h
 )

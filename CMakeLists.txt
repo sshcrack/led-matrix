@@ -7,11 +7,18 @@ endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
+option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
 option(SKIP_WEB_BUILD "Skip building and installing the React web application" OFF)
 
 if(ENABLE_DESKTOP)
     list(APPEND VCPKG_MANIFEST_FEATURES "desktop")
+    if(ENABLE_SCENE_WORKER)
+        # The worker executes the same matrix-scene plugins against the headless
+        # rpi-rgb-led-matrix emulator, but in a separate process. Pulling these
+        # features into desktop builds does not enable the matrix daemon itself.
+        list(APPEND VCPKG_MANIFEST_FEATURES "matrix" "emulator")
+    endif()
 else()
     list(APPEND VCPKG_MANIFEST_FEATURES "matrix")
 endif()
@@ -172,6 +179,94 @@ add_subdirectory(plugins)
 add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
+
+# Generic desktop scene execution lives in a child process. It links the matrix
+# scene runtime while the GUI links the desktop runtime, avoiding symbol/type
+# collisions between the two plugin managers. Worker plugin DSOs are copies of
+# the normal matrix plugin halves and therefore pick up new scenes automatically.
+if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
+    add_executable(led-matrix-scene-worker
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_scene_worker/main.cpp
+    )
+    target_compile_features(led-matrix-scene-worker PRIVATE cxx_std_23)
+    target_compile_definitions(led-matrix-scene-worker PRIVATE ENABLE_EMULATOR SCENE_WORKER)
+
+    # The installed worker lives beside led-matrix-desktop and resolves shared
+    # libraries from ../lib/led-matrix-desktop. In the build tree those same
+    # libraries live under shared/{common,matrix}, so give the worker an
+    # explicit build-only RPATH instead of forcing the install RPATH while
+    # developing/testing.
+    if(NOT WIN32)
+        set_target_properties(led-matrix-scene-worker PROPERTIES
+            BUILD_WITH_INSTALL_RPATH FALSE
+            BUILD_RPATH "$<TARGET_FILE_DIR:SharedToolsCommon>;$<TARGET_FILE_DIR:SharedToolsMatrix>"
+            INSTALL_RPATH "$ORIGIN/../lib/led-matrix-desktop"
+        )
+    endif()
+
+    find_package(ixwebsocket CONFIG REQUIRED)
+    find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
+    find_package(magic_enum CONFIG REQUIRED)
+    find_package(restinio REQUIRED)
+    find_package(nlohmann_json 3.2.0 REQUIRED)
+    find_package(spdlog CONFIG REQUIRED)
+
+    target_link_libraries(led-matrix-scene-worker PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        ixwebsocket::ixwebsocket
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        PkgConfig::GraphicsMagick
+        magic_enum::magic_enum
+        restinio::restinio
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog
+        ${CMAKE_DL_LIBS}
+    )
+    if(WIN32)
+        target_link_libraries(led-matrix-scene-worker PRIVATE ws2_32)
+        # Windows has no RPATH. Keep the build-tree worker executable runnable
+        # by placing the two project DLLs it imports beside the executable; the
+        # installer already puts these DLLs in bin/.
+        add_custom_command(TARGET led-matrix-scene-worker POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:SharedToolsCommon>"
+                "$<TARGET_FILE:SharedToolsMatrix>"
+                "$<TARGET_FILE_DIR:led-matrix-scene-worker>"
+        )
+    endif()
+
+    get_property(SCENE_WORKER_PLUGIN_TARGETS GLOBAL PROPERTY SCENE_WORKER_PLUGIN_TARGETS)
+    if(SCENE_WORKER_PLUGIN_TARGETS)
+        add_dependencies(led-matrix-scene-worker ${SCENE_WORKER_PLUGIN_TARGETS})
+    endif()
+
+    install(TARGETS led-matrix-scene-worker
+        RUNTIME DESTINATION bin
+    )
+
+    add_test(NAME scene_worker_registry_smoke
+        COMMAND $<TARGET_FILE:led-matrix-scene-worker>
+            --list-scenes
+            --plugin-dir ${CMAKE_BINARY_DIR}/scene_plugins
+    )
+    # These are representative CPU-heavy / data-driven scenes that should be
+    # present without any hand-written desktop renderer. The output is sorted.
+    set_tests_properties(scene_worker_registry_smoke PROPERTIES
+        PASS_REGULAR_EXPRESSION "boids.*julia_set.*metablob.*reaction_diffusion.*spotify"
+    )
+
+    add_test(NAME scene_worker_render_smoke
+        COMMAND $<TARGET_FILE:led-matrix-scene-worker>
+            --self-test
+            --plugin-dir ${CMAKE_BINARY_DIR}/scene_plugins
+    )
+    set_tests_properties(scene_worker_render_smoke PROPERTIES
+        PASS_REGULAR_EXPRESSION "\"ok\":true"
+    )
+endif()
 if(ENABLE_DESKTOP)
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
@@ -659,11 +754,25 @@ if(NOT ENABLE_DESKTOP)
         DESTINATION "share/led-matrix"
     )
 else()
-    install(TARGETS SharedToolsCommon SharedToolsDesktop
+    set(DESKTOP_SHARED_TARGETS SharedToolsCommon SharedToolsDesktop)
+    if(ENABLE_SCENE_WORKER)
+        list(APPEND DESKTOP_SHARED_TARGETS SharedToolsMatrix)
+    endif()
+    install(TARGETS ${DESKTOP_SHARED_TARGETS}
         RUNTIME DESTINATION bin                         # .dll (Windows)
         ARCHIVE DESTINATION lib/led-matrix-desktop      # .lib (Windows static or import lib)
         LIBRARY DESTINATION lib/led-matrix-desktop      # .so/.dylib (Unix)
     )
+    if(ENABLE_SCENE_WORKER AND NOT WIN32)
+        # The headless worker directly imports the emulator build of the matrix
+        # library. Unlike Windows (where vcpkg DLLs are copied to bin by the
+        # desktop runtime install rules), Unix packages must install this vcpkg
+        # shared object explicitly beside SharedToolsMatrix.
+        find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+        install(FILES "$<TARGET_FILE:rpi_rgb_led_matrix::rpi-rgb-led-matrix>"
+            DESTINATION lib/led-matrix-desktop
+        )
+    endif()
 
 endif()
 

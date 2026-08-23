@@ -10,8 +10,8 @@
 #include <memory>
 #include <vector>
 
-#include "plugins/AudioVisualizer/matrix/scenes/AudioReactiveScenes.h"
-#include "plugins/AudioVisualizer/matrix/scenes/AudioSpectrumScene.h"
+#include "plugins/AudioVisualizer/scenes/AudioReactiveScenes.h"
+#include "plugins/AudioVisualizer/scenes/AudioSpectrumScene.h"
 
 namespace {
 constexpr int Width = 128;

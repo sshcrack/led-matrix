@@ -5,10 +5,10 @@ register_plugin(RGBMatrixAnimations
         matrix/anim/gravityparticles.h
         matrix/anim/RGBMatrixRenderer.cpp
         matrix/anim/RGBMatrixRenderer.h
-        matrix/scenes/ParticleScene.cpp
-        matrix/scenes/ParticleScene.h
-        matrix/scenes/RainScene.cpp
-        matrix/scenes/RainScene.h
-        matrix/scenes/SparksScene.cpp
-        matrix/scenes/SparksScene.h
+        scenes/ParticleScene.cpp
+        scenes/ParticleScene.h
+        scenes/RainScene.cpp
+        scenes/RainScene.h
+        scenes/SparksScene.cpp
+        scenes/SparksScene.h
 )

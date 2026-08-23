@@ -14,6 +14,7 @@ public:
     std::optional<std::string> before_server_init() override;
     std::optional<std::string> pre_exit() override;
     std::optional<std::vector<std::string>> on_websocket_open() override;
+    void on_websocket_message(const std::string &message) override;
     bool on_udp_packet(uint8_t plugin_id, const uint8_t *data, size_t size) override;
 
 private:
