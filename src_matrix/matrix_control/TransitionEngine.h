@@ -37,7 +37,8 @@ public:
         const std::string &transition_name,
         std::shared_ptr<Scenes::Scene> &forced_scene,
         tmillis_t start_delay_ms = 0,
-        std::function<bool()> inputs_still_available = {});
+        std::function<bool()> inputs_still_available = {},
+        FrameCanvas *current_display_canvas = nullptr);
 
 private:
     RGBMatrixBase *matrix_;

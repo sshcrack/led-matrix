@@ -272,6 +272,7 @@ bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
                 if (!curr_animation->PeekNext(canvas, &delay_us))
                 {
                     trace("Returning, reader done");
+                    hold_current_frame();
                     return false;
                 }
                 anim_frame_start_ms = 0;

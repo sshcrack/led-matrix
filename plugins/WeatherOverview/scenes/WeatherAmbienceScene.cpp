@@ -265,7 +265,10 @@ void WeatherAmbienceScene::render_lightning(rgb_matrix::FrameCanvas *canvas, Wea
 }
 
 bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas) {
-    if (!refresh_weather()) return false;
+    if (!refresh_weather()) {
+        hold_current_frame();
+        return false;
+    }
     const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.08f);
     time_ += dt * animation_speed_->get();
     const auto mode = effective_mode();

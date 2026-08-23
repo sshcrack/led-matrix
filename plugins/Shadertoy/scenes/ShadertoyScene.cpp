@@ -108,6 +108,7 @@ bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
     if (!plugin)
     {
         spdlog::info("ShadertoyScene: Plugin not found, cannot render");
+        hold_current_frame();
         return false;
     }
 
@@ -164,7 +165,11 @@ bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
                 }
             }
             
-            return true; // Continue rendering
+            if (showing_loading_animation)
+                render_loading_animation(canvas);
+            else
+                hold_current_frame();
+            return true; // Continue rendering without presenting stale canvas contents.
         }
     }
 
@@ -208,12 +213,14 @@ bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     if (!plugin) {
         spdlog::warn("CustomShadertoyScene: Plugin not found, cannot render");
+        hold_current_frame();
         return false;
     }
 
     const auto shader_file = shader_path_.string();
     if (!std::filesystem::exists(shader_path_)) {
         spdlog::warn("CustomShadertoyScene: Shader file no longer exists: {}", shader_file);
+        hold_current_frame();
         return false;
     }
 
@@ -225,6 +232,7 @@ bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
         std::ifstream file(shader_path_);
         if (!file.is_open()) {
             spdlog::warn("CustomShadertoyScene: Failed to open shader file: {}", shader_file);
+        hold_current_frame();
             return false;
         }
         std::stringstream buffer;

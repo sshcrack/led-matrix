@@ -30,6 +30,11 @@ public:
 
     void render_fallback();
 
+    /// Canvas currently latched on the matrix after the most recent successful
+    /// presentation. This is only used at scene-transition boundaries, avoiding
+    /// a per-frame framebuffer copy just to recover the visible outgoing frame.
+    [[nodiscard]] FrameCanvas *last_presented_canvas() const { return last_presented_canvas_; }
+
 private:
     RGBMatrixBase *matrix_;
     TimeSource *time_source_;
@@ -37,4 +42,5 @@ private:
     MatrixPresenter *presenter_;
     const std::atomic<bool> *exit_flag_;
     const std::atomic<bool> *interrupt_flag_;
+    FrameCanvas *last_presented_canvas_ = nullptr;
 };

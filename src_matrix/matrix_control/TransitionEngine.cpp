@@ -67,7 +67,8 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                                                FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
                                                tmillis_t transition_duration, const std::string& transition_name,
                                                std::shared_ptr<Scenes::Scene>& forced_scene, tmillis_t start_delay_ms,
-                                               std::function<bool()> inputs_still_available)
+                                               std::function<bool()> inputs_still_available,
+                                               FrameCanvas *current_display_canvas)
 {
     tmillis_t next_input_check_ms = time_source_->now_ms();
     const auto runtime_inputs_valid = [&]() {
@@ -89,20 +90,29 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         while (time_source_->now_ms() - hold_start < start_delay_ms) {
             if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid())
                 return;
+            bool frame_updated = false;
             try {
-                bool rendered = false;
                 const auto remote_status = RemoteRender::status();
                 if (remote_status.requested && remote_status.scene == scene->get_name()) {
                     RemoteRender::publish_runtime_state(remote_status.session);
-                    rendered = RemoteRender::copy_latest(
+                    frame_updated = RemoteRender::copy_latest(
                         remote_status.session, composite_offscreen_canvas,
                         matrix_width, matrix_height);
                 }
-                if (!rendered && !scene->render_frame(composite_offscreen_canvas, std::nullopt, true))
-                    break;
+                if (!frame_updated) {
+                    if (!scene->render_frame(composite_offscreen_canvas, std::nullopt, true))
+                        break;
+                    frame_updated = scene->frame_was_updated();
+                }
             }
             catch (...) {
                 break;
+            }
+            if (!frame_updated) {
+                // The scene deliberately held its current frame. Do not rotate
+                // an untouched historical off-screen buffer onto the matrix.
+                SleepMillis(std::max<tmillis_t>(1, 1000 / std::max(1, scene->get_declared_target_fps())));
+                continue;
             }
             if (post_processor_)
                 post_processor_->apply_effects(composite_offscreen_canvas);
@@ -143,11 +153,23 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     // especially important when the current scene is already desktop-rendered:
     // its local simulation may have intentionally stopped advancing.
     bool current_continue = true;
+    bool current_frame_updated = false;
     const auto current_remote = RemoteRender::status();
-    if (!(current_remote.requested && current_remote.scene == scene->get_name()
-          && RemoteRender::copy_latest(current_remote.session, first_offscreen_canvas,
-                                       matrix_width, matrix_height))) {
+    if (current_remote.requested && current_remote.scene == scene->get_name()) {
+        current_frame_updated = RemoteRender::copy_latest(
+            current_remote.session, first_offscreen_canvas, matrix_width, matrix_height);
+    }
+    if (!current_frame_updated) {
         current_continue = safe_render(scene, first_offscreen_canvas);
+        current_frame_updated = scene->frame_was_updated();
+    }
+    if (!current_frame_updated && current_display_canvas != nullptr) {
+        // The outgoing scene has no new pixels. Snapshot the canvas that the
+        // renderer most recently latched on the matrix instead of exposing
+        // arbitrary contents left in this reusable transition buffer. This
+        // copy happens only at the transition boundary, not every frame.
+        first_offscreen_canvas->CopyFrom(*current_display_canvas);
+        current_frame_updated = true;
     }
 
     std::optional<std::uint32_t> next_remote_session;
@@ -165,15 +187,29 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     if (!next_remote_session.has_value() && current_remote.requested)
         RemoteRender::stop();
 
+    bool have_next_frame = false;
     const auto render_next = [&]() {
         if (next_remote_session.has_value()) {
             RemoteRender::publish_runtime_state(*next_remote_session);
             if (RemoteRender::copy_latest(
                     *next_remote_session, second_offscreen_canvas,
-                    matrix_width, matrix_height))
+                    matrix_width, matrix_height)) {
+                have_next_frame = true;
                 return true;
+            }
         }
-        return safe_render(next_scene, second_offscreen_canvas);
+
+        const bool keep_running = safe_render(next_scene, second_offscreen_canvas);
+        if (next_scene->frame_was_updated()) {
+            have_next_frame = true;
+        } else if (!have_next_frame) {
+            // A not-yet-ready incoming scene (paused media, async artwork, etc.)
+            // must not expose whatever pixels happened to be left in this
+            // reusable transition canvas. Until it has a real frame, blending
+            // from the outgoing snapshot to itself is visually neutral.
+            second_offscreen_canvas->CopyFrom(*first_offscreen_canvas);
+        }
+        return keep_running;
     };
 
     auto next_continue = render_next();
