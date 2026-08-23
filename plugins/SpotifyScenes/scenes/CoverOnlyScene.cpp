@@ -136,10 +136,10 @@ namespace {
 std::optional<SpotifyState> spotify_state_from_runtime_input()
 {
     const auto snapshot = RuntimeInputs::snapshot();
-    if (!snapshot.available(RuntimeInputIds::SpotifyPlayback)
-        || !snapshot.boolean(RuntimeInputIds::SpotifyPlayback, "playing").value_or(false))
+    if (!snapshot.available(RuntimeInputIds::SpotifyPlayback))
         return std::nullopt;
 
+    const bool playing = snapshot.boolean(RuntimeInputIds::SpotifyPlayback, "playing").value_or(false);
     const auto track_id = snapshot.text(RuntimeInputIds::SpotifyPlayback, "track_id");
     const auto duration = snapshot.number(RuntimeInputIds::SpotifyPlayback, "duration_ms");
     if (!track_id.has_value() || !duration.has_value())
@@ -162,7 +162,7 @@ std::optional<SpotifyState> spotify_state_from_runtime_input()
     return SpotifyState({
         {"timestamp", now_ms},
         {"progress_ms", static_cast<long>(std::max(0.0, progress))},
-        {"is_playing", true},
+        {"is_playing", playing},
         {"item", std::move(item)},
     });
 }
@@ -383,6 +383,7 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
     if (!temp.has_value())
     {
         spdlog::debug("Tried to render CoverOnlyScene, but no current track");
+        hold_current_frame();
         return false;
     }
 
@@ -391,13 +392,15 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
     if (!track_id.has_value())
     {
         spdlog::debug("No track id, exiting");
+        hold_current_frame();
         return false;
     }
 
     if (!curr_state.has_value() || curr_state->get_track().get_id().value() != track_id)
     {
         if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            return true; // Previous fetch still in progress
+            hold_current_frame();
+            return true; // Keep the previous cover until the new artwork is ready.
         }
 
         {
@@ -424,6 +427,7 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
         if (!res.has_value())
         {
             spdlog::error("Failed to refresh info: {}", res.error());
+            hold_current_frame();
             return false;
         }
 
@@ -431,6 +435,7 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
         if (images.empty())
         {
             spdlog::debug("Exited refresh thread, waiting for new future");
+            hold_current_frame();
             return true;
         }
 
@@ -457,11 +462,16 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
 
     if (!quick_cover.has_value() && !curr_animation.has_value())
     {
+        hold_current_frame();
         return true;
     }
 
     if (!curr_state->is_playing())
     {
+        // Preserve exactly the last presented cover while paused. Swapping an
+        // untouched double buffer here used to alternate two historical frames
+        // on the physical matrix, which looked like severe flicker.
+        hold_current_frame();
         return true;
     }
 

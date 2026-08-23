@@ -184,9 +184,6 @@ void Scenes::WeatherScene::renderSunRays(rgb_matrix::FrameCanvas *canvas, const 
 
                     if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height)
                     {
-                        uint8_t existing_r, existing_g, existing_b;
-                        canvas->GetPixel(x, y, &existing_r, &existing_g, &existing_b);
-
                         float base_intensity = 1.0f - distance_factor;
                         float width_intensity = 1.0f - std::abs(w) / static_cast<float>(ray_width / 2 + 1);
                         float final_intensity = base_intensity * width_intensity * 0.3f;
@@ -443,20 +440,27 @@ RGB Scenes::WeatherScene::interpolateColor(const RGB &start, const RGB &end, flo
 
 void Scenes::WeatherScene::applyBackgroundEffects(rgb_matrix::FrameCanvas *canvas, const RGB &base_color)
 {
+    if (background_x_variation_.size() != static_cast<std::size_t>(matrix_width)) {
+        background_x_variation_.resize(static_cast<std::size_t>(matrix_width));
+        for (int x = 0; x < matrix_width; ++x)
+            background_x_variation_[static_cast<std::size_t>(x)] =
+                1.0f + std::sin(static_cast<float>(x) * 0.1f) * 0.05f;
+    }
+
+    // Keep the sky luminance stable. The old renderer modulated every pixel by
+    // a global 1.00..1.05 triangle wave tied to frame number; on a bright LED
+    // matrix that reads as a periodic whole-screen flicker rather than useful
+    // weather motion. Clouds, particles, rays and stars provide local motion.
     for (int y = 0; y < matrix_height; y++)
     {
-        float gradient_factor = 1.0f - (float)y / matrix_height * GRADIENT_INTENSITY;
+        const float row_factor = 1.0f - static_cast<float>(y) / matrix_height * GRADIENT_INTENSITY;
 
         for (int x = 0; x < matrix_width; x++)
         {
-            float x_variation = 1.0f + std::sin(x * 0.1f) * 0.05f;
-
-            int pulse = (animation_frame < 30) ? animation_frame : 60 - animation_frame;
-            float pulse_factor = 1.0f + (pulse / 600.0f);
-
-            uint8_t r = std::min(255.0f, base_color.r * gradient_factor * x_variation * pulse_factor);
-            uint8_t g = std::min(255.0f, base_color.g * gradient_factor * x_variation * pulse_factor);
-            uint8_t b = std::min(255.0f, base_color.b * gradient_factor * x_variation * pulse_factor);
+            const float factor = row_factor * background_x_variation_[static_cast<std::size_t>(x)];
+            const uint8_t r = std::min(255.0f, base_color.r * factor);
+            const uint8_t g = std::min(255.0f, base_color.g * factor);
+            const uint8_t b = std::min(255.0f, base_color.b * factor);
 
             canvas->SetPixel(x, y, r, g, b);
         }

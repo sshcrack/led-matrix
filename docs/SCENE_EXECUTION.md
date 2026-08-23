@@ -141,6 +141,8 @@ This keeps matrix rendering, previews, and worker rendering consistent. Avoid re
 
 `SwapOnVSync`/the renderer coordinator owns frame pacing. Do not add an unconditional sleep in a scene render loop. `wait_until_next_frame()` remains supported for older code, but `render_frame(..., suppress_internal_wait=true)` is used by the central renderer and worker so pacing does not happen twice.
 
+If a scene stays active but deliberately has no new pixels to present (for example while an async image is loading or media is paused), call `hold_current_frame()` before returning from `render()`. The local renderer then leaves the currently displayed buffer latched instead of swapping an untouched historical double buffer. The scene is still polled at its normal target rate so it can resume immediately when state changes.
+
 For fixed-rate simulations use `Scenes::FixedStepAccumulator` rather than coupling physics updates to render FPS.
 
 ## Adaptive local quality
