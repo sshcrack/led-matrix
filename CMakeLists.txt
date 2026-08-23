@@ -553,6 +553,48 @@ if(ENABLE_EMULATOR)
     add_test(NAME runtime_selection_smoke COMMAND $<TARGET_FILE:runtime_selection_smoke>)
     set_tests_properties(runtime_selection_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(scene_renderer_cadence_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_renderer_cadence_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(scene_renderer_cadence_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(scene_renderer_cadence_smoke PRIVATE ENABLE_EMULATOR)
+    target_include_directories(scene_renderer_cadence_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(scene_renderer_cadence_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog
+        fmt::fmt
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME scene_renderer_cadence_smoke COMMAND $<TARGET_FILE:scene_renderer_cadence_smoke>)
+    set_tests_properties(scene_renderer_cadence_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(scene_renderer_frame_hold_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_renderer_frame_hold_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(scene_renderer_frame_hold_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(scene_renderer_frame_hold_smoke PRIVATE ENABLE_EMULATOR)
+    target_include_directories(scene_renderer_frame_hold_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(scene_renderer_frame_hold_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog
+        fmt::fmt
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME scene_renderer_frame_hold_smoke COMMAND $<TARGET_FILE:scene_renderer_frame_hold_smoke>)
+    set_tests_properties(scene_renderer_frame_hold_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(remote_render_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_render_smoke.cpp
     )

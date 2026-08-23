@@ -20,14 +20,21 @@ string Scenes::WeatherScene::get_name() const
     return "weather";
 }
 
-void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data)
+void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas, const WeatherData &data, const RGB &theme_color)
 {
-    // Hero area: icon on the left, temperature and condition on the right.
-    // A dark translucent-looking card is approximated with a solid low-luminance fill.
+    // Blend the panel into the rendered sky instead of replacing it with an
+    // almost-black rectangle. FrameCanvas::GetPixel reads the off-screen canvas
+    // backing store here; the renderer regressions are covered separately.
+    const RGB panel_tint{
+        static_cast<uint8_t>(std::max(8, static_cast<int>(theme_color.r * 0.18f))),
+        static_cast<uint8_t>(std::max(18, static_cast<int>(theme_color.g * 0.18f))),
+        static_cast<uint8_t>(std::max(34, static_cast<int>(theme_color.b * 0.18f)))
+    };
+    constexpr float panel_alpha = 0.54f;
     const int card_x = 4, card_y = 16, card_w = matrix_width - 8, card_h = 43;
     for (int y = card_y; y < card_y + card_h && y < matrix_height; ++y)
         for (int x = card_x; x < card_x + card_w && x < matrix_width; ++x)
-            canvas->SetPixel(x, y, 6, 15, 30);
+            SetPixelAlpha(canvas, x, y, panel_tint.r, panel_tint.g, panel_tint.b, panel_alpha);
 
     if (images.has_value())
         SetImageTransparent(canvas, card_x + 3, card_y + 4, images->currentIcon);
@@ -49,7 +56,7 @@ void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas,
     }
 }
 
-void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data) const
+void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const WeatherData &data, const RGB &theme_color) const
 {
     if (data.forecast.empty() || !images.has_value())
         return;
@@ -58,6 +65,12 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
     const int count = std::min<size_t>(3, data.forecast.size());
     const int gap = 3;
     const int card_w = (matrix_width - 8 - gap * (count - 1)) / count;
+    const RGB panel_tint{
+        static_cast<uint8_t>(std::max(7, static_cast<int>(theme_color.r * 0.15f))),
+        static_cast<uint8_t>(std::max(16, static_cast<int>(theme_color.g * 0.15f))),
+        static_cast<uint8_t>(std::max(30, static_cast<int>(theme_color.b * 0.15f)))
+    };
+    constexpr float panel_alpha = 0.58f;
 
     for (int i = 0; i < count; ++i)
     {
@@ -65,7 +78,7 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
         const int x0 = 4 + i * (card_w + gap);
         for (int y = top; y < std::min(matrix_height - 4, top + 47); ++y)
             for (int x = x0; x < std::min(matrix_width, x0 + card_w); ++x)
-                canvas->SetPixel(x, y, 5, 12, 25);
+                SetPixelAlpha(canvas, x, y, panel_tint.r, panel_tint.g, panel_tint.b, panel_alpha);
 
         DrawText(canvas, *SMALL_FONT, x0 + 4, top + 9, {205, 225, 245}, day.day_name.c_str());
         if (i < static_cast<int>(images->forecastIcons.size()))
@@ -212,9 +225,9 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
     if (enable_clock->get())
         renderClock(canvas);
 
-    renderCurrentWeather(canvas, data);
+    renderCurrentWeather(canvas, data, theme_color);
     renderSunriseSunset(canvas, data);
-    renderForecast(canvas, data);
+    renderForecast(canvas, data, theme_color);
 
     if (enable_animations->get())
     {

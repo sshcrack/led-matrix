@@ -39,6 +39,7 @@ namespace Scenes {
         std::chrono::steady_clock::time_point frame_clock_last_{};
         bool frame_clock_started_ = false;
         bool suppress_internal_wait_ = false;
+        bool frame_updated_ = true;
         double frame_wait_ms_ = 0.0;
         float render_quality_scale_ = 1.0f;
         unsigned render_over_budget_streak_ = 0;
@@ -76,6 +77,12 @@ namespace Scenes {
         }
 
         virtual void wait_until_next_frame();
+
+        /// Keep the currently presented matrix frame instead of swapping an
+        /// untouched/stale off-screen buffer. Use this when a scene remains
+        /// active but intentionally has no new visual frame yet (for example
+        /// paused media or an asynchronous artwork load).
+        void hold_current_frame() { frame_updated_ = false; }
 
         /// Current render-frame timing. Prefer this over reading wall clock time
         /// inside a scene. The matrix renderer and preview generator populate it.
@@ -132,6 +139,7 @@ namespace Scenes {
 
         [[nodiscard]] int get_declared_target_fps() const { return target_fps; }
         [[nodiscard]] double get_last_frame_wait_ms() const { return frame_wait_ms_; }
+        [[nodiscard]] bool frame_was_updated() const { return frame_updated_; }
         [[nodiscard]] float get_render_quality_scale() const { return render_quality_scale_; }
         void report_render_cost(double active_render_ms);
 

@@ -372,6 +372,7 @@ bool Scenes::Scene::render_frame(FrameCanvas *canvas,
     frame_context_.deterministic = deterministic;
 
     frame_wait_ms_ = 0.0;
+    frame_updated_ = true;
     const bool previous_suppress = suppress_internal_wait_;
     suppress_internal_wait_ = suppress_internal_wait || deterministic;
     try {
