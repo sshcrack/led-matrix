@@ -7,15 +7,10 @@ endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
-if(WIN32)
-    # The headless rpi-rgb-led-matrix emulator used by the worker depends on
-    # POSIX headers (pthread.h, sys/mman.h, ...), so it cannot be built with
-    # the native Windows toolchain. Windows desktop builds still include the
-    # dedicated desktop plugins and can use their existing render paths.
-    option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" OFF)
-else()
-    option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
-endif()
+# Generic scene offload is a normal part of desktop builds on both Linux and
+# Windows. The rpi-rgb-led-matrix fork provides a native headless emulator on
+# Windows, so worker scenes do not require GPIO, pthreads, mmap, or SDL there.
+option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
 option(SKIP_WEB_BUILD "Skip building and installing the React web application" OFF)
 
@@ -235,14 +230,16 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     )
     if(WIN32)
         target_link_libraries(led-matrix-scene-worker PRIVATE ws2_32)
-        # Windows has no RPATH. Keep the build-tree worker executable runnable
-        # by placing the two project DLLs it imports beside the executable; the
-        # installer already puts these DLLs in bin/.
+        # Windows has no RPATH. Stage every DLL known to the worker's link graph
+        # beside the executable so build-tree smoke tests and dynamically loaded
+        # scene plugins see the same runtime environment as the installed app.
         add_custom_command(TARGET led-matrix-scene-worker POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE:SharedToolsCommon>"
                 "$<TARGET_FILE:SharedToolsMatrix>"
+                $<TARGET_RUNTIME_DLLS:led-matrix-scene-worker>
                 "$<TARGET_FILE_DIR:led-matrix-scene-worker>"
+            COMMAND_EXPAND_LISTS
         )
     endif()
 
@@ -834,6 +831,17 @@ else()
         ARCHIVE DESTINATION lib/led-matrix-desktop      # .lib (Windows static or import lib)
         LIBRARY DESTINATION lib/led-matrix-desktop      # .so/.dylib (Unix)
     )
+    if(WIN32)
+        # The Windows triplet uses dynamic linkage. CMake/vcpkg applocal makes
+        # build-tree targets runnable, but CPack only sees explicit install
+        # rules. Bundle the release vcpkg DLL set so the desktop executable,
+        # scene worker, and dynamically loaded scene plugins are self-contained.
+        install(DIRECTORY
+            "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/bin/"
+            DESTINATION bin
+            FILES_MATCHING PATTERN "*.dll"
+        )
+    endif()
     if(ENABLE_SCENE_WORKER AND NOT WIN32)
         # The headless worker directly imports the emulator build of the matrix
         # library. Unlike Windows (where vcpkg DLLs are copied to bin by the
