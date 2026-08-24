@@ -134,7 +134,7 @@ public:
             throw std::runtime_error("failed to create scene worker UDP socket");
         }
         std::memcpy(&address_, result->ai_addr, result->ai_addrlen);
-        address_len_ = static_cast<socklen_t>(result->ai_addrlen);
+        address_len_ = static_cast<int>(result->ai_addrlen);
         freeaddrinfo(result);
     }
 

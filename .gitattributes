@@ -1,1 +1,2 @@
 *.sh text eol=lf
+cmake/overlay-ports/rpi-rgb-led-matrix/*.patch whitespace=-blank-at-eol,-space-before-tab
