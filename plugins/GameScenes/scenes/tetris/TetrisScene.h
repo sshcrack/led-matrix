@@ -20,6 +20,11 @@ namespace Scenes {
         bool rotated = false;
         std::string bestMove;
         int bestRotation = 0;
+        int high_score = 0;
+        bool high_score_dirty = false;
+
+        void update_high_score();
+        void persist_high_score();
 
         struct RGB {
             uint8_t r, g, b;
@@ -64,6 +69,9 @@ namespace Scenes {
         void initialize(int width, int height) override;
 
         void after_render_stop() override;
+
+        [[nodiscard]] nlohmann::json snapshot_runtime_state() const override;
+        void restore_runtime_state(const nlohmann::json &state) override;
 
         [[nodiscard]] std::string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Games"; }
