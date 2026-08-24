@@ -4,14 +4,43 @@
 #include "utils/grid.hpp"
 #include "utils/neuralNetwork.hpp"
 #include "spdlog/spdlog.h"
+#include "shared/matrix/execution_mode.h"
+#include "shared/matrix/utils/shared.h"
 #include <chrono>
 #include <array>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 using namespace std;
 
 namespace {
+constexpr const char *game_scenes_config_key = "GameScenes";
+std::atomic<int> process_high_score{0};
+
+int load_persisted_high_score() {
+    if (SceneExecution::mode() != SceneExecution::Mode::Matrix || config == nullptr) return 0;
+    try {
+        const auto plugin_configs = config->get_plugin_configs();
+        const auto it = plugin_configs.find(game_scenes_config_key);
+        if (it == plugin_configs.end()) return 0;
+        const auto state = nlohmann::json::parse(it->second);
+        return std::max(0, state.value("tetris_high_score", 0));
+    } catch (const std::exception &e) {
+        spdlog::warn("Ignoring invalid GameScenes persistent state: {}", e.what());
+        return 0;
+    }
+}
+
+void publish_high_score(int score) {
+    int current = process_high_score.load(std::memory_order_relaxed);
+    while (score > current &&
+           !process_high_score.compare_exchange_weak(current, score,
+                                                     std::memory_order_relaxed,
+                                                     std::memory_order_relaxed)) {
+    }
+}
+
 const std::array<uint8_t, 5> &glyph3x5(char c) {
     static const std::array<uint8_t, 5> blank{0,0,0,0,0};
     static const std::array<uint8_t, 5> zero {7,5,5,5,7};
@@ -29,10 +58,13 @@ const std::array<uint8_t, 5> &glyph3x5(char c) {
     static const std::array<uint8_t, 5> O{7,5,5,5,7};
     static const std::array<uint8_t, 5> R{6,5,6,5,5};
     static const std::array<uint8_t, 5> E{7,4,6,4,7};
+    static const std::array<uint8_t, 5> H{5,5,7,5,5};
+    static const std::array<uint8_t, 5> I{7,2,2,2,7};
     switch(c) {
         case '0': return zero; case '1': return one; case '2': return two; case '3': return three; case '4': return four;
         case '5': return five; case '6': return six; case '7': return seven; case '8': return eight; case '9': return nine;
         case 'S': return S; case 'C': return C; case 'O': return O; case 'R': return R; case 'E': return E;
+        case 'H': return H; case 'I': return I;
         default: return blank;
     }
 }
@@ -57,6 +89,9 @@ namespace Scenes {
             Scene() {
         bestParams = NeuralNetwork(BEST_PARAMS);
         brain = Brain(bestParams);
+        high_score = std::max(load_persisted_high_score(),
+                              process_high_score.load(std::memory_order_relaxed));
+        publish_high_score(high_score);
         last_update_time = std::chrono::steady_clock::now();
     }
 
@@ -75,6 +110,36 @@ namespace Scenes {
         bestMove = brain.getBestMove(grid);
         bestRotation = static_cast<int>(bestMove.back()) - 48;
         bestMove.pop_back();
+    }
+
+    void TetrisScene::update_high_score() {
+        const int previous = high_score;
+        high_score = std::max(high_score, grid.score);
+        if (!SceneExecution::is_preview()) {
+            publish_high_score(high_score);
+            high_score = std::max(high_score, process_high_score.load(std::memory_order_relaxed));
+        }
+        if (SceneExecution::mode() == SceneExecution::Mode::Matrix && high_score > previous)
+            high_score_dirty = true;
+    }
+
+    void TetrisScene::persist_high_score() {
+        if (!high_score_dirty || SceneExecution::mode() != SceneExecution::Mode::Matrix || config == nullptr)
+            return;
+
+        try {
+            auto plugin_configs = config->get_plugin_configs();
+            nlohmann::json state = nlohmann::json::object();
+            if (const auto it = plugin_configs.find(game_scenes_config_key); it != plugin_configs.end()) {
+                try { state = nlohmann::json::parse(it->second); } catch (...) {}
+                if (!state.is_object()) state = nlohmann::json::object();
+            }
+            state["tetris_high_score"] = high_score;
+            config->set_plugin_config(game_scenes_config_key, state.dump());
+            high_score_dirty = false;
+        } catch (const std::exception &e) {
+            spdlog::warn("Could not persist Tetris high score: {}", e.what());
+        }
     }
 
     bool TetrisScene::render(rgb_matrix::FrameCanvas *canvas) {
@@ -130,6 +195,8 @@ namespace Scenes {
             grid.update();
         }
 
+        update_high_score();
+
         if (grid.gameOver) {
             gameOver = true;
             hold_current_frame();
@@ -156,21 +223,44 @@ namespace Scenes {
         }
 
 
-        // Score panel. On the 128x128 matrix the board leaves enough room for
-        // a permanent, readable HUD; on narrow matrices we use a compact overlay.
+        // Score panel. On wide matrices both the current score and session high
+        // high score get a permanent HUD. Narrow matrices keep both values inside the
+        // board header; if unusually large values no longer fit, alternate them.
         const int board_right = offset_x + 10 * block_size;
         const int right_space = matrix_width - board_right - 2;
         const std::string score_text = std::to_string(grid.score);
+        const std::string high_score_text = std::to_string(high_score);
         if (right_space >= 20) {
             const int panel_x = board_right + std::max(3, (right_space - 19) / 2);
             const int panel_y = std::max(2, offset_y + 4);
+            const int score_scale = score_text.size() <= 2 && right_space >= 28 ? 2 : 1;
+            const int high_scale = high_score_text.size() <= 2 && right_space >= 28 ? 2 : 1;
             draw3x5(canvas, panel_x, panel_y, "SCORE", 105, 105, 105);
-            draw3x5(canvas, panel_x, panel_y + 8, score_text, 255, 255, 255,
-                    score_text.size() <= 2 && right_space >= 28 ? 2 : 1);
+            draw3x5(canvas, panel_x, panel_y + 8, score_text, 255, 255, 255, score_scale);
+
+            const int high_label_y = panel_y + (score_scale == 2 ? 21 : 15);
+            draw3x5(canvas, panel_x, high_label_y, "HI", 105, 105, 105);
+            draw3x5(canvas, panel_x, high_label_y + 8, high_score_text, 255, 220, 80, high_scale);
         } else {
-            const int text_width = static_cast<int>(score_text.size()) * 4 - 1;
-            draw3x5(canvas, std::max(offset_x + 1, board_right - text_width - 1), offset_y + 1,
-                    score_text, 255, 255, 255);
+            const std::string compact_high = "H" + high_score_text;
+            const int score_width = static_cast<int>(score_text.size()) * 4 - 1;
+            const int high_width = static_cast<int>(compact_high.size()) * 4 - 1;
+            const int inner_width = std::max(0, 10 * block_size - 2);
+            const int header_y = offset_y + 1;
+
+            if (score_width + high_width + 2 <= inner_width) {
+                draw3x5(canvas, offset_x + 1, header_y, compact_high, 255, 220, 80);
+                draw3x5(canvas, board_right - score_width - 1, header_y,
+                        score_text, 255, 255, 255);
+            } else {
+                const bool show_high = (frame_context().now_ms / 2000U) % 2U != 0U;
+                const std::string &text = show_high ? compact_high : score_text;
+                const int text_width = static_cast<int>(text.size()) * 4 - 1;
+                const uint8_t g = show_high ? 220 : 255;
+                const uint8_t b = show_high ? 80 : 255;
+                draw3x5(canvas, std::max(offset_x + 1, board_right - text_width - 1), header_y,
+                        text, 255, g, b);
+            }
         }
 
         for (int j = 4; j < 24; j++) {
@@ -200,11 +290,26 @@ namespace Scenes {
         return true;
     }
 
+    nlohmann::json TetrisScene::snapshot_runtime_state() const {
+        return {{"high_score", high_score}};
+    }
+
+    void TetrisScene::restore_runtime_state(const nlohmann::json &state) {
+        const int restored = std::max(0, state.value("high_score", 0));
+        high_score = std::max({high_score, restored, grid.score});
+        if (!SceneExecution::is_preview()) {
+            publish_high_score(high_score);
+            high_score = std::max(high_score, process_high_score.load(std::memory_order_relaxed));
+        }
+    }
+
     std::string TetrisScene::get_name() const {
         return "tetris";
     }
 
     void TetrisScene::after_render_stop() {
+        persist_high_score();
+
         if (gameOver) {
             // Reset game state
             grid = Grid();  // Create new grid
