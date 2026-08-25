@@ -1,16 +1,14 @@
 vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 
-# Temporary backport of sshcrack/rpi-rgb-led-matrix commit b3c8fe1. Once a
-# published fork tag contains that commit, bump VERSION/SHA512 and remove the
-# patch entry/file instead of maintaining a second implementation here.
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    REF "v${VERSION}"
-    SHA512 fd99b97c02861224ac65e2cfafa6c48fd67f2b7e8c4bf65bba66ac7e9f6bcf8e433f70bc2dfa89ffcd515d4a4ac57841f90db64dcd82bf6ff7fb541525dd256c
+    # Pinned to the pushed Windows-headless emulator commit. This is equivalent
+    # to the former v0.1.7 + local backport, but keeps the implementation solely
+    # in the fork where it belongs.
+    REF ce8200517237aa31959440f8c8cad600201f761b
+    SHA512 4ddc67502ecfd6ccc1432e3fa66ec265748f9775497963156367c388fa3f4a0347dd79ed6faecdb1cb7bf4a213e352f8da255737c8ee8d5188ef7ee4f4f6e75f
     HEAD_REF master
-    PATCHES
-        windows-headless-backport.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
