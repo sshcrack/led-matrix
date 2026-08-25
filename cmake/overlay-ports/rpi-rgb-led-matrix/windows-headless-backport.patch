@@ -1,0 +1,1112 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b9b9f77..87c0d6b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,7 +6,7 @@ include(GNUInstallDirs)
+ 
+ option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
+ 
+-set(MATRIX_CORE_SOURCES
++set(MATRIX_HARDWARE_SOURCES
+     lib/gpio.cc
+     lib/led-matrix.cc
+     lib/framebuffer.cc
+@@ -14,37 +14,52 @@ set(MATRIX_CORE_SOURCES
+     lib/pixel-mapper.cc
+     lib/multiplex-mappers.cc
+     lib/hardware-mapping.c
+-    lib/content-streamer.cc
+-    lib/bdf-font.cc
+-    lib/graphics.cc
+     lib/options-initialize.cc
+     lib/led-matrix-c.cc
+     lib/matrix-factory.cc
+ )
+ 
+-set(MATRIX_SOURCES ${MATRIX_CORE_SOURCES})
++set(MATRIX_PORTABLE_SOURCES
++    lib/frame-canvas.cc
++    lib/content-streamer.cc
++    lib/bdf-font.cc
++    lib/graphics.cc
++)
+ 
+-if(ENABLE_EMULATOR)
+-    list(APPEND MATRIX_SOURCES lib/emulator.cc)
+-    message(STATUS "Building with emulator support")
++if(WIN32)
++    if(NOT ENABLE_EMULATOR)
++        message(FATAL_ERROR "Native Windows builds support the emulator backend only; configure with -DENABLE_EMULATOR=ON")
++    endif()
++    set(MATRIX_SOURCES ${MATRIX_PORTABLE_SOURCES} lib/emulator-headless.cc)
++    message(STATUS "Building portable headless emulator support for Windows")
+ else()
+-    message(STATUS "Building without emulator support")
++    set(MATRIX_SOURCES ${MATRIX_HARDWARE_SOURCES} ${MATRIX_PORTABLE_SOURCES})
++    if(ENABLE_EMULATOR)
++        list(APPEND MATRIX_SOURCES lib/emulator.cc)
++        message(STATUS "Building with SDL emulator support")
++    else()
++        message(STATUS "Building without emulator support")
++    endif()
+ endif()
+ 
+ add_library(rpi-rgb-led-matrix SHARED ${MATRIX_SOURCES})
+ 
+-if (BUILD_SHARED_LIBS AND MSVC)
++if(MSVC)
+     target_compile_definitions(rpi-rgb-led-matrix PRIVATE RPI_RGB_LED_MATRIX_EXPORTS)
++    set_target_properties(rpi-rgb-led-matrix PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ endif()
+ 
+-# Export ENABLE_EMULATOR define to consumers of the library
++set(RPI_RGB_LED_MATRIX_NEEDS_SDL OFF)
+ if(ENABLE_EMULATOR)
+     target_compile_definitions(rpi-rgb-led-matrix PUBLIC ENABLE_EMULATOR)
+-    find_package(SDL2 CONFIG REQUIRED)
+-    target_link_libraries(rpi-rgb-led-matrix PRIVATE
+-        $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+-    )
++    if(NOT WIN32)
++        set(RPI_RGB_LED_MATRIX_NEEDS_SDL ON)
++        find_package(SDL2 CONFIG REQUIRED)
++        target_link_libraries(rpi-rgb-led-matrix PRIVATE
++            $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
++            $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
++        )
++    endif()
+ endif()
+ 
+ # Include directories
+@@ -60,8 +75,14 @@ target_include_directories(rpi-rgb-led-matrix PUBLIC
+ option(BUILD_TESTS "Build memory leak test programs" OFF)
+ 
+ if(ENABLE_EMULATOR AND BUILD_TESTS)
+-    add_executable(emulator-memleak-test examples/emulator-memleak-test.cc)
+-    target_link_libraries(emulator-memleak-test PRIVATE rpi-rgb-led-matrix)
++    enable_testing()
++    add_executable(emulator-smoke-test examples/emulator-smoke-test.cc)
++    target_link_libraries(emulator-smoke-test PRIVATE rpi-rgb-led-matrix)
++    add_test(NAME emulator-smoke-test COMMAND emulator-smoke-test)
++    if(NOT WIN32)
++        add_executable(emulator-memleak-test examples/emulator-memleak-test.cc)
++        target_link_libraries(emulator-memleak-test PRIVATE rpi-rgb-led-matrix)
++    endif()
+ endif()
+ 
+ # Install the library and its headers
+diff --git a/cmake/rpi-rgb-led-matrix-config.cmake.in b/cmake/rpi-rgb-led-matrix-config.cmake.in
+index 82f9292..5cf275a 100644
+--- a/cmake/rpi-rgb-led-matrix-config.cmake.in
++++ b/cmake/rpi-rgb-led-matrix-config.cmake.in
+@@ -5,7 +5,8 @@ include(CMakeFindDependencyMacro)
+ # Find dependencies if emulator support is enabled
+ # The ENABLE_EMULATOR value is set during configuration
+ set(_rpi_rgb_led_matrix_enable_emulator @ENABLE_EMULATOR@)
+-if(_rpi_rgb_led_matrix_enable_emulator)
++set(_rpi_rgb_led_matrix_needs_sdl @RPI_RGB_LED_MATRIX_NEEDS_SDL@)
++if(_rpi_rgb_led_matrix_needs_sdl)
+     find_dependency(SDL2 CONFIG REQUIRED)
+ endif()
+ 
+diff --git a/examples/emulator-smoke-test.cc b/examples/emulator-smoke-test.cc
+new file mode 100644
+index 0000000..1277d4c
+--- /dev/null
++++ b/examples/emulator-smoke-test.cc
+@@ -0,0 +1,31 @@
++#include "content-streamer.h"
++#include "emulator.h"
++#include <cstdint>
++#include <memory>
++using namespace rgb_matrix;
++int main() {
++  RGBMatrix::Options options;
++  options.rows = 32;
++  options.cols = 64;
++  options.chain_length = 2;
++  EmulatorOptions emulator_options;
++  emulator_options.headless = true;
++  std::unique_ptr<EmulatorMatrix> matrix(EmulatorMatrix::Create(options, emulator_options));
++  if (!matrix || matrix->width() != 128 || matrix->height() != 32) return 1;
++  FrameCanvas *first = matrix->CreateFrameCanvas();
++  FrameCanvas *second = matrix->CreateFrameCanvas();
++  first->SetPixel(3, 4, 11, 22, 33);
++  uint8_t r = 0, g = 0, b = 0;
++  if (!first->GetPixel(3, 4, &r, &g, &b) || r != 11 || g != 22 || b != 33) return 2;
++  second->CopyFrom(*first);
++  if (!second->GetPixel(3, 4, &r, &g, &b) || r != 11 || g != 22 || b != 33) return 3;
++  MemStreamIO stream;
++  StreamWriter writer(&stream);
++  if (!writer.Stream(*first, 12345)) return 4;
++  second->Clear();
++  StreamReader reader(&stream);
++  uint32_t hold = 0;
++  if (!reader.GetNext(second, &hold) || hold != 12345) return 5;
++  if (!second->GetPixel(3, 4, &r, &g, &b) || r != 11 || g != 22 || b != 33) return 6;
++  return 0;
++}
+diff --git a/include/content-streamer.h b/include/content-streamer.h
+index dd0b618..464d886 100644
+--- a/include/content-streamer.h
++++ b/include/content-streamer.h
+@@ -17,7 +17,12 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ #include <stdlib.h>
++#if defined(_WIN32) && !defined(__MINGW32__)
++#include <cstddef>
++using ssize_t = std::ptrdiff_t;
++#else
+ #include <sys/types.h>
++#endif
+ 
+ #include <string>
+ 
+@@ -69,7 +74,7 @@ public:
+ 
+ private:
+   std::string buffer_;  // super simplistic.
+-  size_t pos_;
++  size_t pos_ = 0;
+ };
+ 
+ // Just a view around the memory, possibly a memory mapped file.
+@@ -103,7 +108,7 @@ public:
+   bool Stream(const FrameCanvas &frame, uint32_t hold_time_us);
+ 
+ private:
+-  void WriteFileHeader(const FrameCanvas &frame, size_t len);
++  bool WriteFileHeader(const FrameCanvas &frame, size_t len);
+ 
+   StreamIO *const io_;
+   bool header_written_;
+diff --git a/include/led-matrix.h b/include/led-matrix.h
+index 689df12..7ae594e 100644
+--- a/include/led-matrix.h
++++ b/include/led-matrix.h
+@@ -27,10 +27,15 @@
+ #include <vector>
+ 
+ #include "canvas.h"
+-#include "thread.h"
+ #include "pixel-mapper.h"
+ #include "graphics.h"
+ 
++#if defined(_MSC_VER)
++#define RGB_MATRIX_DEPRECATED __declspec(deprecated)
++#else
++#define RGB_MATRIX_DEPRECATED __attribute__((deprecated))
++#endif
++
+ namespace rgb_matrix {
+ class RGBMatrix;
+ class FrameCanvas;   // Canvas for Double- and Multibuffering
+@@ -336,7 +341,7 @@ public:
+   // matrix->gpio()->RequestInputs(...)
+   //
+   // Don't use, use AwaitInputChange() directly.
+-  RGBMatrix *gpio() __attribute__((deprecated)) { return this; }
++  RGB_MATRIX_DEPRECATED RGBMatrix *gpio() { return this; }
+ 
+   //--  Rarely needed
+   // Start the refresh thread.
+@@ -352,7 +357,7 @@ private:
+ };
+ 
+ namespace internal {
+-class Framebuffer;
++class FramebufferInterface;
+ }
+ 
+ class FrameCanvas : public Canvas {
+@@ -410,13 +415,13 @@ private:
+   friend class RGBMatrix;
+   friend class EmulatorMatrix;  // Add EmulatorMatrix as a friend
+ 
+-  FrameCanvas(internal::Framebuffer *frame) : frame_(frame){}
++  FrameCanvas(internal::FramebufferInterface *frame) : frame_(frame){}
+   virtual ~FrameCanvas();   // Any FrameCanvas is owned by RGBMatrix.
+ 
+-  internal::Framebuffer *const frame_;
++  internal::FramebufferInterface *const frame_;
+ 
+   // Make framebuffer() accessible to EmulatorMatrix
+-  internal::Framebuffer *framebuffer() { return frame_; }
++  internal::FramebufferInterface *framebuffer() { return frame_; }
+ };
+ 
+ // Runtime options to simplify doing common things for many programs such as
+diff --git a/lib/Makefile b/lib/Makefile
+index c478ba3..d381b39 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -3,10 +3,10 @@
+ # So
+ #   -lrgbmatrix
+ ##
+-OBJECTS=gpio.o led-matrix.o options-initialize.o framebuffer.o \
++OBJECTS=gpio.o led-matrix.o frame-canvas.o options-initialize.o framebuffer.o \
+         thread.o bdf-font.o graphics.o led-matrix-c.o hardware-mapping.o \
+         pixel-mapper.o multiplex-mappers.o \
+-	content-streamer.o emulator.o matrix-factory.o
++	content-streamer.o matrix-factory.o
+ 
+ TARGET=librgbmatrix
+ 
+@@ -243,6 +243,7 @@ $(TARGET).so.1 : $(OBJECTS)
+ 	$(CXX) -shared -Wl,-soname,$@ -o $@ $^ -lpthread  -lrt -lm -lpthread
+ 
+ led-matrix.o: led-matrix.cc $(INCDIR)/led-matrix.h
++frame-canvas.o: frame-canvas.cc framebuffer-interface.h $(INCDIR)/led-matrix.h
+ thread.o : thread.cc $(INCDIR)/thread.h
+ framebuffer.o: framebuffer.cc framebuffer-internal.h
+ graphics.o: graphics.cc utf8-internal.h
+diff --git a/lib/content-streamer.cc b/lib/content-streamer.cc
+index e67d932..65b4e69 100644
+--- a/lib/content-streamer.cc
++++ b/lib/content-streamer.cc
+@@ -8,11 +8,15 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#ifdef _WIN32
++#include <algorithm>
++#include <climits>
++#include <io.h>
++#else
+ #include <sys/types.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
+-
+-#include <algorithm>
++#endif
+ 
+ #include "gpio-bits.h"
+ 
+@@ -51,22 +55,42 @@ STATIC_ASSERT(file_header_size_changed, sizeof(FrameHeader) == 32);
+ }
+ 
+ FileStreamIO::FileStreamIO(int fd) : fd_(fd) {
++#ifndef _WIN32
+   posix_fadvise(fd_, 0, 0, POSIX_FADV_SEQUENTIAL);
++#endif
++}
++FileStreamIO::~FileStreamIO() {
++#ifdef _WIN32
++  _close(fd_);
++#else
++  close(fd_);
++#endif
++}
++void FileStreamIO::Rewind() {
++#ifdef _WIN32
++  _lseek(fd_, 0, SEEK_SET);
++#else
++  lseek(fd_, 0, SEEK_SET);
++#endif
+ }
+-FileStreamIO::~FileStreamIO() { close(fd_); }
+-
+-void FileStreamIO::Rewind() { lseek(fd_, 0, SEEK_SET); }
+-
+ ssize_t FileStreamIO::Read(void *buf, const size_t count) {
++#ifdef _WIN32
++  return static_cast<ssize_t>(_read(fd_, buf, static_cast<unsigned int>(std::min<size_t>(count, INT_MAX))));
++#else
+   return read(fd_, buf, count);
++#endif
+ }
+-
+ ssize_t FileStreamIO::Append(const void *buf, const size_t count) {
++#ifdef _WIN32
++  return static_cast<ssize_t>(_write(fd_, buf, static_cast<unsigned int>(std::min<size_t>(count, INT_MAX))));
++#else
+   return write(fd_, buf, count);
++#endif
+ }
+ 
+ void MemStreamIO::Rewind() { pos_ = 0; }
+ ssize_t MemStreamIO::Read(void *buf, size_t count) {
++  if (pos_ >= buffer_.size()) return 0;
+   const size_t amount = std::min(count, buffer_.size() - pos_);
+   memcpy(buf, buffer_.data() + pos_, amount);
+   pos_ += amount;
+@@ -86,95 +110,123 @@ MemStreamIO::~MemStreamIO() {
+   Clear();
+ }
+ 
+-MemMapViewInput::MemMapViewInput(int fd) : buffer_(nullptr) {
++MemMapViewInput::MemMapViewInput(int fd) : buffer_(nullptr), end_(nullptr), pos_(nullptr) {
++#ifdef _WIN32
++  struct _stat64 s = {};
++  if (_fstat64(fd, &s) < 0 || s.st_size < 0) {
++    _close(fd);
++    perror("Couldn't get size");
++    return;
++  }
++  const size_t file_size = static_cast<size_t>(s.st_size);
++  buffer_ = new char[file_size ? file_size : 1];
++  end_ = buffer_ + file_size;
++  pos_ = buffer_;
++  _lseek(fd, 0, SEEK_SET);
++  size_t offset = 0;
++  while (offset < file_size) {
++    const int amount = _read(fd, buffer_ + offset,
++      static_cast<unsigned int>(std::min<size_t>(file_size - offset, INT_MAX)));
++    if (amount <= 0) {
++      delete[] buffer_;
++      buffer_ = end_ = pos_ = nullptr;
++      break;
++    }
++    offset += static_cast<size_t>(amount);
++  }
++  _close(fd);
++#else
+   struct stat s;
+   if (fstat(fd, &s) < 0) {
+     close(fd);
+     perror("Couldn't get size");
+-    return;   // Can't return error state from constructor. Stay uninitialized.
++    return;
+   }
+-
+   const size_t file_size = s.st_size;
+   buffer_ = (char*)mmap(nullptr, file_size, PROT_READ, MAP_SHARED, fd, 0);
+   close(fd);
+   if (buffer_ == MAP_FAILED) {
+-    perror("Can't mmmap()");
++    buffer_ = nullptr;
++    perror("Can't mmap()");
+     return;
+   }
+   end_ = buffer_ + file_size;
++  pos_ = buffer_;
+ #ifdef POSIX_MADV_WILLNEED
+-  // Trigger read-ahead if possible.
+   posix_madvise(buffer_, file_size, POSIX_MADV_WILLNEED);
+ #endif
++#endif
+ }
+ 
+ void MemMapViewInput::Rewind() { pos_ = buffer_; }
+ ssize_t MemMapViewInput::Read(void *buf, size_t count) {
+-  if (pos_ + count >= end_) return -1;
++  if (!pos_ || !end_ || count > static_cast<size_t>(end_ - pos_)) return -1;
+   memcpy(buf, pos_, count);
+   pos_ += count;
+-  return count;
++  return static_cast<ssize_t>(count);
+ }
+ 
+ MemMapViewInput::~MemMapViewInput() {
++#ifdef _WIN32
++  delete[] buffer_;
++#else
+   if (buffer_) munmap(buffer_, end_ - buffer_);
++#endif
+ }
+ 
+ // Read exactly count bytes including retries. Returns success.
+ static bool FullRead(StreamIO *io, void *buf, const size_t count) {
+-  int remaining = count;
+-  char *char_buffer = (char*)buf;
++  size_t remaining = count;
++  char *char_buffer = static_cast<char *>(buf);
+   while (remaining > 0) {
+-    int r = io->Read(char_buffer, remaining);
+-    if (r < 0) return false;
+-    if (r == 0) break;  // EOF.
+-    char_buffer += r; remaining -= r;
++    const ssize_t r = io->Read(char_buffer, remaining);
++    if (r <= 0) return false;
++    char_buffer += r;
++    remaining -= static_cast<size_t>(r);
+   }
+-  return remaining == 0;
++  return true;
+ }
+ 
+-// Write exactly count bytes including retries. Returns success.
+ static bool FullAppend(StreamIO *io, const void *buf, const size_t count) {
+-  int remaining = count;
+-  const char *char_buffer = (const char*) buf;
++  size_t remaining = count;
++  const char *char_buffer = static_cast<const char *>(buf);
+   while (remaining > 0) {
+-    int w = io->Append(char_buffer, remaining);
+-    if (w < 0) return false;
+-    char_buffer += w; remaining -= w;
++    const ssize_t w = io->Append(char_buffer, remaining);
++    if (w <= 0) return false;
++    char_buffer += w;
++    remaining -= static_cast<size_t>(w);
+   }
+-  return remaining == 0;
++  return true;
+ }
+ 
+ StreamWriter::StreamWriter(StreamIO *io) : io_(io), header_written_(false) {}
+ bool StreamWriter::Stream(const FrameCanvas &frame, uint32_t hold_time_us) {
+ #ifndef MOCK_RPI
+-  const char *data;
+-  size_t len;
++  const char *data = nullptr;
++  size_t len = 0;
+   frame.Serialize(&data, &len);
+-
+-  if (!header_written_) {
+-    WriteFileHeader(frame, len);
+-  }
++  if (!data || len > UINT32_MAX) return false;
++  if (!header_written_ && !WriteFileHeader(frame, len)) return false;
+   FrameHeader h = {};
+   h.magic = kFrameMagicValue;
+-  h.size = len;
++  h.size = static_cast<uint32_t>(len);
+   h.hold_time_us = hold_time_us;
+-  FullAppend(io_, &h, sizeof(h));
+-  return FullAppend(io_, data, len) == (ssize_t)len;
++  return FullAppend(io_, &h, sizeof(h)) && FullAppend(io_, data, len);
+ #else
+   return true;
+ #endif
+ }
+ 
+-void StreamWriter::WriteFileHeader(const FrameCanvas &frame, size_t len) {
++bool StreamWriter::WriteFileHeader(const FrameCanvas &frame, size_t len) {
++  if (len > UINT32_MAX) return false;
+   FileHeader header = {};
+   header.magic = kFileMagicValue;
+-  header.width = frame.width();
+-  header.height = frame.height();
+-  header.buf_size = len;
++  header.width = static_cast<uint32_t>(frame.width());
++  header.height = static_cast<uint32_t>(frame.height());
++  header.buf_size = static_cast<uint32_t>(len);
+   header.is_wide_gpio = (sizeof(gpio_bits_t) > 4);
+-  FullAppend(io_, &header, sizeof(header));
+-  header_written_ = true;
++  header_written_ = FullAppend(io_, &header, sizeof(header));
++  return header_written_;
+ }
+ 
+ StreamReader::StreamReader(StreamIO *io)
+@@ -280,9 +332,8 @@ bool StreamReader::PeekNext(FrameCanvas *frame, uint32_t* hold_time_us) {
+ }
+ 
+ bool StreamReader::ReadFileHeader(const FrameCanvas &frame) {
+-  FileHeader header;
+-  FullRead(io_, &header, sizeof(header));
+-  if (header.magic != kFileMagicValue) {
++  FileHeader header = {};
++  if (!FullRead(io_, &header, sizeof(header)) || header.magic != kFileMagicValue) {
+     state_ = STREAM_ERROR;
+     return false;
+   }
+diff --git a/lib/emulator-headless.cc b/lib/emulator-headless.cc
+new file mode 100644
+index 0000000..1bfe58c
+--- /dev/null
++++ b/lib/emulator-headless.cc
+@@ -0,0 +1,289 @@
++#include "emulator.h"
++
++#ifdef ENABLE_EMULATOR
++
++#include "framebuffer-interface.h"
++
++#include <algorithm>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <string>
++#include <vector>
++
++namespace rgb_matrix {
++namespace internal {
++
++class HeadlessFramebuffer final : public FramebufferInterface {
++public:
++  HeadlessFramebuffer(int width, int height)
++      : width_(width), height_(height),
++        pixels_(static_cast<size_t>(width) * static_cast<size_t>(height) * 3U, 0) {}
++
++  int width() const override { return width_; }
++  int height() const override { return height_; }
++
++  void SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) override {
++    if (x < 0 || x >= width_ || y < 0 || y >= height_) return;
++    const size_t offset = static_cast<size_t>(y * width_ + x) * 3U;
++    pixels_[offset] = r;
++    pixels_[offset + 1] = g;
++    pixels_[offset + 2] = b;
++  }
++
++  bool GetPixel(int x, int y, uint8_t *r, uint8_t *g, uint8_t *b) const override {
++    if (x < 0 || x >= width_ || y < 0 || y >= height_) return false;
++    const size_t offset = static_cast<size_t>(y * width_ + x) * 3U;
++    if (r) *r = pixels_[offset];
++    if (g) *g = pixels_[offset + 1];
++    if (b) *b = pixels_[offset + 2];
++    return true;
++  }
++
++  void Clear() override { std::fill(pixels_.begin(), pixels_.end(), uint8_t{0}); }
++
++  void Fill(uint8_t r, uint8_t g, uint8_t b) override {
++    for (size_t i = 0; i < pixels_.size(); i += 3) {
++      pixels_[i] = r;
++      pixels_[i + 1] = g;
++      pixels_[i + 2] = b;
++    }
++  }
++
++  bool SetPWMBits(uint8_t value) override {
++    if (value < 1 || value > 11) return false;
++    pwm_bits_ = value;
++    return true;
++  }
++  uint8_t pwmbits() override { return pwm_bits_; }
++  void set_luminance_correct(bool on) override { luminance_correct_ = on; }
++  bool luminance_correct() const override { return luminance_correct_; }
++  void SetBrightness(uint8_t value) override {
++    brightness_ = std::max<uint8_t>(1, std::min<uint8_t>(100, value));
++  }
++  uint8_t brightness() override { return brightness_; }
++
++  void Serialize(const char **data, size_t *len) const override {
++    *data = reinterpret_cast<const char *>(pixels_.data());
++    *len = pixels_.size();
++  }
++
++  bool Deserialize(const char *data, size_t len) override {
++    if (!data || len != pixels_.size()) return false;
++    std::memcpy(pixels_.data(), data, len);
++    return true;
++  }
++
++  void CopyFrom(const FramebufferInterface *other) override {
++    if (!other || other == this || other->width() != width_ || other->height() != height_) return;
++    const char *data = nullptr;
++    size_t len = 0;
++    other->Serialize(&data, &len);
++    Deserialize(data, len);
++  }
++
++private:
++  int width_;
++  int height_;
++  std::vector<uint8_t> pixels_;
++  uint8_t brightness_ = 100;
++  uint8_t pwm_bits_ = 8;
++  bool luminance_correct_ = false;
++};
++
++}  // namespace internal
++
++RGBMatrix::Options::Options()
++    : hardware_mapping("regular"), rows(32), cols(32), chain_length(1), parallel(1),
++      pwm_bits(11), pwm_lsb_nanoseconds(130), pwm_dither_bits(0), brightness(100),
++      scan_mode(0), row_address_type(0), multiplexing(0), disable_hardware_pulsing(false),
++      show_refresh_rate(false), inverse_colors(false), led_rgb_sequence("RGB"),
++      pixel_mapper_config(nullptr), panel_type(nullptr), limit_refresh_rate_hz(0),
++      disable_busy_waiting(false) {}
++
++bool RGBMatrix::Options::Validate(std::string *err_in) const {
++  std::string scratch;
++  std::string *err = err_in ? err_in : &scratch;
++  bool valid = true;
++  const auto fail = [&](const char *message) {
++    err->append(message);
++    err->push_back('\n');
++    valid = false;
++  };
++
++  if (rows < 8 || rows > 64 || rows % 2 != 0) fail("rows must be even and between 8 and 64");
++  if (cols < 16) fail("cols must be at least 16");
++  if (chain_length < 1) fail("chain_length must be positive");
++  if (parallel < 1 || parallel > 3) fail("parallel must be between 1 and 3");
++  if (brightness < 1 || brightness > 100) fail("brightness must be between 1 and 100");
++  if (pwm_bits < 1 || pwm_bits > 11) fail("pwm_bits must be between 1 and 11");
++  if (scan_mode < 0 || scan_mode > 1) fail("scan_mode must be 0 or 1");
++  if (row_address_type < 0 || row_address_type > 5) fail("row_address_type must be between 0 and 5");
++  if (multiplexing < 0) fail("multiplexing must not be negative");
++  if (pwm_lsb_nanoseconds < 50 || pwm_lsb_nanoseconds > 3000) fail("pwm_lsb_nanoseconds must be between 50 and 3000");
++  if (pwm_dither_bits < 0 || pwm_dither_bits > 2) fail("pwm_dither_bits must be between 0 and 2");
++  if (!led_rgb_sequence || std::strlen(led_rgb_sequence) != 3 ||
++      (!std::strchr(led_rgb_sequence, 'R') && !std::strchr(led_rgb_sequence, 'r')) ||
++      (!std::strchr(led_rgb_sequence, 'G') && !std::strchr(led_rgb_sequence, 'g')) ||
++      (!std::strchr(led_rgb_sequence, 'B') && !std::strchr(led_rgb_sequence, 'b'))) {
++    fail("led_rgb_sequence must contain R, G and B");
++  }
++  if (!valid && !err_in) std::fprintf(stderr, "%s", err->c_str());
++  return valid;
++}
++
++RuntimeOptions::RuntimeOptions()
++    : gpio_slowdown(1), daemon(0), drop_privileges(0), do_gpio_init(false),
++      drop_priv_user(nullptr), drop_priv_group(nullptr) {}
++
++EmulatorOptions::EmulatorOptions()
++    : display_scale(1), window_title("RGB Matrix Headless Emulator"),
++      emulate_hardware_timing(false), refresh_rate_hz(60), frame_export_path(""),
++      headless(true) {}
++
++class EmulatorMatrix::Impl {
++public:
++  Impl(const RGBMatrix::Options &options, const EmulatorOptions &emulator_options)
++      : width(std::max(1, options.cols * options.chain_length)),
++        height(std::max(1, options.rows * options.parallel)),
++        brightness(std::max(1, std::min(100, options.brightness))),
++        pwm_bits(std::max(1, std::min(11, options.pwm_bits))),
++        emulator_options(emulator_options) {}
++
++  void ExportFrame() const {
++    if (emulator_options.frame_export_path.empty() || !active) return;
++    const std::string tmp = emulator_options.frame_export_path + ".tmp";
++    FILE *file = std::fopen(tmp.c_str(), "wb");
++    if (!file) return;
++    const uint32_t w = static_cast<uint32_t>(width);
++    const uint32_t h = static_cast<uint32_t>(height);
++    std::fwrite(&w, sizeof(w), 1, file);
++    std::fwrite(&h, sizeof(h), 1, file);
++    const float factor = static_cast<float>(brightness) / 100.0f;
++    for (int y = 0; y < height; ++y) {
++      for (int x = 0; x < width; ++x) {
++        uint8_t r = 0, g = 0, b = 0;
++        active->GetPixel(x, y, &r, &g, &b);
++        const uint8_t pixel[3] = {
++            static_cast<uint8_t>(r * factor),
++            static_cast<uint8_t>(g * factor),
++            static_cast<uint8_t>(b * factor)};
++        std::fwrite(pixel, 1, sizeof(pixel), file);
++      }
++    }
++    std::fclose(file);
++    std::remove(emulator_options.frame_export_path.c_str());
++    std::rename(tmp.c_str(), emulator_options.frame_export_path.c_str());
++  }
++
++  int width;
++  int height;
++  uint8_t brightness;
++  uint8_t pwm_bits;
++  bool luminance_correct = false;
++  EmulatorOptions emulator_options;
++  FrameCanvas *active = nullptr;
++  std::vector<FrameCanvas *> canvases;
++};
++
++EmulatorMatrix::EmulatorMatrix(Impl *impl) : impl_(impl) {}
++EmulatorMatrix::~EmulatorMatrix() {
++  for (auto *canvas : impl_->canvases) delete canvas;
++  delete impl_;
++}
++
++EmulatorMatrix *EmulatorMatrix::Create(const RGBMatrix::Options &options,
++                                       const EmulatorOptions &emulator_options) {
++  std::string error;
++  if (!options.Validate(&error)) return nullptr;
++  auto *matrix = new EmulatorMatrix(new Impl(options, emulator_options));
++  matrix->CreateFrameCanvas();
++  return matrix;
++}
++
++int EmulatorMatrix::width() const { return impl_->width; }
++int EmulatorMatrix::height() const { return impl_->height; }
++void EmulatorMatrix::SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) { if (impl_->active) impl_->active->SetPixel(x, y, r, g, b); }
++bool EmulatorMatrix::GetPixel(int x, int y, uint8_t *r, uint8_t *g, uint8_t *b) const { return impl_->active && impl_->active->GetPixel(x, y, r, g, b); }
++void EmulatorMatrix::Clear() { if (impl_->active) impl_->active->Clear(); }
++void EmulatorMatrix::Fill(uint8_t r, uint8_t g, uint8_t b) { if (impl_->active) impl_->active->Fill(r, g, b); }
++
++FrameCanvas *EmulatorMatrix::CreateFrameCanvas() {
++  auto *canvas = new FrameCanvas(new internal::HeadlessFramebuffer(impl_->width, impl_->height));
++  canvas->SetBrightness(impl_->brightness);
++  canvas->SetPWMBits(impl_->pwm_bits);
++  canvas->set_luminance_correct(impl_->luminance_correct);
++  impl_->canvases.push_back(canvas);
++  if (!impl_->active) impl_->active = canvas;
++  return canvas;
++}
++
++FrameCanvas *EmulatorMatrix::SwapOnVSync(FrameCanvas *other, unsigned) {
++  FrameCanvas *previous = impl_->active;
++  if (other) impl_->active = other;
++  return previous;
++}
++
++bool EmulatorMatrix::ApplyPixelMapper(const PixelMapper *mapper) { return mapper == nullptr; }
++void EmulatorMatrix::SetBrightness(uint8_t value) {
++  impl_->brightness = std::max<uint8_t>(1, std::min<uint8_t>(100, value));
++  for (auto *canvas : impl_->canvases) canvas->SetBrightness(impl_->brightness);
++}
++uint8_t EmulatorMatrix::brightness() { return impl_->brightness; }
++bool EmulatorMatrix::SetPWMBits(uint8_t value) {
++  if (value < 1 || value > 11) return false;
++  impl_->pwm_bits = value;
++  for (auto *canvas : impl_->canvases) canvas->SetPWMBits(value);
++  return true;
++}
++uint8_t EmulatorMatrix::pwmbits() { return impl_->pwm_bits; }
++void EmulatorMatrix::set_luminance_correct(bool on) {
++  impl_->luminance_correct = on;
++  for (auto *canvas : impl_->canvases) canvas->set_luminance_correct(on);
++}
++bool EmulatorMatrix::luminance_correct() const { return impl_->luminance_correct; }
++bool EmulatorMatrix::StartRefresh() { return true; }
++void EmulatorMatrix::Render() { impl_->ExportFrame(); }
++
++bool ParseEmulatorOptionsFromFlags(int *argc, char ***argv, EmulatorOptions *options, bool remove_consumed_flags) {
++  if (!argc || !argv || !*argv || !options) return false;
++  int write_index = 1;
++  for (int i = 1; i < *argc; ++i) {
++    const char *option = (*argv)[i];
++    if (!option) continue;
++    bool consumed = false;
++    if (std::strncmp(option, "--led-emulator-scale=", 21) == 0) {
++      options->display_scale = std::atoi(option + 21); consumed = true;
++    } else if (std::strncmp(option, "--led-emulator-title=", 21) == 0) {
++      options->window_title = option + 21; consumed = true;
++    } else if (std::strncmp(option, "--led-emulator-refresh=", 23) == 0) {
++      options->refresh_rate_hz = std::atoi(option + 23); consumed = true;
++    } else if (std::strcmp(option, "--led-emulator-hardware-timing") == 0) {
++      options->emulate_hardware_timing = true; consumed = true;
++    } else if (std::strncmp(option, "--led-emulator-frame-export=", 28) == 0) {
++      options->frame_export_path = option + 28; consumed = true;
++    } else if (std::strcmp(option, "--led-emulator-headless") == 0) {
++      options->headless = true; consumed = true;
++    }
++    if (!remove_consumed_flags || !consumed) (*argv)[write_index++] = (*argv)[i];
++  }
++  if (remove_consumed_flags) {
++    for (int i = write_index; i < *argc; ++i) (*argv)[i] = nullptr;
++    *argc = write_index;
++  }
++  return true;
++}
++
++void PrintEmulatorFlags(FILE *out, const EmulatorOptions &defaults) {
++  std::fprintf(out,
++      "\t--led-emulator-scale=<scale>       : Window scale factor (Default: %d)\n"
++      "\t--led-emulator-title=<title>       : Window title (Default: %s)\n"
++      "\t--led-emulator-refresh=<hz>        : Refresh rate (Default: %d)\n"
++      "\t--led-emulator-frame-export=<path> : Export raw RGB frames\n"
++      "\t--led-emulator-headless            : Headless mode (Default: on)\n",
++      defaults.display_scale, defaults.window_title.c_str(), defaults.refresh_rate_hz);
++}
++
++}  // namespace rgb_matrix
++
++#endif
+diff --git a/lib/emulator.cc b/lib/emulator.cc
+index 8e807a9..4187593 100644
+--- a/lib/emulator.cc
++++ b/lib/emulator.cc
+@@ -324,7 +324,7 @@ public:
+     return true;
+   }
+   
+-  void CopyFrom(const Framebuffer *other) override {
++  void CopyFrom(const FramebufferInterface *other) override {
+     const EmulatorFramebuffer* o = dynamic_cast<const EmulatorFramebuffer*>(other);
+     if (!o) return;
+     
+@@ -489,8 +489,7 @@ public:
+ 
+     std::unique_lock<std::mutex> lock(mutex_);
+     if (active_buffer_) {
+-      rgb_matrix::internal::Framebuffer* fb = active_buffer_->framebuffer();
+-      internal::EmulatorFramebuffer* emulator_fb = static_cast<internal::EmulatorFramebuffer*>(fb);
++      auto* emulator_fb = static_cast<internal::EmulatorFramebuffer*>(active_buffer_->framebuffer());
+       emulator_fb->Render(display_);
+       display_->Render(brightness_);
+     }
+@@ -510,8 +509,7 @@ private:
+       {
+         std::unique_lock<std::mutex> lock(mutex_);
+         if (active_buffer_) {
+-          rgb_matrix::internal::Framebuffer* fb = active_buffer_->framebuffer();
+-          internal::EmulatorFramebuffer* emulator_fb = static_cast<internal::EmulatorFramebuffer*>(fb);
++          auto* emulator_fb = static_cast<internal::EmulatorFramebuffer*>(active_buffer_->framebuffer());
+           emulator_fb->Render(display_);
+           display_->Render(brightness_);
+         }
+diff --git a/lib/frame-canvas.cc b/lib/frame-canvas.cc
+new file mode 100644
+index 0000000..d87cb42
+--- /dev/null
++++ b/lib/frame-canvas.cc
+@@ -0,0 +1,27 @@
++#include "led-matrix.h"
++#include "framebuffer-interface.h"
++
++namespace rgb_matrix {
++
++FrameCanvas::~FrameCanvas() { delete frame_; }
++int FrameCanvas::width() const { return frame_->width(); }
++int FrameCanvas::height() const { return frame_->height(); }
++void FrameCanvas::SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) { frame_->SetPixel(x, y, r, g, b); }
++void FrameCanvas::SetPixels(int x, int y, int width, int height, Color *colors) { frame_->SetPixels(x, y, width, height, colors); }
++void FrameCanvas::Clear() { frame_->Clear(); }
++void FrameCanvas::Fill(uint8_t r, uint8_t g, uint8_t b) { frame_->Fill(r, g, b); }
++bool FrameCanvas::SetPWMBits(uint8_t value) { return frame_->SetPWMBits(value); }
++uint8_t FrameCanvas::pwmbits() { return frame_->pwmbits(); }
++void FrameCanvas::set_luminance_correct(bool on) { frame_->set_luminance_correct(on); }
++bool FrameCanvas::luminance_correct() const { return frame_->luminance_correct(); }
++void FrameCanvas::SetBrightness(uint8_t brightness) { frame_->SetBrightness(brightness); }
++uint8_t FrameCanvas::brightness() { return frame_->brightness(); }
++void FrameCanvas::Serialize(const char **data, size_t *len) const { frame_->Serialize(data, len); }
++bool FrameCanvas::Deserialize(const char *data, size_t len) { return frame_->Deserialize(data, len); }
++void FrameCanvas::CopyFrom(const FrameCanvas &other) { frame_->CopyFrom(other.frame_); }
++bool FrameCanvas::GetPixel(int x, int y, uint8_t *r, uint8_t *g, uint8_t *b) const {
++  if (x < 0 || x >= width() || y < 0 || y >= height()) return false;
++  return frame_->GetPixel(x, y, r, g, b);
++}
++
++}  // namespace rgb_matrix
+diff --git a/lib/framebuffer-interface.h b/lib/framebuffer-interface.h
+new file mode 100644
+index 0000000..4a6772f
+--- /dev/null
++++ b/lib/framebuffer-interface.h
+@@ -0,0 +1,48 @@
++#ifndef RPI_RGBMATRIX_FRAMEBUFFER_INTERFACE_H
++#define RPI_RGBMATRIX_FRAMEBUFFER_INTERFACE_H
++
++#include <stddef.h>
++#include <stdint.h>
++
++#include "graphics.h"
++
++namespace rgb_matrix {
++namespace internal {
++
++class FramebufferInterface {
++public:
++  virtual ~FramebufferInterface() = default;
++
++  virtual int width() const = 0;
++  virtual int height() const = 0;
++  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) = 0;
++  virtual bool GetPixel(int x, int y, uint8_t *red, uint8_t *green, uint8_t *blue) const = 0;
++  virtual void Clear() = 0;
++  virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) = 0;
++
++  virtual bool SetPWMBits(uint8_t value) = 0;
++  virtual uint8_t pwmbits() = 0;
++  virtual void set_luminance_correct(bool on) = 0;
++  virtual bool luminance_correct() const = 0;
++  virtual void SetBrightness(uint8_t brightness) = 0;
++  virtual uint8_t brightness() = 0;
++
++  virtual void Serialize(const char **data, size_t *len) const = 0;
++  virtual bool Deserialize(const char *data, size_t len) = 0;
++  virtual void CopyFrom(const FramebufferInterface *other) = 0;
++
++  void SetPixels(int x, int y, int width, int height, Color *colors) {
++    if (!colors) return;
++    for (int row = 0; row < height; ++row) {
++      for (int col = 0; col < width; ++col) {
++        const Color &color = colors[row * width + col];
++        SetPixel(x + col, y + row, color.r, color.g, color.b);
++      }
++    }
++  }
++};
++
++}  // namespace internal
++}  // namespace rgb_matrix
++
++#endif
+diff --git a/lib/framebuffer-internal.h b/lib/framebuffer-internal.h
+index e52b837..fa3812d 100644
+--- a/lib/framebuffer-internal.h
++++ b/lib/framebuffer-internal.h
+@@ -19,6 +19,7 @@
+ #include <stdlib.h>
+ 
+ #include "hardware-mapping.h"
++#include "framebuffer-interface.h"
+ #include "../include/graphics.h"
+ 
+ namespace rgb_matrix {
+@@ -64,7 +65,7 @@ private:
+ // write itself to GPIO.
+ // Our internal memory layout mimicks as much as possible what needs to be
+ // written out.
+-class Framebuffer {
++class Framebuffer : public FramebufferInterface {
+ public:
+   // Maximum usable bitplanes.
+   //
+@@ -88,7 +89,7 @@ public:
+               int scan_mode,
+               const char* led_sequence, bool inverse_color,
+               PixelDesignatorMap **mapper);
+-  virtual ~Framebuffer();
++  ~Framebuffer() override;
+ 
+   // Initialize GPIO bits for output. Only call once.
+   static void InitHardwareMapping(const char *named_hardware);
+@@ -102,35 +103,34 @@ public:
+   // Set PWM bits used for output. Default is 11, but if you only deal with
+   // simple comic-colors, 1 might be sufficient. Lower require less CPU.
+   // Returns boolean to signify if value was within range.
+-  bool SetPWMBits(uint8_t value);
+-  uint8_t pwmbits() { return pwm_bits_; }
++  bool SetPWMBits(uint8_t value) override;
++  uint8_t pwmbits() override { return pwm_bits_; }
+ 
+   // Map brightness of output linearly to input with CIE1931 profile.
+-  void set_luminance_correct(bool on) { do_luminance_correct_ = on; }
+-  bool luminance_correct() const { return do_luminance_correct_; }
++  void set_luminance_correct(bool on) override { do_luminance_correct_ = on; }
++  bool luminance_correct() const override { return do_luminance_correct_; }
+ 
+   // Set brightness in percent; range=1..100
+   // This will only affect newly set pixels.
+-  void SetBrightness(uint8_t b) {
++  void SetBrightness(uint8_t b) override {
+     brightness_ = (b <= 100 ? (b != 0 ? b : 1) : 100);
+   }
+-  uint8_t brightness() { return brightness_; }
++  uint8_t brightness() override { return brightness_; }
+ 
+   virtual void DumpToMatrix(GPIO *io, int pwm_bits_to_show);
+ 
+-  virtual void Serialize(const char **data, size_t *len) const;
+-  virtual bool Deserialize(const char *data, size_t len);
+-  virtual void CopyFrom(const Framebuffer *other);
++  void Serialize(const char **data, size_t *len) const override;
++  bool Deserialize(const char *data, size_t len) override;
++  void CopyFrom(const FramebufferInterface *other) override;
+ 
+   // Canvas-inspired methods, but we're not implementing this interface to not
+   // have an unnecessary vtable.
+-  virtual int width() const;
+-  virtual int height() const;
+-  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue);
+-  virtual bool GetPixel(int x, int y, uint8_t *red, uint8_t *green, uint8_t *blue) const;
+-  void SetPixels(int x, int y, int width, int height, Color *colors);
+-  virtual void Clear();
+-  virtual void Fill(uint8_t red, uint8_t green, uint8_t blue);
++  int width() const override;
++  int height() const override;
++  void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) override;
++  bool GetPixel(int x, int y, uint8_t *red, uint8_t *green, uint8_t *blue) const override;
++  void Clear() override;
++  void Fill(uint8_t red, uint8_t green, uint8_t blue) override;
+ 
+ private:
+   static const struct HardwareMapping *hardware_mapping_;
+diff --git a/lib/framebuffer.cc b/lib/framebuffer.cc
+index 90c6945..ed583e6 100644
+--- a/lib/framebuffer.cc
++++ b/lib/framebuffer.cc
+@@ -831,14 +831,6 @@ void Framebuffer::SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+   }
+ }
+ 
+-void Framebuffer::SetPixels(int x, int y, int width, int height, Color *colors) {
+-  for (int iy = 0; iy < height; ++iy) {
+-    for (int ix = 0; ix < width; ++ix) {
+-      SetPixel(x + ix, y + iy, colors->r, colors->g, colors->b);
+-      ++colors;
+-    }
+-  }
+-}
+ // Strange LED-mappings such as RBG or so are handled here.
+ gpio_bits_t Framebuffer::GetGpioFromLedSequence(char col,
+                                                 const char *led_sequence,
+@@ -948,9 +940,11 @@ bool Framebuffer::Deserialize(const char *data, size_t len) {
+   return true;
+ }
+ 
+-void Framebuffer::CopyFrom(const Framebuffer *other) {
++void Framebuffer::CopyFrom(const FramebufferInterface *other) {
+   if (other == this) return;
+-  memcpy(bitplane_buffer_, other->bitplane_buffer_, buffer_size_);
++  const auto *hardware = dynamic_cast<const Framebuffer *>(other);
++  if (!hardware || hardware->buffer_size_ != buffer_size_) return;
++  memcpy(bitplane_buffer_, hardware->bitplane_buffer_, buffer_size_);
+ }
+ 
+ void Framebuffer::DumpToMatrix(GPIO *io, int pwm_low_bit) {
+diff --git a/lib/led-matrix.cc b/lib/led-matrix.cc
+index acce5ff..8aa5f64 100644
+--- a/lib/led-matrix.cc
++++ b/lib/led-matrix.cc
+@@ -166,7 +166,7 @@ public:
+     while (running()) {
+       const uint32_t start_time_us = GetMicrosecondCounter();
+ 
+-      current_frame_->framebuffer()
++      static_cast<internal::Framebuffer *>(current_frame_->framebuffer())
+         ->DumpToMatrix(io_, start_bit_[low_bit_sequence % 4]);
+ 
+       // SwapOnVSync() exchange.
+@@ -411,7 +411,7 @@ RGBMatrix::Impl::~Impl() {
+ 
+   // Make sure LEDs are off.
+   active_->Clear();
+-  if (io_) active_->framebuffer()->DumpToMatrix(io_, 0);
++  if (io_) static_cast<internal::Framebuffer *>(active_->framebuffer())->DumpToMatrix(io_, 0);
+ 
+   for (size_t i = 0; i < created_frames_.size(); ++i) {
+     delete created_frames_[i];
+@@ -785,53 +785,4 @@ void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
+   impl_->active_->Fill(red, green, blue);
+ }
+ 
+-// FrameCanvas implementation of Canvas
+-FrameCanvas::~FrameCanvas() { delete frame_; }
+-int FrameCanvas::width() const { return frame_->width(); }
+-int FrameCanvas::height() const { return frame_->height(); }
+-void FrameCanvas::SetPixel(int x, int y,
+-                         uint8_t red, uint8_t green, uint8_t blue) {
+-  frame_->SetPixel(x, y, red, green, blue);
+-}
+-void FrameCanvas::SetPixels(int x, int y, int width, int height,
+-                         Color *colors) {
+-  frame_->SetPixels(x, y, width, height, colors);
+-}
+-void FrameCanvas::Clear() { return frame_->Clear(); }
+-void FrameCanvas::Fill(uint8_t red, uint8_t green, uint8_t blue) {
+-  frame_->Fill(red, green, blue);
+-}
+-bool FrameCanvas::SetPWMBits(uint8_t value) { return frame_->SetPWMBits(value); }
+-uint8_t FrameCanvas::pwmbits() { return frame_->pwmbits(); }
+-
+-// Map brightness of output linearly to input with CIE1931 profile.
+-void FrameCanvas::set_luminance_correct(bool on) { frame_->set_luminance_correct(on); }
+-bool FrameCanvas::luminance_correct() const { return frame_->luminance_correct(); }
+-
+-void FrameCanvas::SetBrightness(uint8_t brightness) { frame_->SetBrightness(brightness); }
+-uint8_t FrameCanvas::brightness() { return frame_->brightness(); }
+-
+-void FrameCanvas::Serialize(const char **data, size_t *len) const {
+-#ifndef MOCK_RPI
+-  frame_->Serialize(data, len);
+-#endif
+-}
+-bool FrameCanvas::Deserialize(const char *data, size_t len) {
+-#ifndef MOCK_RPI
+-  return frame_->Deserialize(data, len);
+-#else
+-    return true;
+-#endif
+-}
+-void FrameCanvas::CopyFrom(const FrameCanvas &other) {
+-  frame_->CopyFrom(other.frame_);
+-}
+-
+-// Implementation of RGBMatrix Canvas interface.
+-bool FrameCanvas::GetPixel(int x, int y, uint8_t *r, uint8_t *g, uint8_t *b) const {
+-  if (x < 0 || x >= width() || y < 0 || y >= height()) {
+-    return false;
+-  }
+-  return frame_->GetPixel(x, y, r, g, b);
+-}
+ }  // end namespace rgb_matrix
