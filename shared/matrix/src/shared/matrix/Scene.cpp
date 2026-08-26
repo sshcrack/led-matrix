@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/Scene.h"
 
 #include <shared/common/utils/utils.h>
@@ -59,7 +62,7 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
 
-    const string t = j["type"].get<string>();
+    const std::string t = j["type"].get<std::string>();
     const nlohmann::json &arguments = j.value("arguments", nlohmann::json::object());
 
     const auto pl = Plugins::PluginManager::instance();
@@ -87,7 +90,7 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
         spdlog::debug("Loading properties for scene '{}'", t);
         scene->load_properties(arguments);
         if (j.contains("uuid"))
-            scene->uuid = j["uuid"].get<string>();
+            scene->uuid = j["uuid"].get<std::string>();
 
         if (scene->uuid.empty())
             scene->uuid = uuid::generate_uuid_v4();
@@ -99,7 +102,7 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
 
     unknown_scene->arguments = arguments;
     if (j.contains("uuid"))
-        unknown_scene->uuid = j["uuid"].get<string>();
+        unknown_scene->uuid = j["uuid"].get<std::string>();
 
     if (unknown_scene->uuid.empty())
         unknown_scene->uuid = uuid::generate_uuid_v4();

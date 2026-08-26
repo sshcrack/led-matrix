@@ -1,14 +1,29 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/utils/utils.h"
 #include "shared/matrix/utils/shared.h"
 #include <iostream>
 #include <expected>
 #include <thread>
 #include <regex>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <cstdio>
+#else
+#include <unistd.h>
+#endif
 #include "spdlog/spdlog.h"
 #include "shared/matrix/canvas_consts.h"
 #include <random>
 
 using namespace spdlog;
+using std::string;
+using std::vector;
 
 void SleepMillis(tmillis_t milli_seconds)
 {
@@ -36,7 +51,7 @@ void SleepMillis(tmillis_t milli_seconds)
     }
 }
 
-std::expected<std::string, std::string> execute_process(const string &cmd, const vector<std::string> &args)
+std::expected<std::string, std::string> execute_process(const std::string &cmd, const std::vector<std::string> &args)
 {
     std::stringstream fullCmd;
     fullCmd << cmd;
@@ -46,13 +61,31 @@ std::expected<std::string, std::string> execute_process(const string &cmd, const
         fullCmd << " " << arg;
     }
 
+#ifdef _WIN32
+    // Windows has no mkstemp; use _mktemp_s + _open
+    char out_file[MAX_PATH];
+    std::string tmp_dir = std::filesystem::temp_directory_path().string();
+    // Ensure no trailing slash duplication
+    std::snprintf(out_file, sizeof(out_file), "%s\\spotify_XXXXXX", tmp_dir.c_str());
+    if (_mktemp_s(out_file, sizeof(out_file)) != 0)
+    {
+        return std::unexpected("Could not create temporary file");
+    }
+    // _mktemp_s replaces XXXXXX with unique chars but does not create the file
+    int temp_fd = _open(out_file, _O_CREAT | _O_RDWR | _O_TRUNC, _S_IREAD | _S_IWRITE);
+    if (temp_fd == -1)
+    {
+        return std::unexpected("Could not create temporary file");
+    }
+#else
     char out_file[] = "/tmp/spotify.XXXXXX";
     int temp_fd = mkstemp(out_file);
 
     if (temp_fd == -1)
     {
-        return unexpected("Could not create temporary file");
+        return std::unexpected("Could not create temporary file");
     }
+#endif
 
     // Redirect output of the command appropriately
     std::ostringstream ss;
@@ -64,8 +97,8 @@ std::expected<std::string, std::string> execute_process(const string &cmd, const
 
     if (status != 0)
     {
-        cout << "Status " << status << " \n";
-        return unexpected("Command failed");
+        std::cout << "Status " << status << " \n";
+        return std::unexpected("Command failed");
     }
 
     // Read the output from the files and remove them
@@ -78,7 +111,11 @@ std::expected<std::string, std::string> execute_process(const string &cmd, const
         file.close();
     }
 
+#ifdef _WIN32
+    _close(temp_fd);
+#else
     close(temp_fd);
+#endif
     std::remove(out_file);
 
     return out_stream.str();

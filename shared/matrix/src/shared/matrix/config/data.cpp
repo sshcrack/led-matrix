@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/config/data.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "nlohmann/json.hpp"
@@ -6,9 +9,13 @@
 #include <chrono>
 #include <ctime>
 
-using namespace std;
 using namespace spdlog;
 using json = nlohmann::json;
+using std::map;
+using std::shared_ptr;
+using std::string;
+using std::unique_ptr;
+using std::vector;
 
 namespace ConfigData {
     void to_json(json &j, const CustomSceneVariant &p) {

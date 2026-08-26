@@ -9,6 +9,7 @@ vcpkg_from_github(
     REF ce8200517237aa31959440f8c8cad600201f761b
     SHA512 4ddc67502ecfd6ccc1432e3fa66ec265748f9775497963156367c388fa3f4a0347dd79ed6faecdb1cb7bf4a213e352f8da255737c8ee8d5188ef7ee4f4f6e75f
     HEAD_REF master
+    PATCHES fix-win-compat.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

@@ -1,4 +1,7 @@
 #pragma once
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 #include <shared_mutex>
