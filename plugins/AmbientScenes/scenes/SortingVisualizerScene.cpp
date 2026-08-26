@@ -89,7 +89,7 @@ namespace AmbientScenes {
         sort_phase = 1;
         access_indices.clear();
         delay_counter = 0;
-        last_step_time = std::chrono::steady_clock::now();
+        last_step_elapsed_seconds = frame_context().elapsed_seconds;
 
         int n = static_cast<int>(array_data.size());
         i = 0;
@@ -241,11 +241,11 @@ namespace AmbientScenes {
         if (sort_phase == 1) {
             int delay = delay_ms->get();
             if (delay > 0) {
-                auto now = std::chrono::steady_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_step_time).count();
-                if (elapsed >= delay) {
+                const double elapsed_ms =
+                    (frame_context().elapsed_seconds - last_step_elapsed_seconds) * 1000.0;
+                if (elapsed_ms >= delay) {
                     step_sort();
-                    last_step_time = now;
+                    last_step_elapsed_seconds = frame_context().elapsed_seconds;
                 }
             } else {
                 step_sort();
@@ -257,8 +257,6 @@ namespace AmbientScenes {
                 pick_next_algorithm();
             }
         }
-
-        std::vector<int> local_access_indices = access_indices;
 
         int n = static_cast<int>(array_data.size());
         for (int x = 0; x < n; ++x) {
@@ -282,7 +280,7 @@ namespace AmbientScenes {
                 b = col.b;
             }
 
-            bool is_access = contains_index(local_access_indices, x);
+            bool is_access = contains_index(access_indices, x);
             bool use_special_color = false;
 
             if (sort_phase == 2) {
@@ -400,7 +398,7 @@ namespace AmbientScenes {
                         break;
                     case Algorithm::COMB_SORT:
                         if (comb_gap > 1) {
-                            if (contains_index(local_access_indices, x)) {
+                            if (contains_index(access_indices, x)) {
                                 r = kAccessColor.r;
                                 g = kAccessColor.g;
                                 b = kAccessColor.b;
@@ -490,6 +488,15 @@ namespace AmbientScenes {
 
     std::string SortingVisualizerScene::get_name() const {
         return "sorting-visualizer";
+    }
+
+    Scenes::SceneDescriptor SortingVisualizerScene::get_descriptor() const {
+        auto d = Scene::get_descriptor();
+        d.automatic_eligible = true;
+        d.family = "sorting";
+        d.tags = {"ambient", "geometric", "bars", "structured", "algorithmic"};
+        d.intensity = 0.44f; d.motion = 0.42f; d.music_affinity = 0.08f; d.performance_cost = 0.28f;
+        return d;
     }
 
     void SortingVisualizerScene::register_properties() {

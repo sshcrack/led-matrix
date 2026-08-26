@@ -96,6 +96,8 @@ RuntimeInputs::publish(
 
 The complete Runtime Input snapshot is mirrored into a remote worker session. Audio is mirrored as the full `AudioProtocol::Frame`, including features, spectrum, waveform, event flags, and counters.
 
+Automatic Mode can also warm an eligible scene while another scene remains visible by calling `Scene::prepare_runtime(snapshot)`. This hook is for lightweight orchestration only—for example, telling a desktop media plugin to begin an asynchronous decode. It **must be non-blocking and idempotent** and must not perform synchronous network/file work on the matrix render thread. Prepared pixel streams should still remain gated until the scene becomes active.
+
 Spotify is an example of a network-backed scene whose render path can consume mirrored runtime state (track, artist, progress, duration, artwork URL) rather than requiring the worker to own the Pi-side Spotify polling thread.
 
 ## Scene state during migration

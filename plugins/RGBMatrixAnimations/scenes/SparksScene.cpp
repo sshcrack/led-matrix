@@ -63,6 +63,24 @@ string SparksScene::get_name() const
     return "sparks";
 }
 
+Scenes::SceneDescriptor SparksScene::get_descriptor() const
+{
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "sparks";
+    d.tags = {"ambient", "particles", "physics", "vivid", "energetic"};
+    d.intensity = 0.70f; d.motion = 0.78f; d.music_affinity = 0.30f; d.performance_cost = 0.42f;
+    d.variants = {
+        {"embers", "Floating embers", "A restrained low-density spark field",
+         {{"num_particles", 24}, {"shake", 2}, {"bounce", 210}, {"delay_ms", 14}},
+         {"calm", "particles"}, 0.36f, 0.52f, 0.18f, 0.32f},
+        {"burst", "Spark burst", "Brighter energetic bouncing particles",
+         {{"num_particles", 64}, {"shake", 7}, {"bounce", 250}, {"delay_ms", 8}},
+         {"vivid", "energetic", "particles"}, 0.76f, 0.82f, 0.34f, 0.48f},
+    };
+    return d;
+}
+
 std::unique_ptr<Scenes::Scene> SparksSceneWrapper::create()
 {
     return std::make_unique<SparksScene>();

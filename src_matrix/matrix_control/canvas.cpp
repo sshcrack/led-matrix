@@ -72,6 +72,20 @@ void CanvasCoordinator::ensure_automatic_catalog()
     info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
 }
 
+void CanvasCoordinator::prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs)
+{
+    for (const auto &scene : automatic_scenes_) {
+        if (!scene) continue;
+        try {
+            scene->prepare_runtime(runtime_inputs);
+        } catch (const std::exception &e) {
+            Diagnostics::RuntimeDiagnostics::instance().record_scene_error(
+                scene->get_name() + "/prepare", e.what());
+            debug("Automatic background preparation for '{}' failed: {}", scene->get_name(), e.what());
+        }
+    }
+}
+
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
     const auto configured_seed = config_->get_automatic_director_seed();
@@ -136,6 +150,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         if (scene == nullptr) {
             if (automatic_mode) {
+                prepare_automatic_scenes(runtime_inputs);
                 const auto decision = automatic_director_.choose(scenes, runtime_inputs, exclude_name);
                 scene = decision.scene;
                 Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
@@ -216,20 +231,43 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             }
         }
 
-        bool early_exit = renderer_.render_scene_phase(
-            scene, composite, end_ms, std::move(inputs_still_available));
+        bool director_switch_triggered = false;
+        std::shared_ptr<Scenes::Scene> director_preferred_scene;
+        const tmillis_t scene_started_ms = time_source_->now_ms();
+        std::function<bool()> director_switch_requested;
+        if (automatic_mode && !lab_mode && !pinned_scene) {
+            director_switch_requested = [this, &scenes, scene, scene_started_ms,
+                                         &director_switch_triggered, &director_preferred_scene] {
+                const auto latest_inputs = runtime_inputs_fn_();
+                prepare_automatic_scenes(latest_inputs);
+                const auto opportunity = automatic_director_.consider_switch(
+                    scenes, scene, latest_inputs, time_source_->now_ms() - scene_started_ms);
+                Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+                if (!opportunity.should_switch)
+                    return false;
+                director_switch_triggered = true;
+                director_preferred_scene = opportunity.preferred_scene;
+                debug("Automatic Director handoff opportunity from '{}': {}", scene->get_name(), opportunity.reason);
+                return true;
+            };
+        }
 
-        if (!early_exit && automatic_mode && !lab_mode
+        bool early_exit = renderer_.render_scene_phase(
+            scene, composite, end_ms, std::move(inputs_still_available), std::move(director_switch_requested));
+
+        const bool should_handoff = !early_exit || director_switch_triggered;
+        if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
             const auto latest_inputs = runtime_inputs_fn_();
-            const auto decision = automatic_director_.choose(scenes, latest_inputs, scene->get_name());
+            const auto decision = automatic_director_.choose(
+                scenes, latest_inputs, scene->get_name(), director_preferred_scene);
             next_scene = decision.scene;
             Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }
 
-        if (!early_exit && !lab_mode && next_scene != nullptr
+        if (should_handoff && !lab_mode && next_scene != nullptr
             && RuntimeInputs::satisfies(
                 next_scene->get_effective_runtime_inputs(), runtime_inputs_fn_())) {
             tmillis_t transition_delay = 0;
@@ -260,12 +298,23 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                         && RuntimeInputs::satisfies(next_input_spec, snapshot);
                 };
             }
+            // Desktop-fed incoming scenes need their packet stream enabled
+            // before TransitionEngine asks them for the first transition frame.
+            // The outgoing scene is already frozen into the transition snapshot,
+            // so stopping its bulk stream at this point is intentional.
+            const bool prime_incoming_desktop_stream = next_scene->get_capabilities().requires_desktop;
+            if (prime_incoming_desktop_stream)
+                broadcast_fn_(next_scene->get_name());
+
             transition_engine_.render_transition_phase(
                 scene, next_scene,
                 first, second, composite,
                 matrix_width, matrix_height,
                 transition_duration, transition_name, forced_scene_, transition_delay,
                 std::move(transition_inputs_still_available), renderer_.last_presented_canvas());
+
+            if (prime_incoming_desktop_stream && forced_scene_ != next_scene)
+                broadcast_fn_(scene->get_name());
         }
 
         if (automatic_mode) {

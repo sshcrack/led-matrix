@@ -183,6 +183,23 @@ string RainScene::get_name() const {
     return "rain";
 }
 
+Scenes::SceneDescriptor RainScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "particle-rain";
+    d.tags = {"ambient", "particles", "rain", "flow"};
+    d.intensity = 0.54f; d.motion = 0.70f; d.music_affinity = 0.22f; d.performance_cost = 0.68f;
+    d.variants = {
+        {"mist", "Light particle rain", "Sparse relaxed rain with a lower simulation budget",
+         {{"num_particles", 1800}, {"velocity", 3500}, {"delay_ms", 14}},
+         {"calm", "particles", "flow"}, 0.30f, 0.48f, 0.12f, 0.46f},
+        {"downpour", "Color downpour", "Dense fast particle rain for lively ambient passages",
+         {{"num_particles", 4800}, {"velocity", 7600}, {"delay_ms", 8}},
+         {"vivid", "dense", "particles"}, 0.68f, 0.82f, 0.28f, 0.74f},
+    };
+    return d;
+}
+
 
 std::unique_ptr<Scene> RainSceneWrapper::create() {
     return std::make_unique<RainScene>();
