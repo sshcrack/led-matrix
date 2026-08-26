@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/post.h"
 #include "shared/matrix/utils/image_fetch.h"
 #include <vector>
@@ -13,22 +16,20 @@
 #include "spdlog/spdlog.h"
 #include "picosha2.h"
 
-using namespace std;
-
-optional<vector<Magick::Image>> Post::process_images(const int width, const int height, const bool store_processed_file) {
+std::optional<std::vector<Magick::Image>> Post::process_images(const int width, const int height, const bool store_processed_file) {
     spdlog::trace("Preprocessing img {}", img_url);
     
     try {
-        if (!filesystem::exists(Constants::post_dir)) {
-            if (!filesystem::create_directory(Constants::post_dir)) {
+        if (!std::filesystem::exists(Constants::post_dir)) {
+            if (!std::filesystem::create_directory(Constants::post_dir)) {
                 spdlog::error("Could not create directory at {}.", Constants::post_dir.c_str());
-                return nullopt;
+                return std::nullopt;
             }
         }
 
         const tmillis_t start_loading = GetTimeInMillis();
-        const filesystem::path file_path = Constants::post_dir / get_filename();
-        const filesystem::path processed_img = to_processed_path(file_path);
+        const std::filesystem::path file_path = Constants::post_dir / get_filename();
+        const std::filesystem::path processed_img = to_processed_path(file_path);
 
         // Early return if processed image exists
         if (exists(processed_img)) {
@@ -41,10 +42,10 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
         // Download image if needed
         if (!exists(processed_img)) {
             try_remove(file_path);
-            const auto res = utils::download_image(get_image_url(), file_path);
+            const auto res = utils::download_image(get_image_url(), file_path.string());
             if (!res) {
                 spdlog::error("Could not download image: {}", res.error());
-                return nullopt;
+                return std::nullopt;
             }
         }
 
@@ -61,7 +62,7 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
 
         if (!res) {
             spdlog::error("Error loading image: {}", res.error());
-            return nullopt;
+            return std::nullopt;
         }
 
         spdlog::trace("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
@@ -69,15 +70,15 @@ optional<vector<Magick::Image>> Post::process_images(const int width, const int 
 
     } catch (std::exception &e) {
         spdlog::error("Exception in process_images: {}", e.what());
-        return nullopt;
+        return std::nullopt;
     }
 }
 
-Post::Post(const string &img_url, const bool maybe_fetch_type) {
+Post::Post(const std::string &img_url, const bool maybe_fetch_type) {
     this->img_url = img_url;
 
     const auto last_index = img_url.find_last_of('.');
-    string file_ext = ".unknown";
+    std::string file_ext = ".unknown";
     if (last_index != std::string::npos) {
         file_ext = img_url.substr(img_url.find_last_of('.'));
     }
@@ -99,10 +100,10 @@ Post::Post(const string &img_url, const bool maybe_fetch_type) {
     this->file_name += file_ext;
 }
 
-string Post::get_filename() {
+std::string Post::get_filename() {
     return file_name;
 }
 
-string Post::get_image_url() {
+std::string Post::get_image_url() {
     return img_url;
 }

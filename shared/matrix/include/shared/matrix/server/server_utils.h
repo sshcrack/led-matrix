@@ -1,5 +1,7 @@
 #pragma once
-
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "restinio/all.hpp"
 #include "nlohmann/json.hpp"
 #include <string>

@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "CoverOnlyScene.h"
 #include "Magick++.h"
 #include "spdlog/spdlog.h"
@@ -23,6 +26,19 @@ using namespace std;
 using namespace Scenes;
 
 namespace {
+// Manual brightness scaling: tuning pixel RGB values directly instead of
+// relying on hardware/global brightness (e.g. matrix SetBrightness). Factor is
+// percent (100 = unchanged). Uses quantumOperator which multiplies each
+// channel value — equivalent to per-pixel RGB scaling.
+void apply_manual_brightness(Magick::Image &image, double brightness_percent) {
+    double factor = std::clamp(brightness_percent / 100.0, 0.0, 2.0);
+    if (std::abs(factor - 1.0) < 0.001) return;
+    // MultiplyQuantumOp scales every channel (RGB) by factor; alpha is left
+    // untouched by operating on AllChannels which in GraphicsMagick excludes
+    // alpha unless explicitly included.
+    image.quantumOperator(Magick::AllChannels, Magick::MultiplyQuantumOp, factor);
+}
+
 struct PaletteBin {
     uint32_t count = 0;
     uint32_t r = 0;
@@ -539,7 +555,10 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
             std::max(0L, static_cast<long>(background.rows() - height) / 2)));
         if (background_blur->get() > 0)
             background.blur(0.0, static_cast<double>(background_blur->get()));
-        background.modulate(static_cast<double>(background_brightness->get()), 112.0, 100.0);
+        // Manual brightness: scale RGB pixel values directly instead of using
+        // a global/hardware brightness. Keeps saturation boost via modulate(100, 112).
+        apply_manual_brightness(background, static_cast<double>(background_brightness->get()));
+        background.modulate(100.0, 112.0, 100.0);
         cover_img.composite(background, 0, 0, Magick::OverCompositeOp);
 
         // Put a crisp, slightly inset square cover above the atmospheric background.
@@ -548,7 +567,8 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
             8, std::min(width, height));
         Magick::Image foreground = source;
         foreground.resize(Magick::Geometry(cover_size, cover_size));
-        foreground.modulate(104.0, 112.0, 100.0);
+        apply_manual_brightness(foreground, 104.0);
+        foreground.modulate(100.0, 112.0, 100.0);
         const int x = (width - cover_size) / 2;
         const int y = (height - cover_size) / 2 - std::max(0, progress_bar_height->get() / 2);
 
