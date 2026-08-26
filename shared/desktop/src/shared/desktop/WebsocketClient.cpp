@@ -37,12 +37,27 @@ void WebsocketClient::setup_callback()
         auto shared_this = weak_this.lock();
         if (!shared_this) return;
 
+        if (msg->type == ix::WebSocketMessageType::Open)
+        {
+            shared_this->streamState_.on_websocket_open();
+            return;
+        }
+
+        if (msg->type == ix::WebSocketMessageType::Close
+            || msg->type == ix::WebSocketMessageType::Error)
+        {
+            shared_this->streamState_.on_websocket_closed();
+            return;
+        }
+
         if (msg->type == ix::WebSocketMessageType::Message)
         {
-            std::unique_lock<std::mutex> lock(shared_this->activeSceneMutex);
-
             const std::string &m = msg->str;
+            if (shared_this->streamState_.on_control_message(m))
+                return;
+
             if (m.starts_with("active:")) {
+                std::unique_lock<std::mutex> lock(shared_this->activeSceneMutex);
                 shared_this->activeScene = m.substr(7);
             }
 
@@ -111,6 +126,16 @@ void WebsocketClient::threadLoop()
             hostname = generalConfig.getHostname();
             port = generalConfig.getPort();
             udpFpsLimit = generalConfig.getUdpFpsLimit();
+        }
+
+        // Bulk UDP is only useful while the control connection is alive and
+        // the matrix has explicitly reported that its canvas is enabled. Do
+        // not even ask plugins to render/encode packets while streaming is
+        // paused; this saves CPU in addition to network bandwidth.
+        if (!streamState_.can_send_udp())
+        {
+            std::this_thread::sleep_for(FRAME_DURATION_MS);
+            continue;
         }
 
         auto largePayloadMinInterval = std::chrono::duration<double, std::milli>(1000.0 / udpFpsLimit);

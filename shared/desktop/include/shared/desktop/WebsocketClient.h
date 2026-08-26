@@ -2,6 +2,7 @@
 #include "shared/desktop/macro.h"
 #include <ixwebsocket/IXWebSocket.h>
 #include "shared/desktop/UdpSender.h"
+#include "shared/desktop/DesktopStreamState.h"
 #include <string>
 #include <thread>
 #include <mutex>
@@ -99,6 +100,7 @@ public:
 private:
     WebsocketClient();
     UdpSender udpSender;
+    DesktopStreamState streamState_;
 
     std::thread senderThread;
 

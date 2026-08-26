@@ -1,4 +1,5 @@
 #include "canvas_status.h"
+#include "desktop_ws.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
 #include <spdlog/spdlog.h>
@@ -14,6 +15,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
 
     router->http_get("/toggle", [](auto req, auto) {
         config->set_turned_off(!config->is_turned_off());
+        Server::broadcast_matrix_enabled(!config->is_turned_off());
         exit_canvas_update.store(true);
 
         return reply_with_json(req, {{"turned_off", config->is_turned_off()}});
@@ -41,6 +43,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
         }
 
         config->set_turned_off(enabled_str == "false");
+        Server::broadcast_matrix_enabled(!config->is_turned_off());
         exit_canvas_update.store(true);
 
         return reply_with_json(req, {{"turned_off", config->is_turned_off()}});
