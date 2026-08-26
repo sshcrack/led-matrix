@@ -11,7 +11,8 @@ namespace {
 class TestScene final : public Scenes::Scene {
 public:
     TestScene(std::string name, float intensity, float music, float cost, bool needs_audio, std::string family, float motion = .5f,
-              std::vector<std::string> tags = {}, std::vector<std::string> required_inputs = {}, tmillis_t duration = 1000)
+              std::vector<std::string> tags = {}, std::vector<std::string> required_inputs = {}, tmillis_t duration = 1000,
+              bool automatic_eligible = true)
         : name_(std::move(name)),
           intensity_(intensity),
           music_(music),
@@ -21,7 +22,8 @@ public:
           motion_(motion),
           tags_(std::move(tags)),
           required_inputs_(std::move(required_inputs)),
-          duration_(duration)
+          duration_(duration),
+          automatic_eligible_(automatic_eligible)
     {
         update_default_properties();
         register_properties();
@@ -33,7 +35,7 @@ public:
     Scenes::SceneDescriptor get_descriptor() const override
     {
         auto d = Scene::get_descriptor();
-        d.automatic_eligible = true;
+        d.automatic_eligible = automatic_eligible_;
         d.family = family_;
         d.intensity = intensity_;
         d.motion = motion_;
@@ -63,6 +65,7 @@ private:
     std::vector<std::string> tags_;
     std::vector<std::string> required_inputs_;
     tmillis_t duration_;
+    bool automatic_eligible_;
 };
 }  // namespace
 
@@ -74,7 +77,8 @@ int main()
         std::make_shared<TestScene>("ambient_b", .5f, .2f, .3f, false, "organic"),
         std::make_shared<TestScene>("music", .8f, 1.f, .4f, true, "music", .78f, std::vector<std::string>{"music", "energetic"}),
         std::make_shared<TestScene>("music_director", .7f, 1.f, .6f, true, "music-director", .72f,
-                                    std::vector<std::string>{"music", "director", "adaptive"}),
+                                    std::vector<std::string>{"music", "director", "adaptive"},
+                                    std::vector<std::string>{}, 1000, false),
     };
     AutomaticDirector director(7);
     auto ranked = director.rank(scenes, RuntimeInputs::snapshot());
@@ -97,8 +101,8 @@ int main()
                             {"silence", false}},
                            std::chrono::seconds(1));
     ranked = director.rank(scenes, RuntimeInputs::snapshot());
-    if (ranked.size() != 4 || ranked.front().scene->get_name() != "music_director") {
-        std::cerr << "live music did not prioritize continuously adaptive director scene\n";
+    if (ranked.size() != 3 || ranked.front().scene->get_name() != "music") {
+        std::cerr << "live music did not prioritize the strongest directly selectable reactive scene\n";
         return 2;
     }
 
@@ -140,21 +144,28 @@ int main()
     };
     RuntimeInputs::clear_all();
     RuntimeInputs::set_available(RuntimeInputIds::Desktop, true, {{"connected", true}});
-    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, true, {{"ready", true}});
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, true,
+        {{"tools_ready", true}, {"state", std::string("preparing")}, {"first_frame_ready", false},
+         {"track_id", std::string("track-a")}});
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
-        {{"playing", true}, {"progress_ms", std::int64_t{10000}}, {"duration_ms", std::int64_t{200000}}},
+        {{"playing", true}, {"track_id", std::string("track-a")},
+         {"progress_ms", std::int64_t{10000}}, {"duration_ms", std::int64_t{200000}}},
         std::chrono::seconds(1));
     AutomaticDirector spotify_director(23);
     ranked = spotify_director.rank(spotify_scenes, RuntimeInputs::snapshot());
-    if (ranked.size() != 2 || ranked.front().scene->get_name() != "cover") {
+    if (ranked.size() != 1 || ranked.front().scene->get_name() != "cover") {
         std::cerr << "Spotify track intro did not prefer album art\n";
         return 13;
     }
 
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, true,
+        {{"tools_ready", true}, {"state", std::string("playing")}, {"first_frame_ready", true},
+         {"track_id", std::string("track-a")}});
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
-        {{"playing", true}, {"progress_ms", std::int64_t{90000}}, {"duration_ms", std::int64_t{200000}}},
+        {{"playing", true}, {"track_id", std::string("track-a")},
+         {"progress_ms", std::int64_t{90000}}, {"duration_ms", std::int64_t{200000}}},
         std::chrono::seconds(1));
     const auto mid_track = RuntimeInputs::snapshot();
     ranked = spotify_director.rank(spotify_scenes, mid_track);
@@ -168,9 +179,28 @@ int main()
         return 15;
     }
 
+    // Event-driven handoffs carry the candidate that caused the event. The
+    // subsequent stochastic selector must honor that candidate while it remains
+    // eligible, otherwise an MV-ready event could switch to unrelated visuals.
+    AutomaticDirector mv_handoff_director(31);
+    const auto mv_handoff = mv_handoff_director.consider_switch(
+        spotify_scenes, spotify_scenes.front(), mid_track, 9000);
+    if (!mv_handoff.should_switch || !mv_handoff.preferred_scene
+        || mv_handoff.preferred_scene->get_name() != "spotifymv") {
+        std::cerr << "prepared SpotifyMV handoff did not preserve its preferred scene\n";
+        return 20;
+    }
+    const auto mv_decision = mv_handoff_director.choose(
+        spotify_scenes, mid_track, "cover", mv_handoff.preferred_scene);
+    if (!mv_decision.scene || mv_decision.scene->get_name() != "spotifymv") {
+        std::cerr << "preferred event candidate was lost during final Director selection\n";
+        return 21;
+    }
+
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
-        {{"playing", true}, {"progress_ms", std::int64_t{190000}}, {"duration_ms", std::int64_t{200000}}},
+        {{"playing", true}, {"track_id", std::string("track-a")},
+         {"progress_ms", std::int64_t{190000}}, {"duration_ms", std::int64_t{200000}}},
         std::chrono::seconds(1));
     ranked = spotify_director.rank(spotify_scenes, RuntimeInputs::snapshot());
     if (ranked.empty() || ranked.front().scene->get_name() != "cover") {
@@ -183,6 +213,36 @@ int main()
     if (ranked.size() != 1 || ranked.front().scene->get_name() != "cover") {
         std::cerr << "SpotifyMV remained eligible after desktop toolchain became unavailable\n";
         return 17;
+    }
+
+    // The global director should consume musical structure itself instead of
+    // relying on the nested MusicDirector scene. A section event after minimum
+    // dwell creates a sparse handoff opportunity.
+    RuntimeInputs::clear_all();
+    RuntimeInputs::publish(RuntimeInputIds::Audio,
+        {{"loudness", 0.72}, {"loudness_slow", 0.70}, {"loudness_fast", 0.74},
+         {"bass", 0.62}, {"beat_confidence", 0.82}, {"tempo_stability", 0.84},
+         {"beat_counter", std::int64_t{16}}, {"drop_counter", std::int64_t{1}},
+         {"section_counter", std::int64_t{2}}, {"silence", false}},
+        std::chrono::seconds(1));
+    AutomaticDirector event_director(29);
+    const auto current_scene = scenes.front();
+    event_director.record_played(current_scene);
+    auto opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 9000);
+    if (opportunity.should_switch) {
+        std::cerr << "director reacted while priming musical event counters\n";
+        return 18;
+    }
+    RuntimeInputs::publish(RuntimeInputIds::Audio,
+        {{"loudness", 0.72}, {"loudness_slow", 0.70}, {"loudness_fast", 0.74},
+         {"bass", 0.62}, {"beat_confidence", 0.82}, {"tempo_stability", 0.84},
+         {"beat_counter", std::int64_t{20}}, {"drop_counter", std::int64_t{1}},
+         {"section_counter", std::int64_t{3}}, {"silence", false}},
+        std::chrono::seconds(1));
+    opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 10000);
+    if (!opportunity.should_switch || opportunity.reason.find("section") == std::string::npos) {
+        std::cerr << "global director ignored a durable musical section change\n";
+        return 19;
     }
 
     // Restore active music for deterministic sequence/reseed checks below.

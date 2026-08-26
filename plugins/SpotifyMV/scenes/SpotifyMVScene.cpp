@@ -1,31 +1,12 @@
 #include "SpotifyMVScene.h"
-#include "../../SpotifyScenes/matrix/manager/spotify.h"
 #include <shared/matrix/canvas_consts.h>
-#include <shared/matrix/plugin_registry.h>
 #include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/runtime_inputs.h>
 #include <shared/matrix/utils/LoadingAnimation.h>
 #include <spdlog/spdlog.h>
 
 using namespace Scenes;
 
-namespace
-{
-  Spotify *resolve_spotify()
-  {
-    static bool warned = false;
-    if (!PluginRegistry::contains("spotify"))
-    {
-      if (!warned) {
-        spdlog::warn("[SpotifyMVScene] SpotifyScenes unavailable (disabled or missing credentials) — track detection disabled");
-        warned = true;
-      }
-      return nullptr;
-    }
-    auto pluginAny = PluginRegistry::get("spotify");
-    auto *spotifyPtr = std::any_cast<Spotify *>(&pluginAny);
-    return spotifyPtr ? *spotifyPtr : nullptr;
-  }
-}
 
 std::unique_ptr<Scenes::Scene>
 SpotifyMVSceneWrapper::create()
@@ -71,14 +52,57 @@ Scenes::SceneDescriptor SpotifyMVScene::get_descriptor() const
   return d;
 }
 
+void SpotifyMVScene::prepare_runtime(const RuntimeInputs::Snapshot& snapshot)
+{
+  if (!plugin_)
+    return;
+
+  if (!snapshot.available(RuntimeInputIds::SpotifyPlayback))
+  {
+    if (!last_track_id_sent_.empty())
+    {
+      plugin_->send_msg_to_desktop("stop");
+      plugin_->clear_last_track_message();
+      last_track_id_sent_.clear();
+    }
+    return;
+  }
+
+  const auto track_id = snapshot.text(RuntimeInputIds::SpotifyPlayback, "track_id").value_or("");
+  const auto song = snapshot.text(RuntimeInputIds::SpotifyPlayback, "track").value_or("");
+  const auto artist = snapshot.text(RuntimeInputIds::SpotifyPlayback, "artist").value_or("");
+  if (track_id.empty() || (song.empty() && artist.empty()) || track_id == last_track_id_sent_)
+    return;
+
+  const auto progress_ms = static_cast<long>(
+      snapshot.number(RuntimeInputIds::SpotifyPlayback, "progress_ms").value_or(0.0));
+  const auto duration_ms = static_cast<long>(
+      snapshot.number(RuntimeInputIds::SpotifyPlayback, "duration_ms").value_or(0.0));
+  const auto suffix = search_suffix->get();
+  const auto fallback = fallback_to_lyric_video->get() ? "true" : "false";
+  const auto track_msg = "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fallback + "\n"
+      + std::to_string(progress_ms) + "\n" + std::to_string(duration_ms);
+
+  // Hidden preparation deliberately does not send pixel packets. The desktop
+  // only emits the large UDP stream when `spotifymv` is the active scene.
+  plugin_->send_msg_to_desktop(track_msg);
+  plugin_->set_last_track_message(track_msg);
+  plugin_->flush_status();
+  last_track_id_sent_ = track_id;
+  loading_frame_ = 0;
+}
+
 void SpotifyMVScene::after_render_stop()
 {
   if (plugin_)
   {
     plugin_->send_msg_to_desktop("stop");
     plugin_->flush_status();
+    plugin_->clear_last_track_message();
   }
-  last_track_id_sent_ = "";
+  // Remember which track was just stopped so hidden automatic preparation does
+  // not immediately download it again. A visible manual re-entry below can
+  // explicitly restart the same track if desired.
   loading_frame_ = 0;
 }
 
@@ -103,44 +127,15 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     return false;
   }
 
-  auto *sp = resolve_spotify();
-  if (sp == nullptr)
+  const auto runtime_inputs = RuntimeInputs::snapshot();
+  const auto active_track_id = runtime_inputs.text(RuntimeInputIds::SpotifyPlayback, "track_id").value_or("");
+  if (!active_track_id.empty() && active_track_id == last_track_id_sent_ && plugin_->get_status() == "idle")
+    last_track_id_sent_.clear();
+  prepare_runtime(runtime_inputs);
+  if (!runtime_inputs.available(RuntimeInputIds::SpotifyPlayback))
   {
     canvas->Fill(0, 0, 0);
     return true;
-  }
-
-  auto state_opt = sp->get_currently_playing();
-  if (!state_opt || !state_opt->is_playing())
-  {
-    canvas->Fill(0, 0, 0);
-    return true;
-  }
-
-  auto track = state_opt->get_track();
-  auto track_id = track.get_id().value_or("");
-  if (track_id != last_track_id_sent_)
-  {
-    auto song = track.get_song_name().value_or("");
-    auto artist = track.get_artist_name().value_or("");
-
-    if (song.empty() && artist.empty())
-    {
-      canvas->Fill(0, 0, 0);
-      return true;
-    }
-
-    auto progress_ms = state_opt->get_progress_ms();
-    auto duration_opt = track.get_duration();
-    auto duration_ms = duration_opt.value_or(0);
-    auto suffix = search_suffix->get();
-    auto fb = fallback_to_lyric_video->get() ? "true" : "false";
-    auto track_msg = "track:" + track_id + ":" + song + "\n" + artist + "\n" + suffix + "\n" + fb + "\n" + std::to_string(progress_ms) + "\n" + std::to_string(duration_ms);
-    plugin_->send_msg_to_desktop(track_msg);
-    plugin_->set_last_track_message(track_msg);
-    last_track_id_sent_ = track_id;
-    loading_frame_ = 0;
-    plugin_->flush_status();
   }
 
   auto frame = plugin_->get_frame();
@@ -169,13 +164,16 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     return true;
   }
 
-  if (plugin_->is_stale())
+  auto status = plugin_->get_status();
+  if (status == "playing")
   {
-    canvas->Fill(10, 0, 20);
+    // The desktop has decoded a frame but the bulk UDP stream may only just
+    // have been enabled for the transition. Keep the outgoing matrix frame
+    // until the first current-track packet arrives instead of exposing a
+    // loader or stale pixels.
+    hold_current_frame();
     return true;
   }
-
-  auto status = plugin_->get_status();
   if (status == "idle")
   {
     canvas->Fill(0, 0, 0);
@@ -186,9 +184,14 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     canvas->Fill(20, 0, 0);
     return true;
   }
-  if (status == "searching" || status == "downloading" || status == "processing")
+  if (status == "searching" || status == "downloading" || status == "processing" || status == "pending")
   {
     render_loading(canvas, status == "searching");
+    return true;
+  }
+  if (plugin_->is_stale())
+  {
+    canvas->Fill(10, 0, 20);
     return true;
   }
 

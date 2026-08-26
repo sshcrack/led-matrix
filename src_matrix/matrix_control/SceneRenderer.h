@@ -26,7 +26,8 @@ public:
         std::shared_ptr<Scenes::Scene> scene,
         FrameCanvas *&composite_offscreen_canvas,
         tmillis_t end_ms,
-        std::function<bool()> inputs_still_available = {});
+        std::function<bool()> inputs_still_available = {},
+        std::function<bool()> switch_requested = {});
 
     void render_fallback();
 

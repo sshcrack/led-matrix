@@ -2,7 +2,6 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <chrono>
 #include <random>
 #include <utility>
 #include <vector>
@@ -29,7 +28,7 @@ namespace AmbientScenes {
         Algorithm current_algorithm;
         int sort_phase; // 0 = unsorting, 1 = sorting, 2 = sorted (wait), 3 = completed
         int delay_counter;
-        std::chrono::time_point<std::chrono::steady_clock> last_step_time;
+        double last_step_elapsed_seconds = 0.0;
         
         // Sorting state variables
         int i, j;
@@ -106,6 +105,8 @@ namespace AmbientScenes {
         int get_default_weight() override { return 1; }
         [[nodiscard]] std::string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Ambient"; }
+        [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
     };
 
     class SortingVisualizerSceneWrapper : public Plugins::SceneWrapper {

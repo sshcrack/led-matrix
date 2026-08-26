@@ -22,6 +22,10 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::RGBMatrixBase;
 using std::string;
 
+namespace RuntimeInputs {
+    class Snapshot;
+}
+
 template <typename T>
 using Property = Plugins::Property<T>;
 namespace Scenes {
@@ -188,6 +192,12 @@ namespace Scenes {
         [[nodiscard]] virtual SceneInputSpec get_runtime_input_spec() const { return {}; }
 
         [[nodiscard]] SceneInputSpec get_effective_runtime_inputs() const;
+
+        /// Optional lightweight background preparation hook. Automatic Mode may
+        /// call this while another scene is visible so media/network scenes can
+        /// warm resources without forcing a loading screen onto the matrix.
+        /// Implementations must be non-blocking and idempotent.
+        virtual void prepare_runtime(const RuntimeInputs::Snapshot &) {}
 
         /// Machine-readable scene capabilities used by the web app and Music
         /// Director. Preview eligibility is derived from get_preview_spec() so
