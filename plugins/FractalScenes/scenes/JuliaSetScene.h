@@ -2,7 +2,6 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <chrono>
 #include <complex>
 
 namespace Scenes {
@@ -20,6 +19,8 @@ namespace Scenes {
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         [[nodiscard]] string get_name() const override;
         [[nodiscard]] std::string get_category() const override { return "Fractals"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
 
         tmillis_t get_default_duration() override {
             return 20000;
@@ -32,10 +33,6 @@ namespace Scenes {
         void register_properties() override;
 
     private:
-        std::chrono::steady_clock::time_point last_update;
-        float total_time = 0.0f;
-        float animation_speed = 0.1f;
-        
         // Julia set parameters
         std::complex<float> c = {-0.7, 0.27};
         

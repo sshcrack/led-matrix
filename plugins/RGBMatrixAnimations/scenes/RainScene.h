@@ -2,7 +2,6 @@
 
 #include "ParticleScene.h"
 #include "shared/matrix/wrappers.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "matrix/anim/gravityparticles.h"
 #include <led-matrix.h>  // Add direct include for rgb_matrix types
 
@@ -39,6 +38,7 @@ namespace Scenes {
 
         void initialize(int width, int height) override; // Add override here instead
         [[nodiscard]] string get_name() const override;
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
         tmillis_t get_default_duration() override {
             return 20000;

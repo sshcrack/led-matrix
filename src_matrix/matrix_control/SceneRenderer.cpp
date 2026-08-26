@@ -31,7 +31,8 @@ bool SceneRenderer::render_scene_phase(
     std::shared_ptr<Scenes::Scene> scene,
     FrameCanvas *&composite_offscreen_canvas,
     tmillis_t end_ms,
-    std::function<bool()> inputs_still_available)
+    std::function<bool()> inputs_still_available,
+    std::function<bool()> switch_requested)
 {
     auto &diagnostics = Diagnostics::RuntimeDiagnostics::instance();
     diagnostics.set_active_scene(scene->get_name());
@@ -78,6 +79,7 @@ bool SceneRenderer::render_scene_phase(
     });
 
     tmillis_t next_input_check_ms = time_source_->now_ms();
+    tmillis_t next_switch_check_ms = next_input_check_ms;
     // Pace from the previous render start, not from the previous completed
     // SwapOnVSync(). SwapOnVSync() already waits for the next matrix refresh.
     // Pacing from the completed swap adds a second full frame interval at
@@ -105,6 +107,13 @@ bool SceneRenderer::render_scene_phase(
             next_input_check_ms = now_ms + 250;
             if (!inputs_still_available()) {
                 spdlog::debug("Scene '{}' lost a required Runtime Input; selecting a replacement", scene->get_name());
+                return true;
+            }
+        }
+        if (switch_requested && now_ms >= next_switch_check_ms) {
+            next_switch_check_ms = now_ms + 250;
+            if (switch_requested()) {
+                spdlog::debug("Automatic Director requested an early handoff from '{}'", scene->get_name());
                 return true;
             }
         }

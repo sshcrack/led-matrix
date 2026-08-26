@@ -574,13 +574,14 @@ void MusicDirectorScene::before_transition_stop()
 Scenes::SceneDescriptor Scenes::MusicDirectorScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
-    d.automatic_eligible = true;
     d.family = "music-director";
     d.tags = {"music", "director", "adaptive", "audio-reactive"};
     d.intensity = 0.70f;
     d.motion = 0.72f;
     d.music_affinity = 1.0f;
     d.performance_cost = 0.62f;
-    d.automatic_eligible = true;
+    // Kept as a useful manual/composite scene. Automatic Mode now owns musical
+    // event timing globally so desktop media such as SpotifyMV can participate.
+    d.automatic_eligible = false;
     return d;
 }

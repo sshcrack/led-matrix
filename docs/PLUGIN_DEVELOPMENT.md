@@ -280,6 +280,8 @@ const double temp = inputs.number("my.input", "temperature").value_or(0.0);
 
 Required inputs participate in scene eligibility. If a required input disappears while a scene is running, the scheduler can replace that scene.
 
+An automatically eligible scene may optionally override `prepare_runtime(const RuntimeInputs::Snapshot&)` to start asynchronous preparation before it is selected. Keep this hook non-blocking and idempotent; it runs from the Automatic Director path while a different scene may be rendering. Use it to enqueue/request work, not to fetch or decode synchronously. SpotifyMV uses this to prepare the current track on the desktop without sending its high-bandwidth frame stream until SpotifyMV is actually active.
+
 The worker receives mirrored Runtime Inputs automatically. Do not create a worker-specific socket or duplicated data model unless the data fundamentally cannot be represented as Runtime Inputs.
 
 ## Audio-reactive scenes

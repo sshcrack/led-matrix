@@ -45,6 +45,11 @@ void draw_engine_status(Shared::VideoStreamEngine::State state,
 REGISTER_PLUGIN(SpotifyMV, SpotifyMVDesktop)
 
 SpotifyMVDesktop::~SpotifyMVDesktop() {
+    {
+        std::lock_guard<std::mutex> lk(track_id_mutex_);
+        request_generation_.fetch_add(1, std::memory_order_relaxed);
+        pending_track_id_.clear();
+    }
     if (search_thread_.joinable()) search_thread_.join();
     if (pending_engine_) {
         std::lock_guard<std::mutex> lk(engine_mutex_);
@@ -266,46 +271,43 @@ void SpotifyMVDesktop::render() {
     }
 }
 
-void SpotifyMVDesktop::on_pending_first_frame() {
+void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const std::string& track_id) {
     std::unique_ptr<Shared::VideoStreamEngine> old_engine;
     bool do_crossfade = true;
-    {
-        std::lock_guard<std::mutex> lk(engine_mutex_);
 
-        if (!pending_engine_)
+    // Serialize promotion with track-request replacement. The captured generation
+    // makes callbacks from a superseded search harmless even if the decoder
+    // produces its first frame just as Spotify changes tracks.
+    {
+        std::unique_lock<std::mutex> lk_track(track_id_mutex_);
+        if (generation != request_generation_.load(std::memory_order_relaxed)
+            || pending_track_id_ != track_id)
+            return;
+
+        std::lock_guard<std::mutex> lk_engine(engine_mutex_);
+        if (generation != request_generation_.load(std::memory_order_relaxed)
+            || pending_track_id_ != track_id || !pending_engine_)
             return;
 
         total_tracks_played_++;
 
         if (!current_engine_) {
             // current_engine_ was reset (e.g. by a prior "stop" message), so
-            // there's nothing to crossfade from — just promote the pending
-            // engine directly. Without this, the swap below would silently
-            // no-op forever: the pending engine keeps decoding frames in the
-            // background, but compute_next_packet() only ever reads
-            // current_engine_ (null), so no frames are ever sent and the UI
-            // is stuck showing "Current track: None" with a pending track
-            // that never finishes loading.
+            // there's nothing to crossfade from — promote the prepared engine.
             current_engine_ = std::move(pending_engine_);
             current_engine_->on_first_frame_ready = nullptr;
             do_crossfade = false;
         } else {
-            // Capture the old engine's last frame before the swap
             old_last_frame_ = current_engine_->get_current_frame();
-
-            // Swap engines
             std::swap(current_engine_, pending_engine_);
             total_swaps_++;
-
-            // Take ownership of the old engine to stop outside the lock,
-            // avoiding deadlock: processing thread holds status_cb_mutex_ and
-            // calls this callback which would acquire engine_mutex_ then
-            // status_cb_mutex_ again via stop(); on_websocket_message holds
-            // engine_mutex_ then status_cb_mutex_.
             old_engine = std::move(pending_engine_);
             if (current_engine_)
                 current_engine_->on_first_frame_ready = nullptr;
         }
+
+        current_track_id_ = track_id;
+        pending_track_id_.clear();
     }
 
     if (old_engine) {
@@ -314,20 +316,15 @@ void SpotifyMVDesktop::on_pending_first_frame() {
         old_engine->stop();
     }
 
-    // Update track IDs
-    {
-        std::lock_guard<std::mutex> lk_track(track_id_mutex_);
-        current_track_id_ = pending_track_id_;
-        pending_track_id_.clear();
-    }
-
+    send_websocket_message("track:ready:" + track_id);
     send_websocket_message("status:playing");
 
-    // Start crossfade (only if we actually have an old frame captured to
-    // blend from — not the case when current_engine_ was null, i.e. this is
-    // effectively a fresh start rather than a transition).
     if (do_crossfade && !old_last_frame_.empty()) {
         std::lock_guard<std::mutex> lk(engine_mutex_);
+        // A newer request may have arrived while the old engine was stopping.
+        // Do not start a crossfade for a superseded promotion.
+        if (generation != request_generation_.load(std::memory_order_relaxed))
+            return;
         crossfade_start_ = std::chrono::steady_clock::now();
         crossfade_active_ = true;
     }
@@ -412,10 +409,12 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         std::string track_id = remainder.substr(0, colon_pos);
 
         // ── Dedup ─────────────────────────────────────────────────────────
-        // Lock ordering: track_id_mutex_ is released BEFORE engine_mutex_ is
-        // taken, to avoid deadlock with on_pending_first_frame (engine → track_id).
+        // Request identity is serialized by track_id_mutex_. on_pending_first_frame
+        // takes the same mutex before engine_mutex_, so a superseded callback
+        // cannot promote the wrong track.
         std::unique_ptr<Shared::VideoStreamEngine> engine_to_cancel;
         bool went_back = false;
+        bool already_current = false;
         {
             std::lock_guard<std::mutex> lk(track_id_mutex_);
             if (track_id == current_track_id_) {
@@ -423,27 +422,33 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
                     // Went back to the currently playing track while a different
                     // track was loading — cancel the pending engine and keep
                     // playing the current one as-is.
-                    // NOTE: we do NOT re-seek the current engine, so there will
-                    // be a loose sync with Spotify progress (~1-4s window).
                     spdlog::info("SpotifyMV: went back to current track, cancelling pending");
+                    request_generation_.fetch_add(1, std::memory_order_relaxed);
                     pending_track_id_.clear();
-                    // Join search thread before destroying the engine it may be using
-                    if (search_thread_.joinable()) search_thread_.join();
-                    engine_to_cancel = std::move(pending_engine_);
                     went_back = true;
+                } else {
+                    already_current = true;
                 }
+            } else if (track_id == pending_track_id_) {
                 return;
             }
-            if (track_id == pending_track_id_)
-                return;
         }
-        // track_id_mutex_ released — now safe to acquire engine_mutex_
-        if (engine_to_cancel) {
-            engine_to_cancel->on_status_change = nullptr;
-            engine_to_cancel->on_first_frame_ready = nullptr;
-            engine_to_cancel->stop();
-        }
+        if (already_current)
+            return;
         if (went_back) {
+            // No plugin mutex is held while joining: the search worker can finish
+            // callbacks without lock inversion. Move/stop its engine only after
+            // the worker no longer references it.
+            if (search_thread_.joinable()) search_thread_.join();
+            {
+                std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                engine_to_cancel = std::move(pending_engine_);
+            }
+            if (engine_to_cancel) {
+                engine_to_cancel->on_status_change = nullptr;
+                engine_to_cancel->on_first_frame_ready = nullptr;
+                engine_to_cancel->stop();
+            }
             send_websocket_message("status:playing");
             return;
         }
@@ -497,6 +502,13 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             spdlog::warn("SpotifyMV: invalid progress/duration values, using 0");
         }
 
+        std::uint64_t generation = 0;
+        {
+            std::lock_guard<std::mutex> lk(track_id_mutex_);
+            generation = request_generation_.fetch_add(1, std::memory_order_relaxed) + 1;
+            pending_track_id_ = track_id;
+        }
+
         // ── Cancel any existing pending engine ───────────────────────────
         std::unique_ptr<Shared::VideoStreamEngine> to_stop;
         {
@@ -523,12 +535,14 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // would never forward status (downloading/error/etc.) once it
         // becomes current, e.g. errors after the first track change would
         // go unreported and the matrix would just freeze on the old frame.
-        new_engine->on_status_change = [this](const std::string& s) {
-            spdlog::info("Status change " + s);
-            send_websocket_message("status:" + s);
+        new_engine->on_status_change = [this, generation](const std::string& status) {
+            if (request_generation_.load(std::memory_order_relaxed) != generation)
+                return;
+            spdlog::info("Status change " + status);
+            send_websocket_message("status:" + status);
         };
-        new_engine->on_first_frame_ready = [this]() {
-            on_pending_first_frame();
+        new_engine->on_first_frame_ready = [this, generation, track_id]() {
+            on_pending_first_frame(generation, track_id);
         };
 
         {
@@ -536,19 +550,21 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             pending_engine_ = std::move(new_engine);
         }
 
-        {
-            std::lock_guard<std::mutex> lk(track_id_mutex_);
-            pending_track_id_ = track_id;
-        }
-
+        send_websocket_message("track:preparing:" + track_id);
         send_websocket_message("status:pending");
 
         search_and_play(pending_engine_.get(), track_id, song, artist,
-                        suffix, fallback, progress_ms, duration_ms);
+                        suffix, fallback, progress_ms, duration_ms, generation);
         return;
     }
 
-        if (message == "stop") {
+    if (message == "stop") {
+        {
+            std::lock_guard<std::mutex> lk(track_id_mutex_);
+            request_generation_.fetch_add(1, std::memory_order_relaxed);
+            current_track_id_.clear();
+            pending_track_id_.clear();
+        }
         if (search_thread_.joinable()) search_thread_.join();
 
         {
@@ -568,11 +584,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             crossfade_active_ = false;
             old_last_frame_.clear();
         }
-        {
-            std::lock_guard<std::mutex> lk(track_id_mutex_);
-            current_track_id_ = "";
-            pending_track_id_ = "";
-        }
+        send_websocket_message("track:idle");
         send_websocket_message("status:idle");
         return;
     }
@@ -585,44 +597,75 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                                        const std::string& suffix,
                                        bool fallback,
                                        long spotify_progress_ms,
-                                       long spotify_duration_ms) {
+                                       long spotify_duration_ms,
+                                       std::uint64_t generation) {
     if (search_thread_.joinable()) search_thread_.join();
 
     search_running_ = true;
 
     search_thread_ = std::thread([this, engine, track_id, song, artist, suffix, fallback,
-                                   spotify_progress_ms, spotify_duration_ms]() {
+                                   spotify_progress_ms, spotify_duration_ms, generation]() {
+        const auto request_is_current = [this, generation] {
+            return request_generation_.load(std::memory_order_relaxed) == generation;
+        };
+
         try {
             std::string query = song + " " + artist + " " + suffix;
             std::string url = YouTubeSearcher::search(query);
+            if (!request_is_current()) {
+                search_running_ = false;
+                return;
+            }
 
             if (url.empty() && fallback) {
                 spdlog::info("SpotifyMV: falling back to lyric video search");
                 url = YouTubeSearcher::search(song + " " + artist + " lyrics");
+                if (!request_is_current()) {
+                    search_running_ = false;
+                    return;
+                }
             }
 
             if (url.empty()) {
                 spdlog::error("SpotifyMV: no YouTube URL found for '{}'", song);
+                send_websocket_message("track:error:" + track_id);
                 send_websocket_message("status:error");
                 search_running_ = false;
                 total_errors_++;
                 return;
             }
 
-            long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms);
+            const long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms);
+            if (!request_is_current()) {
+                search_running_ = false;
+                return;
+            }
+
             engine->start(url, track_id, seek_ms);
-            // Re-set callbacks that start() cleared via its internal stop() call
-            engine->on_status_change = [this](const std::string& s) {
-                spdlog::info("Status change " + s);
-                send_websocket_message("status:" + s);
+            if (!request_is_current()) {
+                search_running_ = false;
+                return;
+            }
+
+            // start() clears callbacks through its internal stop(). Reinstall
+            // generation-aware callbacks so superseded decoders cannot publish
+            // stale status or promote themselves after a quick track change.
+            engine->on_status_change = [this, generation](const std::string& status) {
+                if (request_generation_.load(std::memory_order_relaxed) != generation)
+                    return;
+                spdlog::info("Status change " + status);
+                send_websocket_message("status:" + status);
             };
-            engine->on_first_frame_ready = [this]() {
-                on_pending_first_frame();
+            engine->on_first_frame_ready = [this, generation, track_id]() {
+                on_pending_first_frame(generation, track_id);
             };
         } catch (const std::exception& e) {
-            spdlog::error("SpotifyMV search exception: {}", e.what());
-            send_websocket_message("status:error");
-            total_errors_++;
+            if (request_is_current()) {
+                spdlog::error("SpotifyMV search exception: {}", e.what());
+                send_websocket_message("track:error:" + track_id);
+                send_websocket_message("status:error");
+                total_errors_++;
+            }
         }
         search_running_ = false;
     });

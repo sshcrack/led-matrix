@@ -3,6 +3,7 @@
 #include "shared/desktop/VideoStreamEngine.h"
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -49,6 +50,7 @@ private:
     std::mutex engine_mutex_;
 
     std::atomic<bool> search_running_{false};
+    std::atomic<std::uint64_t> request_generation_{0};
     std::thread search_thread_;
 
     // Crossfade state
@@ -72,7 +74,7 @@ private:
 
     bool refresh_tools_status(bool force = false);
     void report_tools_status();
-    void on_pending_first_frame();
+    void on_pending_first_frame(std::uint64_t generation, const std::string& track_id);
 
     void search_and_play(Shared::VideoStreamEngine* engine,
                          const std::string& track_id,
@@ -81,7 +83,8 @@ private:
                          const std::string& suffix,
                          bool fallback,
                          long spotify_progress_ms,
-                         long spotify_duration_ms);
+                         long spotify_duration_ms,
+                         std::uint64_t generation);
 
     long compute_video_seek(const std::string& url, long spotify_progress_ms,
                             long spotify_duration_ms);

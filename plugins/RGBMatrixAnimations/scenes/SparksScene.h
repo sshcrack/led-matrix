@@ -2,7 +2,6 @@
 
 #include "ParticleScene.h"
 #include "shared/matrix/wrappers.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include "matrix/anim/gravityparticles.h"
 #include <led-matrix.h>
 
@@ -18,6 +17,7 @@ namespace Scenes {
         ~SparksScene() override = default;
 
         [[nodiscard]] string get_name() const override;
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
 
         tmillis_t get_default_duration() override {

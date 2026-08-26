@@ -2,35 +2,32 @@
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/wrappers.h"
-#include "shared/matrix/utils/FrameTimer.h"
 #include <random>
+#include <vector>
 
 using namespace Scenes;
 
 namespace Scenes {
     class WaveScene : public Scene {
     private:
-        float *map = nullptr;
-        FrameTimer frameTimer;
+        std::vector<float> map_;
+        std::vector<float> next_map_;
         std::mt19937 rng{std::random_device{}()};
 
-        void drawMap(rgb_matrix::FrameCanvas *canvas, float *iMap);
-
-        WaveScene(WaveScene&&) = delete;
-        WaveScene& operator=(WaveScene&&) = delete;
-        WaveScene(const WaveScene&) = delete;
-        WaveScene& operator=(const WaveScene&) = delete;
+        void drawMap(rgb_matrix::FrameCanvas *canvas, const std::vector<float> &map) const;
 
     public:
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         using Scene::Scene::Scene;
-        ~WaveScene() override;
+        ~WaveScene() override = default;
 
         void initialize(int width, int height) override;
 
         [[nodiscard]] string get_name() const override;
         std::string get_category() const override { return "Generative"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
 
         void register_properties() override {}
 

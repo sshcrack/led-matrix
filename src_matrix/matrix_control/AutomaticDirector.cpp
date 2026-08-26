@@ -20,6 +20,19 @@ bool signal_bool(const RuntimeInputs::Snapshot& snapshot, std::string_view input
     return value.has_value() ? *value : fallback;
 }
 
+std::uint64_t signal_counter(const RuntimeInputs::Snapshot& snapshot, std::string_view input, std::string_view signal)
+{
+    const auto value = snapshot.number(input, signal);
+    if (!value.has_value() || *value <= 0.0)
+        return 0;
+    return static_cast<std::uint64_t>(*value);
+}
+
+std::string signal_text(const RuntimeInputs::Snapshot& snapshot, std::string_view input, std::string_view signal)
+{
+    return snapshot.text(input, signal).value_or(std::string{});
+}
+
 bool has_tag(const std::vector<std::string>& tags, std::string_view wanted)
 {
     return std::find(tags.begin(), tags.end(), wanted) != tags.end();
@@ -45,7 +58,14 @@ struct DirectorContext {
     bool audio_available = false;
     bool audio_active = false;
     bool spotify = false;
+    bool spotify_mv_tools_ready = false;
+    bool spotify_mv_first_frame_ready = false;
     bool spotify_mv_ready = false;
+    std::string spotify_track_id;
+    std::string spotify_mv_track_id;
+    std::string spotify_mv_state;
+    std::uint64_t drop_counter = 0;
+    std::uint64_t section_counter = 0;
     float loudness = 0.35f;
     float loudness_fast = 0.35f;
     float bass = 0.0f;
@@ -74,7 +94,15 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float
     c.audio_available = runtime_inputs.available(RuntimeInputIds::Audio);
     c.spotify = runtime_inputs.available(RuntimeInputIds::SpotifyPlayback)
         && signal_bool(runtime_inputs, RuntimeInputIds::SpotifyPlayback, "playing", true);
-    c.spotify_mv_ready = runtime_inputs.available(RuntimeInputIds::SpotifyMVReady);
+    c.spotify_track_id = signal_text(runtime_inputs, RuntimeInputIds::SpotifyPlayback, "track_id");
+    c.spotify_mv_tools_ready = runtime_inputs.available(RuntimeInputIds::SpotifyMVReady)
+        && signal_bool(runtime_inputs, RuntimeInputIds::SpotifyMVReady, "tools_ready", true);
+    c.spotify_mv_first_frame_ready = signal_bool(
+        runtime_inputs, RuntimeInputIds::SpotifyMVReady, "first_frame_ready", false);
+    c.spotify_mv_track_id = signal_text(runtime_inputs, RuntimeInputIds::SpotifyMVReady, "track_id");
+    c.spotify_mv_state = signal_text(runtime_inputs, RuntimeInputIds::SpotifyMVReady, "state");
+    c.spotify_mv_ready = c.spotify && c.spotify_mv_tools_ready && c.spotify_mv_first_frame_ready
+        && !c.spotify_track_id.empty() && c.spotify_mv_track_id == c.spotify_track_id;
 
     const bool silence = c.audio_available
         && signal_bool(runtime_inputs, RuntimeInputIds::Audio, "silence", false);
@@ -114,6 +142,8 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float
     const float stability = std::clamp(
         signal_number(runtime_inputs, RuntimeInputIds::Audio, "tempo_stability", 0.0f), 0.0f, 1.0f);
     c.tempo_trust = std::clamp((confidence - 0.30f) / 0.50f, 0.0f, 1.0f) * stability;
+    c.drop_counter = signal_counter(runtime_inputs, RuntimeInputIds::Audio, "drop_counter");
+    c.section_counter = signal_counter(runtime_inputs, RuntimeInputIds::Audio, "section_counter");
 
     if (c.spotify) {
         const float progress_ms = std::max(
@@ -165,6 +195,18 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float
 }  // namespace
 
 AutomaticDirector::AutomaticDirector(std::uint64_t seed) : seed_(seed), rng_(seed) {}
+
+bool AutomaticDirector::sync_track_context(const std::string& track_id)
+{
+    if (track_id == current_track_id_)
+        return false;
+    current_track_id_ = track_id;
+    current_track_cover_shown_ = false;
+    current_track_mv_shown_ = false;
+    track_switch_pending_ = !track_id.empty();
+    switch_events_primed_ = false;
+    return true;
+}
 
 float AutomaticDirector::history_multiplier(
     const std::string& scene,
@@ -219,6 +261,18 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
         const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
         const auto profile = Scenes::effective_profile(descriptor, variant);
         const auto role = presentation_role(profile);
+
+        // Tool availability makes SpotifyMV manually usable, but Automatic Mode
+        // waits for a decoded first frame for this exact track. This keeps the
+        // loading animation out of unattended playback.
+        if (has_tag(profile.tags, "spotify-video")) {
+            if (!context.spotify_mv_ready)
+                continue;
+            if (current_track_mv_shown_ && !current_track_id_.empty()
+                && current_track_id_ == context.spotify_track_id)
+                continue;
+        }
+
         Candidate candidate;
         candidate.scene = scene;
         candidate.score = 1.0f;
@@ -236,13 +290,6 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                 candidate.reasons.push_back("strong live-music affinity");
             if (has_tag(profile.tags, "audio-reactive"))
                 candidate.score += 0.22f;
-            if (has_tag(profile.tags, "director")) {
-                // MusicDirector remains a strong long-form option, but it is no
-                // longer allowed to crowd every purpose-built reactive/media
-                // scene out of Automatic Mode.
-                candidate.score += 0.48f;
-                candidate.reasons.push_back("adapts continuously to music");
-            }
             if (has_any_tag(profile.tags, {"depth", "tunnel"}) && context.bass > 0.28f) {
                 candidate.score += context.bass * 0.30f + context.beat_strength * 0.12f;
                 candidate.reasons.push_back("bass supports depth motion");
@@ -280,6 +327,9 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             const bool spotify_video = has_tag(profile.tags, "spotify-video");
             if (album_art) {
                 candidate.score += 1.10f;
+                if (current_track_cover_shown_ && context.spotify_progress >= 0.14f
+                    && context.spotify_progress <= 0.82f)
+                    candidate.score -= 0.48f;
                 if (context.spotify_progress < 0.12f) {
                     candidate.score += 0.78f;
                     candidate.reasons.push_back("album art suits the start of this track");
@@ -310,7 +360,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                 if (context.spotify_remaining_seconds > 0.0f && context.spotify_remaining_seconds < 35.0f)
                     candidate.score -= 1.20f;
                 if (context.spotify_mv_ready)
-                    candidate.reasons.push_back("SpotifyMV desktop pipeline is ready");
+                    candidate.reasons.push_back("prepared SpotifyMV frame matches this track");
             }
         }
 
@@ -321,6 +371,26 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
         }
         else {
             candidate.score += 0.20f * (context.performance_budget - profile.performance_cost);
+        }
+
+        if (!history_.empty()) {
+            const auto& previous = history_.back();
+            const float intensity_delta = std::abs(profile.intensity - previous.intensity);
+            const float motion_delta = std::abs(profile.motion - previous.motion);
+            const float continuity = 1.0f - std::clamp(0.62f * intensity_delta + 0.38f * motion_delta, 0.0f, 1.0f);
+            candidate.score += continuity * 0.18f;
+            if (continuity > 0.78f)
+                candidate.reasons.push_back("continues the visual trajectory");
+
+            // Ordinary handoffs should form an arc instead of channel surfing.
+            // A detected drop is the deliberate exception: it may justify a
+            // large jump in visual intensity.
+            if (intensity_delta > 0.48f && context.drop < 0.35f)
+                candidate.score -= 0.24f;
+            if (context.energy_trend > 0.14f && profile.intensity > previous.intensity + 0.06f)
+                candidate.score += 0.16f;
+            else if (context.energy_trend < -0.14f && profile.intensity + 0.06f < previous.intensity)
+                candidate.score += 0.16f;
         }
 
         const float history = history_multiplier(scene->get_name(), descriptor.family, role);
@@ -344,14 +414,21 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
 AutomaticDirector::Decision AutomaticDirector::choose(
     const std::vector<std::shared_ptr<Scenes::Scene>>& scenes,
     const RuntimeInputs::Snapshot& runtime_inputs,
-    const std::string& exclude_name)
+    const std::string& exclude_name,
+    const std::shared_ptr<Scenes::Scene>& preferred_scene)
 {
     Decision decision;
     const auto context = context_for(runtime_inputs, render_quality_);
+    sync_track_context(context.spotify ? context.spotify_track_id : std::string{});
     last_audio_available_ = context.audio_available;
     last_audio_active_ = context.audio_active;
     last_spotify_available_ = context.spotify;
     last_spotify_mv_ready_ = context.spotify_mv_ready;
+    last_spotify_mv_tools_ready_ = context.spotify_mv_tools_ready;
+    last_spotify_mv_first_frame_ready_ = context.spotify_mv_first_frame_ready;
+    last_spotify_track_id_ = context.spotify_track_id;
+    last_spotify_mv_track_id_ = context.spotify_mv_track_id;
+    last_spotify_mv_state_ = context.spotify_mv_state;
     last_loudness_ = context.loudness;
     last_bass_ = context.bass;
     last_treble_ = context.treble;
@@ -388,13 +465,30 @@ AutomaticDirector::Decision AutomaticDirector::choose(
         ++pool_size;
     }
 
-    const float best_score = decision.ranked.front().score;
-    std::vector<double> weights(pool_size);
-    constexpr double selection_temperature = 0.30;
-    for (std::size_t i = 0; i < pool_size; ++i)
-        weights[i] = std::exp(static_cast<double>(decision.ranked[i].score - best_score) / selection_temperature);
-    std::discrete_distribution<std::size_t> distribution(weights.begin(), weights.end());
-    const auto selected = distribution(rng_);
+    std::size_t selected = decision.ranked.size();
+    if (preferred_scene) {
+        const auto preferred_name = preferred_scene->get_name();
+        const auto preferred_variant = preferred_scene->get_variant_id();
+        for (std::size_t i = 0; i < decision.ranked.size(); ++i) {
+            const auto& candidate_scene = decision.ranked[i].scene;
+            if (candidate_scene == preferred_scene
+                || (candidate_scene->get_name() == preferred_name
+                    && candidate_scene->get_variant_id() == preferred_variant)) {
+                selected = i;
+                break;
+            }
+        }
+    }
+
+    if (selected == decision.ranked.size()) {
+        const float best_score = decision.ranked.front().score;
+        std::vector<double> weights(pool_size);
+        constexpr double selection_temperature = 0.30;
+        for (std::size_t i = 0; i < pool_size; ++i)
+            weights[i] = std::exp(static_cast<double>(decision.ranked[i].score - best_score) / selection_temperature);
+        std::discrete_distribution<std::size_t> distribution(weights.begin(), weights.end());
+        selected = distribution(rng_);
+    }
 
     decision.scene = decision.ranked[selected].scene;
     decision.score = decision.ranked[selected].score;
@@ -419,7 +513,7 @@ tmillis_t AutomaticDirector::presentation_duration(
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
 
-    float seconds = 27.0f;
+    float seconds = 30.0f;
     if (has_tag(profile.tags, "spotify-video")) {
         seconds = 42.0f;
         if (context.spotify_remaining_seconds > 0.0f)
@@ -428,26 +522,154 @@ tmillis_t AutomaticDirector::presentation_duration(
     else if (has_tag(profile.tags, "album-art")) {
         seconds = context.spotify_progress < 0.12f ? 24.0f : 20.0f;
     }
-    else if (has_tag(profile.tags, "director")) {
-        seconds = 32.0f;
-    }
     else if (context.audio_active && profile.music_affinity > 0.72f) {
         seconds = profile.intensity > 0.82f ? 18.0f : (profile.intensity < 0.48f ? 27.0f : 22.0f);
     }
     else if (has_any_tag(profile.tags, {"calm", "soft", "minimal"})) {
-        seconds = 34.0f;
+        seconds = context.audio_active ? 34.0f : 42.0f;
     }
     else if (has_any_tag(profile.tags, {"energetic", "dense", "vivid"})) {
         seconds = 21.0f;
     }
     else if (profile.motion < 0.42f) {
-        seconds = 31.0f;
+        seconds = context.audio_active ? 31.0f : 38.0f;
     }
 
     if (profile.performance_cost > context.performance_budget + 0.12f)
         seconds = std::min(seconds, 18.0f);
 
-    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, 45.0f) * 1000.0f);
+    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, 52.0f) * 1000.0f);
+}
+
+AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
+    const std::vector<std::shared_ptr<Scenes::Scene>>& scenes,
+    const std::shared_ptr<Scenes::Scene>& current_scene,
+    const RuntimeInputs::Snapshot& runtime_inputs,
+    tmillis_t elapsed_ms)
+{
+    SwitchOpportunity result;
+    if (!current_scene)
+        return result;
+
+    const auto context = context_for(runtime_inputs, render_quality_);
+    const bool track_changed = sync_track_context(context.spotify ? context.spotify_track_id : std::string{});
+    last_audio_available_ = context.audio_available;
+    last_audio_active_ = context.audio_active;
+    last_spotify_available_ = context.spotify;
+    last_spotify_mv_ready_ = context.spotify_mv_ready;
+    last_spotify_mv_tools_ready_ = context.spotify_mv_tools_ready;
+    last_spotify_mv_first_frame_ready_ = context.spotify_mv_first_frame_ready;
+    last_spotify_track_id_ = context.spotify_track_id;
+    last_spotify_mv_track_id_ = context.spotify_mv_track_id;
+    last_spotify_mv_state_ = context.spotify_mv_state;
+    last_loudness_ = context.loudness;
+    last_bass_ = context.bass;
+    last_treble_ = context.treble;
+    last_onset_ = context.onset;
+    last_rhythmicity_ = context.rhythmicity;
+    last_brightness_ = context.brightness;
+    last_tempo_trust_ = context.tempo_trust;
+    last_spotify_progress_ = context.spotify_progress;
+    last_spotify_remaining_seconds_ = context.spotify_remaining_seconds;
+    last_target_intensity_ = context.target_intensity;
+    last_target_motion_ = context.target_motion;
+    last_performance_budget_ = context.performance_budget;
+    last_mode_ = context.mode;
+
+    bool drop_event = false;
+    bool section_event = false;
+    if (!switch_events_primed_) {
+        seen_drop_ = context.drop_counter;
+        seen_section_ = context.section_counter;
+        switch_events_primed_ = true;
+    } else {
+        if (context.drop_counter < seen_drop_) seen_drop_ = context.drop_counter;
+        else drop_event = context.drop_counter > seen_drop_;
+        if (context.section_counter < seen_section_) seen_section_ = context.section_counter;
+        else section_event = context.section_counter > seen_section_;
+        seen_drop_ = context.drop_counter;
+        seen_section_ = context.section_counter;
+    }
+
+    const auto current_descriptor = current_scene->get_descriptor();
+    const auto* current_variant = Scenes::find_variant(current_descriptor, current_scene->get_variant_id());
+    const auto current_profile = Scenes::effective_profile(current_descriptor, current_variant);
+    const auto alternatives = rank(scenes, runtime_inputs, current_scene->get_name());
+    if (alternatives.empty())
+        return result;
+
+    const auto& best = alternatives.front();
+    const auto best_descriptor = best.scene->get_descriptor();
+    const auto* best_variant = Scenes::find_variant(best_descriptor, best.scene->get_variant_id());
+    const auto best_profile = Scenes::effective_profile(best_descriptor, best_variant);
+    result.alternative_score = best.score;
+
+    const float current_error = std::abs(current_profile.intensity - context.target_intensity) * 0.62f
+        + std::abs(current_profile.motion - context.target_motion) * 0.38f;
+    const float best_error = std::abs(best_profile.intensity - context.target_intensity) * 0.62f
+        + std::abs(best_profile.motion - context.target_motion) * 0.38f;
+    result.current_score = 1.0f - current_error;
+
+    auto request = [&](std::string reason, std::shared_ptr<Scenes::Scene> preferred = nullptr) {
+        result.should_switch = true;
+        result.reason = std::move(reason);
+        result.preferred_scene = std::move(preferred);
+        last_switch_reason_ = result.reason;
+    };
+
+    const auto best_with_tag = [&](std::string_view tag) -> std::shared_ptr<Scenes::Scene> {
+        for (const auto& candidate : alternatives) {
+            const auto descriptor = candidate.scene->get_descriptor();
+            const auto* variant = Scenes::find_variant(descriptor, candidate.scene->get_variant_id());
+            if (has_tag(Scenes::effective_profile(descriptor, variant).tags, tag))
+                return candidate.scene;
+        }
+        return nullptr;
+    };
+
+    const bool current_is_cover = has_tag(current_profile.tags, "album-art");
+    const bool current_is_spotify_video = has_tag(current_profile.tags, "spotify-video");
+    if ((track_changed || track_switch_pending_) && context.spotify && elapsed_ms >= 1500) {
+        if (current_is_cover) {
+            current_track_cover_shown_ = true;
+            track_switch_pending_ = false;
+        } else {
+            request("Spotify track changed; introduce the new track visually", best_with_tag("album-art"));
+            return result;
+        }
+    }
+
+    // Once Automatic Mode deliberately enters the prepared music video, let it
+    // read as a feature segment instead of immediately reacting to the next
+    // ordinary section/energy change. Track changes above may still cut it short.
+    if (current_is_spotify_video && elapsed_ms < 26000)
+        return result;
+
+    if (context.spotify_mv_ready && !current_track_mv_shown_
+        && context.spotify_progress >= 0.10f && context.spotify_progress <= 0.74f
+        && elapsed_ms >= 8000 && has_tag(best_profile.tags, "spotify-video")) {
+        request("prepared SpotifyMV reached a clean mid-track insertion point", best.scene);
+        return result;
+    }
+
+    if (drop_event && context.audio_active && elapsed_ms >= 5500
+        && best_profile.intensity > current_profile.intensity + 0.10f) {
+        request("music drop supports a higher-energy visual", best.scene);
+        return result;
+    }
+
+    if (section_event && context.audio_active && elapsed_ms >= 8500
+        && (best_error + 0.04f < current_error || best_descriptor.family != current_descriptor.family)) {
+        request("musical section change created a new visual phrase", best.scene);
+        return result;
+    }
+
+    if (elapsed_ms >= 12000 && current_error > 0.25f && best_error + 0.16f < current_error) {
+        request("sustained music energy no longer fits the current scene", best.scene);
+        return result;
+    }
+
+    return result;
 }
 
 void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scene)
@@ -457,9 +679,19 @@ void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scen
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
-    history_.push_back({scene->get_name(), descriptor.family, scene->get_variant_id(), presentation_role(profile)});
+    history_.push_back({scene->get_name(), descriptor.family, scene->get_variant_id(), presentation_role(profile),
+                        profile.intensity, profile.motion});
     while (history_.size() > 8)
         history_.pop_front();
+
+    if (!current_track_id_.empty()) {
+        if (has_tag(profile.tags, "album-art")) {
+            current_track_cover_shown_ = true;
+            track_switch_pending_ = false;
+        }
+        if (has_tag(profile.tags, "spotify-video"))
+            current_track_mv_shown_ = true;
+    }
 }
 
 void AutomaticDirector::report_render_quality(float quality_scale)
@@ -485,6 +717,11 @@ void AutomaticDirector::reseed(std::uint64_t seed)
     last_audio_active_ = false;
     last_spotify_available_ = false;
     last_spotify_mv_ready_ = false;
+    last_spotify_mv_tools_ready_ = false;
+    last_spotify_mv_first_frame_ready_ = false;
+    last_spotify_track_id_.clear();
+    last_spotify_mv_track_id_.clear();
+    last_spotify_mv_state_.clear();
     last_loudness_ = 0.0f;
     last_bass_ = 0.0f;
     last_treble_ = 0.0f;
@@ -499,6 +736,14 @@ void AutomaticDirector::reseed(std::uint64_t seed)
     last_performance_budget_ = 0.88f;
     last_mode_ = "ambient";
     last_exclude_name_.clear();
+    current_track_id_.clear();
+    current_track_cover_shown_ = false;
+    current_track_mv_shown_ = false;
+    track_switch_pending_ = false;
+    switch_events_primed_ = false;
+    seen_drop_ = 0;
+    seen_section_ = 0;
+    last_switch_reason_.clear();
 }
 
 nlohmann::json AutomaticDirector::diagnostics() const
@@ -508,7 +753,9 @@ nlohmann::json AutomaticDirector::diagnostics() const
         history.push_back({{"scene", entry.scene},
                            {"family", entry.family},
                            {"variant", entry.variant},
-                           {"role", entry.role}});
+                           {"role", entry.role},
+                           {"intensity", entry.intensity},
+                           {"motion", entry.motion}});
     }
     nlohmann::json candidates = nlohmann::json::array();
     for (std::size_t i = 0; i < std::min<std::size_t>(10, last_ranked_.size()); ++i) {
@@ -526,7 +773,12 @@ nlohmann::json AutomaticDirector::diagnostics() const
               {"audio_available", last_audio_available_},
               {"audio_active", last_audio_active_},
               {"spotify_available", last_spotify_available_},
+              {"spotify_track_id", last_spotify_track_id_},
               {"spotify_mv_ready", last_spotify_mv_ready_},
+              {"spotify_mv_tools_ready", last_spotify_mv_tools_ready_},
+              {"spotify_mv_first_frame_ready", last_spotify_mv_first_frame_ready_},
+              {"spotify_mv_track_id", last_spotify_mv_track_id_},
+              {"spotify_mv_state", last_spotify_mv_state_},
               {"spotify_progress", last_spotify_progress_},
               {"spotify_remaining_seconds", last_spotify_remaining_seconds_},
               {"loudness", last_loudness_},
@@ -544,6 +796,12 @@ nlohmann::json AutomaticDirector::diagnostics() const
             {"last_variant", last_variant_},
             {"last_score", last_score_},
             {"last_reasons", last_reasons_},
+            {"last_switch_reason", last_switch_reason_},
+            {"track_session",
+             {{"track_id", current_track_id_},
+              {"cover_shown", current_track_cover_shown_},
+              {"spotify_mv_shown", current_track_mv_shown_},
+              {"track_switch_pending", track_switch_pending_}}},
             {"history", std::move(history)},
             {"candidates", std::move(candidates)}};
 }

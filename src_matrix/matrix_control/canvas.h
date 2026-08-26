@@ -63,6 +63,7 @@ private:
     std::shared_ptr<ConfigData::Preset> automatic_preset_;
 
     void ensure_automatic_catalog();
+    void prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs);
     SceneRenderer renderer_;
     TransitionEngine transition_engine_;
 };

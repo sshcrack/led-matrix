@@ -57,24 +57,118 @@ std::optional<std::vector<std::string>> SpotifyMVPlugin::on_websocket_open() {
 
 void SpotifyMVPlugin::on_websocket_message(const std::string& message) {
   if (message == "tools:ready") {
-    RuntimeInputs::publish(
-        RuntimeInputIds::SpotifyMVReady, {{"ready", true}}, std::chrono::seconds(5));
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      tools_ready_ = true;
+    }
+    publish_runtime_state();
     return;
   }
   if (message == "tools:error") {
-    RuntimeInputs::set_available(
-        RuntimeInputIds::SpotifyMVReady, false, {{"ready", false}});
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      tools_ready_ = false;
+      first_frame_ready_ = false;
+    }
+    publish_runtime_state();
+    return;
+  }
+  if (message.starts_with("track:preparing:")) {
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      prepared_track_id_ = message.substr(std::string("track:preparing:").size());
+      first_frame_ready_ = false;
+      status_ = "preparing";
+    }
+    {
+      std::lock_guard<std::mutex> lock(frame_mutex_);
+      frame_.clear();
+      last_frame_time_ = {};
+    }
+    publish_runtime_state();
+    return;
+  }
+  if (message.starts_with("track:ready:")) {
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      prepared_track_id_ = message.substr(std::string("track:ready:").size());
+      first_frame_ready_ = !prepared_track_id_.empty();
+      status_ = first_frame_ready_ ? "playing" : "idle";
+    }
+    publish_runtime_state();
+    return;
+  }
+  if (message.starts_with("track:error:")) {
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      prepared_track_id_ = message.substr(std::string("track:error:").size());
+      first_frame_ready_ = false;
+      status_ = "error";
+    }
+    publish_runtime_state();
+    return;
+  }
+  if (message == "track:idle") {
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      prepared_track_id_.clear();
+      first_frame_ready_ = false;
+      status_ = "idle";
+    }
+    {
+      std::lock_guard<std::mutex> lock(frame_mutex_);
+      frame_.clear();
+      last_frame_time_ = {};
+    }
+    publish_runtime_state();
     return;
   }
   if (message.starts_with("status:")) {
-    std::lock_guard<std::mutex> lock(status_mutex_);
-    status_ = message.substr(7);
-    spdlog::info("SpotifyMVPlugin status update: {}", status_);
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      status_ = message.substr(7);
+      if (status_ == "error")
+        first_frame_ready_ = false;
+      spdlog::info("SpotifyMVPlugin status update: {}", status_);
+    }
+    publish_runtime_state();
   }
 }
 
 void SpotifyMVPlugin::flush_status() {
-  std::scoped_lock lock(status_mutex_, track_msg_mutex_);
+  std::lock_guard<std::mutex> lock(status_mutex_);
   status_ = "idle";
+}
+
+void SpotifyMVPlugin::clear_last_track_message() {
+  std::lock_guard<std::mutex> lock(track_msg_mutex_);
   last_track_message_.clear();
+}
+
+void SpotifyMVPlugin::publish_runtime_state() {
+  bool tools_ready = false;
+  std::string status;
+  std::string track_id;
+  bool first_frame_ready = false;
+  {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    tools_ready = tools_ready_;
+    status = status_;
+    track_id = prepared_track_id_;
+    first_frame_ready = first_frame_ready_;
+  }
+
+  RuntimeInputs::Signals signals{
+      {"tools_ready", tools_ready},
+      {"state", status},
+      {"first_frame_ready", first_frame_ready},
+  };
+  if (!track_id.empty())
+    signals.emplace("track_id", track_id);
+
+  if (tools_ready) {
+    RuntimeInputs::publish(RuntimeInputIds::SpotifyMVReady, std::move(signals), std::chrono::seconds(5));
+  } else {
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, false, std::move(signals));
+  }
 }

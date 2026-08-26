@@ -32,6 +32,7 @@ public:
   }
 
   void flush_status();
+  void clear_last_track_message();
 
   void set_last_track_message(const std::string& msg) {
     std::lock_guard<std::mutex> lock(track_msg_mutex_);
@@ -52,7 +53,12 @@ private:
 
   std::mutex status_mutex_;
   std::string status_ = "idle";
+  bool tools_ready_ = false;
+  std::string prepared_track_id_;
+  bool first_frame_ready_ = false;
 
   std::mutex track_msg_mutex_;
   std::string last_track_message_;
+
+  void publish_runtime_state();
 };

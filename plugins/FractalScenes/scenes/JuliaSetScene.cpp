@@ -9,19 +9,13 @@ JuliaSetScene::JuliaSetScene() : Scene() {
 
 void JuliaSetScene::initialize(int width, int height) {
     Scene::initialize(width, height);
-    last_update = std::chrono::steady_clock::now();
-    total_time = 0.0f;
 }
 
 bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
-    auto current_time = std::chrono::steady_clock::now();
-    float delta_time = std::chrono::duration<float>(current_time - last_update).count();
-    last_update = current_time;
-    total_time += delta_time;
-    
-    // Calculate Julia set parameter based on time if animation is enabled
+    // Calculate Julia set parameter from the canonical scene clock so previews,
+    // local rendering and desktop offload stay visually in sync.
     if (animate_params->get()) {
-        float t = total_time * move_speed->get();
+        const float t = static_cast<float>(frame_context().elapsed_seconds) * move_speed->get();
         c = {-0.7f + 0.2f * std::sin(t * 0.3f), 0.27f + 0.1f * std::cos(t * 0.5f)};
     }
     
@@ -77,6 +71,23 @@ bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
 
 string JuliaSetScene::get_name() const {
     return "julia_set";
+}
+
+Scenes::SceneDescriptor JuliaSetScene::get_descriptor() const {
+    auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
+    d.family = "fractal";
+    d.tags = {"ambient", "fractal", "organic", "texture", "evolving"};
+    d.intensity = 0.46f; d.motion = 0.30f; d.music_affinity = 0.16f; d.performance_cost = 0.78f;
+    d.variants = {
+        {"drift", "Slow fractal drift", "Lower-cost slowly evolving Julia geometry",
+         {{"zoom", 0.9f}, {"move_speed", 0.07f}, {"max_iterations", 56}, {"animate_params", true}},
+         {"calm", "texture", "organic"}, 0.30f, 0.22f, 0.08f, 0.58f},
+        {"vivid", "Vivid fractal", "Richer animated Julia detail for higher-headroom moments",
+         {{"zoom", 1.05f}, {"move_speed", 0.16f}, {"max_iterations", 92}, {"animate_params", true}, {"color_shift", 0.16f}},
+         {"vivid", "texture", "evolving"}, 0.58f, 0.40f, 0.18f, 0.76f},
+    };
+    return d;
 }
 
 void JuliaSetScene::register_properties() {
