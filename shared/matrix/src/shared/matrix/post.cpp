@@ -22,7 +22,7 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
     try {
         if (!std::filesystem::exists(Constants::post_dir)) {
             if (!std::filesystem::create_directory(Constants::post_dir)) {
-                spdlog::error("Could not create directory at {}.", Constants::post_dir.c_str());
+                spdlog::error("Could not create directory at {}.", Constants::post_dir.string());
                 return std::nullopt;
             }
         }

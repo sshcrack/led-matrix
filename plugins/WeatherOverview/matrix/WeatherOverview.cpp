@@ -52,10 +52,10 @@ std::optional<string> WeatherOverview::before_server_init() {
         plugin_weather_dir = env_var;
     }
 
-    spdlog::trace("Using fonts in {}", parent.c_str());
-    const std::string HEADER_FONT_FILE = std::string(plugin_weather_dir) + "/7x13.bdf";
-    const std::string BODY_FONT_FILE = std::string(plugin_weather_dir) + "/5x8.bdf";
-    const std::string SMALL_FONT_FILE = std::string(plugin_weather_dir) + "/4x6.bdf";
+    spdlog::trace("Using fonts in {}", parent.string());
+    const std::string HEADER_FONT_FILE = plugin_weather_dir.string() + "/7x13.bdf";
+    const std::string BODY_FONT_FILE = plugin_weather_dir.string() + "/5x8.bdf";
+    const std::string SMALL_FONT_FILE = plugin_weather_dir.string() + "/4x6.bdf";
 
     spdlog::debug("Loading fonts...");
     HEADER_FONT.emplace();
