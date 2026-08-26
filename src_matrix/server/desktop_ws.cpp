@@ -6,6 +6,7 @@
 #include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/input_ids.h>
 #include <shared/matrix/runtime_inputs.h>
+#include <shared/common/desktop_control_protocol.h>
 
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
@@ -26,6 +27,21 @@ void publish_desktop_runtime_input(bool availability_changed)
         exit_canvas_update.store(true);
 }
 } // namespace
+
+void Server::broadcast_matrix_enabled(bool enabled)
+{
+    std::shared_lock lock(registryMutex);
+    for (const auto &[connection_id, handle] : registry) {
+        if (scene_worker_connections.contains(connection_id))
+            continue;
+
+        rws::message_t message;
+        message.set_opcode(rws::opcode_t::text_frame);
+        message.set_final_flag(rws::final_frame_flag_t::final_frame);
+        message.set_payload(DesktopControlProtocol::matrix_enabled(enabled));
+        handle->send_message(message);
+    }
+}
 
 std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry)
 {
@@ -103,6 +119,9 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             message.set_final_flag(rws::final_frame_flag_t::final_frame);
             message.set_payload("active:" + sceneName);
 
+            wsh->send_message(message);
+
+            message.set_payload(DesktopControlProtocol::matrix_enabled(!config->is_turned_off()));
             wsh->send_message(message);
 
             for (const auto &plugin: Plugins::PluginManager::instance()->get_plugins()) {

@@ -273,6 +273,16 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     )
 endif()
 if(ENABLE_DESKTOP)
+    add_executable(desktop_stream_state_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_stream_state_smoke.cpp
+    )
+    target_compile_features(desktop_stream_state_smoke PRIVATE cxx_std_23)
+    target_include_directories(desktop_stream_state_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/shared/desktop/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/shared/common/include
+    )
+    add_test(NAME desktop_stream_state_smoke COMMAND $<TARGET_FILE:desktop_stream_state_smoke>)
+
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.

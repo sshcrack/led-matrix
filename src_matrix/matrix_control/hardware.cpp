@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 
 #include "led-matrix.h"
 #include "canvas.h"
@@ -12,6 +13,7 @@
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/runtime_inputs.h"
+#include "server/desktop_ws.h"
 
 #include <csignal>
 #include <functional>
@@ -74,6 +76,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
                 config->set_curr(active_preset.value());
                 last_scheduled_preset = active_preset.value();
                 config->set_turned_off(false);
+                Server::broadcast_matrix_enabled(true);
             }
             else if (!active_preset.has_value() && !last_scheduled_preset.empty())
             {
@@ -81,6 +84,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
                 debug("No active schedule, clearing scheduled preset and turning off canvas");
                 last_scheduled_preset = "";
                 config->set_turned_off(true);
+                Server::broadcast_matrix_enabled(false);
             }
         }
 
