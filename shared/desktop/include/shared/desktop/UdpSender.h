@@ -4,7 +4,9 @@
 
 #pragma once
 #include "shared/desktop/macro.h"
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <vector>
 #include <string>
 #include <expected>

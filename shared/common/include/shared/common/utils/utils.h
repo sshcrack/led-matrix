@@ -5,7 +5,7 @@
 #include <optional>
 
 typedef int64_t tmillis_t;
-tmillis_t GetTimeInMillis();
+SHARED_COMMON_API tmillis_t GetTimeInMillis();
 
 SHARED_COMMON_API bool try_remove(const std::filesystem::path&);
 
