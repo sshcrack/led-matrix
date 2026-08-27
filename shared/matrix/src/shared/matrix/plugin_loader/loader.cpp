@@ -38,7 +38,11 @@ bool snake_caseish(const std::string &value) {
 }
 
 PluginManager::PluginManager()
+#ifdef _WIN32
+    : PluginLoader("led-matrix")
+#else
     : PluginLoader("led-matrix", RTLD_LAZY | RTLD_GLOBAL)
+#endif
 {}
 
 PluginManager *PluginManager::instance_ = nullptr;
