@@ -15,10 +15,10 @@ namespace Scenes {
         ShadertoyPlugin *plugin;
 
         std::vector<std::shared_ptr<ShaderProviders::General> > providers;
-        uint curr_provider_index = 0;
-        uint failed_provider_count = 0;
+        unsigned int curr_provider_index = 0;
+        unsigned int failed_provider_count = 0;
         bool showing_loading_animation = false;
-        uint loading_animation_frame = 0;
+        unsigned int loading_animation_frame = 0;
 
         void render_loading_animation(rgb_matrix::FrameCanvas *canvas);
 

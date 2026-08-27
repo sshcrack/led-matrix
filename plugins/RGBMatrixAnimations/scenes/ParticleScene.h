@@ -6,6 +6,8 @@
 #include "spdlog/spdlog.h"
 #include <led-matrix.h>
 #include <random>
+#include <thread>
+#include <chrono>
 
 namespace Scenes {
     class ParticleMatrixRenderer : public RGBMatrixRenderer {
@@ -34,7 +36,11 @@ namespace Scenes {
         }
 
         void msSleep(int ms) override {
+#ifdef _WIN32
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+#else
             usleep(ms * 1000);
+#endif
         }
 
         int16_t random_int16(int16_t a, int16_t b) override {
