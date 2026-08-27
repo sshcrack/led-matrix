@@ -30,7 +30,7 @@ bool Scenes::WeatherScene::reloadImages()
     std::string hash;
     picosha2::hash256_hex_string(data.icon_url, hash);
 
-    string file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
+    fs::path file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
     fs::path processed_img = to_processed_path(file_path);
 
     if (!fs::exists(processed_img) && !data.icon_url.empty())
@@ -73,7 +73,7 @@ bool Scenes::WeatherScene::reloadImages()
             std::string forecast_hash;
             picosha2::hash256_hex_string(forecast_day.icon_url, forecast_hash);
 
-            string forecast_file = weather_dir_path / ("forecast_icon" + forecast_hash + ".png");
+            fs::path forecast_file = weather_dir_path / ("forecast_icon" + forecast_hash + ".png");
             fs::path forecast_processed = to_processed_path(forecast_file);
 
             if (!fs::exists(forecast_processed))
