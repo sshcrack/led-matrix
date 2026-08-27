@@ -2,6 +2,11 @@
 #include "shared/common/win_compat.h"
 #endif
 #include <Magick++.h>
+// GraphicsMagick defines ssize_t as a macro on Windows. ixwebsocket declares
+// the POSIX-compatible type itself, so let it see the identifier unexpanded.
+#ifdef ssize_t
+#undef ssize_t
+#endif
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXWebSocket.h>
 #include <nlohmann/json.hpp>
