@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/update/UpdateManager.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/interrupt.h"

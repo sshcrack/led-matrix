@@ -11,7 +11,7 @@
 #include "shared/common/utils/utils.h"
 
 #ifdef _WIN32
-#include <windows.h>
+#include "shared/common/win_compat.h"
 #else
 #include <dlfcn.h>
 #endif
