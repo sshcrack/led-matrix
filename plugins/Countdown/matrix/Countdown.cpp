@@ -28,9 +28,9 @@ std::optional<string> Countdown::before_server_init() {
         font_dir = std::getenv("COUNTDOWN_FONT_DIRECTORY");
     }
 
-    const std::string HEADER_FONT_FILE = std::string(font_dir) + "/7x13.bdf";
-    const std::string BODY_FONT_FILE = std::string(font_dir) + "/5x8.bdf";
-    const std::string SMALL_FONT_FILE = std::string(font_dir) + "/4x6.bdf";
+    const std::string HEADER_FONT_FILE = font_dir.string() + "/7x13.bdf";
+    const std::string BODY_FONT_FILE = font_dir.string() + "/5x8.bdf";
+    const std::string SMALL_FONT_FILE = font_dir.string() + "/4x6.bdf";
 
     spdlog::debug("Loading Countdown fonts from {}", font_dir.string());
 
