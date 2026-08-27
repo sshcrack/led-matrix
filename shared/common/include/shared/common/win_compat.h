@@ -27,6 +27,7 @@
 #endif
 // asio (via restinio) requires Winsock2 before Windows.h
 #include <winsock2.h>
+#include <BaseTsd.h>
 #include <windows.h>
 // Windows headers define DrawText as DrawTextA/W via macro, which collides
 // with rgb_matrix::DrawText. Remove the macro so the C++ API is visible.
