@@ -121,10 +121,10 @@ jobs:
           buildPreset: ${{ matrix.preset }}
           buildPresetAdditionalArgs: ${{ runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
         env:
-          # The feed rejects some newly built packages with HTTP 413. Reads
-          # still reuse existing CI cache entries, while cache publication must
-          # not be allowed to turn a successful build into a failed job.
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,read"
+          # Use readwrite so new port-versions are cached; BaGetter may
+          # reject very large packages (e.g. hello-imgui) with 413, but
+          # vcpkg logs this as a warning and the build still succeeds.
+          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
       - name: Upload ${{ matrix.name }} artifacts

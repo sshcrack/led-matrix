@@ -1,9 +1,10 @@
-#include "CountdownScene.h"
-#include "matrix/Constants.h"
-
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #endif
+
+#include "CountdownScene.h"
+#include "matrix/Constants.h"
+
 #include <chrono>
 #include <cmath>
 #ifndef M_PI
