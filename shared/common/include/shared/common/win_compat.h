@@ -10,6 +10,12 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOGDI
+#define NOGDI
+#endif
+#ifndef NOUSER
+#define NOUSER
+#endif
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0601
 #endif
@@ -22,4 +28,18 @@
 // asio (via restinio) requires Winsock2 before Windows.h
 #include <winsock2.h>
 #include <windows.h>
+// Windows headers define DrawText as DrawTextA/W via macro, which collides
+// with rgb_matrix::DrawText. Remove the macro so the C++ API is visible.
+#ifdef DrawText
+#undef DrawText
+#endif
+#ifdef GetCurrentTime
+#undef GetCurrentTime
+#endif
+#ifdef CreateWindow
+#undef CreateWindow
+#endif
+#ifdef GetObject
+#undef GetObject
+#endif
 #endif
