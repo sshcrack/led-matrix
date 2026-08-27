@@ -71,7 +71,7 @@ void store_file_to_disk(
     if (!filesystem::exists(Constants::upload_dir))
         filesystem::create_directory(Constants::upload_dir);
 
-    upload_filename = hash + ext.c_str();
+    upload_filename = hash + ext.string();
     spdlog::debug("Uploading file as {}", upload_filename.c_str());
 
     std::ofstream dest_file;
