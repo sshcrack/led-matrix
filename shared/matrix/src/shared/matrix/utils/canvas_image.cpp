@@ -31,15 +31,15 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
     try {
         // Check for processed image first
         if (filesystem::exists(img_processed)) {
-            readImages(&result, img_processed);
+            readImages(&result, img_processed.string());
             if (!result.empty()) {
                 return result;
             }
         }
 
         vector<Magick::Image> frames;
-        spdlog::trace("Reading images from {}", path.c_str());
-        readImages(&frames, path);
+        spdlog::trace("Reading images from {}", path.string());
+        readImages(&frames, path.string());
 
         if (frames.empty()) {
             return unexpected("No image found.");
@@ -113,7 +113,7 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
 
         if (store_resized_img) {
             try {
-                writeImages(result.begin(), result.end(), img_processed);
+                writeImages(result.begin(), result.end(), img_processed.string());
             } catch (std::exception &e) {
                 spdlog::warn("Failed to write processed image: {}", e.what());
             }

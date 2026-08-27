@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.21.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 if(WIN32)
     set(VCPKG_APPLOCAL_DEPS ON)
+    # Global Windows defines: prevent min/max macros and reduce Windows.h bloat.
+    # Required for fmt/spdlog, GraphicsMagick, and to avoid winsock.h vs
+    # winsock2.h redefinitions. Must be set before any Windows header is
+    # included, so define globally rather than per-file.
+    add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601 _HAS_STD_BYTE=0)
 endif()
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
