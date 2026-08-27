@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin_registry.h"
 #include <shared/matrix/input_ids.h>
