@@ -5,6 +5,11 @@
 #include "cpr/cpr.h"
 #include "spdlog/spdlog.h"
 #include <ctime>
+#ifdef _WIN32
+inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_s(out, t) == 0 ? out : nullptr; }
+#else
+inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_r(t, out); }
+#endif
 #include <iomanip>
 #include <sstream>
 
@@ -50,7 +55,7 @@ std::string get_day_name(const std::string &date_str) {
     std::time_t time = std::mktime(&tm);
     char buffer[10];
     std::tm local_time_storage{};
-    std::strftime(buffer, sizeof(buffer), "%a", localtime_r(&time, &local_time_storage));
+    std::strftime(buffer, sizeof(buffer), "%a", compat_localtime_r(&time, &local_time_storage));
     return {buffer};
 }
 
@@ -147,7 +152,7 @@ std::expected<WeatherData, std::string> WeatherParser::parse_weather_data(const 
         // Format current time for last updated display
         std::time_t now = std::time(nullptr);
         std::tm local_time_storage{};
-        std::tm* local_time = localtime_r(&now, &local_time_storage);
+        std::tm* local_time = compat_localtime_r(&now, &local_time_storage);
         std::ostringstream time_str;
         time_str << std::put_time(local_time, "%H:%M");
         

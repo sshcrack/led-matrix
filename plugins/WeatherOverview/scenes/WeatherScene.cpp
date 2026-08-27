@@ -5,6 +5,11 @@
 #include "shared/matrix/utils/utils.h"
 #include <algorithm>
 #include <ctime>
+#ifdef _WIN32
+inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_s(out, t) == 0 ? out : nullptr; }
+#else
+inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_r(t, out); }
+#endif
 #include <iostream>
 #ifdef ENABLE_EMULATOR
 #include "emulator.h"
@@ -143,7 +148,7 @@ void Scenes::WeatherScene::renderClock(rgb_matrix::FrameCanvas *canvas) const
 {
     const time_t timestamp = time(nullptr);
     tm local_time_storage{};
-    const tm datetime = *localtime_r(&timestamp, &local_time_storage);
+    const tm datetime = *compat_localtime_r(&timestamp, &local_time_storage);
 
     char output[50];
     strftime(output, 50, "%H:%M", &datetime);
