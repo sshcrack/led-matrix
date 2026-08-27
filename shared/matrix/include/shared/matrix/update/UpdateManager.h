@@ -11,6 +11,13 @@
 #include "shared/common/Version.h"
 #include "nlohmann/json.hpp"
 
+// Windows.h defines ERROR as 0, which collides with UpdateStatus::ERROR
+#ifdef _WIN32
+#ifdef ERROR
+#undef ERROR
+#endif
+#endif
+
 namespace Update
 {
     struct UpdateInfo
@@ -72,8 +79,8 @@ namespace Update
         void stop();
 
         // Manual update operations
-        expected<UpdateInfo, string> manual_check_for_updates();
-        expected<UpdateInfo, string> get_update_info(const std::optional<Common::Version> &version = std::nullopt);
+        std::expected<UpdateInfo, std::string> manual_check_for_updates();
+        std::expected<UpdateInfo, std::string> get_update_info(const std::optional<Common::Version> &version = std::nullopt);
         std::expected<void, std::string> manual_download_and_install(const UpdateInfo &update_info);
 
         UpdateStatus get_status() const;
