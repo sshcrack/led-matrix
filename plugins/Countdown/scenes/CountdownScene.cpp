@@ -1,10 +1,26 @@
 #include "CountdownScene.h"
 #include "matrix/Constants.h"
 
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
 #include <chrono>
 #include <cmath>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
 #include <random>
 #include <ctime>
+#ifdef _WIN32
+inline time_t compat_timegm(std::tm* tm) { return _mkgmtime(tm); }
+inline std::tm* compat_gmtime_r(const time_t* t, std::tm* out) { return gmtime_s(out, t) == 0 ? out : nullptr; }
+#else
+inline time_t compat_timegm(std::tm* tm) { return timegm(tm); }
+inline std::tm* compat_gmtime_r(const time_t* t, std::tm* out) { return gmtime_r(t, out); }
+#endif
 #include "spdlog/spdlog.h"
 
 using namespace Scenes;
@@ -113,7 +129,7 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
     tm_target.tm_hour = 0;
     tm_target.tm_min = 0;
     tm_target.tm_sec = 0;
-    time_t target_time_t = timegm(&tm_target);
+    time_t target_time_t = compat_timegm(&tm_target);
     system_clock::time_point target_tp = system_clock::from_time_t(target_time_t);
 
     auto diff = duration_cast<seconds>(target_tp - now);
@@ -129,7 +145,7 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
     {
         time_t now_time_t = time(nullptr);
         std::tm now_tm;
-        gmtime_r(&now_time_t, &now_tm);
+        compat_gmtime_r(&now_time_t, &now_tm);
         // tm_mon: 0 = Jan, 11 = Dec
         if (now_tm.tm_mon == 11 && now_tm.tm_mday == 31)
         {
@@ -340,7 +356,7 @@ int CountdownScene::get_weight() const
     // Determine current date in UTC
     time_t now_time_t = time(nullptr);
     std::tm now_tm;
-    gmtime_r(&now_time_t, &now_tm);
+    compat_gmtime_r(&now_time_t, &now_tm);
     bool new_year_window = false;
     if (now_tm.tm_mon == 11 && now_tm.tm_mday == 31)
         new_year_window = true;
