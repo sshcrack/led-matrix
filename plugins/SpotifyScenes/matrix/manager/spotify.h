@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include <expected>
 #include <thread>
+#include <mutex>
 
 #include "./state.h"
 
