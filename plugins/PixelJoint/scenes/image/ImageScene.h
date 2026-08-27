@@ -75,7 +75,7 @@ class ImageScene final : public Scenes::Scene {
     std::optional<std::unique_ptr<CurrAnimation>> curr_animation;
     std::vector<std::shared_ptr<ImageProviders::General> > providers;
 
-    uint curr_category = 0;
+    unsigned int curr_category = 0;
     std::atomic<bool> is_exiting{false};
     optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
 

@@ -123,7 +123,7 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
 
     auto parsed = json::parse(json_resp);
     string access_token;
-    uint expires_in_seconds;
+    unsigned int expires_in_seconds;
 
     parsed.at("access_token").get_to(access_token);
     parsed.at("expires_in").get_to(expires_in_seconds);
