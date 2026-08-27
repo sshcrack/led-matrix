@@ -1,8 +1,28 @@
 #include "ClockScene.h"
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
 #include <cmath>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <ctime>
+
+namespace {
+inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) {
+#ifdef _WIN32
+    return localtime_s(out, t) == 0 ? out : nullptr;
+#else
+    return localtime_r(t, out);
+#endif
+}
+}
 
 namespace AmbientScenes
 {
@@ -19,7 +39,7 @@ namespace AmbientScenes
         // Initialize clock hands to current time
         auto now = std::time(nullptr);
         std::tm local_time_storage{};
-        std::tm *local_time = localtime_r(&now, &local_time_storage);
+        std::tm *local_time = compat_localtime_r(&now, &local_time_storage);
 
         current_hour = local_time->tm_hour % 12;
         current_minute = local_time->tm_min;
@@ -31,7 +51,7 @@ namespace AmbientScenes
         // Get current time
         auto now = std::time(nullptr);
         std::tm local_time_storage{};
-        std::tm *local_time = localtime_r(&now, &local_time_storage);
+        std::tm *local_time = compat_localtime_r(&now, &local_time_storage);
 
         int hour = local_time->tm_hour % 12;
         int minute = local_time->tm_min;
@@ -265,7 +285,7 @@ namespace AmbientScenes
     {
         const auto now = std::time(nullptr);
         std::tm local_time_storage{};
-        const std::tm *local_time = localtime_r(&now, &local_time_storage);
+        const std::tm *local_time = compat_localtime_r(&now, &local_time_storage);
 
         const int hour = local_time->tm_hour;
         const int minute = local_time->tm_min;
@@ -696,7 +716,7 @@ namespace AmbientScenes
     {
         auto now = std::time(nullptr);
         std::tm local_time_storage{};
-        std::tm *local_time = localtime_r(&now, &local_time_storage);
+        std::tm *local_time = compat_localtime_r(&now, &local_time_storage);
 
         int day = local_time->tm_mday;
         int month = local_time->tm_mon + 1; // tm_mon is 0-11
