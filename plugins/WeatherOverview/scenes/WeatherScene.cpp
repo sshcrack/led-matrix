@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "spdlog/spdlog.h"
 #include "WeatherScene.h"
 #include "matrix/Constants.h"
