@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <memory>
+#include "shared/matrix/export.h"
 
 // Forward declaration
 namespace Update {
@@ -13,5 +14,5 @@ namespace Constants {
     const static std::filesystem::path upload_dir = root_dir / "uploads";
     
     // Global UpdateManager instance (defined in main.cpp)
-    extern std::shared_ptr<Update::UpdateManager> global_update_manager;
+    extern SHARED_MATRIX_API std::shared_ptr<Update::UpdateManager> global_update_manager;
 }
