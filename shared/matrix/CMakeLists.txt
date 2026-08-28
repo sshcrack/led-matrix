@@ -49,6 +49,7 @@ endif()
 # Main Target Compile
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_MATRIX_EXPORTS)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
@@ -98,4 +99,3 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
-
