@@ -1,6 +1,7 @@
 // System and standard library includes
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -636,8 +637,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     try {
         result = inner_main(argc, argv);
     } catch (const std::exception &e) {
+        std::ofstream(get_exec_dir() / "startup-error.log", std::ios::trunc) << e.what() << '\n';
         MessageBoxA(nullptr, e.what(), "LED Matrix Controller startup error", MB_OK | MB_ICONERROR);
     } catch (...) {
+        std::ofstream(get_exec_dir() / "startup-error.log", std::ios::trunc)
+            << "An unknown exception occurred during startup.\n";
         MessageBoxA(nullptr, "An unknown exception occurred during startup.",
                     "LED Matrix Controller startup error", MB_OK | MB_ICONERROR);
     }
