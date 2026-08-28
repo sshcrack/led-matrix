@@ -7,16 +7,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include "shared/matrix/Scene.h"
-
-#ifdef _WIN32
-#ifdef SHARED_MATRIX_EXPORTS
-#define SHARED_MATRIX_API __declspec(dllexport)
-#else
-#define SHARED_MATRIX_API __declspec(dllimport)
-#endif
-#else
-#define SHARED_MATRIX_API
-#endif
+#include "shared/matrix/export.h"
 
 namespace Server {
     namespace rws = restinio::websocket::basic;
@@ -37,4 +28,3 @@ namespace Server {
     extern SHARED_MATRIX_API std::shared_mutex currSceneMutex;
     extern SHARED_MATRIX_API std::shared_ptr<Scenes::Scene> currScene;
 }
-
