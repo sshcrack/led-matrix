@@ -39,6 +39,13 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/remote_render.cpp
 )
 
+# Matrix scenes are built as separate DLLs by the desktop scene worker. Unlike
+# ELF, MSVC does not emit an import library for a DLL with no explicitly
+# exported symbols, leaving those plugins unable to link SharedToolsMatrix.
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
 # Main Target Compile
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
@@ -91,5 +98,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GraphicsMagick)
 # HTTP Client
 find_package(cpr CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
-
 
