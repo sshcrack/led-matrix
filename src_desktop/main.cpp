@@ -632,7 +632,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         argv[i] = new char[len];
         WideCharToMultiByte(CP_UTF8, 0, argv_w[i], -1, argv[i], len, nullptr, nullptr);
     }
-    const int result = inner_main(argc, argv);
+    int result = -1;
+    try {
+        result = inner_main(argc, argv);
+    } catch (const std::exception &e) {
+        MessageBoxA(nullptr, e.what(), "LED Matrix Controller startup error", MB_OK | MB_ICONERROR);
+    } catch (...) {
+        MessageBoxA(nullptr, "An unknown exception occurred during startup.",
+                    "LED Matrix Controller startup error", MB_OK | MB_ICONERROR);
+    }
     for (int i = 0; i < argc; ++i)
         delete[] argv[i];
     delete[] argv;
