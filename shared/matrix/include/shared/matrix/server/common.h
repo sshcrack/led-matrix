@@ -8,6 +8,16 @@
 #include <atomic>
 #include "shared/matrix/Scene.h"
 
+#ifdef _WIN32
+#ifdef SHARED_MATRIX_EXPORTS
+#define SHARED_MATRIX_API __declspec(dllexport)
+#else
+#define SHARED_MATRIX_API __declspec(dllimport)
+#endif
+#else
+#define SHARED_MATRIX_API
+#endif
+
 namespace Server {
     namespace rws = restinio::websocket::basic;
     using router_t = restinio::router::express_router_t<>;
@@ -20,12 +30,11 @@ namespace Server {
     // Alias for container with stored websocket handles.
     using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;
 
-    extern std::shared_mutex registryMutex;
-    extern ws_registry_t registry;
-    extern std::atomic<int> desktop_connection_count;
+    extern SHARED_MATRIX_API std::shared_mutex registryMutex;
+    extern SHARED_MATRIX_API ws_registry_t registry;
+    extern SHARED_MATRIX_API std::atomic<int> desktop_connection_count;
 
-    extern std::shared_mutex currSceneMutex;
-    extern std::shared_ptr<Scenes::Scene> currScene;
+    extern SHARED_MATRIX_API std::shared_mutex currSceneMutex;
+    extern SHARED_MATRIX_API std::shared_ptr<Scenes::Scene> currScene;
 }
-
 
