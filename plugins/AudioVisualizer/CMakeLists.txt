@@ -5,8 +5,8 @@ register_plugin(AudioVisualizer
         matrix/AudioVisualizer.h
         scenes/AudioSpectrumScene.cpp
         scenes/AudioSpectrumScene.h
-        scenes/AudioReactiveScenes.cpp
-        scenes/AudioReactiveScenes.h
+        scenes/AudioParticleScene.cpp
+        scenes/AudioParticleScene.h
         scenes/MusicDirectorScene.cpp
         scenes/MusicDirectorScene.h
         DESKTOP
