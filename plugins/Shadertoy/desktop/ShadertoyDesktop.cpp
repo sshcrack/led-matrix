@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <shadertoy/PipelineEditor.hpp>
 #include <shared/desktop/glfw.h>
+#include <shared/desktop/audio_state.h>
 #include "shared/desktop/utils.h"
 
 #include "CanvasPacket.h"
@@ -22,11 +23,54 @@ ShadertoyDesktop::~ShadertoyDesktop()
     }
 }
 
-static bool isActive = false;
-static bool currShaderHasError = false;
+static std::atomic_bool isActive{false};
+static std::atomic_bool currShaderHasError{false};
+
+namespace {
+ShaderToy::AudioInput currentAudioInput() {
+    const auto snapshot = DesktopAudioState::snapshot();
+    ShaderToy::AudioInput audio;
+    if (!snapshot.fresh())
+        return audio;
+
+    audio.available = true;
+    audio.silence = snapshot.event(AudioProtocol::Silent) ||
+                    snapshot.feature(AudioProtocol::Feature::Silence) > 0.5f;
+    audio.sampleRate = snapshot.sample_rate;
+    audio.spectrum = snapshot.spectrum;
+    audio.waveform = snapshot.waveform;
+
+    audio.loudness = snapshot.feature(AudioProtocol::Feature::LoudnessFast);
+    audio.bass = 0.55f * snapshot.feature(AudioProtocol::Feature::Bass) +
+                 0.45f * snapshot.feature(AudioProtocol::Feature::SubBass);
+    audio.mid = snapshot.feature(AudioProtocol::Feature::Mid);
+    audio.treble = snapshot.feature(AudioProtocol::Feature::Treble);
+
+    audio.onset = snapshot.feature(AudioProtocol::Feature::OnsetStrength);
+    audio.kick = snapshot.feature(AudioProtocol::Feature::Kick);
+    audio.snare = snapshot.feature(AudioProtocol::Feature::Snare);
+    audio.hihat = snapshot.feature(AudioProtocol::Feature::Hihat);
+
+    audio.bpm = snapshot.feature(AudioProtocol::Feature::Bpm);
+    audio.beatPhase = snapshot.feature(AudioProtocol::Feature::BeatPhase);
+    audio.beatConfidence = snapshot.feature(AudioProtocol::Feature::BeatConfidence);
+    audio.beatStrength = snapshot.feature(AudioProtocol::Feature::BeatStrength);
+
+    audio.stereoWidth = snapshot.feature(AudioProtocol::Feature::StereoWidth);
+    audio.stereoBalance = snapshot.feature(AudioProtocol::Feature::StereoBalance);
+    audio.stereoCorrelation = snapshot.feature(AudioProtocol::Feature::StereoCorrelation);
+    audio.energyTrend = snapshot.feature(AudioProtocol::Feature::EnergyTrend);
+
+    audio.drop = snapshot.feature(AudioProtocol::Feature::Drop);
+    audio.sectionChange = snapshot.feature(AudioProtocol::Feature::SectionChange);
+    audio.spectralCentroid = snapshot.feature(AudioProtocol::Feature::SpectralCentroid);
+    audio.spectralFlux = snapshot.feature(AudioProtocol::Feature::SpectralFlux);
+    return audio;
+}
+}
 void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 {
-    if (currShaderHasError || !isActive)
+    if (currShaderHasError.load(std::memory_order_relaxed) || !isActive.load(std::memory_order_relaxed))
         return;
 
     if (hasUrlChanged)
@@ -49,10 +93,11 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
         spdlog::error("Failed to update shader: {}", res.error().what());
 
         send_websocket_message("next_shader");
-        currShaderHasError = true;
+        currShaderHasError.store(true, std::memory_order_relaxed);
         return;
     }
 
+    ctx.setAudioInput(currentAudioInput());
     ctx.tick(60);
 
     const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height), imCtx);
@@ -229,7 +274,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
         {
             spdlog::error("Failed to load from cache: {}", res.error().what());
             send_websocket_message("next_shader");
-            currShaderHasError = true;
+            currShaderHasError.store(true, std::memory_order_relaxed);
             return;
         }
         hasUrlChanged = false;
@@ -242,7 +287,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
         {
             spdlog::error("Failed to load from shadertoy: {}", res.error().what());
             send_websocket_message("next_shader");
-            currShaderHasError = true;
+            currShaderHasError.store(true, std::memory_order_relaxed);
             return;
         }
         hasUrlChanged = false;
@@ -251,56 +296,16 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
 
 void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code)
 {
-    try
+    auto res = ShaderToy::PipelineEditor::get().loadImageShader(name, code, 0);
+    if (!res.has_value())
     {
-        nlohmann::json response = nlohmann::json::array({
-            {
-                {"ver", "0.1"},
-                {"info", {
-                    {"id", "ldlGD4"},
-                    {"date", "1370982836"},
-                    {"viewed", 3033},
-                    {"name", name},
-                    {"username", "ammarz"},
-                    {"description", "Basic GLSL tutorial, for noobs, by a noob!\nWarning: this tutorial is based on my own understanding, so if there's wrong info please tell me about it.\n[Edit] fixed an error in part 2 and added more info."},
-                    {"likes", 14},
-                    {"published", 1},
-                    {"flags", 0},
-                    {"usePreview", 0},
-                    {"tags", nlohmann::json::array({"tutorial"})},
-                    {"hasliked", 0},
-                    {"parentid", ""},
-                    {"parentname", ""}
-                }},
-                {"renderpass", nlohmann::json::array({
-                    {
-                        {"inputs", nlohmann::json::array()},
-                        {"outputs", nlohmann::json::array()},
-                        {"code", code},
-                        {"name", ""},
-                        {"description", ""},
-                        {"type", "image"}
-                    }
-                })}
-            }
-        });
-
-        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToyResponse("local", response.dump());
-        if (!res.has_value())
-        {
-            spdlog::error("Failed to load custom shader '{}': {}", name, res.error().what());
-            currShaderHasError = true;
-            return;
-        }
-
-        hasUrlChanged = false;
-        currShaderHasError = false;
+        spdlog::error("Failed to prepare custom shader '{}': {}", name, res.error().what());
+        currShaderHasError.store(true, std::memory_order_relaxed);
+        return;
     }
-    catch (const std::exception &e)
-    {
-        spdlog::error("Error loading custom shader '{}': {}", name, e.what());
-        currShaderHasError = true;
-    }
+
+    hasUrlChanged = false;
+    currShaderHasError.store(false, std::memory_order_relaxed);
 }
 
 void ShadertoyDesktop::on_websocket_message(const std::string message)
@@ -314,16 +319,23 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
         height = std::stoi(sizeStr.substr(xPos + 1));
     }
 
+    if (message == "shadertoy_inactive")
+    {
+        shaderRequested.store(false, std::memory_order_relaxed);
+        return;
+    }
+
     if (message.starts_with("url:"))
     {
         std::string newUrl = message.substr(4);
-        bool urlChanged = newUrl != url;
+        bool urlChanged = newUrl != url || currShaderHasError.load(std::memory_order_relaxed);
 
         custom_shader_code.clear();
         custom_shader_name.clear();
+        shaderRequested.store(true, std::memory_order_relaxed);
         url = newUrl;
         hasUrlChanged = urlChanged;
-        currShaderHasError = false;
+        currShaderHasError.store(false, std::memory_order_relaxed);
     }
     else if (message.starts_with("custom_shader:"))
     {
@@ -332,12 +344,14 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
             std::string name = payload.value("name", "unknown");
             std::string code = payload.value("code", "");
             
-            bool changed = (code != custom_shader_code) || (name != custom_shader_name);
+            bool changed = (code != custom_shader_code) || (name != custom_shader_name) ||
+                           currShaderHasError.load(std::memory_order_relaxed);
             custom_shader_code = code;
             custom_shader_name = name;
+            shaderRequested.store(true, std::memory_order_relaxed);
             url = "local://" + name;
             hasUrlChanged = changed;
-            currShaderHasError = false;
+            currShaderHasError.store(false, std::memory_order_relaxed);
         } catch (const std::exception& e) {
             spdlog::error("Failed to parse custom_shader payload: {}", e.what());
         }
@@ -347,13 +361,16 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
 std::optional<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packet(
     const std::string sceneName)
 {
-    if ((sceneName != "shadertoy" && !sceneName.starts_with("custom_shader:")) || width == 0 || height == 0 || !initError.empty())
+    const bool directShaderScene = sceneName == "shadertoy" || sceneName.starts_with("custom_shader:") ||
+                                   sceneName.starts_with("shader:");
+    const bool nestedShaderScene = sceneName == "music_director" && shaderRequested.load(std::memory_order_relaxed);
+    if ((!directShaderScene && !nestedShaderScene) || width == 0 || height == 0 || !initError.empty())
     {
-        isActive = false;
+        isActive.store(false, std::memory_order_relaxed);
         return std::nullopt; // Not for this scene
     }
 
-    isActive = true;
+    isActive.store(true, std::memory_order_relaxed);
     std::shared_lock lock(currDataMutex);
     return std::make_unique<CanvasPacket>(currData);
 }

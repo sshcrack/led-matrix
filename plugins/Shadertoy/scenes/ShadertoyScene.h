@@ -70,32 +70,32 @@ namespace Scenes {
         ShadertoyPlugin *plugin;
         std::filesystem::path shader_path_;
         std::string scene_name_;
+        std::string scene_prefix_;
         std::string last_shader_sent_;
 
     public:
-        explicit CustomShadertoyScene(std::filesystem::path shader_path);
+        explicit CustomShadertoyScene(std::filesystem::path shader_path, std::string scene_prefix = "custom_shader:");
         ~CustomShadertoyScene() override = default;
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
         string get_name() const override;
-        std::string get_category() const override { return "Custom Shaders"; }
+        std::string get_category() const override { return scene_prefix_ == "shader:" ? "Shaders" : "Custom Shaders"; }
+        [[nodiscard]] SceneDescriptor get_descriptor() const override;
         void register_properties() override {}
         tmillis_t get_default_duration() override { return 20000; }
         int get_default_weight() override { return 5; }
         [[nodiscard]] bool needs_desktop_app() override { return true; }
-        [[nodiscard]] SceneCapabilities get_capabilities() const override {
-            auto caps = Scene::get_capabilities();
-            caps.supports_remote_rendering = false;
-            return caps;
-        }
+        [[nodiscard]] SceneCapabilities get_capabilities() const override;
+        void after_render_stop() override;
     };
 
     class CustomShadertoySceneWrapper : public Plugins::SceneWrapper {
         std::filesystem::path shader_path_;
+        std::string scene_prefix_;
         std::string name_;
 
     public:
-        explicit CustomShadertoySceneWrapper(std::filesystem::path shader_path);
+        explicit CustomShadertoySceneWrapper(std::filesystem::path shader_path, std::string scene_prefix = "custom_shader:");
         std::unique_ptr<Scenes::Scene> create() override;
         std::string get_name() override { return name_; }
     };

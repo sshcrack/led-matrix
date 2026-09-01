@@ -30,6 +30,23 @@ bool hasTag(const Scenes::EffectiveSceneProfile& profile, std::string_view tag)
     return std::find(profile.tags.begin(), profile.tags.end(), tag) != profile.tags.end();
 }
 
+bool autoDiscoverableMusicScene(const Scenes::SceneDescriptor& descriptor, const Scenes::SceneCapabilities& caps)
+{
+    if (!descriptor.automatic_eligible || !caps.music_director_eligible || caps.interactive)
+        return false;
+    const auto profile = Scenes::effective_profile(descriptor);
+    const bool taggedForMusic = hasTag(profile, "music") || hasTag(profile, "audio-reactive") || hasTag(profile, "beat-driven");
+    return taggedForMusic && profile.music_affinity >= 0.65f;
+}
+
+bool nestedDesktopSceneSupported(std::string_view name)
+{
+    // Shadertoy has an explicit nested routing handshake: a shader child can
+    // request/release its desktop framebuffer while Music Director remains the
+    // externally active scene. Other desktop scenes still cannot be nested.
+    return name.starts_with("shader:") || name.starts_with("custom_shader:");
+}
+
 float eased(float value)
 {
     value = std::clamp(value, 0.0f, 1.0f);
@@ -41,6 +58,9 @@ void MusicDirectorScene::register_properties()
 {
     scene_pool_->label("Scene pool")
         .description("Scenes Music Director may choose from. Unsupported or unavailable entries are ignored.")
+        .group("Director");
+    auto_discover_music_scenes_->label("Auto-discover music scenes")
+        .description("Automatically include metadata-tagged audio-reactive scenes, including one-file Shadertoy shaders.")
         .group("Director");
     minimum_dwell_->label("Minimum scene time")
         .description("Do not switch again before this much time has passed.")
@@ -81,6 +101,7 @@ void MusicDirectorScene::register_properties()
         .group("Child scenes");
 
     add_property(scene_pool_);
+    add_property(auto_discover_music_scenes_);
     add_property(minimum_dwell_);
     add_property(maximum_dwell_);
     add_property(beat_sync_);
@@ -203,8 +224,7 @@ bool MusicDirectorScene::child_allowed(const std::string& name) const
     if (name.empty() || name == get_name())
         return false;
     const auto& pool = scene_pool_->get();
-    if (!pool.empty() && std::find(pool.begin(), pool.end(), name) == pool.end())
-        return false;
+    const bool explicitPoolEntry = pool.empty() || std::find(pool.begin(), pool.end(), name) != pool.end();
 
     for (const auto& wrapper : Plugins::PluginManager::instance()->get_scenes()) {
         if (!wrapper || wrapper->get_name() != name)
@@ -213,9 +233,14 @@ bool MusicDirectorScene::child_allowed(const std::string& name) const
         if (!scene)
             return false;
         const auto caps = scene->get_capabilities();
-        // The outer active scene remains music_director, so desktop-dependent
-        // scenes that require their own plugin packets cannot be nested safely.
-        if (caps.requires_desktop && !caps.requires_audio)
+        const auto descriptor = scene->get_descriptor();
+        if (!explicitPoolEntry &&
+            (!auto_discover_music_scenes_->get() || !autoDiscoverableMusicScene(descriptor, caps)))
+            return false;
+
+        // The outer active scene remains music_director. Shadertoy explicitly
+        // supports nested desktop routing; arbitrary desktop plugins do not.
+        if (caps.requires_desktop && !caps.requires_audio && !nestedDesktopSceneSupported(name))
             return false;
         if (!caps.music_director_eligible || caps.interactive)
             return false;
@@ -249,6 +274,19 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
     for (const auto& name : pool)
         if (std::find(candidates.begin(), candidates.end(), name) == candidates.end())
             candidates.push_back(name);
+
+    auto wrappers = Plugins::PluginManager::instance()->get_scenes();
+    if (auto_discover_music_scenes_->get()) {
+        for (const auto& wrapper : wrappers) {
+            if (!wrapper) continue;
+            const auto scene = wrapper->get_default();
+            if (!scene || !autoDiscoverableMusicScene(scene->get_descriptor(), scene->get_capabilities()))
+                continue;
+            const auto name = wrapper->get_name();
+            if (std::find(candidates.begin(), candidates.end(), name) == candidates.end())
+                candidates.push_back(name);
+        }
+    }
     if (candidates.empty())
         return false;
 
@@ -284,7 +322,6 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
         size_t candidate_index = 0;
     };
     std::vector<Choice> choices;
-    auto wrappers = Plugins::PluginManager::instance()->get_scenes();
     const std::string currentFamily = child_ ? child_->get_descriptor().family : std::string{};
 
     for (size_t candidateIndex = 0; candidateIndex < candidates.size(); ++candidateIndex) {

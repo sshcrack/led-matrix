@@ -1,5 +1,6 @@
 #include "AudioVisualizerDesktop.h"
 #include "udpBandsPacket.h"
+#include <shared/desktop/audio_state.h>
 
 #include <algorithm>
 #include <array>
@@ -34,7 +35,9 @@ constexpr std::array<AudioProtocol::Feature, 7> MusicalBandFeatures{
 bool isDedicatedAudioScene(const std::string &name) {
     return name == "audio_spectrum" || name == "audio_particles" ||
            name == "audio_pulse_tunnel" || name == "audio_aurora" ||
-           name == "audio_kaleidoscope" || name == "music_director";
+           name == "audio_kaleidoscope" || name == "music_director" ||
+           name == "shadertoy" || name.starts_with("custom_shader:") ||
+           name.starts_with("shader:");
 }
 }
 
@@ -67,6 +70,7 @@ void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> con
 }
 
 void AudioVisualizerDesktop::before_exit() {
+    DesktopAudioState::clear();
     if (recorder) recorder->stopRecording();
     if (implotContext) {
         ImPlot::DestroyContext(implotContext);
@@ -353,6 +357,7 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
 
     latestBands = bands;
     latestAnalysis = analysis;
+    DesktopAudioState::update(analysis, static_cast<float>(captured->sampleRate));
     hasLatestAnalysis = true;
     DiagnosticSample sample;
     sample.time = static_cast<float>(analysis.timestamp_ms) / 1000.0f;

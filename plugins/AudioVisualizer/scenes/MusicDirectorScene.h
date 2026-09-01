@@ -19,6 +19,7 @@ class MusicDirectorScene final : public Scene {
         "scene_pool",
         std::vector<std::string>({"audio_aurora", "starfield", "metablob", "boids", "wave_pattern", "reaction_diffusion", "neontunnel",
                                   "audio_pulse_tunnel", "audio_kaleidoscope", "audio_particles", "audio_spectrum"}));
+    PropertyPointer<bool> auto_discover_music_scenes_ = MAKE_PROPERTY("auto_discover_music_scenes", bool, true);
     PropertyPointer<tmillis_t> minimum_dwell_ = MAKE_PROPERTY_MINMAX("minimum_dwell", tmillis_t, 9000, 2000, 60000);
     PropertyPointer<tmillis_t> maximum_dwell_ = MAKE_PROPERTY_MINMAX("maximum_dwell", tmillis_t, 26000, 6000, 120000);
     PropertyPointer<bool> beat_sync_ = MAKE_PROPERTY("beat_sync", bool, true);

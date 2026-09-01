@@ -2,6 +2,7 @@
 #include "shared/desktop/plugin/main.h"
 #include <nlohmann/json.hpp>
 #include <memory>
+#include <atomic>
 #include <thread>
 #include <shared_mutex>
 #include <shadertoy/ShaderToyContext.hpp>
@@ -28,7 +29,8 @@ public:
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn, ImGuiMemFreeFunc*free_fn, void **user_data) override;
 
 private:
-    int width, height;
+    int width = 0;
+    int height = 0;
     std::string url;
     std::string custom_shader_code;
     std::string custom_shader_name;
@@ -37,7 +39,8 @@ private:
 
     std::string initError;
 
-    bool enablePreview;
+    bool enablePreview = false;
+    std::atomic<bool> shaderRequested{false};
 
     std::shared_mutex currDataMutex;
     std::vector<uint8_t> currData;

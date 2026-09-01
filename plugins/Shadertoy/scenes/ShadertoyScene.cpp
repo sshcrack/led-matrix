@@ -1,4 +1,5 @@
 #include "ShadertoyScene.h"
+#include "ShaderMetadata.h"
 #include "spdlog/spdlog.h"
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/utils/LoadingAnimation.h>
@@ -96,6 +97,12 @@ void Scenes::ShadertoyScene::after_render_stop()
     switchToNextRandomShader = true;
     failed_provider_count = 0;
     showing_loading_animation = false;
+    lastUrlSent.clear();
+    if (plugin) {
+        const std::string msg = "shadertoy_inactive";
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
+    }
 }
 
 void Scenes::ShadertoyScene::render_loading_animation(rgb_matrix::FrameCanvas *canvas)
@@ -194,10 +201,10 @@ bool ShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
     return true;
 }
 
-CustomShadertoyScene::CustomShadertoyScene(std::filesystem::path shader_path)
-    : plugin(get_shadertoy_plugin()), shader_path_(std::move(shader_path))
+CustomShadertoyScene::CustomShadertoyScene(std::filesystem::path shader_path, std::string scene_prefix)
+    : plugin(get_shadertoy_plugin()), shader_path_(std::move(shader_path)), scene_prefix_(std::move(scene_prefix))
 {
-    scene_name_ = "custom_shader:" + shader_path_.stem().string();
+    scene_name_ = scene_prefix_ + shader_path_.stem().string();
 
     if (!plugin) {
         spdlog::error("CustomShadertoyScene: Failed to find Shadertoy plugin");
@@ -207,6 +214,39 @@ CustomShadertoyScene::CustomShadertoyScene(std::filesystem::path shader_path)
 string CustomShadertoyScene::get_name() const
 {
     return scene_name_;
+}
+
+Scenes::SceneDescriptor CustomShadertoyScene::get_descriptor() const
+{
+    const auto metadata = read_custom_shader_metadata(shader_path_);
+    auto descriptor = Scene::get_descriptor();
+    descriptor.family = metadata.family;
+    descriptor.tags = metadata.tags;
+    descriptor.intensity = metadata.intensity;
+    descriptor.motion = metadata.motion;
+    descriptor.music_affinity = metadata.music_affinity;
+    descriptor.performance_cost = metadata.performance_cost;
+    descriptor.automatic_eligible = metadata.automatic_eligible;
+    return descriptor;
+}
+
+Scenes::SceneCapabilities CustomShadertoyScene::get_capabilities() const
+{
+    const auto metadata = read_custom_shader_metadata(shader_path_);
+    auto caps = Scene::get_capabilities();
+    caps.supports_audio = metadata.audio_reactive;
+    caps.supports_remote_rendering = false;
+    return caps;
+}
+
+void CustomShadertoyScene::after_render_stop()
+{
+    last_shader_sent_.clear();
+    if (plugin) {
+        const std::string msg = "shadertoy_inactive";
+        plugin->send_msg_to_desktop(msg);
+        plugin->set_last_sent_message(msg);
+    }
 }
 
 bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
@@ -252,13 +292,13 @@ bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
     return true;
 }
 
-CustomShadertoySceneWrapper::CustomShadertoySceneWrapper(std::filesystem::path shader_path)
-    : shader_path_(std::move(shader_path))
+CustomShadertoySceneWrapper::CustomShadertoySceneWrapper(std::filesystem::path shader_path, std::string scene_prefix)
+    : shader_path_(std::move(shader_path)), scene_prefix_(std::move(scene_prefix))
 {
-    name_ = "custom_shader:" + shader_path_.stem().string();
+    name_ = scene_prefix_ + shader_path_.stem().string();
 }
 
 std::unique_ptr<Scenes::Scene> CustomShadertoySceneWrapper::create()
 {
-    return std::make_unique<CustomShadertoyScene>(shader_path_);
+    return std::make_unique<CustomShadertoyScene>(shader_path_, scene_prefix_);
 }
