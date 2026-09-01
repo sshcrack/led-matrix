@@ -106,6 +106,27 @@ int main()
         return 2;
     }
 
+    // Repo-owned Shadertoy scenes are visually curated against actual matrix
+    // renders. When desktop rendering is present, an otherwise equivalent
+    // shader should outrank the older native approximation instead of merely
+    // tying it and disappearing into the stochastic candidate pool.
+    RuntimeInputs::set_available(RuntimeInputIds::Desktop, true, {{"connected", true}});
+    std::vector<std::shared_ptr<Scenes::Scene>> music_quality_scenes{
+        std::make_shared<TestScene>(
+            "legacy_reactive", .78f, 1.0f, .30f, true, "orbital", .82f,
+            std::vector<std::string>{"music", "audio-reactive", "geometric"}),
+        std::make_shared<TestScene>(
+            "shader:showcase", .78f, 1.0f, .30f, false, "orbital", .82f,
+            std::vector<std::string>{"music", "audio-reactive", "geometric", "shader", "shadertoy", "gpu-rendered", "showcase"},
+            std::vector<std::string>{std::string(RuntimeInputIds::Desktop)}),
+    };
+    AutomaticDirector shader_music_director(71);
+    const auto shader_music_ranked = shader_music_director.rank(music_quality_scenes, RuntimeInputs::snapshot());
+    if (shader_music_ranked.size() != 2 || shader_music_ranked.front().scene->get_name() != "shader:showcase") {
+        std::cerr << "curated audio-reactive shader was not preferred over an equivalent legacy visual\n";
+        return 22;
+    }
+
     const auto previously_best = ranked.front().scene;
     director.record_played(previously_best);
     ranked = director.rank(scenes, RuntimeInputs::snapshot());
@@ -123,6 +144,27 @@ int main()
     if (ranked.empty() || ranked.front().scene->get_name().starts_with("music")) {
         std::cerr << "paused/silent audio still prioritized high-energy music visuals\n";
         return 12;
+    }
+
+    // The same preference applies to scenic shader ambience when music is not
+    // active, while high-music-affinity shaders remain naturally penalized by
+    // the normal context score.
+    RuntimeInputs::clear_all();
+    RuntimeInputs::set_available(RuntimeInputIds::Desktop, true, {{"connected", true}});
+    std::vector<std::shared_ptr<Scenes::Scene>> ambient_quality_scenes{
+        std::make_shared<TestScene>(
+            "legacy_scenic", .46f, .10f, .25f, false, "aurora", .48f,
+            std::vector<std::string>{"ambient", "scenic", "calm"}),
+        std::make_shared<TestScene>(
+            "shader:scenic", .46f, .10f, .25f, false, "aurora", .48f,
+            std::vector<std::string>{"ambient", "scenic", "calm", "shader", "shadertoy", "gpu-rendered", "showcase"},
+            std::vector<std::string>{std::string(RuntimeInputIds::Desktop)}),
+    };
+    AutomaticDirector shader_ambient_director(73);
+    const auto shader_ambient_ranked = shader_ambient_director.rank(ambient_quality_scenes, RuntimeInputs::snapshot());
+    if (shader_ambient_ranked.size() != 2 || shader_ambient_ranked.front().scene->get_name() != "shader:scenic") {
+        std::cerr << "curated scenic shader was not preferred for desktop-backed ambient playback\n";
+        return 23;
     }
 
     // Spotify media should follow the track lifecycle rather than monopolizing

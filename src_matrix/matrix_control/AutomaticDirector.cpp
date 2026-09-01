@@ -284,12 +284,26 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
         if (motion_fit > 0.82f)
             candidate.reasons.push_back("motion fits current pace");
 
+        // Curated repo shaders are authored and visually reviewed specifically
+        // for the physical matrix. When the desktop renderer is available they
+        // should not merely tie older CPU-rendered approximations with the same
+        // semantic profile. `showcase` is metadata-driven so future agent-made
+        // shaders can opt into the same quality tier without hard-coded names.
+        if (has_tag(profile.tags, "showcase")) {
+            candidate.score += 0.24f;
+            candidate.reasons.push_back("visually curated showcase scene");
+        }
+
         if (context.audio_active) {
             candidate.score += profile.music_affinity * 1.02f;
             if (profile.music_affinity > 0.72f)
                 candidate.reasons.push_back("strong live-music affinity");
             if (has_tag(profile.tags, "audio-reactive"))
                 candidate.score += 0.22f;
+            if (has_tag(profile.tags, "shader") && has_tag(profile.tags, "audio-reactive")) {
+                candidate.score += 0.30f;
+                candidate.reasons.push_back("GPU shader uses live music analysis");
+            }
             if (has_any_tag(profile.tags, {"depth", "tunnel"}) && context.bass > 0.28f) {
                 candidate.score += context.bass * 0.30f + context.beat_strength * 0.12f;
                 candidate.reasons.push_back("bass supports depth motion");
@@ -318,6 +332,10 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
         }
         else {
             candidate.score += (1.0f - profile.music_affinity) * 0.42f;
+            if (has_tag(profile.tags, "shader") && has_any_tag(profile.tags, {"ambient", "scenic", "calm"})) {
+                candidate.score += 0.18f;
+                candidate.reasons.push_back("curated shader fits ambient playback");
+            }
             if (context.audio_available && context.target_intensity < 0.30f && profile.intensity > 0.70f)
                 candidate.score -= 0.55f;
         }

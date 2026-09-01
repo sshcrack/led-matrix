@@ -208,14 +208,14 @@ std::vector<std::string> MusicDirectorScene::preferred(MusicalState state) const
 {
     switch (state) {
         case MusicalState::Calm:
-            return {"audio_aurora", "audio_spectrum", "starfield", "metablob", "reaction_diffusion"};
+            return {"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "audio_spectrum", "starfield", "metablob", "reaction_diffusion"};
         case MusicalState::Build:
-            return {"wave_pattern", "boids", "audio_spectrum", "neontunnel", "audio_pulse_tunnel"};
+            return {"shader:music_neon_orbit", "shader:music_spectrum_tunnel", "shader:music_celestial_bloom", "wave_pattern", "boids", "audio_spectrum", "neontunnel"};
         case MusicalState::Peak:
-            return {"audio_pulse_tunnel", "audio_particles", "audio_kaleidoscope", "audio_spectrum", "neontunnel"};
+            return {"shader:music_spectrum_tunnel", "shader:music_neon_orbit", "shader:music_celestial_bloom", "audio_particles", "audio_spectrum", "neontunnel"};
         case MusicalState::Groove:
         default:
-            return {"boids", "audio_spectrum", "wave_pattern", "metablob", "audio_kaleidoscope", "audio_particles"};
+            return {"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "shader:music_neon_orbit", "boids", "audio_spectrum", "wave_pattern", "metablob", "audio_particles"};
     }
 }
 
@@ -341,6 +341,10 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
             score -= std::abs(profile.motion - targetMotion) * 1.25f;
             score += profile.music_affinity * 0.92f;
             score -= profile.performance_cost * 0.42f;
+            if (hasTag(profile, "showcase"))
+                score += 0.18f;
+            if (hasTag(profile, "shader"))
+                score += 0.16f;
 
             // Musical timbre steers *style*, while energy/motion select the
             // variant. This keeps automatic choices intentional without any
