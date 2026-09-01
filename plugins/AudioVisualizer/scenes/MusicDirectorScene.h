@@ -17,8 +17,9 @@ class MusicDirectorScene final : public Scene {
 
     PropertyPointer<std::vector<std::string>> scene_pool_ = MAKE_STRING_LIST_PROPERTY(
         "scene_pool",
-        std::vector<std::string>({"audio_aurora", "starfield", "metablob", "boids", "wave_pattern", "reaction_diffusion", "neontunnel",
-                                  "audio_pulse_tunnel", "audio_kaleidoscope", "audio_particles", "audio_spectrum"}));
+        std::vector<std::string>({"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "shader:music_neon_orbit",
+                                  "shader:music_spectrum_tunnel", "audio_particles", "audio_spectrum", "starfield", "metablob",
+                                  "boids", "wave_pattern", "reaction_diffusion", "neontunnel"}));
     PropertyPointer<bool> auto_discover_music_scenes_ = MAKE_PROPERTY("auto_discover_music_scenes", bool, true);
     PropertyPointer<tmillis_t> minimum_dwell_ = MAKE_PROPERTY_MINMAX("minimum_dwell", tmillis_t, 9000, 2000, 60000);
     PropertyPointer<tmillis_t> maximum_dwell_ = MAKE_PROPERTY_MINMAX("maximum_dwell", tmillis_t, 26000, 6000, 120000);
