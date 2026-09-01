@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
         const auto [minIt, maxIt] = std::minmax_element(rgb.begin(), rgb.end());
         double sum = 0.0;
         for (const auto byte : rgb) sum += byte;
-        std::cout << "Rendered " << width << 'x' << height << " after " << frames << " synthetic-audio frames; "
+        std::cout << "Rendered " << width << 'x' << height << " after " << frames << ' ' << audioMode << " frames; "
                   << "range=" << static_cast<int>(*minIt) << ".." << static_cast<int>(*maxIt)
                   << ", mean=" << (sum / static_cast<double>(rgb.size())) << '\n';
     } catch (const std::exception &error) {

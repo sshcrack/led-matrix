@@ -79,8 +79,8 @@ Music should modulate structure instead of flashing the entire framebuffer. Good
 2. Add the metadata block first so intent is explicit.
 3. Make the no-audio frame attractive before adding reactions.
 4. Add semantic music choreography, then optional spectrum/waveform detail.
-5. Compile and render a synthetic-audio preview with the shadertoy-headless preview tool before considering the shader done. A typical Linux check is `xvfb-run -a shadertoy_shader_preview shaders/<name>.frag /tmp/<name>.png 256 128 120`; use nearby frame counts such as 120/121 to inspect both ordinary and kick-heavy synthetic phases. Pass `none` as the final argument to verify the no-audio fallback.
-6. Inspect the actual generated image, not only compiler success. Check multiple synthetic-audio phases for clipping, empty frames, unreadable detail, and excessive full-screen flashes.
+5. Run `./scripts/preview_shadertoy_shader.sh plugins/Shadertoy/shaders/<name>.frag`. It builds the exact LED Matrix consumer preview tool if needed and renders a five-frame review set at matrix-like 128×64 resolution: idle/no-audio, early motion, a strong synthetic kick, groove, and a later frame. Use `shadertoy_shader_preview` directly only when you need a specific size/frame count.
+6. Inspect the actual generated PNGs, not only compiler success. When working through Laptop MCP, use `sandbox_read_image` on the generated files so the agent literally sees the rendered pixels. Check for clipping, empty frames, unreadable detail, temporal collapse, and excessive full-screen flashes.
 7. For repo shaders, no registry edit is needed: committing the `.frag` file is enough for packaging, Automatic Mode metadata, and scene discovery.
 
 The goal is one self-contained shader file with obvious intent, no bespoke C++ glue, deterministic previewability, and graceful behavior both with and without live music.
