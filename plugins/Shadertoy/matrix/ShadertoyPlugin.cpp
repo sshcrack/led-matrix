@@ -4,6 +4,9 @@
 #ifndef LED_MATRIX_DATA_DIR
 #define LED_MATRIX_DATA_DIR "."
 #endif
+#ifndef SHADERTOY_BUILTIN_SHADER_DIR
+#define SHADERTOY_BUILTIN_SHADER_DIR ""
+#endif
 
 #include "scenes/ShadertoyScene.h"
 #include "providers/Random.h"
@@ -12,6 +15,7 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/utils/shared.h"
 #include <filesystem>
+#include <algorithm>
 #include <chrono>
 
 using namespace Scenes;
@@ -21,6 +25,36 @@ namespace fs = std::filesystem;
 namespace {
 fs::path custom_shader_dir() {
     return std::filesystem::path(LED_MATRIX_DATA_DIR) / "data" / "custom_shaders";
+}
+
+fs::path builtin_shader_dir() {
+    return std::filesystem::path(SHADERTOY_BUILTIN_SHADER_DIR);
+}
+
+void append_builtin_scenes(std::vector<std::unique_ptr<SceneWrapper>> &scenes) {
+    const auto builtin_dir = builtin_shader_dir();
+    if (builtin_dir.empty()) return;
+
+    std::error_code ec;
+    if (!fs::exists(builtin_dir, ec)) {
+        spdlog::warn("Shadertoy: built-in shader directory '{}' is unavailable", builtin_dir.string());
+        return;
+    }
+
+    std::vector<fs::path> shaders;
+    for (const auto &entry : fs::directory_iterator(builtin_dir, ec)) {
+        if (ec) break;
+        if (entry.is_regular_file() && entry.path().extension() == ".frag")
+            shaders.push_back(entry.path());
+    }
+    std::sort(shaders.begin(), shaders.end());
+    for (const auto &shader : shaders)
+        scenes.push_back(std::make_unique<CustomShadertoySceneWrapper>(shader, "shader:"));
+
+    if (ec)
+        spdlog::warn("Shadertoy: failed to scan built-in shader directory '{}': {}", builtin_dir.string(), ec.message());
+    else
+        spdlog::info("Shadertoy: registered {} built-in shader scenes", shaders.size());
 }
 }
 
@@ -48,6 +82,7 @@ vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
     auto scenes = vector<std::unique_ptr<SceneWrapper>>();
 
     scenes.push_back(std::make_unique<ShadertoySceneWrapper>());
+    append_builtin_scenes(scenes);
 
     const auto custom_dir = custom_shader_dir();
     std::error_code ec;
