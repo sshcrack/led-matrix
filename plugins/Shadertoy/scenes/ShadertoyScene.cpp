@@ -6,7 +6,9 @@
 
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/config/shader_providers/general.h"
+#include <algorithm>
 #include <filesystem>
+#include <string_view>
 
 bool Scenes::switchToNextRandomShader = true;
 
@@ -222,6 +224,10 @@ Scenes::SceneDescriptor CustomShadertoyScene::get_descriptor() const
     auto descriptor = Scene::get_descriptor();
     descriptor.family = metadata.family;
     descriptor.tags = metadata.tags;
+    for (const std::string_view tag : {std::string_view("shader"), std::string_view("shadertoy"), std::string_view("gpu-rendered")}) {
+        if (std::find(descriptor.tags.begin(), descriptor.tags.end(), tag) == descriptor.tags.end())
+            descriptor.tags.emplace_back(tag);
+    }
     descriptor.intensity = metadata.intensity;
     descriptor.motion = metadata.motion;
     descriptor.music_affinity = metadata.music_affinity;
