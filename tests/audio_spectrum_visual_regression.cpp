@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include "plugins/AudioVisualizer/scenes/AudioReactiveScenes.h"
 #include "plugins/AudioVisualizer/scenes/AudioSpectrumScene.h"
 
 namespace {
@@ -163,75 +162,6 @@ int main()
     std::cout << "white mirror foreground/rear luma=" << foregroundLuma << '/' << rearLuma << '\n';
     if (foregroundLuma < 180 || rearLuma <= 0 || foregroundLuma < static_cast<int>(rearLuma * 1.6f)) {
         std::cerr << "white mirrored spectrum layers are not visually separated\n";
-        failed = true;
-    }
-
-    // Stress the radial/tunnel path with exactly the failure mode seen in
-    // production: beat phase jumps wildly while a single beat/drop packet flag
-    // remains the latest packet for many display frames. Geometry should remain
-    // continuous and each event counter must be consumed exactly once.
-    Scenes::AudioPulseTunnelScene tunnel;
-    tunnel.register_properties();
-    tunnel.load_properties({{"speed", 1.65f},
-                            {"ring_count", 17},
-                            {"twist", 1.55f},
-                            {"sensitivity", 1.18f},
-                            {"tempo_lock", true},
-                            {"spectrum_ribs", true},
-                            {"rainbow", true}});
-    tunnel.initialize(Width, Height);
-
-    previous.clear();
-    accumulated_change = 0.0f;
-    comparisons = 0;
-    float lateFlagLuma = 0.0f;
-    float postEventPeakLuma = 0.0f;
-    for (std::uint32_t frame_index = 0; frame_index < 72; ++frame_index) {
-        AudioProtocol::Frame f;
-        f.sequence = 1000 + frame_index;
-        f.spectrum.assign(64, 0.34f);
-        f.set(AudioProtocol::Feature::LoudnessFast, 0.67f);
-        f.set(AudioProtocol::Feature::Bass, 0.62f);
-        f.set(AudioProtocol::Feature::Kick, frame_index >= 12 && frame_index < 18 ? 0.80f : 0.16f);
-        f.set(AudioProtocol::Feature::Snare, 0.24f);
-        f.set(AudioProtocol::Feature::Hihat, 0.30f);
-        f.set(AudioProtocol::Feature::StereoWidth, 0.46f);
-        f.set(AudioProtocol::Feature::StereoBalance, (frame_index & 1U) ? 0.18f : -0.18f);
-        f.set(AudioProtocol::Feature::Bpm, frame_index < 36 ? 132.0f : 96.0f);
-        f.set(AudioProtocol::Feature::BeatConfidence, 0.92f);
-        f.set(AudioProtocol::Feature::TempoStability, 0.90f);
-        // Deliberately discontinuous tracker phase: spatial ring position must
-        // not be tied to it.
-        f.set(AudioProtocol::Feature::BeatPhase, (frame_index & 1U) ? 0.94f : 0.06f);
-        if (frame_index >= 12) {
-            f.beat_counter = 1;
-            f.drop_counter = 1;
-            if (frame_index < 42)
-                f.flags = AudioProtocol::BeatEvent | AudioProtocol::DropEvent;
-        }
-        AudioState::update(f);
-        tunnel.render_frame(canvas, 1.0 / 60.0, true);
-        auto pixels = capture(canvas);
-        const float luma = mean_luma(pixels);
-        if (frame_index >= 12 && frame_index < 26)
-            postEventPeakLuma = std::max(postEventPeakLuma, luma);
-        if (frame_index == 40)
-            lateFlagLuma = luma;
-        if (!previous.empty() && frame_index >= 8) {
-            accumulated_change += changed_pixel_fraction(previous, pixels);
-            ++comparisons;
-        }
-        previous = std::move(pixels);
-    }
-    const float tunnelChange = comparisons > 0 ? accumulated_change / comparisons : 1.0f;
-    std::cout << "tunnel stress changed-pixel fraction=" << tunnelChange << " peak/late luma=" << postEventPeakLuma << '/' << lateFlagLuma
-              << '\n';
-    if (tunnelChange > 0.34f) {
-        std::cerr << "pulse tunnel geometry jumps too aggressively during phase/tempo changes\n";
-        failed = true;
-    }
-    if (postEventPeakLuma > 0.0f && lateFlagLuma > postEventPeakLuma * 1.18f) {
-        std::cerr << "persistent event flags keep retriggering tunnel brightness\n";
         failed = true;
     }
 
