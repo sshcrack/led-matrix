@@ -42,28 +42,46 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 
 ## 🎬 Demonstration
 
-Below are some example scenes and effects from the included plugins:
+Selected GIFs from `scene_previews/` (45 pre-generated previews, committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
 
 <div align="center">
 
-| AmbientScenes: Clock | AmbientScenes: Starfield | AudioVisualizer: Beat Spectrum | FractalScenes: Game of Life | FractalScenes: Julia Set |
-|:-------------------:|:-----------------------:|:----------------------------:|:--------------------------:|:------------------------:|
-| ![](plugins/AmbientScenes/img/clock.gif) | ![](plugins/AmbientScenes/img/starfield.gif) | ![](plugins/AudioVisualizer/img/beat_spectrum_normal.gif) | ![](plugins/FractalScenes/img/game_of_life.gif) | ![](plugins/FractalScenes/img/julia_set.gif) |
+| AmbientScenes: Clock | AmbientScenes: Starfield | AmbientScenes: Metablob | AmbientScenes: DigitalRain | AmbientScenes: NeonTunnel |
+|:-------------------:|:-----------------------:|:----------------------:|:--------------------------:|:-------------------------:|
+| ![](scene_previews/clock.gif) | ![](scene_previews/starfield.gif) | ![](scene_previews/metablob.gif) | ![](scene_previews/digitalrain.gif) | ![](scene_previews/neontunnel.gif) |
 
-| FractalScenes: Wave | GameScenes: Maze | GameScenes: Ping Pong | GameScenes: Snake | GameScenes: Tetris |
-|:------------------:|:---------------:|:---------------------:|:----------------:|:-----------------:|
-| ![](plugins/FractalScenes/img/wave.gif) | ![](plugins/GameScenes/img/maze.gif) | ![](plugins/GameScenes/img/ping_pong.gif) | ![](plugins/GameScenes/img/snake.gif) | ![](plugins/GameScenes/img/tetris.gif) |
+| AmbientScenes: Bouncing Logo | AmbientScenes: Sorting Visualizer | FractalScenes: Julia Set | FractalScenes: Game of Life | FractalScenes: Wave Pattern |
+|:---------------------------:|:--------------------------------:|:------------------------:|:--------------------------:|:---------------------------:|
+| ![](scene_previews/bouncing-logo.gif) | ![](scene_previews/sorting-visualizer.gif) | ![](scene_previews/julia_set.gif) | ![](scene_previews/game_of_life.gif) | ![](scene_previews/wave_pattern.gif) |
 
-| GithubScenes: Watermelon Plasma | GithubScenes: Wave | RGBMatrixAnimations: Rain | RGBMatrixAnimations: Sparks | Shadertoy |
-|:------------------------------:|:------------------:|:------------------------:|:--------------------------:|:---------:|
-| ![](plugins/GithubScenes/img/watermelon_plasma.gif) | ![](plugins/GithubScenes/img/wave.gif) | ![](plugins/RGBMatrixAnimations/img/rain.gif) | ![](plugins/RGBMatrixAnimations/img/sparks.gif) | ![](plugins/Shadertoy/img/shadertoy.gif) |
+| GenerativeScenes: Boids | GenerativeScenes: Falling Sand | GenerativeScenes: Reaction Diffusion | GameScenes: Tetris | GameScenes: Pac-Man |
+|:----------------------:|:------------------------------:|:-----------------------------------:|:------------------:|:-------------------:|
+| ![](scene_previews/boids.gif) | ![](scene_previews/falling_sand.gif) | ![](scene_previews/reaction_diffusion.gif) | ![](scene_previews/tetris.gif) | ![](scene_previews/pacman_ai.gif) |
 
-| SpotifyScenes: Cover Only | WeatherOverview: Night Clear |
-|:------------------------:|:---------------------------:|
-| ![](plugins/SpotifyScenes/img/cover_only.gif) | ![](plugins/WeatherOverview/img/night-clear.gif) |
+| GameScenes: Maze | GameScenes: Ping Pong | GameScenes: Snake | GithubScenes: Watermelon Plasma | GithubScenes: Wave |
+|:----------------:|:---------------------:|:-----------------:|:------------------------------:|:------------------:|
+| ![](scene_previews/maze.gif) | ![](scene_previews/ping_pong.gif) | ![](scene_previews/snake_game.gif) | ![](scene_previews/watermelon_plasma.gif) | ![](scene_previews/wave.gif) |
 
+| RGBMatrixAnimations: Rain | RGBMatrixAnimations: Sparks | Shadertoy: Plasma Waves | Shadertoy: Ethereal Portal | WeatherOverview: Weather |
+|:------------------------:|:--------------------------:|:-----------------------:|:--------------------------:|:------------------------:|
+| ![](scene_previews/rain.gif) | ![](scene_previews/sparks.gif) | ![](scene_previews/plasma_waves.gif) | ![](scene_previews/ethereal_portal.gif) | ![](scene_previews/weather.gif) |
+
+| WeatherOverview: Weather Ambience | AudioVisualizer: Spectrum | AudioVisualizer: Aurora | AudioVisualizer: Kaleidoscope | SpotifyScenes: Cover |
+|:---------------------------------:|:-------------------------:|:-----------------------:|:-----------------------------:|:--------------------:|
+| ![](scene_previews/weather_ambience.gif) | ![](scene_previews/audio_spectrum.gif) | ![](scene_previews/audio_aurora.gif) | ![](scene_previews/audio_kaleidoscope.gif) | ![](scene_previews/spotify.gif) |
+
+| PixelJoint: Image Scene | Countdown | **✨ New: Shadertoy Audio-Reactive** | **✨ New: Shadertoy Audio-Reactive** |
+|:-----------------------:|:---------:|:-----------------------------------:|:-----------------------------------:|
+| ![](scene_previews/image_scene.gif) | ![](scene_previews/countdown.gif) | ![](scene_previews/neon_orbit_tunnel.gif) | ![](scene_previews/starfield_warp.gif) |
+|  |  | `music_neon_orbit` — neon orbital rings reacting to kick/snare | `music_spectrum_tunnel` — spectrum tunnel with beat-driven warp |
+
+| Shadertoy: Mobius Fluid | Shadertoy: Rainbow Spiral | Shadertoy: Expert Julia | Shadertoy: Realistic Cloth |
+|:-----------------------:|:--------------------------:|:-----------------------:|:--------------------------:|
+| ![](scene_previews/mobius_fluid_manifold.gif) | ![](scene_previews/rainbow_spiral.gif) | ![](scene_previews/expert_quaternion_julia.gif) | ![](scene_previews/realistic_cloth.gif) |
 
 </div>
+
+> **New in this update:** 5 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings, featured above as `neon_orbit_tunnel.gif`), `music_spectrum_tunnel` (neon depth tunnel, featured above as `starfield_warp.gif`), `scenic_aurora` (calm aurora flow), `scenic_plasma_garden` (organic plasma). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` deployed to `/usr/share/led-matrix/scene_previews/`.
 
 ---
 ## ✨ Features
@@ -71,82 +89,41 @@ Below are some example scenes and effects from the included plugins:
 ### 🎮 **Comprehensive Control System**
 - **REST API server** for seamless remote control
 - **PWA** and **a website** for on-the-go management
-- **11+ specialized plugins** for unlimited visual variety
+- **18 plugins, 39 scenes, 7 post-processing effects & 11 transitions**
 - **Preset management** for quick scene switching
 - **Advanced scheduling** - Automatically switch presets based on time and day
 - **Automatic updates** - Keep your system up-to-date with the latest features and security fixes
 - **Real-time configuration** without restarts
+- **Live matrix preview** via pull-based WebSocket (`/live_frame`, `LMF1` frames, coalesced viewers)
+- **Adaptive quality & automatic desktop offload** - heavy scenes migrate to the desktop scene worker when the Pi is under pressure
 ![Website Showcase](./docs/web-showcase.gif)
 
-### 🎨 **Rich Plugin Ecosystem**
-Our modular plugin architecture delivers an incredible variety of visual experiences across 11+ specialized plugins:
+### 🎨 **Rich Plugin Ecosystem — 18 Plugins, 39 Scenes**
 
-#### 🌟 **AmbientScenes Plugin**
-Create mesmerizing atmospheric effects:
-- **Starfield** - Simulates twinkling stars
-- **Metablob** - Organic fluid animations with flowing, morphing colors
-- **Clock** - Elegant digital timepieces with customizable styles
+> Scene IDs are the values returned by `Scene::get_name()` / `list_scenes` and used for pinning (`--scene <id>`), presets, and previews. Categories match `get_category()`.
 
-#### 🎵 **SpotifyScenes Plugin**
-Music comes alive on your matrix:
-- **Album Art Display** - Show current track artwork with smooth transitions
-- **Beat-synchronized Effects** - Visual rhythms that pulse with your music
-- **Now Playing Info** - Track, artist, and playback status visualization
-- **OAuth Integration** - Seamless Spotify account connection
-_[Setup required](./plugins/SpotifyScenes/README.md)_
+| Plugin | Scenes (ID — `Category`) | What it does |
+|:-------|:--------------------------|:-------------|
+| **AmbientScenes** | `starfield`, `metablob`, `clock`, `sorting-visualizer`, `bouncing-logo`, `neontunnel`, `digitalrain` — `Ambient` | Atmospheric & procedural ambience: warp starfield, metaball fluid, analog/digital clock + date, sorting-algorithm visualizer, DVD-style bouncing logo, neon tunnel, Matrix-style digital rain. |
+| **AudioVisualizer** | `audio_spectrum`, `audio_particles`, `audio_pulse_tunnel`, `audio_aurora`, `audio_kaleidoscope`, `music_director` — `Audio Reactive` | Real-time audio analysis via desktop capture: spectrum bars, particle fields, pulse tunnel, aurora, kaleidoscope, and the `music_director` automatic DJ. [Setup required](./plugins/AudioVisualizer/README.md). Audio is also mirrored to the remote scene worker. |
+| **GameScenes** | `ping_pong`, `tetris`, `maze`, `snake_game`, `pacman_ai` — `Games` | Self-playing games: Pong (AI opponents), Tetris (neural-net placement), Maze (Hunt-and-Kill + A* solver), Snake, Pac-Man. |
+| **FractalScenes** | `julia_set`, `game_of_life`, `wave_pattern` — `Fractals` | Math-driven visuals: animated Julia sets, Conway's Game of Life, wave interference patterns. |
+| **GenerativeScenes** | `reaction_diffusion`, `boids`, `falling_sand` — `Generative` | Emergent simulations: Gray-Scott reaction-diffusion, Boids flocking, Falling Sand automata. |
+| **GithubScenes** | `watermelon_plasma`, `wave` — `Generative` | Community effects ported from [matryx-gl](https://github.com/Knifa/matryx-gl) (Knifa). |
+| **RGBMatrixAnimations** | `rain`, `sparks` — `Particles` | Particle systems: gravity-driven rain and sparks. |
+| **Shadertoy** | `shadertoy` (+ dynamic `custom_shader:*` / `shader:*`) — `Shaders` / `Custom Shaders` | Streams Shadertoy shaders rendered on the desktop (`shadertoy` cycles randomly; installed `.frag` files under `shaders/` appear as `custom_shader:<name>` / `shader:<name>` with preview GIFs like `ethereal_portal`, `plasma_waves`). **New:** 5 built-in shaders — `music_liquid_ribbons`, `music_neon_orbit`, `music_spectrum_tunnel` (audio-reactive, `music_affinity=1.0`), `scenic_aurora`, `scenic_plasma_garden` (calm scenic). See `SHADER_AUTHORING.md` for the `iChannel0` music texture + `iAudio*` uniforms. Needs desktop app; `supports_remote_rendering = false`. |
+| **WeatherOverview** | `weather`, `weather_ambience` — `Weather` | Live weather dashboard (current icon + forecast + sunrise/sunset + clock) and ambient weather particles (rain/snow/aurora/fog/lightning). Requires network. |
+| **SpotifyScenes** | `spotify` — `Media` | Shows current Spotify cover art with transitions. OAuth; deterministic `spotify.playback` preview fixture so previews need no credentials. |
+| **SpotifyMV** | `spotifymv` — `Media` | Auto-plays YouTube music videos for the current Spotify track (yt-dlp + ffmpeg on desktop, muted video piped via UDP to Pi; `prepare_runtime` pre-warms while another scene is active). |
+| **Video** | `video` — `Media` | Plays URL-sourced video (YouTube etc.) decoded on desktop and streamed to a lightweight Pi proxy. Needs desktop app. |
+| **PixelJoint** | `image_scene` — `Images` | Pixel-art & general image provider: `pages` / `collection` / `random` providers scraping PixelJoint; also handles generic URL images. `scene_previews/image_scene.gif` is its preview. |
+| **Countdown** | `countdown` — `Utility` | Countdown to a target date with confetti & firework particles, big-digit modes, pulse effects. |
+| **ExampleScenes** | `color_pulse`, `property_demo`, `rendering_demo` — `Examples` | Minimal reference scenes for plugin authors (see [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)). |
+| **BasicEffects** | *(no scenes — 7 post-processing effects)* `flash`, `rotate`, `glow`, `rgb_split`, `glitch`, `pixelate`, `shockwave` | Screen-wide effects triggerable via `/post_processing/*` or automatically on audio beats. Applied on the Pi even when the scene is remotely rendered. |
+| **Transitions** | *(no scenes — 11 transitions)* `blend`, `swipe`, `morph`, `radial_reveal`, `checker_reveal`, `ordered_dissolve`, `random_dissolve`, `glitch_cut`, `crt_collapse`, `block_dissolve`, `zoom_blend` | Transitions between scenes. Configured per-scene via `transition_name` / `transition_duration`. |
+| **RenderOffload** | *(infrastructure, no scenes)* | Generic desktop scene worker supervisor (`led-matrix-scene-worker`). Packages worker copies of all portable `scenes/` renderers; Pi offloads based on measured per-scene p50/p95 cost, not a static `heavy` flag. |
 
-#### 🎮 **GameScenes Plugin**
-Interactive entertainment with AI-powered gameplay:
-- **Tetris** - Neural network AI plays automatically, optimizing piece placement
-- **Ping Pong** - Classic Pong with intelligent AI opponents
-- **Maze Generator** - Hunt-and-Kill algorithm creates mazes, A* pathfinding solves them
-
-#### 🧮 **FractalScenes Plugin**
-Mathematical beauty in motion:
-- **Julia Set** - Animated fractal visualizations with evolving parameters
-- **Conways Game of Life**
-
-#### 🌦️ **WeatherOverview Plugin**
-Real-world data with style:
-- **Live Weather Display** - Current conditions with animated effects
-- **Weather Animations** - Visual rain, snow, sunshine effects
-
-#### 💻 **GithubScenes Plugin**
-These include scenes, I've found on github:
-Watermelonplasma and Wave effects by [Knifa](https://github.com/Knifa/matryx-gl)
-
-#### 🎭 **Shadertoy Plugin**
-GPU-powered visual effects:
-- **Shader-based Animations** - Renders random (or selected) shaders from shadertoy
-- **Real-time Rendering** - Smooth, performance-optimized effects
-
-#### 🎨 **PixelJoint Plugin**
-Scrapes the PixelJoint website and displays pixel art
-
-#### 🎆 **RGBMatrixAnimations Plugin**
-Physics-based particle systems:
-- **Rain Effects** - Realistic precipitation with gravity
-- **Spark Systems** - Dynamic particle explosions and trails
-- **Gravity Simulations** - Physics-accurate particle behavior
-
-#### 🎵 **AudioVisualizer Plugin**
-[Real-time audio analysis](https://github.com/sshcrack/led-matrix/tree/master/plugins/AudioVisualizer):
-- **Frequency Spectrum** - Live audio visualization (setup required)
-- **Beat Detection** - Intelligent rhythm detection with visual effects
-- **Post-Processing Effects** - Flash and rotate effects triggered by beats
-- **REST API Control** - Manual effect triggering and configuration
-- **Multi-source Audio** - Various input methods supported
-
-#### 🛠️ **ExampleScenes Plugin**
-Development foundation:
-- **Template Scenes** - Starting point for custom plugin development
-- **Reference Implementation** - Best practices demonstration
-
-#### 🌐 **Image & Media**
-- **Remote Image Loading** - Display images from URLs with artistic processing
-- **Multiple Format Support** - Handle various image types and sizes
-- **Dynamic Content** - Real-time image updates and transformations
-_(contained within the PixelJoint Scene)_
+**At a glance:** 7 Ambient + 6 AudioVisualizer + 5 GameScenes + 3 FractalScenes + 3 GenerativeScenes + 2 GithubScenes + 2 RGBMatrixAnimations + 2 WeatherOverview + 1 Shadertoy (+ N custom shaders) + 1 SpotifyScenes + 1 SpotifyMV + 1 Video + 1 PixelJoint + 1 Countdown + 3 ExampleScenes = **39 named scenes** (plus dynamically discovered custom shaders). Effects and transitions are separate from scenes and are listed above.
 
 ### 🔧 **Advanced Features**
 - **Hardware abstraction** supporting various matrix configurations
@@ -174,11 +151,12 @@ Take automation to the next level with intelligent preset scheduling:
 
 ### 🖥️ **C++ Backend**
 The heart of the system - a high-performance application that orchestrates everything:
-- **Scene rendering engine** with smooth animations at 60+ FPS
-- **Plugin management** with many loadable plugins
+- **Scene rendering engine** with smooth animations at 60+ FPS, `FixedStepAccumulator` for FPS-independent physics, and `render_quality_scale()` for adaptive detail
+- **Plugin management** — 18 loadable plugins providing 39 scenes, plus 7 post-processing effects and 11 transitions; plugins auto-register via `register_plugin()` with no root `CMakeLists.txt` edits needed
 - **Hardware interface** supporting multiple matrix configurations
 - **RESTful API server** for external control and integration
 - **Configuration persistence** and real-time updates
+- **Automatic director & diagnostics** — per-scene p50/p95/p99 profiling and `/diagnostics` pressure metrics drive optional remote rendering via the desktop scene worker
 
 ### 🌐 **React Web App**
 A sleek web companion for remote control, also installable as a PWA on mobile:
@@ -726,12 +704,15 @@ This comprehensive guide covers:
 ### 📚 **Study These Plugin Examples**
 
 - **`ExampleScenes/`** - Simple starting template and basic patterns
-- **`AudioVisualizer/`** - Real-time audio analysis and visualization
-- **`WeatherOverview/`** - External API integration and animated displays
-- **`GameScenes/`** - Interactive content and game logic (Tetris, Pong, Maze)
-- **`FractalScenes/`** - Mathematical visualizations and complex algorithms
-- **`SpotifyScenes/`** - OAuth integration and music visualization
-- **`AmbientScenes/`** - Atmospheric effects and procedural generation
+- **`AmbientScenes/`** - Procedural & atmospheric effects (Starfield, Metablob, Clock, etc.)
+- **`AudioVisualizer/`** - Real-time audio analysis and 6 audio-reactive scenes
+- **`GenerativeScenes/`** - Emergent simulations (Boids, Falling Sand, Reaction-Diffusion)
+- **`GameScenes/`** - Self-playing games (Tetris, Pong, Maze, Snake, Pac-Man)
+- **`FractalScenes/`** - Mathematical visualizations (Julia Set, Game of Life, Wave Pattern)
+- **`WeatherOverview/`** - External API integration and animated weather displays
+- **`SpotifyScenes/` / `SpotifyMV` / `Video` / `Shadertoy`** - OAuth, YouTube music videos, video streaming, and GPU shaders (desktop-dependent patterns)
+- **`GithubScenes/` / `RGBMatrixAnimations/` / `PixelJoint/`** - Community ports, particle systems, and image/pixel-art providers
+- **`Countdown/`** - Utility scene with particle celebrations
 
 ### 🚀 **Get Started**
 
