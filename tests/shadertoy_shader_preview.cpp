@@ -92,8 +92,8 @@ void flipRows(std::vector<std::uint8_t> &rgb, const int width, const int height)
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3 || argc > 7) {
-        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=256] [height=128] [frames=120] [audio=synthetic|none]\n";
+    if (argc < 3 || argc > 8) {
+        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=256] [height=128] [frames=120] [audio=synthetic|none] [max-temporal-delta]\n";
         return 2;
     }
 
@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
     const int height = argc >= 5 ? std::stoi(argv[4]) : 128;
     const int frames = argc >= 6 ? std::stoi(argv[5]) : 120;
     const std::string audioMode = argc >= 7 ? argv[6] : "synthetic";
+    const double maxTemporalDeltaLimit = argc >= 8 ? std::stod(argv[7]) : -1.0;
     if (audioMode != "synthetic" && audioMode != "none") {
         std::cerr << "audio must be 'synthetic' or 'none'\n";
         return 2;
@@ -143,10 +144,24 @@ int main(int argc, char **argv) {
 
         constexpr float Fps = 60.0f;
         std::vector<std::uint8_t> rgb;
+        std::vector<std::uint8_t> previousRgb;
+        double temporalDeltaSum = 0.0;
+        double maxTemporalDelta = 0.0;
+        int temporalComparisons = 0;
         for (int frame = 0; frame < frames; ++frame) {
             context.setAudioInput(audioMode == "synthetic" ? syntheticAudio(frame, Fps) : ShaderToy::AudioInput{});
             context.tickFixed(1.0f / Fps, Fps);
             rgb = context.renderToBuffer(ImVec2(static_cast<float>(width), static_cast<float>(height)));
+            if (previousRgb.size() == rgb.size() && !rgb.empty()) {
+                double delta = 0.0;
+                for (std::size_t i = 0; i < rgb.size(); ++i)
+                    delta += std::abs(static_cast<int>(rgb[i]) - static_cast<int>(previousRgb[i]));
+                delta /= static_cast<double>(rgb.size()) * 255.0;
+                temporalDeltaSum += delta;
+                maxTemporalDelta = std::max(maxTemporalDelta, delta);
+                ++temporalComparisons;
+            }
+            previousRgb = rgb;
         }
         if (rgb.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3)
             throw std::runtime_error("Renderer returned an unexpected buffer size");
@@ -160,9 +175,14 @@ int main(int argc, char **argv) {
         const auto [minIt, maxIt] = std::minmax_element(rgb.begin(), rgb.end());
         double sum = 0.0;
         for (const auto byte : rgb) sum += byte;
+        const double temporalMean = temporalComparisons > 0 ? temporalDeltaSum / temporalComparisons : 0.0;
         std::cout << "Rendered " << width << 'x' << height << " after " << frames << ' ' << audioMode << " frames; "
                   << "range=" << static_cast<int>(*minIt) << ".." << static_cast<int>(*maxIt)
-                  << ", mean=" << (sum / static_cast<double>(rgb.size())) << '\n';
+                  << ", mean=" << (sum / static_cast<double>(rgb.size()))
+                  << ", temporal_mean=" << temporalMean << ", temporal_max=" << maxTemporalDelta << '\n';
+        if (maxTemporalDeltaLimit >= 0.0 && maxTemporalDelta > maxTemporalDeltaLimit)
+            throw std::runtime_error("Temporal delta exceeded limit: " + std::to_string(maxTemporalDelta) +
+                                     " > " + std::to_string(maxTemporalDeltaLimit));
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';
         glfwDestroyWindow(window);

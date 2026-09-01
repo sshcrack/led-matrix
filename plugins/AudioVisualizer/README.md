@@ -11,7 +11,9 @@ This plugin adds real-time audio visualization capabilities to your LED Matrix d
 
 ## Usage
 
-The plugin runs a UDP server on port 8888 to receive audio data packets from external clients. The audio data is visualized as a frequency spectrum display on the LED matrix.
+The plugin runs a UDP server on port 8888 to receive rich music-analysis packets from the desktop client. That shared analysis feeds both the remaining native audio scenes and the Shadertoy renderer.
+
+The intentionally distinct native visuals are now `audio_spectrum` (bars/radial/waveform/spectrogram) and `audio_particles` (percussion/drop particle bursts). Older fixed tunnel, aurora, and kaleidoscope implementations were removed after their roles were superseded by visually reviewed GPU shaders. Music Director and Automatic Director prefer curated `shader:*` music scenes when the desktop renderer is connected while retaining the native scenes as genuinely different alternatives.
 
 ### Audio Spectrum Scene
 

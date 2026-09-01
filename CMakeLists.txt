@@ -699,7 +699,7 @@ if(ENABLE_EMULATOR)
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>
             --output ${CMAKE_BINARY_DIR}/audio-preview-smoke
-            --scenes audio_spectrum,audio_particles,audio_pulse_tunnel,audio_aurora,audio_kaleidoscope,music_director
+            --scenes audio_spectrum,audio_particles,music_director
             --frames 36
             --fps 18
             --audio-bpm 132

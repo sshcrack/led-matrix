@@ -5,7 +5,7 @@ endif()
 file(REMOVE_RECURSE "${OUTPUT_DIR}")
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
 set(METRICS "${OUTPUT_DIR}/metrics.json")
-set(SCENES "audio_spectrum,audio_pulse_tunnel,audio_aurora,audio_kaleidoscope,wave_pattern")
+set(SCENES "audio_spectrum,wave_pattern")
 
 execute_process(
     COMMAND "${PREVIEW_GEN}"
@@ -26,7 +26,7 @@ endif()
 
 file(READ "${METRICS}" ACTUAL_JSON)
 file(READ "${BASELINE}" BASELINE_JSON)
-set(SCENE_NAMES audio_spectrum audio_pulse_tunnel audio_aurora audio_kaleidoscope wave_pattern)
+set(SCENE_NAMES audio_spectrum wave_pattern)
 # Average metrics catch broad regressions; max metrics catch the one-frame
 # blowouts/flicker that motivated the audio-visual polish pass.
 set(METRIC_NAMES lit_fraction_average mean_luma_average temporal_change_average lit_fraction_max temporal_change_max)
