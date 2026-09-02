@@ -23,6 +23,15 @@ option(ENABLE_DESKTOP "Build desktop application" OFF)
 # Windows. The rpi-rgb-led-matrix fork provides a native headless emulator on
 # Windows, so worker scenes do not require GPIO, pthreads, mmap, or SDL there.
 option(ENABLE_SCENE_WORKER "Bundle the generic scene offload worker with desktop builds" ON)
+# Scene offload is part of the desktop runtime now. Older desktop build trees may
+# still have ENABLE_SCENE_WORKER=OFF cached from before Windows/Linux worker
+# support became mandatory; heal that stale cache instead of silently packaging
+# a RenderOffload UI that can never start its worker.
+if(ENABLE_DESKTOP AND NOT ENABLE_SCENE_WORKER)
+    message(STATUS "Desktop scene worker is required; overriding cached ENABLE_SCENE_WORKER=OFF")
+    set(ENABLE_SCENE_WORKER ON CACHE BOOL
+        "Bundle the generic scene offload worker with desktop builds" FORCE)
+endif()
 option(DESKTOP_DEBUG_CONSOLE "If the desktop should have a console window for debugging" OFF)
 option(SKIP_WEB_BUILD "Skip building and installing the React web application" OFF)
 
