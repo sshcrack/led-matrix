@@ -11,11 +11,11 @@ if(WIN32)
     # windows.h where needed.
     add_compile_definitions(NOMINMAX _WIN32_WINNT=0x0601 _HAS_STD_BYTE=0)
 endif()
-if(MSVC)
-    # fmt and other UTF-8 dependent headers require /utf-8 on MSVC.
-    # Without it, fmt/base.h triggers: "Unicode support requires compiling with /utf-8"
-    add_compile_options(/utf-8)
-endif()
+# fmt and other UTF-8 dependent headers require /utf-8 on MSVC.
+# Without it, fmt/base.h triggers: "Unicode support requires compiling with /utf-8"
+# Use generator expression so it works before project() (when MSVC var is not yet set).
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 set(RPI_RGB_LED_MATRIX_FONTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shared/fonts)
 
 option(ENABLE_DESKTOP "Build desktop application" OFF)
