@@ -87,6 +87,12 @@ if(ENABLE_DESKTOP)
         endif()
 
         if(WIN32 OR SHADERTOY_XVFB_RUN)
+                # The physical LED matrix is 128x128. Keep automated shader
+                # review at the real geometry so square-composition regressions
+                # cannot be hidden by a widescreen preview.
+                set(SHADERTOY_MATRIX_PREVIEW_WIDTH 128)
+                set(SHADERTOY_MATRIX_PREVIEW_HEIGHT 128)
+
                 file(GLOB BUILTIN_SHADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag")
                 foreach(SHADER_FILE ${BUILTIN_SHADERS})
                         get_filename_component(SHADER_NAME "${SHADER_FILE}" NAME_WE)
@@ -95,14 +101,14 @@ if(ENABLE_DESKTOP)
                                         $<TARGET_FILE:shadertoy_shader_preview>
                                         "${SHADER_FILE}"
                                         "${CMAKE_BINARY_DIR}/shader-previews/${SHADER_NAME}.png"
-                                        128 64 45)
+                                        ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 45)
                         if(SHADER_NAME MATCHES "^music_")
                                 add_test(NAME "shadertoy_shader_${SHADER_NAME}_idle_smoke"
                                         COMMAND ${SHADERTOY_PREVIEW_RUNNER}
                                                 $<TARGET_FILE:shadertoy_shader_preview>
                                                 "${SHADER_FILE}"
                                                 "${CMAKE_BINARY_DIR}/shader-previews/idle/${SHADER_NAME}.png"
-                                                128 64 45 none)
+                                                ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 45 none)
                         endif()
                 endforeach()
 
@@ -116,7 +122,7 @@ if(ENABLE_DESKTOP)
                                         $<TARGET_FILE:shadertoy_shader_preview>
                                         "${TUNNEL_SHADER}"
                                         "${CMAKE_BINARY_DIR}/shader-previews/temporal/music_spectrum_tunnel.png"
-                                        128 64 180 none 0.012)
+                                        ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 180 none 0.012)
                 endif()
         endif()
 endif()

@@ -5,10 +5,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 shader="${1:-}"
 out_dir="${2:-$repo_root/desktop_build/shader-preview-manual}"
 width="${3:-128}"
-height="${4:-64}"
+height="${4:-128}"
 
 if [[ -z "$shader" ]]; then
-  echo "Usage: $0 <shader.frag> [output-dir] [width=128] [height=64]" >&2
+  echo "Usage: $0 <shader.frag> [output-dir] [width=128] [height=128]" >&2
   exit 2
 fi
 

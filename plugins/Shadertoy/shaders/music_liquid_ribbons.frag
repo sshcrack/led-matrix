@@ -40,19 +40,23 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec3 color = vec3(0.0025, 0.005, 0.014);
     color += vec3(0.006, 0.012, 0.028) * (0.35 + 0.65 * (1.0 - screenUv.y));
     float t = iTime * (0.21 + 0.07 * mids);
+    // The physical panel is square. Give the flow enough horizontal phase
+    // travel to feel organic without squeezing the ribbon stack into a narrow
+    // widescreen band.
+    float flowX = uv.x * 1.46;
     float mist = 0.0;
 
     for (int i = 0; i < 7; ++i) {
         float fi = float(i);
-        float lane = (fi - 3.0) * 0.086;
+        float lane = (fi - 3.0) * 0.112;
         float samplePos = clamp(0.06 + fi * 0.145, 0.0, 1.0);
         float band = mix(0.13, sampleAudioSpectrum(iChannel0, samplePos), live);
-        float wave = mix(0.0, sampleAudioWaveform(iChannel0, fract(uv.x * 0.34 + 0.5 + fi * 0.11)), live);
+        float wave = mix(0.0, sampleAudioWaveform(iChannel0, fract(flowX * 0.34 + 0.5 + fi * 0.11)), live);
 
         float phase = t * (1.16 + fi * 0.055) + fi * 1.21;
         float curve = lane
-                    + sin(uv.x * (2.7 + fi * 0.17) + phase) * (0.062 + 0.040 * bass)
-                    + sin(uv.x * 5.2 - phase * 0.74 + fi * 0.83) * (0.018 + 0.018 * mids)
+                    + sin(flowX * (2.7 + fi * 0.17) + phase) * (0.075 + 0.044 * bass)
+                    + sin(flowX * 5.2 - phase * 0.74 + fi * 0.83) * (0.022 + 0.020 * mids)
                     + wave * (0.004 + 0.012 * treble);
         float d = abs(uv.y - curve);
         float width = 0.0105 + 0.0080 * band + 0.0035 * onset + 0.002 * beat;
@@ -60,7 +64,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float halo = exp(-d / (0.026 + 0.020 * band));
         float soft = exp(-d / (0.080 + 0.025 * bass));
 
-        vec3 tint = ribbonPalette(fi * 0.105 + uv.x * 0.075 + iTime * 0.020);
+        vec3 tint = ribbonPalette(fi * 0.105 + flowX * 0.075 + iTime * 0.020);
         float depth = 0.75 + 0.25 * sin(fi * 1.9 + iTime * 0.18);
         color += tint * core * depth * (0.30 + 0.50 * band);
         color += tint * halo * (0.018 + 0.035 * bass);

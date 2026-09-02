@@ -34,21 +34,23 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     color += vec3(0.012, 0.020, 0.060) * (0.42 + 0.58 * (1.0 - uv.y));
     float haze = 0.0;
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         float fi = float(i);
         float phase = iTime * (0.105 + fi * 0.014) + fi * 1.51;
-        float center = 0.245 - fi * 0.088
-                     + 0.060 * sin(p.x * (2.0 + fi * 0.25) + phase)
-                     + 0.022 * sin(p.x * 5.4 - phase * 1.55 + fi);
+        // Spread the curtains over the full square panel instead of composing
+        // them as a narrow widescreen ribbon across the middle.
+        float center = 0.34 - fi * 0.125
+                     + 0.070 * sin(p.x * (2.2 + fi * 0.24) + phase)
+                     + 0.026 * sin(p.x * 5.8 - phase * 1.55 + fi);
         float d = p.y - center;
-        float width = 0.027 + fi * 0.004;
+        float width = 0.031 + fi * 0.0045;
         float crest = exp(-d * d / (width * width * 1.55));
         float halo = exp(-abs(d) / (0.062 + fi * 0.004));
 
         // A soft curtain hangs below each crest. It gives the aurora body and
         // remains readable after the physical matrix's low-resolution sampling.
         float below = max(0.0, center - p.y);
-        float curtain = exp(-below * (4.6 + fi * 0.18))
+        float curtain = exp(-below * (3.65 + fi * 0.16))
                       * (1.0 - smoothstep(0.00, 0.032, d));
         float folds = 0.58 + 0.42 * sin(p.x * (4.1 + fi * 0.31) + phase * 1.3 + sin(p.x * 1.7));
         folds *= folds;
@@ -56,7 +58,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec3 tint = auroraPalette(fract(0.13 * fi + uv.x * 0.24 + iTime * 0.014));
         color += tint * crest * (0.16 + 0.035 * fi);
         color += tint * halo * (0.018 + 0.007 * fi);
-        color += tint * curtain * folds * (0.018 + 0.010 * fi);
+        color += tint * curtain * folds * (0.021 + 0.009 * fi);
         haze += halo * 0.020;
     }
 
