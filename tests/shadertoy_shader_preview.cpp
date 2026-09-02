@@ -93,13 +93,13 @@ void flipRows(std::vector<std::uint8_t> &rgb, const int width, const int height)
 
 int main(int argc, char **argv) {
     if (argc < 3 || argc > 8) {
-        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=256] [height=128] [frames=120] [audio=synthetic|none] [max-temporal-delta]\n";
+        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=128] [height=128] [frames=120] [audio=synthetic|none] [max-temporal-delta]\n";
         return 2;
     }
 
     const std::filesystem::path shaderPath = argv[1];
     const std::filesystem::path outputPath = argv[2];
-    const int width = argc >= 4 ? std::stoi(argv[3]) : 256;
+    const int width = argc >= 4 ? std::stoi(argv[3]) : 128;
     const int height = argc >= 5 ? std::stoi(argv[4]) : 128;
     const int frames = argc >= 6 ? std::stoi(argv[5]) : 120;
     const std::string audioMode = argc >= 7 ? argv[6] : "synthetic";
