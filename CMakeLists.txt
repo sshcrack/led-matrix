@@ -260,6 +260,11 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
         add_dependencies(led-matrix-scene-worker ${SCENE_WORKER_PLUGIN_TARGETS})
     endif()
 
+    # The worker is part of the desktop runtime, not an optional standalone
+    # tool. Keep targeted/IDE builds of the desktop executable from producing
+    # a GUI that cannot offload scenes.
+    add_dependencies(${PROJECT_NAME} led-matrix-scene-worker)
+
     install(TARGETS led-matrix-scene-worker
         RUNTIME DESTINATION bin
     )
@@ -282,6 +287,17 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     )
     set_tests_properties(scene_worker_render_smoke PROPERTIES
         PASS_REGULAR_EXPRESSION "\"ok\":true"
+    )
+
+    add_test(NAME desktop_scene_worker_build_dependency_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DBUILD_DIR=${CMAKE_BINARY_DIR}
+            -DWORKER_FILE=$<TARGET_FILE:led-matrix-scene-worker>
+            -DCONFIG=$<CONFIG>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_scene_worker_build_dependency_smoke.cmake
+    )
+    set_tests_properties(desktop_scene_worker_build_dependency_smoke PROPERTIES
+        RUN_SERIAL TRUE
     )
 endif()
 if(ENABLE_DESKTOP)
