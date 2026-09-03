@@ -29,7 +29,7 @@ fi
 
 # --- Create runtime data directory owned by pi (post-drop identity) ---
 DATA_DIR=/var/lib/led-matrix
-mkdir -p "$DATA_DIR/data"
+mkdir -p "$DATA_DIR/data" "$DATA_DIR/crashes"
 if id pi >/dev/null 2>&1; then
     chown -R pi:pi "$DATA_DIR"
 fi
