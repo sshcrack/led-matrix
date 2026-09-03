@@ -9,6 +9,7 @@
 
 #include <shared/common/utils/utils.h>
 #include <shared/desktop/config.h>
+#include <shared/desktop/utils.h>
 
 #ifndef _WIN32
 #include <cerrno>
@@ -108,7 +109,12 @@ bool RenderOffloadDesktop::worker_alive()
 #ifdef _WIN32
     if (!worker_process_.hProcess) return false;
     DWORD code = 0;
-    if (!GetExitCodeProcess(worker_process_.hProcess, &code) || code != STILL_ACTIVE) {
+    const bool got_exit_code = GetExitCodeProcess(worker_process_.hProcess, &code) != FALSE;
+    if (!got_exit_code || code != STILL_ACTIVE) {
+        if (!got_exit_code)
+            spdlog::warn("Failed to query scene worker exit code (Windows error {})", GetLastError());
+        else
+            spdlog::warn("Scene worker exited unexpectedly with code {}", code);
         CloseHandle(worker_process_.hProcess);
         CloseHandle(worker_process_.hThread);
         worker_process_ = {};
@@ -120,7 +126,17 @@ bool RenderOffloadDesktop::worker_alive()
     int status = 0;
     const pid_t result = waitpid(worker_pid_, &status, WNOHANG);
     if (result == 0) return true;
-    if (result == worker_pid_ || (result < 0 && errno == ECHILD)) {
+    if (result == worker_pid_) {
+        if (WIFEXITED(status))
+            spdlog::warn("Scene worker exited unexpectedly with code {}", WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            spdlog::warn("Scene worker exited unexpectedly from signal {}", WTERMSIG(status));
+        else
+            spdlog::warn("Scene worker exited unexpectedly");
+        worker_pid_ = -1;
+        return false;
+    }
+    if (result < 0 && errno == ECHILD) {
         worker_pid_ = -1;
         return false;
     }
@@ -158,6 +174,7 @@ void RenderOffloadDesktop::ensure_worker()
 bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t port)
 {
     const auto executable = worker_executable();
+    const auto crash_dir = get_data_dir() / "crashes";
     if (!fs::is_regular_file(executable)) {
         std::lock_guard lock(mutex_);
         worker_error_ = "led-matrix-scene-worker is missing from the desktop installation";
@@ -167,7 +184,8 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
 
 #ifdef _WIN32
     std::string command = "\"" + executable.string() + "\" --host \"" + host
-        + "\" --port " + std::to_string(port);
+        + "\" --port " + std::to_string(port) + " --crash-dir \""
+        + crash_dir.string() + "\"";
     std::vector<char> cmdline(command.begin(), command.end());
     cmdline.push_back('\0');
     STARTUPINFOA startup{};
@@ -194,7 +212,8 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
     if (pid == 0) {
         const auto port_string = std::to_string(port);
         execl(executable.c_str(), executable.c_str(), "--host", host.c_str(),
-              "--port", port_string.c_str(), static_cast<char *>(nullptr));
+              "--port", port_string.c_str(), "--crash-dir", crash_dir.c_str(),
+              static_cast<char *>(nullptr));
         _exit(127);
     }
     worker_pid_ = pid;

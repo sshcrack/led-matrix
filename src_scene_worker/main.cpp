@@ -45,6 +45,7 @@
 #include "led-matrix.h"
 
 #include <shared/common/remote_render_protocol.h>
+#include <shared/common/crash_reporter.h>
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/audio_state.h>
@@ -65,6 +66,7 @@ struct Args {
     std::string host;
     std::uint16_t port = 8080;
     fs::path plugin_dir;
+    fs::path crash_dir;
     bool list_scenes = false;
     bool self_test = false;
 };
@@ -84,10 +86,11 @@ Args parse_args(int argc, char **argv)
             if (port < 1 || port > 65535) throw std::runtime_error("invalid port");
             args.port = static_cast<std::uint16_t>(port);
         } else if (value == "--plugin-dir") args.plugin_dir = next();
+        else if (value == "--crash-dir") args.crash_dir = next();
         else if (value == "--list-scenes") args.list_scenes = true;
         else if (value == "--self-test") args.self_test = true;
         else if (value == "--help") {
-            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--plugin-dir path] [--list-scenes] [--self-test]");
+            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--plugin-dir path] [--crash-dir path] [--list-scenes] [--self-test]");
         } else {
             throw std::runtime_error("unknown argument: " + value);
         }
@@ -289,6 +292,7 @@ struct RenderRuntime {
         matrix = nullptr;
         session = sequence = 0;
         width = height = 0;
+        CrashReporter::set_activity("scene worker idle");
     }
 
     void start(const nlohmann::json &command)
@@ -339,6 +343,8 @@ struct RenderRuntime {
             scene->restore_runtime_state(*state);
         sequence = 0;
         next_frame = Clock::now();
+        CrashReporter::set_activity(std::string("offloading scene '") + scene->get_name()
+            + "' session " + std::to_string(session));
         spdlog::info("Remote scene '{}' started (session {}, {}x{} @ {} FPS)",
                      scene->get_name(), session, width, height, target_fps);
     }
@@ -351,6 +357,12 @@ int main(int argc, char **argv)
     spdlog::cfg::load_env_levels();
     try {
         const auto args = parse_args(argc, argv);
+        const auto crash_dir = args.crash_dir.empty()
+            ? (fs::temp_directory_path() / "led-matrix-crashes")
+            : args.crash_dir;
+        CrashReporter::install({"led-matrix-scene-worker", crash_dir});
+        CrashReporter::attach_to_default_logger();
+        CrashReporter::set_activity("initializing scene worker");
         // --list-scenes is a machine-readable capability probe used by tests
         // and diagnostics. Keep stdout as a single JSON document.
         if (args.list_scenes || args.self_test)
@@ -535,6 +547,7 @@ int main(int argc, char **argv)
         ix::uninitNetSystem();
         return 0;
     } catch (const std::exception &e) {
+        CrashReporter::report_exception("scene worker fatal exception", e.what());
         spdlog::critical("Scene worker failed: {}", e.what());
         return 1;
     }

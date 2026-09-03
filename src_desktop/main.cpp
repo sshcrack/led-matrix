@@ -8,6 +8,7 @@
 
 // Project includes
 #include "shared/desktop/WebsocketClient.h"
+#include <shared/common/crash_reporter.h>
 #include <shared/common/utils/utils.h>
 #include <hello_imgui/hello_imgui.h>
 #include "imgui_stdlib.h"
@@ -174,7 +175,17 @@ static void init_plugins() {
 
 // ---- Main application logic ----
 int run_app(int argc, char *argv[]) {
+    fs::path crash_dir;
+    try {
+        crash_dir = get_data_dir() / "crashes";
+    } catch (...) {
+        crash_dir = fs::temp_directory_path() / "led-matrix-desktop-crashes";
+    }
+    CrashReporter::install({"led-matrix-desktop", crash_dir});
     setup_logging();
+    CrashReporter::attach_to_default_logger();
+    CrashReporter::set_activity("initializing desktop controller");
+    spdlog::info("Crash reports are written to {}", crash_dir.string());
 
     SingleInstanceManager *instanceManager = nullptr;
     try {
@@ -583,7 +594,9 @@ int run_app(int argc, char *argv[]) {
     std::signal(SIGTERM, signal_handler);
 #endif
 
+    CrashReporter::set_activity("desktop UI event loop");
     HelloImGui::Run(runnerParams);
+    CrashReporter::set_activity("shutting down desktop controller");
     spdlog::info("Exiting tray thread...");
     ws->stop();
     tray.exit();
@@ -637,9 +650,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     try {
         result = inner_main(argc, argv);
     } catch (const std::exception &e) {
+        CrashReporter::report_exception("desktop startup exception", e.what());
         std::ofstream(get_exec_dir() / "startup-error.log", std::ios::trunc) << e.what() << '\n';
         MessageBoxA(nullptr, e.what(), "LED Matrix Controller startup error", MB_OK | MB_ICONERROR);
     } catch (...) {
+        CrashReporter::report_exception("desktop startup exception", "unknown exception");
         std::ofstream(get_exec_dir() / "startup-error.log", std::ios::trunc)
             << "An unknown exception occurred during startup.\n";
         MessageBoxA(nullptr, "An unknown exception occurred during startup.",

@@ -119,6 +119,21 @@ add_compile_definitions(
     PROJECT_VERSION_STRING="${PROJECT_VERSION}"
 )
 
+# Persist the exact source revision in crash reports so an address/minidump can
+# be matched back to the build that produced it. Configure still succeeds when
+# building from a source archive without .git metadata.
+execute_process(
+    COMMAND git rev-parse --short=12 HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE LED_MATRIX_GIT_REVISION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE LED_MATRIX_GIT_REVISION_RESULT
+)
+if(NOT LED_MATRIX_GIT_REVISION_RESULT EQUAL 0 OR LED_MATRIX_GIT_REVISION STREQUAL "")
+    set(LED_MATRIX_GIT_REVISION "unknown")
+endif()
+
 
 # Add update testing flag if enabled
 if(ENABLE_UPDATE_TESTING)
@@ -214,6 +229,9 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     )
     target_compile_features(led-matrix-scene-worker PRIVATE cxx_std_23)
     target_compile_definitions(led-matrix-scene-worker PRIVATE ENABLE_EMULATOR SCENE_WORKER)
+    if(NOT WIN32)
+        target_link_options(led-matrix-scene-worker PRIVATE -rdynamic)
+    endif()
 
     # The installed worker lives beside led-matrix-desktop and resolves shared
     # libraries from ../lib/led-matrix-desktop. In the build tree those same
@@ -309,6 +327,45 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
         RUN_SERIAL TRUE
     )
 endif()
+# CrashReporter is shared by the Linux/Pi daemon, Linux/Windows desktop, and
+# scene worker. Native development builds exercise both std::terminate and the
+# OS fatal-crash path in a subprocess so the handler itself is regression-tested.
+if(ENABLE_DESKTOP OR ENABLE_EMULATOR)
+    add_executable(crash_reporter_probe tests/crash_reporter_probe.cpp)
+    target_compile_features(crash_reporter_probe PRIVATE cxx_std_23)
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(crash_reporter_probe PRIVATE SharedToolsCommon spdlog::spdlog)
+    if(WIN32)
+        # Project DLLs are not covered by vcpkg's applocal step. Keep the probe
+        # self-contained so native Windows CTest can exercise the real handler.
+        add_custom_command(TARGET crash_reporter_probe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:SharedToolsCommon>"
+                $<TARGET_RUNTIME_DLLS:crash_reporter_probe>
+                "$<TARGET_FILE_DIR:crash_reporter_probe>"
+            COMMAND_EXPAND_LISTS
+        )
+    else()
+        target_link_options(crash_reporter_probe PRIVATE -rdynamic)
+        set_target_properties(crash_reporter_probe PROPERTIES
+            BUILD_WITH_INSTALL_RPATH FALSE
+            BUILD_RPATH "$<TARGET_FILE_DIR:SharedToolsCommon>"
+        )
+    endif()
+
+    foreach(CRASH_MODE terminate segfault exception)
+        add_test(NAME crash_reporter_${CRASH_MODE}_smoke
+            COMMAND ${CMAKE_COMMAND}
+                -DPROBE=$<TARGET_FILE:crash_reporter_probe>
+                -DCRASH_DIR=${CMAKE_BINARY_DIR}/crash-reporter-${CRASH_MODE}
+                -DMODE=${CRASH_MODE}
+                -DWIN32_TEST=${WIN32}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/crash_reporter_smoke.cmake
+        )
+        set_tests_properties(crash_reporter_${CRASH_MODE}_smoke PROPERTIES RUN_SERIAL TRUE)
+    endforeach()
+endif()
+
 if(ENABLE_DESKTOP)
     add_executable(desktop_stream_state_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_stream_state_smoke.cpp
@@ -385,6 +442,9 @@ endif()
 
 # Main Target Compile
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+if(NOT WIN32)
+    target_link_options(${PROJECT_NAME} PRIVATE -rdynamic)
+endif()
 
 # Add emulator flag if enabled
 if(ENABLE_EMULATOR)
