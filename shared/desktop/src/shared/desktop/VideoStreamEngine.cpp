@@ -517,7 +517,7 @@ std::string VideoStreamEngine::build_ytdlp_command(
     const std::filesystem::path& output_path, int start_sec, int end_sec) const
 {
     return fmt::format(
-        "{} -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "{} -4 -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
         "--force-overwrites -o \"{}\" \"{}\"",
         get_ytdlp_command(), start_sec, end_sec, output_path.string(), current_url_);
 }

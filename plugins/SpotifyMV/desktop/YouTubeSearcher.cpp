@@ -26,7 +26,7 @@ std::string YouTubeSearcher::search(const std::string& query) {
     return "";
   }
   std::string cmd = get_ytdlp_command() + " \"ytsearch1:" + safe + "\" "
-                    "--flat-playlist --print webpage_url --no-warnings 2>"
+                    "--flat-playlist --print webpage_url --no-warnings -4 2>"
 #ifdef _WIN32
                     "nul"
 #else
