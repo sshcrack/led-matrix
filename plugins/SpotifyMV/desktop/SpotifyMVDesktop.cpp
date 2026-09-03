@@ -30,6 +30,12 @@ ImVec4 engine_state_color(Shared::VideoStreamEngine::State s) {
     return {1, 1, 1, 1};
 }
 
+void draw_error_text(const char* prefix, const std::string& error) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
+    ImGui::TextWrapped("%s%s", prefix, error.c_str());
+    ImGui::PopStyleColor();
+}
+
 void draw_engine_status(Shared::VideoStreamEngine::State state,
                          const std::string& error) {
     ImGui::TextColored(engine_state_color(state), "State: %s",
@@ -37,7 +43,7 @@ void draw_engine_status(Shared::VideoStreamEngine::State state,
     ImGui::SameLine();
     ImGui::ProgressBar(0, ImVec2(-FLT_MIN, 0), "");
     if (state == Shared::VideoStreamEngine::State::Error && !error.empty())
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", error.c_str());
+        draw_error_text("", error);
 }
 
 } // anonymous namespace
@@ -252,9 +258,9 @@ void SpotifyMVDesktop::render() {
 
     // ── Error display ────────────────────────────────────────────────────
     if (cur_state == Shared::VideoStreamEngine::State::Error && !cur_error.empty())
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", cur_error.c_str());
+        draw_error_text("Error: ", cur_error);
     if (has_pending && pend_state == Shared::VideoStreamEngine::State::Error && !pend_error.empty())
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Pending Error: %s", pend_error.c_str());
+        draw_error_text("Pending Error: ", pend_error);
 
     // ── Debug section ───────────────────────────────────────────────────
     if (ImGui::CollapsingHeader("Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -697,7 +703,7 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
-    std::string durCmd = get_ytdlp_command() + " --no-warnings -4 --print duration \"" + url + "\" 2>"
+    std::string durCmd = get_ytdlp_network_command() + " --no-warnings --print duration \"" + url + "\" 2>"
 #ifdef _WIN32
                          "nul";
 #else
