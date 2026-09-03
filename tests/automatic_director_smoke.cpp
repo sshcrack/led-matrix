@@ -257,6 +257,26 @@ int main()
         return 17;
     }
 
+    RuntimeInputs::InputState aged_playback;
+    aged_playback.available = true;
+    aged_playback.age_seconds = 5.0;
+    aged_playback.signals = {
+        {"playing", true}, {"track_id", std::string("aged-track")},
+        {"progress_ms", std::int64_t{20000}}, {"duration_ms", std::int64_t{100000}}
+    };
+    RuntimeInputs::Snapshot aged_snapshot({
+        {std::string(RuntimeInputIds::SpotifyPlayback), aged_playback}
+    });
+    AutomaticDirector aged_director(27);
+    (void)aged_director.choose(scenes, aged_snapshot);
+    const auto aged_context = aged_director.diagnostics()["context"];
+    const float aged_progress = aged_context.value("spotify_progress", 0.0f);
+    if (aged_progress < 0.249f || aged_progress > 0.251f) {
+        std::cerr << "Automatic Director did not interpolate Spotify playback age: "
+                  << aged_progress << "\n";
+        return 24;
+    }
+
     // The global director should consume musical structure itself instead of
     // relying on the nested MusicDirector scene. A section event after minimum
     // dwell creates a sparse handoff opportunity.

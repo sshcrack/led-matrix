@@ -167,7 +167,11 @@ void SpotifyMVPlugin::publish_runtime_state() {
     signals.emplace("track_id", track_id);
 
   if (tools_ready) {
-    RuntimeInputs::publish(RuntimeInputIds::SpotifyMVReady, std::move(signals), std::chrono::seconds(5));
+    // This is capability/preparation state, not a heartbeat. Automatic Mode can
+    // intentionally wait several seconds for a clean insertion point, so a TTL
+    // here can expire a perfectly prepared MV before the Director may select it.
+    // Desktop disconnect eligibility is tracked separately by the Desktop input.
+    RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, true, std::move(signals));
   } else {
     RuntimeInputs::set_available(RuntimeInputIds::SpotifyMVReady, false, std::move(signals));
   }

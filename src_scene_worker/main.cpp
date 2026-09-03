@@ -37,6 +37,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <sys/file.h>
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 
@@ -69,6 +71,73 @@ struct Args {
     fs::path crash_dir;
     bool list_scenes = false;
     bool self_test = false;
+};
+
+
+class WorkerSingletonGuard {
+public:
+    WorkerSingletonGuard() = default;
+    WorkerSingletonGuard(const WorkerSingletonGuard&) = delete;
+    WorkerSingletonGuard& operator=(const WorkerSingletonGuard&) = delete;
+
+    ~WorkerSingletonGuard()
+    {
+#ifdef _WIN32
+        if (mutex_) {
+            ReleaseMutex(mutex_);
+            CloseHandle(mutex_);
+        }
+#else
+        if (lock_fd_ >= 0)
+            close(lock_fd_);
+#endif
+    }
+
+    bool acquire(const std::string& host, std::uint16_t port)
+    {
+        std::uint64_t key = 1469598103934665603ULL;
+        for (const unsigned char c : host) {
+            key ^= c;
+            key *= 1099511628211ULL;
+        }
+        key ^= static_cast<std::uint8_t>(port & 0xffU);
+        key *= 1099511628211ULL;
+        key ^= static_cast<std::uint8_t>((port >> 8U) & 0xffU);
+        key *= 1099511628211ULL;
+        const auto key_text = std::to_string(key);
+#ifdef _WIN32
+        const auto mutex_name = "Local\\LedMatrixSceneWorker-" + key_text;
+        mutex_ = CreateMutexA(nullptr, TRUE, mutex_name.c_str());
+        if (!mutex_)
+            return false;
+        if (GetLastError() == ERROR_ALREADY_EXISTS) {
+            CloseHandle(mutex_);
+            mutex_ = nullptr;
+            return false;
+        }
+        return true;
+#else
+        const auto lock_path = fs::temp_directory_path()
+            / ("led-matrix-scene-worker-" + std::to_string(static_cast<unsigned long>(getuid()))
+               + "-" + key_text + ".lock");
+        lock_fd_ = open(lock_path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+        if (lock_fd_ < 0)
+            return false;
+        if (flock(lock_fd_, LOCK_EX | LOCK_NB) != 0) {
+            close(lock_fd_);
+            lock_fd_ = -1;
+            return false;
+        }
+        return true;
+#endif
+    }
+
+private:
+#ifdef _WIN32
+    HANDLE mutex_ = nullptr;
+#else
+    int lock_fd_ = -1;
+#endif
 };
 
 Args parse_args(int argc, char **argv)
@@ -367,6 +436,13 @@ int main(int argc, char **argv)
         // and diagnostics. Keep stdout as a single JSON document.
         if (args.list_scenes || args.self_test)
             spdlog::set_level(spdlog::level::off);
+
+        WorkerSingletonGuard singleton;
+        if (!args.list_scenes && !args.self_test && !singleton.acquire(args.host, args.port)) {
+            spdlog::error("Another led-matrix scene worker is already running; refusing duplicate renderer");
+            return 3;
+        }
+
         const auto plugin_dir = find_plugin_dir(args.plugin_dir);
         set_plugin_dir_env(plugin_dir);
         Magick::InitializeMagick(*argv);

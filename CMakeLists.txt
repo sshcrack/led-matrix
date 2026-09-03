@@ -316,6 +316,17 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
         PASS_REGULAR_EXPRESSION "\"ok\":true"
     )
 
+    add_executable(scene_worker_singleton_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_worker_singleton_smoke.cpp
+    )
+    target_compile_features(scene_worker_singleton_smoke PRIVATE cxx_std_23)
+    add_test(NAME scene_worker_singleton_smoke
+        COMMAND $<TARGET_FILE:scene_worker_singleton_smoke>
+            $<TARGET_FILE:led-matrix-scene-worker>
+            ${CMAKE_BINARY_DIR}/scene_plugins
+    )
+    set_tests_properties(scene_worker_singleton_smoke PROPERTIES RUN_SERIAL TRUE)
+
     add_test(NAME desktop_scene_worker_build_dependency_smoke
         COMMAND ${CMAKE_COMMAND}
             -DBUILD_DIR=${CMAKE_BINARY_DIR}
@@ -617,6 +628,35 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME runtime_inputs_smoke COMMAND $<TARGET_FILE:runtime_inputs_smoke>)
     set_tests_properties(runtime_inputs_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(spotify_progress_interpolation_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_progress_interpolation_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes/matrix/manager/state.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes/matrix/manager/track.cpp
+    )
+    target_compile_features(spotify_progress_interpolation_smoke PRIVATE cxx_std_23)
+    target_include_directories(spotify_progress_interpolation_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(spotify_progress_interpolation_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json PkgConfig::GraphicsMagick
+    )
+    add_test(NAME spotify_progress_interpolation_smoke COMMAND $<TARGET_FILE:spotify_progress_interpolation_smoke>)
+    set_tests_properties(spotify_progress_interpolation_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(spotify_mv_runtime_ready_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_runtime_ready_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+    )
+    target_compile_features(spotify_mv_runtime_ready_smoke PRIVATE cxx_std_23)
+    target_include_directories(spotify_mv_runtime_ready_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(spotify_mv_runtime_ready_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json
+        fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick ${CMAKE_DL_LIBS}
+    )
+    if(MATRIX_PLUGIN_TARGETS)
+        add_dependencies(spotify_mv_runtime_ready_smoke ${MATRIX_PLUGIN_TARGETS})
+    endif()
+    add_test(NAME spotify_mv_runtime_ready_smoke COMMAND $<TARGET_FILE:spotify_mv_runtime_ready_smoke>)
+    set_tests_properties(spotify_mv_runtime_ready_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(transition_planner_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/transition_planner_smoke.cpp
