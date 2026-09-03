@@ -137,11 +137,14 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                             std::lock_guard<std::mutex> lock(frame_mutex_);
                             current_frame_ = buffer;
                         }
+                        std::function<void()> first_frame_cb;
                         {
                             std::lock_guard<std::mutex> lk(status_cb_mutex_);
                             if (on_first_frame_ready && !first_frame_fired_.exchange(true))
-                                on_first_frame_ready();
+                                first_frame_cb = on_first_frame_ready;
                         }
+                        if (first_frame_cb)
+                            first_frame_cb();
                         std::this_thread::sleep_for(
                             std::chrono::duration<double>(1.0 / fps_));
                     }
@@ -456,11 +459,14 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             current_frame_ = buffer;
         }
+        std::function<void()> first_frame_cb;
         {
             std::lock_guard<std::mutex> lk(status_cb_mutex_);
             if (on_first_frame_ready && !first_frame_fired_.exchange(true))
-                on_first_frame_ready();
+                first_frame_cb = on_first_frame_ready;
         }
+        if (first_frame_cb)
+            first_frame_cb();
         ++frames_played;
         std::this_thread::sleep_for(std::chrono::duration<double>(1.0 / fps_));
     }
@@ -521,7 +527,8 @@ void VideoStreamEngine::stop() {
     }
 
     std::function<void(const std::string &)> tmp_status_change;
-    // Clear the status callback BEFORE joining threads.
+    std::function<void()> tmp_first_frame_ready;
+    // Clear callbacks BEFORE joining threads.
     // The processing_thread_ calls notify_status() just before it exits, which fires
     // on_status_change — a lambda that typically captures the parent plugin's `this`
     // pointer (e.g. to call send_websocket_message). If stop() is called from the
@@ -531,6 +538,7 @@ void VideoStreamEngine::stop() {
     {
         std::lock_guard<std::mutex> lk(status_cb_mutex_);
         tmp_status_change = on_status_change;
+        tmp_first_frame_ready = on_first_frame_ready;
         on_status_change = nullptr;
         on_first_frame_ready = nullptr;
     }
@@ -555,7 +563,11 @@ void VideoStreamEngine::stop() {
         std::lock_guard<std::mutex> lock(frame_mutex_);
         current_frame_.clear();
     }
-    on_status_change = tmp_status_change;
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        on_status_change = std::move(tmp_status_change);
+        on_first_frame_ready = std::move(tmp_first_frame_ready);
+    }
     state_ = State::Idle;
 }
 
@@ -782,9 +794,13 @@ void VideoStreamEngine::set_last_error(const std::string& msg) {
 }
 
 void VideoStreamEngine::notify_status(const std::string& s) {
-    std::lock_guard<std::mutex> lk(status_cb_mutex_);
-    if (on_status_change)
-        on_status_change(s);
+    std::function<void(const std::string&)> callback;
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        callback = on_status_change;
+    }
+    if (callback)
+        callback(s);
 }
 
 } // namespace Shared

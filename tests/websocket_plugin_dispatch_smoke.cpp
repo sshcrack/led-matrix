@@ -3,11 +3,14 @@
 
 #include <ixwebsocket/IXWebSocketServer.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <mutex>
+#include <vector>
 #include <string>
 #include <thread>
 
@@ -46,13 +49,32 @@ int main()
     write_executable(bin / "yt-dlp", R"SH(#!/bin/sh
 if [ "$1" = "--version" ]; then echo fake-yt-dlp; exit 0; fi
 case "$*" in
-  *ytsearch1:*) sleep 3; echo 'https://www.youtube.com/watch?v=fake'; exit 0 ;;
-  *) echo 180; exit 0 ;;
+  *ytsearch1:*SlowSong*) sleep 3; echo 'https://www.youtube.com/watch?v=slow'; exit 0 ;;
+  *ytsearch1:*) echo 'https://www.youtube.com/watch?v=fast'; exit 0 ;;
+  *"--print duration"*) echo 180; exit 0 ;;
 esac
+out=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "-o" ]; then out="$arg"; break; fi
+  prev="$arg"
+done
+if [ -n "$out" ]; then : > "$out"; exit 0; fi
+exit 0
 )SH");
     write_executable(bin / "ffmpeg", R"SH(#!/bin/sh
 if [ "$1" = "-version" ]; then echo fake-ffmpeg; exit 0; fi
-exit 0
+case "$*" in
+  *pipe:1*)
+    dd if=/dev/zero bs=49152 count=3 2>/dev/null
+    exit 0
+    ;;
+  *)
+    eval "last=\${$#}"
+    dd if=/dev/zero of="$last" bs=49152 count=3 2>/dev/null
+    exit 0
+    ;;
+esac
 )SH");
 
     const char* old_path = std::getenv("PATH");
@@ -76,7 +98,14 @@ exit 0
 
     const int server_port = 19000 + (static_cast<int>(::getpid()) % 10000);
     ix::WebSocketServer server(server_port, "127.0.0.1");
-    server.setOnClientMessageCallback([](auto, auto&, const auto&) {});
+    std::mutex received_mutex;
+    std::vector<std::string> received_messages;
+    server.setOnClientMessageCallback([&](auto, auto&, const auto& message) {
+        if (message->type != ix::WebSocketMessageType::Message)
+            return;
+        std::lock_guard lock(received_mutex);
+        received_messages.push_back(message->str);
+    });
     if (!server.listenAndStart()) {
         std::cerr << "failed to start local WebSocket server\n";
         return 3;
@@ -116,7 +145,7 @@ exit 0
         return 5;
     }
 
-    peer->send("msg:SpotifyMV:track:track-a:Song\nArtist\nofficial music video\ntrue\n0\n180000");
+    peer->send("msg:SpotifyMV:track:track-a:SlowSong\nArtist\nofficial music video\ntrue\n0\n180000");
     std::this_thread::sleep_for(100ms);
 
     // This stop intentionally makes SpotifyMV cancel/join an in-flight search.
@@ -134,6 +163,31 @@ exit 0
         std::cerr << "WebSocket control callback was blocked by slow SpotifyMV stop\n";
         return 1;
     }
+
+    // Now exercise the opposite edge: a fast/cached decode can produce its
+    // first frame immediately. SpotifyMV must have installed the readiness
+    // callback before start(), otherwise the matrix never receives track:ready
+    // even though the engine is already Playing.
+    peer->send("msg:SpotifyMV:track:track-fast:FastSong\nArtist\nofficial music video\ntrue\n0\n0");
+    const auto ready_deadline = std::chrono::steady_clock::now() + 3s;
+    bool first_frame_ready = false;
+    while (std::chrono::steady_clock::now() < ready_deadline) {
+        {
+            std::lock_guard lock(received_mutex);
+            first_frame_ready = std::find(received_messages.begin(), received_messages.end(),
+                                          "msg:SpotifyMV:track:ready:track-fast") != received_messages.end();
+        }
+        if (first_frame_ready)
+            break;
+        std::this_thread::sleep_for(10ms);
+    }
+    if (!first_frame_ready) {
+        std::cerr << "fast SpotifyMV first frame never published track readiness\n";
+        return 10;
+    }
+
+    peer->send("msg:SpotifyMV:stop");
+    std::this_thread::sleep_for(50ms);
 
     // Drop the connection from the server side while leaving the listener up.
     // The initial application start (not a later UI click) must have armed
