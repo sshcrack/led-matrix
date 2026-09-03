@@ -24,6 +24,46 @@ inline const char* null_device() {
 #endif
 }
 
+std::string command_error_summary(const std::string& output) {
+    std::string error_line;
+    std::string fallback_line;
+    std::string line;
+
+    auto consider = [&](std::string candidate) {
+        candidate.erase(std::remove_if(candidate.begin(), candidate.end(), [](unsigned char c) {
+            return c < 0x20 && c != '\t';
+        }), candidate.end());
+        const auto first = candidate.find_first_not_of(" \t");
+        if (first == std::string::npos)
+            return;
+        candidate.erase(0, first);
+        const auto last = candidate.find_last_not_of(" \t");
+        if (last != std::string::npos)
+            candidate.erase(last + 1);
+        if (candidate.empty())
+            return;
+        fallback_line = candidate;
+        if (candidate.find("ERROR:") != std::string::npos)
+            error_line = candidate;
+    };
+
+    for (char c : output) {
+        if (c == '\n' || c == '\r') {
+            consider(std::move(line));
+            line.clear();
+        } else {
+            line.push_back(c);
+        }
+    }
+    consider(std::move(line));
+
+    std::string result = !error_line.empty() ? error_line : fallback_line;
+    constexpr std::size_t MaxSummary = 700;
+    if (result.size() > MaxSummary)
+        result = result.substr(0, MaxSummary - 3) + "...";
+    return result;
+}
+
 } // anonymous namespace
 
 namespace Shared {
@@ -162,15 +202,19 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     });
 
                     // Play the fast clip while the full chunk downloads in the background.
-                    // If fast start fails (e.g. yt-dlp flake) we fall through and wait
-                    // for the full chunk like before — no UX regression.
+                    // If stop() races the fast clip, remember the cancellation but
+                    // still join full_chunk_thread before leaving this scope. Destroying
+                    // a joinable std::thread calls std::terminate(), which used to make
+                    // quick track changes / shutdowns crash the desktop here.
+                    bool fast_start_cancelled = false;
                     if (running_.load()) {
-                        if (!play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_) && !running_.load()) {
-                            break;
-                        }
+                        if (!play_fast_chunk(fast_start_sec, fast_chunk_duration_sec_) && !running_.load())
+                            fast_start_cancelled = true;
                     }
 
-                    // Now wait for the full chunk to be ready
+                    // Now wait for the full chunk to be ready. This join is mandatory
+                    // even on cancellation; full_chunk_thread owns a cancellable yt-dlp
+                    // child and observes running_ becoming false.
                     if (full_chunk_thread.joinable()) {
                         // Show downloading state again while we wait (fast clip has ended)
                         if (running_.load() && !full_chunk_done->load()) {
@@ -180,9 +224,8 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                         full_chunk_thread.join();
                     }
 
-                    if (!full_chunk_ok->load()) {
+                    if (fast_start_cancelled || !full_chunk_ok->load())
                         break;
-                    }
                     // The full chunk now starts at fast_start_sec (aligned to the
                     // seek point), so we only skip frames the fast chunk already
                     // played — not the gap between the chunk boundary and the seek.
@@ -300,9 +343,13 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     // Download the short clip
     std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, start_sec + duration_sec);
     spdlog::info("Fast chunk: downloading {}s clip starting at {}s", duration_sec, start_sec);
-    int dlResult = run_command(dlCmd, &running_);
-    if (dlResult != 0) {
-        spdlog::warn("Fast chunk download failed (exit {}), skipping fast start", dlResult);
+    const auto dl = run_command_capture(dlCmd, &running_);
+    if (dl.exit_code != 0) {
+        const auto detail = command_error_summary(dl.output);
+        if (detail.empty())
+            spdlog::warn("Fast chunk download failed (exit {}), skipping fast start", dl.exit_code);
+        else
+            spdlog::warn("Fast chunk download failed (exit {}): {}", dl.exit_code, detail);
         return false;
     }
     if (!running_.load()) return false;
@@ -517,9 +564,10 @@ std::string VideoStreamEngine::build_ytdlp_command(
     const std::filesystem::path& output_path, int start_sec, int end_sec) const
 {
     return fmt::format(
-        "{} -4 -f \"best[ext=mp4]/best\" --download-sections \"*{}-{}\" "
+        "{} -f \"{}\" --download-sections \"*{}-{}\" "
         "--force-overwrites -o \"{}\" \"{}\"",
-        get_ytdlp_command(), start_sec, end_sec, output_path.string(), current_url_);
+        get_ytdlp_network_command(), get_ytdlp_video_format_selector(),
+        start_sec, end_sec, output_path.string(), current_url_);
 }
 
 std::string VideoStreamEngine::build_ffmpeg_command(
@@ -585,13 +633,16 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
 
         std::string dlCmd = build_ytdlp_command(mp4Path, start_sec, end_sec);
         spdlog::info("Downloading chunk {} ({}-{}s)", chunk_index, start_sec, end_sec);
-        int dlResult = run_command(dlCmd, &running_);
-        if (dlResult != 0) {
-            if (dlResult == -2 || !running_.load()) {
+        const auto dl = run_command_capture(dlCmd, &running_);
+        if (dl.exit_code != 0) {
+            if (dl.exit_code == -2 || !running_.load()) {
                 spdlog::info("yt-dlp chunk {} interrupted by stop()", chunk_index);
                 return false;
             }
-            std::string msg = fmt::format("yt-dlp chunk {} failed (exit {})", chunk_index, dlResult);
+            const auto detail = command_error_summary(dl.output);
+            std::string msg = fmt::format("yt-dlp chunk {} failed (exit {})", chunk_index, dl.exit_code);
+            if (!detail.empty())
+                msg += ": " + detail;
             if (set_error_on_fail) {
                 set_last_error(msg);
                 spdlog::error(last_error_);
@@ -606,13 +657,16 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
         std::string ffCmd = build_ffmpeg_command(mp4Path, binPath);
         spdlog::info("Processing chunk {} to {}x{} @ {}fps", chunk_index,
                      width_, height_, fps_);
-        int ffResult = run_command(ffCmd, &running_);
-        if (ffResult != 0) {
-            if (ffResult == -2 || !running_.load()) {
+        const auto ff = run_command_capture(ffCmd, &running_);
+        if (ff.exit_code != 0) {
+            if (ff.exit_code == -2 || !running_.load()) {
                 spdlog::info("ffmpeg chunk {} interrupted by stop()", chunk_index);
                 return false;
             }
-            std::string msg = fmt::format("ffmpeg chunk {} failed (exit {})", chunk_index, ffResult);
+            const auto detail = command_error_summary(ff.output);
+            std::string msg = fmt::format("ffmpeg chunk {} failed (exit {})", chunk_index, ff.exit_code);
+            if (!detail.empty())
+                msg += ": " + detail;
             if (set_error_on_fail) {
                 set_last_error(msg);
                 spdlog::error(last_error_);

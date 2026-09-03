@@ -388,6 +388,42 @@ if(ENABLE_DESKTOP)
     )
     add_test(NAME desktop_stream_state_smoke COMMAND $<TARGET_FILE:desktop_stream_state_smoke>)
 
+    add_executable(ytdlp_policy_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/ytdlp_policy_smoke.cpp
+    )
+    target_compile_features(ytdlp_policy_smoke PRIVATE cxx_std_23)
+    target_link_libraries(ytdlp_policy_smoke PRIVATE SharedToolsDesktop SharedToolsCommon)
+    add_test(NAME ytdlp_policy_smoke COMMAND $<TARGET_FILE:ytdlp_policy_smoke>)
+    if(WIN32)
+        add_custom_command(TARGET ytdlp_policy_smoke POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsDesktop> $<TARGET_FILE_DIR:ytdlp_policy_smoke>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsCommon> $<TARGET_FILE_DIR:ytdlp_policy_smoke>
+        )
+    else()
+        set_tests_properties(ytdlp_policy_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
+    add_executable(video_stream_stop_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/video_stream_stop_smoke.cpp
+    )
+    target_compile_features(video_stream_stop_smoke PRIVATE cxx_std_23)
+    target_link_libraries(video_stream_stop_smoke PRIVATE SharedToolsDesktop SharedToolsCommon)
+    add_test(NAME video_stream_stop_smoke COMMAND $<TARGET_FILE:video_stream_stop_smoke>)
+    if(WIN32)
+        add_custom_command(TARGET video_stream_stop_smoke POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsDesktop> $<TARGET_FILE_DIR:video_stream_stop_smoke>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsCommon> $<TARGET_FILE_DIR:video_stream_stop_smoke>
+        )
+    else()
+        set_tests_properties(video_stream_stop_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
