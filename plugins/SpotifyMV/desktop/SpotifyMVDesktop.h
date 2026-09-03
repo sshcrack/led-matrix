@@ -31,6 +31,9 @@ public:
 private:
     [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
 
+    // Multiple desktop controllers may be connected, but exactly one is
+    // elected by the matrix as the SpotifyMV pixel/status producer.
+    std::atomic<bool> producer_owner_{true};
     std::atomic<bool> tools_available_{false};
     std::mutex tools_status_mutex_;
     std::string tools_error_msg_;
@@ -78,6 +81,7 @@ private:
     void on_pending_first_frame(std::uint64_t generation, const std::string& track_id);
 
     void cancel_search_and_join();
+    void stop_playback(bool report_status);
 
     void search_and_play(Shared::VideoStreamEngine* engine,
                          const std::string& track_id,

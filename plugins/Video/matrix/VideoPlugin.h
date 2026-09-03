@@ -26,6 +26,7 @@ public:
                      const size_t size) override;
 
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
+  [[nodiscard]] bool requires_single_desktop_producer() const override { return true; }
 
   std::optional<std::vector<std::string>> on_websocket_open() override;
   void on_websocket_message(const std::string &message) override;

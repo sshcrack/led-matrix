@@ -17,6 +17,7 @@ public:
   std::optional<std::vector<std::string>> on_websocket_open() override;
   void on_websocket_message(const std::string& message) override;
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
+  [[nodiscard]] bool requires_single_desktop_producer() const override { return true; }
   [[nodiscard]] std::vector<std::string> get_runtime_input_ids() const override {
     return {std::string(RuntimeInputIds::SpotifyMVReady)};
   }

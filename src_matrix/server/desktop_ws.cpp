@@ -22,9 +22,99 @@ void publish_desktop_runtime_input(bool availability_changed)
         RuntimeInputIds::Desktop,
         connections > 0,
         {{"connected", connections > 0},
-         {"connections", static_cast<std::int64_t>(connections)}});
+         {"connections", static_cast<std::int64_t>(connections)},
+         {"producer_owner_connection", static_cast<std::int64_t>(Server::desktop_producer_owner())}});
     if (availability_changed)
         exit_canvas_update.store(true);
+}
+
+void send_plugin_message(const Server::rws::ws_handle_t& socket,
+                         const std::string& plugin_name,
+                         const std::string& payload)
+{
+    if (!socket)
+        return;
+    Server::rws::message_t message;
+    message.set_opcode(Server::rws::opcode_t::text_frame);
+    message.set_final_flag(Server::rws::final_frame_flag_t::final_frame);
+    message.set_payload("msg:" + plugin_name + ":" + payload);
+    socket->send_message(std::move(message));
+}
+
+void send_control_message(const Server::rws::ws_handle_t& socket, const std::string& payload)
+{
+    if (!socket)
+        return;
+    Server::rws::message_t message;
+    message.set_opcode(Server::rws::opcode_t::text_frame);
+    message.set_final_flag(Server::rws::final_frame_flag_t::final_frame);
+    message.set_payload(payload);
+    socket->send_message(std::move(message));
+}
+
+Server::rws::ws_handle_t socket_for(const std::uint64_t connection_id)
+{
+    std::shared_lock lock(Server::registryMutex);
+    const auto it = Server::registry.find(connection_id);
+    return it == Server::registry.end() ? Server::rws::ws_handle_t{} : it->second;
+}
+
+void send_producer_role(const std::uint64_t connection_id, const bool active)
+{
+    const auto socket = socket_for(connection_id);
+    if (!socket)
+        return;
+
+    // This transport-level gate applies to every UDP-producing desktop plugin,
+    // including AudioVisualizer, not just plugins with matrix->desktop commands.
+    send_control_message(socket, DesktopControlProtocol::desktop_producer(active));
+
+    for (const auto& plugin : Plugins::PluginManager::instance()->get_plugins()) {
+        if (!plugin->requires_single_desktop_producer())
+            continue;
+        send_plugin_message(socket, plugin->get_plugin_name(), active ? "producer:active" : "producer:standby");
+    }
+}
+
+void send_initial_plugin_messages(const Server::rws::ws_handle_t& socket,
+                                  const bool producer_owner,
+                                  const bool producer_only = false)
+{
+    if (!socket)
+        return;
+    for (const auto& plugin : Plugins::PluginManager::instance()->get_plugins()) {
+        const bool exclusive = plugin->requires_single_desktop_producer();
+        if (producer_only && !exclusive)
+            continue;
+        if (exclusive && !producer_owner)
+            continue;
+
+        const auto messages = plugin->on_websocket_open();
+        if (!messages.has_value())
+            continue;
+        for (const auto& payload : *messages)
+            send_plugin_message(socket, plugin->get_plugin_name(), payload);
+    }
+}
+
+void apply_producer_change(const Server::DesktopProducerChange& change,
+                           const bool replay_new_owner)
+{
+    if (!change.changed)
+        return;
+
+    if (change.previous_owner != 0 && change.previous_owner != change.owner)
+        send_producer_role(change.previous_owner, false);
+
+    if (change.owner != 0) {
+        send_producer_role(change.owner, true);
+        if (replay_new_owner)
+            send_initial_plugin_messages(socket_for(change.owner), true, true);
+    }
+
+    // The connection count may be unchanged when ownership moves, but expose
+    // the new owner in Runtime Inputs/diagnostics immediately.
+    publish_desktop_runtime_input(false);
 }
 } // namespace
 
@@ -45,6 +135,7 @@ void Server::broadcast_matrix_enabled(bool enabled)
 
 std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry)
 {
+    clear_desktop_producers();
     publish_desktop_runtime_input(false);
     router->http_get("/desktopWebsocket", [&registry](auto req, auto)
                      {
@@ -59,40 +150,64 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                         rws::activation_t::immediate,
                         [ &registry, is_scene_worker ](auto wsh, auto m) {
                             if(rws::opcode_t::text_frame == m->opcode()) {
-                                std::string mStr = m->payload();
+                                const std::string mStr = m->payload();
                                 if (mStr.starts_with("msg:")) {
-                                    const int pluginNameEnd = mStr.find(':', 4);
+                                    const auto pluginNameEnd = mStr.find(':', 4);
+                                    if (pluginNameEnd == std::string::npos)
+                                        return;
 
-                                    const std::string pluginName = mStr.substr(4, pluginNameEnd -4);
-                                    const std::string message = mStr.substr(mStr.find(':', pluginNameEnd) +1);
+                                    const std::string pluginName = mStr.substr(4, pluginNameEnd - 4);
+                                    const std::string message = mStr.substr(pluginNameEnd + 1);
 
                                     for (const auto & plugin : Plugins::PluginManager::instance()->get_plugins()) {
                                         if (plugin->get_plugin_name() != pluginName)
                                             continue;
 
+                                        if (plugin->requires_single_desktop_producer()
+                                            && !Server::accepts_desktop_producer_message(wsh->connection_id())) {
+                                            spdlog::debug("Ignoring {} message from standby desktop connection {}",
+                                                          pluginName, wsh->connection_id());
+                                            break;
+                                        }
+
                                         plugin->on_websocket_message(message);
+                                        break;
                                     }
-                            }
+                                }
                             }
                             if (rws::opcode_t::ping_frame == m->opcode()) {
                                 auto resp = *m;
                                 resp.set_opcode(rws::opcode_t::pong_frame);
                                 wsh->send_message(resp);
                             } else if (rws::opcode_t::connection_close_frame == m->opcode()) {
-                                std::unique_lock lock(registryMutex);
-                                if (registry.erase(wsh->connection_id()) > 0) {
-                                    if (scene_worker_connections.erase(wsh->connection_id()) == 0) {
-                                        const int previous = desktop_connection_count.fetch_sub(1);
-                                        if (previous <= 1)
-                                            desktop_connection_count.store(0);
-                                        publish_desktop_runtime_input(previous == 1);
+                                bool removed_regular_desktop = false;
+                                int previous_count = 0;
+                                {
+                                    std::unique_lock lock(registryMutex);
+                                    if (registry.erase(wsh->connection_id()) > 0) {
+                                        if (scene_worker_connections.erase(wsh->connection_id()) == 0) {
+                                            removed_regular_desktop = true;
+                                            previous_count = desktop_connection_count.fetch_sub(1);
+                                            if (previous_count <= 1)
+                                                desktop_connection_count.store(0);
+                                        }
                                     }
+                                }
+
+                                if (removed_regular_desktop) {
+                                    const auto change = unregister_desktop_producer(wsh->connection_id());
+                                    publish_desktop_runtime_input(previous_count == 1);
+                                    // A clean owner disconnect promotes the newest remaining
+                                    // controller and replays the current producer request.
+                                    apply_producer_change(change, true);
                                 }
                             }
                         });
             // Store websocket handle to registry object to prevent closing of the websocket
             // on exit from this request handler.
 
+            bool inserted_regular_desktop = false;
+            int previous_count = 0;
             {
                 std::unique_lock lock(registryMutex);
                 const auto [_, inserted] = registry.emplace(wsh->connection_id(), wsh);
@@ -100,11 +215,19 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                     if (is_scene_worker) {
                         scene_worker_connections.insert(wsh->connection_id());
                     } else {
-                        const int previous = desktop_connection_count.fetch_add(1);
-                        publish_desktop_runtime_input(previous == 0);
+                        inserted_regular_desktop = true;
+                        previous_count = desktop_connection_count.fetch_add(1);
                     }
                 }
             } // Release registryMutex here
+
+            if (inserted_regular_desktop) {
+                // The newest controller owns single-producer desktop plugins. A
+                // reconnect therefore supersedes any stale server-side socket.
+                const auto change = register_desktop_producer(wsh->connection_id());
+                publish_desktop_runtime_input(previous_count == 0);
+                apply_producer_change(change, false);
+            }
 
             std::string sceneName;
             {
@@ -121,19 +244,21 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
 
             wsh->send_message(message);
 
+            const bool producer_owner = !is_scene_worker
+                && accepts_desktop_producer_message(wsh->connection_id());
+            if (!is_scene_worker) {
+                // Producer ownership must precede matrix_enabled. A new desktop
+                // is legacy-compatible (producer=true until told otherwise),
+                // while this ordering guarantees a standby client learns its
+                // role before matrix_enabled can unlock its UDP stream.
+                message.set_payload(DesktopControlProtocol::desktop_producer(producer_owner));
+                wsh->send_message(message);
+            }
+
             message.set_payload(DesktopControlProtocol::matrix_enabled(!config->is_turned_off()));
             wsh->send_message(message);
 
-            for (const auto &plugin: Plugins::PluginManager::instance()->get_plugins()) {
-                auto msgs = plugin->on_websocket_open();
-                if (!msgs.has_value())
-                    continue;
-
-                for (const auto &msg: msgs.value()) {
-                    message.set_payload("msg:" + plugin->get_plugin_name() + ":" + msg);
-                    wsh->send_message(message);
-                }
-            }
+            send_initial_plugin_messages(wsh, producer_owner);
 
             return restinio::request_accepted();
         }

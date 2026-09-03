@@ -136,6 +136,8 @@ void SpotifyMVDesktop::report_tools_status() {
 }
 
 void SpotifyMVDesktop::pre_new_frame() {
+    if (!producer_owner_.load(std::memory_order_acquire))
+        return;
     const bool changed = refresh_tools_status();
     const auto now = std::chrono::steady_clock::now();
     if (changed || last_tools_report_ == std::chrono::steady_clock::time_point{}
@@ -145,6 +147,7 @@ void SpotifyMVDesktop::pre_new_frame() {
 }
 
 void SpotifyMVDesktop::render() {
+    ImGui::Text("Producer role: %s", producer_owner_.load(std::memory_order_acquire) ? "Active" : "Standby");
     if (!tools_available_.load()) {
         std::string error;
         {
@@ -343,6 +346,8 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
 
 std::optional<std::unique_ptr<UdpPacket>>
 SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
+    if (!producer_owner_.load(std::memory_order_acquire))
+        return std::nullopt;
     if (sceneName != "spotifymv")
         return std::nullopt;
     if (!tools_available_.load())
@@ -400,6 +405,23 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 }
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
+    if (message == "producer:active") {
+        producer_owner_.store(true, std::memory_order_release);
+        last_tools_report_ = {};
+        spdlog::info("SpotifyMV: this desktop is the active producer");
+        return;
+    }
+    if (message == "producer:standby") {
+        if (producer_owner_.exchange(false, std::memory_order_acq_rel)) {
+            spdlog::info("SpotifyMV: producer ownership moved to another desktop; stopping local stream");
+            stop_playback(false);
+        }
+        return;
+    }
+
+    if (!producer_owner_.load(std::memory_order_acquire))
+        return;
+
     if (message == "tools:probe") {
         refresh_tools_status(true);
         report_tools_status();
@@ -570,34 +592,41 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
     }
 
     if (message == "stop") {
-        {
-            std::lock_guard<std::mutex> lk(track_id_mutex_);
-            request_generation_.fetch_add(1, std::memory_order_relaxed);
-            current_track_id_.clear();
-            pending_track_id_.clear();
-        }
-        cancel_search_and_join();
+        stop_playback(true);
+        return;
+    }
+}
 
-        {
-            std::lock_guard<std::mutex> lk_eng(engine_mutex_);
-            if (pending_engine_) {
-                pending_engine_->on_status_change = nullptr;
-                pending_engine_->on_first_frame_ready = nullptr;
-                pending_engine_->stop();
-                pending_engine_.reset();
-            }
-            if (current_engine_) {
-                current_engine_->on_status_change = nullptr;
-                current_engine_->on_first_frame_ready = nullptr;
-                current_engine_->stop();
-                current_engine_.reset();
-            }
-            crossfade_active_ = false;
-            old_last_frame_.clear();
+void SpotifyMVDesktop::stop_playback(const bool report_status) {
+    {
+        std::lock_guard<std::mutex> lk(track_id_mutex_);
+        request_generation_.fetch_add(1, std::memory_order_relaxed);
+        current_track_id_.clear();
+        pending_track_id_.clear();
+    }
+    cancel_search_and_join();
+
+    {
+        std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+        if (pending_engine_) {
+            pending_engine_->on_status_change = nullptr;
+            pending_engine_->on_first_frame_ready = nullptr;
+            pending_engine_->stop();
+            pending_engine_.reset();
         }
+        if (current_engine_) {
+            current_engine_->on_status_change = nullptr;
+            current_engine_->on_first_frame_ready = nullptr;
+            current_engine_->stop();
+            current_engine_.reset();
+        }
+        crossfade_active_ = false;
+        old_last_frame_.clear();
+    }
+
+    if (report_status) {
         send_websocket_message("track:idle");
         send_websocket_message("status:idle");
-        return;
     }
 }
 
@@ -659,24 +688,15 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                 return;
             }
 
+            // The pending engine's generation-aware callbacks are installed
+            // before this search begins. VideoStreamEngine::start() preserves
+            // them across its internal stop(), so the decoder can never outrun
+            // first-frame registration on a cached/fast start.
             engine->start(url, track_id, seek_ms);
             if (!request_is_current()) {
                 search_running_ = false;
                 return;
             }
-
-            // start() clears callbacks through its internal stop(). Reinstall
-            // generation-aware callbacks so superseded decoders cannot publish
-            // stale status or promote themselves after a quick track change.
-            engine->on_status_change = [this, generation](const std::string& status) {
-                if (request_generation_.load(std::memory_order_relaxed) != generation)
-                    return;
-                spdlog::info("Status change " + status);
-                send_websocket_message("status:" + status);
-            };
-            engine->on_first_frame_ready = [this, generation, track_id]() {
-                on_pending_first_frame(generation, track_id);
-            };
         } catch (const std::exception& e) {
             if (request_is_current()) {
                 spdlog::error("SpotifyMV search exception: {}", e.what());
