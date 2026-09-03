@@ -8,6 +8,8 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <condition_variable>
+#include <deque>
 #include <unordered_map>
 #include <spdlog/spdlog.h>
 
@@ -65,23 +67,33 @@ public:
 
     void start()
     {
+        // `ReadyState::Closed` is also used between automatic-reconnect
+        // attempts, so it cannot tell us whether the transport lifecycle has
+        // actually been stopped by the user. Keep that state explicitly.
+        if (transportStarted_.exchange(true))
+            return;
+
         spdlog::info("Starting WebSocket client");
+        // Reconnection is a transport policy, not a UI-button side effect.
+        // Enable it before starting so the initial application connection is
+        // protected too (previously only a later manual Connect click did it).
+        webSocket.enableAutomaticReconnection();
         webSocket.start();
 
-        if (!senderRunning)
+        if (!senderRunning.exchange(true))
         {
-            senderRunning = true;
             senderThread = std::thread(&WebsocketClient::threadLoop, this);
         }
     }
 
     void stop()
     {
+        transportStarted_.store(false);
         spdlog::info("Stopping WebSocket client");
+        webSocket.disableAutomaticReconnection();
         webSocket.stop();
-        if (senderRunning)
+        if (senderRunning.exchange(false))
         {
-            senderRunning = false;
             if (senderThread.joinable())
             {
                 senderThread.join();
@@ -93,6 +105,11 @@ public:
     {
         std::unique_lock<std::mutex> lock(lastErrorMutex);
         return lastError;
+    }
+
+    [[nodiscard]] bool isTransportStarted() const
+    {
+        return transportStarted_.load();
     }
 
     ix::WebSocket webSocket;
@@ -111,9 +128,23 @@ private:
     std::string lastError = "";
 
     void threadLoop();
+    void enqueuePluginMessage(std::string plugin_name, std::string message);
+    void pluginMessageLoop();
 
-    bool senderRunning = false;
+    std::atomic<bool> senderRunning{false};
+    std::atomic<bool> transportStarted_{false};
     int consecutiveError_ = 0;
+
+    // Plugin callbacks are deliberately kept off ixwebsocket's network
+    // callback thread. Some plugins stop child processes / join decoder or
+    // search threads, which can legitimately take hundreds of milliseconds.
+    // Blocking the network thread there can starve ping/pong/reconnect work and
+    // make an unrelated scene/mode switch look like a WebSocket disconnect.
+    std::mutex pluginMessageMutex_;
+    std::condition_variable pluginMessageCv_;
+    std::deque<std::pair<std::string, std::string>> pluginMessages_;
+    std::atomic<bool> pluginMessageRunning_{true};
+    std::thread pluginMessageThread_;
 };
 
 SHARED_DESKTOP_API extern WebsocketClient *websocketClientInstance;
