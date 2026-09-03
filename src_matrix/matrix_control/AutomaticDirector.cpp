@@ -146,10 +146,14 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float
     c.section_counter = signal_counter(runtime_inputs, RuntimeInputIds::Audio, "section_counter");
 
     if (c.spotify) {
-        const float progress_ms = std::max(
+        float progress_ms = std::max(
             0.0f, signal_number(runtime_inputs, RuntimeInputIds::SpotifyPlayback, "progress_ms", 0.0f));
+        if (const auto* playback = runtime_inputs.find(RuntimeInputIds::SpotifyPlayback); playback != nullptr)
+            progress_ms += static_cast<float>(std::max(0.0, playback->age_seconds) * 1000.0);
         const float duration_ms = std::max(
             0.0f, signal_number(runtime_inputs, RuntimeInputIds::SpotifyPlayback, "duration_ms", 0.0f));
+        if (duration_ms > 0.0f)
+            progress_ms = std::min(progress_ms, duration_ms);
         if (duration_ms > 1000.0f) {
             c.spotify_progress = std::clamp(progress_ms / duration_ms, 0.0f, 1.0f);
             c.spotify_remaining_seconds = std::max(0.0f, (duration_ms - progress_ms) / 1000.0f);

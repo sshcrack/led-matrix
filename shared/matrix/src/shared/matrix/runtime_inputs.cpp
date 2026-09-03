@@ -189,7 +189,11 @@ void replace_from_json(const nlohmann::json &snapshot_json)
             continue;
         StoredInput stored;
         stored.available = item.value("available", false);
-        stored.updated_at = now;
+        const double source_age_seconds = item.contains("age_seconds") && item.at("age_seconds").is_number()
+            ? std::max(0.0, item.at("age_seconds").get<double>())
+            : 0.0;
+        stored.updated_at = now - std::chrono::duration_cast<Clock::duration>(
+            std::chrono::duration<double>(source_age_seconds));
         if (item.contains("ttl_seconds") && item.at("ttl_seconds").is_number()) {
             const double seconds = std::max(0.0, item.at("ttl_seconds").get<double>());
             stored.ttl = std::chrono::duration_cast<std::chrono::milliseconds>(

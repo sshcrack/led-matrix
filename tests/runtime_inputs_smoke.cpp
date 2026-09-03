@@ -136,6 +136,25 @@ int main()
         return 1;
     }
 
+    // Offload workers receive serialized Runtime Inputs. Their local mirror must
+    // preserve how old the producer sample already was; otherwise time-based
+    // consumers such as Spotify progress restart from the same value every frame.
+    RuntimeInputs::replace_from_json({
+        {"spotify.playback", {
+            {"available", true},
+            {"stale", false},
+            {"age_seconds", 2.0},
+            {"ttl_seconds", 10.0},
+            {"signals", {{"playing", true}, {"progress_ms", 1000}}}
+        }}
+    });
+    const auto mirrored = RuntimeInputs::snapshot();
+    const auto* mirrored_spotify = mirrored.find(RuntimeInputIds::SpotifyPlayback);
+    if (!mirrored_spotify || mirrored_spotify->age_seconds < 1.8 || mirrored_spotify->age_seconds > 2.3) {
+        std::cerr << "serialized Runtime Input age was not preserved in worker mirror\n";
+        return 1;
+    }
+
     RuntimeInputs::clear_all();
     return 0;
 }

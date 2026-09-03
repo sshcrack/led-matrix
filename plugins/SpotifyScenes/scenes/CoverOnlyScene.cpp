@@ -149,43 +149,9 @@ MediaArtworkState::Palette extract_artwork_palette(const Magick::Image &image)
 }
 
 namespace {
-std::optional<SpotifyState> spotify_state_from_runtime_input()
-{
-    const auto snapshot = RuntimeInputs::snapshot();
-    if (!snapshot.available(RuntimeInputIds::SpotifyPlayback))
-        return std::nullopt;
-
-    const bool playing = snapshot.boolean(RuntimeInputIds::SpotifyPlayback, "playing").value_or(false);
-    const auto track_id = snapshot.text(RuntimeInputIds::SpotifyPlayback, "track_id");
-    const auto duration = snapshot.number(RuntimeInputIds::SpotifyPlayback, "duration_ms");
-    if (!track_id.has_value() || !duration.has_value())
-        return std::nullopt;
-
-    const auto progress = snapshot.number(RuntimeInputIds::SpotifyPlayback, "progress_ms").value_or(0.0);
-    const auto song = snapshot.text(RuntimeInputIds::SpotifyPlayback, "track").value_or(std::string{});
-    const auto artist = snapshot.text(RuntimeInputIds::SpotifyPlayback, "artist").value_or(std::string{});
-    const auto cover = snapshot.text(RuntimeInputIds::SpotifyPlayback, "cover_url").value_or(std::string{});
-    const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
-
-    nlohmann::json item{
-        {"id", *track_id},
-        {"name", song},
-        {"duration_ms", static_cast<long>(std::max(0.0, *duration))},
-        {"artists", nlohmann::json::array({{{"name", artist}}})},
-        {"album", {{"images", nlohmann::json::array({{{"url", cover}}})}}},
-    };
-    return SpotifyState({
-        {"timestamp", now_ms},
-        {"progress_ms", static_cast<long>(std::max(0.0, progress))},
-        {"is_playing", playing},
-        {"item", std::move(item)},
-    });
-}
-
 std::optional<SpotifyState> current_spotify_state()
 {
-    if (auto mirrored = spotify_state_from_runtime_input(); mirrored.has_value())
+    if (auto mirrored = spotify_state_from_runtime_input(RuntimeInputs::snapshot()); mirrored.has_value())
         return mirrored;
     return spotify != nullptr ? spotify->get_currently_playing() : std::nullopt;
 }

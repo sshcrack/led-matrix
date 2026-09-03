@@ -46,6 +46,7 @@ private:
 
 #ifdef _WIN32
     PROCESS_INFORMATION worker_process_{};
+    HANDLE worker_job_ = nullptr;
 #else
     pid_t worker_pid_ = -1;
 #endif
