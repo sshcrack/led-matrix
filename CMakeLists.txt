@@ -424,6 +424,32 @@ if(ENABLE_DESKTOP)
             ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
     endif()
 
+    add_executable(spotify_mv_stop_latency_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_stop_latency_smoke.cpp
+    )
+    target_compile_features(spotify_mv_stop_latency_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(spotify_mv_stop_latency_smoke PRIVATE PLUGIN_NAME="SpotifyMV")
+    target_include_directories(spotify_mv_stop_latency_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(spotify_mv_stop_latency_smoke PRIVATE SpotifyMV SharedToolsDesktop SharedToolsCommon)
+    add_test(NAME spotify_mv_stop_latency_smoke COMMAND $<TARGET_FILE:spotify_mv_stop_latency_smoke>)
+    if(NOT WIN32)
+        set_tests_properties(spotify_mv_stop_latency_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/SpotifyMV:${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
+    add_executable(websocket_plugin_dispatch_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/websocket_plugin_dispatch_smoke.cpp
+    )
+    target_compile_features(websocket_plugin_dispatch_smoke PRIVATE cxx_std_23)
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(websocket_plugin_dispatch_smoke PRIVATE SharedToolsDesktop SharedToolsCommon spdlog::spdlog)
+    add_dependencies(websocket_plugin_dispatch_smoke SpotifyMV)
+    add_test(NAME websocket_plugin_dispatch_smoke COMMAND $<TARGET_FILE:websocket_plugin_dispatch_smoke>)
+    if(NOT WIN32)
+        set_tests_properties(websocket_plugin_dispatch_smoke PROPERTIES
+            ENVIRONMENT "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.
