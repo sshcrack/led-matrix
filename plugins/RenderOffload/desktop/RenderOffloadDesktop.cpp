@@ -16,6 +16,9 @@
 #include <csignal>
 #include <sys/wait.h>
 #include <unistd.h>
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
 #endif
 
 REGISTER_PLUGIN(RenderOffload, RenderOffloadDesktop)
@@ -118,6 +121,10 @@ bool RenderOffloadDesktop::worker_alive()
         CloseHandle(worker_process_.hProcess);
         CloseHandle(worker_process_.hThread);
         worker_process_ = {};
+        if (worker_job_) {
+            CloseHandle(worker_job_);
+            worker_job_ = nullptr;
+        }
         return false;
     }
     return true;
@@ -192,16 +199,46 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
     startup.cb = sizeof(startup);
     startup.dwFlags = STARTF_USESHOWWINDOW;
     startup.wShowWindow = SW_HIDE;
+
+    HANDLE job = CreateJobObjectA(nullptr, nullptr);
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info{};
+    job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if (!job || !SetInformationJobObject(job, JobObjectExtendedLimitInformation,
+                                          &job_info, sizeof(job_info))) {
+        const auto error = GetLastError();
+        if (job) CloseHandle(job);
+        std::lock_guard lock(mutex_);
+        worker_error_ = "failed to create scene worker lifetime job (Windows error " + std::to_string(error) + ")";
+        worker_running_ = false;
+        return false;
+    }
+
     PROCESS_INFORMATION process{};
     if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
+                        CREATE_NO_WINDOW | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process)) {
+        const auto error = GetLastError();
+        CloseHandle(job);
         std::lock_guard lock(mutex_);
-        worker_error_ = "failed to start scene worker (Windows error " + std::to_string(GetLastError()) + ")";
+        worker_error_ = "failed to start scene worker (Windows error " + std::to_string(error) + ")";
+        worker_running_ = false;
+        return false;
+    }
+    if (!AssignProcessToJobObject(job, process.hProcess) || ResumeThread(process.hThread) == static_cast<DWORD>(-1)) {
+        const auto error = GetLastError();
+        TerminateProcess(process.hProcess, 1);
+        WaitForSingleObject(process.hProcess, 2000);
+        CloseHandle(process.hProcess);
+        CloseHandle(process.hThread);
+        CloseHandle(job);
+        std::lock_guard lock(mutex_);
+        worker_error_ = "failed to bind scene worker lifetime (Windows error " + std::to_string(error) + ")";
         worker_running_ = false;
         return false;
     }
     worker_process_ = process;
+    worker_job_ = job;
 #else
+    const pid_t desktop_pid = getpid();
     const pid_t pid = fork();
     if (pid < 0) {
         std::lock_guard lock(mutex_);
@@ -210,6 +247,12 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
         return false;
     }
     if (pid == 0) {
+#if defined(__linux__)
+        // If the desktop crashes or is SIGKILLed, do not leave an orphan that
+        // keeps sending frames and later races a replacement desktop worker.
+        if (prctl(PR_SET_PDEATHSIG, SIGTERM) != 0 || getppid() != desktop_pid)
+            _exit(125);
+#endif
         const auto port_string = std::to_string(port);
         execl(executable.c_str(), executable.c_str(), "--host", host.c_str(),
               "--port", port_string.c_str(), "--crash-dir", crash_dir.c_str(),
@@ -241,6 +284,10 @@ void RenderOffloadDesktop::stop_worker()
         CloseHandle(worker_process_.hProcess);
         CloseHandle(worker_process_.hThread);
         worker_process_ = {};
+    }
+    if (worker_job_) {
+        CloseHandle(worker_job_);
+        worker_job_ = nullptr;
     }
 #else
     if (worker_pid_ > 0) {
