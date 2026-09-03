@@ -89,10 +89,11 @@ esac
         return 2;
     }
 
-    engine.start("https://example.invalid/video", "stop-regression", 0);
-    // start() calls stop(), which deliberately clears callbacks. SpotifyMV
-    // reinstalls them immediately; mirror the production sequence.
+    // Callers must be able to register readiness callbacks before starting the
+    // asynchronous decoder. Registering them after start() is inherently racy:
+    // a cached/fast first frame may arrive before the caller gets control back.
     engine.on_first_frame_ready = [&] { first_frame = true; };
+    engine.start("https://example.invalid/video", "stop-regression", 0);
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
     while (!first_frame.load() && std::chrono::steady_clock::now() < deadline)

@@ -155,6 +155,15 @@ namespace Plugins
         }
 
         virtual std::string get_plugin_name() const = 0;
+
+        // Some desktop plugins are single physical media producers. Multiple
+        // controller connections may coexist, but only the elected producer
+        // owner may receive commands or publish state for such a plugin.
+        [[nodiscard]] virtual bool requires_single_desktop_producer() const
+        {
+            return false;
+        }
+
         virtual void on_websocket_message(const std::string &message)
         {
             // Default implementation does nothing
@@ -170,6 +179,17 @@ namespace Plugins
             message.set_opcode(rb::opcode_t::text_frame);
 
             message.set_payload("msg:" + get_plugin_name() + ":" + msg);
+
+            if (requires_single_desktop_producer())
+            {
+                const auto owner = Server::desktop_producer_owner();
+                if (owner == 0)
+                    return;
+                const auto it = Server::registry.find(owner);
+                if (it != Server::registry.end())
+                    it->second->send_message(message);
+                return;
+            }
 
             for (const auto &val : Server::registry | std::views::values)
             {

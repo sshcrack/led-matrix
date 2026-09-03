@@ -1,6 +1,7 @@
 #include <shared/matrix/input_ids.h>
 #include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/runtime_inputs.h>
+#include <shared/matrix/server/common.h>
 
 #include "matrix_control/AutomaticDirector.h"
 
@@ -57,6 +58,23 @@ int main()
     if (it == plugins.end()) {
         std::cerr << "SpotifyMV matrix plugin was not loaded\n";
         return 1;
+    }
+
+    if (!(*it)->requires_single_desktop_producer()) {
+        std::cerr << "SpotifyMV did not opt into single desktop producer ownership\n";
+        return 11;
+    }
+    Server::clear_desktop_producers();
+    constexpr std::uint64_t old_desktop = 1001;
+    constexpr std::uint64_t new_desktop = 1002;
+    Server::register_desktop_producer(old_desktop);
+    const auto ownership = Server::register_desktop_producer(new_desktop);
+    if (!ownership.changed || ownership.previous_owner != old_desktop
+        || ownership.owner != new_desktop
+        || !Server::accepts_desktop_producer_message(new_desktop)
+        || Server::accepts_desktop_producer_message(old_desktop)) {
+        std::cerr << "newest desktop did not become the exclusive SpotifyMV producer\n";
+        return 12;
     }
 
     (*it)->on_websocket_message("tools:ready");
@@ -130,6 +148,17 @@ int main()
         return 7;
     }
 
+    // Model the server dispatcher: a stale/older desktop may still send a late
+    // prepare message, but it is not the elected producer and therefore must
+    // not be allowed to mutate the matrix-side SpotifyMV state.
+    if (Server::accepts_desktop_producer_message(old_desktop))
+        (*it)->on_websocket_message("track:preparing:track-a");
+    const auto duplicate_preparing = RuntimeInputs::snapshot();
+    if (!duplicate_preparing.boolean(RuntimeInputIds::SpotifyMVReady, "first_frame_ready").value_or(false)) {
+        std::cerr << "standby desktop revoked an already-ready SpotifyMV track\n";
+        return 10;
+    }
+
     std::vector<std::shared_ptr<Scenes::Scene>> spotify_scenes{cover, mv};
     AutomaticDirector director(31);
     const auto live_inputs = RuntimeInputs::snapshot();
@@ -145,10 +174,18 @@ int main()
         return 9;
     }
 
+    const auto failover = Server::unregister_desktop_producer(new_desktop);
+    if (!failover.changed || failover.owner != old_desktop
+        || !Server::accepts_desktop_producer_message(old_desktop)) {
+        std::cerr << "SpotifyMV producer ownership did not fail over to the remaining desktop\n";
+        return 13;
+    }
+
     spotify_scenes.clear();
     mv.reset();
     cover.reset();
     manager->delete_references();
+    Server::clear_desktop_producers();
     RuntimeInputs::clear_all();
     std::cout << "SpotifyMV readiness persists until an explicit state change\n";
     return 0;

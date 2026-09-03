@@ -280,6 +280,8 @@ Daemon::Daemon(int argc, char* argv[])
                     unique_lock lock(Server::registryMutex);
                     Server::registry.clear();
                 }
+                Server::desktop_connection_count.store(0);
+                Server::clear_desktop_producers();
                 Server::clear_live_frame_connections();
             });
         });
@@ -377,6 +379,17 @@ void Daemon::shutdown(bool persist_config) noexcept
     pinned_scene_.reset();
 #endif
     SceneLabRuntime::instance().stop();
+
+    // Server::currScene is another owning reference to the scene currently
+    // rendered by the hardware loop. Scene implementations live in plugin
+    // DSOs, so this global must release its object before destroy_plugins()
+    // unloads those DSOs. Otherwise its static destructor later calls through
+    // an already-unmapped scene vtable and crashes during process teardown.
+    {
+        std::unique_lock lock(Server::currSceneMutex);
+        Server::currScene.reset();
+    }
+
     if (config_) {
         try { config_->release_scene_references(); }
         catch (...) { error("Releasing configured scene references failed"); }

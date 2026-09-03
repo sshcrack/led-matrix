@@ -53,7 +53,8 @@ public:
     // Fired exactly once when the first frame is written to current_frame_,
     // whether via fast-start or chunk playback. The frame is already in
     // current_frame_ when this fires (frame_mutex_ is NOT held).
-    // Guarded by status_cb_mutex_ — cleared in stop() like on_status_change.
+    // Guarded by status_cb_mutex_. stop() suppresses it while workers join, then
+    // restores it so callers can register before start() without a race.
     std::function<void()> on_first_frame_ready;
 
 private:
