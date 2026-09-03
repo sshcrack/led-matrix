@@ -697,7 +697,7 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
-    std::string durCmd = get_ytdlp_command() + " --no-warnings --print duration \"" + url + "\" 2>"
+    std::string durCmd = get_ytdlp_command() + " --no-warnings -4 --print duration \"" + url + "\" 2>"
 #ifdef _WIN32
                          "nul";
 #else
