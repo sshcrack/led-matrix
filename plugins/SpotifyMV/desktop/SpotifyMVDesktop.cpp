@@ -56,7 +56,7 @@ SpotifyMVDesktop::~SpotifyMVDesktop() {
         request_generation_.fetch_add(1, std::memory_order_relaxed);
         pending_track_id_.clear();
     }
-    if (search_thread_.joinable()) search_thread_.join();
+    cancel_search_and_join();
     if (pending_engine_) {
         std::lock_guard<std::mutex> lk(engine_mutex_);
         pending_engine_->stop();
@@ -229,8 +229,13 @@ void SpotifyMVDesktop::render() {
         ImGui::Text("URL:   %s", cur_url.c_str());
 
     // ── Search status ───────────────────────────────────────────────────
-    if (search_running_.load())
-        ImGui::TextColored(ImVec4(0, 0.84f, 0.38f, 1), "Searching YouTube...");
+    if (search_running_.load()) {
+        const char* preparation_label =
+            cur_state == Shared::VideoStreamEngine::State::Playing
+                ? "Preparing upcoming Spotify video in background..."
+                : "Searching YouTube for Spotify video...";
+        ImGui::TextColored(ImVec4(0, 0.84f, 0.38f, 1), "%s", preparation_label);
+    }
 
     // ── Crossfade progress ──────────────────────────────────────────────
     if (crossfade_active_.load()) {
@@ -267,7 +272,7 @@ void SpotifyMVDesktop::render() {
         ImGui::Text("Total tracks played: %d", total_tracks_played_.load());
         ImGui::Text("Total errors:       %d", total_errors_.load());
         ImGui::Text("Engine swaps:       %d", total_swaps_.load());
-        ImGui::Text("Search running:     %s", search_running_.load() ? "Yes" : "No");
+        ImGui::Text("Background prepare: %s", search_running_.load() ? "Yes" : "No");
         ImGui::Text("Crossfade active:   %s", crossfade_active_.load() ? "Yes" : "No");
         ImGui::Separator();
         ImGui::Text("Current engine:     %s", current_engine_ ? "Valid" : "NULL");
@@ -445,7 +450,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             // No plugin mutex is held while joining: the search worker can finish
             // callbacks without lock inversion. Move/stop its engine only after
             // the worker no longer references it.
-            if (search_thread_.joinable()) search_thread_.join();
+            cancel_search_and_join();
             {
                 std::lock_guard<std::mutex> lk_eng(engine_mutex_);
                 engine_to_cancel = std::move(pending_engine_);
@@ -526,7 +531,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             }
         }
         if (to_stop) {
-            if (search_thread_.joinable()) search_thread_.join();
+            cancel_search_and_join();
             to_stop->stop();
         }
 
@@ -571,7 +576,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             current_track_id_.clear();
             pending_track_id_.clear();
         }
-        if (search_thread_.joinable()) search_thread_.join();
+        cancel_search_and_join();
 
         {
             std::lock_guard<std::mutex> lk_eng(engine_mutex_);
@@ -596,6 +601,13 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
     }
 }
 
+void SpotifyMVDesktop::cancel_search_and_join() {
+    search_command_running_.store(false, std::memory_order_release);
+    if (search_thread_.joinable())
+        search_thread_.join();
+    search_running_.store(false, std::memory_order_release);
+}
+
 void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                                        const std::string& track_id,
                                        const std::string& song,
@@ -605,9 +617,9 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                                        long spotify_progress_ms,
                                        long spotify_duration_ms,
                                        std::uint64_t generation) {
-    if (search_thread_.joinable()) search_thread_.join();
-
-    search_running_ = true;
+    cancel_search_and_join();
+    search_command_running_.store(true, std::memory_order_release);
+    search_running_.store(true, std::memory_order_release);
 
     search_thread_ = std::thread([this, engine, track_id, song, artist, suffix, fallback,
                                    spotify_progress_ms, spotify_duration_ms, generation]() {
@@ -617,7 +629,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
 
         try {
             std::string query = song + " " + artist + " " + suffix;
-            std::string url = YouTubeSearcher::search(query);
+            std::string url = YouTubeSearcher::search(query, &search_command_running_);
             if (!request_is_current()) {
                 search_running_ = false;
                 return;
@@ -625,7 +637,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
 
             if (url.empty() && fallback) {
                 spdlog::info("SpotifyMV: falling back to lyric video search");
-                url = YouTubeSearcher::search(song + " " + artist + " lyrics");
+                url = YouTubeSearcher::search(song + " " + artist + " lyrics", &search_command_running_);
                 if (!request_is_current()) {
                     search_running_ = false;
                     return;
@@ -641,7 +653,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                 return;
             }
 
-            const long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms);
+            const long seek_ms = compute_video_seek(url, spotify_progress_ms, spotify_duration_ms, &search_command_running_);
             if (!request_is_current()) {
                 search_running_ = false;
                 return;
@@ -679,7 +691,8 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
 
 long SpotifyMVDesktop::compute_video_seek(const std::string& url,
                                            long spotify_progress_ms,
-                                           long spotify_duration_ms) {
+                                           long spotify_duration_ms,
+                                           const std::atomic<bool>* running) {
     if (spotify_duration_ms <= 0)
         return spotify_progress_ms;
 
@@ -703,15 +716,13 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     }
 
     double video_duration = 0;
-    std::string durCmd = get_ytdlp_network_command() + " --no-warnings --print duration \"" + url + "\" 2>"
-#ifdef _WIN32
-                         "nul";
-#else
-                         "/dev/null";
-#endif
-    std::string durOut = run_command_and_get_output(durCmd);
-    if (!durOut.empty()) {
-        try { video_duration = std::stod(durOut); } catch (...) {}
+    const std::string durCmd = get_ytdlp_network_command()
+        + " --no-warnings --print duration \"" + url + "\"";
+    const auto duration_result = run_command_capture(durCmd, running, 4096);
+    if (duration_result.exit_code == -2)
+        return spotify_progress_ms;
+    if (duration_result.exit_code == 0 && !duration_result.output.empty()) {
+        try { video_duration = std::stod(duration_result.output); } catch (...) {}
     }
     if (video_duration <= 0) {
         spdlog::warn("SpotifyMV: could not get video duration, falling back to raw seek");
@@ -721,6 +732,9 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
     double intro_end = 0;
     double outro_start = video_duration;
 
+    if (running && !running->load(std::memory_order_acquire))
+        return spotify_progress_ms;
+
     {
         auto response = cpr::Get(
             cpr::Url{"https://sponsor.ajay.app/api/skipSegments"},
@@ -728,7 +742,7 @@ long SpotifyMVDesktop::compute_video_seek(const std::string& url,
                 {"videoID", video_id},
                 {"categories", R"(["intro","outro","music_offtopic"])"}
             },
-            cpr::Timeout{3000}
+            cpr::Timeout{1200}
         );
 
         if (response.status_code == 200 && !response.text.empty()) {

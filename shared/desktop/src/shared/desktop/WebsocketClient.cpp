@@ -27,6 +27,7 @@ WebsocketClient::WebsocketClient() : udpSender()
     if (net_refs().fetch_add(1, std::memory_order_relaxed) == 0) {
         ix::initNetSystem();
     }
+    pluginMessageThread_ = std::thread(&WebsocketClient::pluginMessageLoop, this);
 }
 
 void WebsocketClient::setup_callback()
@@ -40,13 +41,36 @@ void WebsocketClient::setup_callback()
         if (msg->type == ix::WebSocketMessageType::Open)
         {
             shared_this->streamState_.on_websocket_open();
+            {
+                std::unique_lock<std::mutex> lock(shared_this->lastErrorMutex);
+                shared_this->lastError.clear();
+            }
+            spdlog::info("WebSocket opened");
             return;
         }
 
-        if (msg->type == ix::WebSocketMessageType::Close
-            || msg->type == ix::WebSocketMessageType::Error)
+        if (msg->type == ix::WebSocketMessageType::Close)
         {
             shared_this->streamState_.on_websocket_closed();
+            spdlog::warn("WebSocket closed (code {}, remote={}): {}",
+                         msg->closeInfo.code, msg->closeInfo.remote,
+                         msg->closeInfo.reason.empty() ? "no reason" : msg->closeInfo.reason);
+            return;
+        }
+
+        if (msg->type == ix::WebSocketMessageType::Error)
+        {
+            shared_this->streamState_.on_websocket_closed();
+            {
+                std::unique_lock<std::mutex> lock(shared_this->lastErrorMutex);
+                shared_this->lastError = msg->errorInfo.reason.empty()
+                    ? "WebSocket transport error"
+                    : msg->errorInfo.reason;
+            }
+            spdlog::warn("WebSocket error (retry {}, wait {}s, HTTP {}): {}",
+                         msg->errorInfo.retries, msg->errorInfo.wait_time,
+                         msg->errorInfo.http_status,
+                         msg->errorInfo.reason.empty() ? "no reason" : msg->errorInfo.reason);
             return;
         }
 
@@ -63,30 +87,74 @@ void WebsocketClient::setup_callback()
 
             if (m.starts_with("msg:")) {
                 const auto pluginNameEnd = m.find(':', 4);
-
+                if (pluginNameEnd == std::string::npos)
+                    return;
                 const std::string pluginName = m.substr(4, pluginNameEnd - 4);
-                const std::string message = m.substr(m.find(':', pluginNameEnd) + 1);
-
-                for (const auto & [_p, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
-                    if (plugin->get_plugin_name() != pluginName)
-                        continue;
-
-                    plugin->on_websocket_message(message);
-                }
+                const std::string message = m.substr(pluginNameEnd + 1);
+                shared_this->enqueuePluginMessage(pluginName, message);
             }
         } });
 }
 
 WebsocketClient::~WebsocketClient()
 {
+    transportStarted_.store(false);
+    webSocket.disableAutomaticReconnection();
     webSocket.stop();
-    senderRunning = false;
+    senderRunning.store(false);
     if (senderThread.joinable())
     {
         senderThread.join();
     }
+    {
+        std::lock_guard<std::mutex> lock(pluginMessageMutex_);
+        pluginMessageRunning_.store(false);
+        pluginMessages_.clear();
+    }
+    pluginMessageCv_.notify_all();
+    if (pluginMessageThread_.joinable())
+        pluginMessageThread_.join();
     if (net_refs().fetch_sub(1, std::memory_order_relaxed) == 1) {
         ix::uninitNetSystem();
+    }
+}
+
+void WebsocketClient::enqueuePluginMessage(std::string plugin_name, std::string message)
+{
+    {
+        std::lock_guard<std::mutex> lock(pluginMessageMutex_);
+        pluginMessages_.emplace_back(std::move(plugin_name), std::move(message));
+    }
+    pluginMessageCv_.notify_one();
+}
+
+void WebsocketClient::pluginMessageLoop()
+{
+    while (true) {
+        std::pair<std::string, std::string> item;
+        {
+            std::unique_lock<std::mutex> lock(pluginMessageMutex_);
+            pluginMessageCv_.wait(lock, [this] {
+                return !pluginMessageRunning_.load() || !pluginMessages_.empty();
+            });
+            if (!pluginMessageRunning_.load() && pluginMessages_.empty())
+                return;
+            item = std::move(pluginMessages_.front());
+            pluginMessages_.pop_front();
+        }
+
+        try {
+            for (const auto& [_name, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
+                if (plugin->get_plugin_name() != item.first)
+                    continue;
+                plugin->on_websocket_message(item.second);
+                break;
+            }
+        } catch (const std::exception& e) {
+            spdlog::error("Desktop plugin '{}' WebSocket message failed: {}", item.first, e.what());
+        } catch (...) {
+            spdlog::error("Desktop plugin '{}' WebSocket message failed with unknown exception", item.first);
+        }
     }
 }
 

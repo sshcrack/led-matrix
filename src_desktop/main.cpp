@@ -372,21 +372,34 @@ int run_app(int argc, char *argv[]) {
         const std::string stateStr = ws->getReadyStateString();
         ImGui::Text("WebSocket is currently: %s", stateStr.c_str());
 
-        if (state != ix::ReadyState::Open) {
-            if (ImGui::Button("Connect", ImVec2(0, 0))) {
+        if (state == ix::ReadyState::Closed) {
+            if (ws->isTransportStarted()) {
+                ImGui::BeginDisabled();
+                ImGui::Button("Reconnecting...", ImVec2(0, 0));
+                ImGui::EndDisabled();
+            } else if (ImGui::Button("Connect", ImVec2(0, 0))) {
                 ws->setUrl(fmt::format("ws://{}:{}/desktopWebsocket", hostname, port));
                 ws->start();
-                ws->webSocket.enableAutomaticReconnection();
                 matrixVersionManager.checkMatrixVersionAsync(hostname, port);
                 spdlog::info("Connecting to WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
             }
             return;
-        } else {
-            if (ImGui::Button("Disconnect", ImVec2(0, 0))) {
-                ws->stop();
-                ws->webSocket.disableAutomaticReconnection();
-                spdlog::info("Disconnecting from WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
-            }
+        }
+        if (state == ix::ReadyState::Connecting) {
+            ImGui::BeginDisabled();
+            ImGui::Button("Connecting...", ImVec2(0, 0));
+            ImGui::EndDisabled();
+            return;
+        }
+        if (state == ix::ReadyState::Closing) {
+            ImGui::BeginDisabled();
+            ImGui::Button("Disconnecting...", ImVec2(0, 0));
+            ImGui::EndDisabled();
+            return;
+        }
+        if (ImGui::Button("Disconnect", ImVec2(0, 0))) {
+            ws->stop();
+            spdlog::info("Disconnecting from WebSocket at ws://{}:{}/desktopWebsocket", hostname, port);
         }
 
         ImGui::Text("Active Scene: %s", ws->getActiveScene().c_str());

@@ -50,6 +50,7 @@ private:
     std::mutex engine_mutex_;
 
     std::atomic<bool> search_running_{false};
+    std::atomic<bool> search_command_running_{true};
     std::atomic<std::uint64_t> request_generation_{0};
     std::thread search_thread_;
 
@@ -76,6 +77,8 @@ private:
     void report_tools_status();
     void on_pending_first_frame(std::uint64_t generation, const std::string& track_id);
 
+    void cancel_search_and_join();
+
     void search_and_play(Shared::VideoStreamEngine* engine,
                          const std::string& track_id,
                          const std::string& song,
@@ -87,5 +90,6 @@ private:
                          std::uint64_t generation);
 
     long compute_video_seek(const std::string& url, long spotify_progress_ms,
-                            long spotify_duration_ms);
+                            long spotify_duration_ms,
+                            const std::atomic<bool>* running = nullptr);
 };
