@@ -1,6 +1,7 @@
 #include "TransitionEngine.h"
 
 #include "LiveFrameSnapshot.h"
+#include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/remote_render.h"
@@ -70,6 +71,8 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                                                std::function<bool()> inputs_still_available,
                                                FrameCanvas *current_display_canvas)
 {
+    CrashReporter::set_activity(std::string("transition '") + transition_name + "': '"
+        + scene->get_name() + "' -> '" + next_scene->get_name() + "'");
     tmillis_t next_input_check_ms = time_source_->now_ms();
     const auto runtime_inputs_valid = [&]() {
         if (!inputs_still_available)

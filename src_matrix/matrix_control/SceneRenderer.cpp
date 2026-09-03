@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "LiveFrameSnapshot.h"
+#include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/remote_render.h"
@@ -70,6 +71,9 @@ bool SceneRenderer::render_scene_phase(
             placement_reason = "desktop scene worker is unavailable; rendering locally";
     }
 
+    CrashReporter::set_activity(std::string("rendering scene '") + scene->get_name()
+        + (remote_session.has_value() ? "' (desktop pending)" : "' (local)"));
+
     diagnostics.set_render_placement({
         {"scene", scene->get_name()},
         {"placement", remote_session.has_value() ? "desktop_pending" : "local"},
@@ -126,6 +130,7 @@ bool SceneRenderer::render_scene_phase(
             if (!desktop_available()) {
                 remote_session.reset();
                 remote_was_live = false;
+                CrashReporter::set_activity(std::string("rendering scene '") + scene->get_name() + "' (local fallback)");
                 diagnostics.set_render_placement({
                     {"scene", scene->get_name()},
                     {"placement", "local"},
@@ -140,6 +145,7 @@ bool SceneRenderer::render_scene_phase(
                     matrix_->width(), matrix_->height());
                 if (used_remote_frame && !remote_was_live) {
                     remote_was_live = true;
+                    CrashReporter::set_activity(std::string("rendering scene '") + scene->get_name() + "' (desktop)");
                     diagnostics.set_render_placement({
                         {"scene", scene->get_name()},
                         {"placement", "desktop"},
