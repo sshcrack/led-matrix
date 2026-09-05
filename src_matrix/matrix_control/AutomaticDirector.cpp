@@ -88,7 +88,8 @@ struct DirectorContext {
     std::string mode = "ambient";
 };
 
-DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float render_quality)
+DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float render_quality,
+                            const VisualJourney::Frame& journey)
 {
     DirectorContext c;
     c.audio_available = runtime_inputs.available(RuntimeInputIds::Audio);
@@ -192,13 +193,17 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, float
         c.mode = silence ? "quiet" : "ambient";
     }
 
+    const float journey_weight = c.audio_active ? 0.18f : (c.spotify ? 0.35f : (silence ? 0.25f : 0.85f));
+    c.target_intensity += (journey.intensity - c.target_intensity) * journey_weight;
+    c.target_motion += (journey.motion - c.target_motion) * journey_weight;
+
     c.performance_budget = render_quality < 0.78f ? 0.44f
         : (render_quality < 0.90f ? 0.61f : (render_quality < 0.97f ? 0.76f : 0.90f));
     return c;
 }
 }  // namespace
 
-AutomaticDirector::AutomaticDirector(std::uint64_t seed) : seed_(seed), rng_(seed) {}
+AutomaticDirector::AutomaticDirector(std::uint64_t seed) : journey_(seed), seed_(seed), rng_(seed) {}
 
 bool AutomaticDirector::sync_track_context(const std::string& track_id)
 {
@@ -251,7 +256,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
     const std::string& exclude_name) const
 {
     std::vector<Candidate> ranked;
-    const auto context = context_for(runtime_inputs, render_quality_);
+    const auto context = context_for(runtime_inputs, render_quality_, journey_.frame());
 
     for (const auto& scene : scenes) {
         if (!scene || scene->get_name() == exclude_name)
@@ -280,6 +285,13 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
         Candidate candidate;
         candidate.scene = scene;
         candidate.score = 1.0f;
+        const auto journey = journey_.frame();
+        candidate.reasons.push_back("journey phase: " + std::string(journey.phase));
+        if (has_tag(profile.tags, journey.motif) || descriptor.family == journey.motif) {
+            const float motif_strength = 4.0f * journey.progress * (1.0f - journey.progress);
+            candidate.score += (context.audio_active ? 0.12f : 0.32f) * motif_strength;
+            candidate.reasons.push_back("continues the " + std::string(journey.motif) + " journey motif");
+        }
 
         const float intensity_fit = 1.0f - std::abs(profile.intensity - context.target_intensity);
         const float motion_fit = 1.0f - std::abs(profile.motion - context.target_motion);
@@ -440,7 +452,7 @@ AutomaticDirector::Decision AutomaticDirector::choose(
     const std::shared_ptr<Scenes::Scene>& preferred_scene)
 {
     Decision decision;
-    const auto context = context_for(runtime_inputs, render_quality_);
+    const auto context = context_for(runtime_inputs, render_quality_, journey_.frame());
     sync_track_context(context.spotify ? context.spotify_track_id : std::string{});
     last_audio_available_ = context.audio_available;
     last_audio_active_ = context.audio_active;
@@ -530,7 +542,7 @@ tmillis_t AutomaticDirector::presentation_duration(
     if (!scene)
         return 20000;
 
-    const auto context = context_for(runtime_inputs, render_quality_);
+    const auto context = context_for(runtime_inputs, render_quality_, journey_.frame());
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
@@ -557,10 +569,15 @@ tmillis_t AutomaticDirector::presentation_duration(
         seconds = context.audio_active ? 31.0f : 38.0f;
     }
 
+    if (presentation_role(profile) != "media") {
+        const float influence = context.audio_active ? 0.25f : 1.0f;
+        seconds *= 1.0f + (journey_.frame().dwell_scale - 1.0f) * influence;
+    }
+
     if (profile.performance_cost > context.performance_budget + 0.12f)
         seconds = std::min(seconds, 18.0f);
 
-    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, 52.0f) * 1000.0f);
+    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, 75.0f) * 1000.0f);
 }
 
 AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
@@ -573,7 +590,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     if (!current_scene)
         return result;
 
-    const auto context = context_for(runtime_inputs, render_quality_);
+    const auto context = context_for(runtime_inputs, render_quality_, journey_.frame());
     const bool track_changed = sync_track_context(context.spotify ? context.spotify_track_id : std::string{});
     last_audio_available_ = context.audio_available;
     last_audio_active_ = context.audio_active;
@@ -687,11 +704,18 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     }
 
     if (elapsed_ms >= 12000 && current_error > 0.25f && best_error + 0.16f < current_error) {
-        request("sustained music energy no longer fits the current scene", best.scene);
+        request(context.audio_active ? "sustained music energy no longer fits the current scene"
+                                     : "visual journey has moved beyond the current scene", best.scene);
         return result;
     }
 
     return result;
+}
+
+void AutomaticDirector::advance_journey(tmillis_t elapsed_ms)
+{
+    if (elapsed_ms > 0)
+        journey_.advance(static_cast<std::uint64_t>(elapsed_ms));
 }
 
 void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scene)
@@ -725,6 +749,7 @@ void AutomaticDirector::reseed(std::uint64_t seed)
 {
     if (seed == 0)
         seed = 1;
+    journey_ = VisualJourney(seed);
     seed_ = seed;
     rng_.seed(seed_);
     history_.clear();
@@ -787,7 +812,14 @@ nlohmann::json AutomaticDirector::diagnostics() const
                               {"score", candidate.score},
                               {"reasons", candidate.reasons}});
     }
-    return {{"seed", std::to_string(seed_)},
+    const auto journey = journey_.frame();
+    return {{"journey", {{"phase", journey.phase}, {"motif", journey.motif},
+                          {"cycle", journey_.cycle()}, {"progress", journey.progress},
+                          {"phase_progress", journey.phase_progress},
+                          {"elapsed_ms", journey_.elapsed_ms()}, {"duration_ms", journey_.duration_ms()},
+                          {"intensity", journey.intensity}, {"motion", journey.motion},
+                          {"dwell_scale", journey.dwell_scale}}},
+            {"seed", std::to_string(seed_)},
             {"decision_count", decision_count_},
             {"render_quality", render_quality_},
             {"context",

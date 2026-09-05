@@ -356,6 +356,84 @@ int main()
         return 6;
     }
 
+    RuntimeInputs::clear_all();
+    std::vector<std::shared_ptr<Scenes::Scene>> journey_scenes{
+        std::make_shared<TestScene>("rest", .25f, .1f, .2f, false, "soft", .27f),
+        std::make_shared<TestScene>("crest", .68f, .1f, .2f, false, "bright", .70f),
+    };
+    AutomaticDirector journey_director(81);
+    const auto duration = journey_director.diagnostics()["journey"]["duration_ms"].get<tmillis_t>();
+    if (duration < 24 * 60000 || duration > 36 * 60000
+        || journey_director.rank(journey_scenes, {}).front().scene->get_name() != "rest") {
+        std::cerr << "journey did not start with a restrained opening\n";
+        return 25;
+    }
+    const auto opening_dwell = journey_director.presentation_duration(journey_scenes.front(), {});
+    journey_director.advance_journey(duration * 7 / 10);
+    if (journey_director.rank(journey_scenes, {}).front().scene->get_name() != "crest"
+        || journey_director.presentation_duration(journey_scenes.front(), {}) >= opening_dwell) {
+        std::cerr << "journey crest did not change selection and pacing\n";
+        return 26;
+    }
+    const auto crest_state = journey_director.diagnostics()["journey"];
+    (void)journey_director.rank(journey_scenes, {});
+    (void)journey_director.diagnostics();
+    journey_director.advance_journey(-1000);
+    if (journey_director.diagnostics()["journey"] != crest_state) {
+        std::cerr << "read-only calls or invalid elapsed time advanced the journey\n";
+        return 27;
+    }
+    journey_director.advance_journey(duration - duration * 7 / 10);
+    const auto next_journey = journey_director.diagnostics()["journey"];
+    if (next_journey["phase"] != "settle" || next_journey["cycle"] != 1
+        || next_journey["motif"] == crest_state["motif"]
+        || journey_director.rank(journey_scenes, {}).front().scene->get_name() != "rest") {
+        std::cerr << "journey did not resolve and start a new motif\n";
+        return 28;
+    }
+    VisualJourney continuous(81), batched(81);
+    float previous_intensity = continuous.frame().intensity;
+    for (int second = 0; second < 6 * 60 * 60; ++second) {
+        continuous.advance(1000);
+        const auto frame = continuous.frame();
+        if (std::abs(frame.intensity - previous_intensity) > .01f
+            || frame.progress < 0 || frame.progress >= 1 || frame.motion < 0 || frame.motion > 1) {
+            std::cerr << "six-hour journey had a discontinuity or invalid target\n";
+            return 29;
+        }
+        previous_intensity = frame.intensity;
+    }
+    batched.advance(6 * 60 * 60 * 1000);
+    if (continuous.elapsed_ms() != batched.elapsed_ms() || continuous.cycle() != batched.cycle()
+        || continuous.frame().motif != batched.frame().motif) {
+        std::cerr << "journey depends on renderer polling cadence\n";
+        return 30;
+    }
+    journey_director.reseed(81);
+    AutomaticDirector fresh_journey(81);
+    if (journey_director.diagnostics()["journey"] != fresh_journey.diagnostics()["journey"]) {
+        std::cerr << "reseed did not restart the journey\n";
+        return 31;
+    }
+
+    RuntimeInputs::InputState music_input;
+    music_input.available = true;
+    music_input.signals = {{"loudness", .9}, {"loudness_slow", .9}, {"bass", .8}, {"silence", false}};
+    const RuntimeInputs::Snapshot loud_music({{std::string(RuntimeInputIds::Audio), music_input}});
+    (void)fresh_journey.choose(journey_scenes, loud_music);
+    const auto opening_music = fresh_journey.diagnostics()["context"]["target_intensity"].get<float>();
+    fresh_journey.advance_journey(duration * 7 / 10);
+    (void)fresh_journey.choose(journey_scenes, loud_music);
+    const auto crest_music = fresh_journey.diagnostics()["context"]["target_intensity"].get<float>();
+    music_input.signals["silence"] = true;
+    const RuntimeInputs::Snapshot quiet_music({{std::string(RuntimeInputIds::Audio), music_input}});
+    (void)fresh_journey.choose(journey_scenes, quiet_music);
+    const auto quiet_crest = fresh_journey.diagnostics()["context"]["target_intensity"].get<float>();
+    if (opening_music < .5f || crest_music - opening_music > .1f || quiet_crest > .38f) {
+        std::cerr << "journey overrode music energy or ignored detected silence\n";
+        return 32;
+    }
+
     const auto config_path = std::filesystem::temp_directory_path() / "automatic-director-seed-smoke.json";
     std::filesystem::remove(config_path);
     std::uint64_t persisted_seed = 0;

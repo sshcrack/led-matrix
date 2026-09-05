@@ -187,6 +187,7 @@ else()
         src_matrix/matrix_control/hardware.cpp
         src_matrix/matrix_control/SceneScheduler.cpp
         src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
         src_matrix/matrix_control/TransitionPlanner.cpp
         src_matrix/matrix_control/SceneLabRuntime.cpp
         src_matrix/matrix_control/SceneRenderer.cpp
@@ -707,6 +708,7 @@ if(ENABLE_EMULATOR)
     add_executable(spotify_mv_runtime_ready_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_runtime_ready_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
     )
     target_compile_features(spotify_mv_runtime_ready_smoke PRIVATE cxx_std_23)
     target_include_directories(spotify_mv_runtime_ready_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
@@ -732,9 +734,14 @@ if(ENABLE_EMULATOR)
     add_test(NAME transition_planner_smoke COMMAND $<TARGET_FILE:transition_planner_smoke>)
     set_tests_properties(transition_planner_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(section_tracker_smoke ${CMAKE_CURRENT_SOURCE_DIR}/tests/section_tracker_smoke.cpp)
+    target_compile_features(section_tracker_smoke PRIVATE cxx_std_23)
+    add_test(NAME section_tracker_smoke COMMAND $<TARGET_FILE:section_tracker_smoke>)
+
     add_executable(automatic_director_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic_director_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
     )
     target_compile_features(automatic_director_smoke PRIVATE cxx_std_23)
     target_include_directories(automatic_director_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)

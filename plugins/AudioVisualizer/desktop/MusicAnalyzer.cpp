@@ -47,7 +47,7 @@ void MusicAnalyzer::reset()
     previousNormalizedSpectrum_.clear();
     previousBands_.fill(0.0f);
     smoothedBands_.fill(0.0f);
-    sectionReference_.fill(0.0f);
+    section_tracker_ = SectionTracker{};
     bandPeakDb_.fill(-35.0f);
     bandFloorDb_.fill(-90.0f);
     loudnessHistoryDb_.clear();
@@ -67,7 +67,7 @@ void MusicAnalyzer::reset()
     tempoChangeStreak_ = 0;
     dropArmed_ = false;
     wasSustainedSilence_ = false;
-    lastBeatTime_ = lastOnsetTime_ = lastDropTime_ = lastSectionTime_ = -1000.0;
+    lastBeatTime_ = lastOnsetTime_ = lastDropTime_ = -1000.0;
     audioClockOriginSequence_ = lastAudioSequence_ = 0;
     hasAudioClock_ = false;
     startTime_ = lastAnalyzeTime_ = std::chrono::steady_clock::now();
@@ -598,17 +598,16 @@ AudioProtocol::Frame MusicAnalyzer::analyze(const AudioRecorder::CapturedAudioFr
     }
     dropEnvelope_ = smooth(dropEnvelope_, 0.0f, 0.01f, 1.25f, dt);
 
-    float sectionDistance = 0.0f;
-    for (size_t i = 0; i < FeatureBandCount; ++i) {
-        const float difference = bands[i] - sectionReference_[i];
-        sectionDistance += difference * difference;
-        sectionReference_[i] = smooth(sectionReference_[i], bands[i], 4.0f, 4.0f, dt);
-    }
-    sectionDistance = std::sqrt(sectionDistance / static_cast<float>(FeatureBandCount));
-    const bool sectionEvent = !reacquiringAfterSilence && nowSeconds > 5.0 && nowSeconds - lastSectionTime_ > 3.0 &&
-                              sectionDistance > 0.30f && onsetStrength > 0.12f;
+    std::array<float, FeatureBandCount> section_bands{};
+    float section_power = 0.0f;
+    for (float band : rawBands) section_power += band * band;
+    const float section_norm = std::sqrt(std::max(section_power, 1.0e-18f));
+    for (size_t i = 0; i < FeatureBandCount; ++i)
+        section_bands[i] = rawBands[i] / section_norm;
+    const bool sectionEvent = section_tracker_.update(
+        section_bands, dt, hardSilenceSeconds_ < 0.22f && !reacquiringAfterSilence,
+        tempoLocked ? period : 0.5f);
     if (sectionEvent) {
-        lastSectionTime_ = nowSeconds;
         ++sectionCounter_;
         frame.flags |= AudioProtocol::SectionEvent;
         sectionEnvelope_ = 1.0f;

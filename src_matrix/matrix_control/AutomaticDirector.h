@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VisualJourney.h"
+
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -63,6 +65,8 @@ public:
         const RuntimeInputs::Snapshot& runtime_inputs,
         tmillis_t elapsed_ms);
 
+    void advance_journey(tmillis_t elapsed_ms);
+
     void record_played(const std::shared_ptr<Scenes::Scene>& scene);
     void report_render_quality(float quality_scale);
     void reseed(std::uint64_t seed);
@@ -80,6 +84,7 @@ private:
         float motion = 0.5f;
     };
 
+    VisualJourney journey_;
     std::uint64_t seed_;
     mutable std::mt19937_64 rng_;
     std::deque<HistoryEntry> history_;
