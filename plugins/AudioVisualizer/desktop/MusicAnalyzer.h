@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 
+#include "SectionTracker.h"
 #include "config.h"
 #include "record.h"
 
@@ -37,7 +38,7 @@ private:
     std::array<float, FeatureBandCount> smoothedBands_{};
     std::array<float, FeatureBandCount> bandPeakDb_{};
     std::array<float, FeatureBandCount> bandFloorDb_{};
-    std::array<float, FeatureBandCount> sectionReference_{};
+    SectionTracker section_tracker_;
 
     std::deque<float> loudnessHistoryDb_;
     std::deque<float> fluxHistory_;
@@ -67,7 +68,6 @@ private:
     double lastBeatTime_ = -1000.0;
     double lastOnsetTime_ = -1000.0;
     double lastDropTime_ = -1000.0;
-    double lastSectionTime_ = -1000.0;
     uint32_t sequence_ = 0;
     uint64_t beatCounter_ = 0;
     uint64_t onsetCounter_ = 0;

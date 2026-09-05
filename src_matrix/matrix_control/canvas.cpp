@@ -136,10 +136,19 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
     auto &second = second_offscreen_canvas_;
     auto &composite = composite_offscreen_canvas_;
 
+    auto journey_updated_ms = time_source_->now_ms();
+    const auto advance_journey = [&] {
+        const auto now = time_source_->now_ms();
+        if (automatic_mode && now >= journey_updated_ms)
+            automatic_director_.advance_journey(now - journey_updated_ms);
+        journey_updated_ms = now;
+    };
+
     int no_scene_count = 0;
     while (!*exit_flag_) {
         if (lab_mode && !SceneLabRuntime::instance().lease_active(lab_snapshot.generation))
             return;
+        advance_journey();
         const auto runtime_inputs = runtime_inputs_fn_();
 
         std::shared_ptr<Scenes::Scene> scene = lab_mode
@@ -237,7 +246,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         std::function<bool()> director_switch_requested;
         if (automatic_mode && !lab_mode && !pinned_scene) {
             director_switch_requested = [this, &scenes, scene, scene_started_ms,
-                                         &director_switch_triggered, &director_preferred_scene] {
+                                         &director_switch_triggered, &director_preferred_scene, &advance_journey] {
+                advance_journey();
                 const auto latest_inputs = runtime_inputs_fn_();
                 prepare_automatic_scenes(latest_inputs);
                 const auto opportunity = automatic_director_.consider_switch(
@@ -255,6 +265,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         bool early_exit = renderer_.render_scene_phase(
             scene, composite, end_ms, std::move(inputs_still_available), std::move(director_switch_requested));
 
+        advance_journey();
         const bool should_handoff = !early_exit || director_switch_triggered;
         if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
@@ -317,6 +328,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 broadcast_fn_(scene->get_name());
         }
 
+        advance_journey();
         if (automatic_mode) {
             automatic_director_.report_render_quality(scene->get_render_quality_scale());
             Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());

@@ -37,3 +37,18 @@ For best results, it is **recommended** to set the `SHADERTOY_API_KEY` environme
 
 ## License
 See LICENSE files in this directory and thirdparty/ for details.
+
+## Built-in 3D music scenes
+
+- `shader:music_resonance_cathedral`: a rotating crystal surrounded by bowed ribs and luminous halos. Bass opens the structure, percussion travels along the ribs, and drops light the crystal's edges.
+- `shader:music_tidal_reactor`: a rotating gyroid sculpture with a warm interior and moving surface veins. Mids thicken the membrane, bass expands it, and percussion/section events illuminate the veins.
+
+Both run on the connected desktop GPU and stream pixels to the Pi. They participate in Automatic Mode and have an idle animation when audio is unavailable. They require no Shadertoy API key.
+
+Render a review set with `scripts/preview_shadertoy_shader.sh <shader.frag>`. The preview executable also accepts an optional final frames-directory argument after the temporal limit, for capturing every rendered frame at 60 FPS:
+
+```bash
+xvfb-run -a desktop_build/tools/shadertoy_shader_preview \
+  plugins/Shadertoy/shaders/music_tidal_reactor.frag /tmp/reactor.png \
+  128 128 360 synthetic -1 /tmp/reactor-frames
+```

@@ -92,8 +92,8 @@ void flipRows(std::vector<std::uint8_t> &rgb, const int width, const int height)
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3 || argc > 8) {
-        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=128] [height=128] [frames=120] [audio=synthetic|none] [max-temporal-delta]\n";
+    if (argc < 3 || argc > 9) {
+        std::cerr << "Usage: shadertoy_shader_preview <shader.frag> <output.png> [width=128] [height=128] [frames=120] [audio=synthetic|none] [max-temporal-delta] [frames-directory]\n";
         return 2;
     }
 
@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
     const int height = argc >= 5 ? std::stoi(argv[4]) : 128;
     const int frames = argc >= 6 ? std::stoi(argv[5]) : 120;
     const std::string audioMode = argc >= 7 ? argv[6] : "synthetic";
+    const std::filesystem::path framesDirectory = argc >= 9 ? argv[8] : "";
     const double maxTemporalDeltaLimit = argc >= 8 ? std::stod(argv[7]) : -1.0;
     if (audioMode != "synthetic" && audioMode != "none") {
         std::cerr << "audio must be 'synthetic' or 'none'\n";
@@ -142,6 +143,7 @@ int main(int argc, char **argv) {
         auto build = editor.build(context);
         if (!build) throw build.error();
 
+        if (!framesDirectory.empty()) std::filesystem::create_directories(framesDirectory);
         constexpr float Fps = 60.0f;
         std::vector<std::uint8_t> rgb;
         std::vector<std::uint8_t> previousRgb;
@@ -160,6 +162,15 @@ int main(int argc, char **argv) {
                 temporalDeltaSum += delta;
                 maxTemporalDelta = std::max(maxTemporalDelta, delta);
                 ++temporalComparisons;
+            }
+            if (!framesDirectory.empty()) {
+                auto capture = rgb;
+                if (capture.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3)
+                    throw std::runtime_error("Renderer returned an unexpected capture size");
+                flipRows(capture, width, height);
+                const auto path = framesDirectory / (std::to_string(frame) + ".png");
+                if (!stbi_write_png(path.string().c_str(), width, height, 3, capture.data(), width * 3))
+                    throw std::runtime_error("Could not write captured frame: " + path.string());
             }
             previousRgb = rgb;
         }
