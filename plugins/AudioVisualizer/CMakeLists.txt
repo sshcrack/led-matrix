@@ -17,6 +17,7 @@ register_plugin(AudioVisualizer
         desktop/record.h
         desktop/MusicAnalyzer.cpp
         desktop/MusicAnalyzer.h
+        desktop/SectionTracker.h
         desktop/udpBandsPacket.cpp
         desktop/udpBandsPacket.h
         desktop/AudioProcessor.h

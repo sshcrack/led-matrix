@@ -72,6 +72,10 @@ interface DiagnosticsData {
   automatic_mode: boolean
   configured_director_seed: string
   director?: {
+    journey?: {
+      phase: string; motif: string; cycle: number; progress: number; phase_progress: number
+      elapsed_ms: number; duration_ms: number; intensity: number; motion: number; dwell_scale: number
+    }
     seed: string
     decision_count: number
     render_quality: number
@@ -225,6 +229,14 @@ export default function Diagnostics() {
               <Metric label="Decision score" value={number(data.director.last_score, 2)} detail={`${data.director.decision_count} seeded decisions`} />
               <Metric label="Pi headroom" value={`${number(data.director.render_quality * 100, 0)}%`} detail={`budget ${number(data.director.context?.performance_budget * 100, 0)}%`} />
             </div>
+            {data.director.journey && <div className="mt-4 rounded-xl border border-border/70 bg-background/55 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="font-semibold capitalize">{data.director.journey.motif} journey · {data.director.journey.phase}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">{number(data.director.journey.elapsed_ms / 60000, 1)} / {number(data.director.journey.duration_ms / 60000, 0)} min · journey {data.director.journey.cycle + 1}</span>
+              </div>
+              <progress className="mt-3 h-2 w-full accent-primary" max={1} value={data.director.journey.progress} aria-label="Visual journey progress" />
+              <div className="mt-2 text-xs text-muted-foreground">Settle → Explore → Rise → Crest → Release. Music leads while playing; the journey shapes the longer arc.</div>
+            </div>}
             {data.director.last_reasons?.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{data.director.last_reasons.map(reason => <Badge key={reason} variant="outline">{reason}</Badge>)}</div>}
             <div className="mt-4 overflow-x-auto">
               <div className="min-w-[620px] space-y-1 text-xs">

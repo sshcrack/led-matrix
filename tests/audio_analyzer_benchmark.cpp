@@ -33,6 +33,7 @@ struct Result {
     float meanKick = 0.0f;
     float meanSnare = 0.0f;
     float meanHihat = 0.0f;
+    float sectionRate = 0.0f;
 };
 
 float median(std::vector<float> values)
@@ -155,6 +156,7 @@ Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
 
     std::vector<float> bpms, confidences, stabilities, kicks, snares, hihats;
     uint64_t firstOnset = 0, lastOnset = 0, firstBeat = 0, lastBeat = 0, firstDrop = 0, lastDrop = 0;
+    uint64_t firstSection = 0, lastSection = 0;
     double firstCollected = 0.0, lastCollected = 0.0;
     std::vector<float> displayBands(64, 0.0f);
 
@@ -179,15 +181,17 @@ Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
         }
         if (seconds < collectAfterSeconds)
             continue;
-        if (bpms.empty()) {
+        if (confidences.empty()) {
             firstOnset = result.onset_counter;
             firstBeat = result.beat_counter;
             firstDrop = result.drop_counter;
+            firstSection = result.section_counter;
             firstCollected = seconds;
         }
         lastOnset = result.onset_counter;
         lastBeat = result.beat_counter;
         lastDrop = result.drop_counter;
+        lastSection = result.section_counter;
         lastCollected = seconds;
         if (result.feature(AudioProtocol::Feature::Bpm) > 1.0f)
             bpms.push_back(result.feature(AudioProtocol::Feature::Bpm));
@@ -210,14 +214,15 @@ Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
             static_cast<float>(lastDrop - firstDrop) / duration,
             mean(kicks),
             mean(snares),
-            mean(hihats)};
+            mean(hihats),
+            static_cast<float>(lastSection - firstSection) / duration};
 }
 
 void printResult(const std::string& name, const Result& r)
 {
     std::cout << name << ": bpm=" << r.bpm << " confidence=" << r.confidence << " stability=" << r.stability << " onsets/s=" << r.onsetRate
               << " beats/s=" << r.beatRate << " drops/s=" << r.dropRate << " kick=" << r.meanKick << " snare=" << r.meanSnare
-              << " hihat=" << r.meanHihat << '\n';
+              << " sections/s=" << r.sectionRate << " hihat=" << r.meanHihat << '\n';
 }
 }  // namespace
 
@@ -250,7 +255,7 @@ int main(int argc, char** argv)
         const float error = std::abs(result.bpm - expected);
         const float expectedBeatRate = expected / 60.0f;
         const float beatRateError = std::abs(result.beatRate - expectedBeatRate);
-        if (error > 2.5f || result.confidence < 0.55f || result.stability < 0.50f || result.onsetRate < 0.7f || result.dropRate > 0.03f ||
+        if (error > 2.5f || result.confidence < 0.55f || result.stability < 0.50f || result.onsetRate < 0.7f || result.dropRate > 0.03f || result.sectionRate > 0.03f ||
             beatRateError > std::max(0.16f, expectedBeatRate * 0.10f)) {
             std::cerr << "FAILED " << expected << " BPM: error=" << error << ", confidence=" << result.confidence
                       << ", stability=" << result.stability << ", onsetRate=" << result.onsetRate << ", dropRate=" << result.dropRate
@@ -296,7 +301,7 @@ int main(int argc, char** argv)
     pauseResume.mono.insert(pauseResume.mono.end(), resumed.mono.begin(), resumed.mono.end());
     const Result afterPauseResume = analyzeTrack(pauseResume, 7.0f);
     printResult("120 BPM pause/resume", afterPauseResume);
-    if (afterPauseResume.dropRate > 0.02f || afterPauseResume.confidence < 0.35f || std::abs(afterPauseResume.bpm - 120.0f) > 4.0f) {
+    if (afterPauseResume.dropRate > 0.02f || afterPauseResume.sectionRate > 0.02f || afterPauseResume.confidence < 0.35f || std::abs(afterPauseResume.bpm - 120.0f) > 4.0f) {
         std::cerr << "FAILED pause/resume stability: false drop or tempo did not recover\n";
         ok = false;
     }
@@ -308,6 +313,35 @@ int main(int argc, char** argv)
     printResult("90 to 150 BPM transition", afterChange);
     if (std::abs(afterChange.bpm - 150.0f) > 3.0f || afterChange.confidence < 0.45f || afterChange.stability < 0.45f) {
         std::cerr << "FAILED tempo-change recovery\n";
+        ok = false;
+    }
+    Track evolving{std::vector<float>(static_cast<size_t>(24.0 * 44100.0)), 44100.0};
+    for (size_t i = 0; i < evolving.mono.size(); ++i) {
+        const double t = static_cast<double>(i) / evolving.sampleRate;
+        const double blend = std::clamp((t - 12.0) / 1.5, 0.0, 1.0);
+        const double warm = std::sin(2 * Pi * 82 * t) + .7 * std::sin(2 * Pi * 196 * t);
+        const double bright = std::sin(2 * Pi * 1800 * t) + .7 * std::sin(2 * Pi * 4200 * t);
+        evolving.mono[i] = static_cast<float>(.15 * (1.0 - .6 * std::clamp((t - 18.0) / 2.0, 0.0, 1.0))
+                                             * ((1 - blend) * warm + blend * bright));
+    }
+    AudioVisualizerConfig section_config;
+    MusicAnalyzer section_analyzer(section_config);
+    std::vector<double> section_times;
+    for (size_t end = MUSIC_ANALYSIS_WINDOW_SIZE; end <= evolving.mono.size(); end += FFT_HOP_SIZE) {
+        AudioRecorder::CapturedAudioFrame frame;
+        frame.sampleRate = evolving.sampleRate;
+        frame.sequence = end;
+        frame.mono.assign(evolving.mono.begin() + static_cast<std::ptrdiff_t>(end - MUSIC_ANALYSIS_WINDOW_SIZE),
+                          evolving.mono.begin() + static_cast<std::ptrdiff_t>(end));
+        const auto analysis = section_analyzer.analyze(frame, {});
+        if (analysis.event(AudioProtocol::SectionEvent))
+            section_times.push_back(static_cast<double>(end) / evolving.sampleRate);
+    }
+    std::cout << "smooth instrumentation change: sections=" << section_times.size();
+    for (double t : section_times) std::cout << " at " << t << "s";
+    std::cout << '\n';
+    if (section_times.size() != 1 || section_times.front() < 12.0 || section_times.front() > 17.0) {
+        std::cerr << "FAILED sustained section detection through the audio analysis pipeline\n";
         ok = false;
     }
     return ok ? 0 : 1;
