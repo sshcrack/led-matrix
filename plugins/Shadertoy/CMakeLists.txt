@@ -102,13 +102,21 @@ if(ENABLE_DESKTOP)
                                         "${SHADER_FILE}"
                                         "${CMAKE_BINARY_DIR}/shader-previews/${SHADER_NAME}.png"
                                         ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 45)
-                        if(SHADER_NAME MATCHES "^music_")
+                        if(SHADER_NAME MATCHES "^(music_|scenic_)")
                                 add_test(NAME "shadertoy_shader_${SHADER_NAME}_idle_smoke"
                                         COMMAND ${SHADERTOY_PREVIEW_RUNNER}
                                                 $<TARGET_FILE:shadertoy_shader_preview>
                                                 "${SHADER_FILE}"
                                                 "${CMAKE_BINARY_DIR}/shader-previews/idle/${SHADER_NAME}.png"
                                                 ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 45 none)
+                        endif()
+                        if(SHADER_NAME MATCHES "^scenic_(tidal_aquarium|planetary_vista|aurora)$")
+                                add_test(NAME "shadertoy_shader_${SHADER_NAME}_temporal_smoke"
+                                        COMMAND ${SHADERTOY_PREVIEW_RUNNER}
+                                                $<TARGET_FILE:shadertoy_shader_preview>
+                                                "${SHADER_FILE}"
+                                                "${CMAKE_BINARY_DIR}/shader-previews/temporal/${SHADER_NAME}.png"
+                                                ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 4800 none 0.015)
                         endif()
                 endforeach()
 

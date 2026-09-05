@@ -1,9 +1,9 @@
 /* led-matrix-shader
 {
   "family": "aurora",
-  "tags": ["ambient", "aurora", "scenic", "flow", "calm", "showcase"],
-  "intensity": 0.48,
-  "motion": 0.48,
+  "tags": ["ambient", "aurora", "scenic", "showcase", "flow", "calm"],
+  "intensity": 0.32,
+  "motion": 0.25,
   "music_affinity": 0.10,
   "performance_cost": 0.27,
   "automatic_eligible": true,
@@ -20,15 +20,13 @@ float hash21(vec2 p) {
 }
 
 vec3 auroraPalette(float t) {
-    vec3 cyan = vec3(0.05, 0.90, 0.74);
-    vec3 violet = vec3(0.45, 0.18, 0.96);
-    vec3 rose = vec3(1.00, 0.24, 0.58);
-    return mix(mix(cyan, violet, smoothstep(0.0, 0.58, t)), rose, smoothstep(0.56, 1.0, t));
+    vec3 green = vec3(0.06, 0.90, 0.47);
+    vec3 violet = vec3(0.32, 0.22, 0.68);
+    return mix(green, violet, smoothstep(.30, .95, .5 + .5 * sin(TAU * t)));
 }
 
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
-    vec2 p = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+vec3 auroraSky(vec2 p) {
+    vec2 uv = p + .5;
 
     vec3 color = vec3(0.003, 0.007, 0.026);
     color += vec3(0.012, 0.020, 0.060) * (0.42 + 0.58 * (1.0 - uv.y));
@@ -77,6 +75,54 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     color += vec3(0.018, 0.075, 0.115) * horizon;
     color *= 0.84 + 0.16 * exp(-0.75 * dot(p, p));
 
-    color = 1.0 - exp(-color * 1.72);
-    fragColor = vec4(color, 1.0);
+    return color;
+}
+
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 p = (fragCoord - .5 * iResolution.xy) / iResolution.y;
+    float aa = .65 / iResolution.y;
+    float horizon = -.15;
+    bool water = p.y < horizon;
+    vec2 skyPoint = p;
+    if (water) {
+        skyPoint.y = 2.0 * horizon - p.y;
+        skyPoint.x += .006 * sin(p.y * 170.0 + iTime * .7)
+                    + .003 * sin(p.y * 390.0 - iTime * .4);
+    }
+    skyPoint.y = (skyPoint.y - horizon) * 1.45 - .43;
+    vec3 color = auroraSky(skyPoint);
+    if (water) {
+        float ripple = .88 + .08 * sin(p.y * 230.0 + sin(p.x * 17.0) + iTime * .5)
+                     + .04 * sin(p.y * 71.0 - p.x * 9.0 - iTime * .3);
+        color *= .48 * ripple;
+        color += vec3(.003, .011, .021);
+    }
+    for (int i = 0; i < 2; ++i) {
+        float layer = float(i);
+        float ridge = horizon + .035 + .018 * layer
+                    + .024 * sin(p.x * 14.0 + layer * 3.0)
+                    + .018 * sin(p.x * 27.0 + layer)
+                    + .012 * sin(p.x * 51.0);
+        float y = water ? 2.0 * horizon - p.y : p.y;
+        float mask = 1.0 - smoothstep(ridge - aa, ridge + aa, y);
+        vec3 mountain = layer == 0 ? vec3(.009, .027, .039) : vec3(.005, .015, .021);
+        if (water) mountain *= .5;
+        color = mix(color, mountain, mask);
+    }
+    for (int i = 0; i < 24; ++i) {
+        float k = float(i);
+        float x = -.52 + k * .045;
+        float seed = hash21(vec2(k, 5.0));
+        float height = .035 + .035 * seed;
+        float y = (water ? 2.0 * horizon - p.y : p.y) - horizon;
+        float width = .016 * (1.0 - clamp(y / height, 0.0, 1.0));
+        width *= .78 + .22 * sin(y * 500.0);
+        float d = max(abs(p.x - x) - width, max(-y, y - height));
+        float mask = 1.0 - smoothstep(-aa, aa, d);
+        color = mix(color, vec3(.002, .008, .010), mask);
+    }
+    float shore = -.50 + .08 * exp(-pow((p.x + .38) / .25, 2.0));
+    color = mix(color, vec3(.002, .006, .008), 1.0 - smoothstep(shore - aa, shore + aa, p.y));
+    fragColor = vec4(1.0 - exp(-color * 2.2), 1.0);
 }

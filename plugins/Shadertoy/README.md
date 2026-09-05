@@ -38,17 +38,18 @@ For best results, it is **recommended** to set the `SHADERTOY_API_KEY` environme
 ## License
 See LICENSE files in this directory and thirdparty/ for details.
 
-## Built-in 3D music scenes
+## Atmospheric scenes
 
-- `shader:music_resonance_cathedral`: a rotating crystal surrounded by bowed ribs and luminous halos. Bass opens the structure, percussion travels along the ribs, and drops light the crystal's edges.
-- `shader:music_tidal_reactor`: a rotating gyroid sculpture with a warm interior and moving surface veins. Mids thicken the membrane, bass expands it, and percussion/section events illuminate the veins.
+- `shader:scenic_tidal_aquarium`: a planted aquarium with foreground fish, a distant school, swaying foliage, drifting particles, and occasional bubbles. A larger fish visits roughly every 73 seconds and the school parts around it.
+- `shader:scenic_planetary_vista`: a shaded ringed planet with drifting cloud bands, a small moon, distant stars, and layered terrain. A meteor crosses the sky roughly every 53 seconds.
+- `shader:scenic_aurora`: northern lights above mountains and a wooded shoreline, reflected in gently rippling water.
 
-Both run on the connected desktop GPU and stream pixels to the Pi. They participate in Automatic Mode and have an idle animation when audio is unavailable. They require no Shadertoy API key.
+These scenes favor slow, calm motion in Automatic Mode. The aquarium and planetary vista respond subtly to music without depending on it. All three run on the connected desktop GPU and stream pixels to the Pi; no Shadertoy API key is required.
 
-Render a review set with `scripts/preview_shadertoy_shader.sh <shader.frag>`. The preview executable also accepts an optional final frames-directory argument after the temporal limit, for capturing every rendered frame at 60 FPS:
+Render a review set with `scripts/preview_shadertoy_shader.sh <shader.frag>`. The preview executable accepts an optional final frames-directory argument after the temporal limit, for capturing every rendered frame at 60 FPS:
 
 ```bash
 xvfb-run -a desktop_build/tools/shadertoy_shader_preview \
-  plugins/Shadertoy/shaders/music_tidal_reactor.frag /tmp/reactor.png \
-  128 128 360 synthetic -1 /tmp/reactor-frames
+  plugins/Shadertoy/shaders/scenic_tidal_aquarium.frag /tmp/aquarium.png \
+  128 128 900 none -1 /tmp/aquarium-frames
 ```
