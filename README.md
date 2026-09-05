@@ -157,7 +157,7 @@ The heart of the system - a high-performance application that orchestrates every
 - **RESTful API server** for external control and integration
 - **Configuration persistence** and real-time updates
 - **Automatic director & diagnostics** — per-scene p50/p95/p99 profiling and `/diagnostics` pressure metrics drive optional remote rendering via the desktop scene worker
-- **Visual journeys & 3D music scenes** — Automatic Mode composes 24–36 minute visual arcs; sustained instrumentation changes guide musical handoffs. Built-in Resonance Cathedral and Tidal Reactor shaders render on the desktop GPU. See [automatic journeys](docs/automatic-journeys.md) and [3D music scenes](plugins/Shadertoy/README.md#built-in-3d-music-scenes).
+- **Visual journeys & atmospheric scenes** — Automatic Mode composes 24–36 minute visual arcs; sustained instrumentation changes guide musical handoffs. A planted aquarium, ringed planetary vista, and aurora lake render on the desktop GPU. See [automatic journeys](docs/automatic-journeys.md) and [atmospheric scenes](plugins/Shadertoy/README.md#atmospheric-scenes).
 
 ### 🌐 **React Web App**
 A sleek web companion for remote control, also installable as a PWA on mobile:
