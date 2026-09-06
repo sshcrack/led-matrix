@@ -10,6 +10,10 @@
 #include <filesystem>
 #include <string_view>
 
+#ifdef SHADERTOY_PREVIEW_RENDERER
+#include "matrix/preview/ShaderPreviewRenderer.h"
+#endif
+
 bool Scenes::switchToNextRandomShader = true;
 
 using namespace Scenes;
@@ -236,6 +240,18 @@ Scenes::SceneDescriptor CustomShadertoyScene::get_descriptor() const
     return descriptor;
 }
 
+Previews::SceneSpec CustomShadertoyScene::get_preview_spec() const
+{
+#ifdef SHADERTOY_PREVIEW_RENDERER
+    const auto metadata = read_custom_shader_metadata(shader_path_);
+    if (metadata.audio_reactive)
+        return Previews::SceneSpec::with_inputs({ShadertoyPreview::InputId, Previews::Inputs::Audio});
+    return Previews::SceneSpec::with_inputs({ShadertoyPreview::InputId});
+#else
+    return Previews::SceneSpec::disabled();
+#endif
+}
+
 Scenes::SceneCapabilities CustomShadertoyScene::get_capabilities() const
 {
     const auto metadata = read_custom_shader_metadata(shader_path_);
@@ -257,6 +273,14 @@ void CustomShadertoyScene::after_render_stop()
 
 bool CustomShadertoyScene::render(rgb_matrix::FrameCanvas *canvas)
 {
+#ifdef SHADERTOY_PREVIEW_RENDERER
+    // In production these scenes are intentionally GPU-rendered by the desktop
+    // plugin and arrive here as RGB UDP data. preview_gen has no desktop peer,
+    // so render the same shader locally only while the preview runtime is active.
+    if (Previews::Runtime::active())
+        return ShadertoyPreview::render_shader(shader_path_, canvas, frame_context());
+#endif
+
     if (!plugin) {
         spdlog::warn("CustomShadertoyScene: Plugin not found, cannot render");
         hold_current_frame();

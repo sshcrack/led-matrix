@@ -50,7 +50,7 @@ endif()
 # Option to enable/disable emulator
 option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 if(ENABLE_EMULATOR)
-    list(APPEND VCPKG_MANIFEST_FEATURES "emulator")
+    list(APPEND VCPKG_MANIFEST_FEATURES "emulator" "shadertoy-preview")
 endif()
 
 if(ENABLE_EMULATOR AND ENABLE_DESKTOP)
@@ -918,6 +918,25 @@ if(ENABLE_EMULATOR)
             --preview-option spotify.playback:duration_ms=30000
             --strict
     )
+
+    # Built-in/local Shadertoy scenes are desktop-rendered in production, but
+    # preview_gen renders them through an isolated hidden-GL worker. Exercise a
+    # scenic and an audio-reactive shader so both preview contracts stay wired.
+    find_program(SHADERTOY_PREVIEW_XVFB_RUN xvfb-run)
+    if(WIN32 OR SHADERTOY_PREVIEW_XVFB_RUN OR DEFINED ENV{DISPLAY})
+        add_test(NAME shadertoy_scene_preview_smoke
+            COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+                $<TARGET_FILE:preview_gen>
+                --output ${CMAKE_BINARY_DIR}/shadertoy-preview-smoke-ctest
+                --scenes shader:scenic_aurora,shader:music_neon_orbit
+                --frames 18
+                --fps 12
+                --audio-bpm 132
+                --audio-profile percussion
+                --virtual-time-only
+                --strict
+        )
+    endif()
 
     add_test(NAME visual_regression_smoke
         COMMAND ${CMAKE_COMMAND}

@@ -46,6 +46,14 @@ See LICENSE files in this directory and thirdparty/ for details.
 
 These scenes favor slow, calm motion in Automatic Mode. The aquarium and planetary vista respond subtly to music without depending on it. All three run on the connected desktop GPU and stream pixels to the Pi; no Shadertoy API key is required.
 
+Built-in `shader:` scenes and local `custom_shader:` scenes also opt into the normal emulator `preview_gen` pipeline. The generator uses an isolated hidden-OpenGL helper, so it renders the real shader code without a running desktop client or Shadertoy network request. Audio-reactive shaders automatically use the same deterministic preview audio options (`--audio-bpm`, `--audio-profile`) as the other audio scenes. The network-backed random `shadertoy` scene remains excluded because it has no deterministic local shader source. On headless Linux, install `xvfb` so the helper can create its OpenGL context.
+
+```bash
+./scripts/generate_scene_previews.sh \
+  --scenes 'shader:scenic_aurora,shader:music_neon_orbit' \
+  --audio-bpm 132 --audio-profile percussion
+```
+
 Render a review set with `scripts/preview_shadertoy_shader.sh <shader.frag>`. The preview executable accepts an optional final frames-directory argument after the temporal limit, for capturing every rendered frame at 60 FPS:
 
 ```bash
