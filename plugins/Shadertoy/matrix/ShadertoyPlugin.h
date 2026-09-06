@@ -21,6 +21,8 @@ public:
 
     vector<std::unique_ptr<ShaderProviderWrapper> > create_shader_providers() override;
 
+    vector<std::unique_ptr<Previews::DataProvider> > create_preview_data_providers() override;
+
     bool on_udp_packet(const uint8_t pluginId, const uint8_t *packetData,
                        const size_t size) override;
 

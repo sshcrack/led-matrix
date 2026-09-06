@@ -18,6 +18,10 @@
 #include <algorithm>
 #include <chrono>
 
+#ifdef SHADERTOY_PREVIEW_RENDERER
+#include "preview/ShaderPreviewProvider.h"
+#endif
+
 using namespace Scenes;
 using namespace ShaderProviders;
 namespace fs = std::filesystem;
@@ -74,6 +78,15 @@ ShadertoyPlugin::create_shader_providers()
     providers.push_back(std::make_unique<RandomWrapper>());
     providers.push_back(std::make_unique<CollectionWrapper>());
 
+    return providers;
+}
+
+vector<std::unique_ptr<Previews::DataProvider>> ShadertoyPlugin::create_preview_data_providers()
+{
+    auto providers = vector<std::unique_ptr<Previews::DataProvider>>();
+#ifdef SHADERTOY_PREVIEW_RENDERER
+    providers.push_back(std::make_unique<ShadertoyPreview::Provider>());
+#endif
     return providers;
 }
 

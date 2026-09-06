@@ -81,10 +81,12 @@ namespace Scenes {
         string get_name() const override;
         std::string get_category() const override { return scene_prefix_ == "shader:" ? "Shaders" : "Custom Shaders"; }
         [[nodiscard]] SceneDescriptor get_descriptor() const override;
+        [[nodiscard]] Previews::SceneSpec get_preview_spec() const override;
         void register_properties() override {}
         tmillis_t get_default_duration() override { return 20000; }
         int get_default_weight() override { return 5; }
         [[nodiscard]] bool needs_desktop_app() override { return true; }
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
         [[nodiscard]] SceneCapabilities get_capabilities() const override;
         void after_render_stop() override;
     };

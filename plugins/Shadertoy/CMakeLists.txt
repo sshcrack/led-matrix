@@ -36,6 +36,37 @@ if(TARGET ShadertoySceneWorker)
         target_link_libraries(ShadertoySceneWorker PRIVATE cpr::cpr)
 endif()
 
+# preview_gen runs the matrix half of each plugin, so desktop-rendered shader
+# scenes need a preview-only renderer. The OpenGL renderer deliberately lives in
+# a child process: EmulatorMatrix already owns graphics state in preview_gen and
+# a second in-process GLX context is not reliable on headless Linux.
+if(ENABLE_EMULATOR)
+        find_package(GLEW REQUIRED)
+        find_package(glfw3 CONFIG REQUIRED)
+        find_package(shadertoy-headless CONFIG REQUIRED)
+
+        add_executable(shadertoy_scene_preview_worker
+                matrix/preview/ShaderPreviewWorker.cpp)
+        target_compile_features(shadertoy_scene_preview_worker PRIVATE cxx_std_23)
+        target_link_libraries(shadertoy_scene_preview_worker PRIVATE
+                shadertoy_headless::shadertoy-headless
+                GLEW::GLEW
+                glfw)
+        set_target_properties(shadertoy_scene_preview_worker PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+        target_sources(Shadertoy PRIVATE
+                matrix/preview/ShaderPreviewProvider.cpp
+                matrix/preview/ShaderPreviewProvider.h
+                matrix/preview/ShaderPreviewRenderer.cpp
+                matrix/preview/ShaderPreviewRenderer.h)
+        target_compile_definitions(Shadertoy PRIVATE SHADERTOY_PREVIEW_RENDERER=1)
+        add_dependencies(Shadertoy shadertoy_scene_preview_worker)
+
+        install(TARGETS shadertoy_scene_preview_worker
+                RUNTIME DESTINATION bin)
+endif()
+
 # Built-in one-file shaders are normal scenes on the matrix/emulator. Keeping
 # them as data instead of C++ makes adding an AI-authored visual a one-file
 # change while still packaging the exact source used in production.
