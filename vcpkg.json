@@ -59,6 +59,12 @@
       "dependencies": [
         "shadertoy-headless"
       ]
+    },
+    "shadertoy-preview": {
+      "description": "Headless OpenGL renderer used by emulator scene preview generation",
+      "dependencies": [
+        "shadertoy-headless"
+      ]
     }
   },
   "name": "led-matrix",
