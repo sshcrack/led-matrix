@@ -42,7 +42,7 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 
 ## 🎬 Demonstration
 
-Selected GIFs from `scene_previews/` (45 pre-generated previews, committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
+Selected GIFs from `scene_previews/` (50+ pre-generated previews, committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
 
 <div align="center">
 
@@ -70,18 +70,27 @@ Selected GIFs from `scene_previews/` (45 pre-generated previews, committed to gi
 |:---------------------------------:|:-------------------------:|:-----------------------:|:-----------------------------:|:--------------------:|
 | ![](scene_previews/weather_ambience.gif) | ![](scene_previews/audio_spectrum.gif) | ![](scene_previews/audio_aurora.gif) | ![](scene_previews/audio_kaleidoscope.gif) | ![](scene_previews/spotify.gif) |
 
-| PixelJoint: Image Scene | Countdown | **✨ New: Shadertoy Audio-Reactive** | **✨ New: Shadertoy Audio-Reactive** |
-|:-----------------------:|:---------:|:-----------------------------------:|:-----------------------------------:|
-| ![](scene_previews/image_scene.gif) | ![](scene_previews/countdown.gif) | ![](scene_previews/neon_orbit_tunnel.gif) | ![](scene_previews/starfield_warp.gif) |
-|  |  | `music_neon_orbit` — neon orbital rings reacting to kick/snare | `music_spectrum_tunnel` — spectrum tunnel with beat-driven warp |
+| PixelJoint: Image Scene | Countdown | AudioVisualizer: Particles | AudioVisualizer: Pulse Tunnel | AudioVisualizer: Music Director |
+|:-----------------------:|:---------:|:--------------------------:|:-----------------------------:|:-------------------------------:|
+| ![](scene_previews/image_scene.gif) | ![](scene_previews/countdown.gif) | ![](scene_previews/audio_particles.gif) | ![](scene_previews/audio_pulse_tunnel.gif) | ![](scene_previews/music_director.gif) |
 
 | Shadertoy: Mobius Fluid | Shadertoy: Rainbow Spiral | Shadertoy: Expert Julia | Shadertoy: Realistic Cloth |
 |:-----------------------:|:--------------------------:|:-----------------------:|:--------------------------:|
 | ![](scene_previews/mobius_fluid_manifold.gif) | ![](scene_previews/rainbow_spiral.gif) | ![](scene_previews/expert_quaternion_julia.gif) | ![](scene_previews/realistic_cloth.gif) |
 
+| **✨ New: Shader — Celestial Bloom** | **✨ New: Shader — Liquid Ribbons** | **✨ New: Shader — Neon Orbit** | **✨ New: Shader — Spectrum Tunnel** |
+|:-----------------------------------:|:-----------------------------------:|:-------------------------------:|:-----------------------------------:|
+| ![](scene_previews/shader:music_celestial_bloom.gif) | ![](scene_previews/shader:music_liquid_ribbons.gif) | ![](scene_previews/shader:music_neon_orbit.gif) | ![](scene_previews/shader:music_spectrum_tunnel.gif) |
+| `shader:music_celestial_bloom` — 7-petal bloom with spectrum-driven warp, beat-lit core | `shader:music_liquid_ribbons` — 7 flowing ribbons deformed by spectrum/waveform | `shader:music_neon_orbit` — neon orbital rings reacting to kick/snare | `shader:music_spectrum_tunnel` — 14-ring depth tunnel with circular spectrum deformation |
+
+| **✨ New: Shader — Aurora** | **✨ New: Shader — Planetary Vista** | **✨ New: Shader — Plasma Garden** | **✨ New: Shader — Tidal Aquarium** |
+|:---------------------------:|:-----------------------------------:|:---------------------------------:|:----------------------------------:|
+| ![](scene_previews/shader:scenic_aurora.gif) | ![](scene_previews/shader:scenic_planetary_vista.gif) | ![](scene_previews/shader:scenic_plasma_garden.gif) | ![](scene_previews/shader:scenic_tidal_aquarium.gif) |
+| `shader:scenic_aurora` — aurora curtains, mountain silhouettes & lake reflection | `shader:scenic_planetary_vista` — ringed planet, drifting clouds & meteor (~53s) | `shader:scenic_plasma_garden` — organic plasma cells & veined petals | `shader:scenic_tidal_aquarium` — planted aquarium, schooling fish & visitor fish (~73s) |
+
 </div>
 
-> **New in this update:** 5 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings, featured above as `neon_orbit_tunnel.gif`), `music_spectrum_tunnel` (neon depth tunnel, featured above as `starfield_warp.gif`), `scenic_aurora` (calm aurora flow), `scenic_plasma_garden` (organic plasma). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` deployed to `/usr/share/led-matrix/scene_previews/`.
+> **New in this update:** 8 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — **audio-reactive:** `music_celestial_bloom` (7-petal spectral bloom), `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings), `music_spectrum_tunnel` (neon depth tunnel); **scenic/calm:** `scenic_aurora` (aurora curtains + lake reflection), `scenic_planetary_vista` (ringed planet + moon + meteor), `scenic_plasma_garden` (organic plasma cells), `scenic_tidal_aquarium` (planted aquarium with fish schools). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` deployed to `/usr/share/led-matrix/scene_previews/`.
 
 ---
 ## ✨ Features
@@ -111,7 +120,7 @@ Selected GIFs from `scene_previews/` (45 pre-generated previews, committed to gi
 | **GenerativeScenes** | `reaction_diffusion`, `boids`, `falling_sand` — `Generative` | Emergent simulations: Gray-Scott reaction-diffusion, Boids flocking, Falling Sand automata. |
 | **GithubScenes** | `watermelon_plasma`, `wave` — `Generative` | Community effects ported from [matryx-gl](https://github.com/Knifa/matryx-gl) (Knifa). |
 | **RGBMatrixAnimations** | `rain`, `sparks` — `Particles` | Particle systems: gravity-driven rain and sparks. |
-| **Shadertoy** | `shadertoy` (+ dynamic `custom_shader:*` / `shader:*`) — `Shaders` / `Custom Shaders` | Streams Shadertoy shaders rendered on the desktop (`shadertoy` cycles randomly; installed `.frag` files under `shaders/` appear as `custom_shader:<name>` / `shader:<name>` with preview GIFs like `ethereal_portal`, `plasma_waves`). **New:** 5 built-in shaders — `music_liquid_ribbons`, `music_neon_orbit`, `music_spectrum_tunnel` (audio-reactive, `music_affinity=1.0`), `scenic_aurora`, `scenic_plasma_garden` (calm scenic). See `SHADER_AUTHORING.md` for the `iChannel0` music texture + `iAudio*` uniforms. Needs desktop app; `supports_remote_rendering = false`. |
+| **Shadertoy** | `shadertoy` (+ dynamic `custom_shader:*` / `shader:*`) — `Shaders` / `Custom Shaders` | Streams Shadertoy shaders rendered on the desktop (`shadertoy` cycles randomly; installed `.frag` files under `shaders/` appear as `custom_shader:<name>` / `shader:<name>` with preview GIFs like `ethereal_portal`, `plasma_waves`). **New:** 8 built-in `shader:*` scenes — `music_celestial_bloom`, `music_liquid_ribbons`, `music_neon_orbit`, `music_spectrum_tunnel` (audio-reactive, `music_affinity` 0.96–1.0, featured in new demo rows), `scenic_aurora`, `scenic_planetary_vista`, `scenic_plasma_garden`, `scenic_tidal_aquarium` (calm scenic; aquarium/planetary respond subtly to music with `music_affinity` 0.15–0.20). See `SHADER_AUTHORING.md` for the `iChannel0` music texture + `iAudio*` uniforms. Needs desktop app; `supports_remote_rendering = false`. |
 | **WeatherOverview** | `weather`, `weather_ambience` — `Weather` | Live weather dashboard (current icon + forecast + sunrise/sunset + clock) and ambient weather particles (rain/snow/aurora/fog/lightning). Requires network. |
 | **SpotifyScenes** | `spotify` — `Media` | Shows current Spotify cover art with transitions. OAuth; deterministic `spotify.playback` preview fixture so previews need no credentials. |
 | **SpotifyMV** | `spotifymv` — `Media` | Auto-plays YouTube music videos for the current Spotify track (yt-dlp + ffmpeg on desktop, muted video piped via UDP to Pi; `prepare_runtime` pre-warms while another scene is active). |
