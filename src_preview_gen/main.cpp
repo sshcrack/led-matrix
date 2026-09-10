@@ -620,7 +620,7 @@ int main(int argc, char* argv[])
             // Quantise colours (required for GIF palette, 256 colours max)
             Magick::quantizeImages(frames.begin(), frames.end());
 
-            const fs::path gif_path = fs::path(args.output_dir) / (scene_name + ".gif");
+            const fs::path gif_path = fs::path(args.output_dir) / Previews::preview_filename(scene_name);
 
             Magick::writeImages(frames.begin(), frames.end(), gif_path.string());
             spdlog::info("Saved preview → {}", gif_path.string());

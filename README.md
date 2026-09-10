@@ -80,17 +80,17 @@ Selected GIFs from `scene_previews/` (50+ pre-generated previews, committed to g
 
 | **✨ New: Shader — Celestial Bloom** | **✨ New: Shader — Liquid Ribbons** | **✨ New: Shader — Neon Orbit** | **✨ New: Shader — Spectrum Tunnel** |
 |:-----------------------------------:|:-----------------------------------:|:-------------------------------:|:-----------------------------------:|
-| ![](scene_previews/shader:music_celestial_bloom.gif) | ![](scene_previews/shader:music_liquid_ribbons.gif) | ![](scene_previews/shader:music_neon_orbit.gif) | ![](scene_previews/shader:music_spectrum_tunnel.gif) |
+| ![](scene_previews/shader_music_celestial_bloom.gif) | ![](scene_previews/shader_music_liquid_ribbons.gif) | ![](scene_previews/shader_music_neon_orbit.gif) | ![](scene_previews/shader_music_spectrum_tunnel.gif) |
 | `shader:music_celestial_bloom` — 7-petal bloom with spectrum-driven warp, beat-lit core | `shader:music_liquid_ribbons` — 7 flowing ribbons deformed by spectrum/waveform | `shader:music_neon_orbit` — neon orbital rings reacting to kick/snare | `shader:music_spectrum_tunnel` — 14-ring depth tunnel with circular spectrum deformation |
 
 | **✨ New: Shader — Aurora** | **✨ New: Shader — Planetary Vista** | **✨ New: Shader — Plasma Garden** | **✨ New: Shader — Tidal Aquarium** |
 |:---------------------------:|:-----------------------------------:|:---------------------------------:|:----------------------------------:|
-| ![](scene_previews/shader:scenic_aurora.gif) | ![](scene_previews/shader:scenic_planetary_vista.gif) | ![](scene_previews/shader:scenic_plasma_garden.gif) | ![](scene_previews/shader:scenic_tidal_aquarium.gif) |
+| ![](scene_previews/shader_scenic_aurora.gif) | ![](scene_previews/shader_scenic_planetary_vista.gif) | ![](scene_previews/shader_scenic_plasma_garden.gif) | ![](scene_previews/shader_scenic_tidal_aquarium.gif) |
 | `shader:scenic_aurora` — aurora curtains, mountain silhouettes & lake reflection | `shader:scenic_planetary_vista` — ringed planet, drifting clouds & meteor (~53s) | `shader:scenic_plasma_garden` — organic plasma cells & veined petals | `shader:scenic_tidal_aquarium` — planted aquarium, schooling fish & visitor fish (~73s) |
 
 </div>
 
-> **New in this update:** 8 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — **audio-reactive:** `music_celestial_bloom` (7-petal spectral bloom), `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings), `music_spectrum_tunnel` (neon depth tunnel); **scenic/calm:** `scenic_aurora` (aurora curtains + lake reflection), `scenic_planetary_vista` (ringed planet + moon + meteor), `scenic_plasma_garden` (organic plasma cells), `scenic_tidal_aquarium` (planted aquarium with fish schools). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` deployed to `/usr/share/led-matrix/scene_previews/`.
+> **New in this update:** 8 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — **audio-reactive:** `music_celestial_bloom` (7-petal spectral bloom), `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings), `music_spectrum_tunnel` (neon depth tunnel); **scenic/calm:** `scenic_aurora` (aurora curtains + lake reflection), `scenic_planetary_vista` (ringed planet + moon + meteor), `scenic_plasma_garden` (organic plasma cells), `scenic_tidal_aquarium` (planted aquarium with fish schools). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` with `:` mapped to `_` (e.g. `shader:music_neon_orbit` → `shader_music_neon_orbit.gif`) deployed to `/usr/share/led-matrix/scene_previews/`.
 
 ---
 ## ✨ Features

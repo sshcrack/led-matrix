@@ -16,6 +16,28 @@
 
 namespace Previews {
 
+/// Windows (NTFS) forbids <>:"/\|?* plus control chars in file names, so a
+/// scene id like "shader:music_neon_orbit" cannot be used verbatim as a file
+/// name — `git checkout` fails on Windows with "invalid path". Map any such
+/// character to '_' so previews are checkout-safe on all platforms.
+/// The scene id itself is unchanged; only the on-disk "<name>.gif" mapping.
+[[nodiscard]] inline std::string sanitize_preview_stem(std::string_view scene_name) {
+    std::string out(scene_name);
+    for (char &c : out) {
+        const unsigned char u = static_cast<unsigned char>(c);
+        if (u < 32 || c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' || c == '|' || c == '?' || c == '*')
+            c = '_';
+    }
+    // NTFS also dislikes trailing dots/spaces.
+    while (!out.empty() && (out.back() == '.' || out.back() == ' '))
+        out.back() = '_';
+    return out;
+}
+
+[[nodiscard]] inline std::string preview_filename(std::string_view scene_name) {
+    return sanitize_preview_stem(scene_name) + ".gif";
+}
+
 namespace Inputs {
 inline constexpr std::string_view Audio = RuntimeInputIds::Audio;
 inline constexpr std::string_view SpotifyPlayback = RuntimeInputIds::SpotifyPlayback;
