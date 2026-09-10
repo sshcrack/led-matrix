@@ -69,7 +69,7 @@ Package the DEB:
 ```bash
 cmake --preset cross-compile
 cmake --build --preset cross-compile --target package
-# Produces build/led-matrix-<version>-arm64.deb
+# Produces build/led-matrix-<version>_arm64.deb
 ```
 
 The DEB includes:
