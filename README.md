@@ -449,7 +449,7 @@ Run the development server in minutes:
 
 ### 🐌 **Manual Installation**
 
-Download the built binary from GitHub releases (`led-matrix-*-arm64.deb` or `led-matrix-*-arm64.tar.gz` for RPI 3 64-bit).
+Download the built binary from GitHub releases (`led-matrix-*_arm64.deb` or `led-matrix-*-arm64.tar.gz` for RPI 3 64-bit).
 
 For DEB:
 ```bash

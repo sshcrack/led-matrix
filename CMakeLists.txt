@@ -1273,7 +1273,12 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/prerm"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/postrm")
 
-    set(CPACK_DEBIAN_PACKAGE_FILE_NAME "led-matrix-${PROJECT_VERSION}_arm64")
+    # NB: the DEB generator ignores CPACK_PACKAGE_FILE_NAME and uses
+    # CPACK_DEBIAN_FILE_NAME instead ("CPACK_DEBIAN_PACKAGE_FILE_NAME" is not
+    # a real variable — a previous typo of that name silently produced the
+    # default hyphenated name and broke the release upload expecting "_arm64").
+    set(CPACK_PACKAGE_FILE_NAME "led-matrix-${PROJECT_VERSION}-arm64")
+    set(CPACK_DEBIAN_FILE_NAME "led-matrix-${PROJECT_VERSION}_arm64.deb")
 
     include(CPack)
 endif()
