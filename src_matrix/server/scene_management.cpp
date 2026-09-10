@@ -1,6 +1,7 @@
 #include "scene_management.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/preview.h"
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/canvas_consts.h"
@@ -80,7 +81,7 @@ namespace {
             j.push_back({
                 {"name", scene->get_name()},
                 {"properties", std::move(properties_json)},
-                {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / (scene->get_name() + ".gif"))},
+                {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / Previews::preview_filename(scene->get_name()))},
                 {"needs_desktop", caps.requires_desktop},
                 {"category", default_item->get_category()},
                 {"descriptor", std::move(descriptor_json)},
@@ -161,7 +162,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
 
         const std::string scene_name{qp["name"]};
         const std::filesystem::path preview_dir = std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews";
-        const std::filesystem::path gif_path = preview_dir / (scene_name + ".gif");
+        const std::filesystem::path gif_path = preview_dir / Previews::preview_filename(scene_name);
 
         // Validate path is inside scene_previews dir
         std::error_code ec;
