@@ -6,7 +6,6 @@
         "thirdparty/traypp",
         "plugins/AudioVisualizer/thirdparty/implot",
         "plugins/AudioVisualizer/thirdparty/portaudio",
-        "plugins/Shadertoy/thirdparty/shadertoy-headless",
         "scripts/rpi_vm/pi-ci-larger"
     ],
     "rust-analyzer.linkedProjects": [
