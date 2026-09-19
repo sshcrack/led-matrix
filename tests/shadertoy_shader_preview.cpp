@@ -1,11 +1,11 @@
-// Consumer-side preview harness derived from shadertoy-headless tools/shadertoy-preview.cpp.
+// Consumer-side preview harness derived from shadertoy tools/shadertoy-preview.cpp.
 // Keep this tiny executable buildable with the exact renderer version consumed by LED Matrix.
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include <shadertoy/PipelineEditor.hpp>
-#include <shadertoy/ShaderToyContext.hpp>
+#include <shadertoy/ShaderToy.hpp>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
 #include <algorithm>
@@ -135,13 +135,9 @@ int main(int argc, char **argv) {
     glGetError(); // GLEW may leave GL_INVALID_ENUM on core contexts.
 
     try {
-        auto &editor = ShaderToy::PipelineEditor::get();
-        auto load = editor.loadImageShader(shaderPath.stem().string(), readFile(shaderPath), 0);
+        ShaderToy::Runtime runtime;
+        auto load = runtime.loadImageShader(shaderPath.stem().string(), readFile(shaderPath), 0);
         if (!load) throw load.error();
-
-        ShaderToy::ShaderToyContext context;
-        auto build = editor.build(context);
-        if (!build) throw build.error();
 
         if (!framesDirectory.empty()) std::filesystem::create_directories(framesDirectory);
         constexpr float Fps = 60.0f;
@@ -151,9 +147,9 @@ int main(int argc, char **argv) {
         double maxTemporalDelta = 0.0;
         int temporalComparisons = 0;
         for (int frame = 0; frame < frames; ++frame) {
-            context.setAudioInput(audioMode == "synthetic" ? syntheticAudio(frame, Fps) : ShaderToy::AudioInput{});
-            context.tickFixed(1.0f / Fps, Fps);
-            rgb = context.renderToBuffer(ImVec2(static_cast<float>(width), static_cast<float>(height)));
+            runtime.setAudioInput(audioMode == "synthetic" ? syntheticAudio(frame, Fps) : ShaderToy::AudioInput{});
+            runtime.tickFixed(1.0f / Fps, Fps);
+            rgb = runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width), static_cast<float>(height)});
             if (previousRgb.size() == rgb.size() && !rgb.empty()) {
                 double delta = 0.0;
                 for (std::size_t i = 0; i < rgb.size(); ++i)

@@ -5,7 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <shared_mutex>
-#include <shadertoy/ShaderToyContext.hpp>
+#include <shadertoy/ShaderToy.hpp>
 #include "ShaderCache.h"
 
 class ShadertoyDesktop final : public Plugins::DesktopPlugin
@@ -17,7 +17,7 @@ public:
     void render() override;
     void on_websocket_message(std::string message) override;
 
-    ShaderToy::ShaderToyContext ctx;
+    ShaderToy::Runtime runtime;
     std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(std::string sceneName) override;
     std::string get_plugin_name() const override {
         return PLUGIN_NAME;
@@ -54,6 +54,8 @@ private:
     char mCacheValueInput[4096] = {0};
     std::string mCacheToDelete;
     
+    static void renderCanvasCallback(const ImDrawList* draw_list, const ImDrawCmd* command);
+
     void renderCacheEditorUI();
     void loadCacheFromUrl(const std::string& url);
     void loadLocalShaderFromCode(const std::string& name, const std::string& code);

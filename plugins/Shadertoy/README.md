@@ -28,7 +28,7 @@ For best results, it is **recommended** to set the `SHADERTOY_API_KEY` environme
 ## Directory Structure
 - `desktop/` – Desktop preview and plugin integration
 - `matrix/` – Matrix plugin, scene, and scraper logic
-- `thirdparty/` – Dependencies, including the shadertoy-headless renderer
+- `overlay-ports/` – vcpkg overlays for the Shadertoy renderer dependency
 
 ## Requirements
 - C++23 or later
@@ -36,7 +36,7 @@ For best results, it is **recommended** to set the `SHADERTOY_API_KEY` environme
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
 
 ## License
-See LICENSE files in this directory and thirdparty/ for details.
+See the repository license files and dependency licenses installed by vcpkg for details.
 
 ## Atmospheric scenes
 

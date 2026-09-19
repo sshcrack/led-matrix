@@ -1,0 +1,26 @@
+{
+  "name": "shadertoy",
+  "version": "2.0.0",
+  "description": "Standalone C++23 ShaderToy renderer library.",
+  "homepage": "https://github.com/sshcrack/shadertoy",
+  "license": "Apache-2.0",
+  "dependencies": [
+    "fmt",
+    "glew",
+    "cpp-httplib",
+    "ms-gsl",
+    "magic-enum",
+    "cpp-base64",
+    "nlohmann-json",
+    "stb",
+    "openssl",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}
