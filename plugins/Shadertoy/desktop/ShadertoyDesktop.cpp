@@ -6,7 +6,6 @@
 #include <spdlog/spdlog.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <shadertoy/PipelineEditor.hpp>
 #include <shared/desktop/glfw.h>
 #include <shared/desktop/audio_state.h>
 #include "shared/desktop/utils.h"
@@ -27,6 +26,17 @@ static std::atomic_bool isActive{false};
 static std::atomic_bool currShaderHasError{false};
 
 namespace {
+std::string shaderIdFromUrl(std::string_view value)
+{
+    if (const auto query = value.find_first_of("?#"); query != std::string_view::npos)
+        value = value.substr(0, query);
+    while (!value.empty() && value.back() == '/')
+        value.remove_suffix(1);
+    if (const auto slash = value.find_last_of('/'); slash != std::string_view::npos)
+        value = value.substr(slash + 1);
+    return std::string(value);
+}
+
 ShaderToy::AudioInput currentAudioInput() {
     const auto snapshot = DesktopAudioState::snapshot();
     ShaderToy::AudioInput audio;
@@ -87,23 +97,47 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
         }
     }
 
-    auto res = ShaderToy::PipelineEditor::get().update(ctx);
-    if (!res.has_value())
-    {
-        spdlog::error("Failed to update shader: {}", res.error().what());
+    ImGui::SetCurrentContext(imCtx);
+    runtime.setAudioInput(currentAudioInput());
+    runtime.tick(60);
 
-        send_websocket_message("next_shader");
-        currShaderHasError.store(true, std::memory_order_relaxed);
-        return;
-    }
-
-    ctx.setAudioInput(currentAudioInput());
-    ctx.tick(60);
-
-    const std::vector<uint8_t> data = ctx.renderToBuffer(ImVec2(width, height), imCtx);
+    const std::vector<uint8_t> data =
+        runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width), static_cast<float>(height)});
 
     std::unique_lock lock(currDataMutex);
     currData = data;
+}
+
+void ShadertoyDesktop::renderCanvasCallback(const ImDrawList*, const ImDrawCmd* command)
+{
+    auto* self = static_cast<ShadertoyDesktop*>(command->UserCallbackData);
+    const auto* draw_data = ImGui::GetDrawData();
+    if (self == nullptr || draw_data == nullptr || !self->runtime.isValid())
+        return;
+
+    const ImVec2 framebuffer_size{
+        draw_data->DisplaySize.x * draw_data->FramebufferScale.x,
+        draw_data->DisplaySize.y * draw_data->FramebufferScale.y
+    };
+    const ImVec2 clip_offset = draw_data->DisplayPos;
+    const ImVec2 clip_scale = draw_data->FramebufferScale;
+    const ImVec2 clip_min{
+        (command->ClipRect.x - clip_offset.x) * clip_scale.x,
+        (command->ClipRect.y - clip_offset.y) * clip_scale.y
+    };
+    const ImVec2 clip_max{
+        (command->ClipRect.z - clip_offset.x) * clip_scale.x,
+        (command->ClipRect.w - clip_offset.y) * clip_scale.y
+    };
+    if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+        return;
+
+    self->runtime.render(ShaderToy::RenderRegion{
+        .framebufferSize = {framebuffer_size.x, framebuffer_size.y},
+        .clipMin = {clip_min.x, clip_min.y},
+        .clipMax = {clip_max.x, clip_max.y},
+        .canvasSize = {static_cast<float>(self->width), static_cast<float>(self->height)}
+    });
 }
 
 void ShadertoyDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn,
@@ -156,11 +190,16 @@ void ShadertoyDesktop::render()
         {
             ImVec2 size(width, height);
 
-            const auto base = ImGui::GetCursorScreenPos();
-            std::optional<ImVec4> mouse = std::nullopt;
-
-            // TODO rendering twice may cause issues for lighting and stuff
-            ctx.render(base, size, mouse);
+            // Match shadertoy v2's renderer integration: schedule the OpenGL
+            // draw inside ImGui's draw list so its clip rectangle/framebuffer
+            // coordinates are valid when the command is executed.
+            auto* draw_list = ImGui::GetWindowDrawList();
+            if (runtime.isValid())
+            {
+                draw_list->AddCallback(renderCanvasCallback, this);
+                draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+            }
+            ImGui::Dummy(size);
             ImGui::EndChild();
         }
 
@@ -269,7 +308,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
     if (cached.has_value())
     {
         spdlog::info("Loading shader from cache for {}", url);
-        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToyResponse(url, cached.value());
+        auto res = runtime.loadFromShaderToyResponse(shaderIdFromUrl(url), cached.value());
         if (!res.has_value())
         {
             spdlog::error("Failed to load from cache: {}", res.error().what());
@@ -282,7 +321,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
     else
     {
         spdlog::info("Loading shader {} from ShaderToy...", url);
-        auto res = ShaderToy::PipelineEditor::get().loadFromShaderToy(url);
+        auto res = runtime.loadFromShaderToy(url);
         if (!res.has_value())
         {
             spdlog::error("Failed to load from shadertoy: {}", res.error().what());
@@ -296,7 +335,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
 
 void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code)
 {
-    auto res = ShaderToy::PipelineEditor::get().loadImageShader(name, code, 0);
+    auto res = runtime.loadImageShader(name, code, 0);
     if (!res.has_value())
     {
         spdlog::error("Failed to prepare custom shader '{}': {}", name, res.error().what());

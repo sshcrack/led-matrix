@@ -22,9 +22,9 @@ register_plugin(Shadertoy
 
 if(ENABLE_DESKTOP)
         find_package(GLEW REQUIRED)
-        find_package(shadertoy-headless CONFIG REQUIRED)
+        find_package(shadertoy CONFIG REQUIRED)
 
-        target_link_libraries(Shadertoy PRIVATE shadertoy_headless::shadertoy-headless)
+        target_link_libraries(Shadertoy PRIVATE shadertoy::shadertoy)
         target_link_libraries(Shadertoy PRIVATE GLEW::GLEW)
 else()
         find_package(cpr CONFIG REQUIRED)
@@ -43,13 +43,13 @@ endif()
 if(ENABLE_EMULATOR)
         find_package(GLEW REQUIRED)
         find_package(glfw3 CONFIG REQUIRED)
-        find_package(shadertoy-headless CONFIG REQUIRED)
+        find_package(shadertoy CONFIG REQUIRED)
 
         add_executable(shadertoy_scene_preview_worker
                 matrix/preview/ShaderPreviewWorker.cpp)
         target_compile_features(shadertoy_scene_preview_worker PRIVATE cxx_std_23)
         target_link_libraries(shadertoy_scene_preview_worker PRIVATE
-                shadertoy_headless::shadertoy-headless
+                shadertoy::shadertoy
                 GLEW::GLEW
                 glfw)
         set_target_properties(shadertoy_scene_preview_worker PROPERTIES
@@ -102,7 +102,7 @@ if(ENABLE_DESKTOP)
         find_package(Stb REQUIRED)
         target_include_directories(shadertoy_shader_preview PRIVATE ${Stb_INCLUDE_DIR})
         target_link_libraries(shadertoy_shader_preview PRIVATE
-                shadertoy_headless::shadertoy-headless
+                shadertoy::shadertoy
                 GLEW::GLEW
                 glfw)
         set_target_properties(shadertoy_shader_preview PROPERTIES

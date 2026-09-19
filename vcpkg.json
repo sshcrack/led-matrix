@@ -55,15 +55,17 @@
       ]
     },
     "shadertoy-desktop": {
-      "description": "Dependencies needed by shadertoy-headless",
+      "description": "Dependencies needed by shadertoy",
       "dependencies": [
-        "shadertoy-headless"
+        "shadertoy",
+        "glfw3"
       ]
     },
     "shadertoy-preview": {
       "description": "Headless OpenGL renderer used by emulator scene preview generation",
       "dependencies": [
-        "shadertoy-headless"
+        "shadertoy",
+        "glfw3"
       ]
     }
   },

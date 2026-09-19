@@ -7,8 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <shadertoy/PipelineEditor.hpp>
-#include <shadertoy/ShaderToyContext.hpp>
+#include <shadertoy/ShaderToy.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -163,15 +162,10 @@ int main(int argc, char** argv)
             throw std::runtime_error("Preview dimensions, frame count, and FPS must be positive");
 
         GlfwGuard glfw(width, height);
-        auto& editor = ShaderToy::PipelineEditor::get();
-        auto load = editor.loadImageShader(shader.stem().string(), read_file(shader), 0);
+        ShaderToy::Runtime runtime;
+        auto load = runtime.loadImageShader(shader.stem().string(), read_file(shader), 0);
         if (!load)
             throw load.error();
-
-        ShaderToy::ShaderToyContext context;
-        auto build = editor.build(context);
-        if (!build)
-            throw build.error();
 
         std::ofstream stream(output, std::ios::binary | std::ios::trunc);
         if (!stream)
@@ -179,9 +173,9 @@ int main(int argc, char** argv)
         const float fixed_fps = static_cast<float>(fps);
         const float dt = 1.0f / fixed_fps;
         for (int frame = 0; frame < frames; ++frame) {
-            context.setAudioInput(synthetic_audio(frame, fixed_fps, bpm, profile));
-            context.tickFixed(dt, fixed_fps);
-            const auto rgb = context.renderToBuffer(ImVec2(static_cast<float>(width), static_cast<float>(height)));
+            runtime.setAudioInput(synthetic_audio(frame, fixed_fps, bpm, profile));
+            runtime.tickFixed(dt, fixed_fps);
+            const auto rgb = runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width), static_cast<float>(height)});
             const auto expected = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3U;
             if (rgb.size() != expected)
                 throw std::runtime_error("Renderer returned an unexpected RGB buffer size");
