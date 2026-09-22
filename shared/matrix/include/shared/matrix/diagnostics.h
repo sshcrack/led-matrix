@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -18,6 +19,10 @@ public:
 
     void set_active_scene(const std::string &scene);
     void record_render(const std::string &scene, double render_ms, int target_fps, float quality_scale);
+    /// Record a frame that actually reached the matrix. This path is lock-free
+    /// so diagnostics can never delay the hardware refresh loop.
+    void record_presentation(int target_fps);
+    void reset_presentation_cadence();
     void record_scene_error(const std::string &scene, const std::string &message);
 
     void record_udp_datagram(std::size_t bytes);
@@ -43,6 +48,16 @@ private:
 
     std::uint64_t render_frames_ = 0;
     std::uint64_t dropped_render_frames_ = 0;
+    std::atomic<std::uint64_t> render_samples_skipped_{0};
+
+    std::atomic<std::uint64_t> presentation_frames_{0};
+    std::atomic<std::uint64_t> presentation_intervals_{0};
+    std::atomic<std::uint64_t> presentation_late_frames_{0};
+    std::atomic<std::uint64_t> presentation_estimated_missed_refreshes_{0};
+    std::atomic<std::uint64_t> presentation_last_us_{0};
+    std::atomic<std::uint64_t> presentation_last_interval_us_{0};
+    std::atomic<std::uint64_t> presentation_interval_total_us_{0};
+    std::atomic<std::uint64_t> presentation_interval_max_us_{0};
     double render_ms_ema_ = 0.0;
     double render_ms_max_ = 0.0;
     double fps_ema_ = 0.0;
@@ -63,11 +78,13 @@ private:
     std::unordered_map<std::string, std::uint64_t> scene_error_counts_;
     std::unordered_map<std::string, std::string> scene_last_errors_;
 
-    std::uint64_t udp_datagrams_ = 0;
-    std::uint64_t udp_bytes_ = 0;
-    std::uint64_t udp_packets_ = 0;
-    std::uint64_t udp_unhandled_ = 0;
-    std::uint64_t udp_malformed_ = 0;
+    // UDP telemetry is deliberately independent of mutex_. Desktop frame
+    // traffic can be high-rate and must not contend with render diagnostics.
+    std::atomic<std::uint64_t> udp_datagrams_{0};
+    std::atomic<std::uint64_t> udp_bytes_{0};
+    std::atomic<std::uint64_t> udp_packets_{0};
+    std::atomic<std::uint64_t> udp_unhandled_{0};
+    std::atomic<std::uint64_t> udp_malformed_{0};
 
     std::uint64_t audio_packets_ = 0;
     std::uint64_t audio_sequence_gaps_ = 0;

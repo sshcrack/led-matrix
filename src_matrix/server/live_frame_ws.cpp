@@ -3,10 +3,15 @@
 #include "live_frame_protocol.h"
 #include "matrix_control/LiveFrameSnapshot.h"
 
+#include <atomic>
+#include <condition_variable>
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -22,6 +27,11 @@ struct LiveFrameClient {
 
 std::mutex clients_mutex;
 std::map<std::uint64_t, LiveFrameClient> clients;
+
+struct QueuedLiveFrame {
+    LiveFrame::Snapshot snapshot;
+    std::uint64_t capture_generation = 0;
+};
 
 void erase_client(const std::uint64_t connection_id)
 {
@@ -66,11 +76,66 @@ void publish_to_waiting_clients(const LiveFrame::Snapshot &snapshot,
     }
 }
 
+class LiveFrameDispatcher {
+public:
+    LiveFrameDispatcher()
+        : worker_([this](std::stop_token stop) { run(stop); })
+    {
+    }
+
+    void enqueue(LiveFrame::Snapshot snapshot, const std::uint64_t capture_generation)
+    {
+        // The matrix thread never waits on the network sender. If a newer
+        // capture arrives before the worker has sent the previous one, the
+        // newer generation safely satisfies every older outstanding request.
+        pending_.store(std::make_shared<QueuedLiveFrame>(
+            QueuedLiveFrame{std::move(snapshot), capture_generation}),
+            std::memory_order_release);
+        wake_.notify_one();
+    }
+
+    void clear()
+    {
+        pending_.store({}, std::memory_order_release);
+    }
+
+private:
+    void run(const std::stop_token stop)
+    {
+        while (!stop.stop_requested()) {
+            auto frame = pending_.exchange({}, std::memory_order_acq_rel);
+            if (!frame) {
+                std::unique_lock lock(wake_mutex_);
+                wake_.wait_for(lock, std::chrono::milliseconds(100), [this, &stop] {
+                    return stop.stop_requested()
+                        || static_cast<bool>(pending_.load(std::memory_order_acquire));
+                });
+                continue;
+            }
+            publish_to_waiting_clients(frame->snapshot, frame->capture_generation);
+        }
+    }
+
+    std::atomic<std::shared_ptr<QueuedLiveFrame>> pending_{};
+    std::mutex wake_mutex_;
+    std::condition_variable wake_;
+    std::jthread worker_;
+};
+
+LiveFrameDispatcher &dispatcher()
+{
+    static LiveFrameDispatcher value;
+    return value;
+}
+
 } // namespace
 
 std::unique_ptr<Server::router_t> Server::add_live_frame_routes(std::unique_ptr<router_t> router)
 {
-    LiveFrame::SnapshotStore::instance().set_publish_callback(publish_to_waiting_clients);
+    LiveFrame::SnapshotStore::instance().set_publish_callback(
+        [](LiveFrame::Snapshot snapshot, const std::uint64_t capture_generation) {
+            dispatcher().enqueue(std::move(snapshot), capture_generation);
+        });
 
     // /live_frame is intentionally WebSocket-only. The connection itself is
     // free from matrix-capture work; each text "next" asks for exactly one
@@ -126,6 +191,7 @@ std::unique_ptr<Server::router_t> Server::add_live_frame_routes(std::unique_ptr<
 
 void Server::clear_live_frame_connections()
 {
+    dispatcher().clear();
     std::lock_guard lock(clients_mutex);
     clients.clear();
 }

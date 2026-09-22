@@ -9,6 +9,7 @@
 
 #include <shared/common/utils/utils.h>
 #include <shared/desktop/config.h>
+#include <shared/desktop/WebsocketClient.h>
 #include <shared/desktop/utils.h>
 
 #ifndef _WIN32
@@ -153,12 +154,17 @@ bool RenderOffloadDesktop::worker_alive()
 
 void RenderOffloadDesktop::ensure_worker()
 {
+    const auto *websocket = WebsocketClient::instance();
+    if (!websocket)
+        return;
+
     const auto &general = Config::ConfigManager::instance()->getGeneralConfig();
     const auto host = general.getHostnameCopy();
     const auto port = general.getPort();
+    const auto client_id = websocket->clientId();
 
     bool alive = worker_alive();
-    if (alive && (host != worker_host_ || port != worker_port_)) {
+    if (alive && (host != worker_host_ || port != worker_port_ || client_id != worker_client_id_)) {
         stop_worker();
         alive = false;
     }
@@ -175,10 +181,10 @@ void RenderOffloadDesktop::ensure_worker()
         && now - last_launch_attempt_ < std::chrono::seconds(2))
         return;
     last_launch_attempt_ = now;
-    start_worker(host, port);
+    start_worker(host, port, client_id);
 }
 
-bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t port)
+bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t port, const std::string &client_id)
 {
     const auto executable = worker_executable();
     const auto crash_dir = get_data_dir() / "crashes";
@@ -191,8 +197,8 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
 
 #ifdef _WIN32
     std::string command = "\"" + executable.string() + "\" --host \"" + host
-        + "\" --port " + std::to_string(port) + " --crash-dir \""
-        + crash_dir.string() + "\"";
+        + "\" --port " + std::to_string(port) + " --client-id \"" + client_id
+        + "\" --crash-dir \"" + crash_dir.string() + "\"";
     std::vector<char> cmdline(command.begin(), command.end());
     cmdline.push_back('\0');
     STARTUPINFOA startup{};
@@ -255,14 +261,15 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
 #endif
         const auto port_string = std::to_string(port);
         execl(executable.c_str(), executable.c_str(), "--host", host.c_str(),
-              "--port", port_string.c_str(), "--crash-dir", crash_dir.c_str(),
-              static_cast<char *>(nullptr));
+              "--port", port_string.c_str(), "--client-id", client_id.c_str(),
+              "--crash-dir", crash_dir.c_str(), static_cast<char *>(nullptr));
         _exit(127);
     }
     worker_pid_ = pid;
 #endif
 
     worker_host_ = host;
+    worker_client_id_ = client_id;
     worker_port_ = port;
     {
         std::lock_guard lock(mutex_);

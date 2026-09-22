@@ -7,6 +7,8 @@
 #include <shared_mutex>
 #include <atomic>
 #include <cstdint>
+#include <string>
+#include <vector>
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/export.h"
 
@@ -34,13 +36,17 @@ namespace Server {
 
     // Desktop controllers may be connected concurrently, but some plugins
     // represent one physical producer stream (SpotifyMV is the first). The
-    // newest regular desktop connection owns those producers. This also makes
-    // an automatic reconnect supersede a stale server-side socket immediately.
-    SHARED_MATRIX_API DesktopProducerChange register_desktop_producer(std::uint64_t connection_id);
+    // producer owner stays sticky while healthy. A reconnect carrying the same
+    // logical client id may supersede its own stale server-side socket without
+    // displacing an unrelated healthy desktop.
+    SHARED_MATRIX_API DesktopProducerChange register_desktop_producer(std::uint64_t connection_id, std::string client_id = {});
     SHARED_MATRIX_API DesktopProducerChange unregister_desktop_producer(std::uint64_t connection_id);
+    SHARED_MATRIX_API void register_desktop_worker(std::uint64_t connection_id, std::string client_id);
+    SHARED_MATRIX_API void unregister_desktop_worker(std::uint64_t connection_id);
     SHARED_MATRIX_API void clear_desktop_producers();
     SHARED_MATRIX_API std::uint64_t desktop_producer_owner();
     SHARED_MATRIX_API bool accepts_desktop_producer_message(std::uint64_t connection_id);
+    SHARED_MATRIX_API std::vector<std::uint64_t> desktop_producer_targets();
 
     extern SHARED_MATRIX_API std::shared_mutex currSceneMutex;
     extern SHARED_MATRIX_API std::shared_ptr<Scenes::Scene> currScene;

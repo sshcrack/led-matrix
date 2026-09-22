@@ -677,6 +677,17 @@ if(ENABLE_EMULATOR)
     add_test(NAME property_compat_smoke COMMAND $<TARGET_FILE:property_compat_smoke>)
     set_tests_properties(property_compat_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(desktop_producer_ownership_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_producer_ownership_smoke.cpp
+    )
+    target_compile_features(desktop_producer_ownership_smoke PRIVATE cxx_std_23)
+    target_link_libraries(desktop_producer_ownership_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix restinio::restinio
+        nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME desktop_producer_ownership_smoke COMMAND $<TARGET_FILE:desktop_producer_ownership_smoke>)
+    set_tests_properties(desktop_producer_ownership_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(runtime_inputs_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_inputs_smoke.cpp
     )

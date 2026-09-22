@@ -27,7 +27,7 @@ struct Snapshot {
 /// allocation, mutex acquisition, timer, or background capture.
 class SnapshotStore {
 public:
-    using PublishCallback = std::function<void(const Snapshot &, std::uint64_t capture_generation)>;
+    using PublishCallback = std::function<void(Snapshot, std::uint64_t capture_generation)>;
 
     static SnapshotStore &instance();
 

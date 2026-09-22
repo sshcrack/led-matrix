@@ -42,8 +42,10 @@ bool PostProcessor::add_effect(const std::string& effect_name, float duration, f
 
 void PostProcessor::apply_effects(FrameCanvas* canvas)
 {
-    std::lock_guard<std::mutex> lock(effectsMutex);
-    if (active_effects.empty() || !canvas) {
+    // Post-processing is cosmetic. Never let a concurrent control/audio event
+    // that is adding or clearing an effect stall the matrix presentation path.
+    std::unique_lock<std::mutex> lock(effectsMutex, std::try_to_lock);
+    if (!lock.owns_lock() || active_effects.empty() || !canvas) {
         return;
     }
 

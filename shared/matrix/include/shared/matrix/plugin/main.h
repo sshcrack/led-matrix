@@ -173,24 +173,24 @@ namespace Plugins
         {
             namespace rb = restinio::websocket::basic;
 
-            std::shared_lock lock(Server::registryMutex);
             rb::message_t message;
             message.set_final_flag(rb::final_frame_flag_t::final_frame);
             message.set_opcode(rb::opcode_t::text_frame);
-
             message.set_payload("msg:" + get_plugin_name() + ":" + msg);
 
             if (requires_single_desktop_producer())
             {
-                const auto owner = Server::desktop_producer_owner();
-                if (owner == 0)
-                    return;
-                const auto it = Server::registry.find(owner);
-                if (it != Server::registry.end())
-                    it->second->send_message(message);
+                const auto targets = Server::desktop_producer_targets();
+                std::shared_lock lock(Server::registryMutex);
+                for (const auto connection_id : targets) {
+                    const auto it = Server::registry.find(connection_id);
+                    if (it != Server::registry.end())
+                        it->second->send_message(message);
+                }
                 return;
             }
 
+            std::shared_lock lock(Server::registryMutex);
             for (const auto &val : Server::registry | std::views::values)
             {
                 val->send_message(message);

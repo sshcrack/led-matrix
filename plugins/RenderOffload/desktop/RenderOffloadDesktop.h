@@ -32,7 +32,7 @@ private:
 
     bool worker_alive();
     void ensure_worker();
-    bool start_worker(const std::string &host, std::uint16_t port);
+    bool start_worker(const std::string &host, std::uint16_t port, const std::string &client_id);
     void stop_worker();
 
     std::mutex mutex_;
@@ -41,6 +41,7 @@ private:
     bool worker_running_ = false;
     std::string worker_error_;
     std::string worker_host_;
+    std::string worker_client_id_;
     std::uint16_t worker_port_ = 0;
     Clock::time_point last_launch_attempt_{};
 
