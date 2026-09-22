@@ -109,7 +109,7 @@ void SnapshotStore::publish(const int width,
     }
 
     if (callback)
-        callback(published, capture_generation);
+        callback(std::move(published), capture_generation);
 }
 
 void SnapshotStore::set_publish_callback(PublishCallback callback)

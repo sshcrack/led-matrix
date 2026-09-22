@@ -122,6 +122,8 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             LiveFrame::SnapshotStore::instance().capture_if_requested(composite_offscreen_canvas, matrix_width, matrix_height);
             composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
             presenter_->present();
+            Diagnostics::RuntimeDiagnostics::instance().record_presentation(
+                scene->get_declared_target_fps());
         }
     }
 
@@ -265,6 +267,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
 
         presenter_->present();
+        Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
 
         if (alpha >= 1.0f) {
             forced_scene = next_scene;

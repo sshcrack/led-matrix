@@ -11,6 +11,9 @@
 #include <condition_variable>
 #include <deque>
 #include <unordered_map>
+#include <random>
+#include <sstream>
+#include <iomanip>
 #include <spdlog/spdlog.h>
 
 class SHARED_DESKTOP_API WebsocketClient : public std::enable_shared_from_this<WebsocketClient>
@@ -59,8 +62,13 @@ public:
 
     void setUrl(const std::string &url)
     {
-        spdlog::info("Setting WebSocket URL to: {}", url);
-        webSocket.setUrl(url);
+        std::string effective = url;
+        if (effective.find("client_id=") == std::string::npos) {
+            effective += effective.find('?') == std::string::npos ? '?' : '&';
+            effective += "client_id=" + clientId_;
+        }
+        spdlog::info("Setting WebSocket URL to: {}", effective);
+        webSocket.setUrl(effective);
     }
 
     void setup_callback();
@@ -112,10 +120,26 @@ public:
         return transportStarted_.load();
     }
 
+    [[nodiscard]] const std::string &clientId() const
+    {
+        return clientId_;
+    }
+
     ix::WebSocket webSocket;
 
 private:
+    static std::string makeClientId()
+    {
+        std::random_device rd;
+        std::mt19937_64 rng((static_cast<std::uint64_t>(rd()) << 32U) ^ rd());
+        std::ostringstream out;
+        out << std::hex << std::setfill('0')
+            << std::setw(16) << rng() << std::setw(16) << rng();
+        return out.str();
+    }
+
     WebsocketClient();
+    const std::string clientId_ = makeClientId();
     UdpSender udpSender;
     DesktopStreamState streamState_;
 

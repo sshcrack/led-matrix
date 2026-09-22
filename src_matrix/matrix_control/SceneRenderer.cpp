@@ -37,6 +37,7 @@ bool SceneRenderer::render_scene_phase(
 {
     auto &diagnostics = Diagnostics::RuntimeDiagnostics::instance();
     diagnostics.set_active_scene(scene->get_name());
+    diagnostics.reset_presentation_cadence();
 
     const auto caps = scene->get_capabilities();
     const double budget_ms = 1000.0 / static_cast<double>(
@@ -221,6 +222,8 @@ bool SceneRenderer::render_scene_phase(
         }
 
         const bool frame_updated = used_remote_frame || local_frame_updated;
+        if (!frame_updated)
+            diagnostics.reset_presentation_cadence();
         if (frame_updated) {
             if (post_processor_)
                 post_processor_->apply_effects(composite_offscreen_canvas);
@@ -232,6 +235,7 @@ bool SceneRenderer::render_scene_phase(
             composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
             last_presented_canvas_ = presented_canvas;
             presenter_->present();
+            diagnostics.record_presentation(scene->get_declared_target_fps());
         }
 
         // A held frame skips SwapOnVSync, so retain software pacing instead of
