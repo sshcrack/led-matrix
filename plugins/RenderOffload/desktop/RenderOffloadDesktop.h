@@ -8,8 +8,9 @@
 #include <shared/desktop/plugin/main.h>
 
 #ifdef _WIN32
-#define NOMINMAX
-#include <windows.h>
+// win_compat.h pulls in winsock2.h before windows.h; required since this
+// plugin's .cpp also includes WebsocketClient.h (ixwebsocket → Winsock).
+#include <shared/common/win_compat.h>
 #else
 #include <sys/types.h>
 #endif
