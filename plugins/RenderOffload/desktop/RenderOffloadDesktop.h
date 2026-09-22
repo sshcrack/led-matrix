@@ -8,9 +8,12 @@
 #include <shared/desktop/plugin/main.h>
 
 #ifdef _WIN32
-// win_compat.h pulls in winsock2.h before windows.h; required since this
-// plugin's .cpp also includes WebsocketClient.h (ixwebsocket → Winsock).
-#include <shared/common/win_compat.h>
+// winsock2.h must precede windows.h: this plugin's .cpp also includes
+// WebsocketClient.h (ixwebsocket → Winsock). Full windows.h (not
+// win_compat.h) is needed here — the worker launch uses SW_HIDE, which
+// win_compat.h's NOUSER excludes.
+#include <winsock2.h>
+#include <windows.h>
 #else
 #include <sys/types.h>
 #endif
