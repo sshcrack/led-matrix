@@ -10,6 +10,7 @@ public:
     std::vector<std::unique_ptr<Plugins::SceneWrapper>> create_scenes() override { return {}; }
     std::vector<std::unique_ptr<Plugins::ImageProviderWrapper>> create_image_providers() override { return {}; }
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
+    [[nodiscard]] bool requires_single_desktop_producer() const override { return true; }
 
     std::optional<std::string> before_server_init() override;
     std::optional<std::string> pre_exit() override;

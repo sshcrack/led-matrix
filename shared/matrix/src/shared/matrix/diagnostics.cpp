@@ -9,6 +9,11 @@ std::uint64_t monotonic_ms() {
     return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
 }
+
+std::uint64_t monotonic_us() {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+}
 }
 
 namespace Diagnostics {
@@ -20,12 +25,19 @@ RuntimeDiagnostics &RuntimeDiagnostics::instance() {
 }
 
 void RuntimeDiagnostics::set_active_scene(const std::string &scene) {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     active_scene_ = scene;
 }
 
 void RuntimeDiagnostics::record_render(const std::string &scene, double render_ms, int target_fps, float quality_scale) {
-    std::lock_guard lock(mutex_);
+    // Rendering diagnostics are observational only. Never let a diagnostics
+    // HTTP snapshot or busy UDP telemetry mutex stall the matrix refresh path.
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        render_samples_skipped_.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
     active_scene_ = scene;
     ++render_frames_;
     render_ms_max_ = std::max(render_ms_max_, render_ms);
@@ -54,6 +66,39 @@ void RuntimeDiagnostics::record_render(const std::string &scene, double render_m
     stats.recent_count = std::min(stats.recent_count + 1, stats.recent_ms.size());
 }
 
+void RuntimeDiagnostics::record_presentation(int target_fps) {
+    const auto now_us = monotonic_us();
+    presentation_frames_.fetch_add(1, std::memory_order_relaxed);
+    const auto previous_us = presentation_last_us_.exchange(now_us, std::memory_order_relaxed);
+    if (previous_us == 0 || now_us <= previous_us)
+        return;
+
+    const auto interval_us = now_us - previous_us;
+    presentation_last_interval_us_.store(interval_us, std::memory_order_relaxed);
+    presentation_intervals_.fetch_add(1, std::memory_order_relaxed);
+    presentation_interval_total_us_.fetch_add(interval_us, std::memory_order_relaxed);
+
+    auto observed_max = presentation_interval_max_us_.load(std::memory_order_relaxed);
+    while (interval_us > observed_max
+           && !presentation_interval_max_us_.compare_exchange_weak(
+               observed_max, interval_us, std::memory_order_relaxed, std::memory_order_relaxed)) {
+    }
+
+    const auto target_us = static_cast<std::uint64_t>(
+        1000000.0 / static_cast<double>(std::max(1, target_fps)));
+    if (interval_us > target_us + target_us / 2) {
+        presentation_late_frames_.fetch_add(1, std::memory_order_relaxed);
+        const auto refreshes = std::max<std::uint64_t>(1, (interval_us + target_us / 2) / target_us);
+        presentation_estimated_missed_refreshes_.fetch_add(
+            refreshes - 1, std::memory_order_relaxed);
+    }
+}
+
+void RuntimeDiagnostics::reset_presentation_cadence() {
+    presentation_last_us_.store(0, std::memory_order_relaxed);
+    presentation_last_interval_us_.store(0, std::memory_order_relaxed);
+}
+
 void RuntimeDiagnostics::record_scene_error(const std::string &scene, const std::string &message) {
     std::lock_guard lock(mutex_);
     ++scene_error_counts_[scene];
@@ -61,20 +106,17 @@ void RuntimeDiagnostics::record_scene_error(const std::string &scene, const std:
 }
 
 void RuntimeDiagnostics::record_udp_datagram(std::size_t bytes) {
-    std::lock_guard lock(mutex_);
-    ++udp_datagrams_;
-    udp_bytes_ += bytes;
+    udp_datagrams_.fetch_add(1, std::memory_order_relaxed);
+    udp_bytes_.fetch_add(bytes, std::memory_order_relaxed);
 }
 
 void RuntimeDiagnostics::record_udp_packet(bool handled) {
-    std::lock_guard lock(mutex_);
-    ++udp_packets_;
-    if (!handled) ++udp_unhandled_;
+    udp_packets_.fetch_add(1, std::memory_order_relaxed);
+    if (!handled) udp_unhandled_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void RuntimeDiagnostics::record_udp_malformed() {
-    std::lock_guard lock(mutex_);
-    ++udp_malformed_;
+    udp_malformed_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void RuntimeDiagnostics::record_audio_packet(std::uint32_t sequence) {
@@ -92,22 +134,26 @@ void RuntimeDiagnostics::record_audio_decode_error() {
 }
 
 void RuntimeDiagnostics::set_director_state(nlohmann::json state) {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     director_state_ = std::move(state);
 }
 
 void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     transition_state_ = std::move(state);
 }
 
 void RuntimeDiagnostics::set_render_placement(nlohmann::json state) {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return;
     render_placement_state_ = std::move(state);
 }
 
 std::optional<double> RuntimeDiagnostics::scene_render_p95(const std::string &scene) const {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) return std::nullopt;
     const auto it = scene_render_stats_.find(scene);
     if (it == scene_render_stats_.end() || it->second.recent_count < 4)
         return std::nullopt;
@@ -123,6 +169,12 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
     std::lock_guard lock(mutex_);
     const auto now = monotonic_ms();
     const double uptime_seconds = std::max(0.001, static_cast<double>(now - started_ms_) / 1000.0);
+    const auto presentation_intervals = presentation_intervals_.load(std::memory_order_relaxed);
+    const auto presentation_last_interval_us = presentation_last_interval_us_.load(std::memory_order_relaxed);
+    const auto presentation_total_interval_us = presentation_interval_total_us_.load(std::memory_order_relaxed);
+    const double presentation_average_ms = presentation_intervals == 0 ? 0.0
+        : static_cast<double>(presentation_total_interval_us) / static_cast<double>(presentation_intervals) / 1000.0;
+    const double presentation_last_ms = static_cast<double>(presentation_last_interval_us) / 1000.0;
 
     nlohmann::json errors = nlohmann::json::object();
     for (const auto &[scene, count] : scene_error_counts_) {
@@ -169,17 +221,25 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
             {"render_ms_average", render_ms_ema_},
             {"render_ms_max", render_ms_max_},
             {"slow_frames", dropped_render_frames_},
+            {"render_samples_skipped", render_samples_skipped_.load(std::memory_order_relaxed)},
+            {"presentation_frames", presentation_frames_.load(std::memory_order_relaxed)},
+            {"presentation_fps_last", presentation_last_interval_us == 0 ? 0.0 : 1000000.0 / static_cast<double>(presentation_last_interval_us)},
+            {"presentation_interval_ms_last", presentation_last_ms},
+            {"presentation_interval_ms_average", presentation_average_ms},
+            {"presentation_interval_ms_max", static_cast<double>(presentation_interval_max_us_.load(std::memory_order_relaxed)) / 1000.0},
+            {"late_presentations", presentation_late_frames_.load(std::memory_order_relaxed)},
+            {"estimated_missed_refreshes", presentation_estimated_missed_refreshes_.load(std::memory_order_relaxed)},
             {"scene_errors", errors},
             {"scene_performance", scene_performance}
         }},
         {"udp", {
-            {"datagrams", udp_datagrams_},
-            {"packets", udp_packets_},
-            {"bytes", udp_bytes_},
-            {"datagrams_per_second", static_cast<double>(udp_datagrams_) / uptime_seconds},
-            {"bytes_per_second", static_cast<double>(udp_bytes_) / uptime_seconds},
-            {"malformed", udp_malformed_},
-            {"unhandled", udp_unhandled_}
+            {"datagrams", udp_datagrams_.load(std::memory_order_relaxed)},
+            {"packets", udp_packets_.load(std::memory_order_relaxed)},
+            {"bytes", udp_bytes_.load(std::memory_order_relaxed)},
+            {"datagrams_per_second", static_cast<double>(udp_datagrams_.load(std::memory_order_relaxed)) / uptime_seconds},
+            {"bytes_per_second", static_cast<double>(udp_bytes_.load(std::memory_order_relaxed)) / uptime_seconds},
+            {"malformed", udp_malformed_.load(std::memory_order_relaxed)},
+            {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)}
         }},
         {"audio_transport", {
             {"packets", audio_packets_},

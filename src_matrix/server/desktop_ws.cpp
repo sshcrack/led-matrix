@@ -76,6 +76,22 @@ void send_producer_role(const std::uint64_t connection_id, const bool active)
     }
 }
 
+void publish_scene_worker_producer_roles()
+{
+    std::vector<std::uint64_t> workers;
+    {
+        std::shared_lock lock(Server::registryMutex);
+        workers.reserve(scene_worker_connections.size());
+        for (const auto connection_id : scene_worker_connections)
+            workers.push_back(connection_id);
+    }
+    for (const auto connection_id : workers)
+        send_control_message(
+            socket_for(connection_id),
+            DesktopControlProtocol::desktop_producer(
+                Server::accepts_desktop_producer_message(connection_id)));
+}
+
 void send_initial_plugin_messages(const Server::rws::ws_handle_t& socket,
                                   const bool producer_owner,
                                   const bool producer_only = false)
@@ -108,8 +124,11 @@ void apply_producer_change(const Server::DesktopProducerChange& change,
 
     if (change.owner != 0) {
         send_producer_role(change.owner, true);
-        if (replay_new_owner)
-            send_initial_plugin_messages(socket_for(change.owner), true, true);
+        publish_scene_worker_producer_roles();
+        if (replay_new_owner) {
+            for (const auto connection_id : Server::desktop_producer_targets())
+                send_initial_plugin_messages(socket_for(connection_id), true, true);
+        }
     }
 
     // The connection count may be unchanged when ownership moves, but expose
@@ -144,6 +163,12 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             const auto query = restinio::parse_query(req->header().query());
             const bool is_scene_worker = query.has("role")
                 && std::string{query["role"]} == "scene-worker";
+            std::string desktop_client_id;
+            if (query.has("client_id")) {
+                desktop_client_id = std::string{query["client_id"]};
+                if (desktop_client_id.size() > 128)
+                    desktop_client_id.resize(128);
+            }
             auto wsh =
                     rws::upgrade<traits_t>(
                         *req,
@@ -190,6 +215,8 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                                             previous_count = desktop_connection_count.fetch_sub(1);
                                             if (previous_count <= 1)
                                                 desktop_connection_count.store(0);
+                                        } else {
+                                            unregister_desktop_worker(wsh->connection_id());
                                         }
                                     }
                                 }
@@ -207,6 +234,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             // on exit from this request handler.
 
             bool inserted_regular_desktop = false;
+            bool inserted_scene_worker = false;
             int previous_count = 0;
             {
                 std::unique_lock lock(registryMutex);
@@ -214,6 +242,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                 if (inserted) {
                     if (is_scene_worker) {
                         scene_worker_connections.insert(wsh->connection_id());
+                        inserted_scene_worker = true;
                     } else {
                         inserted_regular_desktop = true;
                         previous_count = desktop_connection_count.fetch_add(1);
@@ -221,10 +250,13 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                 }
             } // Release registryMutex here
 
+            if (inserted_scene_worker)
+                register_desktop_worker(wsh->connection_id(), desktop_client_id);
+
             if (inserted_regular_desktop) {
-                // The newest controller owns single-producer desktop plugins. A
-                // reconnect therefore supersedes any stale server-side socket.
-                const auto change = register_desktop_producer(wsh->connection_id());
+                // Keep the current producer sticky. A reconnect carrying the
+                // same logical desktop id may replace only its own stale socket.
+                const auto change = register_desktop_producer(wsh->connection_id(), desktop_client_id);
                 publish_desktop_runtime_input(previous_count == 0);
                 apply_producer_change(change, false);
             }
@@ -244,16 +276,12 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
 
             wsh->send_message(message);
 
-            const bool producer_owner = !is_scene_worker
-                && accepts_desktop_producer_message(wsh->connection_id());
-            if (!is_scene_worker) {
-                // Producer ownership must precede matrix_enabled. A new desktop
-                // is legacy-compatible (producer=true until told otherwise),
-                // while this ordering guarantees a standby client learns its
-                // role before matrix_enabled can unlock its UDP stream.
-                message.set_payload(DesktopControlProtocol::desktop_producer(producer_owner));
-                wsh->send_message(message);
-            }
+            const bool producer_owner = accepts_desktop_producer_message(wsh->connection_id());
+            // Producer ownership must precede matrix_enabled/plugin replay.
+            // Scene workers use the same control to stop their UDP loop as soon
+            // as their parent desktop becomes standby.
+            message.set_payload(DesktopControlProtocol::desktop_producer(producer_owner));
+            wsh->send_message(message);
 
             message.set_payload(DesktopControlProtocol::matrix_enabled(!config->is_turned_off()));
             wsh->send_message(message);

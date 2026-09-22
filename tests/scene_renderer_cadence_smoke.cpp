@@ -3,6 +3,7 @@
 
 #include <shared/common/timesource/TimeSource.h>
 #include <shared/matrix/Scene.h>
+#include <shared/matrix/diagnostics.h>
 
 #include <emulator.h>
 #include <led-matrix.h>
@@ -120,6 +121,16 @@ int main()
     if (presenter.count != 6) {
         std::cerr << "expected six presentations, got " << presenter.count << '\n';
         return 2;
+    }
+
+    const auto diagnostics = Diagnostics::RuntimeDiagnostics::instance().snapshot();
+    const auto &renderer_stats = diagnostics.at("renderer");
+    if (renderer_stats.value("presentation_frames", 0ULL) != 6ULL
+        || !renderer_stats.contains("presentation_interval_ms_last")
+        || !renderer_stats.contains("late_presentations")
+        || !renderer_stats.contains("estimated_missed_refreshes")) {
+        std::cerr << "presentation deadline telemetry was not recorded\n";
+        return 4;
     }
 
     // The fake SwapOnVSync advances scene time by one 16 ms refresh interval.

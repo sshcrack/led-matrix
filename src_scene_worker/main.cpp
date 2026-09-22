@@ -47,6 +47,7 @@
 #include "led-matrix.h"
 
 #include <shared/common/remote_render_protocol.h>
+#include <shared/common/desktop_control_protocol.h>
 #include <shared/common/crash_reporter.h>
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
@@ -66,6 +67,7 @@ using Clock = std::chrono::steady_clock;
 namespace {
 struct Args {
     std::string host;
+    std::string client_id;
     std::uint16_t port = 8080;
     fs::path plugin_dir;
     fs::path crash_dir;
@@ -150,6 +152,7 @@ Args parse_args(int argc, char **argv)
             return argv[i];
         };
         if (value == "--host") args.host = next();
+        else if (value == "--client-id") args.client_id = next();
         else if (value == "--port") {
             const int port = std::stoi(next());
             if (port < 1 || port > 65535) throw std::runtime_error("invalid port");
@@ -159,7 +162,7 @@ Args parse_args(int argc, char **argv)
         else if (value == "--list-scenes") args.list_scenes = true;
         else if (value == "--self-test") args.self_test = true;
         else if (value == "--help") {
-            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--plugin-dir path] [--crash-dir path] [--list-scenes] [--self-test]");
+            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--client-id id] [--plugin-dir path] [--crash-dir path] [--list-scenes] [--self-test]");
         } else {
             throw std::runtime_error("unknown argument: " + value);
         }
@@ -507,25 +510,34 @@ int main(int argc, char **argv)
         DatagramSender udp(args.host, args.port);
         ix::WebSocket websocket;
         websocket.setUrl("ws://" + args.host + ":" + std::to_string(args.port)
-                         + "/desktopWebsocket?role=scene-worker");
+                         + "/desktopWebsocket?role=scene-worker&client_id=" + args.client_id);
         websocket.enableAutomaticReconnection();
 
         std::mutex command_mutex;
         std::deque<nlohmann::json> commands;
         std::atomic<bool> connected{false};
+        // Default active on Open for compatibility with older matrix servers;
+        // current servers immediately send an explicit producer role.
+        std::atomic<bool> producer_active{false};
         websocket.setOnMessageCallback([&](const ix::WebSocketMessagePtr &message) {
             if (message->type == ix::WebSocketMessageType::Open) {
                 connected.store(true);
+                producer_active.store(true);
                 return;
             }
             if (message->type == ix::WebSocketMessageType::Close
                 || message->type == ix::WebSocketMessageType::Error) {
                 connected.store(false);
+                producer_active.store(false);
                 return;
             }
             if (message->type != ix::WebSocketMessageType::Message)
                 return;
             const std::string &payload = message->str;
+            if (const auto role = DesktopControlProtocol::parse_desktop_producer(payload); role.has_value()) {
+                producer_active.store(*role);
+                return;
+            }
             if (!payload.starts_with("msg:RenderOffload:"))
                 return;
             try {
@@ -540,6 +552,7 @@ int main(int argc, char **argv)
 
         RenderRuntime runtime;
         auto next_heartbeat = Clock::now();
+        bool was_producer_active = false;
         while (true) {
             std::deque<nlohmann::json> pending;
             {
@@ -571,7 +584,20 @@ int main(int argc, char **argv)
             }
 
             const auto now = Clock::now();
-            if (connected.load() && now >= next_heartbeat) {
+            const bool active_producer = connected.load() && producer_active.load();
+            if (!active_producer) {
+                if (was_producer_active)
+                    runtime.reset();
+                was_producer_active = false;
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                continue;
+            }
+            if (!was_producer_active) {
+                was_producer_active = true;
+                next_heartbeat = now;
+            }
+
+            if (now >= next_heartbeat) {
                 const nlohmann::json heartbeat{
                     {"op", "worker_heartbeat"},
                     {"protocol", RemoteRenderProtocol::Version},
