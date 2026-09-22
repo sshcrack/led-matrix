@@ -92,7 +92,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-set(VERSION 1.15.0)
+set(VERSION 1.16.0)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
