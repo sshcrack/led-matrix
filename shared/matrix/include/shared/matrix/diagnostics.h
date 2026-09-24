@@ -35,7 +35,9 @@ public:
     void set_director_state(nlohmann::json state);
     void set_transition_state(nlohmann::json state);
     void set_render_placement(nlohmann::json state);
+    void set_hardware_state(nlohmann::json state);
     [[nodiscard]] std::optional<double> scene_render_p95(const std::string &scene) const;
+    [[nodiscard]] std::uint64_t scene_error_count(const std::string &scene) const;
 
     [[nodiscard]] nlohmann::json snapshot() const;
 
@@ -94,6 +96,7 @@ private:
     nlohmann::json director_state_ = nlohmann::json::object();
     nlohmann::json transition_state_ = nlohmann::json::object();
     nlohmann::json render_placement_state_ = nlohmann::json::object();
+    nlohmann::json hardware_state_ = nlohmann::json::object();
 };
 
 } // namespace Diagnostics

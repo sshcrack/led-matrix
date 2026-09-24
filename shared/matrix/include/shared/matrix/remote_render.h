@@ -61,6 +61,10 @@ bool submit_frame(std::uint32_t session, std::uint32_t sequence,
 bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
                  int width, int height, double max_age_ms = 300.0);
 
+/// Age of the newest received frame for `session`, without taking the state
+/// lock. Empty when no frame of that session has arrived.
+std::optional<double> latest_frame_age_ms(std::uint32_t session);
+
 /// Return a start command for a newly reconnected desktop, if a session is
 /// currently requested.
 std::optional<nlohmann::json> reconnect_command();

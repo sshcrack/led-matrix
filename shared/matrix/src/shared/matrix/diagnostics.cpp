@@ -145,6 +145,11 @@ void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
     transition_state_ = std::move(state);
 }
 
+void RuntimeDiagnostics::set_hardware_state(nlohmann::json state) {
+    std::lock_guard lock(mutex_);
+    hardware_state_ = std::move(state);
+}
+
 void RuntimeDiagnostics::set_render_placement(nlohmann::json state) {
     std::unique_lock lock(mutex_, std::try_to_lock);
     if (!lock.owns_lock()) return;
@@ -163,6 +168,12 @@ std::optional<double> RuntimeDiagnostics::scene_render_p95(const std::string &sc
     const std::size_t index = std::min(samples.size() - 1,
         static_cast<std::size_t>(std::floor((samples.size() - 1) * 0.95)));
     return samples[index];
+}
+
+std::uint64_t RuntimeDiagnostics::scene_error_count(const std::string &scene) const {
+    std::lock_guard lock(mutex_);
+    const auto it = scene_error_counts_.find(scene);
+    return it == scene_error_counts_.end() ? 0 : it->second;
 }
 
 nlohmann::json RuntimeDiagnostics::snapshot() const {
@@ -249,7 +260,8 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
         }},
         {"director", director_state_},
         {"transition", transition_state_},
-        {"render_placement", render_placement_state_}
+        {"render_placement", render_placement_state_},
+        {"hardware", hardware_state_}
     };
 }
 }
