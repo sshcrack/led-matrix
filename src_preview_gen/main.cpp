@@ -23,6 +23,8 @@
  *   (defaults to stdout).
  */
 
+#include <cstdlib>
+#include <random>
 #include <Magick++.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
@@ -345,8 +347,17 @@ int main(int argc, char* argv[])
     Constants::global_transition_manager = nullptr;
     Constants::global_update_manager = nullptr;
 
-    // provide a minimal config so nothing derefs a null pointer
-    const fs::path cfg_path = fs::temp_directory_path() / "preview_gen_config.json";
+    // Provide a minimal config so nothing derefs a null pointer. Each run gets
+    // its own fresh file: concurrent runs (ctest -j) sharing one path used to
+    // interleave writes and leave a corrupt config that broke every later run.
+    static const fs::path cfg_path = fs::temp_directory_path()
+        / ("preview_gen_config-" + std::to_string(std::random_device{}()) + ".json");
+    std::error_code cfg_error;
+    fs::remove(cfg_path, cfg_error);
+    std::atexit([] {
+        std::error_code ignored;
+        fs::remove(cfg_path, ignored);
+    });
     config = new Config::MainConfig(cfg_path.string());
 
     // ---- load plugins ------------------------------------------------------
