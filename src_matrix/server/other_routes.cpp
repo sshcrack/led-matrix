@@ -195,6 +195,24 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
     });
 
+    router->http_get("/automatic_director/preferences", [](auto req, auto) {
+        return reply_with_json(req, json(config->get_automatic_preferences()));
+    });
+
+    router->http_post("/automatic_director/preferences", [](auto req, auto) {
+        try {
+            const auto body = json::parse(req->body());
+            const auto look = body.value("look", std::string{});
+            const auto preference = body.value("preference", std::string{});
+            config->set_automatic_preference(look, preference);
+            if (!config->save())
+                return reply_with_error(req, "Could not persist Automatic Mode preference", restinio::status_internal_server_error());
+            return reply_with_json(req, json(config->get_automatic_preferences()));
+        } catch (const std::exception &e) {
+            return reply_with_error(req, e.what());
+        }
+    });
+
     router->http_get("/list", [](auto req, auto)
                      {
         json file_list = json::array();

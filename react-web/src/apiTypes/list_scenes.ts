@@ -8,6 +8,7 @@ export interface SceneVariant {
   motion?: number
   music_affinity?: number
   performance_cost?: number
+  automatic_default?: boolean
 }
 
 export interface SceneDescriptor {
@@ -18,6 +19,7 @@ export interface SceneDescriptor {
   music_affinity: number
   performance_cost: number
   automatic_eligible: boolean
+  automatic_default?: boolean
   variants: SceneVariant[]
 }
 

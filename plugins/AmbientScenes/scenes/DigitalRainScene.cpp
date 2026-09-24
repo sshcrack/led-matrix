@@ -150,6 +150,7 @@ namespace AmbientScenes {
              {{"num_drops", 70}, {"base_speed", 1.65f}, {"fade_factor", 0.86f}, {"glitch_effect", true}},
              {"dense", "energetic", "geometric"}, 0.78f, 0.88f, 0.24f, 0.58f},
         };
+        Scenes::set_off_by_default(d, {"storm"});
         return d;
     }
 

@@ -199,5 +199,6 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
          {{"num_stars", 112}, {"speed", 0.030f}, {"streak_length", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
          {"music", "beat-driven"}, 0.72f, 0.86f, 1.0f, 0.36f},
     };
+    Scenes::set_off_by_default(d, {"warp"});
     return d;
 }

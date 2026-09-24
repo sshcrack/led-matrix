@@ -2,6 +2,7 @@
 #include <shared/matrix/input_ids.h>
 #include <shared/matrix/runtime_inputs.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 
@@ -42,6 +43,7 @@ public:
         d.music_affinity = music_;
         d.performance_cost = cost_;
         d.tags = tags_;
+        d.automatic_default = automatic_default;
         return d;
     }
     Scenes::SceneInputSpec get_runtime_input_spec() const override
@@ -55,6 +57,7 @@ public:
     }
     tmillis_t get_default_duration() override { return duration_; }
     int get_default_weight() override { return 1; }
+    bool automatic_default = true;
 
 private:
     std::string name_;
@@ -226,7 +229,7 @@ int main()
     // eligible, otherwise an MV-ready event could switch to unrelated visuals.
     AutomaticDirector mv_handoff_director(31);
     const auto mv_handoff = mv_handoff_director.consider_switch(
-        spotify_scenes, spotify_scenes.front(), mid_track, 9000);
+        spotify_scenes, spotify_scenes.front(), mid_track, 9000, 60000);
     if (!mv_handoff.should_switch || !mv_handoff.preferred_scene
         || mv_handoff.preferred_scene->get_name() != "spotifymv") {
         std::cerr << "prepared SpotifyMV handoff did not preserve its preferred scene\n";
@@ -279,7 +282,7 @@ int main()
 
     // The global director should consume musical structure itself instead of
     // relying on the nested MusicDirector scene. A section event after minimum
-    // dwell creates a sparse handoff opportunity.
+    // dwell creates a handoff when the current look no longer fits the music.
     RuntimeInputs::clear_all();
     RuntimeInputs::publish(RuntimeInputIds::Audio,
         {{"loudness", 0.72}, {"loudness_slow", 0.70}, {"loudness_fast", 0.74},
@@ -288,9 +291,9 @@ int main()
          {"section_counter", std::int64_t{2}}, {"silence", false}},
         std::chrono::seconds(1));
     AutomaticDirector event_director(29);
-    const auto current_scene = scenes.front();
+    const auto current_scene = std::make_shared<TestScene>("too_calm", .08f, .1f, .2f, false, "still", .08f);
     event_director.record_played(current_scene);
-    auto opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 9000);
+    auto opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 9000, 60000);
     if (opportunity.should_switch) {
         std::cerr << "director reacted while priming musical event counters\n";
         return 18;
@@ -301,10 +304,64 @@ int main()
          {"beat_counter", std::int64_t{20}}, {"drop_counter", std::int64_t{1}},
          {"section_counter", std::int64_t{3}}, {"silence", false}},
         std::chrono::seconds(1));
-    opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 10000);
+    opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 10000, 60000);
     if (!opportunity.should_switch || opportunity.reason.find("section") == std::string::npos) {
         std::cerr << "global director ignored a durable musical section change\n";
         return 19;
+    }
+
+    // Sections arrive every 15-30 s in most music. They must not cut a scene
+    // that still fits mid-dwell; instead a finished scene waits briefly for the
+    // next section so the handoff lands on a musical phrase.
+    auto publish_music = [](std::int64_t section) {
+        RuntimeInputs::publish(RuntimeInputIds::Audio,
+            {{"loudness", 0.72}, {"loudness_slow", 0.70}, {"loudness_fast", 0.74},
+             {"bass", 0.62}, {"beat_confidence", 0.82}, {"tempo_stability", 0.84},
+             {"section_counter", section}, {"silence", false}},
+            std::chrono::seconds(1));
+    };
+    RuntimeInputs::clear_all();
+    publish_music(1);
+    AutomaticDirector phrase_director(97);
+    (void)phrase_director.consider_switch(scenes, scenes.front(), RuntimeInputs::snapshot(), 1000, 30000);
+    const auto phrase_context = phrase_director.diagnostics()["context"];
+    const float fit_intensity = phrase_context["target_intensity"].get<float>();
+    const float fit_motion = phrase_context["target_motion"].get<float>();
+    std::vector<std::shared_ptr<Scenes::Scene>> phrase_scenes{
+        std::make_shared<TestScene>("phrase_a", fit_intensity, .5f, .3f, false, "phrase_a", fit_motion),
+        std::make_shared<TestScene>("phrase_b", fit_intensity, .5f, .3f, false, "phrase_b", fit_motion),
+    };
+    publish_music(2);
+    opportunity = phrase_director.consider_switch(phrase_scenes, phrase_scenes[0], RuntimeInputs::snapshot(), 10000, 30000);
+    if (opportunity.should_switch) {
+        std::cerr << "section change cut a well-fitting scene mid-dwell: " << opportunity.reason << "\n";
+        return 41;
+    }
+    opportunity = phrase_director.consider_switch(phrase_scenes, phrase_scenes[0], RuntimeInputs::snapshot(), 30500, 30000);
+    if (opportunity.should_switch) {
+        std::cerr << "finished scene did not wait for a musical phrase boundary\n";
+        return 42;
+    }
+    publish_music(3);
+    opportunity = phrase_director.consider_switch(phrase_scenes, phrase_scenes[0], RuntimeInputs::snapshot(), 31000, 30000);
+    if (!opportunity.should_switch || opportunity.reason.find("phrase") == std::string::npos) {
+        std::cerr << "finished scene did not hand off on the next section boundary\n";
+        return 43;
+    }
+    AutomaticDirector grace_director(98);
+    (void)grace_director.consider_switch(phrase_scenes, phrase_scenes[0], RuntimeInputs::snapshot(), 1000, 30000);
+    opportunity = grace_director.consider_switch(phrase_scenes, phrase_scenes[0], RuntimeInputs::snapshot(),
+        30000 + AutomaticDirector::phrase_grace_ms, 30000);
+    if (!opportunity.should_switch) {
+        std::cerr << "phrase wait was not bounded by the grace period\n";
+        return 44;
+    }
+    RuntimeInputs::clear_all();
+    AutomaticDirector ambient_dwell_director(99);
+    opportunity = ambient_dwell_director.consider_switch(phrase_scenes, phrase_scenes[0], {}, 30000, 30000);
+    if (!opportunity.should_switch) {
+        std::cerr << "ambient scene did not end at its planned dwell\n";
+        return 45;
     }
 
     // Restore active music for deterministic sequence/reseed checks below.
@@ -434,6 +491,111 @@ int main()
         return 32;
     }
 
+    // Authored performance costs are only priors. A scene measured to blow its
+    // frame budget on this Pi must lose to an otherwise identical scene.
+    RuntimeInputs::clear_all();
+    auto twin = [](std::string name, std::string family = "twin") {
+        return std::make_shared<TestScene>(std::move(name), .4f, .1f, .3f, false, std::move(family), .4f);
+    };
+    std::vector<std::shared_ptr<Scenes::Scene>> twins{twin("twin_a"), twin("twin_b")};
+    AutomaticDirector load_director(91);
+    load_director.report_outcome(twins[0], {.render_load = 1.3f});
+    load_director.report_outcome(twins[1], {.render_load = 0.2f});
+    ranked = load_director.rank(twins, {});
+    if (ranked.size() != 2 || ranked.front().scene->get_name() != "twin_b") {
+        std::cerr << "measured Pi render load did not override the authored cost prior\n";
+        return 33;
+    }
+    load_director.reseed(92);
+    ranked = load_director.rank(twins, {});
+    if (ranked.front().scene->get_name() != "twin_b"
+        || load_director.diagnostics()["scenes"].size() != 2) {
+        std::cerr << "reseed discarded measured hardware render loads\n";
+        return 34;
+    }
+
+    // A failed presentation cools the scene down with backoff, but never leaves
+    // the matrix without a scene when nothing else is eligible.
+    AutomaticDirector health_director(93);
+    health_director.report_outcome(twins[0], {.failed = true});
+    ranked = health_director.rank(twins, {});
+    if (ranked.size() != 1 || ranked.front().scene->get_name() != "twin_b") {
+        std::cerr << "failed scene was not cooled down\n";
+        return 35;
+    }
+    ranked = health_director.rank(twins, {}, "twin_b");
+    if (ranked.size() != 1 || ranked.front().scene->get_name() != "twin_a") {
+        std::cerr << "cooldown left Automatic Mode without any scene\n";
+        return 36;
+    }
+    health_director.advance_journey(2 * 60000 + 1);
+    if (health_director.rank(twins, {}).size() != 2) {
+        std::cerr << "first failure cooldown did not expire after two minutes\n";
+        return 37;
+    }
+    health_director.report_outcome(twins[0], {.failed = true});
+    health_director.advance_journey(2 * 60000 + 1);
+    if (health_director.rank(twins, {}).size() != 1) {
+        std::cerr << "repeated failure did not back off the cooldown\n";
+        return 38;
+    }
+    health_director.advance_journey(2 * 60000);
+    health_director.report_outcome(twins[0], {});
+    health_director.report_outcome(twins[0], {.failed = true});
+    health_director.advance_journey(2 * 60000 + 1);
+    if (health_director.rank(twins, {}).size() != 2) {
+        std::cerr << "successful presentation did not reset the failure backoff\n";
+        return 39;
+    }
+
+    // Scenes unseen for a long time regain priority so the catalog is explored
+    // instead of the same well-fitting looks winning forever.
+    AutomaticDirector fresh_director(95);
+    std::vector<std::shared_ptr<Scenes::Scene>> fillers;
+    for (int i = 0; i < 8; ++i)
+        fillers.push_back(twin("filler_" + std::to_string(i), "filler"));
+    fresh_director.record_played(twins[0]);
+    fresh_director.advance_journey(40 * 60000);
+    fresh_director.record_played(twins[1]);
+    for (const auto& filler : fillers)
+        fresh_director.record_played(filler);
+    ranked = fresh_director.rank(twins, {});
+    const auto has_reason = [](const AutomaticDirector::Candidate& candidate, std::string_view reason) {
+        return std::find(candidate.reasons.begin(), candidate.reasons.end(), reason) != candidate.reasons.end();
+    };
+    if (ranked.size() != 2 || ranked.front().scene->get_name() != "twin_a"
+        || !has_reason(ranked.front(), "not shown for a while")) {
+        std::cerr << "long-unseen scene did not regain priority\n";
+        return 40;
+    }
+
+    // User curation: hidden looks never play, looks that are off by default only
+    // play once opted in, favorites get a boost, and hiding the look that is
+    // currently visible ends it right away.
+    auto off_by_default = twin("twin_c");
+    off_by_default->automatic_default = false;
+    std::vector<std::shared_ptr<Scenes::Scene>> curated{twins[0], twins[1], off_by_default};
+    AutomaticDirector curation_director(101);
+    ranked = curation_director.rank(curated, {});
+    if (ranked.size() != 2 || std::any_of(ranked.begin(), ranked.end(),
+            [](const auto& c) { return c.scene->get_name() == "twin_c"; })) {
+        std::cerr << "look that is off by default was played without opting in\n";
+        return 46;
+    }
+    curation_director.set_preferences({{"twin_a", "hidden"}, {"twin_b", "favorite"}, {"twin_c", "on"}});
+    ranked = curation_director.rank(curated, {});
+    if (ranked.size() != 2 || ranked.front().scene->get_name() != "twin_b"
+        || !has_reason(ranked.front(), "marked as a favorite")
+        || std::any_of(ranked.begin(), ranked.end(), [](const auto& c) { return c.scene->get_name() == "twin_a"; })) {
+        std::cerr << "hidden/favorite/opt-in preferences were not honored\n";
+        return 47;
+    }
+    opportunity = curation_director.consider_switch(curated, twins[0], {}, 2000, 30000);
+    if (!opportunity.should_switch || opportunity.reason.find("hidden") == std::string::npos) {
+        std::cerr << "hiding the visible look did not end it\n";
+        return 48;
+    }
+
     const auto config_path = std::filesystem::temp_directory_path() / "automatic-director-seed-smoke.json";
     std::filesystem::remove(config_path);
     std::uint64_t persisted_seed = 0;
@@ -458,11 +620,23 @@ int main()
             return 9;
         }
         second.set_automatic_director_seed(424242);
+        const auto preferences_before = second.get_automatic_preferences_version();
+        second.set_automatic_preference("shader:scenic_aurora", "favorite");
+        second.set_automatic_preference("boids/swarm", "on");
+        second.set_automatic_preference("boids/swarm", "default");
+        if (second.get_automatic_preferences_version() != preferences_before + 3) {
+            std::cerr << "preference changes did not bump the preferences version\n";
+            return 49;
+        }
         if (!second.save())
             return 10;
     }
     {
         Config::MainConfig third(config_path.string());
+        if (third.get_automatic_preferences() != std::map<std::string, std::string>{{"shader:scenic_aurora", "favorite"}}) {
+            std::cerr << "Automatic Mode preferences did not persist\n";
+            return 50;
+        }
         if (third.get_automatic_director_seed() != 424242) {
             std::cerr << "explicit Director seed did not persist\n";
             return 11;

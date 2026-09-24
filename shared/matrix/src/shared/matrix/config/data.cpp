@@ -86,6 +86,7 @@ namespace ConfigData {
             {"scheduling_enabled", p.scheduling_enabled},
             {"operation_mode", p.operation_mode},
             {"automatic_director_seed", p.automatic_director_seed},
+            {"automatic_preferences", p.automatic_preferences},
             {"update_settings", p.update_settings},
             {"turned_off", p.turned_off.load()}
         };
@@ -121,6 +122,7 @@ namespace ConfigData {
         p.operation_mode = j.value("operation_mode", std::string("automatic"));
         if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
         p.automatic_director_seed = j.value("automatic_director_seed", std::uint64_t{0});
+        p.automatic_preferences = j.value("automatic_preferences", std::map<string, string>());
         p.update_settings = j.value("update_settings", UpdateSettings());
     }
 

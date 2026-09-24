@@ -708,5 +708,6 @@ Scenes::SceneDescriptor Scenes::AudioSpectrumScene::get_descriptor() const
          1.0f,
          0.72f},
     };
+    Scenes::set_off_by_default(d, {"spectrogram", "waveform"});
     return d;
 }
