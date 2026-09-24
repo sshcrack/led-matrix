@@ -208,5 +208,6 @@ Scenes::SceneDescriptor Scenes::AudioParticleFieldScene::get_descriptor() const
          1.0f,
          0.78f},
     };
+    Scenes::set_off_by_default(d, {"explosive"});
     return d;
 }

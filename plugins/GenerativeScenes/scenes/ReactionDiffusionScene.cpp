@@ -318,5 +318,6 @@ Scenes::SceneDescriptor GenerativeScenes::ReactionDiffusionScene::get_descriptor
          {{"simulation_speed", 1.0f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
          {"music", "beat-driven"}, 0.62f, 0.52f, 1.0f, 0.94f},
     };
+    Scenes::set_off_by_default(d, {"vivid"});
     return d;
 }

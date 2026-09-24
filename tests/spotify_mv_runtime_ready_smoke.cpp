@@ -167,7 +167,7 @@ int main()
         std::cerr << "real prepared SpotifyMV scene was not preferred mid-track\n";
         return 8;
     }
-    const auto handoff = director.consider_switch(spotify_scenes, cover, live_inputs, 9000);
+    const auto handoff = director.consider_switch(spotify_scenes, cover, live_inputs, 9000, 60000);
     if (!handoff.should_switch || !handoff.preferred_scene
         || handoff.preferred_scene->get_name() != "spotifymv") {
         std::cerr << "real prepared SpotifyMV scene did not trigger automatic mid-track handoff\n";

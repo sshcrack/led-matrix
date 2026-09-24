@@ -78,7 +78,8 @@ interface DiagnosticsData {
     }
     seed: string
     decision_count: number
-    render_quality: number
+    clock_ms: number
+    performance_budget: number
     last_scene: string
     last_variant: string
     last_score: number
@@ -88,11 +89,18 @@ interface DiagnosticsData {
       spotify_available: boolean
       loudness: number
       target_intensity: number
-      performance_budget: number
       excluded_scene: string
     }
     history: Array<{ scene: string; family: string; variant: string }>
     candidates: Array<{ scene: string; variant: string; score: number; reasons: string[] }>
+    scenes?: Array<{
+      scene: string
+      presentations: number
+      last_shown_ago_ms: number | null
+      render_load: number | null
+      failures: number
+      cooldown_remaining_ms: number
+    }>
   }
   render_placement?: {
     scene?: string
@@ -175,6 +183,12 @@ export default function Diagnostics() {
     return () => { disposed = true; if (timer) clearTimeout(timer) }
   }, [apiUrl, paused])
 
+  const directorScenes = useMemo(() => data?.director?.scenes ?? [], [data])
+  const coolingScenes = directorScenes.filter(scene => scene.cooldown_remaining_ms > 0)
+  const heavyScenes = directorScenes.filter(scene => (scene.render_load ?? 0) > 0.72)
+  const heaviestScene = directorScenes.reduce<(typeof directorScenes)[number] | undefined>(
+    (heaviest, scene) => scene.render_load != null && (heaviest?.render_load == null || scene.render_load > heaviest.render_load) ? scene : heaviest,
+    undefined)
   const sceneErrors = useMemo(() => data ? Object.entries(data.renderer.scene_errors) : [], [data])
   const scenePerformance = useMemo(() => data
     ? Object.entries(data.renderer.scene_performance ?? {}).sort(([, a], [, b]) => b.render_ms_p95 - a.render_ms_p95)
@@ -227,7 +241,7 @@ export default function Diagnostics() {
             <div className="grid gap-3 sm:grid-cols-3">
               <Metric label="Last choice" value={data.director.last_scene || 'None'} detail={data.director.last_variant || 'scene defaults'} />
               <Metric label="Decision score" value={number(data.director.last_score, 2)} detail={`${data.director.decision_count} seeded decisions`} />
-              <Metric label="Pi headroom" value={`${number(data.director.render_quality * 100, 0)}%`} detail={`budget ${number(data.director.context?.performance_budget * 100, 0)}%`} />
+              <Metric label="Heaviest Pi load" value={heaviestScene?.render_load != null ? `${number(heaviestScene.render_load * 100, 0)}%` : 'Not measured'} detail={heaviestScene ? `${heaviestScene.scene} · p95 of frame budget` : 'measured after scenes render locally'} />
             </div>
             {data.director.journey && <div className="mt-4 rounded-xl border border-border/70 bg-background/55 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -236,6 +250,13 @@ export default function Diagnostics() {
               </div>
               <progress className="mt-3 h-2 w-full accent-primary" max={1} value={data.director.journey.progress} aria-label="Visual journey progress" />
               <div className="mt-2 text-xs text-muted-foreground">Settle → Explore → Rise → Crest → Release. Music leads while playing; the journey shapes the longer arc.</div>
+            </div>}
+            {(coolingScenes.length > 0 || heavyScenes.length > 0) && <div className="mt-4 rounded-xl border border-border/70 bg-background/55 p-4 text-sm">
+              <div className="mb-2 font-semibold">Scene health</div>
+              <div className="space-y-1 text-xs">
+                {coolingScenes.map(scene => <div key={`cool:${scene.scene}`} className="flex justify-between gap-3"><span className="font-medium">{scene.scene}</span><span className="text-muted-foreground">cooling down {number(scene.cooldown_remaining_ms / 60000, 1)} min after {scene.failures} failure{scene.failures === 1 ? '' : 's'}</span></div>)}
+                {heavyScenes.map(scene => <div key={`heavy:${scene.scene}`} className="flex justify-between gap-3"><span className="font-medium">{scene.scene}</span><span className="text-muted-foreground">{number((scene.render_load ?? 0) * 100, 0)}% of frame budget · deprioritized without desktop</span></div>)}
+              </div>
             </div>}
             {data.director.last_reasons?.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{data.director.last_reasons.map(reason => <Badge key={reason} variant="outline">{reason}</Badge>)}</div>}
             <div className="mt-4 overflow-x-auto">

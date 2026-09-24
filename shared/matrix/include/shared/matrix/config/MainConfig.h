@@ -14,6 +14,7 @@ namespace Config {
         mutable shared_mutex data_mutex;
         ConfigData::Root data;
         std::atomic<std::uint64_t> automatic_director_generation_{0};
+        std::atomic<std::uint64_t> automatic_preferences_version_{0};
 
         shared_mutex update_mutex;
         bool dirty;
@@ -34,6 +35,11 @@ namespace Config {
         std::uint64_t get_automatic_director_seed();
         std::uint64_t get_automatic_director_generation() const;
         void set_automatic_director_seed(std::uint64_t seed);
+        map<string, string> get_automatic_preferences();
+        /// Increments whenever preferences change so consumers can cache them.
+        std::uint64_t get_automatic_preferences_version() const;
+        /// `preference` is "favorite", "on", "hidden" or "default" (removes it).
+        void set_automatic_preference(const string &look_key, const string &preference);
         ConfigData::SpotifyData get_spotify();
 
         std::shared_ptr<ConfigData::Preset> get_curr();

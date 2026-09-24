@@ -72,6 +72,14 @@ void CanvasCoordinator::ensure_automatic_catalog()
     info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
 }
 
+void CanvasCoordinator::sync_automatic_preferences()
+{
+    const auto version = config_->get_automatic_preferences_version();
+    if (automatic_preferences_version_ == version) return;
+    automatic_director_.set_preferences(config_->get_automatic_preferences());
+    automatic_preferences_version_ = version;
+}
+
 void CanvasCoordinator::prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs)
 {
     for (const auto &scene : automatic_scenes_) {
@@ -159,6 +167,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         if (scene == nullptr) {
             if (automatic_mode) {
+                sync_automatic_preferences();
                 prepare_automatic_scenes(runtime_inputs);
                 const auto decision = automatic_director_.choose(scenes, runtime_inputs, exclude_name);
                 scene = decision.scene;
@@ -203,7 +212,10 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 ? automatic_director_.presentation_duration(scene, runtime_inputs)
                 : scene->get_duration());
         if (automatic_mode) automatic_director_.record_played(scene);
-        const tmillis_t end_ms = time_source_->now_ms() + presentation_duration;
+        // Automatic Mode ends scenes through the Director so a handoff can wait
+        // briefly for a musical phrase; the deadline only bounds that wait.
+        const tmillis_t end_ms = time_source_->now_ms() + presentation_duration
+            + (automatic_mode ? AutomaticDirector::phrase_grace_ms : 0);
 
         set_curr_scene_fn_(scene);
 
@@ -245,14 +257,25 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         const tmillis_t scene_started_ms = time_source_->now_ms();
         std::function<bool()> director_switch_requested;
         if (automatic_mode && !lab_mode && !pinned_scene) {
-            director_switch_requested = [this, &scenes, scene, scene_started_ms,
-                                         &director_switch_triggered, &director_preferred_scene, &advance_journey] {
+            director_switch_requested = [this, &scenes, scene, scene_started_ms, presentation_duration,
+                                         &director_switch_triggered, &director_preferred_scene, &advance_journey,
+                                         next_background_ms = tmillis_t{0}]() mutable {
                 advance_journey();
                 const auto latest_inputs = runtime_inputs_fn_();
-                prepare_automatic_scenes(latest_inputs);
+                // This runs on the render thread. Background preparation and
+                // diagnostics serialization only need a ~1 Hz cadence; the
+                // switch check itself stays responsive.
+                const auto now = time_source_->now_ms();
+                const bool background_due = now >= next_background_ms;
+                if (background_due) {
+                    next_background_ms = now + 1000;
+                    prepare_automatic_scenes(latest_inputs);
+                }
+                sync_automatic_preferences();
                 const auto opportunity = automatic_director_.consider_switch(
-                    scenes, scene, latest_inputs, time_source_->now_ms() - scene_started_ms);
-                Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+                    scenes, scene, latest_inputs, now - scene_started_ms, presentation_duration);
+                if (background_due || opportunity.should_switch)
+                    Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
                 if (!opportunity.should_switch)
                     return false;
                 director_switch_triggered = true;
@@ -262,10 +285,33 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             };
         }
 
+        const auto scene_errors_before = automatic_mode
+            ? Diagnostics::RuntimeDiagnostics::instance().scene_error_count(scene->get_name()) : 0;
         bool early_exit = renderer_.render_scene_phase(
             scene, composite, end_ms, std::move(inputs_still_available), std::move(director_switch_requested));
 
         advance_journey();
+        if (automatic_mode) {
+            // Report before choosing the successor so a crashing scene is
+            // already cooling down. Ending because a required input vanished
+            // or the coordinator was interrupted is not the scene's fault; a
+            // render loop that gives up within seconds effectively is.
+            auto &diagnostics = Diagnostics::RuntimeDiagnostics::instance();
+            const bool interrupted = *interrupt_flag_ || *exit_flag_;
+            const bool inputs_lost = !RuntimeInputs::satisfies(
+                scene->get_effective_runtime_inputs(), runtime_inputs_fn_());
+            const bool gave_up_early = early_exit && !director_switch_triggered && !interrupted && !inputs_lost
+                && time_source_->now_ms() - scene_started_ms < 3000;
+            AutomaticDirector::PresentationOutcome outcome;
+            outcome.failed = gave_up_early
+                || diagnostics.scene_error_count(scene->get_name()) > scene_errors_before;
+            if (const auto p95 = diagnostics.scene_render_p95(scene->get_name()); p95.has_value())
+                outcome.render_load = static_cast<float>(
+                    *p95 * std::max(1, scene->get_declared_target_fps()) / 1000.0);
+            automatic_director_.report_outcome(scene, outcome);
+            if (outcome.failed)
+                warn("Automatic Director is cooling down '{}' after a failed presentation", scene->get_name());
+        }
         const bool should_handoff = !early_exit || director_switch_triggered;
         if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
@@ -329,10 +375,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         }
 
         advance_journey();
-        if (automatic_mode) {
-            automatic_director_.report_render_quality(scene->get_render_quality_scale());
+        if (automatic_mode)
             Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
-        }
         scene->after_render_stop();
     }
 }

@@ -233,5 +233,6 @@ Scenes::SceneDescriptor Scenes::WavePatternScene::get_descriptor() const {
          {{"num_waves", 4}, {"speed", 0.85f}, {"audio_reactive", true}, {"audio_strength", 1.1f}},
          {"music", "beat-driven"}, 0.64f, 0.68f, 1.0f, 0.62f},
     };
+    Scenes::set_off_by_default(d, {"layered"});
     return d;
 }

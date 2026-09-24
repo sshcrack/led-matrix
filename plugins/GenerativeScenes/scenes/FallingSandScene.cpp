@@ -516,6 +516,7 @@ Scenes::SceneDescriptor FallingSandScene::get_descriptor() const {
          {{"emitters", 5}, {"spawn_rate", 3}, {"water", true}, {"wind", true}, {"wind_strength", 78}, {"explosions", true}, {"explosion_frequency", 18}},
          {"energetic", "particles", "dense"}, 0.78f, 0.80f, 0.22f, 0.78f},
     };
+    Scenes::set_off_by_default(d, {"storm"});
     return d;
 }
 

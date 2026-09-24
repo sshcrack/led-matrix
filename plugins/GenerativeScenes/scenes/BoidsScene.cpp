@@ -207,5 +207,6 @@ Scenes::SceneDescriptor GenerativeScenes::BoidsScene::get_descriptor() const {
          {{"count", 58}, {"speed", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.05f}},
          {"music", "beat-driven"}, 0.68f, 0.78f, 1.0f, 0.66f},
     };
+    Scenes::set_off_by_default(d, {"swarm"});
     return d;
 }
