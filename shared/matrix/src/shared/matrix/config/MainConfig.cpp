@@ -96,6 +96,31 @@ namespace Config {
         this->mark_dirty();
     }
 
+    map<string, string> MainConfig::get_automatic_preferences() {
+        shared_lock lock(this->data_mutex);
+        return this->data.automatic_preferences;
+    }
+
+    std::uint64_t MainConfig::get_automatic_preferences_version() const {
+        return automatic_preferences_version_.load(std::memory_order_relaxed);
+    }
+
+    void MainConfig::set_automatic_preference(const string &look_key, const string &preference) {
+        if (look_key.empty())
+            throw std::invalid_argument("look key must not be empty");
+        if (preference != "favorite" && preference != "on" && preference != "hidden" && preference != "default")
+            throw std::invalid_argument("preference must be 'favorite', 'on', 'hidden' or 'default'");
+        {
+            unique_lock lock(this->data_mutex);
+            if (preference == "default")
+                this->data.automatic_preferences.erase(look_key);
+            else
+                this->data.automatic_preferences[look_key] = preference;
+        }
+        automatic_preferences_version_.fetch_add(1, std::memory_order_relaxed);
+        this->mark_dirty();
+    }
+
     std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
         shared_lock lock(this->data_mutex);
 

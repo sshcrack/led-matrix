@@ -80,6 +80,9 @@ namespace ConfigData
         std::atomic<bool> turned_off;
         string operation_mode = "automatic";
         std::uint64_t automatic_director_seed = 0;
+        /// Look key ("scene" or "scene/variant") -> "favorite" | "on" | "hidden".
+        /// Absent keys follow the look's automatic_default.
+        map<string, string> automatic_preferences;
         string curr;
         UpdateSettings update_settings;
 
@@ -97,6 +100,7 @@ namespace ConfigData
                 turned_off.store(other.turned_off.load());
                 operation_mode = std::move(other.operation_mode);
                 automatic_director_seed = other.automatic_director_seed;
+                automatic_preferences = std::move(other.automatic_preferences);
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
             }
@@ -114,6 +118,7 @@ namespace ConfigData
               turned_off(other.turned_off.load()),
               operation_mode(std::move(other.operation_mode)),
               automatic_director_seed(other.automatic_director_seed),
+              automatic_preferences(std::move(other.automatic_preferences)),
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings))
         {

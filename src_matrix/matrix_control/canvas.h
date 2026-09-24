@@ -3,6 +3,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
@@ -58,11 +59,13 @@ private:
     SceneScheduler scheduler_;
     AutomaticDirector automatic_director_;
     std::uint64_t automatic_director_generation_ = 0;
+    std::optional<std::uint64_t> automatic_preferences_version_;
     TransitionPlanner transition_planner_;
     std::vector<std::shared_ptr<Scenes::Scene>> automatic_scenes_;
     std::shared_ptr<ConfigData::Preset> automatic_preset_;
 
     void ensure_automatic_catalog();
+    void sync_automatic_preferences();
     void prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs);
     SceneRenderer renderer_;
     TransitionEngine transition_engine_;

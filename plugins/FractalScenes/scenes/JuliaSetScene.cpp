@@ -87,6 +87,7 @@ Scenes::SceneDescriptor JuliaSetScene::get_descriptor() const {
          {{"zoom", 1.05f}, {"move_speed", 0.16f}, {"max_iterations", 92}, {"animate_params", true}, {"color_shift", 0.16f}},
          {"vivid", "texture", "evolving"}, 0.58f, 0.40f, 0.18f, 0.76f},
     };
+    Scenes::set_off_by_default(d, {"vivid"});
     return d;
 }
 

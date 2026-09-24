@@ -496,6 +496,7 @@ namespace AmbientScenes {
         d.family = "sorting";
         d.tags = {"ambient", "geometric", "bars", "structured", "algorithmic"};
         d.intensity = 0.44f; d.motion = 0.42f; d.music_affinity = 0.08f; d.performance_cost = 0.28f;
+        d.automatic_default = false;
         return d;
     }
 

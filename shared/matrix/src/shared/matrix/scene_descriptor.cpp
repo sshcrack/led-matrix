@@ -54,6 +54,7 @@ nlohmann::json descriptor_to_json(const SceneDescriptor &descriptor)
         if (variant.motion.has_value()) item["motion"] = *variant.motion;
         if (variant.music_affinity.has_value()) item["music_affinity"] = *variant.music_affinity;
         if (variant.performance_cost.has_value()) item["performance_cost"] = *variant.performance_cost;
+        item["automatic_default"] = variant.automatic_default;
         variants.push_back(std::move(item));
     }
 
@@ -65,8 +66,22 @@ nlohmann::json descriptor_to_json(const SceneDescriptor &descriptor)
         {"music_affinity", descriptor.music_affinity},
         {"performance_cost", descriptor.performance_cost},
         {"automatic_eligible", descriptor.automatic_eligible},
+        {"automatic_default", descriptor.automatic_default},
         {"variants", std::move(variants)},
     };
+}
+
+bool automatic_default(const SceneDescriptor &descriptor, const SceneVariant *variant)
+{
+    return descriptor.automatic_default && (variant == nullptr || variant->automatic_default);
+}
+
+void set_off_by_default(SceneDescriptor &descriptor, std::initializer_list<std::string_view> variant_ids)
+{
+    for (auto &variant : descriptor.variants) {
+        if (std::find(variant_ids.begin(), variant_ids.end(), variant.id) != variant_ids.end())
+            variant.automatic_default = false;
+    }
 }
 
 } // namespace Scenes

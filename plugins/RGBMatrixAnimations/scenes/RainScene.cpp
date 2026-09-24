@@ -197,6 +197,7 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const {
          {{"num_particles", 4800}, {"velocity", 7600}, {"delay_ms", 8}},
          {"vivid", "dense", "particles"}, 0.68f, 0.82f, 0.28f, 0.74f},
     };
+    Scenes::set_off_by_default(d, {"downpour"});
     return d;
 }
 

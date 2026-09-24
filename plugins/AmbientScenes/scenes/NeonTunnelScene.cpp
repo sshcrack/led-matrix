@@ -187,5 +187,6 @@ Scenes::SceneDescriptor AmbientScenes::NeonTunnelScene::get_descriptor() const {
          {{"speed", 1.8f}, {"audio_reactive", true}, {"audio_strength", 1.25f}, {"hue_shift_speed", 1.2f}},
          {"music", "beat-driven"}, 0.82f, 0.94f, 1.0f, 0.50f},
     };
+    Scenes::set_off_by_default(d, {"hyperspace"});
     return d;
 }
