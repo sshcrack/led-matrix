@@ -13,6 +13,11 @@
 
 using namespace spdlog;
 
+namespace {
+// Longest desktop stream stall bridged by holding the last desktop frame.
+constexpr double remote_stall_hold_ms = 1500.0;
+}
+
 SceneRenderer::SceneRenderer(RGBMatrixBase *matrix,
                               TimeSource *time_source,
                               PostProcessor *post_processor,
@@ -158,7 +163,17 @@ bool SceneRenderer::render_scene_phase(
             }
         }
 
-        if (!used_remote_frame) {
+        // Once desktop frames are flowing, a short network stall must not flip
+        // to the local simulation: its state has diverged from the desktop's,
+        // so alternating the two reads as flicker. Hold the last desktop frame
+        // for brief stalls and only fall back locally for a real outage.
+        bool holding_remote_frame = false;
+        if (!used_remote_frame && remote_session.has_value() && remote_was_live) {
+            const auto age = RemoteRender::latest_frame_age_ms(*remote_session);
+            holding_remote_frame = age.has_value() && *age <= remote_stall_hold_ms;
+        }
+
+        if (!used_remote_frame && !holding_remote_frame) {
             const auto render_start = std::chrono::steady_clock::now();
             try {
                 cont = scene->render_frame(composite_offscreen_canvas, std::nullopt, true);

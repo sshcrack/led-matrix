@@ -324,6 +324,14 @@ bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
     return true;
 }
 
+std::optional<double> latest_frame_age_ms(std::uint32_t session)
+{
+    const auto frame = state().latest_frame.load(std::memory_order_acquire);
+    if (!frame || session == 0 || frame->session != session)
+        return std::nullopt;
+    return age_ms(frame->received_at);
+}
+
 std::optional<nlohmann::json> reconnect_command()
 {
     std::lock_guard lock(state().mutex);

@@ -22,6 +22,16 @@
 #include "udp.h"
 #include "matrix_control/hardware.h"
 #include "matrix_control/SceneLabRuntime.h"
+#include "shared/matrix/diagnostics.h"
+
+#ifdef __linux__
+#include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
+#endif
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 using namespace spdlog;
 using namespace std;
@@ -30,6 +40,67 @@ using Plugins::PluginManager;
 
 namespace {
     constexpr uint16_t default_http_port = 8080;
+    // rpi-rgb-led-matrix pins its SCHED_FIFO refresh thread to this core.
+    constexpr int refresh_cpu = 3;
+
+    bool cpu_list_contains(const string &list, int cpu)
+    {
+        stringstream stream(list);
+        string range;
+        while (getline(stream, range, ',')) {
+            try {
+                const auto dash = range.find('-');
+                const int first = stoi(range.substr(0, dash));
+                const int last = dash == string::npos ? first : stoi(range.substr(dash + 1));
+                if (cpu >= first && cpu <= last)
+                    return true;
+            } catch (...) {}
+        }
+        return false;
+    }
+
+    /// Visible flicker on the Pi is almost always the refresh thread losing its
+    /// core, not blank frames. The library already pins the refresh thread to
+    /// CPU 3; keeping every daemon thread created afterwards (render, HTTP, UDP,
+    /// plugin workers, GraphicsMagick) off that core removes our own contention.
+    /// The kernel can still schedule other work there unless isolcpus=3 is set.
+    void protect_refresh_core()
+    {
+        json state = json::object();
+#ifdef __linux__
+        const long cpus = sysconf(_SC_NPROCESSORS_ONLN);
+        state["cpus"] = cpus;
+        if (cpus > refresh_cpu) {
+            cpu_set_t set;
+            CPU_ZERO(&set);
+            for (int cpu = 0; cpu < cpus; ++cpu)
+                if (cpu != refresh_cpu)
+                    CPU_SET(cpu, &set);
+            const bool pinned = pthread_setaffinity_np(pthread_self(), sizeof(set), &set) == 0;
+            state["daemon_threads_off_refresh_cpu"] = pinned;
+            if (pinned)
+                info("Daemon threads pinned away from CPU {}, which is reserved for the LED refresh thread", refresh_cpu);
+            else
+                warn("Could not pin daemon threads away from the LED refresh CPU {}", refresh_cpu);
+        }
+
+        string isolated;
+        if (ifstream file("/sys/devices/system/cpu/isolated"); file)
+            getline(file, isolated);
+        const bool refresh_cpu_isolated = cpu_list_contains(isolated, refresh_cpu);
+        state["refresh_cpu_isolated"] = refresh_cpu_isolated;
+        if (!refresh_cpu_isolated && cpus > refresh_cpu)
+            warn("CPU {} is not isolated. Add 'isolcpus={}' to /boot/firmware/cmdline.txt to stop other "
+                 "processes from disturbing the LED refresh (visible as flicker)", refresh_cpu, refresh_cpu);
+
+        const bool onboard_sound = filesystem::exists("/sys/module/snd_bcm2835");
+        state["onboard_sound_loaded"] = onboard_sound;
+        if (onboard_sound)
+            warn("The on-board sound module snd_bcm2835 is loaded. It shares hardware with the LED matrix "
+                 "timing; blacklist it (dtparam=audio=off) to avoid flicker");
+#endif
+        Diagnostics::RuntimeDiagnostics::instance().set_hardware_state(std::move(state));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +226,8 @@ Daemon::Daemon(int argc, char* argv[])
     matrix_.reset(rgb_matrix::MatrixFactory::CreateMatrix(options));
     if (!matrix_)
         throw runtime_error("Failed to create matrix");
+    if (!options.use_emulator)
+        protect_refresh_core();
 
     // -------------------------------------------------------------------
     // 5. Ensure root data directory exists
