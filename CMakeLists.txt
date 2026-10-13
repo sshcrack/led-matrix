@@ -1043,12 +1043,18 @@ else()
 endif()
 
 if(NOT ENABLE_DESKTOP)
-    if(NOT SKIP_WEB_BUILD)
-        # Install web files only when this configuration actually builds them.
-        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
-            DESTINATION share/led-matrix/web
-        )
-    endif()
+    # Install whatever frontend build is present, unconditionally.
+    #
+    # SKIP_WEB_BUILD must only skip *building* react-web/dist (see the
+    # react_web_* targets above). Gating this install rule on SKIP_WEB_BUILD
+    # used to silently ship a package with no web UI at all, because CI builds
+    # the frontend in the `prepare` job and passes the result in via the
+    # web-build artifact while configuring with -DSKIP_WEB_BUILD=ON.
+    # OPTIONAL keeps a fresh tree that has never built the frontend working.
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist/
+        DESTINATION share/led-matrix/web
+        OPTIONAL
+    )
 
     # Add sync to RPI if enabled
     option(SYNC_TO_RPI "Sync to Raspberry Pi after install" OFF)
