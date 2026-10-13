@@ -24,6 +24,22 @@
 
 using json = nlohmann::json;
 
+namespace {
+// True when `candidate` is `base` itself or lives underneath it, compared
+// component-wise so sibling directories with a shared name prefix (e.g.
+// ".../web" vs ".../web-secrets") are not treated as contained.
+bool is_within(const filesystem::path &candidate, const filesystem::path &base)
+{
+    auto candidate_it = candidate.begin();
+    auto base_it = base.begin();
+    for (; base_it != base.end(); ++base_it, ++candidate_it) {
+        if (candidate_it == candidate.end() || *candidate_it != *base_it)
+            return false;
+    }
+    return true;
+}
+} // namespace
+
 
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router)
 {
@@ -35,8 +51,11 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         return response.done(); });
 
+    // Serve the app root. The path is relative to web_dir, so it must be
+    // relative: an absolute "/web/" would replace the base directory and
+    // resolve to "/web/" at the filesystem root.
     router->http_get("/web", [](auto req, auto)
-                     { return handle_web_request(req, "/web/"); });
+                     { return handle_web_request(req, ""); });
 
     // Static file serving
     router->http_get("/web/:path(.*)", [](auto req, auto params)
@@ -63,7 +82,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         if (can_ec || upload_ec) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
-        if (!canonical.string().starts_with(canonical_upload.string())) {
+        if (!is_within(canonical, canonical_upload)) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
 
@@ -269,20 +288,31 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
 #define LED_MATRIX_SHARE_DIR "."
 #endif
     const filesystem::path web_dir = filesystem::path(LED_MATRIX_SHARE_DIR) / "web";
+
+    // A missing/unreadable web_dir used to surface as a 403 "Invalid path",
+    // which looks like a client problem but is really a broken install
+    // (e.g. a package built with SKIP_WEB_BUILD=ON). Report it distinctly.
+    std::error_code web_ec;
+    const auto canonical_web = filesystem::canonical(web_dir, web_ec);
+    if (web_ec) {
+        spdlog::error("Web UI directory {} is unavailable: {}", web_dir.string(), web_ec.message());
+        return reply_with_error(
+            req,
+            "Web UI not installed at " + web_dir.string(),
+            restinio::status_internal_server_error());
+    }
+
     filesystem::path file_path = web_dir / requested_path;
     if (!filesystem::exists(file_path))
         file_path = web_dir / "index.html"; // Fallback to index.html if not found
 
     // Ensure the requested path is within the web directory
-    std::error_code web_ec;
-    const auto canonical_web = filesystem::canonical(web_dir, web_ec);
     std::error_code ec;
     const auto canonical_file = filesystem::canonical(file_path, ec);
-    if (web_ec) {
-        return reply_with_error(req, "Invalid path", restinio::status_forbidden());
-    }
 
-    if (ec || !canonical_file.string().starts_with(canonical_web.string()))
+    // Compare path components, not raw strings: "/…/web-evil" would pass a
+    // plain string prefix test against "/…/web".
+    if (ec || !is_within(canonical_file, canonical_web))
     {
         return reply_with_error(req, "Invalid path", restinio::status_forbidden());
     }

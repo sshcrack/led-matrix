@@ -1291,5 +1291,16 @@ else()
     set(CPACK_PACKAGE_FILE_NAME "led-matrix-${PROJECT_VERSION}-arm64")
     set(CPACK_DEBIAN_FILE_NAME "led-matrix-${PROJECT_VERSION}_arm64.deb")
 
+    # Refuse to build a DEB/TGZ without the web UI instead of shipping a
+    # package whose matrix serves 403 {"error":"Invalid path"} for /web/.
+    # Must be set before include(CPack). CPack `include()`s this file right
+    # after reading its own configuration, so it is the reliable hook here —
+    # a `package` target does not exist yet at configure time to depend on.
+    set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/cpack_verify_web_assets.cmake")
+    file(WRITE "${CPACK_PROJECT_CONFIG_FILE}"
+"set(LED_MATRIX_SKIP_WEB_BUILD \"${SKIP_WEB_BUILD}\")\n"
+"set(LED_MATRIX_WEB_DIST \"${CMAKE_CURRENT_SOURCE_DIR}/react-web/dist\")\n"
+"include(\"${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_web_assets.cmake\")\n")
+
     include(CPack)
 endif()
