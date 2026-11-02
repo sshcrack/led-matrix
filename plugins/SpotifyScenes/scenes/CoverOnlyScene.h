@@ -5,7 +5,9 @@
 #include <content-streamer.h>
 #include <deque>
 #include <future>
-#include <shared_mutex>
+#include <stop_token>
+#include <shared/matrix/utils/AnimationPlayer.h>
+#include <shared/matrix/media_artwork_state.h>
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/utils/utils.h"
@@ -32,7 +34,7 @@ namespace Scenes {
         PropertyPointer<int> scene_weight_if_new_song = MAKE_PROPERTY("scene_weight_if_new_song", int, 100);
         PropertyPointer<float> cover_zoom_factor = MAKE_PROPERTY("cover_zoom_factor", float, 10.0f);
         PropertyPointer<bool> sync_transitions_with_beat = MAKE_PROPERTY("sync_transition_with_beat", bool, true);
-        PropertyPointer<int> cover_transition_steps = MAKE_PROPERTY_MINMAX("cover_transition_steps", int, 25, 0, INT_MAX);
+        PropertyPointer<int> cover_transition_steps = MAKE_PROPERTY_MINMAX("cover_transition_steps", int, 25, 0, 120);
         PropertyPointer<float> bpm_slowdown_factor = MAKE_PROPERTY("bpm_slowdown_factor", float, 1.0f);
         PropertyPointer<float> bpm_slowdown_threshold = MAKE_PROPERTY(
             "bpm_slowdown_threshold", float, 110.0f);
@@ -40,24 +42,33 @@ namespace Scenes {
 
         bool DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas);
 
-        std::shared_mutex state_mtx;
+        // Only the render thread mutates scene state. The worker receives value
+        // snapshots and publishes a complete result through the future.
+        struct ArtworkOptions {
+            int width, height, blur, brightness, cover_percent, bar_height, steps;
+            float slowdown_factor, slowdown_threshold, zoom;
+            tmillis_t frame_wait, final_wait;
+            bool animate, sync, wait_final;
+        };
+        struct ArtworkResult {
+            Magick::Image cover;
+            MediaArtworkState::Palette palette;
+            std::vector<std::pair<int64_t, Magick::Image>> frames;
+            float bpm = 120.0f;
+        };
         std::optional<SpotifyState> curr_state;
-        std::future<std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> > refresh_future;
-
-
-        std::shared_mutex animation_mtx;
-        std::shared_mutex quick_cover_mtx;
-
-        std::optional<rgb_matrix::StreamReader> curr_animation;
-        std::optional<rgb_matrix::MemStreamIO*> curr_content_stream;
-        tmillis_t anim_frame_start_ms = 0;
-        tmillis_t anim_frame_delay_ms = 0;
-
-        // This is just the cover until the animation is calculated
+        std::future<std::expected<ArtworkResult, std::string>> refresh_future;
+        std::future<ArtworkResult> cover_future;
+        std::stop_source artwork_stop;
+        std::optional<std::string> requested_track_id;
+        std::unique_ptr<rgb_matrix::MemStreamIO> curr_content_stream;
+        std::optional<AnimationPlayer> curr_animation;
         std::optional<Magick::Image> quick_cover;
         float curr_bpm = 120.0f;
 
-        std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> refresh_info(int width, int height);
+        static std::expected<ArtworkResult, std::string> refresh_info(
+            SpotifyTrack track, ArtworkOptions options, std::stop_token stop,
+            std::promise<ArtworkResult> cover_ready);
 
         // Beat detection simulation
         std::chrono::time_point<std::chrono::steady_clock> last_beat_time;

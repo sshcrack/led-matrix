@@ -67,13 +67,23 @@ int main()
     Server::clear_desktop_producers();
     constexpr std::uint64_t old_desktop = 1001;
     constexpr std::uint64_t new_desktop = 1002;
-    Server::register_desktop_producer(old_desktop);
-    const auto ownership = Server::register_desktop_producer(new_desktop);
+    constexpr std::uint64_t standby_desktop = 1003;
+    Server::register_desktop_producer(old_desktop, "desktop-a");
+    // An unrelated healthy desktop remains standby; only a reconnect from the
+    // current logical producer may supersede its old transport.
+    const auto standby = Server::register_desktop_producer(standby_desktop, "desktop-b");
+    if (standby.changed || standby.owner != old_desktop
+        || !Server::accepts_desktop_producer_message(old_desktop)
+        || Server::accepts_desktop_producer_message(standby_desktop)) {
+        std::cerr << "standby desktop displaced the healthy SpotifyMV producer\n";
+        return 14;
+    }
+    const auto ownership = Server::register_desktop_producer(new_desktop, "desktop-a");
     if (!ownership.changed || ownership.previous_owner != old_desktop
         || ownership.owner != new_desktop
         || !Server::accepts_desktop_producer_message(new_desktop)
         || Server::accepts_desktop_producer_message(old_desktop)) {
-        std::cerr << "newest desktop did not become the exclusive SpotifyMV producer\n";
+        std::cerr << "reconnected desktop did not become the exclusive SpotifyMV producer\n";
         return 12;
     }
 
@@ -148,14 +158,14 @@ int main()
         return 7;
     }
 
-    // Model the server dispatcher: a stale/older desktop may still send a late
-    // prepare message, but it is not the elected producer and therefore must
-    // not be allowed to mutate the matrix-side SpotifyMV state.
-    if (Server::accepts_desktop_producer_message(old_desktop))
+    // Model the server dispatcher: stale transports and standby desktops may
+    // send late messages, but cannot mutate the elected producer's state.
+    if (Server::accepts_desktop_producer_message(old_desktop)
+        || Server::accepts_desktop_producer_message(standby_desktop))
         (*it)->on_websocket_message("track:preparing:track-a");
     const auto duplicate_preparing = RuntimeInputs::snapshot();
     if (!duplicate_preparing.boolean(RuntimeInputIds::SpotifyMVReady, "first_frame_ready").value_or(false)) {
-        std::cerr << "standby desktop revoked an already-ready SpotifyMV track\n";
+        std::cerr << "stale or standby desktop revoked an already-ready SpotifyMV track\n";
         return 10;
     }
 
@@ -175,8 +185,10 @@ int main()
     }
 
     const auto failover = Server::unregister_desktop_producer(new_desktop);
-    if (!failover.changed || failover.owner != old_desktop
-        || !Server::accepts_desktop_producer_message(old_desktop)) {
+    if (!failover.changed || failover.owner != standby_desktop
+        || !Server::accepts_desktop_producer_message(standby_desktop)
+        || Server::accepts_desktop_producer_message(old_desktop)
+        || Server::accepts_desktop_producer_message(new_desktop)) {
         std::cerr << "SpotifyMV producer ownership did not fail over to the remaining desktop\n";
         return 13;
     }

@@ -128,8 +128,8 @@ namespace Scenes {
         std::vector<float> background_x_variation_;
 
         struct Images {
-            Magick::Image currentIcon;
-            std::vector<Magick::Image> forecastIcons;
+            std::optional<Magick::Image> currentIcon;
+            std::vector<std::optional<Magick::Image>> forecastIcons;
         };
 
         std::optional<Images> images;

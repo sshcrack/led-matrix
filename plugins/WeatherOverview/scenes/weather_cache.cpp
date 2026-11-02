@@ -31,9 +31,7 @@ bool Scenes::WeatherScene::reloadImages()
     picosha2::hash256_hex_string(data.icon_url, hash);
 
     fs::path file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
-    fs::path processed_img = to_processed_path(file_path);
-
-    if (!fs::exists(processed_img) && !data.icon_url.empty())
+    if (!fs::exists(file_path) && !data.icon_url.empty())
     {
         try_remove(file_path);
         auto res = utils::download_image(data.icon_url, file_path);
@@ -49,34 +47,34 @@ bool Scenes::WeatherScene::reloadImages()
         MAIN_ICON_SIZE, MAIN_ICON_SIZE,
         true, true,
         contain_img, true,
-        pre_process_image);
+        pre_process_image, "weather-icon-v1");
 
     auto img = WeatherScene::Images();
     bool have_any_image = false;
 
-    if (res.has_value())
+    if (res.has_value() && !res->empty())
     {
         auto arr = std::move(res.value());
         img.currentIcon = arr.front();
         have_any_image = true;
-        try_remove(file_path);
     }
     else
     {
-        spdlog::error("Error loading main image: {}", res.error());
+        spdlog::error("Error loading main image: {}", res ? "No image frames" : res.error());
+        try_remove(file_path);
     }
 
-    for (const auto &forecast_day : data.forecast)
+    img.forecastIcons.resize(data.forecast.size());
+    for (size_t index = 0; index < data.forecast.size(); ++index)
     {
+        const auto &forecast_day = data.forecast[index];
         if (!forecast_day.icon_url.empty())
         {
             std::string forecast_hash;
             picosha2::hash256_hex_string(forecast_day.icon_url, forecast_hash);
 
             fs::path forecast_file = weather_dir_path / ("forecast_icon" + forecast_hash + ".png");
-            fs::path forecast_processed = to_processed_path(forecast_file);
-
-            if (!fs::exists(forecast_processed))
+            if (!fs::exists(forecast_file))
             {
                 try_remove(forecast_file);
                 auto dl_res = utils::download_image(forecast_day.icon_url, forecast_file);
@@ -91,19 +89,18 @@ bool Scenes::WeatherScene::reloadImages()
                                            FORECAST_ICON_SIZE, FORECAST_ICON_SIZE,
                                            true, true,
                                            contain_img, true,
-                                           pre_process_image);
+                                           pre_process_image, "weather-icon-v1");
 
-            if (f_res)
+            if (f_res && !f_res->empty())
             {
-                img.forecastIcons.push_back(f_res.value().at(0));
+                img.forecastIcons[index] = f_res->front();
                 have_any_image = true;
             }
             else
             {
-                spdlog::warn("Could not load forecast image: {}", f_res.error());
+                spdlog::warn("Could not load forecast image: {}", f_res ? "No image frames" : f_res.error());
+                try_remove(forecast_file);
             }
-
-            try_remove(forecast_file);
         }
     }
 

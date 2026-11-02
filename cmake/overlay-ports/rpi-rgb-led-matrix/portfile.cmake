@@ -3,9 +3,9 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    # v0.1.8: cached stream frames skip FrameHeader (led-matrix#77).
-    REF 67adb2a627029c7b4892d90aa2ebd66a60acd2ec
-    SHA512 3dcf997750b914d72436231034e95d6ea5ec34b198b685ab78038f8f04b238b5467674fc1f0475ca0a286fd4b4181ac33793dd58adf2799dbc39f07551374369
+    # v0.1.10: stream ownership, hardware readback, and emulator lifecycle fixes.
+    REF 16cdf44b760b79e9fad9ee53ab689639cf2c69f1
+    SHA512 3df5f2b172f52485ea797be1d72d88f6aebbf6daa417d82ecccec1ea6e66b38609e600aec78e7e5ef46281064b821e7d823f19a960eb5f709ac4064c2ecfc45e
     HEAD_REF master
     PATCHES fix-win-compat.patch
 )
