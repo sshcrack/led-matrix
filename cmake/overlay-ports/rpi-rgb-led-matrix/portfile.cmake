@@ -3,11 +3,9 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    # Pinned to the pushed Windows-headless emulator commit. This is equivalent
-    # to the former v0.1.7 + local backport, but keeps the implementation solely
-    # in the fork where it belongs.
-    REF ce8200517237aa31959440f8c8cad600201f761b
-    SHA512 4ddc67502ecfd6ccc1432e3fa66ec265748f9775497963156367c388fa3f4a0347dd79ed6faecdb1cb7bf4a213e352f8da255737c8ee8d5188ef7ee4f4f6e75f
+    # v0.1.8: cached stream frames skip FrameHeader (led-matrix#77).
+    REF 67adb2a627029c7b4892d90aa2ebd66a60acd2ec
+    SHA512 3dcf997750b914d72436231034e95d6ea5ec34b198b685ab78038f8f04b238b5467674fc1f0475ca0a286fd4b4181ac33793dd58adf2799dbc39f07551374369
     HEAD_REF master
     PATCHES fix-win-compat.patch
 )
