@@ -24,30 +24,9 @@ bool ImageScene::DisplayAnimation(rgb_matrix::FrameCanvas *canvas) {
 
     canvas->Clear();
 
-    auto *anim = curr_animation->get();
-    auto *reader = &anim->reader;
-    uint32_t delay_us = 0;
-
-    // Peek at the current frame to render it without consuming
-    if (!reader->PeekNext(canvas, &delay_us)) {
-        reader->Rewind();
-        if (!reader->PeekNext(canvas, &delay_us)) {
-            this->curr_animation.reset();
-            return false;
-        }
-        anim->frame_start_ms = 0;
-    }
-
-    // Record start time and delay on first peek after an advance (or at start)
-    if (anim->frame_start_ms == 0) {
-        anim->frame_start_ms = GetTimeInMillis();
-        anim->frame_delay_ms = delay_us / 1000;
-    }
-
-    // Consume the frame and advance once its hold time has elapsed
-    if (GetTimeInMillis() >= anim->frame_start_ms + anim->frame_delay_ms) {
-        reader->GetNext(canvas, &delay_us);
-        anim->frame_start_ms = 0;
+    if (!curr_animation->get()->player.render(canvas, GetTimeInMillis())) {
+        curr_animation.reset();
+        return false;
     }
 
     return true;
@@ -139,10 +118,10 @@ ImageScene::get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness) {
     info("Loading image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
     const tmillis_t duration_ms = file->params.duration_ms;
 
-    StreamReader reader(file->content_stream);
     const tmillis_t end_time_ms = GetTimeInMillis() + duration_ms;
 
-    return std::make_unique<CurrAnimation>(reader, end_time_ms, std::move(file));
+    auto *stream = file->content_stream;
+    return std::make_unique<CurrAnimation>(stream, end_time_ms, std::move(file));
 }
 
 

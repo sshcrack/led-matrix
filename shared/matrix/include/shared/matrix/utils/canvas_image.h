@@ -10,6 +10,8 @@
 #include "content-streamer.h"
 #include <filesystem>
 #include <optional>
+#include <functional>
+#include <string>
 #include "magick/image.h"
 
 bool SetImageTransparent(rgb_matrix::FrameCanvas *c, int x_offset, int y_offset,
@@ -17,7 +19,8 @@ bool SetImageTransparent(rgb_matrix::FrameCanvas *c, int x_offset, int y_offset,
 
 std::expected<std::vector<Magick::Image>, std::string>
 LoadImageAndScale(const std::filesystem::path &path, int canvas_width, int canvas_height, bool fill_width, bool fill_height,
-                  bool contain_img, bool store_resized_img = false, std::optional<std::function<void(Magick::Image*)>> pre_process = std::nullopt);
+                  bool contain_img, bool store_resized_img = false, std::optional<std::function<void(Magick::Image*)>> pre_process = std::nullopt,
+                  const std::string &preprocessing_cache_key = {});
 
 void StoreInStream(const Magick::Image &img, int64_t delay_time_us,
                    bool do_center,

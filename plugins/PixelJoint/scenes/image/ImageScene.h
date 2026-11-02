@@ -1,6 +1,7 @@
 #pragma once
 
 #include <content-streamer.h>
+#include <shared/matrix/utils/AnimationPlayer.h>
 
 #include "led-matrix.h"
 #include <optional>
@@ -37,15 +38,13 @@ struct FileInfo {
 };
 
 struct CurrAnimation {
-    rgb_matrix::StreamReader reader;
+    AnimationPlayer player;
     std::unique_ptr<FileInfo> file;
     const tmillis_t end_time_ms;
-    tmillis_t frame_start_ms = 0;
-    tmillis_t frame_delay_ms = 0;
 
-    CurrAnimation(const rgb_matrix::StreamReader &reader,
+    CurrAnimation(rgb_matrix::StreamIO *stream,
                   const tmillis_t end_time_ms,
-                  std::unique_ptr<FileInfo> file): reader(reader), file(std::move(file)),
+                  std::unique_ptr<FileInfo> file): player(stream), file(std::move(file)),
                                                                         end_time_ms(end_time_ms) {
     }
 
