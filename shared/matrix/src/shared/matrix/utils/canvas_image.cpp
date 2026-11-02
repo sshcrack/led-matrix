@@ -7,6 +7,13 @@
 #include "spdlog/spdlog.h"
 #include <functional>
 #include <optional>
+#include <picosha2.h>
+#include <atomic>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 using namespace spdlog;
 using namespace std;
@@ -23,17 +30,36 @@ filesystem::path to_processed_path(const filesystem::path &path) {
 std::expected<vector<Magick::Image>, string>
 LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_height, const bool fill_width,
                   const bool fill_height,
-                  const bool contain_img, const bool store_resized_img, std::optional<std::function<void(Magick::Image*)>> pre_process) {
-    const filesystem::path img_processed = to_processed_path(path);
+                  const bool contain_img, const bool store_resized_img, std::optional<std::function<void(Magick::Image*)>> pre_process,
+                  const std::string &preprocessing_cache_key) {
+    if (canvas_width <= 0 || canvas_height <= 0) return unexpected("Invalid canvas dimensions");
+    filesystem::path img_processed;
+    const bool cacheable = store_resized_img && (!pre_process || !preprocessing_cache_key.empty());
     vector<Magick::Image> result;
 
     // Use RAII to ensure Magick resources are cleaned up
     try {
-        // Check for processed image first
-        if (filesystem::exists(img_processed)) {
-            readImages(&result, img_processed.string());
-            if (!result.empty()) {
-                return result;
+        // Transform identity and source revision prevent stale geometry and repeated
+        // preprocessing. Unversioned callbacks deliberately bypass the cache.
+        if (cacheable) {
+            const std::string identity = std::to_string(canvas_width) + ":" + std::to_string(canvas_height)
+                + ":" + std::to_string(fill_width) + ":" + std::to_string(fill_height)
+                + ":" + std::to_string(contain_img) + ":" + std::to_string(pre_process.has_value())
+                + ":" + preprocessing_cache_key + ":" + std::to_string(filesystem::file_size(path))
+                + ":" + std::to_string(filesystem::last_write_time(path).time_since_epoch().count());
+            std::string digest;
+            picosha2::hash256_hex_string(identity, digest);
+            img_processed = path.parent_path() / (path.stem().string() + "." + digest + ".p" + path.extension().string());
+            if (filesystem::exists(img_processed)) {
+                try {
+                    readImages(&result, img_processed.string());
+                    if (!result.empty()) return result;
+                } catch (const std::exception &e) {
+                    spdlog::warn("Discarding invalid processed image {}: {}", img_processed.string(), e.what());
+                }
+                result.clear();
+                std::error_code ec;
+                filesystem::remove(img_processed, ec);
             }
         }
 
@@ -86,7 +112,8 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
 
         if (canvas_height < target_height) {
             offset_y = (target_height - canvas_height) / 2;
-        } else if (canvas_width < target_width) {
+        }
+        if (canvas_width < target_width) {
             offset_x = (target_width - canvas_width) / 2;
         }
 
@@ -111,11 +138,25 @@ LoadImageAndScale(const filesystem::path &path, int canvas_width, int canvas_hei
             img.crop(Magick::Geometry(canvas_width, canvas_height, offset_x, offset_y));
         }
 
-        if (store_resized_img) {
+        if (cacheable) {
+            static std::atomic<unsigned long long> sequence{0};
+#ifdef _WIN32
+            const auto process_id = _getpid();
+#else
+            const auto process_id = getpid();
+#endif
+            auto temporary = img_processed;
+            temporary.replace_filename(img_processed.stem().string() + ".tmp-" + std::to_string(process_id) + "-" + std::to_string(sequence++) + img_processed.extension().string());
             try {
-                writeImages(result.begin(), result.end(), img_processed.string());
+                writeImages(result.begin(), result.end(), temporary.string());
+                // Windows does not replace an existing destination on rename.
+                std::error_code ec;
+                filesystem::remove(img_processed, ec);
+                filesystem::rename(temporary, img_processed);
             } catch (std::exception &e) {
                 spdlog::warn("Failed to write processed image: {}", e.what());
+                std::error_code ec;
+                filesystem::remove(temporary, ec);
             }
         }
 
@@ -137,6 +178,7 @@ void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
 
     // Get direct access to pixel data
     const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
+    if (!pixels) throw std::runtime_error("Image pixel data is unavailable");
 
     for (size_t y = 0; y < img.rows(); ++y) {
         const Magick::PixelPacket *row = pixels + (y * img.columns());
@@ -151,15 +193,18 @@ void StoreInStream(const Magick::Image &img, const int64_t delay_time_us,
             }
         }
     }
-    output->Stream(*scratch, delay_time_us);
+    const auto hold_us = static_cast<uint32_t>(std::clamp<int64_t>(delay_time_us, 1, UINT32_MAX));
+    if (!output->Stream(*scratch, hold_us)) throw std::runtime_error("Failed to serialize image frame");
 }
 
 bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const int y_offset,
                          const Magick::Image &img) {
+    if (!c || !img.isValid() || img.columns() == 0 || img.rows() == 0) return false;
     // Get direct access to pixel data
     const Magick::PixelPacket *pixels = img.getConstPixels(0, 0, img.columns(), img.rows());
 
 
+    if (!pixels) return false;
     for (int y = 0; y < img.rows(); y++) {
         const Magick::PixelPacket *row = pixels + (y * img.columns());
         for (int x = 0; x < img.columns(); x++) {
@@ -170,8 +215,8 @@ bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const i
             const float alpha = 1.0f - (ScaleQuantumToChar(q.opacity) / 255.0f);
 
             if (alpha > 0.0f) {
-                uint8_t r = 255, g, b;
-                c->GetPixel(x + x_offset, y + y_offset, &r, &g, &b);
+                uint8_t r = 0, g = 0, b = 0;
+                if (!c->GetPixel(x + x_offset, y + y_offset, &r, &g, &b)) continue;
 
                 // Proper alpha compositing formula: new = (source × alpha) + (destination × (1 - alpha))
                 const uint8_t new_r = ScaleQuantumToChar(q.red) * alpha + r * (1.0f - alpha);

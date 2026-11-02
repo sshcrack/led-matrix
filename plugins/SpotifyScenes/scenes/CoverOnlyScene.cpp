@@ -239,47 +239,16 @@ void CoverOnlyScene::update_beat_simulation()
 
 bool CoverOnlyScene::DisplaySpotifySong(rgb_matrix::FrameCanvas *canvas)
 {
-    bool has_anim = false;
-    {
-        std::shared_lock anim_lock(animation_mtx);
-        if (curr_animation.has_value() && !disable_cover_animation->get())
-        {
-            has_anim = true;
-            uint32_t delay_us = 0;
-
-            // Peek at the current frame to render it without consuming
-            if (!curr_animation->PeekNext(canvas, &delay_us))
-            {
-                curr_animation->Rewind();
-                if (!curr_animation->PeekNext(canvas, &delay_us))
-                {
-                    trace("Returning, reader done");
-                    hold_current_frame();
-                    return false;
-                }
-                anim_frame_start_ms = 0;
-            }
-
-            // Record start time and delay on first peek after an advance (or at start)
-            if (anim_frame_start_ms == 0)
-            {
-                anim_frame_start_ms = GetTimeInMillis();
-                anim_frame_delay_ms = delay_us / 1000;
-            }
-
-            // Consume the frame and advance once its hold time has elapsed
-            if (GetTimeInMillis() >= anim_frame_start_ms + anim_frame_delay_ms)
-            {
-                curr_animation->GetNext(canvas, &delay_us);
-                anim_frame_start_ms = 0;
-            }
-        }
+    const bool has_anim = curr_animation.has_value() && !disable_cover_animation->get();
+    if (has_anim && !curr_animation->render(canvas, GetTimeInMillis())) {
+        curr_animation.reset();
+        hold_current_frame();
+        return false;
     }
 
     if (!has_anim)
     {
-        std::shared_lock cover_lock(quick_cover_mtx);
-
+        if (!quick_cover) { hold_current_frame(); return true; }
         const int x_offset = (canvas->width() - quick_cover->columns()) / 2;
         const int y_offset = (canvas->height() - quick_cover->rows()) / 2;
 
@@ -379,68 +348,76 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
         return false;
     }
 
-    if (!curr_state.has_value() || curr_state->get_track().get_id().value() != track_id)
-    {
-        if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            hold_current_frame();
-            return true; // Keep the previous cover until the new artwork is ready.
-        }
+    curr_state.emplace(track);
+    if (requested_track_id != track_id && refresh_future.valid()) artwork_stop.request_stop();
 
-        {
-            std::unique_lock lock(state_mtx);
-            curr_state.emplace(track);
+    if (cover_future.valid() && cover_future.wait_for(std::chrono::seconds(0)) == future_status::ready) {
+        try {
+            auto artwork = cover_future.get();
+            if (requested_track_id == track_id) {
+                curr_animation.reset();
+                curr_content_stream.reset();
+                quick_cover = std::move(artwork.cover);
+                MediaArtworkState::update(*track_id, artwork.palette);
+            }
+        } catch (const std::future_error &) {
+            // An early worker failure is reported by the final result below.
         }
+    }
 
+    if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) == future_status::ready) {
+        auto result = refresh_future.get();
+        if (requested_track_id == track_id) {
+            if (!result) {
+                spdlog::error("Failed to refresh info: {}", result.error());
+                requested_track_id.reset();
+                hold_current_frame();
+                return false;
+            }
+            auto artwork = std::move(*result);
+            curr_animation.reset();
+            curr_content_stream.reset();
+            curr_bpm = artwork.bpm;
+            quick_cover = std::move(artwork.cover);
+            MediaArtworkState::update(*track_id, artwork.palette);
+            if (!artwork.frames.empty() && !disable_cover_animation->get()) {
+                auto stream = std::make_unique<rgb_matrix::MemStreamIO>();
+                rgb_matrix::StreamWriter out(stream.get());
+                for (const auto &frame : artwork.frames)
+                    StoreInStream(frame.second, frame.first, true, canvas, &out);
+                curr_content_stream = std::move(stream);
+                curr_animation.emplace(curr_content_stream.get());
+            }
+        }
+    }
+
+    if (!refresh_future.valid() && requested_track_id != track_id) {
+        const auto finite = [](float value, float fallback, float low, float high) {
+            return std::isfinite(value) ? std::clamp(value, low, high) : fallback;
+        };
+        ArtworkOptions options{
+            matrix_width, matrix_height, background_blur->get(), background_brightness->get(),
+            cover_size_percent->get(), progress_bar_height->get(), std::clamp(cover_transition_steps->get(), 0, 120),
+            finite(bpm_slowdown_factor->get(), 1.0f, 0.1f, 10.0f),
+            finite(bpm_slowdown_threshold->get(), 110.0f, 1.0f, 1000.0f),
+            finite(cover_zoom_factor->get(), 1.0f, 0.0f, 2.0f),
+            std::clamp<tmillis_t>(zoom_transition_frame_wait->get(), 1, 60000),
+            std::clamp<tmillis_t>(final_cover_wait->get(), 1, 60000),
+            !disable_cover_animation->get(), sync_transitions_with_beat->get(), wait_on_final_cover->get()
+        };
+        requested_track_id = track_id;
+        artwork_stop = std::stop_source{};
+        std::promise<ArtworkResult> cover_ready;
+        cover_future = cover_ready.get_future();
         refresh_future = std::async(launch::async,
-                                    [this]() -> std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string>
-                                    {
-                                        return this->refresh_info(matrix_width, matrix_height);
-                                    });
-    }
-    else
-    {
-        std::unique_lock lock(state_mtx);
-        curr_state.emplace(track);
-    }
-
-    if (refresh_future.valid() && refresh_future.wait_for(std::chrono::seconds(0)) == future_status::ready)
-    {
-        spdlog::trace("Future is ready");
-        const auto res = refresh_future.get();
-        if (!res.has_value())
-        {
-            spdlog::error("Failed to refresh info: {}", res.error());
-            hold_current_frame();
-            return false;
-        }
-
-        auto images = std::move(res.value());
-        if (images.empty())
-        {
-            spdlog::debug("Exited refresh thread, waiting for new future");
-            hold_current_frame();
-            return true;
-        }
-
-        auto content_stream = std::make_unique<rgb_matrix::MemStreamIO>();
-        rgb_matrix::StreamWriter out(content_stream.get());
-
-        for (auto pair : images)
-        {
-            StoreInStream(pair.second, pair.first, true, canvas, &out);
-        }
-
-        spdlog::trace("Deleting curr content stream");
-        if (curr_content_stream.has_value())
-            delete curr_content_stream.value();
-
-        std::unique_lock lock(animation_mtx);
-
-        spdlog::trace("Constructing reader");
-        curr_animation = rgb_matrix::StreamReader(content_stream.get());
-        anim_frame_start_ms = 0;
-        spdlog::trace("Setting stream");
-        curr_content_stream = content_stream.release();
+            [snapshot = track.get_track(), options, stop = artwork_stop.get_token(),
+             cover_ready = std::move(cover_ready)]() mutable -> std::expected<ArtworkResult, std::string> {
+                try {
+                    return refresh_info(std::move(snapshot), options, stop, std::move(cover_ready));
+                } catch (const std::exception &e) {
+                    return unexpected(e.what());
+                }
+            });
     }
 
     if (!quick_cover.has_value() && !curr_animation.has_value())
@@ -462,16 +439,12 @@ bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
     return DisplaySpotifySong(canvas);
 }
 
-std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> CoverOnlyScene::refresh_info(
-    int width, int height)
+std::expected<CoverOnlyScene::ArtworkResult, std::string> CoverOnlyScene::refresh_info(
+    SpotifyTrack track, ArtworkOptions options, std::stop_token stop,
+    std::promise<ArtworkResult> cover_ready)
 {
-    // Verified previously that this must have a value
-
-    std::shared_lock state_lock(state_mtx);
-    auto track = curr_state->get_track();
-
-    state_lock.unlock();
-
+    const int width = options.width, height = options.height;
+    if (stop.stop_requested()) return unexpected("Artwork request cancelled");
     auto opt_track = track.get_id();
     if (!opt_track.has_value())
     {
@@ -493,7 +466,7 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
 
     if (!std::filesystem::exists(out_file))
     {
-        const auto res = utils::download_image(cover, out_file);
+        const auto res = utils::download_image(cover, out_file, stop);
         if (!res.has_value())
             return unexpected(res.error());
     }
@@ -509,7 +482,8 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
 
     vector<Magick::Image> frames = std::move(res.value());
     Magick::Image source = frames[0];
-    MediaArtworkState::update(track_id, extract_artwork_palette(source));
+    ArtworkResult result;
+    result.palette = extract_artwork_palette(source);
     Magick::Image cover_img(Magick::Geometry(width, height), Magick::Color("black"));
 
     try {
@@ -519,24 +493,24 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
         background.crop(Magick::Geometry(width, height,
             std::max(0L, static_cast<long>(background.columns() - width) / 2),
             std::max(0L, static_cast<long>(background.rows() - height) / 2)));
-        if (background_blur->get() > 0)
-            background.blur(0.0, static_cast<double>(background_blur->get()));
+        if (options.blur > 0)
+            background.blur(0.0, static_cast<double>(options.blur));
         // Manual brightness: scale RGB pixel values directly instead of using
         // a global/hardware brightness. Keeps saturation boost via modulate(100, 112).
-        apply_manual_brightness(background, static_cast<double>(background_brightness->get()));
+        apply_manual_brightness(background, static_cast<double>(options.brightness));
         background.modulate(100.0, 112.0, 100.0);
         cover_img.composite(background, 0, 0, Magick::OverCompositeOp);
 
         // Put a crisp, slightly inset square cover above the atmospheric background.
         const int cover_size = std::clamp(
-            std::min(width, height) * cover_size_percent->get() / 100,
+            std::min(width, height) * options.cover_percent / 100,
             8, std::min(width, height));
         Magick::Image foreground = source;
         foreground.resize(Magick::Geometry(cover_size, cover_size));
         apply_manual_brightness(foreground, 104.0);
         foreground.modulate(100.0, 112.0, 100.0);
         const int x = (width - cover_size) / 2;
-        const int y = (height - cover_size) / 2 - std::max(0, progress_bar_height->get() / 2);
+        const int y = (height - cover_size) / 2 - std::max(0, options.bar_height / 2);
 
         // Two dark pixels of separation preserve the cover edge on bright artwork.
         Magick::Image shadow(Magick::Geometry(cover_size + 4, cover_size + 4), Magick::Color("#05070a"));
@@ -547,38 +521,26 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
         cover_img.draw(Magick::DrawableCompositeImage(0, 0, width, height, source));
     }
 
-    state_lock.lock();
-    if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id)
-    {
-        state_lock.unlock();
-        spdlog::debug("New track detected, exiting");
-        return {};
-    }
-    state_lock.unlock();
-
-    //
-    {
-        std::unique_lock lock(animation_mtx);
-        std::unique_lock lock2(quick_cover_mtx);
-
-        this->quick_cover = std::move(cover_img);
-        curr_animation = nullopt;
-    }
-
-    auto bpm_res = SongBpmApi::get_bpm(track.get_song_name().value_or(""), track.get_artist_name().value_or(""));
+    result.cover = std::move(cover_img);
+    if (stop.stop_requested()) return unexpected("Artwork request cancelled");
+    cover_ready.set_value(result);
+    auto bpm_res = SongBpmApi::get_bpm(track.get_song_name().value_or(""), track.get_artist_name().value_or(""), stop);
     if (!bpm_res.has_value())
         spdlog::error("Couldn't get bpm {}", bpm_res.error());
 
-    curr_bpm = bpm_res.value_or(120);
-    auto slowed_down = curr_bpm > bpm_slowdown_threshold->get()
-                           ? curr_bpm / bpm_slowdown_factor->get()
-                           : curr_bpm;
+    result.bpm = bpm_res.value_or(120);
+    if (!std::isfinite(result.bpm) || result.bpm <= 0) result.bpm = 120;
+    result.bpm = std::clamp(result.bpm, 30.0f, 300.0f);
+    if (!options.animate || options.steps == 0) return result;
+    const float slowed_down = result.bpm > options.slowdown_threshold
+                           ? result.bpm / options.slowdown_factor
+                           : result.bpm;
 
     // Fix: Calculate beat duration correctly (milliseconds per beat)
     float beat_duration_ms = 60000.0f / slowed_down;
 
     // Create a more interesting transition effect
-    const int transition_steps = this->cover_transition_steps->get();
+    const int transition_steps = options.steps;
 
     float single_img_duration_ms = beat_duration_ms / transition_steps;
 
@@ -586,15 +548,7 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
     // Then, create a zoom-in effect
     for (int i = 0; i < transition_steps; i++)
     {
-        state_lock.lock();
-        if (curr_state.has_value() && curr_state->get_track().get_id().value_or("") != track_id)
-        {
-            state_lock.unlock();
-            spdlog::debug("New track detected, exiting");
-            return {};
-        }
-
-        state_lock.unlock();
+        if (stop.stop_requested()) return unexpected("Artwork request cancelled");
         float zoom = (float)i / (float)(transition_steps);
 
         Magick::Image img(Magick::Geometry(width, height), Magick::Color("black"));
@@ -603,7 +557,7 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
         Magick::Image cover_copy = frames[0];
 
         // Calculate margins for the zoom effect
-        int zoom_margin = (int)(width * zoom * cover_zoom_factor->get());
+        int zoom_margin = (int)(width * zoom * options.zoom);
 
         // Composite the cover onto the black background
         img.draw(Magick::DrawableCompositeImage(-zoom_margin, -zoom_margin,
@@ -619,17 +573,18 @@ std::expected<std::vector<std::pair<int64_t, Magick::Image>>, std::string> Cover
         img.draw(Magick::DrawableCompositeImage(x, y, size, size, cover_copy));
 
         // Store the frame with a short delay
-        int64_t delay = sync_transitions_with_beat->get() ? single_img_duration_ms * 1000 : zoom_transition_frame_wait->get() * 1000;
+        int64_t delay = options.sync ? static_cast<int64_t>(single_img_duration_ms * 1000) : options.frame_wait * 1000;
 
         track_images.push_back(std::make_pair(delay, std::move(img)));
     }
 
-    if (wait_on_final_cover->get() && !sync_transitions_with_beat->get())
+    if (options.wait_final && !options.sync)
     {
-        track_images.push_back(std::make_pair(final_cover_wait->get() * 1000, std::move(cover_img)));
+        track_images.push_back(std::make_pair(options.final_wait * 1000, result.cover));
     }
 
-    return track_images;
+    result.frames = std::move(track_images);
+    return result;
 }
 
 int CoverOnlyScene::get_weight() const
@@ -682,14 +637,14 @@ void CoverOnlyScene::register_properties()
 CoverOnlyScene::~CoverOnlyScene()
 {
     spdlog::info("Waiting for CoverOnlyScene to finish...");
+    artwork_stop.request_stop();
     if (refresh_future.valid())
     {
         refresh_future.wait();
     }
 
     curr_animation.reset(); // Ensure animation is cleaned up
-    if (curr_content_stream.has_value())
-        delete curr_content_stream.value();
+    curr_content_stream.reset();
 }
 
 Scenes::SceneDescriptor Scenes::CoverOnlyScene::get_descriptor() const {

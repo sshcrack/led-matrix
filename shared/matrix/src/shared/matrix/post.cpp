@@ -29,19 +29,10 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
 
         const tmillis_t start_loading = GetTimeInMillis();
         const std::filesystem::path file_path = Constants::post_dir / get_filename();
-        const std::filesystem::path processed_img = to_processed_path(file_path);
 
-        // Early return if processed image exists
-        if (exists(processed_img)) {
-            auto res = LoadImageAndScale(processed_img, width, height, true, true, true, false);
-            if (res) {
-                return std::move(res.value());
-            }
-        }
-
-        // Download image if needed
-        if (!exists(processed_img)) {
-            try_remove(file_path);
+        // Persistent caches keep the original so new matrix sizes can regenerate
+        // full-quality transforms. Uncached downloads are removed after decoding.
+        if (!exists(file_path)) {
             const auto res = utils::download_image(get_image_url(), file_path.string());
             if (!res) {
                 spdlog::error("Could not download image: {}", res.error());
@@ -58,12 +49,14 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
             store_processed_file || utils::is_local_file_url(get_image_url())
         );
 
-        try_remove(file_path);
 
         if (!res) {
+            try_remove(file_path);
             spdlog::error("Error loading image: {}", res.error());
             return std::nullopt;
         }
+
+        if (!store_processed_file && !utils::is_local_file_url(get_image_url())) try_remove(file_path);
 
         spdlog::trace("Loading/Scaling Image took {}s.", (GetTimeInMillis() - start_loading) / 1000.0);
         return std::move(res.value());
@@ -77,15 +70,14 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
 Post::Post(const std::string &img_url, const bool maybe_fetch_type) {
     this->img_url = img_url;
 
-    const auto last_index = img_url.find_last_of('.');
-    std::string file_ext = ".unknown";
-    if (last_index != std::string::npos) {
-        file_ext = img_url.substr(img_url.find_last_of('.'));
-    }
+    // Derive the suffix from the URL path, not dots in the hostname or query.
+    const auto url_path = img_url.substr(0, img_url.find_first_of("?#"));
+    std::string file_ext = std::filesystem::path(url_path).extension().string();
+    if (file_ext.empty()) file_ext = ".unknown";
 
     if (maybe_fetch_type && (MimeTypes::getType("file" + file_ext) == "application/octet-stream")) {
         // Fetch Content-Type online
-        cpr::Response res = cpr::Head(cpr::Url(img_url));
+        cpr::Response res = cpr::Head(cpr::Url(img_url), cpr::ConnectTimeout{5000}, cpr::Timeout{30000}, cpr::LowSpeed{1024, 10});
         if (res.status_code < 200 || res.status_code >= 300) {
             spdlog::warn("Could not fetch Content-Type for {}: {}", img_url, res.status_code);
         } else {

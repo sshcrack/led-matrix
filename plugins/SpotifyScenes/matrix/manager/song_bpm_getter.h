@@ -5,10 +5,12 @@
 #pragma once
 #include <expected>
 #include <string>
+#include <stop_token>
 
 
 class SongBpmApi {
 public:
     [[nodiscard]] static std::expected<float, std::string> get_bpm(const std::string &song_name,
-                                                                   const std::string &artist_name);
+                                                                   const std::string &artist_name,
+                                                                   std::stop_token stop = {});
 };
