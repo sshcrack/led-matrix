@@ -92,7 +92,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-set(VERSION 1.16.2)
+set(VERSION 1.16.3)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
@@ -648,6 +648,21 @@ if(ENABLE_EMULATOR)
         "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
         "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
     )
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_executable(media_fetch_probe tests/media_fetch_probe.cpp)
+    target_compile_features(media_fetch_probe PRIVATE cxx_std_23)
+    target_link_libraries(media_fetch_probe PRIVATE SharedToolsMatrix PkgConfig::GraphicsMagick)
+    add_test(NAME media_fetch_smoke COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/media_fetch_smoke.py $<TARGET_FILE:media_fetch_probe>)
+    set_tests_properties(media_fetch_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}" TIMEOUT 30)
+
+    add_executable(media_utilities_smoke tests/media_utilities_smoke.cpp)
+    target_compile_features(media_utilities_smoke PRIVATE cxx_std_23)
+    target_link_libraries(media_utilities_smoke PRIVATE SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix PkgConfig::GraphicsMagick)
+    add_test(NAME media_utilities_smoke COMMAND media_utilities_smoke)
+    set_tests_properties(media_utilities_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(live_frame_snapshot_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/live_frame_snapshot_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
