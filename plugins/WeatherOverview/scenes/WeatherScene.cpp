@@ -44,8 +44,8 @@ void Scenes::WeatherScene::renderCurrentWeather(rgb_matrix::FrameCanvas *canvas,
         for (int x = card_x; x < card_x + card_w && x < matrix_width; ++x)
             SetPixelAlpha(canvas, x, y, panel_tint.r, panel_tint.g, panel_tint.b, panel_alpha);
 
-    if (images.has_value())
-        SetImageTransparent(canvas, card_x + 3, card_y + 4, images->currentIcon);
+    if (images.has_value() && images->currentIcon.has_value())
+        SetImageTransparent(canvas, card_x + 3, card_y + 4, *images->currentIcon);
 
     const int text_x = card_x + MAIN_ICON_SIZE + 8;
     DrawText(canvas, *HEADER_FONT, text_x, card_y + 14, {245, 250, 255}, data.temperature.c_str());
@@ -89,8 +89,8 @@ void Scenes::WeatherScene::renderForecast(rgb_matrix::FrameCanvas *canvas, const
                 SetPixelAlpha(canvas, x, y, panel_tint.r, panel_tint.g, panel_tint.b, panel_alpha);
 
         DrawText(canvas, *SMALL_FONT, x0 + 4, top + 9, {205, 225, 245}, day.day_name.c_str());
-        if (i < static_cast<int>(images->forecastIcons.size()))
-            SetImageTransparent(canvas, x0 + (card_w - FORECAST_ICON_SIZE) / 2, top + 11, images->forecastIcons[i]);
+        if (i < static_cast<int>(images->forecastIcons.size()) && images->forecastIcons[i].has_value())
+            SetImageTransparent(canvas, x0 + (card_w - FORECAST_ICON_SIZE) / 2, top + 11, *images->forecastIcons[i]);
 
         const std::string temp = day.temperature_max + " " + day.temperature_min;
         DrawText(canvas, *SMALL_FONT, x0 + 3, top + 37, {245, 248, 255}, temp.c_str());
