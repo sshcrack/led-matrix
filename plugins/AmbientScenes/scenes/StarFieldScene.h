@@ -38,7 +38,6 @@ namespace AmbientScenes {
         PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.8f, 0.0f, 2.0f);
         PropertyPointer<bool> drifting_center = MAKE_PROPERTY("drifting_center", bool, true);
 
-        static void hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b);
         static void draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
                               uint8_t r, uint8_t g, uint8_t b, int width, int height);
 

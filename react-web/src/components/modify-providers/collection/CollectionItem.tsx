@@ -1,6 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 
 interface CollectionItemProps {
   url: string

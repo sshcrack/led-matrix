@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, Clock, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import useFetch from '~/useFetch'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Card, CardContent } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -19,6 +19,7 @@ import {
 } from '~/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import type { ListPresets } from '~/apiTypes/list_presets'
+import BrightnessScheduleCard from '~/components/schedules/BrightnessScheduleCard'
 
 /** Matches the server's ConfigData::Schedule struct */
 interface Schedule {
@@ -139,6 +140,8 @@ export default function Schedules() {
         <h1 className="text-2xl font-bold">Schedules</h1>
         <p className="text-muted-foreground text-sm mt-1">Automate preset switching by time</p>
       </div>
+
+      <BrightnessScheduleCard />
 
       {/* Scheduling toggle */}
       <Card>

@@ -1,4 +1,5 @@
 #include "FallingSandScene.h"
+#include <shared/matrix/utils/color.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -7,24 +8,6 @@
 
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
-
-void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
-    h = std::fmod(h, 360.0f);
-    if (h < 0) h += 360.0f;
-    const float c = v * s;
-    const float x = c * (1.0f - std::fabs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-    const float m = v - c;
-    float rf = 0, gf = 0, bf = 0;
-    if (h < 60) { rf = c; gf = x; }
-    else if (h < 120) { rf = x; gf = c; }
-    else if (h < 180) { gf = c; bf = x; }
-    else if (h < 240) { gf = x; bf = c; }
-    else if (h < 300) { rf = x; bf = c; }
-    else { rf = c; bf = x; }
-    r = static_cast<uint8_t>((rf + m) * 255.0f);
-    g = static_cast<uint8_t>((gf + m) * 255.0f);
-    b = static_cast<uint8_t>((bf + m) * 255.0f);
-}
 
 float triangle_wave(float value) {
     const float phase = value - std::floor(value);
@@ -431,7 +414,7 @@ void FallingSandScene::draw(rgb_matrix::FrameCanvas *canvas) {
             if (!c.type) continue;
             uint8_t r, g, b;
             if (c.type == 2) { r = 20; g = 95; b = 255; }
-            else hsv_to_rgb(c.hue * 360.0f / 255.0f, 0.82f, 1.0f, r, g, b);
+            else color::hsv_to_rgb(c.hue * 360.0f / 255.0f, 0.82f, 1.0f, r, g, b);
             canvas->SetPixel(x, y, r, g, b);
         }
     }
@@ -452,7 +435,7 @@ void FallingSandScene::draw(rgb_matrix::FrameCanvas *canvas) {
         if (!inside(x, y)) continue;
         uint8_t r, g, b;
         if (p.cell.type == 2) { r = 80; g = 170; b = 255; }
-        else hsv_to_rgb(p.cell.hue * 360.0f / 255.0f, 0.72f, 1.0f, r, g, b);
+        else color::hsv_to_rgb(p.cell.hue * 360.0f / 255.0f, 0.72f, 1.0f, r, g, b);
         canvas->SetPixel(x, y, r, g, b);
     }
     if (frame_ < flash_until_) {

@@ -2,22 +2,11 @@
 #include <algorithm>
 #include <cmath>
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/utils/color.h>
 #include <shared/matrix/media_artwork_state.h>
 
 namespace {
 constexpr float PI = 3.14159265358979323846f;
-
-void hsv_to_rgb(float h, float s, float v, uint8_t &r, uint8_t &g, uint8_t &b) {
-    h = std::fmod(h, 360.0f); if (h < 0) h += 360.0f;
-    const float c = v * s;
-    const float x = c * (1.0f - std::fabs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
-    const float m = v - c;
-    float rf=0,gf=0,bf=0;
-    if (h < 60) { rf=c; gf=x; } else if (h < 120) { rf=x; gf=c; }
-    else if (h < 180) { gf=c; bf=x; } else if (h < 240) { gf=x; bf=c; }
-    else if (h < 300) { rf=x; bf=c; } else { rf=c; bf=x; }
-    r = static_cast<uint8_t>((rf+m)*255); g = static_cast<uint8_t>((gf+m)*255); b = static_cast<uint8_t>((bf+m)*255);
-}
 }
 
 using namespace GenerativeScenes;
@@ -166,7 +155,7 @@ bool BoidsScene::render(rgb_matrix::FrameCanvas *canvas) {
             const float direction = std::atan2(b.vy, b.vx) / (2.0f * PI) + 0.5f;
             const auto c = MediaArtworkState::sample(artwork, direction);
             r = static_cast<uint8_t>(c.r * audio_glow); g = static_cast<uint8_t>(c.g * audio_glow); bl = static_cast<uint8_t>(c.b * audio_glow);
-        } else if (rainbow_->get()) hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,audio_glow,r,g,bl);
+        } else if (rainbow_->get()) color::hsv_to_rgb(std::atan2(b.vy,b.vx)*180.0f/PI+180.0f,0.8f,audio_glow,r,g,bl);
         else {
             const auto c=color_->get();
             r=static_cast<uint8_t>(c.r * audio_glow);

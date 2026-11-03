@@ -67,6 +67,9 @@ namespace Config {
         bool delete_custom_scene_variant(const string &scene_name, const string &variant_id);
         void set_schedule(const string& id, const ConfigData::Schedule& schedule);
         bool delete_schedule(const string& id);
+        ConfigData::BrightnessSchedule get_brightness_schedule();
+        void set_brightness_schedule(ConfigData::BrightnessSchedule schedule);
+
         bool is_scheduling_enabled();
         void set_scheduling_enabled(bool enabled);
         optional<string> get_active_scheduled_preset();

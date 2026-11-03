@@ -4,9 +4,9 @@ import { titleCase } from '~/lib/utils'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface GeneralPropertyProps {
-  property: Property<any>
-  value: any
-  onChange: (value: any) => void
+  property: Property<unknown>
+  value: unknown
+  onChange: (value: unknown) => void
 }
 
 export default function GeneralProperty({ property, value, onChange }: GeneralPropertyProps) {

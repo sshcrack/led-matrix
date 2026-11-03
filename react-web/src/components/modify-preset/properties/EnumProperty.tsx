@@ -38,7 +38,9 @@ export default function EnumProperty({ property, value, onChange }: EnumProperty
     : value
 
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (options.length > 0 && normalizedValue && value !== normalizedValue) {

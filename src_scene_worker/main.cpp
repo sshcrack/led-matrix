@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #include "shared/common/win_compat.h"
+#include <cstdlib>
 #endif
 #include <Magick++.h>
 // GraphicsMagick defines ssize_t as a macro on Windows. ixwebsocket declares
@@ -511,6 +512,8 @@ int main(int argc, char **argv)
         ix::WebSocket websocket;
         websocket.setUrl("ws://" + args.host + ":" + std::to_string(args.port)
                          + "/desktopWebsocket?role=scene-worker&client_id=" + args.client_id);
+        if (const char *token = std::getenv("LED_MATRIX_API_TOKEN"); token && *token)
+            websocket.setExtraHeaders({{"Authorization", std::string("Bearer ") + token}});
         websocket.enableAutomaticReconnection();
 
         std::mutex command_mutex;
