@@ -740,7 +740,7 @@ if(ENABLE_EMULATOR)
     )
     target_compile_features(request_guard_smoke PRIVATE cxx_std_23)
     target_include_directories(request_guard_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
-    target_link_libraries(request_guard_smoke PRIVATE SharedToolsCommon SharedToolsMatrix restinio::restinio spdlog::spdlog)
+    target_link_libraries(request_guard_smoke PRIVATE SharedToolsCommon SharedToolsMatrix restinio::restinio spdlog::spdlog PkgConfig::GraphicsMagick)
     add_test(NAME request_guard_smoke COMMAND $<TARGET_FILE:request_guard_smoke>)
     set_tests_properties(request_guard_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 

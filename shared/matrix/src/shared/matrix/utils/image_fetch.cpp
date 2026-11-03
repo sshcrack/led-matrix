@@ -1,4 +1,8 @@
+#ifdef _WIN32
+#include "shared/common/win_compat.h"
+#endif
 #include "shared/matrix/utils/image_fetch.h"
+#include <restinio/asio_include.hpp>
 #include "cpr/cpr.h"
 #include "spdlog/spdlog.h"
 #include "curl/curl.h"
@@ -9,7 +13,6 @@
 #include <algorithm>
 #include <cctype>
 #include <optional>
-#include <arpa/inet.h>
 
 #include "shared/matrix/utils/consts.h"
 
@@ -205,27 +208,20 @@ namespace utils {
     }
 
     bool is_internal_address(const std::string &ip) {
-        in_addr v4{};
-        if (inet_pton(AF_INET, ip.c_str(), &v4) == 1) {
-            const auto addr = ntohl(v4.s_addr);
-            return (addr >> 24) == 127 || (addr >> 24) == 0 || (addr >> 16) == 0xA9FE;
-        }
-
-        in6_addr v6{};
-        if (inet_pton(AF_INET6, ip.c_str(), &v6) == 1) {
-            const auto *b = v6.s6_addr;
-            static constexpr unsigned char mapped_prefix[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
-            if (std::memcmp(b, mapped_prefix, sizeof(mapped_prefix)) == 0) {
-                char mapped[INET_ADDRSTRLEN]{};
-                inet_ntop(AF_INET, b + 12, mapped, sizeof(mapped));
-                return is_internal_address(mapped);
-            }
-            if (IN6_IS_ADDR_LOOPBACK(&v6) || IN6_IS_ADDR_UNSPECIFIED(&v6) || IN6_IS_ADDR_LINKLOCAL(&v6))
-                return true;
-            return false;
-        }
-
+        namespace ip_ns = restinio::asio_ns::ip;
+        restinio::asio_ns::error_code ec;
+        auto address = ip_ns::make_address(ip, ec);
         // Not an IP literal: be conservative.
-        return true;
+        if (ec) return true;
+
+        if (address.is_v6() && address.to_v6().is_v4_mapped())
+            address = ip_ns::make_address_v4(ip_ns::v4_mapped, address.to_v6());
+
+        if (address.is_v4()) {
+            const auto value = address.to_v4().to_uint();
+            return (value >> 24) == 127 || (value >> 24) == 0 || (value >> 16) == 0xA9FE;
+        }
+        const auto v6 = address.to_v6();
+        return v6.is_loopback() || v6.is_unspecified() || v6.is_link_local();
     }
 } // namespace utils

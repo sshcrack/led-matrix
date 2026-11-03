@@ -384,10 +384,17 @@ namespace Update
         {
             // Private 0700 directory: the root-run update script installs this file, so it must not live at a
             // predictable path in world-writable /tmp where another user could swap or symlink it.
+#ifdef __linux__
             string dir_template = (filesystem::temp_directory_path() / "led-matrix-update-XXXXXX").string();
             if (!mkdtemp(dir_template.data()))
                 return std::unexpected("Could not create private update directory: " + string(strerror(errno)));
             string filename = dir_template + "/led-matrix-update.deb";
+#else
+            // Updates are only installed on Linux; keep other platforms compiling.
+            const auto dir = filesystem::temp_directory_path() / "led-matrix-update";
+            filesystem::create_directories(dir);
+            string filename = (dir / "led-matrix-update.deb").string();
+#endif
 
             auto download_res = download_update(update_info.download_url, filename);
             if (download_res.has_value())

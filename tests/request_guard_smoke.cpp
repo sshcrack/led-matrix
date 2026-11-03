@@ -1,4 +1,5 @@
 #include "server/request_guard.h"
+#include "shared/matrix/utils/image_fetch.h"
 
 #include <iostream>
 #include <string>
@@ -98,6 +99,19 @@ int main() {
     auto cross_with_token = cross;
     cross_with_token.authorization = "Bearer s3cret";
     expect("token does not bypass origin check", evaluate(locked, cross_with_token), Verdict::CrossOrigin);
+
+    const std::pair<const char *, bool> addresses[] = {
+        {"127.0.0.1", true}, {"0.0.0.0", true}, {"169.254.169.254", true}, {"::1", true}, {"::", true},
+        {"fe80::1", true}, {"::ffff:127.0.0.1", true}, {"not-an-ip", true},
+        {"10.0.0.5", false}, {"192.168.1.20", false}, {"8.8.8.8", false}, {"::ffff:8.8.8.8", false},
+        {"2606:4700::1", false},
+    };
+    for (const auto &[address, internal] : addresses) {
+        if (utils::is_internal_address(address) != internal) {
+            std::cerr << "FAIL: is_internal_address(" << address << ") != " << internal << "\n";
+            ++failures;
+        }
+    }
 
     if (failures == 0) std::cout << "request_guard_smoke: all checks passed\n";
     return failures == 0 ? 0 : 1;
