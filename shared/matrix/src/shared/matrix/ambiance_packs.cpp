@@ -48,7 +48,7 @@ nlohmann::json catalog() {
 
 std::shared_ptr<ConfigData::Preset> create_preset(std::string_view id) {
     const auto packs = catalog();
-    const auto it = std::find_if(packs.begin(), packs.end(), [id](const auto &pack) { return pack.at("id") == id; });
+    const auto it = std::find_if(packs.begin(), packs.end(), [id](const auto &pack) { return pack.at("id").template get<std::string>() == id; });
     if (it == packs.end()) throw std::invalid_argument("Unknown ambiance pack");
     if (!it->at("available").get<bool>()) throw std::runtime_error("This pack requires scenes that are unavailable on this device");
     const json preset = {{"display_name", it->at("name")}, {"scenes", it->at("scenes")},
