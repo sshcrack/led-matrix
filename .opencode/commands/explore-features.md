@@ -99,7 +99,7 @@ Two known TODOs in the codebase (do not duplicate):
 - `plugins/Shadertoy/desktop/ShadertoyDesktop.cpp:125` — "rendering twice may
   cause issues" comment
 
-Read `FEATURES.md` and `AGENTS.md` for design constraints before brainstorming.
+Read `AGENTS.md` (Design constraints section) for design constraints before brainstorming.
 
 ## Step 2 — Read the rpi-rgb-led-matrix source/docs
 
@@ -166,8 +166,8 @@ For each feature:
 - Do NOT suggest features that conflict with existing implementation patterns
   (the property system, plugin lifecycle, etc.)
 - Ground every feature in actual rpi-rgb-led-matrix API classes you found
-- Respect design constraints from `FEATURES.md`: low compute, non-interactive,
+- Respect the design constraints in `AGENTS.md`: low compute, non-interactive,
   no readable text
-- Avoid ideas explicitly rejected in `FEATURES.md` (Home Assistant, WebSocket
+- Avoid ideas explicitly rejected in `AGENTS.md` (Home Assistant, WebSocket
   preview, RSS/scores/tickers, scrolling text, web paint, emoji signals)
 - Output ONLY the feature list — no preamble, no summary

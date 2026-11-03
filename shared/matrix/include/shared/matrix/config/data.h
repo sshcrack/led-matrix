@@ -59,6 +59,24 @@ namespace ConfigData
         [[nodiscard]] bool is_active_at_time(int hour, int minute, int day_of_week) const;
     };
 
+    /// Dims the panel during a nightly window, fading linearly over fade_minutes after each boundary.
+    struct BrightnessSchedule
+    {
+        bool enabled = false;
+        int day_brightness = 100;   // 1-100 (percent)
+        int night_brightness = 25;  // 1-100 (percent)
+        int night_start_hour = 22;
+        int night_start_minute = 0;
+        int night_end_hour = 7;
+        int night_end_minute = 0;
+        int fade_minutes = 20;      // 0-180
+
+        /// Brightness in percent for a wall-clock time given as minutes since midnight (0-1439).
+        [[nodiscard]] int brightness_at(int minute_of_day) const;
+        /// Clamps all fields into their valid ranges.
+        void sanitize();
+    };
+
     struct UpdateSettings
     {
         bool auto_update_enabled = true;
@@ -77,6 +95,7 @@ namespace ConfigData
         map<string, Schedule> schedules;
         map<string, vector<CustomSceneVariant>> custom_scene_variants;
         bool scheduling_enabled;
+        BrightnessSchedule brightness_schedule;
         std::atomic<bool> turned_off;
         string operation_mode = "automatic";
         std::uint64_t automatic_director_seed = 0;
@@ -97,6 +116,7 @@ namespace ConfigData
                 schedules = std::move(other.schedules);
                 custom_scene_variants = std::move(other.custom_scene_variants);
                 scheduling_enabled = other.scheduling_enabled;
+                brightness_schedule = other.brightness_schedule;
                 turned_off.store(other.turned_off.load());
                 operation_mode = std::move(other.operation_mode);
                 automatic_director_seed = other.automatic_director_seed;
@@ -115,6 +135,7 @@ namespace ConfigData
               schedules(std::move(other.schedules)),
               custom_scene_variants(std::move(other.custom_scene_variants)),
               scheduling_enabled(other.scheduling_enabled),
+              brightness_schedule(other.brightness_schedule),
               turned_off(other.turned_off.load()),
               operation_mode(std::move(other.operation_mode)),
               automatic_director_seed(other.automatic_director_seed),
@@ -140,6 +161,9 @@ namespace ConfigData
     void to_json(json &j, const UpdateSettings &p);
 
     void to_json(json &j, const Schedule &p);
+
+    void to_json(json &j, const BrightnessSchedule &p);
+    void from_json(const json &j, BrightnessSchedule &p);
 
     void to_json(json &j, const Root &p);
 

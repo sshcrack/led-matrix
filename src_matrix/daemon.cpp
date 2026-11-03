@@ -19,6 +19,7 @@
 #include "matrix-factory.h"
 #include "server/server.h"
 #include "server/live_frame_ws.h"
+#include "server/request_guard.h"
 #include "udp.h"
 #include "matrix_control/hardware.h"
 #include "matrix_control/SceneLabRuntime.h"
@@ -345,7 +346,14 @@ Daemon::Daemon(int argc, char* argv[])
 
             settings.port(port_);
             settings.address(host);
-            settings.request_handler(move(router));
+            std::shared_ptr<Server::router_t> shared_router = std::move(router);
+            settings.request_handler(
+                [shared_router, policy = Server::RequestGuard::policy_from_env()](auto req)
+                {
+                    if (auto rejected = Server::RequestGuard::reject_if_needed(policy, req))
+                        return *rejected;
+                    return (*shared_router)(std::move(req));
+                });
             settings.write_http_response_timelimit(30s);
             settings.cleanup_func([]
             {

@@ -4,6 +4,9 @@ register_plugin(RGBMatrixAnimations
         matrix/anim/gravityparticles.cpp
         matrix/anim/gravityparticles.h
         matrix/anim/RGBMatrixRenderer.cpp
+        matrix/anim/RGBMatrixRendererPalette.cpp
+        matrix/anim/RGBMatrixRendererPosition.cpp
+        matrix/anim/RGBMatrixRendererShapes.cpp
         matrix/anim/RGBMatrixRenderer.h
         scenes/ParticleScene.cpp
         scenes/ParticleScene.h

@@ -1,7 +1,7 @@
 import { toast } from 'sonner'
 import { Activity, Layers3, Radio, Sparkles, SlidersHorizontal } from 'lucide-react'
 import useFetch from '~/useFetch'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import StatusCard from '~/components/home/StatusCard'
 import PresetsSection from '~/components/home/PresetsSection'
 import ErrorCard from '~/components/home/ErrorCard'

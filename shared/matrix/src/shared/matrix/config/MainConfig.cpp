@@ -407,6 +407,18 @@ spdlog::info("Setting preset {}", id);
         return true;
     }
 
+    ConfigData::BrightnessSchedule MainConfig::get_brightness_schedule() {
+        shared_lock lock(this->data_mutex);
+        return this->data.brightness_schedule;
+    }
+
+    void MainConfig::set_brightness_schedule(ConfigData::BrightnessSchedule schedule) {
+        schedule.sanitize();
+        unique_lock lock(this->data_mutex);
+        this->data.brightness_schedule = schedule;
+        this->mark_dirty();
+    }
+
     bool MainConfig::is_scheduling_enabled() {
         shared_lock lock(this->data_mutex);
         return this->data.scheduling_enabled;

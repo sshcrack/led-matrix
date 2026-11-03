@@ -5,6 +5,15 @@ endif()
 file(REMOVE_RECURSE "${CRASH_DIR}")
 file(MAKE_DIRECTORY "${CRASH_DIR}")
 
+# Retention: seed stale reports; install() must prune them down to the newest 20.
+if(DEFINED SEED_OLD_REPORTS)
+    foreach(INDEX RANGE 1 ${SEED_OLD_REPORTS})
+        file(WRITE "${CRASH_DIR}/crash-stale-${INDEX}.txt" "stale")
+        file(WRITE "${CRASH_DIR}/crash-stale-${INDEX}.dmp" "stale")
+    endforeach()
+    file(WRITE "${CRASH_DIR}/unrelated.log" "keep me")
+endif()
+
 execute_process(
     COMMAND "${PROBE}" "${CRASH_DIR}" "${MODE}"
     RESULT_VARIABLE PROBE_RESULT
@@ -103,3 +112,16 @@ if(PENDING)
 endif()
 
 message(STATUS "validated ${MODE} crash report: ${REPORT}")
+
+if(DEFINED SEED_OLD_REPORTS)
+    file(GLOB STALE_TXT "${CRASH_DIR}/crash-stale-*.txt")
+    file(GLOB STALE_DMP "${CRASH_DIR}/crash-stale-*.dmp")
+    list(LENGTH STALE_TXT STALE_TXT_COUNT)
+    list(LENGTH STALE_DMP STALE_DMP_COUNT)
+    if(NOT STALE_TXT_COUNT EQUAL 20 OR NOT STALE_DMP_COUNT EQUAL 20)
+        message(FATAL_ERROR "expected 20 retained stale reports, found ${STALE_TXT_COUNT} txt / ${STALE_DMP_COUNT} dmp")
+    endif()
+    if(NOT EXISTS "${CRASH_DIR}/unrelated.log")
+        message(FATAL_ERROR "retention removed a file it does not own")
+    endif()
+endif()

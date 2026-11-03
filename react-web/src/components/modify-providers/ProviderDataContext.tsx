@@ -1,19 +1,6 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { useState } from 'react'
 import type { ProviderValue } from '~/apiTypes/list_scenes'
-
-interface ProviderDataContextType {
-  providers: ProviderValue[]
-  setProviders: React.Dispatch<React.SetStateAction<ProviderValue[]>>
-}
-
-const ProviderDataContext = createContext<ProviderDataContextType>({
-  providers: [],
-  setProviders: () => {},
-})
-
-export function useProviderData() {
-  return useContext(ProviderDataContext)
-}
+import { ProviderDataContext } from './providerDataContext'
 
 export function ProviderDataProvider({ children, initial }: { children: React.ReactNode; initial: ProviderValue[] }) {
   const [providers, setProviders] = useState<ProviderValue[]>(initial)

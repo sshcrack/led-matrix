@@ -183,6 +183,10 @@ if(ENABLE_DESKTOP)
         src_desktop/main.cpp
         src_desktop/filters.cpp
         src_desktop/single_instance_manager.cpp
+        src_desktop/app_setup.cpp
+        src_desktop/matrix_connection.cpp
+        src_desktop/settings_panel.cpp
+        src_desktop/tray_window.cpp
     )
 
     if(WIN32)
@@ -192,10 +196,15 @@ else()
     set(SOURCES
         src_matrix/main.cpp
         src_matrix/daemon.cpp
+        src_matrix/server/request_guard.cpp
         src_matrix/matrix_control/canvas.cpp
         src_matrix/matrix_control/hardware.cpp
         src_matrix/matrix_control/SceneScheduler.cpp
         src_matrix/matrix_control/AutomaticDirector.cpp
+        src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
         src_matrix/matrix_control/TransitionPlanner.cpp
         src_matrix/matrix_control/SceneLabRuntime.cpp
@@ -385,6 +394,17 @@ if(ENABLE_DESKTOP OR ENABLE_EMULATOR)
         )
         set_tests_properties(crash_reporter_${CRASH_MODE}_smoke PROPERTIES RUN_SERIAL TRUE)
     endforeach()
+
+    add_test(NAME crash_reporter_retention_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DPROBE=$<TARGET_FILE:crash_reporter_probe>
+            -DCRASH_DIR=${CMAKE_BINARY_DIR}/crash-reporter-retention
+            -DMODE=exception
+            -DSEED_OLD_REPORTS=30
+            -DWIN32_TEST=${WIN32}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/crash_reporter_smoke.cmake
+    )
+    set_tests_properties(crash_reporter_retention_smoke PROPERTIES RUN_SERIAL TRUE)
 endif()
 
 if(ENABLE_DESKTOP)
@@ -717,6 +737,24 @@ if(ENABLE_EMULATOR)
     add_test(NAME live_frame_snapshot_smoke COMMAND $<TARGET_FILE:live_frame_snapshot_smoke>)
     set_tests_properties(live_frame_snapshot_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(brightness_schedule_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/brightness_schedule_smoke.cpp
+    )
+    target_compile_features(brightness_schedule_smoke PRIVATE cxx_std_23)
+    target_link_libraries(brightness_schedule_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME brightness_schedule_smoke COMMAND $<TARGET_FILE:brightness_schedule_smoke>)
+    set_tests_properties(brightness_schedule_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(request_guard_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/request_guard_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/server/request_guard.cpp
+    )
+    target_compile_features(request_guard_smoke PRIVATE cxx_std_23)
+    target_include_directories(request_guard_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(request_guard_smoke PRIVATE SharedToolsCommon SharedToolsMatrix restinio::restinio spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME request_guard_smoke COMMAND $<TARGET_FILE:request_guard_smoke>)
+    set_tests_properties(request_guard_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(property_compat_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
     )
@@ -775,6 +813,10 @@ if(ENABLE_EMULATOR)
     add_executable(spotify_mv_runtime_ready_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_runtime_ready_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
     )
     target_compile_features(spotify_mv_runtime_ready_smoke PRIVATE cxx_std_23)
@@ -808,6 +850,10 @@ if(ENABLE_EMULATOR)
     add_executable(automatic_director_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic_director_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
     )
     target_compile_features(automatic_director_smoke PRIVATE cxx_std_23)

@@ -14,7 +14,7 @@ import type { Scene as SceneType } from '~/apiTypes/list_presets'
 import type { ListScenes, ListProviders } from '~/apiTypes/list_scenes'
 import { useSceneContext } from './SceneContext'
 import PropertyList from './property_list'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Badge } from '../ui/badge'
 import { sceneArgumentsForVariant, sceneVariant } from '~/lib/sceneVariants'
 

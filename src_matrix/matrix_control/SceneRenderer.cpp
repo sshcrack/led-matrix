@@ -1,5 +1,6 @@
 #include "SceneRenderer.h"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 
@@ -246,6 +247,7 @@ bool SceneRenderer::render_scene_phase(
             LiveFrame::SnapshotStore::instance().capture_if_requested(
                 composite_offscreen_canvas, matrix_->width(), matrix_->height());
 
+            apply_scheduled_brightness(frame_start_ms);
             auto *presented_canvas = composite_offscreen_canvas;
             composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
             last_presented_canvas_ = presented_canvas;
@@ -264,6 +266,30 @@ bool SceneRenderer::render_scene_phase(
     }
 
     return false;
+}
+
+void SceneRenderer::apply_scheduled_brightness(const tmillis_t now_ms)
+{
+    if (!brightness_provider_ || now_ms < next_brightness_check_ms_) return;
+    next_brightness_check_ms_ = now_ms + 1000;
+
+    const auto desired = brightness_provider_();
+    if (!desired.has_value()) {
+        // Schedule switched off: restore the brightness the matrix had before we took over (--led-brightness).
+        if (applied_brightness_ >= 0 && unscheduled_brightness_ > 0) {
+            matrix_->SetBrightness(static_cast<uint8_t>(unscheduled_brightness_));
+            spdlog::debug("Brightness schedule disabled, restored {}%", unscheduled_brightness_);
+        }
+        applied_brightness_ = -1;
+        return;
+    }
+    const int brightness = std::clamp(*desired, 1, 100);
+    if (brightness == applied_brightness_) return;
+    if (applied_brightness_ < 0) unscheduled_brightness_ = matrix_->brightness();
+
+    matrix_->SetBrightness(static_cast<uint8_t>(brightness));
+    applied_brightness_ = brightness;
+    spdlog::debug("Scheduled brightness set to {}%", brightness);
 }
 
 void SceneRenderer::render_fallback()

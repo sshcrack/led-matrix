@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import useFetch from '~/useFetch'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import ShaderUrlProviders from '~/components/modify-providers/ShaderUrlProviders'
 import AddProviderButton from '~/components/modify-providers/AddProviderButton'
 import type { RawPreset } from '~/apiTypes/list_presets'
@@ -27,23 +27,27 @@ export default function ModifyShaderProviders() {
   const { data: rawPreset, isLoading } = useFetch<RawPreset>(`/presets?id=${encodeURIComponent(presetId)}`)
   const { data: providerDefs } = useFetch<ListProviders[]>('/list_providers')
 
-  useEffect(() => {
-    if (!rawPreset) return
+  // Re-derive local editing state whenever the fetched preset or scene changes
+  // (adjusting state during render rather than in an effect).
+  const [syncedFrom, setSyncedFrom] = useState<{ raw: RawPreset | null; sceneId: string }>({ raw: null, sceneId })
+  if (rawPreset && (syncedFrom.raw !== rawPreset || syncedFrom.sceneId !== sceneId)) {
+    setSyncedFrom({ raw: rawPreset, sceneId })
     const p = arrayToObjectPresets(rawPreset)
     setPreset(p)
     const scene = p.scenes[sceneId]
-    if (!scene) return
-    const providerArgs: ProviderValue[] = []
-    for (const [, val] of Object.entries(scene.arguments)) {
-      if (val && typeof val === 'object' && 'type' in val && 'uuid' in val) {
-        const ptype = (val as ProviderValue).type
-        if (ptype === 'random' || ptype === 'shader_collection') {
-          providerArgs.push(val as ProviderValue)
+    if (scene) {
+      const providerArgs: ProviderValue[] = []
+      for (const [, val] of Object.entries(scene.arguments)) {
+        if (val && typeof val === 'object' && 'type' in val && 'uuid' in val) {
+          const ptype = (val as ProviderValue).type
+          if (ptype === 'random' || ptype === 'shader_collection') {
+            providerArgs.push(val as ProviderValue)
+          }
         }
       }
+      setProviders(providerArgs)
     }
-    setProviders(providerArgs)
-  }, [rawPreset, sceneId])
+  }
 
   const handleSave = async () => {
     if (!apiUrl || !preset) return

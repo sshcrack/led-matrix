@@ -6,7 +6,9 @@
 #include "nlohmann/json.hpp"
 #include <random>
 #include "spdlog/spdlog.h"
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <ctime>
 
 using namespace spdlog;
@@ -84,6 +86,7 @@ namespace ConfigData {
             {"schedules", p.schedules},
             {"custom_scene_variants", p.custom_scene_variants},
             {"scheduling_enabled", p.scheduling_enabled},
+            {"brightness_schedule", p.brightness_schedule},
             {"operation_mode", p.operation_mode},
             {"automatic_director_seed", p.automatic_director_seed},
             {"automatic_preferences", p.automatic_preferences},
@@ -119,11 +122,73 @@ namespace ConfigData {
         p.schedules = j.value("schedules", std::map<string, Schedule>());
         p.custom_scene_variants = j.value("custom_scene_variants", std::map<string, vector<CustomSceneVariant>>());
         p.scheduling_enabled = j.value("scheduling_enabled", false);
+        p.brightness_schedule = j.contains("brightness_schedule")
+            ? j.at("brightness_schedule").get<BrightnessSchedule>()
+            : BrightnessSchedule{};
         p.operation_mode = j.value("operation_mode", std::string("automatic"));
         if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
         p.automatic_director_seed = j.value("automatic_director_seed", std::uint64_t{0});
         p.automatic_preferences = j.value("automatic_preferences", std::map<string, string>());
         p.update_settings = j.value("update_settings", UpdateSettings());
+    }
+
+    void to_json(json &j, const BrightnessSchedule &p) {
+        j = json{
+            {"enabled", p.enabled},
+            {"day_brightness", p.day_brightness},
+            {"night_brightness", p.night_brightness},
+            {"night_start_hour", p.night_start_hour},
+            {"night_start_minute", p.night_start_minute},
+            {"night_end_hour", p.night_end_hour},
+            {"night_end_minute", p.night_end_minute},
+            {"fade_minutes", p.fade_minutes},
+        };
+    }
+
+    void from_json(const json &j, BrightnessSchedule &p) {
+        const BrightnessSchedule defaults;
+        p.enabled = j.value("enabled", defaults.enabled);
+        p.day_brightness = j.value("day_brightness", defaults.day_brightness);
+        p.night_brightness = j.value("night_brightness", defaults.night_brightness);
+        p.night_start_hour = j.value("night_start_hour", defaults.night_start_hour);
+        p.night_start_minute = j.value("night_start_minute", defaults.night_start_minute);
+        p.night_end_hour = j.value("night_end_hour", defaults.night_end_hour);
+        p.night_end_minute = j.value("night_end_minute", defaults.night_end_minute);
+        p.fade_minutes = j.value("fade_minutes", defaults.fade_minutes);
+        p.sanitize();
+    }
+
+    void BrightnessSchedule::sanitize() {
+        day_brightness = std::clamp(day_brightness, 1, 100);
+        night_brightness = std::clamp(night_brightness, 1, 100);
+        night_start_hour = std::clamp(night_start_hour, 0, 23);
+        night_start_minute = std::clamp(night_start_minute, 0, 59);
+        night_end_hour = std::clamp(night_end_hour, 0, 23);
+        night_end_minute = std::clamp(night_end_minute, 0, 59);
+        fade_minutes = std::clamp(fade_minutes, 0, 180);
+    }
+
+    int BrightnessSchedule::brightness_at(int minute_of_day) const {
+        constexpr int day_minutes = 24 * 60;
+        minute_of_day = ((minute_of_day % day_minutes) + day_minutes) % day_minutes;
+        const int start = night_start_hour * 60 + night_start_minute;
+        const int end = night_end_hour * 60 + night_end_minute;
+        if (start == end) return day_brightness;
+
+        const auto since = [&](int boundary) { return (minute_of_day - boundary + day_minutes) % day_minutes; };
+        const int night_length = (end - start + day_minutes) % day_minutes;
+        const int day_length = day_minutes - night_length;
+        const bool is_night = since(start) < night_length;
+
+        const int from = is_night ? day_brightness : night_brightness;
+        const int to = is_night ? night_brightness : day_brightness;
+        const int elapsed = is_night ? since(start) : since(end);
+        const int phase_length = is_night ? night_length : day_length;
+        const int fade = std::min(fade_minutes, phase_length);
+        if (fade <= 0 || elapsed >= fade) return to;
+
+        const double t = static_cast<double>(elapsed) / static_cast<double>(fade);
+        return static_cast<int>(std::lround(from + (to - from) * t));
     }
 
     void from_json(const json &j, Schedule &p) {

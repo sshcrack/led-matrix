@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "RenderOffloadDesktop.h"
 
 #include <filesystem>
@@ -119,6 +120,7 @@ bool RenderOffloadDesktop::worker_alive()
             spdlog::warn("Failed to query scene worker exit code (Windows error {})", GetLastError());
         else
             spdlog::warn("Scene worker exited unexpectedly with code {}", code);
+        note_worker_exit();
         CloseHandle(worker_process_.hProcess);
         CloseHandle(worker_process_.hThread);
         worker_process_ = {};
@@ -141,6 +143,7 @@ bool RenderOffloadDesktop::worker_alive()
             spdlog::warn("Scene worker exited unexpectedly from signal {}", WTERMSIG(status));
         else
             spdlog::warn("Scene worker exited unexpectedly");
+        note_worker_exit();
         worker_pid_ = -1;
         return false;
     }
@@ -150,6 +153,15 @@ bool RenderOffloadDesktop::worker_alive()
     }
     return true;
 #endif
+}
+
+void RenderOffloadDesktop::note_worker_exit()
+{
+    if (worker_started_at_ != Clock::time_point{} && Clock::now() - worker_started_at_ < fast_exit_window)
+        ++consecutive_fast_exits_;
+    else
+        consecutive_fast_exits_ = 0;
+    worker_started_at_ = {};
 }
 
 void RenderOffloadDesktop::ensure_worker()
@@ -176,9 +188,28 @@ void RenderOffloadDesktop::ensure_worker()
     if (host.empty() || alive)
         return;
 
+    // A different matrix target is a fresh start for crash-loop detection.
+    if (host != worker_host_ || port != worker_port_)
+        consecutive_fast_exits_ = 0;
+
+    if (consecutive_fast_exits_ >= max_fast_exits) {
+        std::lock_guard lock(mutex_);
+        if (worker_error_.empty()) {
+            worker_error_ = "scene worker crashed " + std::to_string(consecutive_fast_exits_)
+                + " times right after starting; not restarting it. Crash reports: "
+                + (get_data_dir() / "crashes").string();
+            spdlog::error("Render offload: {}", worker_error_);
+        }
+        return;
+    }
+
+    auto delay = std::chrono::duration_cast<Clock::duration>(base_relaunch_delay);
+    for (unsigned i = 0; i < consecutive_fast_exits_ && delay < max_relaunch_delay; ++i)
+        delay *= 2;
+    delay = (std::min)(delay, std::chrono::duration_cast<Clock::duration>(max_relaunch_delay));
+
     const auto now = Clock::now();
-    if (last_launch_attempt_ != Clock::time_point{}
-        && now - last_launch_attempt_ < std::chrono::seconds(2))
+    if (last_launch_attempt_ != Clock::time_point{} && now - last_launch_attempt_ < delay)
         return;
     last_launch_attempt_ = now;
     start_worker(host, port, client_id);
@@ -271,6 +302,7 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
     worker_host_ = host;
     worker_client_id_ = client_id;
     worker_port_ = port;
+    worker_started_at_ = Clock::now();
     {
         std::lock_guard lock(mutex_);
         worker_error_.clear();

@@ -219,6 +219,13 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           EGL_PLATFORM: surfaceless
 
+      - name: Run desktop test suite
+        if: matrix.name == 'desktop-linux'
+        run: ctest --test-dir desktop_build --output-on-failure --parallel 2 --timeout 180
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          EGL_PLATFORM: surfaceless
+
       - name: Run memory and undefined-behavior regressions
         if: matrix.name == 'emulator-sanitizers'
         run: ctest --test-dir emulator_build --output-on-failure -R 'media_.*smoke|spotify_cover_lifecycle_smoke|ambiance_packs_smoke|automatic_director_smoke|live_frame_snapshot_smoke|scene_renderer_frame_hold_smoke|transition_frame_hold_smoke|desktop_producer_ownership_smoke|runtime_inputs_smoke'

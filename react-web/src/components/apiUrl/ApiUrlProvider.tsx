@@ -1,33 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { ApiUrlContext } from './apiUrlContext'
 
-const ApiUrlContext = createContext<string | null>(null)
-
-export function useApiUrl(): string | null {
-  return useContext(ApiUrlContext)
+function readInitialApiUrl(): string | null {
+  if (!import.meta.env.DEV) return window.location.protocol + '//' + window.location.host
+  return localStorage.getItem('apiUrl') || null
 }
 
 export function ApiUrlProvider({ children }: { children: React.ReactNode }) {
-  const [apiUrl, setApiUrl] = useState<string | null>(null)
-  const [showDialog, setShowDialog] = useState(false)
+  const [apiUrl, setApiUrl] = useState<string | null>(readInitialApiUrl)
+  const [showDialog, setShowDialog] = useState(() => readInitialApiUrl() === null)
   const [inputValue, setInputValue] = useState('')
-
-  useEffect(() => {
-    const isDev = import.meta.env.DEV
-    if (!isDev) {
-      setApiUrl(window.location.protocol + '//' + window.location.host)
-    } else {
-      const stored = localStorage.getItem('apiUrl')
-      if (stored) {
-        setApiUrl(stored)
-      } else {
-        setShowDialog(true)
-      }
-    }
-  }, [])
 
   const handleSave = () => {
     const url = inputValue.trim().replace(/\/$/, '')

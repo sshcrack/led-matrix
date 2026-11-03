@@ -19,6 +19,7 @@ Config::General::General(const General &other)
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     ytdlpPath = other.ytdlpPath;
+    apiToken = other.apiToken;
 }
 
 Config::General &Config::General::operator=(const General &other)
@@ -37,6 +38,8 @@ Config::General &Config::General::operator=(const General &other)
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
         ytdlpPath = other.ytdlpPath;
+        apiToken = other.apiToken;
+    apiToken = other.apiToken;
     }
     return *this;
 }
@@ -52,6 +55,7 @@ Config::General::General(General &&other) noexcept
     turnMatrixOffOnExit = other.turnMatrixOffOnExit;
     turnMatrixOnOnStart = other.turnMatrixOnOnStart;
     ytdlpPath = std::move(other.ytdlpPath);
+    apiToken = std::move(other.apiToken);
 }
 
 Config::General &Config::General::operator=(General &&other) noexcept
@@ -70,6 +74,8 @@ Config::General &Config::General::operator=(General &&other) noexcept
         turnMatrixOffOnExit = other.turnMatrixOffOnExit;
         turnMatrixOnOnStart = other.turnMatrixOnOnStart;
         ytdlpPath = std::move(other.ytdlpPath);
+        apiToken = std::move(other.apiToken);
+    apiToken = std::move(other.apiToken);
     }
     return *this;
 }
@@ -187,6 +193,39 @@ void Config::General::setYtDlpPath(const std::string &path)
     ytdlpPath = path;
 }
 
+std::string Config::General::getApiToken() const
+{
+    std::shared_lock lock(mutex_);
+    return apiToken;
+}
+
+void Config::General::setApiToken(const std::string &token)
+{
+    {
+        std::unique_lock lock(mutex_);
+        apiToken = token;
+    }
+    exportApiTokenToEnvironment(token);
+}
+
+void Config::exportApiTokenToEnvironment(const std::string &token)
+{
+#ifdef _WIN32
+    _putenv_s("LED_MATRIX_API_TOKEN", token.c_str());
+#else
+    if (token.empty())
+        unsetenv("LED_MATRIX_API_TOKEN");
+    else
+        setenv("LED_MATRIX_API_TOKEN", token.c_str(), 1);
+#endif
+}
+
+std::string Config::matrixAuthorizationHeader()
+{
+    const auto token = ConfigManager::instance()->getGeneralConfig().getApiToken();
+    return token.empty() ? std::string{} : "Bearer " + token;
+}
+
 void Config::from_json(const json &j, General &p)
 {
     std::unique_lock lock(p.mutex_);
@@ -215,6 +254,12 @@ void Config::from_json(const json &j, General &p)
         j.at("ytdlpPath").get_to(p.ytdlpPath);
     else
         p.ytdlpPath.clear(); // Empty = discover from PATH.
+
+    if (j.contains("apiToken"))
+        j.at("apiToken").get_to(p.apiToken);
+    else
+        p.apiToken.clear();
+    Config::exportApiTokenToEnvironment(p.apiToken);
 }
 
 void Config::to_json(json &j, const General &p)
@@ -227,7 +272,8 @@ void Config::to_json(json &j, const General &p)
         {"udpFpsLimit", p.udpFpsLimit},
         {"turnMatrixOffOnExit", p.turnMatrixOffOnExit},
         {"turnMatrixOnOnStart", p.turnMatrixOnOnStart},
-        {"ytdlpPath", p.ytdlpPath}
+        {"ytdlpPath", p.ytdlpPath},
+        {"apiToken", p.apiToken}
     };
 }
 

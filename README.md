@@ -225,6 +225,8 @@ chmod +x install_led_matrix.sh
 The script will ask you for your matrix configuration and any optional features. After installation, the service will start automatically.
 You can now access the LED Matrix control at http://<led_matrix_ip>:8080/
 
+**API access control (optional):** the installer can ask for an API token. If set (`LED_MATRIX_API_TOKEN` in `/etc/default/led-matrix`, change with `sudo dpkg-reconfigure led-matrix`), the web UI prompts for it once and the desktop app has an "API token" setting. Browser requests from other websites are always rejected; to use a dev server such as Vite, set `LED_MATRIX_ALLOWED_ORIGINS=http://localhost:5173`.
+
 ---
 
 ## 🖥️ **Desktop App**

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
-import type { Property, ListProviders } from '~/apiTypes/list_scenes'
+import type { Property, ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 import { Button } from '~/components/ui/button'
 import BooleanProperty from './properties/BooleanProperty'
 import ColorProperty from './properties/ColorProperty'
@@ -14,15 +14,15 @@ import AudioModulationProperty from './properties/AudioModulationProperty'
 import { propertyGroup, propertyVisible } from './propertyUi'
 
 interface PropertyListProps {
-  properties: Property<any>[]
-  arguments: Record<string, any>
+  properties: Property<unknown>[]
+  arguments: Record<string, unknown>
   providers: ListProviders[]
-  onChange: (args: Record<string, any>) => void
+  onChange: (args: Record<string, unknown>) => void
 }
 
 export default function PropertyList({ properties, arguments: args, providers, onChange }: PropertyListProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const update = (name: string, value: any) => onChange({ ...args, [name]: value })
+  const update = (name: string, value: unknown) => onChange({ ...args, [name]: value })
 
   const visible = properties.filter((property) => propertyVisible(property, args))
   const normal = visible.filter((property) => !property.additional?.advanced)
@@ -31,7 +31,7 @@ export default function PropertyList({ properties, arguments: args, providers, o
 
   if (properties.length === 0) return <p className="text-sm text-muted-foreground italic">No properties</p>
 
-  const groups = new Map<string, Property<any>[]>()
+  const groups = new Map<string, Property<unknown>[]>()
   for (const property of displayed) {
     const group = propertyGroup(property)
     const list = groups.get(group) ?? []
@@ -39,9 +39,8 @@ export default function PropertyList({ properties, arguments: args, providers, o
     groups.set(group, list)
   }
 
-  const renderProperty = (prop: Property<any>) => {
+  const renderProperty = (prop: Property<unknown>) => {
     const value = args[prop.name] ?? prop.default_value
-    const commonProps = { property: prop, value, onChange: (v: any) => update(prop.name, v) }
     if (prop.type_id === 'json' && prop.additional?.control === 'audio_modulations') {
       return <AudioModulationProperty
         property={prop}
@@ -50,16 +49,17 @@ export default function PropertyList({ properties, arguments: args, providers, o
         onChange={(next) => update(prop.name, next)}
       />
     }
+    const onValue = (v: unknown) => update(prop.name, v)
     switch (prop.type_id) {
-      case 'bool': return <BooleanProperty {...commonProps} />
-      case 'color': return <ColorProperty {...commonProps} />
-      case 'enum': return <EnumProperty {...commonProps} />
+      case 'bool': return <BooleanProperty property={prop as Property<boolean>} value={value as boolean} onChange={onValue} />
+      case 'color': return <ColorProperty property={prop as Property<number>} value={value as number | string} onChange={onValue} />
+      case 'enum': return <EnumProperty property={prop as Property<string>} value={value as string} onChange={onValue} />
       case 'int': case 'double': case 'float': case 'int16_t': case 'uint8_t': case 'millis':
-        return <NumberProperty {...commonProps} />
-      case 'string': return <StringProperty {...commonProps} />
-      case 'string[]': return <StringListProperty {...commonProps} />
-      case 'json': return <ProvidersProperty property={prop} value={value} providers={providers} onChange={(v) => update(prop.name, v)} />
-      default: return <GeneralProperty {...commonProps} />
+        return <NumberProperty property={prop as Property<number>} value={value as number} onChange={onValue} />
+      case 'string': return <StringProperty property={prop as Property<string>} value={value as string} onChange={onValue} />
+      case 'string[]': return <StringListProperty property={prop as Property<string[]>} value={value as string[]} onChange={onValue} />
+      case 'json': return <ProvidersProperty property={prop} value={value as ProviderValue | null} providers={providers} onChange={onValue} />
+      default: return <GeneralProperty property={prop} value={value} onChange={onValue} />
     }
   }
 
