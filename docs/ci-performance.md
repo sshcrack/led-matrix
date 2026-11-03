@@ -11,7 +11,9 @@ The NuGet backend is BaGetter at `storage:5001`, reverse proxied by Nginx on `pi
 The origin certificate and public Cloudflare certificate validate with the system
 CA bundle. Nginx already permits 2 GB requests. Cloudflare's proxy can still limit
 large uploads; GitHub-backed vcpkg binary archives provide a second cache for those
-packages without requiring public DNS changes. No server restart was needed for
+packages without requiring public DNS changes. The dependency cache key includes
+the hosted runner image generation and toolchain/manifest inputs, so a compiler
+upgrade can save a new cache instead of repeatedly restoring an obsolete one. No server restart was needed for
 the reproduced TLS problem.
 
 Application compilation uses sccache with the GitHub Actions backend. Compiler,
@@ -28,7 +30,8 @@ out Git tree and package version. Release preparation searches successful CI run
 from this repository for an exact tree/version match with all three package
 artifacts still available. A matching run is reused, including after a squash
 merge with a different commit ID. Missing/expired/mismatched artifacts or lookup
-errors fall back to the normal complete release build.
+errors fall back to the normal complete release build. Release tags explicitly
+target the workflow commit, even if the default branch advances meanwhile.
 
 References:
 - https://www.mono-project.com/docs/faq/security/

@@ -93,11 +93,17 @@ jobs:
         with:
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
 
+      - name: Identify dependency cache generation
+        shell: bash
+        run: |
+          echo "VCPKG_CACHE_IMAGE=${ImageOS:-$RUNNER_OS}-${ImageVersion:-unknown}" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/vcpkg-binary-cache"
+
       - name: Cache vcpkg binary archives
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vcpkg-binary-cache
-          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
+          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
           restore-keys: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-
 
       - name: Configure NuGet publishing key (Linux)
