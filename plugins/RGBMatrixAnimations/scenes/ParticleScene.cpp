@@ -34,6 +34,7 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
         // pixels from the outgoing scene, even when the first delta is zero.
         canvas->Clear();
         auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, canvas);
+        if (random_seed_) local_renderer->set_random_seed(*random_seed_);
         auto local_animation = std::make_shared<GravityParticles>(local_renderer, shake->get(), bounce->get());
 
         renderer = local_renderer;

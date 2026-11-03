@@ -43,6 +43,7 @@ namespace AmbientScenes {
                               uint8_t r, uint8_t g, uint8_t b, int width, int height);
 
     public:
+        void set_random_seed(uint32_t seed) override { gen.seed(seed); }
         explicit StarFieldScene();
         ~StarFieldScene() override = default;
         Scenes::SceneCapabilities get_capabilities() const override { auto caps = Scenes::Scene::get_capabilities(); caps.supports_audio = true; return caps; }
