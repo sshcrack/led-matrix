@@ -87,3 +87,28 @@ new compiler objects. This avoids duplicating full compiler caches into each
 isolated PR scope while still retaining PR dependency snapshots. Modified sources
 can compile normally in a PR; after merging, their objects join the shared master
 cache. No paid cache-storage limit increase is required by this configuration.
+
+## Source transfer
+
+Profiling the warm PR #88 run showed three network costs outside compilation:
+
+- `actions/checkout` spent 90-110 s on most jobs. About 50 MiB of the 94 MiB
+  tree is README/docs GIFs (`plugins/*/img/`, `docs/*.gif`) that no build reads.
+  Build jobs use a non-cone sparse checkout that excludes them; sparse checkout
+  also makes `actions/checkout` use a blobless partial clone, so excluded blobs
+  are never downloaded. `scene_previews/` stays because packages install it.
+- Submodules pinned to non-tip commits are fetched with an explicit
+  `git submodule update --init --depth 1` after checkout.
+- `lukka/run-vcpkg` cloned the full microsoft/vcpkg history, and vcpkg's git
+  default registry fetched the full history again into its registry cache
+  (`Fetching registry information ... (HEAD)`: 80-115 s). CI now seeds both
+  with depth-1 fetches of the pinned baseline (plus registry `HEAD`) and points
+  `X_VCPKG_REGISTRIES_CACHE` at the seeded cache. Every port version resolved
+  from the baseline is a tree inside the baseline commit, so the install plan
+  and package ABIs are unchanged; a local dry run produced an identical plan to
+  the full-history registry. A future `overrides` entry or `version>=`
+  constraint newer than the baseline would need a deeper registry fetch.
+
+When the exact installed-dependency cache hits, CI skips Mono setup, the NuGet
+key/probe steps, and removes NuGet from `VCPKG_BINARY_SOURCES`: nothing needs to
+be restored or published. A miss uses the full NuGet + GitHub archive path.

@@ -53,10 +53,21 @@ jobs:
       SCCACHE_GHA_RW_MODE: ${{ github.event_name == 'pull_request' && 'READ_ONLY' || 'READ_WRITE' }}
       SCCACHE_GHA_VERSION: ${{ matrix.name }}
     steps:
+      # README/docs GIFs are not build inputs; sparse checkout also enables a
+      # blobless partial clone, so those ~50 MiB are never transferred.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          submodules: recursive
+          sparse-checkout: |
+            /*
+            !/plugins/*/img/
+            !/docs/*.gif
+          sparse-checkout-cone-mode: false
+
+      # Submodules are pinned to non-tip commits; fetch exactly those commits.
+      - name: Fetch submodules
+        shell: bash
+        run: git submodule update --init --depth 1 --recursive --jobs 4
 
       - name: Download web build artifact
         uses: actions/download-artifact@v4
@@ -78,8 +89,24 @@ jobs:
           packages: libasound2-dev python3-jinja2 pkg-config autoconf autoconf-archive automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libglu1-mesa-dev libibus-1.0-dev libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
           version: 1.1
 
+      - name: Identify dependency cache generation
+        shell: bash
+        run: |
+          echo "VCPKG_CACHE_IMAGE=${ImageOS:-$RUNNER_OS}-${ImageVersion:-unknown}" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/vcpkg-binary-cache"
+
+      # vcpkg does not copy NuGet restores into its files-cache provider.
+      # Save the installed tree too, with an exact configuration/image key.
+      - name: Cache installed vcpkg dependencies
+        id: installed-dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.preset == 'cross-compile' && 'build/vcpkg_installed' || startsWith(matrix.name, 'emulator-') && 'emulator_build/vcpkg_installed' || 'desktop_build/vcpkg_installed' }}
+          key: ${{ runner.os }}-vcpkg-installed-v1-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
+
+      # Mono/NuGet are only needed when dependencies must be restored or published.
       - name: Install Mono and synchronize certificate stores
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && steps.installed-dependencies.outputs.cache-hit != 'true'
         run: bash scripts/setup_mono_certificates.sh
 
       - name: Configure compiler cache diagnostics
@@ -93,15 +120,27 @@ jobs:
         with:
           cmakeVersion: "~3.25.0"
 
+      # run-vcpkg and vcpkg's git registry otherwise fetch the full
+      # microsoft/vcpkg history (1-2 minutes per job). Only the pinned
+      # baseline tree is needed: every port version resolved from the
+      # baseline lives in that commit. vcpkg's later `fetch HEAD` into the
+      # shallow registry cache then only transfers the newest commit.
+      - name: Seed shallow vcpkg checkouts
+        shell: bash
+        run: |
+          baseline=$(jq -r '."default-registry".baseline' vcpkg-configuration.json)
+          registry=$(jq -r '."default-registry".repository' vcpkg-configuration.json)
+          git init -q vcpkg
+          git -C vcpkg fetch -q --depth 1 "$registry" "$baseline"
+          git -C vcpkg -c advice.detachedHead=false checkout -q FETCH_HEAD
+          cache="$RUNNER_TEMP/vcpkg-registries"
+          echo "X_VCPKG_REGISTRIES_CACHE=$cache" >> "$GITHUB_ENV"
+          git init -q "$cache/git"
+          git -C "$cache/git" fetch -q --depth 1 "$registry" HEAD "$baseline"
+
       - uses: lukka/run-vcpkg@v11
         with:
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
-
-      - name: Identify dependency cache generation
-        shell: bash
-        run: |
-          echo "VCPKG_CACHE_IMAGE=${ImageOS:-$RUNNER_OS}-${ImageVersion:-unknown}" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/vcpkg-binary-cache"
 
       - name: Cache vcpkg binary archives
         uses: actions/cache@v4
@@ -110,17 +149,8 @@ jobs:
           key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
           restore-keys: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-
 
-      # vcpkg does not copy NuGet restores into its files-cache provider.
-      # Save the installed tree too, with an exact configuration/image key.
-      - name: Cache installed vcpkg dependencies
-        id: installed-dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ matrix.preset == 'cross-compile' && 'build/vcpkg_installed' || startsWith(matrix.name, 'emulator-') && 'emulator_build/vcpkg_installed' || 'desktop_build/vcpkg_installed' }}
-          key: ${{ runner.os }}-vcpkg-installed-v1-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
-
       - name: Configure NuGet publishing key (Linux)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && steps.installed-dependencies.outputs.cache-hit != 'true'
         shell: bash
         env:
           VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
@@ -130,13 +160,11 @@ jobs:
           NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
           mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
           # Probe the actual Mono/NuGet TLS path before vcpkg starts its restores.
-          if [[ "${{ steps.installed-dependencies.outputs.cache-hit }}" != 'true' ]]; then
-            timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive || \
-              echo "::warning::NuGet probe failed; vcpkg will try the available cache providers and source builds"
-          fi
+          timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive || \
+            echo "::warning::NuGet probe failed; vcpkg will try the available cache providers and source builds"
 
       - name: Configure NuGet publishing key (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && steps.installed-dependencies.outputs.cache-hit != 'true'
         shell: pwsh
         env:
           VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg.exe
@@ -180,7 +208,8 @@ jobs:
           # Use readwrite so new port-versions are cached; BaGetter may
           # reject very large packages (e.g. hello-imgui) with 413, but
           # vcpkg logs this as a warning and the build still succeeds.
-          VCPKG_BINARY_SOURCES: "clear;files,${{ runner.temp }}/vcpkg-binary-cache,readwrite;nugettimeout,30;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
+          # An exact installed-tree hit needs no restores, so leave NuGet (and Mono) out.
+          VCPKG_BINARY_SOURCES: ${{ steps.installed-dependencies.outputs.cache-hit == 'true' && format('clear;files,{0}/vcpkg-binary-cache,readwrite', runner.temp) || format('clear;files,{0}/vcpkg-binary-cache,readwrite;nugettimeout,30;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite', runner.temp) }}
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
       - name: Run complete emulator suite
