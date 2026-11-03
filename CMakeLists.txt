@@ -394,6 +394,17 @@ if(ENABLE_DESKTOP OR ENABLE_EMULATOR)
         )
         set_tests_properties(crash_reporter_${CRASH_MODE}_smoke PROPERTIES RUN_SERIAL TRUE)
     endforeach()
+
+    add_test(NAME crash_reporter_retention_smoke
+        COMMAND ${CMAKE_COMMAND}
+            -DPROBE=$<TARGET_FILE:crash_reporter_probe>
+            -DCRASH_DIR=${CMAKE_BINARY_DIR}/crash-reporter-retention
+            -DMODE=exception
+            -DSEED_OLD_REPORTS=30
+            -DWIN32_TEST=${WIN32}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/crash_reporter_smoke.cmake
+    )
+    set_tests_properties(crash_reporter_retention_smoke PROPERTIES RUN_SERIAL TRUE)
 endif()
 
 if(ENABLE_DESKTOP)
