@@ -6,6 +6,11 @@ register_plugin(SpotifyMV
     DESKTOP
     desktop/SpotifyMVDesktop.cpp
     desktop/SpotifyMVDesktop.h
+    desktop/SpotifyMVDesktopMessages.cpp
+    desktop/SpotifyMVDesktopPlayback.cpp
+    desktop/SpotifyMVDesktopSearch.cpp
+    desktop/SpotifyMVDesktopSeek.cpp
+    desktop/SpotifyMVDesktopUi.cpp
     desktop/SpotifyMVPacket.cpp
     desktop/SpotifyMVPacket.h
     desktop/YouTubeSearcher.cpp

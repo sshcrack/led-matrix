@@ -12,9 +12,12 @@ class Post {
 protected:
     string img_url;
     string file_name;
+    bool block_internal_hosts = false;
 public:
     virtual ~Post() = default;
     explicit Post(const string &img_url, bool maybe_fetch_type = true);
+    // For URLs supplied directly by API clients: refuse loopback/link-local destinations.
+    Post(const string &img_url, bool maybe_fetch_type, bool block_internal_hosts);
 
     string get_filename();
 

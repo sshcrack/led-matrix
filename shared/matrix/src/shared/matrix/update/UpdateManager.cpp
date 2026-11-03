@@ -7,6 +7,7 @@
 #include "shared/common/Version.h"
 #include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
+#include "picosha2.h"
 #include <filesystem>
 #include <fstream>
 #include <chrono>
@@ -24,6 +25,8 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
+#include <cctype>
+#include <iterator>
 #endif
 
 using namespace spdlog;
@@ -221,6 +224,7 @@ namespace Update
 
             // Find the led-matrix arm64 deb asset
             string download_url = "";
+            string sha256 = "";
             bool found_asset = false;
 
             if (json_response.contains("assets"))
@@ -233,6 +237,9 @@ namespace Update
                         asset_name.ends_with(".deb"))
                     {
                         download_url = asset["browser_download_url"];
+                        const string digest = asset.value("digest", "");
+                        if (digest.starts_with("sha256:"))
+                            sha256 = digest.substr(7);
                         found_asset = true;
                         break;
                     }
@@ -241,10 +248,13 @@ namespace Update
 
             if (!found_asset)
                 return std::unexpected("Could not find led-matrix arm64 asset in release");
+            if (!download_url.starts_with("https://github.com/"))
+                return std::unexpected("Refusing update asset outside https://github.com/: " + download_url);
 
             UpdateInfo info;
             info.version = version.value_or(latest_version);
             info.download_url = download_url;
+            info.sha256 = sha256;
             info.body = json_response.value("body", "");
             info.is_prerelease = json_response.value("prerelease", false);
 
@@ -372,9 +382,30 @@ namespace Update
             return std::unexpected("An update is already in progress");
         try
         {
-            string filename = "/tmp/led-matrix-update.deb";
+            // Private 0700 directory: the root-run update script installs this file, so it must not live at a
+            // predictable path in world-writable /tmp where another user could swap or symlink it.
+#ifdef __linux__
+            string dir_template = (filesystem::temp_directory_path() / "led-matrix-update-XXXXXX").string();
+            if (!mkdtemp(dir_template.data()))
+                return std::unexpected("Could not create private update directory: " + string(strerror(errno)));
+            string filename = dir_template + "/led-matrix-update.deb";
+#else
+            // Updates are only installed on Linux; keep other platforms compiling.
+            const auto dir = filesystem::temp_directory_path() / "led-matrix-update";
+            filesystem::create_directories(dir);
+            string filename = (dir / "led-matrix-update.deb").string();
+#endif
 
             auto download_res = download_update(update_info.download_url, filename);
+            if (download_res.has_value())
+            {
+                if (update_info.sha256.empty())
+                    warn("Release asset has no published digest; skipping SHA-256 verification");
+                else
+                    download_res = verify_sha256(filename, update_info.sha256);
+                if (!download_res.has_value())
+                    try_remove(filename);
+            }
             if (!download_res.has_value())
             {
                 status_.store(UpdateStatus::ERROR);
@@ -402,6 +433,25 @@ namespace Update
         {
             return std::unexpected("Manual update failed: " + string(ex.what()));
         }
+    }
+
+    std::expected<void, std::string> UpdateManager::verify_sha256(const string &filename, const string &expected_hex)
+    {
+        ifstream file(filename, ios::binary);
+        if (!file)
+            return std::unexpected("Could not open downloaded update for verification");
+
+        std::vector<unsigned char> hash(picosha2::k_digest_size);
+        picosha2::hash256(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), hash.begin(), hash.end());
+        const string actual = picosha2::bytes_to_hex_string(hash.begin(), hash.end());
+
+        string expected = expected_hex;
+        std::ranges::transform(expected, expected.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (actual != expected)
+            return std::unexpected("SHA-256 mismatch for downloaded update (expected " + expected + ", got " + actual + ")");
+
+        info("Verified update SHA-256: {}", actual);
+        return {};
     }
 
     UpdateStatus UpdateManager::get_status() const

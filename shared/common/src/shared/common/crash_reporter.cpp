@@ -17,9 +17,13 @@
 #include <cstring>
 #include <ctime>
 #include <exception>
+#include <filesystem>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
+#include <vector>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -606,6 +610,55 @@ void cleanup_pending_report() noexcept
 #endif
 }
 
+// Keeps the newest kMaxKeptReports crash reports (.txt plus matching .dmp) so a
+// crash-looping process cannot fill the disk. Pending files of live processes
+// are never touched.
+constexpr std::size_t kMaxKeptReports = 20;
+
+void prune_old_reports(const std::filesystem::path& directory) noexcept
+{
+    try {
+        std::map<std::string, std::filesystem::file_time_type> newest_by_stem;
+        std::vector<std::filesystem::path> files;
+        std::error_code ec;
+        for (std::filesystem::directory_iterator it(directory, ec), end; !ec && it != end; it.increment(ec)) {
+            const auto& path = it->path();
+            const auto name = path.filename().string();
+            const auto extension = path.extension().string();
+            if (!name.starts_with("crash-") || (extension != ".txt" && extension != ".dmp"))
+                continue;
+            std::error_code time_ec;
+            const auto modified = it->last_write_time(time_ec);
+            if (time_ec)
+                continue;
+            auto& newest = newest_by_stem[path.stem().string()];
+            newest = (std::max)(newest, modified);
+            files.push_back(path);
+        }
+        if (newest_by_stem.size() <= kMaxKeptReports)
+            return;
+
+        std::vector<std::pair<std::filesystem::file_time_type, std::string>> ordered;
+        ordered.reserve(newest_by_stem.size());
+        for (const auto& [stem, modified] : newest_by_stem)
+            ordered.emplace_back(modified, stem);
+        std::sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+
+        std::set<std::string> keep;
+        for (std::size_t i = 0; i < kMaxKeptReports; ++i)
+            keep.insert(ordered[i].second);
+        for (const auto& path : files) {
+            if (!keep.contains(path.stem().string())) {
+                std::error_code remove_ec;
+                std::filesystem::remove(path, remove_ec);
+            }
+        }
+    }
+    catch (...) {
+        // Pruning is best-effort.
+    }
+}
+
 }  // namespace
 
 void install(const Config& config) noexcept
@@ -614,6 +667,7 @@ void install(const Config& config) noexcept
         return;
     try {
         std::filesystem::create_directories(config.report_directory);
+        prune_old_reports(config.report_directory);
         char timestamp[32]{};
         fill_timestamp(timestamp, sizeof(timestamp));
 #ifdef _WIN32

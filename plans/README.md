@@ -1,19 +1,14 @@
-# Tech Debt & Refactoring Plan
+# Tech Debt Plan
 
-Four tiers, ordered by severity. Each file is self-contained so agents can execute them independently.
+Remaining items after the June audit (tier 0 is fully resolved).
 
 | Tier | File | Focus |
 |------|------|-------|
-| **0** | `tier0-critical.md` | UB, data races, correctness bugs |
-| **1** | `tier1-high.md` | Architectural debt, maintainability blockers |
-| **2** | `tier2-medium.md` | Code quality, performance, build system |
-| **3** | `tier3-low.md` | Style, naming, minor cleanup |
+| **1** | `tier1-high.md` | Global state, shutdown race |
+| **2** | `tier2-medium.md` | Headers, API conventions |
+| **3** | `tier3-low.md` | Naming, docs, formatting CI |
 
 ## Conventions
 
-- **Do not add comments** unless the fix requires them for correctness.
-- **Follow existing code style** (snake_case for functions/variables, PascalCase for classes).
-- **No emojis** in code or comments.
-- **Run** `cmake --preset emulator && cmake --build --preset emulator` after non-trivial C++ changes to verify compilation.
-- **Run** `cmake --build --preset emulator --target install` before testing.
-- **Commit** changes only when explicitly asked.
+- Do not add comments unless needed for correctness; follow the existing style (snake_case functions, PascalCase classes); no emojis.
+- Build with the emulator preset after non-trivial C++ changes. Commit only when asked.

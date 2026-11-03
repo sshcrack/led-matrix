@@ -19,7 +19,7 @@ namespace Server {
         restinio::traits_t<
             restinio::asio_timer_manager_t,
             restinio::null_logger_t,
-            router_t>;
+            restinio::default_request_handler_t>;
 
     // Alias for container with stored websocket handles.
     using ws_registry_t = std::map<std::uint64_t, rws::ws_handle_t>;

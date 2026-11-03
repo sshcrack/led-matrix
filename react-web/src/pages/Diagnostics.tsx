@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, AudioLines, BrainCircuit, CircleAlert, Network, PlugZap, RefreshCw, Shuffle } from 'lucide-react'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -156,12 +156,10 @@ export default function Diagnostics() {
   const [data, setData] = useState<DiagnosticsData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paused, setPaused] = useState(false)
-  const [seedInput, setSeedInput] = useState('')
+  const [editedSeed, setSeedInput] = useState('')
   const [seedEdited, setSeedEdited] = useState(false)
-
-  useEffect(() => {
-    if (data?.configured_director_seed && !seedEdited) setSeedInput(data.configured_director_seed)
-  }, [data?.configured_director_seed, seedEdited])
+  // Follow the server's configured seed until the user edits the field.
+  const seedInput = seedEdited ? editedSeed : (data?.configured_director_seed || editedSeed)
 
   useEffect(() => {
     if (!apiUrl || paused) return

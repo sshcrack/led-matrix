@@ -1,5 +1,6 @@
 #pragma once
 #include "shared/desktop/macro.h"
+#include "shared/desktop/config.h"
 #include <ixwebsocket/IXWebSocket.h>
 #include "shared/desktop/UdpSender.h"
 #include "shared/desktop/DesktopStreamState.h"
@@ -69,6 +70,10 @@ public:
         }
         spdlog::info("Setting WebSocket URL to: {}", effective);
         webSocket.setUrl(effective);
+        ix::WebSocketHttpHeaders headers;
+        if (const auto auth = Config::matrixAuthorizationHeader(); !auth.empty())
+            headers["Authorization"] = auth;
+        webSocket.setExtraHeaders(headers);
     }
 
     void setup_callback();

@@ -1,6 +1,6 @@
 import { Save, Loader2 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { useConfig } from './ConfigProvider'
+import { useConfig } from './configContext'
 
 export function SaveButton() {
   const { save, isSaving, isDirty } = useConfig()

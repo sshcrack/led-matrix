@@ -9,7 +9,7 @@ import {
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import type { Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import MatrixPreview from '~/components/scene-browser/MatrixPreview'
 import { sceneArgumentsForVariant, sceneDisplayName } from '~/lib/sceneVariants'
 

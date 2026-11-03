@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { ApiUrlProvider } from './components/apiUrl/ApiUrlProvider'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
+import ApiTokenDialog from './components/apiUrl/ApiTokenDialog'
 
 const Home = lazy(() => import('./pages/Home'))
 const Schedules = lazy(() => import('./pages/Schedules'))
@@ -19,6 +20,7 @@ const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 export default function App() {
   return (
     <ApiUrlProvider>
+      <ApiTokenDialog />
       <BrowserRouter basename="/web">
           <Layout>
             <ErrorBoundary>

@@ -32,7 +32,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     document.documentElement.classList.toggle('dark', stored === 'dark' || (!stored && prefersDark))
   }, [])
-  useEffect(() => setMobileOpen(false), [location.pathname])
+  const [openedAt, setOpenedAt] = useState(location.pathname)
+  if (openedAt !== location.pathname) {
+    // Close the mobile menu on navigation (adjust state during render).
+    setOpenedAt(location.pathname)
+    setMobileOpen(false)
+  }
 
   if (useMatch('/modify-:id/*')) return <main className="min-h-screen app-surface">{children}</main>
 

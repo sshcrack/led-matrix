@@ -12,6 +12,7 @@ db_get led-matrix/extra-opts;          EXTRA_OPTS="$RET"
 db_get led-matrix/spotify-enable;      USE_SPOTIFY="$RET"
 db_get led-matrix/spotify-client-id;   SPOTIFY_ID="$RET"
 db_get led-matrix/spotify-client-secret; SPOTIFY_SECRET="$RET"
+db_get led-matrix/api-token;             API_TOKEN="$RET"
 db_get led-matrix/auto-update-enable;  AUTO_UPDATE="$RET"
 db_get led-matrix/auto-update-interval; UPDATE_INTERVAL="$RET"
 
@@ -71,6 +72,13 @@ if [ "$USE_SPOTIFY" = "true" ] && [ -n "$SPOTIFY_ID" ]; then
     cat >> "$ENV_FILE" << EOF
 SPOTIFY_CLIENT_ID="${SPOTIFY_ID_SAFE}"
 SPOTIFY_CLIENT_SECRET="${SPOTIFY_SECRET_SAFE}"
+EOF
+fi
+
+if [ -n "$API_TOKEN" ]; then
+    API_TOKEN_SAFE=$(printf '%s\n' "$API_TOKEN" | sed 's/[$`\\"]/\\&/g')
+    cat >> "$ENV_FILE" << EOF
+LED_MATRIX_API_TOKEN="${API_TOKEN_SAFE}"
 EOF
 fi
 

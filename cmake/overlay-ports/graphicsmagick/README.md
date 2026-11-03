@@ -17,3 +17,13 @@ Release: <https://sourceforge.net/projects/graphicsmagick/files/graphicsmagick/1
 
 SHA-512:
 `2c12a24198a8ee1f86b4c43bf8903d129c891ec2c27ba22287dfc8a5f65c9223b2caa67a37b9a91b10b049ba8425e757738f5d92a9ae70abee76d323af9bd1a0`
+
+## Windows x64 pointer-width fix (port-version 3)
+
+`magick-types.diff` also makes the MSVC branch of `magick/magick_types.h.in`
+honour `_WIN64`. Upstream only checks `WIN64`, which is defined by
+GraphicsMagick's own VisualMagick projects but not by MSVC under vcpkg's
+autotools build, so x64 builds typedef'd `magick_uintptr_t` as 32-bit
+`unsigned long`. `MagickMallocAligned()` then truncated heap pointers above
+4 GiB and every process crashed inside `InitializeMagick()` (seen as an access
+violation in `MagickMallocAligned+0x5c` in `led-matrix-scene-worker`).

@@ -1,4 +1,5 @@
 #include "shared/desktop/MatrixVersionChecker.h"
+#include "shared/desktop/config.h"
 #include <spdlog/spdlog.h>
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
@@ -65,9 +66,12 @@ namespace MatrixVersionChecker
                 std::string url = "http://" + hostname + ":" + std::to_string(port) + "/api/update/status";
                 spdlog::info("Checking matrix version from: {}", url);
                 
+                cpr::Header headers{{"User-Agent", "led-matrix-desktop/" + getDesktopVersion().toString()}};
+                if (const auto auth = Config::matrixAuthorizationHeader(); !auth.empty())
+                    headers["Authorization"] = auth;
                 auto response = cpr::Get(
                     cpr::Url{url},
-                    cpr::Header{{"User-Agent", "led-matrix-desktop/" + getDesktopVersion().toString()}},
+                    headers,
                     cpr::Timeout{5000} // 5 second timeout
                 );
                 

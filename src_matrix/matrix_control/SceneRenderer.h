@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
+#include <optional>
 
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
@@ -31,6 +32,10 @@ public:
 
     void render_fallback();
 
+    /// Supplies the desired panel brightness in percent, or nullopt to leave it untouched.
+    /// Polled at most once per second from the render thread.
+    void set_brightness_provider(std::function<std::optional<int>()> provider) { brightness_provider_ = std::move(provider); }
+
     /// Canvas currently latched on the matrix after the most recent successful
     /// presentation. This is only used at scene-transition boundaries, avoiding
     /// a per-frame framebuffer copy just to recover the visible outgoing frame.
@@ -44,4 +49,10 @@ private:
     const std::atomic<bool> *exit_flag_;
     const std::atomic<bool> *interrupt_flag_;
     FrameCanvas *last_presented_canvas_ = nullptr;
+    std::function<std::optional<int>()> brightness_provider_;
+    tmillis_t next_brightness_check_ms_ = 0;
+    int applied_brightness_ = -1;
+    int unscheduled_brightness_ = -1;
+
+    void apply_scheduled_brightness(tmillis_t now_ms);
 };
