@@ -1,6 +1,5 @@
-#include "matrix_connection.h"
-
 #include "app_state.h"
+#include "matrix_connection.h"
 
 #include <shared/desktop/config.h>
 

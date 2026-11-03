@@ -1,6 +1,5 @@
-#include "tray_window.h"
-
 #include "app_state.h"
+#include "tray_window.h"
 
 #include <hello_imgui/hello_imgui.h>
 #include <spdlog/spdlog.h>

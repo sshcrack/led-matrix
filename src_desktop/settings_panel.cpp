@@ -1,6 +1,5 @@
-#include "settings_panel.h"
-
 #include "app_state.h"
+#include "settings_panel.h"
 #include "filters.h"
 #include "matrix_connection.h"
 

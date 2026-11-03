@@ -3,13 +3,16 @@
 // Private header shared by the src_desktop translation units.
 // Declares the file-scope state that used to live at the top of main.cpp.
 
+// Windows: WebsocketClient.h must come first so ixwebsocket pulls in winsock2/windows.h
+// (with the USER API) before PluginLoader.h's win_compat.h defines NOUSER.
+#include <shared/desktop/WebsocketClient.h>
+
 #include <atomic>
 #include <csignal>
 #include <memory>
 
 #include <shared/desktop/MatrixVersionManager.h>
 #include <shared/desktop/UpdateManager.h>
-#include <shared/desktop/WebsocketClient.h>
 
 namespace desktop_app::detail {
     // tray_window.cpp

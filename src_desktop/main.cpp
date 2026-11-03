@@ -1,3 +1,7 @@
+// Windows: WebsocketClient.h must come first so ixwebsocket pulls in winsock2/windows.h
+// (with the USER API) before PluginLoader.h's win_compat.h defines NOUSER.
+#include "shared/desktop/WebsocketClient.h"
+
 // System and standard library includes
 #include <fstream>
 #include <filesystem>
