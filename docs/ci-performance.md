@@ -1,11 +1,17 @@
 # CI caches and release reuse
 
-The old Linux cache restored Mono package files without initializing its trust
-store. NuGet then spent minutes failing TLS verification and rebuilt dependencies.
+Ubuntu 26.04's Mono 6.14 packages omit `ca-certificates-mono` and `cert-sync`,
+leaving its TLS store empty. Restoring apt package files also does not run trust-
+store hooks. NuGet then spent minutes failing TLS verification and rebuilt dependencies.
 A container reproduction against the real feed produced
 `CERTIFICATE_VERIFY_FAILED` with an empty Mono store and succeeded immediately
 after `cert-sync`. The workflow now installs Mono normally and synchronizes both
-machine and user stores; synchronization errors fail the job.
+machine and user stores; synchronization errors fail the job. When the distro
+omits `cert-sync`, the setup script builds Mono's own MIT-licensed tool from a
+pinned, SHA256-verified source against the installed runtime. A bounded NuGet
+search checks the real feed TLS path before dependency restoration.
+
+Upstream packaging regression: https://github.com/KSP-CKAN/CKAN/issues/4590
 
 The NuGet backend is BaGetter at `storage:5001`, reverse proxied by Nginx on `pi`.
 The origin certificate and public Cloudflare certificate validate with the system
