@@ -2,6 +2,6 @@
 
 #include <optional>
 
-std::optional<rgb_matrix::Font> HEADER_FONT;
-std::optional<rgb_matrix::Font> BODY_FONT;
-std::optional<rgb_matrix::Font> SMALL_FONT;
+std::optional<rgb_matrix::Font> CountdownFonts::HEADER_FONT;
+std::optional<rgb_matrix::Font> CountdownFonts::BODY_FONT;
+std::optional<rgb_matrix::Font> CountdownFonts::SMALL_FONT;

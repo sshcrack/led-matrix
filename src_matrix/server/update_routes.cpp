@@ -27,6 +27,7 @@ namespace Server
         router->http_get("/api/update/status", [update_manager](auto req, auto)
                          {
             try {
+                update_manager->check_and_handle_update_completion();
                 json response;
                 response["auto_update_enabled"] = update_manager->is_auto_update_enabled();
                 response["check_interval_hours"] = update_manager->get_check_interval_hours();

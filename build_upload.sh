@@ -22,4 +22,11 @@ if [ -z "$deb" ]; then
 fi
 echo "Installing $deb on ledmat..."
 rsync -avz "$deb" ledmat:/tmp/
-ssh ledmat sudo dpkg -i "/tmp/$(basename "$deb")"
+# Use the candidate updater, not the previously installed script: this also
+# bootstraps health checks for devices upgrading from an older updater.
+rsync -avz scripts/update_service.sh ledmat:/tmp/led-matrix-update-service.sh
+ssh ledmat sudo -n install -d -m 700 /var/cache/led-matrix/deploy
+ssh ledmat sudo -n install -m 700 /tmp/led-matrix-update-service.sh /var/cache/led-matrix/deploy/update_service.sh
+ssh ledmat sudo -n systemd-run --wait --collect --unit=led-matrix-deploy \
+    /var/cache/led-matrix/deploy/update_service.sh "/tmp/$(basename "$deb")"
+ssh ledmat rm -f /tmp/led-matrix-update-service.sh
