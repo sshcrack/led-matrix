@@ -68,3 +68,12 @@ Frontend builds fetch one commit and no C++ submodules. Artifact comments use th
 Actions metadata API directly, so they neither clone the repository nor download
 all of the build archives simply to list them. Full history remains available in
 the release workflow where changelog generation uses tags and commit dates.
+
+NuGet-restored packages are not written into vcpkg's files-cache provider. CI also
+caches the installed dependency tree, so a warm job can restore one GitHub archive
+instead of downloading every NuGet package again. That tree uses an exact key
+covering preset, runner image and dependency/overlay/toolchain inputs; it has no
+broad restore prefix that could reuse an incompatible installed tree. The binary
+archive provider retains its broader fallback because vcpkg validates those ABI
+keys before selecting individual packages. Bump the installed-cache generation
+if dependency-affecting configure flags change outside the hashed preset inputs.
