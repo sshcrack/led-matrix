@@ -149,6 +149,7 @@ jobs:
           fi
 
           gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
             --title "$TAG" \
             --notes "$CHANGELOG"
         env:
