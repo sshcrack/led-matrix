@@ -33,6 +33,11 @@ jobs:
             preset: "emulator"
             artifact-name: "emulator-tests"
             requires-toolchain: false
+          - name: "emulator-sanitizers"
+            os: ubuntu-latest
+            preset: "emulator"
+            artifact-name: "emulator-sanitizers"
+            requires-toolchain: false
           - name: "desktop-windows"
             os: windows-latest
             preset: "desktop-windows"
@@ -129,9 +134,9 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.preset }}
-          configurePresetAdditionalArgs: "['-DSKIP_WEB_BUILD=ON']"
+          configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DENABLE_SANITIZERS=ON"]' || '["-DSKIP_WEB_BUILD=ON"]' }}
           buildPreset: ${{ matrix.preset }}
-          buildPresetAdditionalArgs: ${{ matrix.name == 'emulator-tests' && '["--target", "media_utilities_smoke", "media_fetch_probe", "preview_gen"]' || runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
+          buildPresetAdditionalArgs: ${{ startsWith(matrix.name, 'emulator-') && '["--parallel", "2"]' || runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
         env:
           # Use readwrite so new port-versions are cached; BaGetter may
           # reject very large packages (e.g. hello-imgui) with 413, but
@@ -139,12 +144,30 @@ jobs:
           VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
-      - name: Test media cache, HTTP lifecycle, animation timing and Spotify previews
+      - name: Run complete emulator suite
         if: matrix.name == 'emulator-tests'
-        run: ctest --test-dir emulator_build --output-on-failure -R 'media_utilities_smoke|media_fetch_smoke|declared_preview_provider_smoke'
+        run: ctest --test-dir emulator_build --output-on-failure --parallel 2
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          EGL_PLATFORM: surfaceless
+
+      - name: Run memory and undefined-behavior regressions
+        if: matrix.name == 'emulator-sanitizers'
+        run: ctest --test-dir emulator_build --output-on-failure -R 'media_.*smoke|spotify_cover_lifecycle_smoke|ambiance_packs_smoke|automatic_director_smoke|live_frame_snapshot_smoke|scene_renderer_frame_hold_smoke|transition_frame_hold_smoke|desktop_producer_ownership_smoke|runtime_inputs_smoke'
+        env:
+          ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+      - name: Upload test diagnostics
+        if: always() && startsWith(matrix.name, 'emulator-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: emulator_build/Testing/Temporary/
+          if-no-files-found: ignore
 
       - name: Upload ${{ matrix.name }} artifacts
-        if: matrix.name != 'emulator-tests'
+        if: ${{ !startsWith(matrix.name, 'emulator-') }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}

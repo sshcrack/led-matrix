@@ -1,6 +1,7 @@
 import { Skeleton } from '~/components/ui/skeleton'
 import PresetCard from './Preset'
 import AddPresetButton from './AddPresetButton'
+import AmbiancePacks from './AmbiancePacks'
 import type { ListPresets } from '~/apiTypes/list_presets'
 
 interface PresetsSectionProps {
@@ -53,6 +54,7 @@ export default function PresetsSection({
       )}
 
       <AddPresetButton onCreated={onCreated} />
+      <AmbiancePacks onCreated={onCreated} />
     </div>
   )
 }

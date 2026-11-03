@@ -104,6 +104,15 @@ endif()
 # ctest is run from the build root.
 enable_testing()
 
+option(ENABLE_SANITIZERS "Instrument project code with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+if(ENABLE_SANITIZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
+        message(FATAL_ERROR "ENABLE_SANITIZERS requires GCC or Clang on Linux")
+    endif()
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
 include(cmake/update_package_version.cmake)
 
 add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGET_NAME "update_package_version")
@@ -646,9 +655,38 @@ if(ENABLE_EMULATOR)
     enable_testing()
     set(PREVIEW_TEST_ENV
         "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
-        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib"
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
     )
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    if(UNIX)
+        add_test(NAME update_transaction_test COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_transaction_test.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh)
+        set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 45)
+    endif()
+    add_executable(ambiance_packs_smoke tests/ambiance_packs_smoke.cpp)
+    target_compile_features(ambiance_packs_smoke PRIVATE cxx_std_23)
+    target_link_libraries(ambiance_packs_smoke PRIVATE SharedToolsMatrix SharedToolsCommon
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
+    if(MATRIX_PLUGIN_TARGETS)
+        add_dependencies(ambiance_packs_smoke ${MATRIX_PLUGIN_TARGETS})
+    endif()
+    add_test(NAME ambiance_packs_smoke COMMAND ambiance_packs_smoke)
+    set_tests_properties(ambiance_packs_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(spotify_cover_lifecycle_smoke
+        tests/spotify_cover_lifecycle_smoke.cpp
+        plugins/SpotifyScenes/scenes/CoverOnlyScene.cpp
+        plugins/SpotifyScenes/matrix/manager/state.cpp
+        plugins/SpotifyScenes/matrix/manager/track.cpp)
+    target_compile_features(spotify_cover_lifecycle_smoke PRIVATE cxx_std_23)
+    target_include_directories(spotify_cover_lifecycle_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes)
+    target_link_libraries(spotify_cover_lifecycle_smoke PRIVATE SharedToolsMatrix SharedToolsCommon
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
+    add_test(NAME spotify_cover_lifecycle_smoke COMMAND spotify_cover_lifecycle_smoke)
+    set_tests_properties(spotify_cover_lifecycle_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}" TIMEOUT 20)
+
     add_executable(media_fetch_probe tests/media_fetch_probe.cpp)
     target_compile_features(media_fetch_probe PRIVATE cxx_std_23)
     target_link_libraries(media_fetch_probe PRIVATE SharedToolsMatrix PkgConfig::GraphicsMagick)
@@ -675,6 +713,7 @@ if(ENABLE_EMULATOR)
         rpi_rgb_led_matrix::rpi-rgb-led-matrix
     )
     add_test(NAME live_frame_snapshot_smoke COMMAND $<TARGET_FILE:live_frame_snapshot_smoke>)
+    set_tests_properties(live_frame_snapshot_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(property_compat_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
@@ -1290,7 +1329,7 @@ else()
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq")
+        "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq, curl, ca-certificates, util-linux, systemd")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"

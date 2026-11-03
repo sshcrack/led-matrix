@@ -151,6 +151,13 @@ bool WavePatternScene::render(rgb_matrix::FrameCanvas* canvas)
                 b = static_cast<uint8_t>(std::clamp((255.0f - warmth * 35.0f) * intensity, 0.0f, 255.0f));
             }
 
+            if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL) {
+                const auto tint = Ambiance::sample(look_palette_->get().get(), layer_position * 0.7f + normalized_x * 0.3f,
+                    intensity * look_brightness_->get());
+                r = tint.r; g = tint.g; b = tint.b;
+            } else {
+                r *= look_brightness_->get(); g *= look_brightness_->get(); b *= look_brightness_->get();
+            }
             add_pixel(canvas, x, y, r, g, b);
             for (int distance = 1; distance <= glow; ++distance) {
                 const float falloff = 0.34f / static_cast<float>(distance);
@@ -195,6 +202,10 @@ void WavePatternScene::register_properties()
         .visible_if("audio_reactive", true)
         .step(0.05);
 
+    look_palette_->label("Look palette").group("Appearance");
+    look_brightness_->label("Look brightness").group("Appearance").step(0.05);
+    add_property(look_palette_);
+    add_property(look_brightness_);
     add_property(num_waves_);
     add_property(speed_);
     add_property(color_speed_);
@@ -233,6 +244,15 @@ Scenes::SceneDescriptor Scenes::WavePatternScene::get_descriptor() const {
          {{"num_waves", 4}, {"speed", 0.85f}, {"audio_reactive", true}, {"audio_strength", 1.1f}},
          {"music", "beat-driven"}, 0.64f, 0.68f, 1.0f, 0.62f},
     };
-    Scenes::set_off_by_default(d, {"layered"});
+    d.variants.push_back({"evening", "Evening ribbons", "Slow amber and copper ribbons with a soft glow",
+        {{"look_palette", "EMBER"}, {"look_brightness", 0.45f}, {"num_waves", 3}, {"speed", 0.22f}, {"wave_height", 0.45f}, {"ribbon_layers", 3}, {"glow_radius", 1}, {"audio_reactive", false}},
+        {"calm", "warm", "amber"}, 0.16f, 0.18f, 0.0f, 0.30f});
+    d.variants.push_back({"rain_window", "Rain window glow", "Cool low ribbons beneath soft blue rain",
+        {{"look_palette", "RAIN"}, {"look_brightness", 0.42f}, {"num_waves", 3}, {"speed", 0.30f}, {"wave_height", 0.55f}, {"ribbon_layers", 3}, {"glow_radius", 1}, {"audio_reactive", false}},
+        {"calm", "rain", "blue"}, 0.18f, 0.22f, 0.0f, 0.30f});
+    d.variants.push_back({"deep_space", "Indigo ribbons", "Sparse slow violet and indigo light",
+        {{"look_palette", "SPACE"}, {"look_brightness", 0.40f}, {"num_waves", 2}, {"speed", 0.18f}, {"wave_height", 0.50f}, {"ribbon_layers", 2}, {"glow_radius", 1}, {"audio_reactive", false}},
+        {"calm", "space", "indigo"}, 0.14f, 0.16f, 0.0f, 0.26f});
+    Scenes::set_off_by_default(d, {"layered", "evening", "rain_window", "deep_space"});
     return d;
 }

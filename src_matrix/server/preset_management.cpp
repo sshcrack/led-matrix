@@ -4,6 +4,7 @@
 #include "shared/matrix/utils/uuid.h"
 #include "nlohmann/json.hpp"
 #include <spdlog/spdlog.h>
+#include <shared/matrix/ambiance_packs.h>
 
 using json = nlohmann::json;
 
@@ -49,6 +50,27 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
 
     router->http_get("/list_presets", [](auto req, auto) {
         return reply_with_json(req, json(config->get_presets()));
+    });
+
+    router->http_get("/ambiance_packs", [](auto req, auto) {
+        return reply_with_json(req, Ambiance::catalog());
+    });
+    router->http_post("/ambiance_packs", [](auto req, auto) {
+        const auto query = restinio::parse_query(req->header().query());
+        if (!query.has("id")) return reply_with_error(req, "Pack id is required");
+        try {
+            auto preset = Ambiance::create_preset(std::string(query["id"]));
+            std::string id;
+            do { id = uuid::generate_uuid_v4(); } while (config->get_presets().contains(id));
+            config->set_presets(id, preset);
+            if (!config->save()) {
+                config->delete_preset(id);
+                return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
+            }
+            return reply_with_json(req, {{"id", id}, {"display_name", preset->display_name}});
+        } catch (const std::exception &error) {
+            return reply_with_error(req, error.what());
+        }
     });
 
     // POST routes

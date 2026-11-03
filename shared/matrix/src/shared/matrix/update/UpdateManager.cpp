@@ -15,9 +15,15 @@
 #include <algorithm>
 #include <regex>
 #include <atomic>
+#include <vector>
 
 #ifdef __linux__
 #include <sys/utsname.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <cerrno>
+#include <cstring>
 #endif
 
 using namespace spdlog;
@@ -87,14 +93,36 @@ namespace Update
             return;
 #endif
 
-            std::filesystem::path script_path = "/usr/lib/led-matrix/update_service.sh";
-            string command = "sudo " + script_path.string() + " " + pending_update_filename_ + " &";
-            int result = system(command.c_str());
-            if (result != 0)
-            {
-                spdlog::error("Failed to launch update script: {}", command);
+#ifdef __linux__
+            // A child in led-matrix.service would be killed when dpkg restarts
+            // that service. A transient unit owns the complete update transaction.
+            std::string port = getenv("PORT") ? getenv("PORT") : "8080";
+            if (!std::regex_match(port, std::regex("[1-9][0-9]{0,4}")) || std::stoul(port) > 65535)
+                port = "8080";
+            std::vector<std::string> arguments{
+                "sudo", "-n", "systemd-run", "--collect", "--unit=led-matrix-update",
+                "--property=Type=exec", "--setenv=LED_MATRIX_UPDATE_PORT=" + port,
+                "/usr/lib/led-matrix/update_service.sh", pending_update_filename_
+            };
+            std::vector<char *> argv;
+            for (auto &argument : arguments) argv.push_back(argument.data());
+            argv.push_back(nullptr);
+            pid_t child;
+            const int spawned = posix_spawnp(&child, argv.front(), nullptr, nullptr, argv.data(), ::environ);
+            int status = 0;
+            pid_t waited = -1;
+            if (spawned == 0) {
+                do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
+            }
+            if (spawned != 0 || waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                std::ofstream("/var/lib/led-matrix/.update_error") << "Failed to launch the update transaction unit";
+                spdlog::error("Failed to launch the update transaction unit");
                 return;
             }
+#else
+            spdlog::error("Transactional updates require Linux/systemd");
+            return;
+#endif
             info("Update script launched. The process must exit now.");
         }
     }
@@ -174,7 +202,8 @@ namespace Update
 
             auto response = cpr::Get(
                 cpr::Url{api_url},
-                cpr::Header{{"User-Agent", get_user_agent()}});
+                cpr::Header{{"User-Agent", get_user_agent()}},
+                cpr::ConnectTimeout{5000}, cpr::Timeout{30000});
 
             if (response.status_code != 200)
                 return std::unexpected("GitHub API request failed with status: " + to_string(response.status_code));
@@ -238,9 +267,15 @@ namespace Update
             if (!file)
                 return std::unexpected("Could not create file: " + filename);
 
-            auto response = cpr::Download(file, cpr::Url{url});
-            if (response.status_code != 200)
-                return std::unexpected("Download failed with status: " + to_string(response.status_code));
+            auto response = cpr::Download(file, cpr::Url{url}, cpr::ConnectTimeout{5000}, cpr::Timeout{180000},
+                cpr::LowSpeed{1024, 10},
+                cpr::ProgressCallback{[this](auto, auto, auto, auto, intptr_t) { return !should_stop_.load(); }});
+            file.flush();
+            file.close();
+            if (response.status_code != 200 || !file) {
+                try_remove(filename);
+                return std::unexpected("Download failed or could not be written (HTTP " + to_string(response.status_code) + ")");
+            }
 
             info("Download completed: {}", filename);
             return {};
@@ -330,6 +365,9 @@ namespace Update
 
     std::expected<void, std::string> UpdateManager::manual_download_and_install(const UpdateInfo &update_info)
     {
+        std::unique_lock transaction_lock(installation_mutex_, std::try_to_lock);
+        if (!transaction_lock.owns_lock() || pending_update_.load())
+            return std::unexpected("An update is already in progress");
         try
         {
             string filename = "/tmp/led-matrix-update.deb";
@@ -454,6 +492,7 @@ namespace Update
 
     bool UpdateManager::check_and_handle_update_completion()
     {
+        std::lock_guard completion_lock(completion_mutex_);
 
 #ifdef ENABLE_UPDATE_TESTING
         filesystem::path success_flag = get_exec_dir() / ".update_test_success";
