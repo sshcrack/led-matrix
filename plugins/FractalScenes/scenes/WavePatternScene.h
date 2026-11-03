@@ -1,4 +1,5 @@
 #pragma once
+#include <shared/matrix/utils/AmbiancePalette.h>
 
 #include <cstdint>
 #include <random>
@@ -16,6 +17,7 @@ public:
 
 class WavePatternScene final : public Scene {
 public:
+    void set_random_seed(uint32_t seed) override { rng_.seed(seed); }
     WavePatternScene();
     ~WavePatternScene() override = default;
 
@@ -45,6 +47,9 @@ protected:
     void load_properties(const json& j) override;
 
 private:
+    PropertyPointer<Plugins::EnumProperty<Ambiance::Palette>> look_palette_ =
+        MAKE_ENUM_PROPERTY("look_palette", Ambiance::Palette, Ambiance::Palette::ORIGINAL);
+    PropertyPointer<float> look_brightness_ = MAKE_PROPERTY_MINMAX("look_brightness", float, 1.0f, 0.05f, 1.0f);
     struct Wave {
         float amplitude;
         float frequency;

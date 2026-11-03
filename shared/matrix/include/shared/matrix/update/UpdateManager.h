@@ -7,6 +7,7 @@
 #include <optional>
 #include <functional>
 #include <expected>
+#include <mutex>
 #include "shared/matrix/config/MainConfig.h"
 #include "shared/common/Version.h"
 #include "nlohmann/json.hpp"
@@ -42,6 +43,8 @@ namespace Update
     class UpdateManager
     {
     private:
+        std::mutex installation_mutex_;
+        std::mutex completion_mutex_;
         std::atomic<bool> running_;
         std::atomic<bool> should_stop_;
         std::atomic<UpdateStatus> status_;
