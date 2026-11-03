@@ -45,12 +45,17 @@ jobs:
             requires-toolchain: false
     env:
       BUILD_TYPE: RelWithDebInfo
+      # A runner's newer system CMake changes every vcpkg package ABI.
+      VCPKG_FORCE_DOWNLOADED_BINARIES: '1'
+      SCCACHE_LOG: warn
       SCCACHE_GHA_ENABLED: "true"
+      # Avoid duplicating every compiler object into each PR's isolated scope.
+      SCCACHE_GHA_RW_MODE: ${{ github.event_name == 'pull_request' && 'READ_ONLY' || 'READ_WRITE' }}
       SCCACHE_GHA_VERSION: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: recursive
 
       - name: Download web build artifact
@@ -77,6 +82,10 @@ jobs:
         if: runner.os != 'Windows'
         run: bash scripts/setup_mono_certificates.sh
 
+      - name: Configure compiler cache diagnostics
+        shell: bash
+        run: echo "SCCACHE_ERROR_LOG=$RUNNER_TEMP/sccache-errors.log" >> "$GITHUB_ENV"
+
       - name: Cache compiler results
         uses: Mozilla-Actions/sccache-action@v0.0.11
 
@@ -98,8 +107,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vcpkg-binary-cache
-          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
+          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
           restore-keys: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-
+
+      # vcpkg does not copy NuGet restores into its files-cache provider.
+      # Save the installed tree too, with an exact configuration/image key.
+      - name: Cache installed vcpkg dependencies
+        id: installed-dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.preset == 'cross-compile' && 'build/vcpkg_installed' || startsWith(matrix.name, 'emulator-') && 'emulator_build/vcpkg_installed' || 'desktop_build/vcpkg_installed' }}
+          key: ${{ runner.os }}-vcpkg-installed-v1-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
 
       - name: Configure NuGet publishing key (Linux)
         if: runner.os != 'Windows'
@@ -112,7 +130,10 @@ jobs:
           NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
           mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
           # Probe the actual Mono/NuGet TLS path before vcpkg starts its restores.
-          timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive
+          if [[ "${{ steps.installed-dependencies.outputs.cache-hit }}" != 'true' ]]; then
+            timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive || \
+              echo "::warning::NuGet probe failed; vcpkg will try the available cache providers and source builds"
+          fi
 
       - name: Configure NuGet publishing key (Windows)
         if: runner.os == 'Windows'
@@ -122,8 +143,14 @@ jobs:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
           FEED_URL: https://nuget.sshcrack.me/v3/index.json
         run: |
-          $nuget = & $env:VCPKG_EXE fetch nuget
+          $output = & $env:VCPKG_EXE fetch nuget
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg could not fetch NuGet" }
+          $nuget = ($output | Select-Object -Last 1).Trim()
+          if (-not (Test-Path -LiteralPath $nuget -PathType Leaf)) {
+            throw "vcpkg did not return a NuGet executable path"
+          }
           & $nuget setapikey $env:NUGET_API_KEY -Source $env:FEED_URL
+          if ($LASTEXITCODE -ne 0) { throw "NuGet API-key setup failed" }
 
       - name: Cache cross-compile toolchain
         if: matrix.requires-toolchain
@@ -169,6 +196,24 @@ jobs:
         env:
           ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+      - name: Record cache diagnostics
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          sccache --show-stats --stats-format=json > "$RUNNER_TEMP/sccache-stats.json"
+          python scripts/summarize_cache_diagnostics.py
+
+      - name: Upload cache diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cache-diagnostics-${{ matrix.name }}
+          path: |
+            ${{ runner.temp }}/sccache-stats.json
+            ${{ runner.temp }}/cache-diagnostics.json
+          if-no-files-found: ignore
 
       - name: Upload test diagnostics
         if: always() && startsWith(matrix.name, 'emulator-')
