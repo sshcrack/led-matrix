@@ -105,16 +105,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vcpkg-binary-cache
-          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
+          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
           restore-keys: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-
 
       # vcpkg does not copy NuGet restores into its files-cache provider.
       # Save the installed tree too, with an exact configuration/image key.
       - name: Cache installed vcpkg dependencies
+        id: installed-dependencies
         uses: actions/cache@v4
         with:
           path: ${{ matrix.preset == 'cross-compile' && 'build/vcpkg_installed' || startsWith(matrix.name, 'emulator-') && 'emulator_build/vcpkg_installed' || 'desktop_build/vcpkg_installed' }}
-          key: ${{ runner.os }}-vcpkg-installed-v1-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
+          key: ${{ runner.os }}-vcpkg-installed-v1-${{ matrix.preset }}-${{ env.VCPKG_CACHE_IMAGE }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/PI.cmake', 'cmake/overlay-ports/**', 'plugins/**/overlay-ports/**', 'cmake/triplets/**') }}
 
       - name: Configure NuGet publishing key (Linux)
         if: runner.os != 'Windows'
@@ -127,7 +128,10 @@ jobs:
           NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
           mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
           # Probe the actual Mono/NuGet TLS path before vcpkg starts its restores.
-          timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive
+          if [[ "${{ steps.installed-dependencies.outputs.cache-hit }}" != 'true' ]]; then
+            timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive || \
+              echo "::warning::NuGet probe failed; vcpkg will try the available cache providers and source builds"
+          fi
 
       - name: Configure NuGet publishing key (Windows)
         if: runner.os == 'Windows'

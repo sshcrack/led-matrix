@@ -77,3 +77,7 @@ broad restore prefix that could reuse an incompatible installed tree. The binary
 archive provider retains its broader fallback because vcpkg validates those ABI
 keys before selecting individual packages. Bump the installed-cache generation
 if dependency-affecting configure flags change outside the hashed preset inputs.
+
+Plugin-owned overlays participate in both cache keys. An exact installed-tree
+hit skips the NuGet network probe; otherwise a failed probe is diagnostic and
+vcpkg can still satisfy dependencies from GitHub archives or source builds.
