@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/utils/color.h>
 
 namespace AmbientScenes {
     void StarFieldScene::Star::respawn(float max_depth, std::mt19937& rng) {
@@ -31,24 +32,6 @@ namespace AmbientScenes {
             star.previous_z = std::min(depth, star.z + speed->get());
         }
         time = 0.0f;
-    }
-
-    void StarFieldScene::hsv_to_rgb(float h, float s, float v, uint8_t& r, uint8_t& g, uint8_t& b) {
-        h = h - std::floor(h);
-        const float c = v * s;
-        const float x = c * (1.0f - std::fabs(std::fmod(h * 6.0f, 2.0f) - 1.0f));
-        const float m = v - c;
-        float rr = 0, gg = 0, bb = 0;
-        const int sector = static_cast<int>(h * 6.0f) % 6;
-        if (sector == 0) { rr = c; gg = x; }
-        else if (sector == 1) { rr = x; gg = c; }
-        else if (sector == 2) { gg = c; bb = x; }
-        else if (sector == 3) { gg = x; bb = c; }
-        else if (sector == 4) { rr = x; bb = c; }
-        else { rr = c; bb = x; }
-        r = static_cast<uint8_t>(std::clamp((rr + m) * 255.0f, 0.0f, 255.0f));
-        g = static_cast<uint8_t>(std::clamp((gg + m) * 255.0f, 0.0f, 255.0f));
-        b = static_cast<uint8_t>(std::clamp((bb + m) * 255.0f, 0.0f, 255.0f));
     }
 
     void StarFieldScene::draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
@@ -131,7 +114,8 @@ namespace AmbientScenes {
             uint8_t r, g, b;
             if (colored_stars->get()) {
                 const float hue = 0.55f + section_hue + (star.hue - 0.5f) * 0.18f + hihat_detail * 0.025f;
-                hsv_to_rgb(hue, 0.28f, std::clamp(brightness, 0.0f, 1.0f), r, g, b);
+                // shared helper takes degrees; hue here is a 0-1 fraction
+                color::hsv_to_rgb(hue * 360.0f, 0.28f, std::clamp(brightness, 0.0f, 1.0f), r, g, b);
             } else {
                 r = g = b = static_cast<uint8_t>(255.0f * std::clamp(brightness, 0.0f, 1.0f));
             }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentProps } from 'react'
 import { ShadertoyRendererComponent } from '@reindernijhoff/shadertoy/react'
 
 interface ShaderPreviewProps {
@@ -40,13 +40,15 @@ const dummyShader = {
   ]
 }
 
+type PreviewShader = ComponentProps<typeof ShadertoyRendererComponent>['shader']
+
 const PREVIEW_SIZE = 128
 const PIXEL_SCALE = 3
 
 export default function ShaderPreview({ apiUrl, filename, script }: ShaderPreviewProps) {
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('Select a Shader to preview')
-  const [actualShader, setActualShader] = useState<any>(null)
+  const [actualShader, setActualShader] = useState<PreviewShader | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -76,14 +78,14 @@ export default function ShaderPreview({ apiUrl, filename, script }: ShaderPrevie
         if (cancelled) return
 
         if (scriptText) {
-          const newShader = JSON.parse(JSON.stringify(dummyShader))
+          const newShader: typeof dummyShader = JSON.parse(JSON.stringify(dummyShader))
           newShader.renderpass[0].code = scriptText
-          setActualShader(newShader)
+          setActualShader(newShader as unknown as PreviewShader)
           setStatus(`Previewing ${filename ?? 'local shader'}`)
         }
-      } catch (e: any) {
+      } catch (e) {
         if (!cancelled) {
-          setError(e?.message ?? 'Failed to load Shader')
+          setError((e as { message?: string } | null)?.message ?? 'Failed to load Shader')
           setActualShader(null)
         }
       }

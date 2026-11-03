@@ -61,6 +61,15 @@ Default:
 Description: Spotify Client Secret
  The Client Secret from your Spotify Developer application.
 
+Template: led-matrix/api-token
+Type: password
+Default:
+Description: API token (optional)
+ When set, the web UI, REST API and desktop app must present this token.
+ Browsers ask for it once and remember it. Leave blank to keep the API open
+ to every device on the local network (cross-site browser requests are
+ always rejected).
+
 Template: led-matrix/auto-update-enable
 Type: boolean
 Default: true

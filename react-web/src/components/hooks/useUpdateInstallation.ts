@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { toast } from 'sonner'
 import type { UpdateStatus } from '~/apiTypes/update'
 
@@ -35,9 +35,9 @@ export function useUpdateInstallation(onStatusChange?: () => void) {
       setInstallState('success')
       toast.success('Update installation started')
       onStatusChange?.()
-    } catch (e: any) {
+    } catch (e) {
       setInstallState('error')
-      setInstallError(e.message)
+      setInstallError((e as Error).message)
       toast.error('Failed to install update')
     }
   }, [apiUrl, onStatusChange])

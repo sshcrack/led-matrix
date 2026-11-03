@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/post.h"
+#include "shared/matrix/utils/image_fetch.h"
 #include <filesystem>
 #include "shared/matrix/server/MimeTypes.h"
 #include "shared/matrix/utils/consts.h"
@@ -256,28 +257,40 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
 
         const string remote_url{qp["url"]};
-
-        auto post = std::make_unique<Post>(remote_url);
-        const filesystem::path file_path(Constants::post_dir / post->get_filename());
-        const filesystem::path processing_path = to_processed_path(file_path);
-        if (!exists(processing_path)) {
-            const auto res = post->process_images(Constants::width, Constants::height, true);
-
-            if (!res.has_value() || !exists(processing_path)) {
-                return reply_with_error(req, "Could not get file", restinio::status_internal_server_error());
-            }
+        if (!utils::is_http_url(remote_url) && !utils::resolve_local_file_url(remote_url)) {
+            return reply_with_error(req, "Only http(s) URLs or files in the upload directory are supported");
         }
 
-        const string ext = file_path.extension();
-        const string content_type = MimeTypes::getType("file" + ext);
+        auto post = std::make_unique<Post>(remote_url, true, true);
+        // process_images keeps its own content-addressed cache of the scaled frames.
+        auto frames = post->process_images(Constants::width, Constants::height, true);
+        if (!frames.has_value() || frames->empty()) {
+            return reply_with_error(req, "Could not get file", restinio::status_internal_server_error());
+        }
+
+        Magick::Blob blob;
+        string content_type;
+        try {
+            if (frames->size() > 1) {
+                for (auto &frame : *frames) frame.magick("GIF");
+                Magick::writeImages(frames->begin(), frames->end(), &blob);
+                content_type = "image/gif";
+            } else {
+                auto frame = frames->front();
+                frame.magick("PNG");
+                frame.write(&blob);
+                content_type = "image/png";
+            }
+        } catch (const std::exception &e) {
+            spdlog::error("Could not encode preview for {}: {}", remote_url, e.what());
+            return reply_with_error(req, "Could not encode image", restinio::status_internal_server_error());
+        }
 
         auto response = req->create_response(restinio::status_ok())
                 .append_header_date_field()
                 .append_header(restinio::http_field::content_type, content_type);
         Server::add_cors_headers(response);
-        response.set_body(restinio::sendfile(processing_path)).done();
-
-        return restinio::request_accepted(); });
+        return response.set_body(string(static_cast<const char *>(blob.data()), blob.length())).done(); });
 
     return std::move(router);
 }

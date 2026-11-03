@@ -102,6 +102,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<Scenes
         SleepMillis(1000);
     }
 
+    if (const int signo = interrupt_signal.load())
+        info("Interrupt signal received: {}", signo);
     info("Finished, shutting down...");
 }
 
@@ -111,8 +113,12 @@ int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, std::shared_ptr<S
     Constants::height = matrix->height();
     Constants::width = matrix->width();
 
-    signal(SIGTERM, InterruptHandler);
-    signal(SIGINT, InterruptHandler);
+    struct sigaction action{};
+    action.sa_handler = InterruptHandler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = SA_RESTART;
+    sigaction(SIGTERM, &action, nullptr);
+    sigaction(SIGINT, &action, nullptr);
 
     debug("Running hardware mainloop...");
     hardware_mainloop(matrix, pinned_scene);

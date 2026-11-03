@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlaskConical, Save, Square, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { ListScenes } from '~/apiTypes/list_scenes'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import LiveMatrixPreview from '~/components/scene-browser/LiveMatrixPreview'
 import PropertyList from '~/components/modify-preset/property_list'
 import { Badge } from '~/components/ui/badge'
@@ -44,11 +44,11 @@ export default function SceneLab() {
 
   const definition = useMemo(() => scenes?.find(scene => scene.name === sceneName) ?? null, [scenes, sceneName])
 
-  useEffect(() => {
-    if (!initialStatus) return
-    activeRef.current = initialStatus.active
-    sessionIdRef.current = initialStatus.session_id ?? 0
-    generationRef.current = initialStatus.generation ?? 0
+  // Adopt the server's Scene Lab status once it has been fetched (adjusting
+  // state during render; refs are synced in the effect below).
+  const [appliedStatus, setAppliedStatus] = useState<LabStatus | null>(null)
+  if (initialStatus && appliedStatus !== initialStatus) {
+    setAppliedStatus(initialStatus)
     setActive(initialStatus.active)
     setMissing(initialStatus.missing_inputs ?? [])
     if (initialStatus.active) {
@@ -56,19 +56,27 @@ export default function SceneLab() {
       setVariant(initialStatus.variant ?? '')
       setArgs(initialStatus.properties ?? {})
       setFps(initialStatus.fps ?? 20)
-      updateReady.current = true
     }
-  }, [initialStatus])
+  }
 
   useEffect(() => {
-    if (sceneName || !scenes?.length) return
+    if (!initialStatus) return
+    activeRef.current = initialStatus.active
+    sessionIdRef.current = initialStatus.session_id ?? 0
+    generationRef.current = initialStatus.generation ?? 0
+    if (initialStatus.active) updateReady.current = true
+  }, [initialStatus])
+
+  // Pre-select a sensible default scene once the scene list is available.
+  if (!sceneName && scenes?.length) {
     const first = scenes.find(scene => scene.descriptor?.automatic_eligible && scene.capabilities?.can_generate_preview !== false) ?? scenes[0]
-    if (!first) return
-    setSceneName(first.name)
-    const firstVariant = first.descriptor?.variants?.[0]?.id ?? ''
-    setVariant(firstVariant)
-    setArgs(sceneArgumentsForVariant(first, firstVariant))
-  }, [scenes, sceneName])
+    if (first) {
+      setSceneName(first.name)
+      const firstVariant = first.descriptor?.variants?.[0]?.id ?? ''
+      setVariant(firstVariant)
+      setArgs(sceneArgumentsForVariant(first, firstVariant))
+    }
+  }
 
   const selectScene = (name: string) => {
     const next = scenes?.find(scene => scene.name === name)
@@ -87,14 +95,14 @@ export default function SceneLab() {
     setArgs(sceneArgumentsForVariant(definition, id))
   }
 
-  const post = async (path: string, body: Record<string, unknown> = {}) => {
+  const post = useCallback(async (path: string, body: Record<string, unknown> = {}) => {
     if (!apiUrl) throw new Error('Matrix is not connected')
     const response = await fetch(`${apiUrl}${path}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     })
     if (!response.ok) throw new Error((await response.text()) || 'Request failed')
     return await response.json()
-  }
+  }, [apiUrl])
 
   const start = async () => {
     if (!definition) return
@@ -138,7 +146,7 @@ export default function SceneLab() {
       })
     }, 250)
     return () => window.clearTimeout(timer)
-  }, [active, definition, variant, args, fps])
+  }, [active, definition, variant, args, fps, post])
 
   useEffect(() => {
     if (!active || !apiUrl) return

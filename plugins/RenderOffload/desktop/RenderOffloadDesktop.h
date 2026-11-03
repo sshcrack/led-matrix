@@ -38,6 +38,15 @@ private:
     void ensure_worker();
     bool start_worker(const std::string &host, std::uint16_t port, const std::string &client_id);
     void stop_worker();
+    void note_worker_exit();
+
+    // A worker that dies shortly after launch is crash-looping (e.g. a broken
+    // dependency); back off exponentially and eventually stop respawning so we
+    // do not fill the crash directory with one report every two seconds.
+    static constexpr auto fast_exit_window = std::chrono::seconds(30);
+    static constexpr auto base_relaunch_delay = std::chrono::seconds(2);
+    static constexpr auto max_relaunch_delay = std::chrono::minutes(10);
+    static constexpr unsigned max_fast_exits = 8;
 
     std::mutex mutex_;
     std::uint32_t requested_session_ = 0;
@@ -48,6 +57,8 @@ private:
     std::string worker_client_id_;
     std::uint16_t worker_port_ = 0;
     Clock::time_point last_launch_attempt_{};
+    Clock::time_point worker_started_at_{};
+    unsigned consecutive_fast_exits_ = 0;
 
 #ifdef _WIN32
     PROCESS_INFORMATION worker_process_{};

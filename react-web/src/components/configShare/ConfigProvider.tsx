@@ -1,30 +1,9 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
+import { ConfigContext } from './configContext'
 import type { Preset, RawPreset } from '~/apiTypes/list_presets'
 import { objectToArrayPresets } from '~/apiTypes/list_presets'
-
-interface ConfigContextType {
-  preset: Preset | null
-  setPreset: React.Dispatch<React.SetStateAction<Preset | null>>
-  isDirty: boolean
-  setDirty: (dirty: boolean) => void
-  save: () => Promise<void>
-  isSaving: boolean
-}
-
-const ConfigContext = createContext<ConfigContextType>({
-  preset: null,
-  setPreset: () => {},
-  isDirty: false,
-  setDirty: () => {},
-  save: async () => {},
-  isSaving: false,
-})
-
-export function useConfig() {
-  return useContext(ConfigContext)
-}
 
 interface ConfigProviderProps {
   children: React.ReactNode

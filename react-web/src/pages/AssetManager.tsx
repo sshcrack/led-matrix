@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '~/components/ui/dialog'
-import { useApiUrl } from '~/components/apiUrl/ApiUrlProvider'
+import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import ShaderPreview from '~/components/AssetManager/ShaderPreview'
 
 
@@ -17,43 +17,54 @@ interface CustomAsset {
 export default function AssetManager() {
   const apiUrl = useApiUrl()
   const [assets, setAssets] = useState<CustomAsset[]>([])
-  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const loading = refreshing || (!!apiUrl && loadedFor !== apiUrl)
   const [selectedShader, setSelectedShader] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [previewScript, setPreviewScript] = useState<string | null>(null)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
 
+  const requestAssets = useCallback((): Promise<void> => {
+    if (!apiUrl) return Promise.resolve()
+    return fetch(`${apiUrl}/api/custom-assets/shader`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.text().catch(() => 'Unknown error')
+          toast.error(`Failed to fetch assets: ${err}`)
+          setAssets([])
+          return
+        }
+        const data = await res.json()
+        setAssets(Array.isArray(data) ? data : [])
+        if (Array.isArray(data) && data.length > 0) {
+          setSelectedShader((current) => current || data[0].filename)
+        }
+        if (Array.isArray(data) && data.length === 0) {
+          setSelectedShader(null)
+        }
+      })
+      .catch((err) => {
+        toast.error(`Failed to fetch assets: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      })
+      .finally(() => {
+        setLoadedFor(apiUrl)
+      })
+  }, [apiUrl])
+
   const fetchAssets = async () => {
-    if (!apiUrl) return
-    setLoading(true)
+    setRefreshing(true)
     try {
-      const res = await fetch(`${apiUrl}/api/custom-assets/shader`)
-      if (!res.ok) {
-        const err = await res.text().catch(() => 'Unknown error')
-        toast.error(`Failed to fetch assets: ${err}`)
-        setAssets([])
-        return
-      }
-      const data = await res.json()
-      setAssets(Array.isArray(data) ? data : [])
-      if (Array.isArray(data) && data.length > 0 && !selectedShader) {
-        setSelectedShader(data[0].filename)
-      }
-      if (Array.isArray(data) && data.length === 0) {
-        setSelectedShader(null)
-      }
-    } catch (err) {
-      toast.error(`Failed to fetch assets: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      await requestAssets()
     } finally {
-      setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchAssets()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiUrl])
+    void requestAssets()
+  }, [requestAssets])
 
   const onUploadClick = () => {
     fileInputRef.current?.click()

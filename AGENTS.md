@@ -160,13 +160,35 @@ For plugins with additional vcpkg dependencies, add a feature entry to `vcpkg.js
 
 ## Design constraints (read before proposing features)
 
-See `FEATURES.md` for the authoritative list. Summary:
+The matrix is a passive prop in a room. Every scene must be:
 - **Low compute on the Pi** — scenes run on a single RPi 4, no GPU
-- **Non-interactive** — the matrix is a passive ambient prop; no input from viewers
+- **Non-interactive** — no input from viewers (configuration via the web UI is fine; the running display needs no input)
 - **No readable text** — no tickers, scores, headlines, or anything requiring active reading
 - **Visually interesting** — ambient/aesthetic purpose only
 
-Ideas already explicitly rejected: Home Assistant/MQTT, continuously pushed/always-on live preview, RSS/news/sports/crypto tickers, scrolling text, web paint canvas, emoji signals. Check `FEATURES.md` before implementing anything in these areas.
+Rejected ideas (do not implement without asking the owner):
+
+| Idea | Reason |
+|---|---|
+| Home Assistant / MQTT | Not needed |
+| Continuously pushed / always-on live preview | Too heavy on the Pi; live capture must stay viewer-demand-driven (pull-based, see "Live web matrix capture performance") |
+| RSS / news, sports scores, crypto/stock tickers, scrolling text | Violates the no-text rule |
+| Web paint / pixel canvas | Too interactive |
+| Emoji signal scene | Implies active triggering from a user |
+
+Scenery guidance (2026-09-06): new scenery should prioritize calm, recognizable environments that reward occasional glances (aquariums, planetary vistas, natural landscapes with sparse events). Standalone crystal/gyroid sculpture shaders were rejected and replaced.
+
+Live preview rule (2026-08-22): `/live_frame` is a WebSocket-only, pull-based transport (no HTTP polling). A connected socket does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting.
+
+SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
+
+## API security
+
+`src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):
+- **Cross-origin browser requests are rejected** (`Origin` vs `Host`, and `Sec-Fetch-Site: cross-site` when no `Origin` is sent). `ENABLE_CORS` builds disable this check.
+- **Optional token**: set `LED_MATRIX_API_TOKEN` (debconf `led-matrix/api-token` writes it to `/etc/default/led-matrix`). When set, requests must carry it as `Authorization: Bearer`, `X-Api-Token`, the `led_matrix_token` SameSite=Strict cookie (set by the web UI's token prompt), or `?token=`. `/`, `/web` and `/web/*` are always public so the UI can load and ask for the token.
+- `LED_MATRIX_ALLOWED_ORIGINS` (comma-separated) allowlists extra browser origins, e.g. the Vite dev server `http://localhost:5173`.
+- The desktop app has an "API token" setting; it sends it on its WebSocket/HTTP calls and exports it as `LED_MATRIX_API_TOKEN` to scene workers.
 
 ## Environment quirks
 

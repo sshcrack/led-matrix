@@ -5,6 +5,8 @@
 #include "shared/matrix/diagnostics.h"
 #include "SceneLabRuntime.h"
 #include "spdlog/spdlog.h"
+#include <chrono>
+#include <ctime>
 
 using namespace std;
 using namespace spdlog;
@@ -33,6 +35,14 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
     , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag)
     , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag)
 {
+    renderer_.set_brightness_provider([cfg]() -> std::optional<int> {
+        const auto schedule = cfg->get_brightness_schedule();
+        if (!schedule.enabled) return std::nullopt;
+        const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::tm local{};
+        localtime_r(&now, &local);
+        return schedule.brightness_at(local.tm_hour * 60 + local.tm_min);
+    });
     first_offscreen_canvas_ = matrix->CreateFrameCanvas();
     second_offscreen_canvas_ = matrix->CreateFrameCanvas();
     composite_offscreen_canvas_ = matrix->CreateFrameCanvas();

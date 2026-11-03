@@ -1,6 +1,7 @@
 import { Expand, ImageOff, MonitorPlay } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '~/lib/utils'
+import { parseLiveFrame } from '~/lib/liveFrame'
 
 interface LiveMatrixPreviewProps {
   apiUrl: string
@@ -13,30 +14,13 @@ interface LiveMatrixPreviewProps {
 type LiveState = 'connecting' | 'live' | 'unavailable'
 
 function drawFrame(canvas: HTMLCanvasElement, buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer)
-  if (bytes.length < 12 || bytes[0] !== 0x4c || bytes[1] !== 0x4d || bytes[2] !== 0x46 || bytes[3] !== 0x31)
-    throw new Error('Unsupported live frame payload')
-
-  const view = new DataView(buffer)
-  const width = view.getUint16(4, true)
-  const height = view.getUint16(6, true)
-  const sequence = view.getUint32(8, true)
-  const expected = 12 + width * height * 3
-  if (!width || !height || bytes.length !== expected)
-    throw new Error('Incomplete live frame payload')
+  const { width, height, sequence, rgba } = parseLiveFrame(buffer)
 
   if (canvas.width !== width) canvas.width = width
   if (canvas.height !== height) canvas.height = height
   const context = canvas.getContext('2d', { alpha: false })
   if (!context) throw new Error('Canvas 2D context unavailable')
 
-  const rgba = new Uint8ClampedArray(width * height * 4)
-  for (let source = 12, target = 0; source < bytes.length; source += 3, target += 4) {
-    rgba[target] = bytes[source]
-    rgba[target + 1] = bytes[source + 1]
-    rgba[target + 2] = bytes[source + 2]
-    rgba[target + 3] = 255
-  }
   context.putImageData(new ImageData(rgba, width, height), 0, 0)
   return { width, height, sequence }
 }

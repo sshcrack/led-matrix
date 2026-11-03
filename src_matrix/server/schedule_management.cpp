@@ -4,6 +4,8 @@
 #include "shared/matrix/utils/uuid.h"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <chrono>
+#include <ctime>
 
 using json = nlohmann::json;
 using namespace spdlog;
@@ -30,6 +32,28 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         }
 
         return reply_with_json(req, json(it->second));
+    });
+
+    router->http_get("/brightness_schedule", [](const auto& req, auto) {
+        const auto schedule = config->get_brightness_schedule();
+        json j = schedule;
+        const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::tm local{};
+        localtime_r(&now, &local);
+        j["current_brightness"] = schedule.enabled ? schedule.brightness_at(local.tm_hour * 60 + local.tm_min) : -1;
+        return reply_with_json(req, j);
+    });
+
+    router->http_post("/brightness_schedule", [](const auto& req, auto) {
+        ConfigData::BrightnessSchedule schedule;
+        try {
+            schedule = json::parse(req->body()).template get<ConfigData::BrightnessSchedule>();
+        } catch (const std::exception &ex) {
+            warn("Invalid brightness schedule payload: {}", ex.what());
+            return reply_with_error(req, "Invalid json payload");
+        }
+        config->set_brightness_schedule(schedule);
+        return reply_with_json(req, json(config->get_brightness_schedule()));
     });
 
     router->http_get("/scheduling_status", [](const auto& req, auto) {

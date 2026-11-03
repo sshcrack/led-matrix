@@ -25,6 +25,8 @@ namespace Update
     {
         Common::Version version;
         std::string download_url;
+        // Lowercase hex SHA-256 from the GitHub asset "digest" field; empty for releases without one.
+        std::string sha256;
         std::string body;
         bool is_prerelease;
     };
@@ -65,6 +67,7 @@ namespace Update
         void update_loop();
 
         std::expected<void, std::string> download_update(const std::string &url, const std::string &filename);
+        static std::expected<void, std::string> verify_sha256(const std::string &filename, const std::string &expected_hex);
         std::expected<void, std::string> install_update(const UpdateInfo &info, const std::string &filename);
         bool should_check_for_updates();
         

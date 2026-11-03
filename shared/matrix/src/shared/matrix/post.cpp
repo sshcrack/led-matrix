@@ -33,7 +33,8 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
         // Persistent caches keep the original so new matrix sizes can regenerate
         // full-quality transforms. Uncached downloads are removed after decoding.
         if (!exists(file_path)) {
-            const auto res = utils::download_image(get_image_url(), file_path.string());
+            const auto res = utils::download_image(get_image_url(), file_path.string(), {},
+                                                   utils::DownloadOptions{.block_internal_hosts = block_internal_hosts});
             if (!res) {
                 spdlog::error("Could not download image: {}", res.error());
                 return std::nullopt;
@@ -67,21 +68,24 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
     }
 }
 
-Post::Post(const std::string &img_url, const bool maybe_fetch_type) {
+Post::Post(const std::string &img_url, const bool maybe_fetch_type) : Post(img_url, maybe_fetch_type, false) {}
+
+Post::Post(const std::string &img_url, const bool maybe_fetch_type, const bool block_internal_hosts) {
     this->img_url = img_url;
+    this->block_internal_hosts = block_internal_hosts;
 
     // Derive the suffix from the URL path, not dots in the hostname or query.
     const auto url_path = img_url.substr(0, img_url.find_first_of("?#"));
     std::string file_ext = std::filesystem::path(url_path).extension().string();
     if (file_ext.empty()) file_ext = ".unknown";
 
-    if (maybe_fetch_type && (MimeTypes::getType("file" + file_ext) == "application/octet-stream")) {
-        // Fetch Content-Type online
-        cpr::Response res = cpr::Head(cpr::Url(img_url), cpr::ConnectTimeout{5000}, cpr::Timeout{30000}, cpr::LowSpeed{1024, 10});
-        if (res.status_code < 200 || res.status_code >= 300) {
-            spdlog::warn("Could not fetch Content-Type for {}: {}", img_url, res.status_code);
+    if (maybe_fetch_type && utils::is_http_url(img_url) && (MimeTypes::getType("file" + file_ext) == "application/octet-stream")) {
+        const auto content_type = utils::fetch_content_type(
+            img_url, utils::DownloadOptions{.block_internal_hosts = block_internal_hosts});
+        if (!content_type) {
+            spdlog::warn("Could not fetch Content-Type for {}", img_url);
         } else {
-            const auto ext = MimeTypes::getExtension(res.header["content-type"]);
+            const auto ext = MimeTypes::getExtension(*content_type);
             if (!ext.empty())
                 file_ext = "." + ext;
             spdlog::trace("Content-Type for {} is {}", img_url, file_ext);

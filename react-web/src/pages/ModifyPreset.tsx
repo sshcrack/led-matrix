@@ -4,7 +4,8 @@ import { ArrowLeft, Blend, Layers3 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import useFetch from '~/useFetch'
-import { ConfigProvider, useConfig } from '~/components/configShare/ConfigProvider'
+import { ConfigProvider } from '~/components/configShare/ConfigProvider'
+import { useConfig } from '~/components/configShare/configContext'
 import { SaveButton } from '~/components/configShare/SaveButton'
 import { SceneContext } from '~/components/modify-preset/SceneContext'
 import Scene from '~/components/modify-preset/Scene'
@@ -29,7 +30,7 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
     if (rawPreset) {
       setPreset(arrayToObjectPresets(rawPreset))
     }
-  }, [rawPreset])
+  }, [rawPreset, setPreset])
 
   const isLoading = presetLoading || scenesLoading
 

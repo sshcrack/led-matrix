@@ -29,6 +29,8 @@ namespace Config
         // Empty means "auto-detect yt-dlp from PATH". A non-empty value is
         // the user-selected binary shared by all desktop plugins.
         std::string ytdlpPath;
+        // Matches LED_MATRIX_API_TOKEN on the Pi. Empty when the matrix API is open.
+        std::string apiToken;
 
         bool autostart = Autostart::isEnabled(APP_NAME);
 
@@ -68,7 +70,16 @@ namespace Config
 
         std::string getYtDlpPath() const;
         void setYtDlpPath(const std::string &path);
+
+        std::string getApiToken() const;
+        void setApiToken(const std::string &token);
     };
+
+    // Publishes the token as LED_MATRIX_API_TOKEN so spawned scene workers inherit it.
+    SHARED_DESKTOP_API void exportApiTokenToEnvironment(const std::string &token);
+
+    // Authorization header value for requests to the matrix, or empty when no token is configured.
+    SHARED_DESKTOP_API std::string matrixAuthorizationHeader();
 
     SHARED_DESKTOP_API void to_json(json &j, const General &p);
     SHARED_DESKTOP_API void from_json(const json &j, General &p);
