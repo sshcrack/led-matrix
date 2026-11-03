@@ -143,8 +143,14 @@ jobs:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
           FEED_URL: https://nuget.sshcrack.me/v3/index.json
         run: |
-          $nuget = & $env:VCPKG_EXE fetch nuget
+          $output = & $env:VCPKG_EXE fetch nuget
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg could not fetch NuGet" }
+          $nuget = ($output | Select-Object -Last 1).Trim()
+          if (-not (Test-Path -LiteralPath $nuget -PathType Leaf)) {
+            throw "vcpkg did not return a NuGet executable path"
+          }
           & $nuget setapikey $env:NUGET_API_KEY -Source $env:FEED_URL
+          if ($LASTEXITCODE -ne 0) { throw "NuGet API-key setup failed" }
 
       - name: Cache cross-compile toolchain
         if: matrix.requires-toolchain
