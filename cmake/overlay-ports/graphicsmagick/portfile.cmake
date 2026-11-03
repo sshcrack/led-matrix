@@ -1,18 +1,18 @@
-# Keep the baseline port's build and patches, but use the signed upstream
+# Same build and patches as the vcpkg 1.3.49 port (microsoft/vcpkg#54862), but use the signed upstream
 # release archive: Heptapod's generated archives can return an anti-bot page.
 vcpkg_download_distfile(ARCHIVE
     URLS
         "https://downloads.sourceforge.net/project/graphicsmagick/graphicsmagick/${VERSION}/GraphicsMagick-${VERSION}.tar.xz"
         "https://downloads.sourceforge.net/project/graphicsmagick/graphicsmagick-history/1.3/GraphicsMagick-${VERSION}.tar.xz"
     FILENAME "GraphicsMagick-${VERSION}.tar.xz"
-    SHA512 2c12a24198a8ee1f86b4c43bf8903d129c891ec2c27ba22287dfc8a5f65c9223b2caa67a37b9a91b10b049ba8425e757738f5d92a9ae70abee76d323af9bd1a0
+    SHA512 ad721c9b57fe94a1d46a6d051156c5072d24742d974650c9200877b813d3a36d2154a8c25c40af3d06fb8f91c0fa4688905b52f49f49ea2c87d627bedb101d3a
 )
 
 vcpkg_extract_source_archive(SOURCE_PATH
     ARCHIVE "${ARCHIVE}"
     PATCHES
         dependencies.diff
-        magick-types.diff
+        msvc-static-coders.diff
 )
 
 set(options "")
