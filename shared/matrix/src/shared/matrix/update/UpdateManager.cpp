@@ -272,7 +272,8 @@ namespace Update
                 cpr::ProgressCallback{[this](auto, auto, auto, auto, intptr_t) { return !should_stop_.load(); }});
             file.flush();
             file.close();
-            if (response.status_code != 200 || !file) {
+            if (response.error.code != cpr::ErrorCode::OK || response.status_code != 200 ||
+                should_stop_.load() || !file) {
                 try_remove(filename);
                 return std::unexpected("Download failed or could not be written (HTTP " + to_string(response.status_code) + ")");
             }
@@ -282,6 +283,7 @@ namespace Update
         }
         catch (const exception &ex)
         {
+            try_remove(filename);
             return std::unexpected("Error downloading update: " + string(ex.what()));
         }
     }

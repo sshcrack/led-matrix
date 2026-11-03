@@ -16,6 +16,8 @@ namespace Scenes {
             : RGBMatrixRenderer(width, height), canvas_(canvas) {
         }
 
+        void set_random_seed(uint32_t seed) { rng.seed(seed); }
+
         void setCanvas(rgb_matrix::Canvas *canvas) {
             if (canvas_ == canvas) {
                 return;
@@ -57,6 +59,7 @@ namespace Scenes {
     private:
         std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
         std::optional<std::shared_ptr<GravityParticles> > animation;
+        std::optional<uint32_t> random_seed_;
         FixedStepAccumulator simulation_{100.0, 8};
 
         void after_render_stop() override;
@@ -83,6 +86,11 @@ namespace Scenes {
         }
 
     public:
+        void set_random_seed(uint32_t seed) override {
+            random_seed_ = seed;
+            scene_rng.seed(seed);
+        }
+
         explicit ParticleScene();
 
         ~ParticleScene() override = default;

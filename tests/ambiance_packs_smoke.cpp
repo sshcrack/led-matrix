@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
         CHECK(preset->scenes[0]->get_uuid() != copy->scenes[0]->get_uuid());
         double red = 0, green = 0, blue = 0;
         std::size_t lit = 0, pixels = 0;
+        std::size_t scene_index = 0;
         for (auto &scene : preset->scenes) {
             CHECK(!scene->get_capabilities().requires_desktop && !scene->get_capabilities().requires_network);
             CHECK(scene->get_effective_runtime_inputs().required.empty());
@@ -37,6 +38,7 @@ int main(int argc, char **argv) {
             CHECK(scene->to_json().at("look_palette") != "ORIGINAL");
             CHECK(scene->to_json().at("look_brightness").get<float>() <= 0.55f);
             canvas->Fill(255,0,255);
+            scene->set_random_seed(42);
             scene->initialize(64, 64);
             if (scene->get_name() == "rain") {
                 CHECK(scene->render_frame(canvas, 0.0, true));
@@ -65,7 +67,23 @@ int main(int argc, char **argv) {
                     image.write(reinterpret_cast<char *>(pixel),3);
                 }
             }
+            std::vector<uint8_t> expected(64 * 64 * 3);
+            for (int y=0; y<64; ++y) for (int x=0; x<64; ++x) {
+                auto *pixel = expected.data() + (y*64+x)*3;
+                canvas->GetPixel(x,y,&pixel[0],&pixel[1],&pixel[2]);
+            }
             scene->after_render_stop();
+            auto &repeated = copy->scenes[scene_index++];
+            repeated->set_random_seed(42);
+            repeated->initialize(64, 64);
+            if (repeated->get_name() == "rain") CHECK(repeated->render_frame(canvas, 0.0, true));
+            for (int frame=0; frame<48; ++frame) CHECK(repeated->render_frame(canvas, 1.0 / 24.0, true));
+            for (int y=0; y<64; ++y) for (int x=0; x<64; ++x) {
+                uint8_t r=0,g=0,b=0; canvas->GetPixel(x,y,&r,&g,&b);
+                const auto *pixel = expected.data() + (y*64+x)*3;
+                CHECK(r == pixel[0] && g == pixel[1] && b == pixel[2]);
+            }
+            repeated->after_render_stop();
         }
         const double mean = (red + green + blue) / (pixels * 255.0 * 3);
         CHECK(mean > 0.00005 && mean < 0.18); // Catch black output and whole-panel blowouts.

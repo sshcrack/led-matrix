@@ -17,6 +17,7 @@ public:
 
 class WavePatternScene final : public Scene {
 public:
+    void set_random_seed(uint32_t seed) override { rng_.seed(seed); }
     WavePatternScene();
     ~WavePatternScene() override = default;
 
