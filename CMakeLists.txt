@@ -659,6 +659,8 @@ if(ENABLE_EMULATOR)
     )
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     if(UNIX)
+        add_test(NAME release_artifacts_test COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/release_artifacts_test.py)
         add_test(NAME update_transaction_test COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_transaction_test.py
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh)

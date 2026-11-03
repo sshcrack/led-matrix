@@ -45,6 +45,8 @@ jobs:
             requires-toolchain: false
     env:
       BUILD_TYPE: RelWithDebInfo
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_GHA_VERSION: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,20 +70,20 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         if: runner.os != 'Windows'
         with:
-          packages: libasound2-dev python3-jinja2 pkg-config autoconf autoconf-archive automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libglu1-mesa-dev libibus-1.0-dev mono-complete libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
+          packages: libasound2-dev python3-jinja2 pkg-config autoconf autoconf-archive automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libglu1-mesa-dev libibus-1.0-dev libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
           version: 1.1
 
-      - name: Update certificates
+      - name: Install Mono and synchronize certificate stores
         if: runner.os != 'Windows'
         run: |
-          sudo apt-get install --reinstall ca-certificates
+          # Restoring apt package files does not run Mono's trust-store hooks.
+          sudo apt-get install -y --no-install-recommends mono-devel ca-certificates-mono ca-certificates
           sudo update-ca-certificates
-          if command -v cert-sync >/dev/null 2>&1; then
-            sudo cert-sync /etc/ssl/certs/ca-certificates.crt
-            cert-sync --user /etc/ssl/certs/ca-certificates.crt
-          else
-            echo "cert-sync not available (mono-complete missing), skipping Mono cert sync"
-          fi
+          sudo cert-sync /etc/ssl/certs/ca-certificates.crt
+          cert-sync --user /etc/ssl/certs/ca-certificates.crt
+
+      - name: Cache compiler results
+        uses: Mozilla-Actions/sccache-action@v0.0.11
 
       - uses: lukka/get-cmake@latest
         with:
@@ -90,6 +92,13 @@ jobs:
       - uses: lukka/run-vcpkg@v11
         with:
           vcpkgConfigurationJsonGlob: "vcpkg-configuration.json"
+
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-binary-cache
+          key: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/overlay-ports/**', 'cmake/triplets/**') }}
+          restore-keys: ${{ runner.os }}-vcpkg-${{ matrix.preset }}-
 
       - name: Configure NuGet publishing key (Linux)
         if: runner.os != 'Windows'
@@ -134,14 +143,14 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.preset }}
-          configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DENABLE_SANITIZERS=ON"]' || '["-DSKIP_WEB_BUILD=ON"]' }}
+          configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DENABLE_SANITIZERS=ON"]' || '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DCMAKE_POLICY_DEFAULT_CMP0141=NEW", "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"]' }}
           buildPreset: ${{ matrix.preset }}
-          buildPresetAdditionalArgs: ${{ startsWith(matrix.name, 'emulator-') && '["--parallel", "2"]' || runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
+          buildPresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["--parallel", "2", "--target", "media_fetch_probe", "media_utilities_smoke", "spotify_cover_lifecycle_smoke", "ambiance_packs_smoke", "automatic_director_smoke", "live_frame_snapshot_smoke", "scene_renderer_frame_hold_smoke", "transition_frame_hold_smoke", "desktop_producer_ownership_smoke", "runtime_inputs_smoke"]' || startsWith(matrix.name, 'emulator-') && '["--parallel", "2"]' || runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
         env:
           # Use readwrite so new port-versions are cached; BaGetter may
           # reject very large packages (e.g. hello-imgui) with 413, but
           # vcpkg logs this as a warning and the build still succeeds.
-          VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
+          VCPKG_BINARY_SOURCES: "clear;files,${{ runner.temp }}/vcpkg-binary-cache,readwrite;nugettimeout,30;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite"
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
       - name: Run complete emulator suite
@@ -178,3 +187,23 @@ jobs:
             ${{ matrix.name == 'desktop-windows' && (inputs.version && format('desktop_build/led-matrix-desktop-{0}-win64.exe', inputs.version) || 'desktop_build/led-matrix-desktop-*-win64.exe') || '' }}
             ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}-arm64.tar.gz', inputs.version) || 'build/led-matrix-*-arm64.tar.gz') || '' }}
             ${{ matrix.name == 'led-matrix' && (inputs.version && format('build/led-matrix-{0}_arm64.deb', inputs.version) || 'build/led-matrix-*_arm64.deb') || '' }}
+
+  provenance:
+    name: Record validated build source
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record source tree and version
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import json, pathlib, re, subprocess
+          version = re.search(r'set\(VERSION ([0-9.]+)\)', pathlib.Path('CMakeLists.txt').read_text()).group(1)
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          pathlib.Path('build-provenance.json').write_text(json.dumps({'source_tree': tree, 'version': version}))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-provenance
+          path: build-provenance.json
