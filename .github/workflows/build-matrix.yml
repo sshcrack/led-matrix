@@ -75,12 +75,7 @@ jobs:
 
       - name: Install Mono and synchronize certificate stores
         if: runner.os != 'Windows'
-        run: |
-          # Restoring apt package files does not run Mono's trust-store hooks.
-          sudo apt-get install -y --no-install-recommends mono-devel ca-certificates-mono ca-certificates
-          sudo update-ca-certificates
-          sudo cert-sync /etc/ssl/certs/ca-certificates.crt
-          cert-sync --user /etc/ssl/certs/ca-certificates.crt
+        run: bash scripts/setup_mono_certificates.sh
 
       - name: Cache compiler results
         uses: Mozilla-Actions/sccache-action@v0.0.11
@@ -116,6 +111,8 @@ jobs:
         run: |
           NUGET_EXE=$($VCPKG_EXE fetch nuget | tail -n 1)
           mono "$NUGET_EXE" setapikey "$NUGET_API_KEY" -Source "$FEED_URL"
+          # Probe the actual Mono/NuGet TLS path before vcpkg starts its restores.
+          timeout 45 mono "$NUGET_EXE" search led-matrix-tls-probe -Source "$FEED_URL" -NonInteractive
 
       - name: Configure NuGet publishing key (Windows)
         if: runner.os == 'Windows'
