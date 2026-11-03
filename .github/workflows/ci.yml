@@ -21,8 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          submodules: recursive
+          fetch-depth: 1
 
       - uses: pnpm/action-setup@v4
         with:
@@ -59,56 +58,26 @@ jobs:
     needs: build
     if: github.event_name == 'pull_request' && always() && needs.build.result == 'success'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Post or update PR comment
+      - name: Post or update PR comment from artifact metadata
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           header="## Build Artifacts"
-          body="$header
+          body=$'## Build Artifacts\n\n| Platform | Download | Archive size |\n|---|---|---|'
+          artifacts=$(gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts" --paginate \
+            --jq '.artifacts[] | select(.name | endswith("-build")) | [.name, .id, (.size_in_bytes / 1048576 | floor)] | @tsv')
+          while IFS=$'\t' read -r name id size; do
+            [[ -n "$name" ]] || continue
+            body+=$'\n'"| $name | [Download](https://github.com/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts/$id) | $size MiB |"
+          done <<< "$artifacts"
 
-          | Platform | Download | Files |
-          |---|---|---|"
-
-          artifacts_json=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
-            --jq '.artifacts[] | {name, id}')
-
-          for dir in artifacts/*/; do
-            dir_name=$(basename "$dir")
-            artifact_id=$(echo "$artifacts_json" | jq -r --arg name "$dir_name" 'select(.name == $name) | .id')
-            download_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/$artifact_id"
-
-            file_list=""
-            first=true
-            for file in "$dir"/*; do
-              file_name=$(basename "$file")
-              size=$(du -h "$file" | cut -f1)
-              if [ "$first" = true ]; then
-                file_list="\`$file_name\` ($size)"
-                first=false
-              else
-                file_list="$file_list<br>\`$file_name\` ($size)"
-              fi
-            done
-
-            body+=$'\n'"| $dir_name | [⬇ download]($download_url) | $file_list |"
-          done
-
-          existing=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            --jq ".[] | select(.body | startswith(\"$header\")) | .id")
-
-          if [ -n "$existing" ]; then
-            gh api "/repos/${{ github.repository }}/issues/comments/$existing" \
-              -X PATCH -f body="$body"
+          existing=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Build Artifacts"))) | .id' | head -1)
+          jq -n --arg body "$body" '{body: $body}' > "$RUNNER_TEMP/artifact-comment.json"
+          if [[ -n "$existing" ]]; then
+            gh api "repos/$GH_REPO/issues/comments/$existing" -X PATCH --input "$RUNNER_TEMP/artifact-comment.json" > /dev/null
           else
-            gh pr comment "${{ github.event.pull_request.number }}" --body "$body"
+            gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" -X POST --input "$RUNNER_TEMP/artifact-comment.json" > /dev/null
           fi

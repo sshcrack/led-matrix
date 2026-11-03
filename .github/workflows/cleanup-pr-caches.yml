@@ -1,0 +1,50 @@
+name: Clean closed PR caches
+
+on:
+  pull_request_target:
+    types: [closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    if: github.event_name == 'pull_request_target' || github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout, artifact download or execution of PR code. The completed
+      # workflow event catches cache saves made after an early PR merge/closure.
+      - name: Delete caches scoped to closed pull requests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          repo = os.environ['GH_REPO']
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+          if 'pull_request' in event:
+              numbers = [event['pull_request']['number']]
+          else:
+              run = event['workflow_run']
+              numbers = [pr['number'] for pr in run.get('pull_requests', [])]
+              if not numbers:
+                  sha = run.get('head_sha', '')
+                  if not re.fullmatch(r'[0-9a-f]{40}', sha):
+                      raise ValueError('Invalid workflow source commit')
+                  numbers = [pr['number'] for pr in api(f'repos/{repo}/commits/{sha}/pulls')]
+          for number in set(numbers):
+              if type(number) is not int or number <= 0:
+                  raise ValueError('Invalid pull request number')
+              if api(f'repos/{repo}/pulls/{number}')['state'] == 'closed':
+                  subprocess.run(['gh', 'cache', 'delete', '--all', '--ref',
+                      f'refs/pull/{number}/merge', '--succeed-on-no-caches'], check=True)
+          PY

@@ -44,3 +44,46 @@ References:
 - https://github.com/awalsh128/cache-apt-pkgs-action#non-file-dependencies
 - https://github.com/mozilla/sccache/blob/main/docs/GHA.md
 - https://learn.microsoft.com/en-us/vcpkg/reference/binarycaching
+
+## Tool drift and cache scope
+
+The first master run after PR #85 used a newer hosted runner image. Its `fmt`
+package ABI metadata differed solely in CMake version (4.4.4 to 4.4.5) and the
+resulting host-tool dependency hashes. `VCPKG_FORCE_DOWNLOADED_BINARIES=1` makes
+vcpkg use the tool versions from its fixed metadata instead of newer host tools.
+That causes one initial rebuild, then keeps package keys stable across host
+CMake updates. Compiler changes still correctly invalidate affected packages.
+
+GitHub cannot restore PR-scoped caches on master. Master seeds its own compiler
+cache, which subsequent PRs can read. The closed-PR cleanup workflow removes only
+that PR's merge-ref caches; it never checks out PR code or deletes master caches.
+NuGet remains a shared package cache independent of GitHub branch scope.
+
+Cache diagnostics publish sccache statistics and counts of backend error categories.
+Raw logs, which may contain signed URLs, are not uploaded. A successful upload is
+not treated as proof of a cache hit; warm-run restore/hit statistics must verify it.
+
+Build jobs use a shallow checkout, including the required PortAudio submodule.
+Frontend builds fetch one commit and no C++ submodules. Artifact comments use the
+Actions metadata API directly, so they neither clone the repository nor download
+all of the build archives simply to list them. Full history remains available in
+the release workflow where changelog generation uses tags and commit dates.
+
+NuGet-restored packages are not written into vcpkg's files-cache provider. CI also
+caches the installed dependency tree, so a warm job can restore one GitHub archive
+instead of downloading every NuGet package again. That tree uses an exact key
+covering preset, runner image and dependency/overlay/toolchain inputs; it has no
+broad restore prefix that could reuse an incompatible installed tree. The binary
+archive provider retains its broader fallback because vcpkg validates those ABI
+keys before selecting individual packages. Bump the installed-cache generation
+if dependency-affecting configure flags change outside the hashed preset inputs.
+
+Plugin-owned overlays participate in both cache keys. An exact installed-tree
+hit skips the NuGet network probe; otherwise a failed probe is diagnostic and
+vcpkg can still satisfy dependencies from GitHub archives or source builds.
+
+PR compiler caches are read-only and reuse master objects; master builds publish
+new compiler objects. This avoids duplicating full compiler caches into each
+isolated PR scope while still retaining PR dependency snapshots. Modified sources
+can compile normally in a PR; after merging, their objects join the shared master
+cache. No paid cache-storage limit increase is required by this configuration.
