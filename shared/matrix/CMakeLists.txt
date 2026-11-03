@@ -8,6 +8,7 @@ include(GNUInstallDirs)
 add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/data.cpp
         src/shared/matrix/Scene.cpp
+        src/shared/matrix/ambiance_packs.cpp
         src/shared/matrix/post.cpp
         src/shared/matrix/post_processor.cpp
         src/shared/matrix/utils/utils.cpp

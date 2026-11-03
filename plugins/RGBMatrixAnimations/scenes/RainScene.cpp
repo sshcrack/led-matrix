@@ -35,6 +35,16 @@ void RainScene::initializeParticles(std::shared_ptr<ParticleMatrixRenderer> rend
     animation->setAcceleration(0, -accel->get());
     initializeColumns();
     createColorPalette(renderer);
+    if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL && matrix_height > 1) {
+        // Populate the window immediately instead of waiting a full traversal
+        // before a slow rain preset has anything below the top row.
+        const int count = std::min<int>(totalCols, num_particles->get());
+        for (int i = 0; i < count; ++i) {
+            const auto color = renderer->getColor(random_int16(1, totalColors));
+            animation->addParticle(i * matrix_width / count, random_int16(1, matrix_height),
+                color, 0, -random_int16(velocity->get() / 4, velocity->get()));
+        }
+    }
 }
 
 void RainScene::initializeColumns() {
@@ -55,6 +65,21 @@ void RainScene::initializeColumns() {
 }
 
 void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> renderer) {
+    if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL) {
+        totalColors = 2;
+        for (int i = 0; i < 256; ++i) {
+            const float position = i / 255.0f;
+            const auto tint = Ambiance::sample(look_palette_->get().get(), position,
+                (0.4f + position * 0.6f) * look_brightness_->get());
+            const auto id = renderer->getColourId(RGB_color(tint.r, tint.g, tint.b));
+            totalColors = std::max<uint16_t>(totalColors, id + 1);
+        }
+        return;
+    }
+    const auto color_id = [&](RGB_color color) {
+        color.r *= look_brightness_->get(); color.g *= look_brightness_->get(); color.b *= look_brightness_->get();
+        return renderer->getColourId(color);
+    };
     uint16_t brightness = 255;
     uint8_t red = 0, green = 255, blue = 0;
     uint8_t shadeSize = 8;
@@ -67,7 +92,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * i / 255);
             green = brightness;
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -76,7 +101,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = brightness;
             green = uint16_t(brightness * (255 - i) / 255);
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -85,7 +110,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = brightness;
             blue = uint16_t(brightness * i / 255);
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -94,7 +119,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * (255 - i) / 255);
             blue = brightness;
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -103,7 +128,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             green = uint16_t(brightness * i / 255);
             blue = brightness;
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -112,12 +137,20 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             green = brightness;
             blue = uint16_t(brightness * (255 - i) / 255);
-            colID = renderer->getColourId(RGB_color(red, green, blue));
+            colID = color_id(RGB_color(red, green, blue));
         }
     }
 
     // ...additional color transitions...
-    totalColors = renderer->getColourId(RGB_color(0, 255, 0)) - 1;
+    totalColors = color_id(RGB_color(0, 255, 0)) - 1;
+}
+
+void RainScene::register_properties() {
+    ParticleScene::register_properties();
+    look_palette_->label("Look palette").group("Appearance");
+    look_brightness_->label("Look brightness").group("Appearance").step(0.05);
+    add_property(look_palette_);
+    add_property(look_brightness_);
 }
 
 bool RainScene::render(rgb_matrix::FrameCanvas *canvas) {
@@ -197,7 +230,10 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const {
          {{"num_particles", 4800}, {"velocity", 7600}, {"delay_ms", 8}},
          {"vivid", "dense", "particles"}, 0.68f, 0.82f, 0.28f, 0.74f},
     };
-    Scenes::set_off_by_default(d, {"downpour"});
+    d.variants.push_back({"window", "Rainy window", "Slow blue rain with a compact, low-brightness palette",
+        {{"look_palette", "RAIN"}, {"look_brightness", 0.45f}, {"num_particles", 700}, {"velocity", 1800}, {"delay_ms", 24}},
+        {"calm", "rain", "blue"}, 0.22f, 0.32f, 0.0f, 0.28f});
+    Scenes::set_off_by_default(d, {"downpour", "window"});
     return d;
 }
 

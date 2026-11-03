@@ -12,9 +12,11 @@
 inline std::atomic<float> indoor_temperature{-999.0f};
 
 // Fonts
+namespace WeatherFonts {
 extern std::optional<rgb_matrix::Font> HEADER_FONT;
 extern std::optional<rgb_matrix::Font> BODY_FONT;
 extern std::optional<rgb_matrix::Font> SMALL_FONT;
+}
 
 // Sky colors for different conditions
 namespace SkyColor {

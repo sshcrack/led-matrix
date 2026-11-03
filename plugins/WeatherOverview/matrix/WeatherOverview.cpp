@@ -58,25 +58,25 @@ std::optional<string> WeatherOverview::before_server_init() {
     const std::string SMALL_FONT_FILE = plugin_weather_dir.string() + "/4x6.bdf";
 
     spdlog::debug("Loading fonts...");
-    HEADER_FONT.emplace();
-    BODY_FONT.emplace();
-    SMALL_FONT.emplace();
+    WeatherFonts::HEADER_FONT.emplace();
+    WeatherFonts::BODY_FONT.emplace();
+    WeatherFonts::SMALL_FONT.emplace();
 
-    if (!HEADER_FONT->LoadFont(HEADER_FONT_FILE.c_str()))
+    if (!WeatherFonts::HEADER_FONT->LoadFont(HEADER_FONT_FILE.c_str()))
         return "Could not load header font at " + HEADER_FONT_FILE;
 
-    if (!BODY_FONT->LoadFont(BODY_FONT_FILE.c_str()))
+    if (!WeatherFonts::BODY_FONT->LoadFont(BODY_FONT_FILE.c_str()))
         return "Could not load body font at " + BODY_FONT_FILE;
 
-    if (!SMALL_FONT->LoadFont(SMALL_FONT_FILE.c_str()))
+    if (!WeatherFonts::SMALL_FONT->LoadFont(SMALL_FONT_FILE.c_str()))
         return "Could not load small font at " + SMALL_FONT_FILE;
 
     return BasicPlugin::before_server_init();
 }
 
 std::optional<string> WeatherOverview::pre_exit() {
-    HEADER_FONT.reset();
-    BODY_FONT.reset();
-    SMALL_FONT.reset();
+    WeatherFonts::HEADER_FONT.reset();
+    WeatherFonts::BODY_FONT.reset();
+    WeatherFonts::SMALL_FONT.reset();
     return BasicPlugin::pre_exit();
 }

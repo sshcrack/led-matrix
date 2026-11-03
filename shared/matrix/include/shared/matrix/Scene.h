@@ -118,6 +118,9 @@ namespace Scenes {
         }
 
     public:
+        /// Set before initialize() for repeatable previews and visual fixtures.
+        /// Scenes without random state may ignore this. Production leaves it unset.
+        virtual void set_random_seed(uint32_t seed) {}
         Scene();
 
         virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation

@@ -3,9 +3,9 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    # v0.1.10: stream ownership, hardware readback, and emulator lifecycle fixes.
-    REF 16cdf44b760b79e9fad9ee53ab689639cf2c69f1
-    SHA512 3df5f2b172f52485ea797be1d72d88f6aebbf6daa417d82ecccec1ea6e66b38609e600aec78e7e5ef46281064b821e7d823f19a960eb5f709ac4064c2ecfc45e
+    # v0.1.11: headless rendering without SDL video initialization.
+    REF 7b7cf6b8bd42fd1c2d317658373a4fbe22e6041a
+    SHA512 3dce2257bb921420c43248a10d95503a6be224cf61861277ef973ac6272fbda472b23a9b7ceae652f479160ccb45f96ab9c09652237c7f0632c3f1d7bbd19ff6
     HEAD_REF master
     PATCHES fix-win-compat.patch
 )
