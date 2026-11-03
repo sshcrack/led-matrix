@@ -81,3 +81,9 @@ if dependency-affecting configure flags change outside the hashed preset inputs.
 Plugin-owned overlays participate in both cache keys. An exact installed-tree
 hit skips the NuGet network probe; otherwise a failed probe is diagnostic and
 vcpkg can still satisfy dependencies from GitHub archives or source builds.
+
+PR compiler caches are read-only and reuse master objects; master builds publish
+new compiler objects. This avoids duplicating full compiler caches into each
+isolated PR scope while still retaining PR dependency snapshots. Modified sources
+can compile normally in a PR; after merging, their objects join the shared master
+cache. No paid cache-storage limit increase is required by this configuration.

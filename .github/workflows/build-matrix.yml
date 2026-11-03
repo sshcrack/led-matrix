@@ -49,6 +49,8 @@ jobs:
       VCPKG_FORCE_DOWNLOADED_BINARIES: '1'
       SCCACHE_LOG: warn
       SCCACHE_GHA_ENABLED: "true"
+      # Avoid duplicating every compiler object into each PR's isolated scope.
+      SCCACHE_GHA_RW_MODE: ${{ github.event_name == 'pull_request' && 'READ_ONLY' || 'READ_WRITE' }}
       SCCACHE_GHA_VERSION: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
