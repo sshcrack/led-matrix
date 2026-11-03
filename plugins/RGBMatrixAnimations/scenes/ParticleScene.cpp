@@ -30,6 +30,9 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
     if (!renderer.has_value() || !animation.has_value())
     {
         spdlog::trace("Init particle scenes");
+        // The simulation paints changes only. Its first canvas must not retain
+        // pixels from the outgoing scene, even when the first delta is zero.
+        canvas->Clear();
         auto local_renderer = std::make_shared<ParticleMatrixRenderer>(matrix_width, matrix_height, canvas);
         auto local_animation = std::make_shared<GravityParticles>(local_renderer, shake->get(), bounce->get());
 

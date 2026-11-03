@@ -1,4 +1,5 @@
 #pragma once
+#include <shared/matrix/utils/AmbiancePalette.h>
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
@@ -8,6 +9,9 @@
 namespace AmbientScenes {
     class StarFieldScene : public Scenes::Scene {
     private:
+    PropertyPointer<Plugins::EnumProperty<Ambiance::Palette>> look_palette_ =
+        MAKE_ENUM_PROPERTY("look_palette", Ambiance::Palette, Ambiance::Palette::ORIGINAL);
+    PropertyPointer<float> look_brightness_ = MAKE_PROPERTY_MINMAX("look_brightness", float, 1.0f, 0.05f, 1.0f);
         struct Star {
             float x = 0.0f, y = 0.0f, z = 1.0f;
             float previous_z = 1.0f;

@@ -136,6 +136,13 @@ namespace AmbientScenes {
                 r = g = b = static_cast<uint8_t>(255.0f * std::clamp(brightness, 0.0f, 1.0f));
             }
 
+            if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL) {
+                const auto tint = Ambiance::sample(look_palette_->get().get(), star.hue,
+                    std::clamp(brightness, 0.0f, 1.0f) * look_brightness_->get());
+                r = tint.r; g = tint.g; b = tint.b;
+            } else {
+                r *= look_brightness_->get(); g *= look_brightness_->get(); b *= look_brightness_->get();
+            }
             if (streak_length->get() > 0.01f)
                 draw_line(canvas, px, py, x, y, r / 2, g / 2, b / 2, matrix_width, matrix_height);
             if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
@@ -167,6 +174,10 @@ namespace AmbientScenes {
         audio_reactive->label("Audio reactive").description("Let bass accelerate the flight, beats punch forward and treble brighten stars.").group("Audio");
         audio_strength->label("Audio strength").description("Overall amount of music-driven modulation.").group("Audio").visible_if("audio_reactive", true).step(0.05);
 
+        look_palette_->label("Look palette").group("Appearance");
+        look_brightness_->label("Look brightness").group("Appearance").step(0.05);
+        add_property(look_palette_);
+        add_property(look_brightness_);
         add_property(num_stars);
         add_property(speed);
         add_property(enable_twinkle);
@@ -199,6 +210,12 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
          {{"num_stars", 112}, {"speed", 0.030f}, {"streak_length", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
          {"music", "beat-driven"}, 0.72f, 0.86f, 1.0f, 0.36f},
     };
-    Scenes::set_off_by_default(d, {"warp"});
+    d.variants.push_back({"evening", "Evening starlight", "Sparse amber stars with almost no flight trails",
+        {{"look_palette", "EMBER"}, {"look_brightness", 0.42f}, {"num_stars", 42}, {"speed", 0.006f}, {"streak_length", 0.05f}, {"audio_reactive", false}},
+        {"calm", "warm", "amber"}, 0.12f, 0.14f, 0.0f, 0.18f});
+    d.variants.push_back({"deep_space", "Deep space drift", "Cool distant stars and restrained violet trails",
+        {{"look_palette", "SPACE"}, {"look_brightness", 0.55f}, {"num_stars", 72}, {"speed", 0.009f}, {"streak_length", 0.18f}, {"audio_reactive", false}},
+        {"calm", "space", "indigo"}, 0.18f, 0.22f, 0.0f, 0.22f});
+    Scenes::set_off_by_default(d, {"warp", "evening", "deep_space"});
     return d;
 }
