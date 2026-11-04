@@ -15,6 +15,10 @@ struct Snapshot : AudioProtocol::Frame {
 };
 
 void update(const AudioProtocol::Frame &frame);
+/// Same as update(), with an explicit receive time. Offline replays (preview
+/// fixtures, director simulations) use it to run faster than real time while
+/// keeping the style estimator and Runtime Input cadence on audio time.
+void update(const AudioProtocol::Frame &frame, std::chrono::steady_clock::time_point now);
 void clear();
 Snapshot snapshot();
 float average_spectrum(const Snapshot &state, float start_fraction, float end_fraction);

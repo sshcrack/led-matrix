@@ -656,7 +656,7 @@ Scenes::SceneDescriptor Scenes::AudioSpectrumScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "spectrum";
-    d.tags = {"music", "spectrum", "bars", "waveform", "audio-reactive"};
+    d.tags = {"music", "spectrum", "bars", "waveform", "audio-reactive", "music-showcase", "style:edm", "style:rock", "style:party", "style:hiphop", "drop-reactive"};
     d.intensity = 0.78f;
     d.motion = 0.72f;
     d.music_affinity = 1.0f;

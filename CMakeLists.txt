@@ -855,6 +855,25 @@ if(ENABLE_EMULATOR)
     target_compile_features(section_tracker_smoke PRIVATE cxx_std_23)
     add_test(NAME section_tracker_smoke COMMAND $<TARGET_FILE:section_tracker_smoke>)
 
+    # Offline Automatic Director simulation against recorded music analysis
+    # (tests/audio_analysis_dump output). Not a CTest: a judging tool.
+    add_executable(director_music_sim
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/director_music_sim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
+    )
+    target_compile_features(director_music_sim PRIVATE cxx_std_23)
+    target_include_directories(director_music_sim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(director_music_sim PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix ${CMAKE_DL_LIBS}
+    )
+    install(TARGETS director_music_sim DESTINATION bin)
+
     add_executable(automatic_director_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic_director_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
@@ -871,6 +890,23 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME automatic_director_smoke COMMAND $<TARGET_FILE:automatic_director_smoke>)
     set_tests_properties(automatic_director_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(music_style_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/music_style_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
+    )
+    target_compile_features(music_style_smoke PRIVATE cxx_std_23)
+    target_include_directories(music_style_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(music_style_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME music_style_smoke COMMAND $<TARGET_FILE:music_style_smoke>)
+    set_tests_properties(music_style_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(runtime_selection_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_selection_smoke.cpp

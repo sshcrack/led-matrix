@@ -51,7 +51,7 @@ void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scen
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
     history_.push_back({scene->get_name(), descriptor.family, scene->get_variant_id(), presentation_role(profile),
-                        profile.intensity, profile.motion});
+                        profile.intensity, profile.motion, is_music_look(profile)});
     while (history_.size() > 8)
         history_.pop_front();
     auto& memory = memory_[scene->get_name()];
@@ -115,4 +115,7 @@ void AutomaticDirector::reseed(std::uint64_t seed)
     seen_section_ = 0;
     next_fit_check_ms_ = 0;
     last_switch_reason_.clear();
+    phrase_primed_ = false;
+    mismatch_scene_.clear();
+    mismatch_since_ms_ = 0;
 }

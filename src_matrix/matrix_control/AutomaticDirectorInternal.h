@@ -16,6 +16,8 @@ namespace AutomaticDirectorDetail {
 bool has_tag(const std::vector<std::string>& tags, std::string_view wanted);
 bool has_any_tag(const std::vector<std::string>& tags, std::initializer_list<std::string_view> wanted);
 std::string presentation_role(const Scenes::EffectiveSceneProfile& profile);
+/// A look that visibly reacts to the music (as opposed to ambient scenery).
+bool is_music_look(const Scenes::EffectiveSceneProfile& profile);
 
 using DirectorContext = AutomaticDirector::Context;
 
@@ -61,7 +63,22 @@ inline constexpr float continuity = 0.18f;
 inline constexpr float abrupt_energy_jump = 0.24f;
 inline constexpr float follows_energy_trend = 0.16f;
 inline constexpr float favorite = 0.40f;
+// Live-music session casting.
+inline constexpr float music_showcase = 0.55f;       // "music-showcase" tier
+inline constexpr float style_fit = 2.00f;            // * confidence * (fit - neutral)
+inline constexpr float non_music_in_session = 1.60f; // ambient scenery while music plays
+inline constexpr float breather_penalty = 0.30f;     // ...unless a calm passage invites a breather
 }  // namespace weight
+
+// Live-music dwell (seconds) and minimum time before mid-scene cuts (ms).
+inline constexpr float showcase_dwell_s = 45.0f;
+inline constexpr float showcase_dwell_calm_s = 52.0f;
+inline constexpr float showcase_dwell_peak_s = 38.0f;
+inline constexpr float breather_dwell_s = 20.0f;
+inline constexpr std::uint64_t showcase_min_dwell_ms = 24000;
+inline constexpr std::uint64_t music_min_dwell_ms = 18000;
+inline constexpr std::uint64_t mismatch_hold_ms = 10000;
+inline constexpr float phrase_tau_s = 10.0f;
 
 inline constexpr std::uint64_t freshness_delay_ms = 6 * 60000;
 inline constexpr std::uint64_t freshness_ramp_ms = 24 * 60000;

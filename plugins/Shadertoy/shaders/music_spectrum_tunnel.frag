@@ -1,7 +1,7 @@
 /* led-matrix-shader
 {
   "family": "tunnel",
-  "tags": ["music", "tunnel", "depth", "neon", "audio-reactive", "geometric", "beat-driven", "showcase"],
+  "tags": ["music", "tunnel", "depth", "neon", "audio-reactive", "geometric", "beat-driven", "showcase", "style:edm", "style:rock"],
   "intensity": 0.88,
   "motion": 0.94,
   "music_affinity": 1.0,

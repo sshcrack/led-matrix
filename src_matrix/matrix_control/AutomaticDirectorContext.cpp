@@ -56,6 +56,12 @@ std::string presentation_role(const Scenes::EffectiveSceneProfile& profile)
     return "ambient";
 }
 
+bool is_music_look(const Scenes::EffectiveSceneProfile& profile)
+{
+    return profile.music_affinity >= 0.70f && has_any_tag(profile.tags, {"audio-reactive", "music", "beat-driven"})
+        && presentation_role(profile) == "reactive";
+}
+
 DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const VisualJourney::Frame& journey)
 {
     DirectorContext c;
@@ -160,6 +166,8 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const
         c.mode = silence ? "quiet" : "ambient";
     }
 
+    c.style = MusicStyle::describe(runtime_inputs);
+
     const float journey_weight = c.audio_active ? 0.18f : (c.spotify ? 0.35f : (silence ? 0.25f : 0.85f));
     c.target_intensity += (journey.intensity - c.target_intensity) * journey_weight;
     c.target_motion += (journey.motion - c.target_motion) * journey_weight;
@@ -190,6 +198,42 @@ using namespace AutomaticDirectorDetail;
 
 AutomaticDirector::Context AutomaticDirector::observe(const RuntimeInputs::Snapshot& runtime_inputs)
 {
-    last_context_ = context_for(runtime_inputs, journey_.frame());
+    auto c = context_for(runtime_inputs, journey_.frame());
+    if (c.audio_active) {
+        if (!phrase_primed_) {
+            phrase_intensity_ = c.target_intensity;
+            phrase_motion_ = c.target_motion;
+            phrase_primed_ = true;
+        } else if (clock_ms_ > phrase_updated_ms_) {
+            const float dt = static_cast<float>(clock_ms_ - phrase_updated_ms_) / 1000.0f;
+            const float k = 1.0f - std::exp(-dt / phrase_tau_s);
+            phrase_intensity_ += (c.target_intensity - phrase_intensity_) * k;
+            phrase_motion_ += (c.target_motion - phrase_motion_) * k;
+        }
+        c.target_intensity = phrase_intensity_;
+        c.target_motion = phrase_motion_;
+    } else {
+        phrase_primed_ = false;
+    }
+    phrase_updated_ms_ = clock_ms_;
+    last_context_ = c;
     return last_context_;
+}
+
+AutomaticDirector::Context AutomaticDirector::music_context(const RuntimeInputs::Snapshot& runtime_inputs) const
+{
+    auto c = context_for(runtime_inputs, journey_.frame());
+    if (c.audio_active && phrase_primed_) {
+        c.target_intensity = phrase_intensity_;
+        c.target_motion = phrase_motion_;
+    }
+    return c;
+}
+
+int AutomaticDirector::music_streak() const
+{
+    int streak = 0;
+    for (auto it = history_.rbegin(); it != history_.rend() && it->music_look; ++it)
+        ++streak;
+    return streak;
 }

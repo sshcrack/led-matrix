@@ -17,9 +17,9 @@ class MusicDirectorScene final : public Scene {
 
     PropertyPointer<std::vector<std::string>> scene_pool_ = MAKE_STRING_LIST_PROPERTY(
         "scene_pool",
-        std::vector<std::string>({"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "shader:music_neon_orbit",
-                                  "shader:music_spectrum_tunnel", "audio_particles", "audio_spectrum", "starfield", "metablob",
-                                  "boids", "wave_pattern", "reaction_diffusion", "neontunnel"}));
+        std::vector<std::string>({"audio_ridgeline", "audio_pond", "audio_reef", "audio_skyline", "audio_planet", "audio_campfire",
+                                  "audio_lighthouse", "audio_stage", "audio_night_drive", "audio_spectrum", "audio_particles", "shader:music_celestial_bloom",
+                                  "shader:music_liquid_ribbons", "shader:music_neon_orbit", "shader:music_spectrum_tunnel"}));
     PropertyPointer<bool> auto_discover_music_scenes_ = MAKE_PROPERTY("auto_discover_music_scenes", bool, true);
     PropertyPointer<tmillis_t> minimum_dwell_ = MAKE_PROPERTY_MINMAX("minimum_dwell", tmillis_t, 9000, 2000, 60000);
     PropertyPointer<tmillis_t> maximum_dwell_ = MAKE_PROPERTY_MINMAX("maximum_dwell", tmillis_t, 26000, 6000, 120000);
@@ -37,6 +37,8 @@ class MusicDirectorScene final : public Scene {
     std::string child_name_;
     std::string child_variant_;
     MusicalState child_state_ = MusicalState::Calm;
+    bool child_showcase_ = false;
+    bool child_drop_reactive_ = false;
     double switched_at_ = 0.0;
     bool pending_switch_ = false;
     MusicalState pending_state_ = MusicalState::Calm;

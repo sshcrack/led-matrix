@@ -9,6 +9,8 @@ register_plugin(SpotifyScenes
         matrix/manager/shared_spotify.h
         matrix/manager/song_bpm_getter.cpp
         matrix/manager/song_bpm_getter.h
+        matrix/manager/genre_lookup.cpp
+        matrix/manager/genre_lookup.h
         matrix/manager/spotify.cpp
         matrix/manager/spotify.h
         matrix/manager/state.cpp

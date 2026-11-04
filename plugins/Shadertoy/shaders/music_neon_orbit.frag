@@ -1,7 +1,7 @@
 /* led-matrix-shader
 {
   "family": "orbital",
-  "tags": ["music", "neon", "radial", "audio-reactive", "geometric", "showcase"],
+  "tags": ["music", "neon", "radial", "audio-reactive", "geometric", "showcase", "style:edm", "style:party"],
   "intensity": 0.80,
   "motion": 0.82,
   "music_affinity": 1.0,

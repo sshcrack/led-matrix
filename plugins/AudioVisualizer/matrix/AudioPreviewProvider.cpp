@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <fstream>
+
+#include <spdlog/spdlog.h>
 
 #include "shared/common/audio_protocol.h"
 #include "shared/matrix/audio_state.h"
@@ -125,10 +129,45 @@ void AudioPreviewProvider::begin(const Previews::RunContext &context)
     if (profile_ != "balanced" && profile_ != "bass" &&
         profile_ != "percussion" && profile_ != "ambient")
         profile_ = "balanced";
+
+    replay_.clear();
+    const auto replay_path = options.value("replay", std::string());
+    if (!replay_path.empty()) {
+        std::ifstream in(replay_path, std::ios::binary);
+        char magic[4]{};
+        uint32_t file_fps = 0, count = 0;
+        in.read(magic, 4);
+        in.read(reinterpret_cast<char *>(&file_fps), 4);
+        in.read(reinterpret_cast<char *>(&count), 4);
+        if (!in || std::memcmp(magic, "AUDR", 4) != 0) {
+            spdlog::error("Audio replay file '{}' is missing or invalid", replay_path);
+        } else {
+            replay_fps_ = static_cast<int>(std::max<uint32_t>(1, file_fps));
+            replay_.reserve(count);
+            std::vector<uint8_t> bytes;
+            for (uint32_t i = 0; i < count; ++i) {
+                uint32_t len = 0;
+                if (!in.read(reinterpret_cast<char *>(&len), 4))
+                    break;
+                bytes.resize(len);
+                if (!in.read(reinterpret_cast<char *>(bytes.data()), len))
+                    break;
+                AudioProtocol::Frame frame;
+                if (AudioProtocol::decode(bytes, frame))
+                    replay_.push_back(std::move(frame));
+            }
+            spdlog::info("Replaying {} recorded audio-analysis frames from '{}'", replay_.size(), replay_path);
+        }
+    }
 }
 
 void AudioPreviewProvider::update(const Scenes::SceneFrameContext &frame)
 {
+    if (!replay_.empty()) {
+        const auto index = static_cast<size_t>(std::max(0.0, frame.elapsed_seconds) * replay_fps_ + 1e-6);
+        AudioState::update(replay_[std::min(index, replay_.size() - 1)]);
+        return;
+    }
     AudioState::update(make_preview_audio(frame, fps_, bpm_, profile_));
 }
 

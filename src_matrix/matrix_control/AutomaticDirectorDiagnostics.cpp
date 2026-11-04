@@ -56,6 +56,18 @@ nlohmann::json AutomaticDirector::diagnostics() const
             {"performance_budget", performance_budget},
             {"context",
              {{"mode", c.mode},
+              {"music_style",
+               [&] {
+                   nlohmann::json weights = nlohmann::json::object();
+                   for (int i = 0; i < MusicStyle::StyleCount; ++i)
+                       weights[std::string(MusicStyle::name(static_cast<MusicStyle::Style>(i)))] =
+                           c.style.weights[static_cast<std::size_t>(i)];
+                   return nlohmann::json{{"dominant", c.style.confidence > 0.0f ? std::string(MusicStyle::name(c.style.dominant)) : ""},
+                                         {"confidence", c.style.confidence},
+                                         {"source", c.style.source},
+                                         {"genres", c.style.genres},
+                                         {"weights", weights}};
+               }()},
               {"audio_available", c.audio_available},
               {"audio_active", c.audio_active},
               {"spotify_available", c.spotify},

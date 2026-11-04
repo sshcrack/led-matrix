@@ -180,6 +180,8 @@ Scenery guidance (2026-09-06): new scenery should prioritize calm, recognizable 
 
 Live preview rule (2026-08-22): `/live_frame` is a WebSocket-only, pull-based transport (no HTTP polling). A connected socket does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting.
 
+Music director note (2026-11-05): while live music plays, both directors prefer scenes tagged `music-showcase` (longer dwell) and match `style:<chill|edm|party|rock|hiphop|acoustic>` tags against the current music style (`shared/matrix/music_style.h`). The style fuses genre metadata (`RuntimeInputIds::MusicGenre`, published by SpotifyScenes `genre_lookup.cpp`: Spotify artist genres first, then Deezer, then the optional GetSongBPM key; cached in `cache/genres.json`) with a weak audio estimate. `director_music_sim <song.audr> [--desktop --spotify --genre "a,b"]` replays recorded analysis (from `tests/audio_analysis_dump.cpp`) through the real director to check behaviour.
+
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
 ## API security

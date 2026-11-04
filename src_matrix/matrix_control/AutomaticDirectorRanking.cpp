@@ -50,7 +50,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
     const std::string& exclude_name) const
 {
     std::vector<Candidate> ranked;
-    const auto context = context_for(runtime_inputs, journey_.frame());
+    const auto context = music_context(runtime_inputs);
     const bool desktop_available = runtime_inputs.available(RuntimeInputIds::Desktop);
 
     // Scenes that recently crashed or bailed out immediately sit out a backoff
@@ -122,6 +122,26 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             }
 
             if (context.audio_active) {
+                // Music-first casting: while music plays, looks that visibly
+                // react to it lead; ambient scenery only appears as a short
+                // breather during calm passages after a run of music looks.
+                if (has_tag(profile.tags, "music-showcase")) {
+                    candidate.score += weight::music_showcase;
+                    candidate.reasons.push_back("featured music visualizer");
+                }
+                if (context.style.confidence > 0.0f) {
+                    const float fit = MusicStyle::style_fit(context.style, profile.tags);
+                    candidate.score += weight::style_fit * context.style.confidence * (fit - 0.35f);
+                    if (fit >= 0.45f)
+                        candidate.reasons.push_back("suits " + std::string(MusicStyle::name(context.style.dominant))
+                            + " music (" + context.style.source + ")");
+                }
+                if (!is_music_look(profile) && role != "media" && role != "director") {
+                    const bool breather = context.target_intensity < 0.36f && music_streak() >= 3;
+                    candidate.score -= breather ? weight::breather_penalty : weight::non_music_in_session;
+                    candidate.reasons.push_back(breather ? "calm passage allows an ambient breather"
+                                                         : "not music-reactive while music plays");
+                }
                 candidate.score += profile.music_affinity * weight::music_affinity_live;
                 if (profile.music_affinity > 0.72f)
                     candidate.reasons.push_back("strong live-music affinity");
@@ -350,7 +370,7 @@ tmillis_t AutomaticDirector::presentation_duration(
     if (!scene)
         return 20000;
 
-    const auto context = context_for(runtime_inputs, journey_.frame());
+    const auto context = music_context(runtime_inputs);
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
@@ -363,6 +383,14 @@ tmillis_t AutomaticDirector::presentation_duration(
     }
     else if (has_tag(profile.tags, "album-art")) {
         seconds = context.spotify_progress < 0.12f ? 24.0f : 20.0f;
+    }
+    else if (context.audio_active && has_tag(profile.tags, "music-showcase")) {
+        // Featured visualizers get room to develop across several phrases.
+        seconds = context.target_intensity < 0.40f ? showcase_dwell_calm_s
+            : (context.target_intensity > 0.75f ? showcase_dwell_peak_s : showcase_dwell_s);
+    }
+    else if (context.audio_active && !is_music_look(profile) && presentation_role(profile) == "ambient") {
+        seconds = breather_dwell_s;
     }
     else if (context.audio_active && profile.music_affinity > 0.72f) {
         seconds = profile.intensity > 0.82f ? 18.0f : (profile.intensity < 0.48f ? 27.0f : 22.0f);

@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include "shared/matrix/utils/shared.h"
+#include "genre_lookup.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/utils.h"
@@ -37,6 +38,10 @@ void publish_spotify_runtime_input(std::optional<SpotifyState> state)
         signals.emplace("artist", *artist);
     if (const auto cover = track.get_cover(); cover.has_value())
         signals.emplace("cover_url", *cover);
+
+    if (const auto id = track.get_id(); id.has_value())
+        GenreLookup::instance().track_playing(*id, track.get_song_name().value_or(""), track.get_artist_name().value_or(""),
+                                              track.get_artist_ids());
 
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
@@ -81,6 +86,12 @@ bool Spotify::refresh() const {
 }
 
 bool Spotify::initialize() {
+    GenreLookup::instance().set_spotify_fetch([this](const std::string &url) -> std::optional<json> {
+        auto response = authenticated_get(url);
+        if (!response.has_value() || !response->has_value())
+            return std::nullopt;
+        return **response;
+    });
     const auto [access_token, refresh_token, expires_at] = config->get_spotify();
     const auto any_empty = access_token->empty() || refresh_token->empty() || expires_at == 0;
 
@@ -346,6 +357,8 @@ void Spotify::terminate() {
     if (this->control_thread.joinable())
         this->control_thread.join();
     RuntimeInputs::set_available(RuntimeInputIds::SpotifyPlayback, false);
+    GenreLookup::instance().stop();
+    GenreLookup::instance().set_spotify_fetch({});
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {
