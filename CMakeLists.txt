@@ -1076,9 +1076,15 @@ if(ENABLE_EMULATOR)
 endif()
 
 if(NOT ENABLE_DESKTOP)
-    # Install scene previews from the git-tracked scene_previews/ directory
-    # Previews are committed to git and deployed as-is, not auto-generated
-    # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
+    # Install scene previews from scene_previews/. The GIFs are NOT tracked in git
+    # (they bloated clones): fetch them from the `scene-previews` release with
+    # ./scripts/fetch_scene_previews.sh, regenerate with
+    # ./scripts/generate_scene_previews.sh and publish with
+    # ./scripts/publish_scene_previews.sh.
+    file(GLOB _scene_preview_gifs "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/*.gif")
+    if(NOT _scene_preview_gifs)
+        message(WARNING "scene_previews/ has no GIFs; the package will have no scene thumbnails. Run scripts/fetch_scene_previews.sh")
+    endif()
 
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
         DESTINATION share/led-matrix/scene_previews

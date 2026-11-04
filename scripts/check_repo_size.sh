@@ -18,14 +18,13 @@
 #   scripts/check_repo_size.sh --staged        # pre-commit hook
 #   scripts/check_repo_size.sh <base-ref>      # CI: compares <base-ref>...HEAD
 #
-# Tip: regenerate only the previews you changed
-# (generate_scene_previews.sh --scenes "a,b") instead of --all; every
-# regenerated GIF costs ~0.5-1 MiB of history permanently.
+# scene_previews/*.gif are always blocked: they are published as release assets
+# (scripts/publish_scene_previews.sh), never committed.
 set -euo pipefail
 
 MAX_FILE_KB="${MAX_FILE_KB:-2048}"
 MAX_TOTAL_KB="${MAX_TOTAL_KB:-10240}"
-BLOCKED_RE='(\.(aab|apk|ipa|zst|hprof|dmp|exe|dll|so|dylib|deb|tar|gz|tgz|zip|7z)$|(^|/)heaptrack[^/]*$)'
+BLOCKED_RE='(\.(aab|apk|ipa|zst|hprof|dmp|exe|dll|so|dylib|deb|tar|gz|tgz|zip|7z)$|(^|/)heaptrack[^/]*$|^scene_previews/[^/]*\.gif$)'
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -80,6 +79,7 @@ if (( fail )); then
 Files are kept in git history forever and slow every future clone.
 Put big binaries (builds, profiles, videos) outside the repo, e.g. in a GitHub
 release asset. Exempt a deliberate file via .repo-size-allow.
+Scene preview GIFs: scripts/publish_scene_previews.sh (release assets, not git).
 EOF
     exit 1
 fi

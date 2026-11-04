@@ -43,3 +43,7 @@ install/lib/led-matrix/plugins/*.so
 *.hprof
 heaptrack.*
 core.[0-9]*
+
+# Scene previews live in the `scene-previews` release, not git
+# (scripts/fetch_scene_previews.sh / scripts/publish_scene_previews.sh)
+scene_previews/*.gif
