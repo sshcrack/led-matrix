@@ -13,10 +13,32 @@
 
 #define TAU 6.28318530718
 
+// Integer-cell friendly hash (the previous fract-product hash produced whole
+// rows of identical values for integer cells, which lined stars up in rows).
 float hash21(vec2 p) {
-    p = fract(p * vec2(123.34, 345.45));
-    p += dot(p, p + 34.345);
-    return fract(p.x * p.y);
+    vec3 p3 = fract(vec3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+float hash11(float n) { return fract(sin(n * 127.1) * 43758.5453); }
+float noise1(float x) {
+    float i = floor(x), f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(hash11(i), hash11(i + 1.0), f);
+}
+
+// Occasional substorm: roughly every 2.6 minutes the curtains brighten, move
+// faster and grow a pink lower fringe for ~20 s, then settle again.
+float substorm() {
+    float age = mod(iTime + 70.0, 157.0);
+    return smoothstep(0.0, 7.0, age) * (1.0 - smoothstep(14.0, 30.0, age));
+}
+// Extra curtain phase gained during substorms. Monotonic and continuous
+// across period boundaries, so the curtains only ever speed up, never reverse.
+float substormPhase() {
+    float cycles = floor((iTime + 70.0) / 157.0);
+    float age = mod(iTime + 70.0, 157.0);
+    return 6.0 * (cycles + smoothstep(0.0, 30.0, age));
 }
 
 vec3 auroraPalette(float t) {
@@ -31,10 +53,12 @@ vec3 auroraSky(vec2 p) {
     vec3 color = vec3(0.003, 0.007, 0.026);
     color += vec3(0.012, 0.020, 0.060) * (0.42 + 0.58 * (1.0 - uv.y));
     float haze = 0.0;
+    float storm = substorm();
+    float stormPhase = substormPhase();
 
     for (int i = 0; i < 6; ++i) {
         float fi = float(i);
-        float phase = iTime * (0.105 + fi * 0.014) + fi * 1.51;
+        float phase = iTime * (0.105 + fi * 0.014) + fi * 1.51 + stormPhase * (.6 + .1 * fi);
         // Spread the curtains over the full square panel instead of composing
         // them as a narrow widescreen ribbon across the middle.
         float center = 0.34 - fi * 0.125
@@ -54,9 +78,13 @@ vec3 auroraSky(vec2 p) {
         folds *= folds;
 
         vec3 tint = auroraPalette(fract(0.13 * fi + uv.x * 0.24 + iTime * 0.014));
-        color += tint * crest * (0.16 + 0.035 * fi);
-        color += tint * halo * (0.018 + 0.007 * fi);
-        color += tint * curtain * folds * (0.021 + 0.009 * fi);
+        float boost = 1.0 + .75 * storm;
+        color += tint * crest * (0.16 + 0.035 * fi) * boost;
+        color += tint * halo * (0.018 + 0.007 * fi) * boost;
+        color += tint * curtain * folds * (0.021 + 0.009 * fi) * boost;
+        // Pink nitrogen fringe along the lower edge during a substorm.
+        float fringe = exp(-pow((d + width * 1.6) / width, 2.0)) * folds;
+        color += vec3(.55, .10, .32) * fringe * storm * .38;
         haze += halo * 0.020;
     }
 
@@ -65,7 +93,9 @@ vec3 auroraSky(vec2 p) {
     // Two populations of stars: a few obvious anchors and a very dim fine field.
     vec2 starCell = floor((p + vec2(1.08, 0.57)) * vec2(21.0, 15.0));
     float seed = hash21(starCell);
-    vec2 starUv = fract((p + vec2(1.08, 0.57)) * vec2(21.0, 15.0)) - 0.5;
+    // Jitter each star inside its cell so the field does not read as a grid.
+    vec2 jitter = (vec2(hash21(starCell + 7.31), hash21(starCell + 3.77)) - 0.5) * 0.55;
+    vec2 starUv = fract((p + vec2(1.08, 0.57)) * vec2(21.0, 15.0)) - 0.5 - jitter;
     float star = step(0.955, seed) * exp(-38.0 * dot(starUv, starUv));
     float twinkle = 0.35 + 0.65 * sin(iTime * (0.34 + seed * 0.45) + seed * TAU);
     twinkle *= twinkle;
@@ -98,26 +128,42 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         color *= .48 * ripple;
         color += vec3(.003, .011, .021);
     }
+    // Two ranges with atmospheric perspective: a taller, hazier far range with
+    // a snow-dusted peak, and a lower, darker near range.
+    float yMirror = water ? 2.0 * horizon - p.y : p.y;
+    vec3 auroraLight = auroraPalette(fract(.26 + (p.x + .5) * .24 + iTime * .014)) * (1.0 + .6 * substorm());
     for (int i = 0; i < 2; ++i) {
         float layer = float(i);
-        float ridge = horizon + .035 + .018 * layer
-                    + .024 * sin(p.x * 14.0 + layer * 3.0)
-                    + .018 * sin(p.x * 27.0 + layer)
-                    + .012 * sin(p.x * 51.0);
-        float y = water ? 2.0 * horizon - p.y : p.y;
-        float mask = 1.0 - smoothstep(ridge - aa, ridge + aa, y);
-        vec3 mountain = layer == 0 ? vec3(.009, .027, .039) : vec3(.005, .015, .021);
+        float ridge;
+        vec3 mountain;
+        if (i == 0) {
+            float peak = .085 * max(0.0, 1.0 - abs(p.x - .16) / .19) + .045 * max(0.0, 1.0 - abs(p.x + .30) / .14);
+            ridge = horizon + .030 + peak + .040 * noise1(p.x * 7.0 + 3.0) + .014 * noise1(p.x * 19.0 + 7.0)
+                  + .006 * noise1(p.x * 47.0);
+            float height = ridge - horizon;
+            float snow = smoothstep(.075, .115, height) * smoothstep(ridge - .035, ridge - .004, yMirror);
+            snow *= .6 + .4 * noise1(p.x * 90.0);
+            mountain = vec3(.012, .030, .046) + auroraLight * .018;
+            mountain = mix(mountain, vec3(.05, .075, .10) + auroraLight * .07, snow);
+        } else {
+            ridge = horizon + .018 + .022 * noise1(p.x * 9.0 + 11.0) + .010 * noise1(p.x * 26.0 + 2.0)
+                  + .004 * noise1(p.x * 61.0);
+            mountain = vec3(.004, .011, .016) + auroraLight * .006;
+        }
+        float mask = 1.0 - smoothstep(ridge - aa, ridge + aa, yMirror);
         if (water) mountain *= .5;
         color = mix(color, mountain, mask);
     }
-    for (int i = 0; i < 24; ++i) {
+    // Irregular spruce line along the shore, with gaps.
+    for (int i = 0; i < 30; ++i) {
         float k = float(i);
-        float x = -.52 + k * .045;
         float seed = hash21(vec2(k, 5.0));
-        float height = .035 + .035 * seed;
-        float y = (water ? 2.0 * horizon - p.y : p.y) - horizon;
-        float width = .016 * (1.0 - clamp(y / height, 0.0, 1.0));
-        width *= .78 + .22 * sin(y * 500.0);
+        if (hash21(vec2(k, 9.0)) < .22) continue;
+        float x = -.54 + k * .037 + .014 * (hash21(vec2(k, 2.0)) - .5);
+        float height = .022 + .048 * seed * seed + .010 * hash21(vec2(k, 4.0));
+        float y = yMirror - horizon;
+        float width = (.010 + .008 * seed) * (1.0 - clamp(y / height, 0.0, 1.0));
+        width *= .74 + .26 * sin(y * 520.0 + k);
         float d = max(abs(p.x - x) - width, max(-y, y - height));
         float mask = 1.0 - smoothstep(-aa, aa, d);
         color = mix(color, vec3(.002, .008, .010), mask);

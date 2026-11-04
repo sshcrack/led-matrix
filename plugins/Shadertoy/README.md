@@ -40,9 +40,9 @@ See the repository license files and dependency licenses installed by vcpkg for 
 
 ## Atmospheric scenes
 
-- `shader:scenic_tidal_aquarium`: a planted aquarium with foreground fish, a distant school, swaying foliage, drifting particles, and occasional bubbles. A larger fish visits roughly every 73 seconds and the school parts around it.
-- `shader:scenic_planetary_vista`: a shaded ringed planet with drifting cloud bands, a small moon, distant stars, and layered terrain. A meteor crosses the sky roughly every 53 seconds.
-- `shader:scenic_aurora`: northern lights above mountains and a wooded shoreline, reflected in gently rippling water.
+- `shader:scenic_tidal_aquarium`: a planted aquarium beneath a shimmering water surface, with moss-topped rocks in a sand bed. Cichlids and an angelfish wander, slow down and turn around; a neon-tetra school turns as a ripple. A larger fish visits roughly every 73 seconds and the school parts around it; roughly every 3.5 minutes food flakes sink from the surface and the foreground fish rise to feed.
+- `shader:scenic_planetary_vista`: a shaded ringed planet with drifting cloud bands and ring shadows, distant stars, and layered hills rim-lit by planetshine. A small moon orbits roughly every 5 minutes, passing behind the planet and then in front of it, and a meteor crosses the sky roughly every 53 seconds.
+- `shader:scenic_aurora`: northern lights above a snow-dusted mountain range and an irregular spruce shoreline, reflected in gently rippling water. Roughly every 2.6 minutes a substorm brightens the curtains, speeds them up and adds a pink lower fringe for about 20 seconds.
 
 These scenes favor slow, calm motion in Automatic Mode. The aquarium and planetary vista respond subtly to music without depending on it. All three run on the connected desktop GPU and stream pixels to the Pi; no Shadertoy API key is required.
 
