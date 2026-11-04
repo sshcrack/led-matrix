@@ -745,6 +745,14 @@ if(ENABLE_EMULATOR)
     add_test(NAME brightness_schedule_smoke COMMAND $<TARGET_FILE:brightness_schedule_smoke>)
     set_tests_properties(brightness_schedule_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(update_release_parse_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_release_parse_smoke.cpp
+    )
+    target_compile_features(update_release_parse_smoke PRIVATE cxx_std_23)
+    target_link_libraries(update_release_parse_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME update_release_parse_smoke COMMAND $<TARGET_FILE:update_release_parse_smoke>)
+    set_tests_properties(update_release_parse_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(request_guard_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/request_guard_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/server/request_guard.cpp
