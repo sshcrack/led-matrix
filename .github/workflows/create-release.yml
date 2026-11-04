@@ -137,15 +137,23 @@ jobs:
           PREV_TAG=$(git tag --sort=-creatordate | grep -v "$TAG" | head -n1 || true)
 
           if [ -n "$PREV_TAG" ]; then
-            PRS=$(gh pr list --state merged --search "merged:>=$(git log -1 --format=%aI $PREV_TAG)" --json number,title,author,mergedAt,mergeCommit --jq '.[] | select(.mergeCommit != null) | "- #\(.number) (\(.title)) - (@\(.author.login))"')
+            PRS=$(gh pr list --state merged --search "merged:>$(git log -1 --format=%cI $PREV_TAG)" --json number,title,author,mergedAt,mergeCommit --jq '.[] | select(.mergeCommit != null) | "- #\(.number) (\(.title)) - (@\(.author.login))"')
             FULL_CHANGELOG_LINK="[**Full Changelog**](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG)"
+            # Bash replacement, not sed: $PRS spans several lines, which broke sed's s||| and left the notes empty.
             if [ -n "$PRS" ]; then
-              CHANGELOG=$(cat .github/changelog-template.md | sed "s|{{PRS}}|$PRS|g" | sed "s|{{FULL_CHANGELOG_LINK}}|$FULL_CHANGELOG_LINK|g")
+              CHANGELOG=$(cat .github/changelog-template.md)
+              CHANGELOG="${CHANGELOG//'{{PRS}}'/"$PRS"}"
             else
-              CHANGELOG=$(cat .github/changelog-no-prs-template.md | sed "s|{{FULL_CHANGELOG_LINK}}|$FULL_CHANGELOG_LINK|g")
+              CHANGELOG=$(cat .github/changelog-no-prs-template.md)
             fi
+            CHANGELOG="${CHANGELOG//'{{FULL_CHANGELOG_LINK}}'/"$FULL_CHANGELOG_LINK"}"
           else
             CHANGELOG="Release v${{ needs.prepare.outputs.version }}"
+          fi
+
+          if [ -z "$CHANGELOG" ]; then
+            echo "Release notes came out empty" >&2
+            exit 1
           fi
 
           gh release create "$TAG" \
