@@ -76,12 +76,18 @@ bool AudioReefScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // --- water column ---------------------------------------------------
     const float bass = spectrum_.band(0.0f, 0.25f);
+    // The shimmer terms are separable: per-column, per-row and per-diagonal
+    // tables replace ~3 sin() per pixel.
+    std::vector<float> sx(static_cast<size_t>(W)), sy(static_cast<size_t>(H)), sd(static_cast<size_t>(W + H));
+    for (int x = 0; x < W; ++x) sx[static_cast<size_t>(x)] = std::sin(x * 0.21f + time_ * 0.9f);
+    for (int y = 0; y < H; ++y) sy[static_cast<size_t>(y)] = std::sin(y * 0.17f - time_ * 0.7f);
+    for (int d = 0; d < W + H; ++d) sd[static_cast<size_t>(d)] = std::sin(d * 0.11f + time_ * 0.5f);
     for (int y = 0; y < H; ++y) {
         const float t = static_cast<float>(y) / H;
         const RGB c = lerp(RGB{8, 70, 105}, RGB{1, 8, 28}, std::pow(t, 0.8f));
         for (int x = 0; x < W; ++x) {
             // Faint drifting caustic shimmer in the upper water.
-            const float cs = std::sin(x * 0.21f + time_ * 0.9f) + std::sin(y * 0.17f - time_ * 0.7f) + std::sin((x + y) * 0.11f + time_ * 0.5f);
+            const float cs = sx[static_cast<size_t>(x)] + sy[static_cast<size_t>(y)] + sd[static_cast<size_t>(x + y)];
             const float shimmer = smoothstep(2.0f, 2.9f, cs) * (1.0f - t) * (0.35f + bass * 0.5f);
             buf_.at(x, y) = c + RGB{40, 90, 100} * shimmer;
         }

@@ -204,8 +204,12 @@ bool AudioNightDriveScene::render(rgb_matrix::FrameCanvas* canvas)
     for (int x = 0; x < W; ++x) {
         const float u = (x + 0.5f) / W * 2.0f - 1.0f;
         const int top = static_cast<int>(hoodTop + u * u * 9.0f);
-        for (int y = std::max(0, top); y < H; ++y) {
-            const float sheen = std::exp(-std::pow((u + 0.15f) * 3.0f, 2.0f)) * std::exp(-(y - top) / 3.0f);
+        const float su = (u + 0.15f) * 3.0f;
+        const float colSheen = std::exp(-su * su);
+        float rowFall = 1.0f;
+        const float fallStep = std::exp(-1.0f / 3.0f);
+        for (int y = std::max(0, top); y < H; ++y, rowFall *= fallStep) {
+            const float sheen = colSheen * rowFall;
             const RGB edge = y - top < 1 ? skyLow * 0.6f : RGB{};
             buf_.set(x, y, RGB{12, 11, 18} + edge + lampCol * (sheen * reflect * 0.6f) + skyLow * (sheen * 0.35f));
         }

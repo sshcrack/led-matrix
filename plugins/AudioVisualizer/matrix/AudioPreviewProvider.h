@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,4 +25,5 @@ private:
     // of the synthetic fixture: --preview-option audio:replay="file.audr".
     std::vector<AudioProtocol::Frame> replay_;
     int replay_fps_ = 30;
+    std::chrono::steady_clock::time_point replay_start_{};
 };

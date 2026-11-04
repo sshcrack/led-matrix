@@ -117,5 +117,8 @@ void AutomaticDirector::reseed(std::uint64_t seed)
     last_switch_reason_.clear();
     phrase_primed_ = false;
     mismatch_scene_.clear();
+    style_scene_.clear();
+    style_at_start_ = MusicStyle::Style::Chill;
+    fit_error_at_start_ = 0.0f;
     mismatch_since_ms_ = 0;
 }

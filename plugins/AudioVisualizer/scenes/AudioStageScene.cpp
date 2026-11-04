@@ -82,7 +82,7 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
                 const float cone = across / (along * width + 1.0f);
                 if (cone > 1.6f)
                     continue;
-                const float a = std::exp(-cone * cone * 2.2f) * std::exp(-along / 140.0f);
+                const float a = std::exp(-cone * cone * 2.2f - along / 140.0f);
                 buf_.add(x, y, col * (a * power * 0.75f));
             }
         // Fixture head on the truss.
@@ -165,13 +165,11 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
 
-    // --- blinder / strobe on drops -------------------------------------------
-    if (strobe_->get() && drop_.v > 0.25f) {
-        const bool on = std::fmod(time_ * 12.0f, 1.0f) < 0.5f;
-        if (on) {
-            const float a = (drop_.v - 0.25f) * 0.6f;
-            for (auto& p : buf_.px) p = p + RGB{255, 250, 240} * (a * 0.35f);
-        }
+    // --- blinder on drops: one warm flash that fades out. No flicker:
+    // fast strobing (3-30 Hz) is a photosensitivity risk in a room.
+    if (strobe_->get() && drop_.v > 0.05f) {
+        const float a = drop_.v * drop_.v * 0.30f;
+        for (auto& p : buf_.px) p = p + RGB{255, 245, 225} * a;
     }
 
     buf_.blit(canvas);

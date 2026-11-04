@@ -102,11 +102,13 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
             const float sy = surface[static_cast<size_t>(x)];
             const float slope = surface[static_cast<size_t>(std::min(x + 1, W - 1))] - surface[static_cast<size_t>(std::max(x - 1, 0))];
             for (int y = std::max(horizon, static_cast<int>(std::floor(sy))); y < H; ++y) {
-                RGB c = water * (0.8f + 0.2f * std::exp(-(y - sy) / 4.0f));
-                // Moonlight glitter column.
-                const float col = std::exp(-std::pow((x - moonX) / (3.0f + (y - horizon) * 0.25f), 2.0f));
-                if (hash(static_cast<uint32_t>(x * 73 + y * 977) + static_cast<uint32_t>(time_ * 6.0f) * 131) > 0.80f)
-                    c = c + RGB{120, 120, 110} * (col * 0.8f);
+                const float below = y - sy;
+                RGB c = water * (below < 16.0f ? 0.8f + 0.2f * std::exp(-below / 4.0f) : 0.8f);
+                // Moonlight glitter column (negligible beyond 3 widths).
+                const float u = (x - moonX) / (3.0f + (y - horizon) * 0.25f);
+                if (u * u < 9.0f
+                    && hash(static_cast<uint32_t>(x * 73 + y * 977) + static_cast<uint32_t>(time_ * 6.0f) * 131) > 0.80f)
+                    c = c + RGB{120, 120, 110} * (std::exp(-u * u) * 0.8f);
                 buf_.at(x, y) = c;
             }
             // Foam on crests, brighter when the band is loud.

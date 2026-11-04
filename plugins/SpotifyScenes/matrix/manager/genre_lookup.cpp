@@ -16,13 +16,20 @@ namespace {
 using nlohmann::json;
 constexpr auto UserAgent = "led-matrix (https://github.com/sshcrack/led-matrix)";
 
+// Set when a request failed (network, rate limit, server error) rather than
+// answering "nothing found"; failed lookups are retried later, not cached.
+thread_local bool request_failed = false;
+
 std::optional<json> get_json(const std::string &url, const std::stop_token &stop)
 {
     const auto response = cpr::Get(cpr::Url{url}, cpr::Header{{"User-Agent", UserAgent}, {"Accept-Language", "en"}},
                                    cpr::ConnectTimeout{std::chrono::seconds(5)}, cpr::Timeout{std::chrono::seconds(15)},
                                    cpr::ProgressCallback{[stop](auto, auto, auto, auto, intptr_t) { return !stop.stop_requested(); }});
-    if (response.status_code != 200)
+    if (response.status_code != 200) {
+        if (response.status_code != 404)
+            request_failed = true;
         return std::nullopt;
+    }
     try {
         return json::parse(response.text);
     } catch (...) {
@@ -117,6 +124,8 @@ std::vector<std::string> GenreLookup::spotify_genres(const std::vector<std::stri
     // The main artist decides; features add a little (max 3 requests).
     for (std::size_t i = 0; i < std::min<std::size_t>(3, artist_ids.size()); ++i) {
         const auto artist = fetch("https://api.spotify.com/v1/artists/" + artist_ids[i]);
+        if (!artist)
+            request_failed = true;
         if (artist && artist->contains("genres") && (*artist)["genres"].is_array())
             for (const auto &g : (*artist)["genres"])
                 if (g.is_string())
@@ -142,10 +151,8 @@ void GenreLookup::load_cache()
     }
 }
 
-void GenreLookup::save_cache() const
+void GenreLookup::write_cache(const json &j)
 {
-    json j = json::object();
-    for (const auto &[id, result] : cache_) j[id] = {{"genres", result.genres}, {"source", result.source}};
     std::error_code ec;
     std::filesystem::create_directories(cache_path().parent_path(), ec);
     const auto tmp = cache_path().string() + ".tmp";
@@ -181,6 +188,11 @@ void GenreLookup::track_playing(const std::string &track_id, const std::string &
     }
     if (in_flight_ == track_id || (pending_ && pending_->track_id == track_id))
         return;
+    if (const auto retry = retry_after_.find(track_id);
+        retry != retry_after_.end() && std::chrono::steady_clock::now() < retry->second)
+        return;
+    if (retry_after_.size() > 256)
+        retry_after_.clear();
     pending_ = Pending{track_id, title, artist, std::move(artist_ids)};
     if (!thread_.joinable())
         thread_ = std::jthread([this](std::stop_token stop) { worker(stop); });
@@ -194,6 +206,9 @@ void GenreLookup::stop()
         cv_.notify_all();
         thread_.join();
     }
+    std::lock_guard lock(mtx_);
+    in_flight_.clear();
+    pending_.reset();
     RuntimeInputs::set_available(RuntimeInputIds::MusicGenre, false);
 }
 
@@ -201,6 +216,7 @@ void GenreLookup::worker(std::stop_token stop)
 {
     while (!stop.stop_requested()) {
         Pending job;
+        request_failed = false;
         {
             std::unique_lock lock(mtx_);
             cv_.wait(lock, stop, [this] { return pending_.has_value(); });
@@ -241,10 +257,25 @@ void GenreLookup::worker(std::stop_token stop)
         result.source = source;
         spdlog::info("Genres for '{}' by '{}': {}", job.title, job.artist, result.genres.empty() ? "(none found)" : result.genres);
 
-        std::lock_guard lock(mtx_);
-        in_flight_.clear();
-        cache_[job.track_id] = result;
-        save_cache();
-        publish(job.track_id, result);
+        json snapshot;
+        {
+            std::lock_guard lock(mtx_);
+            in_flight_.clear();
+            if (result.genres.empty() && request_failed) {
+                // Transient failure: retry on a later poll instead of caching "no genres".
+                retry_after_[job.track_id] = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+                continue;
+            }
+            if (cache_.size() >= MaxCacheEntries) {
+                // Unordered, so this drops arbitrary old tracks; the cache is only an optimisation.
+                auto it = cache_.begin();
+                for (std::size_t n = 0; n < MaxCacheEntries / 5 && it != cache_.end(); ++n) it = cache_.erase(it);
+            }
+            cache_[job.track_id] = result;
+            publish(job.track_id, result);
+            snapshot = json::object();
+            for (const auto &[id, r] : cache_) snapshot[id] = {{"genres", r.genres}, {"source", r.source}};
+        }
+        write_cache(snapshot);  // file I/O outside the lock
     }
 }

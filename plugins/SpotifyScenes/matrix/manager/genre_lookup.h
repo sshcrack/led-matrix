@@ -11,6 +11,7 @@
 // + cache/genres.json) and are published as RuntimeInputIds::MusicGenre so the
 // directors can match scenes to the music style.
 
+#include <chrono>
 #include <condition_variable>
 #include <filesystem>
 #include <functional>
@@ -47,7 +48,7 @@ private:
     void worker(std::stop_token stop);
     void publish(const std::string &track_id, const Result &result) const;
     void load_cache();
-    void save_cache() const;
+    static void write_cache(const nlohmann::json &snapshot);
     [[nodiscard]] static std::filesystem::path cache_path();
 
     std::mutex mtx_;
@@ -63,4 +64,6 @@ private:
     std::vector<std::string> spotify_genres(const std::vector<std::string> &artist_ids);
     std::optional<Pending> pending_;
     std::string in_flight_;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> retry_after_;
+    static constexpr std::size_t MaxCacheEntries = 5000;
 };

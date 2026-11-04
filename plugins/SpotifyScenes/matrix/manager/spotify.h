@@ -20,6 +20,8 @@ private:
     std::string client_id;
     std::string client_secret;
     std::mutex mtx;
+    // Serialises token expiry checks/refreshes (control thread + genre lookup).
+    std::mutex refresh_mtx;
 
     std::optional<SpotifyState> last_playing;
     std::optional<SpotifyState> currently_playing;

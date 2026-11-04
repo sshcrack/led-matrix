@@ -173,6 +173,7 @@ class AudioPlanetScene final : public AmbientMusicScene {
     };
     std::vector<Meteor> meteors_;
     std::vector<float> ringLevel_;
+    std::vector<float> nebula_;  // static per-pixel nebula density (cached)
     AudioKit::Envelope beat_, drop_;
     float spin_ = 0.0f, moonAngle_ = 0.6f;
     AudioKit::HueCycle palette_{{28.0f, 200.0f, 330.0f, 265.0f}};
@@ -232,7 +233,7 @@ class AudioStageScene final : public AmbientMusicScene {
     AudioKit::HueCycle palette_{{0.0f, 210.0f, 285.0f, 30.0f, 330.0f, 190.0f}};
     float sweep_ = 0.0f;
     PropertyPointer<float> crowdSize_ = MAKE_PROPERTY_MINMAX("crowd_density", float, 1.0f, 0.0f, 2.0f);
-    PropertyPointer<bool> strobe_ = MAKE_PROPERTY("strobe_on_drop", bool, true);
+    PropertyPointer<bool> strobe_ = MAKE_PROPERTY("blinder_on_drop", bool, true);
 
 public:
     bool render(rgb_matrix::FrameCanvas* canvas) override;

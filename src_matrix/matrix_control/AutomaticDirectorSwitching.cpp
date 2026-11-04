@@ -160,7 +160,8 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
         };
 
         if (drop_event && elapsed_ms >= 3000) {
-            if (!current_music) {
+            // Covers and music videos follow the track, not its drops.
+            if (!current_music && presentation_role(current_profile) != "media") {
                 if (const auto* candidate = best_music()) {
                     request("music drop: bring a music-reactive look back on screen", candidate->scene);
                     return result;

@@ -45,7 +45,7 @@ static std::vector<AudioProtocol::Frame> load_audr(const std::string& path, int&
     std::vector<uint8_t> bytes;
     for (uint32_t i = 0; i < count; ++i) {
         uint32_t len = 0;
-        if (!in.read(reinterpret_cast<char*>(&len), 4))
+        if (!in.read(reinterpret_cast<char*>(&len), 4) || len > 64 * 1024)
             break;
         bytes.resize(len);
         if (!in.read(reinterpret_cast<char*>(bytes.data()), len))

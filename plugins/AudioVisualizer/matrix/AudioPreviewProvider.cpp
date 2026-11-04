@@ -123,6 +123,7 @@ AudioProtocol::Frame make_preview_audio(const Scenes::SceneFrameContext &frame,
 void AudioPreviewProvider::begin(const Previews::RunContext &context)
 {
     fps_ = std::max(1, context.fps);
+    replay_start_ = std::chrono::steady_clock::now();
     const auto options = context.options_for(id());
     bpm_ = std::clamp(options.value("bpm", 120.0f), 40.0f, 240.0f);
     profile_ = options.value("profile", std::string("balanced"));
@@ -143,11 +144,11 @@ void AudioPreviewProvider::begin(const Previews::RunContext &context)
             spdlog::error("Audio replay file '{}' is missing or invalid", replay_path);
         } else {
             replay_fps_ = static_cast<int>(std::max<uint32_t>(1, file_fps));
-            replay_.reserve(count);
+            replay_.reserve(std::min<uint32_t>(count, 1u << 20));
             std::vector<uint8_t> bytes;
             for (uint32_t i = 0; i < count; ++i) {
                 uint32_t len = 0;
-                if (!in.read(reinterpret_cast<char *>(&len), 4))
+                if (!in.read(reinterpret_cast<char *>(&len), 4) || len > 64 * 1024)
                     break;
                 bytes.resize(len);
                 if (!in.read(reinterpret_cast<char *>(bytes.data()), len))
@@ -165,7 +166,12 @@ void AudioPreviewProvider::update(const Scenes::SceneFrameContext &frame)
 {
     if (!replay_.empty()) {
         const auto index = static_cast<size_t>(std::max(0.0, frame.elapsed_seconds) * replay_fps_ + 1e-6);
-        AudioState::update(replay_[std::min(index, replay_.size() - 1)]);
+        // Stamp frames on the audio timeline so dt-based state (style
+        // estimator, publish cadence) sees real time even when rendering
+        // faster than real time.
+        AudioState::update(replay_[std::min(index, replay_.size() - 1)],
+                           replay_start_ + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                               std::chrono::duration<double>(std::max(0.0, frame.elapsed_seconds))));
         return;
     }
     AudioState::update(make_preview_audio(frame, fps_, bpm_, profile_));
