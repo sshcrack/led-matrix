@@ -42,50 +42,50 @@ Transform your space with a **powerful C++ application** that turns RGB LED matr
 
 ## 🎬 Demonstration
 
-Selected GIFs from `scene_previews/` (50+ pre-generated previews, committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
+Selected GIFs from the rolling [`scene-previews` release](https://github.com/sshcrack/led-matrix/releases/tag/scene-previews) (50+ pre-generated previews, hosted as release assets rather than committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
 
 <div align="center">
 
 | AmbientScenes: Clock | AmbientScenes: Starfield | AmbientScenes: Metablob | AmbientScenes: DigitalRain | AmbientScenes: NeonTunnel |
 |:-------------------:|:-----------------------:|:----------------------:|:--------------------------:|:-------------------------:|
-| ![](scene_previews/clock.gif) | ![](scene_previews/starfield.gif) | ![](scene_previews/metablob.gif) | ![](scene_previews/digitalrain.gif) | ![](scene_previews/neontunnel.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/clock.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/starfield.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/metablob.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/digitalrain.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/neontunnel.gif) |
 
 | AmbientScenes: Bouncing Logo | AmbientScenes: Sorting Visualizer | FractalScenes: Julia Set | FractalScenes: Game of Life | FractalScenes: Wave Pattern |
 |:---------------------------:|:--------------------------------:|:------------------------:|:--------------------------:|:---------------------------:|
-| ![](scene_previews/bouncing-logo.gif) | ![](scene_previews/sorting-visualizer.gif) | ![](scene_previews/julia_set.gif) | ![](scene_previews/game_of_life.gif) | ![](scene_previews/wave_pattern.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/bouncing-logo.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/sorting-visualizer.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/julia_set.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/game_of_life.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/wave_pattern.gif) |
 
 | GenerativeScenes: Boids | GenerativeScenes: Falling Sand | GenerativeScenes: Reaction Diffusion | GameScenes: Tetris | GameScenes: Pac-Man |
 |:----------------------:|:------------------------------:|:-----------------------------------:|:------------------:|:-------------------:|
-| ![](scene_previews/boids.gif) | ![](scene_previews/falling_sand.gif) | ![](scene_previews/reaction_diffusion.gif) | ![](scene_previews/tetris.gif) | ![](scene_previews/pacman_ai.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/boids.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/falling_sand.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/reaction_diffusion.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/tetris.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/pacman_ai.gif) |
 
 | GameScenes: Maze | GameScenes: Ping Pong | GameScenes: Snake | GithubScenes: Watermelon Plasma | GithubScenes: Wave |
 |:----------------:|:---------------------:|:-----------------:|:------------------------------:|:------------------:|
-| ![](scene_previews/maze.gif) | ![](scene_previews/ping_pong.gif) | ![](scene_previews/snake_game.gif) | ![](scene_previews/watermelon_plasma.gif) | ![](scene_previews/wave.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/maze.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/ping_pong.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/snake_game.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/watermelon_plasma.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/wave.gif) |
 
 | RGBMatrixAnimations: Rain | RGBMatrixAnimations: Sparks | Shadertoy: Plasma Waves | Shadertoy: Ethereal Portal | WeatherOverview: Weather |
 |:------------------------:|:--------------------------:|:-----------------------:|:--------------------------:|:------------------------:|
-| ![](scene_previews/rain.gif) | ![](scene_previews/sparks.gif) | ![](scene_previews/plasma_waves.gif) | ![](scene_previews/ethereal_portal.gif) | ![](scene_previews/weather.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/rain.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/sparks.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/plasma_waves.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/ethereal_portal.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/weather.gif) |
 
 | WeatherOverview: Weather Ambience | AudioVisualizer: Spectrum | AudioVisualizer: Aurora | AudioVisualizer: Kaleidoscope | SpotifyScenes: Cover |
 |:---------------------------------:|:-------------------------:|:-----------------------:|:-----------------------------:|:--------------------:|
-| ![](scene_previews/weather_ambience.gif) | ![](scene_previews/audio_spectrum.gif) | ![](scene_previews/audio_aurora.gif) | ![](scene_previews/audio_kaleidoscope.gif) | ![](scene_previews/spotify.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/weather_ambience.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_spectrum.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_aurora.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_kaleidoscope.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/spotify.gif) |
 
 | PixelJoint: Image Scene | Countdown | AudioVisualizer: Particles | AudioVisualizer: Pulse Tunnel | AudioVisualizer: Music Director |
 |:-----------------------:|:---------:|:--------------------------:|:-----------------------------:|:-------------------------------:|
-| ![](scene_previews/image_scene.gif) | ![](scene_previews/countdown.gif) | ![](scene_previews/audio_particles.gif) | ![](scene_previews/audio_pulse_tunnel.gif) | ![](scene_previews/music_director.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/image_scene.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/countdown.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_particles.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_pulse_tunnel.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/music_director.gif) |
 
 | Shadertoy: Mobius Fluid | Shadertoy: Rainbow Spiral | Shadertoy: Expert Julia | Shadertoy: Realistic Cloth |
 |:-----------------------:|:--------------------------:|:-----------------------:|:--------------------------:|
-| ![](scene_previews/mobius_fluid_manifold.gif) | ![](scene_previews/rainbow_spiral.gif) | ![](scene_previews/expert_quaternion_julia.gif) | ![](scene_previews/realistic_cloth.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/mobius_fluid_manifold.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/rainbow_spiral.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/expert_quaternion_julia.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/realistic_cloth.gif) |
 
 | **✨ New: Shader — Celestial Bloom** | **✨ New: Shader — Liquid Ribbons** | **✨ New: Shader — Neon Orbit** | **✨ New: Shader — Spectrum Tunnel** |
 |:-----------------------------------:|:-----------------------------------:|:-------------------------------:|:-----------------------------------:|
-| ![](scene_previews/shader_music_celestial_bloom.gif) | ![](scene_previews/shader_music_liquid_ribbons.gif) | ![](scene_previews/shader_music_neon_orbit.gif) | ![](scene_previews/shader_music_spectrum_tunnel.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_celestial_bloom.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_liquid_ribbons.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_neon_orbit.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_spectrum_tunnel.gif) |
 | `shader:music_celestial_bloom` — 7-petal bloom with spectrum-driven warp, beat-lit core | `shader:music_liquid_ribbons` — 7 flowing ribbons deformed by spectrum/waveform | `shader:music_neon_orbit` — neon orbital rings reacting to kick/snare | `shader:music_spectrum_tunnel` — 14-ring depth tunnel with circular spectrum deformation |
 
 | **✨ New: Shader — Aurora** | **✨ New: Shader — Planetary Vista** | **✨ New: Shader — Plasma Garden** | **✨ New: Shader — Tidal Aquarium** |
 |:---------------------------:|:-----------------------------------:|:---------------------------------:|:----------------------------------:|
-| ![](scene_previews/shader_scenic_aurora.gif) | ![](scene_previews/shader_scenic_planetary_vista.gif) | ![](scene_previews/shader_scenic_plasma_garden.gif) | ![](scene_previews/shader_scenic_tidal_aquarium.gif) |
+| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_aurora.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_planetary_vista.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_plasma_garden.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_tidal_aquarium.gif) |
 | `shader:scenic_aurora` — aurora curtains, mountain silhouettes & lake reflection | `shader:scenic_planetary_vista` — ringed planet, drifting clouds & meteor (~53s) | `shader:scenic_plasma_garden` — organic plasma cells & veined petals | `shader:scenic_tidal_aquarium` — planted aquarium, schooling fish & visitor fish (~73s) |
 
 </div>
@@ -316,7 +316,7 @@ Perfect for development, testing, and demonstrations!
 
 #### **Scene Preview GIFs**
 
-The web interface shows animated GIF previews for each scene in the gallery. Previews are **committed to git** in the `scene_previews/` directory and deployed with the application.
+The web interface shows animated GIF previews for each scene in the gallery. Previews are **not committed to git** (every regeneration would permanently bloat clones). They are assets of the rolling `scene-previews` GitHub release, downloaded into `scene_previews/` with `./scripts/fetch_scene_previews.sh`, and deployed with the application.
 
 **Generate all scene previews:**
 ```bash
@@ -354,10 +354,9 @@ EOF
   --height 128
 ```
 
-**Commit previews to git:**
+**Publish previews to the release (not to git):**
 ```bash
-git add scene_previews/
-git commit -m "Update scene previews"
+./scripts/publish_scene_previews.sh   # needs `gh auth login`; uploads only changed GIFs
 ```
 
 **Preview dependencies are scene-declared and plugin-provided.** `preview_gen` does not know how AudioVisualizer, Spotify, or future plugins obtain their runtime data. A scene declares the named fixture inputs it needs with `get_preview_spec()`, and the owning plugin registers a `Previews::DataProvider` that feeds the same shared state used in production. `preview_gen` only resolves providers and calls `begin()`, `update()` once per preview frame, and `end()`.
@@ -397,9 +396,8 @@ Desktop-dependent scenes default to generated previews being disabled until they
 # 1. Generate/update previews (outputs to scene_previews/)
 ./scripts/generate_scene_previews.sh --all
 
-# 2. Commit previews to git
-git add scene_previews/
-git commit -m "Update scene previews"
+# 2. Publish previews to the scene-previews release (not git)
+./scripts/publish_scene_previews.sh
 
 # 3. Cross-compile and deploy
 cmake --preset cross-compile
@@ -543,7 +541,7 @@ By default, the main index page will redirect you to the web controller (located
 | `GET` | `/list_providers` | Available image providers |
 | `GET` | `/scene_preview?name=<scene_name>` | Preview GIF for a scene (if available) |
 
-> **Scene Previews:** GIF files are pre-generated and committed to git in the `scene_previews/` directory. They are deployed to `<install_dir>/scene_previews/` and accessible via the `/scene_preview?name=<scene_name>` endpoint. To generate or update previews, use the `./scripts/generate_scene_previews.sh` script. After generating, commit the GIFs to git before deploying. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
+> **Scene Previews:** GIF files are pre-generated and published to the rolling `scene-previews` GitHub release (not committed to git); `./scripts/fetch_scene_previews.sh` downloads them into `scene_previews/`. They are deployed to `<install_dir>/scene_previews/` and accessible via the `/scene_preview?name=<scene_name>` endpoint. To generate or update previews, use the `./scripts/generate_scene_previews.sh` script. After generating, run `./scripts/publish_scene_previews.sh` before releasing. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
 
 ### ⚙️ **System Control**
 

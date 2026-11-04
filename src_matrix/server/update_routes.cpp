@@ -175,6 +175,10 @@ namespace Server
                 json simplified_releases = json::array();
                 
                 for (const auto& release : releases_json) {
+                    // The rolling "scene-previews" release is an asset store, not an app version.
+                    if (!release.value("tag_name", std::string{}).starts_with('v')) {
+                        continue;
+                    }
                     json simplified;
                     simplified["version"] = release["tag_name"];
                     simplified["name"] = release["name"];

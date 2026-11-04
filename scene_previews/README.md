@@ -1,37 +1,32 @@
 # Scene Previews Directory
 
-This directory contains pre-generated animated GIF previews for LED matrix scenes.
-These are used by the web interface to display scene thumbnails in the gallery.
+Animated GIF previews for LED matrix scenes, shown as thumbnails in the web
+gallery. **The GIFs are not tracked in git**: every committed regeneration stays
+in history forever and slows every clone. They are assets of the rolling
+[`scene-previews` release](https://github.com/sshcrack/led-matrix/releases/tag/scene-previews)
+and this directory is only a local working copy (`*.gif` is git-ignored).
 
-## Generating Previews
-
-To generate or update scene previews:
+## Get the previews (fresh clone / before a build)
 
 ```bash
-# Generate all scenes
-./scripts/generate_scene_previews.sh --all
-
-# Generate specific scenes
-./scripts/generate_scene_previews.sh --scenes "WaveScene,ColorPulseScene,FractalScene"
-
-# Generate from a list file
-./scripts/generate_scene_previews.sh --list my_scenes.txt
+./scripts/fetch_scene_previews.sh              # always download
+./scripts/fetch_scene_previews.sh --if-missing # only when the directory has no GIFs
 ```
 
-## Workflow
+CMake installs `scene_previews/*.gif` into the package, so fetch before building
+a `.deb`. CI does this automatically for the cross-compile job.
 
-1. Generate previews using the script above
-2. Review the generated GIFs to ensure they look correct
-3. Commit the previews to git:
-   ```bash
-   git add scene_previews/
-   git commit -m "Update scene previews"
-   ```
-4. Deploy with: `cmake --build emulator_build --target install`
+## Generate and publish
 
-## Notes
+```bash
+# Generate (all, or just the scenes you changed)
+./scripts/generate_scene_previews.sh --all
+./scripts/generate_scene_previews.sh --scenes "WaveScene,ColorPulseScene"
 
-- Previews are pre-generated and committed to git for consistency across deployments
-- Desktop-dependent scenes (e.g., AudioSpectrumScene) cannot be generated here
-  - Use `./scripts/capture_desktop_preview.sh` for those scenes
-- Preview parameters (FPS, frames, resolution) can be customized via script options
+# Review the GIFs, then publish (needs `gh auth login`)
+./scripts/publish_scene_previews.sh
+```
+
+Publishing uploads only changed files, removes assets of deleted scenes, and
+refreshes `scene_previews.tar.gz`. It never touches git history.
+Deploy with: `cmake --build emulator_build --target install`.

@@ -297,7 +297,7 @@ if eval "$CMD"; then
     print_info "Previews saved to: $OUTPUT_DIR"
     print_info "Next steps:"
     print_info "  1. Review the generated GIFs"
-    print_info "  2. Commit them to git: git add scene_previews/"
+    print_info "  2. Publish them (NOT to git): scripts/publish_scene_previews.sh"
     print_info "  3. Deploy with: cmake --build emulator_build --target install"
 else
     EXIT_CODE=$?
