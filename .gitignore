@@ -35,3 +35,11 @@ Thumbs.db
 # Install-directory artifacts
 install/lib/led-matrix/*.so
 install/lib/led-matrix/plugins/*.so
+
+# Large binaries that must never enter history (see scripts/check_repo_size.sh)
+*.aab
+*.apk
+*.ipa
+*.hprof
+heaptrack.*
+core.[0-9]*

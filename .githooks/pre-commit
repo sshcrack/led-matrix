@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Enable once per clone:  git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/scripts/check_repo_size.sh" --staged

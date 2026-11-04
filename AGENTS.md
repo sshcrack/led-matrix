@@ -232,6 +232,15 @@ Current providers include `audio` (owned by AudioVisualizer) and `spotify.playba
 
 Live matrix capture is strict pull/on-demand. The React UI normally keeps one `/live_frame` WebSocket open and sends a `next` message only when it wants one future composed frame; simultaneous viewers are coalesced into one capture and all viewers whose request preceded that capture receive the same binary `LMF1` frame. When there is no outstanding demand, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the publish mutex, or run a lease/timer. A connected WebSocket by itself is **not** demand. The React preview stops requesting frames while hidden/off-screen.
 
+## Keeping the repo small
+
+Every committed blob stays in history forever and slows every `git clone`. History was rewritten on 2026-11-04 to drop ~140 MiB of old GIFs, a 51 MiB `.aab` and profiler dumps (clone ~188 MiB → ~46 MiB). Keep it that way:
+
+- `scripts/check_repo_size.sh` fails on files > 2 MiB, blocked artifact types (`.aab .apk .zip .deb heaptrack.*` …) and > 10 MiB of added/modified files per PR. CI runs it on every PR (`repo-size` job); enable the local hook once per clone with `git config core.hooksPath .githooks`.
+- Exempt a deliberate file via `.repo-size-allow`; waive the total budget with `[large-ok]` in a commit message.
+- `scene_previews/*.gif` cost 0.5–1.5 MiB **each time they are regenerated** and are never removed from history. Regenerate only the scenes you changed (`./scripts/generate_scene_previews.sh --scenes "a,b"`), not `--all`.
+- Build outputs, profiles, videos belong in release assets, not git.
+
 ## CI
 
 `.github/workflows/ci.yml` on push/PR to `master` builds only the react-web frontend (pnpm + node 22) and uploads it as the `web-build` artifact. It then delegates all three C++ builds (`cross-compile`, `desktop-linux`, `desktop-windows`) to the reusable workflow `.github/workflows/build-matrix.yml`, which downloads the `web-build` artifact so all presets get the bundled web UI without rebuilding it.
