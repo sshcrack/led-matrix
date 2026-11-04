@@ -86,6 +86,18 @@ For radial visuals, remember that `atan(y, x)` has a coordinate seam at `-PI/+PI
 5. Run `./scripts/preview_shadertoy_shader.sh plugins/Shadertoy/shaders/<name>.frag`. It builds the exact LED Matrix consumer preview tool if needed and renders a five-frame review set at physical 128×128 matrix resolution: idle/no-audio, early motion, a strong synthetic kick, groove, and a later frame. Use `shadertoy_shader_preview` directly only when you need a specific size/frame count.
 6. Inspect the actual generated PNGs, not only compiler success. When working through Laptop MCP, use `sandbox_read_image` on the generated files so the agent literally sees the rendered pixels. Check for clipping, empty frames, unreadable detail, temporal collapse, and excessive full-screen flashes. For looping/depth/radial shaders, also inspect consecutive frames across the expected wrap point.
 7. `shadertoy_shader_preview` reports normalized `temporal_mean` and `temporal_max`. An optional final numeric argument turns `temporal_max` into a hard regression limit; this is useful for seam-prone loops. The built-in spectrum tunnel uses a long no-audio temporal smoke test for exactly this reason.
-8. For repo shaders, no registry edit is needed: committing the `.frag` file is enough for packaging, Automatic Mode metadata, and scene discovery.
+8. For deeper iteration (real music, more frames, GPU profiling, regression tests), wrap the `.frag` in a standalone [`shadertoy` CLI](https://github.com/sshcrack/shadertoy) project. The CLI feeds the same music texture and `iAudio*` uniforms. Its `synthetic` profiles match this plugin's preview generator, and it can analyse a real track frame by frame:
+
+   ```bash
+   shadertoy new /tmp/st && cp plugins/Shadertoy/shaders/<name>.frag /tmp/st/shaders/image.frag
+   cd /tmp/st && shadertoy channel set image 0 music --kind music --filter linear --wrap clamp
+   sed -i 's/width = 1280/width = 128/; s/height = 720/height = 128/' ShaderToy.toml
+   shadertoy render-frames --range 0:600:60 --contact-sheet sheet.png --audio synthetic --audio-profile percussion
+   shadertoy render-frames --range 0:600:60 --contact-sheet song.png --audio ~/music/track.mp3 --audio-offset 30
+   shadertoy audio --audio ~/music/track.mp3 --time 30.5   # print the analysis values the shader sees
+   ```
+
+   See `shadertoy docs audio` and `shadertoy docs agent`. The `.frag` in this repo stays the source of truth; copy changes back.
+9. For repo shaders, no registry edit is needed: committing the `.frag` file is enough for packaging, Automatic Mode metadata, and scene discovery.
 
 The goal is one self-contained shader file with obvious intent, no bespoke C++ glue, deterministic previewability, and graceful behavior both with and without live music.
