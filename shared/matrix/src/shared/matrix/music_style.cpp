@@ -30,7 +30,7 @@ constexpr Keyword Keywords[] = {
     {"new wave", Style::Party, 0.7f}, {"italo", Style::Party, 0.9f},
     // rock / metal
     {"rock", Style::Rock, 1.0f}, {"metal", Style::Rock, 1.0f}, {"punk", Style::Rock, 1.0f}, {"grunge", Style::Rock, 1.0f},
-    {"alternative", Style::Rock, 0.7f}, {"emo", Style::Rock, 0.8f}, {"hardcore", Style::Rock, 0.8f}, {"indie", Style::Rock, 0.5f},
+    {"alternative", Style::Rock, 0.7f}, {"emo", Style::Rock, 0.8f}, {"hardcore", Style::Rock, 0.8f}, {"indie", Style::Rock, 0.35f}, {"indie", Style::Party, 0.4f},
     // hip hop
     {"hip hop", Style::HipHop, 1.0f}, {"hip-hop", Style::HipHop, 1.0f}, {"rap", Style::HipHop, 1.0f}, {"trap", Style::HipHop, 0.9f},
     {"r&b", Style::HipHop, 0.8f}, {"rnb", Style::HipHop, 0.8f}, {"grime", Style::HipHop, 1.0f}, {"drill", Style::HipHop, 1.0f},
