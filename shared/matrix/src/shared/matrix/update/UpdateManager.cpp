@@ -195,6 +195,76 @@ namespace Update
         }
     }
 
+    namespace
+    {
+        // GitHub sends null for empty optional fields (e.g. a release without notes);
+        // nlohmann's value() throws on those, so treat null like a missing key.
+        std::string string_or(const nlohmann::json &obj, const char *key, const std::string &fallback = "")
+        {
+            const auto it = obj.find(key);
+            return it != obj.end() && it->is_string() ? it->get<std::string>() : fallback;
+        }
+
+        bool bool_or(const nlohmann::json &obj, const char *key, bool fallback)
+        {
+            const auto it = obj.find(key);
+            return it != obj.end() && it->is_boolean() ? it->get<bool>() : fallback;
+        }
+    }
+
+    expected<UpdateInfo, string> UpdateManager::parse_release(const nlohmann::json &release,
+                                                              const std::optional<Common::Version> &version)
+    {
+        if (!release.is_object())
+            return std::unexpected("Release response is not a JSON object");
+
+        string latest_version_str = string_or(release, "tag_name");
+        if (latest_version_str.empty())
+            return std::unexpected("Release has no tag_name");
+        // Remove 'v' prefix if present
+        if (latest_version_str.starts_with("v"))
+            latest_version_str = latest_version_str.substr(1);
+
+        // Find the led-matrix arm64 deb asset
+        string download_url;
+        string sha256;
+        bool found_asset = false;
+        const auto assets = release.find("assets");
+        if (assets != release.end() && assets->is_array())
+        {
+            for (const auto &asset : *assets)
+            {
+                if (!asset.is_object())
+                    continue;
+                const string asset_name = string_or(asset, "name");
+                if (asset_name.find("led-matrix") != string::npos &&
+                    asset_name.find("arm64") != string::npos &&
+                    asset_name.ends_with(".deb"))
+                {
+                    download_url = string_or(asset, "browser_download_url");
+                    const string digest = string_or(asset, "digest");
+                    if (digest.starts_with("sha256:"))
+                        sha256 = digest.substr(7);
+                    found_asset = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found_asset)
+            return std::unexpected("Could not find led-matrix arm64 asset in release");
+        if (!download_url.starts_with("https://github.com/"))
+            return std::unexpected("Refusing update asset outside https://github.com/: " + download_url);
+
+        UpdateInfo info;
+        info.version = version.value_or(Common::Version::fromString(latest_version_str));
+        info.download_url = download_url;
+        info.sha256 = sha256;
+        info.body = string_or(release, "body");
+        info.is_prerelease = bool_or(release, "prerelease", false);
+        return info;
+    }
+
     // Unified get_update_info method with optional<string> version
     expected<UpdateInfo, string> UpdateManager::get_update_info(const std::optional<Common::Version> &version)
     {
@@ -211,54 +281,7 @@ namespace Update
             if (response.status_code != 200)
                 return std::unexpected("GitHub API request failed with status: " + to_string(response.status_code));
 
-            auto json_response = nlohmann::json::parse(response.text);
-            string latest_version_str = json_response["tag_name"];
-
-            // Remove 'v' prefix if present
-            if (latest_version_str.starts_with("v"))
-            {
-                latest_version_str = latest_version_str.substr(1);
-            }
-
-            Common::Version latest_version = Common::Version::fromString(latest_version_str);
-
-            // Find the led-matrix arm64 deb asset
-            string download_url = "";
-            string sha256 = "";
-            bool found_asset = false;
-
-            if (json_response.contains("assets"))
-            {
-                for (const auto &asset : json_response["assets"])
-                {
-                    string asset_name = asset["name"];
-                    if (asset_name.find("led-matrix") != string::npos &&
-                        asset_name.find("arm64") != string::npos &&
-                        asset_name.ends_with(".deb"))
-                    {
-                        download_url = asset["browser_download_url"];
-                        const string digest = asset.value("digest", "");
-                        if (digest.starts_with("sha256:"))
-                            sha256 = digest.substr(7);
-                        found_asset = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!found_asset)
-                return std::unexpected("Could not find led-matrix arm64 asset in release");
-            if (!download_url.starts_with("https://github.com/"))
-                return std::unexpected("Refusing update asset outside https://github.com/: " + download_url);
-
-            UpdateInfo info;
-            info.version = version.value_or(latest_version);
-            info.download_url = download_url;
-            info.sha256 = sha256;
-            info.body = json_response.value("body", "");
-            info.is_prerelease = json_response.value("prerelease", false);
-
-            return info;
+            return parse_release(nlohmann::json::parse(response.text), version);
         }
         catch (const exception &ex)
         {

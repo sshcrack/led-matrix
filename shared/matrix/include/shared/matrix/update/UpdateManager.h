@@ -84,6 +84,12 @@ namespace Update
         void start();
         void stop();
 
+        /// Parses a GitHub release JSON object into UpdateInfo. Tolerates null or missing
+        /// optional fields (body, prerelease, digest), which GitHub returns for releases
+        /// without notes. `version` overrides the release's tag when set.
+        static std::expected<UpdateInfo, std::string> parse_release(const nlohmann::json &release,
+                                                                     const std::optional<Common::Version> &version = std::nullopt);
+
         // Manual update operations
         std::expected<UpdateInfo, std::string> manual_check_for_updates();
         std::expected<UpdateInfo, std::string> get_update_info(const std::optional<Common::Version> &version = std::nullopt);
