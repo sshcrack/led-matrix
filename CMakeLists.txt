@@ -1431,6 +1431,8 @@ else()
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
         "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq, curl, ca-certificates, util-linux, systemd")
+    # Collects core dumps of the service (see LimitCORE in led-matrix.service).
+    set(CPACK_DEBIAN_PACKAGE_SUGGESTS "systemd-coredump, gdb")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"

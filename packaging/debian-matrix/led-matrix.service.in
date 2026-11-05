@@ -12,6 +12,12 @@ EnvironmentFile=/etc/default/led-matrix
 ExecStart=/usr/bin/led-matrix $MATRIX_OPTS
 WorkingDirectory=/var/lib/led-matrix
 Restart=on-failure
+# Let crashes leave a core dump for systemd-coredump (`coredumpctl list led-matrix`).
+# The crash reporter writes its text report to /var/lib/led-matrix/crashes and
+# then re-raises the signal so the kernel still dumps core. Because the process
+# drops privileges after GPIO init, the kernel only dumps it when
+# fs.suid_dumpable=2, which the systemd-coredump package configures.
+LimitCORE=infinity
 
 [Install]
 WantedBy=multi-user.target
