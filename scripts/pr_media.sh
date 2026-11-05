@@ -63,7 +63,7 @@ fi
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 url() { echo "https://github.com/$repo/releases/download/$tag/$1"; }
-safe() { echo "$1" | tr -c 'A-Za-z0-9._-\n' '-'; }
+safe() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '-'; }
 
 uploads=()
 markdown=()
