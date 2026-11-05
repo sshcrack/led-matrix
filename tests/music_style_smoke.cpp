@@ -86,6 +86,9 @@ int main()
     check(dominant(MusicStyle::from_genres({"german hip hop", "german indie", "german indie pop"})) != Style::Rock,
           "german indie/rap is not classed as rock");
     check(dominant(MusicStyle::from_genres({"heavy metal"})) == Style::Rock, "heavy metal -> rock");
+    check(dominant(MusicStyle::from_genres({"skate punk", "pop punk"})) == Style::Rock, "skate/pop punk -> rock");
+    check(dominant(MusicStyle::from_genres({"ndw"})) == Style::Party, "NDW -> party");
+    check(dominant(MusicStyle::from_genres({"deutschrap"})) == Style::HipHop, "deutschrap -> hiphop");
     check(dominant(MusicStyle::from_genres({"Chill Out", "Ambient"})) == Style::Chill, "Chill Out -> chill");
     const auto none = MusicStyle::from_genres({"zzz unknown"});
     check(none[0] == 0 && none[1] == 0 && none[3] == 0, "unknown genre stays unclassified");
