@@ -1,0 +1,34 @@
+# ThreadSanitizer suppressions — THIRD-PARTY FRAMES ONLY.
+# Never suppress a race whose top frames are in our own code: fix it.
+# vcpkg ports are not TSan-instrumented, so their internal locking can be
+# invisible to TSan and show up as false positives inside the library.
+
+# Mesa/GL drivers spawn their own threads and use lock-free queues.
+race:libgallium
+race:_dri.so
+race:libGLX
+race:libEGL
+race:libLLVM
+called_from_lib:libgallium
+called_from_lib:libGLX_mesa.so
+# SDL2 emulator window / audio threads.
+race:libSDL2
+called_from_lib:libSDL2
+# GLFW / X11 event handling.
+race:libglfw
+race:libX11
+race:libxcb
+# portaudio / ALSA / PulseAudio / PipeWire realtime callback threads.
+race:libportaudio
+race:libasound
+race:libpulse
+race:libpipewire
+called_from_lib:libpulse
+called_from_lib:libpipewire
+# GraphicsMagick's OpenMP/semaphore internals (built without TSan).
+race:libGraphicsMagick
+race:libgomp
+called_from_lib:libgomp
+# dbus / glib worker threads pulled in by desktop libraries.
+race:libdbus
+race:libglib

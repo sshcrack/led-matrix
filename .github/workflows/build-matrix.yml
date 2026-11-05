@@ -218,7 +218,7 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.preset }}
-          configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DENABLE_SANITIZERS=ON"]' || '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DCMAKE_POLICY_DEFAULT_CMP0141=NEW", "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"]' }}
+          configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DLED_MATRIX_SANITIZE=address"]' || '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DCMAKE_POLICY_DEFAULT_CMP0141=NEW", "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"]' }}
           buildPreset: ${{ matrix.preset }}
           buildPresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["--parallel", "2", "--target", "media_fetch_probe", "media_utilities_smoke", "spotify_cover_lifecycle_smoke", "ambiance_packs_smoke", "automatic_director_smoke", "live_frame_snapshot_smoke", "scene_renderer_frame_hold_smoke", "transition_frame_hold_smoke", "desktop_producer_ownership_smoke", "runtime_inputs_smoke"]' || startsWith(matrix.name, 'emulator-') && '["--parallel", "2"]' || runner.os == 'Windows' && '["--target", "package", "--config", "RelWithDebInfo"]' || '["--target", "package"]' }}
         env:
@@ -248,7 +248,8 @@ jobs:
         run: ctest --test-dir emulator_build --output-on-failure -R 'media_.*smoke|spotify_cover_lifecycle_smoke|ambiance_packs_smoke|automatic_director_smoke|live_frame_snapshot_smoke|scene_renderer_frame_hold_smoke|transition_frame_hold_smoke|desktop_producer_ownership_smoke|runtime_inputs_smoke'
         env:
           ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1
-          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1:suppressions=${{ github.workspace }}/scripts/sanitizers/ubsan.supp
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/scripts/sanitizers/lsan.supp
 
       - name: Record cache diagnostics
         if: always()
