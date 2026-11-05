@@ -52,7 +52,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
                 msg += ": " + detail;
             if (set_error_on_fail) {
                 set_last_error(msg);
-                spdlog::error(last_error_);
+                spdlog::error("{}", msg);
                 state_ = State::Error;
                 notify_status("error");
             } else {
@@ -76,7 +76,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
                 msg += ": " + detail;
             if (set_error_on_fail) {
                 set_last_error(msg);
-                spdlog::error(last_error_);
+                spdlog::error("{}", msg);
                 state_ = State::Error;
                 notify_status("error");
             } else {
@@ -91,7 +91,7 @@ bool VideoStreamEngine::download_and_process_chunk(int chunk_index,
             std::string msg = fmt::format("ffmpeg chunk {} produced empty output — video ended", chunk_index);
             if (set_error_on_fail) {
                 set_last_error(msg);
-                spdlog::error(last_error_);
+                spdlog::error("{}", msg);
                 state_ = State::Error;
                 notify_status("error");
             } else {

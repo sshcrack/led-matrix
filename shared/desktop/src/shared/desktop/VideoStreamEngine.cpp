@@ -64,7 +64,7 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
                     FILE* bin = fopen(binPath.c_str(), "rb");
                     if (!bin) {
                         set_last_error("Failed to open chunk: " + binPath);
-                        spdlog::error(last_error_);
+                        spdlog::error("Failed to open chunk: {}", binPath);
                         state_ = State::Error;
                         notify_status("error");
                         return false;
@@ -291,18 +291,16 @@ void VideoStreamEngine::stop() {
         HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, static_cast<DWORD>(pid));
         if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
 #else
+        // Only signal here: play_fast_chunk() on the processing thread owns the
+        // child and reaps it once fread() unblocks. Reaping it here as well
+        // made the loser of the race spin on ECHILD for 2 s and signal a pid
+        // that may already have been reused. While ffmpeg_pid_ still holds the
+        // pid the child is unreaped, so the pid cannot have been recycled.
         kill(pid, SIGTERM);
-        int status;
-        for (int i = 0; i < 20; ++i) {
-            pid_t result = waitpid(pid, &status, WNOHANG);
-            if (result == pid) break;
+        for (int i = 0; i < 20 && ffmpeg_pid_.load() == pid; ++i)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        if (waitpid(pid, &status, WNOHANG) == 0) {
+        if (ffmpeg_pid_.load() == pid)
             kill(pid, SIGKILL);
-            waitpid(pid, &status, 0);
-        }
-        ffmpeg_pid_ = -1;
 #endif
     }
 

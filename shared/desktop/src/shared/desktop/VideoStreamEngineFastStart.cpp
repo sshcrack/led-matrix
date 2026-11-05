@@ -163,7 +163,9 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     }
     fclose(pipe);
 #else
-    if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
+    // This thread owns reaping the child. Clearing ffmpeg_pid_ first means
+    // stop() never signals a pid after it has been reaped (and possibly reused).
+    if (const pid_t pid = ffmpeg_pid_.exchange(-1); pid > 0) {
         kill(pid, SIGTERM);
         int status;
         for (int i = 0; i < 20; ++i) {
@@ -175,7 +177,6 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             kill(pid, SIGKILL);
             waitpid(pid, &status, 0);
         }
-        ffmpeg_pid_ = -1;
     }
     fclose(pipe);
 #endif
