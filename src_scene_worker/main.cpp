@@ -1,5 +1,4 @@
 #ifdef _WIN32
-#include <shared/common/build_info.h>
 #include "shared/common/win_compat.h"
 #include <cstdlib>
 #endif
@@ -48,6 +47,7 @@
 #include "matrix-factory.h"
 #include "led-matrix.h"
 
+#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/common/desktop_control_protocol.h>
 #include <shared/common/crash_reporter.h>
