@@ -61,6 +61,10 @@ cmake --build --preset cross-compile --target install
 ./build_upload.sh
 ```
 
+### Worktrees and build caching
+
+Fresh worktrees build in seconds instead of minutes: `cmake/BuildCache.cmake` finds vcpkg when `VCPKG_ROOT` is unset and routes compiles through ccache with `base_dir=<worktree>`, so object files are shared across all worktrees and the main checkout; vcpkg ports come from its binary cache. Run `scripts/setup_worktree.sh [--build]` in a new worktree (the T3 project runs it on worktree creation): it copies the git-ignored `.env`, `react-web/dist` and `scene_previews/` from the main checkout and configures the emulator preset. Build only through the presets; a hand-rolled `cmake -B` without the presets misses the shared cache.
+
 ### DEB packaging (cross-compile)
 
 The cross-compile preset now produces both `.tar.gz` and `.deb` packages. The `.deb` installs to FHS paths (`/usr/bin/`, `/usr/lib/led-matrix/`, `/usr/share/led-matrix/`) via CPack.
@@ -180,7 +184,7 @@ Scenery guidance (2026-09-06): new scenery should prioritize calm, recognizable 
 
 Live preview rule (2026-08-22): `/live_frame` is a WebSocket-only, pull-based transport (no HTTP polling). A connected socket does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting.
 
-Music director note (2026-11-05): while live music plays, both directors prefer scenes tagged `music-showcase` (longer dwell) and match `style:<chill|edm|party|rock|hiphop|acoustic>` tags against the current music style (`shared/matrix/music_style.h`). The style fuses genre metadata (`RuntimeInputIds::MusicGenre`, published by SpotifyScenes `genre_lookup.cpp`: Spotify artist genres first, then Deezer, then the optional GetSongBPM key; cached in `cache/genres.json`) with a weak audio estimate. `director_music_sim <song.audr> [--desktop --spotify --genre "a,b"]` replays recorded analysis (from `tests/audio_analysis_dump.cpp`) through the real director to check behaviour.
+Music director note (2026-11-05): while live music plays, both directors prefer scenes tagged `music-showcase` (longer dwell) and match `style:<chill|edm|party|rock|hiphop|acoustic>` tags against the current music style (`shared/matrix/music_style.h`). The style fuses genre metadata (`RuntimeInputIds::MusicGenre`, published by SpotifyScenes `genre_lookup.cpp`: Spotify artist genres first, then Deezer, then the optional GetSongBPM key; cached in `cache/genres.json`) with a weak audio estimate. `director_music_sim <song.audr> [--desktop --spotify --genre "a,b"]` replays recorded analysis (from `tests/audio_analysis_dump.cpp`) through the real director to check behaviour. Every `music-showcase` scene needs a `style:` tag; `tests/music_showcase_coverage.py` enforces a minimum scene count per style (higher for hiphop/rock/party, the owner's main genres).
 
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
@@ -233,6 +237,14 @@ Current providers include `audio` (owned by AudioVisualizer) and `spotify.playba
 ### Live web matrix capture performance
 
 Live matrix capture is strict pull/on-demand. The React UI normally keeps one `/live_frame` WebSocket open and sends a `next` message only when it wants one future composed frame; simultaneous viewers are coalesced into one capture and all viewers whose request preceded that capture receive the same binary `LMF1` frame. When there is no outstanding demand, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the publish mutex, or run a lease/timer. A connected WebSocket by itself is **not** demand. The React preview stops requesting frames while hidden/off-screen.
+
+## Scene videos and PR media
+
+Show visual changes in PRs as videos, not descriptions:
+- `scripts/render_scene_video.sh --scenes <a,b> [--replay song.audr] [--audio song.wav]` renders MP4s with an LED-panel look via `preview_gen` (emulator preset).
+- Real-music input: `emulator_build/install/bin/audio_analysis_dump <song.wav> <out.audr>` records the desktop analyzer's output; pass it as `--replay`. Keep copyrighted audio out of anything uploaded: publish silent videos and keep `--audio` versions local.
+- `spotify` previews take custom artwork and track changes: `--preview-option 'spotify.playback:covers=["a.png","b.png"]' --preview-option spotify.playback:track_seconds=6`.
+- `scripts/pr_media.sh [--comment] <files>` uploads images/MP4s to the rolling `pr-media` prerelease and prints markdown (videos get a linked GIF preview, since GitHub only plays inline video uploaded through the browser). Paste the output into the PR body or use `--comment`.
 
 ## Keeping the repo small
 
