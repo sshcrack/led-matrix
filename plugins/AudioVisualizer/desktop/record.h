@@ -87,6 +87,9 @@ namespace AudioRecorder
         std::thread loopbackThread;
         std::atomic<bool> stopLoopbackThread{false};
         void linuxLoopbackReadLoop();
+        // Joins the reader thread, closes the pipe and reaps parec. Safe to
+        // call when the reader already exited on its own.
+        void releaseLoopback();
 #endif
 
         mutable std::mutex audioBufferMutex;
