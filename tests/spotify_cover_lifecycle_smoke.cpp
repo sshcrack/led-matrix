@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     };
     auto scene = std::make_unique<Scenes::CoverOnlyScene>();
     scene->update_default_properties(); scene->register_properties();
-    scene->load_properties({{"disable_cover_animation",true},{"show_progress",false},
+    scene->load_properties({{"show_progress",false},{"spectrum_aura",false},{"beat_sparkles",false},
         {"background_blur",0},{"cover_border_glow_intensity",0.0},{"beat_pulse_strength",0.0}});
     scene->initialize(64,64);
     auto tick = [&] { return scene->render_frame(canvas, 1.0/60.0, true); };

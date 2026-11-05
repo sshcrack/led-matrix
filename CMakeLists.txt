@@ -64,6 +64,7 @@ if(ENABLE_UPDATE_TESTING)
     message(STATUS "Update testing enabled. This will bypass platform checks and always run the update script.")
 endif()
 
+include(cmake/BuildCache.cmake)
 include(cmake/subdirlist.cmake)
 include(cmake/vcpkg_features.cmake)
 
@@ -1042,6 +1043,12 @@ if(ENABLE_EMULATOR)
             --dump-manifest
             --manifest-out ${CMAKE_BINARY_DIR}/scene-manifest-test.json
     )
+    set_tests_properties(scene_registry_smoke PROPERTIES FIXTURES_SETUP scene_manifest)
+    add_test(NAME music_showcase_coverage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/music_showcase_coverage.py
+            ${CMAKE_BINARY_DIR}/scene-manifest-test.json
+    )
+    set_tests_properties(music_showcase_coverage PROPERTIES FIXTURES_REQUIRED scene_manifest)
     add_test(NAME virtual_scene_preview_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>

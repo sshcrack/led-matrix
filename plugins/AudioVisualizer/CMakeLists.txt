@@ -20,6 +20,13 @@ register_plugin(AudioVisualizer
         scenes/AudioLighthouseScene.cpp
         scenes/AudioStageScene.cpp
         scenes/AudioNightDriveScene.cpp
+        scenes/kit/AmbientMusicScene.h
+        scenes/MusicVistaScenes.h
+        scenes/AudioRainWindowScene.cpp
+        scenes/AudioBoomboxScene.cpp
+        scenes/AudioVolcanoScene.cpp
+        scenes/AudioFestivalScene.cpp
+        scenes/AudioDiscoScene.cpp
         DESKTOP
         desktop/config.h
         desktop/AudioVisualizerDesktop.cpp
@@ -74,6 +81,39 @@ if(ENABLE_EMULATOR)
                         "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:AudioVisualizer>:$<TARGET_FILE_DIR:SharedToolsCommon>:$<TARGET_FILE_DIR:SharedToolsMatrix>:$<TARGET_FILE_DIR:rpi_rgb_led_matrix::rpi-rgb-led-matrix>:$ENV{LD_LIBRARY_PATH}"
                         $<TARGET_FILE:audio_spectrum_visual_regression>
         )
+
+        # Offline music-analysis recorder: runs the desktop analyzer over a WAV
+        # and writes an .audr replay for preview_gen / render_scene_video.sh
+        # (--preview-option audio:replay=...). Built here so scene videos can be
+        # driven by real songs without a desktop build. Installed next to preview_gen.
+        find_package(FFTW3f CONFIG REQUIRED)
+        add_executable(audio_analysis_dump
+                ${CMAKE_SOURCE_DIR}/tests/audio_analysis_dump.cpp
+                desktop/AudioProcessor.cpp
+                desktop/MusicAnalyzer.cpp
+                desktop/BeatDetector.cpp
+                desktop/frequency_analyzer/BarkAnalyzer.cpp
+                desktop/frequency_analyzer/factory.cpp
+                desktop/frequency_analyzer/FullOctaveAnalyzer.cpp
+                desktop/frequency_analyzer/LinearAnalyzer.cpp
+                desktop/frequency_analyzer/LogarithmicAnalyzer.cpp
+                desktop/frequency_analyzer/MelAnalyzer.cpp
+                desktop/frequency_analyzer/ThirdOctaveAnalyzer.cpp
+                desktop/frequency_analyzer/utils.cpp
+        )
+        target_compile_features(audio_analysis_dump PRIVATE cxx_std_23)
+        target_include_directories(audio_analysis_dump PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/desktop
+                ${CMAKE_SOURCE_DIR}/shared/desktop/include
+                # record.h names PortAudio types only; nothing links against it.
+                ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/include
+        )
+        target_link_libraries(audio_analysis_dump PRIVATE
+                SharedToolsCommon
+                FFTW3::fftw3f
+                spdlog::spdlog
+        )
+        install(TARGETS audio_analysis_dump RUNTIME DESTINATION bin)
 endif()
 
 if(ENABLE_DESKTOP)

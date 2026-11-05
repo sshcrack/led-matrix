@@ -27,7 +27,8 @@ constexpr Keyword Keywords[] = {
     {"dance", Style::Party, 1.0f}, {"pop", Style::Party, 0.8f}, {"disco", Style::Party, 1.0f}, {"latin", Style::Party, 0.9f},
     {"reggaeton", Style::Party, 1.0f}, {"funk", Style::Party, 0.8f}, {"schlager", Style::Party, 1.0f}, {"k-pop", Style::Party, 1.0f},
     {"eurodance", Style::Party, 1.0f}, {"afrobeat", Style::Party, 0.8f}, {"neue deutsche welle", Style::Party, 0.8f},
-    {"new wave", Style::Party, 0.7f}, {"italo", Style::Party, 0.9f},
+    {"new wave", Style::Party, 0.7f}, {"italo", Style::Party, 0.9f}, {"ndw", Style::Party, 0.8f},
+    {"hands up", Style::Party, 0.8f}, {"hands up", Style::Edm, 0.7f}, {"deutschpop", Style::Party, 0.8f},
     // rock / metal
     {"rock", Style::Rock, 1.0f}, {"metal", Style::Rock, 1.0f}, {"punk", Style::Rock, 1.0f}, {"grunge", Style::Rock, 1.0f},
     {"alternative", Style::Rock, 0.7f}, {"emo", Style::Rock, 0.8f}, {"hardcore", Style::Rock, 0.8f}, {"indie", Style::Rock, 0.35f}, {"indie", Style::Party, 0.4f},
