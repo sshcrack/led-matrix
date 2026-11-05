@@ -104,6 +104,7 @@ namespace Scenes {
         CoverOnlyScene() = default;
         ~CoverOnlyScene() override;
 
+        void initialize(int width, int height) override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         [[nodiscard]] int get_weight() const override;
@@ -119,8 +120,6 @@ namespace Scenes {
             auto caps = Scene::get_capabilities();
             caps.requires_network = true;
             caps.supports_audio = true;
-            // Pi: coarse-grid backdrop; desktop worker: per-pixel backdrop.
-            caps.prefers_remote_rendering = true;
             return caps;
         }
 

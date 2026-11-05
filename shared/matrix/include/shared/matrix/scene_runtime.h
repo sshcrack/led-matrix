@@ -103,11 +103,6 @@ struct SceneCapabilities {
     // The desktop worker loads the same scene implementation, so no separate
     // renderer registration is required.
     bool supports_remote_rendering = true;
-    // The scene renders a cheaper variant on the Pi and its full-quality look
-    // only on the desktop worker (SceneExecution::is_remote_worker()), so it is
-    // offloaded whenever a compatible worker is available, not only when the
-    // Pi's measured render cost is over budget.
-    bool prefers_remote_rendering = false;
 };
 
 } // namespace Scenes

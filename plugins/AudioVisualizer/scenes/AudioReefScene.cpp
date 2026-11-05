@@ -194,14 +194,14 @@ bool AudioReefScene::render(rgb_matrix::FrameCanvas* canvas)
         float ax = (tx + ox - f.x) * 0.9f, ay = (ty + oy - f.y) * 0.9f;
         // Scatter outward on drops.
         const float dx = f.x - W * 0.5f, dy = f.y - H * 0.45f;
-        const float dl = std::max(1.0f, std::hypot(dx, dy));
+        const float dl = std::max(1.0f, AudioKit::len(dx, dy));
         ax += dx / dl * scatter_ * 260.0f;
         ay += dy / dl * scatter_ * 260.0f;
         if (events_.beatHit)
             f.vx += (f.vx >= 0 ? 1.0f : -1.0f) * 10.0f * kick;
         f.vx += ax * dt * speed;
         f.vy += ay * dt * speed;
-        const float v = std::hypot(f.vx, f.vy);
+        const float v = AudioKit::len(f.vx, f.vy);
         const float vmax = 26.0f * speed + scatter_ * 40.0f;
         if (v > vmax) {
             f.vx *= vmax / v;

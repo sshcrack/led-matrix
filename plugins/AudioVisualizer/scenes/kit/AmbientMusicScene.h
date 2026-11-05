@@ -42,6 +42,14 @@ protected:
     float time_ = 0.0f;
 
     float rnd() { return std::uniform_real_distribution<float>(0.0f, 1.0f)(rng_); }
+    // Lattice step for Buffer::add_field(): per pixel at full quality (desktop
+    // worker, previews, an unloaded Pi), coarser as the Pi's adaptive quality
+    // drops. The Pi then offloads the scene to a compatible desktop worker.
+    [[nodiscard]] int field_step() const
+    {
+        const float q = render_quality_scale();
+        return q >= 0.95f ? 1 : q >= 0.75f ? 2 : 3;
+    }
     // Shared per-frame prologue. Returns false when no analysis is available.
     bool begin_frame(AudioState::Snapshot& audio, float& dt);
 };

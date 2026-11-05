@@ -30,13 +30,19 @@ inline RGB lerp(const RGB& a, const RGB& b, float t)
     return {a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t};
 }
 
+// sqrt(x²+y²). std::hypot guards against overflow and is a libm call on the
+// Pi; at matrix scale a plain sqrt (one instruction) is exact enough.
+inline float len(float x, float y) { return std::sqrt(x * x + y * y); }
+
 inline RGB hsv(float h, float s, float v)
 {
-    h = std::fmod(h, 360.0f);
-    if (h < 0)
-        h += 360.0f;
+    // Wrap with floor instead of std::fmod (a slow libm call on the Pi).
+    h -= 360.0f * std::floor(h * (1.0f / 360.0f));
+    if (h >= 360.0f)
+        h = 0.0f;
     const float c = v * s;
-    const float x = c * (1.0f - std::fabs(std::fmod(h / 60.0f, 2.0f) - 1.0f));
+    const float sector = h * (1.0f / 60.0f);
+    const float x = c * (1.0f - std::fabs(sector - 2.0f * std::floor(sector * 0.5f) - 1.0f));
     const float m = v - c;
     RGB o;
     if (h < 60)
@@ -72,6 +78,8 @@ inline float smoothstep(float a, float b, float x)
 
 // Float RGB accumulation buffer; blitted to the canvas once per frame.
 class Buffer {
+    std::vector<RGB> lattice_;  // scratch for add_field()
+
 public:
     int w = 0, h = 0;
     std::vector<RGB> px;
@@ -120,7 +128,7 @@ public:
         const int r = static_cast<int>(std::ceil(radius + 1));
         for (int y = static_cast<int>(cy) - r; y <= static_cast<int>(cy) + r; ++y)
             for (int x = static_cast<int>(cx) - r; x <= static_cast<int>(cx) + r; ++x) {
-                const float d = std::hypot(x + 0.5f - cx, y + 0.5f - cy);
+                const float d = len(x + 0.5f - cx, y + 0.5f - cy);
                 const float a = std::clamp(radius + 0.5f - d, 0.0f, 1.0f);
                 if (a <= 0)
                     continue;
@@ -130,6 +138,53 @@ public:
                     mix(x, y, c, a);
             }
     }
+    // Adds a smooth layer f(px, py) -> RGB (pixel-centre coordinates) to rows
+    // [y0, y1). step 1 evaluates every pixel; step > 1 evaluates a lattice every
+    // `step` px and interpolates bilinearly, cutting the cost by ~step². Only
+    // for soft content (glows, beams, sky): hard edges get blurred. Scenes pick
+    // the step from AmbientMusicScene::field_step().
+    template <typename F>
+    void add_field(int y0, int y1, int step, F&& f)
+    {
+        y0 = std::max(0, y0);
+        y1 = std::min(h, y1);
+        if (y0 >= y1)
+            return;
+        if (step <= 1) {
+            for (int y = y0; y < y1; ++y)
+                for (int x = 0; x < w; ++x) {
+                    auto& p = at(x, y);
+                    const RGB c = f(x + 0.5f, y + 0.5f);
+                    p.r += c.r;
+                    p.g += c.g;
+                    p.b += c.b;
+                }
+            return;
+        }
+        const int gw = (w - 1) / step + 2, gh = (y1 - 1 - y0) / step + 2;
+        lattice_.resize(static_cast<size_t>(gw * gh));
+        for (int gy = 0; gy < gh; ++gy)
+            for (int gx = 0; gx < gw; ++gx)
+                lattice_[static_cast<size_t>(gy * gw + gx)] = f(gx * step + 0.5f, y0 + gy * step + 0.5f);
+        const float inv = 1.0f / static_cast<float>(step);
+        for (int y = y0; y < y1; ++y) {
+            const int gy = (y - y0) / step;
+            const float fy = ((y - y0) - gy * step) * inv;
+            const RGB* r0 = &lattice_[static_cast<size_t>(gy * gw)];
+            const RGB* r1 = r0 + gw;
+            for (int x = 0; x < w; ++x) {
+                const int gx = x / step;
+                const float fx = (x - gx * step) * inv;
+                const RGB top = r0[gx] * (1.0f - fx) + r0[gx + 1] * fx;
+                const RGB bottom = r1[gx] * (1.0f - fx) + r1[gx + 1] * fx;
+                auto& p = at(x, y);
+                p.r += top.r + (bottom.r - top.r) * fy;
+                p.g += top.g + (bottom.g - top.g) * fy;
+                p.b += top.b + (bottom.b - top.b) * fy;
+            }
+        }
+    }
+
     void blit(rgb_matrix::FrameCanvas* canvas) const
     {
         for (int y = 0; y < h; ++y)

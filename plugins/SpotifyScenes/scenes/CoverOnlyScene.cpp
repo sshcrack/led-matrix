@@ -2,7 +2,6 @@
 #include "shared/common/win_compat.h"
 #endif
 #include "CoverOnlyScene.h"
-#include <shared/matrix/execution_mode.h>
 #include "Magick++.h"
 #include "spdlog/spdlog.h"
 #include "matrix/manager/shared_spotify.h"
@@ -252,6 +251,14 @@ void CoverOnlyScene::adopt(Artwork artwork)
     sparkles_.clear();
 }
 
+void CoverOnlyScene::initialize(int width, int height)
+{
+    Scene::initialize(width, height);
+    // Per-pixel backdrop is too much for the Pi next to the artwork worker;
+    // start on the (visually equivalent) coarse grid there.
+    set_render_quality_hint(0.75f);
+}
+
 bool CoverOnlyScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     auto temp = current_spotify_state();
@@ -381,12 +388,12 @@ void CoverOnlyScene::draw(rgb_matrix::FrameCanvas *canvas, float dt)
     const float half = size * scale * 0.5f;
 
     // --- living backdrop: a slowly flowing, blurred copy of the artwork -------
-    // On the Pi the field is sampled on a coarse grid (every 4 px) and
-    // interpolated, which keeps the scene well inside its frame budget; the
-    // desktop worker and previews sample every pixel. Either way, pixels the
-    // opaque cover hides this frame are skipped.
+    // The field is smooth, so at reduced quality (the Pi) it is sampled on a
+    // coarse grid and interpolated; at full quality (desktop worker, previews)
+    // every pixel is sampled. Pixels the opaque cover hides are skipped.
     {
-        const int Step = SceneExecution::is_headless_fixture_host() ? 1 : 4;
+        const float quality = render_quality_scale();
+        const int Step = quality >= 0.95f ? 1 : quality >= 0.8f ? 2 : 4;
         const int gw = W / Step + 2, gh = H / Step + 2;
         grid_.resize(static_cast<size_t>(gw * gh));
         const float motion = background_motion->get();

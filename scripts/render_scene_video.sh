@@ -22,6 +22,8 @@
 #   --audio <file.wav>   Mux this audio track (aligned with --start). Keep such
 #                        videos local when the audio is copyrighted.
 #   --preview-option p:k=v  Passed through to preview_gen (repeatable)
+#   --quality <0.5..1>   Render quality scale (default 1.0 = desktop/full; lower
+#                        it to see what the Pi renders under CPU pressure)
 #   --build-dir <dir>    Build dir with install/bin/preview_gen (default: emulator_build)
 #
 # Example (real song analysis, silent video for a PR):
@@ -47,7 +49,8 @@ while [[ $# -gt 0 ]]; do
         --audio) AUDIO="$(realpath "$2")"; shift 2 ;;
         --preview-option) EXTRA+=(--preview-option "$2"); shift 2 ;;
         --build-dir) BUILD_DIR="$2"; shift 2 ;;
-        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+        --quality) EXTRA+=(--quality "$2"); shift 2 ;;
+        -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done

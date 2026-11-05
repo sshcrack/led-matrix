@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared/matrix/execution_mode.h"
+
 #include "nlohmann/json.hpp"
 #include "fmt/format.h"
 #include "led-matrix.h"
@@ -92,15 +94,20 @@ namespace Scenes {
         /// inside a scene. The matrix renderer and preview generator populate it.
         [[nodiscard]] const SceneFrameContext &frame_context() const { return frame_context_; }
 
-        /// Adaptive quality scale for scenes with optional expensive detail.
-        /// 1.0 means full quality. Values below 1.0 indicate sustained CPU pressure.
+        /// Adaptive quality scale (0.5..1) for scenes with optional expensive
+        /// detail. It is 1.0 on the desktop scene worker and in previews; on the
+        /// Pi it drops under sustained CPU pressure and recovers with headroom.
+        /// Scenes map it to cheaper work (fewer particles, coarser smooth layers);
+        /// a Pi scene running below 1.0 is offloaded to a compatible desktop
+        /// worker, which renders it at full quality.
         [[nodiscard]] float render_quality_scale() const { return render_quality_scale_; }
 
-        /// Give expensive scenes a conservative startup quality. The adaptive
-        /// controller can still recover all the way to 1.0 when the device has
-        /// enough headroom.
+        /// Give expensive scenes a conservative startup quality on the Pi. The
+        /// adaptive controller can still recover all the way to 1.0 when the
+        /// device has enough headroom. Ignored on the desktop worker/previews.
         void set_render_quality_hint(float scale) {
-            render_quality_scale_ = std::clamp(scale, 0.45f, 1.0f);
+            if (!SceneExecution::is_headless_fixture_host())
+                render_quality_scale_ = std::clamp(scale, 0.45f, 1.0f);
         }
 
         /// Reset timing when a scene is reinitialized or reused.
@@ -148,6 +155,8 @@ namespace Scenes {
         [[nodiscard]] double get_last_frame_wait_ms() const { return frame_wait_ms_; }
         [[nodiscard]] bool frame_was_updated() const { return frame_updated_; }
         [[nodiscard]] float get_render_quality_scale() const { return render_quality_scale_; }
+        /// Pin the quality scale regardless of host (tools: preview_gen --quality).
+        void force_render_quality_scale(float scale) { render_quality_scale_ = std::clamp(scale, 0.45f, 1.0f); }
         void report_render_cost(double active_render_ms);
 
         [[nodiscard]] virtual int get_weight() const;

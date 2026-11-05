@@ -85,7 +85,9 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
     }
 
     // --- sea: far to near layers ---------------------------------------------
-    std::vector<float> surface(static_cast<size_t>(W));
+    // Wave surfaces of all layers first, so each layer only fills down to
+    // where the next (nearer, opaque) layer starts instead of to the bottom.
+    std::vector<std::vector<float>> surfaces(Layers, std::vector<float>(static_cast<size_t>(W)));
     for (int k = 0; k < Layers; ++k) {
         const float depth = static_cast<float>(k) / (Layers - 1);  // 0 far .. 1 near
         const float baseY = horizon + 2.0f + std::pow(depth, 1.4f) * (H - horizon - 10.0f);
@@ -93,15 +95,24 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
         const float amp = (0.6f + depth * 4.2f) * (0.35f + level * 1.3f + (k == Layers - 1 ? beat_.v * 0.8f : 0.0f));
         const float wl = 0.30f - depth * 0.20f;
         const float speed = 0.8f + depth * 1.6f;
-        const RGB water = lerp(RGB{10, 22, 52}, RGB{16, 48, 86}, depth) + RGB{80, 80, 110} * (flash * 0.25f);
         for (int x = 0; x < W; ++x) {
             const float phase = x * wl + time_ * speed + k * 1.7f;
-            surface[static_cast<size_t>(x)] = baseY - amp * (0.6f * std::sin(phase) + 0.4f * std::sin(phase * 1.9f + 0.6f));
+            surfaces[static_cast<size_t>(k)][static_cast<size_t>(x)] =
+                baseY - amp * (0.6f * std::sin(phase) + 0.4f * std::sin(phase * 1.9f + 0.6f));
         }
+    }
+    for (int k = 0; k < Layers; ++k) {
+        const float depth = static_cast<float>(k) / (Layers - 1);  // 0 far .. 1 near
+        const float level = layerLevel_[static_cast<size_t>(k)];
+        const RGB water = lerp(RGB{10, 22, 52}, RGB{16, 48, 86}, depth) + RGB{80, 80, 110} * (flash * 0.25f);
+        const auto& surface = surfaces[static_cast<size_t>(k)];
         for (int x = 0; x < W; ++x) {
             const float sy = surface[static_cast<size_t>(x)];
             const float slope = surface[static_cast<size_t>(std::min(x + 1, W - 1))] - surface[static_cast<size_t>(std::max(x - 1, 0))];
-            for (int y = std::max(horizon, static_cast<int>(std::floor(sy))); y < H; ++y) {
+            const int fillEnd = k + 1 < Layers
+                ? std::clamp(static_cast<int>(std::floor(surfaces[static_cast<size_t>(k + 1)][static_cast<size_t>(x)])), horizon, H)
+                : H;
+            for (int y = std::max(horizon, static_cast<int>(std::floor(sy))); y < fillEnd; ++y) {
                 const float below = y - sy;
                 RGB c = water * (below < 16.0f ? 0.8f + 0.2f * std::exp(-below / 4.0f) : 0.8f);
                 // Moonlight glitter column (negligible beyond 3 widths).

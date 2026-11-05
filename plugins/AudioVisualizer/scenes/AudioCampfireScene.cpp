@@ -116,7 +116,7 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     // --- ground with firelight pool -----------------------------------
     for (int y = groundY; y < H; ++y)
         for (int x = 0; x < W; ++x) {
-            const float d = std::hypot((x + 0.5f - W * 0.5f) * 0.55f, (y - groundY) * 1.6f);
+            const float d = AudioKit::len((x + 0.5f - W * 0.5f) * 0.55f, (y - groundY) * 1.6f);
             const float light = glow_ * std::exp(-d / 22.0f);
             buf_.at(x, y) = RGB{8, 7, 6} + RGB{170, 70, 18} * light;
         }

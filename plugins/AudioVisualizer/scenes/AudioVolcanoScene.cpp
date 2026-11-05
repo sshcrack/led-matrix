@@ -132,7 +132,7 @@ bool AudioVolcanoScene::render(rgb_matrix::FrameCanvas* canvas)
         const RGB sky = t < 1.0f ? lerp(RGB{14, 6, 24}, RGB{70, 20, 26}, t * t) : RGB{};
         for (int x = 0; x < W; ++x) {
             // Glow of the crater lighting the sky around it.
-            const float d = std::hypot((x - peakX) / W, (y - craterY) / H);
+            const float d = AudioKit::len((x - peakX) / W, (y - craterY) / H);
             buf_.at(x, y) = sky + RGB{120, 30, 6} * (crater * 0.35f * std::exp(-d * d * 18.0f));
         }
     }
@@ -154,7 +154,7 @@ bool AudioVolcanoScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int x = static_cast<int>(p.x) - r; x <= static_cast<int>(p.x) + r; ++x) {
                 if (!buf_.inside(x, y))
                     continue;
-                const float d = std::hypot(x - p.x, y - p.y) / p.r;
+                const float d = AudioKit::len(x - p.x, y - p.y) / p.r;
                 if (d < 1.0f)
                     buf_.mix(x, y, col, (1.0f - d * d) * 0.28f * fade);
             }
@@ -200,7 +200,7 @@ bool AudioVolcanoScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     for (int y = static_cast<int>(craterY - 14); y < static_cast<int>(craterY + 2); ++y)
         for (int x = static_cast<int>(peakX - 16); x <= static_cast<int>(peakX + 16); ++x) {
-            const float d = std::hypot((x + 0.5f - peakX) / 1.6f, y + 0.5f - craterY);
+            const float d = AudioKit::len((x + 0.5f - peakX) / 1.6f, y + 0.5f - craterY);
             buf_.add(x, y, RGB{255, 90, 20} * (crater * 0.22f * (0.7f + 0.3f * kick_.v) * std::exp(-d / 5.0f)));
         }
 

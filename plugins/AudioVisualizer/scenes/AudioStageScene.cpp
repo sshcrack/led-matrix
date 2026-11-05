@@ -1,5 +1,7 @@
 #include "AmbientMusicScenes.h"
 
+#include <array>
+
 namespace Scenes {
 using namespace AudioKit;
 
@@ -57,6 +59,11 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
     }
 
     // --- moving-head beams: one light per band ----------------------------
+    struct Beam {
+        float lx, dx, dy, width;
+        RGB col;
+    };
+    std::array<Beam, Lights> beams{};
     for (int i = 0; i < Lights; ++i) {
         const float from = static_cast<float>(i) / Lights, to = static_cast<float>(i + 1) / Lights;
         const float target = spectrum_.band(from, to);
@@ -67,27 +74,29 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
         // Mirrored sweeps; on a drop every beam snaps to centre stage.
         float angle = std::sin(sweep_ * 2.0f + i * 0.9f) * 0.55f * side + std::sin(sweep_ * 0.7f + i) * 0.15f;
         angle = angle * (1.0f - drop_.v) + (W * 0.5f - lx) / H * 0.9f * drop_.v;
-        const float dx = std::sin(angle), dy = std::cos(angle);
         const float hue = palette_.value + (i % 2 == 0 ? 0.0f : 35.0f);
         const RGB col = hsv(hue, i % 3 == 1 ? 0.25f : 0.85f, 1.0f);
         const float power = std::clamp(0.10f + lv * 0.85f + beat_.v * 0.15f + drop_.v * 0.4f, 0.0f, 1.2f);
-        const float width = 0.045f + 0.035f * lv;
-        for (int y = trussY + 1; y < H; ++y)
-            for (int x = 0; x < W; ++x) {
-                const float px = x + 0.5f - lx, py = y + 0.5f - trussY;
-                const float along = px * dx + py * dy;
-                if (along <= 0)
-                    continue;
-                const float across = std::fabs(px * dy - py * dx);
-                const float cone = across / (along * width + 1.0f);
-                if (cone > 1.6f)
-                    continue;
-                const float a = std::exp(-cone * cone * 2.2f - along / 140.0f);
-                buf_.add(x, y, col * (a * power * 0.75f));
-            }
+        beams[static_cast<size_t>(i)] = {lx, std::sin(angle), std::cos(angle), 0.045f + 0.035f * lv, col * (power * 0.75f)};
         // Fixture head on the truss.
         buf_.disc(lx, trussY + 1.0f, 1.6f, col * (0.5f + 0.5f * power));
     }
+    // All beams as one smooth layer (coarser lattice at reduced Pi quality).
+    const float top = static_cast<float>(trussY);
+    buf_.add_field(trussY + 1, H, field_step(), [&](float x, float y) {
+        RGB sum;
+        for (const auto& b : beams) {
+            const float px = x - b.lx, py = y - top;
+            const float along = px * b.dx + py * b.dy;
+            if (along <= 0)
+                continue;
+            const float cone = std::fabs(px * b.dy - py * b.dx) / (along * b.width + 1.0f);
+            if (cone > 1.6f)
+                continue;
+            sum = sum + b.col * std::exp(-cone * cone * 2.2f - along / 140.0f);
+        }
+        return sum;
+    });
 
     // --- truss --------------------------------------------------------------
     for (int x = 0; x < W; ++x) {

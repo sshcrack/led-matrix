@@ -142,6 +142,7 @@ class AudioBoomboxScene final : public AmbientMusicScene {
     std::vector<Leaf> litter_;
     std::vector<float> bricks_;   // per-pixel brick texture (cached)
     std::vector<float> mural_;    // per-pixel mural shape id + shade (cached)
+    std::vector<float> lamp_;     // per-pixel street-lamp falloff (cached; the lamp never moves)
     std::vector<float> eq_;
     AudioKit::Envelope beat_, kick_, snare_, drop_;
     AudioKit::HueCycle palette_{{285.0f, 25.0f, 190.0f, 330.0f, 140.0f}};

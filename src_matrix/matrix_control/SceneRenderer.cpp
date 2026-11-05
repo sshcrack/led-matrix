@@ -62,10 +62,10 @@ bool SceneRenderer::render_scene_phase(
             remote_session = RemoteRender::request_scene(
                 *scene, matrix_->width(), matrix_->height(), scene->get_declared_target_fps());
             placement_reason = "desktop session was warmed during the transition";
-        } else if (caps.prefers_remote_rendering) {
+        } else if (scene->get_render_quality_scale() < 0.97f) {
             remote_session = RemoteRender::request_scene(
                 *scene, matrix_->width(), matrix_->height(), scene->get_declared_target_fps());
-            placement_reason = "scene renders in full quality on the desktop worker";
+            placement_reason = "Pi renders this scene at reduced quality; the desktop renders it at full quality";
         } else if (const auto p95 = diagnostics.scene_render_p95(scene->get_name());
                    p95.has_value() && *p95 > budget_ms * 0.72) {
             remote_session = RemoteRender::request_scene(
