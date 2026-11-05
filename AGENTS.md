@@ -206,6 +206,8 @@ Music director note (2026-11-05): while live music plays, both directors prefer 
 
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
+Desktop offload note: the Pi offloads a scene to the desktop scene worker when its measured render cost exceeds 72% of the frame budget, or always when the scene sets `SceneCapabilities::prefers_remote_rendering` (it then renders a cheaper variant on the Pi and full quality where `SceneExecution::is_headless_fixture_host()`). The worker runs the desktop app's own installed plugins, so it advertises a scene-code fingerprint (`Common::scene_code_digest()`, a git tree hash of `plugins/` + `shared/` from `cmake/SceneCodeDigest.cmake`); the Pi only offloads to a worker whose fingerprint matches its own. `/diagnostics` → `remote_render` shows both fingerprints, `render_placement.reason` says why a scene rendered where it did.
+
 ## API security
 
 `src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):

@@ -62,6 +62,10 @@ bool SceneRenderer::render_scene_phase(
             remote_session = RemoteRender::request_scene(
                 *scene, matrix_->width(), matrix_->height(), scene->get_declared_target_fps());
             placement_reason = "desktop session was warmed during the transition";
+        } else if (caps.prefers_remote_rendering) {
+            remote_session = RemoteRender::request_scene(
+                *scene, matrix_->width(), matrix_->height(), scene->get_declared_target_fps());
+            placement_reason = "scene renders in full quality on the desktop worker";
         } else if (const auto p95 = diagnostics.scene_render_p95(scene->get_name());
                    p95.has_value() && *p95 > budget_ms * 0.72) {
             remote_session = RemoteRender::request_scene(
@@ -74,6 +78,8 @@ bool SceneRenderer::render_scene_phase(
             RemoteRender::stop();
         if (!caps.supports_remote_rendering)
             placement_reason = "scene explicitly opted out of generic desktop execution; adaptive local quality is active";
+        else if (remote_status.worker_available && !remote_status.worker_compatible)
+            placement_reason = "desktop scene worker runs different scene code (update the desktop app to this version); rendering locally";
         else
             placement_reason = "desktop scene worker is unavailable; rendering locally";
     }

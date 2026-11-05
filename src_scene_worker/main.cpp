@@ -1,4 +1,5 @@
 #ifdef _WIN32
+#include <shared/common/build_info.h>
 #include "shared/common/win_compat.h"
 #include <cstdlib>
 #endif
@@ -614,6 +615,7 @@ int main(int argc, char **argv)
                     {"op", "worker_heartbeat"},
                     {"protocol", RemoteRenderProtocol::Version},
                     {"scenes", offloadable_scenes},
+                    {"scene_code", Common::scene_code_digest()},
                 };
                 websocket.send("msg:RenderOffload:" + heartbeat.dump());
                 next_heartbeat = now + std::chrono::seconds(1);

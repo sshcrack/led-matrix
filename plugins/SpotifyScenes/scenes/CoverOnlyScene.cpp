@@ -2,6 +2,7 @@
 #include "shared/common/win_compat.h"
 #endif
 #include "CoverOnlyScene.h"
+#include <shared/matrix/execution_mode.h>
 #include "Magick++.h"
 #include "spdlog/spdlog.h"
 #include "matrix/manager/shared_spotify.h"
@@ -373,37 +374,68 @@ void CoverOnlyScene::draw(rgb_matrix::FrameCanvas *canvas, float dt)
     const int bar_h = show_progress->get() ? std::clamp(progress_bar_height->get(), 1, std::max(1, H / 8)) : 0;
     const float cx = W * 0.5f, cy = H * 0.5f - bar_h * 0.5f;
 
-    // --- living backdrop: a slowly flowing, blurred copy of the artwork -------
-    {
-        const float motion = background_motion->get();
-        const float a = time_ * 0.12f * motion;
-        const float rot = std::sin(a * 0.35f) * 0.35f, zoom = 0.72f + 0.06f * std::sin(a * 0.5f);
-        const float cr = std::cos(rot) * zoom, sr = std::sin(rot) * zoom;
-        std::vector<float> wave_x(static_cast<size_t>(H)), wave_y(static_cast<size_t>(W));
-        for (int y = 0; y < H; ++y) wave_x[static_cast<size_t>(y)] = 0.07f * std::sin(y * 5.0f / H + a * 1.3f);
-        for (int x = 0; x < W; ++x) wave_y[static_cast<size_t>(x)] = 0.07f * std::sin(x * 4.3f / W - a * 1.1f + 1.7f);
-        const float brightness = background_brightness->get() / 100.0f *
-            (0.80f + 0.40f * level_ + 0.6f * pulse_ * pulse_strength);
-        for (int y = 0; y < H; ++y) {
-            const float v = (y + 0.5f) / H - 0.5f;
-            for (int x = 0; x < W; ++x) {
-                const float u = (x + 0.5f) / W - 0.5f;
-                const float su = 0.5f + u * cr - v * sr + wave_x[static_cast<size_t>(y)];
-                const float sv = 0.5f + u * sr + v * cr + wave_y[static_cast<size_t>(x)];
-                Rgb c = sample_bilinear(art.backdrop, art.backdrop_size, su, sv);
-                if (previous_ && fade < 1.0f)
-                    c = mix(sample_bilinear(previous_->backdrop, previous_->backdrop_size, su, sv), c, fade);
-                const float vignette = 1.0f - 0.55f * (u * u + v * v) * 2.0f;
-                frame_[static_cast<size_t>(y * W + x)] = c * (brightness * std::max(0.25f, vignette));
-            }
-        }
-    }
-
     // --- cover geometry -------------------------------------------------------
     const int size = art.cover_size;
     const float land = previous_ ? 0.82f + 0.18f * ease_out_back(transition_ * 1.25f) : 1.0f;
     const float scale = land * (1.0f + pulse_ * pulse_strength * 0.10f);
     const float half = size * scale * 0.5f;
+
+    // --- living backdrop: a slowly flowing, blurred copy of the artwork -------
+    // On the Pi the field is sampled on a coarse grid (every 4 px) and
+    // interpolated, which keeps the scene well inside its frame budget; the
+    // desktop worker and previews sample every pixel. Either way, pixels the
+    // opaque cover hides this frame are skipped.
+    {
+        const int Step = SceneExecution::is_headless_fixture_host() ? 1 : 4;
+        const int gw = W / Step + 2, gh = H / Step + 2;
+        grid_.resize(static_cast<size_t>(gw * gh));
+        const float motion = background_motion->get();
+        const float a = time_ * 0.12f * motion;
+        const float rot = std::sin(a * 0.35f) * 0.35f, zoom = 0.72f + 0.06f * std::sin(a * 0.5f);
+        const float cr = std::cos(rot) * zoom, sr = std::sin(rot) * zoom;
+        const float brightness = background_brightness->get() / 100.0f *
+            (0.80f + 0.40f * level_ + 0.6f * pulse_ * pulse_strength);
+        for (int gy = 0; gy < gh; ++gy) {
+            const float v = static_cast<float>(gy * Step) / H - 0.5f;
+            const float wave_x = 0.07f * std::sin((gy * Step) * 5.0f / H + a * 1.3f);
+            for (int gx = 0; gx < gw; ++gx) {
+                const float u = static_cast<float>(gx * Step) / W - 0.5f;
+                const float wave_y = 0.07f * std::sin((gx * Step) * 4.3f / W - a * 1.1f + 1.7f);
+                const float su = 0.5f + u * cr - v * sr + wave_x;
+                const float sv = 0.5f + u * sr + v * cr + wave_y;
+                Rgb c = sample_bilinear(art.backdrop, art.backdrop_size, su, sv);
+                if (previous_ && fade < 1.0f)
+                    c = mix(sample_bilinear(previous_->backdrop, previous_->backdrop_size, su, sv), c, fade);
+                const float vignette = std::max(0.25f, 1.0f - 1.1f * (u * u + v * v));
+                grid_[static_cast<size_t>(gy * gw + gx)] = c * (brightness * vignette);
+            }
+        }
+        // Opaque cover rectangle (only when no fade-in/out blends through it).
+        int hx0 = W, hx1 = -1, hy0 = H, hy1 = -1;
+        if (!previous_) {
+            hx0 = static_cast<int>(std::ceil(cx - half)) + 1;
+            hx1 = static_cast<int>(std::floor(cx + half)) - 2;
+            hy0 = static_cast<int>(std::ceil(cy - half)) + 1;
+            hy1 = static_cast<int>(std::floor(cy + half)) - 2;
+        }
+        const float inv = 1.0f / static_cast<float>(Step);
+        for (int y = 0; y < H; ++y) {
+            const int gy = y / Step;
+            const float fy = (y - gy * Step) * inv;
+            const Rgb *r0 = &grid_[static_cast<size_t>(gy * gw)];
+            const Rgb *r1 = r0 + gw;
+            const bool row_hidden = y >= hy0 && y <= hy1;
+            for (int x = 0; x < W; ++x) {
+                if (row_hidden && x >= hx0 && x <= hx1) {
+                    x = hx1;
+                    continue;
+                }
+                const int gx = x / Step;
+                const float fx = (x - gx * Step) * inv;
+                frame_[static_cast<size_t>(y * W + x)] = mix(mix(r0[gx], r0[gx + 1], fx), mix(r1[gx], r1[gx + 1], fx), fy);
+            }
+        }
+    }
 
     // --- spectrum aura around the cover, in the cover's own colours -----------
     if (spectrum_aura->get() || cover_border_glow_intensity->get() > 0.0f) {

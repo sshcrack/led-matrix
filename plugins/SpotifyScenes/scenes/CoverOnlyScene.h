@@ -94,6 +94,7 @@ namespace Scenes {
         std::vector<Sparkle> sparkles_;
         uint32_t rng_ = 0x5EED1234u;
         std::vector<Rgb> frame_;
+        std::vector<Rgb> grid_;               // backdrop samples (coarse on the Pi)
 
         void adopt(Artwork artwork);
         void draw(rgb_matrix::FrameCanvas *canvas, float dt);
@@ -118,6 +119,8 @@ namespace Scenes {
             auto caps = Scene::get_capabilities();
             caps.requires_network = true;
             caps.supports_audio = true;
+            // Pi: coarse-grid backdrop; desktop worker: per-pixel backdrop.
+            caps.prefers_remote_rendering = true;
             return caps;
         }
 

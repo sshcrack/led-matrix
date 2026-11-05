@@ -1,3 +1,4 @@
+#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/remote_render.h>
@@ -46,8 +47,21 @@ int main()
         return 1;
     }
 
+    // A worker built from other scene code (old desktop app, or one predating
+    // the fingerprint) would stream a different version of the scene.
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"remote_probe"});
+    if (RemoteRender::worker_available("remote_probe")) {
+        std::cerr << "worker without a scene-code fingerprint was accepted\n";
+        return 8;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"remote_probe"}, "0123456789abcdef-old");
+    if (RemoteRender::worker_available("remote_probe") || RemoteRender::status().worker_compatible) {
+        std::cerr << "worker with different scene code was accepted\n";
+        return 9;
+    }
+
     RemoteRender::report_worker_heartbeat(
-        RemoteRenderProtocol::Version, {"remote_probe", "another_scene"});
+        RemoteRenderProtocol::Version, {"remote_probe", "another_scene"}, Common::scene_code_digest());
     if (!RemoteRender::worker_available("remote_probe")
         || RemoteRender::worker_available("missing_scene")) {
         std::cerr << "worker scene capability advertisement was not respected\n";
