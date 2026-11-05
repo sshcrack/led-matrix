@@ -16,6 +16,19 @@ permissions:
   pull-requests: write
 
 jobs:
+  repo-size:
+    # Stops big binaries / mass GIF regenerations from bloating clone size.
+    # See scripts/check_repo_size.sh and .repo-size-allow.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check added file sizes
+        run: scripts/check_repo_size.sh "origin/${{ github.base_ref }}"
+
   react-web:
     runs-on: ubuntu-latest
     steps:

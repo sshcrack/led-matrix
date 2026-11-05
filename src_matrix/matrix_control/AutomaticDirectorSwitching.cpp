@@ -99,9 +99,13 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
         if (current_is_cover) {
             current_track_cover_shown_ = true;
             track_switch_pending_ = false;
-        } else if (!ranked_alternatives().empty()) {
-            request("Spotify track changed; introduce the new track visually", best_with_tag("album-art"));
+        } else if (auto cover = best_with_tag("album-art")) {
+            request("Spotify track changed; introduce the new track visually", std::move(cover));
             return result;
+        } else {
+            // No cover look is available (hidden, cooling down or plugin
+            // disabled): cutting without one would just reshuffle every tick.
+            track_switch_pending_ = false;
         }
     }
 
@@ -132,29 +136,116 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
         return result;
     }
 
-    if (drop_event && context.audio_active && elapsed_ms >= 5500) {
-        if (const auto* candidate = best();
-            candidate && profile_of(candidate->scene).intensity > current_profile.intensity + 0.10f) {
-            request("music drop supports a higher-energy visual", candidate->scene);
-            return result;
+    if (context.audio_active) {
+        // ---- live-music session --------------------------------------------
+        const bool current_music = is_music_look(current_profile);
+        const bool showcase = has_tag(current_profile.tags, "music-showcase");
+        const std::uint64_t min_dwell = !current_music ? 4000 : (showcase ? showcase_min_dwell_ms : music_min_dwell_ms);
+        const auto best_music = [&](float min_intensity = -1.0f) -> const Candidate* {
+            for (const auto& candidate : ranked_alternatives()) {
+                const auto profile = profile_of(candidate.scene);
+                if (is_music_look(profile) && profile.intensity > min_intensity)
+                    return &candidate;
+            }
+            return nullptr;
+        };
+        const auto better_music_fit = [&](float margin) -> const Candidate* {
+            const auto& ranked = ranked_alternatives();
+            for (std::size_t i = 0; i < std::min<std::size_t>(5, ranked.size()); ++i) {
+                const auto profile = profile_of(ranked[i].scene);
+                if (is_music_look(profile) && fit_error(profile) + margin < current_error)
+                    return &ranked[i];
+            }
+            return nullptr;
+        };
+
+        if (drop_event && elapsed_ms >= 3000) {
+            // Covers and music videos follow the track, not its drops.
+            if (!current_music && presentation_role(current_profile) != "media") {
+                if (const auto* candidate = best_music()) {
+                    request("music drop: bring a music-reactive look back on screen", candidate->scene);
+                    return result;
+                }
+            }
+            // Drop-reactive looks get to play the drop they were built for;
+            // only late in their dwell does the drop become the handoff point.
+            const bool plays_drop = has_tag(current_profile.tags, "drop-reactive")
+                && elapsed_ms < static_cast<tmillis_t>(planned_ms * 0.6);
+            if (current_music && !plays_drop && elapsed_ms >= std::max<tmillis_t>(8000, static_cast<tmillis_t>(min_dwell))) {
+                if (const auto* candidate = best_music(current_profile.intensity + 0.10f)) {
+                    request("music drop supports a higher-energy visual", candidate->scene);
+                    return result;
+                }
+            }
         }
+
+        // Ambient breathers end as soon as the music picks up again.
+        if (!current_music && presentation_role(current_profile) != "media" && elapsed_ms >= 6000
+            && context.target_intensity >= 0.40f) {
+            if (const auto* candidate = best_music()) {
+                request("music picked up; return to a music-reactive look", candidate->scene);
+                return result;
+            }
+        }
+
+        // A new track can change the style entirely (chill -> rock). Only
+        // metadata-backed changes since this look started count; the audio
+        // estimate is a soft nudge for casting, never a reason to cut.
+        if (style_scene_ != look_key(*current_scene)) {
+            style_scene_ = look_key(*current_scene);
+            style_at_start_ = context.style.dominant;
+            fit_error_at_start_ = current_error;
+        }
+        if (current_music && context.style.source.rfind("genre", 0) == 0 && context.style.dominant != style_at_start_
+            && elapsed_ms >= 10000 && MusicStyle::style_fit(context.style, current_profile.tags) < 0.20f) {
+            const auto& ranked = ranked_alternatives();
+            for (std::size_t i = 0; i < std::min<std::size_t>(5, ranked.size()); ++i) {
+                const auto profile = profile_of(ranked[i].scene);
+                if (is_music_look(profile) && MusicStyle::style_fit(context.style, profile.tags) >= 0.50f) {
+                    request("music style changed to " + std::string(MusicStyle::name(context.style.dominant)),
+                            ranked[i].scene);
+                    return result;
+                }
+            }
+        }
+
+        // Energy mismatch must persist (phrase-level, not one loud bar) and the
+        // look must have had its minimum dwell.
+        // "Moved away" is relative to how well the look fit when it was cast:
+        // the ranking deliberately trades raw energy fit for showcase/style,
+        // so an absolute threshold would cut its own picks.
+        const std::string current_key = look_key(*current_scene);
+        // A look that is far off the energy is always replaceable, even when it
+        // was a showcase/style trade-off from the start.
+        const bool drifted = current_error > std::max(0.30f, fit_error_at_start_ + 0.12f) || current_error > 0.38f;
+        if (drifted) {
+            if (mismatch_scene_ != current_key) {
+                mismatch_scene_ = current_key;
+                mismatch_since_ms_ = clock_ms_;
+            }
+        } else if (mismatch_scene_ == current_key) {
+            mismatch_scene_.clear();
+        }
+        const bool sustained_mismatch = mismatch_scene_ == current_key && clock_ms_ - mismatch_since_ms_ >= mismatch_hold_ms;
+        if (elapsed_ms >= min_dwell && (sustained_mismatch || (section_event && drifted))) {
+            if (const auto* candidate = better_music_fit(current_error > 0.38f ? 0.08f : 0.18f)) {
+                request(section_event ? "musical section change moved the energy away from this scene"
+                                      : "sustained music energy no longer fits the current scene", candidate->scene);
+                return result;
+            }
+        }
+        return result;
     }
 
+    // ---- no live music: ambient journey ------------------------------------
     // Sections change every 15-30 s in most music, so a section alone is not a
     // reason to cut mid-scene. It is only used when the current look clearly
     // stopped fitting; otherwise sections just align the planned handoff above.
-    if (section_event && context.audio_active && elapsed_ms >= 8500) {
-        if (const auto* candidate = better_fit(0.10f)) {
-            request("musical section change moved the energy away from this scene", candidate->scene);
-            return result;
-        }
-    }
-
     if (elapsed_ms >= 12000 && current_error > 0.25f && clock_ms_ >= next_fit_check_ms_) {
         next_fit_check_ms_ = clock_ms_ + 2000;
         if (const auto* candidate = better_fit(0.16f)) {
-            request(context.audio_active ? "sustained music energy no longer fits the current scene"
-                                         : "visual journey has moved beyond the current scene", candidate->scene);
+            request(context.spotify ? "Spotify playback energy no longer fits the current scene"
+                                    : "visual journey has moved beyond the current scene", candidate->scene);
             return result;
         }
     }

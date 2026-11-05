@@ -18,7 +18,7 @@
       ]
     },
     "emulator": {
-      "description": "Dependencies needed for the emulator application.",
+      "description": "Dependencies needed for the emulator application (fftw3: offline music-analysis recorder for scene videos).",
       "dependencies": [
         {
           "name": "rpi-rgb-led-matrix",
@@ -26,7 +26,8 @@
             "emulator"
           ]
         },
-        "cli11"
+        "cli11",
+        "fftw3"
       ]
     },
     "desktop": {

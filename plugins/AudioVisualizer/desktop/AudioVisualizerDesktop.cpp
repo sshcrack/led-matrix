@@ -33,7 +33,7 @@ constexpr std::array<AudioProtocol::Feature, 7> MusicalBandFeatures{
     AudioProtocol::Feature::Air};
 
 bool isDedicatedAudioScene(const std::string &name) {
-    return name == "audio_spectrum" || name == "audio_particles" || name == "music_director" ||
+    return name.starts_with("audio_") || name == "music_director" ||
            name == "shadertoy" || name.starts_with("custom_shader:") ||
            name.starts_with("shader:");
 }

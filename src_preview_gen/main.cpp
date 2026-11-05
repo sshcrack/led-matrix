@@ -94,6 +94,7 @@ struct Args {
     bool virtual_time_only = false;
     std::string manifest_out;  // path for --manifest-out; empty = stdout
     std::string metrics_out;   // optional perceptual metrics JSON for regression tests
+    std::string raw_out;       // optional dir: write <scene>.rgb raw RGB24 frames instead of a GIF
     float audio_bpm = 120.0f;
     std::string audio_profile = "balanced";
     nlohmann::json preview_options = nlohmann::json::object();
@@ -135,6 +136,8 @@ static Args parse_args(int argc, char* argv[])
             a.manifest_out = argv[++i];
         else if (std::string(argv[i]) == "--metrics-out" && i + 1 < argc)
             a.metrics_out = argv[++i];
+        else if (std::string(argv[i]) == "--raw-out" && i + 1 < argc)
+            a.raw_out = argv[++i];
         else if (std::string(argv[i]) == "--audio-bpm" && i + 1 < argc)
             parse_float(argv[++i], a.audio_bpm);
         else if (std::string(argv[i]) == "--audio-profile" && i + 1 < argc)
@@ -572,7 +575,14 @@ int main(int argc, char* argv[])
             scene->initialize(args.matrix_width, args.matrix_height);
 
             std::vector<Magick::Image> frames;
-            frames.reserve(static_cast<size_t>(args.total_frames));
+            std::ofstream raw_stream;
+            int raw_frames = 0;
+            if (!args.raw_out.empty()) {
+                fs::create_directories(args.raw_out, ec);
+                raw_stream.open(fs::path(args.raw_out) / (scene_name + ".rgb"), std::ios::binary);
+            }
+            else
+                frames.reserve(static_cast<size_t>(args.total_frames));
             std::vector<uint8_t> previous_rgb;
             VisualMetricAccumulator metric_accumulator;
             int identical_tail_frames = 0;
@@ -606,7 +616,12 @@ int main(int argc, char* argv[])
                     identical_tail_frames = 0;
                 metric_accumulator.add(rgb, previous_rgb);
                 previous_rgb = rgb;
-                frames.push_back(make_frame(rgb, args.matrix_width, args.matrix_height, frame_delay_cs));
+                if (raw_stream.is_open()) {
+                    raw_stream.write(reinterpret_cast<const char*>(rgb.data()), static_cast<std::streamsize>(rgb.size()));
+                    ++raw_frames;
+                }
+                else
+                    frames.push_back(make_frame(rgb, args.matrix_width, args.matrix_height, frame_delay_cs));
 
                 if (!keep_going) {
                     spdlog::debug("Scene '{}' stopped at frame {}/{}", scene_name, f + 1, args.total_frames);
@@ -616,6 +631,12 @@ int main(int argc, char* argv[])
                 }
             }
 
+            if (raw_stream.is_open()) {
+                visual_metrics[scene_name] = metric_accumulator.json();
+                spdlog::info("Saved {} raw frames for '{}' → {}", raw_frames, scene_name, args.raw_out);
+                ++generated;
+                continue;
+            }
             if (frames.empty()) {
                 spdlog::warn("No frames captured for '{}', skipping.", scene_name);
                 ++skipped;

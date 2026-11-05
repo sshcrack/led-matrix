@@ -12,6 +12,8 @@ script_dir=$(dirname "$(readlink -f "$0")")
         echo "Environment file '.env' not found. You can create one if you want"
     fi
 
+    scripts/fetch_scene_previews.sh --if-missing || echo "warning: could not fetch scene previews (offline?)"
+
     #cmake --preset emulator -DSKIP_WEB_BUILD=ON -DENABLE_UPDATE_TESTING=ON
     cmake --build emulator_build --target install
     if [ $? -ne 0 ]; then

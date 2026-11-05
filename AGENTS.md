@@ -61,6 +61,10 @@ cmake --build --preset cross-compile --target install
 ./build_upload.sh
 ```
 
+### Worktrees and build caching
+
+Fresh worktrees build in seconds instead of minutes: `cmake/BuildCache.cmake` finds vcpkg when `VCPKG_ROOT` is unset and routes compiles through ccache with `base_dir=<worktree>`, so object files are shared across all worktrees and the main checkout; vcpkg ports come from its binary cache. Run `scripts/setup_worktree.sh [--build]` in a new worktree (the T3 project runs it on worktree creation): it copies the git-ignored `.env`, `react-web/dist` and `scene_previews/` from the main checkout and configures the emulator preset. Build only through the presets; a hand-rolled `cmake -B` without the presets misses the shared cache.
+
 ### DEB packaging (cross-compile)
 
 The cross-compile preset now produces both `.tar.gz` and `.deb` packages. The `.deb` installs to FHS paths (`/usr/bin/`, `/usr/lib/led-matrix/`, `/usr/share/led-matrix/`) via CPack.
@@ -180,6 +184,8 @@ Scenery guidance (2026-09-06): new scenery should prioritize calm, recognizable 
 
 Live preview rule (2026-08-22): `/live_frame` is a WebSocket-only, pull-based transport (no HTTP polling). A connected socket does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting.
 
+Music director note (2026-11-05): while live music plays, both directors prefer scenes tagged `music-showcase` (longer dwell) and match `style:<chill|edm|party|rock|hiphop|acoustic>` tags against the current music style (`shared/matrix/music_style.h`). The style fuses genre metadata (`RuntimeInputIds::MusicGenre`, published by SpotifyScenes `genre_lookup.cpp`: Spotify artist genres first, then Deezer, then the optional GetSongBPM key; cached in `cache/genres.json`) with a weak audio estimate. `director_music_sim <song.audr> [--desktop --spotify --genre "a,b"]` replays recorded analysis (from `tests/audio_analysis_dump.cpp`) through the real director to check behaviour. Every `music-showcase` scene needs a `style:` tag; `tests/music_showcase_coverage.py` enforces a minimum scene count per style (higher for hiphop/rock/party, the owner's main genres).
+
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
 ## API security
@@ -231,6 +237,23 @@ Current providers include `audio` (owned by AudioVisualizer) and `spotify.playba
 ### Live web matrix capture performance
 
 Live matrix capture is strict pull/on-demand. The React UI normally keeps one `/live_frame` WebSocket open and sends a `next` message only when it wants one future composed frame; simultaneous viewers are coalesced into one capture and all viewers whose request preceded that capture receive the same binary `LMF1` frame. When there is no outstanding demand, `LiveFrameSnapshot` must not read matrix pixels, allocate RGB buffers, take the publish mutex, or run a lease/timer. A connected WebSocket by itself is **not** demand. The React preview stops requesting frames while hidden/off-screen.
+
+## Scene videos and PR media
+
+Show visual changes in PRs as videos, not descriptions:
+- `scripts/render_scene_video.sh --scenes <a,b> [--replay song.audr] [--audio song.wav]` renders MP4s with an LED-panel look via `preview_gen` (emulator preset).
+- Real-music input: `emulator_build/install/bin/audio_analysis_dump <song.wav> <out.audr>` records the desktop analyzer's output; pass it as `--replay`. Keep copyrighted audio out of anything uploaded: publish silent videos and keep `--audio` versions local.
+- `spotify` previews take custom artwork and track changes: `--preview-option 'spotify.playback:covers=["a.png","b.png"]' --preview-option spotify.playback:track_seconds=6`.
+- `scripts/pr_media.sh [--comment] <files>` uploads images/MP4s to the rolling `pr-media` prerelease and prints markdown (videos get a linked GIF preview, since GitHub only plays inline video uploaded through the browser). Paste the output into the PR body or use `--comment`.
+
+## Keeping the repo small
+
+Every committed blob stays in history forever and slows every `git clone`. History was rewritten on 2026-11-04 to drop ~140 MiB of old GIFs, a 51 MiB `.aab` and profiler dumps (clone ~188 MiB → ~46 MiB). Keep it that way:
+
+- `scripts/check_repo_size.sh` fails on files > 2 MiB, blocked artifact types (`.aab .apk .zip .deb heaptrack.*` …) and > 10 MiB of added/modified files per PR. CI runs it on every PR (`repo-size` job); enable the local hook once per clone with `git config core.hooksPath .githooks`.
+- Exempt a deliberate file via `.repo-size-allow`; waive the total budget with `[large-ok]` in a commit message.
+- **`scene_previews/*.gif` are not tracked in git** (each regeneration cost 0.5–1.5 MiB of history forever; the guard blocks them). They live as assets of the rolling `scene-previews` **prerelease**: `./scripts/generate_scene_previews.sh …` then `./scripts/publish_scene_previews.sh` (needs `gh auth login`; uploads only changed files, removes stale ones). `./scripts/fetch_scene_previews.sh [--if-missing]` downloads them into `scene_previews/` (CMake installs that dir; CI fetches before the cross-compile/.deb build; `run_emulator.sh` and `build_upload.sh` fetch when missing). The release publishes `scene_previews.tar.gz` (exact names, what builds use) plus individual URL-safe GIFs for README embeds. It is a prerelease with a non-`v*` tag so `/releases/latest`, the updater and `create-release.yml` ignore it; `/api/update/releases` filters it out. Never delete it.
+- Build outputs, profiles, videos belong in release assets, not git.
 
 ## CI
 

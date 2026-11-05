@@ -20,14 +20,14 @@ long system_now_ms()
         std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-nlohmann::json make_state(const long progress_ms, const long duration_ms)
+nlohmann::json make_state(const std::string &track_id, const long progress_ms, const long duration_ms)
 {
     return {
         {"timestamp", system_now_ms()},
         {"progress_ms", progress_ms},
         {"is_playing", true},
         {"item", {
-            {"id", "preview-track"},
+            {"id", track_id},
             {"name", "Preview Track"},
             {"duration_ms", duration_ms},
             {"artists", nlohmann::json::array({{{"name", "Matrix Studio"}}})},
@@ -68,6 +68,12 @@ void write_preview_cover(const std::filesystem::path &path)
 
 } // namespace
 
+size_t SpotifyPreviewProvider::track_index(const double elapsed_seconds) const
+{
+    if (track_ids_.size() <= 1 || track_seconds_ <= 0.0) return 0;
+    return static_cast<size_t>(std::max(0.0, elapsed_seconds) / track_seconds_) % track_ids_.size();
+}
+
 void SpotifyPreviewProvider::begin(const Previews::RunContext &context)
 {
     if (spotify == nullptr)
@@ -75,19 +81,42 @@ void SpotifyPreviewProvider::begin(const Previews::RunContext &context)
 
     const auto options = context.options_for(id());
     duration_ms_ = std::max<long>(10000, options.value("duration_ms", 180000L));
-    cover_path_ = std::filesystem::path("/tmp") /
-        ("spotify_cover." + std::string(TrackId) + ".jpg");
-    write_preview_cover(cover_path_);
-    spotify->set_preview_currently_playing(make_state(0, duration_ms_));
+    track_seconds_ = std::max(0.0, options.value("track_seconds", 0.0));
+    cover_paths_.clear();
+    track_ids_.clear();
+
+    std::vector<std::filesystem::path> sources;
+    if (const auto it = options.find("covers"); it != options.end() && it->is_array())
+        for (const auto &entry : *it)
+            if (entry.is_string()) sources.emplace_back(entry.get<std::string>());
+
+    // The scene downloads "/tmp/spotify_cover.<track id>.jpg" unless it already
+    // exists, so pre-seeding that path keeps the fixture fully offline.
+    const size_t count = std::max<size_t>(1, sources.size());
+    for (size_t i = 0; i < count; ++i) {
+        const auto track_id = count == 1 ? std::string(TrackId) : std::string(TrackId) + "-" + std::to_string(i);
+        const auto path = std::filesystem::path("/tmp") / ("spotify_cover." + track_id + ".jpg");
+        if (i < sources.size()) {
+            Magick::Image image(sources[i].string());
+            image.magick("JPEG");
+            image.quality(92);
+            image.write(path.string());
+        } else {
+            write_preview_cover(path);
+        }
+        track_ids_.push_back(track_id);
+        cover_paths_.push_back(path);
+    }
+    spotify->set_preview_currently_playing(make_state(track_ids_.front(), 0, duration_ms_));
 }
 
 void SpotifyPreviewProvider::update(const Scenes::SceneFrameContext &frame)
 {
-    if (spotify == nullptr) return;
+    if (spotify == nullptr || track_ids_.empty()) return;
     const auto progress = static_cast<long>(
-        std::fmod(std::max(0.0, frame.elapsed_seconds) * 1000.0,
+        std::fmod(std::max(0.0, frame.elapsed_seconds) * 1000.0 + 42000.0,
                   static_cast<double>(duration_ms_)));
-    spotify->set_preview_currently_playing(make_state(progress, duration_ms_));
+    spotify->set_preview_currently_playing(make_state(track_ids_[track_index(frame.elapsed_seconds)], progress, duration_ms_));
 }
 
 void SpotifyPreviewProvider::end() noexcept
@@ -96,9 +125,9 @@ void SpotifyPreviewProvider::end() noexcept
         if (spotify != nullptr)
             spotify->clear_preview_currently_playing();
         MediaArtworkState::clear();
-        if (!cover_path_.empty()) {
+        for (const auto &path : cover_paths_) {
             std::error_code ec;
-            std::filesystem::remove(cover_path_, ec);
+            std::filesystem::remove(path, ec);
         }
     } catch (...) {
         // Preview fixture cleanup must never mask a scene-rendering result.

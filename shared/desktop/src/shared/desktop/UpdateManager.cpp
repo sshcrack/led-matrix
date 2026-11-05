@@ -106,7 +106,7 @@ namespace UpdateChecker
             ImGui::OpenPopup("Software Up to Date");
             
             if (ImGui::BeginPopupModal("Software Up to Date", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-                ImGui::Text("✅ You're running the latest version!");
+                ImGui::Text("You're running the latest version!");
                 ImGui::Separator();
                 
                 ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
@@ -289,7 +289,7 @@ namespace UpdateChecker
         {
             const auto &release = pImpl->currentRelease;
 
-            ImGui::Text("🚀 A new version of LED Matrix Controller is available!");
+            ImGui::Text("A new version of LED Matrix Controller is available!");
             ImGui::Separator();
 
             ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
@@ -308,7 +308,7 @@ namespace UpdateChecker
             ImGui::TextWrapped("Click 'Update Now' to automatically download and install the latest version. "
                                "The application will close during the update process.");
 
-            if (ImGui::Button("🔄️ Update Now", ImVec2(120, 0)))
+            if (ImGui::Button("Update Now", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::UpdateNow, release);
                 pImpl->showUpdateDialog = false;
@@ -318,7 +318,7 @@ namespace UpdateChecker
             ImGui::TextWrapped("Click 'View Release' to open the GitHub releases page where you can "
                                "download the latest version manually.");
 
-            if (ImGui::Button("🌐 View Release", ImVec2(120, 0)))
+            if (ImGui::Button("View Release", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::UpdateNow, release); // On Linux this opens browser
                 pImpl->showUpdateDialog = false;
@@ -327,7 +327,7 @@ namespace UpdateChecker
 #endif
 
             ImGui::SameLine();
-            if (ImGui::Button("⏰ Remind Later", ImVec2(120, 0)))
+            if (ImGui::Button("Remind Later", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::RemindLater, release);
                 pImpl->showUpdateDialog = false;
@@ -337,7 +337,7 @@ namespace UpdateChecker
                                   pImpl->checker.getPreferences().remindIntervalDays);
 
             ImGui::SameLine();
-            if (ImGui::Button("❌ Skip Version", ImVec2(120, 0)))
+            if (ImGui::Button("Skip Version", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::Skip, release);
                 pImpl->showUpdateDialog = false;

@@ -207,6 +207,13 @@ jobs:
           tar -xvf cross-compile.tar.xz
           rm cross-compile.tar.xz
 
+      # Scene preview GIFs live in the rolling `scene-previews` release, not git.
+      # They are installed into the package, so fail loudly if they are missing.
+      - name: Fetch scene previews
+        if: matrix.preset == 'cross-compile'
+        shell: bash
+        run: scripts/fetch_scene_previews.sh
+
       - name: Build ${{ matrix.name }}
         uses: lukka/run-cmake@v10
         with:

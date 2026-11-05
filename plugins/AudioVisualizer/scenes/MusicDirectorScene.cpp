@@ -2,6 +2,7 @@
 
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/diagnostics.h>
+#include <shared/matrix/music_style.h>
 #include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/runtime_inputs.h>
 #include <spdlog/spdlog.h>
@@ -182,14 +183,18 @@ MusicDirectorScene::MusicalState MusicDirectorScene::classify(const AudioState::
         return MusicalState::Calm;
     }
 
-    const float loud = feature(audio, AudioProtocol::Feature::LoudnessFast);
+    // Phrase-level energy: the analyser's fast loudness swings within a bar,
+    // so it only contributes a little and the envelope moves over seconds.
+    const float loud = 0.55f * feature(audio, AudioProtocol::Feature::LoudnessSlow) +
+                       0.30f * feature(audio, AudioProtocol::Feature::Loudness) +
+                       0.15f * feature(audio, AudioProtocol::Feature::LoudnessFast);
     const float bass = 0.55f * feature(audio, AudioProtocol::Feature::Bass) + 0.45f * feature(audio, AudioProtocol::Feature::SubBass);
     const float onset = feature(audio, AudioProtocol::Feature::OnsetStrength);
     const float hihat = feature(audio, AudioProtocol::Feature::Hihat);
     const float trend = std::clamp(audio.feature(AudioProtocol::Feature::EnergyTrend), -1.0f, 1.0f);
     const float target =
         std::clamp(0.08f + loud * 0.52f + bass * 0.22f + onset * 0.10f + hihat * 0.04f + std::max(0.0f, trend) * 0.12f, 0.0f, 1.0f);
-    state_energy_ = smoothResponse(state_energy_, target, 0.28f, 0.85f, static_cast<float>(frame_context().delta_seconds));
+    state_energy_ = smoothResponse(state_energy_, target, 2.0f, 4.0f, static_cast<float>(frame_context().delta_seconds));
 
     // Verified drop events may react immediately; ordinary energy changes must
     // survive temporal smoothing before they can change the visual state.
@@ -206,16 +211,22 @@ MusicDirectorScene::MusicalState MusicDirectorScene::classify(const AudioState::
 
 std::vector<std::string> MusicDirectorScene::preferred(MusicalState state) const
 {
+    // Candidate order only; the score below (energy, showcase tier, music
+    // style) decides. Featured visualizers come first in every state.
     switch (state) {
         case MusicalState::Calm:
-            return {"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "audio_spectrum", "starfield", "metablob", "reaction_diffusion"};
+            return {"audio_pond", "audio_reef", "audio_planet", "audio_lighthouse", "audio_campfire", "shader:music_celestial_bloom",
+                    "shader:music_liquid_ribbons", "audio_spectrum"};
         case MusicalState::Build:
-            return {"shader:music_neon_orbit", "shader:music_spectrum_tunnel", "shader:music_celestial_bloom", "wave_pattern", "boids", "audio_spectrum", "neontunnel"};
+            return {"audio_ridgeline", "audio_skyline", "audio_lighthouse", "audio_spectrum", "shader:music_neon_orbit",
+                    "shader:music_spectrum_tunnel", "audio_planet"};
         case MusicalState::Peak:
-            return {"shader:music_spectrum_tunnel", "shader:music_neon_orbit", "shader:music_celestial_bloom", "audio_particles", "audio_spectrum", "neontunnel"};
+            return {"audio_spectrum", "audio_ridgeline", "audio_skyline", "audio_particles", "shader:music_spectrum_tunnel",
+                    "shader:music_neon_orbit", "audio_campfire"};
         case MusicalState::Groove:
         default:
-            return {"shader:music_celestial_bloom", "shader:music_liquid_ribbons", "shader:music_neon_orbit", "boids", "audio_spectrum", "wave_pattern", "metablob", "audio_particles"};
+            return {"audio_skyline", "audio_ridgeline", "audio_reef", "audio_planet", "audio_spectrum", "audio_campfire",
+                    "shader:music_liquid_ribbons", "shader:music_neon_orbit", "audio_particles"};
     }
 }
 
@@ -323,6 +334,7 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
     };
     std::vector<Choice> choices;
     const std::string currentFamily = child_ ? child_->get_descriptor().family : std::string{};
+    const auto style = MusicStyle::describe(RuntimeInputs::snapshot());
 
     for (size_t candidateIndex = 0; candidateIndex < candidates.size(); ++candidateIndex) {
         const auto& name = candidates[candidateIndex];
@@ -343,6 +355,15 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
             score -= profile.performance_cost * 0.42f;
             if (hasTag(profile, "showcase"))
                 score += 0.18f;
+            // Featured visualizers and the current music style lead.
+            if (hasTag(profile, "music-showcase"))
+                score += 0.55f;
+            if (style.confidence > 0.0f)
+                score += 2.0f * style.confidence * (MusicStyle::style_fit(style, profile.tags) - 0.35f);
+            if (!(hasTag(profile, "audio-reactive") || hasTag(profile, "beat-driven")) && state != MusicalState::Calm)
+                score -= 1.2f;
+            if (state == MusicalState::Peak && hasTag(profile, "drop-reactive"))
+                score += 0.20f;
             if (hasTag(profile, "shader"))
                 score += 0.16f;
 
@@ -445,6 +466,12 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
             child_ = std::move(next);
             child_name_ = choice.name;
             child_state_ = state;
+            {
+                const auto childProfile = Scenes::effective_profile(child_->get_descriptor(),
+                                                                    Scenes::find_variant(child_->get_descriptor(), child_variant_));
+                child_showcase_ = hasTag(childProfile, "music-showcase");
+                child_drop_reactive_ = hasTag(childProfile, "drop-reactive");
+            }
             switched_at_ = frame_context().elapsed_seconds;
             pending_switch_ = false;
             selection_cursor_ = (choice.candidate_index + 1) % candidates.size();
@@ -497,18 +524,25 @@ bool MusicDirectorScene::request_switch(const AudioState::Snapshot& audio, Music
         seen_beat_ = audio.beat_counter;
     }
 
-    const bool maxed = dwell_ms >= static_cast<double>(maximum_dwell_->get());
-    const bool changed_energy = state != child_state_ && dwell_ms >= static_cast<double>(minimum_dwell_->get());
+    // Featured visualizers develop over several phrases; drop-reactive ones
+    // get to play the drop they were built for instead of being cut by it.
+    const double dwellScale = child_showcase_ ? 1.8 : 1.0;
+    const double minimumDwell = static_cast<double>(minimum_dwell_->get()) * dwellScale;
+    const double maximumDwell = static_cast<double>(maximum_dwell_->get()) * dwellScale;
+    if (drop && child_drop_reactive_ && dwell_ms < maximumDwell * 0.6)
+        drop = false;
+    const bool maxed = dwell_ms >= maximumDwell;
+    const bool changed_energy = state != child_state_ && dwell_ms >= minimumDwell;
 
     if (!child_) {
         pending_switch_ = true;
         pending_state_ = state;
     }
-    else if (drop && dwell_ms >= std::min<double>(minimum_dwell_->get(), 3500.0)) {
+    else if (drop && dwell_ms >= std::min<double>(minimumDwell, 3500.0)) {
         pending_switch_ = true;
         pending_state_ = MusicalState::Peak;
     }
-    else if ((section || maxed || changed_energy) && dwell_ms >= static_cast<double>(minimum_dwell_->get())) {
+    else if ((section || maxed || changed_energy) && dwell_ms >= minimumDwell) {
         pending_switch_ = true;
         pending_state_ = state;
     }

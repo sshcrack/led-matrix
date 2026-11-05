@@ -64,6 +64,7 @@ if(ENABLE_UPDATE_TESTING)
     message(STATUS "Update testing enabled. This will bypass platform checks and always run the update script.")
 endif()
 
+include(cmake/BuildCache.cmake)
 include(cmake/subdirlist.cmake)
 include(cmake/vcpkg_features.cmake)
 
@@ -855,6 +856,25 @@ if(ENABLE_EMULATOR)
     target_compile_features(section_tracker_smoke PRIVATE cxx_std_23)
     add_test(NAME section_tracker_smoke COMMAND $<TARGET_FILE:section_tracker_smoke>)
 
+    # Offline Automatic Director simulation against recorded music analysis
+    # (tests/audio_analysis_dump output). Not a CTest: a judging tool.
+    add_executable(director_music_sim
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/director_music_sim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
+    )
+    target_compile_features(director_music_sim PRIVATE cxx_std_23)
+    target_include_directories(director_music_sim PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(director_music_sim PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix ${CMAKE_DL_LIBS}
+    )
+    install(TARGETS director_music_sim DESTINATION bin)
+
     add_executable(automatic_director_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/automatic_director_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
@@ -871,6 +891,23 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME automatic_director_smoke COMMAND $<TARGET_FILE:automatic_director_smoke>)
     set_tests_properties(automatic_director_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(music_style_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/music_style_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirector.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorContext.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorRanking.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorSwitching.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/AutomaticDirectorDiagnostics.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
+    )
+    target_compile_features(music_style_smoke PRIVATE cxx_std_23)
+    target_include_directories(music_style_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(music_style_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME music_style_smoke COMMAND $<TARGET_FILE:music_style_smoke>)
+    set_tests_properties(music_style_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(runtime_selection_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_selection_smoke.cpp
@@ -1006,6 +1043,12 @@ if(ENABLE_EMULATOR)
             --dump-manifest
             --manifest-out ${CMAKE_BINARY_DIR}/scene-manifest-test.json
     )
+    set_tests_properties(scene_registry_smoke PROPERTIES FIXTURES_SETUP scene_manifest)
+    add_test(NAME music_showcase_coverage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/music_showcase_coverage.py
+            ${CMAKE_BINARY_DIR}/scene-manifest-test.json
+    )
+    set_tests_properties(music_showcase_coverage PROPERTIES FIXTURES_REQUIRED scene_manifest)
     add_test(NAME virtual_scene_preview_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>
@@ -1076,9 +1119,15 @@ if(ENABLE_EMULATOR)
 endif()
 
 if(NOT ENABLE_DESKTOP)
-    # Install scene previews from the git-tracked scene_previews/ directory
-    # Previews are committed to git and deployed as-is, not auto-generated
-    # during the build. Use ./scripts/generate_scene_previews.sh to regenerate.
+    # Install scene previews from scene_previews/. The GIFs are NOT tracked in git
+    # (they bloated clones): fetch them from the `scene-previews` release with
+    # ./scripts/fetch_scene_previews.sh, regenerate with
+    # ./scripts/generate_scene_previews.sh and publish with
+    # ./scripts/publish_scene_previews.sh.
+    file(GLOB _scene_preview_gifs "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/*.gif")
+    if(NOT _scene_preview_gifs)
+        message(WARNING "scene_previews/ has no GIFs; the package will have no scene thumbnails. Run scripts/fetch_scene_previews.sh")
+    endif()
 
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/scene_previews/"
         DESTINATION share/led-matrix/scene_previews

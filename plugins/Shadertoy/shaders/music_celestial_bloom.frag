@@ -1,7 +1,7 @@
 /* led-matrix-shader
 {
   "family": "celestial",
-  "tags": ["music", "ambient", "scenic", "organic", "bloom", "audio-reactive", "soft", "showcase"],
+  "tags": ["music", "ambient", "scenic", "organic", "bloom", "audio-reactive", "soft", "showcase", "style:chill", "style:acoustic"],
   "intensity": 0.74,
   "motion": 0.68,
   "music_affinity": 0.96,
