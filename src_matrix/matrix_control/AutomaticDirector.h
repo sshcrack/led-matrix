@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "shared/matrix/Scene.h"
+#include "shared/matrix/music_style.h"
 #include "shared/matrix/runtime_inputs.h"
 
 class AutomaticDirector {
@@ -128,6 +129,8 @@ public:
         float spotify_remaining_seconds = 0.0f;
         float target_intensity = 0.42f;
         float target_motion = 0.46f;
+        /// Fused genre metadata + audio character of the current music.
+        MusicStyle::Info style;
         std::string mode = "ambient";
     };
 
@@ -139,6 +142,7 @@ private:
         std::string role;
         float intensity = 0.5f;
         float motion = 0.5f;
+        bool music_look = false;
     };
 
     /// Long-lived per-scene knowledge, keyed by scene name (variants share
@@ -178,8 +182,23 @@ private:
     std::uint64_t seen_section_ = 0;
     std::uint64_t next_fit_check_ms_ = 0;
     std::string last_switch_reason_;
+    // Phrase-level music energy: the analyser's loudness swings within seconds,
+    // so casting and fit checks follow a ~10 s average instead.
+    bool phrase_primed_ = false;
+    float phrase_intensity_ = 0.42f;
+    float phrase_motion_ = 0.46f;
+    std::uint64_t phrase_updated_ms_ = 0;
+    std::string mismatch_scene_;
+    std::string style_scene_;
+    MusicStyle::Style style_at_start_ = MusicStyle::Style::Chill;
+    float fit_error_at_start_ = 0.0f;
+    std::uint64_t mismatch_since_ms_ = 0;
 
     [[nodiscard]] Context observe(const RuntimeInputs::Snapshot& runtime_inputs);
+    /// Context with the phrase-smoothed music energy applied (const view).
+    [[nodiscard]] Context music_context(const RuntimeInputs::Snapshot& runtime_inputs) const;
+    /// Consecutive music-reactive presentations at the end of the history.
+    [[nodiscard]] int music_streak() const;
     [[nodiscard]] float history_multiplier(
         const std::string& scene,
         const std::string& family,

@@ -9,6 +9,17 @@ register_plugin(AudioVisualizer
         scenes/AudioParticleScene.h
         scenes/MusicDirectorScene.cpp
         scenes/MusicDirectorScene.h
+        scenes/kit/AudioSceneKit.h
+        scenes/AmbientMusicScenes.h
+        scenes/AudioRidgelineScene.cpp
+        scenes/AudioPondScene.cpp
+        scenes/AudioReefScene.cpp
+        scenes/AudioSkylineScene.cpp
+        scenes/AudioPlanetScene.cpp
+        scenes/AudioCampfireScene.cpp
+        scenes/AudioLighthouseScene.cpp
+        scenes/AudioStageScene.cpp
+        scenes/AudioNightDriveScene.cpp
         DESKTOP
         desktop/config.h
         desktop/AudioVisualizerDesktop.cpp

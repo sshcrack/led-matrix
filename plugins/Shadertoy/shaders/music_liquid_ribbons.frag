@@ -1,7 +1,7 @@
 /* led-matrix-shader
 {
   "family": "ribbons",
-  "tags": ["music", "ribbons", "flow", "organic", "audio-reactive", "soft", "showcase"],
+  "tags": ["music", "ribbons", "flow", "organic", "audio-reactive", "soft", "showcase", "style:chill", "style:hiphop"],
   "intensity": 0.66,
   "motion": 0.72,
   "music_affinity": 1.0,

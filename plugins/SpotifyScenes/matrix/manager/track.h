@@ -12,4 +12,5 @@ public:
     std::optional<std::string> get_cover() const;
     std::optional<std::string> get_song_name() const;
     std::optional<std::string> get_artist_name() const;
+    std::vector<std::string> get_artist_ids() const;
 };

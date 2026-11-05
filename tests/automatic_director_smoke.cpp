@@ -291,9 +291,12 @@ int main()
          {"section_counter", std::int64_t{2}}, {"silence", false}},
         std::chrono::seconds(1));
     AutomaticDirector event_director(29);
-    const auto current_scene = std::make_shared<TestScene>("too_calm", .08f, .1f, .2f, false, "still", .08f);
+    // A (calm) music look: non-music looks are replaced as soon as music plays,
+    // so only a music look exercises the section/energy handoff.
+    const auto current_scene = std::make_shared<TestScene>("too_calm", .08f, .9f, .2f, false, "still", .08f,
+                                                           std::vector<std::string>{"music", "audio-reactive"});
     event_director.record_played(current_scene);
-    auto opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 9000, 60000);
+    auto opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 19000, 60000);
     if (opportunity.should_switch) {
         std::cerr << "director reacted while priming musical event counters\n";
         return 18;
@@ -304,8 +307,9 @@ int main()
          {"beat_counter", std::int64_t{20}}, {"drop_counter", std::int64_t{1}},
          {"section_counter", std::int64_t{3}}, {"silence", false}},
         std::chrono::seconds(1));
-    opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 10000, 60000);
+    opportunity = event_director.consider_switch(scenes, current_scene, RuntimeInputs::snapshot(), 20000, 60000);
     if (!opportunity.should_switch || opportunity.reason.find("section") == std::string::npos) {
+        std::cerr << "reason: " << opportunity.reason << "\n";
         std::cerr << "global director ignored a durable musical section change\n";
         return 19;
     }

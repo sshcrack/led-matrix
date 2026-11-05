@@ -178,7 +178,7 @@ Scenes::SceneDescriptor Scenes::AudioParticleFieldScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "particles";
-    d.tags = {"music", "particles", "bursts", "audio-reactive"};
+    d.tags = {"music", "particles", "bursts", "audio-reactive", "style:edm", "style:party", "drop-reactive"};
     d.intensity = 0.82f;
     d.motion = 0.86f;
     d.music_affinity = 1.0f;

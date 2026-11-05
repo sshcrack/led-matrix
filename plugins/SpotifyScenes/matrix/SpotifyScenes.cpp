@@ -68,7 +68,7 @@ register_routes(std::unique_ptr<router_t> router) {
     router->http_get("/spotify/login",
                      [this, redirect_uri](const restinio::request_handle_t &req, auto) {
                          const string state = generate_random_string(16);
-                         const string scope = "user-read-playback-state user-read-currently-playing";
+                         const string scope = "user-read-playback-state user-read-currently-playing user-top-read";
 
                          std::stringstream auth_url;
                          auth_url << "https://accounts.spotify.com/authorize?"
@@ -112,6 +112,11 @@ register_routes(std::unique_ptr<router_t> router) {
                                                   });
 
                              spotify->spotify_callback = res.text;
+                             // Re-login (e.g. to grant new scopes) while already
+                             // authorised: the first-run wait loop is gone, so
+                             // store the new tokens here.
+                             if (res.status_code == 200 && !Spotify::save_resp_to_config(res.text))
+                                 spdlog::warn("Could not save the new Spotify login");
 
                              return Server::reply_with_json(req, {{"success", true}});
                          }

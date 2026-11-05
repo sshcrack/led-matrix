@@ -9,14 +9,19 @@
 #include "./state.h"
 
 class Spotify {
-private:
+public:
+    /// Store a token response (initial login or a re-login with new scopes).
     static bool save_resp_to_config(const std::string& json_resp);
+
+private:
     std::expected<std::optional<nlohmann::json >, std::pair<std::string, std::optional<int>>> authenticated_get(const std::string& url, bool refresh = true);
     std::expected<std::optional<SpotifyState>, std::pair<std::string, std::optional<int>>> inner_fetch_currently_playing();
 
     std::string client_id;
     std::string client_secret;
     std::mutex mtx;
+    // Serialises token expiry checks/refreshes (control thread + genre lookup).
+    std::mutex refresh_mtx;
 
     std::optional<SpotifyState> last_playing;
     std::optional<SpotifyState> currently_playing;

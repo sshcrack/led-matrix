@@ -37,6 +37,16 @@ std::optional<std::string> SpotifyTrack::get_artist_name() const {
     }
 }
 
+std::vector<std::string> SpotifyTrack::get_artist_ids() const {
+    std::vector<std::string> ids;
+    if (!track_json.contains("artists") || !track_json["artists"].is_array())
+        return ids;
+    for (const auto &artist : track_json["artists"])
+        if (artist.contains("id") && artist["id"].is_string())
+            ids.push_back(artist["id"].get<std::string>());
+    return ids;
+}
+
 std::optional<std::string> SpotifyTrack::get_id() const {
     try {
         return this->track_json["id"].template get<std::string>();

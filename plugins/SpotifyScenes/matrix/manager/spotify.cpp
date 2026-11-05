@@ -6,6 +6,8 @@
 #include <cstdlib>
 
 #include "shared/matrix/utils/shared.h"
+#include "genre_lookup.h"
+#include "shared/matrix/execution_mode.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/utils.h"
@@ -37,6 +39,10 @@ void publish_spotify_runtime_input(std::optional<SpotifyState> state)
         signals.emplace("artist", *artist);
     if (const auto cover = track.get_cover(); cover.has_value())
         signals.emplace("cover_url", *cover);
+
+    if (const auto id = track.get_id(); id.has_value() && !SceneExecution::is_headless_fixture_host())
+        GenreLookup::instance().track_playing(*id, track.get_song_name().value_or(""), track.get_artist_name().value_or(""),
+                                              track.get_artist_ids());
 
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
@@ -81,6 +87,12 @@ bool Spotify::refresh() const {
 }
 
 bool Spotify::initialize() {
+    GenreLookup::instance().set_spotify_fetch([this](const std::string &url) -> std::optional<json> {
+        auto response = authenticated_get(url);
+        if (!response.has_value() || !response->has_value())
+            return std::nullopt;
+        return **response;
+    });
     const auto [access_token, refresh_token, expires_at] = config->get_spotify();
     const auto any_empty = access_token->empty() || refresh_token->empty() || expires_at == 0;
 
@@ -193,11 +205,16 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
     }
 
     if (data.is_expired()) {
-        if (!this->refresh()) {
-            return unexpected(make_pair("Could not refresh token", nullopt));
-        }
-
+        // Two threads may notice expiry together; only one refreshes, the
+        // other re-reads the fresh token after taking the lock.
+        std::lock_guard refresh_lock(refresh_mtx);
         data = config->get_spotify();
+        if (data.is_expired()) {
+            if (!this->refresh()) {
+                return unexpected(make_pair("Could not refresh token", nullopt));
+            }
+            data = config->get_spotify();
+        }
     }
 
     // Simple curl get to the given url with spotify bearer authentication
@@ -211,8 +228,10 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
 
         // Set the Authorization header
         std::string auth_header = "Authorization: Bearer " + data.access_token.value();
-        struct curl_slist *headers;
+        struct curl_slist *headers = nullptr;
         headers = curl_slist_append(headers, auth_header.c_str());
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         // Set the write callback
@@ -346,6 +365,8 @@ void Spotify::terminate() {
     if (this->control_thread.joinable())
         this->control_thread.join();
     RuntimeInputs::set_available(RuntimeInputIds::SpotifyPlayback, false);
+    GenreLookup::instance().stop();
+    GenreLookup::instance().set_spotify_fetch({});
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {

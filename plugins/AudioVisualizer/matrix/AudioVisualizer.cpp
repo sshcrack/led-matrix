@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "AudioPreviewProvider.h"
+#include "scenes/AmbientMusicScenes.h"
 #include "scenes/AudioParticleScene.h"
 #include "scenes/AudioSpectrumScene.h"
 #include "scenes/MusicDirectorScene.h"
@@ -31,6 +32,15 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
     scenes.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
     scenes.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
     scenes.push_back(std::make_unique<MusicDirectorSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioRidgelineSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioPondSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioReefSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioSkylineSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioPlanetSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioCampfireSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioLighthouseSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioStageSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioNightDriveSceneWrapper>());
     return scenes;
 }
 
