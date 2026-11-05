@@ -19,6 +19,7 @@ public:
         return {std::string(RuntimeInputIds::SpotifyPlayback)};
     }
 
+    std::optional<string> before_server_init() override;
     std::optional<string> after_server_init() override;
     std::optional<string> pre_exit() override;
 

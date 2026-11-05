@@ -120,6 +120,18 @@ namespace Plugins
             return preview_data_providers;
         }
 
+        // Lifecycle hooks. Hosts run them through plugin/lifecycle.h, so a
+        // returned error string or a thrown exception is handled the same way
+        // in the daemon, the scene worker and the preview generator: init
+        // failures are fatal, pre_exit failures are logged.
+        //
+        // before_server_init(): runs before the HTTP server accepts requests.
+        //   Create every object that register_routes() handlers touch here.
+        // after_server_init(): runs once the HTTP server is listening, so it
+        //   may block on a request to it (e.g. an OAuth callback). Routes can
+        //   already be called while it runs.
+        // pre_exit(): runs during shutdown; must tolerate the init hooks having
+        //   failed or never run.
         virtual std::optional<string> before_server_init()
         {
             return std::nullopt;

@@ -12,6 +12,7 @@
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/plugin/lifecycle.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
 #include "shared/matrix/update/UpdateManager.h"
@@ -278,10 +279,9 @@ Daemon::Daemon(int argc, char* argv[])
     // 10. Plugin before-server init + register effects / transitions
     // -------------------------------------------------------------------
     for (const auto &item : PluginManager::instance()->get_plugins()) {
-        const auto err = item->before_server_init();
-        if (err.has_value()) {
-            error(err.value());
-            throw runtime_error(err.value());
+        if (const auto failure = Plugins::run_lifecycle_stage(item, Plugins::LifecycleStage::BeforeServerInit)) {
+            error(failure->describe());
+            throw runtime_error(failure->describe());
         }
 
         auto effects = item->create_effects();
@@ -379,12 +379,15 @@ Daemon::Daemon(int argc, char* argv[])
     // -------------------------------------------------------------------
     // 14. Plugin after-server init
     // -------------------------------------------------------------------
-    for (const auto &item : PluginManager::instance()->get_plugins()) {
-        const auto err = item->after_server_init();
-        if (err.has_value()) {
-            error(err.value());
-            throw runtime_error(err.value());
-        }
+    // The HTTP server is already listening here (some hooks, e.g. Spotify's
+    // first-run OAuth flow, block on a request to it). Plugins must therefore
+    // create every object their routes touch in before_server_init().
+    try {
+        Plugins::run_lifecycle_stage_or_throw(
+            PluginManager::instance()->get_plugins(), Plugins::LifecycleStage::AfterServerInit);
+    } catch (const std::exception &e) {
+        error(e.what());
+        throw;
     }
 
     // -------------------------------------------------------------------
@@ -423,15 +426,11 @@ void Daemon::shutdown(bool persist_config) noexcept
     catch (...) { error("UDP shutdown failed"); }
 
     auto *pl = PluginManager::instance();
-    for (const auto &plugin : pl->get_plugins()) {
-        if (!plugin) continue;
-        try {
-            if (auto err = plugin->pre_exit(); err.has_value()) error(err.value());
-        } catch (const std::exception &e) {
-            error("Plugin '{}' pre_exit failed: {}", plugin->get_plugin_name(), e.what());
-        } catch (...) {
-            error("Plugin pre_exit failed with unknown exception");
-        }
+    try {
+        for (const auto &failure : Plugins::run_lifecycle_stage_all(pl->get_plugins(), Plugins::LifecycleStage::PreExit))
+            error(failure.describe());
+    } catch (...) {
+        error("Plugin pre_exit failed with unknown exception");
     }
 
     if (persist_config && config_) {
