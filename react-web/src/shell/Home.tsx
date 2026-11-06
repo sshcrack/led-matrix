@@ -65,7 +65,7 @@ export default function ConsoleHome() {
       {editId && presets?.[editId] ? <div className="rounded-xl border border-border bg-card p-3">
         <div className="mb-2 flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Editing</span>
           <div className="flex gap-1"><Button size="sm" variant="outline" onClick={() => void activate(editId)}><Play className="h-3.5 w-3.5" />Play</Button><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => open(null)} aria-label="Close editor"><X className="h-4 w-4" /></Button></div></div>
-        <PresetEditor presetId={editId} layout="stack" />
+        <PresetEditor presetId={editId} />
       </div>
         : building ? <div className="rounded-xl border border-border bg-card p-3">
           <div className="mb-2 flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">New preset</span><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => open(null)} aria-label="Close"><X className="h-4 w-4" /></Button></div>

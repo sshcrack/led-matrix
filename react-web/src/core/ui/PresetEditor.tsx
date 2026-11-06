@@ -65,11 +65,10 @@ function SceneSettings({ scene, presetId, onChange }: { scene: Scene; presetId: 
 }
 
 /**
- * The preset editing surface shared by all variants (layout differs, behaviour doesn't):
+ * The preset editing surface:
  * autosave, multi-add, reorder, delete-with-undo, inline rename, transition settings.
- * `split` = scene list beside the inspector; `stack` = inspector expands under the selected scene.
  */
-export function PresetEditor({ presetId, layout = 'split', header = true }: { presetId: string; layout?: 'split' | 'stack'; header?: boolean }) {
+export function PresetEditor({ presetId, header = true }: { presetId: string; header?: boolean }) {
   const ed = usePresetEditor(presetId)
   const { preset } = ed
   const { sceneByName } = useMatrix()
@@ -81,7 +80,7 @@ export function PresetEditor({ presetId, layout = 'split', header = true }: { pr
 
   const [lastPreset, setLastPreset] = useState(presetId)
   if (lastPreset !== presetId) { setLastPreset(presetId); setSelectedId(null) }
-  const selected = preset?.scenes.find(s => s.uuid === selectedId) ?? (layout === 'split' ? preset?.scenes[0] : undefined)
+  const selected = preset?.scenes.find(s => s.uuid === selectedId)
 
   // An empty preset opens the scene picker straight away (until dismissed) instead of showing a dead end.
   const showAdd = adding || (preset?.scenes.length === 0 && dismissedFor !== presetId)
@@ -100,7 +99,7 @@ export function PresetEditor({ presetId, layout = 'split', header = true }: { pr
       const def = sceneByName.get(s.type)
       return <li key={s.uuid} className={cn('rounded-xl border transition', on ? 'border-primary/60 bg-primary/5' : 'border-border bg-card')}>
         <div className="flex items-center gap-2 p-2">
-          <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setSelectedId(on && layout === 'stack' ? null : s.uuid)} aria-expanded={on}>
+          <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setSelectedId(on ? null : s.uuid)} aria-expanded={on}>
             <SceneThumb name={s.type} className="h-11 w-11 shrink-0 rounded-lg" />
             <span className="min-w-0"><span className="block truncate text-sm font-semibold">{sceneDisplayName(s.type)}</span>
               <span className="block truncate text-xs text-muted-foreground">{def?.descriptor?.variants.find(v => v.id === s.variant)?.label ?? def?.category ?? 'Unknown'}</span></span>
@@ -111,7 +110,7 @@ export function PresetEditor({ presetId, layout = 'split', header = true }: { pr
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => remove(s, i)} aria-label={`Remove ${s.type}`}><Trash2 className="h-4 w-4" /></Button>
           </div>
         </div>
-        {layout === 'stack' && on && <div className="border-t border-border/60 p-3"><SceneSettings scene={s} presetId={presetId} onChange={ed.updateScene} /></div>}
+        {on && <div className="border-t border-border/60 p-3"><SceneSettings scene={s} presetId={presetId} onChange={ed.updateScene} /></div>}
       </li>
     })}
     <li><Button variant="outline" className="h-11 w-full border-dashed" onClick={() => setAdding(true)}><Plus className="h-4 w-4" />Add scenes</Button></li>
@@ -132,17 +131,7 @@ export function PresetEditor({ presetId, layout = 'split', header = true }: { pr
       <Input value={preset.display_name ?? ''} onChange={e => ed.setName(e.target.value)} aria-label="Preset name" className="h-10 border-transparent bg-transparent px-2 text-lg font-semibold hover:border-border focus-visible:border-input" />
       <SaveBadge state={ed.saveState} onRetry={() => void ed.retry()} className="shrink-0" />
     </div>}
-    {layout === 'split'
-      ? <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-        <div className="space-y-3">{list}{transition}</div>
-        <div className="min-w-0 rounded-xl border border-border bg-card p-4">
-          {selected ? <>
-            <div className="mb-4 flex items-center gap-3"><SceneThumb name={selected.type} className="h-12 w-12 rounded-lg" /><div><h3 className="font-semibold">{sceneDisplayName(selected.type)}</h3><p className="text-xs text-muted-foreground">Changes apply as you go.</p></div></div>
-            <SceneSettings key={selected.uuid} scene={selected} presetId={presetId} onChange={ed.updateScene} />
-          </> : <p className="py-10 text-center text-sm text-muted-foreground">Add a scene to start.</p>}
-        </div>
-      </div>
-      : <div className="space-y-3">{list}{transition}</div>}
+    <div className="space-y-3">{list}{transition}</div>
     <AddScenesDialog open={showAdd} onOpenChange={o => { setAdding(o); if (!o) setDismissedFor(presetId) }} onAdd={scenes => { ed.addScenes(scenes); setSelectedId(scenes[0]?.uuid ?? null) }} />
   </div>
 }

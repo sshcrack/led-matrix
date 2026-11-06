@@ -4,11 +4,11 @@ import App from './App.tsx'
 import './index.css'
 import { installFetchAuth } from './lib/apiToken'
 import { loadPluginUis } from './core/pluginRegistry'
-import { applyVariant } from './core/variants'
+import { applyColorScheme } from './core/colorScheme'
 
 installFetchAuth()
 void loadPluginUis()
-applyVariant()
+applyColorScheme()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

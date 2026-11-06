@@ -3,9 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ApiUrlProvider } from './components/apiUrl/ApiUrlProvider'
 import { MatrixProvider } from './core/MatrixProvider'
-import { useVariantId } from './core/variants'
-import { getVariant } from './variants'
-import VariantSwitcher from './variants/VariantSwitcher'
+import Shell from './shell/Shell'
 import ErrorBoundary from './components/ErrorBoundary'
 import ApiTokenDialog from './components/apiUrl/ApiTokenDialog'
 
@@ -18,8 +16,10 @@ const SceneLab = lazy(() => import('./pages/SceneLab'))
 const AssetManager = lazy(() => import('./pages/AssetManager'))
 const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 
+const Home = lazy(() => import('./shell/Home'))
+const Editor = lazy(() => import('./shell/Editor'))
+
 function Routed() {
-  const { Shell, Home, Editor, routes } = getVariant(useVariantId())
   return (
       <Shell>
             <ErrorBoundary>
@@ -33,7 +33,6 @@ function Routed() {
                   <Route path="/updates" element={<Updates />} />
                   <Route path="/diagnostics" element={<Diagnostics />} />
                   <Route path="/modify-preset/:preset_id" element={<Editor />} />
-                  {routes}
                   <Route path="/modify-providers/:preset_id/:scene_id" element={<ModifyProviders />} />
                   <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<ModifyShaderProviders />} />
                 </Routes>
@@ -50,10 +49,9 @@ export default function App() {
       <BrowserRouter basename="/web">
         <MatrixProvider>
           <Routed />
-          <VariantSwitcher />
         </MatrixProvider>
       </BrowserRouter>
-      <Toaster richColors position="bottom-center" offset={88} />
+      <Toaster richColors position="bottom-center" offset={20} />
     </ApiUrlProvider>
   )
 }

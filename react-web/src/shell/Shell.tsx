@@ -6,6 +6,7 @@ import { NAV, isActive } from '~/core/nav'
 import { PowerButton } from '~/core/ui/controls'
 import { ThemeToggle } from '~/core/ui/ThemeToggle'
 import { CommandPalette } from '~/core/ui/CommandPalette'
+import ResetApiUrl from '~/components/modify-preset/ResetApiUrl'
 
 export default function ConsoleShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
@@ -26,6 +27,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       </div>
     </header>
     <main className="mx-auto max-w-[96rem] p-3 sm:p-4">{children}</main>
+    <footer className="flex justify-center pb-6"><ResetApiUrl /></footer>
     <CommandPalette open={palette} onOpenChange={setPalette} onNewPreset={() => navigate('/?new=1')} onEditPreset={id => navigate(`/?edit=${encodeURIComponent(id)}`)} />
   </div>
 }
