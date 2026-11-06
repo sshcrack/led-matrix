@@ -34,6 +34,12 @@ using namespace std;
 
 namespace Update
 {
+    namespace
+    {
+        // Shared between the (unprivileged) daemon and the root update unit; see led-matrix-update.path.
+        std::filesystem::path update_request_dir() { return "/var/lib/led-matrix/update"; }
+    }
+
 
     UpdateManager::UpdateManager(Config::MainConfig *config)
         : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
@@ -102,6 +108,35 @@ namespace Update
             std::string port = getenv("PORT") ? getenv("PORT") : "8080";
             if (!std::regex_match(port, std::regex("[1-9][0-9]{0,4}")) || std::stoul(port) > 65535)
                 port = "8080";
+
+            // Preferred: hand the package to the root-owned led-matrix-update.path unit. It needs no privilege
+            // escalation, so it works under NoNewPrivileges/ProtectSystem hardening where `sudo` is blocked.
+            if (filesystem::exists("/lib/systemd/system/led-matrix-update.path") ||
+                filesystem::exists("/etc/systemd/system/led-matrix-update.path"))
+            {
+                std::error_code request_ec;
+                const auto request_dir = update_request_dir();
+                filesystem::create_directories(request_dir, request_ec);
+                const auto tmp_request = request_dir / ".request.tmp";
+                const auto request = request_dir / "request";
+                {
+                    std::ofstream out(tmp_request, std::ios::trunc);
+                    out << pending_update_filename_ << '\n' << port << '\n';
+                    if (!out.flush())
+                        request_ec = std::make_error_code(std::errc::io_error);
+                }
+                if (!request_ec)
+                    filesystem::rename(tmp_request, request, request_ec);
+                if (request_ec)
+                {
+                    std::ofstream("/var/lib/led-matrix/.update_error") << "Failed to queue the update request: " << request_ec.message();
+                    spdlog::error("Failed to queue the update request: {}", request_ec.message());
+                    return;
+                }
+                info("Update request queued for led-matrix-update.path. The process must exit now.");
+                return;
+            }
+
             std::vector<std::string> arguments{
                 "sudo", "-n", "systemd-run", "--collect", "--unit=led-matrix-update",
                 "--property=Type=exec", "--setenv=LED_MATRIX_UPDATE_PORT=" + port,
@@ -420,7 +455,17 @@ namespace Update
             // Private 0700 directory: the root-run update script installs this file, so it must not live at a
             // predictable path in world-writable /tmp where another user could swap or symlink it.
 #ifdef __linux__
-            string dir_template = (filesystem::temp_directory_path() / "led-matrix-update-XXXXXX").string();
+            // Prefer the service's own writable data directory: with PrivateTmp the daemon's /tmp is invisible to the
+            // root updater unit, so the package must live where both can see it.
+            filesystem::path download_base = filesystem::temp_directory_path();
+            {
+                std::error_code base_ec;
+                const filesystem::path shared_base = update_request_dir();
+                filesystem::create_directories(shared_base, base_ec);
+                if (!base_ec && access(shared_base.c_str(), W_OK) == 0)
+                    download_base = shared_base;
+            }
+            string dir_template = (download_base / "led-matrix-update-XXXXXX").string();
             if (!mkdtemp(dir_template.data()))
                 return std::unexpected("Could not create private update directory: " + string(strerror(errno)));
             string filename = dir_template + "/led-matrix-update.deb";

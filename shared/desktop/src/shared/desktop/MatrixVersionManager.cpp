@@ -142,7 +142,7 @@ namespace MatrixVersionChecker
             if (ImGui::Button("Update Matrix Controller", ImVec2(200, 0)))
             {
                 // Open the matrix web interface to the updates page
-                std::string url = "http://" + pImpl->lastHostname + ":" + std::to_string(pImpl->lastPort) + "/web/#/updates";
+                std::string url = "http://" + pImpl->lastHostname + ":" + std::to_string(pImpl->lastPort) + "/web/updates";
                 
 #ifdef _WIN32
                 ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);

@@ -93,7 +93,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-set(VERSION 1.19.0)
+set(VERSION 1.19.1)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
@@ -543,6 +543,12 @@ if(NOT ENABLE_DESKTOP)
         @ONLY
     )
     install(FILES "${CMAKE_BINARY_DIR}/led-matrix.service"
+        DESTINATION "lib/systemd/system"
+    )
+    # Root-side half of the web UI update: the hardened daemon cannot sudo, so it queues a request file.
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.path"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.service"
         DESTINATION "lib/systemd/system"
     )
 endif()

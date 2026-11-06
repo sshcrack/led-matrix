@@ -138,6 +138,8 @@ fi
 if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload || true
     systemctl enable led-matrix.service || true
+    systemctl enable led-matrix-update.path || true
+    systemctl start led-matrix-update.path || true
     systemctl restart led-matrix.service || true
 fi
 

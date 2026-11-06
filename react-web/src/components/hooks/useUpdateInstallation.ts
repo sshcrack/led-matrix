@@ -14,6 +14,7 @@ export function useUpdateInstallation(onStatusChange?: () => void) {
     if (!apiUrl) return
     try {
       const res = await fetch(`${apiUrl}/api/update/check`, { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.update_available) {
         toast.success(`Update available: ${data.version || 'new version'}`)
@@ -26,19 +27,20 @@ export function useUpdateInstallation(onStatusChange?: () => void) {
     }
   }, [apiUrl, onStatusChange])
 
-  const installUpdate = useCallback(async () => {
+  const installUpdate = useCallback(async (version: string) => {
     if (!apiUrl) return
     setInstallState('installing')
     setInstallError(null)
     try {
-      await fetch(`${apiUrl}/api/update/install`, { method: 'POST' })
+      const res = await fetch(`${apiUrl}/api/update/install?version=${encodeURIComponent(version)}`, { method: 'POST' })
+      if (!res.ok) throw new Error((await res.text().catch(() => '')) || `HTTP ${res.status}`)
       setInstallState('success')
       toast.success('Update installation started')
       onStatusChange?.()
     } catch (e) {
       setInstallState('error')
       setInstallError((e as Error).message)
-      toast.error('Failed to install update')
+      toast.error(`Failed to install update: ${(e as Error).message}`)
     }
   }, [apiUrl, onStatusChange])
 

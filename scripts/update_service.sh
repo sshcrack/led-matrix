@@ -113,7 +113,29 @@ finish() {
     exit "$result"
 }
 
+# led-matrix-update.path hands over `--request <file>`: line 1 is the downloaded package, line 2 the
+# API port for the health check. The daemon runs unprivileged (NoNewPrivileges, so no sudo); this unit
+# is the only root step, hence the strict validation of what the request may point at.
+resolve_request() {
+    local request=$1 requested_deb="" requested_port="" real
+    [[ -f $request && ! -L $request ]] || { log "Invalid update request: $request"; return 1; }
+    { read -r requested_deb || true; read -r requested_port || true; } < "$request"
+    rm -f "$request"
+    if [[ $requested_port =~ ^[1-9][0-9]{0,4}$ ]] && ((requested_port <= 65535)); then
+        HEALTH_URL="http://127.0.0.1:$requested_port"
+    fi
+    real=$(realpath -e -- "$requested_deb" 2>/dev/null) || { log "Update package not found: $requested_deb"; return 1; }
+    [[ $real == "$DATA_DIR/update/"* && -f $real && ! -L $requested_deb ]] ||
+        { log "Update package must be a regular file below $DATA_DIR/update/: $real"; return 1; }
+    REQUESTED_DEB=$real
+}
+
 main() {
+    if [[ ${1:-} == --request ]]; then
+        [[ $# == 2 ]] || { log "Usage: $0 --request <file>"; return 1; }
+        resolve_request "$2" || return 1
+        set -- "$REQUESTED_DEB"
+    fi
     [[ $# == 1 ]] || { log "Usage: $0 <deb_file>"; return 1; }
     local original_deb=$1 deb_file candidate_version architecture
     [[ -f $original_deb ]] || { log "DEB file not found: $original_deb"; return 1; }
@@ -169,7 +191,10 @@ main() {
     committed=true
     log "Update to $candidate_version passed health checks"
     rm -f "$deb_file"
-    if [[ $original_deb != "$CACHE_DIR/"* && $original_deb != "$BACKUP_DIR/"* ]]; then rm -f "$original_deb"; fi
+    if [[ $original_deb != "$CACHE_DIR/"* && $original_deb != "$BACKUP_DIR/"* ]]; then
+        rm -f "$original_deb"
+        [[ $original_deb == "$DATA_DIR/update/"* ]] && rmdir "$(dirname "$original_deb")" 2>/dev/null || true
+    fi
 }
 
 # Sourcing provides a safe test seam: fixtures supply temporary paths and fake

@@ -455,7 +455,14 @@ int main(int argc, char **argv)
         ix::initNetSystem();
 
         SceneExecution::Scope worker_runtime(SceneExecution::Mode::RemoteWorker);
-        fs::create_directories(Constants::root_dir);
+        {
+            // root_dir is <cwd>/images; the installed Windows app runs from the read-only
+            // Program Files, so a failure here must not kill the worker (only image caches need it).
+            std::error_code images_ec;
+            fs::create_directories(Constants::root_dir, images_ec);
+            if (images_ec)
+                spdlog::warn("Scene worker: cannot create '{}': {}", Constants::root_dir.string(), images_ec.message());
+        }
         Constants::width = 128;
         Constants::height = 128;
         Constants::global_post_processor = nullptr;

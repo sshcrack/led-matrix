@@ -1,0 +1,7 @@
+[Unit]
+Description=LED Matrix update transaction
+# Not part of led-matrix.service, so restarting it cannot kill the updater.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/led-matrix/update_service.sh --request /var/lib/led-matrix/update/request

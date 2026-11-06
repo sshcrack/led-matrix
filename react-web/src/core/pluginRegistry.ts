@@ -91,6 +91,28 @@ export function planPluginUis(paths: string[], info: PluginUiInfo | null) {
  * `import(url)` keeps the API token/cookie handling and works when the UI is
  * served from a different origin than the daemon (dev proxy).
  */
+/**
+ * A plugin's ui.css is plain Tailwind utilities, injected after the host CSS. Its unconditional
+ * `.hidden`/`.flex` rules would then beat the host's responsive `.lg:flex` (same specificity, later),
+ * hiding e.g. the whole navbar. Utilities the host already defines are identical, so drop those
+ * top-level rules from the plugin sheet; classes only the plugin uses (and its media variants) stay.
+ */
+function dropHostDuplicateRules(style: HTMLStyleElement) {
+  const sheet = style.sheet
+  if (!sheet) return
+  try {
+    const host = new Set<string>()
+    for (const s of Array.from(document.styleSheets)) {
+      if (s === sheet || !s.href) continue
+      for (const r of Array.from(s.cssRules)) if (r instanceof CSSStyleRule) host.add(r.selectorText)
+    }
+    for (let i = sheet.cssRules.length - 1; i >= 0; i--) {
+      const r = sheet.cssRules[i]
+      if (r instanceof CSSStyleRule && host.has(r.selectorText)) sheet.deleteRule(i)
+    }
+  } catch { /* cross-origin stylesheet: keep everything */ }
+}
+
 async function loadRuntimeUi(apiUrl: string, name: string, ui: RuntimeUi): Promise<PluginUi> {
   const get = async (file: string) => {
     const res = await fetch(`${apiUrl}/plugin_ui/${encodeURIComponent(name)}/${file}`)
@@ -103,6 +125,7 @@ async function loadRuntimeUi(apiUrl: string, name: string, ui: RuntimeUi): Promi
     style.dataset.pluginUi = name
     style.textContent = css
     document.head.appendChild(style)
+    dropHostDuplicateRules(style)
   }
   const url = URL.createObjectURL(new Blob([js], { type: 'text/javascript' }))
   try { return (await import(/* @vite-ignore */ url) as { default: PluginUi }).default }

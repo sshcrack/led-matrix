@@ -74,11 +74,12 @@ export default function Schedules() {
   const handleToggleScheduling = async (enabled: boolean) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/scheduling_status`, {
+      const res = await fetch(`${apiUrl}/scheduling_status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setSchedulingStatus(prev => prev ? { ...prev, enabled } : null)
       toast.success(enabled ? 'Scheduling enabled' : 'Scheduling disabled')
     } catch {
@@ -92,11 +93,12 @@ export default function Schedules() {
       return
     }
     try {
-      await fetch(`${apiUrl}/schedule`, {
+      const res = await fetch(`${apiUrl}/schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSchedule),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       toast.success('Schedule created')
       setShowCreate(false)
       setNewSchedule(DEFAULT_NEW)
@@ -109,7 +111,8 @@ export default function Schedules() {
   const handleDelete = async (id: string) => {
     if (!apiUrl) return
     try {
-      await fetch(`${apiUrl}/schedule?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const res = await fetch(`${apiUrl}/schedule?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       toast.success('Schedule deleted')
       setRetry(r => r + 1)
     } catch {
