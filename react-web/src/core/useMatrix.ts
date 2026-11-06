@@ -79,8 +79,9 @@ export function useMatrixState() {
       try { await call(`/preset?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); await refreshPresets(); toast.success(`Deleted “${name}”`) }
       catch { toast.error('Could not delete (the active preset can’t be deleted)') }
     },
-    async savePreset(id: string, preset: RawPreset) {
-      await call(`/preset?id=${encodeURIComponent(id)}`, json(preset))
+    /** `keepalive` lets the request finish while the page unloads (browsers cap it at ~64 KB). */
+    async savePreset(id: string, preset: RawPreset, opts?: { keepalive?: boolean }) {
+      await call(`/preset?id=${encodeURIComponent(id)}`, { ...json(preset), keepalive: opts?.keepalive })
       setPresets(p => p && { ...p, [id]: preset })
     },
     async addPack(packId: string, play: boolean) {

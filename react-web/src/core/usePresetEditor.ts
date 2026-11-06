@@ -15,7 +15,11 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   const { savePreset, presets } = useMatrix()
   const sharedName = presets?.[presetId]?.display_name
   // True once the user typed a name here; until then the list's name (e.g. from a menu rename) wins.
-  const nameEdited = useRef(false)
+  // Name edits are tracked apart from scene edits: a name counts as "typed here" only until that exact
+  // name revision has been saved, after which a rename from elsewhere may win again.
+  const nameRev = useRef(0)
+  const savedNameRev = useRef(0)
+  const nameEdited = () => nameRev.current > savedNameRev.current
   const [preset, setPreset] = useState<RawPreset | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('saved')
@@ -35,7 +39,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     if (sharedName === lastShared.current) return
     lastShared.current = sharedName
     renamedTo.current = sharedName
-    if (nameEdited.current || sharedName === undefined || !latest.current || latest.current.display_name === sharedName) return
+    if (nameEdited() || sharedName === undefined || !latest.current || latest.current.display_name === sharedName) return
     latest.current = { ...latest.current, display_name: sharedName }
     setPreset(latest.current)
   }, [sharedName])
@@ -45,7 +49,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     const c = new AbortController()
     // New preset: drop the previous preset's draft/revisions so nothing of it can be saved under this id.
     activeId.current = presetId
-    latest.current = null; revision.current = savedRevision.current = 0; nameEdited.current = false
+    latest.current = null; revision.current = savedRevision.current = 0; nameRev.current = savedNameRev.current = 0
     lastShared.current = sharedNow.current; renamedTo.current = undefined
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     fetch(`${apiUrl}/presets?id=${encodeURIComponent(presetId)}`, { signal: c.signal })
@@ -55,24 +59,29 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     return () => c.abort()
   }, [apiUrl, presetId])
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (keepalive = false) => {
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     if (inFlight.current || !latest.current || revision.current === savedRevision.current) return
     const rev = revision.current
-    const draft = !nameEdited.current && renamedTo.current !== undefined
+    const nameRevNow = nameRev.current
+    const draft = !nameEdited() && renamedTo.current !== undefined
       ? { ...latest.current, display_name: renamedTo.current } : latest.current
     inFlight.current = true
     setSaveState('saving')
     try {
-      await savePreset(presetId, draft)
+      await savePreset(presetId, draft, { keepalive })
       if (activeId.current !== presetId) return   // switched away mid-save: this editor state now belongs to another preset
       savedRevision.current = rev
-      if (revision.current === rev) nameEdited.current = false
+      savedNameRev.current = Math.max(savedNameRev.current, nameRevNow)
       setSaveState(revision.current === rev ? 'saved' : 'dirty')
     } catch { if (activeId.current === presetId) setSaveState('error') }
     finally {
       inFlight.current = false
-      if (activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) timer.current = window.setTimeout(() => void flush(), debounceMs)
+      if (activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) {
+        // Edits made while saving: if the page is going away don't wait for the debounce.
+        if (document.visibilityState === 'hidden') void flush(true)
+        else timer.current = window.setTimeout(() => void flush(), debounceMs)
+      }
     }
   }, [presetId, savePreset, debounceMs])
 
@@ -87,13 +96,13 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   }, [flush, debounceMs])
 
   useEffect(() => {
-    const onHide = () => { if (document.visibilityState === 'hidden') void flush() }
+    const onHide = () => { if (document.visibilityState === 'hidden') void flush(true) }
     document.addEventListener('visibilitychange', onHide)
-    return () => { document.removeEventListener('visibilitychange', onHide); void flush() }
+    return () => { document.removeEventListener('visibilitychange', onHide); void flush(true) }
   }, [flush])
 
   return {
-    preset, loadError, saveState, retry: flush,
+    preset, loadError, saveState, retry: () => flush(),
     updateScene: (scene: Scene) => edit(p => ({ ...p, scenes: p.scenes.map(s => s.uuid === scene.uuid ? scene : s) })),
     addScenes: (scenes: Scene[]) => edit(p => ({ ...p, scenes: [...p.scenes, ...scenes] })),
     restoreScene: (scene: Scene, index: number) => edit(p => { const scenes = [...p.scenes]; scenes.splice(Math.min(index, scenes.length), 0, scene); return { ...p, scenes } }),
@@ -105,7 +114,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
       return { ...p, scenes }
     }),
     setTransition: (patch: { transition_name?: string; transition_duration?: number }) => edit(p => ({ ...p, ...patch })),
-    setName: (display_name: string) => { nameEdited.current = true; edit(p => ({ ...p, display_name })) },
+    setName: (display_name: string) => { nameRev.current++; edit(p => ({ ...p, display_name })) },
   }
 }
 export type PresetEditorApi = ReturnType<typeof usePresetEditor>

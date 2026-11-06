@@ -77,4 +77,21 @@ describe('usePresetEditor', () => {
     await waitFor(() => expect(saved.length).toBe(1))
     expect(saved[0].preset.display_name).toBe('Renamed elsewhere')
   })
+
+  it('lets a menu rename win again after an inline rename was saved', async () => {
+    const view = renderHook(() => usePresetEditor('A', 5), { wrapper: ({ children }: { children: ReactNode }) => (
+      <ApiUrlContext.Provider value="http://x">
+        <MatrixContext.Provider value={{ savePreset, presets: shared } as never}>{children}</MatrixContext.Provider>
+      </ApiUrlContext.Provider>) })
+    await waitFor(() => expect(view.result.current.preset?.display_name).toBe('A'))
+    holdFirstSave = true
+    act(() => view.result.current.setName('B'))
+    await waitFor(() => expect(savePreset).toHaveBeenCalledTimes(1))        // save of "B" in flight
+    act(() => view.result.current.removeScene('u'))                          // edit while saving
+    await act(async () => { release?.() })                                   // "B" acknowledged
+    await waitFor(() => expect(saved.length).toBeGreaterThanOrEqual(2))      // follow-up save of the scene edit
+    shared = { ...shared, A: { ...shared.A, display_name: 'C' } }            // menu rename
+    view.rerender()
+    await waitFor(() => expect(view.result.current.preset?.display_name).toBe('C'))
+  })
 })
