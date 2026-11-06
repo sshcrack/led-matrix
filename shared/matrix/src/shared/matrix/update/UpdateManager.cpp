@@ -130,17 +130,29 @@ namespace Update
         }
     }
 
+    void UpdateManager::set_latest_version(const Common::Version &version)
+    {
+        std::lock_guard lock(latest_version_mutex_);
+        latest_version_ = version;
+    }
+
+    Common::Version UpdateManager::latest_version() const
+    {
+        std::lock_guard lock(latest_version_mutex_);
+        return latest_version_;
+    }
+
     void UpdateManager::update_loop()
     {
         info("Getting latest version information...");
-        latest_version_ = Common::Version::getCurrentVersion();
+        set_latest_version(Common::Version::getCurrentVersion());
         if (should_check_for_updates())
         {
             auto latest_info = get_update_info();
             if (latest_info.has_value())
             {
-                latest_version_ = latest_info->version;
-                info("Latest version: {}", latest_version_.toString());
+                set_latest_version(latest_info->version);
+                info("Latest version: {}", latest_info->version.toString());
             }
             else
             {
@@ -176,8 +188,8 @@ namespace Update
             config_->set_last_check_time(GetTimeInMillis());
             config_->save();
 
-            latest_version_ = latest_info.version;
-            if (latest_version_ <= Common::Version::getCurrentVersion())
+            set_latest_version(latest_info.version);
+            if (latest_info.version <= Common::Version::getCurrentVersion())
                 continue;
 
             auto res = manual_download_and_install(latest_info);
@@ -509,7 +521,7 @@ namespace Update
 
     bool UpdateManager::is_update_available() const
     {
-        return Common::Version::getCurrentVersion() < latest_version_;
+        return Common::Version::getCurrentVersion() < latest_version();
     }
 
     tmillis_t UpdateManager::get_last_check_time() const
@@ -524,7 +536,7 @@ namespace Update
 
     std::optional<Common::Version> UpdateManager::get_latest_version() const
     {
-        return latest_version_;
+        return latest_version();
     }
 
     bool UpdateManager::is_platform_supported()
