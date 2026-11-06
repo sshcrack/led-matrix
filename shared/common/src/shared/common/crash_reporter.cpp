@@ -31,6 +31,8 @@
 #include <dbghelp.h>
 #else
 #include <execinfo.h>
+#include <csignal>
+#include <pthread.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -551,10 +553,40 @@ void write_posix_report(const char* reason, int signal, siginfo_t* info, void* r
     finalize_posix_report();
 }
 
+// Hands a fatal signal to whatever was installed before us (SIG_DFL, or a
+// sanitizer's handler in LED_MATRIX_SANITIZE builds) instead of _exit()ing, so
+// the kernel still produces a core dump for systemd-coredump / coredumpctl and
+// ASan/UBSan still print their own report. Async-signal-safe.
+void forward_fatal_signal(int signal, const siginfo_t* info) noexcept
+{
+    const struct sigaction* previous = nullptr;
+    for (std::size_t index = 0; index < kFatalSignals.size(); ++index) {
+        if (kFatalSignals[index] == signal)
+            previous = &g_previous_handlers[index];
+    }
+    if (previous != nullptr && previous->sa_handler != SIG_IGN) {
+        ::sigaction(signal, previous, nullptr);
+    }
+    else {
+        ::signal(signal, SIG_DFL);
+    }
+    // A kernel-generated fault (si_code > 0) re-executes the faulting
+    // instruction when the handler returns, now hitting the restored
+    // disposition with the original fault address.
+    if (info != nullptr && info->si_code > 0 && signal != SIGABRT)
+        return;
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, signal);
+    ::pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+    ::raise(signal);
+    _exit(128 + signal);
+}
+
 void posix_signal_handler(int signal, siginfo_t* info, void* context) noexcept
 {
     write_posix_report("fatal_posix_signal", signal, info, context);
-    _exit(128 + signal);
+    forward_fatal_signal(signal, info);
 }
 #endif
 
@@ -584,6 +616,13 @@ void terminate_handler() noexcept
     TerminateProcess(GetCurrentProcess(), 134);
 #else
     write_posix_report("std_terminate", 0, nullptr, nullptr, message);
+    // Die like std::abort() (core dump) without re-entering our SIGABRT handler.
+    ::signal(SIGABRT, SIG_DFL);
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGABRT);
+    ::pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+    ::raise(SIGABRT);
     _exit(134);
 #endif
 }

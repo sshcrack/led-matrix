@@ -54,7 +54,12 @@ namespace Update
         std::shared_mutex error_mutex_;
         std::thread update_thread_;
         Config::MainConfig *config_;
+        // Written by update_loop() on the update thread, read by HTTP handlers.
+        // Version is a multi-word struct, so guard it (torn reads otherwise).
+        mutable std::mutex latest_version_mutex_;
         Common::Version latest_version_;
+        void set_latest_version(const Common::Version &version);
+        Common::Version latest_version() const;
 
         std::string repo_owner_;
         std::string repo_name_;

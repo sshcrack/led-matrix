@@ -83,17 +83,28 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
     if (currShaderHasError.load(std::memory_order_relaxed) || !isActive.load(std::memory_order_relaxed))
         return;
 
-    if (hasUrlChanged)
+    bool changed = false;
+    std::string pendingUrl, pendingCode, pendingName;
+    std::uint64_t generation = 0;
     {
-        if (!custom_shader_code.empty())
+        std::lock_guard lock(shaderStateMutex_);
+        changed = hasUrlChanged;
+        pendingUrl = url;
+        pendingCode = custom_shader_code;
+        pendingName = custom_shader_name;
+        generation = shaderStateGeneration_;
+    }
+    if (changed)
+    {
+        if (!pendingCode.empty())
         {
             spdlog::info("Custom shader changed, loading from code...");
-            loadLocalShaderFromCode(custom_shader_name, custom_shader_code);
+            loadLocalShaderFromCode(pendingName, pendingCode, generation);
         }
         else
         {
-            spdlog::info("URL changed, loading shader {}...", url);
-            loadCacheFromUrl(url);
+            spdlog::info("URL changed, loading shader {}...", pendingUrl);
+            loadCacheFromUrl(pendingUrl, generation);
         }
     }
 
@@ -102,7 +113,7 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
     runtime.tick(60);
 
     const std::vector<uint8_t> data =
-        runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width), static_cast<float>(height)});
+        runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width.load()), static_cast<float>(height.load())});
 
     std::unique_lock lock(currDataMutex);
     currData = data;
@@ -136,7 +147,7 @@ void ShadertoyDesktop::renderCanvasCallback(const ImDrawList*, const ImDrawCmd* 
         .framebufferSize = {framebuffer_size.x, framebuffer_size.y},
         .clipMin = {clip_min.x, clip_min.y},
         .clipMax = {clip_max.x, clip_max.y},
-        .canvasSize = {static_cast<float>(self->width), static_cast<float>(self->height)}
+        .canvasSize = {static_cast<float>(self->width.load()), static_cast<float>(self->height.load())}
     });
 }
 
@@ -154,20 +165,29 @@ void ShadertoyDesktop::render()
         return;
     }
 
-    if (!custom_shader_code.empty())
+    std::string shownUrl, shownCustomName;
+    bool shownCustom = false, compiling = false;
     {
-        ImGui::Text("Current Custom Shader: %s", custom_shader_name.c_str());
+        std::lock_guard lock(shaderStateMutex_);
+        shownUrl = url;
+        shownCustom = !custom_shader_code.empty();
+        shownCustomName = custom_shader_name;
+        compiling = hasUrlChanged;
     }
-    else if (url.empty())
+    if (shownCustom)
+    {
+        ImGui::Text("Current Custom Shader: %s", shownCustomName.c_str());
+    }
+    else if (shownUrl.empty())
     {
         ImGui::Text("Currently no URL is set (or no shadertoy scene is active).");
     }
     else
     {
-        ImGui::TextLinkOpenURL(("Current URL: " + url).c_str(), url.c_str());
+        ImGui::TextLinkOpenURL(("Current URL: " + shownUrl).c_str(), shownUrl.c_str());
     }
-    ImGui::Text("Canvas Size: %dx%d", width, height);
-    if (hasUrlChanged)
+    ImGui::Text("Canvas Size: %dx%d", width.load(), height.load());
+    if (compiling)
         ImGui::Text("Compiling shader...");
 
     if (ImGui::Button("Next Shader"))
@@ -188,7 +208,7 @@ void ShadertoyDesktop::render()
         const auto reservedHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
         if (ImGui::BeginChild("CanvasRegion", ImVec2(0, -reservedHeight), false))
         {
-            ImVec2 size(width, height);
+            ImVec2 size(static_cast<float>(width.load()), static_cast<float>(height.load()));
 
             // Match shadertoy v2's renderer integration: schedule the OpenGL
             // draw inside ImGui's draw list so its clip rectangle/framebuffer
@@ -296,7 +316,14 @@ void ShadertoyDesktop::renderCacheEditorUI()
     ImGui::End();
 }
 
-void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
+void ShadertoyDesktop::markShaderLoaded(const std::uint64_t generation)
+{
+    std::lock_guard lock(shaderStateMutex_);
+    if (generation == shaderStateGeneration_)
+        hasUrlChanged = false;
+}
+
+void ShadertoyDesktop::loadCacheFromUrl(const std::string& url, const std::uint64_t generation)
 {
     if (!mCache)
     {
@@ -316,7 +343,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
             currShaderHasError.store(true, std::memory_order_relaxed);
             return;
         }
-        hasUrlChanged = false;
+        markShaderLoaded(generation);
     }
     else
     {
@@ -329,11 +356,11 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url)
             currShaderHasError.store(true, std::memory_order_relaxed);
             return;
         }
-        hasUrlChanged = false;
+        markShaderLoaded(generation);
     }
 }
 
-void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code)
+void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code, const std::uint64_t generation)
 {
     auto res = runtime.loadImageShader(name, code, 0);
     if (!res.has_value())
@@ -343,7 +370,7 @@ void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const st
         return;
     }
 
-    hasUrlChanged = false;
+    markShaderLoaded(generation);
     currShaderHasError.store(false, std::memory_order_relaxed);
 }
 
@@ -367,13 +394,16 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
     if (message.starts_with("url:"))
     {
         std::string newUrl = message.substr(4);
-        bool urlChanged = newUrl != url || currShaderHasError.load(std::memory_order_relaxed);
-
-        custom_shader_code.clear();
-        custom_shader_name.clear();
+        {
+            std::lock_guard lock(shaderStateMutex_);
+            const bool urlChanged = newUrl != url || currShaderHasError.load(std::memory_order_relaxed);
+            custom_shader_code.clear();
+            custom_shader_name.clear();
+            url = std::move(newUrl);
+            hasUrlChanged = urlChanged;
+            ++shaderStateGeneration_;
+        }
         shaderRequested.store(true, std::memory_order_relaxed);
-        url = newUrl;
-        hasUrlChanged = urlChanged;
         currShaderHasError.store(false, std::memory_order_relaxed);
     }
     else if (message.starts_with("custom_shader:"))
@@ -383,13 +413,17 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
             std::string name = payload.value("name", "unknown");
             std::string code = payload.value("code", "");
             
-            bool changed = (code != custom_shader_code) || (name != custom_shader_name) ||
-                           currShaderHasError.load(std::memory_order_relaxed);
-            custom_shader_code = code;
-            custom_shader_name = name;
+            {
+                std::lock_guard lock(shaderStateMutex_);
+                const bool changed = (code != custom_shader_code) || (name != custom_shader_name) ||
+                                     currShaderHasError.load(std::memory_order_relaxed);
+                url = "local://" + name;
+                custom_shader_code = std::move(code);
+                custom_shader_name = std::move(name);
+                hasUrlChanged = changed;
+                ++shaderStateGeneration_;
+            }
             shaderRequested.store(true, std::memory_order_relaxed);
-            url = "local://" + name;
-            hasUrlChanged = changed;
             currShaderHasError.store(false, std::memory_order_relaxed);
         } catch (const std::exception& e) {
             spdlog::error("Failed to parse custom_shader payload: {}", e.what());

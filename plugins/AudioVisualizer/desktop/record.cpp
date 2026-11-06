@@ -251,6 +251,11 @@ namespace AudioRecorder
             return false;
         }
 
+        // A previous capture whose parec died ends its reader thread on its
+        // own (recording=false) but leaves it joinable. Assigning a new
+        // std::thread over a joinable one calls std::terminate.
+        releaseLoopback();
+
         if (!isDefaultOutputLoopbackAvailable())
         {
             spdlog::error("Linux desktop loopback requires 'parec' (usually provided by pulseaudio-utils). PipeWire's PulseAudio compatibility service must also be running.");
@@ -320,6 +325,10 @@ namespace AudioRecorder
         // 128 stereo frames (256 floats) keeps the pipe responsive without
         // waking for every tiny server fragment.
         std::array<float, 256> interleaved{};
+        // Pipe reads may end mid-sample or mid-frame; keep the remainder so
+        // later samples stay aligned to float/left-right boundaries.
+        size_t pendingBytes = 0;
+        constexpr size_t frameBytes = 2 * sizeof(float);
         while (!stopLoopbackThread)
         {
             pollfd descriptor{loopbackPipeFd, POLLIN, 0};
@@ -335,7 +344,8 @@ namespace AudioRecorder
             if ((descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)) && !(descriptor.revents & POLLIN))
                 break;
 
-            const ssize_t bytes = ::read(loopbackPipeFd, interleaved.data(), sizeof(interleaved));
+            auto *raw = reinterpret_cast<char *>(interleaved.data());
+            const ssize_t bytes = ::read(loopbackPipeFd, raw + pendingBytes, sizeof(interleaved) - pendingBytes);
             if (bytes <= 0)
             {
                 if (bytes < 0 && (errno == EINTR || errno == EAGAIN))
@@ -343,8 +353,9 @@ namespace AudioRecorder
                 break;
             }
 
-            const size_t floatCount = static_cast<size_t>(bytes) / sizeof(float);
-            const size_t frameCount = floatCount / 2;
+            const size_t availableBytes = pendingBytes + static_cast<size_t>(bytes);
+            const size_t frameCount = availableBytes / frameBytes;
+            pendingBytes = availableBytes - frameCount * frameBytes;
             std::lock_guard lock(audioBufferMutex);
             for (size_t frame = 0; frame < frameCount; ++frame)
             {
@@ -353,12 +364,34 @@ namespace AudioRecorder
             }
             while (audioBuffer.size() > MAX_BUFFER_FRAMES)
                 audioBuffer.pop_front();
+            if (pendingBytes > 0)
+                std::memmove(raw, raw + frameCount * frameBytes, pendingBytes);
         }
 
         if (!stopLoopbackThread)
         {
             spdlog::error("Linux desktop loopback capture stopped unexpectedly");
             recording = false;
+        }
+    }
+
+    void Recorder::releaseLoopback()
+    {
+        stopLoopbackThread = true;
+        if (loopbackPid > 0)
+            ::kill(loopbackPid, SIGTERM);
+        if (loopbackThread.joinable())
+            loopbackThread.join();
+        if (loopbackPipeFd >= 0)
+        {
+            ::close(loopbackPipeFd);
+            loopbackPipeFd = -1;
+        }
+        if (loopbackPid > 0)
+        {
+            int status = 0;
+            ::waitpid(loopbackPid, &status, 0);
+            loopbackPid = -1;
         }
     }
 
@@ -379,22 +412,7 @@ namespace AudioRecorder
             stream = nullptr;
         }
 #ifndef _WIN32
-        stopLoopbackThread = true;
-        if (loopbackPid > 0)
-            ::kill(loopbackPid, SIGTERM);
-        if (loopbackThread.joinable())
-            loopbackThread.join();
-        if (loopbackPipeFd >= 0)
-        {
-            ::close(loopbackPipeFd);
-            loopbackPipeFd = -1;
-        }
-        if (loopbackPid > 0)
-        {
-            int status = 0;
-            ::waitpid(loopbackPid, &status, 0);
-            loopbackPid = -1;
-        }
+        releaseLoopback();
 #endif
         spdlog::info("Recording stopped");
         recording = false;

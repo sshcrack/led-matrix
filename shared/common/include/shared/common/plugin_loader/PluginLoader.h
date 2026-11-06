@@ -255,6 +255,10 @@ public:
 
 #ifdef _WIN32
             if (item.handle) FreeLibrary((HMODULE)item.handle);
+#elif defined(LED_MATRIX_SANITIZER_BUILD)
+            // Sanitizer builds keep plugin DSOs mapped after destroy so leak
+            // and race reports printed at exit can still symbolize plugin
+            // frames instead of showing "<unknown module>".
 #else
             if (item.handle) dlclose(item.handle);
 #endif

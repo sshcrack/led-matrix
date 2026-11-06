@@ -172,7 +172,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             auto wsh =
                     rws::upgrade<traits_t>(
                         *req,
-                        rws::activation_t::immediate,
+                        rws::activation_t::delayed,
                         [ &registry, is_scene_worker ](auto wsh, auto m) {
                             if(rws::opcode_t::text_frame == m->opcode()) {
                                 const std::string mStr = m->payload();
@@ -287,6 +287,12 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             wsh->send_message(message);
 
             send_initial_plugin_messages(wsh, producer_owner);
+
+            // Start reading only after the connection is in the registry and
+            // producer bookkeeping. With immediate activation a fast close
+            // frame could be handled before registration, leaving a dead
+            // socket in the registry and desktop_connection_count inflated.
+            activate(*wsh);
 
             return restinio::request_accepted();
         }

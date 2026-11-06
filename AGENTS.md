@@ -107,6 +107,24 @@ The DEB includes:
 | Update flags | `/var/lib/led-matrix/.update_success` / `.update_error` |
 | Env config | `/etc/default/led-matrix` |
 
+### Sanitizers, warnings and core dumps
+
+`-DLED_MATRIX_SANITIZE=address` (ASan+UBSan, UB aborts) or `=thread` (TSan) instruments every in-tree target, plugin DSOs included (`cmake/Sanitizers.cmake`; ASan and TSan are mutually exclusive). Presets with their own build dirs and `SKIP_WEB_BUILD=ON`: `emulator-asan` (`emulator_asan_build/`), `emulator-tsan`, `desktop-linux-asan` (`desktop_asan_build/`), `desktop-linux-tsan`.
+
+```bash
+cmake --preset emulator-asan && cmake --build --preset emulator-asan --target install
+source scripts/sanitizers/env.sh   # *SAN_OPTIONS + third-party suppressions
+./emulator_asan_build/install/bin/led-matrix --led-chain 2 --led-parallel 2 --led-rows 64 --led-cols 64 --led-emulator --led-emulator-headless
+ctest --test-dir emulator_asan_build --output-on-failure
+```
+
+- `scripts/sanitizers/{lsan,tsan,ubsan,asan}.supp` suppress **third-party frames only** (SDL, GLFW, Mesa, portaudio, GraphicsMagick, ...). Fix our own findings instead of suppressing them.
+- Sanitizer builds define `LED_MATRIX_SANITIZER_BUILD` and do not `dlclose()` plugins, so exit-time reports still symbolize plugin frames.
+- Every build defines `_GLIBCXX_ASSERTIONS` (bounds-checked `operator[]` etc.; aborts with a message instead of corrupting memory).
+- Our targets (not `thirdparty/`, not vcpkg) build with `-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wnull-dereference -Wuse-after-free=3` (`cmake/Warnings.cmake`). Warnings only, no `-Werror`; don't add new ones.
+- Core dumps: the crash reporter writes `crashes/crash-*.txt` and then re-raises the signal, so the kernel still dumps core. The systemd unit sets `LimitCORE=infinity`; on the Pi install `systemd-coredump` (it also sets `fs.suid_dumpable=2`, which the daemon needs because it drops privileges after GPIO init). Then `coredumpctl list led-matrix`, `coredumpctl info led-matrix` (symbolized backtrace) and `coredumpctl debug led-matrix` (gdb; the `RelWithDebInfo` binary has symbols). Locally, run `ulimit -c unlimited` before reproducing.
+- Findings and open risks so far: `docs/memory-safety-report.md`.
+
 ### clangd
 
 `.clangd` points at `emulator_build/` for `compile_commands.json`. Configure the emulator preset before expecting IDE completion to work.

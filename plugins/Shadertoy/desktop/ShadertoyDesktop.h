@@ -5,6 +5,8 @@
 #include <atomic>
 #include <thread>
 #include <shared_mutex>
+#include <mutex>
+#include <cstdint>
 #include <shadertoy/ShaderToy.hpp>
 #include "ShaderCache.h"
 
@@ -29,13 +31,24 @@ public:
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn, ImGuiMemFreeFunc*free_fn, void **user_data) override;
 
 private:
-    int width = 0;
-    int height = 0;
+    // size: messages arrive on the WebSocket message thread; the UI and UDP
+    // sender threads read these.
+    std::atomic<int> width{0};
+    std::atomic<int> height{0};
+
+    // url/custom_shader_*/hasUrlChanged are written by on_websocket_message()
+    // (WebsocketClient plugin-message thread) and read by render()/after_swap()
+    // (UI thread). Concurrent std::string assign/read is a use-after-free, so
+    // every access goes through shaderStateMutex_. shaderStateGeneration_ is
+    // bumped on each update so a finished load only clears hasUrlChanged if no
+    // newer request arrived while it was compiling.
+    mutable std::mutex shaderStateMutex_;
     std::string url;
     std::string custom_shader_code;
     std::string custom_shader_name;
     // Default is false, still waiting for the WebsocketClient to send the URL
     bool hasUrlChanged = false;
+    std::uint64_t shaderStateGeneration_ = 0;
 
     std::string initError;
 
@@ -57,6 +70,7 @@ private:
     static void renderCanvasCallback(const ImDrawList* draw_list, const ImDrawCmd* command);
 
     void renderCacheEditorUI();
-    void loadCacheFromUrl(const std::string& url);
-    void loadLocalShaderFromCode(const std::string& name, const std::string& code);
+    void loadCacheFromUrl(const std::string& url, std::uint64_t generation);
+    void loadLocalShaderFromCode(const std::string& name, const std::string& code, std::uint64_t generation);
+    void markShaderLoaded(std::uint64_t generation);
 };

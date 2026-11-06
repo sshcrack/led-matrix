@@ -1,0 +1,58 @@
+# ThreadSanitizer suppressions — THIRD-PARTY FRAMES ONLY.
+# Never suppress a race whose top frames are in our own code: fix it.
+# vcpkg ports are not TSan-instrumented, so their internal locking can be
+# invisible to TSan and show up as false positives inside the library.
+
+# Mesa/GL drivers spawn their own threads and use lock-free queues.
+race:libgallium
+race:_dri.so
+race:libGLX
+race:libEGL
+race:libLLVM
+called_from_lib:libgallium
+called_from_lib:libGLX_mesa.so
+# SDL2 emulator window / audio threads.
+race:libSDL2
+called_from_lib:libSDL2
+# GLFW / X11 event handling.
+race:libglfw
+race:libX11
+race:libxcb
+# portaudio / ALSA / PulseAudio / PipeWire realtime callback threads.
+race:libportaudio
+race:libasound
+race:libpulse
+race:libpipewire
+called_from_lib:libpulse.so.0
+called_from_lib:libpipewire
+# GraphicsMagick's OpenMP/semaphore internals (built without TSan).
+race:libGraphicsMagick
+race:libgomp
+called_from_lib:libgomp
+# dbus / glib worker threads pulled in by desktop libraries.
+race:libdbus
+race:libglib
+
+# Lock-order inversions / mutex misuse reported entirely inside the X11, xcb,
+# GLX and Mesa stack (both locks are owned by those libraries).
+deadlock:libX11
+deadlock:libxcb
+deadlock:libGLX
+deadlock:libGL.so
+deadlock:libEGL
+deadlock:libgallium
+# NOTE: GLFW/Mesa GLX teardown (destroyContextGLX) unlocks a Mesa mutex TSan
+# never saw locked and TSan then aborts with "nested bug in the same thread".
+# Reproducible with a bare glfwCreateWindow/glfwDestroyWindow program. It is
+# avoided by env.sh setting TSAN_OPTIONS=ignore_noninstrumented_modules=1
+# (sync calls made from uninstrumented libraries such as Mesa are ignored).
+# GraphicsMagick is statically linked into libSharedToolsMatrix.so and runs
+# OpenMP workers. libgomp barriers are not instrumented, so TSan cannot see the
+# ordering it provides. env.sh also sets OMP_NUM_THREADS=1 so TSan runs avoid
+# those workers entirely; these entries only cover leftovers. They are matched
+# by GraphicsMagick function name, never by our scene code.
+race:CloseCacheView
+race:SetNexus
+race:LockSemaphoreInfo
+race:MagickMallocAligned
+race:MagickFree

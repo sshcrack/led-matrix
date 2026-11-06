@@ -105,14 +105,10 @@ endif()
 # ctest is run from the build root.
 enable_testing()
 
-option(ENABLE_SANITIZERS "Instrument project code with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-if(ENABLE_SANITIZERS)
-    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
-        message(FATAL_ERROR "ENABLE_SANITIZERS requires GCC or Clang on Linux")
-    endif()
-    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
-endif()
+# Deprecated alias for LED_MATRIX_SANITIZE=address (see cmake/Sanitizers.cmake).
+option(ENABLE_SANITIZERS "Deprecated: use LED_MATRIX_SANITIZE=address" OFF)
+include(cmake/Sanitizers.cmake)
+include(cmake/Warnings.cmake)
 
 include(cmake/update_package_version.cmake)
 
@@ -1454,6 +1450,8 @@ else()
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
         "libc6 (>= 2.17), libstdc++6 (>= 12), debconf, jq, curl, ca-certificates, util-linux, systemd")
+    # Collects core dumps of the service (see LimitCORE in led-matrix.service).
+    set(CPACK_DEBIAN_PACKAGE_SUGGESTS "systemd-coredump, gdb")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "LED Matrix Controller (Raspberry Pi)\n"
         " Service binary for driving RGB LED matrix panels on arm64 Raspberry Pi.\n"
@@ -1488,3 +1486,6 @@ else()
 
     include(CPack)
 endif()
+
+# Extra warnings for our own targets (not thirdparty/ submodules or vcpkg).
+led_matrix_enable_project_warnings()

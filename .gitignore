@@ -47,3 +47,9 @@ core.[0-9]*
 # Scene previews live in the `scene-previews` release, not git
 # (scripts/fetch_scene_previews.sh / scripts/publish_scene_previews.sh)
 scene_previews/*.gif
+
+# Sanitizer build trees (CMakePresets.json *-asan / *-tsan)
+emulator_asan_build
+emulator_tsan_build
+desktop_asan_build
+desktop_tsan_build

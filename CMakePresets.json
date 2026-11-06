@@ -69,6 +69,46 @@
                 "DESKTOP_DEBUG_CONSOLE": true
             },
             "inherits": "desktop-windows"
+        },
+        {
+            "name": "emulator-asan",
+            "inherits": "emulator",
+            "displayName": "emulator + ASan/UBSan",
+            "binaryDir": "${sourceDir}/emulator_asan_build",
+            "cacheVariables": {
+                "LED_MATRIX_SANITIZE": "address",
+                "SKIP_WEB_BUILD": true
+            }
+        },
+        {
+            "name": "emulator-tsan",
+            "inherits": "emulator",
+            "displayName": "emulator + TSan",
+            "binaryDir": "${sourceDir}/emulator_tsan_build",
+            "cacheVariables": {
+                "LED_MATRIX_SANITIZE": "thread",
+                "SKIP_WEB_BUILD": true
+            }
+        },
+        {
+            "name": "desktop-linux-asan",
+            "inherits": "desktop-linux",
+            "displayName": "desktop-linux + ASan/UBSan",
+            "binaryDir": "${sourceDir}/desktop_asan_build",
+            "cacheVariables": {
+                "LED_MATRIX_SANITIZE": "address",
+                "SKIP_WEB_BUILD": true
+            }
+        },
+        {
+            "name": "desktop-linux-tsan",
+            "inherits": "desktop-linux",
+            "displayName": "desktop-linux + TSan",
+            "binaryDir": "${sourceDir}/desktop_tsan_build",
+            "cacheVariables": {
+                "LED_MATRIX_SANITIZE": "thread",
+                "SKIP_WEB_BUILD": true
+            }
         }
     ],
     "buildPresets": [
@@ -92,6 +132,22 @@
         {
             "name": "desktop-windows-debug",
             "configurePreset": "desktop-windows-debug"
+        },
+        {
+            "name": "emulator-asan",
+            "configurePreset": "emulator-asan"
+        },
+        {
+            "name": "emulator-tsan",
+            "configurePreset": "emulator-tsan"
+        },
+        {
+            "name": "desktop-linux-asan",
+            "configurePreset": "desktop-linux-asan"
+        },
+        {
+            "name": "desktop-linux-tsan",
+            "configurePreset": "desktop-linux-tsan"
         }
     ],
     "packagePresets": []

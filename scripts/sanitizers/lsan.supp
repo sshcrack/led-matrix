@@ -1,0 +1,42 @@
+# LeakSanitizer suppressions — THIRD-PARTY FRAMES ONLY.
+# Never add a frame from our own code (src_*, shared/, plugins/) here: fix the
+# leak instead, or mark it deliberate in code. Each entry names the library and
+# why it is noise. Loaded by scripts/sanitizers/env.sh via LSAN_OPTIONS.
+
+# SDL2 / X11 / Wayland / Mesa / driver libraries allocate process-lifetime
+# state (display connections, GL dispatch tables, driver caches) that is never
+# freed before exit.
+leak:libSDL2
+leak:libX11
+leak:libxcb
+leak:libwayland
+leak:libdbus
+leak:libGLX
+leak:libEGL
+leak:libGL.so
+leak:libgallium
+leak:libLLVM
+leak:_dri.so
+leak:dri_gbm
+leak:libvulkan
+leak:libnvidia
+leak:libfontconfig
+# GLFW (desktop app window/context)
+leak:libglfw
+leak:_glfwInit
+# portaudio / ALSA / PulseAudio / PipeWire keep global device tables.
+leak:libportaudio
+leak:Pa_Initialize
+leak:libasound
+leak:snd_config
+leak:libpulse
+leak:libpipewire
+# GraphicsMagick: InitializeMagick() registers coders, caches and
+# semaphores for the process lifetime (DestroyMagick is not called on exit).
+leak:libGraphicsMagick
+leak:InitializeMagick
+leak:MagickMalloc
+# OpenSSL/libcurl global init caches.
+leak:CRYPTO_zalloc
+leak:OPENSSL_init_ssl
+leak:curl_global_init

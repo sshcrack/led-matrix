@@ -1,0 +1,5 @@
+# UndefinedBehaviorSanitizer suppressions — THIRD-PARTY FRAMES ONLY.
+# Format: <check>:<file or function pattern>, e.g.
+#   alignment:libfoo.so
+# Our own code is built with -fno-sanitize-recover=undefined, so any UB in it
+# aborts and must be fixed rather than listed here.
