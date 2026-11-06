@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectPluginModules, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
+import { selectPluginModules, selectRuntimeUis, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
 import { definePluginUi } from './pluginUi'
 import { suggestPresetName, newSceneInstance, presetThumbNames } from './scenes'
 import type { ListScenes } from '~/apiTypes/list_scenes'
@@ -71,5 +71,15 @@ describe('plugin UI loading', () => {
   it('the Video plugin provides the video_playlist control', async () => {
     const ui = (await import('../../../plugins/Video/web/index')).default
     expect(findPropertyControl([ui], 'video_playlist')).toBeTypeOf('function')
+  })
+
+  it('uses runtime bundles only for installed, compatible plugins', () => {
+    const info = {
+      ui_api_version: 1, plugins: ['Video', 'Other'],
+      web_ui: { Video: { api_version: 1, js: 'ui.js' }, Other: { api_version: 2, js: 'ui.js' }, Gone: { js: 'ui.js' } },
+    }
+    expect(selectRuntimeUis(info).map(([n]) => n)).toEqual(['Video'])
+    expect(selectRuntimeUis(null)).toEqual([])
+    expect(selectRuntimeUis({ ...info, ui_api_version: UI_API_VERSION + 1 })).toEqual([])
   })
 })

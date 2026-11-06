@@ -1,4 +1,4 @@
-import { definePluginUi } from '~/core/pluginUi'
+import { definePluginUi } from '~/plugin-sdk'
 
 /**
  * Web UI extension for AmbientScenes. Discovered automatically by react-web

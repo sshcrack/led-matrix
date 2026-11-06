@@ -1,4 +1,4 @@
-import { definePluginUi } from '~/core/pluginUi'
+import { definePluginUi } from '~/plugin-sdk'
 import VideoPlaylistProperty from './VideoPlaylistProperty'
 
 /**
