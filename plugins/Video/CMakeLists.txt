@@ -8,6 +8,8 @@ register_plugin(Video
         desktop/VideoDesktop.h
         desktop/VideoPacket.cpp
         desktop/VideoPacket.h
+        desktop/VideoSearch.cpp
+        desktop/VideoSearch.h
 )
 
 if(ENABLE_DESKTOP)
