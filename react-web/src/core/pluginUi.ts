@@ -53,6 +53,8 @@ export interface PresetTemplate {
 export interface PluginUi {
   /** Matches the plugins/<Name>/ directory name. */
   plugin: string
+  /** Extension API version this module was written against (default 1). Modules newer than the host are skipped. */
+  uiApi?: number
   /** Custom controls keyed by the `control` id the scene declares in its property metadata. */
   propertyControls?: Record<string, ComponentType<PropertyControlProps<never>>>
   /** Extra buttons shown on every scene card/inspector that the plugin owns (or `when` matches). */

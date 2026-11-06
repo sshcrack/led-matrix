@@ -8,7 +8,6 @@ import EnumProperty from './properties/EnumProperty'
 import NumberProperty from './properties/NumberProperty'
 import StringProperty from './properties/StringProperty'
 import StringListProperty from './properties/StringListProperty'
-import VideoPlaylistProperty from './properties/VideoPlaylistProperty'
 import ProvidersProperty from './properties/ProvidersProperty'
 import GeneralProperty from './properties/GeneralProperty'
 import AudioModulationProperty from './properties/AudioModulationProperty'
@@ -67,8 +66,6 @@ export default function PropertyList({ properties, arguments: args, providers, o
         return <NumberProperty property={prop as Property<number>} value={value as number} onChange={onValue} />
       case 'string': return <StringProperty property={prop as Property<string>} value={value as string} onChange={onValue} />
       case 'string[]':
-        if (prop.additional?.control === 'video_playlist')
-          return <VideoPlaylistProperty property={prop as Property<string[]>} value={value as string[]} onChange={onValue} />
         return <StringListProperty property={prop as Property<string[]>} value={value as string[]} onChange={onValue} />
       case 'json': return <ProvidersProperty property={prop} value={value as ProviderValue | null} providers={providers} onChange={onValue} />
       default: return <GeneralProperty property={prop} value={value} onChange={onValue} />

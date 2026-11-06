@@ -18,7 +18,10 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "lucide-react": ["./node_modules/lucide-react"]
     }
   },
   "include": ["src", "../plugins/*/web"],

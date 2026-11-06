@@ -44,11 +44,45 @@ registerPluginUi({
   }],
 })
 
-/** Discover plugins/<Name>/web/index.ts(x). Lazy chunks: only fetched when the app boots. */
+/** Web-UI extension API version this build implements. Bump on breaking changes to PluginUi. */
+export const UI_API_VERSION = 1
+
+/** Discover plugins/<Name>/web/index.ts(x). Each is its own lazy chunk, fetched only when needed. */
 const modules = import.meta.glob<{ default: PluginUi }>('../../../plugins/*/web/index.{ts,tsx}')
-export async function loadPluginUis() {
-  await Promise.all(Object.entries(modules).map(async ([path, load]) => {
-    try { registerPluginUi((await load()).default) }
-    catch (e) { console.error(`[plugin-ui] failed to load ${path}`, e) }
+
+export const pluginNameFromPath = (path: string) => /plugins\/([^/]+)\/web\//.exec(path)?.[1] ?? path
+
+interface PluginUiInfo { ui_api_version?: number; plugins?: string[] }
+
+/** Which discovered web modules to load, given what the daemon reports (null = unknown, load all). */
+export function selectPluginModules(paths: string[], info: PluginUiInfo | null): string[] {
+  if (!info?.plugins) return paths
+  if ((info.ui_api_version ?? 1) > UI_API_VERSION) return []   // daemon is newer than this UI build
+  const installed = new Set(info.plugins)
+  return paths.filter(p => installed.has(pluginNameFromPath(p)))
+}
+
+/**
+ * Ask the daemon (`/plugin_ui`) which plugins are installed and load only the
+ * matching web modules. An older daemon without the route, or a failed
+ * request, falls back to loading every bundled module (they're harmless:
+ * a control that no scene declares is never rendered).
+ */
+export async function loadPluginUis(apiUrl: string) {
+  let info: PluginUiInfo | null = null
+  try {
+    const res = await fetch(`${apiUrl}/plugin_ui`)
+    if (res.ok) info = await res.json()
+  } catch { /* old daemon / offline: load all */ }
+
+  await Promise.all(selectPluginModules(Object.keys(modules), info).map(async path => {
+    try {
+      const ui = (await modules[path]()).default
+      if ((ui.uiApi ?? 1) > UI_API_VERSION) {
+        console.warn(`[plugin-ui] ${ui.plugin} needs UI API ${ui.uiApi}, this build has ${UI_API_VERSION}`)
+        return
+      }
+      registerPluginUi(ui)
+    } catch (e) { console.error(`[plugin-ui] failed to load ${path}`, e) }
   }))
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
+import { selectPluginModules, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
 import { definePluginUi } from './pluginUi'
 import { suggestPresetName, newSceneInstance, presetThumbNames } from './scenes'
 import type { ListScenes } from '~/apiTypes/list_scenes'
@@ -46,5 +46,30 @@ describe('scene helpers', () => {
   it('only thumbnails scenes that have previews', () => {
     const names = presetThumbNames({ scenes: [{ uuid: '1', type: 'a', arguments: {} }, { uuid: '2', type: 'b', arguments: {} }] }, [def('a', { has_preview: false }), def('b')])
     expect(names).toEqual(['b'])
+  })
+})
+
+describe('plugin UI loading', () => {
+  const paths = ['../../../plugins/Video/web/index.tsx', '../../../plugins/AmbientScenes/web/index.ts']
+
+  it('derives the plugin name from the module path', () => {
+    expect(pluginNameFromPath(paths[0])).toBe('Video')
+  })
+
+  it('loads only modules for plugins the daemon reports', () => {
+    expect(selectPluginModules(paths, { ui_api_version: 1, plugins: ['Video'] })).toEqual([paths[0]])
+  })
+
+  it('loads everything when the daemon cannot say (old daemon)', () => {
+    expect(selectPluginModules(paths, null)).toEqual(paths)
+  })
+
+  it('loads nothing when the daemon speaks a newer UI API', () => {
+    expect(selectPluginModules(paths, { ui_api_version: UI_API_VERSION + 1, plugins: ['Video'] })).toEqual([])
+  })
+
+  it('the Video plugin provides the video_playlist control', async () => {
+    const ui = (await import('../../../plugins/Video/web/index')).default
+    expect(findPropertyControl([ui], 'video_playlist')).toBeTypeOf('function')
   })
 })

@@ -97,6 +97,16 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         return response.set_body(restinio::sendfile(file_path)).done(); });
 
 
+    // Installed plugins plus the web-UI extension API version this daemon
+    // understands. The web app loads a plugins/<Name>/web module only for
+    // plugins listed here (see react-web/src/core/pluginRegistry.ts).
+    router->http_get("/plugin_ui", [](auto req, auto)
+                     {
+        json plugins = json::array();
+        for (auto *plugin : Plugins::PluginManager::instance()->get_plugins())
+            plugins.push_back(plugin->get_plugin_name());
+        return reply_with_json(req, json{{"ui_api_version", 1}, {"plugins", plugins}}); });
+
     router->http_get("/diagnostics", [](auto req, auto)
                      {
         auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();

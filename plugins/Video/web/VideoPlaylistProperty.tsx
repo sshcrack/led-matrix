@@ -4,7 +4,7 @@ import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { propertyDescription, propertyLabel } from '../propertyUi'
+import { propertyDescription, propertyLabel } from '~/components/modify-preset/propertyUi'
 import type { Property } from '~/apiTypes/list_scenes'
 
 interface VideoResult {
