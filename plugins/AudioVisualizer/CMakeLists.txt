@@ -27,6 +27,18 @@ register_plugin(AudioVisualizer
         scenes/AudioVolcanoScene.cpp
         scenes/AudioFestivalScene.cpp
         scenes/AudioDiscoScene.cpp
+        scenes/AudioSkateparkScene.cpp
+        scenes/AudioMoshPitScene.cpp
+        scenes/AudioStormFrontScene.cpp
+        scenes/AudioDrumKitScene.cpp
+        scenes/AudioTeslaCoilScene.cpp
+        scenes/AudioFireworksScene.cpp
+        scenes/AudioRollerRinkScene.cpp
+        scenes/AudioMarinaSunsetScene.cpp
+        scenes/AudioStringLightsScene.cpp
+        scenes/AudioCassetteScene.cpp
+        scenes/GenreVistaScenes.h
+        scenes/kit/GenreVistaKit.h
         DESKTOP
         desktop/config.h
         desktop/AudioVisualizerDesktop.cpp

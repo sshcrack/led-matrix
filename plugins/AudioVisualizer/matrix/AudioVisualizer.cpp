@@ -9,6 +9,7 @@
 #include "scenes/AudioParticleScene.h"
 #include "scenes/AudioSpectrumScene.h"
 #include "scenes/MusicDirectorScene.h"
+#include "scenes/GenreVistaScenes.h"
 #include "scenes/MusicVistaScenes.h"
 
 using namespace Scenes;
@@ -47,6 +48,16 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
     scenes.push_back(std::make_unique<AudioVolcanoSceneWrapper>());
     scenes.push_back(std::make_unique<AudioFestivalSceneWrapper>());
     scenes.push_back(std::make_unique<AudioDiscoSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioSkateparkSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioMoshPitSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioStormFrontSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioDrumKitSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioTeslaCoilSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioFireworksSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioRollerRinkSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioMarinaSunsetSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioStringLightsSceneWrapper>());
+    scenes.push_back(std::make_unique<AudioCassetteSceneWrapper>());
     return scenes;
 }
 
