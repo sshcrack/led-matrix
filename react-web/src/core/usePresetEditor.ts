@@ -25,10 +25,16 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   const inFlight = useRef(false)
   const timer = useRef<number | null>(null)
   const activeId = useRef(presetId)
-  const sharedNameRef = useRef(sharedName)
-  useEffect(() => { sharedNameRef.current = sharedName }, [sharedName])
+  // Name the shared list showed when the preset was fetched, and a rename seen since then.
+  const lastShared = useRef(sharedName)
+  const renamedTo = useRef<string | undefined>(undefined)
+  const sharedNow = useRef(sharedName)
+  useEffect(() => { sharedNow.current = sharedName }, [sharedName])
   // Show a rename made elsewhere (rail menu) instead of the stale loaded name.
   useEffect(() => {
+    if (sharedName === lastShared.current) return
+    lastShared.current = sharedName
+    renamedTo.current = sharedName
     if (nameEdited.current || sharedName === undefined || !latest.current || latest.current.display_name === sharedName) return
     latest.current = { ...latest.current, display_name: sharedName }
     setPreset(latest.current)
@@ -40,6 +46,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     // New preset: drop the previous preset's draft/revisions so nothing of it can be saved under this id.
     activeId.current = presetId
     latest.current = null; revision.current = savedRevision.current = 0; nameEdited.current = false
+    lastShared.current = sharedNow.current; renamedTo.current = undefined
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     fetch(`${apiUrl}/presets?id=${encodeURIComponent(presetId)}`, { signal: c.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<RawPreset> })
@@ -52,8 +59,8 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     if (inFlight.current || !latest.current || revision.current === savedRevision.current) return
     const rev = revision.current
-    const draft = !nameEdited.current && sharedNameRef.current !== undefined
-      ? { ...latest.current, display_name: sharedNameRef.current } : latest.current
+    const draft = !nameEdited.current && renamedTo.current !== undefined
+      ? { ...latest.current, display_name: renamedTo.current } : latest.current
     inFlight.current = true
     setSaveState('saving')
     try {

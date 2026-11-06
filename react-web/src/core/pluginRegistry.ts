@@ -72,6 +72,20 @@ export function selectRuntimeUis(info: PluginUiInfo | null): [string, RuntimeUi]
 }
 
 /**
+ * What to load: runtime bundles where the plugin ships a compatible one, bundled
+ * modules for the other installed plugins. A plugin whose installed bundle needs
+ * a newer UI API than this build is skipped entirely — its older bundled module
+ * would otherwise resurrect controls the upgraded plugin may have dropped.
+ */
+export function planPluginUis(paths: string[], info: PluginUiInfo | null) {
+  const runtime = selectRuntimeUis(info)
+  const skip = new Set(runtime.map(([n]) => n))
+  for (const [name, ui] of Object.entries(info?.web_ui ?? {})) if ((ui.api_version ?? 1) > UI_API_VERSION) skip.add(name)
+  const bundled = selectPluginModules(paths, info).filter(p => !skip.has(pluginNameFromPath(p)))
+  return { runtime, bundled }
+}
+
+/**
  * Fetch a plugin's installed bundle through the (authenticated) REST API and
  * evaluate it from a Blob URL. Going through fetch + Blob instead of a direct
  * `import(url)` keeps the API token/cookie handling and works when the UI is
@@ -118,9 +132,7 @@ export async function loadPluginUis(apiUrl: string) {
   }
 
   installPluginSdk()
-  const runtime = selectRuntimeUis(info)
-  const runtimeNames = new Set(runtime.map(([n]) => n))
-  const bundled = selectPluginModules(Object.keys(modules), info).filter(p => !runtimeNames.has(pluginNameFromPath(p)))
+  const { runtime, bundled } = planPluginUis(Object.keys(modules), info)
 
   await Promise.all([
     ...runtime.map(async ([name, ui]) => {

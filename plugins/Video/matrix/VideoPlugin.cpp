@@ -53,7 +53,13 @@ std::string clean_query(std::string q) {
   const auto b = out.find_first_not_of(" \t");
   if (b == std::string::npos) return {};
   out = out.substr(b, out.find_last_not_of(" \t") - b + 1);
-  if (out.size() > kMaxQueryLength) out.resize(kMaxQueryLength);
+  if (out.size() > kMaxQueryLength) {
+    // Cut on a UTF-8 character boundary (continuation bytes are 10xxxxxx), otherwise the
+    // query is invalid UTF-8 and breaks JSON/WebSocket text frames.
+    size_t cut = kMaxQueryLength;
+    while (cut > 0 && (static_cast<unsigned char>(out[cut]) & 0xC0) == 0x80) --cut;
+    out.resize(cut);
+  }
   return out;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectPluginModules, selectRuntimeUis, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
+import { selectPluginModules, selectRuntimeUis, planPluginUis, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
 import { definePluginUi } from './pluginUi'
 import { suggestPresetName, newSceneInstance, presetThumbNames } from './scenes'
 import type { ListScenes } from '~/apiTypes/list_scenes'
@@ -81,5 +81,15 @@ describe('plugin UI loading', () => {
     expect(selectRuntimeUis(info).map(([n]) => n)).toEqual(['Video'])
     expect(selectRuntimeUis(null)).toEqual([])
     expect(selectRuntimeUis({ ...info, ui_api_version: UI_API_VERSION + 1 })).toEqual([])
+  })
+
+  it('skips a plugin entirely when its installed bundle needs a newer UI API', () => {
+    const paths = ['../../../plugins/Video/web/index.tsx', '../../../plugins/AmbientScenes/web/index.ts']
+    const plan = planPluginUis(paths, {
+      ui_api_version: 1, plugins: ['Video', 'AmbientScenes'],
+      web_ui: { Video: { api_version: UI_API_VERSION + 1, js: 'ui.js' } },
+    })
+    expect(plan.runtime).toEqual([])
+    expect(plan.bundled).toEqual([paths[1]])
   })
 })

@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MoreHorizontal, Search } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import { NAV, isActive } from '~/core/nav'
+import { useMatrix } from '~/core/matrixContext'
 import { PowerButton } from '~/core/ui/controls'
 import { ThemeToggle } from '~/core/ui/ThemeToggle'
 import { CommandPalette } from '~/core/ui/CommandPalette'
@@ -16,6 +17,13 @@ const MORE = NAV.filter(n => !n.primary)
 /** Desktop: top bar with nav + ⌘K. Phone: compact top bar, mini-player and a bottom tab bar (thumb reach). */
 export default function ConsoleShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
+  // Other pages (Scene Lab, providers, …) write presets/looks through their own calls; the shared
+  // lists live as long as the app, so re-sync them whenever the user navigates.
+  const { refreshAll } = useMatrix()
+  const refreshRef = useRef(refreshAll)
+  useEffect(() => { refreshRef.current = refreshAll })
+  const firstPath = useRef(true)
+  useEffect(() => { if (firstPath.current) { firstPath.current = false; return } refreshRef.current() }, [pathname])
   const navigate = useNavigate()
   const [palette, setPalette] = useState(false)
   const [more, setMore] = useState(false)

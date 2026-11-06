@@ -62,4 +62,19 @@ describe('usePresetEditor', () => {
     await waitFor(() => expect(saved.length).toBe(1))
     expect(saved[0].preset.display_name).toBe('Renamed in menu')
   })
+
+  it('does not overwrite a name fetched newer than the shared list', async () => {
+    const stale = { ...shared }                                   // list still shows "A"
+    shared = { ...shared, A: { ...shared.A, display_name: 'Renamed elsewhere' } }
+    const staleWrapper = ({ children }: { children: ReactNode }) => (
+      <ApiUrlContext.Provider value="http://x">
+        <MatrixContext.Provider value={{ savePreset, presets: stale } as never}>{children}</MatrixContext.Provider>
+      </ApiUrlContext.Provider>
+    )
+    const { result } = renderHook(() => usePresetEditor('A', 5), { wrapper: staleWrapper })
+    await waitFor(() => expect(result.current.preset?.display_name).toBe('Renamed elsewhere'))
+    act(() => result.current.removeScene('u'))
+    await waitFor(() => expect(saved.length).toBe(1))
+    expect(saved[0].preset.display_name).toBe('Renamed elsewhere')
+  })
 })

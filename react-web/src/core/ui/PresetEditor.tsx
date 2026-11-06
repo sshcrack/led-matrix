@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2, Undo2, Blend } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -76,6 +76,9 @@ export function PresetEditor({ presetId, header = true }: { presetId: string; he
 
 function PresetEditorBody({ presetId, header }: { presetId: string; header: boolean }) {
   const ed = usePresetEditor(presetId)
+  // An Undo bound to this editor instance must not outlive it (it would save an obsolete draft).
+  const undoToasts = useRef(new Set<string | number>())
+  useEffect(() => { const ids = undoToasts.current; return () => { ids.forEach(id => toast.dismiss(id)) } }, [])
   const { preset } = ed
   const { sceneByName } = useMatrix()
   const { data: transitions } = useResource<string[]>('/list_transitions')
@@ -96,7 +99,8 @@ function PresetEditorBody({ presetId, header }: { presetId: string; header: bool
 
   const remove = (s: Scene, index: number) => {
     ed.removeScene(s.uuid)
-    toast(`Removed ${sceneDisplayName(s.type)}`, { action: { label: 'Undo', onClick: () => ed.restoreScene(s, index) }, icon: <Undo2 className="h-4 w-4" /> })
+    const id = toast(`Removed ${sceneDisplayName(s.type)}`, { action: { label: 'Undo', onClick: () => ed.restoreScene(s, index) }, icon: <Undo2 className="h-4 w-4" /> })
+    undoToasts.current.add(id)
   }
 
   const list = <ul className="space-y-1.5">

@@ -61,7 +61,9 @@ export function useMatrixState() {
         return id
       } catch { toast.error('Could not create preset'); return null }
     },
-    async duplicatePreset(id: string, preset: RawPreset) {
+    async duplicatePreset(id: string, cached: RawPreset) {
+      // The list may be stale (edited elsewhere); copy the daemon's current version when reachable.
+      const preset = await call(`/presets?id=${encodeURIComponent(id)}`).then(r => r.json() as Promise<RawPreset>).catch(() => cached)
       const copy: RawPreset = {
         ...preset, display_name: `${preset.display_name ?? 'Preset'} copy`,
         scenes: preset.scenes.map(s => ({ ...s, uuid: uuidv4() })),
