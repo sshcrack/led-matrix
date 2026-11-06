@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import type { RawPreset, Scene } from '~/apiTypes/list_presets'
 import { useMatrix } from './matrixContext'
+import { isPresetDeleted } from './presetTombstones'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
 
@@ -62,22 +63,26 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   const flush = useCallback(async (keepalive = false) => {
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     if (inFlight.current || !latest.current || revision.current === savedRevision.current) return
+    if (isPresetDeleted(presetId)) { if (timer.current) { window.clearTimeout(timer.current); timer.current = null } return }
     const rev = revision.current
     const nameRevNow = nameRev.current
     const draft = !nameEdited() && renamedTo.current !== undefined
       ? { ...latest.current, display_name: renamedTo.current } : latest.current
     inFlight.current = true
+    let succeeded = false
     setSaveState('saving')
     try {
       await savePreset(presetId, draft, { keepalive })
       if (activeId.current !== presetId) return   // switched away mid-save: this editor state now belongs to another preset
       savedRevision.current = rev
+      succeeded = true
       savedNameRev.current = Math.max(savedNameRev.current, nameRevNow)
       setSaveState(revision.current === rev ? 'saved' : 'dirty')
     } catch { if (activeId.current === presetId) setSaveState('error') }
     finally {
       inFlight.current = false
-      if (activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) {
+      // Only after a successful save: a failed one (e.g. over the keepalive quota) must not retry in a tight loop.
+      if (succeeded && activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) {
         // Edits made while saving: if the page is going away don't wait for the debounce.
         if (document.visibilityState === 'hidden') void flush(true)
         else timer.current = window.setTimeout(() => void flush(), debounceMs)
