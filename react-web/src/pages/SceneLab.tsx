@@ -12,6 +12,18 @@ import { Input } from '~/components/ui/input'
 import { sceneArgumentsForVariant, sceneDisplayName } from '~/lib/sceneVariants'
 import useFetch from '~/useFetch'
 
+/**
+ * Browser half of the Scene Lab session protocol (server: SceneLabRuntime).
+ * `inactive` → start → `owned` → stop / 409 / expiry → `inactive`.
+ * Every exit goes through `endSession`, which also invalidates debounced
+ * updates queued under the old ownership.
+ */
+type LabSession =
+  | { kind: 'inactive' }
+  | { kind: 'owned'; sessionId: number; generation: number }
+
+class StaleSessionError extends Error {}
+
 type LabStatus = {
   active: boolean
   session_id: number
@@ -36,9 +48,7 @@ export default function SceneLab() {
   const [variantLabel, setVariantLabel] = useState('My look')
   const [presetLabel, setPresetLabel] = useState('Scene Lab look')
   const updateReady = useRef(false)
-  const activeRef = useRef(false)
-  const sessionIdRef = useRef(0)
-  const generationRef = useRef(0)
+  const session = useRef<LabSession>({ kind: 'inactive' })
   const updateRevision = useRef(0)
   const updateChain = useRef<Promise<void>>(Promise.resolve())
 
@@ -61,11 +71,27 @@ export default function SceneLab() {
 
   useEffect(() => {
     if (!initialStatus) return
-    activeRef.current = initialStatus.active
-    sessionIdRef.current = initialStatus.session_id ?? 0
-    generationRef.current = initialStatus.generation ?? 0
+    session.current = initialStatus.active
+      ? { kind: 'owned', sessionId: initialStatus.session_id ?? 0, generation: initialStatus.generation ?? 0 }
+      : { kind: 'inactive' }
     if (initialStatus.active) updateReady.current = true
   }, [initialStatus])
+
+  const endSession = useCallback(() => {
+    session.current = { kind: 'inactive' }
+    updateRevision.current += 1
+    updateReady.current = false
+    setActive(false)
+    setMissing([])
+  }, [])
+
+  // Generation is monotonic; responses can cross in flight, so never roll back.
+  const observeGeneration = useCallback((generation: number | undefined) => {
+    const current = session.current
+    if (current.kind === 'owned' && generation)
+      session.current = { ...current, generation: Math.max(current.generation, generation) }
+  }, [])
+  const ownedSessionId = useCallback(() => session.current.kind === 'owned' ? session.current.sessionId : 0, [])
 
   // Pre-select a sensible default scene once the scene list is available.
   if (!sceneName && scenes?.length) {
@@ -100,6 +126,7 @@ export default function SceneLab() {
     const response = await fetch(`${apiUrl}${path}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     })
+    if (response.status === 409) throw new StaleSessionError((await response.text()) || 'Scene Lab session ended')
     if (!response.ok) throw new Error((await response.text()) || 'Request failed')
     return await response.json()
   }, [apiUrl])
@@ -108,9 +135,8 @@ export default function SceneLab() {
     if (!definition) return
     try {
       const state = await post('/scene_lab/start', { scene: definition.name, variant, properties: args, fps }) as LabStatus
-      activeRef.current = true
-      sessionIdRef.current = state.session_id
-      generationRef.current = state.generation
+      updateRevision.current += 1
+      session.current = { kind: 'owned', sessionId: state.session_id, generation: state.generation }
       setActive(true); setMissing(state.missing_inputs ?? []); updateReady.current = true
       toast.success('Scene Lab is live on the matrix')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not start Scene Lab') }
@@ -118,12 +144,13 @@ export default function SceneLab() {
 
   const stop = async () => {
     try {
-      await post('/scene_lab/stop', { session_id: sessionIdRef.current })
-      activeRef.current = false
-      updateRevision.current += 1
-      setActive(false); setMissing([]); updateReady.current = false
+      await post('/scene_lab/stop', { session_id: ownedSessionId() })
+      endSession()
       toast.success('Normal playback resumed')
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not stop Scene Lab') }
+    } catch (error) {
+      if (error instanceof StaleSessionError) { endSession(); toast.info('Scene Lab was already taken over by another session'); return }
+      toast.error(error instanceof Error ? error.message : 'Could not stop Scene Lab')
+    }
   }
 
   useEffect(() => {
@@ -131,22 +158,28 @@ export default function SceneLab() {
     const revision = ++updateRevision.current
     const timer = window.setTimeout(() => {
       updateChain.current = updateChain.current.then(async () => {
-        if (!activeRef.current || revision !== updateRevision.current) return
+        const owned = session.current
+        if (owned.kind !== 'owned' || revision !== updateRevision.current) return
         try {
           const state = await post('/scene_lab/update', {
-            variant, properties: args, fps, session_id: sessionIdRef.current,
-            expected_generation: generationRef.current,
+            variant, properties: args, fps, session_id: owned.sessionId,
+            expected_generation: owned.generation,
           }) as LabStatus
-          generationRef.current = Math.max(generationRef.current, state.generation ?? 0)
-          if (activeRef.current) setMissing(state.missing_inputs ?? [])
+          observeGeneration(state.generation)
+          if (session.current.kind === 'owned') setMissing(state.missing_inputs ?? [])
         } catch (error) {
-          if (activeRef.current && revision === updateRevision.current)
-            toast.error(error instanceof Error ? error.message : 'Temporary scene update failed')
+          if (revision !== updateRevision.current) return
+          if (error instanceof StaleSessionError) {
+            endSession()
+            toast.info('Scene Lab session ended (replaced or expired); normal playback resumed')
+            return
+          }
+          toast.error(error instanceof Error ? error.message : 'Temporary scene update failed')
         }
       })
     }, 250)
     return () => window.clearTimeout(timer)
-  }, [active, definition, variant, args, fps, post])
+  }, [active, definition, variant, args, fps, post, endSession, observeGeneration])
 
   useEffect(() => {
     if (!active || !apiUrl) return
@@ -154,52 +187,50 @@ export default function SceneLab() {
       try {
         const response = await fetch(`${apiUrl}/scene_lab/heartbeat`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionIdRef.current }),
+          body: JSON.stringify({ session_id: ownedSessionId() }),
         })
         if (response.status === 409) {
-          activeRef.current = false
-          updateRevision.current += 1
-          updateReady.current = false
-          setActive(false)
-          toast.info('Scene Lab was replaced by another session')
+          endSession()
+          toast.info('Scene Lab session ended (replaced or expired); normal playback resumed')
           return
         }
         if (!response.ok) return
         const state = await response.json() as LabStatus
-        // Heartbeats and debounced updates can cross in flight. Generation is
-        // monotonic, so an older heartbeat response must never roll the client
-        // back and make the next update look stale.
-        generationRef.current = Math.max(generationRef.current, state.generation ?? 0)
-        setMissing(state.missing_inputs ?? [])
+        observeGeneration(state.generation)
         if (!state.active) {
-          activeRef.current = false
-          updateRevision.current += 1
-          updateReady.current = false
-          setActive(false)
+          endSession()
           toast.info('Scene Lab session expired; normal playback resumed')
+          return
         }
+        setMissing(state.missing_inputs ?? [])
       } catch { /* A transient connection loss should not end the local session early. */ }
     }
     void heartbeat()
     const interval = window.setInterval(() => void heartbeat(), 15000)
     return () => window.clearInterval(interval)
-  }, [active, apiUrl])
+  }, [active, apiUrl, endSession, observeGeneration, ownedSessionId])
 
   const saveVariant = async () => {
     try {
-      const result = await post('/scene_lab/save_variant', { label: variantLabel, session_id: sessionIdRef.current }) as { generation?: number; variant?: { id?: string } }
-      if (result.generation) generationRef.current = Math.max(generationRef.current, result.generation)
+      const result = await post('/scene_lab/save_variant', { label: variantLabel, session_id: ownedSessionId() }) as { generation?: number; variant?: { id?: string } }
+      observeGeneration(result.generation)
       toast.success('Saved as a reusable curated look')
       retryScenes(value => value + 1)
       if (result.variant?.id) setVariant(result.variant.id)
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save look') }
+    } catch (error) {
+      if (error instanceof StaleSessionError) endSession()
+      toast.error(error instanceof Error ? error.message : 'Could not save look')
+    }
   }
 
   const savePreset = async () => {
     try {
-      await post('/scene_lab/save_preset', { display_name: presetLabel, session_id: sessionIdRef.current })
+      await post('/scene_lab/save_preset', { display_name: presetLabel, session_id: ownedSessionId() })
       toast.success('Saved as a manual preset')
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save preset') }
+    } catch (error) {
+      if (error instanceof StaleSessionError) endSession()
+      toast.error(error instanceof Error ? error.message : 'Could not save preset')
+    }
   }
 
   return <div className="space-y-6 pb-24 lg:pb-8">

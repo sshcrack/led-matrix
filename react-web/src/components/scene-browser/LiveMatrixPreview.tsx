@@ -1,7 +1,7 @@
 import { Expand, ImageOff, MonitorPlay } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '~/lib/utils'
-import { parseLiveFrame } from '~/lib/liveFrame'
+import { LiveFrameDemand, parseLiveFrame } from '~/lib/liveFrame'
 
 interface LiveMatrixPreviewProps {
   apiUrl: string
@@ -44,11 +44,7 @@ export default function LiveMatrixPreview({
     let socket: WebSocket | null = null
     let frameTimer: number | null = null
     let reconnectTimer: number | null = null
-    let intersectsViewport = false
-    let requestPending = false
-
-    const canRequestFrame = () =>
-      !disposed && document.visibilityState !== 'hidden' && intersectsViewport
+    const demand = new LiveFrameDemand(document.visibilityState !== 'hidden')
 
     const clearFrameTimer = () => {
       if (frameTimer !== null) {
@@ -59,14 +55,12 @@ export default function LiveMatrixPreview({
 
     const requestNextFrame = () => {
       clearFrameTimer()
-      if (!canRequestFrame() || requestPending || socket?.readyState !== WebSocket.OPEN) return
-      requestPending = true
-      socket.send('next')
+      if (socket && demand.tryRequest()) socket.send('next')
     }
 
     const scheduleNextFrame = () => {
       clearFrameTimer()
-      if (!canRequestFrame()) return
+      if (!demand.eligible) return
       frameTimer = window.setTimeout(requestNextFrame, 75)
     }
 
@@ -95,18 +89,18 @@ export default function LiveMatrixPreview({
       const nextSocket = new WebSocket(url)
       nextSocket.binaryType = 'arraybuffer'
       socket = nextSocket
-      requestPending = false
+      demand.socketClosed()
       setState(current => current === 'live' ? current : 'connecting')
 
       nextSocket.onopen = () => {
         if (disposed || socket !== nextSocket) return
-        requestPending = false
+        demand.socketOpened()
         requestNextFrame()
       }
 
       nextSocket.onmessage = event => {
         if (disposed || socket !== nextSocket || !(event.data instanceof ArrayBuffer)) return
-        requestPending = false
+        demand.frameReceived()
         try {
           applyFrame(event.data)
           scheduleNextFrame()
@@ -119,7 +113,7 @@ export default function LiveMatrixPreview({
       nextSocket.onclose = () => {
         if (disposed || socket !== nextSocket) return
         socket = null
-        requestPending = false
+        demand.socketClosed()
         clearFrameTimer()
         setState('unavailable')
         reconnectTimer = window.setTimeout(connect, 5000)
@@ -129,14 +123,15 @@ export default function LiveMatrixPreview({
     const shell = shellRef.current
     const observer = new IntersectionObserver(entries => {
       const entry = entries[0]
-      intersectsViewport = Boolean(entry?.isIntersecting)
-      if (canRequestFrame()) requestNextFrame()
+      demand.setInViewport(Boolean(entry?.isIntersecting))
+      if (demand.eligible) requestNextFrame()
       else clearFrameTimer()
     })
     if (shell) observer.observe(shell)
 
     const onVisibilityChange = () => {
-      if (canRequestFrame()) requestNextFrame()
+      demand.setPageVisible(document.visibilityState !== 'hidden')
+      if (demand.eligible) requestNextFrame()
       else clearFrameTimer()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
@@ -144,6 +139,7 @@ export default function LiveMatrixPreview({
     connect()
     return () => {
       disposed = true
+      demand.dispose()
       clearFrameTimer()
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
       document.removeEventListener('visibilitychange', onVisibilityChange)

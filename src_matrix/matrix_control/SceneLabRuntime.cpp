@@ -45,28 +45,86 @@ std::shared_ptr<Scenes::Scene> SceneLabRuntime::build_scene(
     throw std::invalid_argument("Unknown scene '" + scene_name + "'");
 }
 
+SceneLabRuntime::Clock::time_point SceneLabRuntime::now() const
+{
+    return clock_ ? clock_() : Clock::now();
+}
+
+void SceneLabRuntime::set_clock_for_testing(std::function<Clock::time_point()> clock)
+{
+    std::lock_guard lock(mutex_);
+    clock_ = std::move(clock);
+}
+
+const SceneLabRuntime::Session *SceneLabRuntime::live_session_locked(const Clock::time_point now) const
+{
+    if (!session_ || now >= session_->lease_expires_at) return nullptr;
+    return &*session_;
+}
+
+void SceneLabRuntime::end_session_locked()
+{
+    session_.reset();
+    ++generation_;
+}
+
+void SceneLabRuntime::expire_locked(const Clock::time_point now)
+{
+    if (session_ && !live_session_locked(now)) end_session_locked();
+}
+
+SceneLabRuntime::Session &SceneLabRuntime::require_session_locked(
+    const std::optional<std::uint64_t> expected, const Clock::time_point now)
+{
+    expire_locked(now);
+    if (!session_) {
+        if (expected.has_value()) throw StaleSession("Scene Lab session is stale: it has ended or expired");
+        throw std::runtime_error("Scene Lab is not active");
+    }
+    if (expected.has_value() && *expected != session_->id)
+        throw StaleSession("Scene Lab session is stale: another session replaced it");
+    return *session_;
+}
+
+SceneLabRuntime::Snapshot SceneLabRuntime::snapshot_locked(const Clock::time_point now) const
+{
+    Snapshot result;
+    result.generation = generation_;
+    if (const auto *session = live_session_locked(now)) {
+        result.active = true;
+        result.session_id = session->id;
+        result.scene = session->scene;
+        result.scene_name = session->scene_name;
+        result.variant = session->variant;
+        result.properties = session->properties;
+        result.fps = session->fps;
+    }
+    return result;
+}
+
 SceneLabRuntime::Snapshot SceneLabRuntime::start(
     const std::string &scene_name, const std::string &variant,
     const nlohmann::json &properties, int fps,
     const RuntimeInputs::Snapshot &runtime_inputs)
 {
-    auto scene = build_scene(scene_name, variant, properties, fps);
-    Snapshot next;
-    next.active = true;
-    next.scene = std::move(scene);
+    Session next;
+    next.scene = build_scene(scene_name, variant, properties, fps);
     next.scene_name = scene_name;
     next.variant = variant;
     next.properties = next.scene->to_json();
     next.fps = std::clamp(fps, 10, 30);
-    next.missing_inputs = RuntimeInputs::missing_required(next.scene->get_effective_runtime_inputs(), runtime_inputs);
+    auto missing = RuntimeInputs::missing_required(next.scene->get_effective_runtime_inputs(), runtime_inputs);
 
     std::lock_guard lock(mutex_);
-    next.session_id = next_session_id_++;
+    const auto t = now();
+    next.id = next_session_id_++;
     if (next_session_id_ == 0) next_session_id_ = 1;
-    next.generation = state_.generation + 1;
-    state_ = next;
-    lease_expires_at_ = std::chrono::steady_clock::now() + LeaseDuration;
-    return state_;
+    next.lease_expires_at = t + LeaseDuration;
+    session_ = std::move(next);
+    ++generation_;
+    auto result = snapshot_locked(t);
+    result.missing_inputs = std::move(missing);
+    return result;
 }
 
 SceneLabRuntime::Snapshot SceneLabRuntime::update(
@@ -75,93 +133,75 @@ SceneLabRuntime::Snapshot SceneLabRuntime::update(
     std::optional<std::uint64_t> expected_generation,
     std::optional<std::uint64_t> expected_session_id)
 {
+    // Building a scene is slow, so validate, build unlocked, then re-validate
+    // that nothing moved in between before committing.
     std::string scene_name;
     std::uint64_t base_generation = 0;
     std::uint64_t base_session_id = 0;
     {
         std::lock_guard lock(mutex_);
-        if (!state_.active) throw std::runtime_error("Scene Lab is not active");
-        if (expected_session_id.has_value() && *expected_session_id != state_.session_id)
-            throw std::runtime_error("Scene Lab session is stale");
-        if (expected_generation.has_value() && *expected_generation != state_.generation)
-            throw std::runtime_error("Scene Lab update is stale");
-        scene_name = state_.scene_name;
-        base_generation = state_.generation;
-        base_session_id = state_.session_id;
+        const auto &session = require_session_locked(expected_session_id, now());
+        if (expected_generation.has_value() && *expected_generation != generation_)
+            throw StaleSession("Scene Lab update is stale");
+        scene_name = session.scene_name;
+        base_generation = generation_;
+        base_session_id = session.id;
     }
 
-    auto scene = build_scene(scene_name, variant, properties, fps);
-    Snapshot next;
-    next.active = true;
-    next.scene = std::move(scene);
+    Session next;
+    next.scene = build_scene(scene_name, variant, properties, fps);
+    next.id = base_session_id;
     next.scene_name = scene_name;
-    next.session_id = base_session_id;
     next.variant = variant;
     next.properties = next.scene->to_json();
     next.fps = std::clamp(fps, 10, 30);
-    next.missing_inputs = RuntimeInputs::missing_required(
-        next.scene->get_effective_runtime_inputs(), runtime_inputs);
+    auto missing = RuntimeInputs::missing_required(next.scene->get_effective_runtime_inputs(), runtime_inputs);
 
     std::lock_guard lock(mutex_);
-    if (!state_.active) throw std::runtime_error("Scene Lab is not active");
-    if (state_.session_id != base_session_id)
-        throw std::runtime_error("Scene Lab session is stale");
-    if (state_.generation != base_generation)
-        throw std::runtime_error("Scene Lab update is stale");
-    next.generation = state_.generation + 1;
-    state_ = next;
-    lease_expires_at_ = std::chrono::steady_clock::now() + LeaseDuration;
-    return state_;
+    const auto t = now();
+    require_session_locked(base_session_id, t);
+    if (generation_ != base_generation)
+        throw StaleSession("Scene Lab update is stale");
+    next.lease_expires_at = t + LeaseDuration;
+    session_ = std::move(next);
+    ++generation_;
+    auto result = snapshot_locked(t);
+    result.missing_inputs = std::move(missing);
+    return result;
 }
 
 void SceneLabRuntime::stop(std::optional<std::uint64_t> expected_session_id)
 {
     std::lock_guard lock(mutex_);
-    if (expected_session_id.has_value()) {
-        if (!state_.active) throw std::runtime_error("Scene Lab is not active");
-        if (*expected_session_id != state_.session_id)
-            throw std::runtime_error("Scene Lab session is stale");
-    }
-    const auto generation = state_.generation + 1;
-    state_ = {};
-    state_.generation = generation;
-    lease_expires_at_ = {};
+    expire_locked(now());
+    if (!session_) return;
+    if (expected_session_id.has_value() && *expected_session_id != session_->id)
+        throw StaleSession("Scene Lab session is stale: another session replaced it");
+    end_session_locked();
 }
 
 void SceneLabRuntime::heartbeat(std::optional<std::uint64_t> expected_session_id)
 {
     std::lock_guard lock(mutex_);
-    if (expected_session_id.has_value()) {
-        if (!state_.active) throw std::runtime_error("Scene Lab is not active");
-        if (*expected_session_id != state_.session_id)
-            throw std::runtime_error("Scene Lab session is stale");
-    }
-    if (!state_.active) return;
-    const auto now = std::chrono::steady_clock::now();
-    if (now >= lease_expires_at_) {
-        const auto generation = state_.generation + 1;
-        state_ = {};
-        state_.generation = generation;
-        lease_expires_at_ = {};
+    const auto t = now();
+    if (!expected_session_id.has_value()) {
+        expire_locked(t);
+        if (session_) session_->lease_expires_at = t + LeaseDuration;
         return;
     }
-    lease_expires_at_ = now + LeaseDuration;
+    require_session_locked(expected_session_id, t).lease_expires_at = t + LeaseDuration;
 }
 
 bool SceneLabRuntime::lease_active(std::uint64_t generation) const
 {
     std::lock_guard lock(mutex_);
-    return state_.active && state_.generation == generation
-        && std::chrono::steady_clock::now() < lease_expires_at_;
+    return generation_ == generation && live_session_locked(now()) != nullptr;
 }
 
 SceneLabRuntime::Snapshot SceneLabRuntime::snapshot(const RuntimeInputs::Snapshot &runtime_inputs) const
 {
     std::lock_guard lock(mutex_);
-    auto result = state_;
-    if (result.active && std::chrono::steady_clock::now() >= lease_expires_at_) {
-        result.active = false; result.scene.reset(); result.scene_name.clear(); result.variant.clear();
-    }
+    auto result = snapshot_locked(now());
     if (result.active && result.scene)
         result.missing_inputs = RuntimeInputs::missing_required(result.scene->get_effective_runtime_inputs(), runtime_inputs);
     return result;

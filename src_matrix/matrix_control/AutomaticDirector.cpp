@@ -25,13 +25,11 @@ bool AutomaticDirector::cooling_down(const std::string& scene) const
 
 bool AutomaticDirector::sync_track_context(const std::string& track_id)
 {
-    if (track_id == current_track_id_)
+    if (!track_intro_.sync(track_id))
         return false;
-    current_track_id_ = track_id;
-    current_track_cover_shown_ = false;
-    current_track_mv_shown_ = false;
-    track_switch_pending_ = !track_id.empty();
-    switch_events_primed_ = false;
+    // Counters from the previous track must not fire on the new one.
+    drop_edge_.reset();
+    section_edge_.reset();
     return true;
 }
 
@@ -58,13 +56,11 @@ void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scen
     memory.last_shown_ms = clock_ms_;
     ++memory.presentations;
 
-    if (!current_track_id_.empty()) {
-        if (has_tag(profile.tags, "album-art")) {
-            current_track_cover_shown_ = true;
-            track_switch_pending_ = false;
-        }
+    if (!track_intro_.track_id.empty()) {
+        if (has_tag(profile.tags, "album-art"))
+            track_intro_.mark_cover_shown();
         if (has_tag(profile.tags, "spotify-video"))
-            current_track_mv_shown_ = true;
+            track_intro_.music_video_shown = true;
     }
 }
 
@@ -106,13 +102,9 @@ void AutomaticDirector::reseed(std::uint64_t seed)
     last_ranked_.clear();
     decision_count_ = 0;
     last_exclude_name_.clear();
-    current_track_id_.clear();
-    current_track_cover_shown_ = false;
-    current_track_mv_shown_ = false;
-    track_switch_pending_ = false;
-    switch_events_primed_ = false;
-    seen_drop_ = 0;
-    seen_section_ = 0;
+    track_intro_ = {};
+    drop_edge_.reset();
+    section_edge_.reset();
     next_fit_check_ms_ = 0;
     last_switch_reason_.clear();
     phrase_primed_ = false;

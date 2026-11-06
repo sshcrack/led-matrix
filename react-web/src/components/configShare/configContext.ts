@@ -4,8 +4,9 @@ import type { Preset } from '~/apiTypes/list_presets'
 export interface ConfigContextType {
   preset: Preset | null
   setPreset: React.Dispatch<React.SetStateAction<Preset | null>>
+  /** Replaces the draft with server data without marking it dirty. */
+  loadPreset: (preset: Preset) => void
   isDirty: boolean
-  setDirty: (dirty: boolean) => void
   save: () => Promise<void>
   isSaving: boolean
 }
@@ -13,8 +14,8 @@ export interface ConfigContextType {
 export const ConfigContext = createContext<ConfigContextType>({
   preset: null,
   setPreset: () => {},
+  loadPreset: () => {},
   isDirty: false,
-  setDirty: () => {},
   save: async () => {},
   isSaving: false,
 })

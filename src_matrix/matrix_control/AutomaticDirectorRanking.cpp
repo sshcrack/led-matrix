@@ -88,8 +88,8 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             if (has_tag(profile.tags, "spotify-video")) {
                 if (!context.spotify_mv_ready)
                     continue;
-                if (current_track_mv_shown_ && !current_track_id_.empty()
-                    && current_track_id_ == context.spotify_track_id)
+                if (track_intro_.music_video_shown && !track_intro_.track_id.empty()
+                    && track_intro_.track_id == context.spotify_track_id)
                     continue;
             }
 
@@ -192,7 +192,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                 const bool spotify_video = has_tag(profile.tags, "spotify-video");
                 if (album_art) {
                     candidate.score += weight::album_art_base;
-                    if (current_track_cover_shown_ && context.spotify_progress >= 0.14f
+                    if (track_intro_.cover_shown() && context.spotify_progress >= 0.14f
                         && context.spotify_progress <= 0.82f)
                         candidate.score -= weight::album_art_repeat_penalty;
                     if (context.spotify_progress < 0.12f) {

@@ -94,8 +94,8 @@ void SpotifyMVDesktop::render() {
     std::string pend_track;
     {
         std::lock_guard<std::mutex> lk(track_id_mutex_);
-        cur_track = current_track_id_;
-        pend_track = pending_track_id_;
+        if (const auto &current = track_requests_.current()) cur_track = current->track_id;
+        if (const auto &pending = track_requests_.pending()) pend_track = pending->track_id;
     }
 
     // ── Overall status bar ──────────────────────────────────────────────
@@ -109,7 +109,7 @@ void SpotifyMVDesktop::render() {
         } else if (cur_state == Shared::VideoStreamEngine::State::Error) {
             barColor = {1, 0, 0, 1}; barLabel = "Error";
         }
-        if (crossfade_active_.load()) {
+        if (crossfade_elapsed().has_value()) {
             barColor = {0.5f, 0.5f, 1, 1}; barLabel = "Crossfading";
         } else if (search_running_.load() && cur_state != Shared::VideoStreamEngine::State::Playing) {
             barColor = {0, 0.84f, 0.38f, 1}; barLabel = "Searching";
@@ -138,9 +138,8 @@ void SpotifyMVDesktop::render() {
     }
 
     // ── Crossfade progress ──────────────────────────────────────────────
-    if (crossfade_active_.load()) {
-        auto elapsed = std::chrono::steady_clock::now() - crossfade_start_;
-        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    if (const auto fade_elapsed = crossfade_elapsed()) {
+        auto elapsed_ms = fade_elapsed->count();
         float ratio = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
         float progress = ratio > 1.0f ? 1.0f : ratio;
         ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0), "Crossfade");
@@ -173,7 +172,7 @@ void SpotifyMVDesktop::render() {
         ImGui::Text("Total errors:       %d", total_errors_.load());
         ImGui::Text("Engine swaps:       %d", total_swaps_.load());
         ImGui::Text("Background prepare: %s", search_running_.load() ? "Yes" : "No");
-        ImGui::Text("Crossfade active:   %s", crossfade_active_.load() ? "Yes" : "No");
+        ImGui::Text("Crossfade active:   %s", crossfade_elapsed().has_value() ? "Yes" : "No");
         ImGui::Separator();
         ImGui::Text("Current engine:     %s", current_engine_ ? "Valid" : "NULL");
         ImGui::Text("Pending engine:     %s", pending_engine_ ? "Valid" : "NULL");

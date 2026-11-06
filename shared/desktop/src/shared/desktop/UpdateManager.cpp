@@ -4,31 +4,60 @@
 #include <spdlog/spdlog.h>
 #include <shared/desktop/config.h>
 #include <chrono>
+#include <mutex>
 
 
 namespace UpdateChecker
 {
 
+    /// Update workflow. Exactly one phase is current; each phase owns one
+    /// dialog, so impossible flag combinations cannot be represented.
+    ///
+    ///   Idle ──check──▶ Checking ──update──▶ Prompt ──update now──▶ Downloading
+    ///                     │  └──none (manual)──▶ UpToDate            │      │
+    ///                     └──none (automatic) / notifications off──▶ Idle   │
+    ///   Downloading ──ok──▶ DownloadDone   Downloading ──fail──▶ DownloadFailed
+    ///   Prompt/UpToDate/DownloadDone/DownloadFailed ──dismiss──▶ Idle
+    ///
+    /// The checker reports from its own threads, so `phase` and the data that
+    /// belongs to it are guarded by `mutex`; render() works on a copy.
+    enum class Phase { Idle, Checking, Prompt, UpToDate, Downloading, DownloadDone, DownloadFailed };
+    enum class CheckKind { Automatic, Manual };
+
     struct UpdateManager::Impl
     {
         UpdateChecker checker;
-        bool showUpdateDialog = false;
-        bool showUpToDateDialog = false;
-        bool isCheckingForUpdates = false;
-        bool updateNotificationsEnabled = true;
-        bool showDownloadProgress = false;
-        bool downloadInProgress = false;
-        bool isManualCheck = false;
-        std::string downloadError;
-        ReleaseInfo currentRelease;
+        std::atomic<bool> updateNotificationsEnabled{true};
 
-        // Dialog state
-        bool userWantsUpdate = false;
-        bool userDismissed = false;
+        std::mutex mutex;
+        Phase phase = Phase::Idle;
+        CheckKind checkKind = CheckKind::Automatic;
+        ReleaseInfo currentRelease;  // Prompt
+        std::string downloadError;   // DownloadFailed
 
         // Download progress tracking
         std::atomic<size_t> downloadedBytes{0};
         std::atomic<size_t> totalBytes{0};
+
+        Phase getPhase()
+        {
+            std::lock_guard lock(mutex);
+            return phase;
+        }
+        void dismiss(Phase expected)
+        {
+            std::lock_guard lock(mutex);
+            if (phase == expected) phase = Phase::Idle;
+        }
+        /// Idle/terminal dialog → Checking. False while busy.
+        bool beginCheck(CheckKind kind)
+        {
+            std::lock_guard lock(mutex);
+            if (phase == Phase::Checking || phase == Phase::Downloading) return false;
+            phase = Phase::Checking;
+            checkKind = kind;
+            return true;
+        }
     };
 
     UpdateManager::UpdateManager() : pImpl(std::make_unique<Impl>())
@@ -43,20 +72,22 @@ namespace UpdateChecker
     {
         ImGui::SetCurrentContext(ctx);
 
+        const Phase phase = pImpl->getPhase();
+
         // Render the update dialog if needed
-        if (pImpl->showUpdateDialog)
+        if (phase == Phase::Prompt)
         {
             renderUpdateDialog();
         }
 
         // Render download progress if needed
-        if (pImpl->showDownloadProgress)
+        if (phase == Phase::Downloading || phase == Phase::DownloadDone || phase == Phase::DownloadFailed)
         {
             ImGui::OpenPopup("Download Progress");
 
             if (ImGui::BeginPopupModal("Download Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
             {
-                if (pImpl->downloadInProgress)
+                if (phase == Phase::Downloading)
                 {
                     ImGui::Text("Downloading and installing update...");
                     ImGui::Text("Please wait, this may take a few moments.");
@@ -72,15 +103,19 @@ namespace UpdateChecker
                 }
                 else
                 {
-                    if (!pImpl->downloadError.empty())
+                    if (phase == Phase::DownloadFailed)
                     {
+                        std::string error;
+                        {
+                            std::lock_guard lock(pImpl->mutex);
+                            error = pImpl->downloadError;
+                        }
                         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Download failed:");
-                        ImGui::TextWrapped("%s", pImpl->downloadError.c_str());
+                        ImGui::TextWrapped("%s", error.c_str());
 
                         if (ImGui::Button("OK", ImVec2(120, 0)))
                         {
-                            pImpl->showDownloadProgress = false;
-                            pImpl->downloadError.clear();
+                            pImpl->dismiss(Phase::DownloadFailed);
                             ImGui::CloseCurrentPopup();
                         }
                     }
@@ -91,7 +126,7 @@ namespace UpdateChecker
 
                         if (ImGui::Button("OK", ImVec2(120, 0)))
                         {
-                            pImpl->showDownloadProgress = false;
+                            pImpl->dismiss(Phase::DownloadDone);
                             ImGui::CloseCurrentPopup();
                         }
                     }
@@ -102,7 +137,7 @@ namespace UpdateChecker
         }
         
         // Render "up to date" dialog if needed
-        if (pImpl->showUpToDateDialog) {
+        if (phase == Phase::UpToDate) {
             ImGui::OpenPopup("Software Up to Date");
             
             if (ImGui::BeginPopupModal("Software Up to Date", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
@@ -117,7 +152,7 @@ namespace UpdateChecker
                 ImGui::TextDisabled("Check back later or enable automatic notifications in the menu");
                 
                 if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    pImpl->showUpToDateDialog = false;
+                    pImpl->dismiss(Phase::UpToDate);
                     ImGui::CloseCurrentPopup();
                 }
                 
@@ -128,36 +163,26 @@ namespace UpdateChecker
 
     void UpdateManager::checkForUpdatesAsync()
     {
-        if (pImpl->isCheckingForUpdates || !pImpl->updateNotificationsEnabled)
+        if (!pImpl->updateNotificationsEnabled || !pImpl->beginCheck(CheckKind::Automatic))
         {
             return;
         }
-
-        pImpl->isCheckingForUpdates = true;
-        pImpl->isManualCheck = false;
         spdlog::info("Starting automatic update check...");
 
         pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
-                                       {
-        pImpl->isCheckingForUpdates = false;
-        handleUpdateCheckResult(hasUpdate, release); });
+                                       { handleUpdateCheckResult(hasUpdate, release); });
     }
 
     void UpdateManager::checkForUpdatesManual()
     {
-        if (pImpl->isCheckingForUpdates)
+        if (!pImpl->beginCheck(CheckKind::Manual))
         {
             return;
         }
-
-        pImpl->isCheckingForUpdates = true;
-        pImpl->isManualCheck = true;
         spdlog::info("Starting manual update check...");
 
         pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
-                                       {
-        pImpl->isCheckingForUpdates = false;
-        handleUpdateCheckResult(hasUpdate, release); });
+                                       { handleUpdateCheckResult(hasUpdate, release); });
     }
 
     void UpdateManager::setUpdateNotificationsEnabled(bool enabled)
@@ -198,32 +223,31 @@ namespace UpdateChecker
 
     void UpdateManager::handleUpdateCheckResult(bool hasUpdate, const ReleaseInfo &release)
     {
-        if (hasUpdate && (pImpl->updateNotificationsEnabled || pImpl->isManualCheck))
+        std::lock_guard lock(pImpl->mutex);
+        if (pImpl->phase != Phase::Checking)
+            return;
+        const bool manual = pImpl->checkKind == CheckKind::Manual;
+
+        if (hasUpdate && (pImpl->updateNotificationsEnabled || manual))
         {
             spdlog::info("Update available: {} -> {}",
                          UpdateChecker::getCurrentVersion().toString(),
                          release.version.toString());
 
             pImpl->currentRelease = release;
-            pImpl->showUpdateDialog = true;
-            pImpl->userWantsUpdate = false;
-            pImpl->userDismissed = false;
+            pImpl->phase = Phase::Prompt;
         }
         else if (hasUpdate)
         {
             spdlog::info("Update available but notifications disabled");
+            pImpl->phase = Phase::Idle;
         }
         else
         {
             spdlog::info("No updates available");
             // Show "up to date" dialog for manual checks
-            if (pImpl->isManualCheck) {
-                pImpl->showUpToDateDialog = true;
-            }
+            pImpl->phase = manual ? Phase::UpToDate : Phase::Idle;
         }
-        
-        // Reset manual check flag
-        pImpl->isManualCheck = false;
     }
 
     void UpdateManager::handleUpdateAction(UpdateAction action, const ReleaseInfo &release)
@@ -235,16 +259,23 @@ namespace UpdateChecker
         {
         case UpdateAction::UpdateNow:
             spdlog::info("User chose to update now");
-            pImpl->showDownloadProgress = true;
-            pImpl->downloadInProgress = true;
-            pImpl->downloadError.clear();
+            {
+                std::lock_guard lock(pImpl->mutex);
+                pImpl->phase = Phase::Downloading;
+                pImpl->downloadError.clear();
+            }
             pImpl->downloadedBytes = 0;
             pImpl->totalBytes = 0;
 
             pImpl->checker.downloadAndInstallUpdate(release, [this](bool success, const std::string &error) {
-                pImpl->downloadInProgress = false;
-                if (!success) {
+                std::lock_guard lock(pImpl->mutex);
+                if (pImpl->phase != Phase::Downloading)
+                    return;
+                if (success) {
+                    pImpl->phase = Phase::DownloadDone;
+                } else {
                     pImpl->downloadError = error;
+                    pImpl->phase = Phase::DownloadFailed;
                     spdlog::error("Update download/install failed: {}", error);
                 }
             },
@@ -287,7 +318,11 @@ namespace UpdateChecker
 
         if (ImGui::BeginPopupModal("Update Available", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
         {
-            const auto &release = pImpl->currentRelease;
+            ReleaseInfo release;
+            {
+                std::lock_guard lock(pImpl->mutex);
+                release = pImpl->currentRelease;
+            }
 
             ImGui::Text("A new version of LED Matrix Controller is available!");
             ImGui::Separator();
@@ -311,7 +346,6 @@ namespace UpdateChecker
             if (ImGui::Button("Update Now", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::UpdateNow, release);
-                pImpl->showUpdateDialog = false;
                 ImGui::CloseCurrentPopup();
             }
 #else
@@ -321,7 +355,6 @@ namespace UpdateChecker
             if (ImGui::Button("View Release", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::UpdateNow, release); // On Linux this opens browser
-                pImpl->showUpdateDialog = false;
                 ImGui::CloseCurrentPopup();
             }
 #endif
@@ -330,7 +363,7 @@ namespace UpdateChecker
             if (ImGui::Button("Remind Later", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::RemindLater, release);
-                pImpl->showUpdateDialog = false;
+                pImpl->dismiss(Phase::Prompt);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SetItemTooltip("You'll be reminded again in %d days",
@@ -340,7 +373,7 @@ namespace UpdateChecker
             if (ImGui::Button("Skip Version", ImVec2(120, 0)))
             {
                 handleUpdateAction(UpdateAction::Skip, release);
-                pImpl->showUpdateDialog = false;
+                pImpl->dismiss(Phase::Prompt);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SetItemTooltip("Don't notify about this version anymore");

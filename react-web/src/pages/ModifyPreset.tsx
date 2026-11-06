@@ -19,7 +19,7 @@ import type { ListScenes, ListProviders } from '~/apiTypes/list_scenes'
 
 function ModifyPresetInner({ presetId }: { presetId: string }) {
   const navigate = useNavigate()
-  const { preset, setPreset } = useConfig()
+  const { preset, setPreset, loadPreset } = useConfig()
 
   const { data: rawPreset, isLoading: presetLoading } = useFetch<RawPreset>(`/presets?id=${encodeURIComponent(presetId)}`)
   const { data: sceneDefinitions, isLoading: scenesLoading } = useFetch<ListScenes[]>('/list_scenes')
@@ -28,9 +28,9 @@ function ModifyPresetInner({ presetId }: { presetId: string }) {
 
   useEffect(() => {
     if (rawPreset) {
-      setPreset(arrayToObjectPresets(rawPreset))
+      loadPreset(arrayToObjectPresets(rawPreset))
     }
-  }, [rawPreset, setPreset])
+  }, [rawPreset, loadPreset])
 
   const isLoading = presetLoading || scenesLoading
 

@@ -34,3 +34,44 @@ export function parseLiveFrame(buffer: ArrayBuffer): LiveFrame {
   }
   return { width, height, sequence, rgba }
 }
+
+/**
+ * Demand side of the pull-based `/live_frame` protocol.
+ *
+ * Three independent conditions must all hold before the browser may ask the
+ * matrix for a frame: the socket is open, the page is visible, and the
+ * preview intersects the viewport. On top of that at most one `next` request
+ * is in flight. A connected socket is never demand by itself, so a hidden or
+ * scrolled-away preview costs the Pi nothing.
+ */
+export class LiveFrameDemand {
+  private socketOpen = false
+  private inFlight = false
+  private inViewport = false
+  private disposed = false
+  private pageVisible: boolean
+
+  constructor(pageVisible: boolean) {
+    this.pageVisible = pageVisible
+  }
+
+  /** Visible, on screen and not disposed (socket state aside). */
+  get eligible() {
+    return !this.disposed && this.pageVisible && this.inViewport
+  }
+
+  /** Returns true when a `next` may be sent now, and marks it in flight. */
+  tryRequest() {
+    if (!this.eligible || !this.socketOpen || this.inFlight) return false
+    this.inFlight = true
+    return true
+  }
+
+  socketOpened() { this.socketOpen = true; this.inFlight = false }
+  /** Socket closed or replaced: any outstanding request is gone with it. */
+  socketClosed() { this.socketOpen = false; this.inFlight = false }
+  frameReceived() { this.inFlight = false }
+  setPageVisible(visible: boolean) { this.pageVisible = visible }
+  setInViewport(inViewport: boolean) { this.inViewport = inViewport }
+  dispose() { this.disposed = true; this.socketOpen = false; this.inFlight = false }
+}
