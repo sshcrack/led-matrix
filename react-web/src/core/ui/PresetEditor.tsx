@@ -69,6 +69,12 @@ function SceneSettings({ scene, presetId, onChange }: { scene: Scene; presetId: 
  * autosave, multi-add, reorder, delete-with-undo, inline rename, transition settings.
  */
 export function PresetEditor({ presetId, header = true }: { presetId: string; header?: boolean }) {
+  // Keyed by preset: each preset gets its own editor state, so a save still in
+  // flight for one preset can never touch another preset's draft.
+  return <PresetEditorBody key={presetId} presetId={presetId} header={header} />
+}
+
+function PresetEditorBody({ presetId, header }: { presetId: string; header: boolean }) {
   const ed = usePresetEditor(presetId)
   const { preset } = ed
   const { sceneByName } = useMatrix()

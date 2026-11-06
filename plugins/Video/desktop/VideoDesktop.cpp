@@ -140,16 +140,22 @@ void VideoDesktop::render_search_ui() {
   ImGui::EndChild();
 }
 
-void VideoDesktop::cancel_search() {
-  std::lock_guard<std::mutex> ctl(search_ctl_mutex_);
+void VideoDesktop::cancel_search_locked() {
   search_running_ = false;
   if (search_thread_.joinable()) search_thread_.join();
   search_running_ = true;
 }
 
-void VideoDesktop::start_search(const std::string &query, bool reply_to_matrix) {
-  cancel_search();
+void VideoDesktop::cancel_search() {
   std::lock_guard<std::mutex> ctl(search_ctl_mutex_);
+  cancel_search_locked();
+}
+
+void VideoDesktop::start_search(const std::string &query, bool reply_to_matrix) {
+  // Cancel + start under one lock: the UI thread and the WebSocket thread can
+  // both call this, and assigning to a still-joinable std::thread terminates.
+  std::lock_guard<std::mutex> ctl(search_ctl_mutex_);
+  cancel_search_locked();
   search_busy_ = true;
   search_thread_ = std::thread([this, query, reply_to_matrix] {
     std::string error;

@@ -1,0 +1,65 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { ApiUrlContext } from '~/components/apiUrl/apiUrlContext'
+import { MatrixContext } from './matrixContext'
+import { usePresetEditor } from './usePresetEditor'
+import type { RawPreset } from '~/apiTypes/list_presets'
+
+const mkPreset = (name: string): RawPreset => ({
+  display_name: name, transition_name: 'blend', transition_duration: 0,
+  scenes: [{ uuid: 'u', type: 'clock', arguments: {} }],
+}) as RawPreset
+
+describe('usePresetEditor', () => {
+  const saved: { id: string; preset: RawPreset }[] = []
+  let shared: Record<string, RawPreset>
+  let release: (() => void) | null = null
+  let holdFirstSave = false
+
+  const savePreset = vi.fn(async (id: string, preset: RawPreset) => {
+    if (holdFirstSave) { holdFirstSave = false; await new Promise<void>(r => { release = r }) }
+    saved.push({ id, preset })
+  })
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <ApiUrlContext.Provider value="http://x">
+      <MatrixContext.Provider value={{ savePreset, presets: shared } as never}>{children}</MatrixContext.Provider>
+    </ApiUrlContext.Provider>
+  )
+
+  beforeEach(() => {
+    saved.length = 0; savePreset.mockClear(); release = null
+    shared = { A: mkPreset('A'), B: mkPreset('B') }
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const id = new URL(url).searchParams.get('id')!
+      return { ok: true, json: async () => structuredClone(shared[id]) }
+    }))
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('never saves one preset’s draft under another preset’s id', async () => {
+    holdFirstSave = true
+    const { result, rerender } = renderHook(({ id }) => usePresetEditor(id, 5), { wrapper, initialProps: { id: 'A' } })
+    await waitFor(() => expect(result.current.preset?.display_name).toBe('A'))
+    act(() => result.current.setName('A edited'))
+    await waitFor(() => expect(savePreset).toHaveBeenCalledTimes(1))   // A's save is now in flight
+    rerender({ id: 'B' })                                               // switch before it completes
+    await act(async () => { release?.() })
+    await waitFor(() => expect(result.current.preset?.display_name).toBe('B'))
+    await new Promise(r => setTimeout(r, 30))
+    expect(saved.every(s => (s.id === 'A') === (s.preset.display_name === 'A edited'))).toBe(true)
+    expect(saved.find(s => s.id === 'B')).toBeUndefined()
+  })
+
+  it('keeps a rename made elsewhere when a scene is edited afterwards', async () => {
+    const { result, rerender } = renderHook(() => usePresetEditor('A', 5), { wrapper })
+    await waitFor(() => expect(result.current.preset?.display_name).toBe('A'))
+    shared = { ...shared, A: { ...shared.A, display_name: 'Renamed in menu' } }   // rail-menu rename
+    rerender()
+    await waitFor(() => expect(result.current.preset?.display_name).toBe('Renamed in menu'))
+    act(() => result.current.removeScene('u'))
+    await waitFor(() => expect(saved.length).toBe(1))
+    expect(saved[0].preset.display_name).toBe('Renamed in menu')
+  })
+})

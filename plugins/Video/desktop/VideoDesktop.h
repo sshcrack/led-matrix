@@ -45,6 +45,7 @@ private:
   /// to the Pi so the web UI can show them.
   void start_search(const std::string &query, bool reply_to_matrix);
   void cancel_search();
+  void cancel_search_locked(); // caller holds search_ctl_mutex_
   void play_url(const std::string &url);
   void refresh_tools_status(bool force = false);
   void start_audio(const std::string &path);
