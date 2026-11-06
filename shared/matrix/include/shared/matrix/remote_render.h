@@ -51,8 +51,12 @@ void report_worker_heartbeat(int protocol_version, const std::vector<std::string
 /// Start (or reuse) a remote-render session for this scene. The scene's
 /// canonical property JSON is sent to the desktop so remote rendering remains
 /// an internal placement decision rather than separate user configuration.
+/// A nonempty transition starts a new session carrying {name, duration_ms, from}
+/// (RGB888 bytes). The worker composes the handoff before continuing the scene;
+/// ordinary requests then reuse this session. Reconnects omit the old handoff.
 std::optional<std::uint32_t> request_scene(
-    const Scenes::Scene &scene, int width, int height, int target_fps);
+    const Scenes::Scene &scene, int width, int height, int target_fps,
+    const nlohmann::json &transition = nlohmann::json::object());
 
 /// Keep the worker fed from the same authoritative runtime state as local
 /// scenes. Audio is mirrored losslessly enough for any current audio scene; the

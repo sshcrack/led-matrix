@@ -201,7 +201,7 @@ bool worker_available(std::string_view scene)
 }
 
 std::optional<std::uint32_t> request_scene(
-    const Scenes::Scene &scene, int width, int height, int target_fps)
+    const Scenes::Scene &scene, int width, int height, int target_fps, const nlohmann::json &transition)
 {
     const auto caps = scene.get_capabilities();
     if (!caps.supports_remote_rendering)
@@ -220,7 +220,7 @@ std::optional<std::uint32_t> request_scene(
 
         const auto uuid = scene.get_uuid();
         const auto arguments = scene.to_json();
-        if (s.session != 0 && s.scene == scene.get_name() && s.scene_uuid == uuid
+        if (transition.empty() && s.session != 0 && s.scene == scene.get_name() && s.scene_uuid == uuid
             && s.width == width && s.height == height
             && s.start_command.value("arguments", nlohmann::json::object()) == arguments) {
             return s.session;
@@ -252,6 +252,8 @@ std::optional<std::uint32_t> request_scene(
             {"audio", audio_snapshot},
             {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
         };
+        if (!transition.empty())
+            s.start_command["transition"] = transition;
         session = s.session;
         command = s.start_command;
         sender = s.sender;
@@ -344,7 +346,9 @@ std::optional<nlohmann::json> reconnect_command()
     std::lock_guard lock(state().mutex);
     if (state().session == 0 || state().start_command.empty())
         return std::nullopt;
-    return state().start_command;
+    auto command = state().start_command;
+    command.erase("transition"); // Reconnect resumes the scene, never replays an old handoff.
+    return command;
 }
 
 Status status()

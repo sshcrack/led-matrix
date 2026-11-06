@@ -13,7 +13,7 @@
 namespace RemoteRenderProtocol {
 
 inline constexpr std::uint8_t PluginId = 0x05;
-inline constexpr std::uint8_t Version = 2;
+inline constexpr std::uint8_t Version = 3;
 inline constexpr std::size_t HeaderBytes = 21;
 inline constexpr std::size_t ChunkBytes = 1200;
 
