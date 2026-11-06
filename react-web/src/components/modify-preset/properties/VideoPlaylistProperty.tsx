@@ -198,8 +198,8 @@ export default function VideoPlaylistProperty({ property, value, onChange }: Pro
           {items.map((item) => {
             const added = list.includes(item.url)
             return (
-              <li key={item.id} className="flex items-center gap-3 p-2">
-                <img src={item.thumbnail} alt="" loading="lazy" className="h-12 w-20 shrink-0 rounded object-cover bg-muted" />
+              <li key={item.id} className="flex items-center gap-2 p-2 sm:gap-3">
+                <img src={item.thumbnail} alt="" loading="lazy" className="h-9 w-14 shrink-0 rounded object-cover bg-muted sm:h-12 sm:w-20" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium" title={item.title}>{item.title}</p>
                   <p className="truncate text-xs text-muted-foreground">
@@ -209,9 +209,9 @@ export default function VideoPlaylistProperty({ property, value, onChange }: Pro
                 <Button type="button" size="icon" variant="ghost" title="Play now" onClick={() => playNow(item.url)}>
                   {playing === item.url ? <Check className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>
-                <Button type="button" size="sm" variant={added ? 'secondary' : 'outline'} disabled={added} onClick={() => add(item)} className="gap-1">
+                <Button type="button" size="sm" variant={added ? 'secondary' : 'outline'} disabled={added} onClick={() => add(item)} className="gap-1 px-2 sm:px-3" aria-label={added ? 'Added' : 'Add'}>
                   {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {added ? 'Added' : 'Add'}
+                  <span className="hidden sm:inline">{added ? 'Added' : 'Add'}</span>
                 </Button>
               </li>
             )
@@ -226,11 +226,11 @@ export default function VideoPlaylistProperty({ property, value, onChange }: Pro
             const id = videoId(url)
             const title = (id && titles[id]) || url
             return (
-              <li key={url} className="flex items-center gap-3 p-2">
+              <li key={url} className="flex items-center gap-2 p-2 sm:gap-3">
                 {id ? (
-                  <img src={`https://i.ytimg.com/vi/${id}/default.jpg`} alt="" loading="lazy" className="h-9 w-14 shrink-0 rounded object-cover bg-muted" />
+                  <img src={`https://i.ytimg.com/vi/${id}/default.jpg`} alt="" loading="lazy" className="h-8 w-12 shrink-0 rounded object-cover bg-muted sm:h-9 sm:w-14" />
                 ) : (
-                  <div className="flex h-9 w-14 shrink-0 items-center justify-center rounded bg-muted"><LinkIcon className="h-4 w-4 text-muted-foreground" /></div>
+                  <div className="flex h-8 w-12 sm:h-9 sm:w-14 shrink-0 items-center justify-center rounded bg-muted"><LinkIcon className="h-4 w-4 text-muted-foreground" /></div>
                 )}
                 <p className="min-w-0 flex-1 truncate text-sm" title={url}>{title}</p>
                 <Button type="button" size="icon" variant="ghost" title="Play now" onClick={() => playNow(url)}>
