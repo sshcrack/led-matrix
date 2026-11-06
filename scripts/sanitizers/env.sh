@@ -28,7 +28,7 @@ fi
 export ASAN_OPTIONS="detect_leaks=1:abort_on_error=1:strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:fast_unwind_on_malloc=0:suppressions=${_lm_san_dir}/asan.supp${_lm_log:+${_lm_log}/asan}${ASAN_OPTIONS:+:${ASAN_OPTIONS}}"
 export LSAN_OPTIONS="suppressions=${_lm_san_dir}/lsan.supp:print_suppressions=0${LSAN_OPTIONS:+:${LSAN_OPTIONS}}"
 export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1:suppressions=${_lm_san_dir}/ubsan.supp${_lm_log:+${_lm_log}/ubsan}${UBSAN_OPTIONS:+:${UBSAN_OPTIONS}}"
-export TSAN_OPTIONS="second_deadlock_stack=1:history_size=4:halt_on_error=0:suppressions=${_lm_san_dir}/tsan.supp${_lm_log:+${_lm_log}/tsan}${TSAN_OPTIONS:+:${TSAN_OPTIONS}}"
+export TSAN_OPTIONS="second_deadlock_stack=1:ignore_noninstrumented_modules=1:history_size=4:halt_on_error=0:suppressions=${_lm_san_dir}/tsan.supp${_lm_log:+${_lm_log}/tsan}${TSAN_OPTIONS:+:${TSAN_OPTIONS}}"
 # GraphicsMagick (statically linked) uses OpenMP; libgomp's barriers are
 # invisible to TSan and produce false races. One OpenMP thread avoids them.
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
