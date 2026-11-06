@@ -12,7 +12,7 @@ interface CurrentStatusCardProps {
   isLoading: boolean
   installState: InstallState
   onCheck: () => void
-  onInstall: () => void
+  onInstall: (version: string) => void
 }
 
 export function CurrentStatusCard({ status, isLoading, installState, onCheck, onInstall }: CurrentStatusCardProps) {
@@ -97,7 +97,7 @@ export function CurrentStatusCard({ status, isLoading, installState, onCheck, on
           {status.update_available && (
             <Button
               size="sm"
-              onClick={onInstall}
+              onClick={() => onInstall(status.latest_version)}
               disabled={isInProgress || installState === 'installing'}
               className="gap-2"
             >

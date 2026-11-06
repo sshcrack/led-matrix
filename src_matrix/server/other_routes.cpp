@@ -435,6 +435,10 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
 
     if (content_type == "application/javascript" || content_type == "text/css" || file_path.extension() == ".ico")
         response.append_header(restinio::http_field::cache_control, "public, max-age=31536000");
+    else
+        // index.html (and the SPA fallback) name the hashed bundles; without this the browser's
+        // heuristic cache keeps serving an old shell that points at old assets after an update.
+        response.append_header(restinio::http_field::cache_control, "no-cache");
 
     Server::add_cors_headers(response);
     return response.set_body(restinio::sendfile(file_path)).done();
