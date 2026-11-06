@@ -3,7 +3,7 @@ import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import type { RawPreset, Scene } from '~/apiTypes/list_presets'
 import { useMatrix } from './matrixContext'
 import { toast } from 'sonner'
-import { isPresetBlocked } from './presetSaveQueue'
+import { isPresetBlocked, whenPresetIdle } from './presetSaveQueue'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
 
@@ -56,7 +56,9 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     latest.current = null; revision.current = savedRevision.current = 0; nameRev.current = savedNameRev.current = 0
     lastShared.current = sharedNow.current; renamedTo.current = undefined
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
-    fetch(`${apiUrl}/presets?id=${encodeURIComponent(presetId)}`, { signal: c.signal })
+    // Load only after this preset's queued writes have landed (e.g. a previous editor's last save).
+    whenPresetIdle(presetId)
+      .then(() => fetch(`${apiUrl}/presets?id=${encodeURIComponent(presetId)}`, { signal: c.signal }))
       .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<RawPreset> })
       .then(p => { latest.current = p; revision.current = savedRevision.current = 0; setPreset(p); setLoadError(false); setSaveState('saved') })
       .catch(e => { if (e?.name !== 'AbortError') setLoadError(true) })

@@ -6,7 +6,7 @@ import type { Status } from '~/apiTypes/status'
 import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { useResource } from './useResource'
-import { beginPresetDelete, enqueueSave, finishPresetDelete, isPresetLive, reconcilePresetQueue } from './presetSaveQueue'
+import { beginPresetDelete, enqueueOp, enqueueSave, finishPresetDelete, isPresetLive, reconcilePresetQueue } from './presetSaveQueue'
 
 export interface Pack { id: string; name: string; description: string; colors: string[]; available: boolean; missing_scenes: string[] }
 
@@ -77,7 +77,9 @@ export function useMatrixState() {
     },
     async renamePreset(id: string, name: string) {
       setPresets(p => p && p[id] ? { ...p, [id]: { ...p[id], display_name: name } } : p)
-      try { await call(`/preset_display_name?id=${encodeURIComponent(id)}`, json({ display_name: name })) } catch { toast.error('Could not rename'); void refreshPresets() }
+      // Queued behind this preset's autosaves so an older draft can't write the previous name back afterwards.
+      try { await enqueueOp(id, () => call(`/preset_display_name?id=${encodeURIComponent(id)}`, json({ display_name: name })).then(() => undefined)) }
+      catch { toast.error('Could not rename'); void refreshPresets() }
     },
     async deletePreset(id: string, name: string) {
       await beginPresetDelete(id)   // drop queued autosaves and wait for the one in flight

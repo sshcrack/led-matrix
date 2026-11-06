@@ -22,6 +22,7 @@ describe('usePresetEditor', () => {
   const send = vi.fn(async (id: string, preset: RawPreset) => {
     if (holdFirstSave) { holdFirstSave = false; await new Promise<void>(r => { release = r }) }
     saved.push({ id, preset })
+    shared = { ...shared, [id]: preset }   // the daemon now holds it
   })
   const savePreset = (id: string, preset: RawPreset) => enqueueSave(id, preset, d => send(id, d))
 
@@ -126,19 +127,35 @@ describe('usePresetEditor', () => {
     await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
   })
 
-  it('saves a closing editor’s draft after a slow in-flight save, so a reopened editor’s newer edit wins', async () => {
+  it('a reopened editor loads only after the previous editor’s queued saves landed', async () => {
     holdFirstSave = true
     const first = renderHook(() => usePresetEditor('A', 5), { wrapper })
     await waitFor(() => expect(first.result.current.preset?.display_name).toBe('A'))
     act(() => first.result.current.setName('A1'))
-    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))            // save "A1" in flight (held)
-    act(() => first.result.current.setName('A2'))                                // edit B while pending
-    first.unmount()                                                              // close: A2 is queued behind A1
-    shared = { ...shared, A: mkPreset('A') }
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))                   // save "A1" in flight (held)
+    act(() => first.result.current.setName('A2'))                                 // edit while saving
+    first.unmount()                                                               // close: A2 queued behind A1
+    const fetchCalls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length
     const second = renderHook(() => usePresetEditor('A', 5), { wrapper })
-    await waitFor(() => expect(second.result.current.preset).not.toBeNull())
-    act(() => second.result.current.setName('A3'))                               // newer edit from the new editor
+    await new Promise(r => setTimeout(r, 30))
+    expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(fetchCalls)   // still waiting: no stale GET
     await act(async () => { release?.() })
-    await waitFor(() => expect(saved.at(-1)?.preset.display_name).toBe('A3'))
+    await waitFor(() => expect(saved.map(s => s.preset.display_name)).toEqual(['A1', 'A2']))
+    await waitFor(() => expect(second.result.current.preset?.display_name).toBe('A2'))
+  })
+
+  it('keeps queued drafts when a delete fails, and orders a rename after them', async () => {
+    const { enqueueSave, enqueueOp, beginPresetDelete, finishPresetDelete } = await import('./presetSaveQueue')
+    const order: string[] = []
+    let gate: () => void = () => {}
+    const first = enqueueSave('Q', mkPreset('d1'), async d => { await new Promise<void>(r => { gate = r }); order.push(d.display_name!) })
+    const second = enqueueSave('Q', mkPreset('d2'), async d => { order.push(d.display_name!) })
+    const del = beginPresetDelete('Q')
+    gate(); await del
+    expect(order).toEqual(['d1'])                                                 // d2 held back, not dropped
+    finishPresetDelete('Q', false)                                                // DELETE failed: resume
+    const rename = enqueueOp('Q', async () => { order.push('rename') })
+    await Promise.all([first, second, rename])
+    expect(order).toEqual(['d1', 'd2', 'rename'])
   })
 })
