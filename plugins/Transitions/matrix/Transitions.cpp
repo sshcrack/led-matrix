@@ -9,7 +9,7 @@ static inline uint8_t lerp_u8(uint8_t a, uint8_t b, float t)
     return static_cast<uint8_t>(std::round(a + (b - a) * t));
 }
 
-template<typename F>
+template<bool needs_incoming = false, typename F>
 static void apply_pixel_loop(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* to,
                              float alpha, int width, int height, F&& blend_fn)
 {
@@ -17,11 +17,27 @@ static void apply_pixel_loop(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* t
     {
         for (int x = 0; x < width; ++x)
         {
+            // Most reveal pixels belong entirely to one scene. Compute the
+            // mask first so those pixels need only one expensive hardware read.
+            // Morph is the only mask that depends on incoming luminance.
             uint8_t fr = 0, fg = 0, fb = 0;
             uint8_t tr = 0, tg = 0, tb = 0;
+            if constexpr (needs_incoming)
+                to->GetPixel(x, y, &tr, &tg, &tb);
+            const float la = blend_fn(x, y, fr, fg, fb, tr, tg, tb, alpha);
+            if constexpr (!needs_incoming) {
+                if (la > 0.0f)
+                    to->GetPixel(x, y, &tr, &tg, &tb);
+            }
+            if (la >= 1.0f) {
+                dst->SetPixel(x, y, tr, tg, tb);
+                continue;
+            }
             from->GetPixel(x, y, &fr, &fg, &fb);
-            to->GetPixel(x, y, &tr, &tg, &tb);
-            float la = blend_fn(x, y, fr, fg, fb, tr, tg, tb, alpha);
+            if (la <= 0.0f) {
+                dst->SetPixel(x, y, fr, fg, fb);
+                continue;
+            }
             dst->SetPixel(x, y, lerp_u8(fr, tr, la),
                           lerp_u8(fg, tg, la),
                           lerp_u8(fb, tb, la));
@@ -75,7 +91,7 @@ void SwipeTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to
 void MorphTransition::apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
                             float alpha, int width, int height)
 {
-    apply_pixel_loop(dst, from, to, alpha, width, height,
+    apply_pixel_loop<true>(dst, from, to, alpha, width, height,
         [](int, int, uint8_t, uint8_t, uint8_t, uint8_t tr, uint8_t tg, uint8_t tb, float a) {
             if (a >= 1.0f) return 1.0f;
             const float lum = (0.299f * tr + 0.587f * tg + 0.114f * tb) / 255.0f;
