@@ -46,6 +46,8 @@ private:
   std::mutex tools_status_mutex_;
   std::string tools_error_msg;
   std::string last_checked_ytdlp_path_;
+  // written on the WebSocket thread, read by the UI thread
+  mutable std::mutex current_url_mutex_;
   std::string current_url;
   bool enable_audio = true;
   int matrix_width = 128;

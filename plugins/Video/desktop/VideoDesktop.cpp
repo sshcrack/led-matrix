@@ -68,7 +68,12 @@ void VideoDesktop::render() {
 }
 
 void VideoDesktop::render_status_ui() {
-  ImGui::Text("URL: %s", current_url.empty() ? "None" : current_url.c_str());
+  std::string urlCopy;
+  {
+    std::lock_guard<std::mutex> lock(current_url_mutex_);
+    urlCopy = current_url;
+  }
+  ImGui::Text("URL: %s", urlCopy.empty() ? "None" : urlCopy.c_str());
 
   if (ImGui::Checkbox("Enable Audio", &enable_audio)) {
     if (!enable_audio) stop_audio();
@@ -142,15 +147,23 @@ void VideoDesktop::on_websocket_message(const std::string message) {
       return;
     }
     std::string newUrl = message.substr(4);
-    current_url = newUrl;
+    {
+      std::lock_guard<std::mutex> lock(current_url_mutex_);
+      current_url = newUrl;
+    }
     engine_->start(newUrl);
     return;
   }
   if (message.starts_with("size:")) {
     std::string sizeStr = message.substr(5);
     auto xPos = sizeStr.find('x');
-    matrix_width  = std::stoi(sizeStr.substr(0, xPos));
-    matrix_height = std::stoi(sizeStr.substr(xPos + 1));
+    if (xPos == std::string::npos) return;
+    try {
+      matrix_width  = std::stoi(sizeStr.substr(0, xPos));
+      matrix_height = std::stoi(sizeStr.substr(xPos + 1));
+    } catch (const std::exception &) {
+      // malformed size message from the peer; keep previous dimensions
+    }
   }
 }
 
