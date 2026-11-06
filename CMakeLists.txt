@@ -545,6 +545,12 @@ if(NOT ENABLE_DESKTOP)
     install(FILES "${CMAKE_BINARY_DIR}/led-matrix.service"
         DESTINATION "lib/systemd/system"
     )
+    # Root-side half of the web UI update: the hardened daemon cannot sudo, so it queues a request file.
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.path"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.service"
+        DESTINATION "lib/systemd/system"
+    )
 endif()
 
 # Main Target Compile
