@@ -32,3 +32,29 @@ called_from_lib:libgomp
 # dbus / glib worker threads pulled in by desktop libraries.
 race:libdbus
 race:libglib
+
+# Lock-order inversions / mutex misuse reported entirely inside the X11, xcb,
+# GLX and Mesa stack (both locks are owned by those libraries).
+deadlock:libX11
+deadlock:libxcb
+deadlock:libGLX
+deadlock:libGL.so
+deadlock:libEGL
+deadlock:libgallium
+# NOTE: GLFW's GLX teardown (destroyContextGLX, at process exit in
+# shadertoy_scene_preview_worker) unlocks a Mesa-owned mutex TSan never saw
+# locked ("unlock of an unlocked mutex"), after which TSan aborts with "nested
+# bug in the same thread" while reporting at exit. A mutex: suppression does
+# not avoid that abort, so tests that spawn the GL worker
+# (virtual_scene_preview_smoke, shadertoy_scene_preview_smoke) cannot pass
+# under TSan. See docs/memory-safety-report.md.
+# GraphicsMagick is statically linked into libSharedToolsMatrix.so and runs
+# OpenMP workers. libgomp barriers are not instrumented, so TSan cannot see the
+# ordering it provides. env.sh also sets OMP_NUM_THREADS=1 so TSan runs avoid
+# those workers entirely; these entries only cover leftovers. They are matched
+# by GraphicsMagick function name, never by our scene code.
+race:CloseCacheView
+race:SetNexus
+race:LockSemaphoreInfo
+race:MagickMallocAligned
+race:MagickFree
