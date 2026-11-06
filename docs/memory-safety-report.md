@@ -87,9 +87,9 @@ change was needed.
 
 ## Not verified / limits
 
-- **Cross-compile (arm64) build** and anything touching real GPIO / the Pi
-  (`/dev/mem`, DMA timing, privilege drop) were not run; sanitizers were only run
-  on x64 against the emulator. See "Build verification" below.
+- Anything touching real GPIO / the Pi (`/dev/mem`, DMA timing, privilege drop)
+  was not run; the arm64 build compiles but nothing was executed on `ledmat`, and
+  sanitizers were only run on x64 against the emulator.
 - Hardware-backed GL on the desktop (real GPU drivers) was not exercised; shader
   tests ran on Mesa.
 - Spotify, Deezer, weather and update-download network paths ran without
@@ -119,5 +119,6 @@ change was needed.
 
 ## Build verification
 
-See the PR description for the exact results of the `emulator`, `desktop-linux`
-and `cross-compile` presets.
+Built with the new flags (non-sanitized, `-DSKIP_WEB_BUILD=ON`, -j3), zero errors:
+`emulator` 313/313, `desktop-linux` 268/268, `cross-compile` (toolchain reused via
+`CROSS_COMPILE_ROOT`) 197/197. `desktop-windows` was not built (no Windows host).
