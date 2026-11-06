@@ -6,7 +6,7 @@ import type { Status } from '~/apiTypes/status'
 import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { useResource } from './useResource'
-import { markPresetDeleted, unmarkPresetDeleted } from './presetTombstones'
+import { beginPresetDelete, enqueueSave, finishPresetDelete, isPresetLive, reconcilePresetQueue } from './presetSaveQueue'
 
 export interface Pack { id: string; name: string; description: string; colors: string[]; available: boolean; missing_scenes: string[] }
 
@@ -25,6 +25,7 @@ export function useMatrixState() {
   const { setData: setPresets, refresh: refreshPresets } = presetsR
   const presetsRef = useRef(presetsR.data)
   useEffect(() => { presetsRef.current = presetsR.data })
+  useEffect(() => { if (presetsR.data) reconcilePresetQueue(Object.keys(presetsR.data)) }, [presetsR.data])
 
   const call = useCallback(async (path: string, init?: RequestInit) => {
     if (!apiUrl) throw new Error('No API')
@@ -79,23 +80,29 @@ export function useMatrixState() {
       try { await call(`/preset_display_name?id=${encodeURIComponent(id)}`, json({ display_name: name })) } catch { toast.error('Could not rename'); void refreshPresets() }
     },
     async deletePreset(id: string, name: string) {
-      markPresetDeleted(id)   // stop any open editor from re-creating it with a late autosave
-      try { await call(`/preset?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); await refreshPresets(); toast.success(`Deleted “${name}”`) }
-      catch {
-        unmarkPresetDeleted(id)
+      await beginPresetDelete(id)   // drop queued autosaves and wait for the one in flight
+      try {
+        await call(`/preset?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+        finishPresetDelete(id, true)
+        await refreshPresets(); toast.success(`Deleted “${name}”`)
+      } catch {
+        finishPresetDelete(id, false)
         toast.error('Could not delete (the active preset can’t be deleted)')
       }
     },
-    /** `keepalive` lets the request finish while the page unloads (browsers cap it at ~64 KB). */
-    async savePreset(id: string, preset: RawPreset, opts?: { keepalive?: boolean }) {
-      const nameAtStart = presetsRef.current?.[id]?.display_name
-      await call(`/preset?id=${encodeURIComponent(id)}`, { ...json(preset), keepalive: opts?.keepalive })
-      // A rename made while this save was in flight is newer than the name in `preset`; keep it.
-      setPresets(p => {
-        if (!p) return p
-        const now = p[id]?.display_name
-        const name = now !== undefined && now !== nameAtStart ? now : preset.display_name
-        return { ...p, [id]: { ...preset, display_name: name } }
+    /** Saves are queued per preset (see presetSaveQueue.ts). `keepalive` lets the request finish while the page unloads (~64 KB cap). */
+    savePreset(id: string, preset: RawPreset, opts?: { keepalive?: boolean }) {
+      return enqueueSave(id, preset, async draft => {
+        const nameAtStart = presetsRef.current?.[id]?.display_name
+        await call(`/preset?id=${encodeURIComponent(id)}`, { ...json(draft), keepalive: opts?.keepalive })
+        if (!isPresetLive(id)) return
+        // A rename made while this save was in flight is newer than the name in the draft; keep it.
+        setPresets(p => {
+          if (!p) return p
+          const now = p[id]?.display_name
+          const name = now !== undefined && now !== nameAtStart ? now : draft.display_name
+          return { ...p, [id]: { ...draft, display_name: name } }
+        })
       })
     },
     async addPack(packId: string, play: boolean) {

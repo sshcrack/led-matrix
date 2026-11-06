@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import type { RawPreset, Scene } from '~/apiTypes/list_presets'
 import { useMatrix } from './matrixContext'
-import { isPresetDeleted } from './presetTombstones'
+import { toast } from 'sonner'
+import { isPresetBlocked } from './presetSaveQueue'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
 
@@ -27,7 +28,9 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   const latest = useRef<RawPreset | null>(null)
   const revision = useRef(0)
   const savedRevision = useRef(0)
-  const inFlight = useRef(false)
+  const inFlight = useRef(0)
+  const unmounted = useRef(false)
+  useEffect(() => { unmounted.current = false; return () => { unmounted.current = true } }, [])
   const timer = useRef<number | null>(null)
   const activeId = useRef(presetId)
   // Name the shared list showed when the preset was fetched, and a rename seen since then.
@@ -60,29 +63,32 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     return () => c.abort()
   }, [apiUrl, presetId])
 
-  const flush = useCallback(async (keepalive = false) => {
+  // `force` (editor closing) sends even while an earlier save is in flight: the shared queue orders them.
+  const flush = useCallback(async (keepalive = false, force = false) => {
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
-    if (inFlight.current || !latest.current || revision.current === savedRevision.current) return
-    if (isPresetDeleted(presetId)) { if (timer.current) { window.clearTimeout(timer.current); timer.current = null } return }
+    if ((inFlight.current > 0 && !force) || !latest.current || revision.current === savedRevision.current) return
+    if (isPresetBlocked(presetId)) { if (timer.current) { window.clearTimeout(timer.current); timer.current = null } return }
     const rev = revision.current
     const nameRevNow = nameRev.current
     const draft = !nameEdited() && renamedTo.current !== undefined
       ? { ...latest.current, display_name: renamedTo.current } : latest.current
-    inFlight.current = true
+    inFlight.current++
     let succeeded = false
     setSaveState('saving')
     try {
       await savePreset(presetId, draft, { keepalive })
       if (activeId.current !== presetId) return   // switched away mid-save: this editor state now belongs to another preset
-      savedRevision.current = rev
+      savedRevision.current = Math.max(savedRevision.current, rev)
       succeeded = true
       savedNameRev.current = Math.max(savedNameRev.current, nameRevNow)
       setSaveState(revision.current === rev ? 'saved' : 'dirty')
-    } catch { if (activeId.current === presetId) setSaveState('error') }
-    finally {
-      inFlight.current = false
+    } catch {
+      if (unmounted.current) toast.error(`Could not save your last changes to “${draft.display_name ?? 'preset'}”`)
+      else if (activeId.current === presetId) setSaveState('error')
+    } finally {
+      inFlight.current--
       // Only after a successful save: a failed one (e.g. over the keepalive quota) must not retry in a tight loop.
-      if (succeeded && activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) {
+      if (succeeded && !unmounted.current && activeId.current === presetId && revision.current !== savedRevision.current && !timer.current) {
         // Edits made while saving: if the page is going away don't wait for the debounce.
         if (document.visibilityState === 'hidden') void flush(true)
         else timer.current = window.setTimeout(() => void flush(), debounceMs)
@@ -103,7 +109,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden') void flush(true) }
     document.addEventListener('visibilitychange', onHide)
-    return () => { document.removeEventListener('visibilitychange', onHide); void flush(true) }
+    return () => { document.removeEventListener('visibilitychange', onHide); void flush(false, true) }
   }, [flush])
 
   return {

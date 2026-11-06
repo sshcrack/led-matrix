@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { ApiUrlContext } from '~/components/apiUrl/apiUrlContext'
 import { MatrixContext } from './matrixContext'
 import { usePresetEditor } from './usePresetEditor'
+import { enqueueSave } from './presetSaveQueue'
 import type { RawPreset } from '~/apiTypes/list_presets'
 
 const mkPreset = (name: string): RawPreset => ({
@@ -17,10 +18,12 @@ describe('usePresetEditor', () => {
   let release: (() => void) | null = null
   let holdFirstSave = false
 
-  const savePreset = vi.fn(async (id: string, preset: RawPreset) => {
+  // `send` is the network call; `savePreset` goes through the real shared queue like useMatrix does.
+  const send = vi.fn(async (id: string, preset: RawPreset) => {
     if (holdFirstSave) { holdFirstSave = false; await new Promise<void>(r => { release = r }) }
     saved.push({ id, preset })
   })
+  const savePreset = (id: string, preset: RawPreset) => enqueueSave(id, preset, d => send(id, d))
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <ApiUrlContext.Provider value="http://x">
@@ -29,7 +32,7 @@ describe('usePresetEditor', () => {
   )
 
   beforeEach(() => {
-    saved.length = 0; savePreset.mockClear(); release = null
+    saved.length = 0; send.mockClear(); release = null
     shared = { A: mkPreset('A'), B: mkPreset('B') }
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       const id = new URL(url).searchParams.get('id')!
@@ -43,7 +46,7 @@ describe('usePresetEditor', () => {
     const { result, rerender } = renderHook(({ id }) => usePresetEditor(id, 5), { wrapper, initialProps: { id: 'A' } })
     await waitFor(() => expect(result.current.preset?.display_name).toBe('A'))
     act(() => result.current.setName('A edited'))
-    await waitFor(() => expect(savePreset).toHaveBeenCalledTimes(1))   // A's save is now in flight
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))   // A's save is now in flight
     rerender({ id: 'B' })                                               // switch before it completes
     await act(async () => { release?.() })
     await waitFor(() => expect(result.current.preset?.display_name).toBe('B'))
@@ -86,7 +89,7 @@ describe('usePresetEditor', () => {
     await waitFor(() => expect(view.result.current.preset?.display_name).toBe('A'))
     holdFirstSave = true
     act(() => view.result.current.setName('B'))
-    await waitFor(() => expect(savePreset).toHaveBeenCalledTimes(1))        // save of "B" in flight
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))        // save of "B" in flight
     act(() => view.result.current.removeScene('u'))                          // edit while saving
     await act(async () => { release?.() })                                   // "B" acknowledged
     await waitFor(() => expect(saved.length).toBeGreaterThanOrEqual(2))      // follow-up save of the scene edit
@@ -96,26 +99,46 @@ describe('usePresetEditor', () => {
   })
 
   it('does not retry failed saves in a tight loop and never saves a deleted preset', async () => {
-    savePreset.mockRejectedValueOnce(new Error('quota'))
+    send.mockRejectedValueOnce(new Error('quota'))
     const { result } = renderHook(() => usePresetEditor('A', 5), { wrapper })
     await waitFor(() => expect(result.current.preset?.display_name).toBe('A'))
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     act(() => result.current.removeScene('u'))
     await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
     await new Promise(r => setTimeout(r, 40))
-    expect(savePreset.mock.calls.length).toBeLessThanOrEqual(2)
+    expect(send.mock.calls.length).toBeLessThanOrEqual(2)
     expect(result.current.saveState).toBe('error')
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
 
-    const { markPresetDeleted, unmarkPresetDeleted } = await import('./presetTombstones')
-    markPresetDeleted('B')
+    const { beginPresetDelete, finishPresetDelete, reconcilePresetQueue } = await import('./presetSaveQueue')
+    await beginPresetDelete('B'); finishPresetDelete('B', true)
     const b = renderHook(() => usePresetEditor('B', 5), { wrapper })
     await waitFor(() => expect(b.result.current.preset?.display_name).toBe('B'))
-    savePreset.mockClear()
+    send.mockClear()
     act(() => b.result.current.removeScene('u'))
     b.unmount()
     await new Promise(r => setTimeout(r, 30))
-    expect(savePreset).not.toHaveBeenCalled()
-    unmarkPresetDeleted('B')
+    expect(send).not.toHaveBeenCalled()
+    reconcilePresetQueue(['B'])   // restored through /add_preset?id=B: saving works again
+    const again = renderHook(() => usePresetEditor('B', 5), { wrapper })
+    await waitFor(() => expect(again.result.current.preset?.display_name).toBe('B'))
+    act(() => again.result.current.removeScene('u'))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+  })
+
+  it('saves a closing editor’s draft after a slow in-flight save, so a reopened editor’s newer edit wins', async () => {
+    holdFirstSave = true
+    const first = renderHook(() => usePresetEditor('A', 5), { wrapper })
+    await waitFor(() => expect(first.result.current.preset?.display_name).toBe('A'))
+    act(() => first.result.current.setName('A1'))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))            // save "A1" in flight (held)
+    act(() => first.result.current.setName('A2'))                                // edit B while pending
+    first.unmount()                                                              // close: A2 is queued behind A1
+    shared = { ...shared, A: mkPreset('A') }
+    const second = renderHook(() => usePresetEditor('A', 5), { wrapper })
+    await waitFor(() => expect(second.result.current.preset).not.toBeNull())
+    act(() => second.result.current.setName('A3'))                               // newer edit from the new editor
+    await act(async () => { release?.() })
+    await waitFor(() => expect(saved.at(-1)?.preset.display_name).toBe('A3'))
   })
 })
