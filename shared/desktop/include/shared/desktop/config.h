@@ -24,8 +24,10 @@ namespace Config
         uint16_t port = 8080; // Default port
         int fpsLimit = 60; // Default FPS limit
         int udpFpsLimit = 30; // Default UDP send FPS limit
-        bool turnMatrixOffOnExit;
-        bool turnMatrixOnOnStart;
+        // Same defaults as from_json() uses for a config file lacking the keys.
+        // Without initializers a missing config.json left these indeterminate.
+        bool turnMatrixOffOnExit = true;
+        bool turnMatrixOnOnStart = true;
         // Empty means "auto-detect yt-dlp from PATH". A non-empty value is
         // the user-selected binary shared by all desktop plugins.
         std::string ytdlpPath;
