@@ -46,12 +46,7 @@
 #include <csignal>
 #endif
 
-#ifndef PROJECT_VERSION_STRING
-#define PROJECT_VERSION_STRING "unknown"
-#endif
-#ifndef LED_MATRIX_GIT_REVISION
-#define LED_MATRIX_GIT_REVISION "unknown"
-#endif
+#include "led_matrix_version.h"  // generated
 
 namespace CrashReporter {
 namespace {

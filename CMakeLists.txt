@@ -117,14 +117,6 @@ add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGE
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-# Define version macros for compile-time access
-add_compile_definitions(
-    PROJECT_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-    PROJECT_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    PROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-    PROJECT_VERSION_STRING="${PROJECT_VERSION}"
-)
-
 # Persist the exact source revision in crash reports so an address/minidump can
 # be matched back to the build that produced it. Configure still succeeds when
 # building from a source archive without .git metadata.
@@ -139,6 +131,14 @@ execute_process(
 if(NOT LED_MATRIX_GIT_REVISION_RESULT EQUAL 0 OR LED_MATRIX_GIT_REVISION STREQUAL "")
     set(LED_MATRIX_GIT_REVISION "unknown")
 endif()
+
+# Version and revision live in a generated header, not in compile definitions.
+# A -D flag is part of every object's compiler-cache key, so a global version
+# define made each release bump (and the revision each commit) recompile the
+# whole tree on Linux CI. Only the few files that include this header rebuild.
+set(LED_MATRIX_GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/led_matrix_version.h.in
+        ${LED_MATRIX_GENERATED_DIR}/led_matrix_version.h @ONLY)
 
 
 # Add update testing flag if enabled

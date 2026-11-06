@@ -1,5 +1,6 @@
 #include "shared/desktop/UpdateChecker.h"
 #include "shared/common/Version.h"
+#include "led_matrix_version.h"  // generated
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <regex>
