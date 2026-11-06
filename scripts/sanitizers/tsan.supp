@@ -23,7 +23,7 @@ race:libportaudio
 race:libasound
 race:libpulse
 race:libpipewire
-called_from_lib:libpulse
+called_from_lib:libpulse.so.0
 called_from_lib:libpipewire
 # GraphicsMagick's OpenMP/semaphore internals (built without TSan).
 race:libGraphicsMagick

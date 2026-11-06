@@ -176,4 +176,4 @@ private:
     std::thread pluginMessageThread_;
 };
 
-SHARED_DESKTOP_API extern WebsocketClient *websocketClientInstance;
+SHARED_DESKTOP_API extern std::atomic<WebsocketClient *> websocketClientInstance;

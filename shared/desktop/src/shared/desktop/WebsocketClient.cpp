@@ -3,16 +3,16 @@
 #include "shared/desktop/plugin_loader/loader.h"
 #include <ixwebsocket/IXNetSystem.h>
 
-WebsocketClient *websocketClientInstance = nullptr;
+std::atomic<WebsocketClient *> websocketClientInstance{nullptr};
 
 void WebsocketClient::setInstance(WebsocketClient *instance)
 {
-    websocketClientInstance = instance;
+    websocketClientInstance.store(instance, std::memory_order_release);
 }
 
 WebsocketClient *WebsocketClient::instance()
 {
-    return websocketClientInstance;
+    return websocketClientInstance.load(std::memory_order_acquire);
 }
 
 std::shared_ptr<WebsocketClient> WebsocketClient::create()
