@@ -155,6 +155,49 @@ private:
         std::uint64_t cooldown_until_ms = 0;
     };
 
+    /// Per-track introduction sequence. A new Spotify track is first
+    /// introduced with an album-cover look (cover: Pending → Shown, or
+    /// Skipped when no cover look is available); independently the prepared
+    /// music video may be inserted once per track. A track change restarts
+    /// the sequence; an empty track id means no track (NotNeeded).
+    struct TrackIntroduction {
+        enum class Cover { NotNeeded, Pending, Shown, Skipped };
+        std::string track_id;
+        Cover cover = Cover::NotNeeded;
+        bool music_video_shown = false;
+
+        /// Returns true when the track changed (the sequence restarted).
+        bool sync(const std::string& id)
+        {
+            if (id == track_id)
+                return false;
+            track_id = id;
+            cover = id.empty() ? Cover::NotNeeded : Cover::Pending;
+            music_video_shown = false;
+            return true;
+        }
+        void mark_cover_shown() { cover = Cover::Shown; }
+        void skip_cover() { if (cover == Cover::Pending) cover = Cover::Skipped; }
+        [[nodiscard]] bool awaiting_cover() const { return cover == Cover::Pending; }
+        [[nodiscard]] bool cover_shown() const { return cover == Cover::Shown; }
+    };
+
+    /// Turns a monotonically increasing event counter into one-shot events.
+    /// Unprimed: the first observation only records the counter, so events
+    /// that happened before observation started are not replayed. A counter
+    /// that goes backwards (analyser restart) re-baselines without firing.
+    struct CounterEdge {
+        std::optional<std::uint64_t> seen;
+
+        bool observe(std::uint64_t value)
+        {
+            const bool fired = seen.has_value() && value > *seen;
+            seen = value;
+            return fired;
+        }
+        void reset() { seen.reset(); }
+    };
+
     VisualJourney journey_;
     std::uint64_t seed_;
     mutable std::mt19937_64 rng_;
@@ -173,13 +216,9 @@ private:
     std::vector<Candidate> last_ranked_;
     std::uint64_t decision_count_ = 0;
     std::string last_exclude_name_;
-    std::string current_track_id_;
-    bool current_track_cover_shown_ = false;
-    bool current_track_mv_shown_ = false;
-    bool track_switch_pending_ = false;
-    bool switch_events_primed_ = false;
-    std::uint64_t seen_drop_ = 0;
-    std::uint64_t seen_section_ = 0;
+    TrackIntroduction track_intro_;
+    CounterEdge drop_edge_;
+    CounterEdge section_edge_;
     std::uint64_t next_fit_check_ms_ = 0;
     std::string last_switch_reason_;
     // Phrase-level music energy: the analyser's loudness swings within seconds,

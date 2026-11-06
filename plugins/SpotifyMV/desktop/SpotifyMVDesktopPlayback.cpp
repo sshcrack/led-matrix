@@ -12,13 +12,11 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
     // produces its first frame just as Spotify changes tracks.
     {
         std::unique_lock<std::mutex> lk_track(track_id_mutex_);
-        if (generation != request_generation_.load(std::memory_order_relaxed)
-            || pending_track_id_ != track_id)
+        if (!track_requests_.is_pending(generation, track_id))
             return;
 
         std::lock_guard<std::mutex> lk_engine(engine_mutex_);
-        if (generation != request_generation_.load(std::memory_order_relaxed)
-            || pending_track_id_ != track_id || !pending_engine_)
+        if (!pending_engine_)
             return;
 
         total_tracks_played_++;
@@ -38,8 +36,7 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
                 current_engine_->on_first_frame_ready = nullptr;
         }
 
-        current_track_id_ = track_id;
-        pending_track_id_.clear();
+        track_requests_.promote(generation, track_id);
     }
 
     if (old_engine) {
@@ -52,13 +49,14 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
     send_websocket_message("status:playing");
 
     if (do_crossfade && !old_last_frame_.empty()) {
+        std::lock_guard<std::mutex> lk_track(track_id_mutex_);
         std::lock_guard<std::mutex> lk(engine_mutex_);
         // A newer request may have arrived while the old engine was stopping.
         // Do not start a crossfade for a superseded promotion.
-        if (generation != request_generation_.load(std::memory_order_relaxed))
+        const auto &current = track_requests_.current();
+        if (!current || current->generation != generation || track_requests_.pending())
             return;
-        crossfade_start_ = std::chrono::steady_clock::now();
-        crossfade_active_ = true;
+        start_crossfade();
     }
 }
 
@@ -81,16 +79,14 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 
     // ── Try to get a fresh frame from the engine ──────────────────────
     if (is_playing) {
-        bool do_tick = !crossfade_active_.load();
-        if (!do_tick || current_engine_->tick()) {
+        const auto fade_elapsed = crossfade_elapsed();
+        if (fade_elapsed.has_value() || current_engine_->tick()) {
             std::vector<uint8_t> frame = current_engine_->get_current_frame();
             if (!frame.empty()) {
-                bool cf_active = crossfade_active_.load();
-                if (cf_active) {
-                    auto elapsed = std::chrono::steady_clock::now() - crossfade_start_;
-                    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+                if (fade_elapsed.has_value()) {
+                    const auto elapsed_ms = fade_elapsed->count();
                     if (elapsed_ms >= crossfade_duration_ms_ || crossfade_duration_ms_ <= 0 || old_last_frame_.empty()) {
-                        crossfade_active_ = false;
+                        end_crossfade();
                     } else {
                         float alpha = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
                         size_t blend_pixels = (std::min)(frame.size(), old_last_frame_.size());

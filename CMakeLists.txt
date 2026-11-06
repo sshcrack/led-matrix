@@ -358,6 +358,13 @@ endif()
 # scene worker. Native development builds exercise both std::terminate and the
 # OS fatal-crash path in a subprocess so the handler itself is regression-tested.
 if(ENABLE_DESKTOP OR ENABLE_EMULATOR)
+    add_executable(spotify_mv_track_requests_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_track_requests_smoke.cpp
+    )
+    target_compile_features(spotify_mv_track_requests_smoke PRIVATE cxx_std_23)
+    target_include_directories(spotify_mv_track_requests_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME spotify_mv_track_requests_smoke COMMAND $<TARGET_FILE:spotify_mv_track_requests_smoke>)
+
     add_executable(crash_reporter_probe tests/crash_reporter_probe.cpp)
     target_compile_features(crash_reporter_probe PRIVATE cxx_std_23)
     find_package(spdlog CONFIG REQUIRED)
@@ -967,6 +974,13 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME scene_renderer_cadence_smoke COMMAND $<TARGET_FILE:scene_renderer_cadence_smoke>)
     set_tests_properties(scene_renderer_cadence_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(render_placement_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/render_placement_smoke.cpp
+    )
+    target_compile_features(render_placement_smoke PRIVATE cxx_std_23)
+    target_include_directories(render_placement_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    add_test(NAME render_placement_smoke COMMAND $<TARGET_FILE:render_placement_smoke>)
 
     add_executable(scene_renderer_frame_hold_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_renderer_frame_hold_smoke.cpp

@@ -39,51 +39,6 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         if (colon_pos == std::string::npos) return;
         std::string track_id = remainder.substr(0, colon_pos);
 
-        // ── Dedup ─────────────────────────────────────────────────────────
-        // Request identity is serialized by track_id_mutex_. on_pending_first_frame
-        // takes the same mutex before engine_mutex_, so a superseded callback
-        // cannot promote the wrong track.
-        std::unique_ptr<Shared::VideoStreamEngine> engine_to_cancel;
-        bool went_back = false;
-        bool already_current = false;
-        {
-            std::lock_guard<std::mutex> lk(track_id_mutex_);
-            if (track_id == current_track_id_) {
-                if (!pending_track_id_.empty() && track_id != pending_track_id_) {
-                    // Went back to the currently playing track while a different
-                    // track was loading — cancel the pending engine and keep
-                    // playing the current one as-is.
-                    spdlog::info("SpotifyMV: went back to current track, cancelling pending");
-                    request_generation_.fetch_add(1, std::memory_order_relaxed);
-                    pending_track_id_.clear();
-                    went_back = true;
-                } else {
-                    already_current = true;
-                }
-            } else if (track_id == pending_track_id_) {
-                return;
-            }
-        }
-        if (already_current)
-            return;
-        if (went_back) {
-            // No plugin mutex is held while joining: the search worker can finish
-            // callbacks without lock inversion. Move/stop its engine only after
-            // the worker no longer references it.
-            cancel_search_and_join();
-            {
-                std::lock_guard<std::mutex> lk_eng(engine_mutex_);
-                engine_to_cancel = std::move(pending_engine_);
-            }
-            if (engine_to_cancel) {
-                engine_to_cancel->on_status_change = nullptr;
-                engine_to_cancel->on_first_frame_ready = nullptr;
-                engine_to_cancel->stop();
-            }
-            send_websocket_message("status:playing");
-            return;
-        }
-
         remainder = remainder.substr(colon_pos + 1);
         auto newline1 = remainder.find('\n');
         if (newline1 == std::string::npos) return;
@@ -119,12 +74,6 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         }
         bool fallback = (fallback_str == "true");
 
-        if (song.empty() && artist.empty()) {
-            spdlog::warn("SpotifyMV: empty song/artist, skipping search");
-            send_websocket_message("status:error");
-            return;
-        }
-
         long progress_ms = 0, duration_ms = 0;
         try {
             progress_ms = std::stol(progress_ms_str);
@@ -133,12 +82,51 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
             spdlog::warn("SpotifyMV: invalid progress/duration values, using 0");
         }
 
-        std::uint64_t generation = 0;
+        // ── Request state transition ──────────────────────────────────────
+        // track_requests_ is serialized by track_id_mutex_. on_pending_first_frame
+        // takes the same mutex before engine_mutex_, so a superseded callback
+        // cannot promote the wrong track.
+        SpotifyMVTrackRequests::Decision decision;
         {
             std::lock_guard<std::mutex> lk(track_id_mutex_);
-            generation = request_generation_.fetch_add(1, std::memory_order_relaxed) + 1;
-            pending_track_id_ = track_id;
+            const bool is_known = (track_requests_.current() && track_requests_.current()->track_id == track_id)
+                || (track_requests_.pending() && track_requests_.pending()->track_id == track_id);
+            if (!is_known && song.empty() && artist.empty()) {
+                spdlog::warn("SpotifyMV: empty song/artist, skipping search");
+                send_websocket_message("status:error");
+                return;
+            }
+            decision = track_requests_.request(track_id);
         }
+
+        switch (decision.outcome) {
+        case SpotifyMVTrackRequests::Outcome::AlreadyCurrent:
+        case SpotifyMVTrackRequests::Outcome::AlreadyPending:
+            return;
+        case SpotifyMVTrackRequests::Outcome::ReturnToCurrent: {
+            // Went back to the currently playing track while a different
+            // track was loading — cancel the pending engine and keep playing
+            // the current one as-is. No plugin mutex is held while joining:
+            // the search worker can finish callbacks without lock inversion.
+            spdlog::info("SpotifyMV: went back to current track, cancelling pending");
+            cancel_search_and_join();
+            std::unique_ptr<Shared::VideoStreamEngine> engine_to_cancel;
+            {
+                std::lock_guard<std::mutex> lk_eng(engine_mutex_);
+                engine_to_cancel = std::move(pending_engine_);
+            }
+            if (engine_to_cancel) {
+                engine_to_cancel->on_status_change = nullptr;
+                engine_to_cancel->on_first_frame_ready = nullptr;
+                engine_to_cancel->stop();
+            }
+            send_websocket_message("status:playing");
+            return;
+        }
+        case SpotifyMVTrackRequests::Outcome::NewRequest:
+            break;
+        }
+        const std::uint64_t generation = decision.generation;
 
         // ── Cancel any existing pending engine ───────────────────────────
         std::unique_ptr<Shared::VideoStreamEngine> to_stop;
@@ -164,10 +152,12 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // on_pending_first_frame(), so the object that ends up as
         // current_engine_ after a swap is *this* object — without this it
         // would never forward status (downloading/error/etc.) once it
-        // becomes current, e.g. errors after the first track change would
-        // go unreported and the matrix would just freeze on the old frame.
+        // becomes current. The gate is the request state's status
+        // generation: this engine's status is forwarded while it is the
+        // pending request, and again once it is current with nothing pending
+        // (including after the user returned to it from a skipped track).
         new_engine->on_status_change = [this, generation](const std::string& status) {
-            if (request_generation_.load(std::memory_order_relaxed) != generation)
+            if (track_requests_.status_generation() != generation)
                 return;
             spdlog::info("Status change " + status);
             send_websocket_message("status:" + status);

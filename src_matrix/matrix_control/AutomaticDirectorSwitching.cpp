@@ -21,20 +21,8 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     const auto context = observe(runtime_inputs);
     const bool track_changed = sync_track_context(context.spotify ? context.spotify_track_id : std::string{});
 
-    bool drop_event = false;
-    bool section_event = false;
-    if (!switch_events_primed_) {
-        seen_drop_ = context.drop_counter;
-        seen_section_ = context.section_counter;
-        switch_events_primed_ = true;
-    } else {
-        if (context.drop_counter < seen_drop_) seen_drop_ = context.drop_counter;
-        else drop_event = context.drop_counter > seen_drop_;
-        if (context.section_counter < seen_section_) seen_section_ = context.section_counter;
-        else section_event = context.section_counter > seen_section_;
-        seen_drop_ = context.drop_counter;
-        seen_section_ = context.section_counter;
-    }
+    const bool drop_event = drop_edge_.observe(context.drop_counter);
+    const bool section_event = section_edge_.observe(context.section_counter);
 
     const auto current_profile = profile_of(current_scene);
     const auto fit_error = [&](const Scenes::EffectiveSceneProfile& profile) {
@@ -95,17 +83,16 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
 
     const bool current_is_cover = has_tag(current_profile.tags, "album-art");
     const bool current_is_spotify_video = has_tag(current_profile.tags, "spotify-video");
-    if ((track_changed || track_switch_pending_) && context.spotify && elapsed_ms >= 1500) {
+    if ((track_changed || track_intro_.awaiting_cover()) && context.spotify && elapsed_ms >= 1500) {
         if (current_is_cover) {
-            current_track_cover_shown_ = true;
-            track_switch_pending_ = false;
+            track_intro_.mark_cover_shown();
         } else if (auto cover = best_with_tag("album-art")) {
             request("Spotify track changed; introduce the new track visually", std::move(cover));
             return result;
         } else {
             // No cover look is available (hidden, cooling down or plugin
             // disabled): cutting without one would just reshuffle every tick.
-            track_switch_pending_ = false;
+            track_intro_.skip_cover();
         }
     }
 
@@ -115,7 +102,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     if (current_is_spotify_video && elapsed_ms < 26000 && elapsed_ms < planned_ms)
         return result;
 
-    if (context.spotify_mv_ready && !current_track_mv_shown_
+    if (context.spotify_mv_ready && !track_intro_.music_video_shown
         && context.spotify_progress >= 0.10f && context.spotify_progress <= 0.74f
         && elapsed_ms >= 8000) {
         if (const auto* candidate = best(); candidate && has_tag(profile_of(candidate->scene).tags, "spotify-video")) {

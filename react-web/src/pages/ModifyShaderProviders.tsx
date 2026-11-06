@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import useFetch from '~/useFetch'
+import { useDraftSave } from '~/lib/draftSave'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import ShaderUrlProviders from '~/components/modify-providers/ShaderUrlProviders'
 import AddProviderButton from '~/components/modify-providers/AddProviderButton'
@@ -20,8 +21,7 @@ export default function ModifyShaderProviders() {
   const apiUrl = useApiUrl()
 
   const [providers, setProviders] = useState<ProviderValue[]>([])
-  const [isDirty, setIsDirty] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const { isDirty, isSaving, edited, loaded, save } = useDraftSave()
   const [preset, setPreset] = useState<ReturnType<typeof arrayToObjectPresets> | null>(null)
 
   const { data: rawPreset, isLoading } = useFetch<RawPreset>(`/presets?id=${encodeURIComponent(presetId)}`)
@@ -34,6 +34,7 @@ export default function ModifyShaderProviders() {
     setSyncedFrom({ raw: rawPreset, sceneId })
     const p = arrayToObjectPresets(rawPreset)
     setPreset(p)
+    loaded()
     const scene = p.scenes[sceneId]
     if (scene) {
       const providerArgs: ProviderValue[] = []
@@ -51,44 +52,42 @@ export default function ModifyShaderProviders() {
 
   const handleSave = async () => {
     if (!apiUrl || !preset) return
-    setIsSaving(true)
     try {
-      const scene = preset.scenes[sceneId]
-      if (!scene) throw new Error('Scene not found')
-      const updatedArgs = { ...scene.arguments }
-      let providerIdx = 0
-      for (const [key, val] of Object.entries(scene.arguments)) {
-        if (val && typeof val === 'object' && 'type' in val && 'uuid' in val) {
-          const ptype = (val as ProviderValue).type
-          if (ptype === 'random' || ptype === 'shader_collection') {
-            updatedArgs[key] = providers[providerIdx] ?? val
-            providerIdx++
+      const saved = await save(async () => {
+        const scene = preset.scenes[sceneId]
+        if (!scene) throw new Error('Scene not found')
+        const updatedArgs = { ...scene.arguments }
+        let providerIdx = 0
+        for (const [key, val] of Object.entries(scene.arguments)) {
+          if (val && typeof val === 'object' && 'type' in val && 'uuid' in val) {
+            const ptype = (val as ProviderValue).type
+            if (ptype === 'random' || ptype === 'shader_collection') {
+              updatedArgs[key] = providers[providerIdx] ?? val
+              providerIdx++
+            }
           }
         }
-      }
-      const updatedPreset = {
-        ...preset,
-        scenes: { ...preset.scenes, [sceneId]: { ...scene, arguments: updatedArgs } },
-      }
-      const rawToSave = objectToArrayPresets(updatedPreset)
-      const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(presetId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rawToSave),
+        const updatedPreset = {
+          ...preset,
+          scenes: { ...preset.scenes, [sceneId]: { ...scene, arguments: updatedArgs } },
+        }
+        const rawToSave = objectToArrayPresets(updatedPreset)
+        const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(presetId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rawToSave),
+        })
+        if (!res.ok) throw new Error('Save failed')
       })
-      if (!res.ok) throw new Error('Save failed')
-      toast.success('Shader providers saved')
-      setIsDirty(false)
+      if (saved) toast.success('Shader providers saved')
     } catch {
       toast.error('Failed to save providers')
-    } finally {
-      setIsSaving(false)
     }
   }
 
   const handleProvidersChange = (newProviders: ProviderValue[]) => {
     setProviders(newProviders)
-    setIsDirty(true)
+    edited()
   }
 
   return (

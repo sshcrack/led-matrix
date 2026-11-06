@@ -10,8 +10,7 @@ REGISTER_PLUGIN(SpotifyMV, SpotifyMVDesktop)
 SpotifyMVDesktop::~SpotifyMVDesktop() {
     {
         std::lock_guard<std::mutex> lk(track_id_mutex_);
-        request_generation_.fetch_add(1, std::memory_order_relaxed);
-        pending_track_id_.clear();
+        track_requests_.clear();
     }
     cancel_search_and_join();
     if (pending_engine_) {
@@ -106,9 +105,7 @@ void SpotifyMVDesktop::pre_new_frame() {
 void SpotifyMVDesktop::stop_playback(const bool report_status) {
     {
         std::lock_guard<std::mutex> lk(track_id_mutex_);
-        request_generation_.fetch_add(1, std::memory_order_relaxed);
-        current_track_id_.clear();
-        pending_track_id_.clear();
+        track_requests_.clear();
     }
     cancel_search_and_join();
 
@@ -126,7 +123,7 @@ void SpotifyMVDesktop::stop_playback(const bool report_status) {
             current_engine_->stop();
             current_engine_.reset();
         }
-        crossfade_active_ = false;
+        end_crossfade();
         old_last_frame_.clear();
     }
 
@@ -134,6 +131,26 @@ void SpotifyMVDesktop::stop_playback(const bool report_status) {
         send_websocket_message("track:idle");
         send_websocket_message("status:idle");
     }
+}
+
+bool SpotifyMVDesktop::request_is_pending(const std::uint64_t generation) {
+    std::lock_guard<std::mutex> lk(track_id_mutex_);
+    return track_requests_.is_pending(generation);
+}
+
+void SpotifyMVDesktop::start_crossfade() {
+    const auto now = std::chrono::steady_clock::now().time_since_epoch();
+    crossfade_started_ns_.store(
+        std::max<std::int64_t>(1, std::chrono::duration_cast<std::chrono::nanoseconds>(now).count()),
+        std::memory_order_release);
+}
+
+std::optional<std::chrono::milliseconds> SpotifyMVDesktop::crossfade_elapsed() const {
+    const auto started = crossfade_started_ns_.load(std::memory_order_acquire);
+    if (started == 0) return std::nullopt;
+    const auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        now - std::chrono::nanoseconds(started));
 }
 
 void SpotifyMVDesktop::cancel_search_and_join() {

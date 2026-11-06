@@ -3,6 +3,7 @@
 #include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/runtime_inputs.h>
 
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 
@@ -82,6 +83,48 @@ int main() {
         std::cerr << "Scene Lab did not stop cleanly\n";
         return 8;
     }
+
+    // Lease expiry: an Active session whose lease elapsed behaves as Inactive
+    // for every caller, and the owner learns it through StaleSession (409).
+    auto fake_now = std::chrono::steady_clock::now();
+    lab.set_clock_for_testing([&fake_now] { return fake_now; });
+    const auto leased = lab.start("starfield", "", nlohmann::json::object(), 20, RuntimeInputs::snapshot());
+    fake_now += SceneLabRuntime::LeaseDuration + std::chrono::seconds(1);
+    if (lab.snapshot().active || lab.lease_active(leased.generation)) {
+        std::cerr << "expired Scene Lab lease still reported active\n";
+        return 9;
+    }
+    bool expired_update_rejected = false;
+    try {
+        (void)lab.update("", leased.properties, 20, RuntimeInputs::snapshot(), leased.generation, leased.session_id);
+    } catch (const SceneLabRuntime::StaleSession &) {
+        expired_update_rejected = true;
+    }
+    if (!expired_update_rejected || lab.snapshot().active) {
+        std::cerr << "update revived an expired Scene Lab session\n";
+        return 10;
+    }
+    bool expired_heartbeat_rejected = false;
+    try {
+        lab.heartbeat(leased.session_id);
+    } catch (const SceneLabRuntime::StaleSession &) {
+        expired_heartbeat_rejected = true;
+    }
+    if (!expired_heartbeat_rejected) {
+        std::cerr << "heartbeat for an expired Scene Lab session did not report it stale\n";
+        return 11;
+    }
+    lab.stop(leased.session_id); // already ended: idempotent
+    const auto renewed = lab.start("starfield", "", nlohmann::json::object(), 20, RuntimeInputs::snapshot());
+    fake_now += SceneLabRuntime::LeaseDuration - std::chrono::seconds(1);
+    lab.heartbeat(renewed.session_id);
+    fake_now += std::chrono::seconds(5);
+    if (!lab.lease_active(renewed.generation)) {
+        std::cerr << "heartbeat did not renew the Scene Lab lease\n";
+        return 12;
+    }
+    lab.stop(renewed.session_id);
+    lab.set_clock_for_testing({});
 
     plugins->delete_references();
     RuntimeInputs::clear_all();

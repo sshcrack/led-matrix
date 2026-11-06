@@ -51,8 +51,13 @@ private:
     FrameCanvas *last_presented_canvas_ = nullptr;
     std::function<std::optional<int>()> brightness_provider_;
     tmillis_t next_brightness_check_ms_ = 0;
-    int applied_brightness_ = -1;
-    int unscheduled_brightness_ = -1;
+    /// Present while a brightness schedule controls the panel. `restore_to`
+    /// is the brightness from before the takeover, restored when it ends.
+    struct BrightnessTakeover {
+        int applied = 0;
+        int restore_to = 0;
+    };
+    std::optional<BrightnessTakeover> brightness_takeover_;
 
     void apply_scheduled_brightness(tmillis_t now_ms);
 };

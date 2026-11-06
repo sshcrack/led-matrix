@@ -1,6 +1,7 @@
 #pragma once
 #include "shared/desktop/plugin/main.h"
 #include "shared/desktop/VideoStreamEngine.h"
+#include "SpotifyMVTrackRequests.h"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -39,9 +40,9 @@ private:
     std::string tools_error_msg_;
     std::string last_checked_ytdlp_path_;
     std::chrono::steady_clock::time_point last_tools_report_{};
+    // Guards track_requests_. Lock order: track_id_mutex_ before engine_mutex_.
     std::mutex track_id_mutex_;
-    std::string current_track_id_;
-    std::string pending_track_id_;
+    SpotifyMVTrackRequests track_requests_;
 
     static constexpr int kWidth  = 128;
     static constexpr int kHeight = 128;
@@ -54,12 +55,13 @@ private:
 
     std::atomic<bool> search_running_{false};
     std::atomic<bool> search_command_running_{true};
-    std::atomic<std::uint64_t> request_generation_{0};
     std::thread search_thread_;
 
-    // Crossfade state
-    std::atomic<bool> crossfade_active_{false};
-    std::chrono::steady_clock::time_point crossfade_start_;
+    // Crossfade: steady-clock nanoseconds when the fade started, 0 = no fade.
+    // One atomic value, so readers never see an active flag with a stale start.
+    std::atomic<std::int64_t> crossfade_started_ns_{0};
+    // Outgoing frame during a crossfade, and the freeze frame while the
+    // current engine buffers. Guarded by engine_mutex_.
     std::vector<uint8_t> old_last_frame_;
     int crossfade_duration_ms_ = 500;
 
@@ -79,6 +81,10 @@ private:
     bool refresh_tools_status(bool force = false);
     void report_tools_status();
     void on_pending_first_frame(std::uint64_t generation, const std::string& track_id);
+    [[nodiscard]] bool request_is_pending(std::uint64_t generation);
+    [[nodiscard]] std::optional<std::chrono::milliseconds> crossfade_elapsed() const;
+    void start_crossfade();
+    void end_crossfade() { crossfade_started_ns_.store(0, std::memory_order_release); }
 
     void cancel_search_and_join();
     void stop_playback(bool report_status);

@@ -18,7 +18,7 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
     search_thread_ = std::thread([this, engine, track_id, song, artist, suffix, fallback,
                                    spotify_progress_ms, spotify_duration_ms, generation]() {
         const auto request_is_current = [this, generation] {
-            return request_generation_.load(std::memory_order_relaxed) == generation;
+            return request_is_pending(generation);
         };
 
         try {

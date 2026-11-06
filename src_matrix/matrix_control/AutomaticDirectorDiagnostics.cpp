@@ -96,10 +96,11 @@ nlohmann::json AutomaticDirector::diagnostics() const
             {"last_reasons", last_reasons_},
             {"last_switch_reason", last_switch_reason_},
             {"track_session",
-             {{"track_id", current_track_id_},
-              {"cover_shown", current_track_cover_shown_},
-              {"spotify_mv_shown", current_track_mv_shown_},
-              {"track_switch_pending", track_switch_pending_}}},
+             {{"track_id", track_intro_.track_id},
+              {"cover_shown", track_intro_.cover_shown()},
+              {"cover_skipped", track_intro_.cover == TrackIntroduction::Cover::Skipped},
+              {"spotify_mv_shown", track_intro_.music_video_shown},
+              {"track_switch_pending", track_intro_.awaiting_cover()}}},
             {"history", std::move(history)},
             {"candidates", std::move(candidates)}};
 }
