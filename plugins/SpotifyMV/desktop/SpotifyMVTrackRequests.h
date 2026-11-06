@@ -18,6 +18,8 @@
 ///   request(T) with T == current, other pending   → ReturnToCurrent (pending cancelled)
 ///   request(T) otherwise                          → NewRequest (pending = {T, new gen})
 ///   promote(gen, T) while pending == {T, gen}     → current = pending, pending cleared
+///   abandon(gen) while pending has gen            → pending cleared (search failed);
+///                                                   current keeps playing, T can be retried
 ///   clear()                                       → both slots empty (stop/standby)
 ///
 /// Not internally locked: the owner serializes calls (SpotifyMVDesktop uses
@@ -69,6 +71,19 @@ public:
     {
         if (!is_pending(generation, track_id)) return false;
         current_ = std::move(pending_);
+        pending_ = {};
+        publish();
+        return true;
+    }
+
+    /// The pending request failed (no video found, search error). Drops the
+    /// pending slot so the current track's status is forwarded again and a
+    /// later request for the same track starts a fresh attempt instead of
+    /// being swallowed as AlreadyPending. Returns false for a superseded
+    /// request, whose failure must not be reported.
+    bool abandon(std::uint64_t generation)
+    {
+        if (!is_pending(generation)) return false;
         pending_ = {};
         publish();
         return true;

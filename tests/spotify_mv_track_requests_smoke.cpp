@@ -40,6 +40,21 @@ int main()
     // a skip-and-return, so its later download/error status never reached the Pi.
     expect(r.status_generation() == a.generation, "A's status is forwarded again after returning to it");
 
+    // A failed search (no video found) must not leave a stale pending slot:
+    // that swallowed every retry of the track as AlreadyPending and kept the
+    // current engine's status muted.
+    const auto g = r.request("G");
+    const auto h = r.request("H");
+    expect(!r.abandon(g.generation), "a superseded failure is ignored");
+    expect(r.abandon(h.generation) && !r.pending() && r.current()->track_id == "A",
+           "a failed request drops only the pending slot");
+    expect(r.status_generation() == a.generation, "current status is forwarded again after a failure");
+    const auto retry = r.request("H");
+    expect(retry.outcome == Outcome::NewRequest && retry.generation > h.generation,
+           "a failed track can be requested again");
+    r.abandon(retry.generation);
+    expect(r.request("A").outcome == Outcome::AlreadyCurrent, "after a failure the current track stays current");
+
     r.clear();
     expect(!r.current() && !r.pending() && r.status_generation() == 0, "stop clears both slots");
     expect(r.request("A").outcome == Outcome::NewRequest, "after stop the old current track is requested anew");

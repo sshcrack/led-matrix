@@ -5,13 +5,12 @@
 
 void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const std::string& track_id) {
     std::unique_ptr<Shared::VideoStreamEngine> old_engine;
-    bool do_crossfade = true;
 
     // Serialize promotion with track-request replacement. The captured generation
     // makes callbacks from a superseded search harmless even if the decoder
     // produces its first frame just as Spotify changes tracks.
     {
-        std::unique_lock<std::mutex> lk_track(track_id_mutex_);
+        std::lock_guard<std::mutex> lk_track(track_id_mutex_);
         if (!track_requests_.is_pending(generation, track_id))
             return;
 
@@ -21,20 +20,25 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
 
         total_tracks_played_++;
 
-        if (!current_engine_) {
-            // current_engine_ was reset (e.g. by a prior "stop" message), so
-            // there's nothing to crossfade from — promote the prepared engine.
-            current_engine_ = std::move(pending_engine_);
-            current_engine_->on_first_frame_ready = nullptr;
-            do_crossfade = false;
-        } else {
-            old_last_frame_ = current_engine_->get_current_frame();
-            std::swap(current_engine_, pending_engine_);
+        if (current_engine_) {
+            // Outgoing frame for the crossfade. Keep the existing freeze frame
+            // if the old engine is between chunks and has no frame right now.
+            if (auto outgoing = current_engine_->get_current_frame(); !outgoing.empty())
+                old_last_frame_ = std::move(outgoing);
+            old_engine = std::move(current_engine_);
             total_swaps_++;
-            old_engine = std::move(pending_engine_);
-            if (current_engine_)
-                current_engine_->on_first_frame_ready = nullptr;
         }
+        current_engine_ = std::move(pending_engine_);
+        current_engine_->on_first_frame_ready = nullptr;
+
+        // Start the fade in the same critical section as the swap. Starting it
+        // later (after stopping the old engine) let compute_next_packet()
+        // overwrite old_last_frame_ with the new video first, so the "fade"
+        // blended the new track into itself: a hard cut.
+        if (old_engine && !old_last_frame_.empty())
+            start_crossfade();
+        else
+            end_crossfade();
 
         track_requests_.promote(generation, track_id);
     }
@@ -47,17 +51,6 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
 
     send_websocket_message("track:ready:" + track_id);
     send_websocket_message("status:playing");
-
-    if (do_crossfade && !old_last_frame_.empty()) {
-        std::lock_guard<std::mutex> lk_track(track_id_mutex_);
-        std::lock_guard<std::mutex> lk(engine_mutex_);
-        // A newer request may have arrived while the old engine was stopping.
-        // Do not start a crossfade for a superseded promotion.
-        const auto &current = track_requests_.current();
-        if (!current || current->generation != generation || track_requests_.pending())
-            return;
-        start_crossfade();
-    }
 }
 
 std::optional<std::unique_ptr<UdpPacket>>

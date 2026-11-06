@@ -82,6 +82,7 @@ private:
     void report_tools_status();
     void on_pending_first_frame(std::uint64_t generation, const std::string& track_id);
     [[nodiscard]] bool request_is_pending(std::uint64_t generation);
+    void fail_pending(std::uint64_t generation, const std::string& track_id);
     [[nodiscard]] std::optional<std::chrono::milliseconds> crossfade_elapsed() const;
     void start_crossfade();
     void end_crossfade() { crossfade_started_ns_.store(0, std::memory_order_release); }
