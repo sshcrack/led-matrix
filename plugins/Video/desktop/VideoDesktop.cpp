@@ -3,6 +3,7 @@
 #include "shared/desktop/utils.h"
 #include <fmt/format.h>
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #ifdef _WIN32
 #include <windows.h>
@@ -16,6 +17,7 @@
 REGISTER_PLUGIN(Video, VideoDesktop)
 
 VideoDesktop::~VideoDesktop() {
+  cancel_search();
   stop_audio();
 }
 
@@ -65,6 +67,8 @@ void VideoDesktop::render() {
     return;
   }
   render_status_ui();
+  ImGui::Separator();
+  render_search_ui();
 }
 
 void VideoDesktop::render_status_ui() {
@@ -90,6 +94,90 @@ void VideoDesktop::render_status_ui() {
   ImGui::TextColored(stateColor, "Status: %s", stateStr);
   if (state.load() == State::Error)
     ImGui::TextColored(ImVec4(1, 0, 0, 1), "Last Error: %s", last_error.c_str());
+}
+
+void VideoDesktop::render_search_ui() {
+  ImGui::TextUnformatted("Search YouTube");
+  const bool submit = ImGui::InputTextWithHint(
+      "##video_search", "Search videos...", search_input_, sizeof(search_input_),
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  ImGui::SameLine();
+  const bool busy = search_busy_.load();
+  ImGui::BeginDisabled(busy);
+  const bool clicked = ImGui::Button("Search");
+  ImGui::EndDisabled();
+  if ((submit || clicked) && !busy && search_input_[0] != '\0')
+    start_search(search_input_, false);
+
+  if (busy) ImGui::TextDisabled("Searching...");
+
+  std::vector<VideoSearch::Result> results;
+  std::string error;
+  {
+    std::lock_guard<std::mutex> lock(search_mutex_);
+    results = search_results_;
+    error = search_error_;
+  }
+  if (!error.empty() && !busy)
+    ImGui::TextColored(ImVec4(1, 0.5f, 0.3f, 1), "%s", error.c_str());
+
+  if (results.empty()) return;
+  ImGui::TextDisabled("Plays on the matrix while the video scene is showing.");
+  if (ImGui::BeginChild("##video_results", ImVec2(0, 220), true)) {
+    for (size_t i = 0; i < results.size(); ++i) {
+      const auto &r = results[i];
+      ImGui::PushID(static_cast<int>(i));
+      if (ImGui::Button("Play")) play_url(r.url);
+      ImGui::SameLine();
+      const auto dur = VideoSearch::format_duration(r.duration_sec);
+      ImGui::TextWrapped("%s", r.title.c_str());
+      ImGui::TextDisabled("    %s%s%s", r.channel.c_str(),
+                          (!r.channel.empty() && !dur.empty()) ? "  -  " : "",
+                          dur.c_str());
+      ImGui::PopID();
+    }
+  }
+  ImGui::EndChild();
+}
+
+void VideoDesktop::cancel_search() {
+  std::lock_guard<std::mutex> ctl(search_ctl_mutex_);
+  search_running_ = false;
+  if (search_thread_.joinable()) search_thread_.join();
+  search_running_ = true;
+}
+
+void VideoDesktop::start_search(const std::string &query, bool reply_to_matrix) {
+  cancel_search();
+  std::lock_guard<std::mutex> ctl(search_ctl_mutex_);
+  search_busy_ = true;
+  search_thread_ = std::thread([this, query, reply_to_matrix] {
+    std::string error;
+    auto results = VideoSearch::search(query, 12, &search_running_, error);
+    if (error == "cancelled") return; // superseded; the newer search owns the state
+
+    if (reply_to_matrix) {
+      nlohmann::json items = nlohmann::json::array();
+      for (const auto &r : results)
+        items.push_back({{"id", r.id}, {"url", r.url}, {"title", r.title},
+                         {"channel", r.channel}, {"duration", r.duration_sec},
+                         {"thumbnail", r.thumbnail}});
+      nlohmann::json reply = {{"query", query}, {"items", items}};
+      if (!error.empty() && results.empty()) reply["error"] = error;
+      send_websocket_message("results:" + reply.dump());
+    }
+    {
+      std::lock_guard<std::mutex> lock(search_mutex_);
+      search_results_ = std::move(results);
+      search_error_ = error;
+    }
+    search_busy_ = false;
+  });
+}
+
+void VideoDesktop::play_url(const std::string &url) {
+  // Routed through the Pi so the video scene's playlist bookkeeping stays right.
+  send_websocket_message("play:" + url);
 }
 
 void VideoDesktop::refresh_tools_status(bool force) {
@@ -138,6 +226,18 @@ void VideoDesktop::on_websocket_message(const std::string message) {
   }
   if (message == "stream:start") {
     allow_sending_packets = true;
+    return;
+  }
+  if (message.starts_with("search:")) {
+    refresh_tools_status(true);
+    if (!tools_available.load()) {
+      const auto q = message.substr(7);
+      nlohmann::json reply = {{"query", q}, {"items", nlohmann::json::array()},
+                              {"error", "yt-dlp or ffmpeg is not available on the desktop"}};
+      send_websocket_message("results:" + reply.dump());
+      return;
+    }
+    start_search(message.substr(7), true);
     return;
   }
   if (message.starts_with("url:")) {
