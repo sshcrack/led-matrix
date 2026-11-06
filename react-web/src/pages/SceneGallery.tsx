@@ -8,6 +8,7 @@ import { Input } from '~/components/ui/input'
 import useFetch from '~/useFetch'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import MatrixPreview from '~/components/scene-browser/MatrixPreview'
+import { enqueueOp } from '~/core/presetSaveQueue'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { costLabel, intensityLabel, sceneArgumentsForVariant, sceneDisplayName } from '~/lib/sceneVariants'
 import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
@@ -67,16 +68,19 @@ export default function SceneGallery() {
   const addToPreset = async () => {
     if (!apiUrl || !selected || !targetPreset) return
     try {
-      const response = await fetch(`${apiUrl}/presets?id=${encodeURIComponent(targetPreset)}`)
-      if (!response.ok) throw new Error('Could not load preset')
-      const preset: RawPreset = await response.json()
-      const args = sceneArgumentsForVariant(selected, selectedVariant)
-      const scene: Scene = { uuid: uuidv4(), type: selected.name, arguments: args, variant: selectedVariant || undefined }
-      const save = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(targetPreset)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...preset, scenes: [...(preset.scenes ?? []), scene] }),
+      // Read-modify-write inside the preset's write queue, so it sees (and is ordered after) pending autosaves.
+      await enqueueOp(targetPreset, async () => {
+        const response = await fetch(`${apiUrl}/presets?id=${encodeURIComponent(targetPreset)}`)
+        if (!response.ok) throw new Error('Could not load preset')
+        const preset: RawPreset = await response.json()
+        const args = sceneArgumentsForVariant(selected, selectedVariant)
+        const scene: Scene = { uuid: uuidv4(), type: selected.name, arguments: args, variant: selectedVariant || undefined }
+        const save = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(targetPreset)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...preset, scenes: [...(preset.scenes ?? []), scene] }),
+        })
+        if (!save.ok) throw new Error('Could not save preset')
       })
-      if (!save.ok) throw new Error('Could not save preset')
       toast.success(`${selected.name} added`)
       navigate(`/modify-preset/${encodeURIComponent(targetPreset)}`)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Failed to add scene') }

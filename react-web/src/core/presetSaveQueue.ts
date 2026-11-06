@@ -45,7 +45,11 @@ async function pump(e: Entry) {
 }
 const kick = (e: Entry) => {
   if (e.running || e.state !== 'live') return
-  const run: Promise<void> = pump(e).finally(() => { if (e.running === run) e.running = null })
+  const run: Promise<void> = pump(e).finally(() => {
+    if (e.running === run) e.running = null
+    // A waiter continuation may have queued more work while `running` was still set.
+    if (e.queue.length) kick(e)
+  })
   e.running = run
 }
 

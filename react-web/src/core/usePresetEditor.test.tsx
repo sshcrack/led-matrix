@@ -158,4 +158,12 @@ describe('usePresetEditor', () => {
     await Promise.all([first, second, rename])
     expect(order).toEqual(['d1', 'd2', 'rename'])
   })
+
+  it('runs a save queued from a completion handler of the previous save', async () => {
+    const { enqueueSave } = await import('./presetSaveQueue')
+    const order: string[] = []
+    await enqueueSave('R', mkPreset('r1'), async d => { order.push(d.display_name!) })
+      .then(() => enqueueSave('R', mkPreset('r2'), async d => { order.push(d.display_name!) }))
+    expect(order).toEqual(['r1', 'r2'])
+  })
 })
