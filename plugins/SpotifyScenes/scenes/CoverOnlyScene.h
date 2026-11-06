@@ -94,6 +94,7 @@ namespace Scenes {
         std::vector<Sparkle> sparkles_;
         uint32_t rng_ = 0x5EED1234u;
         std::vector<Rgb> frame_;
+        std::vector<Rgb> grid_;               // backdrop samples (coarse on the Pi)
 
         void adopt(Artwork artwork);
         void draw(rgb_matrix::FrameCanvas *canvas, float dt);
@@ -103,6 +104,7 @@ namespace Scenes {
         CoverOnlyScene() = default;
         ~CoverOnlyScene() override;
 
+        void initialize(int width, int height) override;
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
         [[nodiscard]] int get_weight() const override;

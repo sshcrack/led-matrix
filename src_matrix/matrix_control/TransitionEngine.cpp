@@ -184,7 +184,9 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         std::max(1, next_scene->get_declared_target_fps()));
     if (next_caps.supports_remote_rendering && desktop_available) {
         const auto p95 = Diagnostics::RuntimeDiagnostics::instance().scene_render_p95(next_scene->get_name());
-        if (p95.has_value() && *p95 > next_budget_ms * 0.72) {
+        // Offload when the Pi is over budget or had to lower the scene's
+        // quality (the desktop always renders full quality).
+        if (next_scene->get_render_quality_scale() < 0.97f || (p95.has_value() && *p95 > next_budget_ms * 0.72)) {
             next_remote_session = RemoteRender::request_scene(
                 *next_scene, matrix_width, matrix_height, next_scene->get_declared_target_fps());
         }

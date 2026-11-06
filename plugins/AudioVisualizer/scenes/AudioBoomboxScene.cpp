@@ -1,5 +1,7 @@
 #include "MusicVistaScenes.h"
 
+#include <array>
+
 namespace Scenes {
 using namespace AudioKit;
 
@@ -41,6 +43,16 @@ void AudioBoomboxScene::init_world()
                 if (d < 1.0f)
                     mural_[static_cast<size_t>(y * W + x)] = static_cast<float>(s.band) + (d > 0.75f ? 0.5f : 0.0f) + 1.0f;
             }
+    // Street-lamp light on the wall and the pavement (see render()).
+    const int ground = H - 22;
+    const float lampX = W * 0.80f, lampY = 10.0f;
+    lamp_.assign(static_cast<size_t>(W * H), 0.0f);
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x) {
+            const float d = y < ground ? AudioKit::len((x - lampX) / W, (y - lampY) / H * 0.8f)
+                                       : AudioKit::len((x - lampX) / W, (y - ground) / H * 2.0f);
+            lamp_[static_cast<size_t>(y * W + x)] = std::exp(-d * d * 6.0f);
+        }
     eq_.assign(10, 0.0f);
     rings_.clear();
     litter_.clear();
@@ -100,20 +112,25 @@ bool AudioBoomboxScene::render(rgb_matrix::FrameCanvas* canvas)
     const float lampX = W * 0.80f, lampY = 10.0f;
 
     // --- brick wall lit by the street lamp, mural on top --------------------------------------
+    std::array<RGB, 12> bandPaint{};
+    std::array<float, 12> bandLevel{};
+    for (int b = 0; b < 12; ++b) {
+        bandPaint[static_cast<size_t>(b)] = hsv(palette_.value + b * 32.0f, 0.75f, 1.0f);
+        bandLevel[static_cast<size_t>(b)] = spectrum_.band(b / 12.0f, (b + 1) / 12.0f);
+    }
     for (int y = 0; y < ground; ++y)
         for (int x = 0; x < W; ++x) {
             const size_t i = static_cast<size_t>(y * W + x);
-            const float d = std::hypot((x - lampX) / W, (y - lampY) / H * 0.8f);
-            const float lamp = 0.30f + 0.85f * std::exp(-d * d * 6.0f);
+            const float lamp = 0.30f + 0.85f * lamp_[i];
             const float brick = bricks_[i];
             RGB c = brick < 0 ? RGB{22, 20, 22} : RGB{64, 30, 24} * brick;
             c = c * lamp;
             if (mural_on_->get() && mural_[i] > 0.0f) {
                 const float m = mural_[i] - 1.0f;
-                const int band = static_cast<int>(m);
+                const int band = std::clamp(static_cast<int>(m), 0, 11);
                 const bool rim = (m - band) > 0.25f;
-                const float lv = spectrum_.band(band / 12.0f, (band + 1) / 12.0f);
-                const RGB paint = hsv(palette_.value + band * 32.0f, 0.75f, 1.0f);
+                const float lv = bandLevel[static_cast<size_t>(band)];
+                const RGB& paint = bandPaint[static_cast<size_t>(band)];
                 // Paint is visible under the lamp; the band makes it glow like UV paint.
                 RGB p = paint * (0.16f * lamp + 0.40f * lv + 0.08f * beat_.v);
                 if (rim)
@@ -154,9 +171,8 @@ bool AudioBoomboxScene::render(rgb_matrix::FrameCanvas* canvas)
     // --- sidewalk ---------------------------------------------------------------------------------
     for (int y = ground; y < H; ++y)
         for (int x = 0; x < W; ++x) {
-            const float d = std::hypot((x - lampX) / W, (y - ground) / H * 2.0f);
             const bool seam = x % 24 == 0 || y == ground;
-            const RGB base = (seam ? RGB{18, 18, 20} : RGB{34, 32, 36}) * (0.35f + 0.8f * std::exp(-d * d * 6.0f));
+            const RGB base = (seam ? RGB{18, 18, 20} : RGB{34, 32, 36}) * (0.35f + 0.8f * lamp_[static_cast<size_t>(y * W + x)]);
             buf_.at(x, y) = base;
         }
 
@@ -205,7 +221,7 @@ bool AudioBoomboxScene::render(rgb_matrix::FrameCanvas* canvas)
         const float r = speakerR + push;
         for (int y = static_cast<int>(by - r - 1); y <= static_cast<int>(by + r + 1); ++y)
             for (int x = static_cast<int>(sx - r - 1); x <= static_cast<int>(sx + r + 1); ++x) {
-                const float d = std::hypot(x + 0.5f - sx, y + 0.5f - by) / r;
+                const float d = AudioKit::len(x + 0.5f - sx, y + 0.5f - by) / r;
                 if (d > 1.0f)
                     continue;
                 // Concentric grille rings, lit from the lamp at the top right.

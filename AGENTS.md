@@ -206,6 +206,10 @@ Music director note (2026-11-05): while live music plays, both directors prefer 
 
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
+Pi vs desktop quality: `Scene::render_quality_scale()` (0.5..1) is the one quality knob. It is 1.0 on the desktop worker and in previews; on the Pi it adapts to measured render cost (`set_render_quality_hint()` gives a Pi-only start value). Scenes with optional expensive work map it to cheaper work: particle counts, or smooth layers drawn through `AudioKit::Buffer::add_field()` with `field_step()` (per pixel at full quality, an interpolated lattice below). The Pi offloads a scene to the desktop scene worker when its p95 exceeds 72% of the frame budget or its quality is below 1, and the worker renders full quality. Check the reduced look with `preview_gen --quality 0.6` / `render_scene_video.sh --quality 0.6`. Cache static per-pixel geometry instead of recomputing it each frame, and prefer `AudioKit::len` over `std::hypot` (a libm call on the Pi).
+
+Desktop offload compatibility: the worker runs the desktop app's own installed plugins, so it advertises a scene-code fingerprint (`Common::scene_code_digest()`, a git tree hash of `plugins/` + `shared/` from `cmake/SceneCodeDigest.cmake`); the Pi only offloads to a worker whose fingerprint matches its own. `/diagnostics` → `remote_render` shows both fingerprints, `render_placement.reason` says why a scene rendered where it did.
+
 ## API security
 
 `src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):

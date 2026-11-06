@@ -94,21 +94,23 @@ bool AudioRidgelineScene::render(rgb_matrix::FrameCanvas* canvas)
         const float r = 24.0f + beat_.v * 3.0f + drop_.v * 4.0f;
         const float cy = horizon + 2.0f;
         const float stripeScroll = std::fmod(time_ * 3.0f, 6.0f);
+        const RGB glow = hsv(hue_ + 20.0f, 0.9f, 1.0f) * (0.18f * (0.6f + beat_.v));
+        const RGB sunLow = hsv(hue_ + 10.0f, 0.85f, 1.0f), sunHigh = hsv(hue_ + 70.0f, 0.75f, 1.0f);
         for (int y = static_cast<int>(cy - r - 6); y <= static_cast<int>(cy); ++y)
             for (int x = static_cast<int>(W / 2 - r - 6); x <= static_cast<int>(W / 2 + r + 6); ++x) {
                 if (!buf_.inside(x, y))
                     continue;
-                const float d = std::hypot(x + 0.5f - W * 0.5f, y + 0.5f - cy);
+                const float d = AudioKit::len(x + 0.5f - W * 0.5f, y + 0.5f - cy);
                 const float vt = std::clamp((cy - y) / r, 0.0f, 1.0f);
                 // Glow halo
-                buf_.add(x, y, hsv(hue_ + 20.0f, 0.9f, 1.0f) * (0.18f * std::exp(-std::max(0.0f, d - r) / 5.0f) * (0.6f + beat_.v)));
+                buf_.add(x, y, glow * std::exp(-std::max(0.0f, d - r) / 5.0f));
                 if (d > r)
                     continue;
                 // Gaps in the lower half, scrolling downwards.
                 const float band = std::fmod((cy - y) + stripeScroll, 6.0f);
                 if (vt < 0.55f && band < (0.55f - vt) * 6.0f)
                     continue;
-                const RGB c = lerp(hsv(hue_ + 10.0f, 0.85f, 1.0f), hsv(hue_ + 70.0f, 0.75f, 1.0f), vt);
+                const RGB c = lerp(sunLow, sunHigh, vt);
                 buf_.mix(x, y, c * (0.85f + 0.15f * beat_.v), std::clamp(r - d + 0.5f, 0.0f, 1.0f));
             }
     }
@@ -143,6 +145,11 @@ bool AudioRidgelineScene::render(rgb_matrix::FrameCanvas* canvas)
         }
 
         const RGB ground = lerp(RGB{3, 1, 7}, skyLow * 0.22f, haze * haze);
+        // Per-ridge constants of the crest line colour.
+        const RGB lineHue = hsv(hue_ - 40.0f + depth * 2.5f, 0.85f, 0.9f);
+        const float lineGain = fade * (0.55f + 0.45f * p) * (i == 0 ? 1.0f + beat_.v * 0.6f : 1.0f);
+        const RGB hazeColor = skyLow * 0.6f;
+        const float hazeMix = std::pow(haze, 1.5f) * 0.8f;
         for (int x = 0; x < W; ++x) {
             const float ly = lineY[static_cast<size_t>(x)];
             const float ny = lineY[static_cast<size_t>(std::min(x + 1, W - 1))];
@@ -151,11 +158,7 @@ bool AudioRidgelineScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int y = std::max(0, static_cast<int>(std::ceil(ly))); y < std::min(H, static_cast<int>(base) + 2); ++y)
                 buf_.at(x, y) = ground;
             const float height = std::clamp((base - ly) / std::max(1.0f, amp), 0.0f, 1.0f);
-            RGB line = lerp(hsv(hue_ - 40.0f + depth * 2.5f, 0.85f, 0.9f), RGB{255, 235, 245}, height * height * 0.9f);
-            line = line * (fade * (0.55f + 0.45f * p));
-            if (i == 0)
-                line = line * (1.0f + beat_.v * 0.6f);
-            line = lerp(line, skyLow * 0.6f, std::pow(haze, 1.5f) * 0.8f);
+            const RGB line = lerp(lerp(lineHue, RGB{255, 235, 245}, height * height * 0.9f) * lineGain, hazeColor, hazeMix);
             // Vertical span to keep steep slopes continuous, AA at the ends.
             const float top = std::min({ly, (ly + ny) * 0.5f, (ly + py) * 0.5f});
             const float bot = std::max({ly, (ly + ny) * 0.5f, (ly + py) * 0.5f});

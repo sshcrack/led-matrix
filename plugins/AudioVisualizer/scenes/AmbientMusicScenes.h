@@ -138,6 +138,13 @@ class AudioPlanetScene final : public AmbientMusicScene {
     std::vector<Meteor> meteors_;
     std::vector<float> ringLevel_;
     std::vector<float> nebula_;  // static per-pixel nebula density (cached)
+    // Static per-pixel geometry (cached per ring tilt): ring grain angle and
+    // the planet sphere's shading/latitude/longitude at rest radius.
+    struct PlanetTexel {
+        float ringAngle = 0, diffuse = 0, lat = 0, lon = 0, warp = 0, rim = 0;
+    };
+    std::vector<PlanetTexel> geometry_;
+    float geometryTilt_ = -1.0f;
     AudioKit::Envelope beat_, drop_;
     float spin_ = 0.0f, moonAngle_ = 0.6f;
     AudioKit::HueCycle palette_{{28.0f, 200.0f, 330.0f, 265.0f}};

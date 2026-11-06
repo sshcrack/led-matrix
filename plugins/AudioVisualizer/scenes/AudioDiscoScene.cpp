@@ -112,7 +112,7 @@ bool AudioDiscoScene::render(rgb_matrix::FrameCanvas* canvas)
     for (int s = 0; s < 2; ++s) {
         const float sx = s == 0 ? 2.0f : W - 3.0f, sy = 1.0f;
         const float dx = ballX - sx, dy = ballY - sy;
-        const float len = std::hypot(dx, dy);
+        const float len = AudioKit::len(dx, dy);
         const RGB col = hsv(palette_.value + (s == 0 ? 0.0f : 140.0f), 0.55f, 1.0f) * (0.10f + 0.10f * beat_.v);
         for (int t = 0; t < static_cast<int>(len); ++t) {
             const float k = t / len;
@@ -144,7 +144,7 @@ bool AudioDiscoScene::render(rgb_matrix::FrameCanvas* canvas)
         const float r = sp.size * (y > floorY ? 1.4f : 1.0f);
         for (int yy = static_cast<int>(y - r - 1); yy <= static_cast<int>(y + r + 1); ++yy)
             for (int xx = static_cast<int>(x - r * stretch - 1); xx <= static_cast<int>(x + r * stretch + 1); ++xx) {
-                const float d = std::hypot((xx + 0.5f - x) / stretch, yy + 0.5f - y) / r;
+                const float d = AudioKit::len((xx + 0.5f - x) / stretch, yy + 0.5f - y) / r;
                 if (d < 1.2f)
                     buf_.add(xx, yy, col * (bright * 0.75f * smoothstep(1.2f, 0.4f, d)));
             }

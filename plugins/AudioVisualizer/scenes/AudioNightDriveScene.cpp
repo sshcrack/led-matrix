@@ -150,7 +150,7 @@ bool AudioNightDriveScene::render(rgb_matrix::FrameCanvas* canvas)
         const float r = std::min(18.0f, 1.8f * s);
         for (int y = static_cast<int>(gy - r * 0.35f); y <= static_cast<int>(gy + r * 0.35f); ++y)
             for (int x = static_cast<int>(gx - r); x <= static_cast<int>(gx + r); ++x) {
-                const float d = std::hypot((x - gx) / r, (y - gy) / (r * 0.35f));
+                const float d = AudioKit::len((x - gx) / r, (y - gy) / (r * 0.35f));
                 if (d < 1.0f)
                     buf_.add(x, y, lampCol * ((1.0f - d) * (1.0f - d) * 0.22f * fade));
             }

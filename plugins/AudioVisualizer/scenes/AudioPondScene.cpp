@@ -20,7 +20,7 @@ void AudioPondScene::build_sky()
         for (int x = 0; x < W; ++x) {
             const float t = static_cast<float>(y) / H;
             RGB c = lerp(RGB{8, 14, 38}, RGB{2, 18, 30}, t);
-            const float d = std::hypot(x + 0.5f - mx, y + 0.5f - my);
+            const float d = AudioKit::len(x + 0.5f - mx, y + 0.5f - my);
             c = c + RGB{90, 110, 150} * (0.55f * std::exp(-d / 16.0f));
             if (d < mr + 1) {
                 const float shade = 0.82f + 0.18f * std::clamp(((mx - x) + (my - y)) / (mr * 1.4f), -1.0f, 1.0f);
@@ -41,7 +41,7 @@ void AudioPondScene::drop(float cx, float cy, float radius, float strength)
         for (int x = static_cast<int>(cx) - r; x <= static_cast<int>(cx) + r; ++x) {
             if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1)
                 continue;
-            const float d = std::hypot(x - cx, y - cy) / std::max(0.5f, radius);
+            const float d = AudioKit::len(x - cx, y - cy) / std::max(0.5f, radius);
             if (d >= 1.0f)
                 continue;
             h0_[static_cast<size_t>(y * W + x)] -= strength * (0.5f + 0.5f * std::cos(d * Pi));
@@ -104,7 +104,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         for (const auto& p : pads_) {
             for (int y = static_cast<int>(p.y - p.r); y <= static_cast<int>(p.y + p.r); ++y)
                 for (int x = static_cast<int>(p.x - p.r); x <= static_cast<int>(p.x + p.r); ++x)
-                    if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && std::hypot(x - p.x, y - p.y) < p.r)
+                    if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && AudioKit::len(x - p.x, y - p.y) < p.r)
                         h1_[static_cast<size_t>(y * W + x)] *= 0.6f;
         }
         std::swap(h0_, h1_);
@@ -133,7 +133,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = static_cast<int>(p.y - p.r - 1); y <= static_cast<int>(p.y + p.r + 1); ++y)
             for (int x = static_cast<int>(p.x - p.r - 1); x <= static_cast<int>(p.x + p.r + 1); ++x) {
                 const float dx = x + 0.5f - p.x, dy = y + 0.5f - (p.y + bob);
-                const float d = std::hypot(dx, dy);
+                const float d = AudioKit::len(dx, dy);
                 float ang = std::atan2(dy, dx) - p.phase;
                 ang = std::remainder(ang, Tau);
                 if (std::fabs(ang) < 0.32f)

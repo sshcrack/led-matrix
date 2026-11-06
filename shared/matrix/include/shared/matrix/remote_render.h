@@ -23,6 +23,10 @@ struct Status {
     double frame_age_ms = 0.0;
     std::string scene;
     bool worker_available = false;
+    /// The worker runs the same scene code as this build (see
+    /// Common::scene_code_digest). Offloading requires this.
+    bool worker_compatible = false;
+    std::string worker_scene_code;
     std::size_t worker_scene_count = 0;
 };
 
@@ -36,8 +40,12 @@ void clear_command_sender();
 
 /// Heartbeats are emitted by the generic desktop scene worker. The advertised
 /// scene ids make placement capability-driven: a Pi never offloads to a GUI
-/// connection that cannot actually execute the requested scene.
-void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes);
+/// connection that cannot actually execute the requested scene. `scene_code`
+/// is the worker's Common::scene_code_digest(); a worker built from different
+/// scene code (e.g. a desktop app not updated together with the Pi) would
+/// stream a different version of the scene, so it is never used.
+void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes,
+                             std::string scene_code = {});
 [[nodiscard]] bool worker_available(std::string_view scene = {});
 
 /// Start (or reuse) a remote-render session for this scene. The scene's

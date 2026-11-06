@@ -93,7 +93,7 @@ bool AudioRainWindowScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int x = static_cast<int>(b.x) - r; x <= static_cast<int>(b.x) + r; ++x) {
                 if (!buf_.inside(x, y))
                     continue;
-                const float d = std::hypot(x + 0.5f - b.x, y + 0.5f - b.y) / b.r;
+                const float d = AudioKit::len(x + 0.5f - b.x, y + 0.5f - b.y) / b.r;
                 if (d > 1.15f)
                     continue;
                 // Bokeh discs have a slightly brighter rim.

@@ -75,10 +75,13 @@ bool AudioFestivalScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     // Low sun behind the stage, glowing with the overall loudness.
     const float sunX = W * 0.30f, sunY = horizon - 4.0f;
-    for (int y = 0; y < horizon + 4; ++y)
-        for (int x = 0; x < W; ++x) {
-            const float d = std::hypot(x + 0.5f - sunX, y + 0.5f - sunY);
-            buf_.add(x, y, RGB{255, 170, 80} * ((0.25f + 0.25f * energy) * std::exp(-d / 14.0f)));
+    const RGB glow = RGB{255, 170, 80} * (0.25f + 0.25f * energy);
+    buf_.add_field(0, horizon + 4, field_step(), [&](float x, float y) {
+        return glow * std::exp(-AudioKit::len(x - sunX, y - sunY) / 14.0f);
+    });
+    for (int y = std::max(0, static_cast<int>(sunY) - 8); y < std::min(horizon + 4, static_cast<int>(sunY) + 9); ++y)
+        for (int x = std::max(0, static_cast<int>(sunX) - 8); x < std::min(W, static_cast<int>(sunX) + 9); ++x) {
+            const float d = AudioKit::len(x + 0.5f - sunX, y + 0.5f - sunY);
             if (d < 7.0f)
                 buf_.at(x, y) = lerp(buf_.at(x, y), RGB{255, 220, 150}, smoothstep(7.0f, 5.5f, d));
         }

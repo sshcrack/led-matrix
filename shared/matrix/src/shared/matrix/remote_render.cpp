@@ -1,3 +1,4 @@
+#include <shared/common/build_info.h>
 #include "shared/matrix/remote_render.h"
 
 #include <algorithm>
@@ -34,6 +35,8 @@ struct FrameSnapshot {
 struct WorkerSnapshot {
     Clock::time_point heartbeat{};
     std::unordered_set<std::string> scenes;
+    std::string scene_code;
+    bool compatible = false;
 };
 
 struct State {
@@ -79,7 +82,7 @@ bool worker_alive(const std::shared_ptr<const WorkerSnapshot> &worker)
 bool worker_supports(const State &s, std::string_view scene)
 {
     const auto worker = s.latest_worker.load(std::memory_order_acquire);
-    if (!worker_alive(worker))
+    if (!worker_alive(worker) || !worker->compatible)
         return false;
     return scene.empty() || worker->scenes.contains(std::string(scene));
 }
@@ -176,12 +179,16 @@ void clear_command_sender()
     s.pending_state_session = 0;
 }
 
-void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes)
+void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes,
+                             std::string scene_code)
 {
     if (protocol_version != RemoteRenderProtocol::Version)
         return;
     auto worker = std::make_shared<WorkerSnapshot>();
     worker->heartbeat = Clock::now();
+    const std::string_view local = Common::scene_code_digest();
+    worker->compatible = !scene_code.empty() && scene_code != "unknown" && scene_code == local;
+    worker->scene_code = std::move(scene_code);
     worker->scenes.reserve(scenes.size());
     for (const auto &scene : scenes)
         if (!scene.empty()) worker->scenes.insert(scene);
@@ -355,6 +362,8 @@ Status status()
     result.scene = s.scene;
     const auto worker = s.latest_worker.load(std::memory_order_acquire);
     result.worker_available = worker_alive(worker);
+    result.worker_compatible = result.worker_available && worker->compatible;
+    result.worker_scene_code = worker ? worker->scene_code : std::string{};
     result.worker_scene_count = worker ? worker->scenes.size() : 0;
     return result;
 }

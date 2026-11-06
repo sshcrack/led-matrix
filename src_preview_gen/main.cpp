@@ -8,7 +8,7 @@
  *               [--metrics-out <file>] [--audio-bpm <n>]
  *               [--audio-profile <balanced|bass|percussion|ambient>]
  *               [--preview-option <provider>:<key>=<json>]
- *               [--virtual-time-only] [--strict]
+ *               [--quality <0.5..1>] [--virtual-time-only] [--strict]
  *
  * Defaults:
  *   --output    ./previews
@@ -16,6 +16,8 @@
  *   --fps       15
  *   --width     128
  *   --height    128
+ *   --quality   1.0  (render_quality_scale(); lower it to see the Pi's
+ *                     reduced-quality variant of adaptive scenes)
  *
  * Manifest mode (--dump-manifest):
  *   Writes a JSON array of {name, plugin_name, plugin_path} objects and exits
@@ -97,6 +99,7 @@ struct Args {
     std::string metrics_out;   // optional perceptual metrics JSON for regression tests
     std::string raw_out;       // optional dir: write <scene>.rgb raw RGB24 frames instead of a GIF
     float audio_bpm = 120.0f;
+    float quality = 1.0f;
     std::string audio_profile = "balanced";
     nlohmann::json preview_options = nlohmann::json::object();
 };
@@ -139,6 +142,8 @@ static Args parse_args(int argc, char* argv[])
             a.metrics_out = argv[++i];
         else if (std::string(argv[i]) == "--raw-out" && i + 1 < argc)
             a.raw_out = argv[++i];
+        else if (std::string(argv[i]) == "--quality" && i + 1 < argc)
+            parse_float(argv[++i], a.quality);
         else if (std::string(argv[i]) == "--audio-bpm" && i + 1 < argc)
             parse_float(argv[++i], a.audio_bpm);
         else if (std::string(argv[i]) == "--audio-profile" && i + 1 < argc)
@@ -582,6 +587,7 @@ int main(int argc, char* argv[])
             }
 
             scene->initialize(args.matrix_width, args.matrix_height);
+            scene->force_render_quality_scale(args.quality);
 
             std::vector<Magick::Image> frames;
             std::ofstream raw_stream;

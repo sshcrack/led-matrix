@@ -47,6 +47,7 @@
 #include "matrix-factory.h"
 #include "led-matrix.h"
 
+#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/common/desktop_control_protocol.h>
 #include <shared/common/crash_reporter.h>
@@ -461,7 +462,7 @@ int main(int argc, char **argv)
         Constants::global_transition_manager = nullptr;
         Constants::global_update_manager = nullptr;
 
-        const auto temp_config = fs::temp_directory_path() / "led-matrix-scene-worker.json";
+        const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
         config = new Config::MainConfig(temp_config.string());
 
         auto *plugins = Plugins::PluginManager::instance();
@@ -614,6 +615,7 @@ int main(int argc, char **argv)
                     {"op", "worker_heartbeat"},
                     {"protocol", RemoteRenderProtocol::Version},
                     {"scenes", offloadable_scenes},
+                    {"scene_code", Common::scene_code_digest()},
                 };
                 websocket.send("msg:RenderOffload:" + heartbeat.dump());
                 next_heartbeat = now + std::chrono::seconds(1);

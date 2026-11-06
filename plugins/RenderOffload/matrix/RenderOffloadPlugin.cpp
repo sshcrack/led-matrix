@@ -62,7 +62,8 @@ void RenderOffloadPlugin::on_websocket_message(const std::string &message)
             return;
         RemoteRender::report_worker_heartbeat(
             command.value("protocol", 0),
-            command.value("scenes", std::vector<std::string>{}));
+            command.value("scenes", std::vector<std::string>{}),
+            command.value("scene_code", std::string{}));
     } catch (const std::exception &e) {
         spdlog::debug("Ignoring invalid RenderOffload worker message: {}", e.what());
     }
