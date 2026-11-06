@@ -57,6 +57,7 @@
 #include <shared/matrix/execution_mode.h>
 #include <shared/matrix/media_artwork_state.h>
 #include <shared/matrix/plugin_loader/loader.h>
+#include <shared/matrix/plugin/lifecycle.h>
 #include <shared/matrix/preview.h>
 #include <shared/matrix/runtime_inputs.h>
 #include <shared/matrix/utils/consts.h>
@@ -469,9 +470,16 @@ int main(int argc, char **argv)
         std::vector<Plugins::BasicPlugin *> lifecycle_plugins;
         for (auto *plugin : plugins->get_plugins()) {
             if (plugin->get_scenes().empty()) continue;
-            plugin->before_server_init();
-            plugin->after_server_init();
+            // Track the plugin before running its hooks so a failure still
+            // runs pre_exit for it and everything initialised before it.
             lifecycle_plugins.push_back(plugin);
+            for (const auto stage : {Plugins::LifecycleStage::BeforeServerInit, Plugins::LifecycleStage::AfterServerInit}) {
+                if (const auto failure = Plugins::run_lifecycle_stage(plugin, stage)) {
+                    for (const auto &exit_failure : Plugins::run_lifecycle_stage_all(lifecycle_plugins, Plugins::LifecycleStage::PreExit))
+                        spdlog::error("{}", exit_failure.describe());
+                    throw std::runtime_error(failure->describe());
+                }
+            }
         }
 
         std::vector<std::string> offloadable_scenes;
@@ -487,7 +495,8 @@ int main(int argc, char **argv)
 
         const auto clean_exit = [&] {
             wrappers.clear();
-            for (auto *plugin : lifecycle_plugins) plugin->pre_exit();
+            for (const auto &failure : Plugins::run_lifecycle_stage_all(lifecycle_plugins, Plugins::LifecycleStage::PreExit))
+                spdlog::error("{}", failure.describe());
             config->release_scene_references();
             plugins->delete_references();
             plugins->destroy_plugins();
@@ -642,7 +651,8 @@ int main(int argc, char **argv)
         // intentionally unreachable, but documents the required DSO teardown order.
         runtime.reset();
         websocket.stop();
-        for (auto *plugin : lifecycle_plugins) plugin->pre_exit();
+        for (const auto &failure : Plugins::run_lifecycle_stage_all(lifecycle_plugins, Plugins::LifecycleStage::PreExit))
+                spdlog::error("{}", failure.describe());
         wrappers.clear();
         config->release_scene_references();
         plugins->delete_references();

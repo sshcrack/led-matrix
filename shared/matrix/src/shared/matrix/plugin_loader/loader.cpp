@@ -70,25 +70,36 @@ std::vector<std::shared_ptr<SceneWrapper>> PluginManager::get_scenes() {
     // that empty early query permanently poison the scene cache. Rebuild when
     // the loaded plugin set changes (notably 0 -> N during preview_gen startup).
     if (!scenes_initialized || scenes_plugin_count_ != plugins.size()) {
-        all_scenes.clear();
+        std::vector<std::shared_ptr<SceneWrapper>> candidate;
         for (auto *item : plugins) {
             auto pl_scenes = item->get_scenes();
-            all_scenes.insert(all_scenes.end(), pl_scenes.begin(), pl_scenes.end());
+            candidate.insert(candidate.end(), pl_scenes.begin(), pl_scenes.end());
         }
-        scenes_initialized = true;
-        scenes_plugin_count_ = plugins.size();
-        validation_report_ = validate_registry(false);
-        if (!validation_report_.ok()) {
-            for (const auto &error : validation_report_.errors)
+        // The cache is only marked initialized once the candidate validated,
+        // so a failed registry keeps failing on every lookup instead of being
+        // served from cache on the second call.
+        const auto report = publish_if_valid(std::move(candidate));
+        if (!report.ok()) {
+            for (const auto &error : report.errors)
                 spdlog::error("Registry validation: {}", error);
             throw std::runtime_error(fmt::format(
                 "Plugin/scene registry validation failed with {} error(s)",
-                validation_report_.errors.size()));
+                report.errors.size()));
         }
-        for (const auto &warning : validation_report_.warnings)
+        scenes_initialized = true;
+        scenes_plugin_count_ = plugins.size();
+        for (const auto &warning : report.warnings)
             spdlog::warn("Registry validation: {}", warning);
     }
     return all_scenes;
+}
+
+RegistryValidationReport PluginManager::publish_if_valid(std::vector<std::shared_ptr<SceneWrapper>> candidate) {
+    auto report = build_report(candidate);
+    if (report.ok())
+        all_scenes = std::move(candidate);
+    validation_report_ = report;
+    return report;
 }
 
 void PluginManager::add_scene(std::shared_ptr<SceneWrapper> scene) {
@@ -100,27 +111,36 @@ void PluginManager::add_scene(std::shared_ptr<SceneWrapper> scene) {
     });
     if (duplicate != all_scenes.end())
         throw std::runtime_error(fmt::format("Duplicate scene id '{}'", name));
-    all_scenes.push_back(std::move(scene));
-    const auto report = validate_registry(false);
-    if (!report.ok()) {
-        all_scenes.pop_back();
-        validation_report_ = validate_registry(false);
+    auto candidate = all_scenes;
+    candidate.push_back(std::move(scene));
+    if (const auto report = publish_if_valid(std::move(candidate)); !report.ok()) {
+        // Keep the diagnostics report describing the registry that is
+        // actually live, not the rejected candidate.
+        validation_report_ = build_report(all_scenes);
         throw std::runtime_error(fmt::format(
             "Dynamic scene '{}' failed registry validation: {}",
             name, report.errors.empty() ? "unknown error" : report.errors.front()));
     }
-    validation_report_ = report;
 }
 
 void PluginManager::remove_scene(const std::string& name) {
     std::lock_guard<std::mutex> lock(scenes_mutex);
-    all_scenes.erase(
-        std::remove_if(all_scenes.begin(), all_scenes.end(),
+    auto candidate = all_scenes;
+    candidate.erase(
+        std::remove_if(candidate.begin(), candidate.end(),
                        [&name](const std::shared_ptr<SceneWrapper>& s) {
                            return s && s->get_name() == name;
                        }),
-        all_scenes.end());
-    validation_report_ = validate_registry(false);
+        candidate.end());
+    // Removing a scene cannot introduce a conflict, so publish regardless of
+    // the report; otherwise one bad remaining scene would pin a deleted one.
+    validation_report_ = build_report(candidate);
+    all_scenes = std::move(candidate);
+}
+
+RegistryValidationReport PluginManager::get_validation_report() const {
+    std::lock_guard<std::mutex> lock(scenes_mutex);
+    return validation_report_;
 }
 
 std::vector<std::shared_ptr<ImageProviderWrapper>> PluginManager::get_image_providers() {
@@ -142,6 +162,18 @@ std::vector<std::shared_ptr<Plugins::ShaderProviderWrapper>> PluginManager::get_
 }
 
 RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
+    RegistryValidationReport report;
+    {
+        std::lock_guard<std::mutex> lock(scenes_mutex);
+        report = build_report(all_scenes);
+        validation_report_ = report;
+    }
+    if (throw_on_error && !report.ok())
+        throw std::runtime_error(fmt::format("Registry validation failed with {} error(s)", report.errors.size()));
+    return report;
+}
+
+RegistryValidationReport PluginManager::build_report(const std::vector<std::shared_ptr<SceneWrapper>> &scenes) {
     RegistryValidationReport report;
 
     std::unordered_map<std::string, std::string> plugins_by_name;
@@ -210,8 +242,8 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
     }
 
     std::unordered_map<std::string, size_t> scene_names;
-    for (size_t index = 0; index < all_scenes.size(); ++index) {
-        const auto &wrapper = all_scenes[index];
+    for (size_t index = 0; index < scenes.size(); ++index) {
+        const auto &wrapper = scenes[index];
         if (!wrapper) {
             report.errors.emplace_back(fmt::format("Scene wrapper #{} is null", index));
             continue;
@@ -382,9 +414,6 @@ RegistryValidationReport PluginManager::validate_registry(bool throw_on_error) {
         }
     }
 
-    validation_report_ = report;
-    if (throw_on_error && !report.ok())
-        throw std::runtime_error(fmt::format("Registry validation failed with {} error(s)", report.errors.size()));
     return report;
 }
 
