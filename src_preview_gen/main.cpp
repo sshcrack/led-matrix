@@ -50,6 +50,7 @@
 #include "led-matrix.h"
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/plugin/lifecycle.h"
 #include "shared/matrix/preview.h"
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
@@ -368,9 +369,16 @@ int main(int argc, char* argv[])
     const auto pl = Plugins::PluginManager::instance();
     pl->initialize();
 
-    for (auto plugin : pl->get_plugins()) {
-        plugin->before_server_init();
-        plugin->after_server_init();
+    // Same contract as the daemon: a plugin whose init hook fails would
+    // render broken previews, so stop instead of silently continuing.
+    try {
+        Plugins::run_lifecycle_stage_or_throw(pl->get_plugins(), Plugins::LifecycleStage::BeforeServerInit);
+        Plugins::run_lifecycle_stage_or_throw(pl->get_plugins(), Plugins::LifecycleStage::AfterServerInit);
+    } catch (const std::exception &e) {
+        spdlog::error("{}", e.what());
+        for (const auto &failure : Plugins::run_lifecycle_stage_all(pl->get_plugins(), Plugins::LifecycleStage::PreExit))
+            spdlog::error("{}", failure.describe());
+        return 1;
     }
 
     std::unordered_map<std::string, std::shared_ptr<Previews::DataProvider> > preview_providers;
@@ -469,7 +477,8 @@ int main(int argc, char* argv[])
 
         // Cleanup and exit without rendering. Release all wrapper references
         // before plugin DSOs are unloaded.
-        for (auto* plugin : pl->get_plugins()) plugin->pre_exit();
+        for (const auto &failure : Plugins::run_lifecycle_stage_all(pl->get_plugins(), Plugins::LifecycleStage::PreExit))
+            spdlog::error("{}", failure.describe());
         wrappers.clear();
         preview_providers.clear();
         config->release_scene_references();
@@ -682,7 +691,8 @@ int main(int argc, char* argv[])
     spdlog::info("Done. Generated: {}  Skipped: {}", generated, skipped);
 
     // ---- cleanup ----------------------------------------------------------
-    for (auto* plugin : pl->get_plugins()) plugin->pre_exit();
+    for (const auto &failure : Plugins::run_lifecycle_stage_all(pl->get_plugins(), Plugins::LifecycleStage::PreExit))
+        spdlog::error("{}", failure.describe());
     wrappers.clear();
     preview_providers.clear();
     config->release_scene_references();

@@ -672,6 +672,10 @@ if(ENABLE_EMULATOR)
     enable_testing()
     set(PREVIEW_TEST_ENV
         "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins"
+        # Font plugins resolve fonts next to their DSO, which only exists in
+        # the install tree. Their before_server_init() failure is fatal.
+        "COUNTDOWN_FONT_DIRECTORY=${RPI_RGB_LED_MATRIX_FONTS_DIR}"
+        "WEATHER_FONT_DIRECTORY=${RPI_RGB_LED_MATRIX_FONTS_DIR}"
         "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
     )
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -786,6 +790,21 @@ if(ENABLE_EMULATOR)
     )
     add_test(NAME desktop_producer_ownership_smoke COMMAND $<TARGET_FILE:desktop_producer_ownership_smoke>)
     set_tests_properties(desktop_producer_ownership_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(plugin_lifecycle_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/plugin_lifecycle_smoke.cpp
+    )
+    target_compile_features(plugin_lifecycle_smoke PRIVATE cxx_std_23)
+    target_link_libraries(plugin_lifecycle_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        spdlog::spdlog
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME plugin_lifecycle_smoke COMMAND $<TARGET_FILE:plugin_lifecycle_smoke>)
+    set_tests_properties(plugin_lifecycle_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(runtime_inputs_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_inputs_smoke.cpp

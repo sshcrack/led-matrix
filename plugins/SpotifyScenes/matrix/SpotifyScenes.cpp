@@ -37,13 +37,29 @@ vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
     return scenes;
 }
 
-std::optional<string> SpotifyScenes::after_server_init() {
+std::optional<string> SpotifyScenes::before_server_init() {
     if(is_disabled)
         return std::nullopt;
 
+    // The /spotify/* routes dereference `spotify`, and the daemon starts
+    // accepting requests before after_server_init(). Construct the client
+    // here so a request arriving during startup never sees a null pointer.
+    if (!spotify)
+        spotify = new Spotify(SceneExecution::is_headless_fixture_host());
+    return std::nullopt;
+}
+
+std::optional<string> SpotifyScenes::after_server_init() {
+    if(is_disabled)
+        return std::nullopt;
+    if (!spotify)
+        return "SpotifyScenes: before_server_init() did not create the Spotify client";
+
     spdlog::debug("Initializing SpotifyScenes");
 
-    spotify = new Spotify(SceneExecution::is_headless_fixture_host());
+    // initialize() may block waiting for the browser to complete
+    // /spotify/login -> /spotify/callback, so it must run once the HTTP
+    // server is listening.
     if (!SceneExecution::is_headless_fixture_host())
         spotify->initialize();
     PluginRegistry::set("spotify", spotify);
