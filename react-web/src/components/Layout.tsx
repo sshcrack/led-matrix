@@ -1,7 +1,7 @@
 import { Link, useLocation, useMatch } from 'react-router-dom'
 import { Grid3x3, Calendar, Download, Moon, Sun, Images, FolderCode, Menu, X, Sparkles, Activity, FlaskConical } from 'lucide-react'
 import { cn } from '~/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface NavItem { to: string; label: string; description: string; icon: React.ReactNode }
 const navItems: NavItem[] = [
@@ -27,11 +27,6 @@ function ThemeToggle() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
-  useEffect(() => {
-    const stored = localStorage.getItem('colorScheme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    document.documentElement.classList.toggle('dark', stored === 'dark' || (!stored && prefersDark))
-  }, [])
   const [openedAt, setOpenedAt] = useState(location.pathname)
   if (openedAt !== location.pathname) {
     // Close the mobile menu on navigation (adjust state during render).

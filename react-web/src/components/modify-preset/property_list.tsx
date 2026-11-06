@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import type { Property, ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 import { Button } from '~/components/ui/button'
@@ -12,6 +12,8 @@ import ProvidersProperty from './properties/ProvidersProperty'
 import GeneralProperty from './properties/GeneralProperty'
 import AudioModulationProperty from './properties/AudioModulationProperty'
 import { propertyGroup, propertyVisible } from './propertyUi'
+import { findPropertyControl, usePluginUis } from '~/core/pluginRegistry'
+import type { PropertyControlProps } from '~/core/pluginUi'
 
 interface PropertyListProps {
   properties: Property<unknown>[]
@@ -22,6 +24,7 @@ interface PropertyListProps {
 
 export default function PropertyList({ properties, arguments: args, providers, onChange }: PropertyListProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const pluginUis = usePluginUis()
   const update = (name: string, value: unknown) => onChange({ ...args, [name]: value })
 
   const visible = properties.filter((property) => propertyVisible(property, args))
@@ -50,6 +53,11 @@ export default function PropertyList({ properties, arguments: args, providers, o
       />
     }
     const onValue = (v: unknown) => update(prop.name, v)
+    const Custom = findPropertyControl(pluginUis, prop.additional?.control)
+    if (Custom) {
+      const C = Custom as unknown as ComponentType<PropertyControlProps<unknown>>
+      return <C property={prop} value={value} onChange={onValue} args={args} />
+    }
     switch (prop.type_id) {
       case 'bool': return <BooleanProperty property={prop as Property<boolean>} value={value as boolean} onChange={onValue} />
       case 'color': return <ColorProperty property={prop as Property<number>} value={value as number | string} onChange={onValue} />

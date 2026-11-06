@@ -140,6 +140,14 @@ pnpm run dev   # local dev server
 
 The matrix CMake build embeds `react-web/dist/` into the installed binary tree. Add `-DSKIP_WEB_BUILD=ON` on every `cmake --preset` reconfigure when you haven't changed the web app.
 
+### Web UI architecture and plugin UI extensions
+
+`react-web/src/core/` is the shared layer; `react-web/src/variants/<id>/` are interchangeable shells (chrome + home + preset editor). A variant never calls the API itself: `useMatrix()` (`core/matrixContext.ts`) exposes status/presets/scenes plus optimistic actions (`setPower`, `setMode`, `activate`, `createPreset`, `savePreset`, …), `usePresetEditor` autosaves edits, and `QuickBuilder` creates *and plays* a preset from picked scenes / ambiance packs / plugin templates in one step. `core/variants.ts` picks the active variant (`?ui=<id>`, then `localStorage.uiVariant`) and sets `data-ui` on `<html>`, which switches the design tokens in `index.css`. Adding/removing a variant = one folder + one line in `variants/index.ts`.
+
+A plugin can extend the web UI by adding `plugins/<Name>/web/index.ts(x)` with `export default definePluginUi({...})` (`core/pluginUi.ts`). `core/pluginRegistry.ts` discovers these with `import.meta.glob` — no registration, no CMake or other UI change; plugins without `web/` keep working from the metadata `/list_scenes` already sends. Extension points: `propertyControls` (custom control keyed by the `control` id a property declares in its UI metadata), `sceneActions` (extra buttons on a scene; the "Configure sources" button is itself one, in `pluginRegistry.ts`), `presetTemplates` (one-tap starting points in the quick builder). Plugin web modules import only from `react` and `~/…`. Example: `plugins/AmbientScenes/web/index.ts`.
+
+Dev against a real daemon without CORS trouble: `LED_MATRIX_DEV_API=http://localhost:8080 pnpm dev`, then set the API URL to `http://localhost:5173/__api` (proxies REST + `/live_frame` WebSocket).
+
 ## MCP emulator server
 
 An MCP server in `scripts/mcp-emulator/server.py` lets AI agents control the emulator directly:

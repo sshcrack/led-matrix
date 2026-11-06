@@ -74,6 +74,16 @@ export default defineConfig({
     alias: {
       '~': path.resolve(__dirname, './src'),
     },
+    // Plugin UI modules live outside react-web/ (plugins/<Name>/web); make them share our React.
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'lucide-react'],
+  },
+  server: {
+    fs: { allow: ['..'] },
+    // Opt-in: LED_MATRIX_DEV_API=http://localhost:8080 pnpm dev, then set the API URL to
+    // http://localhost:5173/__api – avoids the daemon's cross-origin rejection (incl. /live_frame WebSocket).
+    proxy: process.env.LED_MATRIX_DEV_API
+      ? { '/__api': { target: process.env.LED_MATRIX_DEV_API, changeOrigin: false, ws: true, rewrite: (p: string) => p.replace(/^\/__api/, '') } }
+      : undefined,
   },
   test: {
     environment: 'jsdom',

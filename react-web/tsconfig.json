@@ -21,6 +21,6 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../plugins/*/web"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

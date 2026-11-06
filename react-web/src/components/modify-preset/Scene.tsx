@@ -17,6 +17,7 @@ import PropertyList from './property_list'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Badge } from '../ui/badge'
 import { sceneArgumentsForVariant, sceneVariant } from '~/lib/sceneVariants'
+import { collectSceneActions, usePluginUis } from '~/core/pluginRegistry'
 
 interface SceneProps {
   scene: SceneType
@@ -34,22 +35,7 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
 
   const def = sceneDefinitions.find(s => s.name === scene.type)
 
-  const hasProviders = def?.properties.some(p =>
-    p.type_id === 'json' && (
-      (p.additional?.provider_type === 'image') || (p.additional?.provider_type === 'shader')
-    )
-  )
-
-  const hasShaderProviders = def?.properties.some(p =>
-    p.type_id === 'json' && p.additional?.provider_type === 'shader'
-  )
-
-  const handleProviderEdit = () => {
-    const route = hasShaderProviders
-      ? `/modify-shader-providers/${encodeURIComponent(presetId)}/${scene.uuid}`
-      : `/modify-providers/${encodeURIComponent(presetId)}/${scene.uuid}`
-    navigate(route)
-  }
+  const actions = collectSceneActions(usePluginUis()).filter(a => def && (a.when?.({ presetId, scene, definition: def, navigate }) ?? true))
 
   return (
     <>
@@ -108,17 +94,11 @@ export default function Scene({ scene, sceneDefinitions, providers, presetId }: 
               ) : (
                 <p className="text-sm text-muted-foreground">Unknown scene type: {scene.type}</p>
               )}
-              {hasProviders && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 w-full"
-                  onClick={handleProviderEdit}
-                >
-                  Configure sources
-                  <ArrowRight className="h-4 w-4" />
+              {def && actions.map(action => (
+                <Button key={action.id} variant="outline" size="sm" className="w-full gap-2" onClick={() => action.run({ presetId, scene, definition: def, navigate })}>
+                  {action.icon}{action.label}<ArrowRight className="h-4 w-4" />
                 </Button>
-              )}
+              ))}
             </CardContent>
           </CollapsibleContent>
         </Collapsible>

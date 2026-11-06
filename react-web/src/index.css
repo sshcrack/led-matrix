@@ -114,3 +114,25 @@
     @apply -translate-y-0.5 border-primary/60 shadow-lg shadow-primary/10;
   }
 }
+
+/* ───────── UI variant design tokens (see src/core/variants.ts) ─────────
+   Each variant re-themes the whole app, including the pages it doesn't redesign. */
+@layer base {
+  /* Console – precise, dense, teal on graphite */
+  [data-ui='console'] { --primary: 13 148 136; --primary-foreground: 240 253 250; --background: 243 245 246; --secondary: 232 236 238; --border: 218 224 227; --r-sm: .25rem; --r-md: .375rem; --r-lg: .5rem; --r-xl: .625rem; --r-2xl: .75rem; }
+  [data-ui='console'].dark { --primary: 45 212 191; --primary-foreground: 4 30 28; --background: 9 12 15; --card: 16 21 26; --secondary: 26 34 41; --border: 34 45 54; --muted-foreground: 130 148 160; }
+
+  /* Deck – friendly, tactile, warm, big tap targets */
+  [data-ui='deck'] { --primary: 234 88 12; --primary-foreground: 255 247 237; --background: 252 248 243; --card: 255 255 255; --secondary: 245 238 229; --secondary-foreground: 68 52 38; --border: 233 223 210; --muted-foreground: 120 104 90; --foreground: 41 30 22; --r-sm: .5rem; --r-md: .75rem; --r-lg: 1rem; --r-xl: 1.25rem; --r-2xl: 1.75rem; --r-3xl: 2.25rem; }
+  [data-ui='deck'].dark { --primary: 251 146 60; --primary-foreground: 38 18 4; --background: 22 18 16; --card: 34 28 25; --secondary: 48 40 35; --border: 62 52 45; --foreground: 250 243 235; --muted-foreground: 168 152 138; }
+
+  /* Studio – editorial, crisp, indigo on paper */
+  [data-ui='studio'] { --primary: 79 70 229; --primary-foreground: 238 242 255; --background: 250 250 249; --card: 255 255 255; --secondary: 244 244 242; --border: 228 228 224; --r-sm: .25rem; --r-md: .5rem; --r-lg: .625rem; --r-xl: .875rem; --r-2xl: 1rem; }
+  [data-ui='studio'].dark { --primary: 129 140 248; --primary-foreground: 19 17 56; --background: 12 12 15; --card: 20 20 25; --secondary: 30 30 38; --border: 42 42 52; }
+  [data-ui='studio'] h1, [data-ui='studio'] h2 { letter-spacing: -0.02em; }
+
+  /* Ambient – immersive, calm, violet glow */
+  [data-ui='ambient'] { --primary: 124 58 237; --primary-foreground: 245 243 255; --background: 246 244 252; --card: 255 255 255; --secondary: 237 233 249; --border: 226 220 244; --r-xl: 1.25rem; --r-2xl: 1.75rem; --r-3xl: 2.25rem; }
+  [data-ui='ambient'].dark { --primary: 167 139 250; --primary-foreground: 28 16 66; --background: 6 6 12; --card: 15 15 26; --secondary: 26 26 42; --border: 38 38 60; --muted-foreground: 140 140 168; }
+  [data-ui='ambient'] .font-display, [data-ui='ambient'] h1 { font-family: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+}
