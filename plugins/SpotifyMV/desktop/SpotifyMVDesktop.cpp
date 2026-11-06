@@ -109,22 +109,23 @@ void SpotifyMVDesktop::stop_playback(const bool report_status) {
     }
     cancel_search_and_join();
 
+    // Detach under the lock, stop outside it: stop() joins the engine threads
+    // (and may wait for ffmpeg to die), which must not stall
+    // compute_next_packet() on the UDP thread.
+    std::unique_ptr<Shared::VideoStreamEngine> pending;
+    std::unique_ptr<Shared::VideoStreamEngine> current;
     {
         std::lock_guard<std::mutex> lk_eng(engine_mutex_);
-        if (pending_engine_) {
-            pending_engine_->on_status_change = nullptr;
-            pending_engine_->on_first_frame_ready = nullptr;
-            pending_engine_->stop();
-            pending_engine_.reset();
-        }
-        if (current_engine_) {
-            current_engine_->on_status_change = nullptr;
-            current_engine_->on_first_frame_ready = nullptr;
-            current_engine_->stop();
-            current_engine_.reset();
-        }
+        pending = std::move(pending_engine_);
+        current = std::move(current_engine_);
         end_crossfade();
         old_last_frame_.clear();
+    }
+    for (auto* engine : {pending.get(), current.get()}) {
+        if (!engine) continue;
+        engine->on_status_change = nullptr;
+        engine->on_first_frame_ready = nullptr;
+        engine->stop();
     }
 
     if (report_status) {
@@ -136,6 +137,17 @@ void SpotifyMVDesktop::stop_playback(const bool report_status) {
 bool SpotifyMVDesktop::request_is_pending(const std::uint64_t generation) {
     std::lock_guard<std::mutex> lk(track_id_mutex_);
     return track_requests_.is_pending(generation);
+}
+
+void SpotifyMVDesktop::fail_pending(const std::uint64_t generation, const std::string& track_id) {
+    {
+        std::lock_guard<std::mutex> lk(track_id_mutex_);
+        if (!track_requests_.abandon(generation))
+            return; // superseded: a newer request owns the status now
+    }
+    total_errors_++;
+    send_websocket_message("track:error:" + track_id);
+    send_websocket_message("status:error");
 }
 
 void SpotifyMVDesktop::start_crossfade() {

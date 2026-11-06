@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 #include <string>
 #include <imgui.h>
@@ -46,6 +47,12 @@ namespace Plugins
 
         virtual void on_websocket_message(const std::string message) {}
         void send_websocket_message(const std::string &message);
+
+        /// Test seam: when set, send_websocket_message() hands (plugin name,
+        /// message) to this sink instead of the WebSocket client. Integration
+        /// tests use it to observe the plugin's protocol without a matrix.
+        using MessageSink = std::function<void(const std::string &plugin, const std::string &message)>;
+        static void set_message_sink(MessageSink sink);
 
         /// Override to return true for plugins that send large payloads (full frames).
         /// These will be throttled by the UDP send FPS limit.

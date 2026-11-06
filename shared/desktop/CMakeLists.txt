@@ -51,6 +51,8 @@ target_include_directories(${PROJECT_NAME}
         PRIVATE
         # where the library itself will look for its internal headers
         src
+        # led_matrix_version.h
+        ${LED_MATRIX_GENERATED_DIR}
         PUBLIC
         # where top-level project will look for the library's public headers
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

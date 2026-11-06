@@ -93,7 +93,7 @@ foreach(PLUGIN_NAME ${PLUGIN_DIRS})
 
 endforeach()
 
-set(VERSION 1.19.1)
+set(VERSION 1.19.2)
 if(ENABLE_DESKTOP)
     project(led-matrix-desktop VERSION ${VERSION})
 else()
@@ -117,14 +117,6 @@ add_package_json_version_update(PACKAGE_JSON_PATH "react-web/package.json" TARGE
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-# Define version macros for compile-time access
-add_compile_definitions(
-    PROJECT_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-    PROJECT_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    PROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-    PROJECT_VERSION_STRING="${PROJECT_VERSION}"
-)
-
 # Persist the exact source revision in crash reports so an address/minidump can
 # be matched back to the build that produced it. Configure still succeeds when
 # building from a source archive without .git metadata.
@@ -139,6 +131,14 @@ execute_process(
 if(NOT LED_MATRIX_GIT_REVISION_RESULT EQUAL 0 OR LED_MATRIX_GIT_REVISION STREQUAL "")
     set(LED_MATRIX_GIT_REVISION "unknown")
 endif()
+
+# Version and revision live in a generated header, not in compile definitions.
+# A -D flag is part of every object's compiler-cache key, so a global version
+# define made each release bump (and the revision each commit) recompile the
+# whole tree on Linux CI. Only the few files that include this header rebuild.
+set(LED_MATRIX_GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/led_matrix_version.h.in
+        ${LED_MATRIX_GENERATED_DIR}/led_matrix_version.h @ONLY)
 
 
 # Add update testing flag if enabled
@@ -468,6 +468,23 @@ if(ENABLE_DESKTOP)
     add_test(NAME spotify_mv_stop_latency_smoke COMMAND $<TARGET_FILE:spotify_mv_stop_latency_smoke>)
     if(NOT WIN32)
         set_tests_properties(spotify_mv_stop_latency_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/SpotifyMV:${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
+    # End-to-end SpotifyMV producer flows (track change, skip-and-return,
+    # rapid skips, failures, stop, cache, producer handover) with fake
+    # yt-dlp/ffmpeg scripts on PATH.
+    add_executable(spotify_mv_flow_integration
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_flow_integration.cpp
+    )
+    target_compile_features(spotify_mv_flow_integration PRIVATE cxx_std_23)
+    target_compile_definitions(spotify_mv_flow_integration PRIVATE PLUGIN_NAME="SpotifyMV")
+    target_include_directories(spotify_mv_flow_integration PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(spotify_mv_flow_integration PRIVATE SpotifyMV SharedToolsDesktop SharedToolsCommon)
+    add_test(NAME spotify_mv_flow_integration COMMAND $<TARGET_FILE:spotify_mv_flow_integration>)
+    set_tests_properties(spotify_mv_flow_integration PROPERTIES TIMEOUT 120)
+    if(NOT WIN32)
+        set_tests_properties(spotify_mv_flow_integration PROPERTIES
             ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/SpotifyMV:${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
     endif()
 

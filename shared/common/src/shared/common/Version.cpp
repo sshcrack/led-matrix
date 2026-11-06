@@ -1,4 +1,5 @@
 #include "shared/common/Version.h"
+#include "led_matrix_version.h"  // generated
 #include <regex>
 
 namespace Common {

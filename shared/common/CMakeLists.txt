@@ -17,7 +17,6 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 # Scene-code fingerprint for the remote-render compatibility check. Regenerated
 # on every build (cheap git plumbing); the header only changes with the code.
-set(LED_MATRIX_GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
 add_custom_target(scene_code_digest ALL
         COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
                 -DOUTPUT=${LED_MATRIX_GENERATED_DIR}/scene_code_digest.h
@@ -38,7 +37,6 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     SHARED_COMMON_EXPORTS
-    LED_MATRIX_GIT_REVISION="${LED_MATRIX_GIT_REVISION}"
 )
 
 target_include_directories(${PROJECT_NAME}

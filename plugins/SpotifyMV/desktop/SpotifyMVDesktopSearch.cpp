@@ -40,10 +40,8 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
 
             if (url.empty()) {
                 spdlog::error("SpotifyMV: no YouTube URL found for '{}'", song);
-                send_websocket_message("track:error:" + track_id);
-                send_websocket_message("status:error");
+                fail_pending(generation, track_id);
                 search_running_ = false;
-                total_errors_++;
                 return;
             }
 
@@ -63,12 +61,8 @@ void SpotifyMVDesktop::search_and_play(Shared::VideoStreamEngine* engine,
                 return;
             }
         } catch (const std::exception& e) {
-            if (request_is_current()) {
-                spdlog::error("SpotifyMV search exception: {}", e.what());
-                send_websocket_message("track:error:" + track_id);
-                send_websocket_message("status:error");
-                total_errors_++;
-            }
+            spdlog::error("SpotifyMV search exception: {}", e.what());
+            fail_pending(generation, track_id);
         }
         search_running_ = false;
     });
