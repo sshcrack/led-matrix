@@ -462,7 +462,7 @@ int main(int argc, char **argv)
         Constants::global_transition_manager = nullptr;
         Constants::global_update_manager = nullptr;
 
-        const auto temp_config = fs::temp_directory_path() / "led-matrix-scene-worker.json";
+        const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
         config = new Config::MainConfig(temp_config.string());
 
         auto *plugins = Plugins::PluginManager::instance();
