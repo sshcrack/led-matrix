@@ -1,10 +1,13 @@
 #pragma once
 #include "shared/desktop/plugin/main.h"
+#include "VideoSearch.h"
 #include "shared/desktop/VideoStreamEngine.h"
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -37,6 +40,13 @@ public:
 
 private:
   void render_status_ui();
+  void render_search_ui();
+  /// Runs yt-dlp on a worker thread. `reply_to_matrix` publishes the results
+  /// to the Pi so the web UI can show them.
+  void start_search(const std::string &query, bool reply_to_matrix);
+  void cancel_search();
+  void cancel_search_locked(); // caller holds search_ctl_mutex_
+  void play_url(const std::string &url);
   void refresh_tools_status(bool force = false);
   void start_audio(const std::string &path);
   void stop_audio();
@@ -64,6 +74,16 @@ private:
   FILE *audio_pipe = nullptr;
   pid_t audio_pid = -1;
 #endif
+
+  // Search (worker thread writes, UI thread reads)
+  std::thread search_thread_;
+  std::atomic<bool> search_running_{false};
+  std::atomic<bool> search_busy_{false};
+  std::mutex search_ctl_mutex_; // serialises start/cancel of search_thread_
+  std::mutex search_mutex_;
+  std::vector<VideoSearch::Result> search_results_;
+  std::string search_error_;
+  char search_input_[200] = {};
 
   double fps = 30.0;
 

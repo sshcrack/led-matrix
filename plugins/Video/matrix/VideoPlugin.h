@@ -1,7 +1,10 @@
 #pragma once
 
 #include "shared/matrix/plugin/main.h"
+#include <chrono>
 #include <mutex>
+#include <nlohmann/json.hpp>
+#include <optional>
 #include <vector>
 
 using Plugins::BasicPlugin;
@@ -28,6 +31,9 @@ public:
   std::string get_plugin_name() const override { return PLUGIN_NAME; }
   [[nodiscard]] bool requires_single_desktop_producer() const override { return true; }
 
+  std::unique_ptr<router_t>
+  register_routes(std::unique_ptr<router_t> router) override;
+
   std::optional<std::vector<std::string>> on_websocket_open() override;
   void on_websocket_message(const std::string &message) override;
 
@@ -45,7 +51,37 @@ public:
     status = "idle";
   }
 
+  /// "Play now" request from the web UI; consumed once by the running scene.
+  /// Requests expire so a click while another scene is showing does not
+  /// start a video minutes later.
+  std::optional<std::string> take_play_request() {
+    std::lock_guard<std::mutex> lock(searchMutex);
+    auto r = std::move(playRequest);
+    playRequest.reset();
+    if (r && std::chrono::steady_clock::now() - playRequestedAt > std::chrono::seconds(15))
+      return std::nullopt;
+    return r;
+  }
+  void set_play_request(std::string url) {
+    std::lock_guard<std::mutex> lock(searchMutex);
+    playRequest = std::move(url);
+    playRequestedAt = std::chrono::steady_clock::now();
+  }
+
 private:
+  enum class SearchState { Idle, Searching, Done, Error };
+
+  nlohmann::json search_snapshot();
+
+  std::mutex searchMutex;
+  SearchState searchState = SearchState::Idle;
+  std::string searchQuery;
+  std::string searchError;
+  nlohmann::json searchItems = nlohmann::json::array();
+  std::chrono::steady_clock::time_point searchStarted{};
+  std::optional<std::string> playRequest;
+  std::chrono::steady_clock::time_point playRequestedAt{};
+
   std::mutex dataMutex;
   std::vector<uint8_t> data;
 

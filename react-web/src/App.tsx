@@ -2,14 +2,14 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ApiUrlProvider } from './components/apiUrl/ApiUrlProvider'
-import Layout from './components/Layout'
+import { MatrixProvider } from './core/MatrixProvider'
+import Shell from './shell/Shell'
 import ErrorBoundary from './components/ErrorBoundary'
 import ApiTokenDialog from './components/apiUrl/ApiTokenDialog'
 
-const Home = lazy(() => import('./pages/Home'))
 const Schedules = lazy(() => import('./pages/Schedules'))
 const Updates = lazy(() => import('./pages/Updates'))
-const ModifyPreset = lazy(() => import('./pages/ModifyPreset'))
+import { PresetWritesGate } from './core/PresetWritesGate'
 const ModifyProviders = lazy(() => import('./pages/ModifyProviders'))
 const ModifyShaderProviders = lazy(() => import('./pages/ModifyShaderProviders'))
 const SceneGallery = lazy(() => import('./pages/SceneGallery'))
@@ -17,12 +17,12 @@ const SceneLab = lazy(() => import('./pages/SceneLab'))
 const AssetManager = lazy(() => import('./pages/AssetManager'))
 const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 
-export default function App() {
+const Home = lazy(() => import('./shell/Home'))
+const Editor = lazy(() => import('./shell/Editor'))
+
+function Routed() {
   return (
-    <ApiUrlProvider>
-      <ApiTokenDialog />
-      <BrowserRouter basename="/web">
-          <Layout>
+      <Shell>
             <ErrorBoundary>
               <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading...</div>}>
                 <Routes>
@@ -33,15 +33,26 @@ export default function App() {
                   <Route path="/schedules" element={<Schedules />} />
                   <Route path="/updates" element={<Updates />} />
                   <Route path="/diagnostics" element={<Diagnostics />} />
-                  <Route path="/modify-preset/:preset_id" element={<ModifyPreset />} />
-                  <Route path="/modify-providers/:preset_id/:scene_id" element={<ModifyProviders />} />
-                  <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<ModifyShaderProviders />} />
+                  <Route path="/modify-preset/:preset_id" element={<Editor />} />
+                  <Route path="/modify-providers/:preset_id/:scene_id" element={<PresetWritesGate><ModifyProviders /></PresetWritesGate>} />
+                  <Route path="/modify-shader-providers/:preset_id/:scene_id" element={<PresetWritesGate><ModifyShaderProviders /></PresetWritesGate>} />
                 </Routes>
               </Suspense>
             </ErrorBoundary>
-          </Layout>
+      </Shell>
+  )
+}
+
+export default function App() {
+  return (
+    <ApiUrlProvider>
+      <ApiTokenDialog />
+      <BrowserRouter basename="/web">
+        <MatrixProvider>
+          <Routed />
+        </MatrixProvider>
       </BrowserRouter>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="bottom-center" offset={20} />
     </ApiUrlProvider>
   )
 }

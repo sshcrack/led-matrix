@@ -4,6 +4,7 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "../plugins/*/web/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -51,9 +52,12 @@ export default {
         },
       },
       borderRadius: {
-        lg: '0.75rem',
-        md: '0.5rem',
-        sm: '0.375rem',
+        sm: 'var(--r-sm, 0.375rem)',
+        md: 'var(--r-md, 0.5rem)',
+        lg: 'var(--r-lg, 0.75rem)',
+        xl: 'var(--r-xl, 0.75rem)',
+        '2xl': 'var(--r-2xl, 1rem)',
+        '3xl': 'var(--r-3xl, 1.5rem)',
       },
     },
   },

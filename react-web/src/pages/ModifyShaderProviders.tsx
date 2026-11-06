@@ -11,6 +11,7 @@ import ShaderUrlProviders from '~/components/modify-providers/ShaderUrlProviders
 import AddProviderButton from '~/components/modify-providers/AddProviderButton'
 import type { RawPreset } from '~/apiTypes/list_presets'
 import { arrayToObjectPresets, objectToArrayPresets } from '~/apiTypes/list_presets'
+import { enqueueSave } from '~/core/presetSaveQueue'
 import type { ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 
 export default function ModifyShaderProviders() {
@@ -72,12 +73,15 @@ export default function ModifyShaderProviders() {
           scenes: { ...preset.scenes, [sceneId]: { ...scene, arguments: updatedArgs } },
         }
         const rawToSave = objectToArrayPresets(updatedPreset)
-        const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(presetId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(rawToSave),
+        // Through the shared per-preset write queue, so it is ordered with the inspector's autosaves.
+        await enqueueSave(presetId, rawToSave, async draft => {
+          const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(presetId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(draft),
+          })
+          if (!res.ok) throw new Error('Save failed')
         })
-        if (!res.ok) throw new Error('Save failed')
       })
       if (saved) toast.success('Shader providers saved')
     } catch {

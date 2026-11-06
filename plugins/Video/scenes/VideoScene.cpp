@@ -36,6 +36,9 @@ string VideoScene::get_name() const { return "video"; }
 
 void VideoScene::register_properties()
 {
+  video_urls->label("Playlist")
+      .description("YouTube videos to play. Use Search to find videos instead of pasting links.")
+      .control("video_playlist");
   add_property(video_urls);
   add_property(random_playback);
 }
@@ -75,8 +78,18 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
     streaming_enabled = true;
   }
 
+  // "Play now" from the web UI's search; handled before the finished-check so
+  // it also revives a scene that is holding the last frame of a finished video.
+  if (auto playNow = plugin->take_play_request())
+  {
+    plugin->flush_status();
+    plugin->send_msg_to_desktop("url:" + *playNow);
+    lastUrlSent = *playNow;
+    last_switch_time = GetTimeInMillis();
+  }
+
   auto urls = video_urls->get();
-  if (urls.empty())
+  if (urls.empty() && lastUrlSent.empty())
   {
     canvas->Fill(50, 0, 0); // Dim red for no config
     return true;

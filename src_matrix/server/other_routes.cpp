@@ -6,6 +6,7 @@
 #include "shared/matrix/post.h"
 #include "shared/matrix/utils/image_fetch.h"
 #include <filesystem>
+#include <fstream>
 #include "shared/matrix/server/MimeTypes.h"
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/canvas_consts.h"
@@ -39,6 +40,28 @@ bool is_within(const filesystem::path &candidate, const filesystem::path &base)
             return false;
     }
     return true;
+}
+
+#ifndef LED_MATRIX_SHARE_DIR
+#define LED_MATRIX_SHARE_DIR "."
+#endif
+
+// Directory holding a plugin's runtime web UI bundle (ui.json, ui.js, ui.css):
+// the plugin's own folder first (<plugin dir>/web, so a plugin can be dropped in
+// with its UI), then the bundle shipped with the web app
+// (<share>/web/plugin-ui/<Name>). Empty path when the plugin ships none.
+filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
+{
+    const auto name = plugin.get_plugin_name();
+    std::vector<filesystem::path> candidates;
+    if (const auto location = plugin.get_plugin_location(); !location.empty())
+        candidates.push_back(filesystem::path(location).parent_path() / "web");
+    candidates.push_back(filesystem::path(LED_MATRIX_SHARE_DIR) / "web" / "plugin-ui" / name);
+    std::error_code ec;
+    for (const auto &dir : candidates)
+        if (filesystem::is_regular_file(dir / "ui.json", ec) && filesystem::is_regular_file(dir / "ui.js", ec))
+            return dir;
+    return {};
 }
 } // namespace
 
@@ -96,6 +119,66 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         return response.set_body(restinio::sendfile(file_path)).done(); });
 
+
+    // Installed plugins plus the web-UI extension API version this daemon
+    // understands, and for plugins that ship a runtime UI bundle where to get it
+    // (react-web/src/core/pluginRegistry.ts loads it from /plugin_ui/<Name>/<file>).
+    router->http_get("/plugin_ui", [](auto req, auto)
+                     {
+        json plugins = json::array();
+        json web_ui = json::object();
+        for (auto *plugin : Plugins::PluginManager::instance()->get_plugins())
+        {
+            const auto name = plugin->get_plugin_name();
+            plugins.push_back(name);
+            const auto dir = plugin_ui_dir(*plugin);
+            if (dir.empty())
+                continue;
+            json entry = {{"js", "ui.js"}, {"api_version", 1}};
+            std::error_code ec;
+            if (filesystem::is_regular_file(dir / "ui.css", ec))
+                entry["css"] = "ui.css";
+            try
+            {
+                std::ifstream meta(dir / "ui.json");
+                const auto parsed = json::parse(meta);
+                if (parsed.contains("api_version") && parsed["api_version"].is_number_integer())
+                    entry["api_version"] = parsed["api_version"];
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::warn("Plugin '{}' has an unreadable ui.json: {}", name, e.what());
+                continue;
+            }
+            web_ui[name] = entry;
+        }
+        return reply_with_json(req, json{{"ui_api_version", 1}, {"plugins", plugins}, {"web_ui", web_ui}}); });
+
+    // Runtime UI bundle files. Only the two fixed file names of a loaded plugin
+    // are served, so the request can never address an arbitrary path.
+    router->http_get("/plugin_ui/:name/:file", [](auto req, auto params)
+                     {
+        const std::string name{params["name"]};
+        const std::string file{params["file"]};
+        if (file != "ui.js" && file != "ui.css")
+            return reply_with_error(req, "Not found", restinio::status_not_found());
+        for (auto *plugin : Plugins::PluginManager::instance()->get_plugins())
+        {
+            if (plugin->get_plugin_name() != name)
+                continue;
+            const auto dir = plugin_ui_dir(*plugin);
+            std::error_code ec;
+            if (dir.empty() || !filesystem::is_regular_file(dir / file, ec))
+                break;
+            auto response = req->create_response(restinio::status_ok())
+                                .append_header_date_field()
+                                .append_header(restinio::http_field::content_type,
+                                               file == "ui.js" ? "text/javascript" : "text/css")
+                                .append_header(restinio::http_field::cache_control, "no-cache");
+            Server::add_cors_headers(response);
+            return response.set_body(restinio::sendfile(dir / file)).done();
+        }
+        return reply_with_error(req, "Not found", restinio::status_not_found()); });
 
     router->http_get("/diagnostics", [](auto req, auto)
                      {
