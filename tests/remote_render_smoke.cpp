@@ -152,6 +152,19 @@ int main()
         std::cerr << "remote scene did not emit a stop command\n";
         return 10;
     }
+    const nlohmann::json transition{{"name", "blend"}, {"duration_ms", 750},
+        {"from", std::vector<std::uint8_t>(32 * 32 * 3, 17)}};
+    const auto transitioning = RemoteRender::request_scene(scene, 32, 32, 60, transition);
+    if (!transitioning || commands.back().at("transition") != transition)
+        return 11;
+    const auto handoff = RemoteRender::request_scene(scene, 32, 32, 60);
+    if (handoff != transitioning || commands.back().value("session", 0U) != *transitioning)
+        return 12;
+    const auto resume = RemoteRender::reconnect_command();
+    if (!resume || resume->contains("transition")) return 13;
+    const auto second = RemoteRender::request_scene(scene, 32, 32, 60, transition);
+    if (!second || second == transitioning) return 14;
+    RemoteRender::stop();
     RemoteRender::clear_command_sender();
     return 0;
 }

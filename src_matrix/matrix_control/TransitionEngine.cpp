@@ -1,4 +1,5 @@
 #include "TransitionEngine.h"
+#include <vector>
 
 #include "LiveFrameSnapshot.h"
 #include "shared/common/crash_reporter.h"
@@ -177,6 +178,75 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         current_frame_updated = true;
     }
 
+    // Send one outgoing RGB snapshot. The worker owns transition timing and
+    // composition; the Pi only writes the finished streamed pixels to GPIO.
+    if (next_scene->get_capabilities().supports_remote_rendering
+        && RemoteRender::worker_available(next_scene->get_name())) {
+        std::vector<std::uint8_t> outgoing(static_cast<std::size_t>(matrix_width * matrix_height * 3));
+        for (int y = 0; y < matrix_height; ++y)
+            for (int x = 0; x < matrix_width; ++x) {
+                const auto offset = static_cast<std::size_t>((y * matrix_width + x) * 3);
+                first_offscreen_canvas->GetPixel(x, y, &outgoing[offset], &outgoing[offset + 1], &outgoing[offset + 2]);
+            }
+        const auto session = RemoteRender::request_scene(
+            *next_scene, matrix_width, matrix_height, 60,
+            {{"name", transition_name}, {"duration_ms", std::clamp<tmillis_t>(transition_duration, 1, max_transition_ms)},
+             {"from", outgoing}});
+        if (session) {
+            const auto requested_at = time_source_->now_ms();
+            auto last_frame_at = requested_at;
+            bool presented = false;
+            std::uint64_t presented_frames = 0;
+            tmillis_t first_frame_at = 0;
+            std::uint32_t last_sequence = 0;
+            while (!*interrupt_flag_ && !*exit_flag_) {
+                if (!runtime_inputs_valid()) return;
+                const auto now = time_source_->now_ms();
+                RemoteRender::publish_runtime_state(*session);
+                const auto remote = RemoteRender::status();
+                if (remote.session == *session && remote.last_sequence != last_sequence
+                    && RemoteRender::copy_latest(*session, composite_offscreen_canvas,
+                                                 matrix_width, matrix_height, 150.0)) {
+                    last_sequence = remote.last_sequence;
+                    last_frame_at = now;
+                    if (!presented) first_frame_at = now;
+                    presented = true;
+                    ++presented_frames;
+                    if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
+                    LiveFrame::SnapshotStore::instance().capture_if_requested(
+                        composite_offscreen_canvas, matrix_width, matrix_height);
+                    composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
+                    presenter_->present();
+                    Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
+                } else {
+                    SleepMillis(1);
+                }
+                if (presented && now - requested_at >= std::clamp<tmillis_t>(transition_duration, 1, max_transition_ms)) {
+                    const auto elapsed_ms = now - first_frame_at;
+                    Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
+                        {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
+                        {"placement", "desktop"}, {"frames", presented_frames},
+                        {"startup_ms", first_frame_at - requested_at},
+                        {"presentation_fps", elapsed_ms > 0 && presented_frames > 1
+                            ? 1000.0 * static_cast<double>(presented_frames - 1) / static_cast<double>(elapsed_ms) : 0.0}});
+                    forced_scene = next_scene;
+                    return; // Keep the same session for ordinary scene rendering.
+                }
+                if (now - last_frame_at > (presented ? 150 : 500)) {
+                    RemoteRender::stop();
+                    if (presented) {
+                        // Do not replay a half-finished handoff on disconnect.
+                        forced_scene = next_scene;
+                        return;
+                    }
+                    break; // Worker never produced a frame: use the local path.
+                }
+            }
+            if (*interrupt_flag_ || *exit_flag_)
+                return;
+        }
+    }
+
     std::optional<std::uint32_t> next_remote_session;
     const auto next_caps = next_scene->get_capabilities();
     const bool desktop_available = RemoteRender::worker_available(next_scene->get_name());
@@ -220,6 +290,8 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     };
 
     auto next_continue = render_next();
+    std::uint64_t local_frames = 0;
+    tmillis_t first_local_frame_ms = 0;
 
     while (true) {
         const auto now_ms = time_source_->now_ms();
@@ -258,6 +330,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             break;
         }
 
+        if (local_frames++ == 0) first_local_frame_ms = now_ms;
         apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, eased_alpha, matrix_width,
                                matrix_height, transition_name);
 
@@ -272,6 +345,12 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
 
         if (alpha >= 1.0f) {
+            const auto elapsed_ms = now_ms - first_local_frame_ms;
+            Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
+                {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
+                {"placement", "local"}, {"frames", local_frames}, {"startup_ms", 0},
+                {"presentation_fps", elapsed_ms > 0 && local_frames > 1
+                    ? 1000.0 * static_cast<double>(local_frames - 1) / static_cast<double>(elapsed_ms) : 0.0}});
             forced_scene = next_scene;
             break;
         }

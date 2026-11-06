@@ -21,3 +21,26 @@ The normal daemon was stopped for the test and successfully restarted afterward.
 | BlockDissolve | 66.73 | 40.57 | 15.0 | 24.6 | 39.2% |
 
 Reveal effects improve by about 20–40% in frame time. Blend and morph have no meaningful improvement; unchanged zoom/glitch/CRT effects serve as controls. The remaining ~40 ms/frame cost on reveal effects means this fix alone does not reach 60 FPS. Further work is needed to avoid hardware framebuffer readback during composition.
+
+## Desktop composition
+
+The worker now receives a single RGB888 outgoing snapshot in its scene-start command, renders the incoming scene, applies the registered transition on its headless software canvases, and streams completed frames. The Pi performs only the final framebuffer write and presentation. After the transition, ordinary scene rendering reuses the session. Protocol version 3 requires updating both Pi and desktop; older workers are not eligible. The existing scene-code fingerprint must also match.
+
+Startup without a frame times out after 500 ms and falls back to local composition. A stream stalled for 150 ms after its first frame hands control to the incoming scene without replaying the transition. Reconnect commands resume the scene without replaying the old outgoing snapshot. Held incoming scenes preserve the snapshot until they produce real pixels. Postprocessing and demand-driven live capture remain on the Pi.
+
+Validation includes worker self-tests for every registered transition and its completion, transport tests for session reuse and reconnect, and matrix-side tests for receiving already-composed pixels, worker stalls, and startup timeout.
+
+### Attached-panel end-to-end measurements
+
+Measured on the same Pi and attached 128×128 panel with GPIO slowdown 3, alternating `metablob` and `neontunnel`, ten-second scene durations and five-second blend transitions. Unlike the fixed-gradient measurements above, these include actual scene rendering and, for desktop placement, the WebSocket start/snapshot, UDP transport and Pi GPIO presentation. Runs used the same candidate code with a compatible desktop worker connected versus no worker. A parent desktop control connection was present for the worker, as required by normal producer election.
+
+| Placement | Direction | Presented frames | FPS | Startup to first streamed frame |
+|---|---|---:|---:|---:|
+| local | neontunnel → metablob | 126 | 25.16 | — |
+| local | metablob → neontunnel | 109 | 21.76 | — |
+| desktop | metablob → neontunnel | 295 | 59.76 | 91 ms |
+| desktop | neontunnel → metablob | 295 | 59.70 | 81 ms |
+| desktop | metablob → neontunnel | 294 | 59.64 | 91 ms |
+| desktop | neontunnel → metablob | 290 | 58.94 | 101 ms |
+
+Desktop mean: 59.51 FPS. Local mean: 23.46 FPS. These are short, controlled samples, not a guarantee for all scenes or networks. FPS covers first-to-last transition presentation; startup is reported separately and holds the outgoing image. All registered transition types pass worker composition/handoff self-tests; this end-to-end timing run covers blend only. The original Pi service and config were restored after each run.

@@ -1,3 +1,4 @@
+#include "shared/matrix/transition_manager.h"
 #ifdef _WIN32
 #include "shared/common/win_compat.h"
 #include <cstdlib>
@@ -353,6 +354,27 @@ struct RenderRuntime {
     int height = 0;
     int target_fps = 60;
     Clock::time_point next_frame{};
+    rgb_matrix::FrameCanvas *transition_from = nullptr;
+    rgb_matrix::FrameCanvas *transition_output = nullptr;
+    TransitionEffect *transition = nullptr;
+    Clock::time_point transition_start{};
+    int transition_ms = 0;
+    bool have_scene_frame = false;
+
+    rgb_matrix::FrameCanvas *output_frame()
+    {
+        if (scene->frame_was_updated()) have_scene_frame = true;
+        if (!have_scene_frame && transition_from)
+            canvas->CopyFrom(*transition_from);
+        if (!transition) return canvas;
+        const float alpha = std::clamp(
+            std::chrono::duration<float, std::milli>(Clock::now() - transition_start).count()
+                / static_cast<float>(transition_ms), 0.0f, 1.0f);
+        if (alpha >= 1.0f) { transition = nullptr; return canvas; }
+        const float eased = alpha * alpha * (3.0f - 2.0f * alpha);
+        transition->apply(transition_output, transition_from, canvas, eased, width, height);
+        return transition_output;
+    }
 
     ~RenderRuntime() { reset(); }
 
@@ -362,6 +384,9 @@ struct RenderRuntime {
             try { scene->after_render_stop(); } catch (...) {}
         }
         scene.reset();
+        have_scene_frame = false;
+        transition = nullptr;
+        transition_from = transition_output = nullptr;
         canvas = nullptr;
         delete matrix;
         matrix = nullptr;
@@ -416,6 +441,23 @@ struct RenderRuntime {
         scene->restore_frame_timeline(command.value("elapsed_seconds", 0.0));
         if (const auto state = command.find("runtime_state"); state != command.end())
             scene->restore_runtime_state(*state);
+        if (const auto it = command.find("transition"); it != command.end()) {
+            const auto rgb = it->at("from").get<std::vector<std::uint8_t>>();
+            if (rgb.size() != static_cast<std::size_t>(width * height * 3))
+                throw std::runtime_error("invalid transition snapshot size");
+            transition_ms = std::clamp(it->at("duration_ms").get<int>(), 1, 10000);
+            transition = Constants::global_transition_manager->get_transition(it->at("name").get<std::string>());
+            if (!transition) transition = Constants::global_transition_manager->get_transition("blend");
+            if (!transition) throw std::runtime_error("worker has no transition effect");
+            transition_from = matrix->CreateFrameCanvas();
+            transition_output = matrix->CreateFrameCanvas();
+            for (int y = 0; y < height; ++y)
+                for (int x = 0; x < width; ++x) {
+                    const auto offset = static_cast<std::size_t>((y * width + x) * 3);
+                    transition_from->SetPixel(x, y, rgb[offset], rgb[offset + 1], rgb[offset + 2]);
+                }
+            transition_start = Clock::now();
+        }
         sequence = 0;
         next_frame = Clock::now();
         CrashReporter::set_activity(std::string("offloading scene '") + scene->get_name()
@@ -466,7 +508,8 @@ int main(int argc, char **argv)
         Constants::width = 128;
         Constants::height = 128;
         Constants::global_post_processor = nullptr;
-        Constants::global_transition_manager = nullptr;
+        TransitionManager transition_manager;
+        Constants::global_transition_manager = &transition_manager;
         Constants::global_update_manager = nullptr;
 
         const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
@@ -474,6 +517,9 @@ int main(int argc, char **argv)
 
         auto *plugins = Plugins::PluginManager::instance();
         plugins->initialize();
+        for (auto *plugin : plugins->get_plugins())
+            for (auto &effect : plugin->create_transitions())
+                transition_manager.register_transition(std::move(effect));
         auto wrappers = plugins->get_scenes();
         std::vector<Plugins::BasicPlugin *> lifecycle_plugins;
         for (auto *plugin : plugins->get_plugins()) {
@@ -507,6 +553,7 @@ int main(int argc, char **argv)
                 spdlog::error("{}", failure.describe());
             config->release_scene_references();
             plugins->delete_references();
+            transition_manager.clear();
             plugins->destroy_plugins();
             delete config;
             config = nullptr;
@@ -520,6 +567,23 @@ int main(int argc, char **argv)
         }
         if (args.self_test) {
             run_self_test(offloadable_scenes);
+            if (transition_manager.get_registered_transitions().empty())
+                throw std::runtime_error("worker has no registered transitions");
+            for (const auto &name : transition_manager.get_registered_transitions()) {
+                RenderRuntime probe;
+                probe.start({{"protocol", RemoteRenderProtocol::Version}, {"session", 1},
+                    {"width", 128}, {"height", 128}, {"scene", "boids"},
+                    {"transition", {{"name", name}, {"duration_ms", 750},
+                        {"from", std::vector<std::uint8_t>(128 * 128 * 3, 31)}}}});
+                probe.scene->render_frame(probe.canvas, 1.0 / 60.0, true);
+                probe.canvas->Fill(210, 120, 80);
+                probe.transition_start = Clock::now() - std::chrono::milliseconds(375);
+                if (probe.output_frame() != probe.transition_output)
+                    throw std::runtime_error("worker skipped transition: " + name);
+                probe.transition_start = Clock::now() - std::chrono::milliseconds(1000);
+                if (probe.output_frame() != probe.canvas || probe.transition)
+                    throw std::runtime_error("worker failed transition handoff: " + name);
+            }
             std::cout << R"({"ok":true,"scenes":["metablob","neontunnel","boids","reaction_diffusion","julia_set"]})" << std::endl;
             clean_exit();
             return 0;
@@ -632,7 +696,7 @@ int main(int argc, char **argv)
                 bool keep_running = true;
                 try {
                     keep_running = runtime.scene->render_frame(runtime.canvas, std::nullopt, true);
-                    const auto rgb = capture(runtime.canvas, runtime.width, runtime.height);
+                    const auto rgb = capture(runtime.output_frame(), runtime.width, runtime.height);
                     auto packets = RemoteRenderProtocol::make_frame_packets(
                         runtime.session, ++runtime.sequence,
                         static_cast<std::uint16_t>(runtime.width),
@@ -665,6 +729,7 @@ int main(int argc, char **argv)
         wrappers.clear();
         config->release_scene_references();
         plugins->delete_references();
+        transition_manager.clear();
         plugins->destroy_plugins();
         delete config;
         config = nullptr;

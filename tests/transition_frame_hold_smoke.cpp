@@ -2,6 +2,9 @@
 #include "matrix_control/TransitionEngine.h"
 
 #include <shared/common/timesource/TimeSource.h>
+#include <shared/common/build_info.h>
+#include <shared/common/remote_render_protocol.h>
+#include <shared/matrix/remote_render.h>
 #include <shared/matrix/Scene.h>
 
 #include <emulator.h>
@@ -46,6 +49,11 @@ public:
     }
     void register_properties() override {}
     std::string get_name() const override { return "transition-stable"; }
+    Scenes::SceneCapabilities get_capabilities() const override {
+        auto caps = Scenes::Scene::get_capabilities();
+        caps.supports_remote_rendering = true;
+        return caps;
+    }
 protected:
     tmillis_t get_default_duration() override { return 2000; }
     int get_default_weight() override { return 1; }
@@ -138,5 +146,35 @@ int main()
         }
     }
 
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version,
+        {next->get_name()}, Common::scene_code_digest());
+    bool sent_transition = false;
+    RemoteRender::set_command_sender([&](const nlohmann::json &command) {
+        if (command.value("op", "") != "start") return;
+        sent_transition = command.contains("transition")
+            && command.at("transition").at("from").size() == 32 * 32 * 3;
+        RemoteRender::submit_frame(command.at("session").get<std::uint32_t>(), 1,
+            32, 32, std::vector<std::uint8_t>(32 * 32 * 3, 83));
+    });
+    presenter.samples.clear();
+    forced_scene.reset();
+    engine.render_transition_phase(current, next, first, second, composite,
+        32, 32, 1000, "blend", forced_scene, 0, {}, display);
+    if (!sent_transition || presenter.samples.size() != 1 || presenter.samples[0] != 83
+        || forced_scene != next || RemoteRender::status().requested) {
+        std::cerr << "desktop composition or stalled-worker fallback failed\n";
+        return 4;
+    }
+    RemoteRender::set_command_sender([](const nlohmann::json &) {});
+    presenter.samples.clear();
+    forced_scene.reset();
+    engine.render_transition_phase(current, next, first, second, composite,
+        32, 32, 100, "blend", forced_scene, 0, {}, display);
+    if (presenter.samples.empty() || forced_scene != next) {
+        std::cerr << "worker startup timeout failed to render locally\n";
+        return 5;
+    }
+    RemoteRender::stop();
+    RemoteRender::clear_command_sender();
     return 0;
 }

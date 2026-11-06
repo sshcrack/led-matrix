@@ -16,6 +16,8 @@ public:
     TransitionManager() = default;
     ~TransitionManager() = default;
 
+    void clear() { registered_transitions.clear(); }
+
     void register_transition(
         std::unique_ptr<TransitionEffect> effect);
 
