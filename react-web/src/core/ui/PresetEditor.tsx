@@ -54,7 +54,7 @@ function SceneSettings({ scene, presetId, onChange }: { scene: Scene; presetId: 
       <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Look</div>
       <div className="flex flex-wrap gap-1.5">
         {[{ id: '', label: 'Original' }, ...variants].map(v => <button key={v.id} onClick={() => onChange({ ...scene, variant: v.id || undefined, arguments: sceneArgumentsForVariant(def, v.id) })}
-          className={cn('rounded-full border px-3 py-1 text-xs font-medium transition', (scene.variant ?? '') === v.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary')}>{v.label}</button>)}
+          className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition sm:py-1', (scene.variant ?? '') === v.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary')}>{v.label}</button>)}
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">Switching look resets this scene’s settings to that baseline.</p>
     </div>}
@@ -105,9 +105,9 @@ export function PresetEditor({ presetId, header = true }: { presetId: string; he
               <span className="block truncate text-xs text-muted-foreground">{def?.descriptor?.variants.find(v => v.id === s.variant)?.label ?? def?.category ?? 'Unknown'}</span></span>
           </button>
           <div className="flex shrink-0 items-center">
-            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={i === 0} onClick={() => ed.moveScene(s.uuid, -1)} aria-label="Move up"><ArrowUp className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={i === preset.scenes.length - 1} onClick={() => ed.moveScene(s.uuid, 1)} aria-label="Move down"><ArrowDown className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => remove(s, i)} aria-label={`Remove ${s.type}`}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" disabled={i === 0} onClick={() => ed.moveScene(s.uuid, -1)} aria-label="Move up"><ArrowUp className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" disabled={i === preset.scenes.length - 1} onClick={() => ed.moveScene(s.uuid, 1)} aria-label="Move down"><ArrowDown className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-10 w-10 hover:text-destructive sm:h-8 sm:w-8" onClick={() => remove(s, i)} aria-label={`Remove ${s.type}`}><Trash2 className="h-4 w-4" /></Button>
           </div>
         </div>
         {on && <div className="border-t border-border/60 p-3"><SceneSettings scene={s} presetId={presetId} onChange={ed.updateScene} /></div>}

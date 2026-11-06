@@ -58,10 +58,10 @@ export function QuickBuilder({ onDone, gridClassName, className }: { onDone: (pr
     </section>
 
     <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/95 p-2.5 shadow-lg backdrop-blur">
-      <Input value={name} onChange={e => setName(e.target.value)} placeholder={picked.length ? suggestion : 'Pick scenes to start'} disabled={!picked.length} className="h-9 min-w-[10rem] flex-1" aria-label="Preset name"
+      <Input value={name} onChange={e => setName(e.target.value)} placeholder={picked.length ? suggestion : 'Pick scenes to start'} disabled={!picked.length} className="h-11 w-full sm:h-9 sm:w-auto sm:min-w-[10rem] sm:flex-1" aria-label="Preset name"
         onKeyDown={e => e.key === 'Enter' && void create(true)} />
-      <Button variant="outline" size="sm" disabled={!picked.length || busy} onClick={() => void create(false)}><Plus className="h-4 w-4" />Save</Button>
-      <Button size="sm" disabled={!picked.length || busy || !scenes} onClick={() => void create(true)}><Play className="h-4 w-4" />Create &amp; play{picked.length > 1 ? ` (${picked.length})` : ''}</Button>
+      <Button variant="outline" size="sm" className="h-11 flex-1 sm:h-8 sm:flex-none" disabled={!picked.length || busy} onClick={() => void create(false)}><Plus className="h-4 w-4" />Save</Button>
+      <Button size="sm" className="h-11 flex-[2] sm:h-8 sm:flex-none" disabled={!picked.length || busy || !scenes} onClick={() => void create(true)}><Play className="h-4 w-4" />Create &amp; play{picked.length > 1 ? ` (${picked.length})` : ''}</Button>
     </div>
   </div>
 }
