@@ -1,11 +1,9 @@
 #include "TransitionEngine.h"
-#include <vector>
 
 #include "LiveFrameSnapshot.h"
 #include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
-#include "shared/matrix/remote_render.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
@@ -14,14 +12,16 @@ using namespace spdlog;
 
 TransitionEngine::TransitionEngine(RGBMatrixBase* matrix, TimeSource* time_source, PostProcessor* post_processor,
                                    TransitionManager* transition_manager, MatrixPresenter* presenter, const std::atomic<bool>* exit_flag,
-                                   const std::atomic<bool>* interrupt_flag)
+                                   const std::atomic<bool>* interrupt_flag, DesktopHandoff* handoff)
     : matrix_(matrix),
       time_source_(time_source),
       post_processor_(post_processor),
       transition_manager_(transition_manager),
       presenter_(presenter),
       exit_flag_(exit_flag),
-      interrupt_flag_(interrupt_flag)
+      interrupt_flag_(interrupt_flag),
+      own_handoff_(handoff ? nullptr : std::make_unique<DesktopHandoff>()),
+      handoff_(handoff ? handoff : own_handoff_.get())
 {
 }
 
@@ -96,13 +96,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                 return;
             bool frame_updated = false;
             try {
-                const auto remote_status = RemoteRender::status();
-                if (remote_status.requested && remote_status.scene == scene->get_name()) {
-                    RemoteRender::publish_runtime_state(remote_status.session);
-                    frame_updated = RemoteRender::copy_latest(
-                        remote_status.session, composite_offscreen_canvas,
-                        matrix_width, matrix_height);
-                }
+                frame_updated = handoff_->copy_scene_frame(*scene, composite_offscreen_canvas, matrix_width, matrix_height);
                 if (!frame_updated) {
                     if (!scene->render_frame(composite_offscreen_canvas, std::nullopt, true))
                         break;
@@ -160,11 +154,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     // its local simulation may have intentionally stopped advancing.
     bool current_continue = true;
     bool current_frame_updated = false;
-    const auto current_remote = RemoteRender::status();
-    if (current_remote.requested && current_remote.scene == scene->get_name()) {
-        current_frame_updated = RemoteRender::copy_latest(
-            current_remote.session, first_offscreen_canvas, matrix_width, matrix_height);
-    }
+    current_frame_updated = handoff_->copy_scene_frame(*scene, first_offscreen_canvas, matrix_width, matrix_height);
     if (!current_frame_updated) {
         current_continue = safe_render(scene, first_offscreen_canvas);
         current_frame_updated = scene->frame_was_updated();
@@ -178,102 +168,51 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         current_frame_updated = true;
     }
 
-    // Send one outgoing RGB snapshot. The worker owns transition timing and
-    // composition; the Pi only writes the finished streamed pixels to GPIO.
-    if (next_scene->get_capabilities().supports_remote_rendering
-        && RemoteRender::worker_available(next_scene->get_name())) {
-        std::vector<std::uint8_t> outgoing(static_cast<std::size_t>(matrix_width * matrix_height * 3));
-        for (int y = 0; y < matrix_height; ++y)
-            for (int x = 0; x < matrix_width; ++x) {
-                const auto offset = static_cast<std::size_t>((y * matrix_width + x) * 3);
-                first_offscreen_canvas->GetPixel(x, y, &outgoing[offset], &outgoing[offset + 1], &outgoing[offset + 2]);
+    // The worker composes the transition when it can; the Pi only writes the finished pixels to GPIO.
+    if (handoff_->begin_desktop_transition(*next_scene, *first_offscreen_canvas, matrix_width, matrix_height,
+                                           transition_name, transition_duration, time_source_->now_ms())) {
+        while (!*interrupt_flag_ && !*exit_flag_) {
+            if (!runtime_inputs_valid()) return;
+            const auto now = time_source_->now_ms();
+            const auto tick = handoff_->desktop_transition_tick(composite_offscreen_canvas, now);
+            if (tick.frame) {
+                if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
+                LiveFrame::SnapshotStore::instance().capture_if_requested(
+                    composite_offscreen_canvas, matrix_width, matrix_height);
+                composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
+                presenter_->present();
+                Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
+            } else {
+                SleepMillis(1);
             }
-        const auto session = RemoteRender::request_scene(
-            *next_scene, matrix_width, matrix_height, 60,
-            {{"name", transition_name}, {"duration_ms", std::clamp<tmillis_t>(transition_duration, 1, max_transition_ms)},
-             {"from", outgoing}});
-        if (session) {
-            const auto requested_at = time_source_->now_ms();
-            auto last_frame_at = requested_at;
-            bool presented = false;
-            std::uint64_t presented_frames = 0;
-            tmillis_t first_frame_at = 0;
-            std::uint32_t last_sequence = 0;
-            while (!*interrupt_flag_ && !*exit_flag_) {
-                if (!runtime_inputs_valid()) return;
-                const auto now = time_source_->now_ms();
-                RemoteRender::publish_runtime_state(*session);
-                const auto remote = RemoteRender::status();
-                if (remote.session == *session && remote.last_sequence != last_sequence
-                    && RemoteRender::copy_latest(*session, composite_offscreen_canvas,
-                                                 matrix_width, matrix_height, 150.0)) {
-                    last_sequence = remote.last_sequence;
-                    last_frame_at = now;
-                    if (!presented) first_frame_at = now;
-                    presented = true;
-                    ++presented_frames;
-                    if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
-                    LiveFrame::SnapshotStore::instance().capture_if_requested(
-                        composite_offscreen_canvas, matrix_width, matrix_height);
-                    composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
-                    presenter_->present();
-                    Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
-                } else {
-                    SleepMillis(1);
-                }
-                if (presented && now - requested_at >= std::clamp<tmillis_t>(transition_duration, 1, max_transition_ms)) {
-                    const auto elapsed_ms = now - first_frame_at;
-                    Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
-                        {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
-                        {"placement", "desktop"}, {"frames", presented_frames},
-                        {"startup_ms", first_frame_at - requested_at},
-                        {"presentation_fps", elapsed_ms > 0 && presented_frames > 1
-                            ? 1000.0 * static_cast<double>(presented_frames - 1) / static_cast<double>(elapsed_ms) : 0.0}});
-                    forced_scene = next_scene;
-                    return; // Keep the same session for ordinary scene rendering.
-                }
-                if (now - last_frame_at > (presented ? 150 : 500)) {
-                    RemoteRender::stop();
-                    if (presented) {
-                        // Do not replay a half-finished handoff on disconnect.
-                        forced_scene = next_scene;
-                        return;
-                    }
-                    break; // Worker never produced a frame: use the local path.
-                }
+            using Outcome = DesktopHandoff::TransitionOutcome;
+            if (tick.outcome == Outcome::Done) {
+                const auto stats = handoff_->desktop_transition_stats(now);
+                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
+                    {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
+                    {"placement", "desktop"}, {"frames", stats.frames},
+                    {"startup_ms", stats.startup_ms}, {"presentation_fps", stats.presentation_fps}});
+                forced_scene = next_scene;
+                return; // The session continues as the scene's.
             }
-            if (*interrupt_flag_ || *exit_flag_)
+            if (tick.outcome == Outcome::Abandoned) {
+                forced_scene = next_scene;
                 return;
+            }
+            if (tick.outcome == Outcome::Failed)
+                break; // Worker never produced a frame: compose locally.
         }
+        if (*interrupt_flag_ || *exit_flag_)
+            return;
     }
 
-    std::optional<std::uint32_t> next_remote_session;
-    const auto next_caps = next_scene->get_capabilities();
-    const bool desktop_available = RemoteRender::worker_available(next_scene->get_name());
-    const double next_budget_ms = 1000.0 / static_cast<double>(
-        std::max(1, next_scene->get_declared_target_fps()));
-    if (next_caps.supports_remote_rendering && desktop_available) {
-        const auto p95 = Diagnostics::RuntimeDiagnostics::instance().scene_render_p95(next_scene->get_name());
-        // Offload when the Pi is over budget or had to lower the scene's
-        // quality (the desktop always renders full quality).
-        if (next_scene->get_render_quality_scale() < 0.97f || (p95.has_value() && *p95 > next_budget_ms * 0.72)) {
-            next_remote_session = RemoteRender::request_scene(
-                *next_scene, matrix_width, matrix_height, next_scene->get_declared_target_fps());
-        }
-    }
-    if (!next_remote_session.has_value() && current_remote.requested)
-        RemoteRender::stop();
+    handoff_->begin_local_transition(*next_scene, matrix_width, matrix_height);
 
     bool have_next_frame = false;
     const auto render_next = [&]() {
-        if (next_remote_session.has_value()) {
-            RemoteRender::publish_runtime_state(*next_remote_session);
-            if (RemoteRender::copy_latest(
-                    *next_remote_session, second_offscreen_canvas,
-                    matrix_width, matrix_height)) {
-                have_next_frame = true;
-                return true;
-            }
+        if (handoff_->incoming_frame(second_offscreen_canvas)) {
+            have_next_frame = true;
+            return true;
         }
 
         const bool keep_running = safe_render(next_scene, second_offscreen_canvas);

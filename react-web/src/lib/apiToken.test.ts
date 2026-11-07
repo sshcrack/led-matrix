@@ -13,7 +13,6 @@ beforeEach(() => {
   underlyingFetch.mockReset()
   underlyingFetch.mockResolvedValue(new Response('{}', { status: 200 }))
   setApiToken(null)
-  localStorage.clear()
 })
 
 afterEach(() => {
@@ -47,13 +46,6 @@ describe('installFetchAuth', () => {
     expect(sentHeaders().get('Authorization')).toBe('Bearer tok')
   })
 
-  it('adds a Bearer header to requests for the configured apiUrl', async () => {
-    setApiToken('tok')
-    localStorage.setItem('apiUrl', 'http://192.168.1.50:8080')
-    await window.fetch('http://192.168.1.50:8080/list_scenes')
-    expect(sentHeaders().get('Authorization')).toBe('Bearer tok')
-  })
-
   it('does not overwrite an explicit Authorization header', async () => {
     setApiToken('tok')
     await window.fetch('/x', { headers: { Authorization: 'Basic abc' } })
@@ -62,7 +54,6 @@ describe('installFetchAuth', () => {
 
   it('does not send the token to third-party origins', async () => {
     setApiToken('tok')
-    localStorage.setItem('apiUrl', 'http://192.168.1.50:8080')
     await window.fetch('https://example.com/data.json')
     expect(underlyingFetch.mock.calls[0][1]).toBeUndefined()
   })

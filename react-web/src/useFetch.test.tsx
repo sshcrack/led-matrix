@@ -47,7 +47,9 @@ describe('useFetch', () => {
   })
 
   it('stays loading and does not fetch without an api url', () => {
-    const { result } = renderHook(() => useFetch('/thing'))
+    const { result } = renderHook(() => useFetch('/thing'), {
+      wrapper: ({ children }: { children: ReactNode }) => <ApiUrlContext.Provider value={null}>{children}</ApiUrlContext.Provider>,
+    })
     expect(result.current.isLoading).toBe(true)
     expect(fetchMock).not.toHaveBeenCalled()
   })

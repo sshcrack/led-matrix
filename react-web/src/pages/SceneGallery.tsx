@@ -8,10 +8,10 @@ import { Input } from '~/components/ui/input'
 import useFetch from '~/useFetch'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import MatrixPreview from '~/components/scene-browser/MatrixPreview'
-import { enqueueOp } from '~/core/presetSaveQueue'
+import { useMatrix } from '~/core/matrixContext'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { costLabel, intensityLabel, sceneArgumentsForVariant, sceneDisplayName } from '~/lib/sceneVariants'
-import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
+import type { ListPresets, Scene } from '~/apiTypes/list_presets'
 import { v4 as uuidv4 } from 'uuid'
 import { toast } from 'sonner'
 import AutomaticCuration from '~/components/scene-browser/AutomaticCuration'
@@ -27,6 +27,7 @@ const rotationFilters: { value: RotationFilter; label: string }[] = [
 
 export default function SceneGallery() {
   const apiUrl = useApiUrl()
+  const { persistence } = useMatrix()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
@@ -66,21 +67,11 @@ export default function SceneGallery() {
   }
 
   const addToPreset = async () => {
-    if (!apiUrl || !selected || !targetPreset) return
+    if (!selected || !targetPreset) return
     try {
-      // Read-modify-write inside the preset's write queue, so it sees (and is ordered after) pending autosaves.
-      await enqueueOp(targetPreset, async () => {
-        const response = await fetch(`${apiUrl}/presets?id=${encodeURIComponent(targetPreset)}`)
-        if (!response.ok) throw new Error('Could not load preset')
-        const preset: RawPreset = await response.json()
-        const args = sceneArgumentsForVariant(selected, selectedVariant)
-        const scene: Scene = { uuid: uuidv4(), type: selected.name, arguments: args, variant: selectedVariant || undefined }
-        const save = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(targetPreset)}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...preset, scenes: [...(preset.scenes ?? []), scene] }),
-        })
-        if (!save.ok) throw new Error('Could not save preset')
-      })
+      // Read-modify-write ordered after this preset's pending autosaves.
+      const scene: Scene = { uuid: uuidv4(), type: selected.name, arguments: sceneArgumentsForVariant(selected, selectedVariant), variant: selectedVariant || undefined }
+      await persistence.update(targetPreset, preset => ({ ...preset, scenes: [...(preset.scenes ?? []), scene] }))
       toast.success(`${selected.name} added`)
       navigate(`/modify-preset/${encodeURIComponent(targetPreset)}`)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Failed to add scene') }

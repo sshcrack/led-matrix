@@ -6,12 +6,12 @@ import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import useFetch from '~/useFetch'
 import { useDraftSave } from '~/lib/draftSave'
-import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import ImageProviders from '~/components/modify-providers/ImageProviders'
 import AddProviderButton from '~/components/modify-providers/AddProviderButton'
 import type { RawPreset } from '~/apiTypes/list_presets'
 import { arrayToObjectPresets, objectToArrayPresets } from '~/apiTypes/list_presets'
-import { enqueueSave } from '~/core/presetSaveQueue'
+import { useMatrix } from '~/core/matrixContext'
+import { useLoadedPreset } from '~/core/useLoadedPreset'
 import type { ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
 
 export default function ModifyProviders() {
@@ -19,13 +19,13 @@ export default function ModifyProviders() {
   const presetId = preset_id ? decodeURIComponent(preset_id) : ''
   const sceneId = scene_id ?? ''
   const navigate = useNavigate()
-  const apiUrl = useApiUrl()
+  const { persistence } = useMatrix()
 
   const [providers, setProviders] = useState<ProviderValue[]>([])
   const { isDirty, isSaving, edited, loaded, save } = useDraftSave()
   const [preset, setPreset] = useState<ReturnType<typeof arrayToObjectPresets> | null>(null)
 
-  const { data: rawPreset, isLoading } = useFetch<RawPreset>(`/presets?id=${encodeURIComponent(presetId)}`)
+  const { data: rawPreset, isLoading } = useLoadedPreset(presetId)
   const { data: providerDefs } = useFetch<ListProviders[]>('/list_providers')
 
   // Re-derive local editing state whenever the fetched preset or scene changes
@@ -53,7 +53,7 @@ export default function ModifyProviders() {
   }
 
   const handleSave = async () => {
-    if (!apiUrl || !preset) return
+    if (!preset) return
     try {
       const saved = await save(async () => {
         // Update the scene's provider arguments
@@ -81,15 +81,8 @@ export default function ModifyProviders() {
           },
         }
         const rawToSave = objectToArrayPresets(updatedPreset)
-        // Through the shared per-preset write queue, so it is ordered with the inspector's autosaves.
-        await enqueueSave(presetId, rawToSave, async draft => {
-          const res = await fetch(`${apiUrl}/preset?id=${encodeURIComponent(presetId)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(draft),
-          })
-          if (!res.ok) throw new Error('Save failed')
-        })
+        // Ordered with the inspector's autosaves by the shared preset persistence.
+        await persistence.save(presetId, rawToSave)
       })
       if (saved) toast.success('Providers saved')
     } catch {
