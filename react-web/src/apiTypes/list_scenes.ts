@@ -93,7 +93,7 @@ export type CollectionProvider = {
 export type PagesProvider = {
   type: "pages";
   uuid: string;
-  arguments: { begin: number; end: number };
+  arguments: { pages_begin: number; pages_end: number };
 };
 
 export type RandomShaderProvider = {

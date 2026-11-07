@@ -64,8 +64,8 @@ const std::string PROVIDER_DEFAULT = R"(
 {
   "type": "pages",
   "arguments": {
-    "begin": 0,
-    "end": -1
+    "pages_begin": 0,
+    "pages_end": -1
   }
 }
 ])";
@@ -111,6 +111,7 @@ public:
     void register_properties() override {
         add_property(image_display_duration);
         add_property(json_providers);
+        json_providers->label("Sources").control("image_sources");
     }
 
     using Scene::Scene;

@@ -4,6 +4,7 @@ import { Link2 } from 'lucide-react'
 import type { PluginUi, PropertyControlProps, SceneAction, PresetTemplate } from './pluginUi'
 import type { ComponentType } from 'react'
 import { installPluginSdk } from './pluginSdk'
+import { sourcesProperty } from './sceneSources'
 
 const registered = new Map<string, PluginUi>()
 const listeners = new Set<() => void>()
@@ -36,10 +37,9 @@ registerPluginUi({
     id: 'configure-sources',
     label: 'Configure sources',
     icon: createElement(Link2, { className: 'h-4 w-4' }),
-    when: ({ definition }) => definition.properties.some(p => p.type_id === 'json'
-      && (p.additional?.provider_type === 'image' || p.additional?.provider_type === 'shader')),
+    when: ({ definition }) => sourcesProperty(definition) !== null,
     run: ({ presetId, scene, definition, navigate }) => {
-      const shader = definition.properties.some(p => p.type_id === 'json' && p.additional?.provider_type === 'shader')
+      const shader = sourcesProperty(definition)?.kind === 'shader'
       navigate(`/${shader ? 'modify-shader-providers' : 'modify-providers'}/${encodeURIComponent(presetId)}/${scene.uuid}`)
     },
   }],

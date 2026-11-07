@@ -17,21 +17,21 @@ export default function PagesProvider({ provider, onChange }: PagesProviderProps
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Begin</Label>
+            <Label>First page</Label>
             <Input
               type="number"
               min={0}
-              value={provider.arguments.begin}
-              onChange={e => onChange({ ...provider, arguments: { ...provider.arguments, begin: Number(e.target.value) } })}
+              value={provider.arguments.pages_begin}
+              onChange={e => onChange({ ...provider, arguments: { ...provider.arguments, pages_begin: Number(e.target.value) } })}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>End</Label>
+            <Label>Last page (-1 = all)</Label>
             <Input
               type="number"
-              min={0}
-              value={provider.arguments.end}
-              onChange={e => onChange({ ...provider, arguments: { ...provider.arguments, end: Number(e.target.value) } })}
+              min={-1}
+              value={provider.arguments.pages_end}
+              onChange={e => onChange({ ...provider, arguments: { ...provider.arguments, pages_end: Number(e.target.value) } })}
             />
           </div>
         </div>

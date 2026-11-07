@@ -60,13 +60,17 @@ string ImageProviders::Pages::get_name() const {
 void ImageProviders::Pages::register_properties() {
     add_property(pages_begin);
     add_property(pages_end_raw);
+    // Names the web UI used to write.
+    pages_begin->legacy_name("begin");
+    pages_end_raw->legacy_name("end");
 }
 
 void ImageProviders::Pages::load_properties(const nlohmann::json &j) {
     General::load_properties(j);
 
 
-    if (pages_end_raw->get() == -1) {
+    pages_end = pages_end_raw->get();
+    if (pages_end == -1) {
         const auto pages = pixeljoint::ScrapedPost::get_pages();
         if (!pages.has_value())
             throw std::runtime_error("Could not get page size");
