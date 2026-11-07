@@ -25,6 +25,9 @@ void VideoDesktop::post_init() {
   auto cacheRoot = get_data_dir() / "cache" / "video";
   std::filesystem::create_directories(cacheRoot);
   engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, matrix_width, matrix_height, fps);
+  // Keep buffering small enough to hand off promptly from the fast-start clip.
+  // The five-minute default leaves long YouTube videos loading for minutes.
+  engine_->set_chunk_duration_sec(20);
   refresh_tools_status(true);
   engine_->on_status_change = [this](const std::string& s) {
     send_websocket_message("status:" + s);

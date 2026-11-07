@@ -458,6 +458,19 @@ if(ENABLE_DESKTOP)
             ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
     endif()
 
+    if(NOT WIN32)
+        foreach(video_test IN ITEMS video_startup_smoke video_switch_integration)
+            add_executable(${video_test} tests/${video_test}.cpp)
+            target_compile_features(${video_test} PRIVATE cxx_std_23)
+            target_compile_definitions(${video_test} PRIVATE PLUGIN_NAME="Video")
+            target_include_directories(${video_test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+            target_link_libraries(${video_test} PRIVATE Video SharedToolsDesktop SharedToolsCommon)
+            add_test(NAME ${video_test} COMMAND $<TARGET_FILE:${video_test}>)
+            set_tests_properties(${video_test} PROPERTIES TIMEOUT 30
+                ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/Video:${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+        endforeach()
+    endif()
+
     add_executable(spotify_mv_stop_latency_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_mv_stop_latency_smoke.cpp
     )
@@ -717,6 +730,16 @@ if(ENABLE_EMULATOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh)
         set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 45)
     endif()
+    add_executable(video_scene_switch_integration tests/video_scene_switch_integration.cpp)
+    target_compile_features(video_scene_switch_integration PRIVATE cxx_std_23)
+    target_compile_definitions(video_scene_switch_integration PRIVATE ENABLE_EMULATOR PLUGIN_NAME="Video")
+    target_include_directories(video_scene_switch_integration PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(video_scene_switch_integration PRIVATE Video SharedToolsMatrix SharedToolsCommon
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
+    add_test(NAME video_scene_switch_integration COMMAND video_scene_switch_integration)
+    set_tests_properties(video_scene_switch_integration PROPERTIES ENVIRONMENT
+        "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/Video:${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+
     add_executable(ambiance_packs_smoke tests/ambiance_packs_smoke.cpp)
     target_compile_features(ambiance_packs_smoke PRIVATE cxx_std_23)
     target_link_libraries(ambiance_packs_smoke PRIVATE SharedToolsMatrix SharedToolsCommon

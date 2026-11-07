@@ -232,6 +232,9 @@ CommandResult run_command_capture(const std::string& cmd,
         return result;
     }
     if (pid == 0) {
+        // Commands run through a shell and yt-dlp can start ffmpeg itself.
+        // Give the entire command tree one cancellation target.
+        setpgid(0, 0);
         close(fds[0]);
         dup2(fds[1], STDOUT_FILENO);
         dup2(fds[1], STDERR_FILENO);
@@ -239,6 +242,7 @@ CommandResult run_command_capture(const std::string& cmd,
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
         _exit(127);
     }
+    setpgid(pid, pid);
     close(fds[1]);
     const int flags = fcntl(fds[0], F_GETFL, 0);
     if (flags >= 0)
@@ -275,14 +279,14 @@ CommandResult run_command_capture(const std::string& cmd,
         }
         if (running && !running->load()) {
             cancelled = true;
-            kill(pid, SIGTERM);
+            kill(-pid, SIGTERM);
             for (int i = 0; i < 5; ++i) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 drain();
                 if (waitpid(pid, &status, WNOHANG) == pid)
                     goto child_done;
             }
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
             waitpid(pid, &status, 0);
             break;
         }

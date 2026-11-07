@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 #include <shared/matrix/wrappers.h>
 #include <shared/matrix/server/common.h>
 // ReSharper disable once CppUnusedIncludeDirective
@@ -39,6 +40,11 @@ namespace Plugins
         }
 
     public:
+        // Transport seam, matching DesktopPlugin: integration tests can join
+        // the real scene/plugin logic without opening a production socket.
+        using MessageSink = std::function<void(const std::string&, const std::string&)>;
+        static SHARED_MATRIX_API void set_message_sink(MessageSink sink);
+        static SHARED_MATRIX_API bool deliver_to_message_sink(const std::string& plugin, const std::string& message);
         virtual vector<std::unique_ptr<PostProcessingEffect>> create_effects() {
             return {};
         }
@@ -183,6 +189,8 @@ namespace Plugins
 
         virtual void send_msg_to_desktop(const std::string &msg)
         {
+            if (deliver_to_message_sink(get_plugin_name(), msg))
+                return;
             namespace rb = restinio::websocket::basic;
 
             rb::message_t message;

@@ -6,7 +6,6 @@
 #include <spdlog/spdlog.h>
 
 using namespace Scenes;
-std::string VideoScene::lastUrlSent = "";
 
 std::unique_ptr<Scenes::Scene>
 VideoSceneWrapper::create()
@@ -52,8 +51,7 @@ void VideoScene::after_render_stop()
   if (plugin && streaming_enabled)
   {
     spdlog::info("VideoScene: Stopping streaming");
-    plugin->send_msg_to_desktop("stream:stop");
-    plugin->flush_status();
+    plugin->stop_stream(this);
   }
   streaming_enabled = false;
 }
@@ -74,7 +72,7 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
   if (!streaming_enabled)
   {
     spdlog::info("VideoScene: Starting streaming");
-    plugin->send_msg_to_desktop("stream:start");
+    plugin->start_stream(this);
     streaming_enabled = true;
   }
 
@@ -82,8 +80,7 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
   // it also revives a scene that is holding the last frame of a finished video.
   if (auto playNow = plugin->take_play_request())
   {
-    plugin->flush_status();
-    plugin->send_msg_to_desktop("url:" + *playNow);
+    plugin->set_stream_url(this, *playNow);
     lastUrlSent = *playNow;
     last_switch_time = GetTimeInMillis();
   }
@@ -92,22 +89,6 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
   if (urls.empty() && lastUrlSent.empty())
   {
     canvas->Fill(50, 0, 0); // Dim red for no config
-    return true;
-  }
-
-  // Check status
-  std::string status = plugin->get_status();
-
-  if (status == "finished")
-  {
-    // Keep the final decoded frame latched while the coordinator changes scenes.
-    hold_current_frame();
-    return false;
-  }
-
-  if (status == "downloading" || status == "processing")
-  {
-    render_loading_animation(canvas);
     return true;
   }
 
@@ -149,10 +130,26 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
     std::string targetUrl = urls[current_video_index];
     if (targetUrl != lastUrlSent)
     {
-      plugin->send_msg_to_desktop("url:" + targetUrl);
+      plugin->set_stream_url(this, targetUrl);
       lastUrlSent = targetUrl;
       last_switch_time = now;
     }
+  }
+
+  // Check status
+  std::string status = plugin->get_status();
+
+  if (status == "finished")
+  {
+    // Keep the final decoded frame latched while the coordinator changes scenes.
+    hold_current_frame();
+    return false;
+  }
+
+  if (status == "downloading" || status == "processing")
+  {
+    render_loading_animation(canvas);
+    return true;
   }
 
   // Render Frame

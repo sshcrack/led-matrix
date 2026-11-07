@@ -6,7 +6,7 @@
 
 namespace Scenes {
 class VideoScene : public Scene {
-  static std::string lastUrlSent;
+  std::string lastUrlSent;
   VideoPlugin *plugin;
 
   bool showing_loading_animation = false;

@@ -296,11 +296,11 @@ void VideoStreamEngine::stop() {
         // made the loser of the race spin on ECHILD for 2 s and signal a pid
         // that may already have been reused. While ffmpeg_pid_ still holds the
         // pid the child is unreaped, so the pid cannot have been recycled.
-        kill(pid, SIGTERM);
+        kill(-pid, SIGTERM);
         for (int i = 0; i < 20 && ffmpeg_pid_.load() == pid; ++i)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (ffmpeg_pid_.load() == pid)
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
 #endif
     }
 
