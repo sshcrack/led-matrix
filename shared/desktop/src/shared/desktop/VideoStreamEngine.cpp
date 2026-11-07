@@ -54,6 +54,11 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
 
     processing_thread_ = std::thread([this]() {
         try {
+            if (continuous_streaming_) {
+                play_continuous_stream(seek_ms_.exchange(0));
+                running_ = false;
+                return;
+            }
             const size_t frameSize = static_cast<size_t>(width_) *
                                      static_cast<size_t>(height_) * 3;
 
@@ -285,13 +290,13 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
 void VideoStreamEngine::stop() {
     running_ = false;
 
-    // Kill ffmpeg child process to unblock fread() in play_fast_chunk
+    // Kill ffmpeg child process to unblock fread() in play_decoded_pipe
     if (const pid_t pid = ffmpeg_pid_.load(); pid > 0) {
 #ifdef _WIN32
         HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, static_cast<DWORD>(pid));
         if (hProc) { TerminateProcess(hProc, 1); CloseHandle(hProc); }
 #else
-        // Only signal here: play_fast_chunk() on the processing thread owns the
+        // Only signal here: play_decoded_pipe() on the processing thread owns the
         // child and reaps it once fread() unblocks. Reaping it here as well
         // made the loser of the race spin on ECHILD for 2 s and signal a pid
         // that may already have been reused. While ffmpeg_pid_ still holds the

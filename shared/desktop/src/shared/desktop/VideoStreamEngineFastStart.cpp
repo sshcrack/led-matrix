@@ -34,16 +34,24 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     if (dl.exit_code != 0) {
         const auto detail = detail::command_error_summary(dl.output);
         if (detail.empty())
-            spdlog::warn("Fast chunk download failed (exit {}), skipping fast start", dl.exit_code);
+            spdlog::warn("Fast chunk download failed (exit {})", dl.exit_code);
         else
             spdlog::warn("Fast chunk download failed (exit {}): {}", dl.exit_code, detail);
         return false;
     }
     if (!running_.load()) return false;
 
-    // Pipe ffmpeg raw output directly — frames arrive as ffmpeg encodes them
+    const bool played = play_decoded_pipe(build_ffmpeg_pipe_command(mp4Path));
+    std::filesystem::remove(mp4Path, ec);
+    return played;
+}
+
+// Shared cancellable decoder pipe for local fast-start clips and continuous
+// network playback. The OS pipe provides backpressure: raw video is never
+// accumulated in an unbounded queue or written to disk.
+bool VideoStreamEngine::play_decoded_pipe(const std::string& ffCmd) {
+    if (!running_.load()) return false;
     const size_t frameSize = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 3;
-    std::string ffCmd = build_ffmpeg_pipe_command(mp4Path);
 #ifdef _WIN32
     SECURITY_ATTRIBUTES sa{};
     sa.nLength = sizeof(sa);
@@ -51,12 +59,12 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     sa.lpSecurityDescriptor = nullptr;
     HANDLE hRead, hWrite;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
-        spdlog::warn("Fast chunk: CreatePipe failed, skipping fast start");
+        spdlog::warn("Video decoder: CreatePipe failed");
         return false;
     }
     if (!SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0)) {
         CloseHandle(hRead); CloseHandle(hWrite);
-        spdlog::warn("Fast chunk: SetHandleInformation failed, skipping fast start");
+        spdlog::warn("Video decoder: SetHandleInformation failed");
         return false;
     }
     // Redirect stderr to NUL explicitly. GetStdHandle(STD_ERROR_HANDLE) is not
@@ -85,7 +93,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
                         CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
         CloseHandle(hRead); CloseHandle(hWrite);
         if (hNul != INVALID_HANDLE_VALUE) CloseHandle(hNul);
-        spdlog::warn("Fast chunk: CreateProcess failed, skipping fast start");
+        spdlog::warn("Video decoder: CreateProcess failed");
         return false;
     }
     CloseHandle(hWrite);
@@ -93,17 +101,19 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     int fd = _open_osfhandle((intptr_t)hRead, _O_RDONLY | _O_BINARY);
     if (fd == -1) {
         CloseHandle(hRead);
+        TerminateProcess(pi.hProcess, 1);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-        spdlog::warn("Fast chunk: _open_osfhandle failed, skipping fast start");
+        spdlog::warn("Video decoder: _open_osfhandle failed");
         return false;
     }
     FILE* pipe = _fdopen(fd, "rb");
     if (!pipe) {
         _close(fd);
+        TerminateProcess(pi.hProcess, 1);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-        spdlog::warn("Fast chunk: _fdopen failed, skipping fast start");
+        spdlog::warn("Video decoder: _fdopen failed");
         return false;
     }
     CloseHandle(pi.hProcess);
@@ -131,12 +141,9 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     ffmpeg_pid_ = child;
 #endif
     if (!pipe) {
-        spdlog::warn("Fast chunk: failed to open ffmpeg pipe, skipping fast start");
+        spdlog::warn("Video decoder: failed to open ffmpeg pipe");
         return false;
     }
-
-    state_ = State::Playing;
-    notify_status("playing");
 
     std::vector<uint8_t> buffer(frameSize);
     int frames_played = 0;
@@ -146,6 +153,11 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
         {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             current_frame_ = buffer;
+        }
+        if (frames_played == 0) {
+            spdlog::info("Video decoder: received first frame");
+            state_ = State::Playing;
+            notify_status("playing");
         }
         std::function<void()> first_frame_cb;
         {
@@ -185,10 +197,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     fclose(pipe);
 #endif
 
-    // Clean up the temp mp4 — chunk 0 .mp4 will be downloaded separately
-    std::filesystem::remove(mp4Path, ec);
-    spdlog::info("Fast chunk: played {} frames, handing off to normal playback", frames_played);
-    return running_.load();
+    return running_.load() && frames_played > 0;
 }
 
 } // namespace Shared

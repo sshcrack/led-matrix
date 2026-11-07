@@ -29,6 +29,12 @@ int main() {
     // but takes longer than fast-start to fetch five minutes of video.
     executable("yt-dlp", R"SH(#!/bin/sh
 if [ "$1" = "--version" ]; then echo fake; exit 0; fi
+for arg in "$@"; do
+  if [ "$arg" = "--dump-single-json" ]; then
+    echo '{"url":"https://example.invalid/continuous","http_headers":{}}'
+    exit 0
+  fi
+done
 out=""
 prev=""
 long=0
@@ -44,7 +50,7 @@ done
 if [ "$1" = "-version" ]; then echo fake; exit 0; fi
 for arg in "$@"; do last="$arg"; done
 if [ "$last" = "pipe:1" ]; then
-  dd if=/dev/zero bs=49152 count=120 2>/dev/null
+  dd if=/dev/zero bs=49152 count=900 2>/dev/null
 else
   dd if=/dev/zero of="$last" bs=49152 count=600 2>/dev/null
 fi

@@ -29,6 +29,12 @@ for arg in "$@"; do
   [ "$prev" = "-o" ] && out="$arg"
   prev="$arg"; url="$arg"
 done
+for arg in "$@"; do
+  if [ "$arg" = "--dump-single-json" ]; then
+    printf '{"url":"%s","http_headers":{}}\n' "$url"
+    exit 0
+  fi
+done
 printf '%s' "$url" > "$out"
 )SH");
     executable("ffmpeg", R"SH(#!/bin/sh
@@ -38,7 +44,7 @@ for arg in "$@"; do
   [ "$prev" = "-i" ] && in="$arg"
   prev="$arg"; last="$arg"
 done
-url="$(cat "$in")"
+case "$in" in https:*) url="$in" ;; *) url="$(cat "$in")" ;; esac
 color=42
 case "$url" in *other*) color=180 ;; esac
 case "$url" in

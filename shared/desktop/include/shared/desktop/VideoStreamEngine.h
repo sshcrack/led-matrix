@@ -33,6 +33,10 @@ public:
     void start(const std::string& url, const std::string& cache_key = "", long seek_ms = 0);
     void stop();
 
+    // Continuous network decode avoids repeated extraction/downloads for long videos.
+    // Configure before start(); chunked playback remains the default for SpotifyMV.
+    void set_continuous_streaming(bool enabled) { continuous_streaming_ = enabled; }
+
     void set_chunk_duration_sec(int sec) { chunk_duration_sec_ = sec; }
     // Duration of the initial fast-start clip (default 4s). Keep short so first
     // frame appears quickly; the normal chunk 0 is downloaded in parallel.
@@ -70,6 +74,7 @@ private:
     std::string last_error_;
 
     static constexpr int MAX_FIRST_CHUNK_CACHE = 10;
+    bool continuous_streaming_ = false;
     int chunk_duration_sec_ = 300;
     int fast_chunk_duration_sec_ = 4;
 
@@ -96,6 +101,8 @@ private:
     // Download a short clip and stream its frames directly via ffmpeg pipe,
     // so playback starts immediately without waiting for a full chunk to be encoded.
     bool play_fast_chunk(int start_sec, int duration_sec);
+    void play_continuous_stream(long seek_ms);
+    bool play_decoded_pipe(const std::string& command);
     std::filesystem::path chunk_mp4_path(int chunk_index) const;
     std::filesystem::path chunk_bin_path(int chunk_index) const;
     std::filesystem::path fast_chunk_mp4_path() const;
