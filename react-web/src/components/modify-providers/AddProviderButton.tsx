@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Check, Images, Layers3, Plus, Shuffle, FileStack } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '~/components/ui/dialog'
-import type { ProviderValue, ListProviders } from '~/apiTypes/list_scenes'
-import { v4 as uuidv4 } from 'uuid'
+import type { ProviderValue } from '~/apiTypes/list_scenes'
+import { newSource, type SourceOption } from '~/core/sceneSources'
 import { cn } from '~/lib/utils'
 
 interface AddProviderButtonProps {
-  providerDefinitions: ListProviders[]
+  /** One per provider type (`sourceOptions`). */
+  options: SourceOption[]
   onAdd: (provider: ProviderValue) => void
-  providerType?: 'image' | 'shader'
 }
 
 const icons: Record<string, React.ReactNode> = {
@@ -20,32 +20,14 @@ const icons: Record<string, React.ReactNode> = {
   shader_collection: <Layers3 className="h-5 w-5" />,
 }
 
-export default function AddProviderButton({ providerDefinitions, onAdd, providerType }: AddProviderButtonProps) {
+export default function AddProviderButton({ options, onAdd }: AddProviderButtonProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState('')
-  const options = useMemo(() => {
-    const builtIn = providerType === 'shader'
-      ? [{ label: 'Random shader', value: 'random', description: 'Pick a shader from a configurable page range.' }, { label: 'Shader collection', value: 'shader_collection', description: 'Use a curated set of shader URLs.' }]
-      : providerType === 'image'
-        ? [{ label: 'Image collection', value: 'collection', description: 'Select multiple uploaded images as one source.' }, { label: 'Page range', value: 'pages', description: 'Use a contiguous range from the image library.' }]
-        : []
-    return [...builtIn, ...providerDefinitions.map(p => ({ label: p.name, value: p.name, description: `${p.properties.length} configurable options` }))]
-  }, [providerDefinitions, providerType])
 
   const handleAdd = () => {
-    if (!selected) return
-    let provider: ProviderValue
-    switch (selected) {
-      case 'collection': provider = { type: 'collection', uuid: uuidv4(), arguments: { images: [] } }; break
-      case 'pages': provider = { type: 'pages', uuid: uuidv4(), arguments: { begin: 0, end: 10 } }; break
-      case 'random': provider = { type: 'random', uuid: uuidv4(), arguments: { min_page: 0, max_page: 10 } }; break
-      case 'shader_collection': provider = { type: 'shader_collection', uuid: uuidv4(), arguments: { urls: [] } }; break
-      default: {
-        const def = providerDefinitions.find(p => p.name === selected)
-        provider = { type: selected, uuid: uuidv4(), arguments: Object.fromEntries((def?.properties ?? []).map(prop => [prop.name, prop.default_value])) }
-      }
-    }
-    onAdd(provider); setSelected(''); setOpen(false)
+    const option = options.find(o => o.value === selected)
+    if (!option) return
+    onAdd(newSource(option)); setSelected(''); setOpen(false)
   }
 
   return <>

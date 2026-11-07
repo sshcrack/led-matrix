@@ -1,6 +1,6 @@
 import { useState, type ComponentType } from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
-import type { Property, ListProviders, ProviderValue } from '~/apiTypes/list_scenes'
+import type { Property, ListProviders } from '~/apiTypes/list_scenes'
 import { Button } from '~/components/ui/button'
 import BooleanProperty from './properties/BooleanProperty'
 import ColorProperty from './properties/ColorProperty'
@@ -67,7 +67,9 @@ export default function PropertyList({ properties, arguments: args, providers, o
       case 'string': return <StringProperty property={prop as Property<string>} value={value as string} onChange={onValue} />
       case 'string[]':
         return <StringListProperty property={prop as Property<string[]>} value={value as string[]} onChange={onValue} />
-      case 'json': return <ProvidersProperty property={prop} value={value as ProviderValue | null} providers={providers} onChange={onValue} />
+      case 'json':
+        if (Array.isArray(value)) return <ProvidersProperty property={prop} value={value} providers={providers} onChange={onValue} />
+        return <GeneralProperty property={prop} value={value} onChange={onValue} />
       default: return <GeneralProperty property={prop} value={value} onChange={onValue} />
     }
   }
