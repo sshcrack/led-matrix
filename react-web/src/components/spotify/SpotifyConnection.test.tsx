@@ -9,7 +9,7 @@ function mount(settings = false) { return render(<ApiUrlContext.Provider value="
 afterEach(() => { localStorage.clear(); cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('Spotify web setup', () => {
-  it('prompts on a fresh install and saves credentials before enabling connect', async () => {
+  it('prompts on a fresh install and saves the Client ID before enabling connect', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(response(initial))
       .mockResolvedValueOnce(response({ success: true }))
       .mockResolvedValueOnce(response({ ...initial, configured: true, client_id: 'a'.repeat(32) }))
@@ -18,23 +18,21 @@ describe('Spotify web setup', () => {
     const id = await screen.findByLabelText('Client ID')
     expect((screen.getByRole('button', { name: 'Connect Spotify' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(id, { target: { value: 'a'.repeat(32) } })
-    fireEvent.change(screen.getByLabelText('Client secret'), { target: { value: 'b'.repeat(32) } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save credentials' }))
-    await screen.findByText('App credentials saved. Connect your Spotify account next.')
-    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ client_id: 'a'.repeat(32), client_secret: 'b'.repeat(32) })
-    expect((screen.getByLabelText('Client secret') as HTMLInputElement).value).toBe('')
+    expect(screen.queryByLabelText('Client secret')).toBeNull() // PKCE: no secret needed
+    fireEvent.click(screen.getByRole('button', { name: 'Save Client ID' }))
+    await screen.findByText('Client ID saved. Connect your Spotify account next.')
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ client_id: 'a'.repeat(32) })
     expect((screen.getByRole('button', { name: 'Connect Spotify' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('keeps entered credentials and shows actionable server errors when saving fails', async () => {
+  it('keeps the entered Client ID and shows actionable server errors when saving fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response(initial))
       .mockResolvedValueOnce(response({ error: 'Config directory is not writable.' }, 400)))
     mount()
     fireEvent.change(await screen.findByLabelText('Client ID'), { target: { value: 'id' } })
-    fireEvent.change(screen.getByLabelText('Client secret'), { target: { value: 'secret' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save credentials' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save Client ID' }))
     expect((await screen.findByRole('alert')).textContent).toContain('Config directory is not writable.')
-    expect((screen.getByLabelText('Client secret') as HTMLInputElement).value).toBe('secret')
+    expect((screen.getByLabelText('Client ID') as HTMLInputElement).value).toBe('id')
   })
 
   it('does not show Spotify setup when the plugin is absent', async () => {

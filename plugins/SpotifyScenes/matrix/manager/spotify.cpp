@@ -68,14 +68,15 @@ bool Spotify::refresh() {
 
     std::string url = "https://accounts.spotify.com/api/token";
 
-    auto r = cpr::Post(cpr::Url{url},
-                       cpr::Payload{
-                               {"grant_type",    "refresh_token"},
-                               {"refresh_token", spAuth.refresh_token.value()},
-                               {"client_id",     get_client_id()},
-                               {"client_secret", get_client_secret()}
-                       }, cpr::Timeout{15000}
-    );
+    // PKCE logins refresh with the client id alone; only older (secret-based) logins send the secret.
+    cpr::Payload payload{
+            {"grant_type",    "refresh_token"},
+            {"refresh_token", spAuth.refresh_token.value()},
+            {"client_id",     get_client_id()}
+    };
+    if (!spAuth.pkce && !get_client_secret().empty())
+        payload.Add({"client_secret", get_client_secret()});
+    auto r = cpr::Post(cpr::Url{url}, payload, cpr::Timeout{15000});
 
     if (r.status_code != 200) {
         if (r.status_code == 400 || r.status_code == 401)
@@ -146,19 +147,22 @@ std::string Spotify::get_client_secret() const {
     return value ? value : "";
 }
 
-bool Spotify::store_login(const std::string& response) {
+bool Spotify::store_login(const std::string& response, const bool pkce) {
     std::lock_guard lock(refresh_mtx);
     if (!save_resp_to_config(response)) return false;
+    auto data = config->get_spotify();
+    data.pkce = pkce;
+    if (pkce) data.client_secret.clear(); // no longer needed, don't keep it around
+    config->set_spotify(data);
     needs_reconnect = false;
-    return true;
+    return config->save();
 }
 
-bool Spotify::configure(const std::string& id, const std::string& secret) {
+bool Spotify::configure(const std::string& id) {
     std::lock_guard lock(refresh_mtx);
     auto data = config->get_spotify();
-    const bool changed = id != get_client_id() || (!secret.empty() && secret != get_client_secret());
+    const bool changed = id != get_client_id();
     data.client_id = id;
-    data.client_secret = secret.empty() ? get_client_secret() : secret;
     if (changed) {
         data.access_token.reset();
         data.refresh_token.reset();

@@ -32,6 +32,7 @@ private:
     static string generate_random_string(size_t length);
     std::mutex setup_mutex;
     string pending_state;
+    string pending_verifier; // PKCE code_verifier for the pending login (never leaves the Pi)
     string pending_redirect; // redirect_uri the pending login was started with (must match at token exchange)
     std::chrono::steady_clock::time_point state_expires;
     restinio::request_handling_status_t complete_login(

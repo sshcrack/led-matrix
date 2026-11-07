@@ -71,11 +71,11 @@ export default function SpotifyConnection({ settings = false }: { settings?: boo
       try { localStorage.setItem(dismissalKey, '1') } catch { /* Keep dismissal for this session. */ }
     }} status={status} busy={busy} error={error} notice={notice}
     onRefresh={() => { void refresh() }}
-    onSave={(clientId, clientSecret) => act(async () => {
-      await post('credentials', { client_id: clientId.trim(), client_secret: clientSecret.trim() })
+    onSave={clientId => act(async () => {
+      await post('credentials', { client_id: clientId.trim() })
       setConnecting(false)
       await refresh()
-      setNotice('App credentials saved. Connect your Spotify account next.')
+      setNotice('Client ID saved. Connect your Spotify account next.')
     })}
     onConnect={() => {
       // Open during the click so mobile popup blockers permit the sign-in tab.

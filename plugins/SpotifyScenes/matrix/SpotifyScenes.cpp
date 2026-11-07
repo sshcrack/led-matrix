@@ -4,6 +4,7 @@
 #include "shared/matrix/utils/shared.h"
 #include "shared/matrix/plugin_registry.h"
 #include "manager/shared_spotify.h"
+#include "manager/pkce.h"
 #include "scenes/CoverOnlyScene.h"
 #include "spdlog/spdlog.h"
 #include "cpr/cpr.h"
@@ -78,24 +79,6 @@ string relay_redirect_uri() {
     return env && *env ? string(env) : string(kDefaultRelayRedirect);
 }
 
-string base64url(const string& in) {
-    static constexpr char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    string out;
-    size_t i = 0;
-    for (; i + 2 < in.size(); i += 3) {
-        const unsigned v = (uint8_t(in[i]) << 16) | (uint8_t(in[i + 1]) << 8) | uint8_t(in[i + 2]);
-        out += tbl[v >> 18]; out += tbl[(v >> 12) & 63]; out += tbl[(v >> 6) & 63]; out += tbl[v & 63];
-    }
-    if (i + 1 == in.size()) {
-        const unsigned v = uint8_t(in[i]) << 16;
-        out += tbl[v >> 18]; out += tbl[(v >> 12) & 63];
-    } else if (i + 2 == in.size()) {
-        const unsigned v = (uint8_t(in[i]) << 16) | (uint8_t(in[i + 1]) << 8);
-        out += tbl[v >> 18]; out += tbl[(v >> 12) & 63]; out += tbl[(v >> 6) & 63];
-    }
-    return out;
-}
-
 // scheme://host[:port] only: no path, credentials or odd characters.
 bool is_plain_origin(const string& o) {
     const size_t start = o.starts_with("https://") ? 8 : o.starts_with("http://") ? 7 : 0;
@@ -131,15 +114,15 @@ register_routes(std::unique_ptr<router_t> router) {
         try {
             const auto body = json::parse(req->body());
             const auto id = body.at("client_id").template get<string>();
-            const auto secret = body.value("client_secret", "");
             const auto valid = [](const string& value) {
                 return value.size() == 32 && value.find_first_not_of("0123456789abcdefABCDEF") == string::npos;
             };
-            if (!valid(id) || (!secret.empty() && !valid(secret)) ||
-                (secret.empty() && spotify->get_client_secret().empty()))
-                return Server::reply_with_error(req, "Enter the Client ID and Client secret from your Spotify app settings.");
+            // Sign-in uses PKCE, so only the Client ID is needed; a Client secret sent by older UIs is ignored.
+            if (!valid(id))
+                return Server::reply_with_error(req, "Enter the Client ID from your Spotify app settings.");
             pending_state.clear();
-            if (!spotify->configure(id, secret))
+            pending_verifier.clear();
+            if (!spotify->configure(id))
                 return Server::reply_with_error(req, "Could not save Spotify settings. Check the config directory is writable.");
             return Server::reply_success(req);
         } catch (const std::exception&) {
@@ -149,7 +132,7 @@ register_routes(std::unique_ptr<router_t> router) {
     router->http_post("/spotify/connect", [this](const auto& req, auto) {
         std::lock_guard lock(setup_mutex);
         if (!spotify->is_configured())
-            return Server::reply_with_error(req, "Save your Spotify app credentials first.");
+            return Server::reply_with_error(req, "Save your Spotify Client ID first.");
         string origin;
         try {
             const auto body = json::parse(req->body().empty() ? "{}" : req->body());
@@ -160,15 +143,17 @@ register_routes(std::unique_ptr<router_t> router) {
         string state = pending_state;
         if (is_plain_origin(origin)) {
             // Return through the hosted relay to the address this browser used to reach the matrix.
-            state += "." + base64url(origin);
+            state += "." + Pkce::base64url(origin);
             pending_state = state;
             pending_redirect = relay_redirect_uri();
         } else {
             pending_redirect = kLoopbackRedirect; // no origin supplied: legacy same-device flow
         }
+        pending_verifier = generate_random_string(64); // PKCE: stays on the Pi, only its SHA-256 is sent
         const string url = "https://accounts.spotify.com/authorize?response_type=code&client_id=" +
             spotify->get_client_id() + "&scope=user-read-playback-state%20user-read-currently-playing%20user-top-read" +
-            "&redirect_uri=" + percent_encode(pending_redirect) + "&state=" + state;
+            "&redirect_uri=" + percent_encode(pending_redirect) + "&code_challenge_method=S256&code_challenge=" +
+            Pkce::challenge(pending_verifier) + "&state=" + state;
         return Server::reply_with_json(req, {{"url", url}});
     });
     router->http_post("/spotify/complete", [this](const auto& req, auto) {
@@ -201,20 +186,22 @@ restinio::request_handling_status_t SpotifyScenes::complete_login(
             std::chrono::steady_clock::now() > state_expires)
             return Server::reply_with_error(req, "This Spotify login has expired or does not match. Choose Connect Spotify and try again.");
         const string redirect = pending_redirect.empty() ? string(kLoopbackRedirect) : pending_redirect;
+        const string verifier = pending_verifier;
         pending_state.clear(); // one-time use, including declined and failed attempts
         pending_redirect.clear();
+        pending_verifier.clear();
         if (qp.has("error"))
             return Server::reply_with_error(req, "Spotify access was declined. Choose Connect Spotify to try again.");
         if (!qp.has("code") || qp["code"].empty())
             return Server::reply_with_error(req, "Spotify did not return an authorization code. Try connecting again.");
         auto res = cpr::Post(cpr::Url{"https://accounts.spotify.com/api/token"},
             cpr::Payload{{"grant_type", "authorization_code"}, {"code", string(qp["code"])},
-                         {"redirect_uri", redirect}},
-            cpr::Authentication{spotify->get_client_id(), spotify->get_client_secret(), cpr::AuthMode::BASIC},
+                         {"redirect_uri", redirect}, {"client_id", spotify->get_client_id()},
+                         {"code_verifier", verifier}},
             cpr::Timeout{15000});
         if (res.status_code != 200)
-            return Server::reply_with_error(req, "Spotify could not connect. Check your app credentials and redirect URI, then connect again.");
-        if (!spotify->store_login(res.text))
+            return Server::reply_with_error(req, "Spotify could not connect. Check your Client ID and redirect URI, then connect again.");
+        if (!spotify->store_login(res.text, true))
             return Server::reply_with_error(req, "Could not save the Spotify login. Check the config directory is writable.");
         if (browser) {
             return req->create_response().append_header(restinio::http_field::content_type, "text/html; charset=utf-8")

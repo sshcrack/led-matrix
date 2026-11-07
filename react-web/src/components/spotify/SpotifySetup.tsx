@@ -13,7 +13,7 @@ export interface SpotifySetupProps {
   busy: boolean
   error: string | null
   notice: string | null
-  onSave: (clientId: string, clientSecret: string) => Promise<void>
+  onSave: (clientId: string) => Promise<void>
   onConnect: () => Promise<void>
   onComplete: (callbackUrl: string) => Promise<void>
   onRefresh: () => void
@@ -62,7 +62,6 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
   // Fresh installs open the guide; everything else starts as a compact row.
   const [open, setOpen] = useState(initiallyOpen ?? (!configured && !connected))
   const [clientId, setClientId] = useState(status.client_id)
-  const [clientSecret, setClientSecret] = useState('')
   const [callbackUrl, setCallbackUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [action, setAction] = useState<Action>(null)
@@ -72,8 +71,8 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
   useEffect(() => () => window.clearTimeout(copyTimer.current), [])
 
   const disabled = busy || action !== null
-  const credsDirty = clientId.trim() !== status.client_id || clientSecret !== ''
-  const canSave = clientId.trim() !== '' && (configured || clientSecret.trim() !== '')
+  const credsDirty = clientId.trim() !== status.client_id
+  const canSave = clientId.trim() !== ''
 
   async function run(kind: Exclude<Action, null>, fn: () => Promise<void>): Promise<boolean> {
     setAction(kind)
@@ -110,7 +109,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
   async function submitCreds(e: FormEvent) {
     e.preventDefault()
     if (!canSave || disabled) return
-    if (await run('save', () => onSave(clientId.trim(), clientSecret.trim()))) setClientSecret('')
+    await run('save', () => onSave(clientId.trim()))
   }
 
   async function submitCallback(e: FormEvent) {
@@ -133,7 +132,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
             {connected
               ? 'Now-playing scenes are available.'
               : configured
-                ? 'Credentials saved. Finish by connecting your account.'
+                ? 'Client ID saved. Finish by connecting your account.'
                 : 'Show album art and what is playing on the matrix.'}
           </p>
         </div>
@@ -197,7 +196,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
             <li className="pl-9 text-sm text-muted-foreground">
               Spotify requires the app owner to have Premium in development mode. Sign in with the app owner’s account, or add your account in the app’s User Management settings.
             </li>
-            <Step n={2} title="Save its credentials" done={configured}>
+            <Step n={2} title="Paste its Client ID" done={configured}>
               <form onSubmit={e => void submitCreds(e)} className="space-y-3">
                 <div className="space-y-1.5">
                   <label htmlFor={`${uid}-id`} className="text-sm font-medium">Client ID</label>
@@ -213,25 +212,9 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
                     disabled={disabled}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label htmlFor={`${uid}-secret`} className="text-sm font-medium">Client secret</label>
-                  <input
-                    id={`${uid}-secret`}
-                    className={inputCls}
-                    type="password"
-                    value={clientSecret}
-                    onChange={e => setClientSecret(e.target.value)}
-                    placeholder={configured ? 'Saved — enter a new one to replace it' : undefined}
-                    autoComplete="new-password"
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    disabled={disabled}
-                  />
-                </div>
                 <button type="submit" className={`${configured && !credsDirty ? btnOutline : btnPrimary} w-full sm:w-auto`} disabled={disabled || !canSave}>
                   {action === 'save' ? <Spinner /> : null}
-                  Save credentials
+                  Save Client ID
                 </button>
               </form>
             </Step>
@@ -255,7 +238,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
                   Check status
                 </button>
               </div>
-              {!configured && <p className="text-xs text-muted-foreground">Save your credentials first.</p>}
+              {!configured && <p className="text-xs text-muted-foreground">Save your Client ID first.</p>}
             </Step>
           </ol>
 

@@ -32,8 +32,8 @@ private:
 
 public:
     std::atomic<bool> needs_reconnect = false;
-    bool store_login(const std::string& response);
-    bool configure(const std::string& id, const std::string& secret);
+    bool store_login(const std::string& response, bool pkce);
+    bool configure(const std::string& id);
 
     explicit Spotify(bool allow_missing_credentials = false);
     ~Spotify();  // Add destructor declaration
@@ -44,7 +44,7 @@ public:
     void terminate();
     std::string get_client_id() const;
     std::string get_client_secret() const;
-    bool is_configured() const { return !get_client_id().empty() && !get_client_secret().empty(); }
+    bool is_configured() const { return !get_client_id().empty(); }
     std::optional<SpotifyState> get_currently_playing();
     void set_preview_currently_playing(nlohmann::json state_json);
     void clear_preview_currently_playing();

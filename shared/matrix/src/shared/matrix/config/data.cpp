@@ -55,6 +55,7 @@ namespace ConfigData {
             {"expires_at", p.expires_at},
             {"client_id", p.client_id},
             {"client_secret", p.client_secret},
+            {"pkce", p.pkce},
             {"access_token", p.access_token.value_or("")},
             {"refresh_token", p.refresh_token.value_or("")}
         };
@@ -229,6 +230,7 @@ namespace ConfigData {
         p.expires_at = expires_at;
         p.client_id = j.value("client_id", "");
         p.client_secret = j.value("client_secret", "");
+        p.pkce = j.value("pkce", false);
     }
 
     void from_json(const json &j, std::shared_ptr<Preset> &p) {
