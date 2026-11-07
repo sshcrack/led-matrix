@@ -37,6 +37,12 @@ public:
   std::optional<std::vector<std::string>> on_websocket_open() override;
   void on_websocket_message(const std::string &message) override;
 
+  // Transitions may prepare a new VideoScene before stopping the old one.
+  // Only the scene that owns the current stream may change or stop it.
+  void start_stream(const void* owner);
+  void set_stream_url(const void* owner, const std::string& url);
+  void stop_stream(const void* owner);
+
   std::vector<uint8_t> get_data() {
     std::lock_guard<std::mutex> lock(dataMutex);
     return data;
@@ -69,6 +75,9 @@ public:
   }
 
 private:
+  std::mutex streamMutex;
+  const void* streamOwner = nullptr;
+  std::string streamUrl;
   enum class SearchState { Idle, Searching, Done, Error };
 
   nlohmann::json search_snapshot();

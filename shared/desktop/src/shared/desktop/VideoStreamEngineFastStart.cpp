@@ -115,15 +115,19 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     pid_t child = fork();
     if (child == -1) { close(fds[0]); close(fds[1]); return false; }
     if (child == 0) {
+        // The shell, decoder and any helpers must be cancelled together. Killing
+        // only the shell leaves ffmpeg holding the pipe open and fread blocked.
+        setpgid(0, 0);
         close(fds[0]);
         dup2(fds[1], STDOUT_FILENO);
         close(fds[1]);
         execl("/bin/sh", "sh", "-c", ffCmd.c_str(), (char*)nullptr);
         _exit(1);
     }
+    setpgid(child, child);
     close(fds[1]);
     FILE* pipe = fdopen(fds[0], "r");
-    if (!pipe) { close(fds[0]); kill(child, SIGTERM); waitpid(child, nullptr, 0); return false; }
+    if (!pipe) { close(fds[0]); kill(-child, SIGTERM); waitpid(child, nullptr, 0); return false; }
     ffmpeg_pid_ = child;
 #endif
     if (!pipe) {
@@ -166,7 +170,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
     // This thread owns reaping the child. Clearing ffmpeg_pid_ first means
     // stop() never signals a pid after it has been reaped (and possibly reused).
     if (const pid_t pid = ffmpeg_pid_.exchange(-1); pid > 0) {
-        kill(pid, SIGTERM);
+        kill(-pid, SIGTERM);
         int status;
         for (int i = 0; i < 20; ++i) {
             pid_t result = waitpid(pid, &status, WNOHANG);
@@ -174,7 +178,7 @@ bool VideoStreamEngine::play_fast_chunk(int start_sec, int duration_sec) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         if (waitpid(pid, &status, WNOHANG) == 0) {
-            kill(pid, SIGKILL);
+            kill(-pid, SIGKILL);
             waitpid(pid, &status, 0);
         }
     }

@@ -36,7 +36,41 @@ bool VideoPlugin::on_udp_packet(const uint8_t pluginId,
 }
 
 std::optional<std::vector<std::string>> VideoPlugin::on_websocket_open() {
-  return std::optional<std::vector<std::string>>({"video"});
+  std::lock_guard lock(streamMutex);
+  std::vector<std::string> messages{"video"};
+  if (streamOwner && !streamUrl.empty()) {
+    messages.push_back("stream:start");
+    messages.push_back("url:" + streamUrl);
+  }
+  return messages;
+}
+
+void VideoPlugin::start_stream(const void* owner) {
+  std::lock_guard lock(streamMutex);
+  streamOwner = owner;
+  streamUrl.clear();
+  send_msg_to_desktop("stream:start");
+}
+
+void VideoPlugin::set_stream_url(const void* owner, const std::string& url) {
+  std::lock_guard lock(streamMutex);
+  if (streamOwner != owner) return;
+  streamUrl = url;
+  flush_status();
+  {
+    std::lock_guard dataLock(dataMutex);
+    data.clear();
+  }
+  send_msg_to_desktop("url:" + url);
+}
+
+void VideoPlugin::stop_stream(const void* owner) {
+  std::lock_guard lock(streamMutex);
+  if (streamOwner != owner) return;
+  streamOwner = nullptr;
+  streamUrl.clear();
+  send_msg_to_desktop("stream:stop");
+  flush_status();
 }
 
 namespace {
