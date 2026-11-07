@@ -4,7 +4,7 @@ Shows the currently playing Spotify album artwork and supplies playback informat
 
 ## Setup
 
-Open the matrix web UI. The Spotify setup guide appears automatically when the plugin is installed but not connected. No terminal access or daemon restart is needed.
+Open the matrix web UI. The Spotify setup guide appears automatically when the plugin is installed but not connected. No terminal access or daemon restart is needed. Choose **Dismiss setup** if you do not use Spotify yet; this browser remembers the dismissal. Reopen it any time from **Integrations** in the desktop navigation, or **More → Integrations** on a phone.
 
 1. Open the [Spotify developer dashboard](https://developer.spotify.com/dashboard) from the guide and create an app with Web API access.
 2. Add the exact redirect URI shown in the guide: `http://127.0.0.1:8080/spotify/callback`. Save the app settings.

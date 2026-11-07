@@ -466,7 +466,7 @@ Set persistent variables with a systemd override. Use `sudo systemctl edit led-m
 
 Enables the album-cover scene, track-change reactions, genre-aware scene choice and the music-video scene.
 
-Open the matrix web UI on your phone or computer. The **Connect Spotify** guide opens automatically when Spotify is not configured.
+Open the matrix web UI on your phone or computer. The **Connect Spotify** guide opens automatically when Spotify is not configured. Choose **Dismiss setup** to hide it for this browser; reopen it any time from **Integrations** (on phones: **More → Integrations**).
 
 1. Follow **Create a Spotify app** to open the developer dashboard. Add the exact redirect URI shown in the guide: **`http://127.0.0.1:8080/spotify/callback`**.
 2. Paste the app’s Client ID and Client secret into the guide and choose **Save credentials**.

@@ -47,7 +47,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       </div>
     </header>
 
-    <main className="mx-auto max-w-[96rem] p-3 pb-44 sm:p-4 sm:pb-44 lg:pb-4"><div className="space-y-4"><SpotifyConnection />{children}</div>
+    <main className="mx-auto max-w-[96rem] p-3 pb-44 sm:p-4 sm:pb-44 lg:pb-4"><div className="space-y-4">{pathname !== '/integrations' && <SpotifyConnection />}{children}</div>
     </main>
 
     {/* Phone chrome */}

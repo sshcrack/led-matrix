@@ -17,6 +17,8 @@ export interface SpotifySetupProps {
   onConnect: () => Promise<void>
   onComplete: (callbackUrl: string) => Promise<void>
   onRefresh: () => void
+  onDismiss?: () => void
+  initiallyOpen?: boolean
 }
 
 type Action = 'save' | 'connect' | 'complete' | null
@@ -52,13 +54,13 @@ function Spinner() {
   return <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
 }
 
-export default function SpotifySetup({ status, busy, error, notice, onSave, onConnect, onComplete, onRefresh }: SpotifySetupProps) {
+export default function SpotifySetup({ status, busy, error, notice, onSave, onConnect, onComplete, onRefresh, onDismiss, initiallyOpen }: SpotifySetupProps) {
   const { configured, connected, redirect_uri: redirectUri } = status
   const uid = useId()
   const panelId = `${uid}-panel`
 
   // Fresh installs open the guide; everything else starts as a compact row.
-  const [open, setOpen] = useState(!configured && !connected)
+  const [open, setOpen] = useState(initiallyOpen ?? (!configured && !connected))
   const [clientId, setClientId] = useState(status.client_id)
   const [clientSecret, setClientSecret] = useState('')
   const [callbackUrl, setCallbackUrl] = useState('')
@@ -147,6 +149,11 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
         </button>
       </div>
 
+      {onDismiss && <div className="flex flex-wrap items-center gap-x-3 border-t border-border px-3 py-2 sm:px-4">
+        <button type="button" onClick={onDismiss} disabled={disabled} className={btnGhost}>Dismiss setup</button>
+        <p className="text-xs text-muted-foreground">Open it again in Integrations whenever you’re ready.</p>
+      </div>}
+
       {/* Feedback stays visible even when the guide is collapsed. */}
       {(error || notice) && (
         <div className="space-y-2 px-3 pb-3 sm:px-4">
@@ -231,14 +238,14 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
 
             <Step n={3} title="Connect your account" done={connected}>
               <p className="text-sm text-muted-foreground">
-                {connected ? 'Connect again to switch Spotify accounts or renew access.' : 'Spotify asks you to approve access, then sends you back.'}
+                {connected ? 'Connect again to switch Spotify accounts or renew access.' : 'Approve access in the Spotify tab. On a phone or another computer, the final 127.0.0.1 page will not load: copy its full address and paste it below. This address points to your browser’s device, not the Pi.'}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="button"
                   className={`${configured ? btnPrimary : btnOutline} w-full sm:w-auto`}
                   disabled={disabled || !configured}
-                  onClick={() => void run('connect', onConnect)}
+                  onClick={() => { setShowCallback(true); void run('connect', onConnect) }}
                 >
                   {action === 'connect' ? <Spinner /> : null}
                   {connected ? 'Reconnect Spotify' : 'Connect Spotify'}

@@ -5,8 +5,8 @@ import SpotifyConnection from './SpotifyConnection'
 
 const initial = { configured: false, connected: false, client_id: '', redirect_uri: 'http://127.0.0.1:8080/spotify/callback' }
 const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status })
-function mount() { return render(<ApiUrlContext.Provider value="http://matrix.test"><SpotifyConnection /></ApiUrlContext.Provider>) }
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+function mount(settings = false) { return render(<ApiUrlContext.Provider value="http://matrix.test"><SpotifyConnection settings={settings} /></ApiUrlContext.Provider>) }
+afterEach(() => { localStorage.clear(); cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('Spotify web setup', () => {
   it('prompts on a fresh install and saves credentials before enabling connect', async () => {
@@ -43,6 +43,29 @@ describe('Spotify web setup', () => {
     const { container } = mount()
     await waitFor(() => expect(fetcher).toHaveBeenCalled())
     expect(container.textContent).toBe('')
+  })
+
+  it('remembers dismissal after a reload and allows setup from Integrations later', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(response(initial))))
+    const first = mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss setup' }))
+    expect(screen.queryByRole('region', { name: 'Spotify connection' })).toBeNull()
+    first.unmount()
+
+    const reloaded = mount()
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(screen.queryByLabelText('Client ID')).toBeNull()
+    reloaded.unmount()
+
+    mount(true)
+    expect(await screen.findByLabelText('Client ID')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Dismiss setup' })).toBeNull()
+  })
+
+  it('explains unavailable plugins on the Integrations page', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 404)))
+    mount(true)
+    await screen.findByText('Spotify is not installed on this matrix. Install the SpotifyScenes plugin to use this integration.')
   })
 
   it('reports blocked sign-in popups and preserves the connection guide', async () => {

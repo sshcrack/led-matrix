@@ -285,7 +285,7 @@ sudo systemctl restart led-matrix
 
 The human completes the web UI’s **Connect Spotify** guide. Leave `spotify-enable` false during installation to defer credentials to this guide; the installed plugin remains available.
 
-1. Open `http://<pi-ip>:8080/`. The setup guide opens automatically when credentials are missing. Ask the human to create a developer app, register the guide’s exact redirect URI, and enter the Client ID and secret directly in the web UI.
+1. Open `http://<pi-ip>:8080/`. The setup guide opens automatically when credentials are missing. If it was dismissed, open **Integrations** (on phones: **More → Integrations**). Ask the human to create a developer app, register the guide’s exact redirect URI, and enter the Client ID and secret directly in the web UI.
 2. The human chooses **Save credentials**, then **Connect Spotify**, and approves access in the new tab. Settings take effect without restarting the daemon.
 3. On another computer or phone, the final loopback page usually cannot load. Have the human copy its full address into **Browser says it cannot connect?** and choose **Finish connecting**. The address contains a temporary authorization code: keep it out of chat and logs. No SSH tunnel is required. On the daemon’s own computer at port 8080, the callback completes automatically.
 4. Verify `GET /spotify/status` reports `configured: true` and `connected: true` (include API authentication when configured). Then ask the human to play a track and verify the cover appears. Listing the scene alone does not prove the account is connected.

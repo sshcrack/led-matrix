@@ -3,8 +3,13 @@ import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import SpotifySetup, { type SpotifySetupStatus } from './SpotifySetup'
 
 /** The plugin owns setup; older daemons and installs without it return 404. */
-export default function SpotifyConnection() {
+export default function SpotifyConnection({ settings = false }: { settings?: boolean }) {
   const apiUrl = useApiUrl()
+  const dismissalKey = `spotify-setup-dismissed:${apiUrl}`
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(dismissalKey) === '1' } catch { return false }
+  })
+  const [unavailable, setUnavailable] = useState(false)
   const [status, setStatus] = useState<SpotifySetupStatus | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +21,7 @@ export default function SpotifyConnection() {
     if (!apiUrl) return
     try {
       const res = await fetch(`${apiUrl}/spotify/status`)
-      if (res.status === 404) { setStatus(null); return }
+      if (res.status === 404) { setStatus(null); setUnavailable(true); return }
       if (!res.ok) throw new Error('Could not check Spotify connection. Try again.')
       const next = await res.json() as SpotifySetupStatus
       setStatus(next)
@@ -58,8 +63,13 @@ export default function SpotifyConnection() {
     } finally { setBusy(false) }
   }
 
-  if (!status) return null
-  return <SpotifySetup status={status} busy={busy} error={error} notice={notice}
+  if (!settings && dismissed) return null
+  if (!status) return settings ? <p role="status" className="text-sm text-muted-foreground">{error ?? (unavailable ? 'Spotify is not installed on this matrix. Install the SpotifyScenes plugin to use this integration.' : 'Loading Spotify setup…')}</p> : null
+  return <SpotifySetup initiallyOpen={settings ? true : undefined}
+    onDismiss={settings ? undefined : () => {
+      setDismissed(true)
+      try { localStorage.setItem(dismissalKey, '1') } catch { /* Keep dismissal for this session. */ }
+    }} status={status} busy={busy} error={error} notice={notice}
     onRefresh={() => { void refresh() }}
     onSave={(clientId, clientSecret) => act(async () => {
       await post('credentials', { client_id: clientId.trim(), client_secret: clientSecret.trim() })
