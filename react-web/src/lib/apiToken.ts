@@ -20,10 +20,8 @@ export function setApiToken(token: string | null) {
 
 function isApiRequest(url: string): boolean {
   try {
-    const target = new URL(url, window.location.href)
-    if (target.origin === window.location.origin) return true
-    const configured = localStorage.getItem('apiUrl')
-    return configured !== null && target.origin === new URL(configured).origin
+    // The API is always same-origin (served by the daemon, or the dev server's /__api proxy).
+    return new URL(url, window.location.href).origin === window.location.origin
   } catch {
     return false
   }

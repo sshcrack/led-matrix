@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { selectPluginModules, selectRuntimeUis, planPluginUis, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPluginActivation, type PluginUiSources, selectPluginModules, selectRuntimeUis, planPluginUis, pluginNameFromPath, UI_API_VERSION, collectSceneActions, collectTemplates, findPropertyControl, registerPluginUi } from './pluginRegistry'
 import { definePluginUi } from './pluginUi'
 import { suggestPresetName, newSceneInstance, presetThumbNames } from './scenes'
 import type { ListScenes } from '~/apiTypes/list_scenes'
@@ -91,5 +91,51 @@ describe('plugin UI loading', () => {
     })
     expect(plan.runtime).toEqual([])
     expect(plan.bundled).toEqual([paths[1]])
+  })
+})
+
+describe('plugin UI activation', () => {
+  const VIDEO = '../../../plugins/Video/web/index.tsx'
+  const AMBIENT = '../../../plugins/AmbientScenes/web/index.ts'
+  const styles = () => Array.from(document.head.querySelectorAll<HTMLStyleElement>('style[data-plugin-ui]')).map(s => `${s.dataset.pluginUi}:${s.textContent}`)
+  const sources = (over: Partial<PluginUiSources> = {}): PluginUiSources => ({
+    info: vi.fn(async () => ({ ui_api_version: 1, plugins: ['Video', 'AmbientScenes'], web_ui: { Video: { js: 'ui.js', css: 'ui.css' } } })),
+    bundledPaths: () => [VIDEO, AMBIENT],
+    bundled: async path => ({ ui: definePluginUi({ plugin: pluginNameFromPath(path) }) }),
+    runtime: async name => ({ ui: definePluginUi({ plugin: name }), css: `.${name}{}` }),
+    ...over,
+  })
+  beforeEach(() => { document.head.querySelectorAll('style[data-plugin-ui]').forEach(s => s.remove()) })
+
+  it('registers each plugin once with its stylesheet, and activates only once', async () => {
+    const src = sources()
+    const registered: string[] = []
+    const activation = createPluginActivation(src, ui => registered.push(ui.plugin))
+    await Promise.all([activation.activate(), activation.activate()])
+    await activation.activate()
+    expect(src.info).toHaveBeenCalledTimes(1)
+    expect(registered.sort()).toEqual(['AmbientScenes', 'Video'])
+    expect(styles()).toEqual(['Video:.Video{}'])
+  })
+
+  it('a runtime bundle that fails to load leaves no stylesheet and falls back to the bundled module', async () => {
+    const registered: string[] = []
+    const activation = createPluginActivation(sources({ runtime: async () => { throw new Error('import failed') } }), ui => registered.push(ui.plugin))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await activation.activate()
+    expect(registered.sort()).toEqual(['AmbientScenes', 'Video'])
+    expect(styles()).toEqual([])
+  })
+
+  it('a module needing a newer UI API is neither registered nor styled', async () => {
+    const registered: string[] = []
+    const activation = createPluginActivation(sources({
+      runtime: async name => ({ ui: definePluginUi({ plugin: name, uiApi: UI_API_VERSION + 1 }), css: '.x{}' }),
+      bundled: async path => ({ ui: definePluginUi({ plugin: pluginNameFromPath(path), uiApi: pluginNameFromPath(path) === 'Video' ? UI_API_VERSION + 1 : undefined }) }),
+    }), ui => registered.push(ui.plugin))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await activation.activate()
+    expect(registered).toEqual(['AmbientScenes'])
+    expect(styles()).toEqual([])
   })
 })

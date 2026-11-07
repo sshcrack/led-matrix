@@ -32,8 +32,8 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
     , set_curr_scene_fn_(std::move(set_curr_scene))
     , broadcast_fn_(std::move(broadcast))
     , automatic_director_(cfg->get_automatic_director_seed())
-    , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag)
-    , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag)
+    , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
+    , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
 {
     renderer_.set_brightness_provider([cfg]() -> std::optional<int> {
         const auto schedule = cfg->get_brightness_schedule();

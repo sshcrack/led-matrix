@@ -18,7 +18,7 @@
 /// so fresh desktop frames resume DesktopLive.
 ///
 /// The type is pure (no clock, no RemoteRender calls) so the transitions are
-/// unit-testable; SceneRenderer feeds it observations each frame.
+/// unit-testable; DesktopHandoff feeds it observations each frame.
 class RenderPlacement {
 public:
     enum class Mode { Local, DesktopPending, DesktopLive, LocalFallback };

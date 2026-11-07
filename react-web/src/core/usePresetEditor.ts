@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import type { RawPreset, Scene } from '~/apiTypes/list_presets'
 import { useMatrix } from './matrixContext'
 import { toast } from 'sonner'
-import { isPresetBlocked, whenPresetIdle } from './presetSaveQueue'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
 
@@ -13,8 +11,7 @@ export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
  * Revision tracking means an edit made while a save is in flight stays dirty.
  */
 export function usePresetEditor(presetId: string, debounceMs = 700) {
-  const apiUrl = useApiUrl()
-  const { savePreset, presets } = useMatrix()
+  const { persistence, presets } = useMatrix()
   const sharedName = presets?.[presetId]?.display_name
   // True once the user typed a name here; until then the list's name (e.g. from a menu rename) wins.
   // Name edits are tracked apart from scene edits: a name counts as "typed here" only until that exact
@@ -49,27 +46,25 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
   }, [sharedName])
 
   useEffect(() => {
-    if (!apiUrl || !presetId) return
+    if (!presetId) return
     const c = new AbortController()
     // New preset: drop the previous preset's draft/revisions so nothing of it can be saved under this id.
     activeId.current = presetId
     latest.current = null; revision.current = savedRevision.current = 0; nameRev.current = savedNameRev.current = 0
     lastShared.current = sharedNow.current; renamedTo.current = undefined
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
-    // Load only after this preset's queued writes have landed (e.g. a previous editor's last save).
-    whenPresetIdle(presetId)
-      .then(() => fetch(`${apiUrl}/presets?id=${encodeURIComponent(presetId)}`, { signal: c.signal }))
-      .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<RawPreset> })
+    // persistence.load waits for this preset's queued writes (e.g. a previous editor's last save).
+    persistence.load(presetId, c.signal)
       .then(p => { latest.current = p; revision.current = savedRevision.current = 0; setPreset(p); setLoadError(false); setSaveState('saved') })
       .catch(e => { if (e?.name !== 'AbortError') setLoadError(true) })
     return () => c.abort()
-  }, [apiUrl, presetId])
+  }, [persistence, presetId])
 
   // `force` (editor closing) sends even while an earlier save is in flight: the shared queue orders them.
   const flush = useCallback(async (keepalive = false, force = false) => {
     if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
     if ((inFlight.current > 0 && !force) || !latest.current || revision.current === savedRevision.current) return
-    if (isPresetBlocked(presetId)) { if (timer.current) { window.clearTimeout(timer.current); timer.current = null } return }
+    if (!persistence.canWrite(presetId)) return
     const rev = revision.current
     const nameRevNow = nameRev.current
     const draft = !nameEdited() && renamedTo.current !== undefined
@@ -78,7 +73,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
     let succeeded = false
     setSaveState('saving')
     try {
-      await savePreset(presetId, draft, { keepalive })
+      await persistence.save(presetId, draft, { keepalive })
       if (activeId.current !== presetId) return   // switched away mid-save: this editor state now belongs to another preset
       savedRevision.current = Math.max(savedRevision.current, rev)
       succeeded = true
@@ -96,7 +91,7 @@ export function usePresetEditor(presetId: string, debounceMs = 700) {
         else timer.current = window.setTimeout(() => void flush(), debounceMs)
       }
     }
-  }, [presetId, savePreset, debounceMs])
+  }, [presetId, persistence, debounceMs])
 
   const edit = useCallback((fn: (p: RawPreset) => RawPreset) => {
     if (!latest.current) return

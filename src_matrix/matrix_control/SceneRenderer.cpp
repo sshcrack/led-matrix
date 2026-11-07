@@ -5,11 +5,9 @@
 #include <filesystem>
 
 #include "LiveFrameSnapshot.h"
-#include "RenderPlacement.h"
 #include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
-#include "shared/matrix/remote_render.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "spdlog/spdlog.h"
 
@@ -20,13 +18,16 @@ SceneRenderer::SceneRenderer(RGBMatrixBase *matrix,
                               PostProcessor *post_processor,
                               MatrixPresenter *presenter,
                               const std::atomic<bool> *exit_flag,
-                              const std::atomic<bool> *interrupt_flag)
+                              const std::atomic<bool> *interrupt_flag,
+                              DesktopHandoff *handoff)
     : matrix_(matrix)
     , time_source_(time_source)
     , post_processor_(post_processor)
     , presenter_(presenter)
     , exit_flag_(exit_flag)
     , interrupt_flag_(interrupt_flag)
+    , own_handoff_(handoff ? nullptr : std::make_unique<DesktopHandoff>())
+    , handoff_(handoff ? handoff : own_handoff_.get())
 {
 }
 
@@ -41,63 +42,7 @@ bool SceneRenderer::render_scene_phase(
     diagnostics.set_active_scene(scene->get_name());
     diagnostics.reset_presentation_cadence();
 
-    const auto caps = scene->get_capabilities();
-    const double budget_ms = 1000.0 / static_cast<double>(
-        std::max(1, scene->get_declared_target_fps()));
-    const auto desktop_available = [&scene] {
-        return RemoteRender::worker_available(scene->get_name());
-    };
-
-    RenderPlacement placement;
-    const auto request_desktop = [&] {
-        placement.request_desktop(RemoteRender::request_scene(
-            *scene, matrix_->width(), matrix_->height(), scene->get_declared_target_fps()));
-    };
-    const auto report_placement = [&](const std::string &reason, nlohmann::json extra = nlohmann::json::object()) {
-        const auto mode = placement.mode();
-        const char *activity = mode == RenderPlacement::Mode::DesktopLive ? "desktop"
-            : mode == RenderPlacement::Mode::DesktopPending ? "desktop pending"
-            : mode == RenderPlacement::Mode::LocalFallback ? "local fallback" : "local";
-        CrashReporter::set_activity(std::string("rendering scene '") + scene->get_name() + "' (" + activity + ")");
-        nlohmann::json payload{
-            {"scene", scene->get_name()},
-            {"placement", RenderPlacement::label(mode)},
-            {"reason", reason},
-            {"frame_budget_ms", budget_ms},
-            {"quality_scale", mode == RenderPlacement::Mode::DesktopLive ? 1.0f : scene->get_render_quality_scale()},
-        };
-        payload.update(extra);
-        diagnostics.set_render_placement(std::move(payload));
-    };
-    std::string placement_reason = "local render is within the measured frame budget";
-    if (caps.supports_remote_rendering && desktop_available()) {
-        const auto remote_status = RemoteRender::status();
-        if (remote_status.requested && remote_status.scene == scene->get_name()) {
-            // A transition may already have warmed the incoming scene on the
-            // desktop. request_scene() reuses the session when the UUID matches.
-            request_desktop();
-            placement_reason = "desktop session was warmed during the transition";
-        } else if (scene->get_render_quality_scale() < 0.97f) {
-            request_desktop();
-            placement_reason = "Pi renders this scene at reduced quality; the desktop renders it at full quality";
-        } else if (const auto p95 = diagnostics.scene_render_p95(scene->get_name());
-                   p95.has_value() && *p95 > budget_ms * RenderPlacement::PressureBudgetFraction) {
-            request_desktop();
-            placement_reason = "measured local p95 exceeds 72% of the frame budget";
-        }
-    } else {
-        const auto remote_status = RemoteRender::status();
-        if (remote_status.requested)
-            RemoteRender::stop();
-        if (!caps.supports_remote_rendering)
-            placement_reason = "scene explicitly opted out of generic desktop execution; adaptive local quality is active";
-        else if (remote_status.worker_available && !remote_status.worker_compatible)
-            placement_reason = "desktop scene worker runs different scene code (update the desktop app to this version); rendering locally";
-        else
-            placement_reason = "desktop scene worker is unavailable; rendering locally";
-    }
-
-    report_placement(placement_reason);
+    handoff_->begin_scene(*scene, matrix_->width(), matrix_->height());
 
     tmillis_t next_input_check_ms = time_source_->now_ms();
     tmillis_t next_switch_check_ms = next_input_check_ms;
@@ -139,28 +84,10 @@ bool SceneRenderer::render_scene_phase(
         const tmillis_t frame_start_ms = time_source_->now_ms();
 
         bool cont = true;
-        bool used_remote_frame = false;
         bool local_frame_updated = false;
-        if (placement.has_session() && !desktop_available()) {
-            placement.worker_lost();
-            report_placement("desktop scene worker became unavailable; immediate local fallback");
-        }
-        if (const auto session = placement.session()) {
-            RemoteRender::publish_runtime_state(*session);
-            used_remote_frame = RemoteRender::copy_latest(
-                *session, composite_offscreen_canvas, matrix_->width(), matrix_->height());
-            if (used_remote_frame && placement.remote_frame_presented())
-                report_placement(placement_reason);
-        }
-
-        bool render_local = !used_remote_frame;
-        if (render_local && placement.mode() == RenderPlacement::Mode::DesktopLive) {
-            const auto session = *placement.session();
-            const auto decision = placement.no_remote_frame(RemoteRender::latest_frame_age_ms(session));
-            render_local = decision == RenderPlacement::NoRemoteFrame::RenderLocal;
-            if (render_local)
-                report_placement("remote frame became stale; continuing locally without blocking");
-        }
+        const auto source = handoff_->scene_frame(composite_offscreen_canvas);
+        const bool used_remote_frame = source == DesktopHandoff::FrameSource::Remote;
+        const bool render_local = source == DesktopHandoff::FrameSource::Local;
 
         if (render_local) {
             const auto render_start = std::chrono::steady_clock::now();
@@ -186,18 +113,7 @@ bool SceneRenderer::render_scene_phase(
                 scene->get_name(), active_render_ms, scene->get_declared_target_fps(),
                 scene->get_render_quality_scale());
 
-            // Learn on the actual Pi instead of guessing from x86/QEMU timings.
-            // Sustained pressure starts the desktop in parallel; local
-            // rendering continues until the first complete remote frame
-            // arrives, so there is never a blank handoff.
-            if (placement.local_frame_rendered(active_render_ms, budget_ms)
-                && caps.supports_remote_rendering && desktop_available()) {
-                request_desktop();
-                if (placement.has_session()) {
-                    placement_reason = "live Pi render cost exceeded 72% of the frame budget for four frames";
-                    report_placement(placement_reason, {{"local_render_ms", active_render_ms}});
-                }
-            }
+            handoff_->local_frame_rendered(active_render_ms);
         }
 
         const bool frame_updated = used_remote_frame || local_frame_updated;

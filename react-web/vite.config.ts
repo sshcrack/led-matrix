@@ -79,11 +79,11 @@ export default defineConfig({
   },
   server: {
     fs: { allow: ['..'] },
-    // Opt-in: LED_MATRIX_DEV_API=http://localhost:8080 pnpm dev, then set the API URL to
-    // http://localhost:5173/__api – avoids the daemon's cross-origin rejection (incl. /live_frame WebSocket).
-    proxy: process.env.LED_MATRIX_DEV_API
-      ? { '/__api': { target: process.env.LED_MATRIX_DEV_API, changeOrigin: false, ws: true, rewrite: (p: string) => p.replace(/^\/__api/, '') } }
-      : undefined,
+    // The dev UI talks to `/__api` (apiUrlContext.ts), proxied to the daemon: LED_MATRIX_DEV_API, default the
+    // local emulator. Same-origin, so the daemon's cross-origin rejection never applies (incl. /live_frame WebSocket).
+    proxy: {
+      '/__api': { target: process.env.LED_MATRIX_DEV_API ?? 'http://localhost:8080', changeOrigin: false, ws: true, rewrite: (p: string) => p.replace(/^\/__api/, '') },
+    },
   },
   test: {
     environment: 'jsdom',

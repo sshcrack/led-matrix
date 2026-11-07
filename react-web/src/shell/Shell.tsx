@@ -8,7 +8,6 @@ import { PowerButton } from '~/core/ui/controls'
 import { ThemeToggle } from '~/core/ui/ThemeToggle'
 import { CommandPalette } from '~/core/ui/CommandPalette'
 import { Sheet } from '~/core/ui/Sheet'
-import ResetApiUrl from '~/components/modify-preset/ResetApiUrl'
 import MiniPlayer from './MiniPlayer'
 
 const TABS = NAV.filter(n => n.primary)
@@ -48,7 +47,6 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
     </header>
 
     <main className="mx-auto max-w-[96rem] p-3 pb-44 sm:p-4 sm:pb-44 lg:pb-4"><div>{children}</div>
-      <footer className="flex justify-center pt-6"><ResetApiUrl /></footer>
     </main>
 
     {/* Phone chrome */}

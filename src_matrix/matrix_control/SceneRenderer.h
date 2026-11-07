@@ -9,6 +9,7 @@
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/post_processor.h"
+#include "DesktopHandoff.h"
 #include "MatrixPresenter.h"
 
 using rgb_matrix::FrameCanvas;
@@ -21,7 +22,8 @@ public:
                   PostProcessor *post_processor,
                   MatrixPresenter *presenter,
                   const std::atomic<bool> *exit_flag,
-                  const std::atomic<bool> *interrupt_flag);
+                  const std::atomic<bool> *interrupt_flag,
+                  DesktopHandoff *handoff = nullptr);
 
     bool render_scene_phase(
         std::shared_ptr<Scenes::Scene> scene,
@@ -48,6 +50,9 @@ private:
     MatrixPresenter *presenter_;
     const std::atomic<bool> *exit_flag_;
     const std::atomic<bool> *interrupt_flag_;
+    /// Shared with TransitionEngine (see Canvas) so a warmed session carries over.
+    std::unique_ptr<DesktopHandoff> own_handoff_;
+    DesktopHandoff *handoff_;
     FrameCanvas *last_presented_canvas_ = nullptr;
     std::function<std::optional<int>()> brightness_provider_;
     tmillis_t next_brightness_check_ms_ = 0;

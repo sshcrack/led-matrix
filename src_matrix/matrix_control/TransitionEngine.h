@@ -10,6 +10,7 @@
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
+#include "DesktopHandoff.h"
 #include "MatrixPresenter.h"
 
 using rgb_matrix::FrameCanvas;
@@ -23,7 +24,8 @@ public:
                      TransitionManager *transition_manager,
                      MatrixPresenter *presenter,
                      const std::atomic<bool> *exit_flag,
-                     const std::atomic<bool> *interrupt_flag);
+                     const std::atomic<bool> *interrupt_flag,
+                     DesktopHandoff *handoff = nullptr);
 
     void render_transition_phase(
         std::shared_ptr<Scenes::Scene> scene,
@@ -48,6 +50,9 @@ private:
     MatrixPresenter *presenter_;
     const std::atomic<bool> *exit_flag_;
     const std::atomic<bool> *interrupt_flag_;
+    /// Shared with SceneRenderer (see Canvas) so a warmed session carries over.
+    std::unique_ptr<DesktopHandoff> own_handoff_;
+    DesktopHandoff *handoff_;
 
     void apply_transition_frame(
         FrameCanvas *dst,
