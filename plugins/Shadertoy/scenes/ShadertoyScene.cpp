@@ -77,6 +77,7 @@ string ShadertoyScene::get_name() const
 void ShadertoyScene::register_properties()
 {
     add_property(json_providers);
+    json_providers->label("Sources").control("shader_sources");
 }
 
 void ShadertoyScene::load_properties(const nlohmann::json &j)
