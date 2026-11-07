@@ -321,26 +321,74 @@ namespace UpdateChecker
             }
 
             spdlog::info("Download completed successfully");
-            writer.file->close();
-
-            // Execute the installer
-            SHELLEXECUTEINFOA sei = {};
-            sei.cbSize = sizeof(SHELLEXECUTEINFOA);
-            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-            sei.lpVerb = "runas"; // Run as administrator
-            sei.lpFile = installerPath.string().c_str();
-            sei.nShow = SW_NORMAL;
-
-            if (ShellExecuteExA(&sei)) {
-                spdlog::info("Installer launched successfully");
-                appShallExit = true;
-                callback(true, "");
-            } else {
-                DWORD error = GetLastError();
-                std::string errorMsg = "Failed to launch installer. Error code: " + std::to_string(error);
+            file.flush();
+            file.close();
+            if (file.fail()) {
+                std::string errorMsg = "Failed to finish writing installer: " + installerPath.string();
                 spdlog::error(errorMsg);
                 callback(false, errorMsg);
+                return;
             }
+
+            // Remove installers left over from earlier updates (best effort).
+            {
+                std::error_code ec;
+                for (const auto& entry : std::filesystem::directory_iterator(tempDir, ec)) {
+                    if (entry.path() != installerPath && entry.path().extension() == ".exe") {
+                        std::filesystem::remove(entry.path(), ec);
+                    }
+                }
+            }
+
+            // Windows Defender / SmartScreen scans a freshly written .exe and keeps it open for a moment;
+            // launching it meanwhile fails with a sharing violation ("Another program is currently using
+            // this file"). Wait until we can open it exclusively, then retry the launch on sharing errors.
+            const std::wstring installerW = installerPath.wstring();
+            auto waitUntilUnlocked = [&]() {
+                for (int i = 0; i < 60; i++) {
+                    HANDLE h = CreateFileW(installerW.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING,
+                                           FILE_ATTRIBUTE_NORMAL, nullptr);
+                    if (h != INVALID_HANDLE_VALUE) {
+                        CloseHandle(h);
+                        return;
+                    }
+                    DWORD err = GetLastError();
+                    if (err != ERROR_SHARING_VIOLATION && err != ERROR_LOCK_VIOLATION) return;
+                    Sleep(500);
+                }
+            };
+
+            const std::string installerStr = installerPath.string();
+            DWORD lastError = 0;
+            for (int attempt = 0; attempt < 10; attempt++) {
+                waitUntilUnlocked();
+
+                SHELLEXECUTEINFOA sei = {};
+                sei.cbSize = sizeof(SHELLEXECUTEINFOA);
+                sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI; // we report errors ourselves
+                sei.lpVerb = "runas"; // Run as administrator
+                sei.lpFile = installerStr.c_str();
+                sei.nShow = SW_NORMAL;
+
+                if (ShellExecuteExA(&sei)) {
+                    spdlog::info("Installer launched successfully");
+                    if (sei.hProcess) CloseHandle(sei.hProcess);
+                    appShallExit = true;
+                    callback(true, "");
+                    return;
+                }
+
+                lastError = GetLastError();
+                if (lastError != ERROR_SHARING_VIOLATION && lastError != ERROR_LOCK_VIOLATION) break;
+                spdlog::warn("Installer still locked (attempt {}), retrying", attempt + 1);
+                Sleep(1000);
+            }
+
+            std::string errorMsg = lastError == ERROR_CANCELLED
+                ? "Installer was cancelled (administrator permission denied)."
+                : "Failed to launch installer. Error code: " + std::to_string(lastError);
+            spdlog::error(errorMsg);
+            callback(false, errorMsg);
         } catch (const std::exception& e) {
             std::string errorMsg = "Exception during update: " + std::string(e.what());
             spdlog::error(errorMsg);
