@@ -468,10 +468,10 @@ Enables the album-cover scene, track-change reactions, genre-aware scene choice 
 
 Open the matrix web UI on your phone or computer. The **Connect Spotify** guide opens automatically when Spotify is not configured. Choose **Dismiss setup** to hide it for this browser; reopen it any time from **Integrations** (on phones: **More → Integrations**).
 
-1. Follow **Create a Spotify app** to open the developer dashboard. Add the exact redirect URI shown in the guide: **`http://127.0.0.1:8080/spotify/callback`**.
+1. Follow **Create a Spotify app** to open the developer dashboard. Add the exact redirect URI shown in the guide: **`https://spotify-auth.sshcrack.me/callback`**.
 2. Paste the app’s Client ID and Client secret into the guide and choose **Save credentials**.
 3. Choose **Connect Spotify** and approve access in the new tab.
-4. When connecting to a Pi from another device, the returned loopback page usually cannot load. Copy its **full address**, return to the matrix UI, expand **Browser says it cannot connect?**, paste the address, and choose **Finish connecting**.
+4. After you approve Spotify, a small hosted page sends your browser straight back to your matrix, from any phone or computer on your network. If that does not happen, copy the page's **full address**, expand **Not sent back to your matrix?** in the guide, paste it, and choose **Finish connecting**.
 5. Play music in Spotify. Expand the Spotify row’s **Settings** to reconnect or change credentials later.
 
 No SSH tunnel or daemon restart is needed. On the same computer with the daemon on port 8080, the callback completes automatically. Spotify requires HTTPS redirect URIs except for explicit loopback addresses; `localhost` and your Pi’s HTTP address cannot replace the supplied URI. Development-mode apps require the app owner to have Premium, and other accounts must be added under User Management. See the [full setup and troubleshooting guide](plugins/SpotifyScenes/README.md).

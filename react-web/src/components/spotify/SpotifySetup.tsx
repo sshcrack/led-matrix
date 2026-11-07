@@ -177,7 +177,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
           <ol className="space-y-5">
             <Step n={1} title="Create a Spotify app" done={configured}>
               <p className="text-sm text-muted-foreground">
-                Create an app in the Spotify developer dashboard and add this exact redirect URI to it.
+                Create an app in the Spotify developer dashboard and add this exact redirect URI to it. It is a small page that sends your browser back to your matrix, so it works from any device on your network.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <code className="block min-h-10 flex-1 select-all break-all rounded-lg border border-input bg-background px-3 py-2 text-sm leading-6">
@@ -238,7 +238,7 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
 
             <Step n={3} title="Connect your account" done={connected}>
               <p className="text-sm text-muted-foreground">
-                {connected ? 'Connect again to switch Spotify accounts or renew access.' : 'Approve access in the Spotify tab. On a phone or another computer, the final 127.0.0.1 page will not load: copy its full address and paste it below. This address points to your browser’s device, not the Pi.'}
+                {connected ? 'Connect again to switch Spotify accounts or renew access.' : 'Approve access in the Spotify tab. You will be sent back to this matrix automatically, from any phone or computer on your network.'}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <button
@@ -269,13 +269,13 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
                 onClick={() => setShowCallback(s => !s)}
               >
                 <Info className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="flex-1">Browser says it cannot connect?</span>
+                <span className="flex-1">Not sent back to your matrix?</span>
                 <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showCallback ? 'rotate-180' : ''}`} aria-hidden />
               </button>
               {showCallback && (
                 <form id={`${uid}-callback`} onSubmit={e => void submitCallback(e)} className="space-y-3 px-3 pb-3">
                   <p className="text-sm text-muted-foreground">
-                    If you approve Spotify on a different device than the matrix, the final page can fail to load. That is expected: copy the full address from the browser bar and paste it here to finish.
+                    If the page after Spotify does not return you to your matrix, copy its full address from the browser bar and paste it here to finish.
                   </p>
                   <div className="space-y-1.5">
                     <label htmlFor={`${uid}-cb`} className="text-sm font-medium">Address of the page that failed</label>

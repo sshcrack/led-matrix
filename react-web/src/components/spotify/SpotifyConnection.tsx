@@ -84,12 +84,12 @@ export default function SpotifyConnection({ settings = false }: { settings?: boo
       popupRef.current = popup
       return act(async () => {
         try {
-          const { url } = await post('connect')
+          const { url } = await post('connect', { origin: window.location.origin })
           if (!url || !url.startsWith('https://accounts.spotify.com/authorize?')) throw new Error('Spotify did not return a sign-in address.')
           if (!popup) throw new Error('Allow pop-ups for this page, then choose Connect Spotify again.')
           popup.location.href = url
           setConnecting(true)
-          setNotice('Finish signing in in the Spotify tab. If the returned page cannot load, copy its full address and paste it below.')
+          setNotice('Finish signing in in the Spotify tab. You will be sent back to your matrix automatically.')
         } catch (err) { popup?.close(); throw err }
       })
     }}

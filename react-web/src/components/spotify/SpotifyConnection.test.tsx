@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { ApiUrlContext } from '~/components/apiUrl/apiUrlContext'
 import SpotifyConnection from './SpotifyConnection'
 
-const initial = { configured: false, connected: false, client_id: '', redirect_uri: 'http://127.0.0.1:8080/spotify/callback' }
+const initial = { configured: false, connected: false, client_id: '', redirect_uri: 'https://spotify-auth.sshcrack.me/callback' }
 const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status })
 function mount(settings = false) { return render(<ApiUrlContext.Provider value="http://matrix.test"><SpotifyConnection settings={settings} /></ApiUrlContext.Provider>) }
 afterEach(() => { localStorage.clear(); cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
