@@ -81,7 +81,7 @@ Ask these as **one short batch** (or two) rather than one question per message. 
 
 | # | Question | If yes |
 |:-:|:--|:--|
-| B1 | Do you want **Spotify** (album art, track-aware scenes)? | You need their Client ID and Secret, and a browser step. See [Spotify](#spotify). |
+| B1 | Do you want **Spotify** (album art, track-aware scenes)? | The human enters credentials and signs in through the web UI. See [Spotify](#spotify). |
 | B2 | Should the web UI and API be **protected with a token**? (Anyone on your network can control it otherwise.) | Ask them to choose or generate one. See [Secrets](#ground-rules). |
 | B3 | **Automatic updates** from GitHub releases? (Default: yes, every 24 h; updates roll back on failure.) | `auto-update-enable` / `auto-update-interval` |
 | B4 | Do you want the **desktop app** on a Windows or Linux PC? (Adds music reactivity, GPU shader scenes, videos.) | See [Desktop app](#desktop-app). |
@@ -169,9 +169,6 @@ Secrets go in separately, so they don't land in your logs. Ask the human to run 
 ```bash
 # Optional. Run by the human, or through a private secret channel. Don't echo the values.
 sudo debconf-set-selections <<< "led-matrix led-matrix/api-token password <TOKEN>"
-sudo debconf-set-selections <<< "led-matrix led-matrix/spotify-enable boolean true"
-sudo debconf-set-selections <<< "led-matrix led-matrix/spotify-client-id string <CLIENT_ID>"
-sudo debconf-set-selections <<< "led-matrix led-matrix/spotify-client-secret password <CLIENT_SECRET>"
 ```
 
 For an Adafruit HAT or other flags, put them in `extra-opts`, e.g. `--led-gpio-mapping=adafruit-hat --led-brightness=60`.
@@ -286,16 +283,14 @@ sudo systemctl restart led-matrix
 
 ### Spotify
 
-Needs a Spotify Developer app and a browser. Steps:
+The human completes the web UI’s **Connect Spotify** guide. Leave `spotify-enable` false during installation to defer credentials to this guide; the installed plugin remains available.
 
-1. The human creates an app at <https://developer.spotify.com/dashboard/> and adds the redirect URI **`http://127.0.0.1:8080/spotify/callback`** (exactly this, including the loopback address).
-2. The credentials must reach the Pi through debconf (see [3.1](#31-pre-seed-the-configuration), then `dpkg-reconfigure`).
-3. Spotify only allows loopback redirects, so the **human's computer** must reach the Pi through a tunnel (port 8080 free locally):
-   ```bash
-   ssh -L 8080:localhost:8080 pi@<pi-ip>
-   ```
-4. The human opens **`http://127.0.0.1:8080/spotify/login`** in their browser and approves. Success returns them to the callback page.
-5. Verify with the human: play a track in Spotify, then check that the Scenes page offers the Spotify cover scene and that the cover appears. (`curl -s localhost:8080/list_scenes | jq -r '.[].name' | grep -i spotify` should list it.)
+1. Open `http://<pi-ip>:8080/`. The setup guide opens automatically when credentials are missing. Ask the human to create a developer app, register the guide’s exact redirect URI, and enter the Client ID and secret directly in the web UI.
+2. The human chooses **Save credentials**, then **Connect Spotify**, and approves access in the new tab. Settings take effect without restarting the daemon.
+3. On another computer or phone, the final loopback page usually cannot load. Have the human copy its full address into **Browser says it cannot connect?** and choose **Finish connecting**. The address contains a temporary authorization code: keep it out of chat and logs. No SSH tunnel is required. On the daemon’s own computer at port 8080, the callback completes automatically.
+4. Verify `GET /spotify/status` reports `configured: true` and `connected: true` (include API authentication when configured). Then ask the human to play a track and verify the cover appears. Listing the scene alone does not prove the account is connected.
+
+Spotify development-mode apps require the app owner to have Premium; other accounts need access under User Management. For URI requirements, credential precedence, expired attempts, and troubleshooting, use the [Spotify plugin guide](../plugins/SpotifyScenes/README.md). Existing debconf/environment credentials remain supported; values saved through the web UI take precedence.
 
 ### API token
 

@@ -427,6 +427,8 @@ bool on_udp_packet(uint8_t plugin_id, const uint8_t* data, size_t size) override
 std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
 ```
 
+Initialize objects used by HTTP routes in `before_server_init()`: requests may arrive before `after_server_init()` finishes. Keep startup hooks non-blocking when user setup is incomplete. SpotifyScenes leaves its scenes and setup routes registered without credentials, exposes setup status to the web UI, and waits for authorization in its background polling loop.
+
 Use `send_msg_to_desktop()` for plugin-scoped WebSocket messages.
 
 Worker execution is marked by `SceneExecution::Mode::RemoteWorker`; preview execution uses `SceneExecution::Mode::Preview`. Plugins that normally start network/background services can use `SceneExecution::is_headless_fixture_host()` to suppress those services while still initializing scene-required state/resources.

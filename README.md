@@ -30,9 +30,9 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 
 ## What is this?
 
-A passive piece of light art for your wall or desk. It runs **67 scenes** (and growing), picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
+A passive piece of light art for your wall or desk. It runs **68 scenes** (and growing), picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
 
-- **Automatic Mode.** A Director chooses from 84 curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
+- **Automatic Mode.** A Director chooses from 86 curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
 - **Web UI** that works on phones and desktops, installable as a PWA. It has a live 128×128 preview, a scene gallery, a Scene Lab, schedules and diagnostics. See the [tour](#web-ui).
 - **Desktop app** (Windows and Linux) for the heavy lifting: GPU shaders, system-audio capture, YouTube music videos. Your PC does the rendering and the Pi just displays pixels. See [Desktop app](#desktop-app).
 - **Runs on modest hardware.** Scene quality adapts to the Pi's measured load, and heavy scenes can move to your PC automatically.
@@ -89,7 +89,8 @@ The installer downloads the latest `.deb` from [Releases](https://github.com/ssh
 | Chained panels | Panels daisy-chained on one cable (this sets width) |
 | Parallel chains | Number of cables from the adapter (this sets height) |
 | GPIO slowdown | `3` for a Pi 3, `2` for a Pi 4 |
-| Spotify, API token, auto-updates | Optional, can be changed later |
+| Spotify credentials | Optional; skip to use the web UI setup guide after installation |
+| API token, auto-updates | Optional, can be changed later |
 
 Then open **`http://<pi-ip-address>:8080/`** on any device in your network. Not sure about the numbers? See [Hardware](#hardware).
 
@@ -166,7 +167,7 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 ### Scenes
 
-67 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
+68 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
 
 | Category | Scenes | Highlights |
 |:--|:--:|:--|
@@ -177,7 +178,7 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 | **Generative** | 5 | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
 | **Fractals** | 3 | Julia set, Game of Life, Wave Pattern |
 | **Particles** | 2 | Rain, Sparks |
-| **Media** | 2 (+1) | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
+| **Media** | 3 | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
 | **Weather** | 2 | Live weather and ambient weather particles (via Open-Meteo, no API key) |
 | **Utility / Images** | 2 | Countdown with fireworks, and a pixel-art and image provider |
 
@@ -455,7 +456,7 @@ Set persistent variables with a systemd override. Use `sudo systemctl edit led-m
 | Variable | Purpose |
 |:--|:--|
 | `PORT` | HTTP and UDP port (default `8080`). |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Spotify integration, usually set via the installer. |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Optional Spotify credential defaults. Credentials saved in the web UI take precedence. |
 | `LED_MATRIX_API_TOKEN` | Require a token for the API and web UI (see [Security](#security)). |
 | `LED_MATRIX_ALLOWED_ORIGINS` | Comma-separated extra browser origins, e.g. a dev server. |
 | `SHADERTOY_API_KEY` | Optional: use the official Shadertoy API for the random `shadertoy` scene. |
@@ -465,13 +466,15 @@ Set persistent variables with a systemd override. Use `sudo systemctl edit led-m
 
 Enables the album-cover scene, track-change reactions, genre-aware scene choice and the music-video scene.
 
-1. Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and add the redirect URI **`http://127.0.0.1:8080/spotify/callback`**.
-2. Give the installer the client ID and secret (or `sudo dpkg-reconfigure led-matrix` later).
-3. Spotify only allows loopback redirects, so tunnel the Pi to your computer. Free port 8080 locally first.
-   ```bash
-   ssh -L 8080:localhost:8080 pi@<pi-ip>
-   ```
-4. Open **`http://127.0.0.1:8080/spotify/login`** in your browser and approve.
+Open the matrix web UI on your phone or computer. The **Connect Spotify** guide opens automatically when Spotify is not configured.
+
+1. Follow **Create a Spotify app** to open the developer dashboard. Add the exact redirect URI shown in the guide: **`http://127.0.0.1:8080/spotify/callback`**.
+2. Paste the app’s Client ID and Client secret into the guide and choose **Save credentials**.
+3. Choose **Connect Spotify** and approve access in the new tab.
+4. When connecting to a Pi from another device, the returned loopback page usually cannot load. Copy its **full address**, return to the matrix UI, expand **Browser says it cannot connect?**, paste the address, and choose **Finish connecting**.
+5. Play music in Spotify. Expand the Spotify row’s **Settings** to reconnect or change credentials later.
+
+No SSH tunnel or daemon restart is needed. On the same computer with the daemon on port 8080, the callback completes automatically. Spotify requires HTTPS redirect URIs except for explicit loopback addresses; `localhost` and your Pi’s HTTP address cannot replace the supplied URI. Development-mode apps require the app owner to have Premium, and other accounts must be added under User Management. See the [full setup and troubleshooting guide](plugins/SpotifyScenes/README.md).
 
 A [getsongbpm.com](https://getsongbpm.com/api) key is optional. Set it as `song_bpm_api_key` under `pluginConfigs` in `/var/lib/led-matrix/config.json`.
 
@@ -481,7 +484,7 @@ The Weather scenes use Open-Meteo, so no key is needed. Set the latitude and lon
 
 ### Security
 
-The API is open to your local network by default. Browser requests from *other websites* are always rejected, but any device on your network can use it.
+The API is open to your local network by default. Browser requests from *other websites* are rejected, but any device on your network can use it. The Spotify OAuth callback is the exception: it validates a one-time, expiring login state instead of the API token.
 
 - **Set an API token** in the installer (or `sudo dpkg-reconfigure led-matrix`). The web UI asks for it once and the desktop app has a matching field. API clients send `Authorization: Bearer <token>` or `X-Api-Token`.
 - Don't expose port 8080 to the internet. Use a VPN or SSH tunnel for remote access.
@@ -554,7 +557,9 @@ curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
 | | POST | `/api/update/check`, `/install[?version=]`, `/config` | Check, install, configure auto-update |
 | **Assets** | GET / POST / DELETE | `/api/custom-assets/<type>[/<file>]` | Custom shaders |
 | **Plugins** | GET | `/plugin_ui`, `/plugin_ui/<Name>/ui.js` | Plugin web UI bundles |
-| **Integrations** | GET | `/spotify/login`, `/spotify/callback` | Spotify OAuth |
+| **Integrations** | GET | `/spotify/status` | Spotify setup and connection status (never returns the secret) |
+| | POST | `/spotify/credentials`, `/spotify/connect`, `/spotify/complete` | Save app credentials, start sign-in, finish with a pasted callback address |
+| | GET | `/spotify/callback` | Complete a local OAuth redirect using a one-time login state |
 | | WS | `/desktopWebsocket` | Desktop app link |
 
 Schedule body:
