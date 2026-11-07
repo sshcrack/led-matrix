@@ -37,6 +37,9 @@ namespace ConfigData
         optional<string> access_token;
         optional<string> refresh_token;
         tmillis_t expires_at = 0;
+        string client_id;
+        string client_secret; // legacy; logins started after PKCE support use no secret
+        bool pkce = false;    // tokens were issued via PKCE: refresh with client_id only
 
         [[nodiscard]] bool is_expired() const;
 

@@ -57,7 +57,7 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *out
     return totalSize;
 }
 
-bool Spotify::refresh() const {
+bool Spotify::refresh() {
     debug("Refreshing spotify token...");
     auto spAuth = config->get_spotify();
 
@@ -68,17 +68,20 @@ bool Spotify::refresh() const {
 
     std::string url = "https://accounts.spotify.com/api/token";
 
-    auto r = cpr::Post(cpr::Url{url},
-                       cpr::Payload{
-                               {"grant_type",    "refresh_token"},
-                               {"refresh_token", spAuth.refresh_token.value()},
-                               {"client_id",     client_id},
-                               {"client_secret", client_secret}
-                       }
-    );
+    // PKCE logins refresh with the client id alone; only older (secret-based) logins send the secret.
+    cpr::Payload payload{
+            {"grant_type",    "refresh_token"},
+            {"refresh_token", spAuth.refresh_token.value()},
+            {"client_id",     get_client_id()}
+    };
+    if (!spAuth.pkce && !get_client_secret().empty())
+        payload.Add({"client_secret", get_client_secret()});
+    auto r = cpr::Post(cpr::Url{url}, payload, cpr::Timeout{15000});
 
     if (r.status_code != 200) {
-        error("Could not refresh token: {}", r.text);
+        if (r.status_code == 400 || r.status_code == 401)
+            needs_reconnect = true;
+        error("Could not refresh Spotify token (HTTP {})", r.status_code);
         return false;
     }
 
@@ -93,39 +96,7 @@ bool Spotify::initialize() {
             return std::nullopt;
         return **response;
     });
-    const auto [access_token, refresh_token, expires_at] = config->get_spotify();
-    const auto any_empty = access_token->empty() || refresh_token->empty() || expires_at == 0;
-
-    if (!any_empty) {
-        const bool is_expired = GetTimeInMillis() > expires_at;
-        if (is_expired) {
-            debug("Is expired. Refreshing...");
-            return Spotify::refresh();
-        }
-
-        this->start_control_thread();
-        return true;
-    }
-
-    uint16_t port = std::getenv("PORT") ? std::stoi(std::getenv("PORT")) : 8080;
-
-    cout << "------------------------- SPOTIFY -----------------------------" << endl;
-    cout << "Open the browser and go to the following url: ";
-    cout << "http://localhost:" << std::to_string(port) << "/spotify/login" << endl;
-    cout << "---------------------------------------------------------------" << endl;
-
-    cout << "Waiting for callback.";
-    while (!this->spotify_callback.has_value()) {
-        cout << "." << std::flush;
-        SleepMillis(1000);
-    }
-
-    cout << "\nDone. Saving to config..." << endl;
-    const auto res = save_resp_to_config(spotify_callback.value());
-    if (!res)
-        return false;
-
-    this->start_control_thread();
+    start_control_thread();
     return true;
 }
 
@@ -134,12 +105,14 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     //debug("Saving '{}' to config...", json_resp);
 
     auto parsed = json::parse(json_resp);
+    if (!parsed.contains("access_token") || !parsed.contains("expires_in")) return false;
     string access_token;
     unsigned int expires_in_seconds;
 
     parsed.at("access_token").get_to(access_token);
     parsed.at("expires_in").get_to(expires_in_seconds);
 
+    if (access_token.empty() || expires_in_seconds == 0) return false;
     const auto curr = config->get_spotify();
     string refresh_token = curr.refresh_token.value_or("");
 
@@ -147,23 +120,57 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
         parsed.at("refresh_token").get_to(refresh_token);
     }
 
-    [[maybe_unused]] tmillis_t expires_in = GetTimeInMillis() + expires_in_seconds * 1000;
-    const auto spotify_struct = ConfigData::SpotifyData(access_token, refresh_token, expires_in);
+    if (refresh_token.empty()) return false;
+    const tmillis_t expires_in = GetTimeInMillis() + static_cast<tmillis_t>(expires_in_seconds) * 1000;
+    auto spotify_struct = curr;
+    spotify_struct.access_token = access_token;
+    spotify_struct.refresh_token = refresh_token;
+    spotify_struct.expires_at = expires_in;
 
     config->set_spotify(spotify_struct);
     return config->save();
 }
 
-Spotify::Spotify(const bool allow_missing_credentials) {
-    auto id = std::getenv("SPOTIFY_CLIENT_ID");
-    auto secret = std::getenv("SPOTIFY_CLIENT_SECRET");
+Spotify::Spotify(const bool /*allow_missing_credentials*/) {}
 
-    if (id && secret) {
-        client_id = id;
-        client_secret = secret;
-    } else if (!allow_missing_credentials) {
-        throw std::runtime_error("SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in the environment. The plugin will be disabled");
+std::string Spotify::get_client_id() const {
+    const auto saved = config->get_spotify().client_id;
+    if (!saved.empty()) return saved;
+    const auto value = std::getenv("SPOTIFY_CLIENT_ID");
+    return value ? value : "";
+}
+
+std::string Spotify::get_client_secret() const {
+    const auto saved = config->get_spotify().client_secret;
+    if (!saved.empty()) return saved;
+    const auto value = std::getenv("SPOTIFY_CLIENT_SECRET");
+    return value ? value : "";
+}
+
+bool Spotify::store_login(const std::string& response, const bool pkce) {
+    std::lock_guard lock(refresh_mtx);
+    if (!save_resp_to_config(response)) return false;
+    auto data = config->get_spotify();
+    data.pkce = pkce;
+    if (pkce) data.client_secret.clear(); // no longer needed, don't keep it around
+    config->set_spotify(data);
+    needs_reconnect = false;
+    return config->save();
+}
+
+bool Spotify::configure(const std::string& id) {
+    std::lock_guard lock(refresh_mtx);
+    auto data = config->get_spotify();
+    const bool changed = id != get_client_id();
+    data.client_id = id;
+    if (changed) {
+        data.access_token.reset();
+        data.refresh_token.reset();
+        data.expires_at = 0;
     }
+    config->set_spotify(data);
+    needs_reconnect = false;
+    return config->save();
 }
 
 Spotify::~Spotify() {
@@ -303,8 +310,15 @@ void Spotify::busy_wait(int seconds) {
 }
 
 void Spotify::start_control_thread() {
+    if (control_thread.joinable()) return;
     thread c_thread{[this] {
         while (!this->should_terminate) {
+            if (!is_configured() || !config->get_spotify().has_auth() || needs_reconnect) {
+                { std::lock_guard lock(mtx); currently_playing.reset(); }
+                publish_spotify_runtime_input(std::nullopt);
+                busy_wait(1);
+                continue;
+            }
             trace("Fetching currently playing...");
             auto data = this->inner_fetch_currently_playing();
             if (!data.has_value()) {

@@ -1,40 +1,20 @@
 # Spotify Scenes Plugin
 
-This plugin connects to the Spotify API to display your currently playing music information and visualizations on your LED Matrix.
-
-## Features
-
-- Display current track information (title, artist, album)
-- Show album artwork on the LED matrix
-- Music visualizers synchronized with your music
-- Now playing status and playback controls
-- Authentication with Spotify OAuth integration
-
-## Configuration
-
-The plugin requires Spotify API credentials and authentication.
-Set your following environment variables:
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-```
+Shows the currently playing Spotify album artwork and supplies playback information to music-aware scenes and the director.
 
 ## Setup
 
-1. Create a Spotify Developer application at [developer.spotify.com](https://developer.spotify.com/dashboard/)
-2. Get your Client ID and Client Secret
-3. Port-Forward `8080` using `ssh -L 8080:localhost:8080 <led-matrix-ip>`
-4. Set the redirect URI to `http://127.0.01.:8080/spotify/callback` in your Spotify app settings
-5. Complete the authentication flow to obtain a refresh token (go to `http://127.0.0.1:8080/spotify/login`)
-6. Add your credentials to the configuration file
+Open the matrix web UI. The Spotify setup guide appears automatically when the plugin is installed but not connected. No terminal access or daemon restart is needed. Choose **Dismiss setup** if you do not use Spotify yet; this browser remembers the dismissal. Reopen it any time from **Integrations** in the desktop navigation, or **More → Integrations** on a phone.
 
-## Installation
-1. Configure your Spotify API credentials
-2. If this plugin is not deleted from the plugins directory, install is automatic!
+1. Open the [Spotify developer dashboard](https://developer.spotify.com/dashboard) from the guide and create an app with Web API access.
+2. Add the exact redirect URI shown in the guide: `https://spotify-auth.sshcrack.me/callback`. Save the app settings.
+3. Copy the app’s Client ID into the guide and choose **Save Client ID**. No Client secret is needed: sign-in uses PKCE (the Pi keeps a one-time verifier and only sends its SHA-256 to Spotify).
+4. Choose **Connect Spotify** and approve access in the new tab.
+5. After you approve Spotify, `spotify-auth.sshcrack.me` (a static page, see `hosted/spotify-auth/`) sends your browser back to the address you used to open the matrix UI, with the one-time code. It only redirects to private/local-network addresses, stores nothing and does not log requests. If you are not sent back, copy the **full address** of that page, expand **Not sent back to your matrix?**, paste it and choose **Finish connecting**. Self-hosting the page? Set `LED_MATRIX_SPOTIFY_REDIRECT_URI` to your copy's URL.
+6. Play music in Spotify. The setup row shows the connection status; expand **Settings** to reconnect or update credentials later.
 
+Spotify permits HTTP redirects only for explicit loopback addresses, so `http://ledmat:8080` and `localhost` cannot replace the supplied redirect URI. See [redirect URI requirements](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri). Development mode requires the app owner to have Premium; other accounts must be added under User Management. See [quota modes](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
 
-## Notes
-- The [getsongbpm.com](https://getsongbpm.com/api) API for beat detection is optional but recommended.
-- The plugin requires an active internet connection
-- A premium Spotify account might be required for some features
-- The refresh token doesn't expire unless you revoke access
+The Client ID and tokens are saved in the daemon’s `config.json` (in `/var/lib/led-matrix` for a DEB install). `SPOTIFY_CLIENT_ID` still works as a default; a Client ID saved in the UI takes precedence. Installs that connected before PKCE keep refreshing with their saved Client secret until you reconnect; reconnecting switches to PKCE and drops the stored secret. Changing the Client ID clears the old login, so connect again afterwards.
+
+A connection attempt expires after ten minutes and starting a new attempt replaces the previous one. If Spotify rejects a login, check the credentials and exact redirect URI and choose **Connect Spotify** again. Setup never blocks daemon startup.

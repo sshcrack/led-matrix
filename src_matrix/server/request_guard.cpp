@@ -107,6 +107,9 @@ namespace Server::RequestGuard {
     }
 
     Verdict evaluate(const Policy &policy, const RequestView &request) {
+        // OAuth returns from Spotify without our SameSite cookie. The callback
+        // authenticates its one-time, expiring state before exchanging any code.
+        if (request.path == "/spotify/callback") return Verdict::Allow;
         if (!origin_allowed(policy, request)) return Verdict::CrossOrigin;
         if (!token_valid(policy, request)) return Verdict::Unauthorized;
         return Verdict::Allow;
@@ -155,15 +158,22 @@ namespace Server::RequestGuard {
         }
 
         const auto origin = header.opt_value_of("Origin");
+        // get_field_or returns an owned string. Keep these alive until evaluate()
+        // has finished reading the RequestView's string_views.
+        const auto host = header.get_field_or(restinio::http_field::host, "");
+        const auto fetch_site = header.get_field_or("Sec-Fetch-Site", "");
+        const auto authorization = header.get_field_or(restinio::http_field::authorization, "");
+        const auto api_token = header.get_field_or("X-Api-Token", "");
+        const auto cookie = header.get_field_or(restinio::http_field::cookie, "");
         RequestView view{
             .path = header.path(),
-            .host = header.get_field_or(restinio::http_field::host, ""),
+            .host = host,
             .origin = origin.value_or(""),
-            .sec_fetch_site = header.get_field_or("Sec-Fetch-Site", ""),
-            .authorization = header.get_field_or(restinio::http_field::authorization, ""),
-            .api_token_header = header.get_field_or("X-Api-Token", ""),
+            .sec_fetch_site = fetch_site,
+            .authorization = authorization,
+            .api_token_header = api_token,
             .query_token = query_token,
-            .cookie_header = header.get_field_or(restinio::http_field::cookie, ""),
+            .cookie_header = cookie,
             .has_origin = origin.has_value(),
         };
 

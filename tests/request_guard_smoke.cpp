@@ -72,6 +72,11 @@ int main() {
     expect("web ui public", evaluate(locked, view("/web/index.html", "ledmat")), Verdict::Allow);
     expect("root public", evaluate(locked, view("/", "ledmat")), Verdict::Allow);
 
+    auto callback = view("/spotify/callback", "127.0.0.1:8080");
+    callback.sec_fetch_site = "cross-site";
+    expect("OAuth callback uses its own state authentication", evaluate(locked, callback), Verdict::Allow);
+    expect("Spotify credentials require token", evaluate(locked, view("/spotify/credentials", "ledmat")), Verdict::Unauthorized);
+    expect("Spotify completion requires token", evaluate(locked, view("/spotify/complete", "ledmat")), Verdict::Unauthorized);
     auto bearer = view("/list_presets", "ledmat");
     bearer.authorization = "Bearer s3cret";
     expect("bearer token accepted", evaluate(locked, bearer), Verdict::Allow);

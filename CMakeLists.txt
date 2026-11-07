@@ -818,6 +818,12 @@ if(ENABLE_EMULATOR)
     add_test(NAME request_guard_smoke COMMAND $<TARGET_FILE:request_guard_smoke>)
     set_tests_properties(request_guard_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(pkce_smoke ${CMAKE_CURRENT_SOURCE_DIR}/tests/pkce_smoke.cpp)
+    target_compile_features(pkce_smoke PRIVATE cxx_std_23)
+    target_include_directories(pkce_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes/matrix)
+    target_include_directories(pkce_smoke SYSTEM PRIVATE ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+    add_test(NAME pkce_smoke COMMAND $<TARGET_FILE:pkce_smoke>)
+
     add_executable(property_compat_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
     )

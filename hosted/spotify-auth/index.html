@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>LED Matrix · Spotify sign-in</title>
+<style>
+  :root { color-scheme: dark light; --bg:#0b0d12; --fg:#e8eaf0; --muted:#9aa3b2; --accent:#1db954; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --fg:#14171f; --muted:#5a6475; } }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; }
+  main { min-height:100%; display:grid; place-items:center; padding:24px; box-sizing:border-box; text-align:center; }
+  .card { max-width:26rem; }
+  h1 { font-size:1.25rem; margin:0 0 .5rem; }
+  p { color:var(--muted); margin:.5rem 0; }
+  .spin { width:28px; height:28px; margin:0 auto 16px; border:3px solid var(--muted); border-top-color:var(--accent); border-radius:50%; animation:s 1s linear infinite; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  code { word-break:break-all; }
+</style>
+</head>
+<body>
+<main><div class="card">
+  <div class="spin" id="spin"></div>
+  <h1 id="title">Returning to your LED matrix…</h1>
+  <p id="msg">Spotify sign-in finished. Sending you back to your matrix.</p>
+  <noscript><p>This page needs JavaScript to send you back to your LED matrix.</p></noscript>
+</div></main>
+<script>
+(function () {
+  "use strict";
+  // Static relay: nothing is stored or sent anywhere. The matrix's address travels
+  // inside the OAuth `state` value as "<nonce>.<base64url(origin)>", and this page
+  // hands the browser straight back to that address on the local network.
+
+  function fail(title, msg) {
+    document.getElementById("spin").style.display = "none";
+    document.getElementById("title").textContent = title;
+    document.getElementById("msg").textContent = msg;
+  }
+
+  function b64urlDecode(s) {
+    s = s.replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    return decodeURIComponent(escape(atob(s)));
+  }
+
+  // Only ever redirect to hosts on a private/local network, never to the public internet.
+  function isLocalHost(h) {
+    h = h.toLowerCase();
+    if (h === "localhost" || h.indexOf(".") === -1 && h.indexOf(":") === -1) return true;
+    if (/\.(local|lan|home|internal|localdomain|home\.arpa|ts\.net)$/.test(h)) return true;
+    var m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (m) {
+      var a = +m[1], b = +m[2];
+      return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)
+        || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127);
+    }
+    if (h.charAt(0) === "[") return /^\[(::1|f[cd][0-9a-f:]*|fe80[0-9a-f:]*)\]$/.test(h);
+    return false;
+  }
+
+  var q = new URLSearchParams(location.search);
+  var state = q.get("state") || "";
+  var dot = state.indexOf(".");
+  if (!q.has("code") && !q.has("error")) return fail("Nothing to relay", "Open this page by signing in to Spotify from your LED matrix setup.");
+  if (dot < 1) return fail("Sign-in link expired", "Start the Spotify connection again from your LED matrix web UI.");
+
+  var target;
+  try { target = new URL(b64urlDecode(state.slice(dot + 1))); } catch (e) { target = null; }
+  if (!target || (target.protocol !== "http:" && target.protocol !== "https:") || target.username || target.password
+      || target.pathname !== "/" || !isLocalHost(target.hostname)) {
+    return fail("Can't return to your matrix", "The return address is missing or isn't a local-network address. Start the connection again from your LED matrix web UI.");
+  }
+
+  var out = new URL("/spotify/callback", target.origin);
+  ["code", "state", "error"].forEach(function (k) { if (q.has(k)) out.searchParams.set(k, q.get(k)); });
+  history.replaceState(null, "", location.pathname);   // drop the code from this page's history
+  location.replace(out.toString());
+  setTimeout(function () {
+    fail("Couldn't reach your matrix", "Make sure this device is on the same network as your LED matrix (" + target.host + "), then try connecting again.");
+  }, 8000);
+})();
+</script>
+</body>
+</html>

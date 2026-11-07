@@ -12,6 +12,7 @@ const ModifySources = lazy(() => import('./pages/ModifySources'))
 const SceneGallery = lazy(() => import('./pages/SceneGallery'))
 const SceneLab = lazy(() => import('./pages/SceneLab'))
 const AssetManager = lazy(() => import('./pages/AssetManager'))
+const Integrations = lazy(() => import('./pages/Integrations'))
 const Diagnostics = lazy(() => import('./pages/Diagnostics'))
 
 const Home = lazy(() => import('./shell/Home'))
@@ -29,6 +30,7 @@ function Routed() {
                   <Route path="/assets" element={<AssetManager />} />
                   <Route path="/schedules" element={<Schedules />} />
                   <Route path="/updates" element={<Updates />} />
+                  <Route path="/integrations" element={<Integrations />} />
                   <Route path="/diagnostics" element={<Diagnostics />} />
                   <Route path="/modify-preset/:preset_id" element={<Editor />} />
                   <Route path="/modify-providers/:preset_id/:scene_id" element={<ModifySources kind="image" />} />

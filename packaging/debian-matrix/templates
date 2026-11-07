@@ -43,10 +43,10 @@ Description: Extra matrix options
 Template: led-matrix/spotify-enable
 Type: boolean
 Default: false
-Description: Enable Spotify Plugin?
- The Spotify Plugin displays the album art of the song currently
- playing on your Spotify account. Requires a Spotify Developer
- account with a registered application.
+Description: Enter Spotify credentials during installation?
+ Spotify displays the album art of your currently playing music.
+ Choose No to use the guided setup in the web UI after installation.
+ The plugin stays available either way. Requires a Spotify Developer app.
 
 Template: led-matrix/spotify-client-id
 Type: string
