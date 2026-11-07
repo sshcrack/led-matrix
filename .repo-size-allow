@@ -1,5 +1,4 @@
 # Files exempt from the per-file size / blocked-type checks in
 # scripts/check_repo_size.sh. Keep this list short: every byte stays in history.
 plugins/Shadertoy/img/shadertoy.webp
-docs/web-showcase.gif
 plugins/WeatherOverview/img/night-clear.gif

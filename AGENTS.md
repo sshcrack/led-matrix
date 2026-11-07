@@ -288,6 +288,7 @@ Every committed blob stays in history forever and slows every `git clone`. Histo
 - Exempt a deliberate file via `.repo-size-allow`; waive the total budget with `[large-ok]` in a commit message.
 - **`scene_previews/*.gif` are not tracked in git** (each regeneration cost 0.5–1.5 MiB of history forever; the guard blocks them). They live as assets of the rolling `scene-previews` **prerelease**: `./scripts/generate_scene_previews.sh …` then `./scripts/publish_scene_previews.sh` (needs `gh auth login`; uploads only changed files, removes stale ones). `./scripts/fetch_scene_previews.sh [--if-missing]` downloads them into `scene_previews/` (CMake installs that dir; CI fetches before the cross-compile/.deb build; `run_emulator.sh` and `build_upload.sh` fetch when missing). The release publishes `scene_previews.tar.gz` (exact names, what builds use) plus individual URL-safe GIFs for README embeds. It is a prerelease with a non-`v*` tag so `/releases/latest`, the updater and `create-release.yml` ignore it; `/api/update/releases` filters it out. Never delete it.
 - Build outputs, profiles, videos belong in release assets, not git.
+- README screenshots and animations live in `docs/media/` (keep each file small; `.gitignore` ignores any directory named `images`, so don't use that name). Regenerate them with the emulator + Playwright instead of hand-editing; `scripts/render_scene_video.sh` gives the LED-panel look for scene clips.
 
 ## CI
 
