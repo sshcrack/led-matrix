@@ -18,6 +18,7 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 [Set up with an AI agent](#set-up-with-an-ai-agent) ·
 [Showcase](#showcase) ·
 [Hardware](#hardware) ·
+[Start from scratch](#start-from-scratch) ·
 [Install guide](#install-guide) ·
 [Configuration](#configuration) ·
 [Troubleshooting](#troubleshooting) ·
@@ -65,6 +66,7 @@ Pick the path that matches what you have.
 
 | I have… | Do this |
 |:--|:--|
+| **Nothing yet** (no Pi, panels or adapter) | [**Start from scratch**](#start-from-scratch): what to buy, how to wire and flash it. Or [try the emulator](#3-try-it-without-hardware) first |
 | A Pi with panels wired up, and I want to type a few commands | [**Install on the Pi**](#1-install-on-the-pi) (about 5 minutes) |
 | A Pi with panels, and I'd rather have an AI agent do it | [**Set up with an AI agent**](#set-up-with-an-ai-agent) |
 | Just a computer, no hardware | [**Try the emulator**](#3-try-it-without-hardware) |
@@ -133,7 +135,7 @@ The [agent setup guide](docs/AGENT_SETUP.md) is written for machines. It has an 
 
 <div align="center">
 
-<img src="docs/media/web-tour.gif" alt="Animated tour of the web UI: switching presets, browsing scenes, Scene Lab, schedules, diagnostics and the command palette" width="720">
+<img src="docs/media/web-tour.gif" alt="Animated tour of the web UI: switching presets, browsing scenes, Scene Lab, schedules, diagnostics and the command palette" width="680">
 
 <sub>The web UI: Control → Scenes → Lab → Automation → Health, plus the ⌘K palette.</sub>
 
@@ -317,6 +319,47 @@ echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.con
 sudo sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/firmware/config.txt   # /boot/config.txt on older images
 sudo reboot
 ```
+
+---
+
+## Start from scratch
+
+No hardware yet, or a Pi that has never seen this project? Work through these steps in order. Each one links to the detail. Want to see the result first? Run the [emulator](#3-try-it-without-hardware), which needs no hardware at all.
+
+### 1. Get the parts
+
+Buy the [shopping list](#shopping-list): a Raspberry Pi (3 B/B+ or 4), HUB75 panels, a HAT or adapter board, a 5 V power supply sized for the panels, and a microSD card (16 GB or more). Check that the panels are HUB75 and note their size (e.g. 64×64), because you will need it in step 4.
+
+### 2. Assemble and wire
+
+1. Plug the **adapter or HAT** onto the Pi's 40-pin header (Pi switched off and unplugged).
+2. Connect the adapter's HUB75 output to the **input** of the first panel with the ribbon cable. Panels have an *in* and an *out* side, usually marked with an arrow.
+3. For more panels on the same chain, run a ribbon from the first panel's **output** to the next panel's **input**. Use a second adapter output for a second (parallel) chain. Which output is which depends on the adapter, so check its documentation, or the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
+4. Connect the **5 V supply** to every panel's power connector (use the supplied power leads). Power the Pi from its own supply. Power everything off before changing any cable.
+
+### 3. Flash the Pi
+
+1. On your computer, install [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. Choose your Pi model, then **Raspberry Pi OS Lite (64-bit)** (under *Raspberry Pi OS (other)*), and your SD card.
+3. In the customisation settings, set:
+   - **Username `pi`** (the installer requires this user) and a password
+   - Your **Wi-Fi** name and password (skip if you use Ethernet)
+   - **Enable SSH**
+   - Optionally a hostname such as `ledmatrix`
+4. Write the card, put it in the Pi, and power it on. Give the first boot a couple of minutes.
+
+### 4. Connect and install
+
+```bash
+ssh pi@ledmatrix.local        # or ssh pi@<ip-from-your-router>
+```
+
+Now follow [Install on the Pi](#1-install-on-the-pi). You will need the panel numbers from [Working out the numbers](#working-out-the-numbers), and you should do the [Pi preparation](#pi-preparation-one-time) once. Open `http://ledmatrix.local:8080/` (or the Pi's IP) when it is done.
+
+If the panels stay dark, flicker or look scrambled, go to [Troubleshooting](#troubleshooting). Those are almost always one-flag fixes.
+
+> [!TIP]
+> Prefer not to do this alone? Your [AI agent](#set-up-with-an-ai-agent) can walk you through every step above and run the commands over SSH.
 
 ---
 

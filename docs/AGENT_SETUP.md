@@ -5,10 +5,11 @@
 
 You are setting up [led-matrix](https://github.com/sshcrack/led-matrix): a daemon on a Raspberry Pi that drives HUB75 LED panels, with a web UI on port 8080 and an optional desktop app. The product is a calm, passive ambient display.
 
-Your job has seven phases. **Do them in order. Interview first, act second, and verify everything.**
+Your job has up to eight phases (Phase 0 only if they're starting from scratch). **Do them in order. Interview first, act second, and verify everything.**
 
 | # | Phase | You | The human |
 |:-:|:--|:--|:--|
+| 0 | Starting point | Find out what exists; guide wiring and flashing if needed | Does the physical steps |
 | 1 | Interview | Ask a few questions | Answers |
 | 2 | Preflight | Inspect the Pi | – |
 | 3 | Install | Run commands | Approves `sudo` if needed |
@@ -33,6 +34,32 @@ Your job has seven phases. **Do them in order. Interview first, act second, and 
 7. **Don't edit `/etc/default/led-matrix` by hand.** It is regenerated from debconf on every upgrade and reconfigure, so your edit will vanish. Use `debconf-set-selections` plus `dpkg-reconfigure` ([how](#changing-settings-later)).
 8. **Never** run the emulator build on the Pi, build from source on the Pi, or open port 8080 to the internet.
 9. Report honestly. If a step failed or was skipped, say so with the error output.
+
+---
+
+## Phase 0: Where are they starting?
+
+Before the interview, find out how far along the person is. Ask one question: **"Do you already have a Raspberry Pi running an OS that I can SSH into, with the panels wired to it?"**
+
+| Answer | What you do |
+|:--|:--|
+| **Yes, all of it** | Continue with Phase 1. |
+| **Pi has an OS but panels aren't wired yet** | Walk them through wiring (checklist below), wait for them to confirm, then continue. |
+| **I have the parts but nothing is set up** | Walk them through the checklist below (wiring, flashing, first SSH login). They do the physical and imaging steps, you guide and verify. |
+| **I have nothing yet** | Help them choose parts (README [shopping list](../README.md#shopping-list)). Offer the **emulator** so they can see the project first: `git clone --recurse-submodules https://github.com/sshcrack/led-matrix.git`, then follow the README's [Development](../README.md#development) steps and run `./scripts/run_web_emulator.sh`. Stop there until the hardware arrives. |
+| **No Pi planned, just curious** | The emulator is the whole setup. Don't try to install the `.deb` anywhere that isn't an arm64 Pi. |
+
+### From-scratch checklist (you guide, they do)
+
+You cannot touch the hardware, so give them these in small batches and wait for a confirmation after each:
+
+1. **Wire it** (everything powered off): adapter or HAT on the Pi header; HUB75 ribbon from the adapter to panel 1's *input*; panel 1's *output* to panel 2's *input* for chained panels; a second adapter output for a parallel chain; the 5 V supply to **every** panel's power connector; the Pi on its own supply. Details: README [Start from scratch](../README.md#start-from-scratch) and the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
+2. **Flash the SD card** with Raspberry Pi Imager: *Raspberry Pi OS Lite (64-bit)*; customisation: username **`pi`**, a password, Wi-Fi (if no Ethernet), **SSH enabled**, optional hostname.
+3. **First boot**: they insert the card and power on, then wait about two minutes.
+4. **Find the Pi**: try `ssh pi@<hostname>.local`; otherwise they look up the IP in their router's device list. If they can't reach it, ask what the Pi's activity LED does and whether Wi-Fi credentials were entered correctly. Don't change their network settings.
+5. **First login**: have them run `ssh pi@<host>` (they enter the password, you never see it), then continue with Phase 1. If you operate over SSH yourself, ask them to set up key-based login (`ssh-copy-id pi@<host>`), or ask them to run the privileged commands.
+
+Don't skip ahead: the display can't be verified until the wiring and power are right, and an undetected wiring fault looks like a software bug.
 
 ---
 
