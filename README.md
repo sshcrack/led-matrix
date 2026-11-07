@@ -1,797 +1,711 @@
-# 🌈 LED Matrix Controller
-
-**One‑line install on a Raspberry Pi (arm64):**
-```bash
-curl -sSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
-```
-Downloads the latest `.deb` from GitHub Releases, presents an interactive config dialog (matrix dimensions, Spotify, auto‑updates), and installs the systemd service.
-
-> [!TIP]
-> This project is still maintained, but I just don't have any ideas what to do right now, I'm open for suggestions!
-
 <div align="center">
 
-Transform your space with a **powerful C++ application** that turns RGB LED matrices into stunning digital canvases. Create mesmerizing visual effects, display real-time data, and control everything remotely with our comprehensive plugin ecosystem.
+# LED Matrix Controller
 
-**✨ Perfect for makers, developers, and digital artists ✨**
+**Turn a Raspberry Pi and a few HUB75 LED panels into a calm, good-looking ambient display.**
+Aquariums, planets, auroras, music-reactive scenes and self-playing games. Controlled from your phone, with no coding required.
 
-> **🎯 Recommended:** 128x128 matrix + Raspberry Pi 4 for optimal results!
+<img src="docs/media/hero.gif" alt="Four scenes running on a 128x128 LED matrix: a night drive, a ringed planet, a planted aquarium and an aurora over a lake" width="100%">
 
-[![GitHub stars](https://img.shields.io/github/stars/sshcrack/led-matrix?style=for-the-badge)](https://github.com/sshcrack/led-matrix/stargazers)
-[![C++](https://img.shields.io/badge/C%2B%2B-23-blue?style=for-the-badge&logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
-[![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi-red?style=for-the-badge&logo=raspberrypi)](https://www.raspberrypi.org/)
-[![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue&style=for-the-badge)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/sshcrack/led-matrix)
+[![Latest release](https://img.shields.io/github/v/release/sshcrack/led-matrix?style=flat-square&color=2dd4bf)](https://github.com/sshcrack/led-matrix/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/sshcrack/led-matrix/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/sshcrack/led-matrix/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue?style=flat-square)](LICENSE)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=cplusplus)](https://en.cppreference.com/w/cpp/23)
+[![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-arm64-c51a4a?style=flat-square&logo=raspberrypi)](#hardware)
+[![Stars](https://img.shields.io/github/stars/sshcrack/led-matrix?style=flat-square)](https://github.com/sshcrack/led-matrix/stargazers)
+
+[Quick start](#quick-start) ·
+[Set up with an AI agent](#set-up-with-an-ai-agent) ·
+[Showcase](#showcase) ·
+[Hardware](#hardware) ·
+[Start from scratch](#start-from-scratch) ·
+[Install guide](#install-guide) ·
+[Configuration](#configuration) ·
+[Troubleshooting](#troubleshooting) ·
+[Development](#development)
 
 </div>
 
-## 📋 Table of Contents
-
-- [✨ Features](#-features)
-- [🔌 Components](#-components)
-- [🛠️ Hardware Support](#️-hardware-support)
-- [📋 Prerequisites](#-prerequisites)
-- [🚀 Quick Start Guide](#-quick-start-guide)
-- [🖥️ Desktop App](#️-desktop-app)
-- [🎯 Usage Guide](#-usage-guide)
-- [🌐 API Reference](#-api-reference)
-- [🔧 Troubleshooting](#-troubleshooting)
-- [🔌 Plugin Development](#-plugin-development)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-
-
-## 🎬 Demonstration
-
-Selected GIFs from the rolling [`scene-previews` release](https://github.com/sshcrack/led-matrix/releases/tag/scene-previews) (50+ pre-generated previews, hosted as release assets rather than committed to git). The full gallery is visible in the web UI and via `scene_preview?name=<id>`.
-
-<div align="center">
-
-| AmbientScenes: Clock | AmbientScenes: Starfield | AmbientScenes: Metablob | AmbientScenes: DigitalRain | AmbientScenes: NeonTunnel |
-|:-------------------:|:-----------------------:|:----------------------:|:--------------------------:|:-------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/clock.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/starfield.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/metablob.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/digitalrain.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/neontunnel.gif) |
-
-| AmbientScenes: Bouncing Logo | AmbientScenes: Sorting Visualizer | FractalScenes: Julia Set | FractalScenes: Game of Life | FractalScenes: Wave Pattern |
-|:---------------------------:|:--------------------------------:|:------------------------:|:--------------------------:|:---------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/bouncing-logo.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/sorting-visualizer.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/julia_set.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/game_of_life.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/wave_pattern.gif) |
-
-| GenerativeScenes: Boids | GenerativeScenes: Falling Sand | GenerativeScenes: Reaction Diffusion | GameScenes: Tetris | GameScenes: Pac-Man |
-|:----------------------:|:------------------------------:|:-----------------------------------:|:------------------:|:-------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/boids.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/falling_sand.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/reaction_diffusion.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/tetris.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/pacman_ai.gif) |
-
-| GameScenes: Maze | GameScenes: Ping Pong | GameScenes: Snake | GithubScenes: Watermelon Plasma | GithubScenes: Wave |
-|:----------------:|:---------------------:|:-----------------:|:------------------------------:|:------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/maze.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/ping_pong.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/snake_game.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/watermelon_plasma.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/wave.gif) |
-
-| RGBMatrixAnimations: Rain | RGBMatrixAnimations: Sparks | Shadertoy: Plasma Waves | Shadertoy: Ethereal Portal | WeatherOverview: Weather |
-|:------------------------:|:--------------------------:|:-----------------------:|:--------------------------:|:------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/rain.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/sparks.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/plasma_waves.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/ethereal_portal.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/weather.gif) |
-
-| WeatherOverview: Weather Ambience | AudioVisualizer: Spectrum | AudioVisualizer: Aurora | AudioVisualizer: Kaleidoscope | SpotifyScenes: Cover |
-|:---------------------------------:|:-------------------------:|:-----------------------:|:-----------------------------:|:--------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/weather_ambience.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_spectrum.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_aurora.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_kaleidoscope.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/spotify.gif) |
-
-| PixelJoint: Image Scene | Countdown | AudioVisualizer: Particles | AudioVisualizer: Pulse Tunnel | AudioVisualizer: Music Director |
-|:-----------------------:|:---------:|:--------------------------:|:-----------------------------:|:-------------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/image_scene.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/countdown.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_particles.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_pulse_tunnel.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/music_director.gif) |
-
-| Shadertoy: Mobius Fluid | Shadertoy: Rainbow Spiral | Shadertoy: Expert Julia | Shadertoy: Realistic Cloth |
-|:-----------------------:|:--------------------------:|:-----------------------:|:--------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/mobius_fluid_manifold.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/rainbow_spiral.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/expert_quaternion_julia.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/realistic_cloth.gif) |
-
-| **✨ New: Shader — Celestial Bloom** | **✨ New: Shader — Liquid Ribbons** | **✨ New: Shader — Neon Orbit** | **✨ New: Shader — Spectrum Tunnel** |
-|:-----------------------------------:|:-----------------------------------:|:-------------------------------:|:-----------------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_celestial_bloom.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_liquid_ribbons.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_neon_orbit.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_spectrum_tunnel.gif) |
-| `shader:music_celestial_bloom` — 7-petal bloom with spectrum-driven warp, beat-lit core | `shader:music_liquid_ribbons` — 7 flowing ribbons deformed by spectrum/waveform | `shader:music_neon_orbit` — neon orbital rings reacting to kick/snare | `shader:music_spectrum_tunnel` — 14-ring depth tunnel with circular spectrum deformation |
-
-| **✨ New: Shader — Aurora** | **✨ New: Shader — Planetary Vista** | **✨ New: Shader — Plasma Garden** | **✨ New: Shader — Tidal Aquarium** |
-|:---------------------------:|:-----------------------------------:|:---------------------------------:|:----------------------------------:|
-| ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_aurora.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_planetary_vista.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_plasma_garden.gif) | ![](https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_tidal_aquarium.gif) |
-| `shader:scenic_aurora` — aurora curtains, mountain silhouettes & lake reflection | `shader:scenic_planetary_vista` — ringed planet, drifting clouds & meteor (~53s) | `shader:scenic_plasma_garden` — organic plasma cells & veined petals | `shader:scenic_tidal_aquarium` — planted aquarium, schooling fish & visitor fish (~73s) |
-
-</div>
-
-> **New in this update:** 8 built-in Shadertoy shaders were added under `plugins/Shadertoy/shaders/` — **audio-reactive:** `music_celestial_bloom` (7-petal spectral bloom), `music_liquid_ribbons` (flowing ribbons), `music_neon_orbit` (neon orbital rings), `music_spectrum_tunnel` (neon depth tunnel); **scenic/calm:** `scenic_aurora` (aurora curtains + lake reflection), `scenic_planetary_vista` (ringed planet + moon + meteor), `scenic_plasma_garden` (organic plasma cells), `scenic_tidal_aquarium` (planted aquarium with fish schools). All expose `led-matrix-shader` JSON for Automatic Mode / Music Director. Add your own `.frag` to `plugins/Shadertoy/shaders/` (→ `shader:<name>`) or `data/custom_shaders/` (→ `custom_shader:<name>`) — see `plugins/Shadertoy/SHADER_AUTHORING.md`. The web gallery sources previews from `scene_previews/<scene_id>.gif` with `:` mapped to `_` (e.g. `shader:music_neon_orbit` → `shader_music_neon_orbit.gif`) deployed to `/usr/share/led-matrix/scene_previews/`.
-
 ---
-## ✨ Features
 
-### 🎮 **Comprehensive Control System**
-- **REST API server** for seamless remote control
-- **PWA** and **a website** for on-the-go management
-- **18 plugins, 39 scenes, 7 post-processing effects & 11 transitions**
-- **Preset management** for quick scene switching
-- **Advanced scheduling** - Automatically switch presets based on time and day
-- **Automatic updates** - Keep your system up-to-date with the latest features and security fixes
-- **Real-time configuration** without restarts
-- **Live matrix preview** via pull-based WebSocket (`/live_frame`, `LMF1` frames, coalesced viewers)
-- **Adaptive quality & automatic desktop offload** - heavy scenes migrate to the desktop scene worker when the Pi is under pressure
-![Website Showcase](./docs/web-showcase.gif)
+## What is this?
 
-### 🎨 **Rich Plugin Ecosystem — 18 Plugins, 39 Scenes**
+A passive piece of light art for your wall or desk. It runs **67 scenes** (and growing), picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
 
-> Scene IDs are the values returned by `Scene::get_name()` / `list_scenes` and used for pinning (`--scene <id>`), presets, and previews. Categories match `get_category()`.
+- **Automatic Mode.** A Director chooses from 84 curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
+- **Web UI** that works on phones and desktops, installable as a PWA. It has a live 128×128 preview, a scene gallery, a Scene Lab, schedules and diagnostics. See the [tour](#web-ui).
+- **Desktop app** (Windows and Linux) for the heavy lifting: GPU shaders, system-audio capture, YouTube music videos. Your PC does the rendering and the Pi just displays pixels. See [Desktop app](#desktop-app).
+- **Runs on modest hardware.** Scene quality adapts to the Pi's measured load, and heavy scenes can move to your PC automatically.
+- **One `.deb` to install.** A systemd service, safe self-updates with automatic rollback, and a REST API for everything.
 
-| Plugin | Scenes (ID — `Category`) | What it does |
-|:-------|:--------------------------|:-------------|
-| **AmbientScenes** | `starfield`, `metablob`, `clock`, `sorting-visualizer`, `bouncing-logo`, `neontunnel`, `digitalrain` — `Ambient` | Atmospheric & procedural ambience: warp starfield, metaball fluid, analog/digital clock + date, sorting-algorithm visualizer, DVD-style bouncing logo, neon tunnel, Matrix-style digital rain. |
-| **AudioVisualizer** | `audio_spectrum`, `audio_particles`, `audio_pulse_tunnel`, `audio_aurora`, `audio_kaleidoscope`, `music_director` — `Audio Reactive` | Real-time audio analysis via desktop capture: spectrum bars, particle fields, pulse tunnel, aurora, kaleidoscope, and the `music_director` automatic DJ. [Setup required](./plugins/AudioVisualizer/README.md). Audio is also mirrored to the remote scene worker. |
-| **GameScenes** | `ping_pong`, `tetris`, `maze`, `snake_game`, `pacman_ai` — `Games` | Self-playing games: Pong (AI opponents), Tetris (neural-net placement), Maze (Hunt-and-Kill + A* solver), Snake, Pac-Man. |
-| **FractalScenes** | `julia_set`, `game_of_life`, `wave_pattern` — `Fractals` | Math-driven visuals: animated Julia sets, Conway's Game of Life, wave interference patterns. |
-| **GenerativeScenes** | `reaction_diffusion`, `boids`, `falling_sand` — `Generative` | Emergent simulations: Gray-Scott reaction-diffusion, Boids flocking, Falling Sand automata. |
-| **GithubScenes** | `watermelon_plasma`, `wave` — `Generative` | Community effects ported from [matryx-gl](https://github.com/Knifa/matryx-gl) (Knifa). |
-| **RGBMatrixAnimations** | `rain`, `sparks` — `Particles` | Particle systems: gravity-driven rain and sparks. |
-| **Shadertoy** | `shadertoy` (+ dynamic `custom_shader:*` / `shader:*`) — `Shaders` / `Custom Shaders` | Streams Shadertoy shaders rendered on the desktop (`shadertoy` cycles randomly; installed `.frag` files under `shaders/` appear as `custom_shader:<name>` / `shader:<name>` with preview GIFs like `ethereal_portal`, `plasma_waves`). **New:** 8 built-in `shader:*` scenes — `music_celestial_bloom`, `music_liquid_ribbons`, `music_neon_orbit`, `music_spectrum_tunnel` (audio-reactive, `music_affinity` 0.96–1.0, featured in new demo rows), `scenic_aurora`, `scenic_planetary_vista`, `scenic_plasma_garden`, `scenic_tidal_aquarium` (calm scenic; aquarium/planetary respond subtly to music with `music_affinity` 0.15–0.20). See `SHADER_AUTHORING.md` for the `iChannel0` music texture + `iAudio*` uniforms. Needs desktop app; `supports_remote_rendering = false`. |
-| **WeatherOverview** | `weather`, `weather_ambience` — `Weather` | Live weather dashboard (current icon + forecast + sunrise/sunset + clock) and ambient weather particles (rain/snow/aurora/fog/lightning). Requires network. |
-| **SpotifyScenes** | `spotify` — `Media` | Shows current Spotify cover art with transitions. OAuth; deterministic `spotify.playback` preview fixture so previews need no credentials. |
-| **SpotifyMV** | `spotifymv` — `Media` | Auto-plays YouTube music videos for the current Spotify track (yt-dlp + ffmpeg on desktop, muted video piped via UDP to Pi; `prepare_runtime` pre-warms while another scene is active). |
-| **Video** | `video` — `Media` | Plays URL-sourced video (YouTube etc.) decoded on desktop and streamed to a lightweight Pi proxy. Needs desktop app. |
-| **PixelJoint** | `image_scene` — `Images` | Pixel-art & general image provider: `pages` / `collection` / `random` providers scraping PixelJoint; also handles generic URL images. `scene_previews/image_scene.gif` is its preview. |
-| **Countdown** | `countdown` — `Utility` | Countdown to a target date with confetti & firework particles, big-digit modes, pulse effects. |
-| **ExampleScenes** | `color_pulse`, `property_demo`, `rendering_demo` — `Examples` | Minimal reference scenes for plugin authors (see [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)). |
-| **BasicEffects** | *(no scenes — 7 post-processing effects)* `flash`, `rotate`, `glow`, `rgb_split`, `glitch`, `pixelate`, `shockwave` | Screen-wide effects triggerable via `/post_processing/*` or automatically on audio beats. Applied on the Pi even when the scene is remotely rendered. |
-| **Transitions** | *(no scenes — 11 transitions)* `blend`, `swipe`, `morph`, `radial_reveal`, `checker_reveal`, `ordered_dissolve`, `random_dissolve`, `glitch_cut`, `crt_collapse`, `block_dissolve`, `zoom_blend` | Transitions between scenes. Configured per-scene via `transition_name` / `transition_duration`. |
-| **RenderOffload** | *(infrastructure, no scenes)* | Generic desktop scene worker supervisor (`led-matrix-scene-worker`). Packages worker copies of all portable `scenes/` renderers; Pi offloads based on measured per-scene p50/p95 cost, not a static `heavy` flag. |
-
-**At a glance:** 7 Ambient + 6 AudioVisualizer + 5 GameScenes + 3 FractalScenes + 3 GenerativeScenes + 2 GithubScenes + 2 RGBMatrixAnimations + 2 WeatherOverview + 1 Shadertoy (+ N custom shaders) + 1 SpotifyScenes + 1 SpotifyMV + 1 Video + 1 PixelJoint + 1 Countdown + 3 ExampleScenes = **39 named scenes** (plus dynamically discovered custom shaders). Effects and transitions are separate from scenes and are listed above.
-
-### 🔧 **Advanced Features**
-- **Hardware abstraction** supporting various matrix configurations
-- **Cross-compilation support** for efficient Raspberry Pi deployment
-- **Emulator support** with SDL2 for development
-- **Configurable logging** with spdlog integration
-- **Persistent configuration** with JSON-based settings
-
-### ⏰ **Smart Scheduling System**
-Take automation to the next level with intelligent preset scheduling:
-- **Time-based switching** - Automatically change presets based on time of day
-- **Day-of-week scheduling** - Different configurations for weekdays vs weekends
-- **Multiple schedules** - Create unlimited schedules for different scenarios
-- **Cross-midnight support** - Schedules that span midnight work seamlessly
-- **Mobile management** - Create and edit schedules from your phone
-- **Real-time activation** - Schedule changes take effect immediately
-
-**Example Use Cases:**
-- **Office hours**: Bright, professional displays during work hours (9 AM - 5 PM, weekdays)
-- **Evening ambiance**: Warm, relaxing scenes after sunset (6 PM - 11 PM, daily)
-- **Weekend fun**: Colorful, dynamic animations on Saturday and Sunday
-- **Night mode**: Dim clock display during sleeping hours (11 PM - 7 AM)
-
-## 🔌 Components
-
-### 🖥️ **C++ Backend**
-The heart of the system - a high-performance application that orchestrates everything:
-- **Scene rendering engine** with smooth animations at 60+ FPS, `FixedStepAccumulator` for FPS-independent physics, and `render_quality_scale()` for adaptive detail
-- **Plugin management** — 18 loadable plugins providing 39 scenes, plus 7 post-processing effects and 11 transitions; plugins auto-register via `register_plugin()` with no root `CMakeLists.txt` edits needed
-- **Hardware interface** supporting multiple matrix configurations
-- **RESTful API server** for external control and integration
-- **Configuration persistence** and real-time updates
-- **Automatic director & diagnostics** — per-scene p50/p95/p99 profiling and `/diagnostics` pressure metrics drive optional remote rendering via the desktop scene worker
-- **Visual journeys & atmospheric scenes** — Automatic Mode composes 24–36 minute visual arcs; sustained instrumentation changes guide musical handoffs. A planted aquarium, ringed planetary vista, and aurora lake render on the desktop GPU. See [automatic journeys](docs/automatic-journeys.md) and [atmospheric scenes](plugins/Shadertoy/README.md#atmospheric-scenes).
-
-### 🌐 **React Web App**
-A sleek web companion for remote control, also installable as a PWA on mobile:
-- **Intuitive scene selection** with live previews
-- **Real-time matrix control** from anywhere on your network
-- **Preset management** for quick configuration switching
-- **Schedule management** - Create and manage time-based automation
-- **Image upload functionality** for custom displays
-- Works on any device with a modern browser
-
-Located in the `react-web/` directory with Vite, React, TypeScript and Tailwind CSS.
-
-## 🛠️ **Hardware Support**
-
-> **⚠️ Important:** This project builds upon the excellent [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) library. For detailed hardware setup, wiring diagrams, troubleshooting, and matrix-specific configuration, please refer to the [comprehensive documentation](https://github.com/hzeller/rpi-rgb-led-matrix) in that repository.
-
-### 🎯 **Recommended Hardware**
-
-> **🌟 Recommended Setup:** For the best experience, we recommend a **128x128 LED matrix** (four 64x64 panels arranged in a 2x2 configuration) paired with a **Raspberry Pi 4**. This setup provides excellent resolution and performance for all visual effects!
-
-- **Raspberry Pi 4** (3B+ minimum) for optimal performance
-- **RGB LED matrix panels** with HUB75 interface:
-  - **Ideal**: Four 64x64 panels for 128x128 total resolution (multiple 32x32 should also work)
-- **Quality power supply** (5V with sufficient amperage - matrices are power-hungry!)
-- **[Active-3 Adapter from Electrodragon](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-raspberry-pi/)**, for alternatives [see here](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/adapter/README.md). 
-
-Configure your setup using command-line flags or the configuration file - the system adapts automatically!
-
-## 📋 **Prerequisites**
-
-## 🚀 **Quick Start Guide**
-
-### 🚀 **Automatic Installation (Recommended)**
-
-The easiest way to install and configure the LED Matrix Controller is with the provided install script. This script will:
-- Download the latest release for your platform
-- Guide you through hardware configuration (matrix size, chain, parallel, etc.)
-- Optionally set up Spotify integration
-- Install the binary via DEB package to `/usr/bin/led-matrix`
-- Set up a systemd service for automatic startup
-
-**To get started, simply run:**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh | bash
+```mermaid
+flowchart LR
+    subgraph Browser["Phone / browser"]
+        WEB["Web UI (PWA)"]
+    end
+    subgraph Pi["Raspberry Pi"]
+        D["led-matrix daemon<br/>scenes · Director · REST API"]
+        P[("HUB75 LED panels")]
+        D -- GPIO --> P
+    end
+    subgraph PC["Your PC (optional)"]
+        APP["Desktop app<br/>audio capture · shaders · video"]
+        W["Scene worker<br/>full-quality offload"]
+    end
+    WEB -- "HTTP + WebSocket :8080" --> D
+    APP -- "WebSocket (config, audio analysis)" --> D
+    APP -- "UDP pixel stream" --> D
+    W -- "rendered frames" --> D
 ```
-
-Or, if you have already cloned the repository:
-
-```bash
-cd scripts
-chmod +x install_led_matrix.sh
-./install_led_matrix.sh
-```
-
-The script will ask you for your matrix configuration and any optional features. After installation, the service will start automatically.
-You can now access the LED Matrix control at http://<led_matrix_ip>:8080/
-
-**API access control (optional):** the installer can ask for an API token. If set (`LED_MATRIX_API_TOKEN` in `/etc/default/led-matrix`, change with `sudo dpkg-reconfigure led-matrix`), the web UI prompts for it once and the desktop app has an "API token" setting. Browser requests from other websites are always rejected; to use a dev server such as Vite, set `LED_MATRIX_ALLOWED_ORIGINS=http://localhost:5173`.
 
 ---
 
-## 🖥️ **Desktop App**
-The Desktop App is used for compute intensive applications, like the AudioVisualizer or the Shadertoy.
+## Quick start
 
-### 📥 **Installation**
+Pick the path that matches what you have.
 
-#### **Windows**
-1. Go to the [Releases page](https://github.com/sshcrack/led-matrix/releases)
-2. Download the latest `led-matrix-desktop-*-win64.exe` file
-3. Run the installer and follow the setup wizard
+| I have… | Do this |
+|:--|:--|
+| **Nothing yet** (no Pi, panels or adapter) | [**Start from scratch**](#start-from-scratch): what to buy, how to wire and flash it. Or [try the emulator](#3-try-it-without-hardware) first |
+| A Pi with panels wired up, and I want to type a few commands | [**Install on the Pi**](#1-install-on-the-pi) (about 5 minutes) |
+| A Pi with panels, and I'd rather have an AI agent do it | [**Set up with an AI agent**](#set-up-with-an-ai-agent) |
+| Just a computer, no hardware | [**Try the emulator**](#3-try-it-without-hardware) |
 
-#### **Linux**
-1. Go to the [Releases page](https://github.com/sshcrack/led-matrix/releases)
-2. Download the latest `led-matrix-desktop-*-Linux.tar.gz` file
-3. Extract and run:
-   ```bash
-   tar -xzf led-matrix-desktop-*-Linux.tar.gz
-   cd led-matrix-desktop-*
-   ./bin/led-matrix-desktop
-   ```
+### 1. Install on the Pi
 
-### 🔧 **Usage**
-Start the Desktop App, enter your LED Matrix IP address, click "Connect" and you are ready to go!
+You need a Raspberry Pi running a **64-bit** Debian-based OS (Raspberry Pi OS Lite 64-bit works well), a user called `pi`, and internet access.
 
-
-### 🖥️ **Manual Build & Development**
-
-If you want to build from source or develop locally, follow these steps:
-
-> **💡 Pro Tip:** You can also use our [devcontainer](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/sshcrack/led-matrix) which has all dependencies installed already!
-
-
-#### 🔧 **System Requirements**
-- **CMake 3.5+** for build system management
-- **C++23 compatible compiler** (GCC 12+ or Clang 15+)
-- **vcpkg package manager** for dependency management
-- **Python 3** with `jinja2` package (`apt install python3-jinja2 -y`)
-- **GraphicsMagick** and development headers (`apt install libgraphicsmagick1-dev`)
-
-#### 📱 **For Web Development**
-- **Node.js 20+** and pnpm
-
-#### **Building with CMake Presets (Recommended)**
-
-This project uses CMake presets for easy configuration. Available presets:
-
-- **`cross-compile`** - Build for Raspberry Pi (ARM64)
-- **`emulator`** - Build with SDL2 emulator for development
-- **`desktop-linux`** - Build desktop app for Linux
-- **`desktop-windows`** - Build desktop app for Windows
-
-**For Raspberry Pi:**
 ```bash
-# Configure and build for Raspberry Pi
-cmake --preset cross-compile
-cmake --build build --target install
+# Download the installer, read it if you like, then run it
+curl -fsSLO https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh
+bash install_led_matrix.sh
 ```
 
-**For Development/Emulator:**
+The installer downloads the latest `.deb` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest) and installs it. It asks for:
+
+| Question | What to answer |
+|:--|:--|
+| Rows / columns per panel | Panel size, e.g. `64` and `64` |
+| Chained panels | Panels daisy-chained on one cable (this sets width) |
+| Parallel chains | Number of cables from the adapter (this sets height) |
+| GPIO slowdown | `3` for a Pi 3, `2` for a Pi 4 |
+| Spotify, API token, auto-updates | Optional, can be changed later |
+
+Then open **`http://<pi-ip-address>:8080/`** on any device in your network. Not sure about the numbers? See [Hardware](#hardware).
+
+### 2. Your first five minutes
+
+1. Open the web UI and press the power button (top right) if the matrix is off.
+2. In **Control**, leave the toggle on **Auto** to let the Director take over, or pick **Manual** and click a preset.
+3. Press **+** to build a preset: choose a one-tap starting point (Night sky, Digital calm, Desk clock) or pick scenes yourself.
+4. Open **Scenes** to browse every scene with an animated preview.
+5. Optional: install the [desktop app](#desktop-app) for shaders and music reactivity.
+
+### 3. Try it without hardware
+
+The emulator renders the exact same code as the Pi into a browser tab, so you can try everything before buying anything.
+
 ```bash
-# Configure and build emulator version
-cmake --preset emulator
-cmake --build --preset emulator
-```
-
-**For Desktop App:**
-```bash
-# Linux desktop app
-cmake --preset desktop-linux
-cmake --build --preset desktop-linux
-
-# Windows desktop app (on Windows)
-cmake --preset=desktop-windows
-cmake --build --preset desktop-windows
-```
-#### **Running the Emulator**
-
-Test your scenes without physical hardware using our SDL2-based emulator:
-
-```bash
-# Run with emulation (after building with emulator preset)
-./scripts/run_emulator.sh
-```
-
-Perfect for development, testing, and demonstrations!
-
-#### **Scene Preview GIFs**
-
-The web interface shows animated GIF previews for each scene in the gallery. Previews are **not committed to git** (every regeneration would permanently bloat clones). They are assets of the rolling `scene-previews` GitHub release, downloaded into `scene_previews/` with `./scripts/fetch_scene_previews.sh`, and deployed with the application.
-
-**Generate all scene previews:**
-```bash
-# Build the emulator first
-cmake --preset emulator
+git clone --recurse-submodules https://github.com/sshcrack/led-matrix.git
+cd led-matrix
+cmake --preset emulator                    # needs the build prerequisites below
 cmake --build --preset emulator --target install
-
-# Generate previews (outputs to scene_previews/)
-./scripts/generate_scene_previews.sh --all
+./scripts/run_web_emulator.sh              # then open http://localhost:8080/web/
 ```
 
-**Generate specific scenes:**
-```bash
-./scripts/generate_scene_previews.sh --scenes "WaveScene,ColorPulseScene,FractalScene"
+Full prerequisites are in [Development](#development).
+
+---
+
+## Set up with an AI agent
+
+Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Give the agent SSH access to the Pi (or run it on the Pi), then paste:
+
+```text
+Set up my LED matrix. Read and follow
+https://raw.githubusercontent.com/sshcrack/led-matrix/master/docs/AGENT_SETUP.md
+Interview me first, then install and verify everything yourself.
 ```
 
-**Generate from a list file:**
-```bash
-# Create a file with scene names (one per line, # for comments)
-cat > my_scenes.txt << EOF
-WaveScene
-ColorPulseScene
-# FractalScene  (commented out)
-EOF
-
-./scripts/generate_scene_previews.sh --list my_scenes.txt
-```
-
-**Customize preview parameters:**
-```bash
-./scripts/generate_scene_previews.sh --all \
-  --fps 20 \
-  --frames 120 \
-  --width 128 \
-  --height 128
-```
+The [agent setup guide](docs/AGENT_SETUP.md) is written for machines. It has an interview script that maps your answers to the right flags, a non-interactive install, verification checks, a flicker and colour troubleshooting tree, and rules for handling secrets safely.
 
-**Publish previews to the release (not to git):**
-```bash
-./scripts/publish_scene_previews.sh   # needs `gh auth login`; uploads only changed GIFs
-```
-
-**Preview dependencies are scene-declared and plugin-provided.** `preview_gen` does not know how AudioVisualizer, Spotify, or future plugins obtain their runtime data. A scene declares the named fixture inputs it needs with `get_preview_spec()`, and the owning plugin registers a `Previews::DataProvider` that feeds the same shared state used in production. `preview_gen` only resolves providers and calls `begin()`, `update()` once per preview frame, and `end()`.
-
-For example, an audio scene declares:
-```cpp
-Previews::SceneSpec get_preview_spec() const override {
-    return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
-}
-```
+---
 
-The AudioVisualizer plugin owns the deterministic music-analysis fixture (spectrum, waveform, percussion events, BPM, stereo features, drops, sections, etc.). Spotify likewise owns a deterministic playback/artwork fixture, so the `spotify` scene can be generated without credentials or network access. New plugins can add their own input IDs/providers without editing `preview_gen`.
+## Showcase
 
-Provider options are generic and repeatable:
-```bash
-./scripts/generate_scene_previews.sh \
-  --scenes "audio_spectrum,spotify" \
-  --preview-option audio:bpm=128 \
-  --preview-option audio:profile=percussion \
-  --preview-option spotify.playback:duration_ms=30000
-```
-
-The older `--audio-bpm` and `--audio-profile balanced|bass|percussion|ambient` options remain as convenience aliases for the `audio` provider. A scene can also declare preview-only property overrides, such as enabling its optional `audio_reactive` mode, without teaching the generator about those properties.
-
-Desktop-dependent scenes default to generated previews being disabled until they explicitly declare a satisfiable preview contract. Scenes whose preview spec is disabled (for example live video/desktop-only sources without a fixture provider) still require manual capture:
-```bash
-# 1. Start the emulator (non-headless) and any desktop source the scene needs
-./scripts/run_emulator.sh &
-./desktop_build/bin/led-matrix-desktop &
-
-# 2. Capture only scenes preview_gen cannot render
-./scripts/capture_desktop_preview.sh --api-url http://localhost:8080
-```
+<div align="center">
 
-**Full deploy workflow:**
-```bash
-# 1. Generate/update previews (outputs to scene_previews/)
-./scripts/generate_scene_previews.sh --all
+<img src="docs/media/web-tour.gif" alt="Animated tour of the web UI: switching presets, browsing scenes, Scene Lab, schedules, diagnostics and the command palette" width="680">
 
-# 2. Publish previews to the scene-previews release (not git)
-./scripts/publish_scene_previews.sh
+<sub>The web UI: Control → Scenes → Lab → Automation → Health, plus the ⌘K palette.</sub>
 
-# 3. Cross-compile and deploy
-cmake --preset cross-compile
-cmake --build <build_dir>
-cmake --build <build_dir> --target install
+</div>
 
-# Or use the build_upload.sh helper script
-./scripts/build_upload.sh
-```
+<details>
+<summary><b>More scene previews</b> (about 10 MB of animated GIFs)</summary>
 
-### 📱 **Headless web emulator (phone-friendly)**
+<br>
 
-The emulator can run without opening an SDL window and stream the **actual composed 128×128 frame** into the web control page. This is useful when the browser is on another device, including a phone:
+Previews are hosted on the rolling [`scene-previews` release](https://github.com/sshcrack/led-matrix/releases/tag/scene-previews) to keep the git history small. The web UI shows all of them.
 
-```bash
-./scripts/run_web_emulator.sh
-```
+<div align="center">
 
-The script prints the reachable local IP addresses. Open `http://<computer-ip>:8080/web/` on the phone, then use the live matrix card on the Control page (or its fullscreen button). Frame capture is **strictly request-driven**: the browser keeps one `/live_frame` WebSocket open and sends `next` only when it wants one future composed frame. Multiple viewers waiting before a render are coalesced into one matrix copy and receive the same raw `LMF1` frame. With no outstanding demand the render loop only performs relaxed atomic checks—no pixel reads, allocation, publish lock, timer, or background capture. The web UI also stops requesting frames while the tab is hidden or the preview is completely off-screen. `/live_frame` is WebSocket-only; there is no HTTP polling fallback.
+<table>
+<tr><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_aurora.gif" width="180"><br><sub><b>Aurora</b> · shader</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_tidal_aquarium.gif" width="180"><br><sub><b>Tidal Aquarium</b> · shader</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_scenic_planetary_vista.gif" width="180"><br><sub><b>Planetary Vista</b> · shader</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_volcano.gif" width="180"><br><sub><b>Volcano</b> · music-reactive</sub></td></tr>
+<tr><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_night_drive.gif" width="180"><br><sub><b>Night Drive</b> · music-reactive</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_campfire.gif" width="180"><br><sub><b>Campfire</b> · music-reactive</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/audio_lighthouse.gif" width="180"><br><sub><b>Lighthouse</b> · music-reactive</sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/shader_music_celestial_bloom.gif" width="180"><br><sub><b>Celestial Bloom</b> · music shader</sub></td></tr>
+<tr><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/neontunnel.gif" width="180"><br><sub><b>Neon Tunnel</b></sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/reaction_diffusion.gif" width="180"><br><sub><b>Reaction Diffusion</b></sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/metablob.gif" width="180"><br><sub><b>Metablob</b></sub></td><td align="center"><img src="https://github.com/sshcrack/led-matrix/releases/download/scene-previews/pacman_ai.gif" width="180"><br><sub><b>Pac-Man</b> · plays itself</sub></td></tr>
+</table>
 
-You can pin a scene while testing:
+</div>
 
-```bash
-./scripts/run_web_emulator.sh --scene audio_spectrum
-```
+</details>
 
-Set a different HTTP port with `PORT=18080 ./scripts/run_web_emulator.sh`. The same live preview also works when the web UI is served by the real matrix daemon, so it can mirror physical Pi output as well as the emulator.
+---
 
-### 🌐 **Web App Development**
+## Features
 
-Run the development server in minutes:
+### Scenes
 
-1. **Navigate to the app directory:**
-   ```bash
-   cd react-web
-   ```
+67 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
 
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
+| Category | Scenes | Highlights |
+|:--|:--:|:--|
+| **Audio reactive** | 27 | A spectrum analyser, particles, and 24 small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
+| **Shaders** | 12 | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
+| **Ambient** | 7 | Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
+| **Games** | 5 | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
+| **Generative** | 5 | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
+| **Fractals** | 3 | Julia set, Game of Life, Wave Pattern |
+| **Particles** | 2 | Rain, Sparks |
+| **Media** | 2 (+1) | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
+| **Weather** | 2 | Live weather and ambient weather particles (via Open-Meteo, no API key) |
+| **Utility / Images** | 2 | Countdown with fireworks, and a pixel-art and image provider |
 
-3. **Launch the dev server:**
-   ```bash
-   pnpm run dev
-   ```
+Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
 
-## 🎯 **Usage Guide**
+### Control
 
-### 🐌 **Manual Installation**
+| Feature | What it does |
+|:--|:--|
+| **Automatic Mode** | The Director picks from curated looks, plans long arcs, and uses music state when it is available. Every look can be starred or excluded in the Scenes page. |
+| **Presets** | Ordered lists of scenes with per-scene properties and transitions. Edits autosave, and deleting a preset can be undone. Three one-tap ambiance packs are included. |
+| **Scene Lab** | Try a scene or curated look on the real Pi renderer with temporary controls, then save it only if you like it. |
+| **Schedules** | Switch presets by time and weekday (overnight ranges work) and dim the panel at night with a smooth brightness fade. While *Auto Scheduling* is on, an active schedule takes over from Automatic Mode, and the display turns **off** outside every schedule window. Add windows for all the hours you want lit, or leave it off. |
+| **Live preview** | A real-time view of the composed matrix frame, pulled on demand so an idle page costs the Pi nothing. |
+| **Plugin UIs** | Plugins can ship their own web controls, for example the YouTube playlist editor. |
+| **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). |
+| **Diagnostics** | Per-scene frame-time percentiles, Director reasoning, desktop-offload status and audio analysis in the **Health** page. |
 
-Download the built binary from GitHub releases (`led-matrix-*_arm64.deb` or `led-matrix-*-arm64.tar.gz` for RPI 3 64-bit).
+### Under the hood
 
-For DEB:
-```bash
-sudo dpkg -i led-matrix-*.deb
-```
+- **Adaptive quality.** Scenes scale optional detail to the Pi's measured load (`render_quality_scale()`). See [scene execution](docs/SCENE_EXECUTION.md).
+- **Automatic desktop offload.** If a scene is too heavy, the Pi hands it to the desktop scene worker at full quality and falls back instantly if the PC disappears.
+- **Plugins are one folder.** Drop in `plugins/MyPlugin/`, call `register_plugin()`, and you have a scene. See [plugin development](docs/PLUGIN_DEVELOPMENT.md).
+- **Memory safe by default.** The tree builds with bounds-checked containers and sanitizer presets. See the [memory safety report](docs/memory-safety-report.md).
 
-For tarball (extract to FHS-like layout):
-```bash
-sudo tar -xzf led-matrix-*-arm64.tar.gz -C /usr/
-sudo led-matrix [options]
-```
+---
 
-> **🔑 Note:** `sudo` is required for GPIO access on Raspberry Pi.
+## Web UI
 
-### ⚙️ **Essential Configuration Options**
+Open `http://<pi-ip>:8080/` in any browser. On a phone, use *Add to Home Screen* to install it like an app.
 
-```bash
-# Basic matrix setup
---led-rows=32              # Rows per panel
---led-cols=64              # Columns per panel
---led-chain=2              # Number of chained panels
---led-parallel=1           # Number of parallel chains
+<table>
+<tr>
+<td width="50%"><a href="docs/media/web-control.png"><img src="docs/media/web-control.png" alt="Control page: preset list, live matrix preview and the preset inspector"></a><br><b>Control.</b> Presets, the live preview, and a one-click Auto/Manual switch. The inspector edits the selected preset in place and autosaves.</td>
+<td width="50%"><a href="docs/media/web-scenes.png"><img src="docs/media/web-scenes.png" alt="Scene gallery with animated previews and category filters"></a><br><b>Scenes.</b> Browse every scene with animated previews. Tune what the Director may play: favourite a look, keep it, or switch it off.</td>
+</tr>
+<tr>
+<td><a href="docs/media/web-lab.png"><img src="docs/media/web-lab.png" alt="Scene Lab with temporary controls and live preview"></a><br><b>Lab.</b> Try scenes on the real Pi renderer with temporary controls. Nothing is saved until you decide.</td>
+<td><a href="docs/media/web-automation.png"><img src="docs/media/web-automation.png" alt="Schedules page with three schedules and night brightness"></a><br><b>Automation.</b> Time-of-day schedules and a night-brightness fade.</td>
+</tr>
+<tr>
+<td><a href="docs/media/web-health.png"><img src="docs/media/web-health.png" alt="Diagnostics page with renderer FPS, Director candidates and a reproducible seed"></a><br><b>Health.</b> Renderer FPS, transport stats, and a transparent view of why the Director chose what it chose.</td>
+<td><a href="docs/media/web-builder.png"><img src="docs/media/web-builder.png" alt="Quick preset builder with one-tap starting points"></a><br><b>Quick builder.</b> Create <i>and play</i> a preset in one step from one-tap starting points or any scenes you pick.</td>
+</tr>
+</table>
 
-# Visual settings
---led-brightness=80        # Brightness (0-100)
---led-pwm-bits=11         # Color depth (1-11)
---led-limit-refresh=120   # Refresh rate limit
+Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> anywhere for the command palette, and use the sun/moon button for the light theme.
 
-# Hardware-specific
---led-gpio-mapping=adafruit-hat    # For Adafruit HAT/Bonnet
---led-slowdown-gpio=1             # Timing adjustment for Pi models
-```
+<details>
+<summary><b>On your phone, and in light mode</b></summary>
 
-> **📖 For comprehensive configuration options**, including troubleshooting flickering displays, timing adjustments, and advanced setups, see the [rpi-rgb-led-matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#types-of-displays).
+<br>
 
-### 🗂️ **Configuration Management**
+<div align="center">
+<img src="docs/media/mobile-control.png" alt="Phone layout: live preview, presets, mini-player and bottom tabs" width="230">
+<img src="docs/media/mobile-editor.png" alt="Phone preset editor as a bottom sheet" width="230">
+<img src="docs/media/mobile-scenes.png" alt="Phone scene gallery" width="230">
+<br><br>
+<img src="docs/media/web-scenes-light.png" alt="Scenes page in the light theme" width="700">
+</div>
 
-The application uses a smart configuration system:
+On screens narrower than 1024 px the layout switches to a bottom tab bar with an always-visible mini-player, and editors open as bottom sheets.
 
-- **`config.json`** - Automatically created in the application directory
-- **Persistent settings** - Scene presets, API configurations, plugin settings
-- **Hot-reload support** - Many settings update without restart
-- **Backup-friendly** - JSON format for easy version control
+</details>
 
-### 📊 **Logging System**
+---
 
-Fine-tune logging for development and debugging:
+## Desktop app
 
-```bash
-# Set log level via environment variable
-SPDLOG_LEVEL=debug ./led-matrix
+The Pi is deliberately modest. The **desktop app** gives it superpowers by running on a PC on the same network:
 
-# Available levels: trace, debug, info, warn, error, critical, off
-```
+| It adds… | How it works |
+|:--|:--|
+| **Music reactivity** | Captures your system's audio output (WASAPI loopback on Windows, PipeWire/PulseAudio monitor on Linux), analyses it (spectrum, beats, drops, BPM, sections) and streams the result to the Pi. No microphone needed. |
+| **GPU shaders** | Renders the `shader:*` scenes (Aurora, Aquarium, Planetary Vista…) and streams pixels to the Pi over UDP. Custom `.frag` files can be uploaded in the web UI under **Assets**. |
+| **Video and music videos** | `video` plays YouTube and URL videos, and `spotifymv` auto-plays the music video for your current Spotify track. Needs [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and ffmpeg on the PC. |
+| **Render offload** | A background scene worker runs the same scene code at full quality when the Pi is under pressure. The handoff is seamless, with instant fallback. |
 
-All logs output to console with timestamps and color coding for easy reading.
+<table>
+<tr>
+<td width="50%"><img src="docs/media/desktop-app.png" alt="Desktop app connected to a matrix, showing the AudioVisualizer settings"><br><sub>Connected, with audio analysis streaming.</sub></td>
+<td width="50%"><img src="docs/media/desktop-offload.png" alt="Desktop app RenderOffload panel showing the scene worker running"><br><sub>The scene worker is running and ready to take over heavy scenes.</sub></td>
+</tr>
+</table>
 
-## 🌐 **API Reference**
-_May be out of date_
+### Install
 
-The REST API provides powerful remote control capabilities at `http://<device-ip>:8080/`.
-By default, the main index page will redirect you to the web controller (located at `/web`)
+Grab the latest build from [Releases](https://github.com/sshcrack/led-matrix/releases/latest):
 
-### 📊 **Core Endpoints**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/status` | System status and current state |
-| `GET` | `/get_curr` | Current scene information |
-| `GET` | `/list_scenes` | Available scenes and plugins (includes `has_preview` and `needs_desktop` per scene) |
-| `GET` | `/toggle` | Toggle display on/off |
-| `GET` | `/skip` | Skip to next scene |
-
-### 🎛️ **Scene Management**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/set_preset?id=<preset_id>` | Switch to specific preset |
-| `GET` | `/presets` | List all saved presets |
-| `POST` | `/preset?id=<preset_id>` | Create/update preset |
-| `DELETE` | `/preset?id=<preset_id>` | Delete preset |
-
-### 🖼️ **Media Control**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/list` | Available local images |
-| `GET` | `/image?url=<url>` | Fetch and display remote image |
-| `GET` | `/list_providers` | Available image providers |
-| `GET` | `/scene_preview?name=<scene_name>` | Preview GIF for a scene (if available) |
-
-> **Scene Previews:** GIF files are pre-generated and published to the rolling `scene-previews` GitHub release (not committed to git); `./scripts/fetch_scene_previews.sh` downloads them into `scene_previews/`. They are deployed to `<install_dir>/scene_previews/` and accessible via the `/scene_preview?name=<scene_name>` endpoint. To generate or update previews, use the `./scripts/generate_scene_previews.sh` script. After generating, run `./scripts/publish_scene_previews.sh` before releasing. The `/list_scenes` endpoint includes `has_preview` (bool) and `needs_desktop` (bool) fields per scene.
-
-### ⚙️ **System Control**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/set_enabled?enabled=<true\|false>` | Enable/disable display |
-| `GET` | `/list_presets` | Detailed preset information |
-
-### ⏰ **Schedule Management**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/schedules` | List all schedules |
-| `GET` | `/schedule?id=<schedule_id>` | Get specific schedule details |
-| `POST` | `/schedule?id=<schedule_id>` | Create/update schedule |
-| `DELETE` | `/schedule?id=<schedule_id>` | Delete schedule |
-| `GET` | `/scheduling_status` | Get scheduling status and active preset |
-| `GET` | `/set_scheduling_enabled?enabled=<true\|false>` | Enable/disable scheduling |
-
-### 🎨 **Post-Processing Effects**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/post_processing/flash?duration=<seconds>&intensity=<0-1>` | Trigger flash effect |
-| `GET` | `/post_processing/rotate?duration=<seconds>&intensity=<0-2>` | Trigger rotation effect |
-| `GET` | `/post_processing/clear` | Clear all active effects |
-| `GET` | `/post_processing/status` | Get post-processing system status |
-| `GET` | `/post_processing/config` | Get beat detection configuration |
-
-#### **Post-Processing Examples**
-```bash
-# Quick flash effect
-curl "http://matrix-ip:8080/post_processing/flash?duration=0.3&intensity=1.0"
-
-# Slow rotation (720 degrees over 3 seconds)
-curl "http://matrix-ip:8080/post_processing/rotate?duration=3.0&intensity=2.0"
-
-# Clear all effects
-curl "http://matrix-ip:8080/post_processing/clear"
-```
+| OS | Download |
+|:--|:--|
+| **Windows** | `led-matrix-desktop-<version>-win64.exe` (installer) or `…-win64.zip` |
+| **Linux** | `led-matrix-desktop-<version>-Linux.deb` (`sudo apt install ./file.deb`) or `…-Linux.tar.gz` |
 
-**Beat Detection**: When using the AudioVisualizer plugin, beats are automatically detected from audio input and trigger flash effects. WebSocket clients receive `beat_detected` messages in real-time.
+### Use
 
-#### **Schedule JSON Format**
-```json
-{
-  "id": "work-hours",
-  "name": "Work Hours Display",
-  "preset_id": "office-preset",
-  "start_hour": 9,
-  "start_minute": 0,
-  "end_hour": 17,
-  "end_minute": 30,
-  "days_of_week": [1, 2, 3, 4, 5],
-  "enabled": true
-}
-```
-
-**Days of Week**: `0` = Sunday, `1` = Monday, ..., `6` = Saturday
-
-### 🔄 **Automatic Updates**
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/update/status` | Get current update status and configuration |
-| `POST` | `/api/update/check` | Manually check for available updates |
-| `POST` | `/api/update/install` | Install available update (optional: `?version=<version>`) |
-| `POST` | `/api/update/config` | Update auto-update configuration |
-| `GET` | `/api/update/releases?per_page=<count>` | Get recent GitHub releases |
-
-#### **Update Status Response**
-```json
-{
-  "auto_update_enabled": true,
-  "check_interval_hours": 24,
-  "current_version": "1.0.0",
-  "latest_version": "1.10.0",
-  "update_available": true,
-  "status": 0,
-  "error_message": ""
-}
-```
-
-**Status Values**: `0`=Idle, `1`=Checking, `2`=Downloading, `3`=Installing, `4`=Error, `5`=Success
-
-#### **Update Configuration**
-```json
-{
-  "auto_update_enabled": true,
-  "check_interval_hours": 12
-}
-```
-
-#### **Update Examples**
-```bash
-# Check update status
-curl "http://matrix-ip:8080/api/update/status"
-
-# Manually check for updates
-curl -X POST "http://matrix-ip:8080/api/update/check"
-
-# Install latest update
-curl -X POST "http://matrix-ip:8080/api/update/install"
-
-# Install specific version
-curl -X POST "http://matrix-ip:8080/api/update/install?version=1.10.0"
-
-# Configure auto-updates
-curl -X POST "http://matrix-ip:8080/api/update/config" \
-  -H "Content-Type: application/json" \
-  -d '{"auto_update_enabled": true, "check_interval_hours": 12}'
-
-# Get recent releases
-curl "http://matrix-ip:8080/api/update/releases?per_page=3"
-```
-
-**Auto-Update**: When enabled, the system automatically checks for updates at the configured interval (default: 24 hours) and installs them if available. The service restarts automatically after installation. Updates can be managed via the web interface at `/updates`.
-
-## 🔧 **Troubleshooting**
-
-### 🚨 **Common Issues & Solutions**
-
-| Problem | Solution |
-|---------|----------|
-| **Matrix flickering** | Check power supply amperage - LEDs need significant current. Flickering can also be caused because the RPi has not enough performance |
-| **Permission errors** | Run with `sudo` for GPIO access |
-| **Slow performance** | Check Diagnostics for per-scene p95/frame-budget pressure. Portable heavy scenes can automatically move to the desktop scene worker; local adaptive quality also reduces load. |
-| **Can't connect to API** | Check firewall and ensure port 8080 is open |
-| **Panels not lighting up** | Verify `--led-panel-type` setting |
-| **Colors look wrong** | Adjust `--led-multiplexing` settings (try values 0-17) |
-
-
-> **📚 For hardware-specific issues**, timing problems, or panel compatibility, consult the comprehensive [rpi-rgb-led-matrix troubleshooting guide](https://github.com/hzeller/rpi-rgb-led-matrix#troubleshooting).
-
-## 🔌 **Plugin Development**
-
-Extend the matrix with your own custom scenes and effects! Create powerful plugins that add new visual experiences, integrate external APIs, and provide custom functionality.
-
-### 📖 **Comprehensive Documentation**
-
-For detailed plugin development, check out the **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**. The **[Scene Execution Guide](docs/SCENE_EXECUTION.md)** explains previews, Runtime Inputs, adaptive quality, and automatic desktop render offload.
-
-Scene implementations now live in `plugins/<Plugin>/scenes/` and are compiled once for the Pi, previews, and the generic desktop scene worker. A normal portable scene does not need a separate desktop renderer.
-
-This comprehensive guide covers:
-- 🏗️ **Plugin Architecture** - Understanding the modular system
-- 🚀 **Quick Start** - Get your first plugin running in minutes
-- 📚 **Core APIs** - Detailed documentation of shared libraries
-- 🎨 **Scene Development** - Create stunning visual effects
-- ⚙️ **Properties System** - Automatic serialization and validation
-- 🖼️ **Image Providers** - Custom image sources and processing
-- 🎭 **Post-Processing Effects** - Screen-wide effects and transformations
-- 🌐 **REST API Integration** - Custom endpoints and remote control
-- 💬 **Desktop Communication** - WebSocket messaging and data streaming
-- 🔧 **Advanced Features** - Runtime Inputs, resource loading, lifecycle hooks, and state migration
-- 🖥️ **Hybrid Rendering** - Automatic Pi/desktop placement without duplicate scene renderers
-- 📦 **Building and Testing** - Matrix, emulator, scene-worker, and web validation
-- 🎯 **Best Practices** - Performance, error handling, and code organization
-
-### ⚙️ **Advanced Plugin Features**
-
-- **Property system** - Automatic API exposure and persistence with validation
-- **Image providers** - Custom image sources and processing
-- **Post-processing effects** - Screen-wide effects like flash and rotation
-- **REST API endpoints** - Extend the API with custom routes
-- **WebSocket communication** - Real-time messaging with desktop clients
-- **Resource loading** - Access plugin-specific assets and fonts
-- **Lifecycle hooks** - Initialize and cleanup resources properly
-
-### 📚 **Study These Plugin Examples**
-
-- **`ExampleScenes/`** - Simple starting template and basic patterns
-- **`AmbientScenes/`** - Procedural & atmospheric effects (Starfield, Metablob, Clock, etc.)
-- **`AudioVisualizer/`** - Real-time audio analysis and 6 audio-reactive scenes
-- **`GenerativeScenes/`** - Emergent simulations (Boids, Falling Sand, Reaction-Diffusion)
-- **`GameScenes/`** - Self-playing games (Tetris, Pong, Maze, Snake, Pac-Man)
-- **`FractalScenes/`** - Mathematical visualizations (Julia Set, Game of Life, Wave Pattern)
-- **`WeatherOverview/`** - External API integration and animated weather displays
-- **`SpotifyScenes/` / `SpotifyMV` / `Video` / `Shadertoy`** - OAuth, YouTube music videos, video streaming, and GPU shaders (desktop-dependent patterns)
-- **`GithubScenes/` / `RGBMatrixAnimations/` / `PixelJoint/`** - Community ports, particle systems, and image/pixel-art providers
-- **`Countdown/`** - Utility scene with particle celebrations
-
-### 🚀 **Get Started**
+1. Start the app, enter the Pi's **hostname or IP** and the **port** (`8080`), and add the **API token** if you set one.
+2. Click **Connect**. The status switches to *WebSocket is currently: Open* and the plugin tabs show what is active.
+3. Leave it running in the tray. Enable *Turn Matrix On on Start* if you like.
+
+The app needs to be connected for shader scenes, desktop audio, videos and render offload. Everything else keeps working without it.
+
+---
+
+## Hardware
 
 > [!NOTE]
-> Linux-Specific: Make sure you have the necessary development packages installed:
->```bash
->sudo apt install libasound2-dev python3-jinja2 pkg-config autoconf automake libtool python3 linux-libc-dev curl libltdl-dev libx11-dev libxft-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev mono-complete libxrandr-dev libxrandr2 wayland-protocols extra-cmake-modules xorg-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgtk-3-dev libayatana-appindicator3-dev
->```
+> This project builds on the excellent [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) library by Henner Zeller. For wiring diagrams, timing issues and panel quirks, its documentation is the reference.
 
-1. **Read the [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)**
-2. **Study existing plugins** for patterns and inspiration
-3. **Use the emulator** for development and testing
-4. **Share your creations** with the community!
+### Shopping list
 
-## 🤝 **Contributing**
+| Part | Recommendation |
+|:--|:--|
+| **Computer** | **Raspberry Pi 4** (best), or Pi 3 B/B+ (works, and the maintainer's 128×128 runs on a Pi 3 B with adaptive quality and desktop offload). A 64-bit OS is required. The Pi 5 is not supported by the underlying library. |
+| **Panels** | HUB75 RGB panels. **Four 64×64 panels in a 2×2 grid make a 128×128 display**, which is the primary target. 32×32 and 64×32 panels work too, and scenes read the canvas size. |
+| **Adapter** | A HAT or bonnet that level-shifts GPIO to HUB75, e.g. the [Electrodragon Active-3](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-raspberry-pi/). [Alternatives](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/adapter/README.md). |
+| **Power** | A dedicated **5 V** supply for the panels, sized generously. Panels can draw several amps each at full white. Power the Pi separately and share ground. Don't power panels from the Pi. |
+| **Cables** | The HUB75 ribbon cables that come with the panels, plus power leads for each panel. |
 
-We welcome contributions! Whether it's a bug fix, new feature, or awesome plugin - join our community.
+### Working out the numbers
 
-### 🚀 **Getting Started**
+The matrix size is **width = `cols` × `chain`** and **height = `rows` × `parallel`**.
 
-1. **Fork the repository**
-2. **Create your feature branch:**
-   ```bash
-   git checkout -b feature/amazing-new-feature
-   ```
-3. **Make your changes** with clear, tested code
-4. **Commit with descriptive messages:**
-   ```bash
-   git commit -m 'Add some amazing new feature'
-   ```
-5. **Push to your branch:**
-   ```bash
-   git push origin feature/amazing-new-feature
-   ```
-6. **Open a Pull Request** with detailed description
+| Layout | rows | cols | chain | parallel | Result |
+|:--|:-:|:-:|:-:|:-:|:--|
+| Four 64×64 panels, 2×2 *(recommended)* | 64 | 64 | 2 | 2 | 128×128 |
+| One 64×64 panel | 64 | 64 | 1 | 1 | 64×64 |
+| Two 64×32 panels side by side | 32 | 64 | 2 | 1 | 128×32 |
+| Four 32×32 panels in a row | 32 | 32 | 4 | 1 | 128×32 |
 
-### 💡 **Contribution Ideas**
+The installer asks for these. They end up as `--led-rows`, `--led-cols`, `--led-chain` and `--led-parallel` in `/etc/default/led-matrix`. Not sure how many chains your adapter has? That depends on the adapter, so check its documentation. The Active-3 has three parallel outputs.
 
-- **New scene plugins** - Stocks, social media, ...
-- **Performance optimizations** - Faster rendering, lower memory usage
-- **Hardware support** - New matrix types, different GPIO mappings
-- **Mobile app features** - Better UI, offline mode, advanced controls
-- **Documentation** - Tutorials, examples, troubleshooting guides
-- **Assembly Guide** - 3D printable models, wiring
+### Pi preparation (one-time)
 
-### 📋 **Code Standards**
+The Pi's onboard sound shares hardware with the LED driver. Disable it, as the upstream library recommends:
 
-- **C++23 features** encouraged where appropriate
-- **Clear variable names** and comprehensive comments
-- **Error handling** with `std::expected` where possible
-- **Thread safety** for multi-threaded operations
-
-## 📄 **License**
-See the [LICENSE](LICENSE) file for details.
-
-### 🙏 **Acknowledgments**
-
-- **[rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)** by Henner Zeller - The foundation that makes this all possible
-- **[RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations)** by Footleg - Particle system animations
-- **[Fluent Emoji by Microsoft](https://github.com/microsoft/fluentui-emoji)** - For the crystal ball emoji used as icon for the desktop app
-- **[matrix-gl](https://github.com/Knifa/matryx-gl)** and **[RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations)** for awesome animations
-- **Open source community** - For the countless libraries and tools that power this project
+```bash
+echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
+sudo sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/firmware/config.txt   # /boot/config.txt on older images
+sudo reboot
+```
 
 ---
 
+## Start from scratch
+
+No hardware yet, or a Pi that has never seen this project? Work through these steps in order. Each one links to the detail. Want to see the result first? Run the [emulator](#3-try-it-without-hardware), which needs no hardware at all.
+
+### 1. Get the parts
+
+Buy the [shopping list](#shopping-list): a Raspberry Pi (3 B/B+ or 4), HUB75 panels, a HAT or adapter board, a 5 V power supply sized for the panels, and a microSD card (16 GB or more). Check that the panels are HUB75 and note their size (e.g. 64×64), because you will need it in step 4.
+
+### 2. Assemble and wire
+
+1. Plug the **adapter or HAT** onto the Pi's 40-pin header (Pi switched off and unplugged).
+2. Connect the adapter's HUB75 output to the **input** of the first panel with the ribbon cable. Panels have an *in* and an *out* side, usually marked with an arrow.
+3. For more panels on the same chain, run a ribbon from the first panel's **output** to the next panel's **input**. Use a second adapter output for a second (parallel) chain. Which output is which depends on the adapter, so check its documentation, or the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
+4. Connect the **5 V supply** to every panel's power connector (use the supplied power leads). Power the Pi from its own supply. Power everything off before changing any cable.
+
+### 3. Flash the Pi
+
+1. On your computer, install [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. Choose your Pi model, then **Raspberry Pi OS Lite (64-bit)** (under *Raspberry Pi OS (other)*), and your SD card.
+3. In the customisation settings, set:
+   - **Username `pi`** (the installer requires this user) and a password
+   - Your **Wi-Fi** name and password (skip if you use Ethernet)
+   - **Enable SSH**
+   - Optionally a hostname such as `ledmatrix`
+4. Write the card, put it in the Pi, and power it on. Give the first boot a couple of minutes.
+
+### 4. Connect and install
+
+```bash
+ssh pi@ledmatrix.local        # or ssh pi@<ip-from-your-router>
+```
+
+Now follow [Install on the Pi](#1-install-on-the-pi). You will need the panel numbers from [Working out the numbers](#working-out-the-numbers), and you should do the [Pi preparation](#pi-preparation-one-time) once. Open `http://ledmatrix.local:8080/` (or the Pi's IP) when it is done.
+
+If the panels stay dark, flicker or look scrambled, go to [Troubleshooting](#troubleshooting). Those are almost always one-flag fixes.
+
+> [!TIP]
+> Prefer not to do this alone? Your [AI agent](#set-up-with-an-ai-agent) can walk you through every step above and run the commands over SSH.
+
+---
+
+## Install guide
+
+### Requirements
+
+- Raspberry Pi with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
+- Panels wired and powered (see [Hardware](#hardware))
+
+### Install
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh
+bash install_led_matrix.sh
+```
+
+Or install the package yourself:
+
+```bash
+# Download led-matrix-<version>_arm64.deb from the latest release, then:
+sudo apt install ./led-matrix-*_arm64.deb
+```
+
+Either way, the package:
+
+- installs the daemon to `/usr/bin/led-matrix`, with plugins, web UI and previews under `/usr/lib/led-matrix` and `/usr/share/led-matrix`
+- writes your answers to `/etc/default/led-matrix`
+- creates `/var/lib/led-matrix/` (config, uploads, crash reports), owned by `pi`
+- enables and starts `led-matrix.service` and the updater units
+
+The service starts as root (needed for GPIO) and drops privileges to `pi:pi` as soon as the matrix is initialised.
+
+### Check that it works
+
+```bash
+systemctl status led-matrix          # should be active (running)
+curl -s localhost:8080/status        # {"turned_on":true, ...}
+journalctl -u led-matrix -f          # live logs
+```
+
+### Change settings later
+
+> [!IMPORTANT]
+> `/etc/default/led-matrix` is **regenerated from the stored answers on every upgrade and reconfigure**, so manual edits to it are lost. Change settings through debconf.
+
+```bash
+sudo dpkg-reconfigure led-matrix     # re-asks every question
+```
+
+Or non-interactively:
+
+```bash
+echo "led-matrix led-matrix/led-slowdown-gpio string 2" | sudo debconf-set-selections
+echo "led-matrix led-matrix/extra-opts string --led-brightness=60" | sudo debconf-set-selections
+sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure led-matrix
+```
+
+Any extra [rpi-rgb-led-matrix flag](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#types-of-displays) goes in `extra-opts`.
+
+### Update and uninstall
+
+Updates run automatically if you enabled them. You can also use the **Updates** page or `POST /api/update/install`, which installs transactionally with rollback. Manually: install a newer `.deb` with `sudo apt install ./led-matrix-*.deb`.
+
+```bash
+sudo apt remove led-matrix           # keep your data
+sudo apt purge led-matrix            # also removes /var/lib/led-matrix and the stored answers
+```
+
+---
+
+## Configuration
+
+### Common matrix flags
+
+Passed to the daemon via `MATRIX_OPTS` (set them through debconf, see above). The full list is in the [upstream docs](https://github.com/hzeller/rpi-rgb-led-matrix).
+
+| Flag | Use it when… |
+|:--|:--|
+| `--led-slowdown-gpio=N` | The picture flickers or has noise. Higher is slower and cleaner (`3` for Pi 3, `2` for Pi 4; try `4` if needed). |
+| `--led-brightness=N` | You want less brightness, heat or power draw (1–100). |
+| `--led-rgb-sequence=RBG` | Colours are swapped. Try `RBG`, `BGR`, `GRB`, … |
+| `--led-gpio-mapping=adafruit-hat` | You use an Adafruit HAT or Bonnet rather than a plain adapter. |
+| `--led-multiplexing=N` / `--led-row-addr-type=N` | The image looks scrambled, striped or only half-lit. Try values `0`–`17` / `0`–`4`. |
+| `--led-panel-type=FM6126A` | Panels stay dark or show garbage at init. Common with newer 64×64 panels (also `FM6127`). |
+| `--led-pixel-mapper="Rotate:90"` | You mounted the display rotated, or need the `U-mapper` for snake-wired panels. |
+| `--led-pwm-bits=N`, `--led-limit-refresh=N` | You want to trade colour depth for refresh rate (e.g. to stop flicker on camera). |
+
+### Environment variables
+
+Set persistent variables with a systemd override. Use `sudo systemctl edit led-matrix` and add `Environment=` lines. These survive upgrades, unlike `/etc/default/led-matrix`.
+
+| Variable | Purpose |
+|:--|:--|
+| `PORT` | HTTP and UDP port (default `8080`). |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Spotify integration, usually set via the installer. |
+| `LED_MATRIX_API_TOKEN` | Require a token for the API and web UI (see [Security](#security)). |
+| `LED_MATRIX_ALLOWED_ORIGINS` | Comma-separated extra browser origins, e.g. a dev server. |
+| `SHADERTOY_API_KEY` | Optional: use the official Shadertoy API for the random `shadertoy` scene. |
+| `SPDLOG_LEVEL` | `trace`, `debug`, `info`, `warn`, `error`, `critical`, `off`. |
+
+### Spotify (optional)
+
+Enables the album-cover scene, track-change reactions, genre-aware scene choice and the music-video scene.
+
+1. Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and add the redirect URI **`http://127.0.0.1:8080/spotify/callback`**.
+2. Give the installer the client ID and secret (or `sudo dpkg-reconfigure led-matrix` later).
+3. Spotify only allows loopback redirects, so tunnel the Pi to your computer. Free port 8080 locally first.
+   ```bash
+   ssh -L 8080:localhost:8080 pi@<pi-ip>
+   ```
+4. Open **`http://127.0.0.1:8080/spotify/login`** in your browser and approve.
+
+A [getsongbpm.com](https://getsongbpm.com/api) key is optional. Set it as `song_bpm_api_key` under `pluginConfigs` in `/var/lib/led-matrix/config.json`.
+
+### Weather (optional)
+
+The Weather scenes use Open-Meteo, so no key is needed. Set the latitude and longitude in the scene's properties in the web UI.
+
+### Security
+
+The API is open to your local network by default. Browser requests from *other websites* are always rejected, but any device on your network can use it.
+
+- **Set an API token** in the installer (or `sudo dpkg-reconfigure led-matrix`). The web UI asks for it once and the desktop app has a matching field. API clients send `Authorization: Bearer <token>` or `X-Api-Token`.
+- Don't expose port 8080 to the internet. Use a VPN or SSH tunnel for remote access.
+
+### Files and paths
+
+| What | Where |
+|:--|:--|
+| Service and logs | `led-matrix.service`, `journalctl -u led-matrix` |
+| Flags and secrets | `/etc/default/led-matrix` (root only, managed by debconf) |
+| Presets, schedules, settings | `/var/lib/led-matrix/config.json` |
+| Uploaded shaders and images | `/var/lib/led-matrix/data/` |
+| Crash reports | `/var/lib/led-matrix/crashes/` |
+| Update log | `/var/log/led-matrix-update.log` |
+
+Back up `/var/lib/led-matrix/config.json` to keep your presets.
+
+---
+
+## REST API
+
+Everything the web UI does goes through a REST API on port 8080. Examples assume no token. If you set one, add `-H "Authorization: Bearer $TOKEN"`.
+
+```bash
+curl localhost:8080/status                           # power, mode, active preset
+curl localhost:8080/list_presets                     # all presets
+curl "localhost:8080/set_active?id=<preset-id>"      # play a preset
+curl "localhost:8080/operation_mode?mode=automatic"  # or: manual
+curl "localhost:8080/set_enabled?enabled=false"      # turn the display off
+curl localhost:8080/skip                             # next scene
+curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
+```
+
+<details>
+<summary><b>Endpoint reference</b></summary>
+
+<br>
+
+| Area | Method | Endpoint | Description |
+|:--|:--|:--|:--|
+| **State** | GET | `/status` | Power, operation mode, active preset |
+| | GET | `/get_curr` | Scenes of the active preset with their properties |
+| | GET | `/toggle`, `/set_enabled?enabled=<bool>` | Toggle or set display power |
+| | GET | `/operation_mode?mode=automatic\|manual` | Switch between the Director and presets |
+| | GET | `/skip` | Skip to the next scene |
+| **Presets** | GET | `/list_presets`, `/presets[?id=]` | List presets / fetch one |
+| | GET | `/set_active?id=` | Play a preset |
+| | POST | `/add_preset[?id=]` | Create a preset (JSON body) |
+| | POST | `/preset?id=` | Replace a preset |
+| | POST | `/preset_display_name?id=` | Rename a preset |
+| | DELETE | `/preset?id=` | Delete a preset |
+| | GET / POST | `/ambiance_packs`, `/ambiance_packs?id=` | List packs / create a preset from a pack |
+| **Scenes** | GET | `/list_scenes` | All scenes with properties, capabilities and descriptors |
+| | GET | `/list_transitions` | Available transitions |
+| | GET | `/scene_preview?name=` | Preview GIF of a scene |
+| | GET | `/list`, `/image?url=`, `/list_providers`, `/list_shader_providers` | Images and providers |
+| **Scene Lab** | GET | `/scene_lab` | Lab state |
+| | POST | `/scene_lab/start`, `/update`, `/heartbeat`, `/stop` | Run a temporary scene (expires without heartbeats) |
+| | POST | `/scene_lab/save_preset`, `/save_variant` | Keep what you tuned |
+| **Automation** | GET / POST / DELETE | `/schedule[?id=]`, `/schedules` | Manage time schedules |
+| | GET / POST | `/scheduling_status` | Read or set whether schedules are active |
+| | GET / POST | `/brightness_schedule` | Night brightness fade |
+| | GET / POST | `/automatic_director/preferences` | Favourite and excluded looks |
+| | POST | `/automatic_director/seed` | Set a reproducible random seed |
+| **Effects** | POST | `/post_processing/flash`, `/rotate`, `/clear`, `/effect/<name>` | Trigger or clear effects (`duration`, `intensity`) |
+| | GET | `/post_processing/status`, `/config` | Effect registry and beat config |
+| **Live and diagnostics** | WS | `/live_frame` | Pull-based live frames (send `next`, receive one binary `LMF1` frame) |
+| | GET | `/diagnostics`, `/runtime_inputs` | Health, per-scene timing, audio state, offload status |
+| **Updates** | GET | `/api/update/status`, `/api/update/releases` | Update state / recent releases |
+| | POST | `/api/update/check`, `/install[?version=]`, `/config` | Check, install, configure auto-update |
+| **Assets** | GET / POST / DELETE | `/api/custom-assets/<type>[/<file>]` | Custom shaders |
+| **Plugins** | GET | `/plugin_ui`, `/plugin_ui/<Name>/ui.js` | Plugin web UI bundles |
+| **Integrations** | GET | `/spotify/login`, `/spotify/callback` | Spotify OAuth |
+| | WS | `/desktopWebsocket` | Desktop app link |
+
+Schedule body:
+
+```json
+{ "name": "Evening ambiance", "preset_id": "<id>", "start_hour": 18, "start_minute": 0,
+  "end_hour": 23, "end_minute": 0, "days_of_week": [0,1,2,3,4,5,6], "enabled": true }
+```
+
+`days_of_week`: `0` = Sunday … `6` = Saturday. Ranges may span midnight.
+
+The UI is the best documentation for payload shapes: open your browser's dev tools, or read `src_matrix/server/`.
+
+</details>
+
+---
+
+## Troubleshooting
+
+| Symptom | Try this |
+|:--|:--|
+| **Nothing lights up** | `systemctl status led-matrix` and `journalctl -u led-matrix -n 50`. Check the panel power and the ribbon cable direction (*in* vs *out*). Try `--led-panel-type=FM6126A`. |
+| **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Pi preparation](#pi-preparation-one-time)) and check the power supply. |
+| **Wrong colours** | Set `--led-rgb-sequence` (`RBG`, `BGR`, …). |
+| **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–17) and `--led-row-addr-type` (0–4). |
+| **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
+| **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
+| **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
+| **Shader, video or music scenes are black or missing** | They need the [desktop app](#desktop-app) connected. Check the *WebSocket is currently: Open* line. |
+| **No audio reactivity** | The desktop app captures *system output*, so play something on that PC. Check the capture device in the AudioVisualizer tab. |
+| **My settings reverted after an upgrade** | You edited `/etc/default/led-matrix` by hand. Use `debconf-set-selections` and `dpkg-reconfigure` ([Change settings later](#change-settings-later)). |
+| **Update failed** | Read `/var/log/led-matrix-update.log`. The updater rolls back by itself and reports on the Updates page. |
+| **The service crashed** | Crash reports are in `/var/lib/led-matrix/crashes/`. Please attach one to an issue. |
+
+Still stuck? [Open an issue](https://github.com/sshcrack/led-matrix/issues) with your Pi model, panel type, the flags in `/etc/default/led-matrix` (minus secrets) and `journalctl -u led-matrix -n 100`.
+
+---
+
+## Development
+
+Three programs share one repository:
+
+| Directory | What | Where it runs |
+|:--|:--|:--|
+| `src_matrix/` | The daemon: scene engine, Director, REST API, GPIO output | Raspberry Pi (and the emulator) |
+| `src_desktop/` | ImGui desktop app, audio analysis, shaders, scene worker | Windows / Linux PC |
+| `react-web/` | The web UI (Vite, React, TypeScript, Tailwind) | Served by the daemon |
+| `plugins/<Name>/` | Scenes and features, with `scenes/`, `matrix/` and optional `desktop/` | Pi, preview generator and desktop worker |
+| `shared/` | Shared libraries for common, matrix and desktop code | All of them |
+
+### Build prerequisites
+
+- A C++23 compiler (GCC 12+ or Clang 15+), CMake, Ninja, Git, Python 3 with `jinja2`
+- [vcpkg](https://github.com/microsoft/vcpkg), with `VCPKG_ROOT` exported
+- Node 20+ and pnpm, if you build the web UI
+- On Debian or Ubuntu:
+
+```bash
+sudo apt install build-essential cmake ninja-build git curl pkg-config autoconf automake libtool python3 python3-jinja2 \
+  libgraphicsmagick1-dev libasound2-dev libltdl-dev linux-libc-dev libx11-dev libxft-dev libxext-dev libwayland-dev \
+  libxkbcommon-dev libegl1-mesa-dev libibus-1.0-dev libxrandr-dev wayland-protocols extra-cmake-modules xorg-dev \
+  libxinerama-dev libxcursor-dev libxi-dev libgtk-3-dev libayatana-appindicator3-dev
+```
+
+A ready-made [Dev Container](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/sshcrack/led-matrix) has all of this installed.
+
+### Presets
+
+| Preset | Builds | Output directory |
+|:--|:--|:--|
+| `emulator` | x64 daemon with an SDL or headless emulator, for local development | `emulator_build/` |
+| `cross-compile` | arm64 daemon and `.deb` for the Pi | `build/` |
+| `desktop-linux`, `desktop-windows` | Desktop app and scene worker | `desktop_build/` |
+| `*-asan`, `*-tsan` | Sanitizer variants | `*_asan_build/`, … |
+
+`ENABLE_EMULATOR` and `ENABLE_DESKTOP` cannot both be on. Use separate presets.
+
+```bash
+cmake --preset emulator -DSKIP_WEB_BUILD=ON          # skip the web build when you didn't touch react-web/
+cmake --build --preset emulator --target install
+
+./scripts/run_emulator.sh                            # SDL window, 128×128 at 4× scale
+./scripts/run_web_emulator.sh                        # headless, view it in a browser (also from your phone)
+./scripts/run_web_emulator.sh --scene audio_spectrum # pin a scene while developing
+
+ctest --test-dir emulator_build --output-on-failure  # unit and smoke tests
+
+cd react-web && pnpm install && pnpm dev             # web UI dev server, proxies to localhost:8080
+```
+
+`LED_MATRIX_DEV_API=http://<pi>:8080 pnpm dev` points the dev server at a real matrix. For Pi builds use `cmake --preset cross-compile && cmake --build --preset cross-compile --target package`, or `./build_upload.sh` to build, copy and install on a Pi called `ledmat`.
+
+New git worktrees build in seconds thanks to a shared ccache and vcpkg binary cache. Run `scripts/setup_worktree.sh --build`.
+
+### Writing a plugin
+
+```text
+plugins/MyPlugin/
+├── CMakeLists.txt        # register_plugin(MyPlugin matrix/MyPlugin.cpp scenes/MyScene.cpp ...)
+├── scenes/MyScene.{h,cpp}
+└── matrix/MyPlugin.{h,cpp}   # extern "C" createMyPlugin / destroyMyPlugin
+```
+
+Write a scene once and it runs on the Pi, in previews and on the desktop worker. Plugins can add properties that auto-serialise and appear in the UI, web controls, REST routes, runtime inputs, effects and transitions.
+
+- [Plugin development guide](docs/PLUGIN_DEVELOPMENT.md)
+- [Scene execution, previews and offload](docs/SCENE_EXECUTION.md)
+- [Shader authoring](plugins/Shadertoy/SHADER_AUTHORING.md)
+- Start from `plugins/ExampleScenes/`
+
+### Previews and media
+
+Scene GIFs are **not** committed to git. They are release assets (`./scripts/fetch_scene_previews.sh`, `./scripts/generate_scene_previews.sh`, `./scripts/publish_scene_previews.sh`). For pull requests, `./scripts/render_scene_video.sh --scenes <a,b>` renders LED-panel-style videos. See [`AGENTS.md`](AGENTS.md) for the repo-size rules.
+
+### Documentation map
+
+| | |
+|:--|:--|
+| [`AGENTS.md`](AGENTS.md) | Contributor and coding-agent handbook: build caches, sanitizers, web architecture, rules |
+| [`CONTEXT.md`](CONTEXT.md) | Domain glossary (Runtime Input, Director, Scene Lab, …) |
+| [`docs/AGENT_SETUP.md`](docs/AGENT_SETUP.md) | Agent-driven setup guide for end users |
+| [`docs/automatic-journeys.md`](docs/automatic-journeys.md) | How Automatic Mode composes arcs |
+| [`docs/transactional-updates.md`](docs/transactional-updates.md) | How updates and rollbacks work |
+| [`docs/memory-safety-report.md`](docs/memory-safety-report.md) | Sanitizer findings and open risks |
+
+---
+
+## Contributing
+
+Contributions are welcome: scenes, performance work, hardware support, docs, an assembly guide.
+
+1. Fork and branch (`git checkout -b feature/my-scene`).
+2. Build with the emulator, run `ctest`, and for visual changes attach a short video made with `render_scene_video.sh`.
+3. Open a pull request describing what changed and why.
+
+Design rules for new scenes: calm and glanceable, **low compute** (the Pi is modest), **no input from viewers**, **no readable text** (no tickers or scores), and visually interesting on their own. The [`AGENTS.md`](AGENTS.md) *Design constraints* section lists ideas that were already considered and rejected.
+
+## License
+
+GPL-3.0. See [LICENSE](LICENSE).
+
+## Acknowledgments
+
+- [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) by Henner Zeller, the foundation that makes this possible
+- [RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations) by Footleg, particle animations
+- [matryx-gl](https://github.com/Knifa/matryx-gl) by Knifa, community effects
+- [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, the crystal-ball app icon
+- Every open-source library in [`vcpkg.json`](vcpkg.json)
+
 <div align="center">
 
-**🌟 Star this repo if you found it helpful! 🌟**
-
-Made with ❤️ by sshcrack for the LED matrix community
+<sub>Made with ❤️ by <a href="https://github.com/sshcrack">sshcrack</a> for the LED matrix community. If it makes your wall prettier, a ⭐ is appreciated.</sub>
 
 </div>
