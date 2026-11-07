@@ -1,40 +1,20 @@
 # Spotify Scenes Plugin
 
-This plugin connects to the Spotify API to display your currently playing music information and visualizations on your LED Matrix.
-
-## Features
-
-- Display current track information (title, artist, album)
-- Show album artwork on the LED matrix
-- Music visualizers synchronized with your music
-- Now playing status and playback controls
-- Authentication with Spotify OAuth integration
-
-## Configuration
-
-The plugin requires Spotify API credentials and authentication.
-Set your following environment variables:
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-```
+Shows the currently playing Spotify album artwork and supplies playback information to music-aware scenes and the director.
 
 ## Setup
 
-1. Create a Spotify Developer application at [developer.spotify.com](https://developer.spotify.com/dashboard/)
-2. Get your Client ID and Client Secret
-3. Port-Forward `8080` using `ssh -L 8080:localhost:8080 <led-matrix-ip>`
-4. Set the redirect URI to `http://127.0.01.:8080/spotify/callback` in your Spotify app settings
-5. Complete the authentication flow to obtain a refresh token (go to `http://127.0.0.1:8080/spotify/login`)
-6. Add your credentials to the configuration file
+Open the matrix web UI. The Spotify setup guide appears automatically when the plugin is installed but not connected. No terminal access or daemon restart is needed.
 
-## Installation
-1. Configure your Spotify API credentials
-2. If this plugin is not deleted from the plugins directory, install is automatic!
+1. Open the [Spotify developer dashboard](https://developer.spotify.com/dashboard) from the guide and create an app with Web API access.
+2. Add the exact redirect URI shown in the guide: `http://127.0.0.1:8080/spotify/callback`. Save the app settings.
+3. Copy the app’s Client ID and Client secret into the guide and choose **Save credentials**.
+4. Choose **Connect Spotify** and approve access in the new tab.
+5. When accessing a Pi from another computer or phone, the returned loopback page usually cannot load. This is expected: copy the **full address** from that tab, return to the matrix UI, expand **Browser says it cannot connect?**, paste the address and choose **Finish connecting**. Keep the address private; it contains a temporary authorization code. On the same computer with the daemon on port 8080, the callback finishes automatically.
+6. Play music in Spotify. The setup row shows the connection status; expand **Settings** to reconnect or update credentials later.
 
+Spotify permits HTTP redirects only for explicit loopback addresses, so `http://ledmat:8080` and `localhost` cannot replace the supplied redirect URI. See [redirect URI requirements](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri). Development mode requires the app owner to have Premium; other accounts must be added under User Management. See [quota modes](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
 
-## Notes
-- The [getsongbpm.com](https://getsongbpm.com/api) API for beat detection is optional but recommended.
-- The plugin requires an active internet connection
-- A premium Spotify account might be required for some features
-- The refresh token doesn't expire unless you revoke access
+Credentials and tokens are saved in the daemon’s `config.json` (in `/var/lib/led-matrix` for a DEB install). Existing `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` environment settings still work; credentials saved in the UI take precedence. The secret is never returned to the browser. Changing app credentials clears the old login, so connect again afterwards. A blank secret preserves the saved secret.
+
+A connection attempt expires after ten minutes and starting a new attempt replaces the previous one. If Spotify rejects a login, check the credentials and exact redirect URI and choose **Connect Spotify** again. Setup never blocks daemon startup.

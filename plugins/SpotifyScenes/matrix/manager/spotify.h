@@ -17,8 +17,6 @@ private:
     std::expected<std::optional<nlohmann::json >, std::pair<std::string, std::optional<int>>> authenticated_get(const std::string& url, bool refresh = true);
     std::expected<std::optional<SpotifyState>, std::pair<std::string, std::optional<int>>> inner_fetch_currently_playing();
 
-    std::string client_id;
-    std::string client_secret;
     std::mutex mtx;
     // Serialises token expiry checks/refreshes (control thread + genre lookup).
     std::mutex refresh_mtx;
@@ -33,22 +31,20 @@ private:
     void busy_wait(int seconds);
 
 public:
-    std::optional<std::string> spotify_callback;
+    std::atomic<bool> needs_reconnect = false;
+    bool store_login(const std::string& response);
+    bool configure(const std::string& id, const std::string& secret);
 
     explicit Spotify(bool allow_missing_credentials = false);
     ~Spotify();  // Add destructor declaration
 
     void start_control_thread();
     bool initialize();
-    bool refresh() const;
+    bool refresh();
     void terminate();
-    std::string get_client_id() {
-        return client_id;
-    }
-
-    std::string get_client_secret() {
-        return client_secret;
-    }
+    std::string get_client_id() const;
+    std::string get_client_secret() const;
+    bool is_configured() const { return !get_client_id().empty() && !get_client_secret().empty(); }
     std::optional<SpotifyState> get_currently_playing();
     void set_preview_currently_playing(nlohmann::json state_json);
     void clear_preview_currently_playing();

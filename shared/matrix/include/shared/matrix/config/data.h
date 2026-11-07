@@ -37,6 +37,8 @@ namespace ConfigData
         optional<string> access_token;
         optional<string> refresh_token;
         tmillis_t expires_at = 0;
+        string client_id;
+        string client_secret;
 
         [[nodiscard]] bool is_expired() const;
 
