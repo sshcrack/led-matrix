@@ -460,7 +460,7 @@ if(ENABLE_DESKTOP)
     endif()
 
     if(NOT WIN32)
-        foreach(video_test IN ITEMS video_startup_smoke video_switch_integration)
+        foreach(video_test IN ITEMS video_startup_smoke video_switch_integration video_buffering_integration)
             add_executable(${video_test} tests/${video_test}.cpp)
             target_compile_features(${video_test} PRIVATE cxx_std_23)
             target_compile_definitions(${video_test} PRIVATE PLUGIN_NAME="Video")
