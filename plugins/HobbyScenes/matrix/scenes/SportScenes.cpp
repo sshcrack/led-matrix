@@ -503,10 +503,11 @@ void SoccerScene::build_background()
             const bool stripe = static_cast<int>((x - x0_) / (9.6f * k) + 100) % 2 == 0;
             const float dx = (x - cx) / W, dy = (y - cy) / H;
             const float flood = 1.15f - 0.9f * (dx * dx + dy * dy);
-            // An even blanket, a little thinner where play tramples the middle;
-            // blotchy patches would fight the players for attention.
+            // Snow lies along the touchlines and is trampled to grass in the
+            // middle and the goalmouths, in broad soft shapes (no blotches).
             const float edge = std::clamp(std::max(std::fabs(dx) * 2.2f, std::fabs(dy) * 2.0f), 0.0f, 1.0f);
-            const float cover = L.snow_cover * (0.80f + 0.12f * edge);
+            const float drift = 0.5f + 0.5f * std::sin(x / k * 0.05f + 1.3f) * std::sin(y / k * 0.07f + 0.4f);
+            const float cover = L.snow_cover * std::clamp(0.25f + 0.65f * edge * edge + 0.15f * drift, 0.0f, 0.92f);
             Rgb c = mix(stripe ? stripeA : stripeB, scale(snow, stripe ? 1.0f : 0.94f), cover);
             bg.set(x, y, scale(c, 1.0f + (flood - 1.0f) * lamp));
         }
@@ -855,7 +856,7 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
                 for (int x = 0; x < cv_.w; ++x) {
                     const float n = 0.5f + 0.5f * std::sin(x * 0.045f + t_ * 0.15f + 1.7f * std::sin(y * 0.03f)) *
                                                std::sin(y * 0.06f - t_ * 0.11f);
-                    cv_.blend(x, y, haze, Lw.fog * (0.12f + 0.45f * n * n));
+                    cv_.blend(x, y, haze, Lw.fog * (0.25f + 0.40f * n * n));
                 }
         }
         // Storm gusts sweep darker sheets of rain across the pitch.
@@ -941,7 +942,7 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
             if (Le.wetness > 0.05f)
                 cv_.glow(lx + (cx - lx) * 0.22f, ly + (cy - ly) * 0.22f, 22 * k, {0.85f, 0.90f, 1.0f}, 0.26f * Le.wetness);
             if (Le.fog > 0.05f)
-                cv_.glow(lx + (cx - lx) * 0.12f, ly + (cy - ly) * 0.12f, 42 * k, {1.0f, 0.97f, 0.88f}, 0.30f * Le.fog);
+                cv_.glow(lx + (cx - lx) * 0.12f, ly + (cy - ly) * 0.12f, 30 * k, {1.0f, 0.97f, 0.88f}, 0.14f * Le.fog);
         }
     paint_weather(rdt, H * 0.5f);
     present(canvas);

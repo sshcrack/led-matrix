@@ -305,7 +305,7 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
     std::uniform_real_distribution<float> u(0.0f, 1.0f);
     const float rain = l.rain, snow = l.snow;
     // Spawn rate in particles per second for the whole panel.
-    const float rate = (rain * 320.0f + snow * 95.0f) * k;
+    const float rate = (rain * 250.0f + snow * 80.0f) * k;
     carry_ = rate > 0.0f ? carry_ + rate * dt : 0.0f;
     while (carry_ >= 1.0f) {
         carry_ -= 1.0f;

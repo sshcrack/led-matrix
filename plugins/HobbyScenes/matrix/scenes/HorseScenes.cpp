@@ -194,7 +194,7 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
         const float haze = (1.0f - m.depth) * (1.0f - 0.45f * dark);
         // Moonlight picks out coats as silvery shapes; black stays a dark grey.
         const Rgb moon{0.60f, 0.62f, 0.70f};
-        const Rgb body = mix(subject(mix(coats[coat], moon, 0.35f * dark)), mistCol, haze * 0.70f);
+        const Rgb body = mix(subject(mix(coats[coat], moon, 0.50f * dark)), mistCol, haze * 0.70f);
         const Rgb mane = mix(subject(mix(manes[coat], moon, 0.20f * dark)), mistCol, haze * 0.65f);
         horse(cv_, m.x, gy, scale, static_cast<float>(m.dir), m.phase, m.graze ? Gait::Graze : Gait::Walk, body, mane);
     }

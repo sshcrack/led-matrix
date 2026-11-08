@@ -239,8 +239,9 @@ void derive_palette(Look &l)
     l.zenith = mix(zenithClear, greyZ, grey) * dim;
     l.horizon = mix(horizonClear, greyH, grey) * dim;
     l.ambient = desaturate(mix(k.ambient, k.ambient * Rgb{0.95f, 0.92f, 1.04f}, dawn), 0.35f * l.overcast) * dim;
-    // Moonlight lifts the night a touch.
-    l.ambient = l.ambient + Rgb{0.07f, 0.08f, 0.13f} * l.moon_light;
+    // Moonlight lifts the night, and a faint starlight/sky-glow floor keeps
+    // shapes readable on a moonless one.
+    l.ambient = l.ambient + Rgb{0.09f, 0.10f, 0.16f} * l.moon_light + Rgb{0.03f, 0.035f, 0.06f} * l.night;
     // Winter light is a little colder.
     l.ambient = mix(l.ambient, l.ambient * Rgb{0.94f, 0.97f, 1.06f}, l.winter);
     l.sun_color = k.sun;
