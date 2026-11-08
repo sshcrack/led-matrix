@@ -16,7 +16,7 @@ vector<std::unique_ptr<SceneWrapper>> HobbyPlugin::create_scenes()
     wrappers.push_back(std::make_unique<HobbySceneWrapper<PegasusSkyScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<RidgeTrailScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<SummitNightScene>>());
-    wrappers.push_back(std::make_unique<HobbySceneWrapper<CloudShadowsScene>>());
+    wrappers.push_back(std::make_unique<HobbySceneWrapper<AlpineLakeScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<BasketballScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<SoccerScene>>());
     return wrappers;

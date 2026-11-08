@@ -112,6 +112,10 @@ void BasketballScene::release(float handX, float handY)
     bvx_ = (tx - bx_) / flightDur_;
     bvy_ = (ty - by_ - 0.5f * c.gravity * flightDur_ * flightDur_) / flightDur_;
     flightT_ = 0.0f;
+    shotX0_ = bx_;
+    shotY0_ = by_;
+    shotVx0_ = bvx_;
+    shotVy0_ = bvy_;
     for (auto& p : trail_) p = {bx_, by_};
 }
 
@@ -267,12 +271,22 @@ bool BasketballScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
     else {
-        bvy_ += c.gravity * dt;
-        bx_ += bvx_ * dt;
-        by_ += bvy_ * dt;
+        if (state_ == State::Flight) {
+            // Evaluate the arc analytically so the ball reaches exactly the
+            // rim point release() aimed at, whatever the frame rate or speed.
+            flightT_ = std::min(flightT_ + dt, flightDur_);
+            bx_ = shotX0_ + shotVx0_ * flightT_;
+            by_ = shotY0_ + shotVy0_ * flightT_ + 0.5f * c.gravity * flightT_ * flightT_;
+            bvx_ = shotVx0_;
+            bvy_ = shotVy0_ + c.gravity * flightT_;
+        }
+        else {
+            bvy_ += c.gravity * dt;
+            bx_ += bvx_ * dt;
+            by_ += bvy_ * dt;
+        }
         spin_ += (bvx_ >= 0 ? 1.0f : -1.0f) * rdt * 7.0f;
         if (state_ == State::Flight) {
-            flightT_ += dt;
             if (flightT_ >= flightDur_) {
                 if (make_) {
                     bvx_ *= 0.08f;
@@ -558,7 +572,7 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     if (ball_ == Ball::Held) {
         holdT_ += dt;
         const bool onBeat = audio_.bpm > 0.0f && am > 0.3f;
-        const bool ready = onBeat ? (audio_.beatHit && holdT_ > 0.7f && (rnd() < 0.6f || holdT_ > 2.5f)) : holdT_ > holdMin_;
+        const bool ready = onBeat ? ((audio_.beatHit && holdT_ > 0.7f && rnd() < 0.6f) || holdT_ > 2.5f) : holdT_ > holdMin_;
         if (ready || (forceShot_ && holdT_ > 0.3f)) {
             decide();
             holdMin_ = 1.0f + rnd() * 1.6f;
@@ -672,13 +686,18 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     // ---- stands: crowd with a travelling wave and camera flashes
     wave_ += dt * (0.12f + 0.25f * audio_.level * am);
     const float waveX = fract(wave_) * (W + 40 * k) - 20 * k;
+    waveWeight_.resize(static_cast<size_t>(cv_.w));
+    for (int x = 0; x < cv_.w; ++x) {
+        const float u = (x - waveX) / (7 * k);
+        waveWeight_[static_cast<size_t>(x)] = std::exp(-u * u);
+    }
     auto crowd = [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
             for (int x = (y & 1); x < cv_.w; x += 2) {
                 const uint32_t id = static_cast<uint32_t>(y * 977 + x * 131);
                 const float hsh = hash01(id);
                 Rgb c = hsh < 0.35f ? Rgb{0.85f, 0.20f, 0.18f} : hsh < 0.7f ? Rgb{0.25f, 0.40f, 0.90f} : Rgb{0.70f, 0.66f, 0.60f};
-                const float w = std::exp(-std::pow((x - waveX) / (7 * k), 2.0f));
+                const float w = waveWeight_[static_cast<size_t>(x)];
                 const float bounce = 0.18f + 0.10f * hash01(id + 9) + 0.55f * w + 0.30f * audio_.beat * am * hash01(id + 3);
                 cv_.blend(x, y, scale(c, std::min(1.0f, bounce)), 0.9f);
             }
@@ -723,15 +742,26 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     // ---- draw players and the ball
     static constexpr Rgb kShirt[] = {{0.90f, 0.18f, 0.16f}, {0.20f, 0.45f, 0.95f}};
     static constexpr Rgb kKeeper[] = {{0.98f, 0.85f, 0.15f}, {0.25f, 0.85f, 0.35f}};
+    // The keeper facing a shot that will be saved dives across the goal.
+    const int shooterTeam = players_[static_cast<size_t>(holder_)].team;
+    const float dive = ball_ == Ball::Shot && !goal_ ? smoothstep(0.45f, 0.9f, ballT_) : 0.0f;
     for (const auto& p : players_) {
         const Rgb shirt = p.keeper ? kKeeper[p.team] : kShirt[p.team];
-        const float legs = std::sin(p.stride * kPi) * 1.0f * k;
+        const float legs = std::sin(p.stride * kPi) * 1.2f * k;
         const float face = p.team == 0 ? 1.0f : -1.0f;
-        cv_.ellipse(p.pos.x + 0.9f * k, p.pos.y + 1.1f * k, 1.8f * k, 1.1f * k, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
-        cv_.capsule(p.pos.x - face * 0.4f * k, p.pos.y - 0.7f * k, 0.45f * k, p.pos.x + legs, p.pos.y - 0.7f * k, 0.45f * k, {0.1f, 0.1f, 0.12f});
-        cv_.capsule(p.pos.x - face * 0.4f * k, p.pos.y + 0.7f * k, 0.45f * k, p.pos.x - legs, p.pos.y + 0.7f * k, 0.45f * k, {0.1f, 0.1f, 0.12f});
-        cv_.ellipse(p.pos.x, p.pos.y, 1.25f * k, 1.7f * k, 0, shirt);
-        cv_.ellipse(p.pos.x, p.pos.y, 0.8f * k, 0.8f * k, 0, {0.20f, 0.13f, 0.09f});
+        if (p.keeper && p.team != shooterTeam && dive > 0.0f) {
+            const float dir = to_.y >= p.pos.y ? 1.0f : -1.0f;
+            const float cy2 = p.pos.y + dir * 1.5f * k * dive;
+            cv_.ellipse(p.pos.x + 0.9f * k, cy2 + 1.1f * k, 1.6f * k, (2.0f + 1.8f * dive) * k, 0, {0.02f, 0.08f, 0.03f}, 0.45f);
+            cv_.ellipse(p.pos.x, cy2, 1.3f * k, (2.0f + 1.8f * dive) * k, 0, shirt);  // stretched full length
+            cv_.ellipse(p.pos.x, cy2 + dir * (2.6f * dive) * k, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
+            continue;
+        }
+        cv_.ellipse(p.pos.x + 1.0f * k, p.pos.y + 1.2f * k, 2.1f * k, 1.3f * k, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
+        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y - 0.8f * k, 0.5f * k, p.pos.x + legs, p.pos.y - 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
+        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y + 0.8f * k, 0.5f * k, p.pos.x - legs, p.pos.y + 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
+        cv_.ellipse(p.pos.x, p.pos.y, 1.5f * k, 2.05f * k, 0, shirt);
+        cv_.ellipse(p.pos.x, p.pos.y, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
     }
     // Ball: lofted a little on long passes and shots, with a ground shadow.
     float hgt = 0.0f;

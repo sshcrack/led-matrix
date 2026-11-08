@@ -136,11 +136,13 @@ inline void horse(Canvas& cv, float x, float y, float s, float flip, float phase
     const float nibble = 0.25f * std::sin(phase * tau);
     const Point neckBase = torso(10, -2);
     const Point poll =
-        gait == Gait::Graze ? Point{16, -5.5f + nibble} : torso(gallop ? 17 + headDrop : 15.5f, (gallop ? -7.0f : -8.5f) + headDrop);
+        gait == Gait::Graze ? Point{15.0f, -7.0f + nibble} : torso(gallop ? 17 + headDrop : 15.5f, (gallop ? -7.0f : -8.5f) + headDrop);
     const Point muzzle =
-        gait == Gait::Graze ? Point{17.5f, -1.8f + nibble} : torso(gallop ? 23.5f + headDrop : 21, (gallop ? -3.5f : -4.5f) + headDrop);
+        gait == Gait::Graze ? Point{19.5f, -1.8f + nibble} : torso(gallop ? 23.5f + headDrop : 21, (gallop ? -3.5f : -4.5f) + headDrop);
     line(neckBase, 3.6f, poll, 2.2f, col);
-    line(poll, 2.1f, muzzle, 1.3f, col);
+    // A grazing head angles forward with a visible jaw, not a straight
+    // continuation of the neck.
+    line(poll, gait == Gait::Graze ? 2.5f : 2.1f, muzzle, 1.3f, col);
     line({poll.x - 0.5f, poll.y - 1.5f}, 0.7f, {poll.x - 0.2f, poll.y - 4}, 0.2f, col);
     const float mw = std::sin(phase * tau * 2 - 0.3f) * 0.9f * flow;
     line({neckBase.x - 1.2f, neckBase.y - 3}, 1.3f, {poll.x - 1.8f, poll.y - 1.2f + mw}, 1, mane);
