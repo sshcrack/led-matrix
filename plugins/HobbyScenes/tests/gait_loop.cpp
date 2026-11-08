@@ -7,7 +7,7 @@
 // this even though every individual frame still looks plausible.
 int main()
 {
-    using namespace HorseScenes;
+    using namespace Hobbies;
     // A planted hoof must cancel forward travel exactly, including the last
     // step before lift-off. Swing feet must stay above the ground and reach
     // beyond stance endpoints, otherwise the gallop degenerates into paddling.

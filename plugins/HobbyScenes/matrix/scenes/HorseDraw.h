@@ -1,89 +1,9 @@
 #pragma once
-// Tiny software rasteriser + procedural horse silhouette. Everything is drawn
-// into a float RGB buffer with capsule/ellipse primitives, so cost is a few
-// hundred pixels per horse.
-#include <algorithm>
-#include <cmath>
-#include <cstdint>
-#include <vector>
+// Procedural horse silhouette and gaits, drawn with the Draw.h primitives.
+#include "Draw.h"
 
-namespace HorseScenes {
-constexpr float kPi = 3.14159265358979323846f;
-
-struct Rgb {
-    float r = 0, g = 0, b = 0;
-};
-
-inline Rgb mix(Rgb a, Rgb b, float t)
-{
-    t = std::clamp(t, 0.0f, 1.0f);
-    return {a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t};
-}
-
-class Canvas {
-public:
-    int w = 0, h = 0;
-    std::vector<float> px;
-    void resize(int width, int height)
-    {
-        w = width;
-        h = height;
-        px.assign(static_cast<size_t>(w * h * 3), 0.0f);
-    }
-    void blend(int x, int y, Rgb c, float a)
-    {
-        if (x < 0 || y < 0 || x >= w || y >= h || a <= 0.0f)
-            return;
-        a = std::min(a, 1.0f);
-        float* p = &px[static_cast<size_t>((y * w + x) * 3)];
-        p[0] += (c.r - p[0]) * a;
-        p[1] += (c.g - p[1]) * a;
-        p[2] += (c.b - p[2]) * a;
-    }
-    void add(int x, int y, Rgb c, float a)
-    {
-        if (x < 0 || y < 0 || x >= w || y >= h)
-            return;
-        float* p = &px[static_cast<size_t>((y * w + x) * 3)];
-        p[0] = std::min(1.0f, p[0] + c.r * a);
-        p[1] = std::min(1.0f, p[1] + c.g * a);
-        p[2] = std::min(1.0f, p[2] + c.b * a);
-    }
-    // Soft-edged capsule from (x0,y0) radius r0 to (x1,y1) radius r1.
-    void capsule(float x0, float y0, float r0, float x1, float y1, float r1, Rgb c, float alpha = 1.0f)
-    {
-        const float rm = std::max(r0, r1) + 1.0f;
-        const int minx = static_cast<int>(std::floor(std::min(x0, x1) - rm)), maxx = static_cast<int>(std::ceil(std::max(x0, x1) + rm));
-        const int miny = static_cast<int>(std::floor(std::min(y0, y1) - rm)), maxy = static_cast<int>(std::ceil(std::max(y0, y1) + rm));
-        const float dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy;
-        for (int y = std::max(0, miny); y <= std::min(h - 1, maxy); ++y)
-            for (int x = std::max(0, minx); x <= std::min(w - 1, maxx); ++x) {
-                const float qx = x + 0.5f - x0, qy = y + 0.5f - y0;
-                const float t = len2 > 1e-6f ? std::clamp((qx * dx + qy * dy) / len2, 0.0f, 1.0f) : 0.0f;
-                const float ex = qx - dx * t, ey = qy - dy * t;
-                const float r = r0 + (r1 - r0) * t;
-                const float d = std::sqrt(ex * ex + ey * ey) - r;
-                blend(x, y, c, std::clamp(0.5f - d, 0.0f, 1.0f) * alpha);
-            }
-    }
-    void ellipse(float cx, float cy, float rx, float ry, float angle, Rgb c, float alpha = 1.0f)
-    {
-        const float rm = std::max(rx, ry) + 1.0f;
-        const float ca = std::cos(angle), sa = std::sin(angle);
-        for (int y = std::max(0, static_cast<int>(cy - rm)); y <= std::min(h - 1, static_cast<int>(cy + rm)); ++y)
-            for (int x = std::max(0, static_cast<int>(cx - rm)); x <= std::min(w - 1, static_cast<int>(cx + rm)); ++x) {
-                const float qx = x + 0.5f - cx, qy = y + 0.5f - cy;
-                const float u = (qx * ca + qy * sa) / rx, v = (-qx * sa + qy * ca) / ry;
-                const float d = (std::sqrt(u * u + v * v) - 1.0f) * std::min(rx, ry);
-                blend(x, y, c, std::clamp(0.5f - d, 0.0f, 1.0f) * alpha);
-            }
-    }
-};
-
+namespace Hobbies {
 enum class Gait { Gallop, Walk, Graze, Fly };
-struct Point {
-    float x, y;
-};
 constexpr float gallopStride = 42.0f;
 constexpr float gallopFrequency = 1.15f;
 constexpr float gallopStance = 0.30f;
@@ -226,4 +146,4 @@ inline void horse(Canvas& cv, float x, float y, float s, float flip, float phase
     line({neckBase.x - 1.2f, neckBase.y - 3}, 1.3f, {poll.x - 1.8f, poll.y - 1.2f + mw}, 1, mane);
     line({poll.x - 1.8f, poll.y - 1.2f + mw}, 1, {poll.x - 4.2f, poll.y + 1.2f + mw}, 0.5f, mane);
 }
-}  // namespace HorseScenes
+}  // namespace Hobbies

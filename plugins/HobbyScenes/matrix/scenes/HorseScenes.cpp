@@ -2,70 +2,7 @@
 
 #include <shared/matrix/utils/color.h>
 
-using namespace HorseScenes;
-
-// ---------------------------------------------------------------- base
-void HorseSceneBase::register_properties()
-{
-    speed_->label("Speed").description("Animation speed.").group("Animation").step(0.05);
-    add_property(speed_);
-}
-
-void HorseSceneBase::initialize(int width, int height)
-{
-    Scene::initialize(width, height);
-    set_target_fps(30);
-    cv_.resize(width, height);
-    t_ = 0.0f;
-}
-
-void HorseSceneBase::begin_frame(float& dt)
-{
-    dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get();
-    t_ += dt;
-}
-
-void HorseSceneBase::fill_gradient(Rgb top, Rgb mid, Rgb bottom, float mid_at)
-{
-    for (int y = 0; y < cv_.h; ++y) {
-        const float v = static_cast<float>(y) / std::max(1, cv_.h - 1);
-        const Rgb c = v < mid_at ? mix(top, mid, v / mid_at) : mix(mid, bottom, (v - mid_at) / (1.0f - mid_at));
-        for (int x = 0; x < cv_.w; ++x) {
-            float* p = &cv_.px[static_cast<size_t>((y * cv_.w + x) * 3)];
-            p[0] = c.r;
-            p[1] = c.g;
-            p[2] = c.b;
-        }
-    }
-}
-
-void HorseSceneBase::present(rgb_matrix::FrameCanvas* canvas)
-{
-    for (int y = 0; y < cv_.h; ++y)
-        for (int x = 0; x < cv_.w; ++x) {
-            const float* p = &cv_.px[static_cast<size_t>((y * cv_.w + x) * 3)];
-            canvas->SetPixel(x, y, static_cast<uint8_t>(std::clamp(p[0], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[1], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[2], 0.0f, 1.0f) * 255.0f));
-        }
-}
-
-namespace {
-// Rolling hill silhouette height (0..1 of base) from layered sines.
-float hill(float x, float seed)
-{
-    return 0.5f + 0.28f * std::sin(x * 0.045f + seed) + 0.17f * std::sin(x * 0.11f + seed * 2.3f) +
-           0.05f * std::sin(x * 0.27f + seed * 4.1f);
-}
-void hills(Canvas& cv, float scroll, float base_y, float amp, float seed, Rgb col)
-{
-    for (int x = 0; x < cv.w; ++x) {
-        const float top = base_y - hill(x + scroll, seed) * amp;
-        for (int y = std::max(0, static_cast<int>(top)); y < cv.h; ++y)
-            cv.blend(x, y, col, y == static_cast<int>(top) ? 1.0f - (top - std::floor(top)) : 1.0f);
-    }
-}
-}  // namespace
+using namespace Hobbies;
 
 // ---------------------------------------------------------------- sunset gallop
 bool SunsetGallopScene::render(rgb_matrix::FrameCanvas* canvas)
@@ -149,7 +86,7 @@ Scenes::SceneDescriptor SunsetGallopScene::get_descriptor() const
 // ---------------------------------------------------------------- misty herd
 void MistyHerdScene::initialize(int width, int height)
 {
-    HorseSceneBase::initialize(width, height);
+    HobbySceneBase::initialize(width, height);
     herd_.clear();
     const float W = static_cast<float>(width);
     for (int i = 0; i < 6; ++i) {
@@ -224,7 +161,7 @@ Scenes::SceneDescriptor MistyHerdScene::get_descriptor() const
 // ---------------------------------------------------------------- pegasus sky
 void PegasusSkyScene::initialize(int width, int height)
 {
-    HorseSceneBase::initialize(width, height);
+    HobbySceneBase::initialize(width, height);
     field_.clear();
     shoot_life_ = 0;
     next_shoot_ = 6.0f;
