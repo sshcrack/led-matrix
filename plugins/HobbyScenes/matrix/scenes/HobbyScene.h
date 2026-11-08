@@ -46,6 +46,8 @@ protected:
     static Rgb from_env(Environment::Rgb c) { return {c.r, c.g, c.b}; }
     // Albedo under the current light; depth 0 foreground .. 1 horizon.
     [[nodiscard]] Rgb lit(Rgb albedo, float depth = 0.0f) const { return from_env(env().lit(to_env(albedo), depth)); }
+    // lit() for the foreground subject: stays readable at night and in storms.
+    [[nodiscard]] Rgb subject(Rgb albedo) const { return from_env(env().subject(to_env(albedo))); }
     // Tree leaves tinted for the season, then lit.
     [[nodiscard]] Rgb plant(Rgb summer, float depth = 0.0f, float snow_exposure = 0.5f, float season_strength = 1.0f) const
     {

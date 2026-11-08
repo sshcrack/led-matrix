@@ -73,13 +73,7 @@ bool HobbySceneBase::environment_changed(std::array<float, 12>& key) const
 
 void HobbySceneBase::light_look(Hobbies::Look& look) const
 {
-    look.skin = lit(look.skin, 0.0f);
-    look.hair = lit(look.hair, 0.0f);
-    look.shirt = lit(look.shirt, 0.0f);
-    look.pants = lit(look.pants, 0.0f);
-    look.shoes = lit(look.shoes, 0.0f);
-    look.pack = lit(look.pack, 0.0f);
-    look.capColor = lit(look.capColor, 0.0f);
+    for (Rgb* c : {&look.skin, &look.hair, &look.shirt, &look.pants, &look.shoes, &look.pack, &look.capColor}) *c = subject(*c);
 }
 
 void HobbySceneBase::present(rgb_matrix::FrameCanvas* canvas)

@@ -67,6 +67,10 @@ struct Adapt {
     /// Weather the scene cannot show sensibly falls back to the default
     /// (e.g. an underwater scene and snow). Empty = all.
     std::vector<Weather> weather_allowed;
+    /// Seasons offered as fixed-look variants (empty = all). A scene where
+    /// only winter looks different still follows the real season, but lists
+    /// just the variants that are worth picking.
+    std::vector<Season> season_variants;
 };
 
 struct Look {
@@ -109,6 +113,10 @@ struct Look {
     /// A daytime albedo under the current light. depth 0 = foreground,
     /// 1 = on the horizon (fades into the haze; more in fog).
     [[nodiscard]] Rgb lit(Rgb albedo, float depth = 0.0f) const;
+    /// lit() for a scene's foreground subject (a rider, a horse): it never
+    /// drops below a cool fill light, so it stays readable at night and under
+    /// storm clouds instead of vanishing into the dark landscape.
+    [[nodiscard]] Rgb subject(Rgb albedo) const;
     /// Season tint for summer-green tree leaves (fresh in spring, ochre and
     /// rust in autumn, bare brown in winter). `strength` < 1 for mixed or
     /// evergreen woods. Apply before lit().

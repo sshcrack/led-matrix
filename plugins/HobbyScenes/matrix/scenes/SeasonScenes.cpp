@@ -182,7 +182,9 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
     cv_.capsule(lx, lb - 16 * k, 0.5f * k, lx + 3 * k, lb - 16 * k, 0.4f * k, lit({0.28f, 0.20f, 0.14f}));
     cv_.ellipse(lx + 3 * k, lb - 13.5f * k, 1.3f * k, 1.8f * k, 0, mix(lit({0.25f, 0.24f, 0.22f}), {1.0f, 0.80f, 0.45f}, L.lamp()));
     cv_.glow(lx + 3 * k, lb - 13.5f * k, 14 * k, {1.0f, 0.72f, 0.35f}, 0.35f * L.lamp());
-    cv_.glow(lx + 2 * k, lb, 10 * k, {1.0f, 0.70f, 0.35f}, 0.12f * L.lamp());
+    cv_.glow(lx + 2 * k, lb, 20 * k, {1.0f, 0.70f, 0.35f}, 0.20f * L.lamp());
+    // Moonlight picks the path out of the dark wood.
+    cv_.glow(W * 0.5f, H * 0.86f, 26 * k, {0.55f, 0.62f, 0.85f}, 0.16f * L.night);
 
     // Deer: wanders in from the left, grazes, looks up, crosses the path.
     const float deerY = H * 0.72f, deerS = 0.75f * k;
@@ -226,8 +228,8 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
     if (deerState_ != 0) {
         const float walking = deerState_ == 1 || deerState_ == 3 ? 1.0f : 0.0f;
         cv_.ellipse(deerX_, deerY, 6.5f * deerS, 1.0f * deerS, 0, lit({0.08f, 0.12f, 0.06f}), 0.4f);
-        deer(cv_, deerX_, deerY, deerS, deerDir_, deerPhase_, walking, deerGraze_, lit({0.56f, 0.36f, 0.20f}, 0.15f),
-             lit({0.80f, 0.68f, 0.52f}, 0.15f), lit({0.10f, 0.07f, 0.06f}, 0.15f));
+        deer(cv_, deerX_, deerY, deerS, deerDir_, deerPhase_, walking, deerGraze_, subject({0.56f, 0.36f, 0.20f}),
+             subject({0.80f, 0.68f, 0.52f}), subject({0.10f, 0.07f, 0.06f}));
     }
 
     // Foreground: two big trunks framing the view, canopy across the top.
@@ -564,17 +566,41 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
         }
         cv_.set(static_cast<int>(48 * k), static_cast<int>(92.7f * k), lit({0.9f, 0.1f, 0.1f}));
     }
-    if (decorated("halloween"))
-        for (float px : {40.5f, 55.5f}) {
-            const float glowA = 0.4f + 0.6f * L.lamp();
-            cv_.ellipse(px * k, 98.5f * k, 2.4f * k, 1.9f * k, 0, lit({0.95f, 0.45f, 0.06f}));
-            cv_.capsule(px * k, 96.4f * k, 0.3f * k, px * k + 0.4f * k, 95.6f * k, 0.3f * k, lit({0.20f, 0.35f, 0.10f}));
-            const Rgb fire{1.0f, 0.80f, 0.25f};
-            cv_.add(static_cast<int>((px - 1) * k), static_cast<int>(98 * k), fire, glowA);
-            cv_.add(static_cast<int>((px + 1) * k), static_cast<int>(98 * k), fire, glowA);
-            cv_.add(static_cast<int>(px * k), static_cast<int>(99.5f * k), fire, glowA * 0.8f);
-            cv_.glow(px * k, 98.5f * k, 6 * k, {1.0f, 0.55f, 0.15f}, 0.2f * L.lamp());
+    if (decorated("halloween")) {
+        // Carved jack-o'-lanterns in the front garden, big enough to read.
+        const Rgb fire{1.0f, 0.78f, 0.22f};
+        const float flick = 0.85f + 0.15f * std::sin(t_ * 9.0f) * std::sin(t_ * 5.3f);
+        auto pumpkin = [&](float px, float py, float r) {
+            const Rgb skin = subject({0.95f, 0.42f, 0.05f}), rib = subject({0.62f, 0.24f, 0.03f});
+            cv_.ellipse(px * k, (py + r * 0.8f) * k, r * 1.2f * k, 0.8f * k, 0, {0.02f, 0.02f, 0.03f}, 0.4f);
+            cv_.ellipse(px * k, py * k, r * 1.15f * k, r * 0.85f * k, 0, skin);
+            for (float off : {-0.45f, 0.0f, 0.45f})
+                cv_.capsule((px + off * r) * k, (py - 0.7f * r) * k, 0.25f * k, (px + off * r * 1.1f) * k, (py + 0.7f * r) * k, 0.25f * k, rib, 0.6f);
+            cv_.capsule(px * k, (py - 0.8f * r) * k, 0.5f * k, (px + 0.4f) * k, (py - 0.8f * r - 1.6f) * k, 0.4f * k, subject({0.25f, 0.35f, 0.10f}));
+            const float g = (0.55f + 0.45f * L.lamp()) * flick;
+            for (float side : {-1.0f, 1.0f}) {  // triangle eyes
+                const float ex = px + side * 0.42f * r, ey = py - 0.18f * r;
+                cv_.add(static_cast<int>(ex * k), static_cast<int>(ey * k), fire, g);
+                cv_.add(static_cast<int>(ex * k), static_cast<int>(ey * k) + 1, fire, g);
+                cv_.add(static_cast<int>(ex * k) - 1, static_cast<int>(ey * k) + 1, fire, g);
+            }
+            for (int i = -2; i <= 2; ++i)  // jagged grin
+                cv_.add(static_cast<int>((px + i * 0.22f * r) * k), static_cast<int>((py + 0.35f * r) * k) + (i % 2 ? 1 : 0), fire, g);
+            cv_.glow(px * k, py * k, r * 3.0f * k, {1.0f, 0.50f, 0.12f}, 0.22f * g);
+        };
+        pumpkin(13, 116, 5.5f);
+        pumpkin(26, 121, 4.0f);
+        pumpkin(98, 118, 5.0f);
+        // Bats wheeling over the roof.
+        for (int i = 0; i < 3; ++i) {
+            const float a = t_ * (0.35f + 0.08f * i) + i * 2.1f;
+            const float bx = (64 + 34 * std::cos(a) + 10 * i) * k, by = (30 + 10 * std::sin(a * 1.7f) + 6 * i) * k;
+            const float flap = std::sin(t_ * 14.0f + i) * 1.4f * k;
+            const Rgb bat{0.05f, 0.04f, 0.06f};
+            cv_.capsule(bx - 3 * k, by - flap, 0.35f * k, bx, by, 0.4f * k, bat);
+            cv_.capsule(bx, by, 0.4f * k, bx + 3 * k, by - flap, 0.35f * k, bat);
         }
+    }
     if (decorated("easter")) {
         static const Rgb eggs[] = {{0.95f, 0.45f, 0.55f}, {0.45f, 0.70f, 0.98f}, {0.98f, 0.85f, 0.30f}, {0.55f, 0.90f, 0.50f}, {0.80f, 0.55f, 0.95f}};
         const float pos[][2] = {{8, 118}, {22, 122}, {70, 119}, {88, 124}, {116, 117}, {62, 125}};

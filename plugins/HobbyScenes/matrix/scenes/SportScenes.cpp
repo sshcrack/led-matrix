@@ -33,7 +33,10 @@ void draw_ball(Canvas& cv, float x, float y, float r, float spin, Rgb tint)
 // ================================================================ basketball
 BasketballScene::BasketballScene()
 {
-    use_environment({Environment::TimeOfDay::Dusk, Environment::Weather::Clear, Environment::Season::Summer, -1.5f, 0.70f});
+    // On a court only winter (snow) looks different; it still follows the real season.
+    Environment::Adapt adapt;
+    adapt.season_variants = {Environment::Season::Winter};
+    use_environment({Environment::TimeOfDay::Dusk, Environment::Weather::Clear, Environment::Season::Summer, -1.5f, 0.70f}, adapt);
 }
 
 void BasketballScene::build_background()
@@ -444,7 +447,9 @@ Point SoccerScene::goal_center(int attackingTeam) const
 
 SoccerScene::SoccerScene()
 {
-    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer});
+    Environment::Adapt adapt;
+    adapt.season_variants = {Environment::Season::Winter};
+    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
 }
 
 void SoccerScene::build_background()
@@ -483,7 +488,8 @@ void SoccerScene::build_background()
             Rgb c = mix(stripe ? stripeA : stripeB, scale(snow, stripe ? 1.0f : 0.94f), L.snow_cover * 0.85f);
             bg.set(x, y, scale(c, 1.0f + (flood - 1.0f) * lamp));
         }
-    const Rgb line = mix(lit({0.92f, 0.95f, 0.92f}), {0.88f, 0.92f, 0.88f}, lamp);
+    // White lines, painted blue on a snowy pitch so they still show.
+    const Rgb line = mix(mix(lit({0.92f, 0.95f, 0.92f}), {0.88f, 0.92f, 0.88f}, lamp), light({0.18f, 0.36f, 0.95f}), L.snow_cover * 0.85f);
     auto seg = [&](float ax, float ay, float bx, float by) { bg.capsule(ax, ay, 0.35f * k, bx, by, 0.35f * k, line, 0.85f); };
     seg(x0_, y0_, x1_, y0_);
     seg(x0_, y1_, x1_, y1_);
@@ -517,6 +523,19 @@ void SoccerScene::build_background()
         seg(gx, cy - gh, gx - dir * 3.5f * k, cy - gh);
         seg(gx, cy + gh, gx - dir * 3.5f * k, cy + gh);
         bg.capsule(gx, cy - gh, 0.6f * k, gx, cy + gh, 0.6f * k, {1, 1, 1});
+    }
+    // Low sun at dawn or dusk: warm light rakes in from its side of the stadium.
+    if (L.twilight > 0.02f && L.daylight > 0.05f) {
+        const Rgb warm = scale(from_env(L.sun_color), 1.25f);
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                const float side = std::clamp(1.0f - std::fabs(x / W - L.sun_x) * 1.3f, 0.0f, 1.0f);
+                float* p = bg.at(x, y);
+                const float a = L.twilight * (0.25f + 0.45f * side) * (1.0f - lamp);
+                p[0] = p[0] + (p[0] * warm.r - p[0]) * a;
+                p[1] = p[1] + (p[1] * warm.g - p[1]) * a;
+                p[2] = p[2] + (p[2] * warm.b - p[2]) * a;
+            }
     }
     // Centre circle.
     for (int i = 0; i < 64; ++i) {
@@ -822,6 +841,11 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     // The keeper facing a shot that will be saved dives across the goal.
     const int shooterTeam = players_[static_cast<size_t>(holder_)].team;
     const float dive = ball_ == Ball::Shot && !goal_ ? smoothstep(0.45f, 0.9f, ballT_) : 0.0f;
+    // Shadows fall away from the sun, long when it is low; short under floodlights.
+    const auto& Le = env();
+    const float sunLow = Le.daylight > 0.05f ? std::clamp(1.0f - Le.sun_elevation / 40.0f, 0.0f, 1.0f) * (1.0f - Le.lamp()) : 0.0f;
+    const float shX = (1.0f + 3.5f * sunLow * (Le.sun_x < 0.5f ? 1.0f : -1.0f)) * k, shY = (1.2f - 0.4f * sunLow) * k;
+    const float ps = 1.3f * k;  // player size
     for (const auto& p : players_) {
         const Rgb shirt = p.keeper ? kKeeper[p.team] : kShirt[p.team];
         const float legs = std::sin(p.stride * kPi) * 1.2f * k;
@@ -834,11 +858,11 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
             cv_.ellipse(p.pos.x, cy2 + dir * (2.6f * dive) * k, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
             continue;
         }
-        cv_.ellipse(p.pos.x + 1.0f * k, p.pos.y + 1.2f * k, 2.1f * k, 1.3f * k, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
-        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y - 0.8f * k, 0.5f * k, p.pos.x + legs, p.pos.y - 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
-        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y + 0.8f * k, 0.5f * k, p.pos.x - legs, p.pos.y + 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
-        cv_.ellipse(p.pos.x, p.pos.y, 1.5f * k, 2.05f * k, 0, shirt);
-        cv_.ellipse(p.pos.x, p.pos.y, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
+        cv_.ellipse(p.pos.x + shX * 1.3f, p.pos.y + shY * 1.3f, (2.1f + 1.5f * sunLow) * ps, 1.3f * ps, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
+        cv_.capsule(p.pos.x - face * 0.5f * ps, p.pos.y - 0.8f * ps, 0.5f * ps, p.pos.x + legs * 1.3f, p.pos.y - 0.8f * ps, 0.5f * ps, {0.1f, 0.1f, 0.12f});
+        cv_.capsule(p.pos.x - face * 0.5f * ps, p.pos.y + 0.8f * ps, 0.5f * ps, p.pos.x - legs * 1.3f, p.pos.y + 0.8f * ps, 0.5f * ps, {0.1f, 0.1f, 0.12f});
+        cv_.ellipse(p.pos.x, p.pos.y, 1.5f * ps, 2.05f * ps, 0, shirt);
+        cv_.ellipse(p.pos.x, p.pos.y, 0.95f * ps, 0.95f * ps, 0, {0.20f, 0.13f, 0.09f});
     }
     // Ball: lofted a little on long passes and shots, with a ground shadow.
     float hgt = 0.0f;
@@ -850,14 +874,21 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
         bp.x += face * 2.0f * k;
         bp.y += 0.8f * k;
     }
-    cv_.ellipse(bp.x + 0.5f * k, bp.y + 0.6f * k, 0.9f * k, 0.6f * k, 0, {0.02f, 0.08f, 0.03f}, 0.5f);
+    cv_.ellipse(bp.x + 0.5f * shX, bp.y + 0.5f * shY, 1.1f * k, 0.7f * k, 0, {0.02f, 0.08f, 0.03f}, 0.5f);
     // An orange ball when the pitch is white.
-    cv_.ellipse(bp.x, bp.y - hgt, 1.15f * k + hgt * 0.08f, 1.15f * k + hgt * 0.08f, 0,
+    cv_.ellipse(bp.x, bp.y - hgt, 1.4f * k + hgt * 0.08f, 1.4f * k + hgt * 0.08f, 0,
                 mix({1.0f, 1.0f, 1.0f}, {1.0f, 0.55f, 0.12f}, env().snow_cover));
 
-    // Weather over the whole stadium (seen from above, drops never land).
-    if (env().fog > 0.02f)
-        Environment::paint_fog(surface(), env(), t_, 0.0f, H);
+    // Weather over the whole stadium (seen from above, drops never land). Fog
+    // is an even, slowly drifting veil rather than banks along a horizon.
+    if (Le.fog > 0.02f) {
+        const Rgb haze = from_env(Le.haze);
+        for (int y = 0; y < cv_.h; ++y)
+            for (int x = 0; x < cv_.w; ++x) {
+                const float n = 0.5f + 0.5f * std::sin(x * 0.05f + t_ * 0.15f) * std::sin(y * 0.07f - t_ * 0.11f);
+                cv_.blend(x, y, haze, Le.fog * (0.30f + 0.15f * n));
+            }
+    }
     paint_weather(rdt, H * 0.5f);
     present(canvas);
     wait_until_next_frame();

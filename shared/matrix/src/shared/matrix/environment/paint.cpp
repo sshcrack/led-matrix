@@ -233,7 +233,7 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
     std::uniform_real_distribution<float> u(0.0f, 1.0f);
     const float rain = l.rain, snow = l.snow;
     // Spawn rate in particles per second for the whole panel.
-    const float rate = (rain * 520.0f + snow * 150.0f) * k;
+    const float rate = (rain * 400.0f + snow * 130.0f) * k;
     carry_ = rate > 0.0f ? carry_ + rate * dt : 0.0f;
     while (carry_ >= 1.0f) {
         carry_ -= 1.0f;
@@ -298,7 +298,7 @@ void Precipitation::draw(const Surface &s, const Look &l) const
             continue;
         }
         if (d.snow) {
-            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.55f + 0.45f * d.size);
+            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.45f + 0.40f * d.size);
             if (d.size > 0.9f) {
                 s.blend(static_cast<int>(d.x) + 1, static_cast<int>(d.y), snow_c, 0.45f);
                 s.blend(static_cast<int>(d.x), static_cast<int>(d.y) + 1, snow_c, 0.45f);
@@ -312,7 +312,7 @@ void Precipitation::draw(const Surface &s, const Look &l) const
         const int steps = static_cast<int>(len) + 1;
         for (int i = 0; i < steps; ++i) {
             const float f = static_cast<float>(i) / steps;
-            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.30f + 0.25f * d.size) * (1.0f - f));
+            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.20f + 0.18f * d.size) * (1.0f - f));
         }
     }
 }

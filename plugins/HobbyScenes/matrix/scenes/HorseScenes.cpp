@@ -123,7 +123,8 @@ void MistyHerdScene::initialize(int width, int height)
     const float W = static_cast<float>(width);
     for (int i = 0; i < 6; ++i) {
         const float depth = 0.25f + 0.75f * (i / 5.0f);
-        herd_.push_back({(i * 0.19f + rnd() * 0.1f) * W, depth, rnd(), 0.6f + rnd() * 0.5f, i % 4 == 3 ? -1 : 1, i == 2 || i == 4});
+        // Neighbours in depth stand far apart across the meadow so legs do not tangle.
+        herd_.push_back({(std::fmod(i * 0.41f + 0.05f, 1.0f) + rnd() * 0.06f) * W, depth, rnd(), 0.6f + rnd() * 0.5f, i % 4 == 3 ? -1 : 1, i == 2 || i == 4});
     }
     std::sort(herd_.begin(), herd_.end(), [](auto& a, auto& b) { return a.depth < b.depth; });
 }
@@ -161,7 +162,15 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < cv_.w; ++x) cv_.blend(x, y, mix(meadowFar, meadowNear, g), 1.0f);
     }
 
+    // Mixed coats (bay, grey, chestnut, white, black, dun) keep the herd apart
+    // from the meadow in every season and light.
+    static const Rgb coats[] = {{0.36f, 0.22f, 0.14f}, {0.62f, 0.62f, 0.64f}, {0.52f, 0.28f, 0.14f},
+                                {0.86f, 0.84f, 0.80f}, {0.16f, 0.13f, 0.12f}, {0.70f, 0.58f, 0.40f}};
+    static const Rgb manes[] = {{0.08f, 0.06f, 0.05f}, {0.30f, 0.30f, 0.32f}, {0.40f, 0.20f, 0.10f},
+                                {0.70f, 0.68f, 0.64f}, {0.06f, 0.05f, 0.05f}, {0.20f, 0.16f, 0.12f}};
+    int coatIndex = 0;
     for (auto& m : herd_) {
+        const int coat = coatIndex++ % 6;
         m.phase = std::fmod(m.phase + dt * walkFrequency * m.speed, 1.0f);
         const float scale = (0.38f + 0.50f * m.depth) * k;
         if (!m.graze)
@@ -172,8 +181,8 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
             m.x = W + 30 * k;
         const float gy = H * (0.69f + 0.24f * m.depth);
         const float haze = 1.0f - m.depth;  // distant horses fade into mist
-        const Rgb body = mix(lit({0.30f, 0.20f, 0.15f}), mistCol, haze * 0.75f);
-        const Rgb mane = mix(lit({0.10f, 0.07f, 0.06f}), mistCol, haze * 0.70f);
+        const Rgb body = mix(subject(coats[coat]), mistCol, haze * 0.70f);
+        const Rgb mane = mix(subject(manes[coat]), mistCol, haze * 0.65f);
         horse(cv_, m.x, gy, scale, static_cast<float>(m.dir), m.phase, m.graze ? Gait::Graze : Gait::Walk, body, mane);
     }
     mist_band(H * 0.90f, 0.20f, 0.5f, 2.0f);

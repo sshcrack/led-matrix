@@ -244,6 +244,7 @@ SummitNightScene::SummitNightScene()
     // Its identity is the night: only the weather and season follow reality.
     Environment::Adapt adapt;
     adapt.time = false;
+    adapt.season_variants = {Environment::Season::Winter};
     use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
 }
 

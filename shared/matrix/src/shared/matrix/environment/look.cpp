@@ -181,6 +181,14 @@ Rgb Look::lit(Rgb albedo, float depth) const
     return c;
 }
 
+Rgb Look::subject(Rgb albedo) const
+{
+    const Rgb c = lit(albedo, 0.0f);
+    const float fill = 0.40f * std::max(night, 0.7f * storm);
+    const Rgb floor{albedo.r * 0.80f * fill, albedo.g * 0.90f * fill, albedo.b * 1.10f * fill};
+    return {std::max(c.r, floor.r), std::max(c.g, floor.g), std::max(c.b, floor.b)};
+}
+
 Rgb Look::foliage(Rgb c, float strength) const
 {
     const float l = luminance(c);
@@ -468,6 +476,9 @@ void SceneEnvironment::add_variants(Scenes::SceneDescriptor &d, std::vector<Scen
             {Season::Autumn, "autumn", "AUTUMN"}, {Season::Winter, "winter", "WINTER"}}};
         for (const auto &[season, id, value] : seasons) {
             if (season == defaults_.season)
+                continue;
+            if (!adapt_.season_variants.empty() &&
+                std::find(adapt_.season_variants.begin(), adapt_.season_variants.end(), season) == adapt_.season_variants.end())
                 continue;
             std::string label = id;
             label[0] = static_cast<char>(std::toupper(label[0]));

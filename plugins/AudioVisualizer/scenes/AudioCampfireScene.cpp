@@ -25,6 +25,7 @@ AudioCampfireScene::AudioCampfireScene()
                              Environment::Weather::Overcast, Environment::Weather::Fog,
                              Environment::Weather::Drizzle,  Environment::Weather::Rain,
                              Environment::Weather::Snow};
+    adapt.season_variants = {Environment::Season::Winter};  // spring/autumn barely change a night fire
     env_ = std::make_unique<Environment::SceneEnvironment>(
         Environment::Defaults{Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer},
         adapt);

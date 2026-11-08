@@ -188,11 +188,11 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
     const Point seat{cx - 3.6f * bk, groundY - wheelR - 8.0f * bk}, headTube{cx + 5.0f * bk, groundY - wheelR - 7.6f * bk};
     // Contact shadow.
     cv_.ellipse(cx, groundY + 0.5f * bk, 12 * bk, 1.0f * bk, 0, lit({0.10f, 0.10f, 0.12f}), 0.4f);
-    const Rgb tire = lit({0.08f, 0.08f, 0.09f}), spokes = lit({0.75f, 0.75f, 0.78f});
+    const Rgb tire = subject({0.08f, 0.08f, 0.09f}), spokes = subject({0.75f, 0.75f, 0.78f});
     const bool rainGear = L.rain > 0.3f || L.storm > 0.2f;
-    const Rgb frame = lit({0.15f, 0.55f, 0.75f});
-    const Rgb jersey = lit(rainGear ? Rgb{0.98f, 0.82f, 0.10f} : L.winter > 0.5f ? Rgb{0.55f, 0.12f, 0.16f} : Rgb{0.90f, 0.30f, 0.20f});
-    const Rgb shorts = lit({0.10f, 0.10f, 0.14f}), skin = lit({0.82f, 0.60f, 0.46f}), helmet = lit({0.95f, 0.95f, 0.95f});
+    const Rgb frame = subject({0.15f, 0.55f, 0.75f});
+    const Rgb jersey = subject(rainGear ? Rgb{0.98f, 0.82f, 0.10f} : L.winter > 0.5f ? Rgb{0.55f, 0.12f, 0.16f} : Rgb{0.90f, 0.30f, 0.20f});
+    const Rgb shorts = subject({0.10f, 0.10f, 0.14f}), skin = subject({0.82f, 0.60f, 0.46f}), helmet = subject({0.95f, 0.95f, 0.95f});
     const Rgb legFar = scale(L.winter > 0.5f || rainGear ? shorts : skin, 0.72f), legNear = L.winter > 0.5f || rainGear ? shorts : skin;
     const float crankR = 2.6f * bk;
     const Point pedal[2] = {{bb.x + std::cos(crank_ + kPi) * crankR, bb.y + std::sin(crank_ + kPi) * crankR},
@@ -432,13 +432,13 @@ bool SkiingScene::render(rgb_matrix::FrameCanvas* canvas)
     const FigureOut out = figure(cv_, sx, feetY, s, 1.0f, p, look);
     // Skis along the slope with upturned tips, poles trailing.
     const float ca = std::cos(tilt), sa = std::sin(tilt), sk = 1.35f * k;
-    const Rgb skiC = lit({0.95f, 0.85f, 0.15f});
+    const Rgb skiC = subject({0.95f, 0.85f, 0.15f});
     cv_.capsule(sx - 7 * sk * ca, feetY + 0.6f * k - 7 * sk * sa, 0.45f * k, sx + 7 * sk * ca, feetY + 0.6f * k + 7 * sk * sa, 0.45f * k, skiC);
     cv_.capsule(sx + 7 * sk * ca, feetY + 0.6f * k + 7 * sk * sa, 0.45f * k, sx + 8.2f * sk * ca, feetY - 0.6f * k + 8.2f * sk * sa, 0.4f * k,
                 skiC);
     for (int i = 0; i < 2; ++i)
         cv_.capsule(out.hand[i].x, out.hand[i].y, 0.3f * k, out.hand[i].x - 9 * k, out.hand[i].y + 8.5f * k, 0.25f * k,
-                    lit({0.75f, 0.75f, 0.78f}), i == 0 ? 0.7f : 1.0f);
+                    subject({0.75f, 0.75f, 0.78f}), i == 0 ? 0.7f : 1.0f);
     // Snow spray off the tails while carving.
     if (liftH < 0.5f * k)
         for (int i = 0; i < 3; ++i)
