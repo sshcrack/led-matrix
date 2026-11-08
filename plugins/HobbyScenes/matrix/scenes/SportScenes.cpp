@@ -112,8 +112,10 @@ void BasketballScene::build_background()
         // Snow stays bright under city light and dusk alike.
         const Rgb snowC = mix(lit({0.95f, 0.97f, 1.0f}), {0.86f, 0.89f, 0.97f}, 0.4f), snowShade = mix(lit({0.74f, 0.80f, 0.94f}), {0.62f, 0.66f, 0.80f}, 0.4f);
         for (int xx = 0; xx < w; ++xx) {
-            const float bank = (4.0f + 3.5f * (0.5f + 0.5f * std::sin(xx / k * 0.09f)) + 1.5f * std::sin(xx / k * 0.31f)) * k * L.snow_cover;
-            for (int yy = static_cast<int>(c.floor - bank); yy <= static_cast<int>(c.floor + 1); ++yy)
+            // Banks against the fence, behind the court edge: the player's
+            // feet stay on the swept court line.
+            const float bank = (3.0f + 2.5f * (0.5f + 0.5f * std::sin(xx / k * 0.09f)) + 1.2f * std::sin(xx / k * 0.31f)) * k * L.snow_cover;
+            for (int yy = static_cast<int>(c.floor - 1.5f * k - bank); yy < static_cast<int>(c.floor - 1.5f * k); ++yy)
                 bg.blend(xx, yy, yy < c.floor - bank * 0.5f ? snowC : snowShade, 0.95f);
         }
         bg.capsule(0, fenceTop - 0.8f * k, 0.5f * k, W, fenceTop - 0.8f * k, 0.5f * k, snowShade, 0.55f * L.snow_cover);
@@ -940,7 +942,7 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     for (float lx : {2.5f * k, W - 2.5f * k})
         for (float ly : {2.5f * k, H - 2.5f * k}) {
             if (Le.wetness > 0.05f)
-                cv_.glow(lx + (cx - lx) * 0.22f, ly + (cy - ly) * 0.22f, 22 * k, {0.85f, 0.90f, 1.0f}, 0.26f * Le.wetness);
+                cv_.glow(lx + (cx - lx) * 0.22f, ly + (cy - ly) * 0.22f, 20 * k, {0.85f, 0.90f, 1.0f}, 0.12f * Le.wetness);
             if (Le.fog > 0.05f)
                 cv_.glow(lx + (cx - lx) * 0.12f, ly + (cy - ly) * 0.12f, 30 * k, {1.0f, 0.97f, 0.88f}, 0.14f * Le.fog);
         }

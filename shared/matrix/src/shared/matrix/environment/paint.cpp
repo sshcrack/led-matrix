@@ -230,8 +230,9 @@ void paint_clouds(const Surface &s, const Look &l, float t, float y0, float y1, 
         const float bottom = y1 + (y1 - y0) * 0.5f;
         for (int y = 0; y < std::min(s.h, static_cast<int>(bottom)); ++y) {
             const float v = std::max(0.0f, (y - y0) / std::max(1.0f, y1 - y0));
-            const float band = 0.5f + 0.5f * std::sin(y * 0.45f + t * 0.05f);
             for (int x = 0; x < s.w; ++x) {
+                // Billows that wander across the sheet, not row-wise stripes.
+                const float band = 0.5f + 0.5f * std::sin(y * 0.30f + 2.2f * std::sin((x + scroll * 0.2f) * 0.043f + t * 0.04f) + t * 0.05f);
                 const float n = 0.5f + 0.5f * std::sin((x + scroll * 0.2f) * 0.07f + t * 0.08f + y * 0.21f) *
                                            std::sin((x + scroll * 0.2f) * 0.031f - t * 0.05f);
                 const Rgb c = mix(lit_top * 0.92f, under, clamp01(v * 0.8f + 0.25f * n));
@@ -254,8 +255,8 @@ void paint_clouds(const Surface &s, const Look &l, float t, float y0, float y1, 
         const float size = (0.65f + 0.7f * hash01(id + 2)) * (0.8f + 0.5f * amount) * k;
         const float alpha = 0.55f + 0.4f * amount;
         // Flat-bottomed cumulus: darker base, a few lit puffs on top.
-        soft_ellipse(s, cx, cy + 2.0f * size, 22.0f * size * (1.0f + 0.8f * (1.0f - puffy)), 4.0f * size * (0.5f + 0.5f * puffy), under,
-                     alpha * (0.45f + 0.4f * puffy));
+        soft_ellipse(s, cx, cy + 2.0f * size, 22.0f * size * (1.0f + 0.35f * (1.0f - puffy)), 4.0f * size * (0.85f + 0.15f * puffy), under,
+                     alpha * (0.30f + 0.55f * puffy));
         if (puffy <= 0.05f)
             continue;
         for (int b = 0; b < 4; ++b) {
