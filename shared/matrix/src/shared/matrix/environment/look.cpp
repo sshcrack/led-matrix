@@ -282,6 +282,9 @@ Look target_look(const Conditions &c, const Defaults &d, const Adapt &a, TimeCho
 
     // ---- season (before weather: winter without a report has snow lying) ----
     Season season = d.season;
+    // Winter picked on purpose (scene property or global override) keeps its
+    // snow even when today's report has none; a calendar winter follows it.
+    const bool chosen_season = a.season && (sc != SeasonChoice::AUTO || c.forced_season.has_value());
     if (a.season && sc != SeasonChoice::AUTO)
         season = static_cast<Season>(static_cast<int>(sc) - 1);
     else if (a.season && c.forced_season)
@@ -323,6 +326,8 @@ Look target_look(const Conditions &c, const Defaults &d, const Adapt &a, TimeCho
         l.snow_cover = clamp01(c.snow_depth_m / 0.03f);
         if (w == Weather::Snow)
             l.snow_cover = std::max(l.snow_cover, 0.55f);
+        else if (chosen_season && season == Season::Winter && w != Weather::Rain && w != Weather::Storm)
+            l.snow_cover = std::max(l.snow_cover, 0.75f);
     } else {
         l.wind = w == Weather::Storm ? 0.8f : w == Weather::Rain ? 0.35f : 0.2f;
         l.temperature = season == Season::Winter ? -2.0f : season == Season::Summer ? 22.0f : 12.0f;

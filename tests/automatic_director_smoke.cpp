@@ -243,6 +243,18 @@ int main()
         return 21;
     }
 
+    // Spotify cuts (track intros, music-video insertion) belong to the
+    // music-led modes; Outside and Chill keep their scenery dwell.
+    for (const auto mode : {AutomaticDirector::Mode::Environment, AutomaticDirector::Mode::Chill}) {
+        AutomaticDirector calm(31);
+        calm.set_mode(mode);
+        const auto calm_switch = calm.consider_switch(spotify_scenes, spotify_scenes.front(), mid_track, 9000, 60000);
+        if (calm_switch.should_switch) {
+            std::cerr << "a calm mode let Spotify cut the scene: " << calm_switch.reason << "\n";
+            return 68;
+        }
+    }
+
     RuntimeInputs::publish(
         RuntimeInputIds::SpotifyPlayback,
         {{"playing", true}, {"track_id", std::string("track-a")},

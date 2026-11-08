@@ -182,6 +182,18 @@ void layering()
     look = target_look(c, d, all, TimeChoice::AUTO, WeatherChoice::AUTO, SeasonChoice::WINTER);
     check(look.snow_cover > 0.5f && look.winter > 0.99f, "chosen winter has snow lying");
     check(look.occasion("christmas") && !look.occasion("easter"), "occasions reach the look");
+
+    // A chosen winter keeps its snow when today's report has none lying.
+    c.weather_known = true;
+    c.weather = Weather::Clear;
+    c.snow_depth_m = 0.0;
+    look = target_look(c, d, all, TimeChoice::AUTO, WeatherChoice::AUTO, SeasonChoice::WINTER);
+    check(look.snow_cover > 0.5f, "chosen winter keeps snow under a snowless live report");
+    // A calendar winter follows the report.
+    c.season_known = true;
+    c.season = Season::Winter;
+    look = target_look(c, d, all, TimeChoice::AUTO, WeatherChoice::AUTO, SeasonChoice::AUTO);
+    check(look.snow_cover < 0.01f, "calendar winter follows the reported snow depth");
 }
 }  // namespace
 

@@ -256,8 +256,10 @@ private:
     /// Live music leads casting and cuts (Mixed and Party only).
     [[nodiscard]] bool music_led(const Context& context) const
     {
-        return context.audio_active && (mode_ == Mode::Mixed || mode_ == Mode::Party);
+        return context.audio_active && music_cuts_allowed();
     }
+    /// Whether the mode lets the music cut scenes (track intros, music videos).
+    [[nodiscard]] bool music_cuts_allowed() const { return mode_ == Mode::Mixed || mode_ == Mode::Party; }
     /// Consecutive music-reactive presentations at the end of the history.
     [[nodiscard]] int music_streak() const;
     [[nodiscard]] float history_multiplier(
