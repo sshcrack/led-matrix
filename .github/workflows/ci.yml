@@ -74,31 +74,66 @@ jobs:
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
-  artifact-comment:
+  # Keeps a "Build artifacts" section in the PR description up to date instead of
+  # posting a comment: description edits send no notification emails, however
+  # often CI runs.
+  pr-build-files:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request' && always() && needs.build.result == 'success'
     steps:
-      - name: Post or update PR comment from artifact metadata
+      - name: Write build artifacts section
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            echo "### 📦 Build artifacts"
+            echo ""
+            echo "Built from \`${HEAD_SHA:0:7}\` · [CI run]($RUN_URL)"
+            echo ""
+            echo "| Platform | Download | Archive size |"
+            echo "|---|---|---|"
+            gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts" --paginate \
+              --jq '.artifacts[] | select(.name | endswith("-build")) | "| \(.name) | [Download]('"$RUN_URL"'/artifacts/\(.id)) | \(.size_in_bytes / 1048576 | floor) MiB |"' \
+              | sort
+          } > "$RUNNER_TEMP/build-files.md"
+          cat "$RUNNER_TEMP/build-files.md"
+
+      - name: Update PR description
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          header="## Build Artifacts"
-          body=$'## Build Artifacts\n\n| Platform | Download | Archive size |\n|---|---|---|'
-          artifacts=$(gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts" --paginate \
-            --jq '.artifacts[] | select(.name | endswith("-build")) | [.name, .id, (.size_in_bytes / 1048576 | floor)] | @tsv')
-          while IFS=$'\t' read -r name id size; do
-            [[ -n "$name" ]] || continue
-            body+=$'\n'"| $name | [Download](https://github.com/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts/$id) | $size MiB |"
-          done <<< "$artifacts"
+          # Read the current description right before writing, so recent author edits are kept.
+          gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.body // ""' > "$RUNNER_TEMP/body.md"
+          python3 - "$RUNNER_TEMP/body.md" "$RUNNER_TEMP/build-files.md" <<'PY'
+          import re, sys
 
-          existing=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Build Artifacts"))) | .id' | head -1)
-          jq -n --arg body "$body" '{body: $body}' > "$RUNNER_TEMP/artifact-comment.json"
-          if [[ -n "$existing" ]]; then
-            gh api "repos/$GH_REPO/issues/comments/$existing" -X PATCH --input "$RUNNER_TEMP/artifact-comment.json" > /dev/null
-          else
-            gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" -X POST --input "$RUNNER_TEMP/artifact-comment.json" > /dev/null
-          fi
+          body_path, section_path = sys.argv[1], sys.argv[2]
+          start, end = "<!-- build-artifacts:start -->", "<!-- build-artifacts:end -->"
+          body = open(body_path, encoding="utf-8").read().rstrip("\n")
+          section = open(section_path, encoding="utf-8").read().strip()
+          block = f"{start}\n{section}\n{end}"
+          pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), re.S)
+          if pattern.search(body):
+              body = pattern.sub(lambda _: block, body)
+          else:
+              body = f"{body}\n\n---\n{block}" if body else block
+          open(body_path, "w", encoding="utf-8").write(body + "\n")
+          PY
+          gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --body-file "$RUNNER_TEMP/body.md"
+
+      # Runs once per PR that still has a comment from the previous mechanism.
+      - name: Remove outdated build artifact comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("## Build Artifacts"))) | .id' \
+            | xargs -r -n1 gh api "repos/$GH_REPO/issues/comments/{}" -X DELETE
