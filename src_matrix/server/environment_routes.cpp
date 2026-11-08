@@ -46,7 +46,10 @@ std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr
             return reply_with_error(req, std::string("Invalid environment settings: ") + ex.what());
         }
         // A half-set manual location is dropped by sanitize(); say so.
-        if ((patch.contains("latitude") && !patch["latitude"].is_null()) && !settings.has_manual_location())
+        // Either coordinate out of range would make sanitize() clear both.
+        const bool sets_coordinate = (patch.contains("latitude") && !patch["latitude"].is_null()) ||
+                                     (patch.contains("longitude") && !patch["longitude"].is_null());
+        if (sets_coordinate && !settings.has_manual_location())
             return reply_with_error(req, "latitude/longitude must both be valid numbers");
 
         config->set_environment(settings);

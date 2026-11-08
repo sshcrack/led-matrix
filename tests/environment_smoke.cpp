@@ -195,11 +195,27 @@ void layering()
     look = target_look(c, d, all, TimeChoice::AUTO, WeatherChoice::AUTO, SeasonChoice::AUTO);
     check(look.snow_cover < 0.01f, "calendar winter follows the reported snow depth");
 }
+void legacy_location()
+{
+    const auto presets = nlohmann::json::parse(R"({
+        "a": {"scenes": [{"type": "weather_ambience", "arguments": {"location_lat": "52.5200", "location_lon": "13.4050"}}]},
+        "b": {"scenes": [{"type": "fire", "arguments": {}},
+                         {"type": "weather_ambience", "arguments": {"location_lat": "48.1374", "location_lon": "11.5755"}}]},
+        "c": {"scenes": [{"type": "weather_ambience", "arguments": {"location_lat": "40.0", "location_lon": "-3.7"}}]}
+    })");
+    const auto legacy = legacy_weather_location(presets);
+    check(legacy && near(legacy->latitude, 48.1374, 1e-6) && near(legacy->longitude, 11.5755, 1e-6),
+          "a custom weather scene location is migrated, the old default is not");
+    check(legacy && legacy->conflicts == 1, "a second different location counts as a conflict");
+    check(!legacy_weather_location(nlohmann::json::parse(R"({"a": {"scenes": [{"type": "weather_ambience", "arguments": {}}]}})")),
+          "no custom location, nothing to migrate");
+}
 }  // namespace
 
 int main()
 {
     sun_and_moon();
+    legacy_location();
     weather();
     occasions_registry();
     settings();

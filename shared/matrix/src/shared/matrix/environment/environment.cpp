@@ -464,4 +464,41 @@ void from_json(const nlohmann::json &j, Settings &s)
     s.sanitize();
 }
 
+std::optional<LegacyLocation> legacy_weather_location(const nlohmann::json &presets)
+{
+    if (!presets.is_object())
+        return std::nullopt;
+    auto number = [](const nlohmann::json &args, const char *key) -> std::optional<double> {
+        if (!args.contains(key))
+            return std::nullopt;
+        const auto &v = args.at(key);
+        try {
+            const double d = v.is_string() ? std::stod(v.get<std::string>()) : v.is_number() ? v.get<double>() : NAN;
+            return std::isfinite(d) ? std::optional<double>(d) : std::nullopt;
+        } catch (const std::exception &) {
+            return std::nullopt;
+        }
+    };
+    std::optional<LegacyLocation> found;
+    for (const auto &[id, preset] : presets.items()) {
+        if (!preset.is_object() || !preset.contains("scenes") || !preset.at("scenes").is_array())
+            continue;
+        for (const auto &scene : preset.at("scenes")) {
+            if (!scene.is_object() || scene.value("type", std::string()) != "weather_ambience")
+                continue;
+            const auto args = scene.value("arguments", nlohmann::json::object());
+            const auto lat = number(args, "location_lat"), lon = number(args, "location_lon");
+            if (!lat || !lon || std::fabs(*lat) > 90.0 || std::fabs(*lon) > 180.0)
+                continue;
+            if (std::fabs(*lat - 52.52) < 1e-4 && std::fabs(*lon - 13.405) < 1e-4)
+                continue;  // the old default, not a choice
+            if (!found)
+                found = LegacyLocation{*lat, *lon, 0};
+            else if (std::fabs(found->latitude - *lat) > 1e-4 || std::fabs(found->longitude - *lon) > 1e-4)
+                ++found->conflicts;
+        }
+    }
+    return found;
+}
+
 } // namespace Environment

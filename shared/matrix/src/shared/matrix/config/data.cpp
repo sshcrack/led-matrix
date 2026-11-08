@@ -143,6 +143,19 @@ namespace ConfigData {
         p.environment = j.contains("environment") && j.at("environment").is_object()
             ? j.at("environment").get<Environment::Settings>()
             : Environment::Settings{};
+        // First start with the shared environment: a weather_ambience preset
+        // with its own (pre-environment) location becomes the manual location.
+        if (!j.contains("environment") && j.contains("presets")) {
+            if (const auto legacy = Environment::legacy_weather_location(j.at("presets"))) {
+                p.environment.latitude = legacy->latitude;
+                p.environment.longitude = legacy->longitude;
+                spdlog::info("Moved the weather scene location {:.4f}, {:.4f} to the real-world location setting",
+                             legacy->latitude, legacy->longitude);
+                if (legacy->conflicts > 0)
+                    spdlog::warn("{} other weather scene preset(s) had a different location; the real-world location is global now",
+                                 legacy->conflicts);
+            }
+        }
     }
 
     void to_json(json &j, const BrightnessSchedule &p) {
