@@ -824,6 +824,11 @@ if(ENABLE_EMULATOR)
     target_include_directories(pkce_smoke SYSTEM PRIVATE ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
     add_test(NAME pkce_smoke COMMAND $<TARGET_FILE:pkce_smoke>)
 
+    add_executable(spotify_login_attempt_smoke ${CMAKE_CURRENT_SOURCE_DIR}/tests/spotify_login_attempt_smoke.cpp)
+    target_compile_features(spotify_login_attempt_smoke PRIVATE cxx_std_23)
+    target_include_directories(spotify_login_attempt_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes/matrix)
+    add_test(NAME spotify_login_attempt_smoke COMMAND $<TARGET_FILE:spotify_login_attempt_smoke>)
+
     add_executable(property_compat_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/property_compat_smoke.cpp
     )

@@ -1,16 +1,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Check, ChevronDown, CircleAlert, Copy, ExternalLink, Info, Loader2, Music2, RefreshCw } from 'lucide-react'
+import type { SetupAction, SpotifySetupStatus } from './spotifySetupModel'
 
-export interface SpotifySetupStatus {
-  configured: boolean
-  connected: boolean
-  client_id: string
-  redirect_uri: string
-}
+export type { SpotifySetupStatus } from './spotifySetupModel'
 
 export interface SpotifySetupProps {
   status: SpotifySetupStatus
-  busy: boolean
+  /** The user action in progress (spinner + inputs disabled), from `spotifySetupModel`. */
+  action: SetupAction | null
+  /** The Spotify tab is open and the Pi has not reported this attempt's end yet. */
+  signingIn?: boolean
   error: string | null
   notice: string | null
   onSave: (clientId: string) => Promise<void>
@@ -20,8 +19,6 @@ export interface SpotifySetupProps {
   onDismiss?: () => void
   initiallyOpen?: boolean
 }
-
-type Action = 'save' | 'connect' | 'complete' | null
 
 const DASHBOARD_URL = 'https://developer.spotify.com/dashboard'
 
@@ -54,7 +51,7 @@ function Spinner() {
   return <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
 }
 
-export default function SpotifySetup({ status, busy, error, notice, onSave, onConnect, onComplete, onRefresh, onDismiss, initiallyOpen }: SpotifySetupProps) {
+export default function SpotifySetup({ status, action, signingIn = false, error, notice, onSave, onConnect, onComplete, onRefresh, onDismiss, initiallyOpen }: SpotifySetupProps) {
   const { configured, connected, redirect_uri: redirectUri } = status
   const uid = useId()
   const panelId = `${uid}-panel`
@@ -64,25 +61,21 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
   const [clientId, setClientId] = useState(status.client_id)
   const [callbackUrl, setCallbackUrl] = useState('')
   const [copied, setCopied] = useState(false)
-  const [action, setAction] = useState<Action>(null)
   const [showCallback, setShowCallback] = useState(false)
   const copyTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), [])
 
-  const disabled = busy || action !== null
+  const disabled = action !== null
   const credsDirty = clientId.trim() !== status.client_id
   const canSave = clientId.trim() !== ''
 
-  async function run(kind: Exclude<Action, null>, fn: () => Promise<void>): Promise<boolean> {
-    setAction(kind)
+  async function run(fn: () => Promise<void>): Promise<boolean> {
     try {
       await fn()
       return true
     } catch {
       return false // the parent reports failures through `error`
-    } finally {
-      setAction(null)
     }
   }
 
@@ -109,13 +102,13 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
   async function submitCreds(e: FormEvent) {
     e.preventDefault()
     if (!canSave || disabled) return
-    await run('save', () => onSave(clientId.trim()))
+    await run(() => onSave(clientId.trim()))
   }
 
   async function submitCallback(e: FormEvent) {
     e.preventDefault()
     if (!callbackUrl.trim() || disabled) return
-    if (await run('complete', () => onComplete(callbackUrl.trim()))) setCallbackUrl('')
+    if (await run(() => onComplete(callbackUrl.trim()))) setCallbackUrl('')
   }
 
   const tone = connected ? 'border-border bg-card' : 'border-primary/30 bg-primary/5'
@@ -228,13 +221,13 @@ export default function SpotifySetup({ status, busy, error, notice, onSave, onCo
                   type="button"
                   className={`${configured ? btnPrimary : btnOutline} w-full sm:w-auto`}
                   disabled={disabled || !configured}
-                  onClick={() => { setShowCallback(true); void run('connect', onConnect) }}
+                  onClick={() => { setShowCallback(true); void run(onConnect) }}
                 >
-                  {action === 'connect' ? <Spinner /> : null}
-                  {connected ? 'Reconnect Spotify' : 'Connect Spotify'}
+                  {action === 'connect' || signingIn ? <Spinner /> : null}
+                  {signingIn ? 'Connect again' : connected ? 'Reconnect Spotify' : 'Connect Spotify'}
                 </button>
-                <button type="button" className={`${btnGhost} w-full sm:w-auto`} onClick={onRefresh} disabled={busy}>
-                  <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} aria-hidden />
+                <button type="button" className={`${btnGhost} w-full sm:w-auto`} onClick={onRefresh} disabled={disabled}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
                   Check status
                 </button>
               </div>

@@ -3,7 +3,7 @@
 #include "shared/matrix/plugin/main.h"
 #include <shared/matrix/input_ids.h>
 #include <mutex>
-#include <chrono>
+#include "manager/login_attempt.h"
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
@@ -30,11 +30,11 @@ public:
 
 private:
     static string generate_random_string(size_t length);
+    // setup_mutex serializes the setup routes (credentials/connect/complete, including the token exchange);
+    // login_mutex only guards `login`, so /spotify/status never waits for a slow exchange. Order: setup, then login.
     std::mutex setup_mutex;
-    string pending_state;
-    string pending_verifier; // PKCE code_verifier for the pending login (never leaves the Pi)
-    string pending_redirect; // redirect_uri the pending login was started with (must match at token exchange)
-    std::chrono::steady_clock::time_point state_expires;
+    std::mutex login_mutex;
+    SpotifyLogin::Attempt login;
     restinio::request_handling_status_t complete_login(
         const restinio::request_handle_t& req, const string& query, bool browser);
 };

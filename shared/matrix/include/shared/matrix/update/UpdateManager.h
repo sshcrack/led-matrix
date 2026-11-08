@@ -34,7 +34,7 @@ namespace Update
     enum class UpdateStatus
     {
         IDLE,
-        CHECKING,
+        CHECKING, // a manual install is resolving its release (set before the install request is answered)
         DOWNLOADING,
         INSTALLING,
         ERROR,
@@ -101,6 +101,11 @@ namespace Update
         std::expected<void, std::string> manual_download_and_install(const UpdateInfo &update_info);
 
         UpdateStatus get_status() const;
+        /// A manual install was accepted: report CHECKING and drop the previous outcome, so pollers never
+        /// mistake an earlier ERROR/SUCCESS for the result of this install.
+        void begin_manual_install();
+        /// Records why an install failed (status ERROR + message).
+        void fail_install(const std::string &message);
         void set_pre_restart_callback(std::function<void()> callback);
 
         // Configuration methods
