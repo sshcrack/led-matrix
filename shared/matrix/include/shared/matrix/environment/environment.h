@@ -71,7 +71,8 @@ struct Conditions {
 /// Moon phase 0..1 (0 = new moon, 0.5 = full moon).
 [[nodiscard]] double moon_phase(std::chrono::system_clock::time_point when);
 /// Meteorological season for a day of year (0-based) and hemisphere.
-[[nodiscard]] Season season_for(int day_of_year, double latitude);
+/// Meteorological season for a calendar month (1-12) at a latitude.
+[[nodiscard]] Season season_for(int month, double latitude);
 /// WMO weather code (Open-Meteo `weather_code`) to family + 0..1 intensity.
 [[nodiscard]] std::pair<Weather, float> weather_from_wmo(int code);
 [[nodiscard]] const char *to_string(Weather weather);

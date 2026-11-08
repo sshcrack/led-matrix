@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <tuple>
 
 #include "shared/matrix/environment/environment.h"
 #include "shared/matrix/environment/look.h"
@@ -50,11 +51,18 @@ void sun_and_moon()
     const double fresh = moon_phase(utc(2024, 1, 11, 11, 57));
     check(fresh < 0.04 || fresh > 0.96, "new moon 2024-01-11 " + std::to_string(fresh));
 
-    check(season_for(200, 52.0) == Season::Summer, "July is summer in the north");
-    check(season_for(200, -33.0) == Season::Winter, "July is winter in the south");
-    check(season_for(15, 52.0) == Season::Winter, "January is winter in the north");
-    check(season_for(100, 52.0) == Season::Spring, "April is spring in the north");
-    check(season_for(290, 52.0) == Season::Autumn, "October is autumn in the north");
+    check(season_for(7, 52.0) == Season::Summer, "July is summer in the north");
+    check(season_for(7, -33.0) == Season::Winter, "July is winter in the south");
+    check(season_for(1, 52.0) == Season::Winter, "January is winter in the north");
+    check(season_for(4, 52.0) == Season::Spring, "April is spring in the north");
+    check(season_for(10, 52.0) == Season::Autumn, "October is autumn in the north");
+    check(season_for(2, 52.0) == Season::Winter && season_for(11, 52.0) == Season::Autumn, "February and November edges");
+    // Leap day and the last days of May/August/November keep their season.
+    for (const auto& [mo, d, want] : {std::tuple{2, 29, Season::Winter}, std::tuple{5, 31, Season::Spring},
+                                      std::tuple{8, 31, Season::Summer}, std::tuple{11, 30, Season::Autumn}}) {
+        const auto c = conditions_at(52.52, 13.405, utc(2028, mo, d, 11, 0), std::nullopt, 0);
+        check(c.season == want, "2028-" + std::to_string(mo) + "-" + std::to_string(d) + " season in a leap year");
+    }
 }
 
 void weather()

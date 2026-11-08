@@ -43,7 +43,7 @@ void gabled_house(Canvas& cv, float x0, float x1, float top, float base, Rgb wal
 // ================================================================ market
 ChristmasMarketScene::ChristmasMarketScene()
 {
-    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Snow, Environment::Season::Winter, 0.0f, 0.5f}, winter_night());
+    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Snow, Environment::Season::Winter, std::nullopt, std::nullopt}, winter_night());
 }
 
 void ChristmasMarketScene::initialize(int width, int height)
@@ -322,7 +322,7 @@ Scenes::SceneDescriptor ChristmasMarketScene::get_descriptor() const
 // ================================================================ sleigh night
 ChristmasSleighScene::ChristmasSleighScene()
 {
-    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Winter, 0.0f, 0.5f}, winter_night());
+    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Winter, std::nullopt, std::nullopt}, winter_night());
 }
 
 void ChristmasSleighScene::initialize(int width, int height)

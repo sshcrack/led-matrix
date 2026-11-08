@@ -89,15 +89,16 @@ double moon_phase(std::chrono::system_clock::time_point when)
     return wrap((julian_day(when) - reference_new_moon) / synodic_month, 1.0);
 }
 
-Season season_for(int day_of_year, double latitude)
+Season season_for(int month, double latitude)
 {
-    // Meteorological seasons: Mar-May, Jun-Aug, Sep-Nov, Dec-Feb.
+    // Meteorological seasons by calendar month (so leap years cannot shift
+    // them): Mar-May, Jun-Aug, Sep-Nov, Dec-Feb.
     Season north;
-    if (day_of_year >= 59 && day_of_year < 151)
+    if (month >= 3 && month <= 5)
         north = Season::Spring;
-    else if (day_of_year >= 151 && day_of_year < 243)
+    else if (month >= 6 && month <= 8)
         north = Season::Summer;
-    else if (day_of_year >= 243 && day_of_year < 334)
+    else if (month >= 9 && month <= 11)
         north = Season::Autumn;
     else
         north = Season::Winter;
@@ -228,7 +229,7 @@ Conditions conditions_at(double latitude, double longitude, std::chrono::system_
     const std::tm local = shifted_tm(t, offset);
     c.local_hour = local.tm_hour + local.tm_min / 60.0 + local.tm_sec / 3600.0;
     c.day_of_year = static_cast<float>(local.tm_yday) + static_cast<float>(c.local_hour / 24.0);
-    c.season = season_for(local.tm_yday, latitude);
+    c.season = season_for(local.tm_mon + 1, latitude);
 
     if (weather.has_value()) {
         c.weather_known = true;
