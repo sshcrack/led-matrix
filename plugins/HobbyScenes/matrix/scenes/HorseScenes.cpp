@@ -225,34 +225,34 @@ bool PegasusSkyScene::render(rgb_matrix::FrameCanvas* canvas)
     const float scale = std::min(W, H) / 128.0f * 1.45f;
     const float horseX = W * 0.51f + std::sin(t_ * 0.23f) * 3 * k;
     const float horseY = H * 0.69f + std::cos((beat - 0.20f) * 2 * kPi) * 1.5f * k;
-    auto wing = [&](bool far) {
-        const float length = far ? 0.85f : 1.0f;
+    auto wing = [&](bool farWing) {
+        const float length = farWing ? 0.85f : 1.0f;
         const float angle = wingAngle(beat);
         const float shorten = 0.925f + 0.075f * std::sin(angle);
         auto point = [&](float dx, float dy, float featherAngle) -> Point {
             dx *= shorten;
             const float ca = std::cos(featherAngle), sa = std::sin(featherAngle);
-            return {horseX + (5 + (far ? 2 : 0) + length * (dx * ca - dy * sa)) * scale,
-                    horseY + (-20 + (far ? -1.5f : 0) + length * (dx * sa + dy * ca)) * scale};
+            return {horseX + (5 + (farWing ? 2 : 0) + length * (dx * ca - dy * sa)) * scale,
+                    horseY + (-20 + (farWing ? -1.5f : 0) + length * (dx * sa + dy * ca)) * scale};
         };
         auto stroke = [&](Point a, float ar, Point b, float br, Rgb color) {
             cv_.capsule(a.x, a.y, ar * scale, b.x, b.y, br * scale, color);
         };
-        const Rgb shade = far ? Rgb{0.30f, 0.41f, 0.63f} : Rgb{0.62f, 0.74f, 0.95f};
+        const Rgb shade = farWing ? Rgb{0.30f, 0.41f, 0.63f} : Rgb{0.62f, 0.74f, 0.95f};
         // Outline the whole near wing first; feather lag bends the primaries
         // slightly without changing the rigid shoulder rotation.
-        for (int pass = far ? 1 : 0; pass < 2; ++pass) {
+        for (int pass = farWing ? 1 : 0; pass < 2; ++pass) {
             for (int i = 8; i >= 0; --i) {
                 const float u = i / 8.0f;
                 const float tipAngle = wingAngle(beat - 0.035f * (1 - u));
                 const Point root = point(-8 + 8 * u, 2 * u, angle);
                 const Point tip = point(-27 + 12 * u, 2 + 10 * u, tipAngle);
-                const Rgb color = pass == 0 ? Rgb{0.07f, 0.10f, 0.21f} : mix(shade, {0.86f, 0.92f, 1.0f}, far ? 0 : (1 - u) * 0.3f);
+                const Rgb color = pass == 0 ? Rgb{0.07f, 0.10f, 0.21f} : mix(shade, {0.86f, 0.92f, 1.0f}, farWing ? 0 : (1 - u) * 0.3f);
                 const float outline = pass == 0 ? 0.65f : 0;
                 stroke(root, 2.3f + outline, tip, 0.55f + outline, color);
             }
         }
-        const Rgb edge = far ? shade : Rgb{0.40f, 0.52f, 0.80f};
+        const Rgb edge = farWing ? shade : Rgb{0.40f, 0.52f, 0.80f};
         stroke(point(0, 0, angle), 2.4f, point(-9, 0, angle), 2.2f, edge);
         stroke(point(-9, 0, angle), 2.2f, point(-27, 2, wingAngle(beat - 0.035f)), 0.55f, edge);
     };
