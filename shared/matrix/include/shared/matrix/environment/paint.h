@@ -90,6 +90,12 @@ void paint_clouds(const Surface &s, const Look &look, float t, float y0, float y
 /// Drifting fog banks over rows [y0, y1); strength from look.fog (plus `base`
 /// for scenes that always have a little mist).
 void paint_fog(const Surface &s, const Look &look, float t, float y0, float y1, float base = 0.0f);
+/// A lone broadleaf tree standing at (x, base), `height` px tall, that shows
+/// the season: blossom in spring, full green in summer, rust and gold with
+/// thinning leaves in autumn, bare branches in winter, snow when it lies.
+/// It sways a little with the wind. `depth` 0..1 as in Look::lit().
+void paint_tree(const Surface &s, const Look &look, float x, float base, float height, uint32_t seed, float t,
+                float depth = 0.0f);
 /// Soft anti-aliased ellipse (blend), handy for scene-specific weather bits.
 void soft_ellipse(const Surface &s, float cx, float cy, float rx, float ry, Rgb c, float alpha);
 

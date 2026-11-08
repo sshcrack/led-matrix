@@ -53,6 +53,76 @@ void soft_ellipse(const Surface &s, float cx, float cy, float rx, float ry, Rgb 
         }
 }
 
+namespace {
+void soft_line(const Surface &s, float ax, float ay, float bx, float by, float r0, float r1, Rgb c)
+{
+    const float len = std::max(std::fabs(bx - ax), std::fabs(by - ay));
+    const int steps = std::max(1, static_cast<int>(len * 1.5f));
+    for (int i = 0; i <= steps; ++i) {
+        const float f = static_cast<float>(i) / steps;
+        const float r = std::max(0.45f, r0 + (r1 - r0) * f);
+        soft_ellipse(s, ax + (bx - ax) * f, ay + (by - ay) * f, r, r, c, 1.0f);
+    }
+}
+}  // namespace
+
+void paint_tree(const Surface &s, const Look &l, float x, float base, float h, uint32_t seed, float t, float depth)
+{
+    const float sway = std::sin(t * 0.9f + seed) * (0.4f + 1.2f * std::fabs(l.wind) + 1.5f * l.storm) * h / 40.0f;
+    const Rgb bark = l.lit({0.30f, 0.22f, 0.16f}, depth), barkDark = l.lit({0.20f, 0.14f, 0.10f}, depth);
+    const Rgb snowC = l.lit({0.94f, 0.95f, 0.99f}, depth);
+    const float topX = x + sway * 0.5f, topY = base - h * 0.52f;
+    soft_line(s, x, base, topX, topY, h * 0.055f, h * 0.035f, bark);
+    // Leaves: thinning in late autumn, none in winter.
+    const float leaves = clamp01(1.0f - l.winter - 0.25f * l.autumn);
+    // Main limbs: spread wide when bare, kept inside the crown when leafy.
+    const float reach = 1.0f - 0.38f * clamp01(leaves * 1.6f);
+    struct Limb { float ax, ay, bx, by; };
+    Limb limbs[6];
+    for (int i = 0; i < 6; ++i) {
+        const float side = i % 2 ? 1.0f : -1.0f;
+        const float spread = (0.20f + 0.16f * hash01(seed * 7u + i)) * h * side;
+        const float up = (0.30f + 0.18f * hash01(seed * 11u + i)) * h;
+        const float startY = topY + h * (0.10f - 0.04f * i);
+        limbs[i] = {topX, startY, topX + (spread + sway) * reach, startY - up * reach};
+        soft_line(s, limbs[i].ax, limbs[i].ay, limbs[i].bx, limbs[i].by, h * 0.028f, h * 0.010f, i % 3 ? bark : barkDark);
+    }
+    if (leaves < 0.6f)
+        for (const auto &b : limbs)  // twigs and snow on the bare crown
+            for (int j = 0; j < 3; ++j) {
+                const float f = 0.45f + 0.25f * j;
+                const float px = b.ax + (b.bx - b.ax) * f, py = b.ay + (b.by - b.ay) * f;
+                const float dir = (j % 2 ? 1.0f : -1.0f) * h * 0.07f;
+                soft_line(s, px, py, px + dir, py - h * 0.08f, h * 0.008f, h * 0.004f, barkDark);
+                if (l.snow_cover > 0.05f)
+                    s.blend(static_cast<int>(px), static_cast<int>(py) - 1, snowC, l.snow_cover * 0.8f);
+            }
+    if (leaves <= 0.02f)
+        return;
+    const Rgb leaf = l.lit(l.foliage({0.24f, 0.44f, 0.16f}), depth);
+    const Rgb leafLight = l.lit(l.foliage({0.40f, 0.60f, 0.22f}), depth), leafDark = l.lit(l.foliage({0.12f, 0.26f, 0.10f}), depth);
+    const float cx = topX, cy = base - h * 0.70f, R = h * 0.34f;
+    const float lightSide = l.sun_x < 0.5f ? -1.0f : 1.0f;
+    for (int i = 0; i < 11; ++i) {
+        const float a = kTau * hash01(seed * 13u + i), r = R * (0.25f + 0.6f * hash01(seed * 17u + i));
+        const float bx = cx + std::cos(a) * r * 1.15f + sway * 0.6f, by = cy + std::sin(a) * r * 0.75f;
+        const float br = R * (0.42f + 0.22f * hash01(seed * 19u + i));
+        soft_ellipse(s, bx, by + br * 0.18f, br, br * 0.85f, leafDark, leaves);
+        soft_ellipse(s, bx, by, br * 0.92f, br * 0.78f, leaf, leaves);
+        soft_ellipse(s, bx + lightSide * br * 0.30f, by - br * 0.28f, br * 0.45f, br * 0.36f, leafLight, leaves * 0.8f);
+        if (l.snow_cover > 0.05f)
+            soft_ellipse(s, bx, by - br * 0.62f, br * 0.6f, br * 0.22f, snowC, l.snow_cover * 0.75f);
+    }
+    // Spring blossom.
+    if (l.spring > 0.05f)
+        for (int i = 0; i < 46; ++i) {
+            const float a = kTau * hash01(seed * 23u + i), r = R * 1.05f * std::sqrt(hash01(seed * 29u + i));
+            const Rgb c = hash01(seed * 31u + i) < 0.5f ? Rgb{1.0f, 0.78f, 0.86f} : Rgb{1.0f, 0.95f, 0.97f};
+            s.blend(static_cast<int>(cx + std::cos(a) * r * 1.15f + sway * 0.6f), static_cast<int>(cy + std::sin(a) * r * 0.8f),
+                    l.lit(c, depth), l.spring * 0.9f);
+        }
+}
+
 void paint_sky(const Surface &s, const Look &l, float horizon_y)
 {
     const int rows = std::min(s.h, static_cast<int>(std::ceil(horizon_y)));
@@ -209,8 +279,10 @@ void paint_fog(const Surface &s, const Look &l, float t, float y0, float y1, flo
     for (int x = 0; x < s.w; ++x) wave[static_cast<std::size_t>(x)] = std::sin(x * 0.055f + t * 0.22f);
     for (int y = a; y < b; ++y) {
         const float v = (y - y0) / span;
-        // Thicker towards the bottom of the band, soft top edge.
-        const float profile = clamp01(v * 2.2f) * (0.65f + 0.35f * v) * (1.0f - 0.55f * clamp01((v - 0.7f) / 0.3f));
+        // Densest in the distance just under the top of the band, thinning
+        // towards the viewer so the foreground keeps its contrast (depth).
+        const float near = clamp01((v - 0.25f) / 0.75f);
+        const float profile = clamp01(v * 4.0f) * (1.0f - 0.62f * near * near * (3.0f - 2.0f * near));
         const float row = std::sin(y * 0.23f - t * 0.13f);
         for (int x = 0; x < s.w; ++x) {
             const float n = 0.5f + 0.5f * wave[static_cast<std::size_t>(x)] * row;
@@ -233,7 +305,7 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
     std::uniform_real_distribution<float> u(0.0f, 1.0f);
     const float rain = l.rain, snow = l.snow;
     // Spawn rate in particles per second for the whole panel.
-    const float rate = (rain * 400.0f + snow * 130.0f) * k;
+    const float rate = (rain * 320.0f + snow * 120.0f) * k;
     carry_ = rate > 0.0f ? carry_ + rate * dt : 0.0f;
     while (carry_ >= 1.0f) {
         carry_ -= 1.0f;
@@ -251,9 +323,9 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
             d.vx = l.wind * 14.0f * k;
             d.size = u(rng_) < 0.25f ? 1.0f : 0.55f;
         } else {
-            d.vy = (95.0f + 40.0f * u(rng_)) * k;
+            d.size = 0.15f + 0.85f * u(rng_);  // depth: near drops fall faster
+            d.vy = (70.0f + 70.0f * d.size) * k;
             d.vx = l.wind * 40.0f * k;
-            d.size = 0.5f + 0.5f * u(rng_);
         }
         d.life = u(rng_) * kTau;  // snow sway phase
         drops_.push_back(d);
@@ -305,14 +377,16 @@ void Precipitation::draw(const Surface &s, const Look &l) const
             }
             continue;
         }
-        // Rain streak along its velocity, fading towards the tail.
-        const float len = (3.0f + 3.0f * d.size) * k;
+        // Rain streak along its velocity, fading towards the tail. size is
+        // depth: most drops are far, faint and short, a few near ones bright.
+        const float near = d.size * d.size;
+        const float len = (2.0f + 4.0f * near) * k;
         const float vlen = std::sqrt(d.vx * d.vx + d.vy * d.vy);
         const float ux = d.vx / vlen, uy = d.vy / vlen;
         const int steps = static_cast<int>(len) + 1;
         for (int i = 0; i < steps; ++i) {
             const float f = static_cast<float>(i) / steps;
-            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.20f + 0.18f * d.size) * (1.0f - f));
+            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.07f + 0.30f * near) * (1.0f - f));
         }
     }
 }

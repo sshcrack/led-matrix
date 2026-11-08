@@ -103,7 +103,10 @@ bool RidgeTrailScene::render(rgb_matrix::FrameCanvas* canvas)
             const float wx = i * spacing + h * 3 * k;
             const float x = wx - midScroll;
             const float base = midBase - hill(wx, 3.7f) * midAmp + 2 * k;
-            pine(cv_, x, base, (6 + 6 * h) * k, pineCol);
+            if (h > 0.86f)  // now and then a broadleaf tree that shows the season
+                Environment::paint_tree(surface(), L, x, base, (10 + 6 * h) * k, static_cast<uint32_t>(i) * 31u, t_, 0.38f);
+            else
+                pine(cv_, x, base, (6 + 6 * h) * k, pineCol);
         }
     }
 
@@ -245,6 +248,9 @@ SummitNightScene::SummitNightScene()
     Environment::Adapt adapt;
     adapt.time = false;
     adapt.season_variants = {Environment::Season::Winter};
+    // Fog and thunderstorms would bury the aurora the scene is about.
+    adapt.weather_allowed = {Environment::Weather::Clear, Environment::Weather::PartlyCloudy, Environment::Weather::Overcast,
+                             Environment::Weather::Drizzle, Environment::Weather::Rain, Environment::Weather::Snow};
     use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
 }
 

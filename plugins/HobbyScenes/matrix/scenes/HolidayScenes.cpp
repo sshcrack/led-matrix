@@ -1,5 +1,7 @@
 #include "HolidayScenes.h"
 
+#include <vector>
+
 #include "SceneryDraw.h"
 
 using namespace Hobbies;
@@ -322,7 +324,10 @@ Scenes::SceneDescriptor ChristmasMarketScene::get_descriptor() const
 // ================================================================ sleigh night
 ChristmasSleighScene::ChristmasSleighScene()
 {
-    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Winter, std::nullopt, std::nullopt}, winter_night());
+    // Thick fog would hide the sleigh and the village it flies over.
+    auto adapt = winter_night();
+    std::erase(adapt.weather_allowed, Environment::Weather::Fog);
+    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Winter, std::nullopt, std::nullopt}, adapt);
 }
 
 void ChristmasSleighScene::initialize(int width, int height)

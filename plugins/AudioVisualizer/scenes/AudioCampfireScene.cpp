@@ -96,14 +96,20 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < FireW; ++x) {
             const float u = (x + 0.5f) / FireW * 2.0f - 1.0f;
             const float bell = std::exp(-u * u * 3.0f);
-            heat_[static_cast<size_t>((FireH - 1) * FireW + x)] = std::clamp(drive * bell * (0.75f + 0.5f * rnd()), 0.0f, 1.2f);
+            // Slowly wandering hot spots along the base grow into tongues.
+            const float tongues = 0.55f + 0.45f * std::sin(x * 0.45f + time_ * 2.3f) * std::sin(x * 0.17f - time_ * 1.3f);
+            heat_[static_cast<size_t>((FireH - 1) * FireW + x)] =
+                std::clamp(drive * bell * (0.55f + 0.6f * tongues + 0.25f * rnd()), 0.0f, 1.2f);
         }
         for (int y = 0; y < FireH - 1; ++y)
             for (int x = 0; x < FireW; ++x) {
                 const float r = rnd();
-                const int sx = std::clamp(x + static_cast<int>(std::round((r - 0.5f) * 2.0f + wind * r)), 0, FireW - 1);
-                const float below = heat_[static_cast<size_t>((y + 1) * FireW + sx)];
-                heat_[static_cast<size_t>(y * FireW + x)] = std::max(0.0f, below - decay * (0.4f + 1.2f * rnd()));
+                const int sx = std::clamp(x + static_cast<int>(std::round((r - 0.5f) * 1.2f + wind * r)), 1, FireW - 2);
+                // Average the three cells below: heat rises as connected
+                // tongues instead of per-cell horizontal streaks.
+                const float* row = &heat_[static_cast<size_t>((y + 1) * FireW)];
+                const float below = (row[sx - 1] + 2.0f * row[sx] + row[sx + 1]) * 0.25f;
+                heat_[static_cast<size_t>(y * FireW + x)] = std::max(0.0f, below - decay * (0.55f + 0.9f * rnd()));
             }
     }
     float fireMass = 0.0f;

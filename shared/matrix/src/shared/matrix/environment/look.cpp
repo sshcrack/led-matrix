@@ -19,8 +19,8 @@ struct SkyKey {
 // Sky and light by sun elevation, clear weather. Tuned on the LED panel:
 // night keeps enough blue to read silhouettes, twilight is rose then gold.
 constexpr std::array<SkyKey, 7> kSky{{
-    {-18.0f, {0.010f, 0.016f, 0.055f}, {0.035f, 0.050f, 0.130f}, {0.17f, 0.20f, 0.36f}, {0.0f, 0.0f, 0.0f}},
-    {-9.0f, {0.030f, 0.045f, 0.160f}, {0.200f, 0.150f, 0.330f}, {0.24f, 0.24f, 0.42f}, {0.6f, 0.3f, 0.3f}},
+    {-18.0f, {0.010f, 0.016f, 0.055f}, {0.035f, 0.050f, 0.130f}, {0.23f, 0.27f, 0.47f}, {0.0f, 0.0f, 0.0f}},
+    {-9.0f, {0.030f, 0.045f, 0.160f}, {0.200f, 0.150f, 0.330f}, {0.30f, 0.30f, 0.50f}, {0.6f, 0.3f, 0.3f}},
     {-3.0f, {0.110f, 0.140f, 0.380f}, {0.900f, 0.420f, 0.380f}, {0.52f, 0.40f, 0.50f}, {1.0f, 0.45f, 0.25f}},
     {2.0f, {0.210f, 0.300f, 0.560f}, {1.000f, 0.620f, 0.380f}, {0.92f, 0.66f, 0.52f}, {1.0f, 0.62f, 0.30f}},
     {8.0f, {0.250f, 0.420f, 0.760f}, {0.960f, 0.800f, 0.640f}, {1.00f, 0.86f, 0.74f}, {1.0f, 0.86f, 0.62f}},
@@ -147,7 +147,6 @@ std::shared_ptr<Plugins::Property<Plugins::EnumProperty<E>>> enum_prop(const cha
 }
 
 float ease(float current, float target, float k) { return current + (target - current) * k; }
-Rgb ease(Rgb a, Rgb b, float k) { return mix(a, b, k); }
 } // namespace
 
 Rgb mix(Rgb a, Rgb b, float t)
@@ -238,7 +237,7 @@ void derive_palette(Look &l)
     l.horizon = mix(horizonClear, greyH, grey) * dim;
     l.ambient = desaturate(mix(k.ambient, k.ambient * Rgb{0.95f, 0.92f, 1.04f}, dawn), 0.35f * l.overcast) * dim;
     // Moonlight lifts the night a touch.
-    l.ambient = l.ambient + Rgb{0.04f, 0.05f, 0.09f} * l.moon_light;
+    l.ambient = l.ambient + Rgb{0.07f, 0.08f, 0.13f} * l.moon_light;
     // Winter light is a little colder.
     l.ambient = mix(l.ambient, l.ambient * Rgb{0.94f, 0.97f, 1.06f}, l.winter);
     l.sun_color = k.sun;

@@ -131,6 +131,18 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < cv_.w; ++x)
             if (y > seaBottom + 2.0f * k - hill(x + scroll_ * 0.45f, 3.3f) * 2.0f * k)
                 cv_.set(x, y, scale(verge, 0.9f + 0.12f * hash01(static_cast<uint32_t>(y * 977 + static_cast<int>(x + scroll_ * 0.8f)))));
+    // Roadside trees on the verge: they carry the season (blossom, autumn
+    // gold, bare winter branches).
+    {
+        const float par = 0.8f, spacing = 46.0f * k, sc = scroll_ * par;
+        for (int i = static_cast<int>(std::floor((sc - 20 * k) / spacing)); i * spacing < sc + W + 20 * k; ++i) {
+            const uint32_t id = static_cast<uint32_t>(i) * 2654435761u;
+            if (hash01(id) < 0.3f)
+                continue;
+            const float x = i * spacing + hash01(id + 1) * 14 * k - sc;
+            Environment::paint_tree(surface(), L, x, roadTop - 1.0f * k, (20.0f + 8.0f * hash01(id + 2)) * k, id % 97u, t_, 0.25f);
+        }
+    }
     // Asphalt: wet roads darken and mirror the sky.
     const Rgb asphalt = lit({0.26f, 0.26f, 0.28f});
     for (int y = static_cast<int>(roadTop); y < static_cast<int>(roadBot); ++y) {
@@ -176,6 +188,9 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
         cv_.capsule(g.x, g.y, 0.35f * k, g.x + 2.4f * k, g.y - flap, 0.3f * k, gc);
     }
     std::erase_if(gulls_, [&](const Gull& g) { return g.x < -10 * k; });
+
+    // Fog over the coast, before the rider so he stays crisp in front of it.
+    Environment::paint_fog(surface(), L, t_, horizon - 8 * k, H, 0.0f);
 
     // ---- the cyclist ----
     const float bk = 1.35f * k;  // rider scale
@@ -260,7 +275,6 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
                 cv_.set(x, y, lit(hash01(static_cast<uint32_t>(wx)) < 0.5f ? Rgb{1.0f, 0.85f, 0.3f} : Rgb{0.95f, 0.45f, 0.6f}));
         }
 
-    Environment::paint_fog(surface(), L, t_, horizon - 8 * k, H, 0.0f);
     paint_weather(rdt, horizon, [&](float) { return H * (0.70f + 0.28f * rnd()); });
     present(canvas);
     wait_until_next_frame();
@@ -393,6 +407,9 @@ bool SkiingScene::render(rgb_matrix::FrameCanvas* canvas)
         cv_.glow(x + 1 * k, g - 19 * k, 18 * k, {1.0f, 0.92f, 0.75f}, 0.25f * L.lamp());
     }
 
+    // Fog over the slope, before the skier so they stay crisp in front of it.
+    Environment::paint_fog(surface(), L, t_, horizon - 10 * k, H, 0.0f);
+
     // Skier: carving down with the occasional hop over a roller.
     nextJump_ -= dt;
     if (jumpT_ < 0.0f && (nextJump_ <= 0.0f || audio_.dropHit)) {
@@ -453,7 +470,6 @@ bool SkiingScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     std::erase_if(spray_, [&](const Flake& f) { return f.life > 0.8f || f.y > ground(f.x) + 1; });
 
-    Environment::paint_fog(surface(), L, t_, horizon - 10 * k, H, 0.0f);
     paint_weather(rdt, horizon, [&](float x) { return ground(x); });
     present(canvas);
     wait_until_next_frame();

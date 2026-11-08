@@ -30,7 +30,11 @@ bool SunsetGallopScene::render(rgb_matrix::FrameCanvas* canvas)
     const Rgb snowDusk{0.62f, 0.50f, 0.62f};
     auto land = [&](Rgb c, float exposure) { return mix(c, scale(snowDusk, 0.4f + 2.0f * (c.r + c.g + c.b) / 3.0f), L.snow_cover * exposure); };
 
-    fill_gradient(sky({0.10f, 0.08f, 0.30f}), sky({0.85f, 0.32f, 0.22f}), sky({1.0f, 0.70f, 0.30f}), 0.62f);
+    // Under cloud the sunset still glows in a band along the horizon, so the
+    // dark silhouette keeps a bright backdrop.
+    auto skyLow = [&](Rgb c) { return mix(c, scale({0.62f, 0.50f, 0.58f}, 0.25f + 0.55f * (c.r + c.g + c.b) / 3.0f), grey * 0.35f); };
+    fill_gradient(sky({0.10f, 0.08f, 0.30f}), mix(sky({0.85f, 0.32f, 0.22f}), skyLow({0.85f, 0.32f, 0.22f}), 0.5f),
+                  skyLow({1.0f, 0.70f, 0.30f}), 0.62f);
     // Sun with glow low on the horizon; hidden behind rain clouds.
     const float sunVis = std::clamp(1.0f - 1.2f * L.overcast + 0.4f * L.fog, 0.0f, 1.0f) * (1.0f - L.rain);
     const float sx = W * 0.68f, sy = H * 0.58f, sr = 15.0f * k;
@@ -162,6 +166,9 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < cv_.w; ++x) cv_.blend(x, y, mix(meadowFar, meadowNear, g), 1.0f);
     }
 
+    // Two meadow trees that carry the season.
+    Environment::paint_tree(surface(), L, W * 0.86f, H * 0.76f, 30.0f * k, 5, t_, 0.30f);
+    Environment::paint_tree(surface(), L, W * 0.10f, H * 0.74f, 18.0f * k, 9, t_, 0.45f);
     // Mixed coats (bay, grey, chestnut, white, black, dun) keep the herd apart
     // from the meadow in every season and light.
     static const Rgb coats[] = {{0.36f, 0.22f, 0.14f}, {0.62f, 0.62f, 0.64f}, {0.52f, 0.28f, 0.14f},

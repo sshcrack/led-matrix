@@ -55,7 +55,8 @@ struct Defaults {
     Season season = Season::Summer;
     /// Fine-tune the designed sun (degrees, 0..1 across the view) when the
     /// coarse time of day is not exact enough, e.g. a mid-morning scene.
-    std::optional<float> sun_elevation, sun_x;
+    std::optional<float> sun_elevation = std::nullopt;
+    std::optional<float> sun_x = std::nullopt;
 };
 
 /// Which aspects a scene follows. An aspect that is off gets no property and

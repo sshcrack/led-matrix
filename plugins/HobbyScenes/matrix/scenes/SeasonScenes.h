@@ -60,6 +60,11 @@ class CottageScene final : public HobbySceneBase {
         float x, y, vx, vy, life;
         int hue;
     };
+    struct Burst {
+        float x, y, life;
+        int hue;
+    };
+    std::vector<Burst> flashes_;
     std::vector<Puff> smoke_;
     std::vector<Spark> sparks_;
     std::vector<float> backdrop_;

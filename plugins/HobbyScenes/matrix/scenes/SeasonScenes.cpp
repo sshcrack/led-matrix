@@ -344,6 +344,7 @@ void CottageScene::initialize(int width, int height)
     backdrop_.clear();
     smoke_.clear();
     sparks_.clear();
+    flashes_.clear();
     drift_.reset();
     nextFirework_ = 1.5f;
 }
@@ -390,7 +391,7 @@ void CottageScene::build_backdrop()
     const float light = L.sun_x < 0.5f ? -1.0f : 1.0f;
     const Rgb snow = lit({0.92f, 0.94f, 0.98f}, 0.1f);
     broadleaf(bg, 104 * k, 98 * k, 42 * k, plant({0.30f, 0.48f, 0.18f}, 0.1f, 0.0f, 1.0f), lit({0.30f, 0.22f, 0.16f}), L.winter * 0.95f,
-              71, light, snow, L.snow_cover);
+              71, light, snow, L.snow_cover, L.spring);
 
     // Chimney (behind the roof edge), roof with tile rows, half-timbered walls.
     const Rgb stone = terrain({0.52f, 0.44f, 0.40f}, 0.0f, 0.0f);
@@ -476,11 +477,12 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
     if (decorated("new_years_eve") && L.night > 0.4f) {
         nextFirework_ -= rdt;
         if (nextFirework_ <= 0.0f) {
-            nextFirework_ = 1.2f + rnd() * 2.0f;
-            const float fx = (0.15f + 0.7f * rnd()) * W, fy = (0.12f + 0.25f * rnd()) * H;
+            nextFirework_ = 0.7f + rnd() * 1.2f;
+            const float fx = (0.15f + 0.7f * rnd()) * W, fy = (0.12f + 0.22f * rnd()) * H;
             const int hue = static_cast<int>(rnd() * 4.0f);
-            for (int i = 0; i < 26; ++i) {
-                const float a = kTau * i / 26.0f, v = (9.0f + 5.0f * rnd()) * k;
+            flashes_.push_back({fx, fy, 1.0f, hue});
+            for (int i = 0; i < 40; ++i) {
+                const float a = kTau * i / 40.0f, v = (15.0f + 7.0f * rnd()) * k;
                 sparks_.push_back({fx, fy, std::cos(a) * v, std::sin(a) * v, 1.6f, hue});
             }
         }
@@ -492,8 +494,15 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
         p.vx *= std::exp(-rdt * 0.8f);
         p.x += p.vx * rdt;
         p.y += p.vy * rdt;
-        cv_.add(static_cast<int>(p.x), static_cast<int>(p.y), fwCols[p.hue], std::clamp(p.life, 0.0f, 1.0f));
+        const float a = std::clamp(p.life, 0.0f, 1.0f);
+        cv_.add(static_cast<int>(p.x), static_cast<int>(p.y), mix(fwCols[p.hue], {1, 1, 1}, 0.3f * a), a);
+        cv_.add(static_cast<int>(p.x - p.vx * 0.06f), static_cast<int>(p.y - p.vy * 0.06f), fwCols[p.hue], a * 0.5f);
     }
+    for (auto& f : flashes_) {  // bloom where a shell bursts
+        f.life -= rdt * 2.5f;
+        cv_.glow(f.x, f.y, 14 * k, fwCols[f.hue], 0.35f * std::max(0.0f, f.life));
+    }
+    std::erase_if(flashes_, [](const Burst& f) { return f.life <= 0.0f; });
     std::erase_if(sparks_, [&](const Spark& p) { return p.life <= 0.0f || p.y > horizon_; });
 
     // Chimney smoke: more when it is cold, drifting with the wind.
@@ -528,6 +537,24 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int i = 0; i < 4 && bloom > 0.2f; ++i)
             cv_.blend(static_cast<int>((wx + 1 + i * 2) * k), static_cast<int>(91 * k),
                       lit(i % 2 ? Rgb{0.95f, 0.30f, 0.35f} : Rgb{1.0f, 0.80f, 0.30f}), bloom);
+    }
+    // Flower bed along the front wall: tulips in spring, tall hollyhocks and
+    // roses in summer, a few late asters in autumn.
+    const float bed = (L.spring + L.summer + 0.5f * L.autumn) * (1.0f - L.snow_cover);
+    if (bed > 0.1f) {
+        static const Rgb blooms[] = {{0.95f, 0.25f, 0.30f}, {1.0f, 0.80f, 0.25f}, {0.95f, 0.55f, 0.75f}, {0.70f, 0.45f, 0.95f}, {1.0f, 0.95f, 0.90f}};
+        const float tall = 2.5f + 5.0f * L.summer;
+        for (int i = 0; i < 13; ++i) {
+            const float fx = 24.5f + i * 3.9f;
+            if (fx > 42.0f && fx < 54.0f)
+                continue;  // the door
+            const float h = tall * (0.7f + 0.3f * hash01(static_cast<uint32_t>(i) * 7u + 1u));
+            cv_.capsule(fx * k, 100 * k, 0.3f * k, fx * k, (100 - h) * k, 0.25f * k, lit({0.20f, 0.40f, 0.16f}), bed);
+            const Rgb c = lit(blooms[(i + (L.autumn > 0.5f ? 3 : 0)) % 5]);
+            cv_.ellipse(fx * k, (100 - h) * k, 1.0f * k, 1.1f * k, 0, c, bed);
+            if (L.summer > 0.5f)
+                cv_.ellipse(fx * k, (100 - h * 0.6f) * k, 0.8f * k, 0.8f * k, 0, c, bed * 0.9f);
+        }
     }
     // Small gable window under the ridge.
     Environment::paint_window(s, L, static_cast<int>(46 * k), static_cast<int>(64 * k), static_cast<int>(4 * k), static_cast<int>(5 * k), 9, t_);
@@ -604,7 +631,21 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
     if (decorated("easter")) {
         static const Rgb eggs[] = {{0.95f, 0.45f, 0.55f}, {0.45f, 0.70f, 0.98f}, {0.98f, 0.85f, 0.30f}, {0.55f, 0.90f, 0.50f}, {0.80f, 0.55f, 0.95f}};
         const float pos[][2] = {{8, 118}, {22, 122}, {70, 119}, {88, 124}, {116, 117}, {62, 125}};
-        for (int i = 0; i < 6; ++i) cv_.ellipse(pos[i][0] * k, pos[i][1] * k, 1.2f * k, 1.6f * k, 0, lit(eggs[i % 5]));
+        for (int i = 0; i < 6; ++i) {
+            const Rgb c = lit(eggs[i % 5]);
+            cv_.ellipse(pos[i][0] * k, pos[i][1] * k, 2.0f * k, 2.6f * k, 0, c);
+            cv_.capsule((pos[i][0] - 1.6f) * k, pos[i][1] * k, 0.4f * k, (pos[i][0] + 1.6f) * k, pos[i][1] * k, 0.4f * k,
+                        lit({1.0f, 1.0f, 1.0f}), 0.8f);  // a painted band
+        }
+        // A rabbit sitting on the lawn, ears up, now and then twitching.
+        const Rgb fur = subject({0.72f, 0.62f, 0.52f}), furLight = subject({0.92f, 0.88f, 0.82f});
+        const float bx = 98 * k, by = 122 * k, twitch = std::sin(t_ * 1.3f) > 0.92f ? 1.0f * k : 0.0f;
+        cv_.ellipse(bx, by, 4.2f * k, 3.2f * k, 0, fur);
+        cv_.ellipse(bx + 3.6f * k, by - 3.2f * k, 2.2f * k, 2.0f * k, 0, fur);
+        cv_.capsule(bx + 3.0f * k, by - 5 * k, 0.6f * k, bx + 2.4f * k - twitch, by - 10 * k, 0.5f * k, fur);
+        cv_.capsule(bx + 4.4f * k, by - 5 * k, 0.6f * k, bx + 5.2f * k, by - 10 * k + twitch, 0.5f * k, fur);
+        cv_.ellipse(bx - 4.0f * k, by - 0.6f * k, 1.3f * k, 1.3f * k, 0, furLight);  // tail
+        cv_.set(static_cast<int>(bx + 4.6f * k), static_cast<int>(by - 3.6f * k), {0.05f, 0.04f, 0.04f});
     }
 
     const auto groundAt = [&](float x) { return H * (0.76f + 0.22f * ground_hash(x)); };

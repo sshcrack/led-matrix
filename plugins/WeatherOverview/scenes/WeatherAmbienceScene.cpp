@@ -82,12 +82,18 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
     const Rgb nearCol = L.lit(L.ground(L.grass({0.20f, 0.32f, 0.18f}), 1.0f), 0.1f);
     for (int x = 0; x < matrix_width; ++x) {
         const float f = far(x + 0.5f), g = ground(x + 0.5f);
+        // The top pixel of each ridge is blended by coverage: smooth hill lines.
         for (int y = std::max(0, static_cast<int>(f)); y < std::min(matrix_height, static_cast<int>(g)); ++y)
-            s.blend(x, y, farCol, 1.0f);
+            s.blend(x, y, farCol, y == static_cast<int>(f) ? 1.0f - (f - std::floor(f)) : 1.0f);
         for (int y = std::max(0, static_cast<int>(g)); y < matrix_height; ++y)
-            s.blend(x, y, Environment::mix(nearCol, nearCol * 0.6f, (y - g) / std::max(1.0f, H - g)), 1.0f);
+            s.blend(x, y, Environment::mix(nearCol, nearCol * 0.6f, (y - g) / std::max(1.0f, H - g)),
+                    y == static_cast<int>(g) ? 1.0f - (g - std::floor(g)) : 1.0f);
     }
+    // A small tree on the far hills, then the fog, then a lone tree on the
+    // near hill that shows the season and leans in the wind.
+    Environment::paint_tree(s, L, W * 0.20f, far(W * 0.20f) + 1.0f, 15.0f * k, 3, time_, 0.6f);
     Environment::paint_fog(s, L, time_, H * 0.40f, H);
+    Environment::paint_tree(s, L, W * 0.76f, ground(W * 0.76f) + 1.5f * k, 44.0f * k, 7, time_, 0.05f);
 
     const float quality = render_quality_scale();
     precip_.set_max(static_cast<int>(particle_limit_->get() * (0.40f + 0.60f * quality) * (0.4f + 0.1f * intensity_->get())));
