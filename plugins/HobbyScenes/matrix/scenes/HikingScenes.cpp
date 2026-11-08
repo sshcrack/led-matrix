@@ -151,10 +151,23 @@ bool RidgeTrailScene::render(rgb_matrix::FrameCanvas* canvas)
     const float phase = fract(walk_);
     const Pose pose = walk_pose(phase, 0.40f + 0.06f * audio_.bass * am, lean);
     const FigureOut out = figure(cv_, hx + 2.0f * k, groundAt(hx + 2.0f * k) + 0.6f * k, s, 1.0f, pose, look);
-    // Pole: plants ahead once per cycle and trails behind until the next plant.
-    const float poleU = fract(phase + 0.25f);
-    const float tipX = hx + (9.0f - 16.0f * poleU) * k;
-    cv_.capsule(out.hand[1].x, out.hand[1].y - 1.0f * k, 0.25f * k, tipX, groundAt(tipX) + 1.0f * k, 0.25f * k, {0.70f, 0.72f, 0.78f});
+    // Pole: planted when the near arm is forward (phase 0.25), the tip then
+    // stays fixed on the ground while the hiker walks past it, then lifts and
+    // swings forward to the next plant.
+    constexpr float kPlanted = 0.55f;
+    const float poleU = fract(phase - 0.22f);
+    const float travel = kPlanted * 13.0f * s;  // ground covered while planted
+    const float front = hx + 6.0f * k, back = front - travel;
+    float tipX, tipLift = 0.0f;
+    if (poleU < kPlanted)
+        tipX = front - travel * (poleU / kPlanted);
+    else {
+        const float v = (poleU - kPlanted) / (1.0f - kPlanted);
+        tipX = back + (front - back) * smoothstep(0.0f, 1.0f, v);
+        tipLift = std::sin(v * kPi) * 2.5f * k;
+    }
+    cv_.capsule(out.hand[1].x, out.hand[1].y - 1.0f * k, 0.25f * k, tipX, groundAt(tipX) + 1.0f * k - tipLift, 0.25f * k,
+                {0.70f, 0.72f, 0.78f});
 
     present(canvas);
     wait_until_next_frame();
