@@ -183,8 +183,11 @@ Rgb Look::lit(Rgb albedo, float depth) const
 Rgb Look::subject(Rgb albedo) const
 {
     const Rgb c = lit(albedo, 0.0f);
-    const float fill = 0.40f * std::max(night, 0.7f * storm);
-    const Rgb floor{albedo.r * 0.80f * fill, albedo.g * 0.90f * fill, albedo.b * 1.10f * fill};
+    const float dark = std::max(night, 0.7f * storm);
+    const float fill = 0.50f * dark;
+    // A cool moonlit lift as well, so dark coats and clothes keep a shape.
+    const Rgb floor{albedo.r * 0.80f * fill + 0.045f * dark, albedo.g * 0.90f * fill + 0.055f * dark,
+                    albedo.b * 1.10f * fill + 0.085f * dark};
     return {std::max(c.r, floor.r), std::max(c.g, floor.g), std::max(c.b, floor.b)};
 }
 
@@ -225,7 +228,7 @@ void derive_palette(Look &l)
 
     // Weather greys the sky and dims the light; storms most of all.
     const float grey = clamp01(l.overcast * 0.9f + l.fog * 0.35f);
-    const float dim = 1.0f - 0.32f * l.overcast - 0.22f * l.storm - 0.08f * l.rain;
+    const float dim = 1.0f - 0.28f * l.overcast - 0.12f * l.storm - 0.06f * l.rain;
     const float zl = luminance(k.zenith), hl = luminance(k.horizon);
     const Rgb greyZ = Rgb{0.86f, 0.90f, 0.98f} * (zl * 0.8f + 0.02f);
     const Rgb greyH = Rgb{0.92f, 0.93f, 0.97f} * (hl * 0.78f + 0.02f);

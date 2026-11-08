@@ -10,6 +10,7 @@ SunsetGallopScene::SunsetGallopScene()
     // Always a sunset; the weather and the season follow reality.
     Environment::Adapt adapt;
     adapt.time = false;
+    adapt.season_variants = {Environment::Season::Winter};  // a backlit silhouette shows no spring or autumn
     use_environment({Environment::TimeOfDay::Dusk, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
 }
 

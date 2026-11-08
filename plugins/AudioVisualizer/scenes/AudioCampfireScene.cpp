@@ -89,7 +89,11 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         sparks_.erase(sparks_.begin(), sparks_.begin() + static_cast<std::ptrdiff_t>(sparks_.size() - 200));
 
     // --- fire simulation (classic heat propagation, two steps per frame) ---
-    const float drive = std::clamp(0.50f + bass * 0.40f + beat_.v * 0.35f + drop_.v * 0.4f, 0.0f, 1.4f);
+    // Smoothed: each step's base row rises through the flame, so a beat-by-beat
+    // drive would show up as horizontal stripes.
+    const float target_drive = std::clamp(0.50f + bass * 0.40f + beat_.v * 0.35f + drop_.v * 0.4f, 0.0f, 1.4f);
+    drive_ += (target_drive - drive_) * (1.0f - std::exp(-dt / 0.45f));
+    const float drive = drive_;
     const float decay = 0.024f / (fireSize_->get() * (0.75f + 0.45f * energy + 0.25f * beat_.v + 0.3f * drop_.v));
     const float wind = std::clamp(audio.feature(AudioProtocol::Feature::StereoBalance), -1.0f, 1.0f) * 0.6f + std::sin(time_ * 0.7f) * 0.3f;
     for (int step = 0; step < 2; ++step) {

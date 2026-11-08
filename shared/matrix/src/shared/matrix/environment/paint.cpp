@@ -305,7 +305,7 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
     std::uniform_real_distribution<float> u(0.0f, 1.0f);
     const float rain = l.rain, snow = l.snow;
     // Spawn rate in particles per second for the whole panel.
-    const float rate = (rain * 320.0f + snow * 120.0f) * k;
+    const float rate = (rain * 320.0f + snow * 95.0f) * k;
     carry_ = rate > 0.0f ? carry_ + rate * dt : 0.0f;
     while (carry_ >= 1.0f) {
         carry_ -= 1.0f;
@@ -319,9 +319,10 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
         d.x = (u(rng_) * 1.4f - 0.2f) * width;
         d.y = -2.0f - u(rng_) * 6.0f;
         if (is_snow) {
-            d.vy = (9.0f + 9.0f * u(rng_)) * k;
-            d.vx = l.wind * 14.0f * k;
-            d.size = u(rng_) < 0.25f ? 1.0f : 0.55f;
+            // depth: most flakes are far, small, faint and slow
+            d.size = 0.15f + 0.85f * u(rng_);
+            d.vy = (6.0f + 12.0f * d.size) * k;
+            d.vx = l.wind * (8.0f + 8.0f * d.size) * k;
         } else {
             d.size = 0.15f + 0.85f * u(rng_);  // depth: near drops fall faster
             d.vy = (70.0f + 70.0f * d.size) * k;
@@ -370,10 +371,11 @@ void Precipitation::draw(const Surface &s, const Look &l) const
             continue;
         }
         if (d.snow) {
-            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.45f + 0.40f * d.size);
-            if (d.size > 0.9f) {
-                s.blend(static_cast<int>(d.x) + 1, static_cast<int>(d.y), snow_c, 0.45f);
-                s.blend(static_cast<int>(d.x), static_cast<int>(d.y) + 1, snow_c, 0.45f);
+            const float near = d.size * d.size;
+            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.16f + 0.62f * near);
+            if (d.size > 0.92f) {
+                s.blend(static_cast<int>(d.x) + 1, static_cast<int>(d.y), snow_c, 0.40f);
+                s.blend(static_cast<int>(d.x), static_cast<int>(d.y) + 1, snow_c, 0.40f);
             }
             continue;
         }

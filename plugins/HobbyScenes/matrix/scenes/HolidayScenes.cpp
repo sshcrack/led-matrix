@@ -45,7 +45,10 @@ void gabled_house(Canvas& cv, float x0, float x1, float top, float base, Rgb wal
 // ================================================================ market
 ChristmasMarketScene::ChristmasMarketScene()
 {
-    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Snow, Environment::Season::Winter, std::nullopt, std::nullopt}, winter_night());
+    // Fog only dims the lights here; keep the market clear or snowy.
+    auto adapt = winter_night();
+    std::erase(adapt.weather_allowed, Environment::Weather::Fog);
+    use_environment({Environment::TimeOfDay::Night, Environment::Weather::Snow, Environment::Season::Winter, std::nullopt, std::nullopt}, adapt);
 }
 
 void ChristmasMarketScene::initialize(int width, int height)

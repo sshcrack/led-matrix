@@ -172,6 +172,7 @@ class AudioCampfireScene final : public AmbientMusicScene {
     std::vector<Spark> sparks_;
     AudioKit::Envelope beat_, drop_;
     float glow_ = 0.5f;
+    float drive_ = 0.5f;  // smoothed fire drive: beats would rise as horizontal bands
     PropertyPointer<float> fireSize_ = MAKE_PROPERTY_MINMAX("fire_size", float, 1.0f, 0.5f, 1.6f);
     // Always night; follows the real weather and season (snow, rain, mist).
     std::unique_ptr<Environment::SceneEnvironment> env_;

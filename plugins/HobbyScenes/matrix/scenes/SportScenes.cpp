@@ -503,11 +503,10 @@ void SoccerScene::build_background()
             const bool stripe = static_cast<int>((x - x0_) / (9.6f * k) + 100) % 2 == 0;
             const float dx = (x - cx) / W, dy = (y - cy) / H;
             const float flood = 1.15f - 0.9f * (dx * dx + dy * dy);
-            // Snow lies thick at the edges and is trampled green in the middle
-            // and the goalmouths.
+            // An even blanket, a little thinner where play tramples the middle;
+            // blotchy patches would fight the players for attention.
             const float edge = std::clamp(std::max(std::fabs(dx) * 2.2f, std::fabs(dy) * 2.0f), 0.0f, 1.0f);
-            const float patch = 0.5f + 0.5f * std::sin(x / k * 0.19f + 2.0f * std::sin(y / k * 0.11f)) * std::sin(y / k * 0.16f + x / k * 0.04f);
-            const float cover = L.snow_cover * std::clamp(0.30f + 0.70f * edge + 0.35f * (patch - 0.5f), 0.0f, 0.95f);
+            const float cover = L.snow_cover * (0.80f + 0.12f * edge);
             Rgb c = mix(stripe ? stripeA : stripeB, scale(snow, stripe ? 1.0f : 0.94f), cover);
             bg.set(x, y, scale(c, 1.0f + (flood - 1.0f) * lamp));
         }
