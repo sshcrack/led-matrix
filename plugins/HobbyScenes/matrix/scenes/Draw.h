@@ -102,13 +102,20 @@ public:
     }
     void ellipse(float cx, float cy, float rx, float ry, float angle, Rgb c, float alpha = 1.0f)
     {
-        const float rm = std::max(rx, ry) + 1.0f;
         const float ca = std::cos(angle), sa = std::sin(angle);
-        for (int y = std::max(0, static_cast<int>(cy - rm)); y <= std::min(h - 1, static_cast<int>(cy + rm)); ++y)
-            for (int x = std::max(0, static_cast<int>(cx - rm)); x <= std::min(w - 1, static_cast<int>(cx + rm)); ++x) {
+        // Bounds of the rotated ellipse (not a square), plus the AA fringe.
+        const float ex = std::sqrt(rx * rx * ca * ca + ry * ry * sa * sa) + 1.0f;
+        const float ey = std::sqrt(rx * rx * sa * sa + ry * ry * ca * ca) + 1.0f;
+        const float rmin = std::min(rx, ry);
+        const float outer = (1.0f + 0.5f / rmin) * (1.0f + 0.5f / rmin);  // (u²+v²) beyond the fringe
+        for (int y = std::max(0, static_cast<int>(cy - ey)); y <= std::min(h - 1, static_cast<int>(cy + ey)); ++y)
+            for (int x = std::max(0, static_cast<int>(cx - ex)); x <= std::min(w - 1, static_cast<int>(cx + ex)); ++x) {
                 const float qx = x + 0.5f - cx, qy = y + 0.5f - cy;
                 const float u = (qx * ca + qy * sa) / rx, v = (-qx * sa + qy * ca) / ry;
-                const float d = (std::sqrt(u * u + v * v) - 1.0f) * std::min(rx, ry);
+                const float r2 = u * u + v * v;
+                if (r2 >= outer)
+                    continue;
+                const float d = (std::sqrt(r2) - 1.0f) * rmin;
                 blend(x, y, c, std::clamp(0.5f - d, 0.0f, 1.0f) * alpha);
             }
     }

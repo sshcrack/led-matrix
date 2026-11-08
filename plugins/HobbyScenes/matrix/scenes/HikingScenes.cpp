@@ -390,11 +390,13 @@ void CloudShadowsScene::build_world()
     isLand_.assign(static_cast<size_t>(w * h), 0);
     for (int x = 0; x < w; ++x) {
         const float top = hill_top(x + 0.5f);
-        const float slope = (hill_top(x + 3.0f) - hill_top(x - 3.0f)) / 6.0f;
+        // Wide, smoothed slope: no crease at the peak or in the saddle.
+        const float span = 10.0f * k;
+        const float slope = (hill_top(x + 0.5f + span) - hill_top(x + 0.5f - span)) / (2.0f * span);
         for (int y = std::max(0, static_cast<int>(std::floor(top))); y < h; ++y) {
             const float depth = (y + 0.5f - top) / std::max(1.0f, H - top);
             // Sun from the right: slope shading fades out down the hillside.
-            const float light = 1.0f + std::clamp(slope * 0.8f, -0.3f, 0.25f) * std::exp(-(y + 0.5f - top) / (H * 0.25f));
+            const float light = 1.0f + 0.22f * std::tanh(slope * 2.5f) * std::exp(-(y + 0.5f - top) / (H * 0.3f));
             const float n = hash01(static_cast<uint32_t>(y * w + x) * 747796405u);
             Rgb c = mix({0.46f, 0.72f, 0.28f}, {0.24f, 0.48f, 0.18f}, depth * 0.8f + 0.12f * n);
             c = scale(c, light * (0.94f + 0.08f * n));

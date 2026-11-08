@@ -49,6 +49,8 @@ bool consume(uint64_t current, uint64_t& seen)
 void AudioPulse::update(bool enabled, float strength, float dt)
 {
     beatHit = onsetHit = dropHit = false;
+    // Strength 0 switches audio off completely, discrete events included.
+    enabled = enabled && strength > 0.01f;
     const auto a = enabled ? AudioState::snapshot() : AudioState::Snapshot{};
     const bool fresh = enabled && a.fresh() && !(a.flags & AudioProtocol::Silent);
     // Fade in over ~1 s, out over ~2 s, so music starting/stopping eases in.

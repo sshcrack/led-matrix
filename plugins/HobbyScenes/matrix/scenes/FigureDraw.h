@@ -81,9 +81,9 @@ inline FigureOut figure(Canvas& cv, float x, float ground, float s, float facing
     FigureOut out;
     const Point hip{x, ground - (drop + 0.5f + lift) * s};
     out.hip = hip;
-    const Point td = dir(kPi + p.lean);  // torso points up, tilted forward
+    const Point td = dir(kPi - p.lean);  // torso points up, tilted forward
     const Point shoulder{hip.x + td.x * kTorso * s, hip.y + td.y * kTorso * s};
-    const Point hd = dir(kPi + p.lean * 0.6f);
+    const Point hd = dir(kPi - p.lean * 0.6f);
     out.head = {shoulder.x + hd.x * (kHeadR + 0.6f) * s, shoulder.y + hd.y * (kHeadR + 0.6f) * s};
 
     auto seg = [&](Point a, float ang, float len) -> Point {
@@ -115,7 +115,7 @@ inline FigureOut figure(Canvas& cv, float x, float ground, float s, float facing
     arm(0);
     leg(0);
     if (look.backpack) {
-        const Point back = seg({hip.x + td.x * kTorso * 0.55f * s, hip.y + td.y * kTorso * 0.55f * s}, -kPi / 2 + p.lean, 1.6f);
+        const Point back = seg({hip.x + td.x * kTorso * 0.55f * s, hip.y + td.y * kTorso * 0.55f * s}, -kPi / 2 - p.lean, 1.6f);
         cv.ellipse(back.x, back.y, 1.6f * s, 3.0f * s, p.lean * facing, look.pack);
     }
     cap(hip, 1.25f, shoulder, 1.45f, look.shirt);

@@ -112,6 +112,10 @@ void BasketballScene::release(float handX, float handY)
     bvx_ = (tx - bx_) / flightDur_;
     bvy_ = (ty - by_ - 0.5f * c.gravity * flightDur_ * flightDur_) / flightDur_;
     flightT_ = 0.0f;
+    shotX0_ = bx_;
+    shotY0_ = by_;
+    shotVx0_ = bvx_;
+    shotVy0_ = bvy_;
     for (auto& p : trail_) p = {bx_, by_};
 }
 
@@ -267,12 +271,22 @@ bool BasketballScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
     else {
-        bvy_ += c.gravity * dt;
-        bx_ += bvx_ * dt;
-        by_ += bvy_ * dt;
+        if (state_ == State::Flight) {
+            // Evaluate the arc analytically so the ball reaches exactly the
+            // rim point release() aimed at, whatever the frame rate or speed.
+            flightT_ = std::min(flightT_ + dt, flightDur_);
+            bx_ = shotX0_ + shotVx0_ * flightT_;
+            by_ = shotY0_ + shotVy0_ * flightT_ + 0.5f * c.gravity * flightT_ * flightT_;
+            bvx_ = shotVx0_;
+            bvy_ = shotVy0_ + c.gravity * flightT_;
+        }
+        else {
+            bvy_ += c.gravity * dt;
+            bx_ += bvx_ * dt;
+            by_ += bvy_ * dt;
+        }
         spin_ += (bvx_ >= 0 ? 1.0f : -1.0f) * rdt * 7.0f;
         if (state_ == State::Flight) {
-            flightT_ += dt;
             if (flightT_ >= flightDur_) {
                 if (make_) {
                     bvx_ *= 0.08f;
@@ -558,7 +572,7 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     if (ball_ == Ball::Held) {
         holdT_ += dt;
         const bool onBeat = audio_.bpm > 0.0f && am > 0.3f;
-        const bool ready = onBeat ? (audio_.beatHit && holdT_ > 0.7f && (rnd() < 0.6f || holdT_ > 2.5f)) : holdT_ > holdMin_;
+        const bool ready = onBeat ? ((audio_.beatHit && holdT_ > 0.7f && rnd() < 0.6f) || holdT_ > 2.5f) : holdT_ > holdMin_;
         if (ready || (forceShot_ && holdT_ > 0.3f)) {
             decide();
             holdMin_ = 1.0f + rnd() * 1.6f;
@@ -672,13 +686,18 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     // ---- stands: crowd with a travelling wave and camera flashes
     wave_ += dt * (0.12f + 0.25f * audio_.level * am);
     const float waveX = fract(wave_) * (W + 40 * k) - 20 * k;
+    waveWeight_.resize(static_cast<size_t>(cv_.w));
+    for (int x = 0; x < cv_.w; ++x) {
+        const float u = (x - waveX) / (7 * k);
+        waveWeight_[static_cast<size_t>(x)] = std::exp(-u * u);
+    }
     auto crowd = [&](int y0, int y1) {
         for (int y = y0; y < y1; ++y)
             for (int x = (y & 1); x < cv_.w; x += 2) {
                 const uint32_t id = static_cast<uint32_t>(y * 977 + x * 131);
                 const float hsh = hash01(id);
                 Rgb c = hsh < 0.35f ? Rgb{0.85f, 0.20f, 0.18f} : hsh < 0.7f ? Rgb{0.25f, 0.40f, 0.90f} : Rgb{0.70f, 0.66f, 0.60f};
-                const float w = std::exp(-std::pow((x - waveX) / (7 * k), 2.0f));
+                const float w = waveWeight_[static_cast<size_t>(x)];
                 const float bounce = 0.18f + 0.10f * hash01(id + 9) + 0.55f * w + 0.30f * audio_.beat * am * hash01(id + 3);
                 cv_.blend(x, y, scale(c, std::min(1.0f, bounce)), 0.9f);
             }
