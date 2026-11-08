@@ -148,12 +148,19 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         const float lit = std::clamp(1.0f - std::fabs(tx - W * 0.5f) / (W * 0.55f), 0.0f, 1.0f) * glow_;
         for (int y = static_cast<int>(base - th); y < static_cast<int>(base); ++y) {
             const float k = (y - (base - th)) / th;
-            const float half = tw * k * (0.75f + 0.25f * std::sin(k * 18.0f));
-            // Snow rests on the upper edge of each bough.
-            const float boughTop = std::clamp(0.5f + 0.5f * std::sin(k * 18.0f + 1.6f), 0.0f, 1.0f);
+            // Each tree has its own bough spacing, so snow lines do not align
+            // into stripes across the forest.
+            const float phase = hash(t * 5 + 3) * 6.28f, freq = 15.0f + hash(t * 11 + 4) * 6.0f;
+            const float half = tw * k * (0.75f + 0.25f * std::sin(k * freq + phase));
+            // Snow rests on the upper, outer edge of each bough.
+            const float boughTop = std::clamp(0.5f + 0.5f * std::sin(k * freq + phase + 1.6f), 0.0f, 1.0f);
             const RGB snowy = RGB{38, 42, 54} + RGB{90, 45, 18} * (lit * 0.45f);
-            for (int x = static_cast<int>(tx - half); x <= static_cast<int>(tx + half); ++x)
-                buf_.set(x, y, lerp(RGB{3, 8, 6} + RGB{60, 25, 8} * (lit * k * 0.35f), snowy, cover * boughTop * 0.85f));
+            for (int x = static_cast<int>(tx - half); x <= static_cast<int>(tx + half); ++x) {
+                const float edge = std::clamp((std::fabs(x + 0.5f - tx) / std::max(half, 1.0f) - 0.2f) * 1.6f, 0.0f, 1.0f);
+                const float flake = 0.65f + 0.35f * hash(x * 7 + y * 13 + t);
+                buf_.set(x, y, lerp(RGB{3, 8, 6} + RGB{60, 25, 8} * (lit * k * 0.35f), snowy,
+                                    cover * boughTop * edge * flake * 0.9f));
+            }
         }
     }
 
@@ -161,7 +168,7 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     for (int y = groundY; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const float d = AudioKit::len((x + 0.5f - W * 0.5f) * 0.55f, (y - groundY) * 1.6f);
-            const float light = glow_ * std::exp(-d / 22.0f);
+            const float light = glow_ * (0.8f * std::exp(-d / 22.0f) + 0.2f * std::exp(-d / 55.0f));
             // Bare earth (wet and darker in rain), or snow that reflects the
             // firelight further.
             const RGB earth = lerp(RGB{8, 7, 6}, RGB{5, 5, 5}, L.wetness);
@@ -176,6 +183,8 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         buf_.disc(sx, sy, 2.2f, RGB{55, 48, 44} + RGB{140, 60, 15} * (glow_ * 0.5f), false);
     }
 
+    // Mist sits in front of the trees and ground; the fire glows through it.
+    Environment::paint_fog(surf, L, time_, groundY - 30.0f, static_cast<float>(H));
     // --- flames -----------------------------------------------------------
     for (int y = 0; y < FireH; ++y)
         for (int x = 0; x < FireW; ++x) {
@@ -210,7 +219,6 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     std::erase_if(sparks_, [](const Spark& s) { return s.life >= s.maxLife; });
 
     // --- weather ----------------------------------------------------------
-    Environment::paint_fog(surf, L, time_, groundY - 30.0f, static_cast<float>(H));
     precip_.set_max(static_cast<int>(260 * render_quality_scale()));
     const float gy = static_cast<float>(groundY);
     precip_.update(dt, L, W, H, [gy](float) { return gy + 6.0f; });

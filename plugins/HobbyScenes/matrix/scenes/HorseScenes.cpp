@@ -188,9 +188,14 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
         if (m.x < -30 * k)
             m.x = W + 30 * k;
         const float gy = H * (0.69f + 0.24f * m.depth);
-        const float haze = 1.0f - m.depth;  // distant horses fade into mist
-        const Rgb body = mix(subject(coats[coat]), mistCol, haze * 0.70f);
-        const Rgb mane = mix(subject(manes[coat]), mistCol, haze * 0.65f);
+        // Distant horses fade into the mist, less so in the dark where the
+        // mist is dark too and would swallow them.
+        const float dark = std::max(L.night, 0.7f * L.storm);
+        const float haze = (1.0f - m.depth) * (1.0f - 0.45f * dark);
+        // Moonlight picks out coats as silvery shapes; black stays a dark grey.
+        const Rgb moon{0.60f, 0.62f, 0.70f};
+        const Rgb body = mix(subject(mix(coats[coat], moon, 0.35f * dark)), mistCol, haze * 0.70f);
+        const Rgb mane = mix(subject(mix(manes[coat], moon, 0.20f * dark)), mistCol, haze * 0.65f);
         horse(cv_, m.x, gy, scale, static_cast<float>(m.dir), m.phase, m.graze ? Gait::Graze : Gait::Walk, body, mane);
     }
     mist_band(H * 0.90f, 0.20f, 0.5f, 2.0f);

@@ -115,7 +115,11 @@ bool RidgeTrailScene::render(rgb_matrix::FrameCanvas* canvas)
     const float nearScroll = scroll_;
     auto groundAt = [&](float x) { return H * 0.86f - hill((x + nearScroll) * 0.55f, 7.0f) * 15 * k; };
     const Rgb edgeC = meadow({0.52f, 0.62f, 0.26f});
-    const Rgb pathC = terrain(mix({0.66f, 0.50f, 0.34f}, {0.36f, 0.28f, 0.22f}, L.wetness), 0.0f, 0.85f);
+    // The trodden path keeps little snow, and moonlight picks it out at night.
+    Rgb pathC = terrain(mix({0.66f, 0.50f, 0.34f}, {0.36f, 0.28f, 0.22f}, L.wetness), 0.0f, 0.35f);
+    const float moonlit = std::max(L.night, 0.6f * L.storm);
+    pathC = {pathC.r + 0.10f * moonlit, pathC.g + 0.10f * moonlit, pathC.b + 0.13f * moonlit};
+    const Rgb pathEdge = scale(pathC, 1.25f);
     const Rgb grassTop = meadow({0.34f, 0.48f, 0.20f}), grassDeep = meadow({0.16f, 0.26f, 0.12f}, 0.0f, 0.9f);
     for (int x = 0; x < cv_.w; ++x) {
         const float top = groundAt(x + 0.5f);
@@ -125,7 +129,9 @@ bool RidgeTrailScene::render(rgb_matrix::FrameCanvas* canvas)
             Rgb c;
             if (d < 1.2f)
                 c = edgeC;
-            else if (d > 2.0f * k && d < 4.6f * k)
+            else if (d > 1.8f * k && d < 2.8f * k)
+                c = pathEdge;  // the worn upper edge catches the light
+            else if (d >= 2.8f * k && d < 6.6f * k)
                 c = pathC;
             else
                 c = mix(grassTop, grassDeep, d / (H * 0.3f));

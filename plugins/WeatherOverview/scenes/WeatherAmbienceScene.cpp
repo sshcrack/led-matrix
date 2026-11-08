@@ -83,7 +83,9 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
     for (int x = 0; x < matrix_width; ++x) {
         const float f = far(x + 0.5f), g = ground(x + 0.5f);
         // The top pixel of each ridge is blended by coverage: smooth hill lines.
-        for (int y = std::max(0, static_cast<int>(f)); y < std::min(matrix_height, static_cast<int>(g)); ++y)
+        // Down to and including the near hill's blended top pixel, so no sky
+        // shows through between the two.
+        for (int y = std::max(0, static_cast<int>(f)); y <= std::min(matrix_height - 1, static_cast<int>(g)); ++y)
             s.blend(x, y, farCol, y == static_cast<int>(f) ? 1.0f - (f - std::floor(f)) : 1.0f);
         for (int y = std::max(0, static_cast<int>(g)); y < matrix_height; ++y)
             s.blend(x, y, Environment::mix(nearCol, nearCol * 0.6f, (y - g) / std::max(1.0f, H - g)),

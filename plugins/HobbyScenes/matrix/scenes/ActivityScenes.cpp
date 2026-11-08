@@ -203,7 +203,9 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
     const Point seat{cx - 3.6f * bk, groundY - wheelR - 8.0f * bk}, headTube{cx + 5.0f * bk, groundY - wheelR - 7.6f * bk};
     // Contact shadow.
     cv_.ellipse(cx, groundY + 0.5f * bk, 12 * bk, 1.0f * bk, 0, lit({0.10f, 0.10f, 0.12f}), 0.4f);
-    const Rgb tire = subject({0.08f, 0.08f, 0.09f}), spokes = subject({0.75f, 0.75f, 0.78f});
+    // Reflective sidewalls catch the light at night, so the wheels stay round.
+    const Rgb tire = subject(mix({0.08f, 0.08f, 0.09f}, {0.42f, 0.44f, 0.50f}, 0.6f * std::max(env().night, 0.7f * env().storm)));
+    const Rgb spokes = subject({0.75f, 0.75f, 0.78f});
     const bool rainGear = L.rain > 0.3f || L.storm > 0.2f;
     const Rgb frame = subject({0.15f, 0.55f, 0.75f});
     const Rgb jersey = subject(rainGear ? Rgb{0.98f, 0.82f, 0.10f} : L.winter > 0.5f ? Rgb{0.55f, 0.12f, 0.16f} : Rgb{0.90f, 0.30f, 0.20f});
