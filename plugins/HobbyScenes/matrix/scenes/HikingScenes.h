@@ -10,10 +10,11 @@
 //                         valley. The lantern breathes with the bass, village
 //                         lights twinkle with the treble, aurora follows the
 //                         mids, drops send shooting stars.
-//   hike_cloud_shadows  - a green hill at midday with a switchback trail; small
-//                         hikers climb it, sheep graze and cloud shadows sweep
-//                         across. Clouds drift faster with the energy, sheep
-//                         hop on beats.
+//   hike_alpine_lake    - a hiker rests on a boulder by a still mountain lake;
+//                         snowy peaks and pines mirror in the water, mist
+//                         drifts and now and then a skipped stone leaves rings.
+//                         Treble shimmers the reflection, beats bring fish
+//                         rings, drops make the hiker skip a stone.
 
 #include <vector>
 
@@ -55,30 +56,26 @@ public:
     [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
 };
 
-class CloudShadowsScene final : public AudioHobbyScene {
-    struct Walker {
-        float s, speed, phase, rest;
-        Rgb jacket;
+class AlpineLakeScene final : public AudioHobbyScene {
+    struct Ripple {
+        float x, y, r, life;
     };
-    struct Sheep {
-        float x, y, dir, phase, hop;
+    struct Stone {
+        std::vector<Point> hops;  // touchdown points, first is the hand
+        float t = -1.0f;          // position along hops (segment index + fraction); <0 idle
     };
-    std::vector<Point> trail_;     // switchback polyline, bottom to top
-    std::vector<float> trailLen_;  // cumulative length
-    std::vector<Walker> walkers_;
-    float summitS_ = 0.0f;
-    std::vector<Sheep> sheep_;
-    std::vector<float> ground_;    // cached lit landscape
-    std::vector<uint8_t> isLand_;  // 1 where cloud shadows may fall
-    float drift_ = 0.0f;
-    void build_world();
-    [[nodiscard]] Point trail_at(float s) const;
-    [[nodiscard]] float hill_top(float x) const;
+    std::vector<float> backdrop_;  // sky, peaks and far shore above the waterline
+    std::vector<Ripple> ripples_;
+    Stone stone_;
+    float throwT_ = -1.0f, nextThrow_ = 14.0f, mist_ = 0.0f, nextFish_ = 5.0f;
+    float horizon_ = 0.0f;
+    void build_backdrop();
+    void start_throw();
 
 public:
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
-    [[nodiscard]] std::string get_name() const override { return "hike_cloud_shadows"; }
+    [[nodiscard]] std::string get_name() const override { return "hike_alpine_lake"; }
     [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
 };
 

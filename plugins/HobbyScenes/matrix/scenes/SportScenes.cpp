@@ -742,15 +742,26 @@ bool SoccerScene::render(rgb_matrix::FrameCanvas* canvas)
     // ---- draw players and the ball
     static constexpr Rgb kShirt[] = {{0.90f, 0.18f, 0.16f}, {0.20f, 0.45f, 0.95f}};
     static constexpr Rgb kKeeper[] = {{0.98f, 0.85f, 0.15f}, {0.25f, 0.85f, 0.35f}};
+    // The keeper facing a shot that will be saved dives across the goal.
+    const int shooterTeam = players_[static_cast<size_t>(holder_)].team;
+    const float dive = ball_ == Ball::Shot && !goal_ ? smoothstep(0.45f, 0.9f, ballT_) : 0.0f;
     for (const auto& p : players_) {
         const Rgb shirt = p.keeper ? kKeeper[p.team] : kShirt[p.team];
-        const float legs = std::sin(p.stride * kPi) * 1.0f * k;
+        const float legs = std::sin(p.stride * kPi) * 1.2f * k;
         const float face = p.team == 0 ? 1.0f : -1.0f;
-        cv_.ellipse(p.pos.x + 0.9f * k, p.pos.y + 1.1f * k, 1.8f * k, 1.1f * k, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
-        cv_.capsule(p.pos.x - face * 0.4f * k, p.pos.y - 0.7f * k, 0.45f * k, p.pos.x + legs, p.pos.y - 0.7f * k, 0.45f * k, {0.1f, 0.1f, 0.12f});
-        cv_.capsule(p.pos.x - face * 0.4f * k, p.pos.y + 0.7f * k, 0.45f * k, p.pos.x - legs, p.pos.y + 0.7f * k, 0.45f * k, {0.1f, 0.1f, 0.12f});
-        cv_.ellipse(p.pos.x, p.pos.y, 1.25f * k, 1.7f * k, 0, shirt);
-        cv_.ellipse(p.pos.x, p.pos.y, 0.8f * k, 0.8f * k, 0, {0.20f, 0.13f, 0.09f});
+        if (p.keeper && p.team != shooterTeam && dive > 0.0f) {
+            const float dir = to_.y >= p.pos.y ? 1.0f : -1.0f;
+            const float cy2 = p.pos.y + dir * 1.5f * k * dive;
+            cv_.ellipse(p.pos.x + 0.9f * k, cy2 + 1.1f * k, 1.6f * k, (2.0f + 1.8f * dive) * k, 0, {0.02f, 0.08f, 0.03f}, 0.45f);
+            cv_.ellipse(p.pos.x, cy2, 1.3f * k, (2.0f + 1.8f * dive) * k, 0, shirt);  // stretched full length
+            cv_.ellipse(p.pos.x, cy2 + dir * (2.6f * dive) * k, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
+            continue;
+        }
+        cv_.ellipse(p.pos.x + 1.0f * k, p.pos.y + 1.2f * k, 2.1f * k, 1.3f * k, 0.3f, {0.02f, 0.08f, 0.03f}, 0.45f);
+        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y - 0.8f * k, 0.5f * k, p.pos.x + legs, p.pos.y - 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
+        cv_.capsule(p.pos.x - face * 0.5f * k, p.pos.y + 0.8f * k, 0.5f * k, p.pos.x - legs, p.pos.y + 0.8f * k, 0.5f * k, {0.1f, 0.1f, 0.12f});
+        cv_.ellipse(p.pos.x, p.pos.y, 1.5f * k, 2.05f * k, 0, shirt);
+        cv_.ellipse(p.pos.x, p.pos.y, 0.95f * k, 0.95f * k, 0, {0.20f, 0.13f, 0.09f});
     }
     // Ball: lofted a little on long passes and shots, with a ground shadow.
     float hgt = 0.0f;
