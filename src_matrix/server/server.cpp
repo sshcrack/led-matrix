@@ -17,6 +17,7 @@
 #include "custom_assets_management.h"
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
+#include "environment_routes.h"
 
 using namespace std;
 using namespace restinio;
@@ -36,6 +37,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
     router = add_scene_lab_routes(std::move(router));
     router = add_custom_assets_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
+    router = add_environment_routes(std::move(router));
     router = add_post_processing_routes(std::move(router));
     router = add_update_routes(std::move(router), Constants::global_update_manager.get());
     router = add_other_routes(std::move(router));

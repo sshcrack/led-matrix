@@ -92,8 +92,10 @@ namespace ConfigData {
             {"brightness_schedule", p.brightness_schedule},
             {"operation_mode", p.operation_mode},
             {"automatic_director_seed", p.automatic_director_seed},
+            {"automatic_director_mode", p.automatic_director_mode},
             {"automatic_preferences", p.automatic_preferences},
             {"update_settings", p.update_settings},
+            {"environment", p.environment},
             {"turned_off", p.turned_off.load()}
         };
     }
@@ -131,8 +133,16 @@ namespace ConfigData {
         p.operation_mode = j.value("operation_mode", std::string("automatic"));
         if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
         p.automatic_director_seed = j.value("automatic_director_seed", std::uint64_t{0});
+        p.automatic_director_mode = j.contains("automatic_director_mode") && j.at("automatic_director_mode").is_string()
+            ? j.at("automatic_director_mode").get<std::string>() : std::string("mixed");
+        if (p.automatic_director_mode != "mixed" && p.automatic_director_mode != "environment"
+            && p.automatic_director_mode != "party" && p.automatic_director_mode != "chill")
+            p.automatic_director_mode = "mixed";
         p.automatic_preferences = j.value("automatic_preferences", std::map<string, string>());
         p.update_settings = j.value("update_settings", UpdateSettings());
+        p.environment = j.contains("environment") && j.at("environment").is_object()
+            ? j.at("environment").get<Environment::Settings>()
+            : Environment::Settings{};
     }
 
     void to_json(json &j, const BrightnessSchedule &p) {

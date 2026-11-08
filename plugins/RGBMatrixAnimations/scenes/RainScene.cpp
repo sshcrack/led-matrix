@@ -220,7 +220,7 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const {
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "particle-rain";
-    d.tags = {"ambient", "particles", "rain", "flow"};
+    d.tags = {"ambient", "particles", "rain", "fits:rain", "fits:storm", "fits:cloudy", "flow"};
     d.intensity = 0.54f; d.motion = 0.70f; d.music_affinity = 0.22f; d.performance_cost = 0.68f;
     d.variants = {
         {"mist", "Light particle rain", "Sparse relaxed rain with a lower simulation budget",

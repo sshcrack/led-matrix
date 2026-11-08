@@ -7,6 +7,7 @@
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
+#include <shared/matrix/environment/settings.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -102,11 +103,14 @@ namespace ConfigData
         std::atomic<bool> turned_off;
         string operation_mode = "automatic";
         std::uint64_t automatic_director_seed = 0;
+        /// "mixed" | "environment" | "party" | "chill" (what Automatic Mode is for).
+        string automatic_director_mode = "mixed";
         /// Look key ("scene" or "scene/variant") -> "favorite" | "on" | "hidden".
         /// Absent keys follow the look's automatic_default.
         map<string, string> automatic_preferences;
         string curr;
         UpdateSettings update_settings;
+        Environment::Settings environment;
 
         // Custom move assignment operator to handle atomic<bool>
         Root &operator=(Root &&other) noexcept
@@ -123,9 +127,11 @@ namespace ConfigData
                 turned_off.store(other.turned_off.load());
                 operation_mode = std::move(other.operation_mode);
                 automatic_director_seed = other.automatic_director_seed;
+                automatic_director_mode = std::move(other.automatic_director_mode);
                 automatic_preferences = std::move(other.automatic_preferences);
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
+                environment = std::move(other.environment);
             }
             return *this;
         }
@@ -142,9 +148,11 @@ namespace ConfigData
               turned_off(other.turned_off.load()),
               operation_mode(std::move(other.operation_mode)),
               automatic_director_seed(other.automatic_director_seed),
+              automatic_director_mode(std::move(other.automatic_director_mode)),
               automatic_preferences(std::move(other.automatic_preferences)),
               curr(std::move(other.curr)),
-              update_settings(std::move(other.update_settings))
+              update_settings(std::move(other.update_settings)),
+              environment(std::move(other.environment))
         {
         }
 

@@ -19,6 +19,7 @@
 #include "shared/matrix/config/MainConfig.h"
 #include "matrix-factory.h"
 #include "server/server.h"
+#include "shared/matrix/environment/service.h"
 #include "server/live_frame_ws.h"
 #include "server/request_guard.h"
 #include "udp.h"
@@ -276,6 +277,14 @@ Daemon::Daemon(int argc, char* argv[])
     update_manager_->check_and_handle_update_completion();
 
     // -------------------------------------------------------------------
+    // 9b. Real-world environment (location, weather, overrides) for scenes
+    // -------------------------------------------------------------------
+    Environment::Service::instance().start(config_->get_environment(), [cfg = config_.get()](const Environment::Settings &s) {
+        cfg->set_environment(s);
+        cfg->save();
+    });
+
+    // -------------------------------------------------------------------
     // 10. Plugin before-server init + register effects / transitions
     // -------------------------------------------------------------------
     for (const auto &item : PluginManager::instance()->get_plugins()) {
@@ -424,6 +433,10 @@ void Daemon::shutdown(bool persist_config) noexcept
     // UdpServer owns a worker thread; resetting it joins that worker first.
     try { udp_server_.reset(); }
     catch (...) { error("UDP shutdown failed"); }
+
+    // Its persist callback writes the config; stop it while config_ lives.
+    try { Environment::Service::instance().stop(); }
+    catch (...) { error("Stopping environment service failed"); }
 
     auto *pl = PluginManager::instance();
     try {

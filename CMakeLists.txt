@@ -219,6 +219,7 @@ else()
         src_matrix/server/scene_management.cpp
         src_matrix/server/scene_lab.cpp
         src_matrix/server/schedule_management.cpp
+        src_matrix/server/environment_routes.cpp
         src_matrix/server/server.cpp
         src_matrix/server/update_routes.cpp
         src_matrix/udp.cpp
@@ -799,6 +800,14 @@ if(ENABLE_EMULATOR)
     target_link_libraries(brightness_schedule_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
     add_test(NAME brightness_schedule_smoke COMMAND $<TARGET_FILE:brightness_schedule_smoke>)
     set_tests_properties(brightness_schedule_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(environment_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/environment_smoke.cpp
+    )
+    target_compile_features(environment_smoke PRIVATE cxx_std_23)
+    target_link_libraries(environment_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME environment_smoke COMMAND $<TARGET_FILE:environment_smoke>)
+    set_tests_properties(environment_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(update_release_parse_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_release_parse_smoke.cpp

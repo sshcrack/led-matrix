@@ -17,10 +17,31 @@ RGB fire_palette(float h)
 }
 }  // namespace
 
+AudioCampfireScene::AudioCampfireScene()
+{
+    Environment::Adapt adapt;
+    adapt.time = false;  // a campfire scene is a night scene
+    adapt.weather_allowed = {Environment::Weather::Clear,   Environment::Weather::PartlyCloudy,
+                             Environment::Weather::Overcast, Environment::Weather::Fog,
+                             Environment::Weather::Drizzle,  Environment::Weather::Rain,
+                             Environment::Weather::Snow};
+    env_ = std::make_unique<Environment::SceneEnvironment>(
+        Environment::Defaults{Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer},
+        adapt);
+}
+
 void AudioCampfireScene::register_properties()
 {
     add_property(sensitivity_);
     add_property(fireSize_);
+    for (const auto& p : env_->properties()) add_property(p);
+}
+
+void AudioCampfireScene::initialize(int width, int height)
+{
+    AmbientMusicScene::initialize(width, height);
+    precip_.reset();
+    env_->snap();
 }
 
 bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
@@ -31,6 +52,9 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     if (!begin_frame(audio, dt))
         return false;
     const int W = matrix_width, H = matrix_height;
+    const auto& L = env_->update(dt);
+    const Environment::Surface surf{&buf_.px[0].r, W, H, 255.0f};
+    const float cover = L.snow_cover;
     if (heat_.empty())
         heat_.assign(static_cast<size_t>(FireW * FireH), 0.0f);
     spectrum_.update(audio, dt, 0.05f, 0.30f);
@@ -87,16 +111,22 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     glow_ += (fireMass * 3.0f - glow_) * (1.0f - std::exp(-dt / 0.08f));
 
     // --- sky, stars, treeline ------------------------------------------
+    // Overcast and fog turn the starry sky into a low grey ceiling that
+    // catches a little warm firelight near the horizon.
+    const float grey = std::clamp(L.overcast * 0.9f + L.fog * 0.6f, 0.0f, 1.0f);
     for (int y = 0; y < groundY; ++y) {
         const float t = static_cast<float>(y) / groundY;
-        const RGB c = lerp(RGB{3, 4, 16}, RGB{16, 14, 40}, t);
+        RGB c = lerp(lerp(RGB{3, 4, 16}, RGB{16, 14, 40}, t), lerp(RGB{9, 9, 13}, RGB{24, 19, 22}, t), grey);
+        c = c + RGB{30, 12, 4} * (grey * glow_ * t * t * 0.5f);
         for (int x = 0; x < W; ++x) buf_.at(x, y) = c;
     }
+    Environment::paint_clouds(surf, L, time_, 0.0f, groundY * 0.45f);
     const float treble = spectrum_.band(0.65f, 1.0f);
-    for (int i = 0; i < 80; ++i) {
+    const float starsVisible = std::clamp(1.0f - L.clouds * 0.7f - grey * 1.2f, 0.0f, 1.0f);
+    for (int i = 0; starsVisible > 0.02f && i < 80; ++i) {
         const int sx = static_cast<int>(hash(i * 3 + 7) * W), sy = static_cast<int>(hash(i * 19 + 1) * groundY * 0.55f);
         const float tw = 0.35f + 0.65f * std::fabs(std::sin(time_ * (0.5f + hash(i) * 1.8f) + i));
-        buf_.add(sx, sy, RGB{150, 150, 185} * (tw * (0.4f + treble * 0.7f)));
+        buf_.add(sx, sy, RGB{150, 150, 185} * (tw * (0.4f + treble * 0.7f) * starsVisible));
     }
     // Pine silhouettes, lit faintly from below by the fire.
     for (int t = 0; t < 14; ++t) {
@@ -108,8 +138,11 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = static_cast<int>(base - th); y < static_cast<int>(base); ++y) {
             const float k = (y - (base - th)) / th;
             const float half = tw * k * (0.75f + 0.25f * std::sin(k * 18.0f));
+            // Snow rests on the upper edge of each bough.
+            const float boughTop = std::clamp(0.5f + 0.5f * std::sin(k * 18.0f + 1.6f), 0.0f, 1.0f);
+            const RGB snowy = RGB{38, 42, 54} + RGB{90, 45, 18} * (lit * 0.45f);
             for (int x = static_cast<int>(tx - half); x <= static_cast<int>(tx + half); ++x)
-                buf_.set(x, y, RGB{3, 8, 6} + RGB{60, 25, 8} * (lit * k * 0.35f));
+                buf_.set(x, y, lerp(RGB{3, 8, 6} + RGB{60, 25, 8} * (lit * k * 0.35f), snowy, cover * boughTop * 0.85f));
         }
     }
 
@@ -118,7 +151,11 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < W; ++x) {
             const float d = AudioKit::len((x + 0.5f - W * 0.5f) * 0.55f, (y - groundY) * 1.6f);
             const float light = glow_ * std::exp(-d / 22.0f);
-            buf_.at(x, y) = RGB{8, 7, 6} + RGB{170, 70, 18} * light;
+            // Bare earth (wet and darker in rain), or snow that reflects the
+            // firelight further.
+            const RGB earth = lerp(RGB{8, 7, 6}, RGB{5, 5, 5}, L.wetness);
+            const RGB snow = RGB{30, 33, 44};
+            buf_.at(x, y) = lerp(earth, snow, cover) + RGB{170, 70, 18} * (light * (1.0f + 0.6f * cover));
         }
     // Stone ring.
     for (int s = 0; s < 9; ++s) {
@@ -161,6 +198,24 @@ bool AudioCampfireScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     std::erase_if(sparks_, [](const Spark& s) { return s.life >= s.maxLife; });
 
+    // --- weather ----------------------------------------------------------
+    Environment::paint_fog(surf, L, time_, groundY - 30.0f, static_cast<float>(H));
+    precip_.set_max(static_cast<int>(260 * render_quality_scale()));
+    const float gy = static_cast<float>(groundY);
+    precip_.update(dt, L, W, H, [gy](float) { return gy + 6.0f; });
+    precip_.draw(surf, L);
+    // Flakes and drops near the flames catch their light.
+    if (L.rain + L.snow > 0.05f)
+        for (int y = 0; y < groundY + 4; ++y)
+            for (int x = W / 2 - 34; x < W / 2 + 34; ++x) {
+                if (!buf_.inside(x, y))
+                    continue;
+                RGB& p = buf_.at(x, y);
+                const float d = AudioKit::len((x - W * 0.5f) / 34.0f, (y - groundY) / 60.0f);
+                const float k = std::clamp(1.0f - d, 0.0f, 1.0f) * glow_ * 0.25f;
+                p = RGB{p.r * (1.0f + k * 0.9f), p.g * (1.0f + k * 0.35f), p.b * (1.0f - k * 0.3f)};
+            }
+
     buf_.blit(canvas);
     return true;
 }
@@ -170,11 +225,12 @@ SceneDescriptor AudioCampfireScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "campfire";
-    d.tags = {"music", "fire", "nature", "night", "audio-reactive", "music-showcase", "calm", "organic", "style:acoustic", "style:rock", "style:chill", "drop-reactive"};
+    d.tags = {"music", "fire", "nature", "night", "fits:dusk", "fits:night", "audio-reactive", "music-showcase", "calm", "organic", "style:acoustic", "style:rock", "style:chill", "drop-reactive"};
     d.intensity = 0.42f;
     d.motion = 0.50f;
     d.music_affinity = 0.9f;
     d.performance_cost = 0.35f;
+    env_->add_variants(d);
     return d;
 }
 }  // namespace Scenes

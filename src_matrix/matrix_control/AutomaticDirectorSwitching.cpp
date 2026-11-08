@@ -116,14 +116,14 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     // musical phrase instead of mid-phrase. Media scenes follow the track.
     if (planned_ms > 0 && elapsed_ms >= planned_ms) {
         const bool phrase_boundary = section_event || drop_event;
-        const bool wait_for_phrase = context.audio_active && presentation_role(current_profile) != "media";
+        const bool wait_for_phrase = music_led(context) && presentation_role(current_profile) != "media";
         if (!wait_for_phrase || phrase_boundary || elapsed_ms >= planned_ms + phrase_grace_ms)
             request(phrase_boundary && wait_for_phrase ? "scene completed on a musical phrase boundary"
                                                        : "planned scene dwell completed");
         return result;
     }
 
-    if (context.audio_active) {
+    if (music_led(context)) {
         // ---- live-music session --------------------------------------------
         const bool current_music = is_music_look(current_profile);
         const bool showcase = has_tag(current_profile.tags, "music-showcase");

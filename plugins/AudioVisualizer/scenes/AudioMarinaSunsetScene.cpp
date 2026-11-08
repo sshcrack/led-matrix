@@ -161,7 +161,7 @@ SceneDescriptor AudioMarinaSunsetScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "marina";
-    d.tags = {"music", "sunset", "sea", "calm", "scenery", "audio-reactive", "beat-driven", "music-showcase", "style:chill",
+    d.tags = {"music", "sunset", "sea", "fits:dawn", "fits:dusk", "calm", "scenery", "audio-reactive", "beat-driven", "music-showcase", "style:chill",
               "style:acoustic"};
     d.intensity = 0.30f;
     d.motion = 0.30f;

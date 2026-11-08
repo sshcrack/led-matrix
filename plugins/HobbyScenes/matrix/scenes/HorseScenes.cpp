@@ -5,45 +5,67 @@
 using namespace Hobbies;
 
 // ---------------------------------------------------------------- sunset gallop
+SunsetGallopScene::SunsetGallopScene()
+{
+    // Always a sunset; the weather and the season follow reality.
+    Environment::Adapt adapt;
+    adapt.time = false;
+    use_environment({Environment::TimeOfDay::Dusk, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
+}
+
 bool SunsetGallopScene::render(rgb_matrix::FrameCanvas* canvas)
 {
     float dt;
     begin_frame(dt);
+    const float rdt = dt / std::max(0.05f, speed_->get());
+    const auto& L = env();
     const float W = static_cast<float>(cv_.w), H = static_cast<float>(cv_.h);
     const float k = W / 128.0f;
     gait_phase_ = std::fmod(gait_phase_ + dt * gallopFrequency, 1.0f);
     scroll_ += dt * (gallopStride * gallopFrequency * 1.55f) * k;
+    // The stylised sunset palette greys out under cloud, and the land turns
+    // a cold dusk blue-white under snow.
+    const float grey = std::clamp(L.overcast * 0.85f + L.fog * 0.4f, 0.0f, 1.0f);
+    auto sky = [&](Rgb c) { return mix(c, scale({0.62f, 0.50f, 0.58f}, 0.25f + 0.55f * (c.r + c.g + c.b) / 3.0f), grey); };
+    const Rgb snowDusk{0.62f, 0.50f, 0.62f};
+    auto land = [&](Rgb c, float exposure) { return mix(c, scale(snowDusk, 0.4f + 2.0f * (c.r + c.g + c.b) / 3.0f), L.snow_cover * exposure); };
 
-    fill_gradient({0.10f, 0.08f, 0.30f}, {0.85f, 0.32f, 0.22f}, {1.0f, 0.70f, 0.30f}, 0.62f);
-    // Sun with glow low on the horizon.
+    fill_gradient(sky({0.10f, 0.08f, 0.30f}), sky({0.85f, 0.32f, 0.22f}), sky({1.0f, 0.70f, 0.30f}), 0.62f);
+    // Sun with glow low on the horizon; hidden behind rain clouds.
+    const float sunVis = std::clamp(1.0f - 1.2f * L.overcast + 0.4f * L.fog, 0.0f, 1.0f) * (1.0f - L.rain);
     const float sx = W * 0.68f, sy = H * 0.58f, sr = 15.0f * k;
     for (int y = 0; y < cv_.h; ++y)
         for (int x = 0; x < cv_.w; ++x) {
             const float dx = x - sx, dy = y - sy;
             const float d = std::sqrt(dx * dx + dy * dy);
             if (d < sr * 3.2f)
-                cv_.add(x, y, {1.0f, 0.55f, 0.2f}, 0.30f * std::pow(1.0f - d / (sr * 3.2f), 2.0f));
+                cv_.add(x, y, {1.0f, 0.55f, 0.2f}, (0.08f + 0.22f * sunVis) * std::pow(1.0f - d / (sr * 3.2f), 2.0f));
         }
-    cv_.ellipse(sx, sy, sr, sr, 0, {1.0f, 0.88f, 0.55f});
-    // A few warm clouds.
+    cv_.ellipse(sx, sy, sr, sr, 0, {1.0f, 0.88f, 0.55f}, sunVis * (1.0f - 0.5f * L.fog));
+    // A few warm clouds, or a heavy deck when it is overcast.
+    if (L.overcast > 0.2f)
+        Environment::paint_clouds(surface(), L, t_, H * 0.02f, H * 0.38f, scroll_ * 0.05f, 9);
     for (int i = 0; i < 3; ++i) {
         const float cx = std::fmod(i * 61.0f * k - scroll_ * 0.05f + W * 4, W + 60 * k) - 30 * k;
-        cv_.ellipse(cx, H * (0.18f + 0.09f * i), 24 * k, 2.2f * k, 0, {0.95f, 0.45f, 0.4f}, 0.55f);
+        cv_.ellipse(cx, H * (0.18f + 0.09f * i), 24 * k, 2.2f * k, 0, sky({0.95f, 0.45f, 0.4f}), 0.55f);
     }
-    hills(cv_, scroll_ * 0.10f, H * 0.78f, 34 * k, 1.0f, {0.50f, 0.20f, 0.30f});
-    hills(cv_, scroll_ * 0.30f, H * 0.88f, 30 * k, 4.0f, {0.28f, 0.10f, 0.22f});
+    hills(cv_, scroll_ * 0.10f, H * 0.78f, 34 * k, 1.0f, land(sky({0.50f, 0.20f, 0.30f}), 0.8f));
+    if (L.fog > 0.05f)
+        Environment::paint_fog(surface(), L, t_, H * 0.55f, H * 0.86f);
+    hills(cv_, scroll_ * 0.30f, H * 0.88f, 30 * k, 4.0f, land({0.28f, 0.10f, 0.22f}, 0.9f));
     // Ground band.
     const float ground = H * 0.86f;
+    const Rgb groundTop = land({0.16f, 0.06f, 0.12f}, 1.0f), groundBottom = land({0.07f, 0.03f, 0.07f}, 1.0f);
     for (int y = static_cast<int>(ground); y < cv_.h; ++y)
         for (int x = 0; x < cv_.w; ++x) {
             const float g = (y - ground) / std::max(1.0f, H - ground);
-            cv_.blend(x, y, mix({0.16f, 0.06f, 0.12f}, {0.07f, 0.03f, 0.07f}, g), 1.0f);
+            cv_.blend(x, y, mix(groundTop, groundBottom, g), 1.0f);
         }
-    // Grass tufts scrolling at ground speed.
+    // Grass tufts scrolling at ground speed (buried in deep snow).
     const float tuftSpacing = 11.0f * k;
     const float tuftOffset = std::fmod(scroll_, tuftSpacing);
     for (float x = -tuftOffset; x < W + tuftSpacing; x += tuftSpacing) {
-        cv_.capsule(x, ground + 1, 0.4f, x - k, ground - 2.5f * k, 0.2f, {0.22f, 0.10f, 0.14f});
+        cv_.capsule(x, ground + 1, 0.4f, x - k, ground - 2.5f * k, 0.2f, {0.22f, 0.10f, 0.14f}, 1.0f - 0.8f * L.snow_cover);
     }
     // Emit dust at actual touchdowns, rather than continuously behind the body.
     const float hx = W * 0.40f, hy = ground + 3.0f * k;
@@ -61,11 +83,14 @@ bool SunsetGallopScene::render(rgb_matrix::FrameCanvas* canvas)
         d.y += d.vy * dt;
         d.vy += 6.0f * dt;
         d.life -= dt * 1.3f;
-        cv_.ellipse(d.x, d.y, 2.0f * k * (1.4f - d.life * 0.4f), 1.4f * k, 0, {0.75f, 0.42f, 0.35f}, std::max(0.0f, d.life) * 0.45f);
+        // Kicked-up snow is white, mud on wet ground does not fly as dust.
+        cv_.ellipse(d.x, d.y, 2.0f * k * (1.4f - d.life * 0.4f), 1.4f * k, 0, land({0.75f, 0.42f, 0.35f}, 1.0f),
+                    std::max(0.0f, d.life) * 0.45f * (1.0f - 0.7f * L.wetness));
     }
     std::erase_if(dust_, [](const Dust& d) { return d.life <= 0.0f; });
 
     horse(cv_, hx, hy, 1.55f * k, 1.0f, gait_phase_, Gait::Gallop, {0.05f, 0.02f, 0.06f}, {0.03f, 0.01f, 0.04f});
+    paint_weather(rdt, H * 0.6f, [&](float) { return ground + 2.0f * k; });
     present(canvas);
     wait_until_next_frame();
     return true;
@@ -75,15 +100,22 @@ Scenes::SceneDescriptor SunsetGallopScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
     d.family = "horses";
-    d.tags = {"horse", "scenery", "sunset", "landscape", "calm"};
+    d.tags = {"horse", "scenery", "sunset", "fits:dawn", "fits:dusk", "landscape", "calm"};
     d.intensity = 0.4f;
     d.motion = 0.7f;
     d.music_affinity = 0.2f;
     d.performance_cost = 0.3f;
+    environment_->add_variants(d);
     return d;
 }
 
 // ---------------------------------------------------------------- misty herd
+MistyHerdScene::MistyHerdScene()
+{
+    // Designed as a soft, low morning sun through mist.
+    use_environment({Environment::TimeOfDay::Dawn, Environment::Weather::Clear, Environment::Season::Summer, 7.0f, 0.28f});
+}
+
 void MistyHerdScene::initialize(int width, int height)
 {
     HobbySceneBase::initialize(width, height);
@@ -100,29 +132,33 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
 {
     float dt;
     begin_frame(dt);
+    const float rdt = dt / std::max(0.05f, speed_->get());
+    const auto& L = env();
     const float W = static_cast<float>(cv_.w), H = static_cast<float>(cv_.h), k = W / 128.0f;
     mist_ += dt * 4.0f;
 
-    fill_gradient({0.45f, 0.58f, 0.72f}, {0.95f, 0.80f, 0.72f}, {0.98f, 0.90f, 0.80f}, 0.55f);
-    // Pale sun disc.
-    cv_.ellipse(W * 0.28f, H * 0.34f, 9 * k, 9 * k, 0, {1.0f, 0.95f, 0.82f}, 0.9f);
-    hills(cv_, 10.0f, H * 0.62f, 28 * k, 2.0f, {0.62f, 0.66f, 0.74f});
-    hills(cv_, 70.0f, H * 0.72f, 26 * k, 5.0f, {0.48f, 0.55f, 0.58f});
+    const float horizon = H * 0.66f;
+    paint_sky_layers(horizon, 0.0f, 9.0f, 0.05f, 0.40f);
+    hills(cv_, 10.0f, H * 0.62f, 28 * k, 2.0f, terrain({0.56f, 0.62f, 0.72f}, 0.85f, 0.8f));
+    hills(cv_, 70.0f, H * 0.72f, 26 * k, 5.0f, plant({0.40f, 0.52f, 0.50f}, 0.6f, 0.8f, 0.6f));
 
+    // Mist is the point of this scene: always some, thick in real fog.
+    const Rgb mistCol = mix(lit({0.96f, 0.92f, 0.88f}, 0.6f), from_env(L.haze), 0.35f);
     auto mist_band = [&](float y, float a, float spd, float phase) {
         for (int py = std::max(0, static_cast<int>(y - 7 * k)); py < std::min(cv_.h, static_cast<int>(y + 7 * k)); ++py)
             for (int x = 0; x < cv_.w; ++x) {
                 const float n = 0.5f + 0.5f * std::sin(x * 0.07f + mist_ * spd + phase) * std::sin(x * 0.023f - mist_ * 0.4f * spd);
                 const float fall = 1.0f - std::fabs(py - y) / (7 * k);
-                cv_.blend(x, py, {0.96f, 0.92f, 0.88f}, a * n * fall);
+                cv_.blend(x, py, mistCol, std::min(1.0f, a * (1.0f + 0.6f * L.fog)) * n * fall);
             }
     };
     mist_band(H * 0.70f, 0.55f, 0.3f, 0.0f);
 
     // Meadow, darker toward the viewer.
+    const Rgb meadowFar = meadow({0.55f, 0.62f, 0.50f}, 0.25f), meadowNear = meadow({0.22f, 0.32f, 0.22f});
     for (int y = static_cast<int>(H * 0.72f); y < cv_.h; ++y) {
         const float g = (y - H * 0.72f) / (H * 0.28f);
-        for (int x = 0; x < cv_.w; ++x) cv_.blend(x, y, mix({0.55f, 0.62f, 0.50f}, {0.22f, 0.32f, 0.22f}, g), 1.0f);
+        for (int x = 0; x < cv_.w; ++x) cv_.blend(x, y, mix(meadowFar, meadowNear, g), 1.0f);
     }
 
     for (auto& m : herd_) {
@@ -136,11 +172,12 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
             m.x = W + 30 * k;
         const float gy = H * (0.69f + 0.24f * m.depth);
         const float haze = 1.0f - m.depth;  // distant horses fade into mist
-        const Rgb body = mix({0.17f, 0.12f, 0.10f}, {0.62f, 0.60f, 0.62f}, haze * 0.75f);
-        const Rgb mane = mix({0.08f, 0.06f, 0.06f}, {0.55f, 0.55f, 0.58f}, haze * 0.75f);
+        const Rgb body = mix(lit({0.30f, 0.20f, 0.15f}), mistCol, haze * 0.75f);
+        const Rgb mane = mix(lit({0.10f, 0.07f, 0.06f}), mistCol, haze * 0.70f);
         horse(cv_, m.x, gy, scale, static_cast<float>(m.dir), m.phase, m.graze ? Gait::Graze : Gait::Walk, body, mane);
     }
     mist_band(H * 0.90f, 0.20f, 0.5f, 2.0f);
+    paint_weather(rdt, horizon, [&](float) { return H * (0.80f + 0.15f * rnd()); });
     present(canvas);
     wait_until_next_frame();
     return true;
@@ -155,6 +192,7 @@ Scenes::SceneDescriptor MistyHerdScene::get_descriptor() const
     d.motion = 0.3f;
     d.music_affinity = 0.05f;
     d.performance_cost = 0.35f;
+    environment_->add_variants(d);
     return d;
 }
 
@@ -283,7 +321,7 @@ Scenes::SceneDescriptor PegasusSkyScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
     d.family = "horses";
-    d.tags = {"horse", "pegasus", "stars", "night", "moon", "fantasy", "calm"};
+    d.tags = {"horse", "pegasus", "stars", "night", "fits:night", "moon", "fantasy", "calm"};
     d.intensity = 0.15f;
     d.motion = 0.15f;
     d.music_affinity = 0.0f;

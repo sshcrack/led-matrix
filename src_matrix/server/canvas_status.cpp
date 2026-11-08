@@ -68,6 +68,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
                                    {"turned_on", !config->is_turned_off()},
                                    {"current", config->get_curr_id()},
                                    {"operation_mode", config->get_operation_mode()},
+                                   {"director_mode", config->get_automatic_director_mode()},
                                    {"automatic_active", config->is_automatic_mode()}
                                }
         );

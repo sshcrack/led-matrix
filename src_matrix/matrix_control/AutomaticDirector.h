@@ -10,6 +10,7 @@
 #include <optional>
 #include <random>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -19,6 +20,17 @@
 
 class AutomaticDirector {
 public:
+    /// What Automatic Mode is for. Mixed is the general default; the others
+    /// shift scoring and pacing towards one purpose.
+    enum class Mode {
+        Mixed,        // everything, music-first while music plays
+        Environment,  // calm scenery that fits the real moment (time, weather, season, holidays)
+        Party,        // high-energy music looks, quicker cuts
+        Chill,        // low intensity, slow motion, long dwell
+    };
+    [[nodiscard]] static std::optional<Mode> parse_mode(std::string_view id);
+    [[nodiscard]] static const char* mode_name(Mode mode);
+
     struct Candidate {
         std::shared_ptr<Scenes::Scene> scene;
         float score = 0.0f;
@@ -94,6 +106,8 @@ public:
     /// User curation keyed by look_key(): "favorite", "on" or "hidden". Looks
     /// without an entry follow their descriptor's automatic_default.
     void set_preferences(std::map<std::string, std::string> preferences);
+    void set_mode(Mode mode) { mode_ = mode; }
+    [[nodiscard]] Mode mode() const { return mode_; }
     [[nodiscard]] static std::string look_key(const Scenes::Scene& scene);
 
     [[nodiscard]] std::uint64_t seed() const { return seed_; }
@@ -208,6 +222,7 @@ private:
     std::deque<HistoryEntry> history_;
     std::unordered_map<std::string, SceneMemory> memory_;
     std::map<std::string, std::string> preferences_;
+    Mode mode_ = Mode::Mixed;
     Context last_context_;
     std::string last_scene_;
     std::string last_variant_;
@@ -236,6 +251,13 @@ private:
     [[nodiscard]] Context observe(const RuntimeInputs::Snapshot& runtime_inputs);
     /// Context with the phrase-smoothed music energy applied (const view).
     [[nodiscard]] Context music_context(const RuntimeInputs::Snapshot& runtime_inputs) const;
+    /// Moves the energy targets towards what the mode is for.
+    void shape_for_mode(Context& context) const;
+    /// Live music leads casting and cuts (Mixed and Party only).
+    [[nodiscard]] bool music_led(const Context& context) const
+    {
+        return context.audio_active && (mode_ == Mode::Mixed || mode_ == Mode::Party);
+    }
     /// Consecutive music-reactive presentations at the end of the history.
     [[nodiscard]] int music_streak() const;
     [[nodiscard]] float history_multiplier(

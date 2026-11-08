@@ -19,17 +19,19 @@ Repo: `sshcrack/led-matrix` (default branch `master`, `gh` authenticated). Each 
 2. **Commit.** Stage only files this task changed (no `git add -A`; skip build dirs, `.env`, scratch files). Write a short imperative message that says why. Commit.
 3. **Push and open the PR.** `git push -u origin HEAD`, then `gh pr create` with a body of what changed, why, and how it was verified. Link the PR to the thread if the harness provides a link tool.
 4. **Screenshots.** For any visible change (UI, effect, scene, web app), capture screenshots or a short video and attach them with `scripts/pr_media.sh --pr <n> --comment <files...>` (uploads to the rolling `pr-media` release and prints embeddable markdown). See AGENTS.md for how to capture: emulator, `scripts/capture_desktop_preview.sh`, `scripts/render_scene_video.sh`, `scripts/preview_shadertoy_shader.sh`. For non-visual changes (CI, docs, refactors) skip this and say so in the PR body.
-5. **Watch checks.** Use the harness PR-watch tool when available, otherwise `gh pr checks <n> --watch`. If a check fails, read the log (`gh run view --log-failed`), fix it, push, and watch again. Repeat until all checks are green. CI includes a repo-size check; large binaries or mass GIF regenerations fail it (see `scripts/check_repo_size.sh`).
-6. **Stop** for tier 1. Report the PR URL and the check results.
+5. **Scene preview GIFs.** If the change adds or alters any matrix scene (look, behaviour, properties that change the default render), regenerate its preview GIF, and also generate one for every scene that has none yet: `scripts/fetch_scene_previews.sh --if-missing`, list the scenes from `emulator_build/install/bin/preview_gen --dump-manifest` that are previewable but have no `scene_previews/<name>.gif` (`:` in a name becomes `_`, e.g. `shader_scenic_aurora.gif`), then `scripts/generate_scene_previews.sh --scenes <changed,new,missing>`. Look at the new GIFs before going on. Never commit them (they are git-ignored and blocked by the repo-size check); they are published in tier 2 after the merge. Note in the PR body which previews were regenerated.
+6. **Watch checks.** Use the harness PR-watch tool when available, otherwise `gh pr checks <n> --watch`. If a check fails, read the log (`gh run view --log-failed`), fix it, push, and watch again. Repeat until all checks are green. CI includes a repo-size check; large binaries or mass GIF regenerations fail it (see `scripts/check_repo_size.sh`).
+7. **Stop** for tier 1. Report the PR URL and the check results.
 
 ## Tier 2: merge
 
 After tier 1 is green:
 
-1. Confirm the PR is mergeable (`gh pr view <n> --json mergeable,reviewDecision,statusCheckRollup`). If there are merge conflicts or requested changes, resolve them, push, and re-run tier 1 step 5.
+1. Confirm the PR is mergeable (`gh pr view <n> --json mergeable,reviewDecision,statusCheckRollup`). If there are merge conflicts or requested changes, resolve them, push, and re-run tier 1 step 6.
 2. Merge with a merge commit (`gh pr merge <n> --merge --delete-branch`); the repo history uses "Merge pull request #N". If the repo rules reject that method, use the one `gh` reports as allowed.
 3. Verify with `gh pr view <n> --json state,mergedAt`: state must be `MERGED`.
-4. If the PR is stacked on another PR's branch, merge the base PR first or tell the user instead of merging out of order.
+4. **Publish scene previews** regenerated in tier 1 step 5: `scripts/publish_scene_previews.sh` (it uploads only changed GIFs and deletes assets missing from `scene_previews/`, so the directory must hold the full fetched set plus the new ones). Skip when no scene changed.
+5. If the PR is stacked on another PR's branch, merge the base PR first or tell the user instead of merging out of order.
 
 ## Tier 3: release and deploy
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
-import type { Status } from '~/apiTypes/status'
+import type { DirectorMode, Status } from '~/apiTypes/status'
 import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { useResource } from './useResource'
@@ -50,6 +50,10 @@ export function useMatrixState() {
     async setMode(mode: 'automatic' | 'manual') {
       setStatus(s => s && { ...s, operation_mode: mode, automatic_active: mode === 'automatic' })
       try { await call(`/operation_mode?mode=${mode}`) } catch { toast.error('Could not change mode'); void refreshStatus() }
+    },
+    async setDirectorMode(mode: DirectorMode) {
+      setStatus(s => s && { ...s, director_mode: mode })
+      try { await call('/automatic_director/mode', json({ mode })) } catch { toast.error('Could not change the director style'); void refreshStatus() }
     },
     /** Create a preset from scenes and (optionally) start playing it – one call chain, one tap. */
     async createPreset(input: { name: string; scenes: Scene[]; play?: boolean; transition_name?: string; transition_duration?: number }): Promise<string | null> {

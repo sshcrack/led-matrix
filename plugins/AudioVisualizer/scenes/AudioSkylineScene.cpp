@@ -193,7 +193,7 @@ SceneDescriptor AudioSkylineScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "skyline";
-    d.tags = {"music", "city", "night", "spectrum", "audio-reactive", "music-showcase", "style:hiphop", "style:party", "style:edm", "drop-reactive"};
+    d.tags = {"music", "city", "night", "fits:dusk", "fits:night", "spectrum", "audio-reactive", "music-showcase", "style:hiphop", "style:party", "style:edm", "drop-reactive"};
     d.intensity = 0.55f;
     d.motion = 0.5f;
     d.music_affinity = 1.0f;

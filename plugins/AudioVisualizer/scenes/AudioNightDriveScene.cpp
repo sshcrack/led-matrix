@@ -224,7 +224,7 @@ SceneDescriptor AudioNightDriveScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "night-drive";
-    d.tags = {"music", "city", "night", "road", "audio-reactive", "beat-driven", "music-showcase", "style:hiphop", "style:party",
+    d.tags = {"music", "city", "night", "fits:dusk", "fits:night", "road", "audio-reactive", "beat-driven", "music-showcase", "style:hiphop", "style:party",
               "style:edm", "drop-reactive"};
     d.intensity = 0.55f;
     d.motion = 0.62f;

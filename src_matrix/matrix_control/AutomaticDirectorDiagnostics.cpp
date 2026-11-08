@@ -50,6 +50,7 @@ nlohmann::json AutomaticDirector::diagnostics() const
                           {"elapsed_ms", journey_.elapsed_ms()}, {"duration_ms", journey_.duration_ms()},
                           {"intensity", journey.intensity}, {"motion", journey.motion},
                           {"dwell_scale", journey.dwell_scale}}},
+            {"director_mode", mode_name(mode_)},
             {"seed", std::to_string(seed_)},
             {"decision_count", decision_count_},
             {"clock_ms", clock_ms_},

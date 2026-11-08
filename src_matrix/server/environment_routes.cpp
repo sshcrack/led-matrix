@@ -1,0 +1,65 @@
+#include "environment_routes.h"
+
+#include "shared/matrix/environment/service.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+
+#include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
+
+using json = nlohmann::json;
+
+std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr<router_t> router) {
+    router->http_get("/environment", [](const auto &req, auto) {
+        return reply_with_json(req, Environment::Service::instance().status());
+    });
+
+    // Partial update: only the given keys change. Send "latitude": null to
+    // clear the manual location (and fall back to the IP-detected one).
+    router->http_post("/environment", [](const auto &req, auto) {
+        json patch;
+        try {
+            patch = json::parse(req->body());
+        } catch (const std::exception &ex) {
+            spdlog::warn("Invalid environment payload: {}", ex.what());
+            return reply_with_error(req, "Invalid json payload");
+        }
+        if (!patch.is_object())
+            return reply_with_error(req, "Expected a JSON object");
+
+        json merged = config->get_environment();
+        for (const auto &[key, value] : patch.items()) {
+            if (key == "overrides" && value.is_object()) {
+                for (const auto &[okey, ovalue] : value.items())
+                    merged["overrides"][okey] = ovalue;
+            } else if (key == "enabled" || key == "auto_locate" || key == "latitude" || key == "longitude" || key == "label") {
+                merged[key] = value;
+            }
+        }
+        Environment::Settings settings;
+        try {
+            settings = merged.get<Environment::Settings>();
+        } catch (const std::exception &ex) {
+            return reply_with_error(req, std::string("Invalid environment settings: ") + ex.what());
+        }
+        // A half-set manual location is dropped by sanitize(); say so.
+        if ((patch.contains("latitude") && !patch["latitude"].is_null()) && !settings.has_manual_location())
+            return reply_with_error(req, "latitude/longitude must both be valid numbers");
+
+        config->set_environment(settings);
+        config->save();
+        Environment::Service::instance().update_settings(config->get_environment());
+        return reply_with_json(req, Environment::Service::instance().status());
+    });
+
+    router->http_get("/environment/geocode", [](const auto &req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
+        if (!qp.has("q"))
+            return reply_with_error(req, "Missing q");
+        const auto result = Environment::geocode(std::string(qp["q"]));
+        if (!result)
+            return reply_with_error(req, result.error());
+        return reply_with_json(req, *result);
+    });
+    return router;
+}

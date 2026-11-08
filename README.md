@@ -167,19 +167,20 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 ### Scenes
 
-68 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
+82 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
 
 | Category | Scenes | Highlights |
 |:--|:--:|:--|
 | **Audio reactive** | 27 | A spectrum analyser, particles, and 24 small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
 | **Shaders** | 12 | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
-| **Ambient** | 7 | Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
+| **Hobbies & activities** | 10 | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
+| **Ambient** | 11 | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
 | **Games** | 5 | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
 | **Generative** | 5 | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
 | **Fractals** | 3 | Julia set, Game of Life, Wave Pattern |
 | **Particles** | 2 | Rain, Sparks |
 | **Media** | 3 | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
-| **Weather** | 2 | Live weather and ambient weather particles (via Open-Meteo, no API key) |
+| **Weather** | 2 | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
 | **Utility / Images** | 2 | Countdown with fireworks, and a pixel-art and image provider |
 
 Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
@@ -188,10 +189,11 @@ Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixe
 
 | Feature | What it does |
 |:--|:--|
-| **Automatic Mode** | The Director picks from curated looks, plans long arcs, and uses music state when it is available. Every look can be starred or excluded in the Scenes page. |
+| **Automatic Mode** | The Director picks from curated looks, plans long arcs, and uses music state when it is available. Every look can be starred or excluded in the Scenes page. Pick a style on the home screen: **Mixed** (everything, music first), **Outside** (calm scenery that matches the real time, weather, season and holidays), **Party** (energetic music looks, quicker cuts) or **Chill** (slow and soft, long dwell). Holiday scenes such as the Christmas market only play while their holiday is on. |
 | **Presets** | Ordered lists of scenes with per-scene properties and transitions. Edits autosave, and deleting a preset can be undone. Three one-tap ambiance packs are included. |
 | **Scene Lab** | Try a scene or curated look on the real Pi renderer with temporary controls, then save it only if you like it. |
 | **Schedules** | Switch presets by time and weekday (overnight ranges work) and dim the panel at night with a smooth brightness fade. While *Auto Scheduling* is on, an active schedule takes over from Automatic Mode, and the display turns **off** outside every schedule window. Add windows for all the hours you want lit, or leave it off. |
+| **Real-world scenery** | Outdoor scenes follow the real time of day, weather and season where the matrix is: sunset light, rain, fog, snow on the ground, autumn leaves, decorations at Christmas. The location is detected from the IP address or set by city. You can override it for every scene (snow all winter, always night) or pin a single scene, or turn it off. See [Real-world scenery](#real-world-scenery-optional). |
 | **Live preview** | A real-time view of the composed matrix frame, pulled on demand so an idle page costs the Pi nothing. |
 | **Plugin UIs** | Plugins can ship their own web controls, for example the YouTube playlist editor. |
 | **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). |
@@ -478,9 +480,21 @@ No SSH tunnel or daemon restart is needed. On the same computer with the daemon 
 
 A [getsongbpm.com](https://getsongbpm.com/api) key is optional. Set it as `song_bpm_api_key` under `pluginConfigs` in `/var/lib/led-matrix/config.json`.
 
-### Weather (optional)
+### Real-world scenery (optional)
 
-The Weather scenes use Open-Meteo, so no key is needed. Set the latitude and longitude in the scene's properties in the web UI.
+Outdoor scenes (hiking, horses, sports, the seasonal landscapes, the campfire, the weather landscape) follow the real time of day, weather and season. It is on by default and needs no key: the location comes from the Pi's IP address (ipwho.is, then ipapi.co) and the weather from Open-Meteo every 15 minutes. Sun, moon and season are computed on the Pi.
+
+Open **Integrations → Real-world scenery** in the web UI to:
+
+- turn it off (scenes then show their designed look),
+- set the location by searching a city, or turn off IP detection,
+- override every scene: a time of day, a weather (rain, snow, fog, …), a season, or holiday decorations (by the calendar, none, or always the ones you pick).
+
+Each adapting scene also has **Time of day**, **Weather** and **Season** properties in its *Environment* group. *Auto* follows the settings above; any other value pins that scene. Fixed looks (`night`, `rain`, `winter`, …) are also available as variants in Scene Lab and presets. Every aspect resolves on its own, in this order: scene property, then the global override, then the real world, then the scene's design.
+
+Automatic Mode uses the same moment: it leans towards scenes that fit it (a rainy-window scene when it rains, night drives after dark), strongly in the **Outside** style and gently in **Mixed**. Holiday scenes (the Christmas market and sleigh) only play in Automatic Mode while their holiday is on, by the calendar or forced here.
+
+The live Weather scene still uses the latitude and longitude in its own properties.
 
 ### Security
 
@@ -549,6 +563,7 @@ curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
 | | GET / POST | `/brightness_schedule` | Night brightness fade |
 | | GET / POST | `/automatic_director/preferences` | Favourite and excluded looks |
 | | POST | `/automatic_director/seed` | Set a reproducible random seed |
+| | GET / POST | `/automatic_director/mode` | Automatic Mode style: `mixed`, `environment`, `party` or `chill` (POST `{"mode": "party"}`) |
 | **Effects** | POST | `/post_processing/flash`, `/rotate`, `/clear`, `/effect/<name>` | Trigger or clear effects (`duration`, `intensity`) |
 | | GET | `/post_processing/status`, `/config` | Effect registry and beat config |
 | **Live and diagnostics** | WS | `/live_frame` | Pull-based live frames (send `next`, receive one binary `LMF1` frame) |
@@ -557,6 +572,8 @@ curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
 | | POST | `/api/update/check`, `/install[?version=]`, `/config` | Check, install, configure auto-update |
 | **Assets** | GET / POST / DELETE | `/api/custom-assets/<type>[/<file>]` | Custom shaders |
 | **Plugins** | GET | `/plugin_ui`, `/plugin_ui/<Name>/ui.js` | Plugin web UI bundles |
+| **Real-world scenery** | GET / POST | `/environment` | Settings, detected location, current conditions and occasions. POST takes a partial patch (`enabled`, `auto_locate`, `latitude`/`longitude`/`label`, `overrides`); `"latitude": null` clears the manual location |
+| | GET | `/environment/geocode?q=` | City search for the location setting |
 | **Integrations** | GET | `/spotify/status` | Spotify setup and connection status (never returns the secret) |
 | | POST | `/spotify/credentials`, `/spotify/connect`, `/spotify/complete` | Save app credentials, start sign-in, finish with a pasted callback address |
 | | GET | `/spotify/callback` | Complete a local OAuth redirect using a one-time login state |

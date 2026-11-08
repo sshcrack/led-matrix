@@ -68,6 +68,14 @@ inline constexpr float music_showcase = 0.55f;       // "music-showcase" tier
 inline constexpr float style_fit = 2.00f;            // * confidence * (fit - neutral)
 inline constexpr float non_music_in_session = 1.60f; // ambient scenery while music plays
 inline constexpr float breather_penalty = 0.30f;     // ...unless a calm passage invites a breather
+// Director modes and the real-world moment (see environment_fit()).
+inline constexpr float environment_fit_mixed = 0.35f;  // * fit (-1..1)
+inline constexpr float environment_fit_strong = 1.20f;
+inline constexpr float environment_adaptive = 0.50f;
+inline constexpr float occasion_mixed = 0.60f;
+inline constexpr float occasion_strong = 1.00f;
+inline constexpr float party_music = 0.50f;
+inline constexpr float off_mode = 1.40f;                // scene does not suit the mode
 }  // namespace weight
 
 // Live-music dwell (seconds) and minimum time before mid-scene cuts (ms).
