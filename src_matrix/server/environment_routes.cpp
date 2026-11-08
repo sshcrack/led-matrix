@@ -1,5 +1,8 @@
 #include "environment_routes.h"
 
+#include <atomic>
+#include <thread>
+
 #include "shared/matrix/environment/service.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/shared.h"
@@ -56,10 +59,26 @@ std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("q"))
             return reply_with_error(req, "Missing q");
-        const auto result = Environment::geocode(std::string(qp["q"]));
-        if (!result)
-            return reply_with_error(req, result.error());
-        return reply_with_json(req, *result);
+        // The lookup takes up to seconds and the server has one worker thread:
+        // answer from a background thread, at most a couple at a time.
+        static std::atomic<int> running{0};
+        if (running.fetch_add(1) >= 2) {
+            running.fetch_sub(1);
+            return reply_with_error(req, "Too many place searches at once, try again", restinio::status_too_many_requests());
+        }
+        std::thread([req, query = std::string(qp["q"])]() {
+            try {
+                const auto result = Environment::geocode(query);
+                if (!result)
+                    reply_with_error(req, result.error());
+                else
+                    reply_with_json(req, *result);
+            } catch (const std::exception &e) {
+                reply_with_error(req, e.what(), restinio::status_internal_server_error());
+            }
+            running.fetch_sub(1);
+        }).detach();
+        return restinio::request_accepted();
     });
     return router;
 }

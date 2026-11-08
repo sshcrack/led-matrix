@@ -74,6 +74,8 @@ namespace Config {
         void set_brightness_schedule(ConfigData::BrightnessSchedule schedule);
         Environment::Settings get_environment();
         void set_environment(Environment::Settings settings);
+        /// Caches an IP-detected location without touching the user's settings.
+        void set_environment_detected(double latitude, double longitude, string label);
 
         bool is_scheduling_enabled();
         void set_scheduling_enabled(bool enabled);

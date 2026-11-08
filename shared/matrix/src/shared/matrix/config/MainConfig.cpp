@@ -441,6 +441,18 @@ spdlog::info("Setting preset {}", id);
         return this->data.environment;
     }
 
+    void MainConfig::set_environment_detected(double latitude, double longitude, string label) {
+        {
+            unique_lock lock(this->data_mutex);
+            auto &env = this->data.environment;
+            env.detected_latitude = latitude;
+            env.detected_longitude = longitude;
+            env.detected_label = std::move(label);
+        }
+        unique_lock lock(this->update_mutex);
+        this->dirty = true;
+    }
+
     void MainConfig::set_environment(Environment::Settings settings) {
         settings.sanitize();
         {

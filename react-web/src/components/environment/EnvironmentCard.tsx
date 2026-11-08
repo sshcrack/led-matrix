@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CloudSun, MapPin, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import useFetch from '~/useFetch'
@@ -269,8 +269,41 @@ function EnvironmentForm({ status, onSaved }: { status: EnvironmentStatus, onSav
   )
 }
 
+/** Location and weather resolve in the background on the daemon: refresh quietly
+ *  (keeping the last good data) every few seconds while they are pending, then
+ *  every minute, and only while the page is visible. */
+function useEnvironmentRefresh(data: EnvironmentStatus | null, setData: (next: EnvironmentStatus) => void) {
+  const apiUrl = useApiUrl()
+  const hasData = !!data
+  const pending = hasData && data.enabled && (!data.location || !data.conditions || data.conditions.weather === null)
+  useEffect(() => {
+    if (!apiUrl || !hasData) return
+    let cancelled = false
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const res = await fetch(`${apiUrl}/environment`)
+        if (!res.ok) return
+        const next = (await res.json()) as EnvironmentStatus
+        if (!cancelled && typeof next.enabled === 'boolean') setData(next)
+      } catch {
+        // keep showing the last status
+      }
+    }
+    const timer = setInterval(() => void refresh(), pending ? 3000 : 60000)
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [apiUrl, pending, hasData, setData])
+}
+
 export default function EnvironmentCard() {
   const { data, error, isLoading, setData } = useFetch<EnvironmentStatus>('/environment')
+  useEnvironmentRefresh(data, setData)
   return (
     <Card>
       {isLoading && !data ? (

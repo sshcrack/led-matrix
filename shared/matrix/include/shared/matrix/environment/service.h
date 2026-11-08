@@ -35,7 +35,8 @@ public:
     static Service &instance();
 
     /// Starts the worker thread. `persist` is called (from the worker thread)
-    /// when an IP lookup found a new location worth caching.
+    /// when an IP lookup found a new location worth caching; only the
+    /// detected_* fields of the passed settings are meant to be stored.
     void start(Settings settings, PersistFn persist);
     void stop();
 

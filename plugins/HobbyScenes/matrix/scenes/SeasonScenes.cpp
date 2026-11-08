@@ -396,7 +396,7 @@ void CottageScene::build_backdrop()
     const Rgb stone = terrain({0.52f, 0.44f, 0.40f}, 0.0f, 0.0f);
     for (int y = static_cast<int>(52 * k); y < static_cast<int>(70 * k); ++y)
         for (int x = static_cast<int>((kChimX - 3) * k); x < static_cast<int>((kChimX + 3) * k); ++x)
-            bg.set(x, y, scale(stone, (y / static_cast<int>(2 * k) + x / static_cast<int>(3 * k)) % 2 ? 0.85f : 1.0f));
+            bg.set(x, y, scale(stone, (y / std::max(1, static_cast<int>(2 * k)) + x / std::max(1, static_cast<int>(3 * k))) % 2 ? 0.85f : 1.0f));
     for (int x = static_cast<int>((kChimX - 3.5f) * k); x < static_cast<int>((kChimX + 3.5f) * k); ++x)
         bg.set(x, static_cast<int>(52 * k), terrain({0.40f, 0.34f, 0.30f}, 0.0f, 1.0f));
     const Rgb tile = terrain({0.50f, 0.22f, 0.15f}, 0.0f, 1.0f), tileDark = terrain({0.36f, 0.15f, 0.11f}, 0.0f, 0.9f);
@@ -428,7 +428,7 @@ void CottageScene::build_backdrop()
     // Door with a step.
     for (int y = static_cast<int>(87 * k); y < static_cast<int>(kBase * k); ++y)
         for (int x = static_cast<int>(kDoorL * k); x < static_cast<int>(kDoorR * k); ++x)
-            bg.set(x, y, scale(lit(((x / static_cast<int>(2 * k)) % 2) ? Rgb{0.40f, 0.24f, 0.14f} : Rgb{0.34f, 0.20f, 0.12f}), facade));
+            bg.set(x, y, scale(lit(((x / std::max(1, static_cast<int>(2 * k))) % 2) ? Rgb{0.40f, 0.24f, 0.14f} : Rgb{0.34f, 0.20f, 0.12f}), facade));
     bg.set(static_cast<int>((kDoorR - 2) * k), static_cast<int>(94 * k), lit({0.85f, 0.70f, 0.30f}));
     for (int x = static_cast<int>((kDoorL - 1) * k); x <= static_cast<int>(kDoorR * k); ++x)
         bg.set(x, static_cast<int>(kBase * k), terrain({0.55f, 0.52f, 0.48f}));
@@ -438,7 +438,7 @@ void CottageScene::build_backdrop()
         const float v = (y / k - kBase) / (128.0f - kBase);
         const float cx = (48.0f - 4.0f * v) * k, half = (3.0f + 5.0f * v) * k;
         for (int x = static_cast<int>(cx - half); x <= static_cast<int>(cx + half); ++x) {
-            const bool gap = hash01(static_cast<uint32_t>((y / static_cast<int>(3 * k)) * 31 + x / static_cast<int>(4 * k))) < 0.18f;
+            const bool gap = hash01(static_cast<uint32_t>((y / std::max(1, static_cast<int>(3 * k))) * 31 + x / std::max(1, static_cast<int>(4 * k)))) < 0.18f;
             bg.blend(x, y, terrain(gap ? Rgb{0.36f, 0.34f, 0.30f} : Rgb{0.60f, 0.57f, 0.52f}, 0.0f, 0.9f), 0.9f);
         }
     }

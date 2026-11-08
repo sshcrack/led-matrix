@@ -102,6 +102,7 @@ public:
     {
         drops_.clear();
         warm_ = false;
+        carry_ = 0.0f;
     }
     void set_seed(uint32_t seed) { rng_.seed(seed); }
     /// `scale` = width/128 so density and speed match any panel size.

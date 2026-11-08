@@ -234,11 +234,13 @@ void Precipitation::update(float dt, const Look &l, int width, int height, const
     const float rain = l.rain, snow = l.snow;
     // Spawn rate in particles per second for the whole panel.
     const float rate = (rain * 520.0f + snow * 150.0f) * k;
-    carry_ += rate * dt;
+    carry_ = rate > 0.0f ? carry_ + rate * dt : 0.0f;
     while (carry_ >= 1.0f) {
         carry_ -= 1.0f;
-        if (static_cast<int>(drops_.size()) >= max_)
+        if (static_cast<int>(drops_.size()) >= max_) {
+            carry_ = 0.0f;  // saturated: drop the backlog instead of spawning it later
             break;
+        }
         const bool is_snow = u(rng_) * (rain + snow) < snow;
         Drop d{};
         d.snow = is_snow;

@@ -280,7 +280,10 @@ Daemon::Daemon(int argc, char* argv[])
     // 9b. Real-world environment (location, weather, overrides) for scenes
     // -------------------------------------------------------------------
     Environment::Service::instance().start(config_->get_environment(), [cfg = config_.get()](const Environment::Settings &s) {
-        cfg->set_environment(s);
+        // Merge only the detected location: the user may have changed other
+        // settings since the worker took its copy.
+        if (s.detected_latitude && s.detected_longitude)
+            cfg->set_environment_detected(*s.detected_latitude, *s.detected_longitude, s.detected_label);
         cfg->save();
     });
 
