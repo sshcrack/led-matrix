@@ -4,7 +4,7 @@ export interface UpdateStatus {
   current_version: string;
   latest_version: string;
   update_available: boolean;
-  status: number; // 0=IDLE, 1=CHECKING, 2=DOWNLOADING, 3=INSTALLING, 4=ERROR, 5=SUCCESS, 6=DISABLED
+  status: number; // 0=IDLE, 1=CHECKING, 2=DOWNLOADING, 3=INSTALLING, 4=ERROR, 5=SUCCESS, 6=DISABLED; name it with serverPhase() (components/updates/updateProgress.ts)
   error_message: string;
 }
 
@@ -40,7 +40,7 @@ export interface Release {
 
 export const UpdateStatusNames = {
   0: 'Idle',
-  1: 'Checking for updates',
+  1: 'Preparing update',
   2: 'Downloading update',
   3: 'Installing update',
   4: 'Error',

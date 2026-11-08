@@ -511,6 +511,7 @@ namespace Update
         }
         catch (const exception &ex)
         {
+            fail_install("Manual update failed: " + string(ex.what()));
             return std::unexpected("Manual update failed: " + string(ex.what()));
         }
     }
@@ -537,6 +538,24 @@ namespace Update
     UpdateStatus UpdateManager::get_status() const
     {
         return status_.load();
+    }
+
+    void UpdateManager::begin_manual_install()
+    {
+        {
+            std::unique_lock lock(error_mutex_);
+            error_message_.clear();
+        }
+        status_.store(UpdateStatus::CHECKING);
+    }
+
+    void UpdateManager::fail_install(const std::string &message)
+    {
+        {
+            std::unique_lock lock(error_mutex_);
+            error_message_ = message;
+        }
+        status_.store(UpdateStatus::ERROR);
     }
 
     void UpdateManager::set_pre_restart_callback(function<void()> callback)

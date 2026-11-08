@@ -36,6 +36,14 @@ _Avoid_: Offload manager, remote renderer (RemoteRender is its transport)
 Loading the plugin web UIs once per page (`createPluginActivation` in `react-web/src/core/pluginRegistry.ts`): a plugin's registration and its stylesheet are applied together, only after its module loaded and passed the UI API check.
 _Avoid_: Plugin registration (only the last step)
 
+**Spotify Sign-in Attempt**:
+One browser-started Spotify login, from Connect to its outcome (`SpotifyLogin::Attempt` in `plugins/SpotifyScenes/matrix/manager/login_attempt.h`; browser side `spotifySetupModel.ts`). Each attempt has an id and a phase (waiting/exchanging/connected/failed/expired) that `/spotify/status` reports, so the tab that started it learns how *its* attempt ended even if sign-in finished on another device. A newer attempt or a Client ID change supersedes a waiting one.
+_Avoid_: OAuth state (that is one of the attempt's secrets), pending login
+
+**Update Installation** (web):
+The browser's view of one firmware install, from click to the Pi reporting SUCCESS or ERROR after its restart (`react-web/src/components/updates/updateProgress.ts`). The install request returning only means the Pi accepted it; a new version answering is still being health-checked by `update_service.sh`.
+_Avoid_: update state (ambiguous with the Pi's numeric `UpdateStatus`)
+
 ## Current roadmap state
 
 The six-phase simple-operation roadmap is complete in sandbox `auto-director-rebased`: Runtime Inputs, scene descriptors/curated Scene Variants, default Automatic Mode, music-aware transition intelligence, Pi-authoritative Scene Lab, and seeded runtime observability/repeatability are implemented and review-polished. Do not redo those foundations when continuing. The global palette/color-system pass remains intentionally deferred.

@@ -66,6 +66,49 @@ describe('Spotify web setup', () => {
     await screen.findByText('Spotify is not installed on this matrix. Install the SpotifyScenes plugin to use this integration.')
   })
 
+  it('confirms the connection once the Pi reports the sign-in finished in the Spotify tab', async () => {
+    const popup = { location: { href: '' }, close: vi.fn(), opener: {} } as unknown as Window
+    vi.spyOn(window, 'open').mockReturnValue(popup)
+    const configured = { ...initial, configured: true, client_id: 'a'.repeat(32) }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response(configured))
+      .mockResolvedValueOnce(response({ url: 'https://accounts.spotify.com/authorize?state=s', attempt: 7 }))
+      .mockResolvedValueOnce(response({ ...configured, connected: true, login: { attempt: 7, phase: 'connected' } })))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue setup' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Spotify' }))
+    await screen.findByText(/Finish signing in in the Spotify tab/)
+    expect(popup.location.href).toContain('https://accounts.spotify.com/authorize')
+    fireEvent(window, new Event('focus')) // coming back from the Spotify tab
+    await screen.findByText('Spotify connected. Play music in Spotify to bring it to your matrix.')
+    expect(screen.queryByText(/Finish signing in in the Spotify tab/)).toBeNull()
+  })
+
+  it('shows why the sign-in failed when Spotify access was declined', async () => {
+    vi.spyOn(window, 'open').mockReturnValue({ location: { href: '' }, close: vi.fn() } as unknown as Window)
+    const configured = { ...initial, configured: true, client_id: 'a'.repeat(32) }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response(configured))
+      .mockResolvedValueOnce(response({ url: 'https://accounts.spotify.com/authorize?state=s', attempt: 2 }))
+      .mockResolvedValueOnce(response({ ...configured, login: { attempt: 2, phase: 'failed', error: 'Spotify access was declined. Choose Connect Spotify to try again.' } })))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue setup' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Spotify' }))
+    await screen.findByText(/Finish signing in/)
+    fireEvent(window, new Event('focus'))
+    expect((await screen.findByRole('alert')).textContent).toContain('Spotify access was declined')
+  })
+
+  it('clears a failed status check once the matrix answers again', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ ...initial, configured: true }))
+      .mockResolvedValueOnce(response({}, 500))
+      .mockResolvedValueOnce(response({ ...initial, configured: true })))
+    mount()
+    await screen.findByRole('button', { name: 'Continue setup' })
+    fireEvent(window, new Event('focus'))
+    await screen.findByRole('alert')
+    fireEvent(window, new Event('focus'))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+
   it('reports blocked sign-in popups and preserves the connection guide', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ ...initial, configured: true }))
       .mockResolvedValueOnce(response({ url: 'https://accounts.spotify.com/authorize?state=test' })))

@@ -73,7 +73,8 @@ namespace Server
             try {
                 // Check if another installation is already in progress
                 auto current_status = update_manager->get_status();
-                if (current_status == Update::UpdateStatus::DOWNLOADING || 
+                if (current_status == Update::UpdateStatus::CHECKING ||
+                    current_status == Update::UpdateStatus::DOWNLOADING ||
                     current_status == Update::UpdateStatus::INSTALLING) {
                     json response;
                     response["message"] = "Update installation already in progress";
@@ -89,17 +90,23 @@ namespace Server
                 if(parsed_version.is_invalid())
                     return reply_with_error(req, "Invalid version format", restinio::status_bad_request());
 
-                // Start installation in background thread
+                // Start installation in background thread. CHECKING is set before replying, so the browser's
+                // first status poll already belongs to this install (react-web/src/components/updates/updateProgress.ts).
                 auto update_manager_sp = Constants::global_update_manager;
+                update_manager_sp->begin_manual_install();
                 std::thread([update_manager_sp, parsed_version]() {
                     auto update = update_manager_sp->get_update_info(parsed_version);
                     if(!update) {
                         spdlog::error("Failed to get update info: {}", update.error());
+                        update_manager_sp->fail_install("Could not find release " + parsed_version.toString() + ": " + update.error());
                         return;
                     }
                     auto res = update_manager_sp->manual_download_and_install(update.value());
                     if (!res) {
                         spdlog::error("Update installation failed: {}", res.error());
+                        // Failures before the download starts (e.g. the transaction is held) must not leave CHECKING.
+                        if (update_manager_sp->get_status() == Update::UpdateStatus::CHECKING)
+                            update_manager_sp->fail_install(res.error());
                     }
                 }).detach();
                 
