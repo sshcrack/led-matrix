@@ -196,10 +196,11 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
             }
             break;
         case 1:
+        case 3:
             deerX_ += deerDir_ * 7.0f * k * dt;
             deerPhase_ += dt * 1.1f;
             deerGraze_ = std::max(0.0f, deerGraze_ - dt * 1.5f);
-            if (deerX_ >= W * 0.22f && deerTimer_ <= 0.0f) {
+            if (deerState_ == 1 && deerX_ >= W * 0.22f) {
                 deerState_ = 2;
                 deerTimer_ = 9.0f + rnd() * 6.0f;
             }
@@ -214,19 +215,16 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
             const bool alert = std::fmod(deerTimer_, 4.5f) < 1.4f;
             deerGraze_ += ((alert ? 0.0f : 1.0f) - deerGraze_) * (1.0f - std::exp(-dt * 3.0f));
             if (deerTimer_ <= 0.0f) {
-                deerState_ = 1;  // keeps walking right, across the path
+                deerState_ = 3;  // walks on right, across the path
                 deerTimer_ = 0.0f;
-                deerX_ += 0.01f;
             }
             break;
         }
         default:
             break;
     }
-    if (deerState_ == 1 && deerX_ < W * 0.22f)
-        deerTimer_ = 0.0f;
     if (deerState_ != 0) {
-        const float walking = deerState_ == 1 ? 1.0f : 0.0f;
+        const float walking = deerState_ == 1 || deerState_ == 3 ? 1.0f : 0.0f;
         cv_.ellipse(deerX_, deerY, 6.5f * deerS, 1.0f * deerS, 0, lit({0.08f, 0.12f, 0.06f}), 0.4f);
         deer(cv_, deerX_, deerY, deerS, deerDir_, deerPhase_, walking, deerGraze_, lit({0.56f, 0.36f, 0.20f}, 0.15f),
              lit({0.80f, 0.68f, 0.52f}, 0.15f), lit({0.10f, 0.07f, 0.06f}, 0.15f));
@@ -358,7 +356,7 @@ void CottageScene::build_backdrop()
 {
     const auto& L = env();
     const int w = cv_.w, h = cv_.h;
-    const float W = static_cast<float>(w), H = static_cast<float>(h), k = W / 128.0f;
+    const float W = static_cast<float>(w), H = static_cast<float>(h), k = std::min(W, H) / 128.0f;  // fit the cottage on wide, short panels too
     Canvas bg;
     bg.resize(w, h);
     const Environment::Surface s{bg.px.data(), w, h, 1.0f};
@@ -464,7 +462,7 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
     begin_frame(dt);
     const float rdt = dt / std::max(0.05f, speed_->get());
     const auto& L = env();
-    const float W = static_cast<float>(cv_.w), H = static_cast<float>(cv_.h), k = W / 128.0f;
+    const float W = static_cast<float>(cv_.w), H = static_cast<float>(cv_.h), k = std::min(W, H) / 128.0f;
     if (environment_changed(backdropKey_) || backdrop_.empty())
         build_backdrop();
     cv_.px = backdrop_;

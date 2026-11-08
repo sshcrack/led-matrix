@@ -50,8 +50,9 @@ std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr
             return reply_with_error(req, "latitude/longitude must both be valid numbers");
 
         config->set_environment(settings);
-        config->save();
         Environment::Service::instance().update_settings(config->get_environment());
+        if (!config->save())
+            return reply_with_error(req, "Could not save the real-world settings", restinio::status_internal_server_error());
         return reply_with_json(req, Environment::Service::instance().status());
     });
 

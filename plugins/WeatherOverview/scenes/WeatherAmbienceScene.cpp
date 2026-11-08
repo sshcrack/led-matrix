@@ -55,7 +55,16 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
 {
     const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f);
     time_ += dt * animation_speed_->get();
-    const auto &L = environment_.update(dt);
+    const Environment::Look *look = &environment_.update(dt);
+    // Lightning off means no flashes either, not only no bolts.
+    Environment::Look calm;
+    if (!lightning_enabled_->get() && (look->flash > 0.0f || look->bolt)) {
+        calm = *look;
+        calm.flash = 0.0f;
+        calm.bolt = false;
+        look = &calm;
+    }
+    const auto &L = *look;
     const Environment::Surface s{px_.data(), matrix_width, matrix_height, 1.0f};
     const float W = static_cast<float>(matrix_width), H = static_cast<float>(matrix_height), k = W / 128.0f;
 
