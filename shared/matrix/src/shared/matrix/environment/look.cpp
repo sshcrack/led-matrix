@@ -317,6 +317,13 @@ Look target_look(const Conditions &c, const Defaults &d, const Adapt &a, TimeCho
         intensity = choice_intensity(w);
         real_weather = false;
     }
+    // Snow with a season that is only the scene's default (no real or chosen
+    // one) means winter: a snowy look under leafy autumn trees reads wrong.
+    const bool default_season = !(a.season && (sc != SeasonChoice::AUTO || c.forced_season.has_value() || c.season_known));
+    if (w == Weather::Snow && default_season && season != Season::Winter) {
+        season = Season::Winter;
+        set_season(l, season);
+    }
     apply_weather(l, w, intensity);
     // A little morning mist in the valleys around sunrise.
     if (l.morning && l.sun_elevation > -6.0f && l.sun_elevation < 8.0f)
