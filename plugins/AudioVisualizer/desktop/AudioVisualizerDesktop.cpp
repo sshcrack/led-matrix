@@ -297,6 +297,7 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *context, ImGuiMemAll
 }
 
 bool AudioVisualizerDesktop::ensure_recording_locked() {
+    if (!recorder) return false; // not initialised yet (post_init)
     if (cfg.deviceName != currentDeviceName) {
         if (recorder) recorder->stopRecording();
         currentDeviceName = cfg.deviceName;
