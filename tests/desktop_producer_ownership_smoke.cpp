@@ -125,6 +125,16 @@ int main()
         return 28;
     S::clear_desktop_producers();
 
+    // A challenger that went silent restarts its hold when it reports again.
+    S::register_desktop_producer(1, "legacy");
+    S::register_desktop_producer(2, "winpc");
+    S::report_desktop_relevance(2, 100, T);
+    if (S::report_desktop_relevance(2, 100, T + 30000).changed || !expect_owner(1, "silent challenger"))
+        return 30;
+    if (!S::report_desktop_relevance(2, 100, T + 30000 + S::DesktopRelevanceHoldMs).changed)
+        return 31;
+    S::clear_desktop_producers();
+
     if (DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:42") != 42
         || DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:250") != 100
         || DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:x").has_value()

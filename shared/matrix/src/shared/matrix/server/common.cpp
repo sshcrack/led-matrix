@@ -99,6 +99,10 @@ namespace Server {
         const auto previous = desktop_producer_owner_id.load(std::memory_order_relaxed);
         if (!desktop_producers.contains(connection_id))
             return {previous, previous, false};
+        // A challenger that went silent counted as 0 meanwhile: its hold restarts.
+        if (challenger_id == connection_id && fresh_score(connection_id, now_ms) == 0
+            && now_ms - desktop_relevance[connection_id].reported_ms > DesktopRelevanceStaleMs)
+            challenger_id = 0;
         desktop_relevance[connection_id] = {score, now_ms};
         if (previous == 0)
             return {previous, previous, false};

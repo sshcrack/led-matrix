@@ -352,12 +352,20 @@ int AudioVisualizerDesktop::desktop_relevance() {
     if (!cfg.streamContinuously) return 0;
     std::lock_guard stateLock(stateMutex);
     if (!ensure_recording_locked()) return 0;
+    // getLastSamples() shares its read position with the producer, so it is empty
+    // right after the stream consumed the newest samples: that is no silence.
+    // Keep the last verdict for a few seconds then.
+    const auto now = std::chrono::steady_clock::now();
     const auto captured = recorder->getLastSamples();
-    if (!captured || captured->mono.empty()) return 0;
+    if (!captured || captured->mono.empty()) {
+        return now - lastRelevanceAt < std::chrono::seconds(3) ? lastRelevance : 0;
+    }
     double sum = 0.0;
     for (const float x : captured->mono) sum += static_cast<double>(x) * x;
     const double rms = std::sqrt(sum / static_cast<double>(captured->mono.size()));
-    return rms > 0.003 ? 100 : 0; // above about -50 dBFS
+    lastRelevance = rms > 0.003 ? 100 : 0; // above about -50 dBFS
+    lastRelevanceAt = now;
+    return lastRelevance;
 }
 
 std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(

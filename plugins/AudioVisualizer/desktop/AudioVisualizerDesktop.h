@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "AudioProcessor.h"
 #include "MusicAnalyzer.h"
 #include "config.h"
@@ -66,6 +67,8 @@ private:
     std::mutex stateMutex;
     /// Switch device / start capture as configured. False when capture is unavailable. Needs stateMutex.
     bool ensure_recording_locked();
+    int lastRelevance = 0;
+    std::chrono::steady_clock::time_point lastRelevanceAt{};
     std::string currentDeviceName;
 
 protected:
