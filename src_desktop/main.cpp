@@ -58,6 +58,15 @@ int run_app(int argc, char *argv[]) {
     CrashReporter::set_activity("initializing desktop controller");
     spdlog::info("Crash reports are written to {}", crash_dir.string());
 
+    // Before the single-instance check: whichever instance wins, its version must not be pruned.
+    if (!SelfUpdate::hold_running_version()) {
+        spdlog::warn("This version was removed by an update while starting; starting the current version instead");
+        bool minimized = false;
+        for (int i = 1; i < argc; i++)
+            minimized |= std::string(argv[i]) == "--start-minimized";
+        return SelfUpdate::restart_into_current(minimized, false) ? 0 : 1;
+    }
+
     SingleInstanceManager *instanceManager = nullptr;
     try {
         instanceManager = new SingleInstanceManager("LedMatrixController", [] {
@@ -69,7 +78,6 @@ int run_app(int argc, char *argv[]) {
     }
 
     // Only the primary instance prunes, and only while no update holds the install lock.
-    SelfUpdate::hold_running_version();
     if (SelfUpdate::is_managed_install()) {
         // The version we updated away from is no longer running: drop it.
         try { SelfUpdate::prune(); } catch (const std::exception &e) { spdlog::warn("Pruning old versions: {}", e.what()); }

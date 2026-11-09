@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 extern char **environ;
@@ -438,14 +439,29 @@ namespace SelfUpdate
                 const DWORD flags = (exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0) | (wait ? 0 : LOCKFILE_FAIL_IMMEDIATELY);
                 held_ = LockFileEx(handle_, flags, 0, 1, 0, &ov) != 0;
 #else
-                fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
-                if (fd_ < 0)
-                    return;
-                int rc;
-                do
-                    rc = flock(fd_, (exclusive ? LOCK_EX : LOCK_SH) | (wait ? 0 : LOCK_NB));
-                while (rc != 0 && errno == EINTR);
-                held_ = rc == 0;
+                // `--uninstall` unlinks lock files. A lock taken on an unlinked file excludes
+                // nobody, so retry until the locked file is still the one at `file`.
+                for (int attempt = 0; attempt < 10; attempt++)
+                {
+                    fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+                    if (fd_ < 0)
+                        return;
+                    int rc;
+                    do
+                        rc = flock(fd_, (exclusive ? LOCK_EX : LOCK_SH) | (wait ? 0 : LOCK_NB));
+                    while (rc != 0 && errno == EINTR);
+                    if (rc != 0)
+                        return;
+                    struct stat locked{}, now{};
+                    if (fstat(fd_, &locked) == 0 && stat(file.c_str(), &now) == 0 && locked.st_dev == now.st_dev &&
+                        locked.st_ino == now.st_ino)
+                    {
+                        held_ = true;
+                        return;
+                    }
+                    close(fd_);
+                    fd_ = -1;
+                }
 #endif
             }
             ~FileLock()
@@ -496,6 +512,25 @@ namespace SelfUpdate
         /// pruning removes a version only when it can take that lock exclusively.
         constexpr const char *IN_USE_FILE = ".in-use";
 
+        /// <root>/.versions.lock orders "is this version in use?" against "start using it":
+        /// removers hold it exclusively from the .in-use probe until the version is gone, a
+        /// starting app holds it shared while it takes its .in-use lock. Short-lived on both
+        /// sides (unlike InstallLock, which spans a whole download).
+        struct VersionsLock : FileLock
+        {
+            VersionsLock(bool exclusive, bool wait)
+                : FileLock(InstallLock::prepared_root() / ".versions.lock", exclusive, wait) {}
+        };
+
+        /// True when no app process holds versions/<v>. Call with VersionsLock held exclusively.
+        bool version_unused(const fs::path &dir)
+        {
+            if (!fs::exists(dir / IN_USE_FILE))
+                return true;
+            FileLock probe(dir / IN_USE_FILE, true, false);
+            return probe.held();
+        }
+
         void report(const std::string &message, bool error)
         {
             (error ? std::cerr : std::cout) << message << std::endl;
@@ -536,14 +571,20 @@ namespace SelfUpdate
                fs::exists(dir.parent_path().parent_path() / "CMakeCache.txt");
     }
 
-    void hold_running_version()
+    bool hold_running_version()
     {
         const auto dir = running_version_dir();
         if (!dir)
-            return;
+            return true;
         static std::unique_ptr<FileLock> held; // process lifetime
-        if (!held)
-            held = std::make_unique<FileLock>(*dir / IN_USE_FILE, false, true);
+        if (held)
+            return true;
+        VersionsLock versions(false, true);
+        // An update or prune may have removed this version while we were starting.
+        if (!fs::exists(*dir / "bin" / EXE_NAME))
+            return false;
+        held = std::make_unique<FileLock>(*dir / IN_USE_FILE, false, true);
+        return true;
     }
 
     fs::path current_exec_path() { return install_root() / "current" / "bin" / EXE_NAME; }
@@ -569,35 +610,36 @@ namespace SelfUpdate
         // `current/bin/led-matrix-desktop --install` installs a version onto itself.
         const bool sameAsSource = fs::exists(dest) && fs::equivalent(prefix, dest, ec);
         bool destInUse = sameAsSource || (running && fs::equivalent(*running, dest, ec));
-        if (!destInUse && fs::exists(dest / "bin" / EXE_NAME))
         {
+            // Held until dest is replaced, so no app starts using the old copy in between.
+            VersionsLock versions(true, true);
             // Same version already there and another app process runs it: keep it as is.
-            FileLock probe(dest / IN_USE_FILE, true, false);
-            destInUse = !probe.held();
-        }
-        if (!destInUse)
-        {
-            fs::remove_all(dest, ec);
-            bool placed = false;
-            if (move)
+            if (!destInUse && fs::exists(dest / "bin" / EXE_NAME))
+                destInUse = !version_unused(dest);
+            if (!destInUse)
             {
-                // Antivirus scanners (Defender) briefly hold freshly extracted files open,
-                // which makes renaming their folder fail with a sharing violation.
-                for (int attempt = 0; attempt < 20 && !placed; attempt++)
+                fs::remove_all(dest, ec);
+                bool placed = false;
+                if (move)
                 {
-                    fs::rename(prefix, dest, ec);
-                    placed = !ec;
-                    if (!placed)
-                        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                    // Antivirus scanners (Defender) briefly hold freshly extracted files open,
+                    // which makes renaming their folder fail with a sharing violation.
+                    for (int attempt = 0; attempt < 20 && !placed; attempt++)
+                    {
+                        fs::rename(prefix, dest, ec);
+                        placed = !ec;
+                        if (!placed)
+                            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                    }
                 }
+                if (!placed)
+                    if (auto r = copy_tree(prefix, dest); !r)
+                    {
+                        fs::remove_all(dest, ec);
+                        return r;
+                    }
             }
-            if (!placed)
-                if (auto r = copy_tree(prefix, dest); !r)
-                {
-                    fs::remove_all(dest, ec);
-                    return r;
-                }
-        }
+        } // before prune_locked(), which takes VersionsLock itself
 
         // Migrating away from a .deb / admin install: remember it so the app can offer to remove it.
         if (const auto legacy = removable_legacy_location())
@@ -723,19 +765,17 @@ namespace SelfUpdate
         std::error_code ec;
         const fs::path current = fs::weakly_canonical(root / "current", ec);
         const auto running = running_version_dir();
+        VersionsLock versions(true, true); // no app starts an old version while it is removed
         for (const auto &entry: fs::directory_iterator(versions_dir(root), ec))
         {
             std::error_code e2;
             if (fs::equivalent(entry.path(), current, e2) || (running && fs::equivalent(entry.path(), *running, e2)))
                 continue;
+            // Another app process (e.g. still open while `--install` ran) uses this version.
+            if (!version_unused(entry.path()))
             {
-                // Another app process (e.g. still open while `--install` ran) uses this version.
-                FileLock probe(entry.path() / IN_USE_FILE, true, false);
-                if (!probe.held())
-                {
-                    spdlog::info("Keeping desktop version {}: still running", entry.path().filename().string());
-                    continue;
-                }
+                spdlog::info("Keeping desktop version {}: still running", entry.path().filename().string());
+                continue;
             }
             fs::remove_all(entry.path(), e2); // Windows can still hold files briefly; retried next time
             if (!e2)
@@ -789,25 +829,62 @@ namespace SelfUpdate
         }
 
         // --uninstall: settings in the data dir stay.
-        remove_launchers();
-        if (Autostart::isEnabled(APP_NAME))
-            (void)Autostart::disable(APP_NAME);
         const fs::path root = install_root();
+        if (!fs::exists(root))
+        {
+            report(std::string(DISPLAY_NAME) + " is not installed for this user.", false);
+            return 0;
+        }
+        {
+            // No update may run while the files go, and no app may still run from them.
+            InstallLock install(true);
+            VersionsLock versions(true, true);
+            if (!install.held() || !versions.held())
+            {
+                report("Uninstall failed: could not lock " + root.string(), true);
+                return 1;
+            }
+            std::error_code ec;
+            for (const auto &entry: fs::directory_iterator(versions_dir(root), ec))
+                if (!version_unused(entry.path()))
+                {
+                    report("Close " + std::string(DISPLAY_NAME) + " (it is still running) and uninstall again.", true);
+                    return 1;
+                }
+
+            remove_launchers();
+            if (Autostart::isEnabled(APP_NAME))
+                (void)Autostart::disable(APP_NAME);
+#ifndef _WIN32
+            // Lock files last: an installer waiting on them notices they were unlinked (FileLock).
+            std::vector<fs::path> entries;
+            for (const auto &entry: fs::directory_iterator(root, ec))
+                if (const auto name = entry.path().filename(); name != ".install.lock" && name != ".versions.lock")
+                    entries.push_back(entry.path());
+            for (const auto &entry: entries)
+                fs::remove_all(entry, ec);
+            fs::remove_all(root, ec);
+            if (fs::exists(root))
+            {
+                report("Uninstall failed: could not remove " + root.string() + ": " + ec.message(), true);
+                return 1;
+            }
+#endif
+        }
 #ifdef _WIN32
-        // Our own files are in use until we exit; remove them right after.
+        // Our own executable and DLLs stay locked until this process exits, so cmd.exe
+        // removes the folder right after, retrying while files are still being released.
         // cmd.exe has its own quoting (no \" escapes), so build this line by hand.
-        run_cmdline(quote_arg((system32() / L"cmd.exe").wstring()) + L" /d /c ping -n 3 127.0.0.1 >nul & rmdir /s /q \"" +
-                        root.wstring() + L"\"",
+        const std::wstring quotedRoot = L"\"" + root.wstring() + L"\"";
+        run_cmdline(quote_arg((system32() / L"cmd.exe").wstring()) + L" /d /c for /l %i in (1,1,30) do @if exist " +
+                        quotedRoot + L" (ping -n 2 127.0.0.1 >nul & rmdir /s /q " + quotedRoot + L" 2>nul)",
                     false);
-#else
-        std::error_code ec;
-        fs::remove_all(root, ec);
 #endif
         report(std::string(DISPLAY_NAME) + " was uninstalled. Your settings are kept in " + get_data_dir().string(), false);
         return 0;
     }
 
-    bool restart_into_current(bool start_minimized)
+    bool restart_into_current(bool start_minimized, bool after_update)
     {
         const fs::path exe = current_exec_path();
         spdlog::info("Restarting into {}", exe.string());
@@ -816,7 +893,8 @@ namespace SelfUpdate
         std::vector<std::wstring> args{exe.wstring()};
         if (start_minimized)
             args.emplace_back(L"--start-minimized");
-        args.emplace_back(L"--after-update");
+        if (after_update)
+            args.emplace_back(L"--after-update");
         return run_process(args, false) == 0;
 #else
         spdlog::default_logger()->flush();
@@ -826,7 +904,8 @@ namespace SelfUpdate
         std::vector<char *> argv{const_cast<char *>(exeStr.c_str())};
         if (start_minimized)
             argv.push_back(minimized.data());
-        argv.push_back(afterUpdate.data());
+        if (after_update)
+            argv.push_back(afterUpdate.data());
         argv.push_back(nullptr);
         execv(exeStr.c_str(), argv.data());
         spdlog::error("Could not restart into {}: {}", exeStr, std::strerror(errno));
