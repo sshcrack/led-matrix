@@ -12,6 +12,7 @@ namespace desktop_app::detail {
     volatile sig_atomic_t shouldExit{0};
     std::atomic<bool> showMainWindow{false};
     bool startMinimized = false;
+    bool restartedForUpdate = false;
     int startupFrameCounter = 0;
 
 #ifdef _WIN32

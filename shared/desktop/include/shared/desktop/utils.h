@@ -9,7 +9,11 @@
 #include <string_view>
 
 SHARED_DESKTOP_API bool isWritableExistingFile(const std::filesystem::path &path);
+/// Settings and caches: the per-user dir, or `data/` next to bin/ for a portable copy
+/// (never for the self-updating install, whose version folders are replaced on update).
 SHARED_DESKTOP_API std::filesystem::path get_data_dir();
+/// The per-user data dir (%APPDATA%\led-matrix-desktop, ~/.config/led-matrix-desktop).
+SHARED_DESKTOP_API std::filesystem::path get_user_data_dir();
 SHARED_DESKTOP_API int run_command(const std::string& cmd,
                                     const std::atomic<bool>* running = nullptr);
 

@@ -95,7 +95,7 @@ namespace desktop_app::detail {
             ws->start();
             matrixVersionManager.checkMatrixVersionAsync(hostname, port);
             initialConnect = false;
-            if (generalCfg.isTurnMatrixOnOnStart()) {
+            if (generalCfg.isTurnMatrixOnOnStart() && !restartedForUpdate) {
                 spdlog::info("Turning Matrix ON on start.");
                 change_matrix_status(hostname, port, true);
             }
@@ -229,10 +229,9 @@ namespace desktop_app::detail {
         ImGui::EndChild();
         ImGui::EndGroup();
 
-        updateManager.render(ImGui::GetCurrentContext());
-        matrixVersionManager.render(ImGui::GetCurrentContext());
-        if (updateManager.shallAppExit())
-            HelloImGui::GetRunnerParams()->appShallExit = true;
+        // With "Match Matrix Version" the desktop follows the matrix by itself.
+        if (!updateManager.isFollowMatrixEnabled())
+            matrixVersionManager.render(ImGui::GetCurrentContext());
     }
 
     void render_app_menu_items(HelloImGui::RunnerParams &runnerParams, ConfigManager *cfg) {
@@ -293,10 +292,31 @@ namespace desktop_app::detail {
             updateManager.checkForUpdatesManual();
         }
 
+        if (const auto pending = updateManager.pendingRestartVersion(); !pending.empty()) {
+            if (ImGui::MenuItem(("Restart to Update to v" + pending).c_str()))
+                updateManager.requestRestart(false);
+        }
+        if (const auto status = updateManager.statusLine(); !status.empty())
+            ImGui::TextDisabled("%s", status.c_str());
+
         bool updateNotificationsEnabled = updateManager.isUpdateNotificationsEnabled();
-        if (ImGui::MenuItem("Update Notifications", nullptr, updateNotificationsEnabled)) {
+        if (ImGui::MenuItem("Check for Updates Automatically", nullptr, updateNotificationsEnabled)) {
             updateManager.setUpdateNotificationsEnabled(!updateNotificationsEnabled);
         }
+
+        bool autoUpdate = updateManager.isAutoUpdateEnabled();
+        if (ImGui::MenuItem("Install Updates Automatically", nullptr, autoUpdate)) {
+            updateManager.setAutoUpdateEnabled(!autoUpdate);
+        }
+        ImGui::SetItemTooltip("Download and install updates in the background and restart while hidden in the tray.\n"
+                              "Off: ask first.");
+
+        bool followMatrix = updateManager.isFollowMatrixEnabled();
+        if (ImGui::MenuItem("Match Matrix Version", nullptr, followMatrix)) {
+            updateManager.setFollowMatrixEnabled(!followMatrix);
+        }
+        ImGui::SetItemTooltip("Run the same release as the matrix, so desktop rendering stays available.\n"
+                              "When a newer release is out and the matrix updates itself, it updates first.");
 
         if (ImGui::BeginMenu("Update Settings")) {
             auto &prefs = updateManager.getUpdatePreferences();
