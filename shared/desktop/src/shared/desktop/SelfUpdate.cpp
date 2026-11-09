@@ -668,24 +668,37 @@ namespace SelfUpdate
             try
             {
                 const fs::path user = get_user_data_dir();
-                const bool intoUser = fs::exists(local / "config.json") && !fs::exists(user / "config.json");
-                const fs::path target = intoUser ? user : user / ("portable-data-" + version_dir.filename().string());
+                // Into the user dir only when nothing there would collide; otherwise keep the whole
+                // set together next to it, so nothing is merged half-way or dropped.
+                bool intoUser = fs::exists(local / "config.json");
+                for (const auto &entry: fs::directory_iterator(local))
+                    intoUser = intoUser && !fs::exists(fs::symlink_status(user / entry.path().filename()));
+                fs::path target = user;
+                if (!intoUser)
+                {
+                    const std::string base = "portable-data-" + version_dir.filename().string();
+                    target = user / base;
+                    for (int n = 2; fs::exists(target); n++)
+                        target = user / (base + "-" + std::to_string(n));
+                }
                 // Copy completely first, then move into place: a failed copy leaves nothing behind.
                 const fs::path staging = user / ".portable-import";
                 fs::remove_all(staging);
                 fs::create_directories(user);
                 fs::copy(local, staging, fs::copy_options::recursive);
-                fs::create_directories(target);
-                std::vector<fs::path> entries;
-                for (const auto &entry: fs::directory_iterator(staging))
-                    if (entry.path().filename() != "config.json")
-                        entries.push_back(entry.path());
-                if (fs::exists(staging / "config.json"))
+                if (!intoUser)
+                    fs::rename(staging, target);
+                else
+                {
+                    std::vector<fs::path> entries;
+                    for (const auto &entry: fs::directory_iterator(staging))
+                        if (entry.path().filename() != "config.json")
+                            entries.push_back(entry.path());
                     entries.push_back(staging / "config.json"); // last: it marks the migration as done
-                for (const auto &entry: entries)
-                    if (!fs::exists(target / entry.filename()))
+                    for (const auto &entry: entries)
                         fs::rename(entry, target / entry.filename());
-                fs::remove_all(staging);
+                    fs::remove_all(staging);
+                }
                 spdlog::info("Moved the portable settings from {} to {}", local.string(), target.string());
             }
             catch (const std::exception &e)
