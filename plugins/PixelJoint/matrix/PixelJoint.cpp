@@ -68,8 +68,8 @@ void store_file_to_disk(
     std::string hash;
     picosha2::hash256_hex_string(full_file, hash);
 
-    if (!filesystem::exists(Constants::upload_dir))
-        filesystem::create_directory(Constants::upload_dir);
+    if (!std::filesystem::exists(Constants::upload_dir))
+        std::filesystem::create_directory(Constants::upload_dir);
 
     upload_filename = hash + ext.string();
     spdlog::debug("Uploading file as {}", upload_filename.c_str());

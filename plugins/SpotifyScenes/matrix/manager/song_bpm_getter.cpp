@@ -38,21 +38,21 @@ std::expected<float, string> SongBpmApi::get_bpm(const std::string &song_name, c
     try {
         const json j = nlohmann::json::parse(response.text);
         if (!j.contains("search") || !j["search"].is_array())
-            return unexpected("Couldn't find song (most probably):" + response.text);
+            return std::unexpected("Couldn't find song (most probably):" + response.text);
 
         const std::vector<json> &search = j["search"];
         if (search.empty() || !search[0].contains("tempo") || !(search[0]["tempo"].is_string()))
-            return unexpected("Invalid JSON returned: " + j.dump());
+            return std::unexpected("Invalid JSON returned: " + j.dump());
 
         std::string s = search[0]["tempo"].template get<std::string>();
         spdlog::trace("Got BPM {}", s);
 
         const float bpm = std::stof(s);
         if (!std::isfinite(bpm) || bpm <= 0.0f)
-            return unexpected("Song BPM must be finite and positive");
+            return std::unexpected("Song BPM must be finite and positive");
         return bpm;
     } catch (const std::exception &e) {
-        return unexpected("Could not parse song BPM response: " + string(e.what()));
+        return std::unexpected("Could not parse song BPM response: " + string(e.what()));
     }
 
 }

@@ -180,16 +180,16 @@ Spotify::~Spotify() {
 std::expected<optional<SpotifyState>, std::pair<string, std::optional<int>>> Spotify::inner_fetch_currently_playing() {
     auto res = Spotify::authenticated_get("https://api.spotify.com/v1/me/player/currently-playing?market=DE");
     if (!res.has_value()) {
-        return unexpected(res.error());
+        return std::unexpected(res.error());
     }
 
     if (!res.value().has_value()) {
-        return nullopt;
+        return std::nullopt;
     }
 
     if (!res->value().contains("item")) {
         warn("SpotifyScenes state does not contain item: {}", res->value().dump());
-        return unexpected(make_pair("Invalid server response: " + res->value().dump(), nullopt));
+        return std::unexpected(make_pair("Invalid server response: " + res->value().dump(), std::nullopt));
     }
 
     if (res->value().contains("timestamp"))
@@ -208,7 +208,7 @@ std::expected<optional<json>, std::pair<string, std::optional<int>>>
 Spotify::authenticated_get(const std::string &url, bool refresh) {
     auto data = config->get_spotify();
     if (!data.has_auth()) {
-        return unexpected(make_pair("No auth data", nullopt));
+        return std::unexpected(std::make_pair("No auth data", std::nullopt));
     }
 
     if (data.is_expired()) {
@@ -218,7 +218,7 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
         data = config->get_spotify();
         if (data.is_expired()) {
             if (!this->refresh()) {
-                return unexpected(make_pair("Could not refresh token", nullopt));
+                return std::unexpected(std::make_pair("Could not refresh token", std::nullopt));
             }
             data = config->get_spotify();
         }
@@ -250,8 +250,8 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
         if (res != CURLE_OK) {
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
-            return unexpected(
-                    make_pair("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)), nullopt));
+            return std::unexpected(
+                    make_pair("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)), std::nullopt));
         }
 
 
@@ -264,7 +264,7 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
 
-            return unexpected(make_pair("Rate limited", retry_after));
+            return std::unexpected(std::make_pair("Rate limited", retry_after));
         }
 
         // Cleanup
@@ -272,7 +272,7 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
         curl_easy_cleanup(curl);
 
         if (readBuffer.empty()) {
-            return nullopt;
+            return std::nullopt;
         }
 
         try {
@@ -287,17 +287,17 @@ Spotify::authenticated_get(const std::string &url, bool refresh) {
                 return j;
 
             if (!this->refresh()) {
-                return unexpected(make_pair("Could not refresh token", nullopt));
+                return std::unexpected(std::make_pair("Could not refresh token", std::nullopt));
             }
 
             return this->authenticated_get(url, false);
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::trace("Couldn't parse payload: {}", readBuffer);
-            return unexpected(make_pair(std::string("Could not parse json: ") + ex.what(), nullopt));
+            return std::unexpected(std::make_pair(std::string("Could not parse json: ") + ex.what(), std::nullopt));
         }
     }
 
-    return unexpected(make_pair("Could not initialize curl!?", nullopt));
+    return std::unexpected(std::make_pair("Could not initialize curl!?", std::nullopt));
 }
 
 void Spotify::busy_wait(int seconds) {
@@ -311,7 +311,7 @@ void Spotify::busy_wait(int seconds) {
 
 void Spotify::start_control_thread() {
     if (control_thread.joinable()) return;
-    thread c_thread{[this] {
+    std::thread c_thread{[this] {
         while (!this->should_terminate) {
             if (!is_configured() || !config->get_spotify().has_auth() || needs_reconnect) {
                 { std::lock_guard lock(mtx); currently_playing.reset(); }

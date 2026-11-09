@@ -32,7 +32,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         auto presets = config->get_presets();
         if (!qp.has("id")) {
             vector<string> keys;
-            for (const auto &key: presets | views::keys) {
+            for (const auto &key: presets | std::views::keys) {
                 keys.push_back(key);
             }
 
@@ -81,7 +81,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         json j;
         try {
             j = json::parse(str_body);
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -113,7 +113,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
                 {"id", id},
                 {"display_name", pr->display_name}
             });
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::warn("Invalid preset with {}", ex.what());
             return reply_with_error(req, "Could not serialize json");
         }
@@ -131,7 +131,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
 
         try {
             j = json::parse(str_body);
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -153,7 +153,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
                 {"success", "Preset has been set"},
                 {"id", id}
             });
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::warn("Invalid preset with {}", ex.what());
             return reply_with_error(req, "Could not serialize json");
         }
@@ -173,7 +173,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         json j;
         try {
             j = json::parse(req->body());
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }

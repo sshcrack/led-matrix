@@ -19,19 +19,29 @@ export function lookKey(sceneName: string, variantId?: string) {
   return variantId ? `${sceneName}/${variantId}` : sceneName
 }
 
-/** Automatic Mode plays one instance per curated variant, or the scene itself when it has none. */
+/** Automatic Mode plays one instance per curated variant, or the scene itself when it has none. Scenes that follow the real world also play their default look. */
 export function automaticLooks(scene: ListScenes, preferences: AutomaticPreferences): AutomaticLook[] {
   const descriptor = scene.descriptor
   if (!descriptor?.automatic_eligible) return []
   const sceneDefault = descriptor.automatic_default ?? true
-  const looks = descriptor.variants.length > 0
-    ? descriptor.variants.map(variant => ({
-        key: lookKey(scene.name, variant.id),
-        label: variant.label,
-        description: variant.description,
-        defaultOn: sceneDefault && (variant.automatic_default ?? true),
-      }))
-    : [{ key: lookKey(scene.name), label: 'Scene', description: undefined, defaultOn: sceneDefault }]
+  const variantLooks = descriptor.variants.map(variant => ({
+    key: lookKey(scene.name, variant.id),
+    label: variant.label,
+    description: variant.description,
+    defaultOn: sceneDefault && (variant.automatic_default ?? true),
+  }))
+  const followsRealWorld = descriptor.tags.includes('environment-adaptive')
+  const looks = variantLooks.length > 0 && !followsRealWorld
+    ? variantLooks
+    : [
+        {
+          key: lookKey(scene.name),
+          label: followsRealWorld ? 'Follows the real world' : 'Scene',
+          description: followsRealWorld ? 'Time of day, weather and season follow the real world outside.' : undefined,
+          defaultOn: sceneDefault,
+        },
+        ...variantLooks,
+      ]
   return looks.map(look => ({ ...look, state: stateFor(preferences[look.key], look.defaultOn) }))
 }
 

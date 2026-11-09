@@ -313,6 +313,7 @@ bool ChristmasMarketScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor ChristmasMarketScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "christmas";
     d.tags = {"christmas", "holidays", "occasion:christmas", "fits:winter", "fits:night", "scenery", "cozy", "city", "calm",
               "audio-reactive"};
@@ -552,6 +553,7 @@ bool ChristmasSleighScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor ChristmasSleighScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "christmas";
     d.tags = {"christmas", "holidays", "occasion:christmas", "fits:winter", "fits:night", "scenery", "landscape", "night",
               "calm", "moon"};

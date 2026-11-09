@@ -31,7 +31,7 @@ namespace {
 // True when `candidate` is `base` itself or lives underneath it, compared
 // component-wise so sibling directories with a shared name prefix (e.g.
 // ".../web" vs ".../web-secrets") are not treated as contained.
-bool is_within(const filesystem::path &candidate, const filesystem::path &base)
+bool is_within(const std::filesystem::path &candidate, const std::filesystem::path &base)
 {
     auto candidate_it = candidate.begin();
     auto base_it = base.begin();
@@ -50,16 +50,16 @@ bool is_within(const filesystem::path &candidate, const filesystem::path &base)
 // the plugin's own folder first (<plugin dir>/web, so a plugin can be dropped in
 // with its UI), then the bundle shipped with the web app
 // (<share>/web/plugin-ui/<Name>). Empty path when the plugin ships none.
-filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
+std::filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
 {
     const auto name = plugin.get_plugin_name();
-    std::vector<filesystem::path> candidates;
+    std::vector<std::filesystem::path> candidates;
     if (const auto location = plugin.get_plugin_location(); !location.empty())
-        candidates.push_back(filesystem::path(location).parent_path() / "web");
-    candidates.push_back(filesystem::path(LED_MATRIX_SHARE_DIR) / "web" / "plugin-ui" / name);
+        candidates.push_back(std::filesystem::path(location).parent_path() / "web");
+    candidates.push_back(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "web" / "plugin-ui" / name);
     std::error_code ec;
     for (const auto &dir : candidates)
-        if (filesystem::is_regular_file(dir / "ui.json", ec) && filesystem::is_regular_file(dir / "ui.js", ec))
+        if (std::filesystem::is_regular_file(dir / "ui.json", ec) && std::filesystem::is_regular_file(dir / "ui.js", ec))
             return dir;
     return {};
 }
@@ -91,8 +91,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
     router->http_get("/uploads/:filename", [](auto req, auto params)
                      {
         const auto filename = std::string(params["filename"]);
-        const filesystem::path file_path = Constants::upload_dir / filename;
-        if (!filesystem::exists(file_path)) {
+        const std::filesystem::path file_path = Constants::upload_dir / filename;
+        if (!std::filesystem::exists(file_path)) {
             return reply_with_error(req, "File not found", restinio::status_not_found());
         }
 
@@ -101,9 +101,9 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
         std::error_code can_ec;
-        const auto canonical = filesystem::canonical(file_path, can_ec);
+        const auto canonical = std::filesystem::canonical(file_path, can_ec);
         std::error_code upload_ec;
-        const auto canonical_upload = filesystem::canonical(Constants::upload_dir, upload_ec);
+        const auto canonical_upload = std::filesystem::canonical(Constants::upload_dir, upload_ec);
         if (can_ec || upload_ec) {
             return reply_with_error(req, "Invalid path", restinio::status_forbidden());
         }
@@ -136,7 +136,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                 continue;
             json entry = {{"js", "ui.js"}, {"api_version", 1}};
             std::error_code ec;
-            if (filesystem::is_regular_file(dir / "ui.css", ec))
+            if (std::filesystem::is_regular_file(dir / "ui.css", ec))
                 entry["css"] = "ui.css";
             try
             {
@@ -168,7 +168,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                 continue;
             const auto dir = plugin_ui_dir(*plugin);
             std::error_code ec;
-            if (dir.empty() || !filesystem::is_regular_file(dir / file, ec))
+            if (dir.empty() || !std::filesystem::is_regular_file(dir / file, ec))
                 break;
             auto response = req->create_response(restinio::status_ok())
                                 .append_header_date_field()
@@ -344,7 +344,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                      {
         json file_list = json::array();
 
-        auto iterator = filesystem::directory_iterator(Constants::post_dir);
+        auto iterator = std::filesystem::directory_iterator(Constants::post_dir);
         for (const auto &entry: iterator) {
             string file_name = entry.path().filename().string();
             if (!file_name.ends_with(".p.gif"))
@@ -407,13 +407,13 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
 #ifndef LED_MATRIX_SHARE_DIR
 #define LED_MATRIX_SHARE_DIR "."
 #endif
-    const filesystem::path web_dir = filesystem::path(LED_MATRIX_SHARE_DIR) / "web";
+    const std::filesystem::path web_dir = std::filesystem::path(LED_MATRIX_SHARE_DIR) / "web";
 
     // A missing/unreadable web_dir used to surface as a 403 "Invalid path",
     // which looks like a client problem but is really a broken install
     // (e.g. a package built with SKIP_WEB_BUILD=ON). Report it distinctly.
     std::error_code web_ec;
-    const auto canonical_web = filesystem::canonical(web_dir, web_ec);
+    const auto canonical_web = std::filesystem::canonical(web_dir, web_ec);
     if (web_ec) {
         spdlog::error("Web UI directory {} is unavailable: {}", web_dir.string(), web_ec.message());
         return reply_with_error(
@@ -422,13 +422,13 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
             restinio::status_internal_server_error());
     }
 
-    filesystem::path file_path = web_dir / requested_path;
-    if (!filesystem::exists(file_path))
+    std::filesystem::path file_path = web_dir / requested_path;
+    if (!std::filesystem::exists(file_path))
         file_path = web_dir / "index.html"; // Fallback to index.html if not found
 
     // Ensure the requested path is within the web directory
     std::error_code ec;
-    const auto canonical_file = filesystem::canonical(file_path, ec);
+    const auto canonical_file = std::filesystem::canonical(file_path, ec);
 
     // Compare path components, not raw strings: "/…/web-evil" would pass a
     // plain string prefix test against "/…/web".
@@ -438,10 +438,10 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
     }
 
     // Serve index file if directory
-    if (filesystem::is_directory(file_path))
+    if (std::filesystem::is_directory(file_path))
         file_path = file_path / "index.html";
 
-    if (!filesystem::exists(file_path))
+    if (!std::filesystem::exists(file_path))
     {
         return reply_with_error(req, "File not found", restinio::status_not_found());
     }
