@@ -176,6 +176,19 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                         [ &registry, is_scene_worker ](auto wsh, auto m) {
                             if(rws::opcode_t::text_frame == m->opcode()) {
                                 const std::string mStr = m->payload();
+                                if (!is_scene_worker) {
+                                    if (const auto relevance = DesktopControlProtocol::parse_desktop_relevance(mStr)) {
+                                        // A clearly more relevant standby desktop (e.g. the one that
+                                        // actually has audio) takes over the producer role.
+                                        const auto change = Server::report_desktop_relevance(
+                                            wsh->connection_id(), *relevance);
+                                        if (change.changed)
+                                            spdlog::info("Desktop producer moved to connection {} (more relevant)",
+                                                         change.owner);
+                                        apply_producer_change(change, true);
+                                        return;
+                                    }
+                                }
                                 if (mStr.starts_with("msg:")) {
                                     const auto pluginNameEnd = mStr.find(':', 4);
                                     if (pluginNameEnd == std::string::npos)

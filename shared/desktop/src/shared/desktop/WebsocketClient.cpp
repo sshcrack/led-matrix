@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "shared/desktop/WebsocketClient.h"
 #include <spdlog/spdlog.h>
 #include "shared/desktop/plugin_loader/loader.h"
@@ -172,6 +173,8 @@ void WebsocketClient::threadLoop()
     uint16_t port = generalConfig.getPort();
     int udpFpsLimit = generalConfig.getUdpFpsLimit();
     auto lastUpdated = clock::now();
+    auto lastRelevance = clock::time_point{};
+    constexpr auto RELEVANCE_INTERVAL = std::chrono::seconds(2);
 
     std::unordered_map<std::string, clock::time_point> lastLargePayloadSend;
 
@@ -185,6 +188,17 @@ void WebsocketClient::threadLoop()
     {
         auto frame_start = clock::now();
         std::string scene = getActiveScene();
+
+        // Tell the matrix how relevant this desktop is (also on standby), so it
+        // can hand the producer role to the desktop that actually has audio.
+        if (lastRelevance + RELEVANCE_INTERVAL < frame_start && webSocket.getReadyState() == ix::ReadyState::Open)
+        {
+            lastRelevance = frame_start;
+            int relevance = 0;
+            for (const auto &pl : plugins | std::views::values)
+                relevance = std::max(relevance, pl->desktop_relevance(scene));
+            webSocket.send(DesktopControlProtocol::desktop_relevance(relevance));
+        }
 
         if (lastUpdated + std::chrono::seconds(1) < frame_start)
         {

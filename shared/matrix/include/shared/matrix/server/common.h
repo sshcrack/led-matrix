@@ -40,7 +40,17 @@ namespace Server {
     // logical client id may supersede its own stale server-side socket without
     // displacing an unrelated healthy desktop.
     SHARED_MATRIX_API DesktopProducerChange register_desktop_producer(std::uint64_t connection_id, std::string client_id = {});
-    SHARED_MATRIX_API DesktopProducerChange unregister_desktop_producer(std::uint64_t connection_id);
+    SHARED_MATRIX_API DesktopProducerChange unregister_desktop_producer(std::uint64_t connection_id, std::int64_t now_ms = -1);
+    /// A desktop reports how relevant it is as producer (0..100, see
+    /// DesktopControlProtocol::desktop_relevance). A standby desktop that stays
+    /// clearly more relevant than the owner for DesktopRelevanceHoldMs takes
+    /// over; reports older than DesktopRelevanceStaleMs count as 0. `now_ms` is
+    /// a monotonic clock (default: steady_clock) so tests can drive time.
+    inline constexpr std::int64_t DesktopRelevanceHoldMs = 10000;
+    inline constexpr std::int64_t DesktopRelevanceStaleMs = 10000;
+    inline constexpr int DesktopRelevanceMargin = 20;
+    SHARED_MATRIX_API DesktopProducerChange report_desktop_relevance(std::uint64_t connection_id, int score,
+                                                                     std::int64_t now_ms = -1);
     SHARED_MATRIX_API void register_desktop_worker(std::uint64_t connection_id, std::string client_id);
     SHARED_MATRIX_API void unregister_desktop_worker(std::uint64_t connection_id);
     SHARED_MATRIX_API void clear_desktop_producers();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "AudioProcessor.h"
 #include "MusicAnalyzer.h"
 #include "config.h"
@@ -27,6 +28,7 @@ public:
     void before_exit() override;
     void post_init() override;
     std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(std::string sceneName) override;
+    int desktop_relevance(const std::string &sceneName) override;
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc *alloc_fn,
                           ImGuiMemFreeFunc *free_fn, void **user_data) override;
@@ -63,6 +65,11 @@ private:
     mutable std::shared_mutex lastErrorMutex;
     std::string lastError;
     std::mutex stateMutex;
+    /// Switch device / start capture as configured. False when capture is unavailable. Needs stateMutex.
+    bool ensure_recording_locked();
+    void note_level_locked(const AudioRecorder::CapturedAudioFrame &captured);
+    int lastRelevance = 0;
+    std::chrono::steady_clock::time_point lastRelevanceAt{};
     std::string currentDeviceName;
 
 protected:
