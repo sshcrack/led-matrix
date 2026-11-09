@@ -1,5 +1,6 @@
 #include "shared/desktop/utils.h"
 #include "shared/desktop/config.h"
+#include "shared/desktop/SelfUpdate.h"
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -47,20 +48,20 @@ bool isWritableExistingFile(const std::filesystem::path &path)
 
 fs::path get_data_dir()
 {
-    fs::path configPath;
-    const fs::path exeDir = get_exec_dir();
+    if (!SelfUpdate::is_managed_install())
+    {
+        const fs::path exeDir = get_exec_dir();
+        auto localDataDir = exeDir.parent_path() / "data";
+        if (fs::exists(exeDir / "portable.txt"))
+            return localDataDir;
+        if (isWritableExistingFile(localDataDir / "config.json"))
+            return localDataDir;
+    }
+    return get_user_data_dir();
+}
 
-    const fs::path portableFile = exeDir / "portable.txt";
-    bool isPortable = fs::exists(portableFile);
-
-    auto localDataDir = exeDir.parent_path() / "data";
-    if (isPortable)
-        return localDataDir;
-
-    const fs::path dataConfigJson = localDataDir / "config.json";
-    if (isWritableExistingFile(dataConfigJson))
-        return localDataDir;
-
+fs::path get_user_data_dir()
+{
 #ifdef _WIN32
     char *appData = nullptr;
     size_t sz = 0;

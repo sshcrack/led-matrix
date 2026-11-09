@@ -2,11 +2,13 @@
 #include <spdlog/spdlog.h>
 #include <random>
 #include <regex>
+#include <optional>
 
 
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <psapi.h>
 constexpr size_t PATH_BUF_SIZE = MAX_PATH;
 #elif defined(__linux__)
 #include <unistd.h>
@@ -78,10 +80,40 @@ int get_random_number_inclusive(int start, int end) {
     return dist(engine);
 }
 
-std::filesystem::path get_exec_file() {
+#if defined(_WIN32)
+namespace {
+    // The file the process image was mapped from. Junctions in the launch path were resolved
+    // when it was loaded, so this stays the version that runs even after the per-user
+    // install re-points its `current` junction (canonicalizing the launch path would not).
+    std::optional<std::filesystem::path> mapped_image_path() {
+        std::wstring nt(32768, L'\0');
+        const DWORD n = K32GetMappedFileNameW(GetCurrentProcess(), GetModuleHandleW(nullptr), nt.data(),
+                                              static_cast<DWORD>(nt.size()));
+        if (n == 0)
+            return std::nullopt;
+        nt.resize(n);
+        // \Device\HarddiskVolume3\... -> C:\...
+        wchar_t drive[] = L"A:";
+        wchar_t device[1024];
+        for (wchar_t letter = L'A'; letter <= L'Z'; letter++) {
+            drive[0] = letter;
+            if (QueryDosDeviceW(drive, device, 1024) == 0)
+                continue;
+            const std::wstring prefix(device);
+            if (nt.size() > prefix.size() && nt.compare(0, prefix.size(), prefix) == 0 && nt[prefix.size()] == L'\\')
+                return std::filesystem::path(std::wstring(drive) + nt.substr(prefix.size()));
+        }
+        return std::nullopt;
+    }
+}
+#endif
+
+static std::filesystem::path find_exec_file() {
         char buffer[PATH_BUF_SIZE];
 
 #if defined(_WIN32)
+    if (auto mapped = mapped_image_path())
+        return *mapped;
     DWORD len = GetModuleFileNameA(NULL, buffer, sizeof(buffer));
     if (len == 0 || len == sizeof(buffer)) {
         throw std::runtime_error("GetModuleFileNameA failed");
@@ -96,7 +128,20 @@ std::filesystem::path get_exec_file() {
     #error Unsupported platform
 #endif
 
+#if defined(_WIN32)
+    std::error_code ec;
+    auto resolved = std::filesystem::canonical(std::filesystem::path(buffer), ec);
+    if (!ec)
+        return resolved;
+#endif
     return std::filesystem::path(buffer);
+}
+
+std::filesystem::path get_exec_file() {
+    // The running image never changes, while the path to it can (an update re-points the
+    // desktop install's `current` link, or prunes the version): resolve it once.
+    static const std::filesystem::path exec_file = find_exec_file();
+    return exec_file;
 }
 
 std::filesystem::path get_exec_dir() {

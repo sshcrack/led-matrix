@@ -1,32 +1,44 @@
 #include "shared/desktop/UpdateChecker.h"
-#include "shared/common/Version.h"
-#include "led_matrix_version.h"  // generated
-#include <spdlog/spdlog.h>
-#include <thread>
-#include <regex>
-#include <fstream>
-#include <filesystem>
+#include "shared/desktop/SelfUpdate.h"
+#include "shared/desktop/config.h"
+#include "shared/desktop/utils.h"
+#include "led_matrix_version.h" // generated
 #include <chrono>
-#include <hello_imgui/hello_imgui.h>
-#include <imgui.h>
-#include <shared/desktop/utils.h>
-
-#ifdef _WIN32
-#include <shellapi.h>
-#include <urlmon.h>
-#pragma comment(lib, "urlmon.lib")
-#pragma comment(lib, "shell32.lib")
-#else
-#include <cstdlib>
-#endif
-
-// Include HTTP client library
+#include <filesystem>
+#include <fstream>
 #include <cpr/cpr.h>
+#include <spdlog/spdlog.h>
 
 namespace UpdateChecker
 {
+    namespace
+    {
+        constexpr const char *RELEASES_API = "https://api.github.com/repos/sshcrack/led-matrix/releases";
 
-    // UpdatePreferences implementation
+        std::string userAgent() { return "led-matrix-desktop/" + UpdateChecker::getCurrentVersion().toString(); }
+
+        std::string matrixUrl(const MatrixEndpoint &matrix, const std::string &path)
+        {
+            return "http://" + matrix.host + ":" + std::to_string(matrix.port) + path;
+        }
+
+        cpr::Header matrixHeaders(const MatrixEndpoint &matrix)
+        {
+            cpr::Header headers{{"User-Agent", userAgent()}};
+            if (!matrix.authorization.empty())
+                headers["Authorization"] = matrix.authorization;
+            return headers;
+        }
+    } // namespace
+
+    MatrixEndpoint MatrixEndpoint::fromConfig()
+    {
+        const auto &general = Config::ConfigManager::instance()->getGeneralConfig();
+        return {general.getHostnameCopy(), general.getPort(), Config::matrixAuthorizationHeader()};
+    }
+
+    // ---- preferences ----------------------------------------------------
+
     void UpdatePreferences::save()
     {
         try
@@ -36,12 +48,9 @@ namespace UpdateChecker
             j["lastRemindTime"] = lastRemindTime;
             j["updateNotificationsEnabled"] = updateNotificationsEnabled;
             j["remindIntervalDays"] = remindIntervalDays;
-
-            std::filesystem::path configPath = get_data_dir() / "update_preferences.json";
-            std::ofstream file(configPath);
-            file << j.dump(4);
-
-            spdlog::debug("Saved update preferences to: {}", configPath.string());
+            j["autoUpdate"] = autoUpdate;
+            j["followMatrix"] = followMatrix;
+            std::ofstream(get_data_dir() / "update_preferences.json") << j.dump(4);
         }
         catch (const std::exception &e)
         {
@@ -53,54 +62,33 @@ namespace UpdateChecker
     {
         try
         {
-            std::filesystem::path configPath = get_data_dir() / "update_preferences.json";
-            if (!std::filesystem::exists(configPath))
-            {
-                spdlog::debug("Update preferences file doesn't exist, using defaults");
+            const auto path = get_data_dir() / "update_preferences.json";
+            if (!std::filesystem::exists(path))
                 return;
-            }
-
-            std::ifstream file(configPath);
+            std::ifstream file(path);
             nlohmann::json j;
             file >> j;
-
             skippedVersion = j.value("skippedVersion", "");
             lastRemindTime = j.value("lastRemindTime", int64_t(0));
             updateNotificationsEnabled = j.value("updateNotificationsEnabled", true);
             remindIntervalDays = j.value("remindIntervalDays", 7);
-
-            spdlog::debug("Loaded update preferences from: {}", configPath.string());
+            autoUpdate = j.value("autoUpdate", true);
+            followMatrix = j.value("followMatrix", true);
         }
         catch (const std::exception &e)
         {
             spdlog::warn("Failed to load update preferences: {}", e.what());
-            // Use defaults on failure
-            skippedVersion = "";
-            lastRemindTime = 0;
-            updateNotificationsEnabled = true;
-            remindIntervalDays = 7;
+            *this = UpdatePreferences{};
         }
     }
 
     bool UpdatePreferences::shouldRemindForVersion(const std::string &version) const
     {
-        if (!updateNotificationsEnabled)
-        {
+        if (!updateNotificationsEnabled || shouldSkipVersion(version))
             return false;
-        }
-
-        // Check if this version is marked as skipped
-        if (shouldSkipVersion(version))
-        {
-            return false;
-        }
-
-        // Check if enough time has passed since last remind
-        auto now = std::chrono::system_clock::now();
-        auto nowTime = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-        auto daysSinceRemind = (nowTime - lastRemindTime) / (24 * 60 * 60);
-
-        return daysSinceRemind >= remindIntervalDays;
+        const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                             std::chrono::system_clock::now().time_since_epoch()).count();
+        return (now - lastRemindTime) / (24 * 60 * 60) >= remindIntervalDays;
     }
 
     bool UpdatePreferences::shouldSkipVersion(const std::string &version) const
@@ -108,329 +96,101 @@ namespace UpdateChecker
         return !skippedVersion.empty() && skippedVersion == version;
     }
 
-    // Version implementation removed (now in common library)
-
-    // UpdateChecker implementation
-    struct UpdateChecker::Impl
-    {
-        bool isCheckingForUpdates = false;
-        bool showUpdateDialogFlag = false;
-        ReleaseInfo pendingRelease;
-        std::function<void(UpdateAction)> pendingCallback;
-        UpdatePreferences preferences;
-
-        Impl()
-        {
-            preferences.load();
-        }
-
-        ~Impl()
-        {
-            preferences.save();
-        }
-    };
-
-    UpdateChecker::UpdateChecker() : pImpl(std::make_unique<Impl>()) {}
-
-    UpdateChecker::~UpdateChecker() = default;
+    // ---- checker ----------------------------------------------------------
 
     Common::Version UpdateChecker::getCurrentVersion()
     {
-        // Use compile-time definitions from CMakeLists.txt
         return Common::Version(PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR, PROJECT_VERSION_PATCH);
     }
 
-    UpdatePreferences &UpdateChecker::getPreferences()
+    std::expected<ReleaseInfo, std::string> UpdateChecker::fetchRelease(const std::optional<Common::Version> &version)
     {
-        return pImpl->preferences;
-    }
-
-    void UpdateChecker::checkForUpdates(std::function<void(bool hasUpdate, const ReleaseInfo &release)> callback)
-    {
-        if (pImpl->isCheckingForUpdates)
+        const std::string url = version ? std::string(RELEASES_API) + "/tags/v" + version->toString()
+                                        : std::string(RELEASES_API) + "/latest";
+        const auto response = cpr::Get(cpr::Url{url}, cpr::Header{{"User-Agent", userAgent()}}, cpr::Timeout{15000});
+        if (response.status_code == 404)
+            return std::unexpected(version ? "No release v" + version->toString() + " on GitHub" : "No release on GitHub");
+        if (response.status_code != 200)
+            return std::unexpected("GitHub returned HTTP " + std::to_string(response.status_code) +
+                                   (response.error ? " (" + response.error.message + ")" : ""));
+        try
         {
-            spdlog::warn("Update check already in progress");
-            return;
+            ReleaseInfo info = parseReleaseInfo(nlohmann::json::parse(response.text));
+            if (info.version.is_invalid())
+                return std::unexpected("Unexpected release tag '" + info.tagName + "'");
+            return info;
         }
-
-        pImpl->isCheckingForUpdates = true;
-
-        // Run HTTP request in background thread
-        std::thread([this, callback]()
-                    {
-        try {
-            spdlog::info("Checking for updates from GitHub...");
-
-            auto response = cpr::Get(
-                cpr::Url{"https://api.github.com/repos/sshcrack/led-matrix/releases/latest"},
-                cpr::Header{{"User-Agent", "led-matrix-desktop/" + getCurrentVersion().toString()}}
-            );
-
-            if (response.status_code == 200) {
-                auto releaseJson = nlohmann::json::parse(response.text);
-                ReleaseInfo release = parseReleaseInfo(releaseJson);
-
-                Common::Version currentVersion = getCurrentVersion();
-                bool hasUpdate = release.version > currentVersion;
-
-                // Check preferences to see if we should notify about this update
-                if (hasUpdate && !pImpl->preferences.shouldRemindForVersion(release.tagName)) {
-                    spdlog::info("Update available but skipped due to user preferences: {}", release.tagName);
-                    hasUpdate = false; // Don't notify
-                }
-
-                spdlog::info("Current version: {}, Latest version: {}, Has update: {}",
-                           currentVersion.toString(), release.version.toString(), hasUpdate);
-
-                // Call callback on main thread
-                callback(hasUpdate, release);
-            } else {
-                spdlog::error("Failed to check for updates: HTTP {}", response.status_code);
-                ReleaseInfo empty;
-                callback(false, empty);
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Error checking for updates: {}", e.what());
-            ReleaseInfo empty;
-            callback(false, empty);
+        catch (const std::exception &e)
+        {
+            return std::unexpected(std::string("Could not parse the GitHub release: ") + e.what());
         }
-
-        pImpl->isCheckingForUpdates = false; })
-            .detach();
-    }
-
-    void UpdateChecker::showUpdateDialog(const ReleaseInfo &release, std::function<void(UpdateAction)> callback)
-    {
-        pImpl->showUpdateDialogFlag = true;
-        pImpl->pendingRelease = release;
-        pImpl->pendingCallback = callback;
     }
 
     ReleaseInfo UpdateChecker::parseReleaseInfo(const nlohmann::json &releaseJson)
     {
         ReleaseInfo info;
-
-        info.tagName = releaseJson.value("tag_name", "");
-        info.name = releaseJson.value("name", "");
-        info.htmlUrl = releaseJson.value("html_url", "");
+        auto str = [&](const char *key) {
+            return releaseJson.contains(key) && releaseJson[key].is_string() ? releaseJson[key].get<std::string>() : std::string{};
+        };
+        info.tagName = str("tag_name");
+        info.name = str("name");
+        info.htmlUrl = str("html_url");
         info.isPrerelease = releaseJson.value("prerelease", false);
         info.version = Common::Version::fromString(info.tagName);
 
-#ifdef _WIN32
-        // Find Windows installer asset
+        const std::string assetName = SelfUpdate::package_asset_name(info.version.toString());
         if (releaseJson.contains("assets") && releaseJson["assets"].is_array())
         {
-            info.downloadUrl = findWindowsAsset(releaseJson["assets"], info.tagName.substr(1));
+            for (const auto &asset: releaseJson["assets"])
+            {
+                if (asset.value("name", "") != assetName)
+                    continue;
+                info.downloadUrl = asset.value("browser_download_url", "");
+                if (asset.contains("digest") && asset["digest"].is_string())
+                {
+                    const std::string digest = asset["digest"].get<std::string>();
+                    if (digest.rfind("sha256:", 0) == 0)
+                        info.sha256 = digest.substr(7);
+                }
+            }
         }
-#endif
-
         return info;
     }
 
-    std::string UpdateChecker::findWindowsAsset(const nlohmann::json &assets, const std::string &version)
+    std::expected<MatrixUpdateState, std::string> UpdateChecker::fetchMatrixState(const MatrixEndpoint &matrix)
     {
-        std::string targetAsset = "led-matrix-desktop-" + version + "-win64.exe";
-
-        for (const auto &asset : assets)
+        const auto response = cpr::Get(cpr::Url{matrixUrl(matrix, "/api/update/status")}, matrixHeaders(matrix),
+                                       cpr::Timeout{5000});
+        if (response.status_code != 200)
+            return std::unexpected(response.status_code == 0 ? "matrix unreachable"
+                                                             : "matrix returned HTTP " + std::to_string(response.status_code));
+        try
         {
-            std::string name = asset.value("name", "");
-            if (name == targetAsset)
-            {
-                return asset.value("browser_download_url", "");
-            }
+            const auto j = nlohmann::json::parse(response.text);
+            MatrixUpdateState state;
+            state.version = Common::Version::fromString(j.value("current_version", ""));
+            state.autoUpdateEnabled = j.value("auto_update_enabled", false);
+            const int status = j.value("status", 0); // Update::UpdateStatus: 1 checking, 2 downloading, 3 installing
+            state.busy = status >= 1 && status <= 3;
+            if (state.version.is_invalid())
+                return std::unexpected("matrix reported no version");
+            return state;
         }
-
-        return "";
+        catch (const std::exception &e)
+        {
+            return std::unexpected(std::string("could not parse the matrix update status: ") + e.what());
+        }
     }
 
-#ifdef _WIN32
-    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback, std::function<void(size_t downloaded, size_t total)> progressCallback)
+    std::expected<void, std::string> UpdateChecker::requestMatrixUpdate(const MatrixEndpoint &matrix,
+                                                                         const Common::Version &version)
     {
-        if (release.downloadUrl.empty())
-        {
-            callback(false, "No download URL found for Windows installer");
-            return;
-        }
-
-        std::thread([this, release, callback, progressCallback]()
-                    {
-        try {
-            // Create temp directory
-            std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "led-matrix-update";
-            std::filesystem::create_directories(tempDir);
-            std::filesystem::path installerPath = tempDir / ("led-matrix-installer-" + release.tagName + ".exe");
-
-            spdlog::info("Downloading installer from: {}", release.downloadUrl);
-            spdlog::info("Saving to: {}", installerPath.string());
-
-            cpr::Session session;
-            session.SetUrl(cpr::Url{release.downloadUrl});
-            session.SetHeader({{"User-Agent", "led-matrix-desktop/" + getCurrentVersion().toString()}});
-            int64_t totalBytes = session.GetDownloadFileLength();
-            if (totalBytes <= 0) {
-                std::string errorMsg = "Failed to get file size from server.";
-                spdlog::error(errorMsg);
-                callback(false, errorMsg);
-                return;
-            }
-
-            std::ofstream file(installerPath, std::ios::binary);
-            if (!file) {
-                std::string errorMsg = "Failed to open file for writing: " + installerPath.string();
-                spdlog::error(errorMsg);
-                callback(false, errorMsg);
-                return;
-            }
-
-            struct FileWriter {
-                std::ofstream* file{};
-                int64_t downloaded = 0;
-                int64_t total = 0;
-                const std::function<void(size_t, size_t)>* progressCb{};
-            };
-            FileWriter writer{&file, 0, totalBytes, &progressCallback};
-
-            auto write_data = [](const std::string_view& data, const intptr_t userdata) -> bool {
-                auto* fw = reinterpret_cast<FileWriter*>(userdata);
-                fw->file->write(data.data(), data.size());
-                fw->downloaded += data.size();
-                if (fw->progressCb && *(fw->progressCb)) {
-                    (*(fw->progressCb))(static_cast<size_t>(fw->downloaded), static_cast<size_t>(fw->total));
-                }
-                return true;
-            };
-
-            cpr::WriteCallback cb{write_data, reinterpret_cast<intptr_t>(&writer)};
-            cpr::Response result = session.Download(cb);
-
-            if (progressCallback) {
-                progressCallback(static_cast<size_t>(writer.downloaded), static_cast<size_t>(writer.total));
-            }
-
-            if (result.error) {
-                std::string errorMsg = "Download failed: " + result.error.message;
-                spdlog::error(errorMsg);
-                callback(false, errorMsg);
-                return;
-            }
-            if (result.status_code != 200) {
-                std::string errorMsg = "Download failed: HTTP " + std::to_string(result.status_code);
-                spdlog::error(errorMsg);
-                callback(false, errorMsg);
-                return;
-            }
-
-            spdlog::info("Download completed successfully");
-            file.flush();
-            file.close();
-            if (file.fail()) {
-                std::string errorMsg = "Failed to finish writing installer: " + installerPath.string();
-                spdlog::error(errorMsg);
-                callback(false, errorMsg);
-                return;
-            }
-
-            // Remove installers left over from earlier updates (best effort).
-            {
-                std::error_code ec;
-                for (const auto& entry : std::filesystem::directory_iterator(tempDir, ec)) {
-                    if (entry.path() != installerPath && entry.path().extension() == ".exe") {
-                        std::filesystem::remove(entry.path(), ec);
-                    }
-                }
-            }
-
-            // Windows Defender / SmartScreen scans a freshly written .exe and keeps it open for a moment;
-            // launching it meanwhile fails with a sharing violation ("Another program is currently using
-            // this file"). Wait until we can open it exclusively, then retry the launch on sharing errors.
-            const std::wstring installerW = installerPath.wstring();
-            auto waitUntilUnlocked = [&]() {
-                for (int i = 0; i < 60; i++) {
-                    HANDLE h = CreateFileW(installerW.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING,
-                                           FILE_ATTRIBUTE_NORMAL, nullptr);
-                    if (h != INVALID_HANDLE_VALUE) {
-                        CloseHandle(h);
-                        return;
-                    }
-                    DWORD err = GetLastError();
-                    if (err != ERROR_SHARING_VIOLATION && err != ERROR_LOCK_VIOLATION) return;
-                    Sleep(500);
-                }
-            };
-
-            const std::string installerStr = installerPath.string();
-            DWORD lastError = 0;
-            for (int attempt = 0; attempt < 10; attempt++) {
-                waitUntilUnlocked();
-
-                SHELLEXECUTEINFOA sei = {};
-                sei.cbSize = sizeof(SHELLEXECUTEINFOA);
-                sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI; // we report errors ourselves
-                sei.lpVerb = "runas"; // Run as administrator
-                sei.lpFile = installerStr.c_str();
-                sei.nShow = SW_NORMAL;
-
-                if (ShellExecuteExA(&sei)) {
-                    spdlog::info("Installer launched successfully");
-                    if (sei.hProcess) CloseHandle(sei.hProcess);
-                    appShallExit = true;
-                    callback(true, "");
-                    return;
-                }
-
-                lastError = GetLastError();
-                if (lastError != ERROR_SHARING_VIOLATION && lastError != ERROR_LOCK_VIOLATION) break;
-                spdlog::warn("Installer still locked (attempt {}), retrying", attempt + 1);
-                Sleep(1000);
-            }
-
-            std::string errorMsg = lastError == ERROR_CANCELLED
-                ? "Installer was cancelled (administrator permission denied)."
-                : "Failed to launch installer. Error code: " + std::to_string(lastError);
-            spdlog::error(errorMsg);
-            callback(false, errorMsg);
-        } catch (const std::exception& e) {
-            std::string errorMsg = "Exception during update: " + std::string(e.what());
-            spdlog::error(errorMsg);
-            callback(false, errorMsg);
-        } })
-            .detach();
-    }
-#else
-    void UpdateChecker::downloadAndInstallUpdate(const ReleaseInfo &release, std::function<void(bool success, const std::string &error)> callback, std::function<void(size_t downloaded, size_t total)> progressCallback)
-    {
-        // On Linux, just open the releases page
-        openReleasesPage(release);
-        callback(true, "");
-    }
-#endif
-
-    void UpdateChecker::openReleasesPage(const ReleaseInfo &release)
-    {
-        std::string url = release.htmlUrl.empty() ? "https://github.com/sshcrack/led-matrix/releases" : release.htmlUrl;
-
-#ifdef _WIN32
-        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-#else
-        std::string command = "xdg-open \"" + url + "\"";
-        int result = std::system(command.c_str());
-        if (result != 0)
-        {
-            spdlog::warn("Failed to open browser with xdg-open, trying alternatives");
-            // Try alternative browsers
-            std::vector<std::string> browsers = {"firefox", "google-chrome", "chromium-browser", "brave-browser"};
-            for (const auto &browser : browsers)
-            {
-                command = browser + " \"" + url + "\" &";
-                if (std::system(command.c_str()) == 0)
-                {
-                    break;
-                }
-            }
-        }
-#endif
-
-        spdlog::info("Opened releases page: {}", url);
+        const auto response = cpr::Post(cpr::Url{matrixUrl(matrix, "/api/update/install")},
+                                        cpr::Parameters{{"version", version.toString()}}, matrixHeaders(matrix),
+                                        cpr::Timeout{10000});
+        if (response.status_code == 202 || response.status_code == 409) // started / already running
+            return {};
+        return std::unexpected("matrix returned HTTP " + std::to_string(response.status_code));
     }
 
 } // namespace UpdateChecker

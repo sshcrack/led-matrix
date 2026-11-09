@@ -1,389 +1,620 @@
 #pragma execution_character_set("utf-8")
 #include "shared/desktop/UpdateManager.h"
+#include "shared/desktop/SelfUpdate.h"
+#include <shared/desktop/config.h>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
-#include <shared/desktop/config.h>
+#include <atomic>
 #include <chrono>
 #include <mutex>
-
+#include <thread>
 
 namespace UpdateChecker
 {
+    /// Update workflow. Exactly one phase is current; each phase owns one dialog.
+    ///
+    ///   Idle ──check──▶ Checking ──auto / manual on a per-user install──▶ Downloading ──ok──▶ Ready
+    ///                     │  ├──other install, update wanted──▶ Prompt ──update now──▶ Downloading
+    ///                     │  └──manual: up to date / waiting for matrix / error──▶ Result
+    ///                     └──automatic, nothing to do / failed──▶ Idle
+    ///   Downloading ──fail──▶ Failed (shown) or Idle (silent automatic update)
+    ///   Ready ──later──▶ ReadyDismissed;  Ready/ReadyDismissed ──restart──▶ app exits and restarts
+    ///
+    /// Checks run on a detached worker that shares `State` through a shared_ptr,
+    /// so it may outlive the manager at shutdown.
+    enum class Phase { Idle, Checking, Prompt, Result, Downloading, Failed, Ready, ReadyDismissed };
 
-    /// Update workflow. Exactly one phase is current; each phase owns one
-    /// dialog, so impossible flag combinations cannot be represented.
-    ///
-    ///   Idle ──check──▶ Checking ──update──▶ Prompt ──update now──▶ Downloading
-    ///                     │  └──none (manual)──▶ UpToDate            │      │
-    ///                     └──none (automatic) / notifications off──▶ Idle   │
-    ///   Downloading ──ok──▶ DownloadDone   Downloading ──fail──▶ DownloadFailed
-    ///   Prompt/UpToDate/DownloadDone/DownloadFailed ──dismiss──▶ Idle
-    ///
-    /// The checker reports from its own threads, so `phase` and the data that
-    /// belongs to it are guarded by `mutex`; render() works on a copy.
-    enum class Phase { Idle, Checking, Prompt, UpToDate, Downloading, DownloadDone, DownloadFailed };
-    enum class CheckKind { Automatic, Manual };
+    namespace
+    {
+        using Clock = std::chrono::steady_clock;
+        constexpr auto CHECK_INTERVAL = std::chrono::hours(1);
+        // While the matrix installs a release we asked for, look again soon so
+        // the desktop follows within a minute of the matrix coming back.
+        constexpr auto MATRIX_WAIT_INTERVAL = std::chrono::minutes(1);
+        constexpr auto MATRIX_WAIT_LIMIT = std::chrono::minutes(20);
+        // Without a matrix answer for this long, follow the latest release instead
+        // (e.g. a laptop away from home).
+        constexpr auto MATRIX_GONE_AFTER = std::chrono::minutes(30);
+
+        struct State
+        {
+            mutable std::mutex mutex;
+            Phase phase = Phase::Idle;
+            bool silent = false;       // Downloading: no progress dialog
+            ReleaseInfo release;       // Prompt / Downloading / Ready
+            std::string reason;        // Prompt: why this version
+            std::string message;       // Result / Failed
+            std::string status;        // menu status line
+            // The release we asked the matrix to install, and until when we wait for it.
+            // Fixed per target: a matrix that never gets there stops blocking the desktop.
+            Common::Version matrixWaitTarget{};
+            Clock::time_point matrixWaitUntil{};
+            // Last successful matrix status. A matrix restarting (e.g. for its own update)
+            // is briefly unreachable; that must not switch the desktop to "latest".
+            Clock::time_point matrixLastSeen{};
+            std::atomic<size_t> downloaded{0};
+            std::atomic<size_t> total{0};
+
+            void set(Phase p)
+            {
+                std::lock_guard lock(mutex);
+                phase = p;
+            }
+            Phase get() const
+            {
+                std::lock_guard lock(mutex);
+                return phase;
+            }
+        };
+
+        std::string v(const Common::Version &version) { return "v" + version.toString(); }
+
+        void install(const std::shared_ptr<State> &state, const ReleaseInfo &release, bool silent)
+        {
+            {
+                std::lock_guard lock(state->mutex);
+                state->phase = Phase::Downloading;
+                state->silent = silent;
+                state->release = release;
+                state->status = "Downloading " + v(release.version) + "…";
+            }
+            state->downloaded = 0;
+            state->total = 0;
+            // Runs on detached threads: an escaping exception would std::terminate the app.
+            std::expected<void, std::string> result;
+            try
+            {
+                result = SelfUpdate::download_and_install(release.downloadUrl, release.sha256, release.version.toString(),
+                                                          [state](size_t done, size_t total) {
+                                                              state->downloaded = done;
+                                                              state->total = total;
+                                                          });
+            }
+            catch (const std::exception &e)
+            {
+                result = std::unexpected(std::string(e.what()));
+            }
+            catch (...)
+            {
+                result = std::unexpected(std::string("unknown error"));
+            }
+
+            std::lock_guard lock(state->mutex);
+            if (result)
+            {
+                spdlog::info("Desktop update {} installed; it starts on the next restart", v(release.version));
+                state->phase = Phase::Ready;
+                state->status = v(release.version) + " is installed; restart to use it";
+            }
+            else
+            {
+                spdlog::error("Desktop update to {} failed: {}", v(release.version), result.error());
+                state->message = result.error();
+                state->status = "Update to " + v(release.version) + " failed: " + result.error();
+                state->phase = silent ? Phase::Idle : Phase::Failed;
+            }
+        }
+
+        /// One check: decide the target version, nudge the matrix, install or prompt.
+        void sync(const std::shared_ptr<State> &state, UpdatePreferences prefs, const MatrixEndpoint &endpoint, bool manual)
+        {
+            const Common::Version current = UpdateChecker::getCurrentVersion();
+            auto finish = [&](const std::string &message, const std::string &status) {
+                std::lock_guard lock(state->mutex);
+                state->message = message;
+                state->status = status;
+                state->phase = manual ? Phase::Result : Phase::Idle;
+            };
+
+            if (!manual && SelfUpdate::is_dev_build())
+            {
+                spdlog::info("Development build: automatic update checks are off");
+                finish("", "");
+                return;
+            }
+
+            const auto latest = UpdateChecker::fetchRelease();
+            if (!latest)
+                spdlog::warn("Desktop update check: {}", latest.error());
+
+            std::optional<MatrixUpdateState> matrix;
+            if (prefs.followMatrix)
+            {
+                if (auto m = UpdateChecker::fetchMatrixState(endpoint))
+                {
+                    matrix = *m;
+                    std::lock_guard lock(state->mutex);
+                    state->matrixLastSeen = Clock::now();
+                }
+                else
+                {
+                    bool transient;
+                    {
+                        std::lock_guard lock(state->mutex);
+                        const auto now = Clock::now();
+                        transient = now < state->matrixWaitUntil ||
+                                    (state->matrixLastSeen != Clock::time_point{} && now - state->matrixLastSeen < MATRIX_GONE_AFTER);
+                    }
+                    if (transient)
+                    {
+                        spdlog::info("Desktop update check: {}; keeping {} until the matrix answers again", m.error(), v(current));
+                        finish("The matrix can't be reached right now (" + m.error() + "). Try again in a minute.",
+                               "Matrix unreachable; keeping " + v(current));
+                        return;
+                    }
+                    spdlog::info("Desktop update check: {}, following the latest release", m.error());
+                }
+
+                // A newer release is out and the matrix updates itself: have it update now, then follow it.
+                // Wait only while the matrix accepted that (or is already busy), and at most
+                // MATRIX_WAIT_LIMIT per release; after that match whatever the matrix runs.
+                if (matrix && latest && latest->version > matrix->version && matrix->autoUpdateEnabled)
+                {
+                    bool expired = false;
+                    {
+                        std::lock_guard lock(state->mutex);
+                        expired = state->matrixWaitTarget == latest->version && Clock::now() >= state->matrixWaitUntil;
+                    }
+                    bool waiting = false;
+                    std::string requestError;
+                    if (!expired)
+                    {
+                        if (matrix->busy)
+                            waiting = true;
+                        else if (auto r = UpdateChecker::requestMatrixUpdate(endpoint, latest->version))
+                        {
+                            spdlog::info("Asked the matrix to update {} -> {}", v(matrix->version), v(latest->version));
+                            waiting = true;
+                        }
+                        else
+                        {
+                            requestError = r.error();
+                            spdlog::warn("Could not ask the matrix to update: {}", requestError);
+                        }
+                    }
+                    if (waiting)
+                    {
+                        {
+                            std::lock_guard lock(state->mutex);
+                            if (!(state->matrixWaitTarget == latest->version))
+                            {
+                                state->matrixWaitTarget = latest->version;
+                                state->matrixWaitUntil = Clock::now() + MATRIX_WAIT_LIMIT;
+                            }
+                        }
+                        finish("The matrix is updating to " + v(latest->version) +
+                                   ". The desktop app follows as soon as the matrix runs it.",
+                               "Waiting for the matrix to update to " + v(latest->version));
+                        return;
+                    }
+                    spdlog::warn("The matrix did not update to {} ({}); matching its {} instead", v(latest->version),
+                                 expired ? "timed out" : requestError, v(matrix->version));
+                }
+            }
+
+            Common::Version target;
+            std::string reason;
+            if (matrix)
+            {
+                target = matrix->version;
+                reason = "This is the version your matrix runs. Matching versions are needed for desktop rendering.";
+            }
+            else if (latest)
+            {
+                if (latest->version < current)
+                {
+                    finish("You're running a newer version than the latest release (" + v(current) + ").", "");
+                    return;
+                }
+                target = latest->version;
+                reason = "This is the latest release.";
+            }
+            else
+            {
+                finish("Could not check for updates: " + latest.error(), "Update check failed: " + latest.error());
+                return;
+            }
+
+            const bool managed = SelfUpdate::is_managed_install();
+            if (target == current)
+            {
+                // Already on the right version. A .deb / admin install (or anyone asking
+                // via "Check for Updates") can still move to the self-updating install.
+                if (managed || !(manual || SelfUpdate::is_recognized_system_install()))
+                {
+                    finish("You're up to date (" + v(current) + (matrix ? ", same as the matrix)." : ")."), "");
+                    return;
+                }
+                reason = "You're on the current version. Switching moves it to a per-user install "
+                         "that keeps itself up to date.";
+            }
+
+            auto release = latest && latest->version == target ? latest : UpdateChecker::fetchRelease(target);
+            if (!release)
+            {
+                finish("The matrix runs " + v(target) + ", which is not a published release (" + release.error() + ").",
+                       "Matrix runs unreleased " + v(target));
+                return;
+            }
+            if (release->downloadUrl.empty())
+            {
+                finish("Release " + v(target) + " has no package for this platform.", "");
+                return;
+            }
+
+            if (managed && (prefs.autoUpdate || manual))
+            {
+                spdlog::info("Updating desktop {} -> {} ({})", v(current), v(target), matrix ? "matrix version" : "latest release");
+                install(state, *release, !manual);
+                return;
+            }
+            if (!manual && !prefs.shouldRemindForVersion(release->tagName))
+            {
+                finish("", "Update to " + v(target) + " available");
+                return;
+            }
+            std::lock_guard lock(state->mutex);
+            state->release = *release;
+            state->reason = reason;
+            state->status = "Update to " + v(target) + " available";
+            state->phase = Phase::Prompt;
+        }
+
+        int64_t nowSeconds()
+        {
+            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        }
+    } // namespace
 
     struct UpdateManager::Impl
     {
-        UpdateChecker checker;
-        std::atomic<bool> updateNotificationsEnabled{true};
+        std::shared_ptr<State> state = std::make_shared<State>();
+        UpdatePreferences prefs;
+        Clock::time_point lastCheck{};
+        bool checkedOnce = false;
+        bool restartRequested = false;
+        bool restartMinimized = false;
 
-        std::mutex mutex;
-        Phase phase = Phase::Idle;
-        CheckKind checkKind = CheckKind::Automatic;
-        ReleaseInfo currentRelease;  // Prompt
-        std::string downloadError;   // DownloadFailed
+        // Old .deb / admin install left behind after moving to a per-user install.
+        enum class Legacy { Unchecked, Ask, Removing, Done } legacy = Legacy::Unchecked;
+        std::shared_ptr<std::atomic<int>> legacyResult = std::make_shared<std::atomic<int>>(-1);
 
-        // Download progress tracking
-        std::atomic<size_t> downloadedBytes{0};
-        std::atomic<size_t> totalBytes{0};
-
-        Phase getPhase()
+        bool begin(bool manual)
         {
-            std::lock_guard lock(mutex);
-            return phase;
-        }
-        void dismiss(Phase expected)
-        {
-            std::lock_guard lock(mutex);
-            if (phase == expected) phase = Phase::Idle;
-        }
-        /// Idle/terminal dialog → Checking. False while busy.
-        bool beginCheck(CheckKind kind)
-        {
-            std::lock_guard lock(mutex);
-            if (phase == Phase::Checking || phase == Phase::Downloading) return false;
-            phase = Phase::Checking;
-            checkKind = kind;
+            {
+                std::lock_guard lock(state->mutex);
+                const Phase p = state->phase;
+                if (p == Phase::Checking || p == Phase::Downloading || p == Phase::Ready || p == Phase::ReadyDismissed)
+                    return false;
+                if (!manual && p != Phase::Idle)
+                    return false; // a dialog is open
+                state->phase = Phase::Checking;
+            }
+            lastCheck = Clock::now();
+            checkedOnce = true;
+            std::thread([s = state, p = prefs, e = MatrixEndpoint::fromConfig(), manual] {
+                try
+                {
+                    sync(s, p, e, manual);
+                }
+                catch (const std::exception &e)
+                {
+                    spdlog::error("Desktop update check failed: {}", e.what());
+                    std::lock_guard lock(s->mutex);
+                    s->message = e.what();
+                    s->phase = manual ? Phase::Result : Phase::Idle;
+                }
+            }).detach();
             return true;
         }
     };
 
-    UpdateManager::UpdateManager() : pImpl(std::make_unique<Impl>())
-    {
-        // Load notification preference from update checker preferences
-        pImpl->updateNotificationsEnabled = pImpl->checker.getPreferences().updateNotificationsEnabled;
-    }
+    UpdateManager::UpdateManager() : pImpl(std::make_unique<Impl>()) { pImpl->prefs.load(); }
 
     UpdateManager::~UpdateManager() = default;
+
+    void UpdateManager::checkForUpdatesAsync()
+    {
+        if (pImpl->prefs.updateNotificationsEnabled)
+            pImpl->begin(false);
+    }
+
+    void UpdateManager::checkForUpdatesManual() { pImpl->begin(true); }
+
+    void UpdateManager::tick(bool windowHidden)
+    {
+        const Phase phase = pImpl->state->get();
+        if ((phase == Phase::Ready || phase == Phase::ReadyDismissed) && windowHidden && pImpl->prefs.autoUpdate &&
+            !pImpl->restartRequested)
+        {
+            spdlog::info("Restarting in the background to finish the update");
+            requestRestart(true);
+            return;
+        }
+        if (phase != Phase::Idle || !pImpl->checkedOnce)
+            return; // the first check comes from checkForUpdatesAsync() after startup
+
+        Clock::time_point waitUntil;
+        {
+            std::lock_guard lock(pImpl->state->mutex);
+            waitUntil = pImpl->state->matrixWaitUntil;
+        }
+        const auto now = Clock::now();
+        const auto interval = now < waitUntil ? MATRIX_WAIT_INTERVAL : CHECK_INTERVAL;
+        if (now - pImpl->lastCheck >= interval)
+            checkForUpdatesAsync();
+    }
 
     void UpdateManager::render(ImGuiContext *ctx)
     {
         ImGui::SetCurrentContext(ctx);
+        auto &state = *pImpl->state;
+        const Phase phase = state.get();
+        ReleaseInfo release;
+        std::string reason, message;
+        bool silent;
+        {
+            std::lock_guard lock(state.mutex);
+            release = state.release;
+            reason = state.reason;
+            message = state.message;
+            silent = state.silent;
+        }
+        const auto modalFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
 
-        const Phase phase = pImpl->getPhase();
-
-        // Render the update dialog if needed
         if (phase == Phase::Prompt)
         {
-            renderUpdateDialog();
+            ImGui::OpenPopup("Update Available");
+            if (ImGui::BeginPopupModal("Update Available", nullptr, modalFlags))
+            {
+                const bool sameVersion = release.version == UpdateChecker::getCurrentVersion();
+                if (sameVersion)
+                    ImGui::Text("Switch LED Matrix Controller v%s to a self-updating install?", release.version.toString().c_str());
+                else
+                    ImGui::Text("LED Matrix Controller %s is available (you have v%s).", ("v" + release.version.toString()).c_str(),
+                                UpdateChecker::getCurrentVersion().toString().c_str());
+                ImGui::TextWrapped("%s", reason.c_str());
+                ImGui::Separator();
+                const bool managed = SelfUpdate::is_managed_install();
+                if (!managed)
+                    ImGui::TextWrapped("Updating installs the app for your user account in %s (no %s needed). "
+                                       "From then on it keeps itself up to date.",
+                                       SelfUpdate::install_root().string().c_str(),
+#ifdef _WIN32
+                                       "administrator rights"
+#else
+                                       "root"
+#endif
+                    );
+                ImGui::Spacing();
+                if (ImGui::Button(sameVersion ? "Switch Now" : "Update Now", ImVec2(140, 0)))
+                {
+                    ImGui::CloseCurrentPopup();
+                    state.set(Phase::Downloading);
+                    std::thread([s = pImpl->state, release] {
+                        try
+                        {
+                            install(s, release, false);
+                        }
+                        catch (const std::exception &e) // install() reports its own errors; this is a last resort
+                        {
+                            spdlog::error("Desktop update failed: {}", e.what());
+                            std::lock_guard lock(s->mutex);
+                            s->message = e.what();
+                            s->phase = Phase::Failed;
+                        }
+                    }).detach();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Remind Later", ImVec2(140, 0)))
+                {
+                    pImpl->prefs.lastRemindTime = nowSeconds();
+                    pImpl->prefs.save();
+                    state.set(Phase::Idle);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SetItemTooltip("You'll be reminded again in %d days", pImpl->prefs.remindIntervalDays);
+                ImGui::SameLine();
+                if (ImGui::Button("Skip Version", ImVec2(140, 0)))
+                {
+                    pImpl->prefs.skippedVersion = release.tagName;
+                    pImpl->prefs.lastRemindTime = nowSeconds();
+                    pImpl->prefs.save();
+                    state.set(Phase::Idle);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         }
-
-        // Render download progress if needed
-        if (phase == Phase::Downloading || phase == Phase::DownloadDone || phase == Phase::DownloadFailed)
+        else if ((phase == Phase::Downloading && !silent) || phase == Phase::Failed)
         {
-            ImGui::OpenPopup("Download Progress");
-
-            if (ImGui::BeginPopupModal("Download Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
+            ImGui::OpenPopup("Updating");
+            if (ImGui::BeginPopupModal("Updating", nullptr, modalFlags))
             {
                 if (phase == Phase::Downloading)
                 {
-                    ImGui::Text("Downloading and installing update...");
-                    ImGui::Text("Please wait, this may take a few moments.");
-
-                    float progress = 0.0f;
-                    size_t total = pImpl->totalBytes.load();
-                    size_t downloaded = pImpl->downloadedBytes.load();
-                    if (total > 0) {
-                        progress = static_cast<float>(downloaded) / static_cast<float>(total);
-                    }
-                    ImGui::ProgressBar(progress, ImVec2(300.0f, 0.0f), total > 0 ? (std::to_string(downloaded / 1024) + " KB / " + std::to_string(total / 1024) + " KB").c_str() : "Calculating...");
-                    ImGui::Text("The application will close when the installer starts.");
+                    ImGui::Text("Downloading and installing v%s…", release.version.toString().c_str());
+                    const size_t total = state.total.load(), done = state.downloaded.load();
+                    const std::string label = total > 0 ? std::to_string(done >> 20) + " / " + std::to_string(total >> 20) + " MB"
+                                                        : "Starting…";
+                    ImGui::ProgressBar(total > 0 ? float(done) / float(total) : 0.0f, ImVec2(320.0f, 0.0f), label.c_str());
+                    ImGui::TextDisabled("You can keep using the app meanwhile.");
                 }
                 else
                 {
-                    if (phase == Phase::DownloadFailed)
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "The update failed:");
+                    ImGui::TextWrapped("%s", message.c_str());
+                    if (ImGui::Button("OK", ImVec2(120, 0)))
                     {
-                        std::string error;
-                        {
-                            std::lock_guard lock(pImpl->mutex);
-                            error = pImpl->downloadError;
-                        }
-                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Download failed:");
-                        ImGui::TextWrapped("%s", error.c_str());
-
-                        if (ImGui::Button("OK", ImVec2(120, 0)))
-                        {
-                            pImpl->dismiss(Phase::DownloadFailed);
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-                    else
-                    {
-                        ImGui::Text("Download completed successfully!");
-                        ImGui::Text("The installer should start shortly.");
-
-                        if (ImGui::Button("OK", ImVec2(120, 0)))
-                        {
-                            pImpl->dismiss(Phase::DownloadDone);
-                            ImGui::CloseCurrentPopup();
-                        }
+                        state.set(Phase::Idle);
+                        ImGui::CloseCurrentPopup();
                     }
                 }
-
                 ImGui::EndPopup();
             }
         }
-        
-        // Render "up to date" dialog if needed
-        if (phase == Phase::UpToDate) {
-            ImGui::OpenPopup("Software Up to Date");
-            
-            if (ImGui::BeginPopupModal("Software Up to Date", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-                ImGui::Text("You're running the latest version!");
-                ImGui::Separator();
-                
-                ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
-                ImGui::Text("No updates are available at this time.");
-                
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::TextDisabled("Check back later or enable automatic notifications in the menu");
-                
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    pImpl->dismiss(Phase::UpToDate);
+        else if (phase == Phase::Ready)
+        {
+            ImGui::OpenPopup("Update Installed");
+            if (ImGui::BeginPopupModal("Update Installed", nullptr, modalFlags))
+            {
+                ImGui::Text("LED Matrix Controller v%s is installed.", release.version.toString().c_str());
+                ImGui::TextDisabled("It also starts by itself the next time the app is hidden in the tray or restarted.");
+                if (ImGui::Button("Restart Now", ImVec2(140, 0)))
+                {
+                    requestRestart(false);
                     ImGui::CloseCurrentPopup();
                 }
-                
+                ImGui::SameLine();
+                if (ImGui::Button("Later", ImVec2(140, 0)))
+                {
+                    state.set(Phase::ReadyDismissed);
+                    ImGui::CloseCurrentPopup();
+                }
                 ImGui::EndPopup();
             }
         }
-    }
-
-    void UpdateManager::checkForUpdatesAsync()
-    {
-        if (!pImpl->updateNotificationsEnabled || !pImpl->beginCheck(CheckKind::Automatic))
+        else if (phase == Phase::Result)
         {
-            return;
+            ImGui::OpenPopup("Software Update");
+            if (ImGui::BeginPopupModal("Software Update", nullptr, modalFlags))
+            {
+                ImGui::TextWrapped("%s", message.c_str());
+                if (ImGui::Button("OK", ImVec2(120, 0)))
+                {
+                    state.set(Phase::Idle);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         }
-        spdlog::info("Starting automatic update check...");
 
-        pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
-                                       { handleUpdateCheckResult(hasUpdate, release); });
-    }
-
-    void UpdateManager::checkForUpdatesManual()
-    {
-        if (!pImpl->beginCheck(CheckKind::Manual))
+        // Offer to remove the .deb / admin install we migrated away from (once per run).
+        if (pImpl->legacy == Impl::Legacy::Unchecked)
+            pImpl->legacy = SelfUpdate::is_managed_install() && SelfUpdate::legacy_install() ? Impl::Legacy::Ask : Impl::Legacy::Done;
+        if (pImpl->legacy == Impl::Legacy::Removing && pImpl->legacyResult->load() >= 0)
+            pImpl->legacy = Impl::Legacy::Done;
+        if (pImpl->legacy == Impl::Legacy::Ask && phase == Phase::Idle)
         {
-            return;
+            ImGui::OpenPopup("Remove Old Installation");
+            if (ImGui::BeginPopupModal("Remove Old Installation", nullptr, modalFlags))
+            {
+                const auto legacy = SelfUpdate::legacy_install();
+                ImGui::TextWrapped("The app now runs from your user account and updates itself.\n"
+                                   "The old copy at %s is no longer needed.",
+                                   legacy ? legacy->string().c_str() : "?");
+                if (ImGui::Button("Remove It", ImVec2(140, 0)))
+                {
+                    pImpl->legacy = Impl::Legacy::Removing;
+                    std::thread([r = pImpl->legacyResult] {
+                        bool removed = false;
+                        try
+                        {
+                            removed = SelfUpdate::remove_legacy_install();
+                        }
+                        catch (const std::exception &e)
+                        {
+                            spdlog::error("Removing the old installation failed: {}", e.what());
+                        }
+                        r->store(removed ? 1 : 0);
+                    }).detach();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SetItemTooltip(
+#ifdef _WIN32
+                    "Runs the old uninstaller (asks for administrator rights once)"
+#else
+                    "Runs 'pkexec dpkg --remove led-matrix-desktop' (asks for your password once)"
+#endif
+                );
+                ImGui::SameLine();
+                if (ImGui::Button("Keep It", ImVec2(140, 0)))
+                {
+                    SelfUpdate::forget_legacy_install();
+                    pImpl->legacy = Impl::Legacy::Done;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         }
-        spdlog::info("Starting manual update check...");
-
-        pImpl->checker.checkForUpdates([this](bool hasUpdate, const ReleaseInfo &release)
-                                       { handleUpdateCheckResult(hasUpdate, release); });
     }
 
     void UpdateManager::setUpdateNotificationsEnabled(bool enabled)
     {
-        pImpl->updateNotificationsEnabled = enabled;
-
-        // Save to update checker preferences
-        pImpl->checker.getPreferences().updateNotificationsEnabled = enabled;
-        pImpl->checker.getPreferences().save();
+        pImpl->prefs.updateNotificationsEnabled = enabled;
+        pImpl->prefs.save();
     }
 
-    bool UpdateManager::isUpdateNotificationsEnabled() const
+    bool UpdateManager::isUpdateNotificationsEnabled() const { return pImpl->prefs.updateNotificationsEnabled; }
+
+    void UpdateManager::setAutoUpdateEnabled(bool enabled)
     {
-        return pImpl->updateNotificationsEnabled;
+        pImpl->prefs.autoUpdate = enabled;
+        pImpl->prefs.save();
     }
+
+    bool UpdateManager::isAutoUpdateEnabled() const { return pImpl->prefs.autoUpdate; }
+
+    void UpdateManager::setFollowMatrixEnabled(bool enabled)
+    {
+        pImpl->prefs.followMatrix = enabled;
+        pImpl->prefs.save();
+    }
+
+    bool UpdateManager::isFollowMatrixEnabled() const { return pImpl->prefs.followMatrix; }
 
     void UpdateManager::resetUpdatePreferences()
     {
-        auto &prefs = pImpl->checker.getPreferences();
-        prefs.skippedVersion = "";
-        prefs.lastRemindTime = 0;
-        prefs.updateNotificationsEnabled = true;
-        prefs.remindIntervalDays = 7;
-        prefs.save();
-
-        pImpl->updateNotificationsEnabled = true;
+        pImpl->prefs = UpdatePreferences{};
+        pImpl->prefs.save();
         spdlog::info("Reset all update preferences to defaults");
     }
 
-    UpdatePreferences &UpdateManager::getUpdatePreferences()
+    UpdatePreferences &UpdateManager::getUpdatePreferences() { return pImpl->prefs; }
+
+    std::string UpdateManager::pendingRestartVersion() const
     {
-        return pImpl->checker.getPreferences();
+        std::lock_guard lock(pImpl->state->mutex);
+        const Phase p = pImpl->state->phase;
+        return p == Phase::Ready || p == Phase::ReadyDismissed ? pImpl->state->release.version.toString() : std::string{};
     }
 
-    bool UpdateManager::shallAppExit() const {
-        return pImpl->checker.shallAppExit();
-    }
-
-    void UpdateManager::handleUpdateCheckResult(bool hasUpdate, const ReleaseInfo &release)
+    void UpdateManager::requestRestart(bool startMinimized)
     {
-        std::lock_guard lock(pImpl->mutex);
-        if (pImpl->phase != Phase::Checking)
+        if (pendingRestartVersion().empty())
             return;
-        const bool manual = pImpl->checkKind == CheckKind::Manual;
-
-        if (hasUpdate && (pImpl->updateNotificationsEnabled || manual))
-        {
-            spdlog::info("Update available: {} -> {}",
-                         UpdateChecker::getCurrentVersion().toString(),
-                         release.version.toString());
-
-            pImpl->currentRelease = release;
-            pImpl->phase = Phase::Prompt;
-        }
-        else if (hasUpdate)
-        {
-            spdlog::info("Update available but notifications disabled");
-            pImpl->phase = Phase::Idle;
-        }
-        else
-        {
-            spdlog::info("No updates available");
-            // Show "up to date" dialog for manual checks
-            pImpl->phase = manual ? Phase::UpToDate : Phase::Idle;
-        }
+        pImpl->restartRequested = true;
+        pImpl->restartMinimized = startMinimized;
     }
 
-    void UpdateManager::handleUpdateAction(UpdateAction action, const ReleaseInfo &release)
+    bool UpdateManager::shallAppExit() const { return pImpl->restartRequested; }
+    bool UpdateManager::restartAfterExit() const { return pImpl->restartRequested; }
+    bool UpdateManager::restartMinimized() const { return pImpl->restartMinimized; }
+
+    std::string UpdateManager::statusLine() const
     {
-        auto now = std::chrono::system_clock::now();
-        auto nowTime = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-
-        switch (action)
-        {
-        case UpdateAction::UpdateNow:
-            spdlog::info("User chose to update now");
-            {
-                std::lock_guard lock(pImpl->mutex);
-                pImpl->phase = Phase::Downloading;
-                pImpl->downloadError.clear();
-            }
-            pImpl->downloadedBytes = 0;
-            pImpl->totalBytes = 0;
-
-            pImpl->checker.downloadAndInstallUpdate(release, [this](bool success, const std::string &error) {
-                std::lock_guard lock(pImpl->mutex);
-                if (pImpl->phase != Phase::Downloading)
-                    return;
-                if (success) {
-                    pImpl->phase = Phase::DownloadDone;
-                } else {
-                    pImpl->downloadError = error;
-                    pImpl->phase = Phase::DownloadFailed;
-                    spdlog::error("Update download/install failed: {}", error);
-                }
-            },
-            // Progress callback
-            [this](size_t downloaded, size_t total) {
-                pImpl->downloadedBytes = downloaded;
-                pImpl->totalBytes = total;
-            });
-            break;
-
-        case UpdateAction::RemindLater:
-            spdlog::info("User chose to be reminded later for version: {}", release.tagName);
-            {
-                auto &prefs = pImpl->checker.getPreferences();
-                prefs.lastRemindTime = nowTime;
-                // Clear any skipped version since user wants to be reminded
-                if (prefs.skippedVersion == release.tagName)
-                {
-                    prefs.skippedVersion = "";
-                }
-                prefs.save();
-            }
-            break;
-
-        case UpdateAction::Skip:
-            spdlog::info("User chose to skip version: {}", release.tagName);
-            {
-                auto &prefs = pImpl->checker.getPreferences();
-                prefs.skippedVersion = release.tagName;
-                prefs.lastRemindTime = nowTime;
-                prefs.save();
-            }
-            break;
-        }
-    }
-
-    void UpdateManager::renderUpdateDialog()
-    {
-        ImGui::OpenPopup("Update Available");
-
-        if (ImGui::BeginPopupModal("Update Available", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
-        {
-            ReleaseInfo release;
-            {
-                std::lock_guard lock(pImpl->mutex);
-                release = pImpl->currentRelease;
-            }
-
-            ImGui::Text("A new version of LED Matrix Controller is available!");
-            ImGui::Separator();
-
-            ImGui::Text("Current version: v%s", UpdateChecker::getCurrentVersion().toString().c_str());
-            ImGui::Text("Latest version:  %s", release.tagName.c_str());
-
-            if (!release.name.empty() && release.name != release.tagName)
-            {
-                ImGui::Text("Release name: %s", release.name.c_str());
-            }
-
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            // Add some helpful text based on platform
-#ifdef _WIN32
-            ImGui::TextWrapped("Click 'Update Now' to automatically download and install the latest version. "
-                               "The application will close during the update process.");
-
-            if (ImGui::Button("Update Now", ImVec2(120, 0)))
-            {
-                handleUpdateAction(UpdateAction::UpdateNow, release);
-                ImGui::CloseCurrentPopup();
-            }
-#else
-            ImGui::TextWrapped("Click 'View Release' to open the GitHub releases page where you can "
-                               "download the latest version manually.");
-
-            if (ImGui::Button("View Release", ImVec2(120, 0)))
-            {
-                handleUpdateAction(UpdateAction::UpdateNow, release); // On Linux this opens browser
-                ImGui::CloseCurrentPopup();
-            }
-#endif
-
-            ImGui::SameLine();
-            if (ImGui::Button("Remind Later", ImVec2(120, 0)))
-            {
-                handleUpdateAction(UpdateAction::RemindLater, release);
-                pImpl->dismiss(Phase::Prompt);
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SetItemTooltip("You'll be reminded again in %d days",
-                                  pImpl->checker.getPreferences().remindIntervalDays);
-
-            ImGui::SameLine();
-            if (ImGui::Button("Skip Version", ImVec2(120, 0)))
-            {
-                handleUpdateAction(UpdateAction::Skip, release);
-                pImpl->dismiss(Phase::Prompt);
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::SetItemTooltip("Don't notify about this version anymore");
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::TextDisabled("You can change notification preferences in the menu");
-
-            ImGui::EndPopup();
-        }
+        std::lock_guard lock(pImpl->state->mutex);
+        return pImpl->state->status;
     }
 
 } // namespace UpdateChecker
