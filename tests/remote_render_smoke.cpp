@@ -4,10 +4,13 @@
 #include <shared/matrix/media_artwork_state.h>
 #include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
+#ifdef ENABLE_EMULATOR
 #include <emulator.h>
 #include <led-matrix.h>
+#endif
 
 #include <cstdint>
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -31,7 +34,7 @@ protected:
 };
 }
 
-int main()
+int main(int argc, char **argv)
 {
     std::vector<nlohmann::json> commands;
     RemoteRender::set_command_sender([&](const nlohmann::json &command) {
@@ -120,6 +123,8 @@ int main()
         std::cerr << "remote scene did not emit a start command\n";
         return 3;
     }
+    if (RemoteRender::session_requested(0) || !RemoteRender::session_requested(*session)
+        || RemoteRender::session_requested(*session + 1)) return 20;
     if (commands.back().value("protocol", 0) != RemoteRenderProtocol::Version
         || commands.back().value("scene", std::string{}) != "remote_probe"
         || commands.back().value("scene_contract", 0) != scene.remote_contract_version()
@@ -137,6 +142,7 @@ int main()
         return 2;
     }
 
+#ifdef ENABLE_EMULATOR
     rgb_matrix::RGBMatrix::Options led;
     led.rows = 32;
     led.cols = 32;
@@ -150,6 +156,7 @@ int main()
         return 3;
     }
     auto *canvas = matrix->CreateFrameCanvas();
+#endif
 
     std::vector<std::uint8_t> frame(32 * 32 * 3);
     for (std::size_t i = 0; i < frame.size(); i += 3) {
@@ -169,6 +176,7 @@ int main()
         std::cerr << "stale-session remote frame was accepted\n";
         return 6;
     }
+#ifdef ENABLE_EMULATOR
     if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
         std::cerr << "latest remote frame was not available\n";
         return 7;
@@ -180,6 +188,7 @@ int main()
         std::cerr << "remote RGB frame was copied incorrectly\n";
         return 8;
     }
+#endif
 
     const auto reconnect = RemoteRender::reconnect_command();
     if (!reconnect.has_value() || reconnect->value("session", 0U) != *session) {
@@ -188,6 +197,7 @@ int main()
     }
 
     RemoteRender::stop();
+    if (RemoteRender::session_requested(*session)) return 21;
     if (commands.size() != 2 || commands.back().value("op", "") != "stop") {
         std::cerr << "remote scene did not emit a stop command\n";
         return 10;
@@ -204,6 +214,63 @@ int main()
     if (!resume || resume->contains("transition")) return 13;
     const auto second = RemoteRender::request_scene(scene, 32, 32, 60, transition);
     if (!second || second == transitioning) return 14;
+    if (RemoteRender::session_requested(*transitioning) || !RemoteRender::session_requested(*second))
+        return 22;
+
+    // Exercise the real chunk receiver, including incomplete/newer frames and
+    // late duplicates. A partial frame must never replace the last complete one.
+    auto deliver = [&](std::uint32_t sequence, int skip = -1) {
+        auto packets = RemoteRenderProtocol::make_frame_packets(*second, sequence, 32, 32, frame);
+        for (int i = static_cast<int>(packets.size()) - 1; i >= 0; --i) {
+            if (i == skip) continue;
+            const auto payload = packets[i]->toData();
+            if (!transport.on_udp_packet(RemoteRenderProtocol::PluginId, payload.data(), payload.size()))
+                return false;
+        }
+        return true;
+    };
+    if (!deliver(20) || !deliver(20) || RemoteRender::status().last_sequence != 20
+        || !deliver(21, 1) || RemoteRender::status().last_sequence != 20
+        || !deliver(22) || !deliver(21) || RemoteRender::status().last_sequence != 22) {
+        std::cerr << "chunk assembly published an incomplete, old or duplicate frame\n";
+        return 16;
+    }
+    auto malformed_packets = RemoteRenderProtocol::make_frame_packets(*second, 23, 32, 32, frame);
+    auto malformed_payload = malformed_packets.front()->toData();
+    malformed_payload[16] -= 1; // Fewer chunks than needed to cover this frame.
+    if (transport.on_udp_packet(RemoteRenderProtocol::PluginId,
+                               malformed_payload.data(), malformed_payload.size())) {
+        std::cerr << "receiver accepted a chunk count that cannot cover its frame\n";
+        return 23;
+    }
+
+    if (argc > 1 && std::string_view(argv[1]) == "--benchmark-packets") {
+        RemoteRender::SceneContracts contracts{{"remote_probe", 1}};
+        for (int i = 0; i < 68; ++i) contracts.emplace("benchmark_scene_" + std::to_string(i), 1);
+        RemoteRender::set_local_scene_contracts(contracts);
+        RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, contracts);
+        const auto benchmark_session = RemoteRender::request_scene(scene, 128, 128, 60);
+        if (!benchmark_session) return 17;
+        const std::vector<std::uint8_t> pixels(128 * 128 * 3, 85);
+        auto packets = RemoteRenderProtocol::make_frame_packets(*benchmark_session, 1, 128, 128, pixels);
+        std::vector<std::vector<std::uint8_t>> payloads;
+        for (const auto &packet : packets) payloads.push_back(packet->toData());
+        const auto start = std::chrono::steady_clock::now();
+        constexpr std::uint32_t frames = 500;
+        for (std::uint32_t sequence = 1; sequence <= frames; ++sequence) {
+            for (auto &payload : payloads) {
+                for (int byte = 0; byte < 4; ++byte)
+                    payload[5 + byte] = static_cast<std::uint8_t>(sequence >> (24 - byte * 8));
+                if (!transport.on_udp_packet(RemoteRenderProtocol::PluginId, payload.data(), payload.size()))
+                    return 18;
+            }
+        }
+        const auto elapsed = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - start).count();
+        if (RemoteRender::status().last_sequence != frames) return 19;
+        std::cout << "receiver: " << frames << " frames, " << payloads.size()
+                  << " chunks/frame, " << elapsed << " ms total, " << elapsed / frames << " ms/frame\n";
+    }
     RemoteRender::stop();
     RemoteRender::clear_command_sender();
     return 0;

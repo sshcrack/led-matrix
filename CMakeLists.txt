@@ -1578,5 +1578,16 @@ else()
     include(CPack)
 endif()
 
+# The transport can be exercised on the real Pi without opening GPIO or
+# creating a matrix. The emulator preset additionally checks canvas readback.
+if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
+    add_executable(remote_render_smoke ${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_render_smoke.cpp)
+    target_compile_features(remote_render_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(remote_render_smoke PRIVATE PLUGIN_NAME="RenderOffload")
+    target_link_libraries(remote_render_smoke PRIVATE
+        RenderOffload SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
+endif()
+
 # Extra warnings for our own targets (not thirdparty/ submodules or vcpkg).
 led_matrix_enable_project_warnings()

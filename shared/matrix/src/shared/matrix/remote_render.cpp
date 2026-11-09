@@ -296,6 +296,13 @@ void publish_runtime_state(std::uint32_t session)
     s.publisher_cv.notify_one();
 }
 
+bool session_requested(std::uint32_t session)
+{
+    auto &s = state();
+    std::lock_guard lock(s.mutex);
+    return session != 0 && session == s.session;
+}
+
 bool submit_frame(std::uint32_t session, std::uint32_t sequence,
                   int width, int height, std::span<const std::uint8_t> rgb)
 {

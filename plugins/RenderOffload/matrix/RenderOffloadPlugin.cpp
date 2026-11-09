@@ -99,8 +99,7 @@ bool RenderOffloadPlugin::on_udp_packet(uint8_t plugin_id, const uint8_t *data, 
         || chunk_count > MaxChunks || chunk_index >= chunk_count)
         return false;
 
-    const auto remote_status = RemoteRender::status();
-    if (!remote_status.requested || remote_status.session != session)
+    if (!RemoteRender::session_requested(session))
         return true; // Valid packet for a session that has already been superseded.
 
     const std::size_t expected = static_cast<std::size_t>(width)
@@ -110,6 +109,7 @@ bool RenderOffloadPlugin::on_udp_packet(uint8_t plugin_id, const uint8_t *data, 
         ? std::min(ChunkBytes, expected - expected_offset)
         : 0;
     if (expected == 0 || expected > MaxFrameBytes || byte_offset != expected_offset
+        || chunk_count != (expected + ChunkBytes - 1) / ChunkBytes
         || chunk_bytes != expected_chunk_bytes)
         return false;
 
@@ -124,7 +124,10 @@ bool RenderOffloadPlugin::on_udp_packet(uint8_t plugin_id, const uint8_t *data, 
         assembly_chunk_count_ = chunk_count;
         assembly_received_count_ = 0;
         assembly_submitted_ = false;
-        assembly_frame_.assign(expected, 0);
+        // Exact chunk geometry and the received bitmap ensure every byte is
+        // overwritten before publication. Reuse storage without clearing the
+        // whole RGB frame for each sequence (including abandoned frames).
+        assembly_frame_.resize(expected);
         assembly_received_.assign(chunk_count, 0);
     }
 
