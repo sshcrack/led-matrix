@@ -912,9 +912,9 @@ namespace SelfUpdate
                                                                                              ));
         {
             // No update may run while the files go, and no app may still run from them.
-            InstallLock install(true);
-            VersionsLock versions(true, true);
-            if (!install.held() || !versions.held())
+            InstallLock installLock(true);
+            VersionsLock versionsLock(true, true);
+            if (!installLock.held() || !versionsLock.held())
             {
                 report("Uninstall failed: could not lock " + root.string(), true);
                 return 1;
