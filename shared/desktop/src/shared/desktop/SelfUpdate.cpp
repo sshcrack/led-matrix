@@ -750,9 +750,10 @@ namespace SelfUpdate
                 const fs::path old = versions_dir(root) / (".old-" + version);
                 fs::remove_all(fresh, ec);
                 // An earlier attempt failed between moving dest away and putting it back: restore it.
-                if (fs::exists(old, ec) && !fs::exists(dest, ec))
-                    rename_retrying(old, dest);
-                fs::remove_all(old, ec);
+                if (fs::exists(old, ec) && !fs::exists(dest, ec) && !rename_retrying(old, dest))
+                    return std::unexpected("Could not restore the previous copy from " + old.string() +
+                                           "; it is kept there");
+                fs::remove_all(old, ec); // dest exists, so this is a leftover duplicate
                 bool placed = false;
                 if (move)
                     placed = rename_retrying(prefix, fresh);
