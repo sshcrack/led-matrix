@@ -358,8 +358,8 @@ void AudioVisualizerDesktop::note_level_locked(const AudioRecorder::CapturedAudi
 int AudioVisualizerDesktop::desktop_relevance(const std::string &sceneName) {
     // Audio that is actually playing makes this desktop the better producer.
     // Capture runs on standby too (cheap); the analysis/streaming does not.
-    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return 0;
     std::lock_guard stateLock(stateMutex);
+    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return 0;
     // While the stream runs it keeps the verdict fresh. getLastSamples() shares
     // its read position with the stream, so reading here would steal its samples.
     const auto now = std::chrono::steady_clock::now();

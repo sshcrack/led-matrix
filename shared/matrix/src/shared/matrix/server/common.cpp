@@ -78,7 +78,8 @@ namespace Server {
         return {previous, owner, previous != owner};
     }
 
-    DesktopProducerChange unregister_desktop_producer(const std::uint64_t connection_id) {
+    DesktopProducerChange unregister_desktop_producer(const std::uint64_t connection_id, std::int64_t now_ms) {
+        if (now_ms < 0) now_ms = steady_ms();
         std::lock_guard lock(desktop_producer_mutex);
         const auto previous = desktop_producer_owner_id.load(std::memory_order_relaxed);
         desktop_producers.erase(connection_id);
@@ -86,7 +87,7 @@ namespace Server {
         if (challenger_id == connection_id) challenger_id = 0;
         auto owner = previous;
         if (previous == connection_id) {
-            owner = best_candidate(0, steady_ms());
+            owner = best_candidate(0, now_ms);
             desktop_producer_owner_id.store(owner, std::memory_order_release);
         }
         return {previous, owner, previous != owner};

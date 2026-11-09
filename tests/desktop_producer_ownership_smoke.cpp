@@ -116,12 +116,16 @@ int main()
     S::report_desktop_relevance(1, 100, T + 70000 + S::DesktopRelevanceHoldMs + 1);
     if (!expect_owner(1, "stale owner report"))
         return 27;
-    // When the owner leaves, the most relevant remaining desktop is promoted.
-    S::register_desktop_producer(3, "tablet");
-    S::report_desktop_relevance(3, 50, T + 90000);
-    S::report_desktop_relevance(2, 0, T + 90000);
-    const auto left = S::unregister_desktop_producer(1);
-    if (!left.changed || left.owner != 3)
+    // When the owner leaves, the most relevant remaining desktop is promoted,
+    // not merely the newest connection (connection 2 is older but scores higher).
+    S::clear_desktop_producers();
+    S::register_desktop_producer(1, "owner");
+    S::register_desktop_producer(2, "busy");
+    S::register_desktop_producer(3, "idle-newest");
+    S::report_desktop_relevance(2, 80, T + 90000);
+    S::report_desktop_relevance(3, 10, T + 90000);
+    const auto left = S::unregister_desktop_producer(1, T + 91000);
+    if (!left.changed || left.owner != 2)
         return 28;
     S::clear_desktop_producers();
 
