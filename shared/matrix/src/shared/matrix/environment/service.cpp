@@ -80,6 +80,7 @@ std::expected<WeatherReport, std::string> parse_weather(const std::string &body)
         r.wind_speed_ms = static_cast<float>(num("wind_speed_10m", 2.0));
         r.wind_direction_deg = static_cast<float>(num("wind_direction_10m", 270.0));
         r.snow_depth_m = static_cast<float>(num("snow_depth", 0.0));
+        r.precipitation_mm = static_cast<float>(num("precipitation", -1.0));
         r.utc_offset_seconds = j.contains("utc_offset_seconds") && j.at("utc_offset_seconds").is_number()
                                    ? j.at("utc_offset_seconds").get<int>()
                                    : 0;
@@ -93,7 +94,7 @@ std::expected<WeatherReport, std::string> fetch_weather(double latitude, double 
 {
     const std::string url = "https://api.open-meteo.com/v1/forecast?latitude=" + coordinate(latitude) +
                             "&longitude=" + coordinate(longitude) +
-                            "&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,snow_depth"
+                            "&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,snow_depth,precipitation"
                             "&wind_speed_unit=ms&timezone=auto&forecast_days=1";
     const auto r = cpr::Get(cpr::Url{url}, cpr::Timeout{8000L});
     if (r.status_code != 200)
@@ -252,6 +253,7 @@ void Service::publish_locked()
         s["wind_speed_ms"] = static_cast<double>(weather_->wind_speed_ms);
         s["wind_direction_deg"] = static_cast<double>(weather_->wind_direction_deg);
         s["snow_depth_m"] = static_cast<double>(weather_->snow_depth_m);
+        s["precipitation_mm"] = static_cast<double>(weather_->precipitation_mm);
         s["utc_offset_seconds"] = static_cast<std::int64_t>(weather_->utc_offset_seconds);
         s["weather_unix"] = std::chrono::duration<double>(weather_at_.time_since_epoch()).count();
     }

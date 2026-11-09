@@ -94,6 +94,16 @@ void weather()
     const auto c = conditions_at(52.52, 13.405, utc(2024, 6, 21, 10, 0), report, 7200);
     check(c.sun_known && c.weather_known && c.weather == Weather::Rain, "conditions carry the real weather");
     check(approx(c.local_hour, 12.0, 0.01), "local hour applies the UTC offset " + std::to_string(c.local_hour));
+
+    // The WMO code says rain but nothing is measured: show no rain. Real rain and unknown amounts keep it.
+    WeatherReport dry = report;
+    dry.cloud_cover = 1.0f;
+    dry.precipitation_mm = 0.0f;
+    check(conditions_at(52.52, 13.405, utc(2024, 6, 21, 10, 0), dry, 7200).weather == Weather::Overcast,
+          "dry reading overrides a rain code");
+    dry.precipitation_mm = 0.4f;
+    check(conditions_at(52.52, 13.405, utc(2024, 6, 21, 10, 0), dry, 7200).weather == Weather::Rain, "measured rain stays rain");
+    check(parse_weather(R"({"current":{"weather_code":61,"precipitation":0.0}})")->precipitation_mm == 0.0f, "parsed precipitation");
 }
 
 void occasions_registry()
