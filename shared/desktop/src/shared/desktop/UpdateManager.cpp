@@ -411,7 +411,19 @@ namespace UpdateChecker
                 {
                     ImGui::CloseCurrentPopup();
                     state.set(Phase::Downloading);
-                    std::thread([s = pImpl->state, release] { install(s, release, false); }).detach();
+                    std::thread([s = pImpl->state, release] {
+                        try
+                        {
+                            install(s, release, false);
+                        }
+                        catch (const std::exception &e) // install() reports its own errors; this is a last resort
+                        {
+                            spdlog::error("Desktop update failed: {}", e.what());
+                            std::lock_guard lock(s->mutex);
+                            s->message = e.what();
+                            s->phase = Phase::Failed;
+                        }
+                    }).detach();
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Remind Later", ImVec2(140, 0)))
@@ -514,7 +526,18 @@ namespace UpdateChecker
                 if (ImGui::Button("Remove It", ImVec2(140, 0)))
                 {
                     pImpl->legacy = Impl::Legacy::Removing;
-                    std::thread([r = pImpl->legacyResult] { r->store(SelfUpdate::remove_legacy_install() ? 1 : 0); }).detach();
+                    std::thread([r = pImpl->legacyResult] {
+                        bool removed = false;
+                        try
+                        {
+                            removed = SelfUpdate::remove_legacy_install();
+                        }
+                        catch (const std::exception &e)
+                        {
+                            spdlog::error("Removing the old installation failed: {}", e.what());
+                        }
+                        r->store(removed ? 1 : 0);
+                    }).detach();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SetItemTooltip(

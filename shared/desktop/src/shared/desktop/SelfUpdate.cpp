@@ -992,7 +992,8 @@ namespace SelfUpdate
         std::string path;
         if (!in || !std::getline(in, path) || path.empty())
             return std::nullopt;
-        if (!fs::exists(path))
+        std::error_code ec;
+        if (!fs::exists(path, ec))
         {
             forget_legacy_install();
             return std::nullopt;
