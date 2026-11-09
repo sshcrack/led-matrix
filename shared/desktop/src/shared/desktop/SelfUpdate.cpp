@@ -133,11 +133,21 @@ namespace SelfUpdate
             pid_t pid = 0;
             // A detached process gets its own session, so closing the terminal that ran
             // `--install` does not take the launched app down with it.
+            // It also must not keep our stdin/stdout/stderr open: a caller reading our output
+            // (`... --install | tee log`) would otherwise wait until the app exits.
             posix_spawnattr_t attr;
             posix_spawnattr_init(&attr);
+            posix_spawn_file_actions_t files;
+            posix_spawn_file_actions_init(&files);
             if (!wait)
+            {
                 posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID);
-            const int rc = posix_spawnp(&pid, argv[0], nullptr, &attr, argv.data(), environ);
+                posix_spawn_file_actions_addopen(&files, 0, "/dev/null", O_RDONLY, 0);
+                posix_spawn_file_actions_addopen(&files, 1, "/dev/null", O_WRONLY, 0);
+                posix_spawn_file_actions_addopen(&files, 2, "/dev/null", O_WRONLY, 0);
+            }
+            const int rc = posix_spawnp(&pid, argv[0], &files, &attr, argv.data(), environ);
+            posix_spawn_file_actions_destroy(&files);
             posix_spawnattr_destroy(&attr);
             if (rc != 0)
                 return -1;
