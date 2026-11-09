@@ -24,9 +24,11 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <winioctl.h>
+#include <tlhelp32.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #else
+#include <csignal>
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/file.h>
@@ -129,7 +131,15 @@ namespace SelfUpdate
                 argv.push_back(const_cast<char *>(a.c_str()));
             argv.push_back(nullptr);
             pid_t pid = 0;
-            if (posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ) != 0)
+            // A detached process gets its own session, so closing the terminal that ran
+            // `--install` does not take the launched app down with it.
+            posix_spawnattr_t attr;
+            posix_spawnattr_init(&attr);
+            if (!wait)
+                posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID);
+            const int rc = posix_spawnp(&pid, argv[0], nullptr, &attr, argv.data(), environ);
+            posix_spawnattr_destroy(&attr);
+            if (rc != 0)
                 return -1;
             if (!wait)
                 return 0;
@@ -423,6 +433,116 @@ namespace SelfUpdate
                 fs::remove(link, ec);
         }
 #endif
+
+        // ---- older installs ------------------------------------------------
+
+        /// The older system-wide install on this machine, whether or not this process runs
+        /// from it: the .deb (dpkg knows the package) or the admin NSIS install in Program Files.
+        /// A setup .exe or install script runs from a temp dir, so the running exe alone
+        /// cannot tell.
+        std::optional<fs::path> installed_legacy_location()
+        {
+            if (auto running = removable_legacy_location())
+                return running;
+            std::error_code ec;
+#ifdef _WIN32
+            for (const auto &id: {FOLDERID_ProgramFiles, FOLDERID_ProgramFilesX86})
+            {
+                const fs::path base = known_folder(id);
+                if (!base.empty() && fs::exists(base / "led-matrix-desktop" / "Uninstall.exe", ec))
+                    return base / "led-matrix-desktop";
+            }
+#else
+            const fs::path debExe = fs::path("/usr/bin") / EXE_NAME;
+            if (fs::exists("/var/lib/dpkg/info/led-matrix-desktop.list", ec) && fs::exists(debExe, ec))
+                return debExe;
+#endif
+            return std::nullopt;
+        }
+
+        /// Ends the app and scene-worker processes of the older install. The app is
+        /// single-instance: while an old copy runs, launching the new one only brings the old
+        /// window up (whose own updater then reinstalls the old kind of install). Returns how
+        /// many were stopped; `failed` counts those it was not allowed to stop.
+        int stop_legacy_processes(const fs::path &legacy, int &failed)
+        {
+            failed = 0;
+            const fs::path dir = fs::is_directory(legacy) ? legacy : legacy.parent_path();
+            auto isLegacyApp = [&](const fs::path &image) {
+                const std::string name = image.filename().string();
+                if (name.rfind("led-matrix-desktop", 0) != 0 && name.rfind("led-matrix-scene-worker", 0) != 0)
+                    return false;
+                std::error_code ec;
+                for (fs::path p = image.parent_path(); !p.empty() && p != p.root_path(); p = p.parent_path())
+                    if (fs::equivalent(p, dir, ec))
+                        return true;
+                return false;
+            };
+            int stopped = 0;
+#ifdef _WIN32
+            HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (snap == INVALID_HANDLE_VALUE)
+                return 0;
+            PROCESSENTRY32W pe{};
+            pe.dwSize = sizeof(pe);
+            for (BOOL more = Process32FirstW(snap, &pe); more; more = Process32NextW(snap, &pe))
+            {
+                if (pe.th32ProcessID == GetCurrentProcessId())
+                    continue;
+                HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe.th32ProcessID);
+                if (!h)
+                    continue;
+                wchar_t buf[32768];
+                DWORD len = static_cast<DWORD>(std::size(buf));
+                const bool named = QueryFullProcessImageNameW(h, 0, buf, &len) != 0;
+                CloseHandle(h);
+                if (!named || !isLegacyApp(fs::path(std::wstring(buf, len))))
+                    continue;
+                // The old installer starts the app elevated; a normal user process may not end it.
+                HANDLE t = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pe.th32ProcessID);
+                if (t && TerminateProcess(t, 0))
+                {
+                    WaitForSingleObject(t, 5000);
+                    stopped++;
+                }
+                else
+                    failed++;
+                if (t)
+                    CloseHandle(t);
+            }
+            CloseHandle(snap);
+#else
+            std::vector<pid_t> pids;
+            std::error_code ec;
+            for (const auto &entry: fs::directory_iterator("/proc", ec))
+            {
+                const std::string name = entry.path().filename().string();
+                if (name.empty() || !std::all_of(name.begin(), name.end(), ::isdigit))
+                    continue;
+                const pid_t pid = static_cast<pid_t>(std::stol(name));
+                std::error_code e2;
+                const fs::path image = fs::read_symlink(entry.path() / "exe", e2);
+                if (!e2 && pid != getpid() && isLegacyApp(image))
+                    pids.push_back(pid);
+            }
+            for (const pid_t pid: pids)
+                if (kill(pid, SIGTERM) != 0)
+                    failed++;
+            for (int i = 0; i < 50; i++) // up to 5 s for a clean exit
+            {
+                if (std::none_of(pids.begin(), pids.end(), [](pid_t pid) { return kill(pid, 0) == 0; }))
+                    break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            for (const pid_t pid: pids)
+                if (kill(pid, 0) == 0)
+                    kill(pid, SIGKILL);
+            stopped = static_cast<int>(pids.size()) - failed;
+#endif
+            if (stopped > 0)
+                spdlog::info("Stopped {} process(es) of the older install in {}", stopped, dir.string());
+            return stopped;
+        }
 
         void refresh_autostart(const fs::path &root)
         {
@@ -786,7 +906,7 @@ namespace SelfUpdate
         } // before prune_locked(), which takes VersionsLock itself
 
         // Migrating away from a .deb / admin install: remember it so the app can offer to remove it.
-        if (const auto legacy = removable_legacy_location())
+        if (const auto legacy = installed_legacy_location())
             if (std::ofstream marker(legacy_marker(), std::ios::trunc); marker)
                 marker << legacy->string();
 
@@ -999,9 +1119,29 @@ namespace SelfUpdate
                 report("Installation failed: " + r.error(), true);
                 return 1;
             }
-            report(std::string(DISPLAY_NAME) + " " + PROJECT_VERSION_STRING + " installed to " + install_root().string() +
-                       "\nIt keeps itself up to date.",
-                   false);
+            std::string note;
+            if (const auto legacy = installed_legacy_location())
+            {
+                // An old copy still running would swallow the launch below (single instance).
+                int failed = 0;
+                if (stop_legacy_processes(*legacy, failed) > 0)
+                    launch = true; // replace the app the user had open
+                if (failed > 0)
+                {
+                    // Launching now would only bring the old window up again.
+                    launch = false;
+                    note = "\n\nThe older " + std::string(DISPLAY_NAME) + " is still running and could not be closed. "
+                           "Exit it (tray icon > Exit), then start " + DISPLAY_NAME + " again.";
+                }
+                note += "\nThe app offers to remove the older installation in " + legacy->string() + " when it starts.";
+            }
+            const std::string done = std::string(DISPLAY_NAME) + " " + PROJECT_VERSION_STRING + " installed to " +
+                                     install_root().string() + "\nIt keeps itself up to date." + note;
+#ifdef _WIN32
+            if (note.find("could not be closed") != std::string::npos) // the setup has no console: show it
+                MessageBoxW(nullptr, widen(done).c_str(), widen(DISPLAY_NAME).c_str(), MB_OK | MB_ICONWARNING);
+#endif
+            report(done, false);
             if (launch)
             {
 #ifdef _WIN32
