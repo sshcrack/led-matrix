@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "shared/matrix/input_ids.h"
+#include "shared/matrix/remote_render.h"
 
 namespace {
 float signal_number(const RuntimeInputs::Snapshot& snapshot, std::string_view input, std::string_view signal, float fallback)
@@ -180,15 +181,14 @@ Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& s
     return Scenes::effective_profile(descriptor, Scenes::find_variant(descriptor, scene->get_variant_id()));
 }
 
-/// Measured Pi render load beats the authored prior. Offloadable scenes are
-/// judged by their prior while a desktop is connected, because their local
-/// cost is then irrelevant.
+/// Only a compatible worker advertising this scene makes Pi cost irrelevant.
+/// Use the same eligibility check as DesktopHandoff for both ranking and dwell.
 float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::EffectiveSceneProfile& profile,
-                     const std::optional<float>& measured_load, bool desktop_available)
+                     const std::optional<float>& measured_load)
 {
+    if (scene->get_capabilities().supports_remote_rendering && RemoteRender::worker_available(scene->get_name()))
+        return std::min(profile.performance_cost, performance_budget);
     if (!measured_load.has_value())
-        return profile.performance_cost;
-    if (desktop_available && scene->get_capabilities().supports_remote_rendering)
         return profile.performance_cost;
     return std::clamp(*measured_load * measured_load_to_cost, 0.0f, 1.5f);
 }

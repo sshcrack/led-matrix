@@ -93,7 +93,6 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
 {
     std::vector<Candidate> ranked;
     const auto context = music_context(runtime_inputs);
-    const bool desktop_available = runtime_inputs.available(RuntimeInputIds::Desktop);
     const bool music_casting = music_led(context);
     const auto moment = Environment::moment_of(
         Environment::conditions_from(runtime_inputs, std::chrono::system_clock::now()));
@@ -352,7 +351,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             const auto memory = memory_.find(scene->get_name());
             const std::optional<float> measured_load = memory != memory_.end()
                 ? memory->second.render_load : std::nullopt;
-            const float cost = effective_cost(scene, profile, measured_load, desktop_available);
+            const float cost = effective_cost(scene, profile, measured_load);
             if (cost > performance_budget) {
                 candidate.score -= (cost - performance_budget) * weight::over_budget;
                 candidate.reasons.push_back(measured_load.has_value() && cost != profile.performance_cost
@@ -536,7 +535,7 @@ tmillis_t AutomaticDirector::presentation_duration(
 
     const auto memory = memory_.find(scene->get_name());
     const auto measured_load = memory != memory_.end() ? memory->second.render_load : std::nullopt;
-    if (effective_cost(scene, profile, measured_load, runtime_inputs.available(RuntimeInputIds::Desktop))
+    if (effective_cost(scene, profile, measured_load)
         > performance_budget + 0.12f)
         seconds = std::min(seconds, 18.0f);
 

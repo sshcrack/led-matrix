@@ -118,6 +118,9 @@ interface DiagnosticsData {
     frame_age_ms: number
     scene: string
     worker_available: boolean
+    worker_compatible?: boolean
+    local_scene_code?: string
+    worker_scene_code?: string
     worker_scene_count: number
   }
   transition?: {
@@ -181,6 +184,9 @@ export default function Diagnostics() {
     return () => { disposed = true; if (timer) clearTimeout(timer) }
   }, [apiUrl, paused])
 
+  const workerMismatch = data?.remote_render?.worker_available
+    && data.remote_render.worker_compatible === false
+
   const directorScenes = useMemo(() => data?.director?.scenes ?? [], [data])
   const coolingScenes = directorScenes.filter(scene => scene.cooldown_remaining_ms > 0)
   const heavyScenes = directorScenes.filter(scene => (scene.render_load ?? 0) > 0.72)
@@ -222,6 +228,24 @@ export default function Diagnostics() {
     {!data && !error && <div className="glass-panel rounded-2xl p-6 text-sm text-muted-foreground">Waiting for matrix diagnostics…</div>}
 
     {data && <>
+      {workerMismatch && <section role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 p-5">
+        <div className="flex items-start gap-3">
+          <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
+          <div className="min-w-0 space-y-2">
+            <h2 className="font-semibold">Desktop app is incompatible</h2>
+            <p className="text-sm">The desktop is connected, but its scene code differs from this matrix. Automatic scene offload is disabled, so heavy scenes render locally at reduced quality when needed.</p>
+            <p className="text-sm text-muted-foreground">Install the desktop app from the same release as the matrix, then restart it. If you use a development build, rebuild both from the same scene code.</p>
+            <a href="https://github.com/sshcrack/led-matrix/releases" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline underline-offset-4">Download desktop releases</a>
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">Scene code details</summary>
+              <dl className="mt-2 grid gap-1 break-all font-mono">
+                <div><dt className="inline">Matrix: </dt><dd className="inline">{data.remote_render?.local_scene_code || 'Unknown'}</dd></div>
+                <div><dt className="inline">Desktop: </dt><dd className="inline">{data.remote_render?.worker_scene_code || 'Not reported — update the desktop app'}</dd></div>
+              </dl>
+            </details>
+          </div>
+        </div>
+      </section>}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Renderer" value={`${number(data.renderer.fps)} FPS`} detail={`${number(data.renderer.render_ms_average, 2)} ms avg · ${number(data.renderer.render_ms_max, 2)} ms max`} />
         <Metric label="Active scene" value={data.renderer.active_scene || 'None'} detail={`${data.render_placement?.placement?.replace('_', ' ') ?? 'local'} · ${data.renderer.slow_frames} slow frames`} />
@@ -295,7 +319,7 @@ export default function Diagnostics() {
           <Metric label="Frame budget" value={`${number(data.render_placement?.frame_budget_ms, 2)} ms`} detail="Auto offload starts at sustained 72% pressure" />
           <Metric label="Local quality" value={`${number((data.render_placement?.quality_scale ?? 1) * 100, 0)}%`} detail="Adaptive before/while desktop warms" />
           <Metric label="Remote frame" value={data.remote_render?.requested ? (data.remote_render.frame_fresh ? 'Fresh' : 'Waiting') : 'Inactive'} detail={data.remote_render?.requested ? `${number(data.remote_render.frame_age_ms, 0)} ms old · seq ${data.remote_render.last_sequence}` : 'Latest-frame-wins, no queued latency'} />
-          <Metric label="Scene worker" value={data.remote_render?.worker_available ? 'Ready' : 'Unavailable'} detail={data.remote_render?.worker_available ? `${data.remote_render?.worker_scene_count ?? 0} scenes available for automatic offload` : 'Start the connected desktop app to enable automatic offload'} />
+          <Metric label="Scene worker" value={workerMismatch ? 'Incompatible' : data.remote_render?.worker_available ? 'Ready' : 'Unavailable'} detail={workerMismatch ? 'Update the desktop app to match the matrix release' : data.remote_render?.worker_available ? `${data.remote_render?.worker_scene_count ?? 0} scenes available for automatic offload` : 'Start the connected desktop app to enable automatic offload'} />
         </div>
       </section>
 
