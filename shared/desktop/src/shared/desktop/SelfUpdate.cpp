@@ -755,6 +755,10 @@ namespace SelfUpdate
             cpr::Session session;
             session.SetUrl(cpr::Url{url});
             session.SetHeader({{"User-Agent", user_agent()}});
+            // The install lock is held for the whole download: a stalled connection must end
+            // it (and free the lock) instead of blocking every later install or uninstall.
+            session.SetConnectTimeout(cpr::ConnectTimeout{std::chrono::seconds(20)});
+            session.SetLowSpeed(cpr::LowSpeed{1024, std::chrono::seconds(60)}); // < 1 KiB/s for a minute
             session.SetProgressCallback(cpr::ProgressCallback{
                 [&progress](cpr::cpr_pf_arg_t total, cpr::cpr_pf_arg_t now, cpr::cpr_pf_arg_t, cpr::cpr_pf_arg_t, intptr_t) {
                     if (progress)
