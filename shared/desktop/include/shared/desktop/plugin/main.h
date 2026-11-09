@@ -46,6 +46,12 @@ namespace Plugins
         virtual void udp_init() {}
 
         virtual void on_websocket_message(const std::string message) {}
+
+        /// How useful this desktop is as the matrix's producer right now, 0..100
+        /// (e.g. audio is playing). Polled every couple of seconds from the sender
+        /// thread, also while this desktop is on standby; keep it cheap. The matrix
+        /// hands the producer role to the most relevant desktop.
+        [[nodiscard]] virtual int desktop_relevance() { return 0; }
         void send_websocket_message(const std::string &message);
 
         /// Test seam: when set, send_websocket_message() hands (plugin name,

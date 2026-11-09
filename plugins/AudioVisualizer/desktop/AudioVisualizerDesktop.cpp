@@ -1,3 +1,4 @@
+#include <cmath>
 #include "AudioVisualizerDesktop.h"
 #include "udpBandsPacket.h"
 #include <shared/desktop/audio_state.h>
@@ -295,11 +296,7 @@ void AudioVisualizerDesktop::initialize_imgui(ImGuiContext *context, ImGuiMemAll
     ImGui::GetAllocatorFunctions(alloc, free, userData);
 }
 
-std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(
-    const std::string sceneName) {
-    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return std::nullopt;
-    std::lock_guard stateLock(stateMutex);
-
+bool AudioVisualizerDesktop::ensure_recording_locked() {
     if (cfg.deviceName != currentDeviceName) {
         if (recorder) recorder->stopRecording();
         currentDeviceName = cfg.deviceName;
@@ -341,11 +338,33 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
         if (!started) {
             std::unique_lock lock(lastErrorMutex);
             lastError = "Could not start audio capture for '" + cfg.deviceName + "'.";
-            return std::nullopt;
+            return false;
         }
         std::unique_lock lock(lastErrorMutex);
         lastError.clear();
     }
+    return true;
+}
+
+int AudioVisualizerDesktop::desktop_relevance() {
+    // Audio that is actually playing makes this desktop the better producer.
+    // Capture runs on standby too (cheap); the analysis/streaming does not.
+    if (!cfg.streamContinuously) return 0;
+    std::lock_guard stateLock(stateMutex);
+    if (!ensure_recording_locked()) return 0;
+    const auto captured = recorder->getLastSamples();
+    if (!captured || captured->mono.empty()) return 0;
+    double sum = 0.0;
+    for (const float x : captured->mono) sum += static_cast<double>(x) * x;
+    const double rms = std::sqrt(sum / static_cast<double>(captured->mono.size()));
+    return rms > 0.003 ? 100 : 0; // above about -50 dBFS
+}
+
+std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(
+    const std::string sceneName) {
+    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return std::nullopt;
+    std::lock_guard stateLock(stateMutex);
+    if (!ensure_recording_locked()) return std::nullopt;
 
     const auto captured = recorder->getLastSamples();
     if (!captured) return std::nullopt;

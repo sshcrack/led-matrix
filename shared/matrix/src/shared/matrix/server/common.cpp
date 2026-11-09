@@ -1,5 +1,6 @@
 #include "shared/matrix/server/common.h"
 
+#include <chrono>
 #include <mutex>
 #include <map>
 #include <string>
@@ -15,6 +16,36 @@ namespace Server {
         std::map<std::uint64_t, std::string> desktop_producers;
         std::map<std::uint64_t, std::string> desktop_workers;
         std::atomic<std::uint64_t> desktop_producer_owner_id{0};
+
+        struct Relevance { int score = 0; std::int64_t reported_ms = 0; };
+        std::map<std::uint64_t, Relevance> desktop_relevance;
+        // The standby desktop currently ahead of the owner, and since when.
+        std::uint64_t challenger_id = 0;
+        std::int64_t challenger_since_ms = 0;
+
+        std::int64_t steady_ms() {
+            using namespace std::chrono;
+            return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+        }
+
+        int fresh_score(std::uint64_t id, std::int64_t now_ms) {
+            const auto it = desktop_relevance.find(id);
+            if (it == desktop_relevance.end() || now_ms - it->second.reported_ms > DesktopRelevanceStaleMs)
+                return 0;
+            return it->second.score;
+        }
+
+        // Most relevant remaining desktop; ties go to the newest connection.
+        std::uint64_t best_candidate(std::uint64_t exclude, std::int64_t now_ms) {
+            std::uint64_t best = 0;
+            int best_score = -1;
+            for (const auto &[id, client] : desktop_producers) {
+                if (id == exclude) continue;
+                const int score = fresh_score(id, now_ms);
+                if (score >= best_score) { best = id; best_score = score; }
+            }
+            return best;
+        }
     }
 
     DesktopProducerChange register_desktop_producer(const std::uint64_t connection_id, std::string client_id) {
@@ -37,6 +68,8 @@ namespace Server {
                 // connection from the candidate set prevents it being promoted
                 // again if the fresh socket closes before TCP teardown is seen.
                 desktop_producers.erase(previous_it);
+                desktop_relevance.erase(previous);
+                challenger_id = 0;
                 owner = connection_id;
             }
         }
@@ -49,12 +82,45 @@ namespace Server {
         std::lock_guard lock(desktop_producer_mutex);
         const auto previous = desktop_producer_owner_id.load(std::memory_order_relaxed);
         desktop_producers.erase(connection_id);
+        desktop_relevance.erase(connection_id);
+        challenger_id = 0;
         auto owner = previous;
         if (previous == connection_id) {
-            owner = desktop_producers.empty() ? 0 : desktop_producers.rbegin()->first;
+            owner = best_candidate(0, steady_ms());
             desktop_producer_owner_id.store(owner, std::memory_order_release);
         }
         return {previous, owner, previous != owner};
+    }
+
+    DesktopProducerChange report_desktop_relevance(const std::uint64_t connection_id, const int score,
+                                                   std::int64_t now_ms) {
+        if (now_ms < 0) now_ms = steady_ms();
+        std::lock_guard lock(desktop_producer_mutex);
+        const auto previous = desktop_producer_owner_id.load(std::memory_order_relaxed);
+        if (!desktop_producers.contains(connection_id))
+            return {previous, previous, false};
+        desktop_relevance[connection_id] = {score, now_ms};
+        if (previous == 0)
+            return {previous, previous, false};
+
+        const int owner_score = fresh_score(previous, now_ms);
+        const auto candidate = best_candidate(previous, now_ms);
+        const bool ahead = candidate != 0 && fresh_score(candidate, now_ms) >= owner_score + DesktopRelevanceMargin;
+        if (!ahead) {
+            challenger_id = 0;
+            return {previous, previous, false};
+        }
+        if (challenger_id != candidate) {
+            challenger_id = candidate;
+            challenger_since_ms = now_ms;
+            return {previous, previous, false};
+        }
+        if (now_ms - challenger_since_ms < DesktopRelevanceHoldMs)
+            return {previous, previous, false};
+
+        challenger_id = 0;
+        desktop_producer_owner_id.store(candidate, std::memory_order_release);
+        return {previous, candidate, true};
     }
 
     void register_desktop_worker(const std::uint64_t connection_id, std::string client_id) {
@@ -71,6 +137,8 @@ namespace Server {
         std::lock_guard lock(desktop_producer_mutex);
         desktop_producers.clear();
         desktop_workers.clear();
+        desktop_relevance.clear();
+        challenger_id = 0;
         desktop_producer_owner_id.store(0, std::memory_order_release);
     }
 
