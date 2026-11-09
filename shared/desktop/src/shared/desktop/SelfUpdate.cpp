@@ -23,6 +23,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <winioctl.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #else
@@ -171,30 +172,67 @@ namespace SelfUpdate
             return {};
         }
 
+#ifdef _WIN32
+        /// Makes the directory `link` (empty, or already a junction) a junction to `target`.
+        std::expected<void, std::string> set_junction_target(const fs::path &link, const fs::path &target)
+        {
+            std::error_code ec;
+            const std::wstring print = fs::absolute(target, ec).wstring();
+            const std::wstring substitute = L"\\??\\" + print;
+            const size_t substituteBytes = substitute.size() * sizeof(wchar_t);
+            const size_t printBytes = print.size() * sizeof(wchar_t);
+
+            // REPARSE_DATA_BUFFER (MountPointReparseBuffer) is only in the DDK headers.
+            struct Header
+            {
+                DWORD ReparseTag;
+                WORD ReparseDataLength;
+                WORD Reserved;
+                WORD SubstituteNameOffset;
+                WORD SubstituteNameLength;
+                WORD PrintNameOffset;
+                WORD PrintNameLength;
+            };
+            std::vector<char> buffer(sizeof(Header) + substituteBytes + sizeof(wchar_t) + printBytes + sizeof(wchar_t), 0);
+            auto *header = reinterpret_cast<Header *>(buffer.data());
+            header->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+            header->ReparseDataLength = static_cast<WORD>(buffer.size() - 8); // everything after the first 8 bytes
+            header->SubstituteNameOffset = 0;
+            header->SubstituteNameLength = static_cast<WORD>(substituteBytes);
+            header->PrintNameOffset = static_cast<WORD>(substituteBytes + sizeof(wchar_t));
+            header->PrintNameLength = static_cast<WORD>(printBytes);
+            char *names = buffer.data() + sizeof(Header);
+            std::memcpy(names, substitute.data(), substituteBytes);
+            std::memcpy(names + substituteBytes + sizeof(wchar_t), print.data(), printBytes);
+
+            HANDLE h = CreateFileW(link.wstring().c_str(), GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+                                   FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+            if (h == INVALID_HANDLE_VALUE)
+                return std::unexpected("Could not open " + link.string() + " (error " + std::to_string(GetLastError()) + ")");
+            DWORD returned = 0;
+            const BOOL ok = DeviceIoControl(h, FSCTL_SET_REPARSE_POINT, buffer.data(), static_cast<DWORD>(buffer.size()),
+                                            nullptr, 0, &returned, nullptr);
+            const DWORD err = GetLastError();
+            CloseHandle(h);
+            if (!ok)
+                return std::unexpected("Could not point " + link.string() + " at " + target.string() + " (error " +
+                                       std::to_string(err) + ")");
+            return {};
+        }
+#endif
+
         std::expected<void, std::string> point_current_at(const fs::path &root, const std::string &version)
         {
             const fs::path current = root / "current";
             std::error_code ec;
 #ifdef _WIN32
-            // Junctions need no admin rights or developer mode (directory symlinks do).
-            const fs::path next = root / "current.new";
-            const fs::path old = root / "current.old";
-            fs::remove(next, ec);
-            fs::remove(old, ec);
-            const int rc = run_process({(system32() / L"cmd.exe").wstring(), L"/d", L"/c", L"mklink", L"/J",
-                                        next.wstring(), (versions_dir(root) / version).wstring()});
-            if (rc != 0 || !exists_nofollow(next))
-                return std::unexpected("Could not create the 'current' junction (mklink exit code " + std::to_string(rc) + ")");
-            if (exists_nofollow(current))
-            {
-                fs::rename(current, old, ec);
-                if (ec)
-                    return std::unexpected("Could not replace 'current': " + ec.message());
-            }
-            fs::rename(next, current, ec);
-            if (ec)
-                return std::unexpected("Could not activate the new version: " + ec.message());
-            fs::remove(old, ec); // removes the junction only, never its target
+            // A junction needs no admin rights or developer mode (directory symlinks do).
+            // Re-pointing an existing junction rewrites its reparse data in one call, so
+            // `current` never goes missing (renaming junctions around would leave a gap).
+            if (!exists_nofollow(current) && !CreateDirectoryW(current.wstring().c_str(), nullptr))
+                return std::unexpected("Could not create " + current.string() + " (error " + std::to_string(GetLastError()) + ")");
+            if (auto r = set_junction_target(current, versions_dir(root) / version); !r)
+                return r;
 #else
             const fs::path tmp = root / "current.tmp";
             fs::remove(tmp, ec);

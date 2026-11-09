@@ -32,6 +32,9 @@ namespace UpdateChecker
         // the desktop follows within a minute of the matrix coming back.
         constexpr auto MATRIX_WAIT_INTERVAL = std::chrono::minutes(1);
         constexpr auto MATRIX_WAIT_LIMIT = std::chrono::minutes(20);
+        // Without a matrix answer for this long, follow the latest release instead
+        // (e.g. a laptop away from home).
+        constexpr auto MATRIX_GONE_AFTER = std::chrono::minutes(30);
 
         struct State
         {
@@ -46,6 +49,9 @@ namespace UpdateChecker
             // Fixed per target: a matrix that never gets there stops blocking the desktop.
             Common::Version matrixWaitTarget{};
             Clock::time_point matrixWaitUntil{};
+            // Last successful matrix status. A matrix restarting (e.g. for its own update)
+            // is briefly unreachable; that must not switch the desktop to "latest".
+            Clock::time_point matrixLastSeen{};
             std::atomic<size_t> downloaded{0};
             std::atomic<size_t> total{0};
 
@@ -126,9 +132,29 @@ namespace UpdateChecker
                 const auto host = general.getHostnameCopy();
                 const int port = general.getPort();
                 if (auto m = UpdateChecker::fetchMatrixState(host, port))
+                {
                     matrix = *m;
+                    std::lock_guard lock(state->mutex);
+                    state->matrixLastSeen = Clock::now();
+                }
                 else
+                {
+                    bool transient;
+                    {
+                        std::lock_guard lock(state->mutex);
+                        const auto now = Clock::now();
+                        transient = now < state->matrixWaitUntil ||
+                                    (state->matrixLastSeen != Clock::time_point{} && now - state->matrixLastSeen < MATRIX_GONE_AFTER);
+                    }
+                    if (transient)
+                    {
+                        spdlog::info("Desktop update check: {}; keeping {} until the matrix answers again", m.error(), v(current));
+                        finish("The matrix can't be reached right now (" + m.error() + "). Try again in a minute.",
+                               "Matrix unreachable; keeping " + v(current));
+                        return;
+                    }
                     spdlog::info("Desktop update check: {}, following the latest release", m.error());
+                }
 
                 // A newer release is out and the matrix updates itself: have it update now, then follow it.
                 // Wait only while the matrix accepted that (or is already busy), and at most
