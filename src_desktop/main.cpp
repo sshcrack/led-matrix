@@ -99,6 +99,8 @@ int run_app(int argc, char *argv[]) {
     runnerParams.callbacks.ShowGui = [&] {
         process_window_requests();
         settingsPanel.render();
+        // Outside the panel: it returns early while disconnected.
+        updateManager.render(ImGui::GetCurrentContext());
     };
     runnerParams.callbacks.PreNewFrame = [&] {
         tray.pump();

@@ -229,7 +229,6 @@ namespace desktop_app::detail {
         ImGui::EndChild();
         ImGui::EndGroup();
 
-        updateManager.render(ImGui::GetCurrentContext());
         // With "Match Matrix Version" the desktop follows the matrix by itself.
         if (!updateManager.isFollowMatrixEnabled())
             matrixVersionManager.render(ImGui::GetCurrentContext());
