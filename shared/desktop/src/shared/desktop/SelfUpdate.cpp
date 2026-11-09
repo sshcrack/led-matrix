@@ -522,6 +522,64 @@ namespace SelfUpdate
                 : FileLock(InstallLock::prepared_root() / ".versions.lock", exclusive, wait) {}
         };
 
+        /// Antivirus scanners (Defender) briefly hold freshly extracted files open,
+        /// which makes renaming their folder fail with a sharing violation.
+        bool rename_retrying(const fs::path &from, const fs::path &to)
+        {
+            std::error_code ec;
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                fs::rename(from, to, ec);
+                if (!ec)
+                    return true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            }
+            spdlog::warn("Could not rename {} to {}: {}", from.string(), to.string(), ec.message());
+            return false;
+        }
+
+        bool is_lock_file(const fs::path &root, const fs::path &p)
+        {
+            return p.parent_path() == root && (p.filename() == ".install.lock" || p.filename() == ".versions.lock");
+        }
+
+        /// Removes everything under root except the lock files. Files the OS refuses to
+        /// delete (Windows: this process's own exe and DLLs, which can still be renamed)
+        /// are moved into `busy`, outside root, to be deleted after this process exits.
+        std::expected<void, std::string> clear_install_root(const fs::path &root, const fs::path &busy)
+        {
+            std::error_code ec;
+#ifdef _WIN32
+            RemoveDirectoryW((root / "current").wstring().c_str()); // the junction, not its target
+#else
+            fs::remove(root / "current", ec);
+#endif
+            std::vector<fs::path> paths;
+            for (auto it = fs::recursive_directory_iterator(root, ec); !ec && it != fs::recursive_directory_iterator();
+                 it.increment(ec))
+                paths.push_back(it->path());
+            if (ec)
+                return std::unexpected("Could not list " + root.string() + ": " + ec.message());
+            int moved = 0;
+            for (auto p = paths.rbegin(); p != paths.rend(); ++p) // children before their folder
+            {
+                if (is_lock_file(root, *p))
+                    continue;
+                std::error_code e2;
+                const bool dir = fs::is_directory(fs::symlink_status(*p, e2));
+                if (fs::remove(*p, e2) || dir)
+                    continue;
+                fs::create_directories(busy, e2);
+                fs::rename(*p, busy / (std::to_string(moved++) + "-" + p->filename().string()), e2);
+                if (e2)
+                    return std::unexpected("Could not remove " + p->string() + ": " + e2.message());
+            }
+            for (const auto &entry: fs::directory_iterator(root, ec))
+                if (!is_lock_file(root, entry.path()))
+                    return std::unexpected("Could not remove " + entry.path().string());
+            return {};
+        }
+
         /// True when no app process holds versions/<v>. Call with VersionsLock held exclusively.
         bool version_unused(const fs::path &dir)
         {
@@ -618,26 +676,36 @@ namespace SelfUpdate
                 destInUse = !version_unused(dest);
             if (!destInUse)
             {
-                fs::remove_all(dest, ec);
+                // Build the new copy next to dest first: `current` may point at dest, and a
+                // failed copy (disk full) must not leave it pointing at nothing. Leftover
+                // .new-/.old- folders are not in use, so prune removes them.
+                const fs::path fresh = versions_dir(root) / (".new-" + version);
+                const fs::path old = versions_dir(root) / (".old-" + version);
+                fs::remove_all(fresh, ec);
+                fs::remove_all(old, ec);
                 bool placed = false;
                 if (move)
-                {
-                    // Antivirus scanners (Defender) briefly hold freshly extracted files open,
-                    // which makes renaming their folder fail with a sharing violation.
-                    for (int attempt = 0; attempt < 20 && !placed; attempt++)
-                    {
-                        fs::rename(prefix, dest, ec);
-                        placed = !ec;
-                        if (!placed)
-                            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                    }
-                }
+                    placed = rename_retrying(prefix, fresh);
                 if (!placed)
-                    if (auto r = copy_tree(prefix, dest); !r)
+                    if (auto r = copy_tree(prefix, fresh); !r)
                     {
-                        fs::remove_all(dest, ec);
+                        fs::remove_all(fresh, ec);
                         return r;
                     }
+                const bool hadOld = fs::exists(fs::symlink_status(dest, ec));
+                if (hadOld && !rename_retrying(dest, old))
+                {
+                    fs::remove_all(fresh, ec);
+                    return std::unexpected("Could not replace " + dest.string() + ": it is in use");
+                }
+                if (!rename_retrying(fresh, dest))
+                {
+                    if (hadOld)
+                        fs::rename(old, dest, ec);
+                    fs::remove_all(fresh, ec);
+                    return std::unexpected("Could not move the new version into " + dest.string());
+                }
+                fs::remove_all(old, ec);
             }
         } // before prune_locked(), which takes VersionsLock itself
 
@@ -835,6 +903,13 @@ namespace SelfUpdate
             report(std::string(DISPLAY_NAME) + " is not installed for this user.", false);
             return 0;
         }
+        const fs::path busy = root.parent_path() / ("led-matrix-desktop.uninstalled-" + std::to_string(
+#ifdef _WIN32
+                                                                                         GetCurrentProcessId()
+#else
+                                                                                         getpid()
+#endif
+                                                                                             ));
         {
             // No update may run while the files go, and no app may still run from them.
             InstallLock install(true);
@@ -855,30 +930,30 @@ namespace SelfUpdate
             remove_launchers();
             if (Autostart::isEnabled(APP_NAME))
                 (void)Autostart::disable(APP_NAME);
-#ifndef _WIN32
-            // Lock files last: an installer waiting on them notices they were unlinked (FileLock).
-            std::vector<fs::path> entries;
-            for (const auto &entry: fs::directory_iterator(root, ec))
-                if (const auto name = entry.path().filename(); name != ".install.lock" && name != ".versions.lock")
-                    entries.push_back(entry.path());
-            for (const auto &entry: entries)
-                fs::remove_all(entry, ec);
-            fs::remove_all(root, ec);
-            if (fs::exists(root))
+            if (auto r = clear_install_root(root, busy); !r)
             {
-                report("Uninstall failed: could not remove " + root.string() + ": " + ec.message(), true);
+                report("Uninstall failed: " + r.error(), true);
                 return 1;
             }
-#endif
+            // While still held: an installer waiting on them notices they were unlinked (FileLock;
+            // on Windows they are deleted once closed and a new open fails until then).
+            fs::remove(root / ".install.lock", ec);
+            fs::remove(root / ".versions.lock", ec);
         }
+        std::error_code ec;
+        fs::remove(root, ec); // only if empty: an install may have started right after the locks
 #ifdef _WIN32
-        // Our own executable and DLLs stay locked until this process exits, so cmd.exe
-        // removes the folder right after, retrying while files are still being released.
-        // cmd.exe has its own quoting (no \" escapes), so build this line by hand.
-        const std::wstring quotedRoot = L"\"" + root.wstring() + L"\"";
-        run_cmdline(quote_arg((system32() / L"cmd.exe").wstring()) + L" /d /c for /l %i in (1,1,30) do @if exist " +
-                        quotedRoot + L" (ping -n 2 127.0.0.1 >nul & rmdir /s /q " + quotedRoot + L" 2>nul)",
-                    false);
+        if (fs::exists(busy))
+        {
+            // Our own executable and DLLs stay locked until this process exits; cmd.exe deletes
+            // them right after, retrying while they are released. They are outside root, so
+            // nothing a later install writes is touched. cmd.exe has its own quoting (no \"
+            // escapes), so build this line by hand.
+            const std::wstring b = L"\"" + busy.wstring() + L"\"", r = L"\"" + root.wstring() + L"\"";
+            run_cmdline(quote_arg((system32() / L"cmd.exe").wstring()) + L" /d /c for /l %i in (1,1,30) do @if exist " + b +
+                            L" (ping -n 2 127.0.0.1 >nul & rmdir /s /q " + b + L" 2>nul & rmdir " + r + L" 2>nul)",
+                        false);
+        }
 #endif
         report(std::string(DISPLAY_NAME) + " was uninstalled. Your settings are kept in " + get_data_dir().string(), false);
         return 0;
