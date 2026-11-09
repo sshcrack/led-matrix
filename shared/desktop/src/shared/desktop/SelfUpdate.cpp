@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 extern char **environ;
@@ -439,29 +438,14 @@ namespace SelfUpdate
                 const DWORD flags = (exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0) | (wait ? 0 : LOCKFILE_FAIL_IMMEDIATELY);
                 held_ = LockFileEx(handle_, flags, 0, 1, 0, &ov) != 0;
 #else
-                // `--uninstall` unlinks lock files. A lock taken on an unlinked file excludes
-                // nobody, so retry until the locked file is still the one at `file`.
-                for (int attempt = 0; attempt < 10; attempt++)
-                {
-                    fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
-                    if (fd_ < 0)
-                        return;
-                    int rc;
-                    do
-                        rc = flock(fd_, (exclusive ? LOCK_EX : LOCK_SH) | (wait ? 0 : LOCK_NB));
-                    while (rc != 0 && errno == EINTR);
-                    if (rc != 0)
-                        return;
-                    struct stat locked{}, now{};
-                    if (fstat(fd_, &locked) == 0 && stat(file.c_str(), &now) == 0 && locked.st_dev == now.st_dev &&
-                        locked.st_ino == now.st_ino)
-                    {
-                        held_ = true;
-                        return;
-                    }
-                    close(fd_);
-                    fd_ = -1;
-                }
+                fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+                if (fd_ < 0)
+                    return;
+                int rc;
+                do
+                    rc = flock(fd_, (exclusive ? LOCK_EX : LOCK_SH) | (wait ? 0 : LOCK_NB));
+                while (rc != 0 && errno == EINTR);
+                held_ = rc == 0;
 #endif
             }
             ~FileLock()
@@ -494,32 +478,37 @@ namespace SelfUpdate
             bool held_ = false;
         };
 
-        /// Cross-process lock on <root>/.install.lock: one install, update or prune at a time,
-        /// so a second app instance or a concurrent `--install` cannot delete files an update
-        /// is still writing. Not reentrant: take it only in the public entry points.
+        /// Lock files live next to the install root, not in it, and are never deleted: a lock
+        /// on a file that `--uninstall` removed would exclude nobody (Linux), or keep it
+        /// delete-pending so the next open fails (Windows).
+        fs::path lock_file(const char *name)
+        {
+            const fs::path dir = install_root().parent_path() / "led-matrix-desktop.locks";
+            std::error_code ec;
+            fs::create_directories(dir, ec);
+            return dir / name;
+        }
+
+        /// Cross-process lock: one install, update, prune or uninstall at a time, so a second
+        /// app instance or a concurrent `--install` cannot delete files an update is still
+        /// writing. Not reentrant: take it only in the public entry points.
         struct InstallLock : FileLock
         {
-            explicit InstallLock(bool wait) : FileLock(prepared_root() / ".install.lock", true, wait) {}
-            static fs::path prepared_root()
-            {
-                std::error_code ec;
-                fs::create_directories(install_root(), ec);
-                return install_root();
-            }
+            explicit InstallLock(bool wait) : FileLock(lock_file("install.lock"), true, wait) {}
         };
 
         /// Every running app holds a shared lock on versions/<v>/.in-use for its lifetime;
         /// pruning removes a version only when it can take that lock exclusively.
         constexpr const char *IN_USE_FILE = ".in-use";
 
-        /// <root>/.versions.lock orders "is this version in use?" against "start using it":
+        /// versions.lock orders "is this version in use?" against "start using it":
         /// removers hold it exclusively from the .in-use probe until the version is gone, a
         /// starting app holds it shared while it takes its .in-use lock. Short-lived on both
         /// sides (unlike InstallLock, which spans a whole download).
         struct VersionsLock : FileLock
         {
             VersionsLock(bool exclusive, bool wait)
-                : FileLock(InstallLock::prepared_root() / ".versions.lock", exclusive, wait) {}
+                : FileLock(lock_file("versions.lock"), exclusive, wait) {}
         };
 
         /// Antivirus scanners (Defender) briefly hold freshly extracted files open,
@@ -538,12 +527,7 @@ namespace SelfUpdate
             return false;
         }
 
-        bool is_lock_file(const fs::path &root, const fs::path &p)
-        {
-            return p.parent_path() == root && (p.filename() == ".install.lock" || p.filename() == ".versions.lock");
-        }
-
-        /// Removes everything under root except the lock files. Files the OS refuses to
+        /// Removes everything under root. Files the OS refuses to
         /// delete (Windows: this process's own exe and DLLs, which can still be renamed)
         /// are moved into `busy`, outside root, to be deleted after this process exits.
         std::expected<void, std::string> clear_install_root(const fs::path &root, const fs::path &busy)
@@ -563,8 +547,6 @@ namespace SelfUpdate
             int moved = 0;
             for (auto p = paths.rbegin(); p != paths.rend(); ++p) // children before their folder
             {
-                if (is_lock_file(root, *p))
-                    continue;
                 std::error_code e2;
                 const bool dir = fs::is_directory(fs::symlink_status(*p, e2));
                 if (fs::remove(*p, e2) || dir)
@@ -574,9 +556,9 @@ namespace SelfUpdate
                 if (e2)
                     return std::unexpected("Could not remove " + p->string() + ": " + e2.message());
             }
-            for (const auto &entry: fs::directory_iterator(root, ec))
-                if (!is_lock_file(root, entry.path()))
-                    return std::unexpected("Could not remove " + entry.path().string());
+            fs::remove(root, ec);
+            if (fs::exists(root))
+                return std::unexpected("Could not remove " + root.string());
             return {};
         }
 
@@ -640,7 +622,7 @@ namespace SelfUpdate
         VersionsLock versions(false, true);
         if (!versions.held())
         {
-            spdlog::error("Could not lock {}", (install_root() / ".versions.lock").string());
+            spdlog::error("Could not lock {}", lock_file("versions.lock").string());
             return HoldResult::Failed;
         }
         // An update or prune may have removed this version while we were starting.
@@ -682,6 +664,8 @@ namespace SelfUpdate
         {
             // Held until dest is replaced, so no app starts using the old copy in between.
             VersionsLock versions(true, true);
+            if (!versions.held())
+                return std::unexpected("Could not lock " + lock_file("versions.lock").string());
             // Same version already there and another app process runs it: keep it as is.
             if (!destInUse && fs::exists(dest / "bin" / EXE_NAME))
                 destInUse = !version_unused(dest);
@@ -740,7 +724,7 @@ namespace SelfUpdate
     {
         InstallLock lock(true);
         if (!lock.held())
-            return std::unexpected("Could not lock " + (install_root() / ".install.lock").string());
+            return std::unexpected("Could not lock " + lock_file("install.lock").string());
         return install_prefix_locked(prefix, version, move, first_install);
     }
 
@@ -750,7 +734,7 @@ namespace SelfUpdate
     {
         InstallLock lock(true); // held until the new version is in place
         if (!lock.held())
-            return std::unexpected("Could not lock " + (install_root() / ".install.lock").string());
+            return std::unexpected("Could not lock " + lock_file("install.lock").string());
         const fs::path root = install_root();
         const fs::path downloads = root / "downloads";
         std::error_code ec;
@@ -845,6 +829,11 @@ namespace SelfUpdate
         const fs::path current = fs::weakly_canonical(root / "current", ec);
         const auto running = running_version_dir();
         VersionsLock versions(true, true); // no app starts an old version while it is removed
+        if (!versions.held())
+        {
+            spdlog::warn("Could not lock {}; not pruning", lock_file("versions.lock").string());
+            return;
+        }
         for (const auto &entry: fs::directory_iterator(versions_dir(root), ec))
         {
             std::error_code e2;
@@ -946,13 +935,7 @@ namespace SelfUpdate
                 report("Uninstall failed: " + r.error(), true);
                 return 1;
             }
-            // While still held: an installer waiting on them notices they were unlinked (FileLock;
-            // on Windows they are deleted once closed and a new open fails until then).
-            fs::remove(root / ".install.lock", ec);
-            fs::remove(root / ".versions.lock", ec);
         }
-        std::error_code ec;
-        fs::remove(root, ec); // only if empty: an install may have started right after the locks
 #ifdef _WIN32
         if (fs::exists(busy))
         {
@@ -960,9 +943,9 @@ namespace SelfUpdate
             // them right after, retrying while they are released. They are outside root, so
             // nothing a later install writes is touched. cmd.exe has its own quoting (no \"
             // escapes), so build this line by hand.
-            const std::wstring b = L"\"" + busy.wstring() + L"\"", r = L"\"" + root.wstring() + L"\"";
+            const std::wstring b = L"\"" + busy.wstring() + L"\"";
             run_cmdline(quote_arg((system32() / L"cmd.exe").wstring()) + L" /d /c for /l %i in (1,1,30) do @if exist " + b +
-                            L" (ping -n 2 127.0.0.1 >nul & rmdir /s /q " + b + L" 2>nul & rmdir " + r + L" 2>nul)",
+                            L" (ping -n 2 127.0.0.1 >nul & rmdir /s /q " + b + L" 2>nul)",
                         false);
         }
 #endif
