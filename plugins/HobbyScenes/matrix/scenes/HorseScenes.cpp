@@ -192,10 +192,13 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
         // mist is dark too and would swallow them.
         const float dark = std::max(L.night, 0.7f * L.storm);
         const float haze = (1.0f - m.depth) * (1.0f - 0.45f * dark);
-        // Moonlight picks out coats as silvery shapes; black stays a dark grey.
+        // Moonlight lifts each coat in its own colour (a grey wash would turn
+        // the herd into ghosts); black stays a dark grey.
         const Rgb moon{0.60f, 0.62f, 0.70f};
-        const Rgb body = mix(subject(mix(coats[coat], moon, 0.50f * dark)), mistCol, haze * 0.70f);
-        const Rgb mane = mix(subject(mix(manes[coat], moon, 0.20f * dark)), mistCol, haze * 0.65f);
+        const float lift = 1.0f + 0.8f * dark;
+        const Rgb lifted = mix({coats[coat].r * lift, coats[coat].g * lift, coats[coat].b * lift}, moon, 0.18f * dark);
+        const Rgb body = mix(subject(lifted), mistCol, haze * 0.70f);
+        const Rgb mane = mix(subject(mix(manes[coat], moon, 0.15f * dark)), mistCol, haze * 0.65f);
         horse(cv_, m.x, gy, scale, static_cast<float>(m.dir), m.phase, m.graze ? Gait::Graze : Gait::Walk, body, mane);
     }
     mist_band(H * 0.90f, 0.20f, 0.5f, 2.0f);

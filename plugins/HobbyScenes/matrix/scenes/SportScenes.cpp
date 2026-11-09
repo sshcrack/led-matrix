@@ -191,6 +191,9 @@ bool BasketballScene::render(rgb_matrix::FrameCanvas* canvas)
     if (audio_.dropHit)
         onFire_ = true;
 
+    // Fog hangs over the city and the fence; the player in front stays clear.
+    Environment::paint_fog(surface(), L, t_, c.floor - 70.0f * k, c.floor + 2.0f * k);
+
     // Floodlights come on at dusk (and in gloomy weather) and pump with the bass.
     const float on = L.lamp();
     const float lamp = (0.55f + 0.35f * audio_.bass * am + 0.5f * audio_.drop * am) * on;
@@ -201,9 +204,15 @@ bool BasketballScene::render(rgb_matrix::FrameCanvas* canvas)
         if (L.rain + L.snow > 0.05f && on > 0.1f)
             cv_.glow(lx + 4 * k, H * 0.30f, 22 * k, {0.75f, 0.78f, 0.85f}, 0.06f * on * (L.rain + L.snow));
     }
-    // Light pool on the court.
-    for (float lx : {W * 0.05f, W * 0.55f})
-        cv_.ellipse(lx + 12 * k, c.floor + 4 * k, 30 * k, 3 * k, 0, {0.50f, 0.48f, 0.52f}, 0.12f * lamp * (1.0f + L.wetness));
+    // A soft cone from each lamp down to the court, and the pool it lights.
+    for (float lx : {W * 0.05f, W * 0.55f}) {
+        for (int i = 1; i <= 8; ++i) {
+            const float u = i / 8.0f;
+            const float y = H * 0.12f + (c.floor - H * 0.12f) * u;
+            cv_.glow(lx + 9.0f * k * u, y, (3.0f + 11.0f * u) * k, {1.0f, 0.92f, 0.75f}, 0.035f * lamp);
+        }
+        cv_.ellipse(lx + 12 * k, c.floor + 5 * k, 32 * k, 6 * k, 0, {0.62f, 0.58f, 0.52f}, 0.20f * lamp * (1.0f + L.wetness));
+    }
 
     // Dribble tempo: one floor contact per beat while music plays.
     float period = 0.55f;
