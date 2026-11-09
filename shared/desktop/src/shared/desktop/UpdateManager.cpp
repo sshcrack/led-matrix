@@ -2,6 +2,7 @@
 #include "shared/desktop/UpdateManager.h"
 #include "shared/desktop/SelfUpdate.h"
 #include <shared/desktop/config.h>
+#include <shared/desktop/WebsocketClient.h>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
 #include <atomic>
@@ -35,6 +36,9 @@ namespace UpdateChecker
         // Without a matrix answer for this long, follow the latest release instead
         // (e.g. a laptop away from home).
         constexpr auto MATRIX_GONE_AFTER = std::chrono::minutes(30);
+        // A matrix that restarts (it does after every update, from any source) is
+        // checked again on reconnect, but not more often than this.
+        constexpr auto RECONNECT_CHECK_GAP = std::chrono::seconds(30);
 
         struct State
         {
@@ -292,6 +296,7 @@ namespace UpdateChecker
         UpdatePreferences prefs;
         Clock::time_point lastCheck{};
         bool checkedOnce = false;
+        bool matrixWasConnected = false;
         bool restartRequested = false;
         bool restartMinimized = false;
 
@@ -349,6 +354,20 @@ namespace UpdateChecker
         {
             spdlog::info("Restarting in the background to finish the update");
             requestRestart(true);
+            return;
+        }
+        // The matrix restarts after an update and the socket reconnects: look right
+        // away instead of staying on an old release (and a mismatching scene
+        // fingerprint) until the hourly check.
+        const auto *ws = WebsocketClient::instance();
+        const bool connected = ws && ws->getReadyState() == ix::ReadyState::Open;
+        const bool reconnected = connected && !pImpl->matrixWasConnected;
+        pImpl->matrixWasConnected = connected;
+        if (reconnected && phase == Phase::Idle && pImpl->checkedOnce &&
+            Clock::now() - pImpl->lastCheck >= RECONNECT_CHECK_GAP)
+        {
+            spdlog::info("Matrix connection opened; checking whether its version changed");
+            checkForUpdatesAsync();
             return;
         }
         if (phase != Phase::Idle || !pImpl->checkedOnce)
