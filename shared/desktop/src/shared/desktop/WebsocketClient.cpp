@@ -196,7 +196,7 @@ void WebsocketClient::threadLoop()
             lastRelevance = frame_start;
             int relevance = 0;
             for (const auto &pl : plugins | std::views::values)
-                relevance = std::max(relevance, pl->desktop_relevance());
+                relevance = std::max(relevance, pl->desktop_relevance(scene));
             webSocket.send(DesktopControlProtocol::desktop_relevance(relevance));
         }
 

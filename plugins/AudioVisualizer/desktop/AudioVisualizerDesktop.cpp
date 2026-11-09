@@ -355,22 +355,20 @@ void AudioVisualizerDesktop::note_level_locked(const AudioRecorder::CapturedAudi
     lastRelevanceAt = std::chrono::steady_clock::now();
 }
 
-int AudioVisualizerDesktop::desktop_relevance() {
+int AudioVisualizerDesktop::desktop_relevance(const std::string &sceneName) {
     // Audio that is actually playing makes this desktop the better producer.
     // Capture runs on standby too (cheap); the analysis/streaming does not.
-    if (!cfg.streamContinuously) return 0;
+    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return 0;
     std::lock_guard stateLock(stateMutex);
-    if (!ensure_recording_locked()) return 0;
-    // getLastSamples() shares its read position with the producer, so it is empty
-    // right after the stream consumed the newest samples: that is no silence.
-    // Keep the last verdict for a few seconds then.
+    // While the stream runs it keeps the verdict fresh. getLastSamples() shares
+    // its read position with the stream, so reading here would steal its samples.
     const auto now = std::chrono::steady_clock::now();
-    const auto captured = recorder->getLastSamples();
-    if (!captured || captured->mono.empty()) {
-        return now - lastRelevanceAt < std::chrono::seconds(3) ? lastRelevance : 0;
-    }
-    note_level_locked(*captured);
-    return lastRelevance;
+    if (now - lastRelevanceAt < std::chrono::milliseconds(1500)) return lastRelevance;
+    if (!ensure_recording_locked()) return 0;
+    if (const auto captured = recorder->getLastSamples())
+        note_level_locked(*captured);
+    // An empty read is not silence: keep the last verdict for a few seconds.
+    return now - lastRelevanceAt < std::chrono::seconds(3) ? lastRelevance : 0;
 }
 
 std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(

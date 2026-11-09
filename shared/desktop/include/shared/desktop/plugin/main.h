@@ -51,7 +51,8 @@ namespace Plugins
         /// (e.g. audio is playing). Polled every couple of seconds from the sender
         /// thread, also while this desktop is on standby; keep it cheap. The matrix
         /// hands the producer role to the most relevant desktop.
-        [[nodiscard]] virtual int desktop_relevance() { return 0; }
+        /// `sceneName` is the matrix's active scene.
+        [[nodiscard]] virtual int desktop_relevance(const std::string &sceneName) { return 0; }
         void send_websocket_message(const std::string &message);
 
         /// Test seam: when set, send_websocket_message() hands (plugin name,

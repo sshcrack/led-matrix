@@ -28,7 +28,7 @@ public:
     void before_exit() override;
     void post_init() override;
     std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(std::string sceneName) override;
-    int desktop_relevance() override;
+    int desktop_relevance(const std::string &sceneName) override;
     std::string get_plugin_name() const override { return PLUGIN_NAME; }
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc *alloc_fn,
                           ImGuiMemFreeFunc *free_fn, void **user_data) override;
