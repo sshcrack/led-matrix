@@ -90,6 +90,9 @@ struct WeatherReport {
     float wind_speed_ms = 2.0f;
     float wind_direction_deg = 270.0f;
     float snow_depth_m = 0.0f;
+    /// Measured precipitation (mm, rain+showers+snow water equivalent) of the current interval; negative = unknown.
+    /// The WMO code is a model classification and can say "rain" while nothing falls, so dry readings override it.
+    float precipitation_mm = -1.0f;
     int utc_offset_seconds = 0;
 };
 

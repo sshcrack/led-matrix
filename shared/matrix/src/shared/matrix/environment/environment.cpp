@@ -236,6 +236,12 @@ Conditions conditions_at(double latitude, double longitude, std::chrono::system_
         const auto [family, intensity] = weather_from_wmo(weather->wmo_code);
         c.weather = family;
         c.weather_intensity = intensity;
+        // Measured precipitation beats the WMO code: the code can report light rain/snow while the gauge reads 0.
+        const bool wet_family = family == Weather::Rain || family == Weather::Drizzle || family == Weather::Snow;
+        if (wet_family && weather->precipitation_mm >= 0.0f && weather->precipitation_mm < 0.05f) {
+            c.weather = weather->cloud_cover > 0.6f ? Weather::Overcast : Weather::PartlyCloudy;
+            c.weather_intensity = 0.6f;
+        }
         c.cloud_cover = std::clamp(weather->cloud_cover, 0.0f, 1.0f);
         c.temperature_c = weather->temperature_c;
         c.wind_speed_ms = std::max(0.0f, weather->wind_speed_ms);
@@ -337,6 +343,7 @@ Conditions conditions_from(const RuntimeInputs::Snapshot &snap, std::chrono::sys
                 r.wind_speed_ms = static_cast<float>(snap.number(id, "wind_speed_ms").value_or(2.0));
                 r.wind_direction_deg = static_cast<float>(snap.number(id, "wind_direction_deg").value_or(270.0));
                 r.snow_depth_m = static_cast<float>(snap.number(id, "snow_depth_m").value_or(0.0));
+                r.precipitation_mm = static_cast<float>(snap.number(id, "precipitation_mm").value_or(-1.0));
                 report = r;
             }
         }
