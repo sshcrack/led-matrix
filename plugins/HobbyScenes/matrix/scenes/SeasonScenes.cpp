@@ -299,8 +299,9 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor ForestPathScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "seasons";
-    d.tags = {"scenery", "landscape", "forest", "nature", "seasons", "calm", "animals"};
+    d.tags = {"scenery", "landscape", "forest", "nature", "seasons", "fits:dawn", "fits:day", "fits:dusk", "calm", "animals"};
     d.intensity = 0.15f;
     d.motion = 0.2f;
     d.music_affinity = 0.05f;
@@ -661,8 +662,9 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor CottageScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "seasons";
-    d.tags = {"scenery", "landscape", "cozy", "home", "seasons", "holidays", "calm"};
+    d.tags = {"scenery", "landscape", "cozy", "home", "seasons", "holidays", "fits:dusk", "fits:night", "fits:rain", "fits:snow", "fits:fog", "calm"};
     d.intensity = 0.15f;
     d.motion = 0.15f;
     d.music_affinity = 0.05f;

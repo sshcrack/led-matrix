@@ -104,6 +104,7 @@ bool SunsetGallopScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor SunsetGallopScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "horses";
     d.tags = {"horse", "scenery", "sunset", "fits:dawn", "fits:dusk", "landscape", "calm"};
     d.intensity = 0.4f;
@@ -211,8 +212,9 @@ bool MistyHerdScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor MistyHerdScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "horses";
-    d.tags = {"horse", "scenery", "dawn", "mist", "landscape", "calm"};
+    d.tags = {"horse", "scenery", "dawn", "mist", "fits:dawn", "fits:fog", "landscape", "calm"};
     d.intensity = 0.2f;
     d.motion = 0.3f;
     d.music_affinity = 0.05f;
@@ -345,8 +347,9 @@ bool PegasusSkyScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor PegasusSkyScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "horses";
-    d.tags = {"horse", "pegasus", "stars", "night", "fits:night", "moon", "fantasy", "calm"};
+    d.tags = {"horse", "pegasus", "scenery", "stars", "night", "fits:night", "moon", "fantasy", "calm"};
     d.intensity = 0.15f;
     d.motion = 0.15f;
     d.music_affinity = 0.0f;

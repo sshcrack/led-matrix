@@ -345,8 +345,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (!filesystem::exists(Constants::root_dir)) {
-        filesystem::create_directory(Constants::root_dir);
+    if (!std::filesystem::exists(Constants::root_dir)) {
+        std::filesystem::create_directory(Constants::root_dir);
     }
 
     // ---- initialise shared globals expected by SharedToolsMatrix ----------

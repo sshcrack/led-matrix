@@ -76,17 +76,17 @@ class ImageScene final : public Scenes::Scene {
 
     unsigned int curr_category = 0;
     std::atomic<bool> is_exiting{false};
-    optional<std::future<expected<optional<ImageInfo>, string> > > next_img;
+    optional<std::future<std::expected<optional<ImageInfo>, string> > > next_img;
 
 
     bool DisplayAnimation(rgb_matrix::FrameCanvas *canvas);
 
-    expected<std::unique_ptr<CurrAnimation>, string>
+    std::expected<std::unique_ptr<CurrAnimation>, string>
     get_next_anim(rgb_matrix::FrameCanvas *canvas, int recursiveness);
 
-    static expected<optional<ImageInfo>, string>
+    static std::expected<optional<ImageInfo>, string>
     get_next_image(const std::shared_ptr<ImageProviders::General> &category, int width, int height,
-                   const atomic<bool> &is_exiting);
+                   const std::atomic<bool> &is_exiting);
 
     std::unique_ptr<FileInfo> GetFileInfo(const vector<Magick::Image> &frames,
                                                                FrameCanvas *canvas) const;

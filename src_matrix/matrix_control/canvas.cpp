@@ -5,6 +5,7 @@
 #include "shared/matrix/diagnostics.h"
 #include "SceneLabRuntime.h"
 #include "spdlog/spdlog.h"
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 
@@ -73,11 +74,9 @@ void CanvasCoordinator::ensure_automatic_catalog()
             automatic_scenes_.push_back(std::shared_ptr<Scenes::Scene>(std::move(instance)));
         };
 
-        if (descriptor.variants.empty()) {
-            create_instance("");
-        } else {
-            for (const auto &variant : descriptor.variants) create_instance(variant.id);
-        }
+        const bool follows_real_world = std::ranges::find(descriptor.tags, "environment-adaptive") != descriptor.tags.end();
+        if (descriptor.variants.empty() || follows_real_world) create_instance("");
+        for (const auto &variant : descriptor.variants) create_instance(variant.id);
     }
     info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
 }

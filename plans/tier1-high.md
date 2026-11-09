@@ -13,7 +13,3 @@ Still extern across translation units:
 | `interrupt_received`, `interrupt_signal` | `shared/matrix/include/shared/matrix/interrupt.h` |
 
 Fix (incremental): wrap into an `AppContext` constructed in `src_matrix/daemon.cpp` and passed to routes/plugins; remove the extern declarations.
-
-## F2. TOCTOU on `global_post_processor`
-
-`src_matrix/server/post_processing_routes.cpp` (lines ~95-165) reads the raw `Constants::global_post_processor` per handler; `daemon.cpp` nulls it at shutdown while HTTP handlers may still run. Fix: make it a `std::shared_ptr` with atomic load, or stop the server before clearing it.

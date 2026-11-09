@@ -1179,6 +1179,11 @@ if(ENABLE_EMULATOR)
             ${CMAKE_BINARY_DIR}/scene-manifest-test.json
     )
     set_tests_properties(music_showcase_coverage PROPERTIES FIXTURES_REQUIRED scene_manifest)
+    add_test(NAME scenery_eligibility_coverage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/scenery_eligibility_coverage.py
+            ${CMAKE_BINARY_DIR}/scene-manifest-test.json
+    )
+    set_tests_properties(scenery_eligibility_coverage PROPERTIES FIXTURES_REQUIRED scene_manifest)
     add_test(NAME virtual_scene_preview_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>
