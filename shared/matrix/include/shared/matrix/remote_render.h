@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -23,11 +24,11 @@ struct Status {
     double frame_age_ms = 0.0;
     std::string scene;
     bool worker_available = false;
-    /// The worker runs the same scene code as this build (see
-    /// Common::scene_code_digest). Offloading requires this.
+    /// At least one advertised scene has a compatible data contract.
     bool worker_compatible = false;
-    std::string worker_scene_code;
+    int worker_protocol = 0;
     std::size_t worker_scene_count = 0;
+    std::size_t worker_compatible_scene_count = 0;
 };
 
 using CommandSender = std::function<void(const nlohmann::json &)>;
@@ -38,14 +39,16 @@ using CommandSender = std::function<void(const nlohmann::json &)>;
 void set_command_sender(CommandSender sender);
 void clear_command_sender();
 
-/// Heartbeats are emitted by the generic desktop scene worker. The advertised
-/// scene ids make placement capability-driven: a Pi never offloads to a GUI
-/// connection that cannot actually execute the requested scene. `scene_code`
-/// is the worker's Common::scene_code_digest(); a worker built from different
-/// scene code (e.g. a desktop app not updated together with the Pi) would
-/// stream a different version of the scene, so it is never used.
-void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes,
-                             std::string scene_code = {});
+using SceneContracts = std::map<std::string, int>;
+
+/// Publish the validated local registry, including dynamic additions/removals.
+/// Registry metadata is copied; no plugin objects are retained by the transport.
+void set_local_scene_contracts(SceneContracts contracts);
+
+/// A worker advertises only offloadable scene IDs and their data contract versions.
+/// A matching protocol and requested scene contract are required; unknown,
+/// missing and nonpositive contracts are never eligible.
+void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts = {});
 [[nodiscard]] bool worker_available(std::string_view scene = {});
 
 /// Start (or reuse) a remote-render session for this scene. The scene's

@@ -39,8 +39,8 @@ namespace UpdateChecker
         int remindIntervalDays = 7;
         /// Download and install updates without asking (per-user installs only).
         bool autoUpdate = true;
-        /// Run the same release as the matrix (needed for desktop render offload,
-        /// which requires matching scene-code fingerprints). Asks the matrix to
+        /// Follow the matrix release to keep features and data contracts aligned.
+        /// Offload itself checks protocol and per-scene contracts. Asks the matrix to
         /// update first when a newer release is out and its auto-update is on.
         bool followMatrix = true;
 

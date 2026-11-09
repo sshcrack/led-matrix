@@ -357,8 +357,8 @@ namespace UpdateChecker
             return;
         }
         // The matrix restarts after an update and the socket reconnects: look right
-        // away instead of staying on an old release (and a mismatching scene
-        // fingerprint) until the hourly check.
+        // away instead of staying on an old release with outdated features or
+        // incompatible data contracts until the hourly check.
         const auto *ws = WebsocketClient::instance();
         const bool connected = ws && ws->getReadyState() == ix::ReadyState::Open;
         const bool reconnected = connected && !pImpl->matrixWasConnected;

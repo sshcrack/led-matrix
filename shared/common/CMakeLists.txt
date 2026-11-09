@@ -11,20 +11,10 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/audio_protocol.cpp
         src/shared/common/remote_render_protocol.cpp
         src/shared/common/crash_reporter.cpp
-        src/shared/common/build_info.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
-# Scene-code fingerprint for the remote-render compatibility check. Regenerated
-# on every build from source contents; the header only changes with the inputs.
-add_custom_target(scene_code_digest ALL
-        COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DOUTPUT=${LED_MATRIX_GENERATED_DIR}/scene_code_digest.h
-                -P ${CMAKE_SOURCE_DIR}/cmake/SceneCodeDigest.cmake
-        BYPRODUCTS ${LED_MATRIX_GENERATED_DIR}/scene_code_digest.h
-        COMMENT "Fingerprinting scene code"
-        VERBATIM)
-add_dependencies(${PROJECT_NAME} scene_code_digest)
+# Version.cpp reads the configured release/build revision header.
 target_include_directories(${PROJECT_NAME} PRIVATE ${LED_MATRIX_GENERATED_DIR})
 
 find_package(spdlog CONFIG REQUIRED)

@@ -1,4 +1,3 @@
-#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/remote_render.h>
 #include <shared/matrix/config/MainConfig.h>
@@ -560,17 +559,18 @@ int main()
         std::cerr << "GUI connection without a scene worker hid measured Pi cost\n";
         return 80;
     }
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_a"}, "old-scene-code");
+    RemoteRender::set_local_scene_contracts({{"twin_a", 1}, {"twin_b", 1}});
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"twin_a", 2}});
     if (!has_cost_penalty(connected_desktop)) {
         std::cerr << "incompatible worker hid measured Pi cost\n";
         return 81;
     }
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_b"}, Common::scene_code_digest());
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"twin_b", 1}});
     if (!has_cost_penalty(connected_desktop)) {
         std::cerr << "worker missing the scene hid measured Pi cost\n";
         return 82;
     }
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_a"}, Common::scene_code_digest());
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"twin_a", 1}});
     if (has_cost_penalty(connected_desktop) || has_cost_penalty({})
         || load_director.presentation_duration(twins[0], connected_desktop) <= 18000) {
         std::cerr << "offloadable scene retained its Pi cost penalty or shortened dwell\n";
@@ -589,7 +589,7 @@ int main()
         std::cerr << "offloadable scene retained its authored Pi cost penalty\n";
         return 85;
     }
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {}, "old-scene-code");
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version);
 
     // A failed presentation cools the scene down with backoff, but never leaves
     // the matrix without a scene when nothing else is eligible.

@@ -1,8 +1,8 @@
-#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/remote_render.h>
 #include <shared/matrix/media_artwork_state.h>
+#include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
 #include <emulator.h>
 #include <led-matrix.h>
@@ -13,8 +13,10 @@
 #include <vector>
 
 namespace {
-class RemoteProbeScene final : public Scenes::Scene {
+class RemoteProbeScene : public Scenes::Scene {
 public:
+    int contract = 1;
+    int remote_contract_version() const override { return contract; }
     bool render(rgb_matrix::FrameCanvas *) override { return true; }
     void register_properties() override {}
     std::string get_name() const override { return "remote_probe"; }
@@ -47,26 +49,63 @@ int main()
         return 1;
     }
 
-    // A worker built from other scene code (old desktop app, or one predating
-    // the fingerprint) would stream a different version of the scene.
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"remote_probe"});
+    RemoteRender::set_local_scene_contracts({{"remote_probe", 1}, {"another_scene", 1}});
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version);
     if (RemoteRender::worker_available("remote_probe")) {
-        std::cerr << "worker without a scene-code fingerprint was accepted\n";
+        std::cerr << "worker without scene contracts was accepted\n";
         return 8;
     }
-    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"remote_probe"}, "0123456789abcdef-old");
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version - 1, {{"remote_probe", 1}});
     if (RemoteRender::worker_available("remote_probe") || RemoteRender::status().worker_compatible) {
-        std::cerr << "worker with different scene code was accepted\n";
+        std::cerr << "unsupported protocol was accepted\n";
         return 9;
     }
 
-    RemoteRender::report_worker_heartbeat(
-        RemoteRenderProtocol::Version, {"remote_probe", "another_scene"}, Common::scene_code_digest());
-    if (!RemoteRender::worker_available("remote_probe")
-        || RemoteRender::worker_available("missing_scene")) {
-        std::cerr << "worker scene capability advertisement was not respected\n";
-        return 2;
+    // Exercise production JSON decoding with a mixed-version worker. Its old
+    // source fingerprint is deliberately different and has no authority.
+    RenderOffloadPlugin transport;
+    transport.on_websocket_message(nlohmann::json{
+        {"op", "worker_heartbeat"}, {"protocol", RemoteRenderProtocol::Version},
+        {"scene_code", "completely-different-renderer-build"},
+        {"scene_contracts", {{"remote_probe", 2}, {"another_scene", 1}, {"missing_scene", 1}}}
+    }.dump());
+    if (!RemoteRender::worker_available("another_scene") || !RemoteRender::worker_available()
+        || RemoteRender::worker_available("remote_probe") || RemoteRender::worker_available("missing_scene")
+        || RemoteRender::status().worker_compatible_scene_count != 1
+        || RemoteRender::request_scene(scene, 32, 32, 60).has_value()) {
+        std::cerr << "mixed worker contracts did not gate each requested scene independently\n";
+        return 10;
     }
+    for (const int invalid : {0, -1}) {
+        RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", invalid}});
+        if (RemoteRender::worker_available("remote_probe")) {
+            std::cerr << "nonpositive contract was accepted\n";
+            return 11;
+        }
+    }
+    for (const auto &invalid : {nlohmann::json(1.5), nlohmann::json("1"),
+                                nlohmann::json(std::uint64_t{4294967297})}) {
+        transport.on_websocket_message(nlohmann::json{
+            {"op", "worker_heartbeat"}, {"protocol", RemoteRenderProtocol::Version},
+            {"scene_contracts", {{"remote_probe", invalid}}}
+        }.dump());
+        if (RemoteRender::worker_available("remote_probe")) return 15;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", 1}});
+    if (!RemoteRender::worker_available("remote_probe") || RemoteRender::worker_available("another_scene")) {
+        std::cerr << "missing scene contract did not fail closed\n";
+        return 12;
+    }
+    // Registry updates take effect immediately, even before another heartbeat.
+    RemoteRender::set_local_scene_contracts({{"remote_probe", 2}});
+    if (RemoteRender::worker_available("remote_probe")) return 13;
+    RemoteRender::set_local_scene_contracts({{"remote_probe", 1}});
+    scene.contract = 2;
+    if (RemoteRender::request_scene(scene, 32, 32, 60).has_value()) {
+        std::cerr << "scene instance bypassed the advertised contract\n";
+        return 14;
+    }
+    scene.contract = 1;
 
     MediaArtworkState::Palette palette{};
     palette[0] = {12, 34, 56};
@@ -83,6 +122,7 @@ int main()
     }
     if (commands.back().value("protocol", 0) != RemoteRenderProtocol::Version
         || commands.back().value("scene", std::string{}) != "remote_probe"
+        || commands.back().value("scene_contract", 0) != scene.remote_contract_version()
         || commands.back().contains("renderer")
         || !commands.back().value("artwork", nlohmann::json::object()).value("valid", false)) {
         std::cerr << "start command still depends on a per-scene desktop renderer\n";

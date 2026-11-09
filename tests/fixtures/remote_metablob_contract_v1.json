@@ -1,0 +1,13 @@
+{
+  "op": "start",
+  "protocol": 4,
+  "session": 1,
+  "scene": "metablob",
+  "scene_contract": 1,
+  "width": 32,
+  "height": 32,
+  "target_fps": 30,
+  "elapsed_seconds": 12.5,
+  "arguments": { "num_blobs": 6, "speed": 0.4, "audio_reactive": false },
+  "runtime_state": {}
+}
