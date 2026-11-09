@@ -886,6 +886,25 @@ namespace SelfUpdate
             fs::remove_all(staging, ec);
             return std::unexpected("The update package does not contain bin/" + std::string(EXE_NAME));
         }
+        // A portable copy switching to the managed install: bring its settings along, the
+        // same way `--install` from that copy would (move_portable_data takes them from there).
+        if (!is_managed_install())
+        {
+            try
+            {
+                const fs::path dataDir = get_data_dir();
+                if (!fs::equivalent(dataDir, get_user_data_dir()) && fs::exists(dataDir / "config.json"))
+                {
+                    fs::remove_all(*prefix / "data");
+                    fs::copy(dataDir, *prefix / "data", fs::copy_options::recursive);
+                }
+            }
+            catch (const std::exception &e)
+            {
+                fs::remove_all(staging, ec);
+                return std::unexpected(std::string("Could not copy the portable settings: ") + e.what());
+            }
+        }
         auto result = install_prefix_locked(*prefix, version, true, false);
         fs::remove_all(staging, ec);
         return result;
