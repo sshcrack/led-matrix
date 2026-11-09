@@ -4,15 +4,19 @@
 #include <shared/common/timesource/TimeSource.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/diagnostics.h>
+#include <shared/matrix/utils/utils.h>
+#include <shared/matrix/utils/shared.h>
 
 #include <emulator.h>
 #include <led-matrix.h>
 
 #include <atomic>
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 namespace {
 
@@ -82,6 +86,36 @@ public:
 
 int main()
 {
+    // Exercise the real wait used by the renderer when VSync leaves a short
+    // remainder. The fake 16 ms refresh below never enters this path. Use a
+    // median and generous scheduling tolerance rather than one tight deadline.
+    std::vector<double> short_waits;
+    for (int i = 0; i < 15; ++i) {
+        const auto start = std::chrono::steady_clock::now();
+        SleepMillis(3);
+        short_waits.push_back(std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - start).count());
+    }
+    std::sort(short_waits.begin(), short_waits.end());
+    const auto median_wait = short_waits[short_waits.size() / 2];
+    if (median_wait < 2.0 || median_wait >= 8.0) {
+        std::cerr << "3 ms pacing wait rounded to " << median_wait << " ms\n";
+        return 5;
+    }
+    for (auto *flag : {&skip_image, &exit_canvas_update}) {
+        flag->store(true);
+        const auto start = std::chrono::steady_clock::now();
+        SleepMillis(500);
+        const auto elapsed = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - start).count();
+        const bool skip_consumed = !skip_image.load();
+        flag->store(false);
+        if (elapsed > 80.0 || !skip_consumed) {
+            std::cerr << "long wait ignored an interrupt\n";
+            return 6;
+        }
+    }
+
     rgb_matrix::RGBMatrix::Options led;
     led.rows = 32;
     led.cols = 32;

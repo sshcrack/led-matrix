@@ -66,6 +66,10 @@ std::optional<std::uint32_t> request_scene(
 /// generic RuntimeInputs snapshot covers plugin-owned contextual data.
 void publish_runtime_state(std::uint32_t session);
 
+/// Cheap chunk-receiver gate. Does not build diagnostics or scan contracts;
+/// submit_frame still validates the session again when the frame is complete.
+[[nodiscard]] bool session_requested(std::uint32_t session);
+
 /// Called by the matrix RenderOffload UDP plugin. Frames are latest-wins: stale
 /// sessions and out-of-order sequences are discarded immediately.
 bool submit_frame(std::uint32_t session, std::uint32_t sequence,

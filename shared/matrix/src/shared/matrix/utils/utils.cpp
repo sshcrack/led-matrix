@@ -20,6 +20,7 @@
 #include "spdlog/spdlog.h"
 #include "shared/matrix/canvas_consts.h"
 #include <random>
+#include <algorithm>
 
 using namespace spdlog;
 using std::string;
@@ -29,13 +30,17 @@ void SleepMillis(tmillis_t milli_seconds)
 {
     if (milli_seconds <= 0)
         return;
-    tmillis_t end_time = GetTimeInMillis() + milli_seconds;
+    const auto end_time = std::chrono::steady_clock::now()
+        + std::chrono::milliseconds(milli_seconds);
 
-    while (GetTimeInMillis() < end_time)
+    while (std::chrono::steady_clock::now() < end_time)
     {
         try
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            // Keep long waits interruptible without rounding a short frame
+            // pacing remainder up to a full 10 ms polling interval.
+            std::this_thread::sleep_until(std::min(end_time,
+                std::chrono::steady_clock::now() + std::chrono::milliseconds(10)));
         }
         catch (std::exception &e)
         {
