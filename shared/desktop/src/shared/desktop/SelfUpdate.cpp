@@ -565,7 +565,8 @@ namespace SelfUpdate
         /// True when no app process holds versions/<v>. Call with VersionsLock held exclusively.
         bool version_unused(const fs::path &dir)
         {
-            if (!fs::exists(dir / IN_USE_FILE))
+            std::error_code ec;
+            if (!fs::exists(dir / IN_USE_FILE, ec) && !ec)
                 return true;
             FileLock probe(dir / IN_USE_FILE, true, false);
             return probe.held();
@@ -677,6 +678,9 @@ namespace SelfUpdate
                 const fs::path fresh = versions_dir(root) / (".new-" + version);
                 const fs::path old = versions_dir(root) / (".old-" + version);
                 fs::remove_all(fresh, ec);
+                // An earlier attempt failed between moving dest away and putting it back: restore it.
+                if (fs::exists(old, ec) && !fs::exists(dest, ec))
+                    rename_retrying(old, dest);
                 fs::remove_all(old, ec);
                 bool placed = false;
                 if (move)
@@ -695,9 +699,11 @@ namespace SelfUpdate
                 }
                 if (!rename_retrying(fresh, dest))
                 {
-                    if (hadOld)
-                        fs::rename(old, dest, ec);
                     fs::remove_all(fresh, ec);
+                    if (hadOld && !rename_retrying(old, dest))
+                        return std::unexpected("Could not move the new version into " + dest.string() +
+                                               ", and the previous copy is still in " + old.string() +
+                                               " (it is restored on the next install attempt)");
                     return std::unexpected("Could not move the new version into " + dest.string());
                 }
                 fs::remove_all(old, ec);
@@ -834,20 +840,33 @@ namespace SelfUpdate
             spdlog::warn("Could not lock {}; not pruning", lock_file("versions.lock").string());
             return;
         }
+        std::vector<fs::path> entries;
         for (const auto &entry: fs::directory_iterator(versions_dir(root), ec))
+            entries.push_back(entry.path());
+        for (const auto &path: entries)
         {
+            // The only copy of a version whose replacement failed half-way: put it back, don't prune it.
+            if (const std::string name = path.filename().string(); name.rfind(".old-", 0) == 0)
+            {
+                std::error_code e2;
+                if (const fs::path dest = versions_dir(root) / name.substr(5); !fs::exists(dest, e2))
+                {
+                    rename_retrying(path, dest);
+                    continue;
+                }
+            }
             std::error_code e2;
-            if (fs::equivalent(entry.path(), current, e2) || (running && fs::equivalent(entry.path(), *running, e2)))
+            if (fs::equivalent(path, current, e2) || (running && fs::equivalent(path, *running, e2)))
                 continue;
             // Another app process (e.g. still open while `--install` ran) uses this version.
-            if (!version_unused(entry.path()))
+            if (!version_unused(path))
             {
-                spdlog::info("Keeping desktop version {}: still running", entry.path().filename().string());
+                spdlog::info("Keeping desktop version {}: still running", path.filename().string());
                 continue;
             }
-            fs::remove_all(entry.path(), e2); // Windows can still hold files briefly; retried next time
+            fs::remove_all(path, e2); // Windows can still hold files briefly; retried next time
             if (!e2)
-                spdlog::info("Removed old desktop version {}", entry.path().filename().string());
+                spdlog::info("Removed old desktop version {}", path.filename().string());
         }
         for (const auto &entry: fs::directory_iterator(root, ec))
         {
