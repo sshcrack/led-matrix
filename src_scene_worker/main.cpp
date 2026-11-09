@@ -399,6 +399,26 @@ struct RenderRuntime {
         CrashReporter::set_activity("scene worker idle");
     }
 
+    void apply_state(const nlohmann::json &command)
+    {
+        if (const auto it = command.find("target_fps"); it != command.end()) {
+            const int fps = std::clamp(it->get<int>(), 1, 60);
+            if (fps != target_fps) {
+                target_fps = fps;
+                if (scene) scene->set_runtime_target_fps(fps);
+                // Discard the old rate's deadline; preserve animation state.
+                next_frame = Clock::now() + std::chrono::duration_cast<Clock::duration>(
+                    std::chrono::duration<double>(1.0 / fps));
+            }
+        }
+        if (const auto it = command.find("inputs"); it != command.end())
+            RuntimeInputs::replace_from_json(*it);
+        if (const auto it = command.find("audio"); it != command.end())
+            apply_audio(*it);
+        if (const auto it = command.find("artwork"); it != command.end())
+            MediaArtworkState::replace_from_json(*it);
+    }
+
     void start(const nlohmann::json &command)
     {
         reset();
@@ -601,6 +621,19 @@ int main(int argc, char **argv)
                     {"transition", {{"name", name}, {"duration_ms", 750},
                         {"from", std::vector<std::uint8_t>(128 * 128 * 3, 31)}}}});
                 probe.scene->render_frame(probe.canvas, 1.0 / 60.0, true);
+                const auto *original_scene = probe.scene.get();
+                const auto elapsed = probe.scene->get_frame_context().elapsed_seconds;
+                probe.sequence = 42;
+                probe.apply_state({{"target_fps", 30}});
+                if (probe.target_fps != 30 || probe.scene->get_declared_target_fps() != 30
+                    || probe.scene.get() != original_scene
+                    || probe.session != 1 || probe.sequence != 42
+                    || probe.scene->get_frame_context().elapsed_seconds != elapsed
+                    || !probe.transition)
+                    throw std::runtime_error("rate update restarted the warmed scene");
+                probe.apply_state(nlohmann::json::object());
+                if (probe.target_fps != 30)
+                    throw std::runtime_error("legacy state message changed the worker rate");
                 probe.canvas->Fill(210, 120, 80);
                 probe.transition_start = Clock::now() - std::chrono::milliseconds(375);
                 if (probe.output_frame() != probe.transition_output)
@@ -679,12 +712,7 @@ int main(int argc, char **argv)
                     } else if (op == "stop" && session == runtime.session) {
                         runtime.reset();
                     } else if (op == "state" && session == runtime.session) {
-                        if (const auto it = command.find("inputs"); it != command.end())
-                            RuntimeInputs::replace_from_json(*it);
-                        if (const auto it = command.find("audio"); it != command.end())
-                            apply_audio(*it);
-                        if (const auto it = command.find("artwork"); it != command.end())
-                            MediaArtworkState::replace_from_json(*it);
+                        runtime.apply_state(command);
                     }
                 } catch (const std::exception &e) {
                     spdlog::error("Scene worker command '{}' failed: {}", op, e.what());

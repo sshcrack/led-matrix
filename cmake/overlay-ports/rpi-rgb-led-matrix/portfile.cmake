@@ -7,7 +7,7 @@ vcpkg_from_github(
     REF 7b7cf6b8bd42fd1c2d317658373a4fbe22e6041a
     SHA512 3dce2257bb921420c43248a10d95503a6be224cf61861277ef973ac6272fbda472b23a9b7ceae652f479160ccb45f96ab9c09652237c7f0632c3f1d7bbd19ff6
     HEAD_REF master
-    PATCHES fix-win-compat.patch
+    PATCHES fix-win-compat.patch bulk-framebuffer.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

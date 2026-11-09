@@ -56,7 +56,9 @@ void report_worker_heartbeat(int protocol_version, SceneContracts scene_contract
 /// an internal placement decision rather than separate user configuration.
 /// A nonempty transition starts a new session carrying {name, duration_ms, from}
 /// (RGB888 bytes). The worker composes the handoff before continuing the scene;
-/// ordinary requests then reuse this session. Reconnects omit the old handoff.
+/// ordinary requests then reuse this session. A changed target FPS sends an
+/// additive state update without restarting the scene. Reconnects omit the old
+/// handoff and use the most recently requested rate.
 std::optional<std::uint32_t> request_scene(
     const Scenes::Scene &scene, int width, int height, int target_fps,
     const nlohmann::json &transition = nlohmann::json::object());

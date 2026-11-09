@@ -40,15 +40,18 @@ void render_plugin_pixels(ShadertoyPlugin *plugin, rgb_matrix::FrameCanvas *canv
 
     const int width = Constants::width;
     const int height = Constants::height;
-    const uint8_t *data = pixels.data();
-    const int num_pixels = pixels.size() / 3;
-
-    for (int idx = 0; idx < num_pixels; ++idx) {
-        int x = idx % width;
-        int y = height - 1 - (idx / width);
-        if (y >= 0) {
-            int i = idx * 3;
-            canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+    // OpenGL sends bottom-up rows. Reverse them before bulk conversion.
+    thread_local std::vector<std::uint8_t> top_down;
+    top_down.resize(static_cast<std::size_t>(width) * height * 3);
+    if (pixels.size() >= top_down.size()) {
+        for (int y = 0; y < height; ++y)
+            std::copy_n(pixels.data() + static_cast<std::size_t>(height - 1 - y) * width * 3,
+                        width * 3, top_down.data() + static_cast<std::size_t>(y) * width * 3);
+        canvas->SetRGB(0, 0, width, height, top_down.data());
+    } else {
+        for (std::size_t i = 0; i < pixels.size() / 3; ++i) {
+            const int y = height - 1 - static_cast<int>(i / width);
+            if (y >= 0) canvas->SetPixel(i % width, y, pixels[i * 3], pixels[i * 3 + 1], pixels[i * 3 + 2]);
         }
     }
 }

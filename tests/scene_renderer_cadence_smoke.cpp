@@ -22,10 +22,12 @@ namespace {
 
 class FakeTimeSource final : public TimeSource {
 public:
-    std::int64_t now_ms() override { return now_ms_; }
-    void advance(std::int64_t ms) { now_ms_ += ms; }
+    std::int64_t now_ms() override { return now_us_ / 1000; }
+    std::int64_t now_us() override { return now_us_; }
+    void sleep_us(std::int64_t us) override { now_us_ += us; }
+    void advance(std::int64_t ms) { now_us_ += ms * 1000; }
 private:
-    std::int64_t now_ms_ = 1;
+    std::int64_t now_us_ = 1000;
 };
 
 class VSyncTimingMatrix final : public rgb_matrix::RGBMatrixBase {
@@ -87,7 +89,7 @@ public:
 int main()
 {
     // Exercise the real wait used by the renderer when VSync leaves a short
-    // remainder. The fake 16 ms refresh below never enters this path. Use a
+    // remainder. The fake clock below advances waits without real sleeping. Use a
     // median and generous scheduling tolerance rather than one tight deadline.
     std::vector<double> short_waits;
     for (int i = 0; i < 15; ++i) {
@@ -157,6 +159,13 @@ int main()
         return 2;
     }
 
+    // Six starts at 0, 16.667, ..., 83.334 ms plus the final 16 ms
+    // VSync wait. Integer-16-ms or jitter-relative pacing finishes too soon.
+    if (time_source.now_us() != 100334) {
+        std::cerr << "renderer lost fractional frame deadlines: " << time_source.now_us() << '\n';
+        return 7;
+    }
+
     const auto diagnostics = Diagnostics::RuntimeDiagnostics::instance().snapshot();
     const auto &renderer_stats = diagnostics.at("renderer");
     if (renderer_stats.value("presentation_frames", 0ULL) != 6ULL
@@ -168,7 +177,7 @@ int main()
     }
 
     // The fake SwapOnVSync advances scene time by one 16 ms refresh interval.
-    // A 60 FPS renderer should therefore add essentially no software sleep on
+    // Fractional remainders are advanced by the fake clock, without real sleep on
     // top. The historical double-pacing bug sleeps ~20 ms between frames.
     if (elapsed_ms > 35.0) {
         std::cerr << "renderer added a second pacing wait: " << elapsed_ms << "ms for six frames\n";

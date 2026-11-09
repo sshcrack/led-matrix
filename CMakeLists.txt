@@ -1589,5 +1589,19 @@ if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
         spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
 endif()
 
+add_executable(frame_cadence_smoke tests/frame_cadence_smoke.cpp)
+target_compile_features(frame_cadence_smoke PRIVATE cxx_std_23)
+target_include_directories(frame_cadence_smoke PRIVATE shared/common/include)
+add_test(NAME frame_cadence_smoke COMMAND frame_cadence_smoke)
+
+if(NOT WIN32)
+    add_executable(hardware_framebuffer_smoke tests/hardware_framebuffer_smoke.cpp)
+    target_compile_features(hardware_framebuffer_smoke PRIVATE cxx_std_23)
+    target_link_libraries(hardware_framebuffer_smoke PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix)
+    add_test(NAME hardware_framebuffer_smoke COMMAND hardware_framebuffer_smoke)
+    set_tests_properties(hardware_framebuffer_smoke PROPERTIES
+        ENVIRONMENT "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:rpi_rgb_led_matrix::rpi-rgb-led-matrix>")
+endif()
+
 # Extra warnings for our own targets (not thirdparty/ submodules or vcpkg).
 led_matrix_enable_project_warnings()

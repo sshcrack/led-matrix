@@ -237,41 +237,51 @@ std::optional<std::uint32_t> request_scene(
             && s.width == width && s.height == height
             && s.start_command.value("scene_contract", 0) == scene.remote_contract_version()
             && s.start_command.value("arguments", nlohmann::json::object()) == arguments) {
-            return s.session;
+            const int requested_fps = std::clamp(target_fps, 1, 60);
+            if (s.target_fps == requested_fps)
+                return s.session;
+            // Keep the warmed scene's timeline, state and last complete frame.
+            // Older workers can ignore this additive state field safely.
+            s.target_fps = requested_fps;
+            s.start_command["target_fps"] = requested_fps;
+            session = s.session;
+            sender = s.sender;
+            command = {{"op", "state"}, {"protocol", RemoteRenderProtocol::Version},
+                       {"session", session}, {"target_fps", requested_fps}};
+        } else {
+            s.session = allocate_session(s);
+            s.last_sequence = 0;
+            s.scene = scene.get_name();
+            s.scene_uuid = uuid;
+            s.width = width;
+            s.height = height;
+            s.target_fps = std::clamp(target_fps, 1, 60);
+            s.latest_frame.store({}, std::memory_order_release);
+            s.last_state_publish = {};
+            s.start_command = {
+                {"op", "start"},
+                {"protocol", RemoteRenderProtocol::Version},
+                {"session", s.session},
+                {"scene", s.scene},
+                {"scene_contract", scene.remote_contract_version()},
+                {"uuid", uuid},
+                {"width", s.width},
+                {"height", s.height},
+                {"target_fps", s.target_fps},
+                {"variant", scene.get_variant_id()},
+                {"arguments", arguments},
+                {"runtime_state", scene.snapshot_runtime_state()},
+                {"elapsed_seconds", scene.get_frame_context().elapsed_seconds},
+                {"inputs", input_snapshot},
+                {"audio", audio_snapshot},
+                {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
+            };
+            if (!transition.empty())
+                s.start_command["transition"] = transition;
+            session = s.session;
+            command = s.start_command;
+            sender = s.sender;
         }
-
-        s.session = allocate_session(s);
-        s.last_sequence = 0;
-        s.scene = scene.get_name();
-        s.scene_uuid = uuid;
-        s.width = width;
-        s.height = height;
-        s.target_fps = std::clamp(target_fps, 1, 60);
-        s.latest_frame.store({}, std::memory_order_release);
-        s.last_state_publish = {};
-        s.start_command = {
-            {"op", "start"},
-            {"protocol", RemoteRenderProtocol::Version},
-            {"session", s.session},
-            {"scene", s.scene},
-            {"scene_contract", scene.remote_contract_version()},
-            {"uuid", uuid},
-            {"width", s.width},
-            {"height", s.height},
-            {"target_fps", s.target_fps},
-            {"variant", scene.get_variant_id()},
-            {"arguments", arguments},
-            {"runtime_state", scene.snapshot_runtime_state()},
-            {"elapsed_seconds", scene.get_frame_context().elapsed_seconds},
-            {"inputs", input_snapshot},
-            {"audio", audio_snapshot},
-            {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
-        };
-        if (!transition.empty())
-            s.start_command["transition"] = transition;
-        session = s.session;
-        command = s.start_command;
-        sender = s.sender;
     }
 
     sender(command);
@@ -346,12 +356,7 @@ bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
         || age_ms(frame->received_at) > max_age_ms)
         return false;
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-            canvas->SetPixel(x, y, frame->rgb[offset], frame->rgb[offset + 1], frame->rgb[offset + 2]);
-        }
-    }
+    canvas->SetRGB(0, 0, width, height, frame->rgb.data());
     return true;
 }
 
