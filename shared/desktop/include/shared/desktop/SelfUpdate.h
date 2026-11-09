@@ -54,7 +54,7 @@ namespace SelfUpdate
                                                                        const std::string &version,
                                                                        bool move, bool first_install);
 
-    /// Downloads a release package, checks its sha256 (when given) and installs it.
+    /// Downloads a release package, verifies its sha256 (required) and installs it.
     SHARED_DESKTOP_API std::expected<void, std::string> download_and_install(
         const std::string &url, const std::string &sha256, const std::string &version,
         const std::function<void(size_t downloaded, size_t total)> &progress);

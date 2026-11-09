@@ -566,7 +566,9 @@ namespace SelfUpdate
             return std::unexpected("Could not create " + versions_dir(root).string() + ": " + ec.message());
 
         const auto running = running_version_dir();
-        bool destInUse = running && fs::equivalent(*running, dest, ec);
+        // `current/bin/led-matrix-desktop --install` installs a version onto itself.
+        const bool sameAsSource = fs::exists(dest) && fs::equivalent(prefix, dest, ec);
+        bool destInUse = sameAsSource || (running && fs::equivalent(*running, dest, ec));
         if (!destInUse && fs::exists(dest / "bin" / EXE_NAME))
         {
             // Same version already there and another app process runs it: keep it as is.
@@ -661,19 +663,19 @@ namespace SelfUpdate
                 return std::unexpected("Could not write " + file.string());
         }
 
-        if (!sha256.empty())
+        // Never install an unverified package. GitHub records a sha256 for every release asset.
+        std::string expected = sha256;
+        std::ranges::transform(expected, expected.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (expected.size() != 64 || !std::ranges::all_of(expected, [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); }))
         {
-            std::string expected = sha256;
-            std::ranges::transform(expected, expected.begin(), [](unsigned char c) { return std::tolower(c); });
-            if (const std::string actual = sha256_file(file); actual != expected)
-            {
-                fs::remove(file, ec);
-                return std::unexpected("Checksum mismatch (expected " + expected + ", got " + actual + ")");
-            }
+            fs::remove(file, ec);
+            return std::unexpected("The release has no valid sha256 digest for " + package_asset_name(version) +
+                                   ", so it cannot be verified. Install it manually from the releases page.");
         }
-        else
+        if (const std::string actual = sha256_file(file); actual != expected)
         {
-            spdlog::warn("Release asset has no sha256 digest; skipping verification");
+            fs::remove(file, ec);
+            return std::unexpected("Checksum mismatch (expected " + expected + ", got " + actual + ")");
         }
 
         const fs::path staging = root / ("staging-" + version);

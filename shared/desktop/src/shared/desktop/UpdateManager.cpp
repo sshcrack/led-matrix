@@ -80,12 +80,24 @@ namespace UpdateChecker
             }
             state->downloaded = 0;
             state->total = 0;
-            auto result = SelfUpdate::download_and_install(
-                release.downloadUrl, release.sha256, release.version.toString(),
-                [state](size_t done, size_t total) {
-                    state->downloaded = done;
-                    state->total = total;
-                });
+            // Runs on detached threads: an escaping exception would std::terminate the app.
+            std::expected<void, std::string> result;
+            try
+            {
+                result = SelfUpdate::download_and_install(release.downloadUrl, release.sha256, release.version.toString(),
+                                                          [state](size_t done, size_t total) {
+                                                              state->downloaded = done;
+                                                              state->total = total;
+                                                          });
+            }
+            catch (const std::exception &e)
+            {
+                result = std::unexpected(std::string(e.what()));
+            }
+            catch (...)
+            {
+                result = std::unexpected(std::string("unknown error"));
+            }
 
             std::lock_guard lock(state->mutex);
             if (result)
