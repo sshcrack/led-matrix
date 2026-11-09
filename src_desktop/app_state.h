@@ -19,6 +19,8 @@ namespace desktop_app::detail {
     extern volatile sig_atomic_t shouldExit;
     extern std::atomic<bool> showMainWindow;
     extern bool startMinimized;
+    // Started by an update restart: the session continues, so skip once-per-start actions.
+    extern bool restartedForUpdate;
     extern int startupFrameCounter;
 
     // matrix_connection.cpp

@@ -1,3 +1,4 @@
+#include "shared/desktop/SelfUpdate.h"
 #include "shared/desktop/config.h"
 #include "shared/desktop/plugin_loader/loader.h"
 #include <spdlog/spdlog.h>
@@ -88,7 +89,9 @@ bool Config::General::isAutostartEnabled() const
 
 void Config::General::setAutostartEnabled(bool enabled)
 {
-    auto res = enabled ? Autostart::enable(get_exec_file().string(), APP_NAME) : Autostart::disable(APP_NAME);
+    // A per-user install starts through current/, which survives updates.
+    const auto exe = SelfUpdate::is_managed_install() ? SelfUpdate::current_exec_path() : get_exec_file();
+    auto res = enabled ? Autostart::enable(exe.string(), APP_NAME) : Autostart::disable(APP_NAME);
 
     if (!res)
     {

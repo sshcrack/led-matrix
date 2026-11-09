@@ -44,44 +44,43 @@ namespace Autostart
         return "";
     }
 
-    std::expected<void, std::string> enable(const std::string &exePath, const std::string &appName)
+    std::expected<void, std::string> create_shortcut(const std::filesystem::path &lnkPath,
+                                                     const std::filesystem::path &target,
+                                                     const std::string &arguments,
+                                                     const std::string &description)
     {
-        std::string shortcutPath = getStartupFolder() + "\\" + appName + ".lnk";
-        Microsoft::WRL::ComPtr<IShellLinkW> pShellLink;
-        HRESULT hr = S_OK;
-        if (FAILED(CoInitialize(NULL)))
-        {
-            return std::unexpected("Failed to initialize COM library: " + std::system_category().message(GetLastError()));
-        }
+        const HRESULT init = CoInitialize(NULL);
+        if (FAILED(init))
+            return std::unexpected("Failed to initialize COM library: " + std::system_category().message(init));
 
-        hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void **)&pShellLink);
-        if (FAILED(hr))
+        std::expected<void, std::string> result{};
         {
-            CoUninitialize();
-            return std::unexpected("Failed to create ShellLink instance: " + std::system_category().message(hr));
-        }
-
-        // Add --start-minimized flag to the command line
-        std::string exeWithArgs = exePath + " --start-minimized";
-        pShellLink->SetPath(s2ws(exePath).c_str());
-        pShellLink->SetArguments(s2ws("--start-minimized").c_str());
-        pShellLink->SetDescription(s2ws(appName).c_str());
-        Microsoft::WRL::ComPtr<IPersistFile> pPersistFile;
-        hr = pShellLink.As(&pPersistFile);
-        if (FAILED(hr))
-        {
-            CoUninitialize();
-            return std::unexpected("Failed to get IPersistFile interface: " + std::system_category().message(hr));
-        }
-        hr = pPersistFile->Save(s2ws(shortcutPath).c_str(), TRUE);
-        if (FAILED(hr))
-        {
-            CoUninitialize();
-            return std::unexpected("Failed to save shortcut file: " + std::system_category().message(hr));
+            Microsoft::WRL::ComPtr<IShellLinkW> pShellLink;
+            HRESULT hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void **)&pShellLink);
+            Microsoft::WRL::ComPtr<IPersistFile> pPersistFile;
+            if (FAILED(hr))
+                result = std::unexpected("Failed to create ShellLink instance: " + std::system_category().message(hr));
+            else
+            {
+                pShellLink->SetPath(target.wstring().c_str());
+                pShellLink->SetArguments(s2ws(arguments).c_str());
+                pShellLink->SetDescription(s2ws(description).c_str());
+                pShellLink->SetWorkingDirectory(target.parent_path().wstring().c_str());
+                pShellLink->SetIconLocation(target.wstring().c_str(), 0);
+                hr = pShellLink.As(&pPersistFile);
+                if (FAILED(hr))
+                    result = std::unexpected("Failed to get IPersistFile interface: " + std::system_category().message(hr));
+                else if (FAILED(hr = pPersistFile->Save(lnkPath.wstring().c_str(), TRUE)))
+                    result = std::unexpected("Failed to save shortcut file: " + std::system_category().message(hr));
+            }
         }
         CoUninitialize();
+        return result;
+    }
 
-        return {};
+    std::expected<void, std::string> enable(const std::string &exePath, const std::string &appName)
+    {
+        return create_shortcut(getStartupFolder() + "\\" + appName + ".lnk", exePath, "--start-minimized", appName);
     }
 
     std::expected<void, std::string> disable(const std::string &appName)
@@ -128,8 +127,8 @@ namespace Autostart
         ofs << "[Desktop Entry]\n";
         ofs << "Type=Application\n";
         // Add --start-minimized flag to the Exec line
-        ofs << "Exec=" << exePath << " --start-minimized\n";
-        ofs << "Icon=" << (exePathDir / "assets" / "app_settings" / "icon.svg").string() << "\n";
+        ofs << "Exec=\"" << exePath << "\" --start-minimized\n";
+        ofs << "Icon=" << (exePathDir / "share" / "icons" / "hicolor" / "scalable" / "apps" / "led-matrix-desktop.svg").string() << "\n";
         ofs << "Hidden=false\n";
         ofs << "NoDisplay=false\n";
         ofs << "X-GNOME-Autostart-enabled=true\n";

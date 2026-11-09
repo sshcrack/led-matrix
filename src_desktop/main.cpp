@@ -15,6 +15,7 @@
 #include <shared/desktop/config.h>
 #include <shared/desktop/utils.h>
 #include <shared/desktop/glfw.h>
+#include <shared/desktop/SelfUpdate.h>
 #include "shared/desktop/plugin_loader/loader.h"
 #include "single_instance_manager.h"
 #include "app_setup.h"
@@ -41,6 +42,10 @@ static auto DISPLAY_APP_NAME = "LED Matrix Controller";
 
 // ---- Main application logic ----
 int run_app(int argc, char *argv[]) {
+    // --install / --uninstall (per-user install, used by the setup scripts and Windows "Installed apps").
+    if (const auto exitCode = SelfUpdate::handle_command_line(argc, argv))
+        return *exitCode;
+
     fs::path crash_dir;
     try {
         crash_dir = get_data_dir() / "crashes";
@@ -52,6 +57,11 @@ int run_app(int argc, char *argv[]) {
     CrashReporter::attach_to_default_logger();
     CrashReporter::set_activity("initializing desktop controller");
     spdlog::info("Crash reports are written to {}", crash_dir.string());
+
+    if (SelfUpdate::is_managed_install()) {
+        // The version we updated away from is no longer running: drop it.
+        try { SelfUpdate::prune(); } catch (const std::exception &e) { spdlog::warn("Pruning old versions: {}", e.what()); }
+    }
 
     SingleInstanceManager *instanceManager = nullptr;
     try {
@@ -70,9 +80,15 @@ int run_app(int argc, char *argv[]) {
     // UI state variables (persist via lambda captures)
     SettingsPanel settingsPanel(pl, cfg);
 
-    if (argc > 1 && std::string(argv[1]) == "--start-minimized") {
-        spdlog::info("Starting minimized.");
-        startMinimized = true;
+    for (int i = 1; i < argc; i++) {
+        const std::string arg = argv[i];
+        if (arg == "--start-minimized") {
+            spdlog::info("Starting minimized.");
+            startMinimized = true;
+        } else if (arg == "--after-update") {
+            spdlog::info("Restarted after an update.");
+            restartedForUpdate = true;
+        }
     }
 
     const auto trayIco = HelloImGui::AssetFileFullPath("app_settings/icon.ico");
@@ -93,6 +109,10 @@ int run_app(int argc, char *argv[]) {
         for (const auto &[name, plugin]: pl->get_plugins()) {
             plugin->pre_new_frame();
         }
+        // Runs while hidden in the tray too: periodic update checks and the background restart.
+        updateManager.tick(runnerParams.appWindowParams.hidden);
+        if (updateManager.shallAppExit())
+            runnerParams.appShallExit = true;
     };
     runnerParams.callbacks.AfterSwap = [&] {
         for (const auto &[name, plugin]: pl->get_plugins()) {
@@ -153,7 +173,7 @@ int run_app(int argc, char *argv[]) {
         auto generalCfg = cfg->getGeneralConfig();
         auto hostname = generalCfg.getHostnameCopy();
         auto port = generalCfg.getPort();
-        if (generalCfg.isTurnMatrixOffOnExit()) {
+        if (generalCfg.isTurnMatrixOffOnExit() && !updateManager.restartAfterExit()) {
             spdlog::info("Turning Matrix OFF on exit.");
             change_matrix_status(hostname, port, false, true);
         }
@@ -167,6 +187,8 @@ int run_app(int argc, char *argv[]) {
     pl->destroy_plugins();
     delete instanceManager;
     spdlog::info("Exited cleanly.");
+    if (updateManager.restartAfterExit() && !SelfUpdate::restart_into_current(updateManager.restartMinimized()))
+        return 1;
     return 0;
 }
 

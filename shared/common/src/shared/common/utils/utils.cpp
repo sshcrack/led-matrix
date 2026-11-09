@@ -96,6 +96,14 @@ std::filesystem::path get_exec_file() {
     #error Unsupported platform
 #endif
 
+#if defined(_WIN32)
+    // Resolve junctions: the per-user desktop install starts through a
+    // `current` junction that an update re-points while we keep running.
+    std::error_code ec;
+    auto resolved = std::filesystem::canonical(std::filesystem::path(buffer), ec);
+    if (!ec)
+        return resolved;
+#endif
     return std::filesystem::path(buffer);
 }
 

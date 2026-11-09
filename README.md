@@ -270,10 +270,12 @@ The Pi is deliberately modest. The **desktop app** gives it superpowers by runni
 
 Grab the latest build from [Releases](https://github.com/sshcrack/led-matrix/releases/latest):
 
-| OS | Download |
+| OS | Install (for your user, no admin/root) |
 |:--|:--|
-| **Windows** | `led-matrix-desktop-<version>-win64.exe` (installer) or `…-win64.zip` |
-| **Linux** | `led-matrix-desktop-<version>-Linux.deb` (`sudo apt install ./file.deb`) or `…-Linux.tar.gz` |
+| **Windows** | Run `led-matrix-desktop-<version>-win64.exe`, or `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 \| iex` |
+| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
+
+The app installs to `%LOCALAPPDATA%\led-matrix-desktop` or `~/.local/share/led-matrix-desktop` and **updates itself**: it runs the same release as your matrix (desktop rendering needs matching versions). When a newer release is out and the matrix has auto-update on, it asks the matrix to update first and follows it. Updates download in the background and apply when the app is hidden in the tray or restarted. You can turn this off in the app menu. An older `.deb` or admin install is replaced on its first update, and the app offers to remove it. Uninstall with `led-matrix-desktop --uninstall` or from Windows *Installed apps*.
 
 ### Use
 

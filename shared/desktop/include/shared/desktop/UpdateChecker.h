@@ -1,16 +1,15 @@
 #pragma once
 
+#include <cstdint>
+#include <expected>
+#include <optional>
 #include <string>
-#include <functional>
-#include <memory>
 #include <nlohmann/json.hpp>
 #include "shared/desktop/macro.h"
 #include "shared/common/Version.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
+// Network side of desktop updates: GitHub releases and the matrix's update API.
+// All calls block; UpdateManager runs them on a worker thread.
 namespace UpdateChecker
 {
     struct SHARED_DESKTOP_API ReleaseInfo
@@ -18,16 +17,18 @@ namespace UpdateChecker
         std::string tagName;
         std::string name;
         std::string htmlUrl;
-        std::string downloadUrl; // For Windows installer
+        std::string downloadUrl; // this platform's package (tar.gz / zip)
+        std::string sha256;      // from the asset's "digest"; empty when GitHub has none
         Common::Version version;
         bool isPrerelease = false;
     };
 
-    enum class SHARED_DESKTOP_API UpdateAction
+    /// What the matrix reports on GET /api/update/status.
+    struct SHARED_DESKTOP_API MatrixUpdateState
     {
-        UpdateNow,
-        RemindLater,
-        Skip
+        Common::Version version;
+        bool autoUpdateEnabled = false;
+        bool busy = false; // checking, downloading or installing an update
     };
 
     struct SHARED_DESKTOP_API UpdatePreferences
@@ -35,7 +36,13 @@ namespace UpdateChecker
         std::string skippedVersion;
         int64_t lastRemindTime = 0;
         bool updateNotificationsEnabled = true;
-        int remindIntervalDays = 7; // Remind every 7 days
+        int remindIntervalDays = 7;
+        /// Download and install updates without asking (per-user installs only).
+        bool autoUpdate = true;
+        /// Run the same release as the matrix (needed for desktop render offload,
+        /// which requires matching scene-code fingerprints). Asks the matrix to
+        /// update first when a newer release is out and its auto-update is on.
+        bool followMatrix = true;
 
         void save();
         void load();
@@ -46,40 +53,17 @@ namespace UpdateChecker
     class SHARED_DESKTOP_API UpdateChecker
     {
     public:
-        UpdateChecker();
-        ~UpdateChecker();
-
-        // Check for updates asynchronously
-        void checkForUpdates(std::function<void(bool hasUpdate, const ReleaseInfo &release)> callback);
-
-        // Show update dialog and handle user choice
-        void showUpdateDialog(const ReleaseInfo &release, std::function<void(UpdateAction)> callback);
-
-        // Get current application version
         static Common::Version getCurrentVersion();
 
-        // Get and set update preferences
-        UpdatePreferences &getPreferences();
+        /// The latest release, or the release of `version` when given.
+        static std::expected<ReleaseInfo, std::string> fetchRelease(const std::optional<Common::Version> &version = std::nullopt);
 
-        // Download and install update (Windows only)
-        void downloadAndInstallUpdate(
-            const ReleaseInfo &release,
-            std::function<void(bool success, const std::string &error)> callback,
-            std::function<void(size_t downloaded, size_t total)> progressCallback = nullptr
-        );
+        static std::expected<MatrixUpdateState, std::string> fetchMatrixState(const std::string &host, int port);
+        /// Asks the matrix to install `version` (POST /api/update/install).
+        static std::expected<void, std::string> requestMatrixUpdate(const std::string &host, int port,
+                                                                    const Common::Version &version);
 
-        // Open browser to releases page (Linux)
-        void openReleasesPage(const ReleaseInfo &release);
-
-        bool shallAppExit() const { return appShallExit; }
-    private:
-        struct Impl;
-        bool appShallExit = false;
-        std::unique_ptr<Impl> pImpl;
-
-        // Internal methods
-        ReleaseInfo parseReleaseInfo(const nlohmann::json &releaseJson);
-        std::string findWindowsAsset(const nlohmann::json &assets, const std::string &version);
+        static ReleaseInfo parseReleaseInfo(const nlohmann::json &releaseJson);
     };
 
 } // namespace UpdateChecker

@@ -300,8 +300,10 @@ Set `led-matrix/api-token` via debconf and reconfigure. The web UI prompts for t
 
 Optional, runs on the human's **PC**, not the Pi. Needs the Pi's IP and port. Ask what OS the PC runs.
 
-- **Windows:** download `led-matrix-desktop-<version>-win64.exe` from the [latest release](https://github.com/sshcrack/led-matrix/releases/latest) and run it.
-- **Linux:** `sudo apt install ./led-matrix-desktop-<version>-Linux.deb` (or use the `.tar.gz`).
+- **Windows:** download `led-matrix-desktop-<version>-win64.exe` from the [latest release](https://github.com/sshcrack/led-matrix/releases/latest) and run it (per-user, no admin), or run `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 | iex` in PowerShell.
+- **Linux (x86_64):** `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh | sh` (per-user, no root).
+
+Both install for the current user and keep the app on the matrix's version automatically. Don't use the `.deb`.
 
 Then in the app: enter the Pi's **hostname/IP** and **port** (default `8080`) and the API token if one is set, and click **Connect**. The status must read *WebSocket is currently: Open*.
 

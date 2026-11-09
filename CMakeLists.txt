@@ -1387,7 +1387,35 @@ if(ENABLE_DESKTOP)
     # -------------------
     # CPack configuration
     # -------------------
-    #include(InstallRequiredSystemLibraries)
+    if(WIN32)
+        # Ship the MSVC runtime next to the exe (app-local), so the per-user
+        # install runs without the VC++ Redistributable. InstallRequiredSystemLibraries
+        # does nothing with clang++, so pick the newest CRT redist folder ourselves.
+        set(_crt_dirs "")
+        if(DEFINED ENV{VCToolsRedistDir})
+            file(TO_CMAKE_PATH "$ENV{VCToolsRedistDir}" _redist)
+            file(GLOB _crt_dirs LIST_DIRECTORIES true "${_redist}/x64/Microsoft.VC*.CRT")
+        endif()
+        if(NOT _crt_dirs)
+            set(_pf86 "ProgramFiles(x86)")
+            find_program(LED_MATRIX_VSWHERE vswhere PATHS "$ENV{${_pf86}}/Microsoft Visual Studio/Installer")
+            if(LED_MATRIX_VSWHERE)
+                execute_process(COMMAND "${LED_MATRIX_VSWHERE}" -latest -products * -property installationPath
+                    OUTPUT_VARIABLE _vs_path OUTPUT_STRIP_TRAILING_WHITESPACE)
+                file(TO_CMAKE_PATH "${_vs_path}" _vs_path)
+                file(GLOB _crt_dirs LIST_DIRECTORIES true "${_vs_path}/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT")
+            endif()
+        endif()
+        if(_crt_dirs)
+            list(SORT _crt_dirs COMPARE NATURAL ORDER DESCENDING)
+            list(GET _crt_dirs 0 _crt_dir)
+            file(GLOB _crt_dlls "${_crt_dir}/*.dll")
+            install(FILES ${_crt_dlls} DESTINATION bin)
+            message(STATUS "Bundling the MSVC runtime from ${_crt_dir}")
+        else()
+            message(WARNING "MSVC runtime redist not found: the desktop package will need the VC++ Redistributable")
+        endif()
+    endif()
     set(CPACK_PACKAGE_NAME "led-matrix-desktop")
     set(CPACK_PACKAGE_VENDOR "sshcrack")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LED Matrix Project Desktop Application (used to control led-matrix)")
@@ -1399,70 +1427,13 @@ if(ENABLE_DESKTOP)
     set(CPACK_PACKAGE_CONTACT "hendrik@sshcrack.me")
 
     if(WIN32)
-        set(CPACK_GENERATOR "ZIP;NSIS64")
+        # A ZIP plus a per-user setup .exe built from it (packaging/windows/):
+        # the app installs to %LOCALAPPDATA% and updates itself, no admin rights.
+        set(CPACK_GENERATOR "ZIP")
         set(CPACK_SYSTEM_NAME "win64")
-        set(CPACK_NSIS_DISPLAY_NAME "LED Matrix Controller")
-        set(CPACK_NSIS_PACKAGE_NAME "LED Matrix Controller")
-        set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}")
-        set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-        set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
-        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
-        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/led-matrix-desktop.exe")
-        set(CPACK_NSIS_HELP_LINK "https://github.com/sshcrack/led-matrix")
-        set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/sshcrack/led-matrix")
-        set(CPACK_NSIS_CONTACT "hendrik@sshcrack.me")
-        set(CPACK_NSIS_ALLOW_ROOT_INSTALL ON)
-        set(CPACK_NSIS_ENABLE_MODERN_UI ON)
-        set(CPACK_NSIS_ENABLE_CUSTOM_INSTALL_DIRECTORY ON)
-
-        # Visual C++ Redistributable configuration
-        set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
-            ; Check if Visual C++ Redistributable is installed
-            ReadRegStr $0 HKLM \\\"SOFTWARE\\\\Microsoft\\\\VisualStudio\\\\14.0\\\\VC\\\\Runtimes\\\\x64\\\" \\\"Version\\\"
-            StrCmp $0 \\\"\\\" 0 vcredist_installed
-
-            ; If not installed, download and install VC++ Redistributable
-            DetailPrint \\\"Downloading Visual C++ Redistributable...\\\"
-            NSISdl::download \\\"https://aka.ms/vs/17/release/vc_redist.x64.exe\\\" \\\"$TEMP\\\\vc_redist.x64.exe\\\"
-            Pop $R0
-            StrCmp $R0 \\\"success\\\" download_ok
-            MessageBox MB_OK \\\"Failed to download Visual C++ Redistributable. Please install it manually.\\\"
-            Goto vcredist_end
-
-            download_ok:
-            DetailPrint \\\"Installing Visual C++ Redistributable...\\\"
-            ExecWait \\\"$TEMP\\\\vc_redist.x64.exe /quiet /norestart\\\" $1
-            Delete \\\"$TEMP\\\\vc_redist.x64.exe\\\"
-            IntCmp $1 0 vcredist_installed
-            MessageBox MB_OK \\\"Visual C++ Redistributable installation may have failed. Exit code: $1\\\"
-
-            vcredist_installed:
-            DetailPrint \\\"Visual C++ Redistributable is available.\\\"
-
-            vcredist_end:
-        ")
-
-        # Remove the old shortcut settings that don't work properly
-        # set(CPACK_NSIS_CREATE_DESKTOP_SHORTCUTS ON)
-        # set(CPACK_NSIS_CREATE_START_MENU_SHORTCUTS ON)
-        # set(CPACK_NSIS_SHORTCUT_NAME "LED Matrix Controller")
-
-        # Properly create shortcuts with working NSIS commands
-        set(CPACK_NSIS_CREATE_ICONS_EXTRA "
-            CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" 0
-            CreateShortCut \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" \\\"\\\" \\\"$INSTDIR\\\\bin\\\\led-matrix-desktop.exe\\\" 0
-        ")
-
-        # Remove shortcuts during uninstall
-        set(CPACK_NSIS_DELETE_ICONS_EXTRA "
-            Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\LED Matrix Controller.lnk\\\"
-            Delete \\\"$DESKTOP\\\\LED Matrix Controller.lnk\\\"
-        ")
-
-        # Add option to launch application after installation
-        set(CPACK_NSIS_MUI_FINISHPAGE_RUN "$INSTDIR\\\\bin\\\\led-matrix-desktop.exe")
-        set(CPACK_NSIS_MUI_FINISHPAGE_RUN_TEXT "Launch LED Matrix Controller")
-        set(CPACK_NSIS_MUI_FINISHPAGE_RUN_CHECKED "1")
+        set(CPACK_LED_MATRIX_SETUP_NSI "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/setup.nsi")
+        set(CPACK_LED_MATRIX_SETUP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src_desktop/assets/app_settings/icon.ico")
+        set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/build_setup.cmake")
     else()
         set(CPACK_GENERATOR "DEB;TGZ")
 
