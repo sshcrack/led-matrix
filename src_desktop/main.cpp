@@ -59,12 +59,31 @@ int run_app(int argc, char *argv[]) {
     spdlog::info("Crash reports are written to {}", crash_dir.string());
 
     // Before the single-instance check: whichever instance wins, its version must not be pruned.
-    if (!SelfUpdate::hold_running_version()) {
-        spdlog::warn("This version was removed by an update while starting; starting the current version instead");
-        bool minimized = false;
-        for (int i = 1; i < argc; i++)
-            minimized |= std::string(argv[i]) == "--start-minimized";
-        return SelfUpdate::restart_into_current(minimized, false) ? 0 : 1;
+    switch (SelfUpdate::hold_running_version()) {
+        case SelfUpdate::HoldResult::Held:
+            break;
+        case SelfUpdate::HoldResult::Removed: {
+            bool minimized = false, retried = false;
+            for (int i = 1; i < argc; i++) {
+                minimized |= std::string(argv[i]) == "--start-minimized";
+                retried |= std::string(argv[i]) == "--version-was-removed";
+            }
+            if (!retried) {
+                spdlog::warn("This version was removed by an update while starting; starting the current version instead");
+                return SelfUpdate::restart_into_current(minimized, false, true) ? 0 : 1;
+            }
+            [[fallthrough]];
+        }
+        case SelfUpdate::HoldResult::Failed: {
+            const std::string message = "LED Matrix Controller could not lock its installation in " +
+                                        SelfUpdate::install_root().string() +
+                                        ". Reinstall it, or check the folder's permissions.";
+            spdlog::error("{}", message);
+#ifdef _WIN32
+            MessageBoxA(nullptr, message.c_str(), DISPLAY_APP_NAME, MB_OK | MB_ICONERROR);
+#endif
+            return 1;
+        }
     }
 
     SingleInstanceManager *instanceManager = nullptr;

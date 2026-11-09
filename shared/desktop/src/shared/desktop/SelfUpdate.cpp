@@ -629,20 +629,31 @@ namespace SelfUpdate
                fs::exists(dir.parent_path().parent_path() / "CMakeCache.txt");
     }
 
-    bool hold_running_version()
+    HoldResult hold_running_version()
     {
         const auto dir = running_version_dir();
         if (!dir)
-            return true;
+            return HoldResult::Held;
         static std::unique_ptr<FileLock> held; // process lifetime
         if (held)
-            return true;
+            return HoldResult::Held;
         VersionsLock versions(false, true);
+        if (!versions.held())
+        {
+            spdlog::error("Could not lock {}", (install_root() / ".versions.lock").string());
+            return HoldResult::Failed;
+        }
         // An update or prune may have removed this version while we were starting.
         if (!fs::exists(*dir / "bin" / EXE_NAME))
-            return false;
-        held = std::make_unique<FileLock>(*dir / IN_USE_FILE, false, true);
-        return true;
+            return HoldResult::Removed;
+        auto lock = std::make_unique<FileLock>(*dir / IN_USE_FILE, false, true);
+        if (!lock->held())
+        {
+            spdlog::error("Could not lock {}", (*dir / IN_USE_FILE).string());
+            return HoldResult::Failed;
+        }
+        held = std::move(lock);
+        return HoldResult::Held;
     }
 
     fs::path current_exec_path() { return install_root() / "current" / "bin" / EXE_NAME; }
@@ -959,7 +970,7 @@ namespace SelfUpdate
         return 0;
     }
 
-    bool restart_into_current(bool start_minimized, bool after_update)
+    bool restart_into_current(bool start_minimized, bool after_update, bool version_removed)
     {
         const fs::path exe = current_exec_path();
         spdlog::info("Restarting into {}", exe.string());
@@ -970,17 +981,21 @@ namespace SelfUpdate
             args.emplace_back(L"--start-minimized");
         if (after_update)
             args.emplace_back(L"--after-update");
+        if (version_removed)
+            args.emplace_back(L"--version-was-removed");
         return run_process(args, false) == 0;
 #else
         spdlog::default_logger()->flush();
         const std::string exeStr = exe.string();
-        std::string minimized = "--start-minimized", afterUpdate = "--after-update";
+        std::string minimized = "--start-minimized", afterUpdate = "--after-update", removed = "--version-was-removed";
         // --start-minimized first: releases before 1.21 only look at argv[1].
         std::vector<char *> argv{const_cast<char *>(exeStr.c_str())};
         if (start_minimized)
             argv.push_back(minimized.data());
         if (after_update)
             argv.push_back(afterUpdate.data());
+        if (version_removed)
+            argv.push_back(removed.data());
         argv.push_back(nullptr);
         execv(exeStr.c_str(), argv.data());
         spdlog::error("Could not restart into {}: {}", exeStr, std::strerror(errno));

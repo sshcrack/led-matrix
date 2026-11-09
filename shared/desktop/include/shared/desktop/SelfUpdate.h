@@ -42,8 +42,13 @@ namespace SelfUpdate
 
     /// Marks the running version as in use for this process's lifetime, so pruning by
     /// another process (an update, `--install`) never deletes it. Call once at startup.
-    /// False when this version was removed while the app was starting: start current instead.
-    SHARED_DESKTOP_API bool hold_running_version();
+    enum class HoldResult
+    {
+        Held,    ///< or not a per-user install: nothing to hold
+        Removed, ///< an update removed this version while the app started: start current instead
+        Failed,  ///< the lock files could not be locked: do not run unprotected
+    };
+    SHARED_DESKTOP_API HoldResult hold_running_version();
 
     /// Executable that launchers should start: current/bin/... in the install root.
     SHARED_DESKTOP_API std::filesystem::path current_exec_path();
@@ -72,7 +77,9 @@ namespace SelfUpdate
     /// Starts current/bin/led-matrix-desktop (Linux: replaces this process).
     /// Call after shutdown released the single-instance lock. False on failure.
     /// `after_update` passes --after-update (skips "Turn Matrix On on Start").
-    SHARED_DESKTOP_API bool restart_into_current(bool start_minimized, bool after_update = true);
+    /// `version_removed` passes --version-was-removed (stops a restart loop in main()).
+    SHARED_DESKTOP_API bool restart_into_current(bool start_minimized, bool after_update = true,
+                                                 bool version_removed = false);
 
     /// The installation the app was migrated away from (a .deb in /usr, the old
     /// admin NSIS install in Program Files), if it still exists.
