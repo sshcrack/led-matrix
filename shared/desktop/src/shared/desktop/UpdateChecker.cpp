@@ -17,19 +17,25 @@ namespace UpdateChecker
 
         std::string userAgent() { return "led-matrix-desktop/" + UpdateChecker::getCurrentVersion().toString(); }
 
-        std::string matrixUrl(const std::string &host, int port, const std::string &path)
+        std::string matrixUrl(const MatrixEndpoint &matrix, const std::string &path)
         {
-            return "http://" + host + ":" + std::to_string(port) + path;
+            return "http://" + matrix.host + ":" + std::to_string(matrix.port) + path;
         }
 
-        cpr::Header matrixHeaders()
+        cpr::Header matrixHeaders(const MatrixEndpoint &matrix)
         {
             cpr::Header headers{{"User-Agent", userAgent()}};
-            if (const auto auth = Config::matrixAuthorizationHeader(); !auth.empty())
-                headers["Authorization"] = auth;
+            if (!matrix.authorization.empty())
+                headers["Authorization"] = matrix.authorization;
             return headers;
         }
     } // namespace
+
+    MatrixEndpoint MatrixEndpoint::fromConfig()
+    {
+        const auto &general = Config::ConfigManager::instance()->getGeneralConfig();
+        return {general.getHostnameCopy(), general.getPort(), Config::matrixAuthorizationHeader()};
+    }
 
     // ---- preferences ----------------------------------------------------
 
@@ -151,9 +157,9 @@ namespace UpdateChecker
         return info;
     }
 
-    std::expected<MatrixUpdateState, std::string> UpdateChecker::fetchMatrixState(const std::string &host, int port)
+    std::expected<MatrixUpdateState, std::string> UpdateChecker::fetchMatrixState(const MatrixEndpoint &matrix)
     {
-        const auto response = cpr::Get(cpr::Url{matrixUrl(host, port, "/api/update/status")}, matrixHeaders(),
+        const auto response = cpr::Get(cpr::Url{matrixUrl(matrix, "/api/update/status")}, matrixHeaders(matrix),
                                        cpr::Timeout{5000});
         if (response.status_code != 200)
             return std::unexpected(response.status_code == 0 ? "matrix unreachable"
@@ -176,11 +182,11 @@ namespace UpdateChecker
         }
     }
 
-    std::expected<void, std::string> UpdateChecker::requestMatrixUpdate(const std::string &host, int port,
+    std::expected<void, std::string> UpdateChecker::requestMatrixUpdate(const MatrixEndpoint &matrix,
                                                                          const Common::Version &version)
     {
-        const auto response = cpr::Post(cpr::Url{matrixUrl(host, port, "/api/update/install")},
-                                        cpr::Parameters{{"version", version.toString()}}, matrixHeaders(),
+        const auto response = cpr::Post(cpr::Url{matrixUrl(matrix, "/api/update/install")},
+                                        cpr::Parameters{{"version", version.toString()}}, matrixHeaders(matrix),
                                         cpr::Timeout{10000});
         if (response.status_code == 202 || response.status_code == 409) // started / already running
             return {};

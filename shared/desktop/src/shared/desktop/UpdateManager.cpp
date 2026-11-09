@@ -116,7 +116,7 @@ namespace UpdateChecker
         }
 
         /// One check: decide the target version, nudge the matrix, install or prompt.
-        void sync(const std::shared_ptr<State> &state, UpdatePreferences prefs, bool manual)
+        void sync(const std::shared_ptr<State> &state, UpdatePreferences prefs, const MatrixEndpoint &endpoint, bool manual)
         {
             const Common::Version current = UpdateChecker::getCurrentVersion();
             auto finish = [&](const std::string &message, const std::string &status) {
@@ -140,10 +140,7 @@ namespace UpdateChecker
             std::optional<MatrixUpdateState> matrix;
             if (prefs.followMatrix)
             {
-                const auto &general = Config::ConfigManager::instance()->getGeneralConfig();
-                const auto host = general.getHostnameCopy();
-                const int port = general.getPort();
-                if (auto m = UpdateChecker::fetchMatrixState(host, port))
+                if (auto m = UpdateChecker::fetchMatrixState(endpoint))
                 {
                     matrix = *m;
                     std::lock_guard lock(state->mutex);
@@ -184,7 +181,7 @@ namespace UpdateChecker
                     {
                         if (matrix->busy)
                             waiting = true;
-                        else if (auto r = UpdateChecker::requestMatrixUpdate(host, port, latest->version))
+                        else if (auto r = UpdateChecker::requestMatrixUpdate(endpoint, latest->version))
                         {
                             spdlog::info("Asked the matrix to update {} -> {}", v(matrix->version), v(latest->version));
                             waiting = true;
@@ -315,10 +312,10 @@ namespace UpdateChecker
             }
             lastCheck = Clock::now();
             checkedOnce = true;
-            std::thread([s = state, p = prefs, manual] {
+            std::thread([s = state, p = prefs, e = MatrixEndpoint::fromConfig(), manual] {
                 try
                 {
-                    sync(s, p, manual);
+                    sync(s, p, e, manual);
                 }
                 catch (const std::exception &e)
                 {

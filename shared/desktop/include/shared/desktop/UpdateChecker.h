@@ -50,6 +50,17 @@ namespace UpdateChecker
         bool shouldSkipVersion(const std::string &version) const;
     };
 
+    /// Where to reach the matrix. A copy taken on the main thread, so background checks
+    /// never read the config (which shutdown destroys while they may still run).
+    struct SHARED_DESKTOP_API MatrixEndpoint
+    {
+        std::string host;
+        int port = 0;
+        std::string authorization; ///< Authorization header value, empty for none
+
+        static MatrixEndpoint fromConfig();
+    };
+
     class SHARED_DESKTOP_API UpdateChecker
     {
     public:
@@ -58,9 +69,9 @@ namespace UpdateChecker
         /// The latest release, or the release of `version` when given.
         static std::expected<ReleaseInfo, std::string> fetchRelease(const std::optional<Common::Version> &version = std::nullopt);
 
-        static std::expected<MatrixUpdateState, std::string> fetchMatrixState(const std::string &host, int port);
+        static std::expected<MatrixUpdateState, std::string> fetchMatrixState(const MatrixEndpoint &matrix);
         /// Asks the matrix to install `version` (POST /api/update/install).
-        static std::expected<void, std::string> requestMatrixUpdate(const std::string &host, int port,
+        static std::expected<void, std::string> requestMatrixUpdate(const MatrixEndpoint &matrix,
                                                                     const Common::Version &version);
 
         static ReleaseInfo parseReleaseInfo(const nlohmann::json &releaseJson);
