@@ -653,6 +653,43 @@ namespace SelfUpdate
 
     namespace
     {
+        /// A package that was used as a portable copy carries its settings in data/ (and
+        /// bin/portable.txt). A version folder is replaced on the next update, so move them to
+        /// the per-user data dir (unless that already has settings) and drop them from the version.
+        void move_portable_data(const fs::path &version_dir)
+        {
+            std::error_code ec;
+            fs::remove(version_dir / "bin" / "portable.txt", ec);
+            const fs::path local = version_dir / "data";
+            if (!fs::exists(local, ec))
+                return;
+            try
+            {
+                const fs::path user = get_user_data_dir();
+                if (fs::exists(local / "config.json") && !fs::exists(user / "config.json"))
+                {
+                    fs::copy(local, user, fs::copy_options::recursive | fs::copy_options::skip_existing);
+                    spdlog::info("Moved the portable settings from {} to {}", local.string(), user.string());
+                }
+                else
+                {
+                    // Keep them, but don't overwrite the settings the user already has.
+                    const fs::path backup = user / ("portable-data-" + version_dir.filename().string());
+                    fs::copy(local, backup, fs::copy_options::recursive | fs::copy_options::skip_existing);
+                    spdlog::info("{} already has settings; kept the portable ones in {}", user.string(), backup.string());
+                }
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::warn("Could not move the portable settings from {}: {}", local.string(), e.what());
+                return; // keep them where they are
+            }
+            fs::remove_all(local, ec);
+        }
+    } // namespace
+
+    namespace
+    {
         void prune_locked();
 
         std::expected<void, std::string> install_prefix_locked(const fs::path &prefix, const std::string &version, bool move,
@@ -719,6 +756,8 @@ namespace SelfUpdate
                 fs::remove_all(old, ec);
             }
         } // before prune_locked(), which takes VersionsLock itself
+
+        move_portable_data(dest);
 
         // Migrating away from a .deb / admin install: remember it so the app can offer to remove it.
         if (const auto legacy = removable_legacy_location())
