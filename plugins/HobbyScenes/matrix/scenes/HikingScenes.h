@@ -16,6 +16,7 @@
 //                         Treble shimmers the reflection, beats bring fish
 //                         rings, drops make the hiker skip a stone.
 
+#include <array>
 #include <vector>
 
 #include "FigureDraw.h"
@@ -32,6 +33,7 @@ class RidgeTrailScene final : public AudioHobbyScene {
     void spawn_flock(float W, float H, float k);
 
 public:
+    RidgeTrailScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     [[nodiscard]] std::string get_name() const override { return "hike_ridge_trail"; }
@@ -50,6 +52,7 @@ class SummitNightScene final : public AudioHobbyScene {
     float shootX_ = 0, shootY_ = 0, shootLife_ = 0, nextShoot_ = 7.0f;
 
 public:
+    SummitNightScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     [[nodiscard]] std::string get_name() const override { return "hike_summit_night"; }
@@ -69,10 +72,12 @@ class AlpineLakeScene final : public AudioHobbyScene {
     Stone stone_;
     float throwT_ = -1.0f, nextThrow_ = 14.0f, mist_ = 0.0f, nextFish_ = 5.0f;
     float horizon_ = 0.0f;
+    std::array<float, 12> backdropKey_{};
     void build_backdrop();
     void start_throw();
 
 public:
+    AlpineLakeScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     [[nodiscard]] std::string get_name() const override { return "hike_alpine_lake"; }

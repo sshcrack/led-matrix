@@ -187,6 +187,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         const auto runtime_inputs = RuntimeInputs::snapshot();
         result["runtime_inputs"] = RuntimeInputs::to_json(runtime_inputs);
         result["operation_mode"] = config->get_operation_mode();
+        result["director_mode"] = config->get_automatic_director_mode();
         result["automatic_mode"] = config->is_automatic_mode();
         result["configured_director_seed"] = std::to_string(config->get_automatic_director_seed());
         result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
@@ -297,6 +298,24 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             if (!config->save())
                 return reply_with_error(req, "Could not persist Automatic Director seed", restinio::status_internal_server_error());
             return reply_with_json(req, {{"success", true}, {"seed", std::to_string(seed)}});
+        } catch (const std::exception &e) {
+            return reply_with_error(req, e.what());
+        }
+    });
+
+    router->http_get("/automatic_director/mode", [](auto req, auto) {
+        return reply_with_json(req, {{"mode", config->get_automatic_director_mode()}});
+    });
+
+    router->http_post("/automatic_director/mode", [](auto req, auto) {
+        try {
+            const auto body = json::parse(req->body());
+            if (!body.is_object() || !body.contains("mode") || !body["mode"].is_string())
+                return reply_with_error(req, "Expected {\"mode\": \"mixed|environment|party|chill\"}");
+            config->set_automatic_director_mode(body["mode"].template get<std::string>());
+            if (!config->save())
+                return reply_with_error(req, "Could not persist the Automatic Mode style", restinio::status_internal_server_error());
+            return reply_with_json(req, {{"mode", config->get_automatic_director_mode()}});
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
         }

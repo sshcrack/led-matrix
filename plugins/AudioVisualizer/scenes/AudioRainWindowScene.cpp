@@ -210,7 +210,7 @@ SceneDescriptor AudioRainWindowScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "window";
-    d.tags = {"music", "rain", "night", "city", "cozy", "spectrum", "audio-reactive", "beat-driven", "music-showcase",
+    d.tags = {"music", "rain", "night", "fits:rain", "fits:storm", "fits:cloudy", "city", "cozy", "spectrum", "audio-reactive", "beat-driven", "music-showcase",
               "style:hiphop", "style:chill"};
     d.intensity = 0.32f;
     d.motion = 0.35f;

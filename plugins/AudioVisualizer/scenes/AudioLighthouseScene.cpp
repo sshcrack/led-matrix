@@ -197,7 +197,7 @@ SceneDescriptor AudioLighthouseScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "coast";
-    d.tags = {"music", "ocean", "nature", "night", "audio-reactive", "music-showcase", "beat-driven", "calm", "style:chill", "style:rock", "style:acoustic", "drop-reactive"};
+    d.tags = {"music", "ocean", "nature", "night", "fits:dusk", "fits:night", "audio-reactive", "music-showcase", "beat-driven", "calm", "style:chill", "style:rock", "style:acoustic", "drop-reactive"};
     d.intensity = 0.40f;
     d.motion = 0.45f;
     d.music_affinity = 0.9f;

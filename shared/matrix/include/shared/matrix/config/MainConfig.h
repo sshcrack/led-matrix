@@ -35,6 +35,9 @@ namespace Config {
         std::uint64_t get_automatic_director_seed();
         std::uint64_t get_automatic_director_generation() const;
         void set_automatic_director_seed(std::uint64_t seed);
+        string get_automatic_director_mode();
+        /// "mixed", "environment", "party" or "chill"; throws on anything else.
+        void set_automatic_director_mode(const string &mode);
         map<string, string> get_automatic_preferences();
         /// Increments whenever preferences change so consumers can cache them.
         std::uint64_t get_automatic_preferences_version() const;
@@ -69,6 +72,10 @@ namespace Config {
         bool delete_schedule(const string& id);
         ConfigData::BrightnessSchedule get_brightness_schedule();
         void set_brightness_schedule(ConfigData::BrightnessSchedule schedule);
+        Environment::Settings get_environment();
+        void set_environment(Environment::Settings settings);
+        /// Caches an IP-detected location without touching the user's settings.
+        void set_environment_detected(double latitude, double longitude, string label);
 
         bool is_scheduling_enabled();
         void set_scheduling_enabled(bool enabled);

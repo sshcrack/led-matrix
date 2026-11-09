@@ -83,7 +83,8 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
 
     const bool current_is_cover = has_tag(current_profile.tags, "album-art");
     const bool current_is_spotify_video = has_tag(current_profile.tags, "spotify-video");
-    if ((track_changed || track_intro_.awaiting_cover()) && context.spotify && elapsed_ms >= 1500) {
+    // Outside and Chill keep their long scenery dwell: a new track does not cut.
+    if (music_cuts_allowed() && (track_changed || track_intro_.awaiting_cover()) && context.spotify && elapsed_ms >= 1500) {
         if (current_is_cover) {
             track_intro_.mark_cover_shown();
         } else if (auto cover = best_with_tag("album-art")) {
@@ -102,7 +103,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     if (current_is_spotify_video && elapsed_ms < 26000 && elapsed_ms < planned_ms)
         return result;
 
-    if (context.spotify_mv_ready && !track_intro_.music_video_shown
+    if (music_cuts_allowed() && context.spotify_mv_ready && !track_intro_.music_video_shown
         && context.spotify_progress >= 0.10f && context.spotify_progress <= 0.74f
         && elapsed_ms >= 8000) {
         if (const auto* candidate = best(); candidate && has_tag(profile_of(candidate->scene).tags, "spotify-video")) {
@@ -116,14 +117,14 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     // musical phrase instead of mid-phrase. Media scenes follow the track.
     if (planned_ms > 0 && elapsed_ms >= planned_ms) {
         const bool phrase_boundary = section_event || drop_event;
-        const bool wait_for_phrase = context.audio_active && presentation_role(current_profile) != "media";
+        const bool wait_for_phrase = music_led(context) && presentation_role(current_profile) != "media";
         if (!wait_for_phrase || phrase_boundary || elapsed_ms >= planned_ms + phrase_grace_ms)
             request(phrase_boundary && wait_for_phrase ? "scene completed on a musical phrase boundary"
                                                        : "planned scene dwell completed");
         return result;
     }
 
-    if (context.audio_active) {
+    if (music_led(context)) {
         // ---- live-music session --------------------------------------------
         const bool current_music = is_music_look(current_profile);
         const bool showcase = has_tag(current_profile.tags, "music-showcase");

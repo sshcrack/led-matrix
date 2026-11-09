@@ -211,7 +211,7 @@ SceneDescriptor AudioStormFrontScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "storm";
-    d.tags = {"music", "rock", "metal", "storm", "weather", "lightning", "night", "audio-reactive", "beat-driven",
+    d.tags = {"music", "rock", "metal", "storm", "weather", "fits:storm", "fits:rain", "lightning", "night", "audio-reactive", "beat-driven",
               "drop-reactive", "music-showcase", "style:rock"};
     d.intensity = 0.72f;
     d.motion = 0.55f;

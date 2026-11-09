@@ -41,6 +41,11 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/plugin_messages.cpp
         src/shared/matrix/preview.cpp
         src/shared/matrix/remote_render.cpp
+        src/shared/matrix/environment/environment.cpp
+        src/shared/matrix/environment/occasions.cpp
+        src/shared/matrix/environment/look.cpp
+        src/shared/matrix/environment/paint.cpp
+        src/shared/matrix/environment/service.cpp
 )
 
 # Matrix scenes are built as separate DLLs by the desktop scene worker. Unlike

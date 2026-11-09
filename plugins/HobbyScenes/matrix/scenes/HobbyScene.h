@@ -2,13 +2,19 @@
 
 #include <shared/matrix/audio_state.h>
 
+#include <array>
+#include <memory>
 #include <random>
+
+#include <shared/matrix/environment/look.h>
+#include <shared/matrix/environment/paint.h>
 
 #include "Draw.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
 
 namespace Hobbies {
+struct Look;  // FigureDraw.h
 
 // Shared plumbing: float framebuffer, animation clock, speed property and
 // output to the canvas.
@@ -24,10 +30,61 @@ protected:
     void present(rgb_matrix::FrameCanvas* canvas);
     void fill_gradient(Rgb top, Rgb mid, Rgb bottom, float mid_at) { cv_.fill_gradient(top, mid, bottom, mid_at); }
 
+    // ---- real-world environment (time of day, weather, season) -----------
+    // Scenery scenes call use_environment() in their constructor; begin_frame()
+    // then updates env() every frame and the helpers below paint with it.
+    std::unique_ptr<Environment::SceneEnvironment> environment_;
+    Environment::Precipitation precip_;
+    Environment::Lightning lightning_;
+    void use_environment(Environment::Defaults defaults, Environment::Adapt adapt = {})
+    {
+        environment_ = std::make_unique<Environment::SceneEnvironment>(defaults, std::move(adapt));
+    }
+    [[nodiscard]] const Environment::Look& env() const { return environment_->look(); }
+    [[nodiscard]] Environment::Surface surface() { return {cv_.px.data(), cv_.w, cv_.h, 1.0f}; }
+    static Environment::Rgb to_env(Rgb c) { return {c.r, c.g, c.b}; }
+    static Rgb from_env(Environment::Rgb c) { return {c.r, c.g, c.b}; }
+    // Albedo under the current light; depth 0 foreground .. 1 horizon.
+    [[nodiscard]] Rgb lit(Rgb albedo, float depth = 0.0f) const { return from_env(env().lit(to_env(albedo), depth)); }
+    // lit() for the foreground subject: stays readable at night and in storms.
+    [[nodiscard]] Rgb subject(Rgb albedo) const { return from_env(env().subject(to_env(albedo))); }
+    // Tree leaves tinted for the season, then lit.
+    [[nodiscard]] Rgb plant(Rgb summer, float depth = 0.0f, float snow_exposure = 0.5f, float season_strength = 1.0f) const
+    {
+        return from_env(env().lit(env().ground(env().foliage(to_env(summer), season_strength), snow_exposure), depth));
+    }
+    // Grass/meadow tinted for the season, then lit.
+    [[nodiscard]] Rgb meadow(Rgb summer, float depth = 0.0f, float snow_exposure = 1.0f) const
+    {
+        return from_env(env().lit(env().ground(env().grass(to_env(summer)), snow_exposure), depth));
+    }
+    // Ground/roof albedo with lying snow, then lit.
+    [[nodiscard]] Rgb terrain(Rgb albedo, float depth = 0.0f, float snow_exposure = 1.0f) const
+    {
+        return from_env(env().lit(env().ground(to_env(albedo), snow_exposure), depth));
+    }
+    // Sky, stars, sun, moon and clouds over rows [0, horizon).
+    void paint_sky_layers(float horizon, float scroll = 0.0f, float sun_radius = 7.0f, float cloud_top = 0.06f,
+                          float cloud_bottom = 0.42f);
+    // Rain/snow (landing on `ground`), lightning and nothing else.
+    void paint_weather(float raw_dt, float horizon, const Environment::Precipitation::GroundFn& ground = {});
+    // True when the look moved enough that a cached backdrop must be redrawn
+    // (every frame during a cross-fade, otherwise rarely). Updates `key`.
+    bool environment_changed(std::array<float, 12>& key) const;
+    // Figure clothing under the current light.
+    void light_look(Look& look) const;
+
 public:
     void initialize(int width, int height) override;
     void register_properties() override;
-    void set_random_seed(uint32_t seed) override { rng_.seed(seed); }
+    void set_random_seed(uint32_t seed) override
+    {
+        rng_.seed(seed);
+        precip_.set_seed(seed + 1);
+        lightning_.set_seed(seed + 2);
+        if (environment_)
+            environment_->set_random_seed(seed + 3);
+    }
     [[nodiscard]] std::string get_category() const override { return "Hobbies"; }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
     tmillis_t get_default_duration() override { return 45000; }

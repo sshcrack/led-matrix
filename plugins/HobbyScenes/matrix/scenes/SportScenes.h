@@ -36,10 +36,12 @@ class BasketballScene final : public AudioHobbyScene {
     bool onFire_ = false;
     std::array<Point, 10> trail_{};
     int trailHead_ = 0;
+    std::array<float, 12> backgroundKey_{};
     void build_background();
     void release(float handX, float handY);
 
 public:
+    BasketballScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     [[nodiscard]] std::string get_name() const override { return "basketball_court"; }
@@ -71,12 +73,14 @@ class SoccerScene final : public AudioHobbyScene {
     std::vector<float> waveWeight_;  // crowd wave weight per column (this frame)
     // Pitch rectangle in pixels.
     float x0_ = 0, x1_ = 0, y0_ = 0, y1_ = 0;
+    std::array<float, 12> backgroundKey_{};
     void build_background();
     void kickoff(int team);
     void decide();
     [[nodiscard]] Point goal_center(int attackingTeam) const;
 
 public:
+    SoccerScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     [[nodiscard]] std::string get_name() const override { return "soccer_pitch"; }

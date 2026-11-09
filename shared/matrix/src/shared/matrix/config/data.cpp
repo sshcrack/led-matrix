@@ -92,8 +92,10 @@ namespace ConfigData {
             {"brightness_schedule", p.brightness_schedule},
             {"operation_mode", p.operation_mode},
             {"automatic_director_seed", p.automatic_director_seed},
+            {"automatic_director_mode", p.automatic_director_mode},
             {"automatic_preferences", p.automatic_preferences},
             {"update_settings", p.update_settings},
+            {"environment", p.environment},
             {"turned_off", p.turned_off.load()}
         };
     }
@@ -131,8 +133,29 @@ namespace ConfigData {
         p.operation_mode = j.value("operation_mode", std::string("automatic"));
         if (p.operation_mode != "automatic" && p.operation_mode != "manual") p.operation_mode = "automatic";
         p.automatic_director_seed = j.value("automatic_director_seed", std::uint64_t{0});
+        p.automatic_director_mode = j.contains("automatic_director_mode") && j.at("automatic_director_mode").is_string()
+            ? j.at("automatic_director_mode").get<std::string>() : std::string("mixed");
+        if (p.automatic_director_mode != "mixed" && p.automatic_director_mode != "environment"
+            && p.automatic_director_mode != "party" && p.automatic_director_mode != "chill")
+            p.automatic_director_mode = "mixed";
         p.automatic_preferences = j.value("automatic_preferences", std::map<string, string>());
         p.update_settings = j.value("update_settings", UpdateSettings());
+        p.environment = j.contains("environment") && j.at("environment").is_object()
+            ? j.at("environment").get<Environment::Settings>()
+            : Environment::Settings{};
+        // First start with the shared environment: a weather_ambience preset
+        // with its own (pre-environment) location becomes the manual location.
+        if (!j.contains("environment") && j.contains("presets")) {
+            if (const auto legacy = Environment::legacy_weather_location(j.at("presets"))) {
+                p.environment.latitude = legacy->latitude;
+                p.environment.longitude = legacy->longitude;
+                spdlog::info("Moved the weather scene location {:.4f}, {:.4f} to the real-world location setting",
+                             legacy->latitude, legacy->longitude);
+                if (legacy->conflicts > 0)
+                    spdlog::warn("{} other weather scene preset(s) had a different location; the real-world location is global now",
+                                 legacy->conflicts);
+            }
+        }
     }
 
     void to_json(json &j, const BrightnessSchedule &p) {

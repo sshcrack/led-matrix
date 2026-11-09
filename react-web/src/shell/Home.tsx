@@ -8,7 +8,7 @@ import { useMatrix } from '~/core/matrixContext'
 import { useNowPlaying } from '~/core/nowPlaying'
 import { presetThumbNames } from '~/core/scenes'
 import { ThumbStrip } from '~/core/ui/SceneThumb'
-import { ModeSwitch } from '~/core/ui/controls'
+import { DirectorModePicker, ModeSwitch } from '~/core/ui/controls'
 import { PresetMenu } from '~/core/ui/PresetMenu'
 import { PresetEditor } from '~/core/ui/PresetEditor'
 import { QuickBuilder } from '~/core/ui/QuickBuilder'
@@ -71,6 +71,7 @@ export default function ConsoleHome() {
         <div className="min-w-0"><div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{now.off ? 'Display off' : now.automatic ? 'Director picks scenes' : 'Playing preset'}</div><div className="truncate font-semibold">{now.label}</div></div>
         <ModeSwitch />
       </div>
+      {now.automatic && <DirectorModePicker className="justify-center lg:justify-start" />}
     </section>
 
     {/* Inspector: inline on wide screens, bottom sheet otherwise */}

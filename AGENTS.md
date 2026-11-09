@@ -222,6 +222,16 @@ Pi vs desktop quality: `Scene::render_quality_scale()` (0.5..1) is the one quali
 
 Desktop offload compatibility: the worker runs the desktop app's own installed plugins, so it advertises a scene-code fingerprint (`Common::scene_code_digest()`, a git tree hash of `plugins/` + `shared/` from `cmake/SceneCodeDigest.cmake`); the Pi only offloads to a worker whose fingerprint matches its own. `/diagnostics` → `remote_render` shows both fingerprints, `render_placement.reason` says why a scene rendered where it did.
 
+## Real-world environment (time of day, weather, season)
+
+Outdoor scenes follow the real world through `shared/matrix/environment/`:
+- `Environment::Service` (daemon thread, started in `daemon.cpp`) locates the Pi (manual setting, else IP), polls Open-Meteo every 15 min and publishes the `environment` Runtime Input (mirrored to the desktop scene worker). Settings live in `config.json` → `environment`; REST: `GET/POST /environment`, `GET /environment/geocode?q=` (`src_matrix/server/environment_routes.cpp`); UI: `react-web/src/components/environment/EnvironmentCard.tsx` on the Integrations page.
+- A scene owns a `SceneEnvironment` (`look.h`), adds its `properties()` (time_of_day / weather / season enums, group "Environment"), calls `update(raw_dt)` every frame and paints with the returned `Look` (smoothed numbers plus a palette: `lit()`, `foliage()`, `grass()`, `ground()`, `lamp()`). Each aspect resolves independently: scene property > global override > real world > scene `Defaults`. `Adapt` switches aspects off for scenes whose identity is fixed (a campfire stays night, skiing stays winter) and `weather_allowed` drops weather a scene cannot show. Call `add_variants(descriptor)` for the fixed-look variants (they default to off in Automatic Mode).
+- `paint.h` has the shared painters for any float RGB buffer (`Surface`, unit 1 or 255): sky, stars, sun, moon with phase, clouds, fog, `Precipitation`, `Lightning`, `SeasonalDrift` (leaves, petals, fireflies), `paint_window`, `paint_string_lights`. Hobby scenes get them through `HobbySceneBase::use_environment()`.
+- Holidays: add an entry to `registry()` in `occasions.cpp`; scenes that know the id decorate via `look.occasion("id")` (example: `season_cottage`), the UI lists it automatically.
+- Director: tag scenes with `fits:<id>` for the moments they suit (`dawn|day|dusk|night`, `clear|cloudy|fog|rain|snow|storm`, `spring|summer|autumn|winter`; ids from `Environment::fit_id`) and holiday-only scenes with `occasion:<id>` (skipped in Automatic Mode unless that occasion is active). `AutomaticDirector::Mode` (`mixed|environment|party|chill`, `config.json` → `automatic_director_mode`, `GET/POST /automatic_director/mode`, picker under the home now-playing bar) weighs the fit, scenery and energy differently and changes dwell; `tests/automatic_director_smoke.cpp` covers it.
+- `preview_gen --scenes name/variant` renders a variant (output `name--variant`); use it to check every look (`night`, `rain`, `snow`, `winter`, …) of a scene you change. `tests/environment_smoke.cpp` covers the astronomy, parsing and layering.
+
 ## API security
 
 `src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):

@@ -12,6 +12,13 @@ register_plugin(HobbyScenes
         matrix/scenes/HikingScenes.h
         matrix/scenes/SportScenes.cpp
         matrix/scenes/SportScenes.h
+        matrix/scenes/SceneryDraw.h
+        matrix/scenes/SeasonScenes.cpp
+        matrix/scenes/SeasonScenes.h
+        matrix/scenes/ActivityScenes.cpp
+        matrix/scenes/ActivityScenes.h
+        matrix/scenes/HolidayScenes.cpp
+        matrix/scenes/HolidayScenes.h
 )
 
 if(ENABLE_EMULATOR)

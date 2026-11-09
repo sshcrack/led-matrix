@@ -7,9 +7,51 @@
 #include <optional>
 #include <random>
 
+#include "shared/matrix/environment/environment.h"
 #include "shared/matrix/input_ids.h"
 
 using namespace AutomaticDirectorDetail;
+
+namespace {
+// How well a scene's `fits:<id>` tags match the moment, -1..1. Each aspect
+// (time, weather, season) the scene declares counts once: +1 when the moment
+// is one it fits, -1 when it is not; aspects the moment does not know are
+// skipped. 0 for scenes without fits tags (they suit any moment).
+float environment_fit(const std::vector<std::string>& tags, const Environment::Moment& m)
+{
+    static constexpr std::string_view times[] = {"dawn", "day", "dusk", "night"};
+    static constexpr std::string_view weathers[] = {"clear", "cloudy", "fog", "rain", "snow", "storm"};
+    static constexpr std::string_view seasons[] = {"spring", "summer", "autumn", "winter"};
+    auto aspect = [&](const auto& ids, const char* now) -> std::optional<float> {
+        bool declared = false, match = false;
+        for (const auto& id : ids) {
+            if (!has_tag(tags, std::string("fits:") + std::string(id)))
+                continue;
+            declared = true;
+            match = match || (now != nullptr && id == now);
+        }
+        if (!declared || now == nullptr)
+            return std::nullopt;
+        return match ? 1.0f : -1.0f;
+    };
+    float sum = 0.0f;
+    int counted = 0;
+    for (const auto part : {aspect(times, m.time ? Environment::fit_id(*m.time) : nullptr),
+                            aspect(weathers, m.weather ? Environment::fit_id(*m.weather) : nullptr),
+                            aspect(seasons, m.season ? Environment::fit_id(*m.season) : nullptr)}) {
+        if (part) {
+            sum += *part;
+            ++counted;
+        }
+    }
+    return counted > 0 ? sum / static_cast<float>(counted) : 0.0f;
+}
+
+bool occasion_active(const Environment::Moment& m, std::string_view id)
+{
+    return std::find(m.occasions.begin(), m.occasions.end(), id) != m.occasions.end();
+}
+}  // namespace
 
 float AutomaticDirector::history_multiplier(
     const std::string& scene,
@@ -52,6 +94,9 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
     std::vector<Candidate> ranked;
     const auto context = music_context(runtime_inputs);
     const bool desktop_available = runtime_inputs.available(RuntimeInputIds::Desktop);
+    const bool music_casting = music_led(context);
+    const auto moment = Environment::moment_of(
+        Environment::conditions_from(runtime_inputs, std::chrono::system_clock::now()));
 
     // Scenes that recently crashed or bailed out immediately sit out a backoff
     // cooldown. If nothing else is eligible they are still better than the
@@ -81,6 +126,17 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                 continue;
             const auto profile = Scenes::effective_profile(descriptor, variant);
             const auto role = presentation_role(profile);
+
+            // Holiday scenes (tag "occasion:<id>") only play while their
+            // occasion is on: by the calendar or forced in the web UI.
+            bool occasion_scene = false, occasion_on = false;
+            for (const auto& tag : profile.tags)
+                if (tag.rfind("occasion:", 0) == 0) {
+                    occasion_scene = true;
+                    occasion_on = occasion_on || occasion_active(moment, std::string_view(tag).substr(9));
+                }
+            if (occasion_scene && !occasion_on)
+                continue;
 
             // Tool availability makes SpotifyMV manually usable, but Automatic Mode
             // waits for a decoded first frame for this exact track. This keeps the
@@ -121,7 +177,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                 candidate.reasons.push_back("visually curated showcase scene");
             }
 
-            if (context.audio_active) {
+            if (music_casting) {
                 // Music-first casting: while music plays, looks that visibly
                 // react to it lead; ambient scenery only appears as a short
                 // breather during calm passages after a run of music looks.
@@ -227,6 +283,70 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
                     if (context.spotify_mv_ready)
                         candidate.reasons.push_back("prepared SpotifyMV frame matches this track");
                 }
+            }
+
+            // ---- director mode and the real-world moment --------------------
+            const float fit = environment_fit(profile.tags, moment);
+            const bool adaptive = has_tag(profile.tags, "environment-adaptive");
+            const bool scenery = adaptive || occasion_scene
+                || has_any_tag(profile.tags, {"scenery", "landscape", "nature"});
+            const bool calm_tags = has_any_tag(profile.tags, {"calm", "soft", "minimal", "airy"});
+            auto add_fit = [&](float weight) {
+                candidate.score += weight * fit;
+                if (fit > 0.4f)
+                    candidate.reasons.push_back("fits the time, weather or season outside");
+                else if (fit < -0.4f)
+                    candidate.reasons.push_back("does not fit the time, weather or season outside");
+            };
+            switch (mode_) {
+                case Mode::Mixed:
+                    add_fit(weight::environment_fit_mixed);
+                    if (occasion_on) {
+                        candidate.score += weight::occasion_mixed;
+                        candidate.reasons.push_back("holiday scene while the holiday is on");
+                    }
+                    break;
+                case Mode::Environment:
+                    add_fit(weight::environment_fit_strong);
+                    if (adaptive) {
+                        candidate.score += weight::environment_adaptive;
+                        candidate.reasons.push_back("shows the real time, weather and season");
+                    }
+                    if (occasion_on) {
+                        candidate.score += weight::occasion_strong;
+                        candidate.reasons.push_back("holiday scene while the holiday is on");
+                    }
+                    if (!scenery) {
+                        candidate.score -= weight::off_mode;
+                        candidate.reasons.push_back("not scenery (environment mode)");
+                    }
+                    break;
+                case Mode::Party:
+                    add_fit(0.10f);
+                    if (is_music_look(profile) || has_tag(profile.tags, "music-showcase")) {
+                        candidate.score += weight::party_music;
+                        candidate.reasons.push_back("music look (party mode)");
+                    }
+                    if (has_any_tag(profile.tags, {"energetic", "vivid", "dense", "party", "style:party", "style:edm"}))
+                        candidate.score += 0.30f;
+                    if (role == "ambient" && profile.intensity < 0.40f) {
+                        candidate.score -= weight::off_mode * 0.65f;
+                        candidate.reasons.push_back("too calm for party mode");
+                    }
+                    if (occasion_on)
+                        candidate.score += 0.30f;
+                    break;
+                case Mode::Chill:
+                    add_fit(0.50f);
+                    if (calm_tags)
+                        candidate.score += 0.30f;
+                    if (profile.intensity > 0.55f) {
+                        candidate.score -= (profile.intensity - 0.55f) * 3.0f;
+                        candidate.reasons.push_back("too intense for chill mode");
+                    }
+                    if (occasion_on)
+                        candidate.score += 0.50f;
+                    break;
             }
 
             const auto memory = memory_.find(scene->get_name());
@@ -370,7 +490,9 @@ tmillis_t AutomaticDirector::presentation_duration(
     if (!scene)
         return 20000;
 
-    const auto context = music_context(runtime_inputs);
+    auto context = music_context(runtime_inputs);
+    // Scenery modes pace by the scene, not by the music.
+    context.audio_active = music_led(context);
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
     const auto profile = Scenes::effective_profile(descriptor, variant);
@@ -408,6 +530,8 @@ tmillis_t AutomaticDirector::presentation_duration(
     if (presentation_role(profile) != "media") {
         const float influence = context.audio_active ? 0.25f : 1.0f;
         seconds *= 1.0f + (journey_.frame().dwell_scale - 1.0f) * influence;
+        // Scenery wants long looks, a party quick ones.
+        seconds *= mode_ == Mode::Environment ? 1.4f : mode_ == Mode::Chill ? 1.3f : mode_ == Mode::Party ? 0.75f : 1.0f;
     }
 
     const auto memory = memory_.find(scene->get_name());
@@ -416,5 +540,5 @@ tmillis_t AutomaticDirector::presentation_duration(
         > performance_budget + 0.12f)
         seconds = std::min(seconds, 18.0f);
 
-    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, 75.0f) * 1000.0f);
+    return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, mode_ == Mode::Party ? 60.0f : 90.0f) * 1000.0f);
 }

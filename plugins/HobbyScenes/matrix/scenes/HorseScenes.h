@@ -12,6 +12,7 @@ class SunsetGallopScene final : public HobbySceneBase {
     std::vector<Dust> dust_;
     float gait_phase_ = 0.0f, scroll_ = 0.0f;
 public:
+    SunsetGallopScene();
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     [[nodiscard]] std::string get_name() const override { return "horse_sunset_gallop"; }
     [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
@@ -22,6 +23,7 @@ class MistyHerdScene final : public HobbySceneBase {
     std::vector<Member> herd_;
     float mist_ = 0.0f;
 public:
+    MistyHerdScene();
     void initialize(int width, int height) override;
     bool render(rgb_matrix::FrameCanvas *canvas) override;
     [[nodiscard]] std::string get_name() const override { return "horse_misty_herd"; }

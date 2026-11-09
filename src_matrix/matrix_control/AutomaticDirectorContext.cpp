@@ -196,9 +196,54 @@ float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::
 
 using namespace AutomaticDirectorDetail;
 
+std::optional<AutomaticDirector::Mode> AutomaticDirector::parse_mode(std::string_view id)
+{
+    if (id == "mixed")
+        return Mode::Mixed;
+    if (id == "environment")
+        return Mode::Environment;
+    if (id == "party")
+        return Mode::Party;
+    if (id == "chill")
+        return Mode::Chill;
+    return std::nullopt;
+}
+
+const char* AutomaticDirector::mode_name(Mode mode)
+{
+    switch (mode) {
+        case Mode::Mixed: return "mixed";
+        case Mode::Environment: return "environment";
+        case Mode::Party: return "party";
+        case Mode::Chill: return "chill";
+    }
+    return "mixed";
+}
+
+void AutomaticDirector::shape_for_mode(Context& c) const
+{
+    switch (mode_) {
+        case Mode::Mixed:
+            break;
+        case Mode::Environment:
+            c.target_intensity = 0.18f + 0.30f * c.target_intensity;
+            c.target_motion = 0.20f + 0.30f * c.target_motion;
+            break;
+        case Mode::Chill:
+            c.target_intensity = 0.16f + 0.25f * c.target_intensity;
+            c.target_motion = 0.16f + 0.25f * c.target_motion;
+            break;
+        case Mode::Party:
+            c.target_intensity = 0.60f + 0.38f * c.target_intensity;
+            c.target_motion = 0.58f + 0.38f * c.target_motion;
+            break;
+    }
+}
+
 AutomaticDirector::Context AutomaticDirector::observe(const RuntimeInputs::Snapshot& runtime_inputs)
 {
     auto c = context_for(runtime_inputs, journey_.frame());
+    shape_for_mode(c);
     if (c.audio_active) {
         if (!phrase_primed_) {
             phrase_intensity_ = c.target_intensity;
@@ -223,6 +268,7 @@ AutomaticDirector::Context AutomaticDirector::observe(const RuntimeInputs::Snaps
 AutomaticDirector::Context AutomaticDirector::music_context(const RuntimeInputs::Snapshot& runtime_inputs) const
 {
     auto c = context_for(runtime_inputs, journey_.frame());
+    shape_for_mode(c);
     if (c.audio_active && phrase_primed_) {
         c.target_intensity = phrase_intensity_;
         c.target_motion = phrase_motion_;

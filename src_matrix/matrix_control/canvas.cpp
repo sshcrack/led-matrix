@@ -84,6 +84,11 @@ void CanvasCoordinator::ensure_automatic_catalog()
 
 void CanvasCoordinator::sync_automatic_preferences()
 {
+    const auto mode = AutomaticDirector::parse_mode(config_->get_automatic_director_mode()).value_or(AutomaticDirector::Mode::Mixed);
+    if (automatic_director_.mode() != mode) {
+        automatic_director_.set_mode(mode);
+        info("Automatic Director mode: {}", AutomaticDirector::mode_name(mode));
+    }
     const auto version = config_->get_automatic_preferences_version();
     if (automatic_preferences_version_ == version) return;
     automatic_director_.set_preferences(config_->get_automatic_preferences());

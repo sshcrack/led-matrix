@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 
 #include "matrix_control/AutomaticDirector.h"
 
@@ -240,6 +241,18 @@ int main()
     if (!mv_decision.scene || mv_decision.scene->get_name() != "spotifymv") {
         std::cerr << "preferred event candidate was lost during final Director selection\n";
         return 21;
+    }
+
+    // Spotify cuts (track intros, music-video insertion) belong to the
+    // music-led modes; Outside and Chill keep their scenery dwell.
+    for (const auto mode : {AutomaticDirector::Mode::Environment, AutomaticDirector::Mode::Chill}) {
+        AutomaticDirector calm(31);
+        calm.set_mode(mode);
+        const auto calm_switch = calm.consider_switch(spotify_scenes, spotify_scenes.front(), mid_track, 9000, 60000);
+        if (calm_switch.should_switch) {
+            std::cerr << "a calm mode let Spotify cut the scene: " << calm_switch.reason << "\n";
+            return 68;
+        }
     }
 
     RuntimeInputs::publish(
@@ -647,6 +660,80 @@ int main()
         }
     }
     std::filesystem::remove(config_path);
+
+    // Modes, real-world fit (fits:<id> tags) and holiday gating (occasion:<id>).
+    {
+        using Mode = AutomaticDirector::Mode;
+        for (const auto mode : {Mode::Mixed, Mode::Environment, Mode::Party, Mode::Chill})
+            if (AutomaticDirector::parse_mode(AutomaticDirector::mode_name(mode)) != mode) {
+                std::cerr << "director mode name does not round-trip\n";
+                return 60;
+            }
+        if (AutomaticDirector::parse_mode("bogus")) {
+            std::cerr << "unknown director mode was accepted\n";
+            return 61;
+        }
+
+        RuntimeInputs::clear_all();
+        const std::vector<std::shared_ptr<Scenes::Scene>> pool{
+            std::make_shared<TestScene>("rainy_night", .2f, .1f, .2f, false, "scenery-a", .2f,
+                                        std::vector<std::string>{"scenery", "calm", "environment-adaptive", "fits:rain", "fits:night"}),
+            std::make_shared<TestScene>("sunny_day", .25f, .1f, .2f, false, "scenery-b", .25f,
+                                        std::vector<std::string>{"scenery", "calm", "fits:clear", "fits:day"}),
+            std::make_shared<TestScene>("xmas", .25f, .1f, .2f, false, "christmas", .25f,
+                                        std::vector<std::string>{"scenery", "occasion:christmas", "fits:winter"}),
+            std::make_shared<TestScene>("rave", .9f, .6f, .2f, false, "party", .9f,
+                                        std::vector<std::string>{"energetic", "vivid", "party"}),
+        };
+        auto score_of = [](const std::vector<AutomaticDirector::Candidate>& ranked, const std::string& name) -> std::optional<float> {
+            for (const auto& c : ranked)
+                if (c.scene->get_name() == name)
+                    return c.score;
+            return std::nullopt;
+        };
+        AutomaticDirector modes(11);
+        if (score_of(modes.rank(pool, RuntimeInputs::snapshot()), "xmas")) {
+            std::cerr << "holiday scene played without its holiday\n";
+            return 62;
+        }
+        RuntimeInputs::set_available(RuntimeInputIds::Environment, true,
+                                     RuntimeInputs::Signals{{"real_world", false},
+                                                            {"time_override", std::string("night")},
+                                                            {"weather_override", std::string("rain")},
+                                                            {"season_override", std::string("winter")},
+                                                            {"occasions", std::string("christmas")}});
+        const auto snap = RuntimeInputs::snapshot();
+        const auto mixed = modes.rank(pool, snap);
+        if (!score_of(mixed, "xmas")) {
+            std::cerr << "holiday scene missing while its holiday is on\n";
+            return 63;
+        }
+        if (*score_of(mixed, "rainy_night") <= *score_of(mixed, "sunny_day")) {
+            std::cerr << "Mixed mode does not prefer the scene that fits a rainy night\n";
+            return 64;
+        }
+        modes.set_mode(Mode::Environment);
+        const auto environment = modes.rank(pool, snap);
+        if (*score_of(environment, "rave") >= *score_of(mixed, "rave") ||
+            *score_of(environment, "rainy_night") - *score_of(environment, "sunny_day") <=
+                *score_of(mixed, "rainy_night") - *score_of(mixed, "sunny_day")) {
+            std::cerr << "Environment mode does not weigh real-world fit over non-scenery\n";
+            return 65;
+        }
+        modes.set_mode(Mode::Party);
+        const auto party = modes.rank(pool, snap);
+        if (*score_of(party, "rave") <= *score_of(party, "rainy_night")) {
+            std::cerr << "Party mode does not prefer the energetic scene\n";
+            return 66;
+        }
+        modes.set_mode(Mode::Chill);
+        const auto chill = modes.rank(pool, snap);
+        if (*score_of(chill, "rave") >= *score_of(mixed, "rave")) {
+            std::cerr << "Chill mode does not push intense scenes down\n";
+            return 67;
+        }
+        RuntimeInputs::clear_all();
+    }
 
     std::cout << "automatic director ranks context, persists seeds, and reproduces complete seeded sequences\n";
 }

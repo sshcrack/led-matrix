@@ -96,6 +96,23 @@ namespace Config {
         this->mark_dirty();
     }
 
+    string MainConfig::get_automatic_director_mode() {
+        shared_lock lock(this->data_mutex);
+        return this->data.automatic_director_mode;
+    }
+
+    void MainConfig::set_automatic_director_mode(const string &mode) {
+        if (mode != "mixed" && mode != "environment" && mode != "party" && mode != "chill")
+            throw std::invalid_argument("mode must be 'mixed', 'environment', 'party' or 'chill'");
+        {
+            unique_lock lock(this->data_mutex);
+            if (this->data.automatic_director_mode == mode)
+                return;
+            this->data.automatic_director_mode = mode;
+        }
+        this->mark_dirty();
+    }
+
     map<string, string> MainConfig::get_automatic_preferences() {
         shared_lock lock(this->data_mutex);
         return this->data.automatic_preferences;
@@ -417,6 +434,35 @@ spdlog::info("Setting preset {}", id);
         unique_lock lock(this->data_mutex);
         this->data.brightness_schedule = schedule;
         this->mark_dirty();
+    }
+
+    Environment::Settings MainConfig::get_environment() {
+        shared_lock lock(this->data_mutex);
+        return this->data.environment;
+    }
+
+    void MainConfig::set_environment_detected(double latitude, double longitude, string label) {
+        {
+            unique_lock lock(this->data_mutex);
+            auto &env = this->data.environment;
+            env.detected_latitude = latitude;
+            env.detected_longitude = longitude;
+            env.detected_label = std::move(label);
+        }
+        unique_lock lock(this->update_mutex);
+        this->dirty = true;
+    }
+
+    void MainConfig::set_environment(Environment::Settings settings) {
+        settings.sanitize();
+        {
+            unique_lock lock(this->data_mutex);
+            this->data.environment = std::move(settings);
+        }
+        // Scenes pick environment changes up live; unlike mark_dirty() this
+        // must not restart the running scene.
+        unique_lock lock(this->update_mutex);
+        this->dirty = true;
     }
 
     bool MainConfig::is_scheduling_enabled() {

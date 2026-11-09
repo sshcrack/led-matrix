@@ -2,7 +2,7 @@
  * preview_gen: Generates animated GIF previews for all registered matrix scenes.
  *
  * Usage:
- *   preview_gen [--output <dir>] [--scene <name>] [--scenes <n1,n2,...>]
+ *   preview_gen [--output <dir>] [--scene <name>] [--scenes <n1,n2/variant,...>]
  *               [--frames <n>] [--fps <n>] [--width <n>] [--height <n>]
  *               [--dump-manifest] [--manifest-out <file>]
  *               [--metrics-out <file>] [--audio-bpm <n>]
@@ -542,145 +542,151 @@ int main(int argc, char* argv[])
         if (args.virtual_time_only && !default_scene->supports_virtual_time())
             continue;
 
-        // Apply scene filter (--scene or --scenes)
-        if (!args.filter_scenes.empty()) {
-            bool found = false;
-            for (const auto& f : args.filter_scenes)
-                if (f == scene_name) {
-                    found = true;
-                    break;
-                }
-            if (!found)
-                continue;
+        // Apply scene filter (--scene or --scenes). "scene/variant" renders a
+        // curated variant (SceneDescriptor::variants) to "scene--variant".
+        std::vector<std::string> variants;
+        if (args.filter_scenes.empty())
+            variants.emplace_back();
+        for (const auto& f : args.filter_scenes) {
+            if (f == scene_name)
+                variants.emplace_back();
+            else if (f.size() > scene_name.size() + 1 && f.compare(0, scene_name.size(), scene_name) == 0 &&
+                     f[scene_name.size()] == '/')
+                variants.push_back(f.substr(scene_name.size() + 1));
         }
 
-        ++attempted;
-        spdlog::info("Rendering preview for '{}' ({} frames @ {} fps)…", scene_name, args.total_frames, args.fps);
+        for (const auto& variant : variants) {
+            const std::string out_name = variant.empty() ? scene_name : scene_name + "--" + variant;
+            ++attempted;
+            spdlog::info("Rendering preview for '{}' ({} frames @ {} fps)…", out_name, args.total_frames, args.fps);
 
-        // Per-scene crash isolation: wrap the entire render in try/catch so a
-        // single broken scene does not abort the rest of the batch.
-        try {
-            // Create a fresh instance so each scene starts from t=0.
-            // After register_properties(), dump default values back to a JSON object
-            // so that load_properties() can set registered=true even for required
-            // properties that have no user-supplied value.
-            auto scene = wrapper->create();
-            scene->update_default_properties();
-            scene->register_properties();
+            // Per-scene crash isolation: wrap the entire render in try/catch so a
+            // single broken scene does not abort the rest of the batch.
+            try {
+                // Create a fresh instance so each scene starts from t=0.
+                // After register_properties(), dump default values back to a JSON object
+                // so that load_properties() can set registered=true even for required
+                // properties that have no user-supplied value.
+                auto scene = wrapper->create();
+                scene->update_default_properties();
+                scene->register_properties();
 
-            nlohmann::json default_props = nlohmann::json::object();
-            for (const auto& prop : scene->get_properties()) prop->dump_to_json(default_props);
-            for (const auto& [name, value] : preview_spec.property_overrides.items()) default_props[name] = value;
+                nlohmann::json default_props = nlohmann::json::object();
+                for (const auto& prop : scene->get_properties()) prop->dump_to_json(default_props);
+                for (const auto& [name, value] : preview_spec.property_overrides.items()) default_props[name] = value;
 
-            scene->load_properties(default_props);
+                scene->load_properties(default_props);
+                if (!variant.empty())
+                    scene->apply_variant(variant);
 
-            struct ProviderSession {
-                std::vector<std::shared_ptr<Previews::DataProvider> > started;
-                ~ProviderSession()
-                {
-                    for (auto it = started.rbegin(); it != started.rend(); ++it) (*it)->end();
-                }
-            } provider_session;
-            for (const auto& provider : scene_preview_providers) {
-                provider_session.started.push_back(provider);
-                provider->begin(preview_run_context);
-            }
-
-            scene->initialize(args.matrix_width, args.matrix_height);
-            scene->force_render_quality_scale(args.quality);
-
-            std::vector<Magick::Image> frames;
-            std::ofstream raw_stream;
-            int raw_frames = 0;
-            if (!args.raw_out.empty()) {
-                fs::create_directories(args.raw_out, ec);
-                raw_stream.open(fs::path(args.raw_out) / (scene_name + ".rgb"), std::ios::binary);
-            }
-            else
-                frames.reserve(static_cast<size_t>(args.total_frames));
-            std::vector<uint8_t> previous_rgb;
-            VisualMetricAccumulator metric_accumulator;
-            int identical_tail_frames = 0;
-
-            const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
-            for (int f = 0; f < args.total_frames; ++f) {
-                const Scenes::SceneFrameContext preview_frame{
-                    .delta_seconds = preview_dt,
-                    .elapsed_seconds = static_cast<double>(f) * preview_dt,
-                    .frame_index = static_cast<std::uint64_t>(f),
-                    .now_ms = static_cast<std::uint64_t>(static_cast<double>(f) * preview_dt * 1000.0),
-                    .deterministic = true,
-                };
-                for (const auto& provider : scene_preview_providers) provider->update(preview_frame);
-                canvas->Clear();
-                bool keep_going = true;
-                if (scene->supports_virtual_time()) {
-                    // Migrated scenes can use fast virtual frame time.
-                    keep_going = scene->render_frame(canvas, preview_dt, true);
-                }
-                else {
-                    // Preserve correct animation for legacy wall-clock scenes.
-                    std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
-                    keep_going = scene->render_frame(canvas);
+                struct ProviderSession {
+                    std::vector<std::shared_ptr<Previews::DataProvider> > started;
+                    ~ProviderSession()
+                    {
+                        for (auto it = started.rbegin(); it != started.rend(); ++it) (*it)->end();
+                    }
+                } provider_session;
+                for (const auto& provider : scene_preview_providers) {
+                    provider_session.started.push_back(provider);
+                    provider->begin(preview_run_context);
                 }
 
-                const auto rgb = capture_canvas(canvas, args.matrix_width, args.matrix_height);
-                if (!previous_rgb.empty() && rgb == previous_rgb)
-                    ++identical_tail_frames;
+                scene->initialize(args.matrix_width, args.matrix_height);
+                scene->force_render_quality_scale(args.quality);
+
+                std::vector<Magick::Image> frames;
+                std::ofstream raw_stream;
+                int raw_frames = 0;
+                if (!args.raw_out.empty()) {
+                    fs::create_directories(args.raw_out, ec);
+                    raw_stream.open(fs::path(args.raw_out) / (out_name + ".rgb"), std::ios::binary);
+                }
                 else
-                    identical_tail_frames = 0;
-                metric_accumulator.add(rgb, previous_rgb);
-                previous_rgb = rgb;
+                    frames.reserve(static_cast<size_t>(args.total_frames));
+                std::vector<uint8_t> previous_rgb;
+                VisualMetricAccumulator metric_accumulator;
+                int identical_tail_frames = 0;
+
+                const double preview_dt = 1.0 / static_cast<double>(std::max(1, args.fps));
+                for (int f = 0; f < args.total_frames; ++f) {
+                    const Scenes::SceneFrameContext preview_frame{
+                        .delta_seconds = preview_dt,
+                        .elapsed_seconds = static_cast<double>(f) * preview_dt,
+                        .frame_index = static_cast<std::uint64_t>(f),
+                        .now_ms = static_cast<std::uint64_t>(static_cast<double>(f) * preview_dt * 1000.0),
+                        .deterministic = true,
+                    };
+                    for (const auto& provider : scene_preview_providers) provider->update(preview_frame);
+                    canvas->Clear();
+                    bool keep_going = true;
+                    if (scene->supports_virtual_time()) {
+                        // Migrated scenes can use fast virtual frame time.
+                        keep_going = scene->render_frame(canvas, preview_dt, true);
+                    }
+                    else {
+                        // Preserve correct animation for legacy wall-clock scenes.
+                        std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
+                        keep_going = scene->render_frame(canvas);
+                    }
+
+                    const auto rgb = capture_canvas(canvas, args.matrix_width, args.matrix_height);
+                    if (!previous_rgb.empty() && rgb == previous_rgb)
+                        ++identical_tail_frames;
+                    else
+                        identical_tail_frames = 0;
+                    metric_accumulator.add(rgb, previous_rgb);
+                    previous_rgb = rgb;
+                    if (raw_stream.is_open()) {
+                        raw_stream.write(reinterpret_cast<const char*>(rgb.data()), static_cast<std::streamsize>(rgb.size()));
+                        ++raw_frames;
+                    }
+                    else
+                        frames.push_back(make_frame(rgb, args.matrix_width, args.matrix_height, frame_delay_cs));
+
+                    if (!keep_going) {
+                        spdlog::debug("Scene '{}' stopped at frame {}/{}", scene_name, f + 1, args.total_frames);
+                        if (args.strict && f + 1 < args.total_frames)
+                            ++skipped;
+                        break;
+                    }
+                }
+
                 if (raw_stream.is_open()) {
-                    raw_stream.write(reinterpret_cast<const char*>(rgb.data()), static_cast<std::streamsize>(rgb.size()));
-                    ++raw_frames;
+                    visual_metrics[out_name] = metric_accumulator.json();
+                    spdlog::info("Saved {} raw frames for '{}' → {}", raw_frames, out_name, args.raw_out);
+                    ++generated;
+                    continue;
                 }
-                else
-                    frames.push_back(make_frame(rgb, args.matrix_width, args.matrix_height, frame_delay_cs));
-
-                if (!keep_going) {
-                    spdlog::debug("Scene '{}' stopped at frame {}/{}", scene_name, f + 1, args.total_frames);
-                    if (args.strict && f + 1 < args.total_frames)
-                        ++skipped;
-                    break;
+                if (frames.empty()) {
+                    spdlog::warn("No frames captured for '{}', skipping.", scene_name);
+                    ++skipped;
+                    continue;
                 }
-            }
+                if (args.strict && frames.size() >= 6 && identical_tail_frames >= 5) {
+                    spdlog::warn("Scene '{}' stopped changing during its final {} frames.", scene_name, identical_tail_frames + 1);
+                    ++skipped;
+                }
 
-            if (raw_stream.is_open()) {
-                visual_metrics[scene_name] = metric_accumulator.json();
-                spdlog::info("Saved {} raw frames for '{}' → {}", raw_frames, scene_name, args.raw_out);
+                visual_metrics[out_name] = metric_accumulator.json();
+
+                // Quantise colours (required for GIF palette, 256 colours max)
+                Magick::quantizeImages(frames.begin(), frames.end());
+
+                const fs::path gif_path = fs::path(args.output_dir) / Previews::preview_filename(out_name);
+
+                Magick::writeImages(frames.begin(), frames.end(), gif_path.string());
+                spdlog::info("Saved preview → {}", gif_path.string());
                 ++generated;
-                continue;
             }
-            if (frames.empty()) {
-                spdlog::warn("No frames captured for '{}', skipping.", scene_name);
-                ++skipped;
-                continue;
-            }
-            if (args.strict && frames.size() >= 6 && identical_tail_frames >= 5) {
-                spdlog::warn("Scene '{}' stopped changing during its final {} frames.", scene_name, identical_tail_frames + 1);
+            catch (const std::exception& e) {
+                spdlog::warn("Scene '{}' failed ({}); skipping — existing preview (if any) preserved.", scene_name, e.what());
                 ++skipped;
             }
-
-            visual_metrics[scene_name] = metric_accumulator.json();
-
-            // Quantise colours (required for GIF palette, 256 colours max)
-            Magick::quantizeImages(frames.begin(), frames.end());
-
-            const fs::path gif_path = fs::path(args.output_dir) / Previews::preview_filename(scene_name);
-
-            Magick::writeImages(frames.begin(), frames.end(), gif_path.string());
-            spdlog::info("Saved preview → {}", gif_path.string());
-            ++generated;
-        }
-        catch (const std::exception& e) {
-            spdlog::warn("Scene '{}' failed ({}); skipping — existing preview (if any) preserved.", scene_name, e.what());
-            ++skipped;
-        }
-        catch (...) {
-            spdlog::warn("Scene '{}' threw an unknown exception; skipping.", scene_name);
-            ++skipped;
-        }
+            catch (...) {
+                spdlog::warn("Scene '{}' threw an unknown exception; skipping.", scene_name);
+                ++skipped;
+            }
+        }  // variants
     }
 
     if (!args.metrics_out.empty()) {

@@ -1,4 +1,5 @@
-import { Check, Loader2, Moon, Power, Sparkles, TriangleAlert, Hand } from 'lucide-react'
+import { Check, CloudSun, Coffee, Loader2, Moon, PartyPopper, Power, Shuffle, Sparkles, TriangleAlert, Hand } from 'lucide-react'
+import type { DirectorMode } from '~/apiTypes/status'
 import { cn } from '~/lib/utils'
 import { useMatrix } from '../matrixContext'
 import type { SaveState } from '../usePresetEditor'
@@ -20,6 +21,30 @@ export function ModeSwitch({ className }: { className?: string }) {
   return <div role="radiogroup" aria-label="Operation mode" className={cn('inline-flex rounded-full bg-secondary p-1', className)}>
     <button role="radio" aria-checked={auto} className={seg(auto)} onClick={() => void setMode('automatic')}><Sparkles className="h-3.5 w-3.5" />Auto</button>
     <button role="radio" aria-checked={!auto} className={seg(!auto)} onClick={() => void setMode('manual')}><Hand className="h-3.5 w-3.5" />Manual</button>
+  </div>
+}
+
+const DIRECTOR_MODES: { id: DirectorMode; label: string; hint: string; icon: React.ReactNode }[] = [
+  { id: 'mixed', label: 'Mixed', hint: 'Everything; music looks lead while music plays', icon: <Shuffle className="h-3.5 w-3.5" /> },
+  { id: 'environment', label: 'Outside', hint: 'Calm scenery that matches the real time, weather, season and holidays', icon: <CloudSun className="h-3.5 w-3.5" /> },
+  { id: 'party', label: 'Party', hint: 'High-energy music looks and quicker cuts', icon: <PartyPopper className="h-3.5 w-3.5" /> },
+  { id: 'chill', label: 'Chill', hint: 'Low intensity, slow motion, long looks', icon: <Coffee className="h-3.5 w-3.5" /> },
+]
+
+/** What the director is for. Only meaningful while Automatic Mode runs. */
+export function DirectorModePicker({ className }: { className?: string }) {
+  const { status, setDirectorMode } = useMatrix()
+  if (status?.director_mode === undefined) return null  // older daemon
+  const current = status.director_mode
+  return <div role="radiogroup" aria-label="Director style" className={cn('flex flex-wrap gap-2', className)}>
+    {DIRECTOR_MODES.map(m => {
+      const active = m.id === current
+      return <button key={m.id} role="radio" aria-checked={active} title={m.hint} onClick={() => void setDirectorMode(m.id)}
+        className={cn('inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition',
+          active ? 'border-primary bg-primary/15 text-foreground' : 'border-border text-muted-foreground hover:text-foreground')}>
+        {m.icon}{m.label}
+      </button>
+    })}
   </div>
 }
 

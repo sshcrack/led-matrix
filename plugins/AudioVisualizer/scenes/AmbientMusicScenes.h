@@ -17,6 +17,11 @@
 
 #include <vector>
 
+#include <memory>
+
+#include <shared/matrix/environment/look.h>
+#include <shared/matrix/environment/paint.h>
+
 #include "kit/AmbientMusicScene.h"
 
 namespace Scenes {
@@ -167,9 +172,21 @@ class AudioCampfireScene final : public AmbientMusicScene {
     std::vector<Spark> sparks_;
     AudioKit::Envelope beat_, drop_;
     float glow_ = 0.5f;
+    float drive_ = 0.5f;  // smoothed fire drive: beats would rise as horizontal bands
     PropertyPointer<float> fireSize_ = MAKE_PROPERTY_MINMAX("fire_size", float, 1.0f, 0.5f, 1.6f);
+    // Always night; follows the real weather and season (snow, rain, mist).
+    std::unique_ptr<Environment::SceneEnvironment> env_;
+    Environment::Precipitation precip_;
 
 public:
+    AudioCampfireScene();
+    void initialize(int width, int height) override;
+    void set_random_seed(uint32_t seed) override
+    {
+        rng_.seed(seed);
+        precip_.set_seed(seed + 1);
+        env_->set_random_seed(seed + 2);
+    }
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_campfire"; }
