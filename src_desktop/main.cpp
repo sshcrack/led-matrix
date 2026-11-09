@@ -58,11 +58,6 @@ int run_app(int argc, char *argv[]) {
     CrashReporter::set_activity("initializing desktop controller");
     spdlog::info("Crash reports are written to {}", crash_dir.string());
 
-    if (SelfUpdate::is_managed_install()) {
-        // The version we updated away from is no longer running: drop it.
-        try { SelfUpdate::prune(); } catch (const std::exception &e) { spdlog::warn("Pruning old versions: {}", e.what()); }
-    }
-
     SingleInstanceManager *instanceManager = nullptr;
     try {
         instanceManager = new SingleInstanceManager("LedMatrixController", [] {
@@ -71,6 +66,12 @@ int run_app(int argc, char *argv[]) {
         });
     } catch ([[maybe_unused]] const std::exception &e) {
         return 0;
+    }
+
+    // Only the primary instance prunes, and only while no update holds the install lock.
+    if (SelfUpdate::is_managed_install()) {
+        // The version we updated away from is no longer running: drop it.
+        try { SelfUpdate::prune(); } catch (const std::exception &e) { spdlog::warn("Pruning old versions: {}", e.what()); }
     }
 
     auto pl = Plugins::PluginManager::instance();

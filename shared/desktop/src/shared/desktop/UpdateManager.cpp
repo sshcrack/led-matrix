@@ -42,6 +42,9 @@ namespace UpdateChecker
             std::string reason;        // Prompt: why this version
             std::string message;       // Result / Failed
             std::string status;        // menu status line
+            // The release we asked the matrix to install, and until when we wait for it.
+            // Fixed per target: a matrix that never gets there stops blocking the desktop.
+            Common::Version matrixWaitTarget{};
             Clock::time_point matrixWaitUntil{};
             std::atomic<size_t> downloaded{0};
             std::atomic<size_t> total{0};
@@ -121,23 +124,49 @@ namespace UpdateChecker
                     spdlog::info("Desktop update check: {}, following the latest release", m.error());
 
                 // A newer release is out and the matrix updates itself: have it update now, then follow it.
+                // Wait only while the matrix accepted that (or is already busy), and at most
+                // MATRIX_WAIT_LIMIT per release; after that match whatever the matrix runs.
                 if (matrix && latest && latest->version > matrix->version && matrix->autoUpdateEnabled)
                 {
-                    if (!matrix->busy)
-                    {
-                        if (auto r = UpdateChecker::requestMatrixUpdate(host, port, latest->version))
-                            spdlog::info("Asked the matrix to update {} -> {}", v(matrix->version), v(latest->version));
-                        else
-                            spdlog::warn("Could not ask the matrix to update: {}", r.error());
-                    }
+                    bool expired = false;
                     {
                         std::lock_guard lock(state->mutex);
-                        state->matrixWaitUntil = Clock::now() + MATRIX_WAIT_LIMIT;
+                        expired = state->matrixWaitTarget == latest->version && Clock::now() >= state->matrixWaitUntil;
                     }
-                    finish("The matrix is updating to " + v(latest->version) +
-                               ". The desktop app follows as soon as the matrix runs it.",
-                           "Waiting for the matrix to update to " + v(latest->version));
-                    return;
+                    bool waiting = false;
+                    std::string requestError;
+                    if (!expired)
+                    {
+                        if (matrix->busy)
+                            waiting = true;
+                        else if (auto r = UpdateChecker::requestMatrixUpdate(host, port, latest->version))
+                        {
+                            spdlog::info("Asked the matrix to update {} -> {}", v(matrix->version), v(latest->version));
+                            waiting = true;
+                        }
+                        else
+                        {
+                            requestError = r.error();
+                            spdlog::warn("Could not ask the matrix to update: {}", requestError);
+                        }
+                    }
+                    if (waiting)
+                    {
+                        {
+                            std::lock_guard lock(state->mutex);
+                            if (!(state->matrixWaitTarget == latest->version))
+                            {
+                                state->matrixWaitTarget = latest->version;
+                                state->matrixWaitUntil = Clock::now() + MATRIX_WAIT_LIMIT;
+                            }
+                        }
+                        finish("The matrix is updating to " + v(latest->version) +
+                                   ". The desktop app follows as soon as the matrix runs it.",
+                               "Waiting for the matrix to update to " + v(latest->version));
+                        return;
+                    }
+                    spdlog::warn("The matrix did not update to {} ({}); matching its {} instead", v(latest->version),
+                                 expired ? "timed out" : requestError, v(matrix->version));
                 }
             }
 

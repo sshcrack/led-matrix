@@ -25,7 +25,9 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #else
+#include <fcntl.h>
 #include <spawn.h>
+#include <sys/file.h>
 #include <sys/wait.h>
 #include <unistd.h>
 extern char **environ;
@@ -381,6 +383,67 @@ namespace SelfUpdate
                 spdlog::warn("Could not point autostart at the new install: {}", r.error());
         }
 
+        /// Cross-process lock on <root>/.install.lock: one install, update or prune at a time,
+        /// so a second app instance or a concurrent `--install` cannot delete files an update
+        /// is still writing. Not reentrant: take it only in the public entry points.
+        class InstallLock
+        {
+        public:
+            explicit InstallLock(bool wait)
+            {
+                const fs::path root = install_root();
+                std::error_code ec;
+                fs::create_directories(root, ec);
+                const fs::path file = root / ".install.lock";
+#ifdef _WIN32
+                handle_ = CreateFileW(file.wstring().c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                      nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (handle_ == INVALID_HANDLE_VALUE)
+                    return;
+                OVERLAPPED ov{};
+                const DWORD flags = LOCKFILE_EXCLUSIVE_LOCK | (wait ? 0 : LOCKFILE_FAIL_IMMEDIATELY);
+                held_ = LockFileEx(handle_, flags, 0, 1, 0, &ov) != 0;
+#else
+                fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+                if (fd_ < 0)
+                    return;
+                int rc;
+                do
+                    rc = flock(fd_, LOCK_EX | (wait ? 0 : LOCK_NB));
+                while (rc != 0 && errno == EINTR);
+                held_ = rc == 0;
+#endif
+            }
+            ~InstallLock()
+            {
+#ifdef _WIN32
+                if (handle_ != INVALID_HANDLE_VALUE)
+                {
+                    if (held_)
+                    {
+                        OVERLAPPED ov{};
+                        UnlockFileEx(handle_, 0, 1, 0, &ov);
+                    }
+                    CloseHandle(handle_);
+                }
+#else
+                if (fd_ >= 0)
+                    close(fd_); // releases the flock
+#endif
+            }
+            InstallLock(const InstallLock &) = delete;
+            InstallLock &operator=(const InstallLock &) = delete;
+            bool held() const { return held_; }
+
+        private:
+#ifdef _WIN32
+            HANDLE handle_ = INVALID_HANDLE_VALUE;
+#else
+            int fd_ = -1;
+#endif
+            bool held_ = false;
+        };
+
         void report(const std::string &message, bool error)
         {
             (error ? std::cerr : std::cout) << message << std::endl;
@@ -414,8 +477,12 @@ namespace SelfUpdate
 
     fs::path current_exec_path() { return install_root() / "current" / "bin" / EXE_NAME; }
 
-    std::expected<void, std::string> install_prefix(const fs::path &prefix, const std::string &version, bool move,
-                                                    bool first_install)
+    namespace
+    {
+        void prune_locked();
+
+        std::expected<void, std::string> install_prefix_locked(const fs::path &prefix, const std::string &version, bool move,
+                                                               bool first_install)
     {
         if (!fs::exists(prefix / "bin" / EXE_NAME))
             return std::unexpected("Not a desktop package: " + (prefix / "bin" / EXE_NAME).string() + " is missing");
@@ -462,15 +529,28 @@ namespace SelfUpdate
             return r;
         write_launchers(root, version, first_install);
         refresh_autostart(root);
-        prune();
+        prune_locked();
         spdlog::info("Installed LED Matrix Controller {} to {}", version, dest.string());
         return {};
+    }
+    } // namespace
+
+    std::expected<void, std::string> install_prefix(const fs::path &prefix, const std::string &version, bool move,
+                                                    bool first_install)
+    {
+        InstallLock lock(true);
+        if (!lock.held())
+            return std::unexpected("Could not lock " + (install_root() / ".install.lock").string());
+        return install_prefix_locked(prefix, version, move, first_install);
     }
 
     std::expected<void, std::string> download_and_install(const std::string &url, const std::string &sha256,
                                                           const std::string &version,
                                                           const std::function<void(size_t, size_t)> &progress)
     {
+        InstallLock lock(true); // held until the new version is in place
+        if (!lock.held())
+            return std::unexpected("Could not lock " + (install_root() / ".install.lock").string());
         const fs::path root = install_root();
         const fs::path downloads = root / "downloads";
         std::error_code ec;
@@ -540,12 +620,25 @@ namespace SelfUpdate
             fs::remove_all(staging, ec);
             return std::unexpected("The update package does not contain bin/" + std::string(EXE_NAME));
         }
-        auto result = install_prefix(*prefix, version, true, false);
+        auto result = install_prefix_locked(*prefix, version, true, false);
         fs::remove_all(staging, ec);
         return result;
     }
 
     void prune()
+    {
+        InstallLock lock(false);
+        if (!lock.held())
+        {
+            spdlog::info("Another instance is installing an update; not pruning now");
+            return;
+        }
+        prune_locked();
+    }
+
+    namespace
+    {
+    void prune_locked()
     {
         const fs::path root = install_root();
         std::error_code ec;
@@ -570,6 +663,7 @@ namespace SelfUpdate
             }
         }
     }
+    } // namespace
 
     std::optional<int> handle_command_line(int argc, char *argv[])
     {
