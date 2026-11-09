@@ -1,40 +1,63 @@
 # Script mode: cmake -DSOURCE_DIR=<repo> -DOUTPUT=<header> -P SceneCodeDigest.cmake
 #
-# Fingerprint of all code that decides what a scene draws (plugins/ + shared/).
-# The Pi only offloads a scene to a desktop worker that reports the same
-# fingerprint, so a stale desktop install can never stream an old version of a
-# scene. Git tree hashes are platform independent (Windows CRLF checkouts hash
-# the same), and uncommitted edits add a hash of the diff and untracked files.
-# Runs on every build; the header is only rewritten when the value changes.
-set(paths plugins shared)
-execute_process(COMMAND git rev-parse HEAD:plugins HEAD:shared
-    WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE trees RESULT_VARIABLE rc ERROR_QUIET)
-if(NOT rc EQUAL 0 OR trees STREQUAL "")
-    set(digest "unknown")
-else()
-    string(SHA1 digest "${trees}")
-    string(SUBSTRING "${digest}" 0 16 digest)
-    execute_process(COMMAND git status --porcelain --untracked-files=all -- ${paths}
-        WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE status ERROR_QUIET)
-    if(NOT status STREQUAL "")
-        execute_process(COMMAND git diff HEAD -- ${paths}
-            WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE diff ERROR_QUIET)
-        execute_process(COMMAND git ls-files --others --exclude-standard -- ${paths}
-            WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE untracked ERROR_QUIET)
-        string(REPLACE "\n" ";" untracked "${untracked}")
-        set(extra "")
-        foreach(file IN LISTS untracked)
-            if(file AND EXISTS "${SOURCE_DIR}/${file}")
-                file(SHA1 "${SOURCE_DIR}/${file}" h)
-                string(APPEND extra "${file}:${h}\n")
-            endif()
-        endforeach()
-        string(SHA1 dirty "${diff}${extra}")
-        string(SUBSTRING "${dirty}" 0 8 dirty)
-        set(digest "${digest}-dirty-${dirty}")
-    endif()
+# A portable source-compatibility identity, not a binary hash or a guarantee of
+# pixel-identical floating-point results across architectures. Hash the actual
+# files, independent of Git history, staging, checkout location or build flavor.
+# Keep this input policy in sync with docs/SCENE_EXECUTION.md and its tests.
+cmake_minimum_required(VERSION 3.21)
+if(NOT IS_DIRECTORY "${SOURCE_DIR}" OR NOT DEFINED OUTPUT)
+    message(FATAL_ERROR "SceneCodeDigest requires SOURCE_DIR and OUTPUT")
 endif()
-set(content "#pragma once\n#define LED_MATRIX_SCENE_CODE_DIGEST \"${digest}\"\n")
+
+set(files)
+foreach(root plugins shared/common shared/matrix shared/fonts src_scene_worker cmake)
+    file(GLOB_RECURSE entries LIST_DIRECTORIES false RELATIVE "${SOURCE_DIR}"
+        "${SOURCE_DIR}/${root}/*")
+    list(APPEND files ${entries})
+endforeach()
+foreach(path CMakeLists.txt shared/CMakeLists.txt vcpkg.json vcpkg-configuration.json)
+    if(EXISTS "${SOURCE_DIR}/${path}")
+        list(APPEND files "${path}")
+    endif()
+endforeach()
+list(REMOVE_DUPLICATES files)
+list(SORT files)
+
+# Version the recipe so fingerprints from the old Git-tree scheme cannot match.
+set(manifest "led-matrix-scene-source-v2\n")
+set(count 0)
+foreach(path IN LISTS files)
+    # UI, documentation, reference media and local build/editor products cannot
+    # change the matrix renderer. Vendor source trees are traversed as ordinary
+    # files, including local edits inside submodules (but never their Git data).
+    if(path MATCHES "(^|/)(desktop|web|docs|img|tests|\\.git|\\.github|__pycache__|node_modules|CMakeFiles|vcpkg_installed|build|install)(/|$)"
+       OR path MATCHES "(^|/)(cmake-build-[^/]*|[^/]*_build[^/]*)(/|$)"
+       OR path MATCHES "(^|/)(README[^/]*|LICENSE[^/]*|AUTHORS|COPYING[^/]*|\\.[^/]*)$"
+       OR path MATCHES "\\.(md|dox|pdf|pyc|o|obj|so|dll|a|lib|swp|swo|tmp|bak)$")
+        continue()
+    endif()
+    # Git's text heuristic: a NUL in the first 8 KiB marks binary data. Inspect
+    # hex byte pairs because CMake strings cannot reliably process NUL bytes.
+    # Known resource formats stay byte-exact even for tiny NUL-free fixtures.
+    file(READ "${SOURCE_DIR}/${path}" probe LIMIT 8192 HEX)
+    string(REGEX REPLACE "(..)" "\\1;" probe "${probe}")
+    string(FIND ";${probe}" ";00;" nul)
+    if(nul EQUAL -1 AND NOT path MATCHES "\\.(png|jpg|jpeg|gif|webp|ico|bmp|wav|mp3|ogg|flac|mp4|ttf|otf|woff|woff2|bin|dat)$")
+        file(READ "${SOURCE_DIR}/${path}" content)
+        string(REPLACE "\r\n" "\n" content "${content}")
+        string(SHA256 hash "${content}")
+    else()
+        file(SHA256 "${SOURCE_DIR}/${path}" hash)
+    endif()
+    # Include the path as well as the content: renames/deletions matter too.
+    string(APPEND manifest "${path}:${hash}\n")
+    math(EXPR count "${count} + 1")
+endforeach()
+if(count EQUAL 0)
+    message(FATAL_ERROR "No scene fingerprint inputs found in ${SOURCE_DIR}")
+endif()
+string(SHA256 digest "${manifest}")
+set(content "#pragma once\n#define LED_MATRIX_SCENE_CODE_DIGEST \"v2-sha256-${digest}\"\n")
 if(EXISTS "${OUTPUT}")
     file(READ "${OUTPUT}" old)
 endif()

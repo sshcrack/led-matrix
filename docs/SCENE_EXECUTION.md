@@ -46,6 +46,38 @@ The handoff is deliberately conservative:
 
 This placement decision is internal. Users do not need to maintain separate scene configurations for local and remote rendering.
 
+### Scene source fingerprint
+
+Offload also requires the worker's `Common::scene_code_digest()` to match the
+matrix's. `cmake/SceneCodeDigest.cmake` generates a versioned SHA-256 identity
+from sorted relative paths and actual file contents on every build. The generated
+header is rewritten only when the identity changes, avoiding needless relinks.
+
+The inputs cover plugin renderer sources and resources, `shared/common`,
+`shared/matrix`, fonts, `src_scene_worker`, CMake recipes (including dependency
+patches and overlays), and the root vcpkg manifests. Vendor/submodule files are
+read directly, so local edits inside a submodule count. New, renamed, deleted,
+untracked and Git-ignored source files all affect the identity. Keep generated
+files in build directories rather than source directories.
+
+Desktop UI, web UI, documentation, reference images under `img/`, tests, Git data
+and build/editor outputs are excluded. Remaining build recipes are deliberately
+conservative: changing one may require rebuilding both peers even if a particular
+scene is unaffected. The worker's advertised scene list separately checks whether
+the requested scene is available.
+
+The identity does not depend on commits, staging, checkout location or Git being
+installed. Text CRLF is normalized to LF; files with a NUL in their first 8 KiB and
+known binary resource formats are hashed byte-for-byte. Thus identical sources in
+a Windows checkout, Linux checkout or unpacked source archive produce the same
+identity. The `v2-sha256-` prefix separates this recipe from older Git-tree hashes;
+both peers need rebuilding when adopting it.
+
+This is a source compatibility check, not a hash of installed binaries or a claim
+of pixel-identical output across compilers, dependency installations or hardware.
+Install matching plugins and shared libraries together with each build; manually
+mixing artifacts from different builds is outside this check.
+
 ### Opting out
 
 Only opt out when the scene fundamentally cannot execute in the worker process, for example because its renderer talks directly to matrix-only hardware or relies on process-local state that cannot be represented by Runtime Inputs/state migration.

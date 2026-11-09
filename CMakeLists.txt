@@ -724,6 +724,8 @@ if(ENABLE_EMULATOR)
         "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
     )
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME scene_code_digest_test COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_code_digest_test.py)
     if(UNIX)
         add_test(NAME release_artifacts_test COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/release_artifacts_test.py)

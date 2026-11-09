@@ -16,7 +16,7 @@ add_library(${PROJECT_NAME} SHARED
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
 # Scene-code fingerprint for the remote-render compatibility check. Regenerated
-# on every build (cheap git plumbing); the header only changes with the code.
+# on every build from source contents; the header only changes with the inputs.
 add_custom_target(scene_code_digest ALL
         COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
                 -DOUTPUT=${LED_MATRIX_GENERATED_DIR}/scene_code_digest.h
