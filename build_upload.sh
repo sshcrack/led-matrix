@@ -12,8 +12,8 @@ set -e
 # trigger systemd-oomd / kernel OOM kills of unrelated apps.
 JOBS="${JOBS:-4}"
 
-# Scene preview GIFs are not tracked in git; make sure they are in the package.
-scripts/fetch_scene_previews.sh --if-missing
+# Refresh scene previews so an existing partial cache cannot enter the package.
+scripts/fetch_scene_previews.sh
 
 cmake --preset cross-compile -DSKIP_WEB_BUILD=OFF
 cmake --build --preset cross-compile --target package --parallel "$JOBS"
