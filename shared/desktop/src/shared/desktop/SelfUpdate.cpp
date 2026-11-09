@@ -374,6 +374,15 @@ namespace SelfUpdate
             return out + "\"";
         }
 
+        /// ~/.local/bin/led-matrix-desktop is a symlink to this install's launcher (not a user's own).
+        bool is_our_bin_link(const fs::path &link)
+        {
+            std::error_code ec;
+            if (!fs::is_symlink(link, ec))
+                return false;
+            return fs::read_symlink(link, ec) == install_root() / "current" / "bin" / EXE_NAME && !ec;
+        }
+
         void write_launchers(const fs::path &root, const std::string &, bool)
         {
             const fs::path exe = root / "current" / "bin" / EXE_NAME;
@@ -397,7 +406,8 @@ namespace SelfUpdate
             const fs::path binDir = home() / ".local" / "bin";
             fs::create_directories(binDir, ec);
             const fs::path link = binDir / EXE_NAME;
-            if (!exists_nofollow(link) || fs::is_symlink(link, ec))
+            // Only create our own link: a user's wrapper or link elsewhere stays.
+            if (!exists_nofollow(link) || is_our_bin_link(link))
             {
                 fs::remove(link, ec);
                 fs::create_symlink(exe, link, ec);
@@ -409,7 +419,7 @@ namespace SelfUpdate
             std::error_code ec;
             fs::remove(xdg_data_home() / "applications" / "led-matrix-desktop.desktop", ec);
             const fs::path link = home() / ".local" / "bin" / EXE_NAME;
-            if (fs::is_symlink(link, ec))
+            if (is_our_bin_link(link))
                 fs::remove(link, ec);
         }
 #endif
