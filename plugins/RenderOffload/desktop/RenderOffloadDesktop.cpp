@@ -166,6 +166,15 @@ void RenderOffloadDesktop::note_worker_exit()
 
 void RenderOffloadDesktop::ensure_worker()
 {
+#ifdef _WIN32
+    // Windows may terminate the worker before the tray app during logoff or
+    // shutdown. Do not interpret that as a crash and launch a replacement into
+    // a session whose DLLs/window station are already being torn down.
+    if (GetSystemMetrics(SM_SHUTTINGDOWN)) {
+        stop_worker();
+        return;
+    }
+#endif
     const auto *websocket = WebsocketClient::instance();
     if (!websocket)
         return;
@@ -251,6 +260,12 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
     }
 
     PROCESS_INFORMATION process{};
+    // Shutdown can begin while preparing the launch; check again at the actual
+    // process creation boundary. If shutdown is cancelled, normal retries resume.
+    if (GetSystemMetrics(SM_SHUTTINGDOWN)) {
+        CloseHandle(job);
+        return false;
+    }
     if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
                         CREATE_NO_WINDOW | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process)) {
         const auto error = GetLastError();
