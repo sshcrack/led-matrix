@@ -654,15 +654,15 @@ namespace SelfUpdate
     namespace
     {
         /// A package that was used as a portable copy carries its settings in data/ (and
-        /// bin/portable.txt). A version folder is replaced on the next update, so move them to
-        /// the per-user data dir (or, when that already has settings, next to them as
-        /// portable-data-<v>/) and drop them from the version. Fails without changing the
-        /// user data dir when the copy fails; the caller then does not activate the version.
-        std::expected<void, std::string> move_portable_data(const fs::path &version_dir)
+        /// bin/portable.txt). Version folders are replaced on update and the installed app
+        /// always uses the per-user data dir, so copy them there (or, when that would collide
+        /// with existing data, next to it as portable-data-<v>/). The package is left as it is.
+        /// Fails without changing the user data dir when the copy fails; the caller then
+        /// stops before touching any version folder.
+        std::expected<void, std::string> import_portable_data(const fs::path &package, const std::string &version)
         {
             std::error_code ec;
-            fs::remove(version_dir / "bin" / "portable.txt", ec);
-            const fs::path local = version_dir / "data";
+            const fs::path local = package / "data";
             if (!fs::exists(local, ec))
                 return {};
             try
@@ -676,7 +676,7 @@ namespace SelfUpdate
                 fs::path target = user;
                 if (!intoUser)
                 {
-                    const std::string base = "portable-data-" + version_dir.filename().string();
+                    const std::string base = "portable-data-" + version;
                     target = user / base;
                     for (int n = 2; fs::exists(target); n++)
                         target = user / (base + "-" + std::to_string(n));
@@ -699,13 +699,12 @@ namespace SelfUpdate
                         fs::rename(entry, target / entry.filename());
                     fs::remove_all(staging);
                 }
-                spdlog::info("Moved the portable settings from {} to {}", local.string(), target.string());
+                spdlog::info("Copied the portable settings from {} to {}", local.string(), target.string());
             }
             catch (const std::exception &e)
             {
-                return std::unexpected("Could not move the portable settings from " + local.string() + ": " + e.what());
+                return std::unexpected("Could not copy the portable settings from " + local.string() + ": " + e.what());
             }
-            fs::remove_all(local, ec);
             return {};
         }
     } // namespace
@@ -726,6 +725,9 @@ namespace SelfUpdate
         fs::create_directories(versions_dir(root), ec);
         if (ec)
             return std::unexpected("Could not create " + versions_dir(root).string() + ": " + ec.message());
+
+        if (auto r = import_portable_data(prefix, version); !r)
+            return r;
 
         const auto running = running_version_dir();
         // `current/bin/led-matrix-desktop --install` installs a version onto itself.
@@ -760,6 +762,9 @@ namespace SelfUpdate
                         fs::remove_all(fresh, ec);
                         return r;
                     }
+                // Settings were imported above; the installed app never reads them from here.
+                fs::remove_all(fresh / "data", ec);
+                fs::remove(fresh / "bin" / "portable.txt", ec);
                 const bool hadOld = fs::exists(fs::symlink_status(dest, ec));
                 if (hadOld && !rename_retrying(dest, old))
                 {
@@ -778,9 +783,6 @@ namespace SelfUpdate
                 fs::remove_all(old, ec);
             }
         } // before prune_locked(), which takes VersionsLock itself
-
-        if (auto r = move_portable_data(dest); !r)
-            return r;
 
         // Migrating away from a .deb / admin install: remember it so the app can offer to remove it.
         if (const auto legacy = removable_legacy_location())
@@ -887,7 +889,7 @@ namespace SelfUpdate
             return std::unexpected("The update package does not contain bin/" + std::string(EXE_NAME));
         }
         // A portable copy switching to the managed install: bring its settings along, the
-        // same way `--install` from that copy would (move_portable_data takes them from there).
+        // same way `--install` from that copy would (import_portable_data takes them from there).
         if (!is_managed_install())
         {
             try
