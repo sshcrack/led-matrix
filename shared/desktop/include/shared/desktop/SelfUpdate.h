@@ -34,6 +34,16 @@ namespace SelfUpdate
     /// True when the running binary is a per-user install that can update itself.
     SHARED_DESKTOP_API bool is_managed_install();
 
+    /// A .deb in /usr or the old admin install in Program Files (can move to a per-user install).
+    SHARED_DESKTOP_API bool is_recognized_system_install();
+
+    /// Running from a CMake build tree: automatic update checks stay off.
+    SHARED_DESKTOP_API bool is_dev_build();
+
+    /// Marks the running version as in use for this process's lifetime, so pruning by
+    /// another process (an update, `--install`) never deletes it. Call once at startup.
+    SHARED_DESKTOP_API void hold_running_version();
+
     /// Executable that launchers should start: current/bin/... in the install root.
     SHARED_DESKTOP_API std::filesystem::path current_exec_path();
 

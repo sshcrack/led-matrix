@@ -108,6 +108,13 @@ namespace UpdateChecker
                 state->phase = manual ? Phase::Result : Phase::Idle;
             };
 
+            if (!manual && SelfUpdate::is_dev_build())
+            {
+                spdlog::info("Development build: automatic update checks are off");
+                finish("", "");
+                return;
+            }
+
             const auto latest = UpdateChecker::fetchRelease();
             if (!latest)
                 spdlog::warn("Desktop update check: {}", latest.error());
@@ -179,9 +186,9 @@ namespace UpdateChecker
             }
             else if (latest)
             {
-                if (!(latest->version > current))
+                if (latest->version < current)
                 {
-                    finish("You're running the latest version (" + v(current) + ").", "");
+                    finish("You're running a newer version than the latest release (" + v(current) + ").", "");
                     return;
                 }
                 target = latest->version;
@@ -193,10 +200,18 @@ namespace UpdateChecker
                 return;
             }
 
+            const bool managed = SelfUpdate::is_managed_install();
             if (target == current)
             {
-                finish("You're up to date (" + v(current) + (matrix ? ", same as the matrix)." : ")."), "");
-                return;
+                // Already on the right version. A .deb / admin install (or anyone asking
+                // via "Check for Updates") can still move to the self-updating install.
+                if (managed || !(manual || SelfUpdate::is_recognized_system_install()))
+                {
+                    finish("You're up to date (" + v(current) + (matrix ? ", same as the matrix)." : ")."), "");
+                    return;
+                }
+                reason = "You're on the current version. Switching moves it to a per-user install "
+                         "that keeps itself up to date.";
             }
 
             auto release = latest && latest->version == target ? latest : UpdateChecker::fetchRelease(target);
@@ -212,7 +227,7 @@ namespace UpdateChecker
                 return;
             }
 
-            if (SelfUpdate::is_managed_install() && (prefs.autoUpdate || manual))
+            if (managed && (prefs.autoUpdate || manual))
             {
                 spdlog::info("Updating desktop {} -> {} ({})", v(current), v(target), matrix ? "matrix version" : "latest release");
                 install(state, *release, !manual);
@@ -337,8 +352,12 @@ namespace UpdateChecker
             ImGui::OpenPopup("Update Available");
             if (ImGui::BeginPopupModal("Update Available", nullptr, modalFlags))
             {
-                ImGui::Text("LED Matrix Controller %s is available (you have v%s).", ("v" + release.version.toString()).c_str(),
-                            UpdateChecker::getCurrentVersion().toString().c_str());
+                const bool sameVersion = release.version == UpdateChecker::getCurrentVersion();
+                if (sameVersion)
+                    ImGui::Text("Switch LED Matrix Controller v%s to a self-updating install?", release.version.toString().c_str());
+                else
+                    ImGui::Text("LED Matrix Controller %s is available (you have v%s).", ("v" + release.version.toString()).c_str(),
+                                UpdateChecker::getCurrentVersion().toString().c_str());
                 ImGui::TextWrapped("%s", reason.c_str());
                 ImGui::Separator();
                 const bool managed = SelfUpdate::is_managed_install();
@@ -353,7 +372,7 @@ namespace UpdateChecker
 #endif
                     );
                 ImGui::Spacing();
-                if (ImGui::Button("Update Now", ImVec2(140, 0)))
+                if (ImGui::Button(sameVersion ? "Switch Now" : "Update Now", ImVec2(140, 0)))
                 {
                     ImGui::CloseCurrentPopup();
                     state.set(Phase::Downloading);

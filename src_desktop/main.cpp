@@ -69,6 +69,7 @@ int run_app(int argc, char *argv[]) {
     }
 
     // Only the primary instance prunes, and only while no update holds the install lock.
+    SelfUpdate::hold_running_version();
     if (SelfUpdate::is_managed_install()) {
         // The version we updated away from is no longer running: drop it.
         try { SelfUpdate::prune(); } catch (const std::exception &e) { spdlog::warn("Pruning old versions: {}", e.what()); }

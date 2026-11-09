@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #ifdef _WIN32
@@ -383,25 +384,20 @@ namespace SelfUpdate
                 spdlog::warn("Could not point autostart at the new install: {}", r.error());
         }
 
-        /// Cross-process lock on <root>/.install.lock: one install, update or prune at a time,
-        /// so a second app instance or a concurrent `--install` cannot delete files an update
-        /// is still writing. Not reentrant: take it only in the public entry points.
-        class InstallLock
+        /// Advisory file lock (flock / LockFileEx), released when the object dies.
+        class FileLock
         {
         public:
-            explicit InstallLock(bool wait)
+            FileLock(const fs::path &file, bool exclusive, bool wait)
             {
-                const fs::path root = install_root();
-                std::error_code ec;
-                fs::create_directories(root, ec);
-                const fs::path file = root / ".install.lock";
 #ifdef _WIN32
-                handle_ = CreateFileW(file.wstring().c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                      nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+                handle_ = CreateFileW(file.wstring().c_str(), GENERIC_READ | GENERIC_WRITE,
+                                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_ALWAYS,
+                                      FILE_ATTRIBUTE_NORMAL, nullptr);
                 if (handle_ == INVALID_HANDLE_VALUE)
                     return;
                 OVERLAPPED ov{};
-                const DWORD flags = LOCKFILE_EXCLUSIVE_LOCK | (wait ? 0 : LOCKFILE_FAIL_IMMEDIATELY);
+                const DWORD flags = (exclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0) | (wait ? 0 : LOCKFILE_FAIL_IMMEDIATELY);
                 held_ = LockFileEx(handle_, flags, 0, 1, 0, &ov) != 0;
 #else
                 fd_ = open(file.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0644);
@@ -409,12 +405,12 @@ namespace SelfUpdate
                     return;
                 int rc;
                 do
-                    rc = flock(fd_, LOCK_EX | (wait ? 0 : LOCK_NB));
+                    rc = flock(fd_, (exclusive ? LOCK_EX : LOCK_SH) | (wait ? 0 : LOCK_NB));
                 while (rc != 0 && errno == EINTR);
                 held_ = rc == 0;
 #endif
             }
-            ~InstallLock()
+            ~FileLock()
             {
 #ifdef _WIN32
                 if (handle_ != INVALID_HANDLE_VALUE)
@@ -431,8 +427,8 @@ namespace SelfUpdate
                     close(fd_); // releases the flock
 #endif
             }
-            InstallLock(const InstallLock &) = delete;
-            InstallLock &operator=(const InstallLock &) = delete;
+            FileLock(const FileLock &) = delete;
+            FileLock &operator=(const FileLock &) = delete;
             bool held() const { return held_; }
 
         private:
@@ -443,6 +439,24 @@ namespace SelfUpdate
 #endif
             bool held_ = false;
         };
+
+        /// Cross-process lock on <root>/.install.lock: one install, update or prune at a time,
+        /// so a second app instance or a concurrent `--install` cannot delete files an update
+        /// is still writing. Not reentrant: take it only in the public entry points.
+        struct InstallLock : FileLock
+        {
+            explicit InstallLock(bool wait) : FileLock(prepared_root() / ".install.lock", true, wait) {}
+            static fs::path prepared_root()
+            {
+                std::error_code ec;
+                fs::create_directories(install_root(), ec);
+                return install_root();
+            }
+        };
+
+        /// Every running app holds a shared lock on versions/<v>/.in-use for its lifetime;
+        /// pruning removes a version only when it can take that lock exclusively.
+        constexpr const char *IN_USE_FILE = ".in-use";
 
         void report(const std::string &message, bool error)
         {
@@ -475,6 +489,25 @@ namespace SelfUpdate
 
     bool is_managed_install() { return running_version_dir().has_value(); }
 
+    bool is_recognized_system_install() { return removable_legacy_location().has_value(); }
+
+    bool is_dev_build()
+    {
+        const fs::path dir = get_exec_dir();
+        return fs::exists(dir / "CMakeCache.txt") || fs::exists(dir.parent_path() / "CMakeCache.txt") ||
+               fs::exists(dir.parent_path().parent_path() / "CMakeCache.txt");
+    }
+
+    void hold_running_version()
+    {
+        const auto dir = running_version_dir();
+        if (!dir)
+            return;
+        static std::unique_ptr<FileLock> held; // process lifetime
+        if (!held)
+            held = std::make_unique<FileLock>(*dir / IN_USE_FILE, false, true);
+    }
+
     fs::path current_exec_path() { return install_root() / "current" / "bin" / EXE_NAME; }
 
     namespace
@@ -495,8 +528,14 @@ namespace SelfUpdate
             return std::unexpected("Could not create " + versions_dir(root).string() + ": " + ec.message());
 
         const auto running = running_version_dir();
-        const bool destIsRunning = running && fs::equivalent(*running, dest, ec);
-        if (!destIsRunning)
+        bool destInUse = running && fs::equivalent(*running, dest, ec);
+        if (!destInUse && fs::exists(dest / "bin" / EXE_NAME))
+        {
+            // Same version already there and another app process runs it: keep it as is.
+            FileLock probe(dest / IN_USE_FILE, true, false);
+            destInUse = !probe.held();
+        }
+        if (!destInUse)
         {
             fs::remove_all(dest, ec);
             bool placed = false;
@@ -649,7 +688,16 @@ namespace SelfUpdate
             std::error_code e2;
             if (fs::equivalent(entry.path(), current, e2) || (running && fs::equivalent(entry.path(), *running, e2)))
                 continue;
-            fs::remove_all(entry.path(), e2); // a still-running older version keeps its files busy on Windows; retried next time
+            {
+                // Another app process (e.g. still open while `--install` ran) uses this version.
+                FileLock probe(entry.path() / IN_USE_FILE, true, false);
+                if (!probe.held())
+                {
+                    spdlog::info("Keeping desktop version {}: still running", entry.path().filename().string());
+                    continue;
+                }
+            }
+            fs::remove_all(entry.path(), e2); // Windows can still hold files briefly; retried next time
             if (!e2)
                 spdlog::info("Removed old desktop version {}", entry.path().filename().string());
         }
