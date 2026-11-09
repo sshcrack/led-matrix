@@ -9,6 +9,7 @@ import { ThemeToggle } from '~/core/ui/ThemeToggle'
 import { CommandPalette } from '~/core/ui/CommandPalette'
 import { Sheet } from '~/core/ui/Sheet'
 import MiniPlayer from './MiniPlayer'
+import { ConnectionBanner } from './ConnectionBanner'
 import SpotifyConnection from '~/components/spotify/SpotifyConnection'
 
 const TABS = NAV.filter(n => n.primary)
@@ -47,7 +48,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       </div>
     </header>
 
-    <main className="mx-auto max-w-[96rem] p-3 pb-44 sm:p-4 sm:pb-44 lg:pb-4"><div className="space-y-4">{pathname !== '/integrations' && <SpotifyConnection />}{children}</div>
+    <main className="mx-auto max-w-[96rem] p-3 pb-44 sm:p-4 sm:pb-44 lg:pb-4"><div className="space-y-4"><ConnectionBanner />{pathname !== '/integrations' && <SpotifyConnection />}{children}</div>
     </main>
 
     {/* Phone chrome */}
