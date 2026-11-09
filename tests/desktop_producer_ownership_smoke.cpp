@@ -135,6 +135,17 @@ int main()
         return 31;
     S::clear_desktop_producers();
 
+    // An unrelated desktop connecting and leaving does not cancel a challenge.
+    S::register_desktop_producer(1, "a");
+    S::register_desktop_producer(2, "b");
+    S::report_desktop_relevance(1, 0, T);
+    S::report_desktop_relevance(2, 100, T);
+    S::register_desktop_producer(3, "c");
+    S::unregister_desktop_producer(3);
+    if (!S::report_desktop_relevance(2, 100, T + S::DesktopRelevanceHoldMs).changed)
+        return 32;
+    S::clear_desktop_producers();
+
     if (DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:42") != 42
         || DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:250") != 100
         || DesktopControlProtocol::parse_desktop_relevance("desktop_relevance:x").has_value()

@@ -67,6 +67,7 @@ private:
     std::mutex stateMutex;
     /// Switch device / start capture as configured. False when capture is unavailable. Needs stateMutex.
     bool ensure_recording_locked();
+    void note_level_locked(const AudioRecorder::CapturedAudioFrame &captured);
     int lastRelevance = 0;
     std::chrono::steady_clock::time_point lastRelevanceAt{};
     std::string currentDeviceName;

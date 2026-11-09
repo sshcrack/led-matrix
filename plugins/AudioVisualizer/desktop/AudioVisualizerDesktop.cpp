@@ -346,6 +346,15 @@ bool AudioVisualizerDesktop::ensure_recording_locked() {
     return true;
 }
 
+void AudioVisualizerDesktop::note_level_locked(const AudioRecorder::CapturedAudioFrame &captured) {
+    if (captured.mono.empty()) return;
+    double sum = 0.0;
+    for (const float x : captured.mono) sum += static_cast<double>(x) * x;
+    const double rms = std::sqrt(sum / static_cast<double>(captured.mono.size()));
+    lastRelevance = rms > 0.003 ? 100 : 0; // above about -50 dBFS
+    lastRelevanceAt = std::chrono::steady_clock::now();
+}
+
 int AudioVisualizerDesktop::desktop_relevance() {
     // Audio that is actually playing makes this desktop the better producer.
     // Capture runs on standby too (cheap); the analysis/streaming does not.
@@ -360,11 +369,7 @@ int AudioVisualizerDesktop::desktop_relevance() {
     if (!captured || captured->mono.empty()) {
         return now - lastRelevanceAt < std::chrono::seconds(3) ? lastRelevance : 0;
     }
-    double sum = 0.0;
-    for (const float x : captured->mono) sum += static_cast<double>(x) * x;
-    const double rms = std::sqrt(sum / static_cast<double>(captured->mono.size()));
-    lastRelevance = rms > 0.003 ? 100 : 0; // above about -50 dBFS
-    lastRelevanceAt = now;
+    note_level_locked(*captured);
     return lastRelevance;
 }
 
@@ -376,6 +381,7 @@ std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_p
 
     const auto captured = recorder->getLastSamples();
     if (!captured) return std::nullopt;
+    note_level_locked(*captured); // the stream consumes the samples the relevance poll would see
     auto bands = audioProcessor->computeBands(captured->mono, captured->sampleRate);
     if (bands.empty()) return std::nullopt;
     auto analysis = musicAnalyzer->analyze(*captured, bands);

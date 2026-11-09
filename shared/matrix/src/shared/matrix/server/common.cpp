@@ -69,7 +69,7 @@ namespace Server {
                 // again if the fresh socket closes before TCP teardown is seen.
                 desktop_producers.erase(previous_it);
                 desktop_relevance.erase(previous);
-                challenger_id = 0;
+                if (challenger_id == previous) challenger_id = 0;
                 owner = connection_id;
             }
         }
@@ -83,7 +83,7 @@ namespace Server {
         const auto previous = desktop_producer_owner_id.load(std::memory_order_relaxed);
         desktop_producers.erase(connection_id);
         desktop_relevance.erase(connection_id);
-        challenger_id = 0;
+        if (challenger_id == connection_id) challenger_id = 0;
         auto owner = previous;
         if (previous == connection_id) {
             owner = best_candidate(0, steady_ms());
