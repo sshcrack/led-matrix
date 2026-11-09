@@ -334,6 +334,12 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
         PASS_REGULAR_EXPRESSION "\"ok\":true"
     )
 
+    add_test(NAME scene_worker_contract_smoke
+        COMMAND $<TARGET_FILE:led-matrix-scene-worker>
+            --self-test --contract-fixture ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/remote_metablob_contract_v1.json
+            --plugin-dir ${CMAKE_BINARY_DIR}/scene_plugins)
+    set_tests_properties(scene_worker_contract_smoke PROPERTIES PASS_REGULAR_EXPRESSION "\"ok\":true")
+
     add_executable(scene_worker_singleton_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_worker_singleton_smoke.cpp
     )
@@ -1112,14 +1118,24 @@ if(ENABLE_EMULATOR)
     add_executable(remote_render_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/remote_render_smoke.cpp
     )
+    set_target_properties(remote_render_smoke PROPERTIES BUILD_WITH_INSTALL_RPATH FALSE)
     target_compile_features(remote_render_smoke PRIVATE cxx_std_23)
-    target_compile_definitions(remote_render_smoke PRIVATE ENABLE_EMULATOR)
+    target_compile_definitions(remote_render_smoke PRIVATE ENABLE_EMULATOR PLUGIN_NAME="RenderOffload")
     target_link_libraries(remote_render_smoke PRIVATE
-        SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        RenderOffload SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
         nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
     )
     add_test(NAME remote_render_smoke COMMAND $<TARGET_FILE:remote_render_smoke>)
     set_tests_properties(remote_render_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(remote_scene_contract_smoke tests/remote_scene_contract_smoke.cpp)
+    target_compile_features(remote_scene_contract_smoke PRIVATE cxx_std_23)
+    target_link_libraries(remote_scene_contract_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME remote_scene_contract_smoke COMMAND $<TARGET_FILE:remote_scene_contract_smoke>
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/remote_scene_contract_v1.json)
+    set_tests_properties(remote_scene_contract_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(scene_lab_runtime_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_lab_runtime_smoke.cpp

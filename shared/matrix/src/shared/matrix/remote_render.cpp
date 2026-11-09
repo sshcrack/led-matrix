@@ -1,4 +1,3 @@
-#include <shared/common/build_info.h>
 #include "shared/matrix/remote_render.h"
 
 #include <algorithm>
@@ -8,7 +7,6 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <unordered_set>
 #include <vector>
 
 #include "led-matrix.h"
@@ -34,9 +32,8 @@ struct FrameSnapshot {
 
 struct WorkerSnapshot {
     Clock::time_point heartbeat{};
-    std::unordered_set<std::string> scenes;
-    std::string scene_code;
-    bool compatible = false;
+    SceneContracts contracts;
+    int protocol = 0;
 };
 
 struct State {
@@ -54,6 +51,7 @@ struct State {
     std::atomic<std::shared_ptr<const FrameSnapshot>> latest_frame{};
     Clock::time_point last_state_publish{};
     std::atomic<std::shared_ptr<const WorkerSnapshot>> latest_worker{};
+    std::atomic<std::shared_ptr<const SceneContracts>> local_contracts{};
     bool state_publish_pending = false;
     std::uint32_t pending_state_session = 0;
     std::condition_variable publisher_cv;
@@ -79,12 +77,28 @@ bool worker_alive(const std::shared_ptr<const WorkerSnapshot> &worker)
         && Clock::now() - worker->heartbeat <= WorkerHeartbeatTimeout;
 }
 
-bool worker_supports(const State &s, std::string_view scene)
+bool matching_contract(const SceneContracts &local, const WorkerSnapshot &worker, std::string_view scene)
+{
+    const auto name = std::string(scene);
+    const auto ours = local.find(name);
+    const auto theirs = worker.contracts.find(name);
+    return ours != local.end() && ours->second > 0 && theirs != worker.contracts.end()
+        && theirs->second == ours->second;
+}
+
+bool worker_supports(const State &s, std::string_view scene, int required_contract = 0)
 {
     const auto worker = s.latest_worker.load(std::memory_order_acquire);
-    if (!worker_alive(worker) || !worker->compatible)
+    const auto local = s.local_contracts.load(std::memory_order_acquire);
+    if (!worker_alive(worker) || worker->protocol != RemoteRenderProtocol::Version || !local)
         return false;
-    return scene.empty() || worker->scenes.contains(std::string(scene));
+    if (scene.empty())
+        return std::any_of(local->begin(), local->end(), [&](const auto &entry) {
+            return matching_contract(*local, *worker, entry.first);
+        });
+    if (!matching_contract(*local, *worker, scene))
+        return false;
+    return required_contract == 0 || local->at(std::string(scene)) == required_contract;
 }
 
 nlohmann::json audio_snapshot_json()
@@ -179,19 +193,18 @@ void clear_command_sender()
     s.pending_state_session = 0;
 }
 
-void report_worker_heartbeat(int protocol_version, const std::vector<std::string> &scenes,
-                             std::string scene_code)
+void set_local_scene_contracts(SceneContracts contracts)
 {
-    if (protocol_version != RemoteRenderProtocol::Version)
-        return;
+    state().local_contracts.store(std::make_shared<const SceneContracts>(std::move(contracts)),
+                                  std::memory_order_release);
+}
+
+void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts)
+{
     auto worker = std::make_shared<WorkerSnapshot>();
     worker->heartbeat = Clock::now();
-    const std::string_view local = Common::scene_code_digest();
-    worker->compatible = !scene_code.empty() && scene_code != "unknown" && scene_code == local;
-    worker->scene_code = std::move(scene_code);
-    worker->scenes.reserve(scenes.size());
-    for (const auto &scene : scenes)
-        if (!scene.empty()) worker->scenes.insert(scene);
+    worker->protocol = protocol_version;
+    worker->contracts = std::move(scene_contracts);
     state().latest_worker.store(std::move(worker), std::memory_order_release);
 }
 
@@ -204,7 +217,7 @@ std::optional<std::uint32_t> request_scene(
     const Scenes::Scene &scene, int width, int height, int target_fps, const nlohmann::json &transition)
 {
     const auto caps = scene.get_capabilities();
-    if (!caps.supports_remote_rendering)
+    if (!caps.supports_remote_rendering || scene.remote_contract_version() <= 0)
         return std::nullopt;
 
     const auto input_snapshot = RuntimeInputs::to_json(RuntimeInputs::snapshot());
@@ -215,13 +228,14 @@ std::optional<std::uint32_t> request_scene(
     {
         auto &s = state();
         std::lock_guard lock(s.mutex);
-        if (!s.sender || !worker_supports(s, scene.get_name()))
+        if (!s.sender || !worker_supports(s, scene.get_name(), scene.remote_contract_version()))
             return std::nullopt;
 
         const auto uuid = scene.get_uuid();
         const auto arguments = scene.to_json();
         if (transition.empty() && s.session != 0 && s.scene == scene.get_name() && s.scene_uuid == uuid
             && s.width == width && s.height == height
+            && s.start_command.value("scene_contract", 0) == scene.remote_contract_version()
             && s.start_command.value("arguments", nlohmann::json::object()) == arguments) {
             return s.session;
         }
@@ -240,6 +254,7 @@ std::optional<std::uint32_t> request_scene(
             {"protocol", RemoteRenderProtocol::Version},
             {"session", s.session},
             {"scene", s.scene},
+            {"scene_contract", scene.remote_contract_version()},
             {"uuid", uuid},
             {"width", s.width},
             {"height", s.height},
@@ -366,9 +381,17 @@ Status status()
     result.scene = s.scene;
     const auto worker = s.latest_worker.load(std::memory_order_acquire);
     result.worker_available = worker_alive(worker);
-    result.worker_compatible = result.worker_available && worker->compatible;
-    result.worker_scene_code = worker ? worker->scene_code : std::string{};
-    result.worker_scene_count = worker ? worker->scenes.size() : 0;
+    result.worker_protocol = worker ? worker->protocol : 0;
+    result.worker_scene_count = worker ? worker->contracts.size() : 0;
+    const auto local = s.local_contracts.load(std::memory_order_acquire);
+    if (result.worker_available && worker->protocol == RemoteRenderProtocol::Version && local) {
+        for (const auto &[name, version] : *local) {
+            (void)version;
+            if (matching_contract(*local, *worker, name))
+                ++result.worker_compatible_scene_count;
+        }
+    }
+    result.worker_compatible = result.worker_compatible_scene_count > 0;
     return result;
 }
 

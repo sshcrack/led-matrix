@@ -46,6 +46,56 @@ The handoff is deliberately conservative:
 
 This placement decision is internal. Users do not need to maintain separate scene configurations for local and remote rendering.
 
+### Remote data contracts
+
+Compatibility follows the data exchanged between the Pi and desktop worker.
+`RemoteRenderProtocol::Version` versions commands, shared Runtime Inputs, audio and
+frame transport. Each scene exposes `remote_contract_version()` (default **1**)
+for its serialized properties, variants and transient runtime state.
+
+A worker advertises `scene_contracts`, a map from scene ID to a positive contract
+version. The Pi checks the requested scene independently: protocol versions and
+that scene's contract must match. Other mismatching scenes remain local. The
+validated plugin registry publishes the local contracts on initial discovery and
+dynamic changes. Missing scenes, missing contracts, nonpositive versions and old
+workers fail closed. Diagnostics exposes both protocol versions and the number
+of compatible advertised scenes. Both peers need updating for protocol **4**.
+
+Renderer improvements, refactors, comments, object layout and unrelated shared-code
+edits keep the same contract. Builds from different releases can offload together
+when their contracts match; their visuals may differ. There is no source scanning,
+Git requirement, generated fingerprint catalog or per-scene build registration.
+
+Bump a scene's contract when changing exchanged data incompatibly: removing or
+renaming a property without an alias, changing its type/units/meaning, changing
+variant interpretation, removing enum values, or changing the runtime-state
+payload. Additive changes may retain the version only when existing senders and
+receivers still handle them acceptably. Default values alone do not establish
+backwards compatibility. Override the version beside the scene's serialization:
+
+```cpp
+int remote_contract_version() const override { return 2; }
+```
+
+A change to the shared command/audio/runtime-input/frame contract bumps
+`RemoteRenderProtocol::Version` instead. Existing self-update behavior still keeps
+release installations aligned, but matching releases are not an offload requirement.
+
+Every start command carries `scene_contract`. The worker's
+`Scene::from_remote_command()` validates protocol, scene availability, offload
+capability and contract **before** loading properties, applying variants or
+restoring state. Local preset loading continues through `Scene::from_json()` and
+retains its existing fallback behavior for unknown scene IDs.
+
+These versions cover messages between processes; installed plugins still need the
+C++ ABI of their own host build.
+
+Keep saved payload fixtures when evolving a contract. The regression tests load a
+v1 payload through two different renderer implementations and through the real
+worker, verify properties/state, reject incompatible starts before property loads,
+and cover mixed-compatible heartbeats and dynamic registry changes. The fixtures
+live under `tests/fixtures/remote_*contract_v1.json`.
+
 ### Opting out
 
 Only opt out when the scene fundamentally cannot execute in the worker process, for example because its renderer talks directly to matrix-only hardware or relies on process-local state that cannot be represented by Runtime Inputs/state migration.
