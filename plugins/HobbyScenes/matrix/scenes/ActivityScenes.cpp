@@ -103,9 +103,9 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int x = 0; x < cv_.w; ++x) {
             const float wave = std::sin(x * 0.35f + y * 1.7f + t_ * 1.6f) * std::sin(x * 0.13f - t_ * 0.9f + y);
             Rgb c = scale(base, 1.0f + 0.10f * wave);
-            const float near = std::exp(-std::pow((x - sp.x) / ((3.0f + 12.0f * v) * k), 2.0f));
+            const float glint = std::exp(-std::pow((x - sp.x) / ((3.0f + 12.0f * v) * k), 2.0f));
             if (wave > 0.35f)
-                c = mix(c, from_env(L.sun_color), near * glitter * 0.8f);
+                c = mix(c, from_env(L.sun_color), glint * glitter * 0.8f);
             const float nearM = std::exp(-std::pow((x - mp.x) / ((2.0f + 8.0f * v) * k), 2.0f));
             if (wave > 0.45f)
                 c = mix(c, {0.85f, 0.88f, 0.95f}, nearM * moonGlit);

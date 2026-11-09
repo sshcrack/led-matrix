@@ -77,11 +77,11 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
     Environment::paint_clouds(s, L, time_, H * 0.06f, H * 0.55f, 0.0f, 17);
 
     auto ground = [&](float x) { return H * 0.86f - hill(x, 1.3f) * 8.0f * k; };
-    auto far = [&](float x) { return H * 0.80f - hill(x + 300.0f, 4.2f) * 9.0f * k; };
+    auto farHill = [&](float x) { return H * 0.80f - hill(x + 300.0f, 4.2f) * 9.0f * k; };
     const Rgb farCol = L.lit(L.ground(L.foliage({0.30f, 0.40f, 0.42f}, 0.5f), 0.8f), 0.7f);
     const Rgb nearCol = L.lit(L.ground(L.grass({0.20f, 0.32f, 0.18f}), 1.0f), 0.1f);
     for (int x = 0; x < matrix_width; ++x) {
-        const float f = far(x + 0.5f), g = ground(x + 0.5f);
+        const float f = farHill(x + 0.5f), g = ground(x + 0.5f);
         // The top pixel of each ridge is blended by coverage: smooth hill lines.
         // Down to and including the near hill's blended top pixel, so no sky
         // shows through between the two.
@@ -93,7 +93,7 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
     }
     // A small tree on the far hills, then the fog, then a lone tree on the
     // near hill that shows the season and leans in the wind.
-    Environment::paint_tree(s, L, W * 0.20f, far(W * 0.20f) + 1.0f, 15.0f * k, 3, time_, 0.6f);
+    Environment::paint_tree(s, L, W * 0.20f, farHill(W * 0.20f) + 1.0f, 15.0f * k, 3, time_, 0.6f);
     Environment::paint_fog(s, L, time_, H * 0.40f, H);
     Environment::paint_tree(s, L, W * 0.76f, ground(W * 0.76f) + 1.5f * k, 44.0f * k, 7, time_, 0.05f);
 

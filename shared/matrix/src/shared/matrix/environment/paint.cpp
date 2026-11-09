@@ -282,8 +282,8 @@ void paint_fog(const Surface &s, const Look &l, float t, float y0, float y1, flo
         const float v = (y - y0) / span;
         // Densest in the distance just under the top of the band, thinning
         // towards the viewer so the foreground keeps its contrast (depth).
-        const float near = clamp01((v - 0.25f) / 0.75f);
-        const float profile = clamp01(v * 4.0f) * (1.0f - 0.62f * near * near * (3.0f - 2.0f * near));
+        const float nearness = clamp01((v - 0.25f) / 0.75f);
+        const float profile = clamp01(v * 4.0f) * (1.0f - 0.62f * nearness * nearness * (3.0f - 2.0f * nearness));
         const float row = std::sin(y * 0.23f - t * 0.13f);
         for (int x = 0; x < s.w; ++x) {
             const float n = 0.5f + 0.5f * wave[static_cast<std::size_t>(x)] * row;
@@ -372,8 +372,8 @@ void Precipitation::draw(const Surface &s, const Look &l) const
             continue;
         }
         if (d.snow) {
-            const float near = d.size * d.size;
-            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.16f + 0.62f * near);
+            const float nearness = d.size * d.size;
+            s.blend(static_cast<int>(d.x), static_cast<int>(d.y), snow_c, 0.16f + 0.62f * nearness);
             if (d.size > 0.92f) {
                 s.blend(static_cast<int>(d.x) + 1, static_cast<int>(d.y), snow_c, 0.40f);
                 s.blend(static_cast<int>(d.x), static_cast<int>(d.y) + 1, snow_c, 0.40f);
@@ -382,14 +382,14 @@ void Precipitation::draw(const Surface &s, const Look &l) const
         }
         // Rain streak along its velocity, fading towards the tail. size is
         // depth: most drops are far, faint and short, a few near ones bright.
-        const float near = d.size * d.size;
-        const float len = (2.0f + 4.0f * near) * k;
+        const float nearness = d.size * d.size;
+        const float len = (2.0f + 4.0f * nearness) * k;
         const float vlen = std::sqrt(d.vx * d.vx + d.vy * d.vy);
         const float ux = d.vx / vlen, uy = d.vy / vlen;
         const int steps = static_cast<int>(len) + 1;
         for (int i = 0; i < steps; ++i) {
             const float f = static_cast<float>(i) / steps;
-            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.07f + 0.30f * near) * (1.0f - f));
+            s.blend(static_cast<int>(d.x - ux * i), static_cast<int>(d.y - uy * i), rain_c, (0.07f + 0.30f * nearness) * (1.0f - f));
         }
     }
 }

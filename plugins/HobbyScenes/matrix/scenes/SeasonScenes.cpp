@@ -85,10 +85,10 @@ void ForestPathScene::build_backdrop()
     }
 
     // Meadow floor, lighter in the distance, with grass texture.
-    const Rgb far = meadow({0.45f, 0.58f, 0.32f}, 0.45f), nearC = meadow({0.20f, 0.36f, 0.14f});
+    const Rgb farC = meadow({0.45f, 0.58f, 0.32f}, 0.45f), nearC = meadow({0.20f, 0.36f, 0.14f});
     for (int y = static_cast<int>(horizon_); y < h; ++y) {
         const float v = (y - horizon_) / (H - horizon_);
-        const Rgb base = mix(far, nearC, std::pow(v, 0.7f));
+        const Rgb base = mix(farC, nearC, std::pow(v, 0.7f));
         for (int x = 0; x < w; ++x) {
             const float n = hash01(static_cast<uint32_t>(y * w + x) * 3u + 1u);
             bg.set(x, y, scale(base, 0.88f + 0.22f * n * v));
