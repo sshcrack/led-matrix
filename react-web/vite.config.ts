@@ -57,16 +57,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https?.*\/api\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 }
-            }
-          }
-        ]
+        // API calls are deliberately not cached: the app must see real failures to show "matrix offline".
+        navigateFallbackDenylist: [/^\/(status|list_|live_frame|plugin_ui|scene_preview|environment|automatic_director|diagnostics|api)/],
       }
     })
   ],

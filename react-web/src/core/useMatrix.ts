@@ -114,7 +114,7 @@ export function useMatrixState() {
 
   return {
     apiUrl, status, presets, scenes, sceneByName, current, persistence,
-    online: !statusR.error, loading: statusR.loading || presetsR.loading || scenesR.loading,
+    online: !statusR.error, lastSeen: statusR.lastOk, loading: statusR.loading || presetsR.loading || scenesR.loading,
     error: statusR.error ?? presetsR.error ?? scenesR.error,
     refreshAll: () => { void refreshStatus(); void refreshPresets(); void scenesR.refresh() },
     ...actions,
