@@ -479,6 +479,9 @@ void SceneEnvironment::add_variants(Scenes::SceneDescriptor &d, std::vector<Scen
         for (const auto &[w, id, value] : weathers) {
             if (w == defaults_.weather || !allowed(adapt_, w))
                 continue;
+            if (!adapt_.weather_variants.empty() &&
+                std::find(adapt_.weather_variants.begin(), adapt_.weather_variants.end(), w) == adapt_.weather_variants.end())
+                continue;
             std::string label = id;
             label[0] = static_cast<char>(std::toupper(label[0]));
             variant(id, label, std::string("Always ") + id + ", whatever the real weather.", {{"weather", value}},

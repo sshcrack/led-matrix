@@ -210,12 +210,31 @@ void legacy_location()
     check(!legacy_weather_location(nlohmann::json::parse(R"({"a": {"scenes": [{"type": "weather_ambience", "arguments": {}}]}})")),
           "no custom location, nothing to migrate");
 }
+void variant_filters()
+{
+    Adapt adapt;
+    adapt.season_variants = {Season::Winter};
+    adapt.weather_variants = {Weather::Snow};
+    const SceneEnvironment env({TimeOfDay::Night, Weather::Clear, Season::Summer}, adapt);
+    Scenes::SceneDescriptor d;
+    env.add_variants(d);
+    auto has = [&](const std::string &id) {
+        for (const auto &v : d.variants)
+            if (v.id == id)
+                return true;
+        return false;
+    };
+    check(has("snow") && has("winter"), "listed weather and season variants are offered");
+    check(!has("rain") && !has("fog") && !has("storm") && !has("spring") && !has("autumn"),
+          "unlisted weather and season variants are not offered");
+}
 }  // namespace
 
 int main()
 {
     sun_and_moon();
     legacy_location();
+    variant_filters();
     weather();
     occasions_registry();
     settings();

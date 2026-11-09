@@ -469,6 +469,9 @@ SoccerScene::SoccerScene()
     Environment::Adapt adapt;
     adapt.time = false;
     adapt.season_variants = {Environment::Season::Winter};
+    // Seen from above, rain, fog and storms add little to the pitch; they
+    // still follow the real weather, only snow is offered as a variant.
+    adapt.weather_variants = {Environment::Weather::Snow};
     use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
 }
 

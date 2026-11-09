@@ -72,6 +72,9 @@ struct Adapt {
     /// only winter looks different still follows the real season, but lists
     /// just the variants that are worth picking.
     std::vector<Season> season_variants;
+    /// Same for weather (empty = every allowed one): the real weather still
+    /// shows, only the listed ones are offered as variants.
+    std::vector<Weather> weather_variants;
 };
 
 struct Look {
