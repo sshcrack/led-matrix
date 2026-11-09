@@ -35,11 +35,49 @@ A temporary manual preset pinned `metablob` with a compatible desktop worker at 
 
 There were no reported scene errors or malformed UDP packets. Automatic Mode and the original preset were restored, and the temporary test preset was deleted afterward. The short samples establish an improvement toward 60 FPS; they do not establish uniformly spaced 60 unique frames per second for every scene/network. `copy_latest()` can present the same fresh remote sequence more than once, so presentation counts are not unique-frame counts.
 
-## Remaining opportunities
+## Follow-up implementation: bulk conversion and absolute deadlines
 
-- The renderer still uses integer 16 ms periods for a declared 60 FPS and anchors pacing to actual starts. An absolute fractional deadline can reduce accumulated scheduling drift. An isolated panel harness reached 59.93 FPS with absolute 60 Hz pacing, but that is not a whole-scene result.
-- RGB-to-panel conversion remains significant: a full SetPixel pass took about 7.37 ms at healthy Pi power. Simply using SetPixels did not materially change this because its implementation also loops over SetPixel.
-- A full hardware GetPixel readback added roughly 11 ms in the same harness. Keep live capture demand-driven, and prefer software RGB composition plus one final conversion when optimizing local transitions/effects.
+Panel library [v0.1.12](https://github.com/sshcrack/rpi-rgb-led-matrix/releases/tag/v0.1.12) provides the packed RGB888 bulk write. The app pins that release and applies no library source patches. Full-frame writes group logical pixels by their shared GPIO word, retain row-major alias ordering, cache mapper geometry with the immutable mapper, and write each active bitplane once per group. Partial rectangles keep the scalar clipping behavior. Brightness, CIE1931 mapping, RGB ordering, rotation, inverse colors, PWM depth and untouched GPIO bits retain their original semantics. Desktop offload, video, shader streams and AudioKit float buffers use the bulk path. The emulator retains its software-pixel implementation.
+
+Preview behavior is unchanged: automatic requests while visible, no capture without outstanding demand. Hardware readback now lazily caches the exact inverse-gamma lookup on its first requested read. It neither allocates a preview RGB frame nor reads pixels when nobody requests a capture. Tables are immutable and initialized safely for concurrent readers.
+
+A reused desktop transition session now receives an optional `target_fps` state field when its requested rate changes. The worker updates the deadline and scene rate without recreating the scene, resetting sequence numbers or changing elapsed animation time. Reconnect commands retain the new rate. This is additive within protocol 4: older workers ignore the field safely, but need an update to gain the bandwidth saving.
+
+The Pi renderer uses absolute microsecond deadlines with fractional periods (60 FPS alternates 16,666/16,667 microsecond increments), fills only the remainder left by VSync, and skips missed deadline slots after stalls instead of bursting. Long waits remain cancellable in at most 10 ms.
+
+An isolated GPIO-free benchmark on the real Pi alternated the installed 1.21.5 library and candidate three times, 180 warmed iterations per mode. The daemon was stopped during timing and restarted afterward. CPU clock was 1.2 GHz and throttling flags remained `0x0`. This measures conversion cost, excluding GPIO scanout, sockets, scene rendering and presentation.
+
+| Operation | Installed median ms/frame | Candidate median ms/frame |
+|---|---:|---:|
+| Scalar full-frame write | 7.226 | 7.218 |
+| `SetPixels` full-frame write | 6.295 | 4.428 |
+| Full `GetPixel` readback | 11.760 | 7.020 |
+
+Moving production RGB blits from the scalar path to bulk saves about 2.80 ms per frame (38.7%); the existing `SetPixels` API also improves by 29.6%. Readback saves about 4.74 ms per requested capture (40.3%). These figures do not imply the same percentage improvement in scene FPS. Raw logs are local artifacts under `output/performance/bulk-cadence/`.
+
+The library-owned `bulk-framebuffer-test` compares complete serialized GPIO bitplanes against scalar writes across three row counts, three parallel layouts, rotations/mirrors, RGB/BGR, inverse colors, gamma, four brightness settings and three PWM depths. It covers clipped rectangles, mapper changes after cache warm-up, aliased pixels and untouched planes. Readback matches the unmodified library fingerprint `1623568448239114217`. Both the old and patched libraries were run against this corpus on the laptop, and the patched library passed on the Pi. `frame_cadence_smoke` checks fractional phase retention, jitter and stall recovery; the renderer integration test failed at 97,000 µs before the fix and passes at the expected 100,334 µs afterward. The remote regression likewise failed before the rate update.
+
+### Full daemon trial on the attached panels
+
+The same `metablob` preset was measured at full desktop quality with and without a localhost preview viewer, waiting 75 ms after each received capture as the web UI does. The installed daemon was sampled twice around one candidate trial (A/B/A), about 30.6 seconds per condition. All retained samples reported desktop placement and quality 1.0, with no viewer errors or throttling. The preview delivered about 10–11 captures/s. Baseline CPU below is the mean of its two trials; CPU percentages use one core as 100%.
+
+| Condition | Installed FPS range | Candidate FPS | Installed CPU | Candidate CPU |
+|---|---:|---:|---:|---:|
+| No preview requests | 58.66–58.72 | 59.81 | 137.8% | 127.1% |
+| Automatic preview visible | 53.26–53.36 | 59.96 | 148.1% | 136.7% |
+
+The candidate increased presentation FPS by about 1.9% without preview and 12.5% with preview while reducing daemon CPU by roughly 7.7%. These counters include repeated fresh remote sequences and do not establish 60 unique, evenly spaced frames every second. Worker sequence rates were about 59.4–60/s. Loopback preview excludes the added cost of serving the browser across Wi-Fi.
+
+Two preliminary candidate trials were excluded: the first started before every plugin finished uploading and fell back to local reduced-quality rendering; another had a transient placement change. The retained trial verified all 18 plugins loaded before measurement and checked full-quality desktop placement at every sample. The original service, preset and Automatic Mode were restored after each trial. This was a temporary candidate run, not a package deployment.
+
+The full emulator build passed 52 tests; the full Linux desktop build passed 49 tests, including worker state continuity and saved contract fixtures. The ARM build also completed. Raw retained samples, discarded-run logs and conversion timings remain local under `output/performance/bulk-cadence/`.
+
+The library implementation and its bitplane regression test now live in `sshcrack/rpi-rgb-led-matrix` (PR #11, release v0.1.12), including the Windows compatibility change previously patched by this app. Its hardware and SDL CMake configurations passed 5 and 8 tests respectively, and Linux/Python/Windows CI passed before release. The app retains the cadence, transport, worker and integration regressions. After switching to the published release, its emulator and Linux desktop builds passed 51 and 48 tests respectively, and the ARM build succeeded.
+
+## Further opportunities
+
+- Local scenes that draw pixels individually still pay scalar conversion costs. Wider software RGB composition could let more scenes and effects use one final bulk conversion.
+- Hardware readback still costs roughly 7 ms per capture. Keep live capture demand-driven, and prefer software RGB composition plus one final conversion when optimizing local transitions/effects.
 - Report unique produced/received/presented sequences and per-stage timing before claiming locked 60 FPS. Lower PWM is a visual-quality tradeoff and is not required for the gains above.
 
 ## Regression coverage

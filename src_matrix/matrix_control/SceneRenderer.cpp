@@ -5,6 +5,8 @@
 #include <filesystem>
 
 #include "LiveFrameSnapshot.h"
+#include "shared/common/frame_cadence.h"
+#include "shared/matrix/utils/shared.h"
 #include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
@@ -46,27 +48,22 @@ bool SceneRenderer::render_scene_phase(
 
     tmillis_t next_input_check_ms = time_source_->now_ms();
     tmillis_t next_switch_check_ms = next_input_check_ms;
-    // Pace from the previous render start, not from the previous completed
-    // SwapOnVSync(). SwapOnVSync() already waits for the next matrix refresh.
-    // Pacing from the completed swap adds a second full frame interval at
-    // 60 FPS (sleep ~16 ms, then wait for VSync again), which can reduce local
-    // presentation to roughly half rate on a healthy renderer.
-    tmillis_t last_frame_start_ms = 0;
-    const tmillis_t target_step_ms = std::max<tmillis_t>(
-        1, 1000 / std::max(1, scene->get_declared_target_fps()));
+    FrameCadence cadence(time_source_->now_us(), scene->get_declared_target_fps());
 
     while (time_source_->now_ms() < end_ms) {
-        auto now_ms = time_source_->now_ms();
-        // SwapOnVSync below supplies the unavoidable hardware VSync wait. This
-        // time-based limiter only fills the remainder for scenes targeting a
-        // lower update rate. Anchoring it to render start means a 60 FPS scene
-        // normally reaches this point after its target interval has already
-        // elapsed while waiting for the previous VSync, so no second sleep is
-        // introduced.
-        if (last_frame_start_ms != 0 && now_ms < last_frame_start_ms + target_step_ms) {
-            SleepMillis(last_frame_start_ms + target_step_ms - now_ms);
-            now_ms = time_source_->now_ms();
+        // VSync already consumes part (or all) of the frame budget. Wait only
+        // for the remainder of the absolute deadline, in cancellable slices.
+        while (time_source_->now_us() < cadence.deadline_us()) {
+            if (*exit_flag_ || *interrupt_flag_ || exit_canvas_update || skip_image.exchange(false))
+                return true;
+            time_source_->sleep_us(std::min<std::int64_t>(10000,
+                cadence.deadline_us() - time_source_->now_us()));
         }
+        if (*exit_flag_ || *interrupt_flag_ || exit_canvas_update || skip_image.exchange(false))
+            return true;
+        const auto now_ms = time_source_->now_ms();
+        if (now_ms >= end_ms) break;
+        cadence.frame_started(time_source_->now_us());
         if (inputs_still_available && now_ms >= next_input_check_ms) {
             next_input_check_ms = now_ms + 250;
             if (!inputs_still_available()) {
@@ -133,10 +130,6 @@ bool SceneRenderer::render_scene_phase(
             presenter_->present();
             diagnostics.record_presentation(scene->get_declared_target_fps());
         }
-
-        // A held frame skips SwapOnVSync, so retain software pacing instead of
-        // busy-looping while the scene waits for new state.
-        last_frame_start_ms = frame_start_ms;
 
         if (!cont || *interrupt_flag_ || *exit_flag_) {
             trace("Exiting scene early.");

@@ -217,6 +217,25 @@ int main(int argc, char **argv)
     if (RemoteRender::session_requested(*transitioning) || !RemoteRender::session_requested(*second))
         return 22;
 
+    // A transition warms the scene at 60 FPS. Reusing it at its native rate
+    // must keep the same session/frame and update the worker without a start.
+    if (!RemoteRender::submit_frame(*second, 19, 32, 32, frame)) return 26;
+    const auto command_count = commands.size();
+    const auto slower = RemoteRender::request_scene(scene, 32, 32, 30);
+    const auto slower_resume = RemoteRender::reconnect_command();
+    if (slower != second || RemoteRender::status().last_sequence != 19
+        || !RemoteRender::latest_frame_age_ms(*second).has_value()
+        || commands.size() != command_count + 1
+        || commands.back().value("op", "") != "state"
+        || commands.back().value("target_fps", 0) != 30
+        || commands.back().value("session", 0U) != *second
+        || !slower_resume || slower_resume->value("target_fps", 0) != 30) {
+        std::cerr << "reused session did not adopt its native frame rate\n";
+        return 24;
+    }
+    if (RemoteRender::request_scene(scene, 32, 32, 30) != second
+        || commands.size() != command_count + 1) return 25;
+
     // Exercise the real chunk receiver, including incomplete/newer frames and
     // late duplicates. A partial frame must never replace the last complete one.
     auto deliver = [&](std::uint32_t sequence, int skip = -1) {

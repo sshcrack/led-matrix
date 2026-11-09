@@ -79,6 +79,7 @@ inline float smoothstep(float a, float b, float x)
 // Float RGB accumulation buffer; blitted to the canvas once per frame.
 class Buffer {
     std::vector<RGB> lattice_;  // scratch for add_field()
+    mutable std::vector<std::uint8_t> rgb_;  // reused RGB888 conversion storage
 
 public:
     int w = 0, h = 0;
@@ -187,13 +188,14 @@ public:
 
     void blit(rgb_matrix::FrameCanvas* canvas) const
     {
-        for (int y = 0; y < h; ++y)
-            for (int x = 0; x < w; ++x) {
-                const auto& p = px[static_cast<size_t>(y * w + x)];
-                canvas->SetPixel(x, y, static_cast<uint8_t>(std::clamp(p.r, 0.0f, 255.0f)),
-                                 static_cast<uint8_t>(std::clamp(p.g, 0.0f, 255.0f)),
-                                 static_cast<uint8_t>(std::clamp(p.b, 0.0f, 255.0f)));
-            }
+        rgb_.resize(px.size() * 3);
+        for (std::size_t i = 0; i < px.size(); ++i) {
+            const auto &p = px[i];
+            rgb_[i * 3] = static_cast<std::uint8_t>(std::clamp(p.r, 0.0f, 255.0f));
+            rgb_[i * 3 + 1] = static_cast<std::uint8_t>(std::clamp(p.g, 0.0f, 255.0f));
+            rgb_[i * 3 + 2] = static_cast<std::uint8_t>(std::clamp(p.b, 0.0f, 255.0f));
+        }
+        canvas->SetRGB(0, 0, w, h, rgb_.data());
     }
 };
 

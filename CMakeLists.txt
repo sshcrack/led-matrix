@@ -1589,5 +1589,10 @@ if(NOT ENABLE_EMULATOR AND NOT ENABLE_DESKTOP)
         spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
 endif()
 
+add_executable(frame_cadence_smoke tests/frame_cadence_smoke.cpp)
+target_compile_features(frame_cadence_smoke PRIVATE cxx_std_23)
+target_include_directories(frame_cadence_smoke PRIVATE shared/common/include)
+add_test(NAME frame_cadence_smoke COMMAND frame_cadence_smoke)
+
 # Extra warnings for our own targets (not thirdparty/ submodules or vcpkg).
 led_matrix_enable_project_warnings()

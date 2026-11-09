@@ -3,11 +3,10 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    # v0.1.11: headless rendering without SDL video initialization.
-    REF 7b7cf6b8bd42fd1c2d317658373a4fbe22e6041a
-    SHA512 3dce2257bb921420c43248a10d95503a6be224cf61861277ef973ac6272fbda472b23a9b7ceae652f479160ccb45f96ab9c09652237c7f0632c3f1d7bbd19ff6
+    # v0.1.12: bulk RGB conversion, lazy readback LUTs and Windows compatibility.
+    REF v0.1.12
+    SHA512 d89985274dac7e975f93874b62df65cef46a4226e7b7b8c4cc1c1346159d029a71191251b2e1ba02bc5422fb887c64fd4ffdb6cce8bc15feb9758d39463daf8c
     HEAD_REF master
-    PATCHES fix-win-compat.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

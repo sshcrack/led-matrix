@@ -163,22 +163,13 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
 
   const int width = Constants::width;
   const int height = Constants::height;
-  const uint8_t *data = pixels.data();
-  const int max_pixels = pixels.size() / 3;
-  const int limit = std::min(width * height, max_pixels);
-
-  for (int idx = 0; idx < limit; ++idx)
-  {
-    int x = idx % width;
-    int y = idx / width; // Standard scanline order from ffmpeg rgb24 usually
-                         // (top-left to bottom-right)
-    // But matrix might be different. Shadertoy used y = height - 1 - ...
-    // ffmpeg rawvideo is top-left origin.
-    // rpi-rgb-led-matrix is top-left origin usually.
-
-    int i = idx * 3;
-    canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
-  }
+  // Whole scanlines use the bulk converter; a truncated final scanline keeps
+  // the original partial-frame behavior.
+  const int limit = std::min(width * height, static_cast<int>(pixels.size() / 3));
+  const int rows = limit / width;
+  canvas->SetRGB(0, 0, width, rows, pixels.data());
+  if (const int tail = limit % width; tail != 0)
+    canvas->SetRGB(0, rows, tail, 1, pixels.data() + rows * width * 3);
 
   return true;
 }
