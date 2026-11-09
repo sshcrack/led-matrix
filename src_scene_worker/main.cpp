@@ -22,6 +22,7 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <iostream>
 #include <mutex>
@@ -48,7 +49,6 @@
 #include "matrix-factory.h"
 #include "led-matrix.h"
 
-#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/common/desktop_control_protocol.h>
 #include <shared/common/crash_reporter.h>
@@ -75,6 +75,7 @@ struct Args {
     std::uint16_t port = 8080;
     fs::path plugin_dir;
     fs::path crash_dir;
+    fs::path contract_fixture;
     bool list_scenes = false;
     bool self_test = false;
 };
@@ -165,12 +166,15 @@ Args parse_args(int argc, char **argv)
         else if (value == "--crash-dir") args.crash_dir = next();
         else if (value == "--list-scenes") args.list_scenes = true;
         else if (value == "--self-test") args.self_test = true;
+        else if (value == "--contract-fixture") args.contract_fixture = next();
         else if (value == "--help") {
-            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--client-id id] [--plugin-dir path] [--crash-dir path] [--list-scenes] [--self-test]");
+            throw std::runtime_error("usage: led-matrix-scene-worker [--host <matrix>] [--port 8080] [--client-id id] [--plugin-dir path] [--crash-dir path] [--list-scenes] [--self-test [--contract-fixture path]]");
         } else {
             throw std::runtime_error("unknown argument: " + value);
         }
     }
+    if (!args.contract_fixture.empty() && !args.self_test)
+        throw std::runtime_error("--contract-fixture requires --self-test");
     if (args.host.empty() && !args.list_scenes && !args.self_test)
         throw std::runtime_error("--host is required unless --list-scenes or --self-test is used");
     return args;
@@ -398,14 +402,13 @@ struct RenderRuntime {
     void start(const nlohmann::json &command)
     {
         reset();
-        const int protocol = command.value("protocol", 0);
-        if (protocol != RemoteRenderProtocol::Version)
-            throw std::runtime_error("unsupported remote render protocol");
         session = command.value("session", 0U);
         width = std::clamp(command.value("width", 128), 1, 1024);
         height = std::clamp(command.value("height", 128), 1, 1024);
         target_fps = std::clamp(command.value("target_fps", 60), 1, 60);
         if (session == 0) throw std::runtime_error("remote session id is zero");
+
+        scene = Scenes::Scene::from_remote_command(command);
 
         rgb_matrix::RGBMatrix::Options led_options;
         led_options.rows = height;
@@ -427,15 +430,6 @@ struct RenderRuntime {
         if (const auto it = command.find("artwork"); it != command.end())
             MediaArtworkState::replace_from_json(*it);
 
-        nlohmann::json scene_json{
-            {"type", command.value("scene", std::string{})},
-            {"arguments", command.value("arguments", nlohmann::json::object())},
-            {"variant", command.value("variant", std::string{})},
-            {"uuid", command.value("uuid", std::string{})},
-        };
-        scene = Scenes::Scene::from_json(scene_json);
-        if (!scene || scene->get_name() != command.value("scene", std::string{}))
-            throw std::runtime_error("scene worker does not have requested scene");
         scene->initialize(width, height);
         scene->set_runtime_target_fps(target_fps);
         scene->restore_frame_timeline(command.value("elapsed_seconds", 0.0));
@@ -537,11 +531,18 @@ int main(int argc, char **argv)
         }
 
         std::vector<std::string> offloadable_scenes;
+        nlohmann::json offloadable_scene_contracts = nlohmann::json::object();
         offloadable_scenes.reserve(wrappers.size());
         for (const auto &wrapper : wrappers) {
             const auto scene = wrapper->get_default();
-            if (scene && scene->get_capabilities().supports_remote_rendering)
-                offloadable_scenes.push_back(scene->get_name());
+            if (scene && scene->get_capabilities().supports_remote_rendering) {
+                const auto name = scene->get_name();
+                const int contract = scene->remote_contract_version();
+                if (contract <= 0)
+                    throw std::runtime_error("Invalid remote contract for scene: " + name);
+                offloadable_scenes.push_back(name);
+                offloadable_scene_contracts[name] = contract;
+            }
         }
         std::sort(offloadable_scenes.begin(), offloadable_scenes.end());
         offloadable_scenes.erase(std::unique(offloadable_scenes.begin(), offloadable_scenes.end()), offloadable_scenes.end());
@@ -566,13 +567,37 @@ int main(int argc, char **argv)
             return 0;
         }
         if (args.self_test) {
+            if (!args.contract_fixture.empty()) {
+                std::ifstream input(args.contract_fixture);
+                const auto fixture = nlohmann::json::parse(input);
+                for (const auto &field : {"protocol", "scene_contract"}) {
+                    for (const auto &value : {nlohmann::json(), nlohmann::json(99)}) {
+                        auto invalid = fixture;
+                        if (value.is_null()) invalid.erase(field);
+                        else invalid[field] = value;
+                        RenderRuntime rejected;
+                        bool threw = false;
+                        try { rejected.start(invalid); }
+                        catch (const std::exception &) { threw = true; }
+                        if (!threw || rejected.scene || rejected.matrix)
+                            throw std::runtime_error("worker accepted incompatible contract fixture");
+                    }
+                }
+                RenderRuntime accepted;
+                accepted.start(fixture);
+                if (!accepted.scene->render_frame(accepted.canvas, 1.0 / 30.0, true))
+                    throw std::runtime_error("saved contract fixture stopped rendering");
+                const auto pixels = capture(accepted.output_frame(), accepted.width, accepted.height);
+                if (std::none_of(pixels.begin(), pixels.end(), [](auto pixel) { return pixel != 0; }))
+                    throw std::runtime_error("saved contract fixture produced no pixels");
+            }
             run_self_test(offloadable_scenes);
             if (transition_manager.get_registered_transitions().empty())
                 throw std::runtime_error("worker has no registered transitions");
             for (const auto &name : transition_manager.get_registered_transitions()) {
                 RenderRuntime probe;
                 probe.start({{"protocol", RemoteRenderProtocol::Version}, {"session", 1},
-                    {"width", 128}, {"height", 128}, {"scene", "boids"},
+                    {"width", 128}, {"height", 128}, {"scene", "boids"}, {"scene_contract", offloadable_scene_contracts.at("boids")},
                     {"transition", {{"name", name}, {"duration_ms", 750},
                         {"from", std::vector<std::uint8_t>(128 * 128 * 3, 31)}}}});
                 probe.scene->render_frame(probe.canvas, 1.0 / 60.0, true);
@@ -686,7 +711,7 @@ int main(int argc, char **argv)
                     {"op", "worker_heartbeat"},
                     {"protocol", RemoteRenderProtocol::Version},
                     {"scenes", offloadable_scenes},
-                    {"scene_code", Common::scene_code_digest()},
+                    {"scene_contracts", offloadable_scene_contracts},
                 };
                 websocket.send("msg:RenderOffload:" + heartbeat.dump());
                 next_heartbeat = now + std::chrono::seconds(1);

@@ -2,6 +2,7 @@
 #include "shared/common/win_compat.h"
 #endif
 #include "shared/matrix/Scene.h"
+#include "shared/common/remote_render_protocol.h"
 
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/utils/utils.h>
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cctype>
+#include <limits>
 #include <unordered_set>
 #include <magic_enum/magic_enum.hpp>
 
@@ -59,6 +61,31 @@ float normalized_audio_feature(const AudioState::Snapshot &audio, AudioProtocol:
 
 std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
 {
+    return from_json_impl(j, std::nullopt);
+}
+
+std::unique_ptr<Scenes::Scene> Scenes::Scene::from_remote_command(const nlohmann::json &command)
+{
+    const auto protocol = command.find("protocol");
+    const auto contract = command.find("scene_contract");
+    if (protocol == command.end() || !protocol->is_number_integer()
+        || *protocol != RemoteRenderProtocol::Version)
+        throw std::runtime_error("Unsupported remote render protocol");
+    if (contract == command.end() || !contract->is_number_integer()
+        || *contract <= 0 || *contract > std::numeric_limits<int>::max())
+        throw std::runtime_error("Missing or invalid remote scene contract");
+    const nlohmann::json scene_json{
+        {"type", command.at("scene")},
+        {"arguments", command.value("arguments", nlohmann::json::object())},
+        {"variant", command.value("variant", std::string{})},
+        {"uuid", command.value("uuid", std::string{})},
+    };
+    return from_json_impl(scene_json, contract->get<int>());
+}
+
+std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json_impl(const nlohmann::json &j,
+                                                          std::optional<int> remote_contract)
+{
     if (!j.contains("type"))
         throw std::runtime_error(fmt::format("No scene type given for '{}'", j.dump()));
 
@@ -72,6 +99,12 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
             continue;
 
         auto scene = item->create();
+        // Remote callers must establish the contract before properties, variants
+        // or runtime state from another build are interpreted.
+        if (remote_contract && (!scene->get_capabilities().supports_remote_rendering
+            || *remote_contract <= 0 || scene->remote_contract_version() != *remote_contract))
+            throw std::runtime_error(fmt::format("Unsupported remote contract {} for scene '{}'",
+                                                *remote_contract, t));
 
         spdlog::debug("Creating scene '{}'", t);
         scene->update_default_properties();
@@ -97,6 +130,8 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json(const nlohmann::json &j)
         return scene;
     }
 
+    if (remote_contract)
+        throw std::runtime_error(fmt::format("Unknown remote scene '{}'", t));
     spdlog::warn("Unknown scene type '{}', returning FallbackScene", t);
     auto unknown_scene = std::make_unique<Scenes::FallbackScene>(t);
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <span>
 
 #include <shared/common/remote_render_protocol.h>
@@ -60,10 +61,19 @@ void RenderOffloadPlugin::on_websocket_message(const std::string &message)
         const auto command = nlohmann::json::parse(message);
         if (command.value("op", std::string{}) != "worker_heartbeat")
             return;
-        RemoteRender::report_worker_heartbeat(
-            command.value("protocol", 0),
-            command.value("scenes", std::vector<std::string>{}),
-            command.value("scene_code", std::string{}));
+        RemoteRender::SceneContracts contracts;
+        if (const auto advertised = command.find("scene_contracts"); advertised != command.end()
+            && advertised->is_object()) {
+            for (const auto &[name, version] : advertised->items())
+                if (version.is_number_integer() && version > 0
+                    && version <= std::numeric_limits<int>::max())
+                    contracts.emplace(name, version.get<int>());
+        }
+        const auto protocol = command.find("protocol");
+        const int protocol_version = protocol != command.end() && protocol->is_number_integer()
+            && *protocol >= 0 && *protocol <= std::numeric_limits<std::uint8_t>::max()
+            ? protocol->get<int>() : 0;
+        RemoteRender::report_worker_heartbeat(protocol_version, std::move(contracts));
     } catch (const std::exception &e) {
         spdlog::debug("Ignoring invalid RenderOffload worker message: {}", e.what());
     }

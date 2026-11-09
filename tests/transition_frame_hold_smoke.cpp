@@ -2,7 +2,6 @@
 #include "matrix_control/TransitionEngine.h"
 
 #include <shared/common/timesource/TimeSource.h>
-#include <shared/common/build_info.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/remote_render.h>
 #include <shared/matrix/Scene.h>
@@ -146,8 +145,9 @@ int main()
         }
     }
 
+    RemoteRender::set_local_scene_contracts({{next->get_name(), next->remote_contract_version()}});
     RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version,
-        {next->get_name()}, Common::scene_code_digest());
+        {{next->get_name(), next->remote_contract_version()}});
     bool sent_transition = false;
     RemoteRender::set_command_sender([&](const nlohmann::json &command) {
         if (command.value("op", "") != "start") return;

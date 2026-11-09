@@ -1,0 +1,14 @@
+{
+  "op": "start",
+  "protocol": 4,
+  "session": 1,
+  "scene": "contract_probe",
+  "scene_contract": 1,
+  "uuid": "contract-v1-fixture",
+  "width": 32,
+  "height": 32,
+  "target_fps": 30,
+  "elapsed_seconds": 12.5,
+  "arguments": { "speed": 2.5, "enabled": true },
+  "runtime_state": { "phase": 0.25 }
+}

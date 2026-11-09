@@ -119,8 +119,9 @@ interface DiagnosticsData {
     scene: string
     worker_available: boolean
     worker_compatible?: boolean
-    local_scene_code?: string
-    worker_scene_code?: string
+    local_protocol?: number
+    worker_protocol?: number
+    worker_compatible_scene_count?: number
     worker_scene_count: number
   }
   transition?: {
@@ -233,14 +234,15 @@ export default function Diagnostics() {
           <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
           <div className="min-w-0 space-y-2">
             <h2 className="font-semibold">Desktop app is incompatible</h2>
-            <p className="text-sm">The desktop is connected, but its scene code differs from this matrix. Automatic scene offload is disabled, so heavy scenes render locally at reduced quality when needed.</p>
-            <p className="text-sm text-muted-foreground">Install the desktop app from the same release as the matrix, then restart it. If you use a development build, rebuild both from the same scene code.</p>
+            <p className="text-sm">The desktop is connected, but no advertised scene has a compatible protocol and scene contract. Heavy scenes render locally at reduced quality when needed.</p>
+            <p className="text-sm text-muted-foreground">Update the matrix and desktop app to compatible versions, then restart the desktop app. Renderer code and release versions can differ when their data contracts match.</p>
             <a href="https://github.com/sshcrack/led-matrix/releases" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline underline-offset-4">Download desktop releases</a>
             <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer">Scene code details</summary>
+              <summary className="cursor-pointer">Compatibility details</summary>
               <dl className="mt-2 grid gap-1 break-all font-mono">
-                <div><dt className="inline">Matrix: </dt><dd className="inline">{data.remote_render?.local_scene_code || 'Unknown'}</dd></div>
-                <div><dt className="inline">Desktop: </dt><dd className="inline">{data.remote_render?.worker_scene_code || 'Not reported — update the desktop app'}</dd></div>
+                <div><dt className="inline">Matrix protocol: </dt><dd className="inline">{data.remote_render?.local_protocol ?? 'Unknown'}</dd></div>
+                <div><dt className="inline">Desktop protocol: </dt><dd className="inline">{data.remote_render?.worker_protocol ?? 'Not reported — update the desktop app'}</dd></div>
+                <div><dt className="inline">Compatible scenes: </dt><dd className="inline">{data.remote_render?.worker_compatible_scene_count ?? 0} / {data.remote_render?.worker_scene_count ?? 0}</dd></div>
               </dl>
             </details>
           </div>

@@ -3,6 +3,7 @@
 #endif
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin_registry.h"
+#include "shared/matrix/remote_render.h"
 #include <shared/matrix/input_ids.h>
 
 #include <algorithm>
@@ -25,6 +26,18 @@ using Plugins::RegistryValidationReport;
 using Plugins::SceneWrapper;
 
 namespace {
+void publish_scene_contracts(const std::vector<std::shared_ptr<SceneWrapper>> &scenes)
+{
+    RemoteRender::SceneContracts contracts;
+    for (const auto &wrapper : scenes) {
+        if (!wrapper) continue;
+        const auto scene = wrapper->get_default();
+        if (scene && scene->get_capabilities().supports_remote_rendering)
+            contracts.emplace(scene->get_name(), scene->remote_contract_version());
+    }
+    RemoteRender::set_local_scene_contracts(std::move(contracts));
+}
+
 bool has_control_or_path_separator(const std::string &value) {
     for (unsigned char c : value) {
         if (c < 0x20 || c == '/' || c == '\\') return true;
@@ -96,8 +109,10 @@ std::vector<std::shared_ptr<SceneWrapper>> PluginManager::get_scenes() {
 
 RegistryValidationReport PluginManager::publish_if_valid(std::vector<std::shared_ptr<SceneWrapper>> candidate) {
     auto report = build_report(candidate);
-    if (report.ok())
+    if (report.ok()) {
         all_scenes = std::move(candidate);
+        publish_scene_contracts(all_scenes);
+    }
     validation_report_ = report;
     return report;
 }
@@ -136,6 +151,7 @@ void PluginManager::remove_scene(const std::string& name) {
     // the report; otherwise one bad remaining scene would pin a deleted one.
     validation_report_ = build_report(candidate);
     all_scenes = std::move(candidate);
+    publish_scene_contracts(all_scenes);
 }
 
 RegistryValidationReport PluginManager::get_validation_report() const {
@@ -272,6 +288,8 @@ RegistryValidationReport PluginManager::build_report(const std::vector<std::shar
         }
 
         const auto caps = scene->get_capabilities();
+        if (caps.supports_remote_rendering && scene->remote_contract_version() <= 0)
+            report.errors.emplace_back(fmt::format("Scene '{}' has a nonpositive remote contract version", scene_name));
         if (caps.requires_audio && !caps.requires_desktop)
             report.warnings.emplace_back(fmt::format("Scene '{}' requires audio but does not declare requires_desktop", scene_name));
 
@@ -420,6 +438,7 @@ RegistryValidationReport PluginManager::build_report(const std::vector<std::shar
 void PluginManager::delete_references() {
     std::lock_guard<std::mutex> lock(scenes_mutex);
     all_scenes.clear();
+    RemoteRender::set_local_scene_contracts({});
     scenes_initialized = false;
     scenes_plugin_count_ = 0;
     validation_report_ = {};

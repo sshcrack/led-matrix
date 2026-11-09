@@ -33,6 +33,8 @@ using Property = Plugins::Property<T>;
 namespace Scenes {
     class Scene {
         std::vector<std::shared_ptr<Plugins::PropertyBase>> properties;
+        static std::unique_ptr<Scene> from_json_impl(const nlohmann::json &j,
+                                                    std::optional<int> remote_contract);
 
     protected:
         bool initialized = false;
@@ -128,6 +130,10 @@ namespace Scenes {
         /// Set before initialize() for repeatable previews and visual fixtures.
         /// Scenes without random state may ignore this. Production leaves it unset.
         virtual void set_random_seed(uint32_t seed) {}
+        /// Version of this scene's remote properties and transient state contract.
+        /// Bump only for incompatible exchanged-data changes (including units or
+        /// meaning), not renderer improvements, refactors or shared-code edits.
+        [[nodiscard]] virtual int remote_contract_version() const { return 1; }
         Scene();
 
         virtual ~Scene() = default;  // Changed to proper virtual destructor with default implementation
@@ -253,6 +259,8 @@ namespace Scenes {
                           bool suppress_internal_wait = false);
 
         static std::unique_ptr<Scene> from_json(const nlohmann::json &j);
+        /// Worker entry: validate protocol and scene contract before loading data.
+        static std::unique_ptr<Scene> from_remote_command(const nlohmann::json &command);
 
         virtual void register_properties() = 0;
 

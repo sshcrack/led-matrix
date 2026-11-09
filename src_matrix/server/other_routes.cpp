@@ -15,7 +15,7 @@
 
 #include "shared/matrix/interrupt.h"
 #include "shared/matrix/diagnostics.h"
-#include <shared/common/build_info.h>
+#include <shared/common/remote_render_protocol.h>
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/runtime_inputs.h"
@@ -201,9 +201,10 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             {"scene", remote.scene},
             {"worker_available", remote.worker_available},
             {"worker_compatible", remote.worker_compatible},
-            {"worker_scene_code", remote.worker_scene_code},
-            {"local_scene_code", Common::scene_code_digest()},
-            {"worker_scene_count", remote.worker_scene_count}
+            {"worker_protocol", remote.worker_protocol},
+            {"local_protocol", RemoteRenderProtocol::Version},
+            {"worker_scene_count", remote.worker_scene_count},
+            {"worker_compatible_scene_count", remote.worker_compatible_scene_count}
         };
 
         const auto audio = AudioState::snapshot();
