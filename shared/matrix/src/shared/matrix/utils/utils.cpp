@@ -128,9 +128,9 @@ std::expected<std::string, std::string> execute_process(const std::string &cmd, 
 
 void floatPixelSet(rgb_matrix::FrameCanvas *canvas, int x, int y, float r, float g, float b)
 {
-    const uint8_t rByte = static_cast<uint8_t>(max(0.0f, min(1.0f, r)) * 255.0f);
-    const uint8_t gByte = static_cast<uint8_t>(max(0.0f, min(1.0f, g)) * 255.0f);
-    const uint8_t bByte = static_cast<uint8_t>(max(0.0f, min(1.0f, b)) * 255.0f);
+    const uint8_t rByte = static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, r)) * 255.0f);
+    const uint8_t gByte = static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, g)) * 255.0f);
+    const uint8_t bByte = static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, b)) * 255.0f);
 
     canvas->SetPixel(x, y, rByte, gByte, bByte);
 }

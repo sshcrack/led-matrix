@@ -8,25 +8,36 @@ import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
  * request runs, and `pollMs` re-fetches while the tab is visible so several
  * clients (phone + desktop) stay in sync.
  */
+const REQUEST_TIMEOUT_MS = 8000
+
 export function useResource<T>(path: string | null, opts: { pollMs?: number } = {}) {
   const apiUrl = useApiUrl()
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [lastOk, setLastOk] = useState<number | null>(null)
   const seq = useRef(0)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!apiUrl || !path) return
     const mine = ++seq.current
+    // A matrix that dropped off the network can leave a request hanging; give up so the UI can say so.
+    const timeout = new AbortController()
+    const timer = window.setTimeout(() => timeout.abort(), REQUEST_TIMEOUT_MS)
+    const onAbort = () => timeout.abort()
+    signal?.addEventListener('abort', onAbort)
     try {
-      const res = await fetch(apiUrl + path, { signal })
+      const res = await fetch(apiUrl + path, { signal: timeout.signal })
       if (!res.ok) throw new Error(`${path} → ${res.status}`)
       const json = (await res.json()) as T
-      if (mine === seq.current) { setData(json); setError(null) }
+      if (mine === seq.current) { setData(json); setError(null); setLastOk(Date.now()) }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
-      if (mine === seq.current) setError(e as Error)
+      if (signal?.aborted) return
+      const err = (e as Error).name === 'AbortError' ? new Error(`${path} timed out`) : (e as Error)
+      if (mine === seq.current) setError(err)
     } finally {
+      window.clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
       if (mine === seq.current) setLoaded(true)
     }
   }, [apiUrl, path])
@@ -45,6 +56,14 @@ export function useResource<T>(path: string | null, opts: { pollMs?: number } = 
     return () => window.clearInterval(id)
   }, [pollMs, load])
 
+  // Coming back online (or to the tab) should not wait for the next poll tick.
+  useEffect(() => {
+    if (!pollMs) return
+    const retry = () => { void load() }
+    window.addEventListener('online', retry)
+    return () => window.removeEventListener('online', retry)
+  }, [pollMs, load])
+
   const refresh = useCallback(() => load(), [load])
-  return { data, error, loading: !loaded, refresh, setData }
+  return { data, error, lastOk, loading: !loaded, refresh, setData }
 }

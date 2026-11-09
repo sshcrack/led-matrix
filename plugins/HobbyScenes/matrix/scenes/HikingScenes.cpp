@@ -221,8 +221,9 @@ bool RidgeTrailScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor RidgeTrailScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "hiking";
-    d.tags = {"hiking", "hills", "scenery", "landscape", "sunset", "calm", "audio-reactive"};
+    d.tags = {"hiking", "hills", "scenery", "landscape", "sunset", "fits:day", "fits:dusk", "calm", "audio-reactive"};
     d.intensity = 0.3f;
     d.motion = 0.5f;
     d.music_affinity = 0.45f;
@@ -417,6 +418,7 @@ bool SummitNightScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor SummitNightScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "hiking";
     d.tags = {"hiking", "hills", "night", "fits:dusk", "fits:night", "stars", "camping", "aurora", "calm", "audio-reactive"};
     d.intensity = 0.15f;
@@ -743,12 +745,13 @@ bool AlpineLakeScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor AlpineLakeScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "hiking";
-    d.tags = {"hiking", "mountains", "lake", "scenery", "landscape", "morning", "calm", "audio-reactive"};
+    d.tags = {"hiking", "mountains", "lake", "scenery", "landscape", "morning", "fits:dawn", "fits:day", "calm", "audio-reactive"};
     d.intensity = 0.15f;
     d.motion = 0.2f;
     d.music_affinity = 0.35f;
-    d.performance_cost = 0.35f;
+    d.performance_cost = 1.0f;
     environment_->add_variants(d);
     return d;
 }

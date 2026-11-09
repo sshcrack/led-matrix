@@ -71,7 +71,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         json j;
         try {
             j = json::parse(str_body);
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -102,7 +102,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         try {
             j = json::parse(str_body);
             j["id"] = id;
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -135,7 +135,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
 
             config->set_schedule(id, schedule);
             return reply_with_json(req, {{"success", "Schedule saved"}, {"id", id}});
-        } catch (exception &ex) {
+        } catch (std::exception &ex) {
             warn("Invalid schedule data {}", ex.what());
             return reply_with_error(req, "Could not parse schedule data");
         }

@@ -118,6 +118,7 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
 SceneDescriptor WeatherAmbienceScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "weather";
     d.tags = {"weather", "sky", "calm", "scenery"};
     d.intensity = 0.2f;

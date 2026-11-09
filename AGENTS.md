@@ -184,6 +184,8 @@ plugins/MyPlugin/
 
 `extern "C"` factory names **must match the plugin name exactly** — `createMyPlugin` / `destroyMyPlugin`. The `PLUGIN_NAME` macro is injected by CMake via `target_compile_definitions`.
 
+A scene is only considered by Automatic Mode if its `get_descriptor()` sets `d.automatic_eligible = true`. `Scene::get_descriptor()` defaults it to **false**, so a scene that sets family, tags and `fits:*` but forgets the flag is never chosen and its `fits:*` tags never matter. Scenes that must stay manual (readable text, games, interactive) keep the default. `tests/scenery_eligibility_coverage.py` (ctest `scenery_eligibility_coverage`) fails when a scene tagged `scenery` or `fits:*` is not eligible, unless it is on the test's `OPT_OUT` list with a reason.
+
 Key headers:
 - Scene base class: `shared/matrix/include/shared/matrix/Scene.h`
 - Plugin entry: `shared/matrix/include/shared/matrix/plugin/main.h`
@@ -195,7 +197,7 @@ For plugins with additional vcpkg dependencies, add a feature entry to `vcpkg.js
 ## Design constraints (read before proposing features)
 
 The matrix is a passive prop in a room. Every scene must be:
-- **Low compute on the Pi** — scenes run on a single RPi 4, no GPU
+- **Low compute on the Pi** — scenes run on a single Raspberry Pi 3 Model B (the real device, `ssh ledmat`: Cortex-A53 at 1.2 GHz, 906 MB RAM), no GPU
 - **Non-interactive** — no input from viewers (configuration via the web UI is fine; the running display needs no input)
 - **No readable text** — no tickers, scores, headlines, or anything requiring active reading
 - **Visually interesting** — ambient/aesthetic purpose only
@@ -228,7 +230,7 @@ Desktop app install and updates: the desktop app installs per user (no root/admi
 
 Outdoor scenes follow the real world through `shared/matrix/environment/`:
 - `Environment::Service` (daemon thread, started in `daemon.cpp`) locates the Pi (manual setting, else IP), polls Open-Meteo every 15 min and publishes the `environment` Runtime Input (mirrored to the desktop scene worker). Settings live in `config.json` → `environment`; REST: `GET/POST /environment`, `GET /environment/geocode?q=` (`src_matrix/server/environment_routes.cpp`); UI: `react-web/src/components/environment/EnvironmentCard.tsx` on the Integrations page.
-- A scene owns a `SceneEnvironment` (`look.h`), adds its `properties()` (time_of_day / weather / season enums, group "Environment"), calls `update(raw_dt)` every frame and paints with the returned `Look` (smoothed numbers plus a palette: `lit()`, `foliage()`, `grass()`, `ground()`, `lamp()`). Each aspect resolves independently: scene property > global override > real world > scene `Defaults`. `Adapt` switches aspects off for scenes whose identity is fixed (a campfire stays night, skiing stays winter) and `weather_allowed` drops weather a scene cannot show. Call `add_variants(descriptor)` for the fixed-look variants (they default to off in Automatic Mode).
+- A scene owns a `SceneEnvironment` (`look.h`), adds its `properties()` (time_of_day / weather / season enums, group "Environment"), calls `update(raw_dt)` every frame and paints with the returned `Look` (smoothed numbers plus a palette: `lit()`, `foliage()`, `grass()`, `ground()`, `lamp()`). Each aspect resolves independently: scene property > global override > real world > scene `Defaults`. `Adapt` switches aspects off for scenes whose identity is fixed (a campfire stays night, skiing stays winter) and `weather_allowed` drops weather a scene cannot show. Call `add_variants(descriptor)` for the fixed-look variants (they default to off in Automatic Mode); it also adds the `environment-adaptive` tag, and Automatic Mode then plays the scene's own real-world-following look (`CanvasCoordinator::ensure_automatic_catalog`, listed as "Follows the real world" in the web UI) in addition to the variants. Scenes with variants but without that tag only play their variants.
 - `paint.h` has the shared painters for any float RGB buffer (`Surface`, unit 1 or 255): sky, stars, sun, moon with phase, clouds, fog, `Precipitation`, `Lightning`, `SeasonalDrift` (leaves, petals, fireflies), `paint_window`, `paint_string_lights`. Hobby scenes get them through `HobbySceneBase::use_environment()`.
 - Holidays: add an entry to `registry()` in `occasions.cpp`; scenes that know the id decorate via `look.occasion("id")` (example: `season_cottage`), the UI lists it automatically.
 - Director: tag scenes with `fits:<id>` for the moments they suit (`dawn|day|dusk|night`, `clear|cloudy|fog|rain|snow|storm`, `spring|summer|autumn|winter`; ids from `Environment::fit_id`) and holiday-only scenes with `occasion:<id>` (skipped in Automatic Mode unless that occasion is active). `AutomaticDirector::Mode` (`mixed|environment|party|chill`, `config.json` → `automatic_director_mode`, `GET/POST /automatic_director/mode`, picker under the home now-playing bar) weighs the fit, scenery and energy differently and changes dwell; `tests/automatic_director_smoke.cpp` covers it.

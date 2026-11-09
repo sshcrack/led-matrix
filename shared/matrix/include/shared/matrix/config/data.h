@@ -4,19 +4,23 @@
 #include <shared/matrix/Scene.h>
 #include <atomic>
 #include <cstdint>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
 #include <shared/matrix/environment/settings.h>
 
-using namespace std;
 using json = nlohmann::json;
 
 namespace ConfigData
 {
     struct Preset
     {
-        vector<std::shared_ptr<Scenes::Scene>> scenes;
+        std::vector<std::shared_ptr<Scenes::Scene>> scenes;
         tmillis_t transition_duration = 750;
         std::string transition_name = "blend";  ///< Global default transition effect name
         std::string display_name;
@@ -27,19 +31,19 @@ namespace ConfigData
 
     struct CustomSceneVariant
     {
-        string id;
-        string label;
-        string description;
+        std::string id;
+        std::string label;
+        std::string description;
         json properties = json::object();
     };
 
     struct SpotifyData
     {
-        optional<string> access_token;
-        optional<string> refresh_token;
+        std::optional<std::string> access_token;
+        std::optional<std::string> refresh_token;
         tmillis_t expires_at = 0;
-        string client_id;
-        string client_secret; // legacy; logins started after PKCE support use no secret
+        std::string client_id;
+        std::string client_secret; // legacy; logins started after PKCE support use no secret
         bool pkce = false;    // tokens were issued via PKCE: refresh with client_id only
 
         [[nodiscard]] bool is_expired() const;
@@ -49,14 +53,14 @@ namespace ConfigData
 
     struct Schedule
     {
-        string id;
-        string name;
-        string preset_id;
+        std::string id;
+        std::string name;
+        std::string preset_id;
         int start_hour;           // 0-23
         int start_minute;         // 0-59
         int end_hour;             // 0-23
         int end_minute;           // 0-59
-        vector<int> days_of_week; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
+        std::vector<int> days_of_week; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
         bool enabled;
 
         [[nodiscard]] bool is_active_now() const;
@@ -87,28 +91,28 @@ namespace ConfigData
         int check_interval_hours = 24; // Check for updates every 24 hours by default
         tmillis_t last_check_time = 0;
         bool update_available = false;
-        string latest_version = "";
-        string update_download_url = "";
+        std::string latest_version = "";
+        std::string update_download_url = "";
     };
 
     struct Root
     {
-        map<string, std::shared_ptr<Preset>> presets;
-        map<string, string> pluginConfigs;
+        std::map<std::string, std::shared_ptr<Preset>> presets;
+        std::map<std::string, std::string> pluginConfigs;
         SpotifyData spotify;
-        map<string, Schedule> schedules;
-        map<string, vector<CustomSceneVariant>> custom_scene_variants;
+        std::map<std::string, Schedule> schedules;
+        std::map<std::string, std::vector<CustomSceneVariant>> custom_scene_variants;
         bool scheduling_enabled;
         BrightnessSchedule brightness_schedule;
         std::atomic<bool> turned_off;
-        string operation_mode = "automatic";
+        std::string operation_mode = "automatic";
         std::uint64_t automatic_director_seed = 0;
         /// "mixed" | "environment" | "party" | "chill" (what Automatic Mode is for).
-        string automatic_director_mode = "mixed";
+        std::string automatic_director_mode = "mixed";
         /// Look key ("scene" or "scene/variant") -> "favorite" | "on" | "hidden".
         /// Absent keys follow the look's automatic_default.
-        map<string, string> automatic_preferences;
-        string curr;
+        std::map<std::string, std::string> automatic_preferences;
+        std::string curr;
         UpdateSettings update_settings;
         Environment::Settings environment;
 

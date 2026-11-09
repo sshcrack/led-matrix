@@ -286,8 +286,9 @@ bool CyclingScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor CyclingScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "activities";
-    d.tags = {"cycling", "sport", "coast", "sea", "fits:spring", "fits:summer", "fits:autumn", "scenery", "landscape", "calm", "audio-reactive"};
+    d.tags = {"cycling", "sport", "coast", "sea", "fits:spring", "fits:summer", "fits:autumn", "fits:day", "fits:clear", "fits:cloudy", "scenery", "landscape", "calm", "audio-reactive"};
     d.intensity = 0.3f;
     d.motion = 0.55f;
     d.music_affinity = 0.3f;
@@ -481,8 +482,9 @@ bool SkiingScene::render(rgb_matrix::FrameCanvas* canvas)
 Scenes::SceneDescriptor SkiingScene::get_descriptor() const
 {
     auto d = Scene::get_descriptor();
+    d.automatic_eligible = true;
     d.family = "activities";
-    d.tags = {"skiing", "sport", "winter", "snow", "mountains", "fits:winter", "scenery", "audio-reactive"};
+    d.tags = {"skiing", "sport", "winter", "snow", "mountains", "fits:winter", "fits:day", "scenery", "audio-reactive"};
     d.intensity = 0.35f;
     d.motion = 0.6f;
     d.music_affinity = 0.3f;
