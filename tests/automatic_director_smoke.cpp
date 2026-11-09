@@ -1,3 +1,6 @@
+#include <shared/common/build_info.h>
+#include <shared/common/remote_render_protocol.h>
+#include <shared/matrix/remote_render.h>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/input_ids.h>
 #include <shared/matrix/runtime_inputs.h>
@@ -58,6 +61,13 @@ public:
     }
     tmillis_t get_default_duration() override { return duration_; }
     int get_default_weight() override { return 1; }
+    Scenes::SceneCapabilities get_capabilities() const override
+    {
+        auto caps = Scene::get_capabilities();
+        caps.supports_remote_rendering = remote_eligible;
+        return caps;
+    }
+    bool remote_eligible = true;
     bool automatic_default = true;
 
 private:
@@ -530,6 +540,56 @@ int main()
         std::cerr << "reseed discarded measured hardware render loads\n";
         return 34;
     }
+
+    // A GUI connection alone cannot remove Pi cost penalties. Ranking and
+    // dwell must use the same per-scene worker eligibility as DesktopHandoff.
+    RuntimeInputs::InputState desktop_input;
+    desktop_input.available = true;
+    const RuntimeInputs::Snapshot connected_desktop({{std::string(RuntimeInputIds::Desktop), desktop_input}});
+    auto has_cost_penalty = [&](const RuntimeInputs::Snapshot& inputs) {
+        const auto candidates = load_director.rank(twins, inputs);
+        const auto heavy = std::find_if(candidates.begin(), candidates.end(), [](const auto& c) {
+            return c.scene->get_name() == "twin_a";
+        });
+        return heavy != candidates.end() && std::any_of(heavy->reasons.begin(), heavy->reasons.end(), [](const auto& r) {
+            return r == "measured Pi render load is too high" || r == "deprioritized for Pi render cost";
+        });
+    };
+    if (!has_cost_penalty(connected_desktop)
+        || load_director.presentation_duration(twins[0], connected_desktop) > 18000) {
+        std::cerr << "GUI connection without a scene worker hid measured Pi cost\n";
+        return 80;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_a"}, "old-scene-code");
+    if (!has_cost_penalty(connected_desktop)) {
+        std::cerr << "incompatible worker hid measured Pi cost\n";
+        return 81;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_b"}, Common::scene_code_digest());
+    if (!has_cost_penalty(connected_desktop)) {
+        std::cerr << "worker missing the scene hid measured Pi cost\n";
+        return 82;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {"twin_a"}, Common::scene_code_digest());
+    if (has_cost_penalty(connected_desktop) || has_cost_penalty({})
+        || load_director.presentation_duration(twins[0], connected_desktop) <= 18000) {
+        std::cerr << "offloadable scene retained its Pi cost penalty or shortened dwell\n";
+        return 83;
+    }
+    std::static_pointer_cast<TestScene>(twins[0])->remote_eligible = false;
+    if (!has_cost_penalty(connected_desktop)) {
+        std::cerr << "scene opting out of remote rendering escaped its Pi cost penalty\n";
+        return 84;
+    }
+    std::static_pointer_cast<TestScene>(twins[0])->remote_eligible = true;
+    const auto authored_heavy = std::make_shared<TestScene>("twin_a", .4f, .1f, 1.0f, false, "twin", .4f);
+    const auto authored_rank = load_director.rank({authored_heavy}, connected_desktop);
+    if (std::find(authored_rank.front().reasons.begin(), authored_rank.front().reasons.end(),
+                  "deprioritized for Pi render cost") != authored_rank.front().reasons.end()) {
+        std::cerr << "offloadable scene retained its authored Pi cost penalty\n";
+        return 85;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {}, "old-scene-code");
 
     // A failed presentation cools the scene down with backoff, but never leaves
     // the matrix without a scene when nothing else is eligible.

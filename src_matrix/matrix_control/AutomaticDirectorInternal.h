@@ -24,7 +24,7 @@ using DirectorContext = AutomaticDirector::Context;
 DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const VisualJourney::Frame& journey);
 Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene);
 float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::EffectiveSceneProfile& profile,
-                     const std::optional<float>& measured_load, bool desktop_available);
+                     const std::optional<float>& measured_load);
 
 // Descriptor performance costs are priors on a 0..1 scale where anything above
 // the budget is expected to strain the Pi.
