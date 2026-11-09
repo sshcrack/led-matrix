@@ -1,6 +1,6 @@
 ---
 name: led-matrix-ship
-description: Ship finished changes in the led-matrix repo (sshcrack/led-matrix) as a commit, PR with screenshots, CI watch, and optionally merge, release and deploy to the Pi. Use when the user says to commit/PR/merge/release in led-matrix, or names a tier ("tier 1/2/3", "just PR it", "PR and merge", "ship and release"). Without a stated tier, ask which tier or default to tier 1.
+description: Ship finished changes in the led-matrix repo (sshcrack/led-matrix) as a commit, PR with screenshots, CI watch, and optionally merge, release and deploy to the Pi. Use when the user says to commit/PR/merge/release in led-matrix, or names a tier ("tier 1/2/3", "just PR it", "PR and merge", "ship and release"). Without a stated tier, ask which tier or default to tier 1. "With review" adds an independent review loop before the merge.
 ---
 
 # Ship led-matrix changes
@@ -22,6 +22,20 @@ Repo: `sshcrack/led-matrix` (default branch `master`, `gh` authenticated). Each 
 5. **Scene preview GIFs.** If the change adds or alters any matrix scene (look, behaviour, properties that change the default render), regenerate its preview GIF, and also generate one for every scene that has none yet: `scripts/fetch_scene_previews.sh --if-missing`, list the scenes from `emulator_build/install/bin/preview_gen --dump-manifest` that are previewable but have no `scene_previews/<name>.gif` (`:` in a name becomes `_`, e.g. `shader_scenic_aurora.gif`), then `scripts/generate_scene_previews.sh --scenes <changed,new,missing>`. Look at the new GIFs before going on. Never commit them (they are git-ignored and blocked by the repo-size check); they are published in tier 2 after the merge. Note in the PR body which previews were regenerated.
 6. **Watch checks.** Use the harness PR-watch tool when available, otherwise `gh pr checks <n> --watch`. If a check fails, read the log (`gh run view --log-failed`), fix it, push, and watch again. Repeat until all checks are green. CI includes a repo-size check; large binaries or mass GIF regenerations fail it (see `scripts/check_repo_size.sh`).
 7. **Stop** for tier 1. Report the PR URL and the check results.
+
+## With review
+
+When the user adds "with review" to a tier (e.g. "tier 2 with review"), run this loop after tier 1 step 3 (the PR exists) and before any merge:
+
+1. **Review.** Start a fresh, independent review of the whole PR with `delegate_task` (role `review`). Use the reviewer the user names, default GPT 6.1 Sol (`{providerInstanceId: "codex", model: "gpt-6.1-sol"}`). Every round is a new task, never a follow-up message to an earlier one. Keep the brief neutral: what the PR does, its key files, what kinds of defects to look for, and "trace each call path fully before reporting". Never mention the round number or what changed since the last round. List design decisions the user has settled and behaviour that is intended, so they are not re-raised. Ask for findings with file:line, severity and a concrete failure scenario, no edits.
+2. **Triage.** Verify each finding yourself by reading the code before acting on it. Fix only relevant findings: defects a user can realistically hit in normal or likely use, such as crashes, data loss, a broken install or update, security problems, or wrong behaviour. Do not fix:
+   - findings that are already handled (trace them: an exception may be caught further up, or the state after a failure may still work for the user)
+   - rare compound failures (a second failure during recovery from a first, a full disk mid-copy, …)
+   - theoretical, style-only or out-of-scope findings
+   Note each skipped finding with a one-line reason.
+3. **Fix and verify.** Fix the relevant findings, build, test the change (say what you could not test), commit and push.
+4. **Repeat** from step 1 until a round has no relevant findings, or the user says to stop. Then continue with tier 1 step 6 (green checks) and the rest of the tier.
+5. **Report** the number of rounds, what was fixed, and the skipped findings with their reasons.
 
 ## Tier 2: merge
 
