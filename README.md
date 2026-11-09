@@ -196,7 +196,7 @@ Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixe
 | **Real-world scenery** | Outdoor scenes follow the real time of day, weather and season where the matrix is: sunset light, rain, fog, snow on the ground, autumn leaves, decorations at Christmas. The location is detected from the IP address or set by city. You can override it for every scene (snow all winter, always night) or pin a single scene, or turn it off. See [Real-world scenery](#real-world-scenery-optional). |
 | **Live preview** | A real-time view of the composed matrix frame, pulled on demand so an idle page costs the Pi nothing. |
 | **Plugin UIs** | Plugins can ship their own web controls, for example the YouTube playlist editor. |
-| **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). |
+| **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). The desktop app updates itself to the same release. |
 | **Diagnostics** | Per-scene frame-time percentiles, Director reasoning, desktop-offload status and audio analysis in the **Health** page. |
 
 ### Under the hood
@@ -607,6 +607,7 @@ The UI is the best documentation for payload shapes: open your browser's dev too
 | **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
 | **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
 | **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
+| **Heavy scenes don't move to the desktop** | The desktop and the Pi must run the same release. With *Match Matrix Version* on (the default), the app switches to the Pi's version within minutes; the update status is shown in the app's *LED Matrix Controller* menu. **Health** → `render_placement.reason` says why a scene stayed on the Pi. |
 | **Shader, video or music scenes are black or missing** | They need the [desktop app](#desktop-app) connected. Check the *WebSocket is currently: Open* line. |
 | **No audio reactivity** | The desktop app captures *system output*, so play something on that PC. Check the capture device in the AudioVisualizer tab. |
 | **My settings reverted after an upgrade** | You edited `/etc/default/led-matrix` by hand. Use `debconf-set-selections` and `dpkg-reconfigure` ([Change settings later](#change-settings-later)). |
