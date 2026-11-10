@@ -3,6 +3,13 @@
 #include <cmath>
 
 namespace AmbientScenes {
+    namespace {
+        // Longest wall-clock gap fed into the simulation after a stall.
+        constexpr float MAX_ELAPSED_SECONDS = 0.25f;
+        // Fixed simulation steps run per rendered frame; more would spiral when behind.
+        constexpr int MAX_SIMULATION_STEPS_PER_FRAME = 4;
+    }
+
     DigitalRainScene::DigitalRainScene() : Scene(), gen(rd()) {}
 
     void DigitalRainScene::reset_drop(Drop& drop) {
@@ -53,7 +60,7 @@ namespace AmbientScenes {
         canvas->Clear();
 
         const auto now = std::chrono::steady_clock::now();
-        const float elapsed = std::min(0.25f, std::chrono::duration<float>(now - last_update).count());
+        const float elapsed = std::min(MAX_ELAPSED_SECONDS, std::chrono::duration<float>(now - last_update).count());
         last_update = now;
         simulation_accumulator += elapsed;
 
@@ -65,7 +72,7 @@ namespace AmbientScenes {
         }
 
         int updates = 0;
-        while (simulation_accumulator >= simulation_step && updates < 4) {
+        while (simulation_accumulator >= simulation_step && updates < MAX_SIMULATION_STEPS_PER_FRAME) {
             simulation_accumulator -= simulation_step;
             ++updates;
             ++simulation_tick;
@@ -102,7 +109,7 @@ namespace AmbientScenes {
                 if (drop.y - drop.length > matrix_height) reset_drop(drop);
             }
         }
-        if (updates == 4) simulation_accumulator = 0.0f;
+        if (updates == MAX_SIMULATION_STEPS_PER_FRAME) simulation_accumulator = 0.0f;
 
         const rgb_matrix::Color base = color->get();
         for (int x = 0; x < matrix_width; ++x) {

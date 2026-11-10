@@ -62,7 +62,7 @@ ctest --test-dir emulator_asan_build --output-on-failure
   `/live_frame` viewers, malformed UDP/HTTP/WebSocket input
   (`drive_emulator.py`-style driver, not committed). Desktop ASan suite 40/41.
 - TSan: emulator run (same driver) found only #4. Desktop suite 40/41.
-- UDP framing in `src_matrix/udp.cpp` and the plugin `on_udp_packet` handlers
+- UDP framing in `src_matrix/udp_server.cpp` and the plugin `on_udp_packet` handlers
   validate sizes before copying (reviewed, no change).
 
 ### clang-tidy triage

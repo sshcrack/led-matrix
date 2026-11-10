@@ -5,6 +5,16 @@
 #include <shared/matrix/utils/color.h>
 
 namespace AmbientScenes {
+    namespace {
+        // Longest frame step simulated at once; a stall or pause never jumps the animation.
+        constexpr float MAX_FRAME_STEP_SECONDS = 0.10f;
+        // Rate (1/s) at which smoothed audio features chase the live analysis.
+        constexpr float AUDIO_SMOOTHING_RATE = 9.0f;
+        // Beat and drop flashes fall by this much per second (1.0 = full flash).
+        constexpr float BEAT_FLASH_DECAY_PER_SECOND = 3.5f;
+        constexpr float DROP_FLASH_DECAY_PER_SECOND = 1.15f;
+    }
+
     void StarFieldScene::Star::respawn(float max_depth, std::mt19937& rng) {
         std::uniform_real_distribution<float> coord(-1.0f, 1.0f);
         std::uniform_real_distribution<float> tint(0.0f, 1.0f);
@@ -50,12 +60,12 @@ namespace AmbientScenes {
 
     bool StarFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
         canvas->Clear();
-        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
+        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, MAX_FRAME_STEP_SECONDS);
         time += dt;
         if (audio_reactive->get()) {
             const auto audio = AudioState::snapshot();
             const bool has_audio = audio.fresh();
-            const float response = 1.0f - std::exp(-dt * 9.0f);
+            const float response = 1.0f - std::exp(-dt * AUDIO_SMOOTHING_RATE);
             audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
             audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
             audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
@@ -69,8 +79,8 @@ namespace AmbientScenes {
             if (has_audio && audio.drop_counter != last_drop_counter) { last_drop_counter = audio.drop_counter; drop_flash = 1.0f; }
             if (has_audio && audio.section_counter != last_section_counter) { last_section_counter = audio.section_counter; section_hue += 0.13f; }
         } else { audio_bass = audio_mids = audio_treble = audio_balance = audio_width = hihat_detail = 0.0f; }
-        beat_flash = std::max(0.0f, beat_flash - dt * 3.5f);
-        drop_flash = std::max(0.0f, drop_flash - dt * 1.15f);
+        beat_flash = std::max(0.0f, beat_flash - dt * BEAT_FLASH_DECAY_PER_SECOND);
+        drop_flash = std::max(0.0f, drop_flash - dt * DROP_FLASH_DECAY_PER_SECOND);
         const float depth = std::max(0.2f, max_depth->get());
 
         const std::size_t wanted_stars = static_cast<std::size_t>(std::max(1, num_stars->get()));

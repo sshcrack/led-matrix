@@ -9,6 +9,13 @@
 namespace AmbientScenes {
     namespace {
         constexpr float PI = 3.14159265358979323846f;
+        // Longest frame step simulated at once; a stall or pause never jumps the animation.
+        constexpr float MAX_FRAME_STEP_SECONDS = 0.10f;
+        // Rate (1/s) at which smoothed audio features chase the live analysis.
+        constexpr float AUDIO_SMOOTHING_RATE = 9.0f;
+        // Beat and drop pulses fall by this much per second (1.0 = full pulse).
+        constexpr float BEAT_PULSE_DECAY_PER_SECOND = 2.8f;
+        constexpr float DROP_PULSE_DECAY_PER_SECOND = 1.0f;
 
         float smoothstep(float edge0, float edge1, float value) {
             if (edge0 == edge1) return value < edge0 ? 0.0f : 1.0f;
@@ -31,13 +38,13 @@ namespace AmbientScenes {
     }
 
     bool NeonTunnelScene::render(rgb_matrix::FrameCanvas *canvas) {
-        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
+        const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, MAX_FRAME_STEP_SECONDS);
         time_counter += dt;
 
         if (audio_reactive->get()) {
             const auto audio = AudioState::snapshot();
             const bool has_audio = audio.fresh();
-            const float response = 1.0f - std::exp(-dt * 9.0f);
+            const float response = 1.0f - std::exp(-dt * AUDIO_SMOOTHING_RATE);
             audio_bass += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass)) : 0.0f) - audio_bass) * response;
             audio_mids += ((has_audio ? (audio.feature(AudioProtocol::Feature::LowMid) + audio.feature(AudioProtocol::Feature::Mid) + audio.feature(AudioProtocol::Feature::HighMid)) / 3.0f : 0.0f) - audio_mids) * response;
             audio_treble += ((has_audio ? 0.5f * (audio.feature(AudioProtocol::Feature::Treble) + audio.feature(AudioProtocol::Feature::Air)) : 0.0f) - audio_treble) * response;
@@ -49,8 +56,8 @@ namespace AmbientScenes {
             if (has_audio && audio.drop_counter != last_drop_counter) { last_drop_counter = audio.drop_counter; drop_pulse = 1.0f; }
             if (has_audio && audio.section_counter != last_section_counter) { last_section_counter = audio.section_counter; section_hue += 67.0f; }
         } else { audio_bass = audio_mids = audio_treble = audio_balance = audio_width = snare_detail = hihat_detail = 0.0f; }
-        beat_pulse = std::max(0.0f, beat_pulse - dt * 2.8f);
-        drop_pulse = std::max(0.0f, drop_pulse - dt * 1.0f);
+        beat_pulse = std::max(0.0f, beat_pulse - dt * BEAT_PULSE_DECAY_PER_SECOND);
+        drop_pulse = std::max(0.0f, drop_pulse - dt * DROP_PULSE_DECAY_PER_SECOND);
 
         const float center_x = static_cast<float>(matrix_width) * 0.5f;
         const float center_y = static_cast<float>(matrix_height) * 0.5f;
