@@ -6,7 +6,7 @@
 - [Coding-agent handbook](../AGENTS.md)
 - [Agent-driven hardware setup](AGENT_SETUP.md)
 - [Domain vocabulary](../CONTEXT.md)
-- [Remaining maintenance work](../plans/README.md)
+- [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and [Led Matrix project](https://github.com/users/sshcrack/projects/7): planned work and priorities
 
 ## Current behavior
 

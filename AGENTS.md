@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## Work tracking
+
+Track planned work in [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and the [Led Matrix project](https://github.com/users/sshcrack/projects/7). Search for an existing issue before creating one; update it when the scope or status changes. Add new issues to the project with a priority (P1 highest, P3 lowest) and status, and keep intentionally deferred work marked `deferred`.
+
+When a task leaves actionable follow-up work, record the problem, relevant code, constraints and completion criteria in an issue. Keep repository docs focused on current behavior, setup, architecture and dated evidence; link to the issue or project for planned changes instead of maintaining backlog/roadmap files or TODO lists in the repo. Resolved or obsolete TODOs should be removed rather than migrated as new work.
+
 ## Project shape
 
 Three binaries, one repo:

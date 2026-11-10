@@ -103,21 +103,13 @@ change was needed.
 - TSan cannot see ordering inside uninstrumented libraries (libgomp, vcpkg
   libraries, Mesa), so races fully inside them are invisible.
 
-## Recommended next steps
+## CI and work tracking
 
-1. CI already runs the complete unsanitized emulator suite and selected
-   ASan+UBSan regressions on pushes/PRs (`build-matrix.yml`). TSan remains local.
-   A useful extension is a repeatable multi-process recovery/soak driver; the
-   original live-emulator driver was not committed.
-2. Keep `-Wall -Wextra ...` warnings visible and move to `-Werror` per directory
-   once the count (~1.2k in the build log) is down.
-3. Riskiest remaining areas: desktop plugin <-> `WebsocketClient` message threads
-   (audit remaining plugins for the same unsynchronised-string pattern),
-   `SpotifyMV`/`Video` external process handling, and the GL worker lifecycle.
-4. Install `systemd-coredump` on the Pi and collect real crash dumps; the symbols
-   are in the `RelWithDebInfo` binary.
-5. Consider building vcpkg deps (GraphicsMagick, ixwebsocket) with TSan for a
-   cleaner signal.
+CI runs the complete unsanitized emulator suite and selected ASan+UBSan
+regressions on pushes/PRs (`build-matrix.yml`). TSan remains a local preset.
+Follow-up investigations and verification work are tracked in the
+[Led Matrix project](https://github.com/users/sshcrack/projects/7); the findings
+and limits above retain the original audit's evidence.
 
 ## Historical build verification
 

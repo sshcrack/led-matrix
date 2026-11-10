@@ -7,7 +7,7 @@ This plugin adds real-time audio visualization capabilities to your LED Matrix d
 - Real-time audio spectrum visualization
 - UDP server for receiving audio data from external sources
 - Customizable visualization settings
-- Compatible with the Rust audio client from the audio-visualizer directory
+- System-output capture and analysis through the desktop app
 
 ## Usage
 
@@ -41,20 +41,14 @@ Two useful starting points:
 
 The plugin is designed to work with the desktop cpp audio plugin that is installed with the desktop application of this project. 
 
-#### Packet Format (outdated) 
-
-The client uses a compact binary packet format:
-
-- Header (9 bytes)
-  - Magic number (2 bytes): 0xAD, 0x01
-  - Version (1 byte): 0x01
-  - Number of bands (1 byte): Number of frequency bands
-  - Flags (1 byte): Bit flags for additional info
-    - bit 0: 1 = interpolated bands enabled + logarithmic scale
-  - Timestamp (4 bytes): Unix timestamp in seconds
-- Audio data (variable length)
-  - Band amplitudes: Each band represented as a uint8 (0-255)
+The current binary format is defined by
+[`shared/common/audio_protocol.h`](../../shared/common/include/shared/common/audio_protocol.h)
+and its encoder/decoder implementation. Use that shared contract when writing a
+producer; the old band-only packet description no longer applies.
 
 ## Installation
 
-The plugin is automatically built and installed with the main LED Matrix application. Just download the client from the releases tab (TODO for now build from source) and set the correct hostname and port (by default 8888). After that your audio visualizer is ready to go!
+Install the [desktop app](../../README.md#desktop-app), set the matrix hostname
+and API port (default `8080`), then connect and select the system-output capture
+device in the AudioVisualizer tab. Analysis packets use UDP port `8888`; that is
+separate from the app's API/WebSocket connection port.

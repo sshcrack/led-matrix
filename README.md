@@ -705,7 +705,7 @@ Scene GIFs are **not** committed to git. They are release assets (`./scripts/fet
 | [`docs/transactional-updates.md`](docs/transactional-updates.md) | How updates and rollbacks work |
 | [`docs/memory-safety-report.md`](docs/memory-safety-report.md) | Safety tooling, historical findings and verification limits |
 | [`docs/README.md`](docs/README.md) | Architecture references and dated performance reports |
-| [`plans/README.md`](plans/README.md) | Remaining maintenance work |
+| [GitHub issues](https://github.com/sshcrack/led-matrix/issues) · [Led Matrix project](https://github.com/users/sshcrack/projects/7) | Planned work, priorities and progress |
 
 ---
 

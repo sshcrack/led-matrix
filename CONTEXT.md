@@ -46,4 +46,4 @@ _Avoid_: update state (ambiguous with the Pi's numeric `UpdateStatus`)
 
 ## Implemented foundations
 
-Runtime Inputs, curated Scene Variants, default Automatic Mode, music-aware transitions, Pi-authoritative Scene Lab and seeded Director diagnostics are implemented. The global palette/color-system pass remains deferred. Remaining maintenance work is tracked in [plans/README.md](plans/README.md).
+Runtime Inputs, curated Scene Variants, default Automatic Mode, music-aware transitions, Pi-authoritative Scene Lab and seeded Director diagnostics are implemented. Planned changes are tracked in [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and the [Led Matrix project](https://github.com/users/sshcrack/projects/7).
