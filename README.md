@@ -15,11 +15,11 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 [![Stars](https://img.shields.io/github/stars/sshcrack/led-matrix?style=flat-square)](https://github.com/sshcrack/led-matrix/stargazers)
 
 [Quick start](#quick-start) ·
-[Set up with an AI agent](#set-up-with-an-ai-agent) ·
-[Showcase](#showcase) ·
+[What is this?](#what-is-this) ·
 [Hardware](#hardware) ·
-[Start from scratch](#start-from-scratch) ·
 [Install guide](#install-guide) ·
+[Desktop app](#desktop-app) ·
+[Web UI](#web-ui) ·
 [Configuration](#configuration) ·
 [Troubleshooting](#troubleshooting) ·
 [Development](#development)
@@ -28,11 +28,102 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 
 ---
 
+## Quick start
+
+> [!IMPORTANT]
+> **You need:** a **Raspberry Pi 3 or 4** (the Pi 5 is not supported) running **64-bit** Raspberry Pi OS Lite with a user named **`pi`**, HUB75 LED panels, a HUB75 adapter board or HAT, and a separate **5 V supply** for the panels.
+
+| I have… | Do this |
+|:--|:--|
+| A Pi with panels wired up | Follow the four steps below (about 10 minutes) |
+| A Pi with panels, and I'd rather have an AI agent do it | [**Set up with an AI agent**](#set-up-with-an-ai-agent) |
+| Nothing yet (no Pi, panels or adapter) | [**Hardware**](#hardware): what to buy, how to wire and flash it |
+| Just a computer, no hardware | [**Try the emulator**](#try-it-without-hardware) |
+
+### 1. Prepare the Pi (one-time)
+
+SSH into the Pi. Its onboard sound shares hardware with the LED driver, so turn it off, as the upstream library recommends:
+
+```bash
+echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
+sudo sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/firmware/config.txt   # /boot/config.txt on older images
+sudo reboot
+```
+
+### 2. Install
+
+```bash
+# Download the installer, read it if you like, then run it
+curl -fsSLO https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh
+bash install_led_matrix.sh
+```
+
+The installer downloads the latest `.deb` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest), installs it and starts the service. It asks for:
+
+| Question | What to answer |
+|:--|:--|
+| Rows / columns per panel | Panel size, e.g. `64` and `64` |
+| Chained panels | Panels daisy-chained on one cable (this sets the width) |
+| Parallel chains | Number of cables from the adapter (this sets the height) |
+| GPIO slowdown | `3` for a Pi 3, `2` for a Pi 4 |
+| Spotify, API token, auto-updates | Optional. You can skip all of them and set them up later |
+
+Four 64×64 panels in a 2×2 grid are `64` / `64` / `2` / `2`. Other layouts are in [Working out the numbers](#working-out-the-numbers).
+
+### 3. Open the web UI
+
+Open **`http://<pi-ip-address>:8080/`** on any device on your network (the installer prints the address). On a phone, use *Add to Home Screen* to install it like an app.
+
+1. Press the power button (top right) if the matrix is off.
+2. In **Control**, leave the toggle on **Auto** to let the Director pick scenes, or pick **Manual** and click a preset.
+3. Press **+** to build a preset: choose a one-tap starting point (Night sky, Digital calm, Desk clock) or pick scenes yourself.
+4. Open **Scenes** to browse every scene with an animated preview.
+
+Panels dark, flickering or scrambled? Those are almost always one-flag fixes. See [Troubleshooting](#troubleshooting).
+
+### 4. Optional: install the desktop app on your PC
+
+The [desktop app](#desktop-app) adds music reactivity (from your PC's audio output), GPU shader scenes, music videos, and render offload for heavy scenes. It installs for your user only, with no admin rights, and keeps itself on the same version as your matrix.
+
+| OS | Install |
+|:--|:--|
+| **Windows** | Run `led-matrix-desktop-<version>-win64.exe` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest) |
+| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
+
+Start it, enter the Pi's address and port `8080`, and click **Connect**.
+
+### Set up with an AI agent
+
+Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Give the agent SSH access to the Pi (or run it on the Pi), then paste:
+
+```text
+Set up my LED matrix. Read and follow
+https://raw.githubusercontent.com/sshcrack/led-matrix/master/docs/AGENT_SETUP.md
+Interview me first, then install and verify everything yourself.
+```
+
+The [agent setup guide](docs/AGENT_SETUP.md) is written for machines. It has an interview script that maps your answers to the right flags, a non-interactive install, verification checks, a flicker and colour troubleshooting tree, and rules for handling secrets safely.
+
+### Try it without hardware
+
+The emulator runs the same code as the Pi and shows the matrix in a browser tab, so you can try everything before buying anything. It is built from source (Linux x86_64, see the [build prerequisites](#build-prerequisites)):
+
+```bash
+git clone --recurse-submodules https://github.com/sshcrack/led-matrix.git
+cd led-matrix
+cmake --preset emulator
+cmake --build --preset emulator --target install
+./scripts/run_web_emulator.sh              # then open http://localhost:8080/web/
+```
+
+---
+
 ## What is this?
 
 A passive piece of light art for your wall or desk. It runs a growing collection of scenes, picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
 
 - **Automatic Mode.** A Director chooses from curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
+- **Follows the real world.** Outdoor scenes match the time of day, weather, season and holidays where the matrix is.
 - **Web UI** that works on phones and desktops, installable as a PWA. It has a live 128×128 preview, a scene gallery, a Scene Lab, schedules and diagnostics. See the [tour](#web-ui).
 - **Desktop app** (Windows and Linux) for the heavy lifting: GPU shaders, system-audio capture, YouTube music videos. Your PC does the rendering and the Pi just displays pixels. See [Desktop app](#desktop-app).
 - **Runs on modest hardware.** Scene quality adapts to the Pi's measured load, and heavy scenes can move to your PC automatically.
@@ -57,78 +148,6 @@ flowchart LR
     APP -- "UDP pixel stream" --> D
     W -- "rendered frames" --> D
 ```
-
----
-
-## Quick start
-
-Pick the path that matches what you have.
-
-| I have… | Do this |
-|:--|:--|
-| **Nothing yet** (no Pi, panels or adapter) | [**Start from scratch**](#start-from-scratch): what to buy, how to wire and flash it. Or [try the emulator](#3-try-it-without-hardware) first |
-| A Pi with panels wired up, and I want to type a few commands | [**Install on the Pi**](#1-install-on-the-pi) (about 5 minutes) |
-| A Pi with panels, and I'd rather have an AI agent do it | [**Set up with an AI agent**](#set-up-with-an-ai-agent) |
-| Just a computer, no hardware | [**Try the emulator**](#3-try-it-without-hardware) |
-
-### 1. Install on the Pi
-
-You need a Raspberry Pi running a **64-bit** Debian-based OS (Raspberry Pi OS Lite 64-bit works well), a user called `pi`, and internet access.
-
-```bash
-# Download the installer, read it if you like, then run it
-curl -fsSLO https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh
-bash install_led_matrix.sh
-```
-
-The installer downloads the latest `.deb` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest) and installs it. It asks for:
-
-| Question | What to answer |
-|:--|:--|
-| Rows / columns per panel | Panel size, e.g. `64` and `64` |
-| Chained panels | Panels daisy-chained on one cable (this sets width) |
-| Parallel chains | Number of cables from the adapter (this sets height) |
-| GPIO slowdown | `3` for a Pi 3, `2` for a Pi 4 |
-| Spotify credentials | Optional; skip to use the web UI setup guide after installation |
-| API token, auto-updates | Optional, can be changed later |
-
-Then open **`http://<pi-ip-address>:8080/`** on any device in your network. Not sure about the numbers? See [Hardware](#hardware).
-
-### 2. Your first five minutes
-
-1. Open the web UI and press the power button (top right) if the matrix is off.
-2. In **Control**, leave the toggle on **Auto** to let the Director take over, or pick **Manual** and click a preset.
-3. Press **+** to build a preset: choose a one-tap starting point (Night sky, Digital calm, Desk clock) or pick scenes yourself.
-4. Open **Scenes** to browse every scene with an animated preview.
-5. Optional: install the [desktop app](#desktop-app) for shaders and music reactivity.
-
-### 3. Try it without hardware
-
-The emulator renders the exact same code as the Pi into a browser tab, so you can try everything before buying anything.
-
-```bash
-git clone --recurse-submodules https://github.com/sshcrack/led-matrix.git
-cd led-matrix
-cmake --preset emulator                    # needs the build prerequisites below
-cmake --build --preset emulator --target install
-./scripts/run_web_emulator.sh              # then open http://localhost:8080/web/
-```
-
-Full prerequisites are in [Development](#development).
-
----
-
-## Set up with an AI agent
-
-Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Give the agent SSH access to the Pi (or run it on the Pi), then paste:
-
-```text
-Set up my LED matrix. Read and follow
-https://raw.githubusercontent.com/sshcrack/led-matrix/master/docs/AGENT_SETUP.md
-Interview me first, then install and verify everything yourself.
-```
-
-The [agent setup guide](docs/AGENT_SETUP.md) is written for machines. It has an interview script that maps your answers to the right flags, a non-interactive install, verification checks, a flicker and colour troubleshooting tree, and rules for handling secrets safely.
 
 ---
 
@@ -163,130 +182,6 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 ---
 
-## Features
-
-### Scenes
-
-Scenes are supplied by plugins. Native scenes render on the Pi or desktop worker; shader and video scenes need the desktop app. Browse **Scenes** in the web UI for the installed catalog.
-
-| Category | Highlights |
-|:--|:--|
-| **Audio reactive** | A spectrum analyser, particles, and small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
-| **Shaders** | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
-| **Hobbies & activities** | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
-| **Ambient** | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
-| **Games** | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
-| **Generative** | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
-| **Fractals** | Julia set, Game of Life, Wave Pattern |
-| **Particles** | Rain, Sparks |
-| **Media** | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
-| **Weather** | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
-| **Utility / Images** | Countdown with fireworks, and a pixel-art and image provider |
-
-Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
-
-### Control
-
-| Feature | What it does |
-|:--|:--|
-| **Automatic Mode** | The Director picks from curated looks, plans long arcs, and uses music state when it is available. Every look can be starred or excluded in the Scenes page. Pick a style on the home screen: **Mixed** (everything, music first), **Outside** (calm scenery that matches the real time, weather, season and holidays), **Party** (energetic music looks, quicker cuts) or **Chill** (slow and soft, long dwell). Holiday scenes such as the Christmas market only play while their holiday is on. |
-| **Presets** | Ordered lists of scenes with per-scene properties and transitions. Edits autosave, and deleting a preset can be undone. Three one-tap ambiance packs are included. |
-| **Scene Lab** | Try a scene or curated look on the real Pi renderer with temporary controls, then save it only if you like it. |
-| **Schedules** | Switch presets by time and weekday (overnight ranges work) and dim the panel at night with a smooth brightness fade. While *Auto Scheduling* is on, an active schedule takes over from Automatic Mode, and the display turns **off** outside every schedule window. Add windows for all the hours you want lit, or leave it off. |
-| **Real-world scenery** | Outdoor scenes follow the real time of day, weather and season where the matrix is: sunset light, rain, fog, snow on the ground, autumn leaves, decorations at Christmas. The location is detected from the IP address or set by city. You can override it for every scene (snow all winter, always night) or pin a single scene, or turn it off. See [Real-world scenery](#real-world-scenery-optional). |
-| **Live preview** | A real-time view of the composed matrix frame, pulled on demand so an idle page costs the Pi nothing. |
-| **Plugin UIs** | Plugins can ship their own web controls, for example the YouTube playlist editor. |
-| **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). The desktop app updates itself to the same release. |
-| **Diagnostics** | Per-scene frame-time percentiles, Director reasoning, desktop-offload status and audio analysis in the **Health** page. |
-
-### Under the hood
-
-- **Adaptive quality.** Scenes scale optional detail to the Pi's measured load (`render_quality_scale()`). See [scene execution](docs/SCENE_EXECUTION.md).
-- **Automatic desktop offload.** If a scene is too heavy, the Pi hands it to the desktop scene worker at full quality and falls back locally if the PC disappears.
-- **Plugins are one folder.** Drop in `plugins/MyPlugin/`, call `register_plugin()`, and you have a scene. See [plugin development](docs/PLUGIN_DEVELOPMENT.md).
-- **Memory-safety tooling.** Builds enable standard-library assertions, and sanitizer presets help catch memory and threading bugs. See the [memory safety report](docs/memory-safety-report.md).
-
----
-
-## Web UI
-
-Open `http://<pi-ip>:8080/` in any browser. On a phone, use *Add to Home Screen* to install it like an app.
-
-<table>
-<tr>
-<td width="50%"><a href="docs/media/web-control.png"><img src="docs/media/web-control.png" alt="Control page: preset list, live matrix preview and the preset inspector"></a><br><b>Control.</b> Presets, the live preview, and a one-click Auto/Manual switch. The inspector edits the selected preset in place and autosaves.</td>
-<td width="50%"><a href="docs/media/web-scenes.png"><img src="docs/media/web-scenes.png" alt="Scene gallery with animated previews and category filters"></a><br><b>Scenes.</b> Browse every scene with animated previews. Tune what the Director may play: favourite a look, keep it, or switch it off.</td>
-</tr>
-<tr>
-<td><a href="docs/media/web-lab.png"><img src="docs/media/web-lab.png" alt="Scene Lab with temporary controls and live preview"></a><br><b>Lab.</b> Try scenes on the real Pi renderer with temporary controls. Nothing is saved until you decide.</td>
-<td><a href="docs/media/web-automation.png"><img src="docs/media/web-automation.png" alt="Schedules page with three schedules and night brightness"></a><br><b>Automation.</b> Time-of-day schedules and a night-brightness fade.</td>
-</tr>
-<tr>
-<td><a href="docs/media/web-health.png"><img src="docs/media/web-health.png" alt="Diagnostics page with renderer FPS, Director candidates and a reproducible seed"></a><br><b>Health.</b> Renderer FPS, transport stats, and a transparent view of why the Director chose what it chose.</td>
-<td><a href="docs/media/web-builder.png"><img src="docs/media/web-builder.png" alt="Quick preset builder with one-tap starting points"></a><br><b>Quick builder.</b> Create <i>and play</i> a preset in one step from one-tap starting points or any scenes you pick.</td>
-</tr>
-</table>
-
-Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> anywhere for the command palette, and use the sun/moon button for the light theme.
-
-<details>
-<summary><b>On your phone, and in light mode</b></summary>
-
-<br>
-
-<div align="center">
-<img src="docs/media/mobile-control.png" alt="Phone layout: live preview, presets, mini-player and bottom tabs" width="230">
-<img src="docs/media/mobile-editor.png" alt="Phone preset editor as a bottom sheet" width="230">
-<img src="docs/media/mobile-scenes.png" alt="Phone scene gallery" width="230">
-<br><br>
-<img src="docs/media/web-scenes-light.png" alt="Scenes page in the light theme" width="700">
-</div>
-
-On screens narrower than 1024 px the layout switches to a bottom tab bar with an always-visible mini-player, and editors open as bottom sheets.
-
-</details>
-
----
-
-## Desktop app
-
-The Pi is deliberately modest. The **desktop app** gives it superpowers by running on a PC on the same network:
-
-| It adds… | How it works |
-|:--|:--|
-| **Music reactivity** | Captures your system's audio output (WASAPI loopback on Windows, PipeWire/PulseAudio monitor on Linux), analyses it (spectrum, beats, drops, BPM, sections) and streams the result to the Pi. No microphone needed. |
-| **GPU shaders** | Renders the `shader:*` scenes (Aurora, Aquarium, Planetary Vista…) and streams pixels to the Pi over UDP. Custom `.frag` files can be uploaded in the web UI under **Assets**. |
-| **Video and music videos** | `video` plays YouTube and URL videos, and `spotifymv` auto-plays the music video for your current Spotify track. Needs [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and ffmpeg on the PC. |
-| **Render offload** | A background scene worker runs the same scene code at full quality when the Pi is under pressure. The handoff is seamless, with local fallback if the worker disappears. |
-
-<table>
-<tr>
-<td width="50%"><img src="docs/media/desktop-app.png" alt="Desktop app connected to a matrix, showing the AudioVisualizer settings"><br><sub>Connected, with audio analysis streaming.</sub></td>
-<td width="50%"><img src="docs/media/desktop-offload.png" alt="Desktop app RenderOffload panel showing the scene worker running"><br><sub>The scene worker is running and ready to take over heavy scenes.</sub></td>
-</tr>
-</table>
-
-### Install
-
-Grab the latest build from [Releases](https://github.com/sshcrack/led-matrix/releases/latest):
-
-| OS | Install (for your user, no admin/root) |
-|:--|:--|
-| **Windows** | Run `led-matrix-desktop-<version>-win64.exe`, or `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 \| iex` |
-| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
-
-The app installs to `%LOCALAPPDATA%\led-matrix-desktop` or `~/.local/share/led-matrix-desktop` and **updates itself**: it runs the same release as your matrix (offload requires compatible protocol and scene contracts). When a newer release is out and the matrix has auto-update on, it asks the matrix to update first and follows it. Updates download in the background and apply when the app is hidden in the tray or restarted. You can turn this off in the app menu. An older `.deb` or admin install is replaced on its first update, and the app offers to remove it. Uninstall with `led-matrix-desktop --uninstall` or from Windows *Installed apps*.
-
-### Use
-
-1. Start the app, enter the Pi's **hostname or IP** and the **port** (`8080`), and add the **API token** if you set one.
-2. Click **Connect**. The status switches to *WebSocket is currently: Open* and the plugin tabs show what is active.
-3. Leave it running in the tray. Enable *Turn Matrix On on Start* if you like.
-
-The app needs to be connected for shader scenes, desktop audio, videos and render offload. Everything else keeps working without it.
-
----
-
 ## Hardware
 
 > [!NOTE]
@@ -301,6 +196,7 @@ The app needs to be connected for shader scenes, desktop audio, videos and rende
 | **Adapter** | A HAT or bonnet that level-shifts GPIO to HUB75, e.g. the [Electrodragon Active-3](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-raspberry-pi/). [Alternatives](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/adapter/README.md). |
 | **Power** | A dedicated **5 V** supply for the panels, sized generously. Panels can draw several amps each at full white. Power the Pi separately and share ground. Don't power panels from the Pi. |
 | **Cables** | The HUB75 ribbon cables that come with the panels, plus power leads for each panel. |
+| **Storage** | A microSD card, 16 GB or more. |
 
 ### Working out the numbers
 
@@ -313,36 +209,16 @@ The matrix size is **width = `cols` × `chain`** and **height = `rows` × `paral
 | Two 64×32 panels side by side | 32 | 64 | 2 | 1 | 128×32 |
 | Four 32×32 panels in a row | 32 | 32 | 4 | 1 | 128×32 |
 
-The installer asks for these. They end up as `--led-rows`, `--led-cols`, `--led-chain` and `--led-parallel` in `/etc/default/led-matrix`. Not sure how many chains your adapter has? That depends on the adapter, so check its documentation. The Active-3 has three parallel outputs.
+The installer asks for these. They end up as `--led-rows`, `--led-cols`, `--led-chain` and `--led-parallel` in `/etc/default/led-matrix`. How many parallel chains your adapter supports depends on the adapter, so check its documentation. The Active-3 has three parallel outputs.
 
-### Pi preparation (one-time)
-
-The Pi's onboard sound shares hardware with the LED driver. Disable it, as the upstream library recommends:
-
-```bash
-echo "blacklist snd_bcm2835" | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
-sudo sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/firmware/config.txt   # /boot/config.txt on older images
-sudo reboot
-```
-
----
-
-## Start from scratch
-
-No hardware yet, or a Pi that has never seen this project? Work through these steps in order. Each one links to the detail. Want to see the result first? Run the [emulator](#3-try-it-without-hardware), which needs no hardware at all.
-
-### 1. Get the parts
-
-Buy the [shopping list](#shopping-list): a Raspberry Pi (3 B/B+ or 4), HUB75 panels, a HAT or adapter board, a 5 V power supply sized for the panels, and a microSD card (16 GB or more). Check that the panels are HUB75 and note their size (e.g. 64×64), because you will need it in step 4.
-
-### 2. Assemble and wire
+### Assemble and wire
 
 1. Plug the **adapter or HAT** onto the Pi's 40-pin header (Pi switched off and unplugged).
 2. Connect the adapter's HUB75 output to the **input** of the first panel with the ribbon cable. Panels have an *in* and an *out* side, usually marked with an arrow.
 3. For more panels on the same chain, run a ribbon from the first panel's **output** to the next panel's **input**. Use a second adapter output for a second (parallel) chain. Which output is which depends on the adapter, so check its documentation, or the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
 4. Connect the **5 V supply** to every panel's power connector (use the supplied power leads). Power the Pi from its own supply. Power everything off before changing any cable.
 
-### 3. Flash the Pi
+### Flash the Pi
 
 1. On your computer, install [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
 2. Choose your Pi model, then **Raspberry Pi OS Lite (64-bit)** (under *Raspberry Pi OS (other)*), and your SD card.
@@ -352,16 +228,7 @@ Buy the [shopping list](#shopping-list): a Raspberry Pi (3 B/B+ or 4), HUB75 pan
    - **Enable SSH**
    - Optionally a hostname such as `ledmatrix`
 4. Write the card, put it in the Pi, and power it on. Give the first boot a couple of minutes.
-
-### 4. Connect and install
-
-```bash
-ssh pi@ledmatrix.local        # or ssh pi@<ip-from-your-router>
-```
-
-Now follow [Install on the Pi](#1-install-on-the-pi). You will need the panel numbers from [Working out the numbers](#working-out-the-numbers), and you should do the [Pi preparation](#pi-preparation-one-time) once. Open `http://ledmatrix.local:8080/` (or the Pi's IP) when it is done.
-
-If the panels stay dark, flicker or look scrambled, go to [Troubleshooting](#troubleshooting). Those are almost always one-flag fixes.
+5. Connect with `ssh pi@ledmatrix.local` (or `ssh pi@<ip-from-your-router>`) and continue with the [Quick start](#1-prepare-the-pi-one-time).
 
 > [!TIP]
 > Prefer not to do this alone? Your [AI agent](#set-up-with-an-ai-agent) can walk you through every step above and run the commands over SSH.
@@ -370,19 +237,17 @@ If the panels stay dark, flicker or look scrambled, go to [Troubleshooting](#tro
 
 ## Install guide
 
+The [Quick start](#quick-start) covers a normal install. This section is the reference for what gets installed and how to change, update or remove it.
+
 ### Requirements
 
-- Raspberry Pi with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
+- Raspberry Pi 3 or 4 with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
 - Panels wired and powered (see [Hardware](#hardware))
+- The Pi's onboard sound disabled ([step 1 of the Quick start](#1-prepare-the-pi-one-time))
 
 ### Install
 
-```bash
-curl -fsSLO https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install_led_matrix.sh
-bash install_led_matrix.sh
-```
-
-Or install the package yourself:
+Use the [installer script](#2-install), or install the package yourself:
 
 ```bash
 # Download led-matrix-<version>_arm64.deb from the latest release, then:
@@ -433,6 +298,132 @@ Updates run automatically if you enabled them. You can also use the **Updates** 
 sudo apt remove led-matrix           # keep your data
 sudo apt purge led-matrix            # also removes /var/lib/led-matrix and the stored answers
 ```
+
+---
+
+## Desktop app
+
+The Pi is deliberately modest. The **desktop app** gives it superpowers by running on a PC on the same network:
+
+| It adds… | How it works |
+|:--|:--|
+| **Music reactivity** | Captures your system's audio output (WASAPI loopback on Windows, PipeWire/PulseAudio monitor on Linux), analyses it (spectrum, beats, drops, BPM, sections) and streams the result to the Pi. No microphone needed. |
+| **GPU shaders** | Renders the `shader:*` scenes (Aurora, Aquarium, Planetary Vista…) and streams pixels to the Pi over UDP. Custom `.frag` files can be uploaded in the web UI under **Assets**. |
+| **Video and music videos** | `video` plays YouTube and URL videos, and `spotifymv` auto-plays the music video for your current Spotify track. Needs [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and ffmpeg on the PC. |
+| **Render offload** | A background scene worker runs the same scene code at full quality when the Pi is under pressure. The handoff is seamless, with local fallback if the worker disappears. |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/media/desktop-app.png" alt="Desktop app connected to a matrix, showing the AudioVisualizer settings"><br><sub>Connected, with audio analysis streaming.</sub></td>
+<td width="50%"><img src="docs/media/desktop-offload.png" alt="Desktop app RenderOffload panel showing the scene worker running"><br><sub>The scene worker is running and ready to take over heavy scenes.</sub></td>
+</tr>
+</table>
+
+### Install
+
+Grab the latest build from [Releases](https://github.com/sshcrack/led-matrix/releases/latest):
+
+| OS | Install (for your user, no admin/root) |
+|:--|:--|
+| **Windows** | Run `led-matrix-desktop-<version>-win64.exe`, or `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 \| iex` |
+| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` (add `-s -- <version>` after `sh` for a specific version). Or download `led-matrix-desktop-<version>-Linux.tar.gz`, extract it and run `bin/led-matrix-desktop --install` |
+
+On Linux the installer adds a launcher entry and `~/.local/bin/led-matrix-desktop`; put `~/.local/bin` on your `PATH` to start it from a terminal.
+
+The app installs to `%LOCALAPPDATA%\led-matrix-desktop` or `~/.local/share/led-matrix-desktop` and **updates itself**: it runs the same release as your matrix (offload requires compatible protocol and scene contracts). When a newer release is out and the matrix has auto-update on, it asks the matrix to update first and follows it. Updates download in the background and apply when the app is hidden in the tray or restarted. You can turn this off in the app menu. An older `.deb` or admin install is replaced on its first update, and the app offers to remove it. Uninstall with `led-matrix-desktop --uninstall` or from Windows *Installed apps*.
+
+### Use
+
+1. Start the app, enter the Pi's **hostname or IP** and the **port** (`8080`), and add the **API token** if you set one.
+2. Click **Connect**. The status switches to *WebSocket is currently: Open* and the plugin tabs show what is active.
+3. Leave it running in the tray. Enable *Turn Matrix On on Start* if you like.
+
+The app needs to be connected for shader scenes, desktop audio, videos and render offload. Everything else keeps working without it.
+
+---
+
+## Web UI
+
+Open `http://<pi-ip>:8080/` in any browser. On a phone, use *Add to Home Screen* to install it like an app.
+
+<table>
+<tr>
+<td width="50%"><a href="docs/media/web-control.png"><img src="docs/media/web-control.png" alt="Control page: preset list, live matrix preview and the preset inspector"></a><br><b>Control.</b> Presets, the live preview, and a one-click Auto/Manual switch. The inspector edits the selected preset in place and autosaves.</td>
+<td width="50%"><a href="docs/media/web-scenes.png"><img src="docs/media/web-scenes.png" alt="Scene gallery with animated previews and category filters"></a><br><b>Scenes.</b> Browse every scene with animated previews. Tune what the Director may play: favourite a look, keep it, or switch it off.</td>
+</tr>
+<tr>
+<td><a href="docs/media/web-lab.png"><img src="docs/media/web-lab.png" alt="Scene Lab with temporary controls and live preview"></a><br><b>Lab.</b> Try scenes on the real Pi renderer with temporary controls. Nothing is saved until you decide.</td>
+<td><a href="docs/media/web-automation.png"><img src="docs/media/web-automation.png" alt="Schedules page with three schedules and night brightness"></a><br><b>Automation.</b> Time-of-day schedules and a night-brightness fade.</td>
+</tr>
+<tr>
+<td><a href="docs/media/web-health.png"><img src="docs/media/web-health.png" alt="Diagnostics page with renderer FPS, Director candidates and a reproducible seed"></a><br><b>Health.</b> Renderer FPS, transport stats, and a transparent view of why the Director chose what it chose.</td>
+<td><a href="docs/media/web-builder.png"><img src="docs/media/web-builder.png" alt="Quick preset builder with one-tap starting points"></a><br><b>Quick builder.</b> Create <i>and play</i> a preset in one step from one-tap starting points or any scenes you pick.</td>
+</tr>
+</table>
+
+Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> anywhere for the command palette, and use the sun/moon button for the light theme.
+
+<details>
+<summary><b>On your phone, and in light mode</b></summary>
+
+<br>
+
+<div align="center">
+<img src="docs/media/mobile-control.png" alt="Phone layout: live preview, presets, mini-player and bottom tabs" width="230">
+<img src="docs/media/mobile-editor.png" alt="Phone preset editor as a bottom sheet" width="230">
+<img src="docs/media/mobile-scenes.png" alt="Phone scene gallery" width="230">
+<br><br>
+<img src="docs/media/web-scenes-light.png" alt="Scenes page in the light theme" width="700">
+</div>
+
+On screens narrower than 1024 px the layout switches to a bottom tab bar with an always-visible mini-player, and editors open as bottom sheets.
+
+</details>
+
+---
+
+## Features
+
+### Scenes
+
+Scenes are supplied by plugins. Native scenes render on the Pi or desktop worker; shader and video scenes need the desktop app. Browse **Scenes** in the web UI for the installed catalog.
+
+| Category | Highlights |
+|:--|:--|
+| **Audio reactive** | A spectrum analyser, particles, and small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
+| **Shaders** | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
+| **Hobbies & activities** | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
+| **Ambient** | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
+| **Games** | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
+| **Generative** | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
+| **Fractals** | Julia set, Game of Life, Wave Pattern |
+| **Particles** | Rain, Sparks |
+| **Media** | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
+| **Weather** | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
+| **Utility / Images** | Countdown with fireworks, and a pixel-art and image provider |
+
+Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
+
+### Control
+
+| Feature | What it does |
+|:--|:--|
+| **Automatic Mode** | The Director picks from curated looks, plans long arcs, and uses music state when it is available. Every look can be starred or excluded in the Scenes page. Pick a style on the home screen: **Mixed** (everything, music first), **Outside** (calm scenery that matches the real time, weather, season and holidays), **Party** (energetic music looks, quicker cuts) or **Chill** (slow and soft, long dwell). Holiday scenes such as the Christmas market only play while their holiday is on. |
+| **Presets** | Ordered lists of scenes with per-scene properties and transitions. Edits autosave, and deleting a preset can be undone. Three one-tap ambiance packs are included. |
+| **Scene Lab** | Try a scene or curated look on the real Pi renderer with temporary controls, then save it only if you like it. |
+| **Schedules** | Switch presets by time and weekday (overnight ranges work) and dim the panel at night with a smooth brightness fade. While *Auto Scheduling* is on, an active schedule takes over from Automatic Mode, and the display turns **off** outside every schedule window. Add windows for all the hours you want lit, or leave it off. |
+| **Real-world scenery** | Outdoor scenes follow the real time of day, weather and season where the matrix is: sunset light, rain, fog, snow on the ground, autumn leaves, decorations at Christmas. The location is detected from the IP address or set by city. You can override it for every scene (snow all winter, always night) or pin a single scene, or turn it off. See [Real-world scenery](#real-world-scenery-optional). |
+| **Live preview** | A real-time view of the composed matrix frame, pulled on demand so an idle page costs the Pi nothing. |
+| **Plugin UIs** | Plugins can ship their own web controls, for example the YouTube playlist editor. |
+| **Safe updates** | Check and install updates from the UI. The updater health-checks the new version and rolls back automatically on failure ([details](docs/transactional-updates.md)). The desktop app updates itself to the same release. |
+| **Diagnostics** | Per-scene frame-time percentiles, Director reasoning, desktop-offload status and audio analysis in the **Health** page. |
+
+### Under the hood
+
+- **Adaptive quality.** Scenes scale optional detail to the Pi's measured load (`render_quality_scale()`). See [scene execution](docs/SCENE_EXECUTION.md).
+- **Automatic desktop offload.** If a scene is too heavy, the Pi hands it to the desktop scene worker at full quality and falls back locally if the PC disappears.
+- **Plugins are one folder.** Drop in `plugins/MyPlugin/`, call `register_plugin()`, and you have a scene. See [plugin development](docs/PLUGIN_DEVELOPMENT.md).
+- **Memory-safety tooling.** Builds enable standard-library assertions, and sanitizer presets help catch memory and threading bugs. See the [memory safety report](docs/memory-safety-report.md).
 
 ---
 
@@ -520,6 +511,28 @@ Back up `/var/lib/led-matrix/config.json` to keep your presets.
 
 ---
 
+## Troubleshooting
+
+| Symptom | Try this |
+|:--|:--|
+| **Nothing lights up** | `systemctl status led-matrix` and `journalctl -u led-matrix -n 50`. Check the panel power and the ribbon cable direction (*in* vs *out*). Try `--led-panel-type=FM6126A`. |
+| **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Quick start step 1](#1-prepare-the-pi-one-time)) and check the power supply. |
+| **Wrong colours** | Set `--led-rgb-sequence` (`RBG`, `BGR`, …). |
+| **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–17) and `--led-row-addr-type` (0–4). |
+| **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
+| **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
+| **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
+| **Heavy scenes don't move to the desktop** | Check protocol and scene-contract compatibility in **Health**. With *Match Matrix Version* on (the default), the app switches to the Pi's version within minutes; the update status is shown in the app's *LED Matrix Controller* menu. **Health** → `render_placement.reason` says why a scene stayed on the Pi. |
+| **Shader, video or music scenes are black or missing** | They need the [desktop app](#desktop-app) connected. Check the *WebSocket is currently: Open* line. |
+| **No audio reactivity** | The desktop app captures *system output*, so play something on that PC. Check the capture device in the AudioVisualizer tab. |
+| **My settings reverted after an upgrade** | You edited `/etc/default/led-matrix` by hand. Use `debconf-set-selections` and `dpkg-reconfigure` ([Change settings later](#change-settings-later)). |
+| **Update failed** | Read `/var/log/led-matrix-update.log`. The updater rolls back by itself and reports on the Updates page. |
+| **The service crashed** | Crash reports are in `/var/lib/led-matrix/crashes/`. Please attach one to an issue. |
+
+Still stuck? [Open an issue](https://github.com/sshcrack/led-matrix/issues) with your Pi model, panel type, the flags in `/etc/default/led-matrix` (minus secrets) and `journalctl -u led-matrix -n 100`.
+
+---
+
 ## REST API
 
 Everything the web UI does goes through a REST API on port 8080. Examples assume no token. If you set one, add `-H "Authorization: Bearer $TOKEN"`.
@@ -596,28 +609,6 @@ The UI is the best documentation for payload shapes: open your browser's dev too
 
 ---
 
-## Troubleshooting
-
-| Symptom | Try this |
-|:--|:--|
-| **Nothing lights up** | `systemctl status led-matrix` and `journalctl -u led-matrix -n 50`. Check the panel power and the ribbon cable direction (*in* vs *out*). Try `--led-panel-type=FM6126A`. |
-| **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Pi preparation](#pi-preparation-one-time)) and check the power supply. |
-| **Wrong colours** | Set `--led-rgb-sequence` (`RBG`, `BGR`, …). |
-| **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–17) and `--led-row-addr-type` (0–4). |
-| **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
-| **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
-| **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
-| **Heavy scenes don't move to the desktop** | Check protocol and scene-contract compatibility in **Health**. With *Match Matrix Version* on (the default), the app switches to the Pi's version within minutes; the update status is shown in the app's *LED Matrix Controller* menu. **Health** → `render_placement.reason` says why a scene stayed on the Pi. |
-| **Shader, video or music scenes are black or missing** | They need the [desktop app](#desktop-app) connected. Check the *WebSocket is currently: Open* line. |
-| **No audio reactivity** | The desktop app captures *system output*, so play something on that PC. Check the capture device in the AudioVisualizer tab. |
-| **My settings reverted after an upgrade** | You edited `/etc/default/led-matrix` by hand. Use `debconf-set-selections` and `dpkg-reconfigure` ([Change settings later](#change-settings-later)). |
-| **Update failed** | Read `/var/log/led-matrix-update.log`. The updater rolls back by itself and reports on the Updates page. |
-| **The service crashed** | Crash reports are in `/var/lib/led-matrix/crashes/`. Please attach one to an issue. |
-
-Still stuck? [Open an issue](https://github.com/sshcrack/led-matrix/issues) with your Pi model, panel type, the flags in `/etc/default/led-matrix` (minus secrets) and `journalctl -u led-matrix -n 100`.
-
----
-
 ## Development
 
 Three programs share one repository:
@@ -633,8 +624,8 @@ Three programs share one repository:
 ### Build prerequisites
 
 - A C++23 compiler (GCC 12+ or Clang 15+), CMake, Ninja, Git, Python 3 with `jinja2`
-- [vcpkg](https://github.com/microsoft/vcpkg), with `VCPKG_ROOT` exported
-- Node 20+ and pnpm, if you build the web UI
+- [vcpkg](https://github.com/microsoft/vcpkg): export `VCPKG_ROOT`, or clone it to `vcpkg/` inside or next to the main checkout and the build finds it
+- Node 22 and pnpm (the emulator and Pi builds include the web UI unless you pass `-DSKIP_WEB_BUILD=ON`)
 - On Debian or Ubuntu:
 
 ```bash
@@ -676,8 +667,6 @@ New git worktrees build in seconds thanks to a shared ccache and vcpkg binary ca
 
 ### Writing a plugin
 
-Library features and fixes can be made in the owner's [rpi-rgb-led-matrix fork](https://github.com/sshcrack/rpi-rgb-led-matrix). Follow the [library release workflow](docs/MATRIX_LIBRARY.md) to ship them there and consume the published release here.
-
 ```text
 plugins/MyPlugin/
 ├── CMakeLists.txt        # register_plugin(MyPlugin matrix/MyPlugin.cpp scenes/MyScene.cpp ...)
@@ -691,6 +680,8 @@ Write a scene once and it runs on the Pi, in previews and on the desktop worker.
 - [Scene execution, previews and offload](docs/SCENE_EXECUTION.md)
 - [Shader authoring](plugins/Shadertoy/SHADER_AUTHORING.md)
 - Start from `plugins/ExampleScenes/`
+
+Changes to the LED driver itself go into the [rpi-rgb-led-matrix fork](https://github.com/sshcrack/rpi-rgb-led-matrix). Follow the [library release workflow](docs/MATRIX_LIBRARY.md) to ship them there and consume the published release here.
 
 ### Previews and media
 
@@ -716,7 +707,7 @@ Scene GIFs are **not** committed to git. They are release assets (`./scripts/fet
 Contributions are welcome: scenes, performance work, hardware support, docs, an assembly guide.
 
 1. Fork and branch (`git checkout -b feature/my-scene`).
-2. Build with the emulator, run `ctest`, and for visual changes attach a short video made with `render_scene_video.sh`.
+2. Build with the emulator ([Development](#development)), run `ctest`, and for visual changes attach a short video made with `render_scene_video.sh`.
 3. Open a pull request describing what changed and why.
 
 Design rules for new scenes: calm and glanceable, **low compute** (the Pi is modest), **no input from viewers**, **no readable text** (no tickers or scores), and visually interesting on their own. The [`AGENTS.md`](AGENTS.md) *Design constraints* section lists ideas that were already considered and rejected.
