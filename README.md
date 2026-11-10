@@ -676,6 +676,8 @@ New git worktrees build in seconds thanks to a shared ccache and vcpkg binary ca
 
 ### Writing a plugin
 
+Library features and fixes can be made in the owner's [rpi-rgb-led-matrix fork](https://github.com/sshcrack/rpi-rgb-led-matrix). Follow the [library release workflow](docs/MATRIX_LIBRARY.md) to ship them there and consume the published release here.
+
 ```text
 plugins/MyPlugin/
 ├── CMakeLists.txt        # register_plugin(MyPlugin matrix/MyPlugin.cpp scenes/MyScene.cpp ...)

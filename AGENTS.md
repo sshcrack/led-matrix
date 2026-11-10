@@ -20,6 +20,8 @@ Plugins live under `plugins/<Name>/` with a `matrix/` subdirectory for Pi code a
 
 ## Build system
 
+The owner also owns the [`sshcrack/rpi-rgb-led-matrix`](https://github.com/sshcrack/rpi-rgb-led-matrix) fork used here. When a led-matrix feature or fix needs library changes, follow [Matrix library ownership and changes](docs/MATRIX_LIBRARY.md): ship the library change through PR, checks, merge and release (the library equivalent of tier 3), then consume that release here. Keep the application on its separately requested shipping tier.
+
 CMake + Ninja + vcpkg. Three presets, three distinct build dirs:
 
 | Preset | Purpose | Build dir |
