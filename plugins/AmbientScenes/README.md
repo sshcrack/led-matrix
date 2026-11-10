@@ -1,27 +1,15 @@
-# Ambient Scenes Plugin
+# Ambient Scenes
 
-This plugin adds ambient visual effects and animations to your LED Matrix.
+Provides Starfield, Metablob, Clock, Sorting Visualizer, Bouncing Logo, Neon
+Tunnel and Digital Rain. Scene properties and curated looks are listed in the
+web UI's **Scenes** page; **Scene Lab** lets you try them before saving a preset.
 
-## Included Scenes
+The plugin also supplies one-tap starting points to the web preset builder
+through `web/index.ts`. Seasonal forest and cottage scenes belong to
+[HobbyScenes](../HobbyScenes/README.md).
 
-### Starfield
-Various twinkling stars in a 3D space, creating a starfield effect.
+Clock is a manual scene because it contains readable text. Automatic Mode uses
+only scenes whose descriptors explicitly opt in.
 
-#### Properties:
-- **num_stars**: Number of stars in the field
-- **speed**: Movement speed through the starfield
-- **enable_twinkle**: Add a twinkling effect to stars
-- **max_depth**: Maximum depth of the starfield (affects perspective)
-
-### Metablob
-An organic-looking fluid animation based on metaballs/metablobs.
-
-#### Properties:
-- **num_blobs**: Number of blobs in the animation
-- **threshold**: Visibility threshold for the blob field
-- **speed**: Animation speed
-- **move_range**: How far blobs move from their center position
-- **color_speed**: Speed of color cycling
-
-## Installation
-If this plugin is not deleted from the plugins directory, install is automatic!
+Build and installation are handled by the repository's CMake presets. See the
+[plugin development guide](../../docs/PLUGIN_DEVELOPMENT.md).

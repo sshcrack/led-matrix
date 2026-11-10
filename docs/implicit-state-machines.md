@@ -6,7 +6,7 @@ This inventory identifies **73 machines or recurring machine families** across t
 
 A state machine here means retained history that changes which action is legal or what happens next, including history encoded by pointer/future presence, flags, sentinel values, counters, timestamps, process handles and call order. Ordinary settings, instantaneous predicates, continuous visual equations and external-library internals are excluded. Existing explicit state labels are included when substantial surrounding behavior remains implicit. Source links point to the audited revision's line numbers.
 
-## Highest-value places to make state explicit
+## Original priorities (implemented below)
 
 1. **Render placement/session/worker recovery**: a distributed protocol with warmup, held frames, freshness, identity and crash-loop suppression. Preserve the distinction between a connected worker, a compatible worker, a requested session and a usable frame.
 2. **SpotifyMV replacement**: current and pending playback coexist. Model request generation, search/decoder completion, promotion and cancellation together; a single Playing/Downloading flag cannot express this.
@@ -39,7 +39,7 @@ Also made explicit by feature work between the two audits (documented in `CONTEX
 
 The remaining rows below are unchanged: they are small, local, or already adequately guarded, and turning each into a type would add more code than clarity.
 
-These are modeling priorities, not claims that each location contains a proven bug. Orthogonal conditions should stay separate where combinations are valid; replacing every flag with one large enum would hide that structure.
+The original priorities above have been addressed by the work listed here; they are not an open refactoring backlog. The remaining inventory is a dated reference, not a claim that each location contains a proven bug. Orthogonal conditions should stay separate where combinations are valid; replacing every flag with one large enum would hide that structure.
 
 ## Runtime and rendering
 

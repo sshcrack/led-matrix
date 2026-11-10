@@ -1,6 +1,6 @@
 # Transition performance on the attached Pi
 
-Measured 2026-11-06 on `ledmat`, comparing bcc108b7 against its parent.
+Historical measurements from 2026-11-06 on `ledmat`, comparing bcc108b7 against its parent. These timings predate the bulk-write and cadence improvements in [Pi frame pacing](pi-frame-pacing.md); they are not current performance baselines.
 
 Both executables used the actual installed `/usr/lib/led-matrix/librpi-rgb-led-matrix.so`, GPIO output and the attached 128×128 panel (64 rows/columns, chain 2, parallel 2, GPIO slowdown 3). Each called the source transition implementation on two fixed gradient frames, followed by `SwapOnVSync(..., 1)`. Each run rendered 24 frames at twelve progress values from 0.04 through 0.92, repeated twice. Execution order: old, new, new, old. Values below average the two runs per version (48 presented frames per effect/version).
 
@@ -24,7 +24,7 @@ Reveal effects improve by about 20–40% in frame time. Blend and morph have no 
 
 ## Desktop composition
 
-The worker now receives a single RGB888 outgoing snapshot in its scene-start command, renders the incoming scene, applies the registered transition on its headless software canvases, and streams completed frames. The Pi performs only the final framebuffer write and presentation. After the transition, ordinary scene rendering reuses the session. Protocol version 3 requires updating both Pi and desktop; older workers are not eligible. The existing scene-code fingerprint must also match.
+The worker now receives a single RGB888 outgoing snapshot in its scene-start command, renders the incoming scene, applies the registered transition on its headless software canvases, and streams completed frames. The Pi performs only the final framebuffer write and presentation. After the transition, ordinary scene rendering reuses the session. This feature originally shipped with protocol 3 and source fingerprints. Current eligibility uses protocol 4 and per-scene data-contract versions; see [Remote data contracts](SCENE_EXECUTION.md#remote-data-contracts).
 
 Startup without a frame times out after 500 ms and falls back to local composition. A stream stalled for 150 ms after its first frame hands control to the incoming scene without replaying the transition. Reconnect commands resume the scene without replaying the old outgoing snapshot. Held incoming scenes preserve the snapshot until they produce real pixels. Postprocessing and demand-driven live capture remain on the Pi.
 

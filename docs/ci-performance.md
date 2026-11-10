@@ -1,5 +1,8 @@
 # CI caches and release reuse
 
+The workflow files are authoritative for job selection and cache keys. The
+measurements below describe the investigations that motivated the current setup.
+
 Ubuntu 26.04's Mono 6.14 packages omit `ca-certificates-mono` and `cert-sync`,
 leaving its TLS store empty. Restoring apt package files also does not run trust-
 store hooks. NuGet then spent minutes failing TLS verification and rebuilt dependencies.
@@ -92,11 +95,13 @@ cache. No paid cache-storage limit increase is required by this configuration.
 
 Profiling the warm PR #88 run showed three network costs outside compilation:
 
-- `actions/checkout` spent 90-110 s on most jobs. About 50 MiB of the 94 MiB
-  tree is README/docs GIFs (`plugins/*/img/`, `docs/*.gif`) that no build reads.
+- `actions/checkout` spent 90-110 s on most jobs. At the time, about 50 MiB of the 94 MiB
+  tree was README/docs GIFs (`plugins/*/img/`, `docs/*.gif`) that no build read.
+  Those sizes predate the repository history cleanup.
   Build jobs use a non-cone sparse checkout that excludes them; sparse checkout
   also makes `actions/checkout` use a blobless partial clone, so excluded blobs
-  are never downloaded. `scene_previews/` stays because packages install it.
+  are never downloaded. Scene previews are now fetched from the rolling `scene-previews` release
+  before packaging; they are not tracked in git.
 - Submodules pinned to non-tip commits are fetched with an explicit
   `git submodule update --init --depth 1` after checkout.
 - `lukka/run-vcpkg` cloned the full microsoft/vcpkg history, and vcpkg's git

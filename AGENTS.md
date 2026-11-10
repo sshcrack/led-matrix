@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Work tracking
+
+Track planned work in [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and the [Led Matrix Road Map](https://github.com/users/sshcrack/projects/7), using the same organization as the [Talking Colonists Road Map](https://github.com/orgs/talking-colonists/projects/3). Search for an existing issue before creating one; update its scope and status as work changes.
+
+- Group related work under a tracking issue using GitHub sub-issues; record real prerequisites with blocked-by links. Each implementation issue owns its problem, relevant code, constraints and acceptance criteria.
+- Add issues to the project with an area label, Priority (`P0` highest, `P1` normal, `P2` lower urgency), Size (`XS`–`XL`) and the appropriate wave milestone. Sizes are rough scope estimates; fill numeric estimates and dates only when established. Deferred ideas keep the `deferred` label and remain outside active milestones.
+- Use statuses `Backlog` → `In progress` → `In review` → `Done`; `Not planned` is for declined or superseded work. Link implementation PRs to their issues and close issues only when acceptance criteria are met. The project provides Backlog, Priority board, Team items, Roadmap and My items views.
+- Keep repository docs focused on current behavior, setup, architecture and dated evidence. Track actionable follow-ups on GitHub instead of adding repo backlog/roadmap files or TODO lists. Remove resolved or obsolete TODOs rather than migrating them as new work.
+
 ## Project shape
 
 Three binaries, one repo:
@@ -10,6 +19,8 @@ Three binaries, one repo:
 Plugins live under `plugins/<Name>/` with a `matrix/` subdirectory for Pi code and an optional `desktop/` subdirectory for desktop code. Shared libraries are in `shared/common/`, `shared/matrix/`, and `shared/desktop/`.
 
 ## Build system
+
+The owner also owns the [`sshcrack/rpi-rgb-led-matrix`](https://github.com/sshcrack/rpi-rgb-led-matrix) fork used here. When a led-matrix feature or fix needs library changes, follow [Matrix library ownership and changes](docs/MATRIX_LIBRARY.md): ship the library change through PR, checks, merge and release (the library equivalent of tier 3), then consume that release here. Keep the application on its separately requested shipping tier.
 
 CMake + Ninja + vcpkg. Three presets, three distinct build dirs:
 
@@ -57,7 +68,7 @@ Cross-compile for Pi and deploy:
 ```bash
 cmake --preset cross-compile
 cmake --build --preset cross-compile --target install
-# build_upload.sh does the above + rsync to ledmat:/home/pi/ledmat/run/ + service restart
+# build_upload.sh builds a DEB and installs it transactionally on ledmat
 ./build_upload.sh
 ```
 
@@ -306,4 +317,4 @@ Every committed blob stays in history forever and slows every `git clone`. Histo
 
 ## CI
 
-`.github/workflows/ci.yml` on push/PR to `master` builds only the react-web frontend (pnpm + node 22) and uploads it as the `web-build` artifact. It then delegates all three C++ builds (`cross-compile`, `desktop-linux`, `desktop-windows`) to the reusable workflow `.github/workflows/build-matrix.yml`, which downloads the `web-build` artifact so all presets get the bundled web UI without rebuilding it.
+`.github/workflows/ci.yml` runs on pushes to `master` and PRs to any base branch. It lints, tests and builds react-web (pnpm + Node 22), then uploads `web-build`. The reusable `.github/workflows/build-matrix.yml` downloads that artifact for the Pi and desktop packages (`cross-compile`, `desktop-linux`, `desktop-windows`), the complete emulator suite, and selected ASan+UBSan regressions. TSan remains a local preset. See `docs/ci-performance.md` for cache and release-artifact reuse.

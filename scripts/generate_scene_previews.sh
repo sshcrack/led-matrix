@@ -4,7 +4,7 @@
 #
 # Generates animated GIF previews for LED matrix scenes.
 # Previews are saved to the scene_previews/ directory in the repository root.
-# These previews are then committed to git and deployed with the application.
+# Previews are git-ignored release assets; publish with publish_scene_previews.sh.
 #
 # Usage:
 #   ./generate_scene_previews.sh [OPTIONS]
@@ -298,7 +298,7 @@ if eval "$CMD"; then
     print_info "Next steps:"
     print_info "  1. Review the generated GIFs"
     print_info "  2. Publish them (NOT to git): scripts/publish_scene_previews.sh"
-    print_info "  3. Deploy with: cmake --build emulator_build --target install"
+    print_info "  3. Deploy with: cmake --build --preset emulator --target install"
 else
     EXIT_CODE=$?
     print_error "Preview generation failed with exit code $EXIT_CODE"

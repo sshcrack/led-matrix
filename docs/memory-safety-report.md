@@ -1,8 +1,8 @@
 # Memory-safety and threading report
 
-Branch `safety/sanitizers`. Goal: catch memory and threading bugs in C++ with
-tooling instead of a rewrite. This document covers how to use the tooling, every
-finding, what could not be verified and what to look at next.
+The original `safety/sanitizers` audit is retained below as historical evidence.
+Its test counts and verification limits describe that audit, not the current
+revision. Tooling and CI status were checked against the tree on 2026-11-10.
 
 ## Using the tooling
 
@@ -36,7 +36,7 @@ ctest --test-dir emulator_asan_build --output-on-failure
   `crashes/crash-*.txt`, the systemd unit has `LimitCORE=infinity`; use
   `coredumpctl list|info|debug led-matrix` (install `systemd-coredump`, `gdb`).
 
-## Findings
+## Historical audit findings
 
 | # | Tool | Location | Bug class | Status |
 |---|---|---|---|---|
@@ -85,7 +85,7 @@ hostile ShaderToy JSON responses through `ShaderDocument::load` /
 `importFromShaderToyResponse` produced no sanitizer report (only exceptions). No library
 change was needed.
 
-## Not verified / limits
+## Original audit limits
 
 - Anything touching real GPIO / the Pi (`/dev/mem`, DMA timing, privilege drop)
   was not run; the arm64 build compiles but nothing was executed on `ledmat`, and
@@ -103,21 +103,15 @@ change was needed.
 - TSan cannot see ordering inside uninstrumented libraries (libgomp, vcpkg
   libraries, Mesa), so races fully inside them are invisible.
 
-## Recommended next steps
+## CI and work tracking
 
-1. Run the ASan and TSan emulator presets in CI nightly (the driver is a good
-   starting point to commit under `tests/`).
-2. Keep `-Wall -Wextra ...` warnings visible and move to `-Werror` per directory
-   once the count (~1.2k in the build log) is down.
-3. Riskiest remaining areas: desktop plugin <-> `WebsocketClient` message threads
-   (audit remaining plugins for the same unsynchronised-string pattern),
-   `SpotifyMV`/`Video` external process handling, and the GL worker lifecycle.
-4. Install `systemd-coredump` on the Pi and collect real crash dumps; the symbols
-   are in the `RelWithDebInfo` binary.
-5. Consider building vcpkg deps (GraphicsMagick, ixwebsocket) with TSan for a
-   cleaner signal.
+CI runs the complete unsanitized emulator suite and selected ASan+UBSan
+regressions on pushes/PRs (`build-matrix.yml`). TSan remains a local preset.
+Follow-up investigations and verification work are tracked in the
+[Led Matrix project](https://github.com/users/sshcrack/projects/7); the findings
+and limits above retain the original audit's evidence.
 
-## Build verification
+## Historical build verification
 
 Built with the new flags (non-sanitized, `-DSKIP_WEB_BUILD=ON`, -j3), zero errors:
 `emulator` 313/313, `desktop-linux` 268/268, `cross-compile` (toolchain reused via

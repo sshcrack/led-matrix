@@ -74,11 +74,12 @@ The full emulator build passed 52 tests; the full Linux desktop build passed 49 
 
 The library implementation and its bitplane regression test now live in `sshcrack/rpi-rgb-led-matrix` (PR #11, release v0.1.12), including the Windows compatibility change previously patched by this app. Its hardware and SDL CMake configurations passed 5 and 8 tests respectively, and Linux/Python/Windows CI passed before release. The app retains the cadence, transport, worker and integration regressions. After switching to the published release, its emulator and Linux desktop builds passed 51 and 48 tests respectively, and the ARM build succeeded.
 
-## Further opportunities
+## Measurement limits and work tracking
 
-- Local scenes that draw pixels individually still pay scalar conversion costs. Wider software RGB composition could let more scenes and effects use one final bulk conversion.
-- Hardware readback still costs roughly 7 ms per capture. Keep live capture demand-driven, and prefer software RGB composition plus one final conversion when optimizing local transitions/effects.
-- Report unique produced/received/presented sequences and per-stage timing before claiming locked 60 FPS. Lower PWM is a visual-quality tradeoff and is not required for the gains above.
+Presentation counts can include repeated fresh remote sequences. The timings in
+this report do not establish 60 unique, evenly spaced frames per second.
+Software composition work is tracked in [issue #148](https://github.com/sshcrack/led-matrix/issues/148).
+Live capture remains strictly demand-driven.
 
 ## Regression coverage
 
