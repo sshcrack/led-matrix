@@ -7,6 +7,7 @@
 #include "matrix/manager/shared_spotify.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include "shared/matrix/utils/image_fetch.h"
+#include "shared/matrix/utils/rgb_blit.h"
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/media_artwork_state.h"
 #include "led-matrix.h"
@@ -590,13 +591,12 @@ void CoverOnlyScene::draw(rgb_matrix::FrameCanvas *canvas, float dt)
             }
     }
 
-    for (int y = 0; y < H; ++y)
-        for (int x = 0; x < W; ++x) {
-            const auto &p = frame_[static_cast<size_t>(y * W + x)];
-            canvas->SetPixel(x, y, static_cast<uint8_t>(std::clamp(p.r, 0.0f, 255.0f)),
-                             static_cast<uint8_t>(std::clamp(p.g, 0.0f, 255.0f)),
-                             static_cast<uint8_t>(std::clamp(p.b, 0.0f, 255.0f)));
-        }
+    RgbBlit::present(canvas, W, H, rgb_, [this, W](int x, int y, uint8_t *out) {
+        const auto &p = frame_[static_cast<size_t>(y * W + x)];
+        out[0] = RgbBlit::from_byte(p.r);
+        out[1] = RgbBlit::from_byte(p.g);
+        out[2] = RgbBlit::from_byte(p.b);
+    });
 }
 
 std::expected<CoverOnlyScene::ArtworkResult, std::string> CoverOnlyScene::refresh_info(

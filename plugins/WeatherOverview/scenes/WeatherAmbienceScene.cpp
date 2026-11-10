@@ -1,3 +1,4 @@
+#include "shared/matrix/utils/rgb_blit.h"
 #include "WeatherAmbienceScene.h"
 
 #include <algorithm>
@@ -104,13 +105,12 @@ bool WeatherAmbienceScene::render(rgb_matrix::FrameCanvas *canvas)
     if (lightning_enabled_->get())
         lightning_.update_and_draw(s, L, dt, horizon);
 
-    for (int y = 0; y < matrix_height; ++y)
-        for (int x = 0; x < matrix_width; ++x) {
-            const float *p = s.at(x, y);
-            canvas->SetPixel(x, y, static_cast<uint8_t>(std::clamp(p[0], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[1], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[2], 0.0f, 1.0f) * 255.0f));
-        }
+    RgbBlit::present(canvas, matrix_width, matrix_height, rgb_, [&s](int x, int y, uint8_t *out) {
+        const float *p = s.at(x, y);
+        out[0] = RgbBlit::from_unit(p[0]);
+        out[1] = RgbBlit::from_unit(p[1]);
+        out[2] = RgbBlit::from_unit(p[2]);
+    });
     wait_until_next_frame();
     return true;
 }
