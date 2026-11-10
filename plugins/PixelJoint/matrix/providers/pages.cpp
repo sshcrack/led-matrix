@@ -1,7 +1,6 @@
 #include "pages.h"
 #include <random>
 #include "spdlog/spdlog.h"
-#include <stdexcept>
 
 vector<int> generate_rand_pages(int page_begin, int page_end) {
     if (page_end <= page_begin) return {};
@@ -27,6 +26,18 @@ void ImageProviders::Pages::flush() {
 
 std::expected<std::optional<std::variant<std::unique_ptr<Post>, std::shared_ptr<Post> > >, string>
 ImageProviders::Pages::get_next_image() {
+    // "pages_end": -1 means "all pages". The count needs the network, so it is
+    // fetched here rather than while loading the config: a daemon started
+    // before the network is up must not fail to start.
+    if (pages_end < 0) {
+        const auto pages = pixeljoint::ScrapedPost::get_pages();
+        if (!pages.has_value())
+            return std::unexpected("Could not get the PixelJoint page count");
+
+        pages_end = pages.value();
+        total_pages = generate_rand_pages(pages_begin->get(), pages_end);
+    }
+
     // Load new page of posts if needed
     while (curr_posts.empty() && !total_pages.empty()) {
         int page = total_pages.front();
@@ -70,12 +81,11 @@ void ImageProviders::Pages::load_properties(const nlohmann::json &j) {
 
 
     pages_end = pages_end_raw->get();
-    if (pages_end == -1) {
-        const auto pages = pixeljoint::ScrapedPost::get_pages();
-        if (!pages.has_value())
-            throw std::runtime_error("Could not get page size");
-
-        pages_end = pages.value();
+    if (pages_end < 0) {
+        // Resolved on the first get_next_image().
+        pages_end = -1;
+        total_pages.clear();
+        return;
     }
 
     total_pages = generate_rand_pages(pages_begin->get(), pages_end);
