@@ -7,6 +7,20 @@ You are setting up [led-matrix](https://github.com/sshcrack/led-matrix): a daemo
 
 Your job has up to eight phases (Phase 0 only if they're starting from scratch). **Do them in order. Interview first, act second, and verify everything.**
 
+### Where you are running (the usual setup)
+
+Most often you run on the human's **own computer** (their work or desktop PC), the same machine where they want the desktop app. From there you set up the Pi **over SSH**, then install and connect the desktop app **locally**:
+
+```text
+ this machine (you + desktop app)  ──ssh──▶  Raspberry Pi (led-matrix daemon + panels)
+                                   ──TCP/UDP :8080──▶
+```
+
+- **Commands for the Pi** (Phases 2–4, 6) run through SSH: `ssh pi@<pi-host> '<command>'`, or an interactive session. `localhost:8080` in those commands means the Pi itself.
+- **Commands for the desktop app** ([Phase 5](#desktop-app-on-this-machine)) run on this machine, in its own shell (bash on Linux, PowerShell on Windows). Here the API is `http://<pi-host>:8080`.
+- If you run **on the Pi** instead, do everything there, and give the human the desktop app steps to run on their PC.
+- The desktop app exists for **Windows x64 and Linux x86_64** only. On macOS or another architecture, skip it and say so.
+
 | # | Phase | You | The human |
 |:-:|:--|:--|:--|
 | 0 | Starting point | Find out what exists; guide wiring and flashing if needed | Does the physical steps |
@@ -14,7 +28,7 @@ Your job has up to eight phases (Phase 0 only if they're starting from scratch).
 | 2 | Preflight | Inspect the Pi | – |
 | 3 | Install | Run commands | Approves `sudo` if needed |
 | 4 | Verify and tune | Check service, API, tune flags | **Looks at the physical panels** |
-| 5 | Integrations (optional) | Configure what they asked for | Browser steps (Spotify login) |
+| 5 | Desktop app and integrations (optional) | Install and connect the desktop app on this machine; configure what they asked for | Looks at the app window; browser steps (Spotify login) |
 | 6 | Starter content | Create presets and schedules | – |
 | 7 | Hand-off | Summarise | Reads the summary |
 
@@ -23,7 +37,7 @@ Your job has up to eight phases (Phase 0 only if they're starting from scratch).
 ## Ground rules
 
 1. **Ask before you assume hardware.** Wrong panel numbers give a scrambled or dark display and make the person think the install failed. Ask the questions in [Phase 1](#phase-1-interview); don't guess what you can't detect.
-2. **Detect, don't ask,** what you can read yourself: architecture, OS, Pi model, whether the `pi` user exists, IP address.
+2. **Detect, don't ask,** what you can read yourself: architecture, OS, Pi model, whether the `pi` user exists, IP address, and the OS and architecture of the machine you run on.
 3. **You cannot see the LEDs.** Only the human can confirm what the panels show. After every visual change, ask what they see. Never claim the display "works" from a healthy service alone.
 4. **Secrets** (Spotify secret, API token, Wi-Fi or SSH passwords):
    - Never invent one, never reuse one from another context, and never print one in a summary.
@@ -71,7 +85,7 @@ Ask these as **one short batch** (or two) rather than one question per message. 
 
 | # | Question | Notes and mapping |
 |:-:|:--|:--|
-| A1 | **How do you connect to the Pi?** Is this session on the Pi, or do I SSH in? Host, user and port? | You need a shell on the Pi with `sudo`. The installer expects a user called **`pi`** to exist. |
+| A1 | **How do I reach the Pi over SSH?** Hostname or IP, user (normally `pi`) and port. | Assume you SSH in from this machine (see [Where you are running](#where-you-are-running-the-usual-setup)); only if you're already on the Pi, skip this. You need `sudo` there. The installer expects a user called **`pi`** to exist. Test with `ssh -o BatchMode=yes pi@<host> true`; if that fails, ask them to run `ssh-copy-id pi@<host>`. |
 | A2 | **Which panels do you have?** Size of each (e.g. 64×64, 64×32, 32×32) and how many? | → `rows` × `cols` of one panel. Ask for the product name or a photo/link if unsure. |
 | A3 | **How are they arranged?** Rows and columns of panels, and how they're cabled | → `chain` (panels in series on one cable) and `parallel` (separate cables from the adapter). See the [layout table](#layout-cheat-sheet). |
 | A4 | **Which adapter or HAT** connects the Pi to the panels? | Plain adapter (e.g. Electrodragon Active-3, hzeller's adapters) → default GPIO mapping. **Adafruit HAT/Bonnet** → `--led-gpio-mapping=adafruit-hat`. |
@@ -84,7 +98,7 @@ Ask these as **one short batch** (or two) rather than one question per message. 
 | B1 | Do you want **Spotify** (album art, track-aware scenes)? | The human enters credentials and signs in through the web UI. See [Spotify](#spotify). |
 | B2 | Should the web UI and API be **protected with a token**? (Anyone on your network can control it otherwise.) | Ask them to choose or generate one. See [Secrets](#ground-rules). |
 | B3 | **Automatic updates** from GitHub releases? (Default: yes, every 24 h; updates roll back on failure.) | `auto-update-enable` / `auto-update-interval` |
-| B4 | Do you want the **desktop app** on a Windows or Linux PC? (Adds music reactivity, GPU shader scenes, videos.) | See [Desktop app](#desktop-app). |
+| B4 | Should I install the **desktop app on this computer**? (Music reactivity from what this PC plays, GPU shader scenes, music videos, and taking over heavy scenes from the Pi. It runs in the tray and updates itself.) Recommend **yes** when this is a Windows or Linux PC that is often on. Follow-ups if yes: start it with the computer? Video scenes too (needs `yt-dlp` and `ffmpeg`)? | See [Desktop app](#desktop-app-on-this-machine). On another machine, give them the steps instead. |
 | B5 | Any **schedule** in mind (e.g. calm scenes in the evening, dim at night)? | See [Phase 6](#phase-6-starter-content). |
 | B6 | If this is a **re-install or upgrade**: keep the existing presets and settings? | Default: yes. Don't purge. |
 
@@ -114,7 +128,7 @@ If the person isn't sure which panels are on which chain, start with `chain` = t
 
 ## Phase 2: Preflight
 
-Run these on the Pi (via SSH if needed) and check each result.
+Run these on the Pi (via SSH) and check each result.
 
 ```bash
 uname -m                                   # must be aarch64 (arm64). If armv7l/armhf: STOP, a 64-bit OS is required.
@@ -127,6 +141,8 @@ curl -fsS -o /dev/null -w "github: %{http_code}\n" https://api.github.com/repos/
 systemctl is-active led-matrix 2>/dev/null || echo "not installed yet"
 ss -ltn | grep ':8080 ' || echo "port 8080 free"
 ```
+
+On **this machine**, if the human wants the desktop app, also check the platform (Linux: `uname -sm` must be `Linux x86_64`; Windows: `[Environment]::Is64BitOperatingSystem` and an x64 CPU) and that it can reach the Pi: `ping -c 1 <pi-host>` (Windows: `Test-Connection <pi-host> -Count 1`).
 
 **Stop and ask** if: the OS is 32-bit, the Pi is a model 5, GitHub is unreachable, port 8080 is used by something else (the daemon honours a `PORT` environment variable, see [Configuration](#changing-settings-later)), or an existing install is present and the human hasn't said whether to keep it.
 
@@ -279,7 +295,7 @@ sudo systemctl restart led-matrix
 
 ---
 
-## Phase 5: Integrations (only what they asked for)
+## Phase 5: Desktop app and integrations (only what they asked for)
 
 ### Spotify
 
@@ -295,28 +311,94 @@ Use the [Spotify plugin guide](../plugins/SpotifyScenes/README.md) for the redir
 
 Set `led-matrix/api-token` via debconf and reconfigure. The web UI prompts for the token once and remembers it. Scripts send `Authorization: Bearer <token>` or `X-Api-Token`. The desktop app has an *API token* field. Don't expose port 8080 beyond the LAN; recommend a VPN or SSH tunnel for remote access.
 
-### Desktop app
+### Desktop app (on this machine)
 
-Optional, runs on the human's **PC**, not the Pi. Needs the Pi's IP and port. Ask what OS the PC runs.
+Do this when the human said yes to B4 and you run on their Windows or Linux PC. The Pi must already be installed and healthy (Phase 4). Do the steps in order: the app saves its config file when it exits, so the file is written while the app is **not** running.
 
-- **Windows:** download `led-matrix-desktop-<version>-win64.exe` from the [latest release](https://github.com/sshcrack/led-matrix/releases/latest) and run it (per-user, no admin), or run `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 | iex` in PowerShell.
-- **Linux (x86_64):** `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh | sh` (per-user, no root).
-
-Both install for the current user and keep the app on the matrix's version automatically. Don't use the `.deb`.
-
-Then in the app: enter the Pi's **hostname/IP** and **port** (default `8080`) and the API token if one is set, and click **Connect**. The status must read *WebSocket is currently: Open*.
-
-On Linux you can pre-seed the connection before the first launch (merge into the file if it already exists, and never overwrite another user's settings):
+**1. Find an address this machine can use for the Pi.** Prefer the Pi's IP (`ssh pi@<host> hostname -I`, first entry) over a `.local` name, which some networks don't resolve. Suggest a DHCP reservation in their router so the IP doesn't change. Check it from here:
 
 ```bash
-mkdir -p ~/.config/led-matrix-desktop
-cat > ~/.config/led-matrix-desktop/config.json <<'EOF'
-{"general":{"hostname":"<pi-ip>","port":8080,"apiToken":"","fpsLimit":60,"udpFpsLimit":30,
-  "turnMatrixOnOnStart":false,"turnMatrixOffOnExit":false,"ytdlpPath":""},"pluginSettings":{}}
-EOF
+curl -fsS http://<pi-ip>:8080/status          # Windows PowerShell: curl.exe -fsS http://<pi-ip>:8080/status
 ```
 
-Video and music-video scenes also need [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and `ffmpeg` on that PC. Verify the link from the Pi side: `curl -s localhost:8080/diagnostics | jq '.desktop_connections'`.
+With an API token, add `-H "Authorization: Bearer <token>"` (from your private secret channel; don't echo it). If this fails while it works on the Pi, a firewall or client isolation (guest Wi-Fi) is blocking it: tell the human. The app only makes outgoing connections to the Pi (TCP and UDP port 8080), so this machine needs no inbound firewall rule.
+
+**2. Close the app if it is already running.** Ask first, then on Linux `pkill -x led-matrix-desktop`, on Windows `Stop-Process -Name led-matrix-desktop -ErrorAction SilentlyContinue`.
+
+**3. Write the connection settings.** The file is `~/.config/led-matrix-desktop/config.json` on Linux and `%APPDATA%\led-matrix-desktop\config.json` on Windows (Roaming AppData, not Local). Merge into an existing file; don't drop other keys or `pluginSettings`. Set `turnMatrixOnOnStart` and `turnMatrixOffOnExit` to `false` (the app's defaults are `true`, which switches the display off whenever the PC shuts down) unless the human wants the PC to control the display's power. Leave `apiToken` empty when no token is set.
+
+Linux:
+
+```bash
+PI_IP=192.168.1.50     # the Pi's IP from step 1
+CFG=~/.config/led-matrix-desktop/config.json
+mkdir -p "${CFG%/*}"; [ -s "$CFG" ] || echo '{}' > "$CFG"
+python3 - "$CFG" "$PI_IP" 8080 <<'PY'
+import json, sys, os
+path, host, port = sys.argv[1], sys.argv[2], int(sys.argv[3])
+cfg = json.load(open(path))
+g = cfg.setdefault("general", {})
+g.update(hostname=host, port=port, turnMatrixOnOnStart=False, turnMatrixOffOnExit=False)
+g["apiToken"] = os.environ.get("LED_MATRIX_API_TOKEN", g.get("apiToken", ""))
+cfg.setdefault("pluginSettings", {})
+json.dump(cfg, open(path, "w"), indent=4)
+PY
+```
+
+Windows (PowerShell):
+
+```powershell
+$PiIp = '192.168.1.50'   # the Pi's IP from step 1
+$dir = Join-Path $env:APPDATA 'led-matrix-desktop'; $cfgPath = Join-Path $dir 'config.json'
+New-Item -ItemType Directory -Force $dir | Out-Null
+$cfg = if (Test-Path $cfgPath) { Get-Content $cfgPath -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+if (-not $cfg.general) { $cfg | Add-Member general ([pscustomobject]@{}) }
+if (-not $cfg.pluginSettings) { $cfg | Add-Member pluginSettings ([pscustomobject]@{}) }
+$set = @{ hostname = $PiIp; port = 8080; turnMatrixOnOnStart = $false; turnMatrixOffOnExit = $false;
+          apiToken = $(if ($env:LED_MATRIX_API_TOKEN) { $env:LED_MATRIX_API_TOKEN } elseif ($cfg.general.apiToken) { $cfg.general.apiToken } else { '' }) }
+foreach ($k in $set.Keys) { $cfg.general | Add-Member -Force $k $set[$k] }
+$cfg | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 $cfgPath
+```
+
+To pass a token, put it in `LED_MATRIX_API_TOKEN` for that one command through your private secret mechanism. Never write it into chat or a repository. The config file stores it in plain text in the user's profile, which is expected.
+
+**4. Install.** Both installers are per-user (no `sudo`, no admin) and replace an older `.deb` or admin install on the app's first update. Don't use the desktop `.deb`.
+
+- **Linux:** `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh | sh`. It installs to `~/.local/share/led-matrix-desktop/` and adds a launcher entry and `~/.local/bin/led-matrix-desktop`. It does not start the app.
+- **Windows:** `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 | iex`. It runs the setup, which installs to `%LOCALAPPDATA%\led-matrix-desktop\` and **starts the app**. It shows a short progress window and asks nothing.
+
+**5. Start it** (Linux only; Windows already started it). It needs the graphical session of the logged-in user, so run it from a terminal of that session, not from an SSH login without a display:
+
+```bash
+setsid -f ~/.local/share/led-matrix-desktop/current/bin/led-matrix-desktop >/dev/null 2>&1
+```
+
+The app follows the matrix's version. If the Pi runs a different release, the app may update itself and restart within the first minute. That is expected.
+
+**6. Verify the connection.** Wait about 15 seconds, then from this machine:
+
+```bash
+curl -fsS http://<pi-ip>:8080/diagnostics | jq '{desktop_connections, worker: .remote_render | {worker_available, worker_compatible}, audio_fresh: .audio.fresh}'
+```
+
+| Field | Expect |
+|:--|:--|
+| `desktop_connections` | `1` or more. `0` means the app isn't connected: check the address, port and token in the config, and that the app is running. |
+| `worker_available`, `worker_compatible` | `true` after up to a minute (the scene worker for offload). `worker_compatible: false` usually means the app is still updating to the Pi's version. |
+| `audio_fresh` | `true` while this PC plays audio. Ask the human to play some music, then check again. |
+
+Without `jq`, read the same fields from the plain JSON. Also ask the human to open the app from the tray: the status must read *WebSocket is currently: Open*.
+
+**7. Start with the computer** (if they said yes): ask the human to tick **Start with System** in the app's *LED Matrix Controller* menu. The app writes the right autostart entry itself (it starts minimised to the tray).
+
+**8. Video scenes** (optional, only if they want them): the `video` and `spotifymv` scenes need `ffmpeg` and `yt-dlp` on this machine. Installing system packages needs their consent (and `sudo` on Linux).
+
+- **Linux:** `sudo apt install ffmpeg` (or the distro's equivalent). Distro `yt-dlp` packages go stale quickly; install the current release instead: `curl -fL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp && chmod +x ~/.local/bin/yt-dlp`. Then set `"ytdlpPath"` in the `general` section of the config to that absolute path (apps started from the launcher may not have `~/.local/bin` on `PATH`), with the app closed as in steps 2–3.
+- **Windows:** `winget install --id yt-dlp.yt-dlp -e` and `winget install --id Gyan.FFmpeg -e`. Quit and restart the app afterwards so it sees the new `PATH`.
+
+If a tool is still missing, the video scenes' panel in the app names it (for example *ffmpeg not found in PATH*).
+
+**If you are not on the PC** (you run on the Pi, or the PC runs macOS): give the human the install command for their OS from the [README](../README.md#desktop-app), tell them to enter the Pi's IP, port `8080` and the token in the app, and click **Connect**. Then verify `desktop_connections` from the Pi with `curl -s localhost:8080/diagnostics | jq .desktop_connections`.
 
 ---
 
@@ -365,7 +447,8 @@ Web UI:         http://<pi-ip>:8080/   (token: set / not set)
 Mode:           Automatic (Director picks scenes)
 Service:        led-matrix.service, enabled at boot
 Updates:        automatic every 24 h, with rollback
-Integrations:   Spotify: <done / skipped>   Desktop app: <installed & connected / skipped>
+Desktop app:    <installed on this PC & connected, starts with the computer: yes/no / skipped>
+Integrations:   Spotify: <done / skipped>   Video tools: <installed / skipped>
 Presets/schedules created: <list>
 
 Useful commands:
@@ -408,6 +491,7 @@ systemctl status led-matrix                 # service state
 journalctl -u led-matrix -f                 # live logs
 sudo systemctl restart led-matrix
 curl -s localhost:8080/diagnostics | jq     # renderer FPS, per-scene timing, desktop link, audio, Director
+curl -s localhost:8080/diagnostics | jq '{desktop_connections, remote_render, audio_fresh: .audio.fresh}'   # desktop app link
 ls /var/lib/led-matrix/crashes/             # crash reports (ask the human to attach one to an issue)
 cat /var/log/led-matrix-update.log          # updater log
 ```

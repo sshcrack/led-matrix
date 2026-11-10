@@ -94,7 +94,7 @@ Start it, enter the Pi's address and port `8080`, and click **Connect**.
 
 ### Set up with an AI agent
 
-Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Give the agent SSH access to the Pi (or run it on the Pi), then paste:
+Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Run the agent on the computer where you want the [desktop app](#desktop-app) (Windows or Linux) and make sure you can `ssh` into the Pi from it. The agent sets up the Pi over SSH, then installs the desktop app on that computer and connects it to the Pi. Paste:
 
 ```text
 Set up my LED matrix. Read and follow
