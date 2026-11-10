@@ -1,3 +1,4 @@
+#include "shared/matrix/utils/rgb_blit.h"
 #include "HobbyScene.h"
 
 #include "FigureDraw.h"
@@ -78,13 +79,12 @@ void HobbySceneBase::light_look(Hobbies::Look& look) const
 
 void HobbySceneBase::present(rgb_matrix::FrameCanvas* canvas)
 {
-    for (int y = 0; y < cv_.h; ++y)
-        for (int x = 0; x < cv_.w; ++x) {
-            const float* p = cv_.at(x, y);
-            canvas->SetPixel(x, y, static_cast<uint8_t>(std::clamp(p[0], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[1], 0.0f, 1.0f) * 255.0f),
-                             static_cast<uint8_t>(std::clamp(p[2], 0.0f, 1.0f) * 255.0f));
-        }
+    RgbBlit::present(canvas, cv_.w, cv_.h, rgb_, [this](int x, int y, uint8_t* out) {
+        const float* p = cv_.at(x, y);
+        out[0] = RgbBlit::from_unit(p[0]);
+        out[1] = RgbBlit::from_unit(p[1]);
+        out[2] = RgbBlit::from_unit(p[2]);
+    });
 }
 
 // ---------------------------------------------------------------- audio

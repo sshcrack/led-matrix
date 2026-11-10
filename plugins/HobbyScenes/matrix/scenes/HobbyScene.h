@@ -21,6 +21,7 @@ struct Look;  // FigureDraw.h
 class HobbySceneBase : public Scenes::Scene {
 protected:
     Canvas cv_;
+    std::vector<uint8_t> rgb_;  // reused RGB888 storage for present()
     float t_ = 0.0f;
     std::mt19937 rng_{std::random_device{}()};
     PropertyPointer<float> speed_ = MAKE_PROPERTY_MINMAX("speed", float, 1.0f, 0.2f, 2.5f);

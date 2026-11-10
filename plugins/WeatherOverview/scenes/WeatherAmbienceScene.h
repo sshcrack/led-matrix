@@ -20,6 +20,7 @@ class WeatherAmbienceScene final : public Scene {
     Environment::Precipitation precip_;
     Environment::Lightning lightning_;
     std::vector<float> px_;
+    std::vector<uint8_t> rgb_;  // reused RGB888 storage for the final bulk write
     float time_ = 0.0f;
 
     PropertyPointer<int> intensity_ = MAKE_PROPERTY_MINMAX("intensity", int, 6, 1, 10);

@@ -147,12 +147,20 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     const int max_pixels = frame.size() / 3;
     const int limit = std::min(width * height, max_pixels);
 
-    for (int idx = 0; idx < limit; ++idx)
+    if (limit == width * height)
     {
-      int x = idx % width;
-      int y = idx / width;
-      int i = idx * 3;
-      canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+      // A complete frame is already packed RGB888: one bulk write.
+      canvas->SetRGB(0, 0, width, height, data);
+    }
+    else
+    {
+      for (int idx = 0; idx < limit; ++idx)
+      {
+        int x = idx % width;
+        int y = idx / width;
+        int i = idx * 3;
+        canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+      }
     }
 
     auto status = plugin_->get_status();

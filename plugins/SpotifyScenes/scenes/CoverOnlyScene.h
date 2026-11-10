@@ -94,6 +94,7 @@ namespace Scenes {
         std::vector<Sparkle> sparkles_;
         uint32_t rng_ = 0x5EED1234u;
         std::vector<Rgb> frame_;
+        std::vector<uint8_t> rgb_;  // reused RGB888 storage for the final bulk write
         std::vector<Rgb> grid_;               // backdrop samples (coarse on the Pi)
 
         void adopt(Artwork artwork);
