@@ -5,6 +5,16 @@
 #include <shared/matrix/audio_state.h>
 
 namespace AmbientScenes {
+namespace {
+// Longest frame step simulated at once; a stall or pause never jumps the animation.
+constexpr float MAX_FRAME_STEP_SECONDS = 0.10f;
+// Rate (1/s) at which smoothed audio features chase the live analysis.
+constexpr float AUDIO_SMOOTHING_RATE = 8.0f;
+// Beat and drop pulses fall by this much per second (1.0 = full pulse).
+constexpr float BEAT_PULSE_DECAY_PER_SECOND = 3.0f;
+constexpr float DROP_PULSE_DECAY_PER_SECOND = 0.95f;
+}
+
 MetaBlobScene::MetaBlobScene() : Scene() {}
 
 void MetaBlobScene::initialize(int width, int height)
@@ -23,12 +33,12 @@ void MetaBlobScene::initialize(int width, int height)
 
 bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas)
 {
-    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.10f);
+    const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, MAX_FRAME_STEP_SECONDS);
 
     if (audio_reactive->get()) {
         const auto audio = AudioState::snapshot();
         const bool has_audio = audio.fresh();
-        const float response = 1.0f - std::exp(-dt * 8.0f);
+        const float response = 1.0f - std::exp(-dt * AUDIO_SMOOTHING_RATE);
         audio_bass += ((has_audio
             ? 0.5f * (audio.feature(AudioProtocol::Feature::SubBass) + audio.feature(AudioProtocol::Feature::Bass))
             : 0.0f) - audio_bass) * response;
@@ -61,8 +71,8 @@ bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas)
         audio_bass = audio_mids = audio_treble = audio_balance = 0.0f;
     }
 
-    beat_pulse = std::max(0.0f, beat_pulse - dt * 3.0f);
-    drop_pulse = std::max(0.0f, drop_pulse - dt * 0.95f);
+    beat_pulse = std::max(0.0f, beat_pulse - dt * BEAT_PULSE_DECAY_PER_SECOND);
+    drop_pulse = std::max(0.0f, drop_pulse - dt * DROP_PULSE_DECAY_PER_SECOND);
 
     AmbientScenes::MetaballParams params;
     params.width = matrix_width;

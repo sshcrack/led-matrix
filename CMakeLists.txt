@@ -222,7 +222,7 @@ else()
         src_matrix/server/environment_routes.cpp
         src_matrix/server/server.cpp
         src_matrix/server/update_routes.cpp
-        src_matrix/udp.cpp
+        src_matrix/udp_server.cpp
     )
 endif()
 

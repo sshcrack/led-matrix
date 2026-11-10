@@ -7,6 +7,8 @@
 
 namespace AmbientScenes {
     namespace {
+        // Rendered frames the finished (sorted) array stays on screen before the next algorithm starts.
+        constexpr int SORTED_HOLD_FRAMES = 100;
         const rgb_matrix::Color kAccessColor(255, 64, 64);
         const rgb_matrix::Color kSortedColor(64, 220, 96);
         const rgb_matrix::Color kPivotColor(255, 196, 64);
@@ -253,7 +255,7 @@ namespace AmbientScenes {
             delay_counter = 0;
         } else if (sort_phase == 2) {
             ++delay_counter;
-            if (delay_counter >= 100) {
+            if (delay_counter >= SORTED_HOLD_FRAMES) {
                 pick_next_algorithm();
             }
         }
