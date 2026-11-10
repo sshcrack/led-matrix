@@ -30,9 +30,9 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 
 ## What is this?
 
-A passive piece of light art for your wall or desk. It runs **68 scenes** (and growing), picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
+A passive piece of light art for your wall or desk. It runs a growing collection of scenes, picks what to show on its own, and reacts to the music you play. The display shows no tickers and takes no input from viewers. You set it up once and then mostly forget about it.
 
-- **Automatic Mode.** A Director chooses from 86 curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
+- **Automatic Mode.** A Director chooses from curated scene looks and composes 24–36 minute visual arcs. While music plays it favours music-reactive scenes. Switch to **Manual** to play your own presets.
 - **Web UI** that works on phones and desktops, installable as a PWA. It has a live 128×128 preview, a scene gallery, a Scene Lab, schedules and diagnostics. See the [tour](#web-ui).
 - **Desktop app** (Windows and Linux) for the heavy lifting: GPU shaders, system-audio capture, YouTube music videos. Your PC does the rendering and the Pi just displays pixels. See [Desktop app](#desktop-app).
 - **Runs on modest hardware.** Scene quality adapts to the Pi's measured load, and heavy scenes can move to your PC automatically.
@@ -167,21 +167,21 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 ### Scenes
 
-82 scenes across 18 plugins. Every scene runs on the Pi; a few need the desktop app.
+Scenes are supplied by plugins. Native scenes render on the Pi or desktop worker; shader and video scenes need the desktop app. Browse **Scenes** in the web UI for the installed catalog.
 
-| Category | Scenes | Highlights |
-|:--|:--:|:--|
-| **Audio reactive** | 27 | A spectrum analyser, particles, and 24 small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
-| **Shaders** | 12 | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
-| **Hobbies & activities** | 10 | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
-| **Ambient** | 11 | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
-| **Games** | 5 | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
-| **Generative** | 5 | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
-| **Fractals** | 3 | Julia set, Game of Life, Wave Pattern |
-| **Particles** | 2 | Rain, Sparks |
-| **Media** | 3 | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
-| **Weather** | 2 | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
-| **Utility / Images** | 2 | Countdown with fireworks, and a pixel-art and image provider |
+| Category | Highlights |
+|:--|:--|
+| **Audio reactive** | A spectrum analyser, particles, and small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
+| **Shaders** | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Turntable, Tube Amp…). Add your own `.frag` files |
+| **Hobbies & activities** | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
+| **Ambient** | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
+| **Games** | Self-playing Tetris, Pac-Man, Snake, Pong, Maze |
+| **Generative** | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
+| **Fractals** | Julia set, Game of Life, Wave Pattern |
+| **Particles** | Rain, Sparks |
+| **Media** | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
+| **Weather** | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
+| **Utility / Images** | Countdown with fireworks, and a pixel-art and image provider |
 
 Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
 
@@ -202,9 +202,9 @@ Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixe
 ### Under the hood
 
 - **Adaptive quality.** Scenes scale optional detail to the Pi's measured load (`render_quality_scale()`). See [scene execution](docs/SCENE_EXECUTION.md).
-- **Automatic desktop offload.** If a scene is too heavy, the Pi hands it to the desktop scene worker at full quality and falls back instantly if the PC disappears.
+- **Automatic desktop offload.** If a scene is too heavy, the Pi hands it to the desktop scene worker at full quality and falls back locally if the PC disappears.
 - **Plugins are one folder.** Drop in `plugins/MyPlugin/`, call `register_plugin()`, and you have a scene. See [plugin development](docs/PLUGIN_DEVELOPMENT.md).
-- **Memory safe by default.** The tree builds with bounds-checked containers and sanitizer presets. See the [memory safety report](docs/memory-safety-report.md).
+- **Memory-safety tooling.** Builds enable standard-library assertions, and sanitizer presets help catch memory and threading bugs. See the [memory safety report](docs/memory-safety-report.md).
 
 ---
 
@@ -257,7 +257,7 @@ The Pi is deliberately modest. The **desktop app** gives it superpowers by runni
 | **Music reactivity** | Captures your system's audio output (WASAPI loopback on Windows, PipeWire/PulseAudio monitor on Linux), analyses it (spectrum, beats, drops, BPM, sections) and streams the result to the Pi. No microphone needed. |
 | **GPU shaders** | Renders the `shader:*` scenes (Aurora, Aquarium, Planetary Vista…) and streams pixels to the Pi over UDP. Custom `.frag` files can be uploaded in the web UI under **Assets**. |
 | **Video and music videos** | `video` plays YouTube and URL videos, and `spotifymv` auto-plays the music video for your current Spotify track. Needs [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and ffmpeg on the PC. |
-| **Render offload** | A background scene worker runs the same scene code at full quality when the Pi is under pressure. The handoff is seamless, with instant fallback. |
+| **Render offload** | A background scene worker runs the same scene code at full quality when the Pi is under pressure. The handoff is seamless, with local fallback if the worker disappears. |
 
 <table>
 <tr>
@@ -275,7 +275,7 @@ Grab the latest build from [Releases](https://github.com/sshcrack/led-matrix/rel
 | **Windows** | Run `led-matrix-desktop-<version>-win64.exe`, or `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.ps1 \| iex` |
 | **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
 
-The app installs to `%LOCALAPPDATA%\led-matrix-desktop` or `~/.local/share/led-matrix-desktop` and **updates itself**: it runs the same release as your matrix (desktop rendering needs matching versions). When a newer release is out and the matrix has auto-update on, it asks the matrix to update first and follows it. Updates download in the background and apply when the app is hidden in the tray or restarted. You can turn this off in the app menu. An older `.deb` or admin install is replaced on its first update, and the app offers to remove it. Uninstall with `led-matrix-desktop --uninstall` or from Windows *Installed apps*.
+The app installs to `%LOCALAPPDATA%\led-matrix-desktop` or `~/.local/share/led-matrix-desktop` and **updates itself**: it runs the same release as your matrix (offload requires compatible protocol and scene contracts). When a newer release is out and the matrix has auto-update on, it asks the matrix to update first and follows it. Updates download in the background and apply when the app is hidden in the tray or restarted. You can turn this off in the app menu. An older `.deb` or admin install is replaced on its first update, and the app offers to remove it. Uninstall with `led-matrix-desktop --uninstall` or from Windows *Installed apps*.
 
 ### Use
 
@@ -607,7 +607,7 @@ The UI is the best documentation for payload shapes: open your browser's dev too
 | **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
 | **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
 | **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
-| **Heavy scenes don't move to the desktop** | The desktop and the Pi must run the same release. With *Match Matrix Version* on (the default), the app switches to the Pi's version within minutes; the update status is shown in the app's *LED Matrix Controller* menu. **Health** → `render_placement.reason` says why a scene stayed on the Pi. |
+| **Heavy scenes don't move to the desktop** | Check protocol and scene-contract compatibility in **Health**. With *Match Matrix Version* on (the default), the app switches to the Pi's version within minutes; the update status is shown in the app's *LED Matrix Controller* menu. **Health** → `render_placement.reason` says why a scene stayed on the Pi. |
 | **Shader, video or music scenes are black or missing** | They need the [desktop app](#desktop-app) connected. Check the *WebSocket is currently: Open* line. |
 | **No audio reactivity** | The desktop app captures *system output*, so play something on that PC. Check the capture device in the AudioVisualizer tab. |
 | **My settings reverted after an upgrade** | You edited `/etc/default/led-matrix` by hand. Use `debconf-set-selections` and `dpkg-reconfigure` ([Change settings later](#change-settings-later)). |
@@ -703,7 +703,9 @@ Scene GIFs are **not** committed to git. They are release assets (`./scripts/fet
 | [`docs/AGENT_SETUP.md`](docs/AGENT_SETUP.md) | Agent-driven setup guide for end users |
 | [`docs/automatic-journeys.md`](docs/automatic-journeys.md) | How Automatic Mode composes arcs |
 | [`docs/transactional-updates.md`](docs/transactional-updates.md) | How updates and rollbacks work |
-| [`docs/memory-safety-report.md`](docs/memory-safety-report.md) | Sanitizer findings and open risks |
+| [`docs/memory-safety-report.md`](docs/memory-safety-report.md) | Safety tooling, historical findings and verification limits |
+| [`docs/README.md`](docs/README.md) | Architecture references and dated performance reports |
+| [`plans/README.md`](plans/README.md) | Remaining maintenance work |
 
 ---
 

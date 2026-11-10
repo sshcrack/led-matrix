@@ -44,6 +44,6 @@ _Avoid_: OAuth state (that is one of the attempt's secrets), pending login
 The browser's view of one firmware install, from click to the Pi reporting SUCCESS or ERROR after its restart (`react-web/src/components/updates/updateProgress.ts`). The install request returning only means the Pi accepted it; a new version answering is still being health-checked by `update_service.sh`.
 _Avoid_: update state (ambiguous with the Pi's numeric `UpdateStatus`)
 
-## Current roadmap state
+## Implemented foundations
 
-The six-phase simple-operation roadmap is complete in sandbox `auto-director-rebased`: Runtime Inputs, scene descriptors/curated Scene Variants, default Automatic Mode, music-aware transition intelligence, Pi-authoritative Scene Lab, and seeded runtime observability/repeatability are implemented and review-polished. Do not redo those foundations when continuing. The global palette/color-system pass remains intentionally deferred.
+Runtime Inputs, curated Scene Variants, default Automatic Mode, music-aware transitions, Pi-authoritative Scene Lab and seeded Director diagnostics are implemented. The global palette/color-system pass remains deferred. Remaining maintenance work is tracked in [plans/README.md](plans/README.md).

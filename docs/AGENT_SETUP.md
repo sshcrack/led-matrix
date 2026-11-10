@@ -285,12 +285,11 @@ sudo systemctl restart led-matrix
 
 The human completes the web UI’s **Connect Spotify** guide. Leave `spotify-enable` false during installation to defer credentials to this guide; the installed plugin remains available.
 
-1. Open `http://<pi-ip>:8080/`. The setup guide opens automatically when credentials are missing. If it was dismissed, open **Integrations** (on phones: **More → Integrations**). Ask the human to create a developer app, register the guide’s exact redirect URI, and enter the Client ID and secret directly in the web UI.
-2. The human chooses **Save credentials**, then **Connect Spotify**, and approves access in the new tab. Settings take effect without restarting the daemon.
-3. On another computer or phone, the final loopback page usually cannot load. Have the human copy its full address into **Browser says it cannot connect?** and choose **Finish connecting**. The address contains a temporary authorization code: keep it out of chat and logs. No SSH tunnel is required. On the daemon’s own computer at port 8080, the callback completes automatically.
-4. Verify `GET /spotify/status` reports `configured: true` and `connected: true` (include API authentication when configured). Then ask the human to play a track and verify the cover appears. Listing the scene alone does not prove the account is connected.
+1. Open **Integrations** (on phones: **More → Integrations**) and follow the **Connect Spotify** guide. The human creates the developer app, registers the exact redirect URI shown, and enters the Client ID directly in the UI. New sign-ins use PKCE and need no Client secret.
+2. Choose **Save Client ID**, then **Connect Spotify**, and approve access in the new tab. The hosted callback redirects the browser to the matrix UI. If that fails, the human pastes the full callback address into **Not sent back to your matrix?** and chooses **Finish connecting**. Keep that temporary authorization code out of chat and logs.
+3. Verify `GET /spotify/status` reports `configured: true` and `connected: true` (include API authentication when configured). Then ask the human to play a track and verify the cover appears.
 
-Spotify development-mode apps require the app owner to have Premium; other accounts need access under User Management. For URI requirements, credential precedence, expired attempts, and troubleshooting, use the [Spotify plugin guide](../plugins/SpotifyScenes/README.md). Existing debconf/environment credentials remain supported; values saved through the web UI take precedence.
+Use the [Spotify plugin guide](../plugins/SpotifyScenes/README.md) for the redirect URI, self-hosting, account requirements, credential precedence and expired attempts. Legacy secret-based logins remain supported until reconnecting switches them to PKCE.
 
 ### API token
 

@@ -1,8 +1,8 @@
 # Memory-safety and threading report
 
-Branch `safety/sanitizers`. Goal: catch memory and threading bugs in C++ with
-tooling instead of a rewrite. This document covers how to use the tooling, every
-finding, what could not be verified and what to look at next.
+The original `safety/sanitizers` audit is retained below as historical evidence.
+Its test counts and verification limits describe that audit, not the current
+revision. Tooling and CI status were checked against the tree on 2026-11-10.
 
 ## Using the tooling
 
@@ -36,7 +36,7 @@ ctest --test-dir emulator_asan_build --output-on-failure
   `crashes/crash-*.txt`, the systemd unit has `LimitCORE=infinity`; use
   `coredumpctl list|info|debug led-matrix` (install `systemd-coredump`, `gdb`).
 
-## Findings
+## Historical audit findings
 
 | # | Tool | Location | Bug class | Status |
 |---|---|---|---|---|
@@ -85,7 +85,7 @@ hostile ShaderToy JSON responses through `ShaderDocument::load` /
 `importFromShaderToyResponse` produced no sanitizer report (only exceptions). No library
 change was needed.
 
-## Not verified / limits
+## Original audit limits
 
 - Anything touching real GPIO / the Pi (`/dev/mem`, DMA timing, privilege drop)
   was not run; the arm64 build compiles but nothing was executed on `ledmat`, and
@@ -105,8 +105,10 @@ change was needed.
 
 ## Recommended next steps
 
-1. Run the ASan and TSan emulator presets in CI nightly (the driver is a good
-   starting point to commit under `tests/`).
+1. CI already runs the complete unsanitized emulator suite and selected
+   ASan+UBSan regressions on pushes/PRs (`build-matrix.yml`). TSan remains local.
+   A useful extension is a repeatable multi-process recovery/soak driver; the
+   original live-emulator driver was not committed.
 2. Keep `-Wall -Wextra ...` warnings visible and move to `-Werror` per directory
    once the count (~1.2k in the build log) is down.
 3. Riskiest remaining areas: desktop plugin <-> `WebsocketClient` message threads
@@ -117,7 +119,7 @@ change was needed.
 5. Consider building vcpkg deps (GraphicsMagick, ixwebsocket) with TSan for a
    cleaner signal.
 
-## Build verification
+## Historical build verification
 
 Built with the new flags (non-sanitized, `-DSKIP_WEB_BUILD=ON`, -j3), zero errors:
 `emulator` 313/313, `desktop-linux` 268/268, `cross-compile` (toolchain reused via

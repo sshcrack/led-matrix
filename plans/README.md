@@ -1,14 +1,13 @@
-# Tech Debt Plan
+# Maintenance backlog
 
-Remaining items after the June audit (tier 0 is fully resolved).
+Checked against the source on 2026-11-10. These tiers rank maintenance work;
+they are separate from the shipping tiers in the `led-matrix-ship` skill.
 
-| Tier | File | Focus |
-|------|------|-------|
-| **1** | `tier1-high.md` | Global state, shutdown race |
-| **2** | `tier2-medium.md` | Headers, API conventions |
-| **3** | `tier3-low.md` | Naming, docs, formatting CI |
+| Priority | Plan | Remaining work |
+|---|---|---|
+| 1 | [Global state](tier1-high.md) | Narrow dependencies and preserve daemon teardown ordering |
+| 2 | [API conventions](tier2-medium.md) | Consistent routes and mutation methods |
+| 3 | [Small cleanup](tier3-low.md) | Naming and formatting checks |
 
-## Conventions
-
-- Do not add comments unless needed for correctness; follow the existing style (snake_case functions, PascalCase classes); no emojis.
-- Build with the emulator preset after non-trivial C++ changes. Commit only when asked.
+Completed audit items are omitted. See [the documentation index](../docs/README.md)
+for current architecture and historical measurements.

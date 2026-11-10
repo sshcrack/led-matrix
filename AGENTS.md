@@ -57,7 +57,7 @@ Cross-compile for Pi and deploy:
 ```bash
 cmake --preset cross-compile
 cmake --build --preset cross-compile --target install
-# build_upload.sh does the above + rsync to ledmat:/home/pi/ledmat/run/ + service restart
+# build_upload.sh builds a DEB and installs it transactionally on ledmat
 ./build_upload.sh
 ```
 
@@ -306,4 +306,4 @@ Every committed blob stays in history forever and slows every `git clone`. Histo
 
 ## CI
 
-`.github/workflows/ci.yml` on push/PR to `master` builds only the react-web frontend (pnpm + node 22) and uploads it as the `web-build` artifact. It then delegates all three C++ builds (`cross-compile`, `desktop-linux`, `desktop-windows`) to the reusable workflow `.github/workflows/build-matrix.yml`, which downloads the `web-build` artifact so all presets get the bundled web UI without rebuilding it.
+`.github/workflows/ci.yml` runs on pushes to `master` and PRs to any base branch. It lints, tests and builds react-web (pnpm + Node 22), then uploads `web-build`. The reusable `.github/workflows/build-matrix.yml` downloads that artifact for the Pi and desktop packages (`cross-compile`, `desktop-linux`, `desktop-windows`), the complete emulator suite, and selected ASan+UBSan regressions. TSan remains a local preset. See `docs/ci-performance.md` for cache and release-artifact reuse.
