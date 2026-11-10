@@ -53,7 +53,7 @@ Before the interview, find out how far along the person is. Ask one question: **
 
 You cannot touch the hardware, so give them these in small batches and wait for a confirmation after each:
 
-1. **Wire it** (everything powered off): adapter or HAT on the Pi header; HUB75 ribbon from the adapter to panel 1's *input*; panel 1's *output* to panel 2's *input* for chained panels; a second adapter output for a parallel chain; the 5 V supply to **every** panel's power connector; the Pi on its own supply. Details: README [Start from scratch](../README.md#start-from-scratch) and the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
+1. **Wire it** (everything powered off): adapter or HAT on the Pi header; HUB75 ribbon from the adapter to panel 1's *input*; panel 1's *output* to panel 2's *input* for chained panels; a second adapter output for a parallel chain; the 5 V supply to **every** panel's power connector; the Pi on its own supply. Details: README [Assemble and wire](../README.md#assemble-and-wire) and the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
 2. **Flash the SD card** with Raspberry Pi Imager: *Raspberry Pi OS Lite (64-bit)*; customisation: username **`pi`**, a password, Wi-Fi (if no Ethernet), **SSH enabled**, optional hostname.
 3. **First boot**: they insert the card and power on, then wait about two minutes.
 4. **Find the Pi**: try `ssh pi@<hostname>.local`; otherwise they look up the IP in their router's device list. If they can't reach it, ask what the Pi's activity LED does and whether Wi-Fi credentials were entered correctly. Don't change their network settings.
