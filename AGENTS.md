@@ -2,9 +2,12 @@
 
 ## Work tracking
 
-Track planned work in [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and the [Led Matrix project](https://github.com/users/sshcrack/projects/7). Search for an existing issue before creating one; update it when the scope or status changes. Add new issues to the project with a priority (P1 highest, P3 lowest) and status, and keep intentionally deferred work marked `deferred`.
+Track planned work in [GitHub issues](https://github.com/sshcrack/led-matrix/issues) and the [Led Matrix Road Map](https://github.com/users/sshcrack/projects/7), using the same organization as the [Talking Colonists Road Map](https://github.com/orgs/talking-colonists/projects/3). Search for an existing issue before creating one; update its scope and status as work changes.
 
-When a task leaves actionable follow-up work, record the problem, relevant code, constraints and completion criteria in an issue. Keep repository docs focused on current behavior, setup, architecture and dated evidence; link to the issue or project for planned changes instead of maintaining backlog/roadmap files or TODO lists in the repo. Resolved or obsolete TODOs should be removed rather than migrated as new work.
+- Group related work under a tracking issue using GitHub sub-issues; record real prerequisites with blocked-by links. Each implementation issue owns its problem, relevant code, constraints and acceptance criteria.
+- Add issues to the project with an area label, Priority (`P0` highest, `P1` normal, `P2` lower urgency), Size (`XS`–`XL`) and the appropriate wave milestone. Sizes are rough scope estimates; fill numeric estimates and dates only when established. Deferred ideas keep the `deferred` label and remain outside active milestones.
+- Use statuses `Backlog` → `In progress` → `In review` → `Done`; `Not planned` is for declined or superseded work. Link implementation PRs to their issues and close issues only when acceptance criteria are met. The project provides Backlog, Priority board, Team items, Roadmap and My items views.
+- Keep repository docs focused on current behavior, setup, architecture and dated evidence. Track actionable follow-ups on GitHub instead of adding repo backlog/roadmap files or TODO lists. Remove resolved or obsolete TODOs rather than migrating them as new work.
 
 ## Project shape
 
