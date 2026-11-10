@@ -7,6 +7,20 @@ using namespace Hobbies;
 
 namespace {
 float ground_hash(float x) { return hash01(static_cast<uint32_t>(std::max(0.0f, x) * 7.0f + 11.0f)); }
+
+struct PathPool { float depth, across; };
+constexpr std::array<PathPool, 3> kForestPools{{{0.44f, -0.20f}, {0.70f, 0.25f}, {0.94f, -0.25f}}};
+
+void rain_ring(Canvas& cv, float x, float y, float radius, float phase, Rgb color, float strength)
+{
+    static constexpr std::array<Point, 12> circle{{
+        {1, 0}, {0.866f, 0.5f}, {0.5f, 0.866f}, {0, 1}, {-0.5f, 0.866f}, {-0.866f, 0.5f},
+        {-1, 0}, {-0.866f, -0.5f}, {-0.5f, -0.866f}, {0, -1}, {0.5f, -0.866f}, {0.866f, -0.5f}}};
+    const float r = radius * (0.25f + 0.75f * phase);
+    const float alpha = strength * (1.0f - phase);
+    for (const auto& p : circle)
+        cv.add(static_cast<int>(x + p.x * r), static_cast<int>(y + p.y * r * 0.28f), color, alpha);
+}
 }  // namespace
 
 // ================================================================ forest path
@@ -118,6 +132,8 @@ void ForestPathScene::build_backdrop()
     // The path: packed earth, two lighter wheel ruts, puddles when wet.
     const Rgb dirt = terrain({0.52f, 0.42f, 0.30f}, 0.0f, 0.85f), rut = terrain({0.62f, 0.52f, 0.38f}, 0.0f, 0.9f);
     const Rgb farDirt = terrain({0.52f, 0.42f, 0.30f}, 0.6f, 0.85f);
+    const float sun = L.daylight * (1.0f - L.overcast) * (1.0f - L.snow_cover);
+    const Rgb sunPatch = lit({0.76f, 0.65f, 0.36f});
     for (int y = static_cast<int>(horizon_) + 1; y < h; ++y) {
         const float fy = y + 0.5f, cx = path_center(fy), half = path_half(fy);
         const float v = (fy - horizon_) / (H - horizon_);
@@ -127,17 +143,21 @@ void ForestPathScene::build_backdrop()
             Rgb c = mix(farDirt, dirt, v);
             const float r = std::exp(-std::pow((std::fabs(u) - 0.45f) / 0.12f, 2.0f));
             c = mix(c, rut, r * 0.5f * v);
-            // Puddles: hashed blobs that mirror the sky.
-            if (L.wetness > 0.05f && v > 0.25f) {
-                const float p = std::sin(fy * 0.35f) * std::sin(u * 3.0f + fy * 0.07f);
-                if (p > 0.55f)
-                    c = mix(scale(c, 0.6f), from_env(L.sky(0.35f)), L.wetness * 0.75f);
-                else
-                    c = scale(c, 1.0f - 0.25f * L.wetness);
-            }
+            c = scale(c, 1.0f - 0.25f * L.wetness * (1.0f - L.snow_cover));
+            // Broken pools of sunlight through the canopy, fixed to the ground.
+            const float patch = std::sin(fy * 0.29f / k + u * 2.5f) * std::sin(fy * 0.13f / k - u * 4.0f);
+            c = mix(c, sunPatch, smoothstep(0.35f, 0.9f, patch) * sun * 0.35f * v);
             bg.blend(x, y, c, edge);
         }
     }
+
+    const float wet = L.wetness * (1.0f - L.snow_cover);
+    if (wet > 0.05f)
+        for (const auto& pool : kForestPools) {
+            const float y = horizon_ + (H - horizon_) * pool.depth, half = path_half(y);
+            bg.ellipse(path_center(y) + pool.across * half, y, half * 0.48f, (0.6f + pool.depth * 1.6f) * k, 0,
+                       from_env(L.sky(0.45f)), wet * 0.65f);
+        }
 
     // Mid-ground trees, far to near.
     const float light = L.sun_x < 0.5f ? -1.0f : 1.0f;
@@ -175,6 +195,15 @@ bool ForestPathScene::render(rgb_matrix::FrameCanvas* canvas)
     const auto s = surface();
     Environment::paint_stars(s, L, horizon_ * 0.7f, t_, 7, 60);
     Environment::paint_clouds(s, L, t_, 0.0f, horizon_ * 0.55f);
+
+    const float ripple = L.rain * L.wetness * (1.0f - L.snow_cover);
+    if (ripple > 0.02f)
+        for (size_t i = 0; i < kForestPools.size(); ++i) {
+            const auto& pool = kForestPools[i];
+            const float y = horizon_ + (H - horizon_) * pool.depth, half = path_half(y);
+            rain_ring(cv_, path_center(y) + pool.across * half, y, half * 0.42f,
+                      fract(t_ * 0.7f + i * 0.37f), from_env(L.sky(0.6f)), ripple * 0.18f);
+        }
 
     // Lantern on a post beside the path, lit at dusk.
     const float lx = W * 0.79f, lb = H * 0.84f;
@@ -401,7 +430,7 @@ void CottageScene::build_backdrop()
             bg.set(x, y, scale(stone, (y / std::max(1, static_cast<int>(2 * k)) + x / std::max(1, static_cast<int>(3 * k))) % 2 ? 0.85f : 1.0f));
     for (int x = static_cast<int>((kChimX - 3.5f) * k); x < static_cast<int>((kChimX + 3.5f) * k); ++x)
         bg.set(x, static_cast<int>(52 * k), terrain({0.40f, 0.34f, 0.30f}, 0.0f, 1.0f));
-    const Rgb tile = terrain({0.50f, 0.22f, 0.15f}, 0.0f, 1.0f), tileDark = terrain({0.36f, 0.15f, 0.11f}, 0.0f, 0.9f);
+    const Rgb tile = terrain({0.50f, 0.22f, 0.15f}, 0.0f, 0.65f), tileDark = terrain({0.36f, 0.15f, 0.11f}, 0.0f, 0.55f);
     for (int y = static_cast<int>(kRidge * k); y < static_cast<int>(kWallTop * k); ++y) {
         const float t = (y / k - kRidge) / (kWallTop - kRidge);
         const float x0 = (kRidgeL + (kEaveL - kRidgeL) * t) * k, x1 = (kRidgeR + (kEaveR - kRidgeR) * t) * k;
@@ -435,13 +464,31 @@ void CottageScene::build_backdrop()
     for (int x = static_cast<int>((kDoorL - 1) * k); x <= static_cast<int>(kDoorR * k); ++x)
         bg.set(x, static_cast<int>(kBase * k), terrain({0.55f, 0.52f, 0.48f}));
 
+    // Rounded snow collects on the ridge and eave rather than whitening all tiles equally.
+    if (L.snow_cover > 0.05f) {
+        bg.capsule(kRidgeL * k, (kRidge - 0.5f) * k, 1.0f * k,
+                   kRidgeR * k, (kRidge - 0.5f) * k, 1.0f * k, snow, L.snow_cover);
+        bg.capsule(kEaveL * k, (kWallTop - 1.0f) * k, 1.1f * k,
+                   kEaveR * k, (kWallTop - 1.0f) * k, 1.1f * k, snow, L.snow_cover);
+        for (int i = 0; i < 8; ++i) {
+            const float x = (kEaveL + 3.0f + i * 7.0f) * k;
+            bg.capsule(x, (kWallTop - 0.5f) * k, 0.5f * k,
+                       x, (kWallTop + 0.5f + 1.8f * hash01(i + 39u)) * k, 0.2f * k,
+                       snow, L.snow_cover * 0.75f);
+        }
+    }
+
     // Stone path from the door to the gate.
+    const float wet = L.wetness * (1.0f - L.snow_cover);
+    const Rgb reflectedSky = scale(from_env(L.sky(0.4f)), 0.75f);
     for (int y = static_cast<int>(kBase * k) + 1; y < h; ++y) {
         const float v = (y / k - kBase) / (128.0f - kBase);
         const float cx = (48.0f - 4.0f * v) * k, half = (3.0f + 5.0f * v) * k;
         for (int x = static_cast<int>(cx - half); x <= static_cast<int>(cx + half); ++x) {
             const bool gap = hash01(static_cast<uint32_t>((y / std::max(1, static_cast<int>(3 * k))) * 31 + x / std::max(1, static_cast<int>(4 * k)))) < 0.18f;
-            bg.blend(x, y, terrain(gap ? Rgb{0.36f, 0.34f, 0.30f} : Rgb{0.60f, 0.57f, 0.52f}, 0.0f, 0.9f), 0.9f);
+            Rgb paving = terrain(gap ? Rgb{0.36f, 0.34f, 0.30f} : Rgb{0.60f, 0.57f, 0.52f}, 0.0f, 0.9f);
+            paving = mix(paving, reflectedSky, wet * 0.45f);
+            bg.blend(x, y, paving, 0.9f);
         }
     }
 
@@ -456,6 +503,10 @@ void CottageScene::build_backdrop()
     for (float ry : {fenceY - 1 * k, fenceY + 3 * k}) {
         bg.capsule(0, ry, 0.45f * k, 38 * k, ry, 0.45f * k, wood);
         bg.capsule(56 * k, ry, 0.45f * k, W, ry, 0.45f * k, wood);
+        if (L.snow_cover > 0.05f) {
+            bg.capsule(0, ry - 0.65f * k, 0.5f * k, 38 * k, ry - 0.65f * k, 0.5f * k, snow, L.snow_cover);
+            bg.capsule(56 * k, ry - 0.65f * k, 0.5f * k, W, ry - 0.65f * k, 0.5f * k, snow, L.snow_cover);
+        }
     }
     backdrop_ = std::move(bg.px);
 }
@@ -565,6 +616,26 @@ bool CottageScene::render(rgb_matrix::FrameCanvas* canvas)
     cv_.capsule(gx, gb, 0.6f * k, gx, gb - 13 * k, 0.5f * k, lit({0.18f, 0.18f, 0.20f}));
     cv_.ellipse(gx, gb - 14 * k, 1.4f * k, 1.6f * k, 0, mix(lit({0.30f, 0.30f, 0.28f}), {1.0f, 0.85f, 0.55f}, L.lamp()));
     cv_.glow(gx, gb - 14 * k, 13 * k, {1.0f, 0.75f, 0.40f}, 0.35f * L.lamp());
+
+    // Short broken reflections stay inside the wet paving, never on lying snow.
+    const float wet = L.wetness * (1.0f - L.snow_cover);
+    if (wet > 0.02f) {
+        for (int i = 0; i < 9; ++i) {
+            const float y = (103.0f + i * 2.7f) * k;
+            const float v = (y / k - kBase) / (128.0f - kBase);
+            const float x = (48.0f - 4.0f * v + 1.2f * std::sin(i * 2.1f)) * k;
+            const float shimmer = 0.8f + 0.2f * std::sin(t_ * 1.7f + i * 1.9f);
+            cv_.capsule(x - (0.7f + v) * k, y, 0.25f * k, x + (0.7f + v) * k, y, 0.25f * k,
+                        {1.0f, 0.67f, 0.28f}, wet * L.lamp() * shimmer * (0.30f - 0.18f * v));
+        }
+        if (L.rain > 0.05f)
+            for (int i = 0; i < 3; ++i) {
+                const float v = 0.25f + i * 0.28f;
+                rain_ring(cv_, (48.0f - 4.0f * v) * k, (kBase + (128.0f - kBase) * v) * k,
+                          (1.2f + 1.5f * v) * k, fract(t_ * 0.65f + i * 0.39f),
+                          from_env(L.sky(0.6f)), wet * L.rain * 0.14f);
+            }
+    }
 
     // Snowman once there is enough snow.
     if (L.snow_cover > 0.35f) {
