@@ -524,7 +524,6 @@ int main(int argc, char **argv)
         Constants::global_post_processor = nullptr;
         TransitionManager transition_manager;
         Constants::global_transition_manager = &transition_manager;
-        Constants::global_update_manager = nullptr;
 
         const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
         config = new Config::MainConfig(temp_config.string());

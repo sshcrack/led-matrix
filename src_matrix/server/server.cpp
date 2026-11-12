@@ -40,7 +40,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const 
     router = add_schedule_routes(std::move(router));
     router = add_environment_routes(std::move(router));
     router = add_post_processing_routes(std::move(router), deps.post_processor);
-    router = add_update_routes(std::move(router), Constants::global_update_manager.get());
+    router = add_update_routes(std::move(router), deps.update_manager);
     router = add_other_routes(std::move(router));
     router = add_live_frame_routes(std::move(router));
     router = add_desktop_routes(std::move(router), registry);

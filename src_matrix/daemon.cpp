@@ -271,7 +271,6 @@ Daemon::Daemon(int argc, char* argv[])
     // -------------------------------------------------------------------
     debug("Initializing UpdateManager...");
     update_manager_ = make_shared<Update::UpdateManager>(config_.get());
-    Constants::global_update_manager = update_manager_;
     update_manager_->start();
     info("UpdateManager initialized and started");
     update_manager_->check_and_handle_update_completion();
@@ -345,7 +344,7 @@ Daemon::Daemon(int argc, char* argv[])
         [this, host](auto &settings)
         {
             unique_lock lock(Server::registryMutex);
-            auto router = Server::server_handler(Server::registry, {post_processor_.get(), transition_manager_.get()});
+            auto router = Server::server_handler(Server::registry, {post_processor_.get(), transition_manager_.get(), update_manager_});
             if (is_debugging_)
                 router->http_get("/exit_debug", [](auto req, auto)
                 {
@@ -504,7 +503,6 @@ void Daemon::shutdown(bool persist_config) noexcept
     try { pl->destroy_plugins(); }
     catch (...) { error("Destroying plugins failed"); }
 
-    Constants::global_update_manager.reset();
     ::config = nullptr;
 }
 
