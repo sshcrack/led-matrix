@@ -9,7 +9,7 @@
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/interrupt.h"
-#include "shared/matrix/utils/shared.h"
+#include "shared/matrix/utils/shared.h"  // exit_canvas_update
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/runtime_inputs.h"
@@ -34,7 +34,7 @@ static std::unique_ptr<MatrixPresenter> create_presenter(RGBMatrixBase *matrix)
 }
 
 void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_processor, TransitionManager* transition_manager,
-                       std::shared_ptr<Scenes::Scene> pinned_scene)
+                       Config::MainConfig* cfg, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
     info("Press Ctrl+C to quit");
 
@@ -56,22 +56,22 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
     };
 
-    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), config, &exit_canvas_update,
+    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), cfg, &exit_canvas_update,
                                   &interrupt_received, RuntimeInputs::snapshot, set_curr_scene, broadcast);
 
     string last_scheduled_preset = "";
 
     while (!interrupt_received)
     {
-        if (config->is_scheduling_enabled())
+        if (cfg->is_scheduling_enabled())
         {
-            auto active_preset = config->get_active_scheduled_preset();
+            auto active_preset = cfg->get_active_scheduled_preset();
             if (active_preset.has_value() && active_preset.value() != last_scheduled_preset)
             {
                 debug("Switching to scheduled preset: {}", active_preset.value());
-                config->set_curr(active_preset.value());
+                cfg->set_curr(active_preset.value());
                 last_scheduled_preset = active_preset.value();
-                config->set_turned_off(false);
+                cfg->set_turned_off(false);
                 Server::broadcast_matrix_enabled(true);
             }
             else if (!active_preset.has_value() && !last_scheduled_preset.empty())
@@ -79,12 +79,12 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 
                 debug("No active schedule, clearing scheduled preset and turning off canvas");
                 last_scheduled_preset = "";
-                config->set_turned_off(true);
+                cfg->set_turned_off(true);
                 Server::broadcast_matrix_enabled(false);
             }
         }
 
-        if (!config->is_turned_off())
+        if (!cfg->is_turned_off())
         {
             coordinator.run(pinned_scene);
             exit_canvas_update = false;
@@ -104,7 +104,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 }
 
 int start_hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_processor, TransitionManager* transition_manager,
-                            std::shared_ptr<Scenes::Scene> pinned_scene)
+                            Config::MainConfig* cfg, std::shared_ptr<Scenes::Scene> pinned_scene)
 {
 
     Constants::height = matrix->height();
@@ -118,6 +118,6 @@ int start_hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* po
     sigaction(SIGINT, &action, nullptr);
 
     debug("Running hardware mainloop...");
-    hardware_mainloop(matrix, post_processor, transition_manager, pinned_scene);
+    hardware_mainloop(matrix, post_processor, transition_manager, cfg, pinned_scene);
     return 0;
 }
