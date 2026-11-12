@@ -349,6 +349,10 @@ void run_self_test(const std::vector<std::string> &available)
 }
 
 struct RenderRuntime {
+    /// Daemon-independent transition catalogue owned by the worker main().
+    TransitionManager& transitions;
+    explicit RenderRuntime(TransitionManager& transition_manager) : transitions(transition_manager) {}
+
     rgb_matrix::EmulatorMatrix *matrix = nullptr;
     rgb_matrix::FrameCanvas *canvas = nullptr;
     std::unique_ptr<Scenes::Scene> scene;
@@ -460,8 +464,9 @@ struct RenderRuntime {
             if (rgb.size() != static_cast<std::size_t>(width * height * 3))
                 throw std::runtime_error("invalid transition snapshot size");
             transition_ms = std::clamp(it->at("duration_ms").get<int>(), 1, 10000);
-            transition = Constants::global_transition_manager->get_transition(it->at("name").get<std::string>());
-            if (!transition) transition = Constants::global_transition_manager->get_transition("blend");
+            transition = transitions.get_transition(it->at("name").get<std::string>());
+            if (!transition)
+                transition = transitions.get_transition("blend");
             if (!transition) throw std::runtime_error("worker has no transition effect");
             transition_from = matrix->CreateFrameCanvas();
             transition_output = matrix->CreateFrameCanvas();
@@ -521,9 +526,7 @@ int main(int argc, char **argv)
         }
         Constants::width = 128;
         Constants::height = 128;
-        Constants::global_post_processor = nullptr;
         TransitionManager transition_manager;
-        Constants::global_transition_manager = &transition_manager;
 
         const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
         config = new Config::MainConfig(temp_config.string());
@@ -594,7 +597,7 @@ int main(int argc, char **argv)
                         auto invalid = fixture;
                         if (value.is_null()) invalid.erase(field);
                         else invalid[field] = value;
-                        RenderRuntime rejected;
+                        RenderRuntime rejected(transition_manager);
                         bool threw = false;
                         try { rejected.start(invalid); }
                         catch (const std::exception &) { threw = true; }
@@ -602,7 +605,7 @@ int main(int argc, char **argv)
                             throw std::runtime_error("worker accepted incompatible contract fixture");
                     }
                 }
-                RenderRuntime accepted;
+                RenderRuntime accepted(transition_manager);
                 accepted.start(fixture);
                 if (!accepted.scene->render_frame(accepted.canvas, 1.0 / 30.0, true))
                     throw std::runtime_error("saved contract fixture stopped rendering");
@@ -614,7 +617,7 @@ int main(int argc, char **argv)
             if (transition_manager.get_registered_transitions().empty())
                 throw std::runtime_error("worker has no registered transitions");
             for (const auto &name : transition_manager.get_registered_transitions()) {
-                RenderRuntime probe;
+                RenderRuntime probe(transition_manager);
                 probe.start({{"protocol", RemoteRenderProtocol::Version}, {"session", 1},
                     {"width", 128}, {"height", 128}, {"scene", "boids"}, {"scene_contract", offloadable_scene_contracts.at("boids")},
                     {"transition", {{"name", name}, {"duration_ms", 750},
@@ -691,7 +694,7 @@ int main(int argc, char **argv)
         });
         websocket.start();
 
-        RenderRuntime runtime;
+        RenderRuntime runtime(transition_manager);
         auto next_heartbeat = Clock::now();
         bool was_producer_active = false;
         while (true) {
