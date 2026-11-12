@@ -518,8 +518,8 @@ Daemon::~Daemon()
 int Daemon::run()
 {
 #ifdef ENABLE_EMULATOR
-    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get(), pinned_scene_);
+    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get(), config_.get(), pinned_scene_);
 #else
-    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get());
+    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get(), config_.get());
 #endif
 }
