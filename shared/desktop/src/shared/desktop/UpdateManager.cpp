@@ -1,4 +1,6 @@
+#ifdef _MSC_VER
 #pragma execution_character_set("utf-8")
+#endif
 #include "shared/desktop/UpdateManager.h"
 #include "shared/desktop/SelfUpdate.h"
 #include <shared/desktop/config.h>
@@ -317,10 +319,10 @@ namespace UpdateChecker
             }
             lastCheck = Clock::now();
             checkedOnce = true;
-            std::thread([s = state, p = prefs, e = MatrixEndpoint::fromConfig(), manual] {
+            std::thread([s = state, p = prefs, endpoint = MatrixEndpoint::fromConfig(), manual] {
                 try
                 {
-                    sync(s, p, e, manual);
+                    sync(s, p, endpoint, manual);
                 }
                 catch (const std::exception &e)
                 {

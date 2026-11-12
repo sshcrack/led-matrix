@@ -323,7 +323,7 @@ void ShadertoyDesktop::markShaderLoaded(const std::uint64_t generation)
         hasUrlChanged = false;
 }
 
-void ShadertoyDesktop::loadCacheFromUrl(const std::string& url, const std::uint64_t generation)
+void ShadertoyDesktop::loadCacheFromUrl(const std::string& shaderUrl, const std::uint64_t generation)
 {
     if (!mCache)
     {
@@ -331,11 +331,11 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url, const std::uint6
         return;
     }
 
-    auto cached = mCache->get(url);
+    auto cached = mCache->get(shaderUrl);
     if (cached.has_value())
     {
-        spdlog::info("Loading shader from cache for {}", url);
-        auto res = runtime.loadFromShaderToyResponse(shaderIdFromUrl(url), cached.value());
+        spdlog::info("Loading shader from cache for {}", shaderUrl);
+        auto res = runtime.loadFromShaderToyResponse(shaderIdFromUrl(shaderUrl), cached.value());
         if (!res.has_value())
         {
             spdlog::error("Failed to load from cache: {}", res.error().what());
@@ -347,8 +347,8 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& url, const std::uint6
     }
     else
     {
-        spdlog::info("Loading shader {} from ShaderToy...", url);
-        auto res = runtime.loadFromShaderToy(url);
+        spdlog::info("Loading shader {} from ShaderToy...", shaderUrl);
+        auto res = runtime.loadFromShaderToy(shaderUrl);
         if (!res.has_value())
         {
             spdlog::error("Failed to load from shadertoy: {}", res.error().what());

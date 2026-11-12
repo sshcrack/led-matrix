@@ -40,10 +40,13 @@ namespace Update
         std::filesystem::path update_request_dir() { return "/var/lib/led-matrix/update"; }
     }
 
-
-    UpdateManager::UpdateManager(Config::MainConfig *config)
-        : running_(false), should_stop_(false), status_(UpdateStatus::IDLE),
-          config_(config), repo_owner_("sshcrack"), repo_name_("led-matrix")
+    UpdateManager::UpdateManager(Config::MainConfig* mainConfig)
+        : running_(false),
+          should_stop_(false),
+          status_(UpdateStatus::IDLE),
+          config_(mainConfig),
+          repo_owner_("sshcrack"),
+          repo_name_("led-matrix")
     {
 
         // Check if the platform supports updates

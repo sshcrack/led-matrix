@@ -70,7 +70,7 @@ private:
     static void renderCanvasCallback(const ImDrawList* draw_list, const ImDrawCmd* command);
 
     void renderCacheEditorUI();
-    void loadCacheFromUrl(const std::string& url, std::uint64_t generation);
+    void loadCacheFromUrl(const std::string& shaderUrl, std::uint64_t generation);
     void loadLocalShaderFromCode(const std::string& name, const std::string& code, std::uint64_t generation);
     void markShaderLoaded(std::uint64_t generation);
 };

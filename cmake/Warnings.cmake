@@ -9,10 +9,11 @@
 # Warnings only by default. Disable with -DLED_MATRIX_WARNINGS=OFF.
 #
 # -DLED_MATRIX_WERROR=ON turns warnings of the project's own targets into
-# errors (CI's emulator build does this, so a new warning fails the PR). It is
-# off by default so a newer local compiler never blocks a build, and it is only
-# verified for the emulator preset with GCC; the desktop and cross-compile
-# presets have not been brought to a clean baseline yet. Two classes stay
+# errors (CI's emulator, desktop-linux and cross-compile builds do this, so a
+# new warning fails the PR). It is off by default so a newer local compiler
+# never blocks a build. Verified clean with GCC for the emulator and
+# desktop-linux presets and the cross-compile toolchain (GCC 12.2 aarch64).
+# MSVC builds get neither the extra warnings nor -Werror. Two classes stay
 # warnings: -Wnull-dereference (GCC reports false positives from inlined asio
 # and libstdc++ code instantiated in our translation units) and deprecated
 # declarations (third-party API churn).

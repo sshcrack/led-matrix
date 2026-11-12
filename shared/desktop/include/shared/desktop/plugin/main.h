@@ -30,8 +30,8 @@ namespace Plugins
 
         virtual void render() = 0;
 
-        virtual void load_config(std::optional<const nlohmann::json> config) {}
-        virtual void save_config(nlohmann::json &config) const {}
+        virtual void load_config(std::optional<const nlohmann::json> /*config*/) {}
+        virtual void save_config(nlohmann::json& /*config*/) const {}
         virtual std::string get_plugin_name() const = 0;
 
         virtual void before_exit()
@@ -40,19 +40,19 @@ namespace Plugins
 
         /// You can here add a function that will be called once after everything is inited(ImGui, Platform and Renderer Backend)
         virtual void pre_new_frame() {}
-        virtual void after_swap(ImGuiContext *imGuiContext) {}
+        virtual void after_swap(ImGuiContext* /*imGuiContext*/) {}
         virtual void post_init() {}
         /// Called before the UDP mainloop of sending packets starts.
         virtual void udp_init() {}
 
-        virtual void on_websocket_message(const std::string message) {}
+        virtual void on_websocket_message(const std::string /*message*/) {}
 
         /// How useful this desktop is as the matrix's producer right now, 0..100
         /// (e.g. audio is playing). Polled every couple of seconds from the sender
         /// thread, also while this desktop is on standby; keep it cheap. The matrix
         /// hands the producer role to the most relevant desktop.
         /// `sceneName` is the matrix's active scene.
-        [[nodiscard]] virtual int desktop_relevance(const std::string &sceneName) { return 0; }
+        [[nodiscard]] virtual int desktop_relevance(const std::string& /*sceneName*/) { return 0; }
         void send_websocket_message(const std::string &message);
 
         /// Test seam: when set, send_websocket_message() hands (plugin name,
@@ -66,7 +66,7 @@ namespace Plugins
         [[nodiscard]] virtual bool is_large_payload_plugin() const { return false; }
 
         // Return a vector of uint8_t if the plugin handles the scene and should send a packet
-        [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(const std::string sceneName)
+        [[nodiscard]] virtual std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(const std::string /*sceneName*/)
         {
             return std::nullopt;
         }

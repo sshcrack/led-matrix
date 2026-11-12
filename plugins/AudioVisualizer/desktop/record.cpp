@@ -119,11 +119,8 @@ namespace AudioRecorder
         return devices;
     }
 
-    int Recorder::audioCallback(const void *inputBuffer, void *outputBuffer,
-                                const unsigned long framesPerBuffer,
-                                const PaStreamCallbackTimeInfo *timeInfo,
-                                PaStreamCallbackFlags statusFlags,
-                                void *userData)
+    int Recorder::audioCallback(const void* inputBuffer, void* /*outputBuffer*/, const unsigned long framesPerBuffer,
+                                const PaStreamCallbackTimeInfo* /*timeInfo*/, PaStreamCallbackFlags /*statusFlags*/, void* userData)
     {
         const auto recorder = static_cast<Recorder *>(userData);
         if (const auto input = static_cast<const float *>(inputBuffer))
