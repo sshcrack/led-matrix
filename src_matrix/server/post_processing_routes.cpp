@@ -3,7 +3,6 @@
 #include "shared/matrix/post_processor.h"
 #include "nlohmann/json.hpp"
 #include <algorithm>
-#include "shared/matrix/canvas_consts.h"
 
 using json = nlohmann::json;
 
@@ -88,11 +87,11 @@ namespace {
     }
 }
 
-std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router) {
+std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router, PostProcessor *post_processor) {
     
     // Trigger flash effect
-    router->http_post("/post_processing/flash", [](const auto& req, auto) {
-        auto* pp = Constants::global_post_processor;
+    router->http_post("/post_processing/flash", [post_processor](const auto& req, auto) {
+        auto* pp = post_processor;
         if (pp) {
             auto [duration, intensity] = parse_duration_intensity(req, flash_default_duration, flash_default_intensity, flash_duration_min, flash_duration_max, flash_intensity_min, flash_intensity_max);
             
@@ -111,8 +110,8 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Trigger rotate effect
-    router->http_post("/post_processing/rotate", [](const auto&  req, auto) {
-        auto* pp = Constants::global_post_processor;
+    router->http_post("/post_processing/rotate", [post_processor](const auto&  req, auto) {
+        auto* pp = post_processor;
         if (pp) {
             auto [duration, intensity] = parse_duration_intensity(req, rotate_default_duration, rotate_default_intensity, rotate_duration_min, rotate_duration_max, rotate_intensity_min, rotate_intensity_max);
             
@@ -131,8 +130,8 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Clear all post-processing effects
-    router->http_post("/post_processing/clear", [](const auto&  req, auto) {
-        auto* pp = Constants::global_post_processor;
+    router->http_post("/post_processing/clear", [post_processor](const auto&  req, auto) {
+        auto* pp = post_processor;
         if (pp) {
             pp->clear_effects();
             
@@ -147,8 +146,8 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
     
     // Get post-processing status
-    router->http_get("/post_processing/status", [](const auto& req, auto) {
-        auto* pp = Constants::global_post_processor;
+    router->http_get("/post_processing/status", [post_processor](const auto& req, auto) {
+        auto* pp = post_processor;
         json response;
         response["post_processor_available"] = (pp != nullptr);
         
@@ -161,8 +160,8 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
 
     // Generic endpoint to trigger any registered effect
-    router->http_post("/post_processing/effect/:effect_name", [](const auto& req, auto params) {
-        auto* pp = Constants::global_post_processor;
+    router->http_post("/post_processing/effect/:effect_name", [post_processor](const auto& req, auto params) {
+        auto* pp = post_processor;
         if (pp) {
             auto effect_name = std::string(params["effect_name"]);
             auto [duration, intensity] = parse_duration_intensity(req, generic_default_duration, generic_default_intensity, generic_duration_min, generic_duration_max, generic_intensity_min, generic_intensity_max);
@@ -184,7 +183,7 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
     });
 
     // Configure beat response settings
-    router->http_get("/post_processing/config", [](const auto& req, auto) {
+    router->http_get("/post_processing/config", [post_processor](const auto& req, auto) {
         auto query_params = restinio::parse_query(req->header().query());
         
         json response;

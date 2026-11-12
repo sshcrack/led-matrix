@@ -112,7 +112,7 @@ namespace {
     }
 }
 
-std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router) {
+std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager *transition_manager) {
     // GET routes
     router->http_get("/get_curr", [](auto req, auto) {
         std::vector<json> scenes;
@@ -145,9 +145,9 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_shader_providers()));
     });
 
-    router->http_get("/list_transitions", [](auto req, auto) {
+    router->http_get("/list_transitions", [transition_manager](auto req, auto) {
         std::vector<std::string> names;
-        if (auto* tm = Constants::global_transition_manager) {
+        if (auto* tm = transition_manager) {
             names = tm->get_registered_transitions();
         }
         nlohmann::json j = names;
