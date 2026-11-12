@@ -344,7 +344,8 @@ Daemon::Daemon(int argc, char* argv[])
         [this, host](auto &settings)
         {
             unique_lock lock(Server::registryMutex);
-            auto router = Server::server_handler(Server::registry, {post_processor_.get(), transition_manager_.get(), update_manager_});
+            auto router = Server::server_handler(Server::registry,
+                                                 {post_processor_.get(), transition_manager_.get(), config_.get(), update_manager_});
             if (is_debugging_)
                 router->http_get("/exit_debug", [](auto req, auto)
                 {

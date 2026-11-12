@@ -12,37 +12,41 @@
 
 using json = nlohmann::json;
 
-std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr<router_t> router) {
+std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
+{
     router->http_get("/environment", [](const auto &req, auto) {
         return reply_with_json(req, Environment::Service::instance().status());
     });
 
     // Partial update: only the given keys change. Send "latitude": null to
     // clear the manual location (and fall back to the IP-detected one).
-    router->http_post("/environment", [](const auto &req, auto) {
+    router->http_post("/environment", [cfg](const auto& req, auto) {
         json patch;
         try {
             patch = json::parse(req->body());
-        } catch (const std::exception &ex) {
+        }
+        catch (const std::exception& ex) {
             spdlog::warn("Invalid environment payload: {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
         if (!patch.is_object())
             return reply_with_error(req, "Expected a JSON object");
 
-        json merged = config->get_environment();
+        json merged = cfg->get_environment();
         for (const auto &[key, value] : patch.items()) {
             if (key == "overrides" && value.is_object()) {
                 for (const auto &[okey, ovalue] : value.items())
                     merged["overrides"][okey] = ovalue;
-            } else if (key == "enabled" || key == "auto_locate" || key == "latitude" || key == "longitude" || key == "label") {
+            }
+            else if (key == "enabled" || key == "auto_locate" || key == "latitude" || key == "longitude" || key == "label") {
                 merged[key] = value;
             }
         }
         Environment::Settings settings;
         try {
             settings = merged.get<Environment::Settings>();
-        } catch (const std::exception &ex) {
+        }
+        catch (const std::exception& ex) {
             return reply_with_error(req, std::string("Invalid environment settings: ") + ex.what());
         }
         // A half-set manual location is dropped by sanitize(); say so.
@@ -52,9 +56,9 @@ std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr
         if (sets_coordinate && !settings.has_manual_location())
             return reply_with_error(req, "latitude/longitude must both be valid numbers");
 
-        config->set_environment(settings);
-        Environment::Service::instance().update_settings(config->get_environment());
-        if (!config->save())
+        cfg->set_environment(settings);
+        Environment::Service::instance().update_settings(cfg->get_environment());
+        if (!cfg->save())
             return reply_with_error(req, "Could not save the real-world settings", restinio::status_internal_server_error());
         return reply_with_json(req, Environment::Service::instance().status());
     });

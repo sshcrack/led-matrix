@@ -10,21 +10,22 @@
 using json = nlohmann::json;
 using namespace spdlog;
 
-std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<router_t> router) {
+std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
+{
     // GET routes
-    router->http_get("/schedules", [](const auto& req, auto) {
-        const auto schedules = config->get_schedules();
+    router->http_get("/schedules", [cfg](const auto& req, auto) {
+        const auto schedules = cfg->get_schedules();
         return reply_with_json(req, json(schedules));
     });
 
-    router->http_get("/schedule", [](const auto& req, auto) {
+    router->http_get("/schedule", [cfg](const auto& req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "No schedule ID given");
         }
 
         const string id{qp["id"]};
-        const auto schedules = config->get_schedules();
+        const auto schedules = cfg->get_schedules();
         const auto it = schedules.find(id);
 
         if (it == schedules.end()) {
@@ -34,8 +35,8 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         return reply_with_json(req, json(it->second));
     });
 
-    router->http_get("/brightness_schedule", [](const auto& req, auto) {
-        const auto schedule = config->get_brightness_schedule();
+    router->http_get("/brightness_schedule", [cfg](const auto& req, auto) {
+        const auto schedule = cfg->get_brightness_schedule();
         json j = schedule;
         const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::tm local{};
@@ -44,21 +45,22 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         return reply_with_json(req, j);
     });
 
-    router->http_post("/brightness_schedule", [](const auto& req, auto) {
+    router->http_post("/brightness_schedule", [cfg](const auto& req, auto) {
         ConfigData::BrightnessSchedule schedule;
         try {
             schedule = json::parse(req->body()).template get<ConfigData::BrightnessSchedule>();
-        } catch (const std::exception &ex) {
+        }
+        catch (const std::exception& ex) {
             warn("Invalid brightness schedule payload: {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
-        config->set_brightness_schedule(schedule);
-        return reply_with_json(req, json(config->get_brightness_schedule()));
+        cfg->set_brightness_schedule(schedule);
+        return reply_with_json(req, json(cfg->get_brightness_schedule()));
     });
 
-    router->http_get("/scheduling_status", [](const auto& req, auto) {
-        const auto enabled = config->is_scheduling_enabled();
-        const auto active_preset = config->get_active_scheduled_preset();
+    router->http_get("/scheduling_status", [cfg](const auto& req, auto) {
+        const auto enabled = cfg->is_scheduling_enabled();
+        const auto active_preset = cfg->get_active_scheduled_preset();
 
         return reply_with_json(req, {
                                    {"enabled", enabled},
@@ -66,12 +68,13 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
                                });
     });
 
-    router->http_post("/scheduling_status", [](const auto& req, auto) {
+    router->http_post("/scheduling_status", [cfg](const auto& req, auto) {
         string str_body = req->body();
         json j;
         try {
             j = json::parse(str_body);
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -81,19 +84,20 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         }
 
         bool enabled = j["enabled"].get<bool>();
-        config->set_scheduling_enabled(enabled);
+        cfg->set_scheduling_enabled(enabled);
 
         return reply_with_json(req, {{"enabled", enabled}});
     });
 
     // POST routes
-    router->http_post("/schedule", [](auto req, auto) {
+    router->http_post("/schedule", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         string id;
 
         if (qp.has("id")) {
             id = qp["id"];
-        } else {
+        }
+        else {
             id = uuid::generate_uuid_v4();
         }
 
@@ -102,7 +106,8 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         try {
             j = json::parse(str_body);
             j["id"] = id;
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -128,28 +133,29 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
             }
 
             // Check if preset exists
-            const auto presets = config->get_presets();
+            const auto presets = cfg->get_presets();
             if (!presets.contains(schedule.preset_id)) {
                 return reply_with_error(req, "Preset not found");
             }
 
-            config->set_schedule(id, schedule);
+            cfg->set_schedule(id, schedule);
             return reply_with_json(req, {{"success", "Schedule saved"}, {"id", id}});
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             warn("Invalid schedule data {}", ex.what());
             return reply_with_error(req, "Could not parse schedule data");
         }
     });
 
     // DELETE routes
-    router->http_delete("/schedule", [](auto req, auto) {
+    router->http_delete("/schedule", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "No schedule ID given");
         }
 
         const string id{qp["id"]};
-        const bool success = config->delete_schedule(id);
+        const bool success = cfg->delete_schedule(id);
 
         if (!success) {
             return reply_with_error(req, "Schedule not found");

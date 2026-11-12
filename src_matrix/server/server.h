@@ -6,6 +6,10 @@
 class PostProcessor;
 class TransitionManager;
 
+namespace Config {
+class MainConfig;
+}
+
 namespace Update {
 class UpdateManager;
 }
@@ -22,6 +26,7 @@ namespace Server
     struct Dependencies {
         PostProcessor* post_processor = nullptr;
         TransitionManager* transition_manager = nullptr;
+        Config::MainConfig* config = nullptr;
         std::shared_ptr<Update::UpdateManager> update_manager;
     };
 
