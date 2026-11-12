@@ -8,13 +8,13 @@ using namespace GenerativeScenes;
 REGISTER_PLUGIN(GenerativeScenes, GenerativePlugin)
 
 vector<std::unique_ptr<SceneWrapper>> GenerativePlugin::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
 
-    scenes.push_back(std::make_unique<ReactionDiffusionSceneWrapper>());
-    scenes.push_back(std::make_unique<BoidsSceneWrapper>());
-    scenes.push_back(std::make_unique<FallingSandSceneWrapper>());
+    created.push_back(std::make_unique<ReactionDiffusionSceneWrapper>());
+    created.push_back(std::make_unique<BoidsSceneWrapper>());
+    created.push_back(std::make_unique<FallingSandSceneWrapper>());
 
-    return scenes;
+    return created;
 }
 
 vector<std::unique_ptr<ImageProviderWrapper>> GenerativePlugin::create_image_providers() {

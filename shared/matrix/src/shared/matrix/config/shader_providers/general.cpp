@@ -53,7 +53,7 @@ std::unique_ptr<ShaderProviders::General> ShaderProviders::General::from_json(co
             else
                 provider->uuid = uuid::generate_uuid_v4();
 
-            return std::move(provider);
+            return provider;
         }
     }
 

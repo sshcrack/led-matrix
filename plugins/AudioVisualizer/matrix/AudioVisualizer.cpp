@@ -30,35 +30,35 @@ std::vector<std::unique_ptr<Previews::DataProvider>> AudioVisualizer::create_pre
 
 std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
 {
-    std::vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
-    scenes.push_back(std::make_unique<MusicDirectorSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioRidgelineSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioPondSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioReefSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioSkylineSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioPlanetSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioCampfireSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioLighthouseSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioStageSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioNightDriveSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioRainWindowSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioBoomboxSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioVolcanoSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioFestivalSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioDiscoSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioSkateparkSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioMoshPitSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioStormFrontSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioDrumKitSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioTeslaCoilSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioFireworksSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioRollerRinkSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioMarinaSunsetSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioStringLightsSceneWrapper>());
-    scenes.push_back(std::make_unique<AudioCassetteSceneWrapper>());
-    return scenes;
+    std::vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
+    created.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
+    created.push_back(std::make_unique<MusicDirectorSceneWrapper>());
+    created.push_back(std::make_unique<AudioRidgelineSceneWrapper>());
+    created.push_back(std::make_unique<AudioPondSceneWrapper>());
+    created.push_back(std::make_unique<AudioReefSceneWrapper>());
+    created.push_back(std::make_unique<AudioSkylineSceneWrapper>());
+    created.push_back(std::make_unique<AudioPlanetSceneWrapper>());
+    created.push_back(std::make_unique<AudioCampfireSceneWrapper>());
+    created.push_back(std::make_unique<AudioLighthouseSceneWrapper>());
+    created.push_back(std::make_unique<AudioStageSceneWrapper>());
+    created.push_back(std::make_unique<AudioNightDriveSceneWrapper>());
+    created.push_back(std::make_unique<AudioRainWindowSceneWrapper>());
+    created.push_back(std::make_unique<AudioBoomboxSceneWrapper>());
+    created.push_back(std::make_unique<AudioVolcanoSceneWrapper>());
+    created.push_back(std::make_unique<AudioFestivalSceneWrapper>());
+    created.push_back(std::make_unique<AudioDiscoSceneWrapper>());
+    created.push_back(std::make_unique<AudioSkateparkSceneWrapper>());
+    created.push_back(std::make_unique<AudioMoshPitSceneWrapper>());
+    created.push_back(std::make_unique<AudioStormFrontSceneWrapper>());
+    created.push_back(std::make_unique<AudioDrumKitSceneWrapper>());
+    created.push_back(std::make_unique<AudioTeslaCoilSceneWrapper>());
+    created.push_back(std::make_unique<AudioFireworksSceneWrapper>());
+    created.push_back(std::make_unique<AudioRollerRinkSceneWrapper>());
+    created.push_back(std::make_unique<AudioMarinaSunsetSceneWrapper>());
+    created.push_back(std::make_unique<AudioStringLightsSceneWrapper>());
+    created.push_back(std::make_unique<AudioCassetteSceneWrapper>());
+    return created;
 }
 
 std::optional<std::string> AudioVisualizer::before_server_init()

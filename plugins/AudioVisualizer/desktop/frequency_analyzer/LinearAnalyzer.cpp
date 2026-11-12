@@ -9,7 +9,7 @@ std::vector<float> LinearAnalyzer::computeBands(
 ) const {
     std::vector<float> bands(config.numBands, 0.0f);
     const size_t binsPerBand = (maxBin - minBin) / std::max<size_t>(config.numBands, 1);
-    for (size_t i = 0; i < config.numBands; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(config.numBands); ++i) {
         const size_t startBin = minBin + i * binsPerBand;
         const size_t endBin = std::min(startBin + binsPerBand, maxBin);
 

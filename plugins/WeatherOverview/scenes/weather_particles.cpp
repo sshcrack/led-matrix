@@ -27,8 +27,7 @@ void Scenes::WeatherScene::resetStars()
 
 void Scenes::WeatherScene::tryCreateShootingStar()
 {
-    if (data.is_day)
-    {
+    if (current_data.is_day) {
         return;
     }
 

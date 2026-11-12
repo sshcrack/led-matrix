@@ -24,7 +24,7 @@ static std::vector<std::string> analysisModes = {"Discrete Frequencies", "1/3 Oc
 static std::vector<std::string> frequencyScales = {"Linear", "Logarithmic", "Bark", "Mel"};
 static std::vector<std::string> beatDetectionAlgorithms = {"Energy", "Spectral Flux", "High Frequency Content", "Complex Domain"};
 
-static AnalysisMode to_analysis_mode(const std::string &str)
+inline AnalysisMode to_analysis_mode(const std::string& str)
 {
     if (str == "Discrete Frequencies")
         return DiscreteFrequencies;
@@ -35,7 +35,7 @@ static AnalysisMode to_analysis_mode(const std::string &str)
     throw std::invalid_argument("Unknown AnalysisMode: " + str);
 }
 
-static FrequencyScale to_frequency_scale(const std::string &str)
+inline FrequencyScale to_frequency_scale(const std::string& str)
 {
     if (str == "Linear")
         return Linear;
@@ -48,7 +48,7 @@ static FrequencyScale to_frequency_scale(const std::string &str)
     throw std::invalid_argument("Unknown FrequencyScale: " + str);
 }
 
-static BeatDetectionAlgorithm to_beat_detection_algorithm(const std::string &str)
+inline BeatDetectionAlgorithm to_beat_detection_algorithm(const std::string& str)
 {
     if (str == "Energy")
         return BeatDetectionAlgorithm::Energy;
@@ -92,11 +92,24 @@ public:
     // Retained in config files only so old user settings can still be read.
     BeatDetectionConfig beatDetection;
 
-    AudioVisualizerConfig() : numBands(64), gain(2.0), smoothing(0.8), minFreq(20.0), maxFreq(20000.0),
-                              analysisMode(DiscreteFrequencies), frequencyScale(Logarithmic),
-                              skipMissingBandsFromOutput(true), linearAmplitudeScaling(false), interpolateMissingBands(false),
-                              musicAnalysisGain(1.0), transientSensitivity(1.0), beatSensitivity(1.0),
-                              waveformGain(3.0), streamContinuously(true) {}
+    AudioVisualizerConfig()
+        : numBands(64),
+          gain(2.0),
+          smoothing(0.8),
+          minFreq(20.0),
+          maxFreq(20000.0),
+          analysisMode(DiscreteFrequencies),
+          frequencyScale(Logarithmic),
+          linearAmplitudeScaling(false),
+          interpolateMissingBands(false),
+          skipMissingBandsFromOutput(true),
+          musicAnalysisGain(1.0),
+          transientSensitivity(1.0),
+          beatSensitivity(1.0),
+          waveformGain(3.0),
+          streamContinuously(true)
+    {
+    }
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(AnalysisMode, {{DiscreteFrequencies, "Discrete Frequencies"},
@@ -113,7 +126,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(BeatDetectionAlgorithm, {{BeatDetectionAlgorithm::E
                                                       {BeatDetectionAlgorithm::HighFrequencyContent, "High Frequency Content"},
                                                       {BeatDetectionAlgorithm::ComplexDomain, "Complex Domain"}})
 
-static void from_json(const json &j, BeatDetectionConfig &config)
+inline void from_json(const json& j, BeatDetectionConfig& config)
 {
     BeatDetectionConfig defaults;
     config.algorithm = j.value("algorithm", defaults.algorithm);
@@ -125,7 +138,7 @@ static void from_json(const json &j, BeatDetectionConfig &config)
     config.hfcThreshold = j.value("hfcThreshold", defaults.hfcThreshold);
 }
 
-static void to_json(json &j, const BeatDetectionConfig &config)
+inline void to_json(json& j, const BeatDetectionConfig& config)
 {
     j = json{
         {"algorithm", config.algorithm},
@@ -137,7 +150,7 @@ static void to_json(json &j, const BeatDetectionConfig &config)
         {"hfcThreshold", config.hfcThreshold}};
 }
 
-static void from_json(const json &j, AudioVisualizerConfig &config)
+inline void from_json(const json& j, AudioVisualizerConfig& config)
 {
     AudioVisualizerConfig defaults;
     config.numBands = j.value("numBands", defaults.numBands);
@@ -159,7 +172,7 @@ static void from_json(const json &j, AudioVisualizerConfig &config)
     config.beatDetection = j.value("beatDetection", defaults.beatDetection);
 }
 
-static void to_json(json &j, const AudioVisualizerConfig &config)
+inline void to_json(json& j, const AudioVisualizerConfig& config)
 {
     j = json{
         {"numBands", config.numBands},

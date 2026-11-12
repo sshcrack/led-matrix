@@ -200,10 +200,10 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
         }
 
         last_weather_fetch = now;
-        data = data_res.value();
+        current_data = data_res.value();
     }
 
-    RGB theme_color = getThemeColor(color_theme->get().get(), data);
+    RGB theme_color = getThemeColor(color_theme->get().get(), current_data);
 
     if (parser.has_changed() || !images.has_value())
     {
@@ -212,7 +212,7 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
 
     animation_frame = (animation_frame + 1) % std::max(1, get_target_fps());
 
-    updateEnhancedParticles(data);
+    updateEnhancedParticles(current_data);
     canvas->Clear();
 
     if (gradient_background->get())
@@ -224,7 +224,7 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
         canvas->Fill(theme_color.r, theme_color.g, theme_color.b);
     }
 
-    renderRainbowEffect(canvas, data);
+    renderRainbowEffect(canvas, current_data);
     if (show_border->get())
     {
         drawWeatherBorder(canvas, theme_color, 40);
@@ -233,13 +233,13 @@ bool Scenes::WeatherScene::render(rgb_matrix::FrameCanvas *canvas)
     if (enable_clock->get())
         renderClock(canvas);
 
-    renderCurrentWeather(canvas, data, theme_color);
-    renderSunriseSunset(canvas, data);
-    renderForecast(canvas, data, theme_color);
+    renderCurrentWeather(canvas, current_data, theme_color);
+    renderSunriseSunset(canvas, current_data);
+    renderForecast(canvas, current_data, theme_color);
 
     if (enable_animations->get())
     {
-        renderAnimations(canvas, data);
+        renderAnimations(canvas, current_data);
     }
 
     wait_until_next_frame();

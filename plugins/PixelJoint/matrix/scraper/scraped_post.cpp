@@ -4,49 +4,46 @@
 #include "spdlog/spdlog.h"
 
 namespace pixeljoint {
-    ScrapedPost::ScrapedPost(const std::string_view thumbnail, const std::string_view url)
-        : thumbnail(thumbnail)
-          , post_url(url) {
-    }
+ScrapedPost::ScrapedPost(const std::string_view thumb, const std::string_view url) : thumbnail(thumb), post_url(url) {}
 
-    std::expected<std::unique_ptr<Post>, std::string> ScrapedPost::fetch_link() const {
-        const auto doc_opt = utils::fetch_page(post_url, BASE_URL);
-        if (!doc_opt.has_value())
-            return std::unexpected("Could not fetch page " + post_url + ": " + doc_opt.error());
+std::expected<std::unique_ptr<Post>, std::string> ScrapedPost::fetch_link() const
+{
+    const auto doc_opt = utils::fetch_page(post_url, BASE_URL);
+    if (!doc_opt.has_value())
+        return std::unexpected("Could not fetch page " + post_url + ": " + doc_opt.error());
 
+    const auto doc = doc_opt.value();
+    const auto context = xmlXPathNewContext(doc);
 
-        const auto doc = doc_opt.value();
-        const auto context = xmlXPathNewContext(doc);
+    const auto mainimg = xmlXPathEvalExpression(BAD_CAST "//*[@id=\"mainimg\"]", context);
 
-        const auto mainimg = xmlXPathEvalExpression(BAD_CAST "//*[@id=\"mainimg\"]", context);
-
-        if (!mainimg->nodesetval || mainimg->nodesetval->nodeNr == 0) {
-            xmlXPathFreeObject(mainimg);
-            xmlXPathFreeContext(context);
-            xmlFreeDoc(doc);
-
-            return std::unexpected("No main image found on page");
-        }
-
-        const auto img = mainimg->nodesetval->nodeTab[0];
-        const auto src_prop = xmlGetProp(img, BAD_CAST "src");
-        if (!src_prop) {
-            xmlXPathFreeObject(mainimg);
-            xmlXPathFreeContext(context);
-            xmlFreeDoc(doc);
-
-            return std::unexpected("No src attributes found on the main image");
-        }
-
-        std::string img_url = BASE_URL + std::string(reinterpret_cast<char *>(src_prop));
-        xmlFree(src_prop);
-
+    if (!mainimg->nodesetval || mainimg->nodesetval->nodeNr == 0) {
         xmlXPathFreeObject(mainimg);
         xmlXPathFreeContext(context);
         xmlFreeDoc(doc);
 
-        return std::make_unique<Post>(img_url);
+        return std::unexpected("No main image found on page");
     }
+
+    const auto img = mainimg->nodesetval->nodeTab[0];
+    const auto src_prop = xmlGetProp(img, BAD_CAST "src");
+    if (!src_prop) {
+        xmlXPathFreeObject(mainimg);
+        xmlXPathFreeContext(context);
+        xmlFreeDoc(doc);
+
+        return std::unexpected("No src attributes found on the main image");
+    }
+
+    std::string img_url = BASE_URL + std::string(reinterpret_cast<char*>(src_prop));
+    xmlFree(src_prop);
+
+    xmlXPathFreeObject(mainimg);
+    xmlXPathFreeContext(context);
+    xmlFreeDoc(doc);
+
+    return std::make_unique<Post>(img_url);
+}
 
     std::optional<int> ScrapedPost::get_pages() {
         const auto doc_opt = utils::fetch_page(SEARCH_URL, BASE_URL);

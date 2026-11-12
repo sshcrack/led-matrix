@@ -64,8 +64,14 @@ void BoidsScene::simulate_step() {
         for (size_t j=0;j<boids_.size();++j) {
             if (i==j) continue;
             float dx=boids_[j].x-boids_[i].x, dy=boids_[j].y-boids_[i].y;
-            if (dx > matrix_width/2.0f) dx -= matrix_width; if (dx < -matrix_width/2.0f) dx += matrix_width;
-            if (dy > matrix_height/2.0f) dy -= matrix_height; if (dy < -matrix_height/2.0f) dy += matrix_height;
+            if (dx > matrix_width / 2.0f)
+                dx -= matrix_width;
+            if (dx < -matrix_width / 2.0f)
+                dx += matrix_width;
+            if (dy > matrix_height / 2.0f)
+                dy -= matrix_height;
+            if (dy < -matrix_height / 2.0f)
+                dy += matrix_height;
             const float d2=dx*dx+dy*dy;
             if (d2>0.01f && d2<p2) {
                 ax += boids_[j].vx; ay += boids_[j].vy;
@@ -85,8 +91,14 @@ void BoidsScene::simulate_step() {
         const float len=std::sqrt(vx*vx+vy*vy);
         if (len>0.001f) { vx=vx/len*max_speed; vy=vy/len*max_speed; }
         next[i].vx=vx; next[i].vy=vy; next[i].x=boids_[i].x+vx; next[i].y=boids_[i].y+vy;
-        if (next[i].x<0) next[i].x+=matrix_width; if (next[i].x>=matrix_width) next[i].x-=matrix_width;
-        if (next[i].y<0) next[i].y+=matrix_height; if (next[i].y>=matrix_height) next[i].y-=matrix_height;
+        if (next[i].x < 0)
+            next[i].x += matrix_width;
+        if (next[i].x >= matrix_width)
+            next[i].x -= matrix_width;
+        if (next[i].y < 0)
+            next[i].y += matrix_height;
+        if (next[i].y >= matrix_height)
+            next[i].y -= matrix_height;
     }
     boids_.swap(next);
 

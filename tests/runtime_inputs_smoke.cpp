@@ -128,10 +128,9 @@ int main()
         return 1;
     }
 
-    const auto json = RuntimeInputs::to_json(ready);
-    if (!json.contains("desktop") || !json.contains("audio")
-        || !json["desktop"].value("available", false)
-        || !json["audio"]["signals"].contains("bass")) {
+    const auto payload = RuntimeInputs::to_json(ready);
+    if (!payload.contains("desktop") || !payload.contains("audio") || !payload["desktop"].value("available", false) ||
+        !payload["audio"]["signals"].contains("bass")) {
         std::cerr << "Runtime Input JSON did not expose availability/signals\n";
         return 1;
     }

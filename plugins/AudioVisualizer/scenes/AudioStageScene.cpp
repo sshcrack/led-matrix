@@ -115,16 +115,17 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int x = ax; x < ax + 14; ++x) buf_.set(x, y, (y - stageY) % 9 == 0 ? RGB{30, 30, 34} : RGB{10, 10, 12});
     }
     const auto person = [&](float cx, float lean, float height, bool guitar) {
-        const float top = stageY - height;
-        buf_.disc(cx + lean * 2.0f, top + 2.5f, 2.6f, RGB{0, 0, 0}, false);  // head
-        for (int y = static_cast<int>(top + 5); y < stageY; ++y) {
-            const float k = (y - top - 5) / (height - 5);
+        const float head_top = stageY - height;
+        buf_.disc(cx + lean * 2.0f, head_top + 2.5f, 2.6f, RGB{0, 0, 0}, false);  // head
+        for (int y = static_cast<int>(head_top + 5); y < stageY; ++y) {
+            const float k = (y - head_top - 5) / (height - 5);
             const float half = k < 0.45f ? 3.2f : 1.6f + (k - 0.45f) * 2.0f;
             const float sway = lean * (1.0f - k) * 2.0f;
             for (int x = static_cast<int>(cx + sway - half); x <= static_cast<int>(cx + sway + half); ++x) buf_.set(x, y, RGB{0, 0, 0});
         }
         if (guitar)  // neck of the guitar, angled
-            for (int t = 0; t < 12; ++t) buf_.set(static_cast<int>(cx - 3 + t), static_cast<int>(top + 13 - t * 0.45f + lean), RGB{0, 0, 0});
+            for (int t = 0; t < 12; ++t)
+                buf_.set(static_cast<int>(cx - 3 + t), static_cast<int>(head_top + 13 - t * 0.45f + lean), RGB{0, 0, 0});
     };
     const float headbang = beat_.v;
     person(W * 0.30f, -0.6f + headbang * 1.2f, 25.0f, true);

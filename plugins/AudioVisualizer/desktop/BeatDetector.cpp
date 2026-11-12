@@ -4,10 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-BeatDetector::BeatDetector() 
-    : beat_detected_(false)
-    , last_beat_time_(std::chrono::steady_clock::now()) {
-}
+BeatDetector::BeatDetector() : last_beat_time_(std::chrono::steady_clock::now()), beat_detected_(false) {}
 
 void BeatDetector::configure(const BeatDetectionConfig& config) {
     std::lock_guard<std::mutex> lock(beat_mutex_);
@@ -55,10 +52,10 @@ bool BeatDetector::detect_beat_energy(const std::vector<float>& audio_data) {
     
     // Add to energy history
     energy_history_.push_back(current_energy);
-    if (energy_history_.size() > config_.historySize) {
+    if (energy_history_.size() > static_cast<size_t>(config_.historySize)) {
         energy_history_.pop_front();
     }
-    
+
     // Need sufficient history to detect beats
     if (energy_history_.size() < 20) {
         return false;
@@ -86,10 +83,10 @@ bool BeatDetector::detect_beat_spectral_flux(const std::vector<float>& audio_dat
     
     // Add to flux history
     flux_history_.push_back(current_flux);
-    if (flux_history_.size() > config_.historySize) {
+    if (flux_history_.size() > static_cast<size_t>(config_.historySize)) {
         flux_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (flux_history_.size() < 20) {
         return false;
@@ -117,10 +114,10 @@ bool BeatDetector::detect_beat_hfc(const std::vector<float>& audio_data) {
     
     // Add to HFC history
     hfc_history_.push_back(current_hfc);
-    if (hfc_history_.size() > config_.historySize) {
+    if (hfc_history_.size() > static_cast<size_t>(config_.historySize)) {
         hfc_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (hfc_history_.size() < 20) {
         return false;
@@ -152,13 +149,13 @@ bool BeatDetector::detect_beat_complex_domain(const std::vector<float>& audio_da
     energy_history_.push_back(energy);
     flux_history_.push_back(flux);
     hfc_history_.push_back(hfc);
-    
-    if (energy_history_.size() > config_.historySize) {
+
+    if (energy_history_.size() > static_cast<size_t>(config_.historySize)) {
         energy_history_.pop_front();
         flux_history_.pop_front();
         hfc_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (energy_history_.size() < 20) {
         return false;

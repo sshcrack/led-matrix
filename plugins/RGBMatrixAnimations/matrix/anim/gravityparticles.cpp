@@ -356,8 +356,8 @@ void GravityParticles::addParticle(uint16_t x, uint16_t y, RGB_color colour, int
     if (i == maxParticles) {
         //Expand particles array
         Particle* newArr = new Particle[maxParticles + 20];
-        for (uint16_t i = 0; i < maxParticles; i++) {
-            newArr[i] = particles[i];
+        for (uint16_t n = 0; n < maxParticles; n++) {
+            newArr[n] = particles[n];
         }
         delete[] particles;
         particles = newArr;

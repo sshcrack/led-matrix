@@ -30,10 +30,9 @@ SpotifyScenes::create_preview_data_providers() {
 }
 
 vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
-    
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<CoverOnlySceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<CoverOnlySceneWrapper>());
+    return created;
 }
 
 std::optional<string> SpotifyScenes::before_server_init() {
@@ -187,7 +186,7 @@ register_routes(std::unique_ptr<router_t> router) {
     router->http_get("/spotify/callback", [this](const auto& req, auto) {
         return complete_login(req, std::string(req->header().query()), true);
     });
-    return std::move(router);
+    return router;
 }
 
 restinio::request_handling_status_t SpotifyScenes::complete_login(

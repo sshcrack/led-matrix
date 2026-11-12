@@ -54,14 +54,6 @@ int pixel_luma(rgb_matrix::FrameCanvas* canvas, int x, int y)
     return (static_cast<int>(r) + static_cast<int>(g) + static_cast<int>(b)) / 3;
 }
 
-float mean_luma(const std::vector<std::uint8_t>& pixels)
-{
-    double total = 0.0;
-    for (std::size_t i = 0; i + 2 < pixels.size(); i += 3)
-        total += (static_cast<double>(pixels[i]) + pixels[i + 1] + pixels[i + 2]) / (3.0 * 255.0);
-    return static_cast<float>(total / static_cast<double>(Width * Height));
-}
-
 AudioProtocol::Frame waveform_frame(std::uint32_t sequence, float phase)
 {
     AudioProtocol::Frame frame;

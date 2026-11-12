@@ -48,7 +48,7 @@ std::unique_ptr<ImageProviders::General> ImageProviders::General::from_json(cons
             else
                 provider->uuid = uuid::generate_uuid_v4();
 
-            return std::move(provider);  // Use std::move to transfer ownership
+            return provider;
         }
     }
 

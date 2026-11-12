@@ -12,10 +12,10 @@ vector<std::unique_ptr<ImageProviderWrapper>> Countdown::create_image_providers(
 }
 
 vector<std::unique_ptr<SceneWrapper>> Countdown::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    auto created = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back(std::make_unique<Scenes::CountdownSceneWrapper>());
-    return scenes;
+    created.push_back(std::make_unique<Scenes::CountdownSceneWrapper>());
+    return created;
 }
 
 Countdown::Countdown() = default;

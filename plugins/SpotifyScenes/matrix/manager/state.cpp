@@ -2,7 +2,9 @@
 
 #include "shared/matrix/input_ids.h"
 
-SpotifyState::SpotifyState(nlohmann::json state_json) : state_json(std::move(state_json)),track(SpotifyTrack(this->state_json.at("item"))) {
+SpotifyState::SpotifyState(nlohmann::json initial_state)
+    : state_json(std::move(initial_state)), track(SpotifyTrack(this->state_json.at("item")))
+{
     // Empty constructor
 }
 

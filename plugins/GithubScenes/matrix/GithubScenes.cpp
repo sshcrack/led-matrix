@@ -11,12 +11,12 @@ vector<std::unique_ptr<ImageProviderWrapper>> GithubScenes::create_image_provide
 }
 
 vector<std::unique_ptr<SceneWrapper>> GithubScenes::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    auto created = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back(std::make_unique<WatermelonPlasmaSceneWrapper>());
-    scenes.push_back(std::make_unique<WaveSceneWrapper>());
+    created.push_back(std::make_unique<WatermelonPlasmaSceneWrapper>());
+    created.push_back(std::make_unique<WaveSceneWrapper>());
 
-    return scenes;
+    return created;
 }
 
 GithubScenes::GithubScenes() = default;

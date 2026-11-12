@@ -173,8 +173,8 @@ bool AudioFestivalScene::render(rgb_matrix::FrameCanvas* canvas)
             buf_.disc(x, headY - 0.7f, 2.3f * scale, rim, false);
             buf_.disc(x, headY, 2.3f * scale, shade, false);
             for (int y = static_cast<int>(headY + 2 * scale); y < H; ++y) {
-                const float k = std::min(1.0f, (y - headY - 2 * scale) / (4.0f * scale));
-                const float half = (1.5f + 3.2f * std::sqrt(k)) * scale;
+                const float kk = std::min(1.0f, (y - headY - 2 * scale) / (4.0f * scale));
+                const float half = (1.5f + 3.2f * std::sqrt(kk)) * scale;
                 for (int xx = static_cast<int>(x - half); xx <= static_cast<int>(x + half); ++xx) buf_.set(xx, y, shade);
             }
             // Raised hands at loud moments, a few waving flags.

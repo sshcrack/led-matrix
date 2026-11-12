@@ -61,7 +61,7 @@ void SnakeGameScene::initializeGame() {
 }
 
 bool SnakeGameScene::render(rgb_matrix::FrameCanvas *canvas) {
-    auto frame = frameTimer.tick();
+    frameTimer.tick();
     frame_counter++;
     
     // Clear canvas

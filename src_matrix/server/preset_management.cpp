@@ -224,5 +224,5 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         return reply_with_json(req, {{"success", "Preset has been deleted"}});
     });
 
-    return std::move(router);
+    return router;
 }

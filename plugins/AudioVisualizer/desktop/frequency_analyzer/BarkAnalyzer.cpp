@@ -16,7 +16,7 @@ std::vector<float> BarkAnalyzer::computeBands(
     const float minBark = hzToBark(config.minFreq);
     const float maxBark = hzToBark(config.maxFreq);
     const float barkWidth = (maxBark - minBark) / config.numBands;
-    for (size_t i = 0; i < config.numBands; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(config.numBands); ++i) {
         const float barkStart = minBark + barkWidth * i;
         const float barkEnd = minBark + barkWidth * (i + 1);
         const float freqStart = barkToHz(barkStart);

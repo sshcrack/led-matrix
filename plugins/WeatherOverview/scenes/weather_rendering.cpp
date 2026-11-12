@@ -97,7 +97,7 @@ void Scenes::WeatherScene::renderLightning(rgb_matrix::FrameCanvas *canvas)
     if (!enable_lightning->get() || !enable_animations->get())
         return;
 
-    int weather_code = data.weatherCode;
+    int weather_code = current_data.weatherCode;
     bool is_thunderstorm =
         weather_code == 17 ||
         weather_code == 29 ||
@@ -352,8 +352,7 @@ void Scenes::WeatherScene::renderAurora(rgb_matrix::FrameCanvas *canvas)
     if (!enable_aurora->get() || !enable_animations->get())
         return;
 
-    if (data.temperature != "N/A" && !data.is_day && data.temperature.find("-") != std::string::npos)
-    {
+    if (current_data.temperature != "N/A" && !current_data.is_day && current_data.temperature.find("-") != std::string::npos) {
         aurora_continuous_time += 0.02f * animation_speed_multiplier->get();
 
         for (int x = 0; x < matrix_width; x++)
@@ -476,15 +475,13 @@ void Scenes::WeatherScene::applyBackgroundEffects(rgb_matrix::FrameCanvas *canva
         }
     }
 
-    if (!data.is_day)
-    {
+    if (!current_data.is_day) {
         if (stars.empty())
         {
             resetStars();
         }
 
-        for (int i = 0; i < stars.size(); i++)
-        {
+        for (size_t i = 0; i < stars.size(); i++) {
             const auto &coords = stars[i];
             const int x = std::get<0>(coords);
             const int y = std::get<1>(coords);

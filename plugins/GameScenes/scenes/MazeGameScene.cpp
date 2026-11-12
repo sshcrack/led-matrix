@@ -44,8 +44,8 @@ namespace Scenes {
         path_found = false;
 
         // Initialize nodes
-        for (int y = 0; y < maze_size; y++) {
-            for (int x = 0; x < maze_size; x++) {
+        for (int y = 0; y < static_cast<int>(maze_size); y++) {
+            for (int x = 0; x < static_cast<int>(maze_size); x++) {
                 Node node;
                 node.x = x;
                 node.y = y;
@@ -86,11 +86,11 @@ namespace Scenes {
         std::vector<std::pair<int, int>> directions;
         if (current_x > 1 && !maze[(current_y) * maze_size + (current_x - 2)])
             directions.push_back({-2, 0});
-        if (current_x < maze_size - 2 && !maze[(current_y) * maze_size + (current_x + 2)])
+        if (current_x < static_cast<int>(maze_size) - 2 && !maze[(current_y)*maze_size + (current_x + 2)])
             directions.push_back({2, 0});
         if (current_y > 1 && !maze[(current_y - 2) * maze_size + current_x])
             directions.push_back({0, -2});
-        if (current_y < maze_size - 2 && !maze[(current_y + 2) * maze_size + current_x])
+        if (current_y < static_cast<int>(maze_size) - 2 && !maze[(current_y + 2) * maze_size + current_x])
             directions.push_back({0, 2});
 
         if (!directions.empty()) {
@@ -131,7 +131,7 @@ namespace Scenes {
         for (const auto &[dx, dy]: directions) {
             int new_x = x + dx;
             int new_y = y + dy;
-            if (new_x >= 0 && new_x < maze_size && new_y >= 0 && new_y < maze_size) {
+            if (new_x >= 0 && new_x < static_cast<int>(maze_size) && new_y >= 0 && new_y < static_cast<int>(maze_size)) {
                 if (maze[new_y * maze_size + new_x]) {
                     neighbors.push_back({new_x, new_y});
                 }
@@ -160,12 +160,12 @@ namespace Scenes {
                                                           nodes[b.second * maze_size + b.first].f_cost;
                                                });
 
-            auto [current_x, current_y] = *current_it;
+            auto [cx, cy] = *current_it;
 
-            if (current_x == maze_size - 2 && current_y == maze_size - 2) {
+            if (cx == static_cast<int>(maze_size) - 2 && cy == static_cast<int>(maze_size) - 2) {
                 // Path found, reconstruct it
                 path.clear();
-                auto current = std::make_pair(current_x, current_y);
+                auto current = std::make_pair(cx, cy);
                 while (current.first != -1) {
                     path.push_back(current);
                     current = nodes[current.second * maze_size + current.first].parent;
@@ -176,19 +176,19 @@ namespace Scenes {
             }
 
             open_set.erase(current_it);
-            closed_set.push_back({current_x, current_y});
+            closed_set.push_back({cx, cy});
 
-            for (const auto &[neighbor_x, neighbor_y]: get_neighbors(current_x, current_y)) {
+            for (const auto& [neighbor_x, neighbor_y] : get_neighbors(cx, cy)) {
                 if (std::find(closed_set.begin(), closed_set.end(),
                               std::make_pair(neighbor_x, neighbor_y)) != closed_set.end()) {
                     continue;
                 }
 
-                float tentative_g_cost = nodes[current_y * maze_size + current_x].g_cost + 1;
+                float tentative_g_cost = nodes[cy * maze_size + cx].g_cost + 1;
 
                 auto &neighbor_node = nodes[neighbor_y * maze_size + neighbor_x];
                 if (tentative_g_cost < neighbor_node.g_cost) {
-                    neighbor_node.parent = {current_x, current_y};
+                    neighbor_node.parent = {cx, cy};
                     neighbor_node.g_cost = tentative_g_cost;
                     neighbor_node.h_cost = calculate_heuristic(neighbor_x, neighbor_y, maze_size - 2, maze_size - 2);
                     neighbor_node.f_cost = neighbor_node.calculate_f_cost();
@@ -208,8 +208,8 @@ namespace Scenes {
         canvas->Clear();
 
         // Draw maze with scaling
-        for (int y = 0; y < maze_size; y++) {
-            for (int x = 0; x < maze_size; x++) {
+        for (int y = 0; y < static_cast<int>(maze_size); y++) {
+            for (int x = 0; x < static_cast<int>(maze_size); x++) {
                 if (maze[y * maze_size + x]) {
                     // Draw scaled pixel as a filled rectangle
                     for (int dy = 0; dy < scale_factor; dy++) {

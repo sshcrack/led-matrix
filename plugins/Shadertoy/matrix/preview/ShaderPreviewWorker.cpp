@@ -67,7 +67,6 @@ ShaderToy::AudioInput synthetic_audio(const int frame, const float fps, const fl
     }
 
     const float groove = 0.5f + 0.5f * std::sin(seconds * (profile == "ambient" ? 0.75f : 1.7f));
-    const float shimmer = 0.5f + 0.5f * std::sin(seconds * (profile == "ambient" ? 1.25f : 4.1f) + 0.7f);
     audio.bass = std::clamp((0.32f + 0.58f * audio.kick) * low_gain, 0.0f, 1.0f);
     audio.mid = std::clamp((0.34f + 0.20f * groove + 0.20f * audio.snare) * mid_gain, 0.0f, 1.0f);
     audio.treble = std::clamp((0.30f + 0.32f * audio.hihat) * high_gain, 0.0f, 1.0f);

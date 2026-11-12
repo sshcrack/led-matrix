@@ -285,9 +285,7 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
         std::string msg = "HAPPY " + std::to_string(target_year->get());
         int px = (width - (int)msg.size() * 6) / 2;
         int py = 2;
-        for (size_t i = 0; i < msg.size(); i++)
-        {
-            char c = msg[i];
+        for (size_t i = 0; i < msg.size(); i++) {
             // draw simple block per char
             for (int oy = 0; oy < 4; oy++)
             {
