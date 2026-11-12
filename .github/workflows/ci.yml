@@ -29,6 +29,21 @@ jobs:
       - name: Check added file sizes
         run: scripts/check_repo_size.sh "origin/${{ github.base_ref }}"
 
+  cpp-format:
+    # Only the C++ lines a PR changes are checked (no mass reformat); see scripts/check_cpp_format.sh.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-format
+        run: pipx install clang-format==21.1.8
+
+      - name: Check formatting of changed C++ lines
+        run: scripts/check_cpp_format.sh "origin/${{ github.base_ref }}"
+
   react-web:
     runs-on: ubuntu-latest
     steps:
