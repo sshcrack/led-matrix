@@ -352,8 +352,6 @@ int main(int argc, char* argv[])
     // ---- initialise shared globals expected by SharedToolsMatrix ----------
     Constants::width = args.matrix_width;
     Constants::height = args.matrix_height;
-    Constants::global_post_processor = nullptr;
-    Constants::global_transition_manager = nullptr;
 
     // Provide a minimal config so nothing derefs a null pointer. Each run gets
     // its own fresh file: concurrent runs (ctest -j) sharing one path used to

@@ -242,11 +242,9 @@ Daemon::Daemon(int argc, char* argv[])
     // 6. Global service objects
     // -------------------------------------------------------------------
     post_processor_ = make_unique<PostProcessor>();
-    Constants::global_post_processor = post_processor_.get();
     info("Post-processor initialized");
 
     transition_manager_ = make_unique<TransitionManager>();
-    Constants::global_transition_manager = transition_manager_.get();
     info("Transition manager initialized");
 
     // -------------------------------------------------------------------
@@ -491,9 +489,7 @@ void Daemon::shutdown(bool persist_config) noexcept
 
     // Post-processing and transition managers may own polymorphic objects
     // implemented inside plugin DSOs. Destroy those objects while the code is
-    // still loaded, then clear their global aliases.
-    Constants::global_post_processor = nullptr;
-    Constants::global_transition_manager = nullptr;
+    // still loaded.
     post_processor_.reset();
     transition_manager_.reset();
 

@@ -12,29 +12,25 @@
 using namespace std;
 using namespace spdlog;
 
-CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
-                                      TimeSource *time_source,
-                                      PostProcessor *post_processor,
-                                      TransitionManager *transition_manager,
-                                      MatrixPresenter *presenter,
-                                      Config::MainConfig *cfg,
-                                      const std::atomic<bool> *exit_flag,
-                                      const std::atomic<bool> *interrupt_flag,
-                                      std::function<RuntimeInputs::Snapshot()> runtime_inputs,
-                                      std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
-                                      std::function<void(const std::string &)> broadcast)
-    : matrix_(matrix)
-    , time_source_(time_source)
-    , presenter_(presenter)
-    , config_(cfg)
-    , exit_flag_(exit_flag)
-    , interrupt_flag_(interrupt_flag)
-    , runtime_inputs_fn_(std::move(runtime_inputs))
-    , set_curr_scene_fn_(std::move(set_curr_scene))
-    , broadcast_fn_(std::move(broadcast))
-    , automatic_director_(cfg->get_automatic_director_seed())
-    , renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
-    , transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
+CanvasCoordinator::CanvasCoordinator(RGBMatrixBase* matrix, TimeSource* time_source, PostProcessor* post_processor,
+                                     TransitionManager* transition_manager, MatrixPresenter* presenter, Config::MainConfig* cfg,
+                                     const std::atomic<bool>* exit_flag, const std::atomic<bool>* interrupt_flag,
+                                     std::function<RuntimeInputs::Snapshot()> runtime_inputs,
+                                     std::function<void(std::shared_ptr<Scenes::Scene>)> set_curr_scene,
+                                     std::function<void(const std::string&)> broadcast)
+    : matrix_(matrix),
+      time_source_(time_source),
+      post_processor_(post_processor),
+      presenter_(presenter),
+      config_(cfg),
+      exit_flag_(exit_flag),
+      interrupt_flag_(interrupt_flag),
+      runtime_inputs_fn_(std::move(runtime_inputs)),
+      set_curr_scene_fn_(std::move(set_curr_scene)),
+      broadcast_fn_(std::move(broadcast)),
+      automatic_director_(cfg->get_automatic_director_seed()),
+      renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_),
+      transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
 {
     renderer_.set_brightness_provider([cfg]() -> std::optional<int> {
         const auto schedule = cfg->get_brightness_schedule();
@@ -219,6 +215,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         }
 
         no_scene_count = 0;
+        scene->set_post_effect_sink(post_processor_);
         if (!scene->is_initialized()) scene->initialize(matrix_width, matrix_height);
         const tmillis_t presentation_duration = lab_mode
             ? 3600000
@@ -246,6 +243,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
                 scene != nullptr ? scene->get_name() : "");
             next_scene = scheduler_.select_scene(weighted);
+            if (next_scene != nullptr)
+                next_scene->set_post_effect_sink(post_processor_);
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }
@@ -334,6 +333,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 scenes, latest_inputs, scene->get_name(), director_preferred_scene);
             next_scene = decision.scene;
             Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+            if (next_scene != nullptr)
+                next_scene->set_post_effect_sink(post_processor_);
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }

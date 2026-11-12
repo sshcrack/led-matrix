@@ -43,6 +43,7 @@ public:
 private:
     RGBMatrixBase *matrix_;
     TimeSource *time_source_;
+    PostProcessor* post_processor_;
     MatrixPresenter *presenter_;
     Config::MainConfig *config_;
     const std::atomic<bool> *exit_flag_;

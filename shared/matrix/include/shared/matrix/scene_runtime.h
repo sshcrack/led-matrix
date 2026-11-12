@@ -10,6 +10,16 @@
 
 namespace Scenes {
 
+/// Narrow capability a render host lends a scene so it can ask for short
+/// post-processing accents (glow, shockwave, ...) without reaching for a
+/// process-wide pointer. Hosts without post-processing (previews, the desktop
+/// scene worker) simply never attach one.
+class PostEffectSink {
+public:
+    virtual ~PostEffectSink() = default;
+    virtual bool add_effect(const std::string& effect_name, float duration, float intensity) = 0;
+};
+
 struct SceneFrameContext {
     double delta_seconds = 0.0;
     double elapsed_seconds = 0.0;
