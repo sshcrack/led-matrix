@@ -56,7 +56,8 @@ namespace {
         return j;
     }
 
-    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg) {
+    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg)
+    {
         std::vector<json> j;
         j.reserve(scenes.size());
         const auto runtime_snapshot = RuntimeInputs::snapshot();
@@ -69,7 +70,7 @@ namespace {
             const auto preview_spec = default_item->get_preview_spec();
             const auto descriptor = default_item->get_descriptor();
             auto descriptor_json = Scenes::descriptor_to_json(descriptor);
-            for (const auto &custom : cfg->get_custom_scene_variants(scene->get_name())) {
+            for (const auto& custom : cfg->get_custom_scene_variants(scene->get_name())) {
                 descriptor_json["variants"].push_back({
                     {"id", custom.id}, {"label", custom.label},
                     {"description", custom.description}, {"properties", custom.properties},
@@ -112,7 +113,8 @@ namespace {
     }
 }
 
-std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager* transition_manager, Config::MainConfig* cfg)
+std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager* transition_manager,
+                                                           Config::MainConfig* cfg)
 {
     // GET routes
     router->http_get("/get_curr", [cfg](auto req, auto) {

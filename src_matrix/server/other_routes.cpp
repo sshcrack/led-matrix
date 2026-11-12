@@ -65,7 +65,6 @@ std::filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
 }
 } // namespace
 
-
 std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
     // Root redirect
@@ -180,8 +179,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
         return reply_with_error(req, "Not found", restinio::status_not_found()); });
 
-    router->http_get("/diagnostics", [cfg](auto req, auto)
-                     {
+    router->http_get("/diagnostics", [cfg](auto req, auto) {
         auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();
         result["desktop_connections"] = Server::desktop_connection_count.load();
         const auto runtime_inputs = RuntimeInputs::snapshot();
@@ -252,7 +250,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             });
         }
 
-        return reply_with_json(req, result); });
+        return reply_with_json(req, result);
+    });
 
     router->http_get("/runtime_inputs", [](auto req, auto)
                      { return reply_with_json(req, RuntimeInputs::to_json(RuntimeInputs::snapshot())); });
@@ -272,41 +271,50 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                         try {
                             std::size_t parsed = 0;
                             seed = std::stoull(text, &parsed, 10);
-                            if (parsed != text.size()) return reply_with_error(req, "seed contains non-digits");
-                        } catch (const std::out_of_range &) {
+                            if (parsed != text.size())
+                                return reply_with_error(req, "seed contains non-digits");
+                        }
+                        catch (const std::out_of_range&) {
                             return reply_with_error(req, "seed exceeds the 64-bit unsigned integer range");
-                        } catch (const std::invalid_argument &) {
+                        }
+                        catch (const std::invalid_argument&) {
                             return reply_with_error(req, "seed must contain decimal digits only");
                         }
-                    } else if (body["seed"].is_number_unsigned()) {
+                    }
+                    else if (body["seed"].is_number_unsigned()) {
                         seed = body["seed"].template get<std::uint64_t>();
-                    } else if (body["seed"].is_number_integer()) {
+                    }
+                    else if (body["seed"].is_number_integer()) {
                         const auto signed_seed = body["seed"].template get<std::int64_t>();
-                        if (signed_seed <= 0) return reply_with_error(req, "seed must be greater than zero");
+                        if (signed_seed <= 0)
+                            return reply_with_error(req, "seed must be greater than zero");
                         seed = static_cast<std::uint64_t>(signed_seed);
-                    } else {
+                    }
+                    else {
                         return reply_with_error(req, "seed must be an unsigned integer or decimal string");
                     }
-                    if (seed == 0) return reply_with_error(req, "seed must be greater than zero");
+                    if (seed == 0)
+                        return reply_with_error(req, "seed must be greater than zero");
                 }
             }
             if (!seed_supplied) {
                 std::random_device random;
                 seed = (static_cast<std::uint64_t>(random()) << 32U) ^ static_cast<std::uint64_t>(random());
-                if (seed == 0) seed = 1;
+                if (seed == 0)
+                    seed = 1;
             }
             cfg->set_automatic_director_seed(seed);
             if (!cfg->save())
                 return reply_with_error(req, "Could not persist Automatic Director seed", restinio::status_internal_server_error());
             return reply_with_json(req, {{"success", true}, {"seed", std::to_string(seed)}});
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             return reply_with_error(req, e.what());
         }
     });
 
-    router->http_get("/automatic_director/mode", [cfg](auto req, auto) {
-        return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}});
-    });
+    router->http_get("/automatic_director/mode",
+                     [cfg](auto req, auto) { return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}}); });
 
     router->http_post("/automatic_director/mode", [cfg](auto req, auto) {
         try {
@@ -317,14 +325,14 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             if (!cfg->save())
                 return reply_with_error(req, "Could not persist the Automatic Mode style", restinio::status_internal_server_error());
             return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}});
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             return reply_with_error(req, e.what());
         }
     });
 
-    router->http_get("/automatic_director/preferences", [cfg](auto req, auto) {
-        return reply_with_json(req, json(cfg->get_automatic_preferences()));
-    });
+    router->http_get("/automatic_director/preferences",
+                     [cfg](auto req, auto) { return reply_with_json(req, json(cfg->get_automatic_preferences())); });
 
     router->http_post("/automatic_director/preferences", [cfg](auto req, auto) {
         try {
@@ -335,7 +343,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             if (!cfg->save())
                 return reply_with_error(req, "Could not persist Automatic Mode preference", restinio::status_internal_server_error());
             return reply_with_json(req, json(cfg->get_automatic_preferences()));
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             return reply_with_error(req, e.what());
         }
     });

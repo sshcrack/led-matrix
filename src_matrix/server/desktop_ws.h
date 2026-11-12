@@ -7,6 +7,6 @@ class MainConfig;
 
 namespace Server
 {
-    std::unique_ptr<router_t> add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry, Config::MainConfig* cfg);
-    void broadcast_matrix_enabled(bool enabled);
+std::unique_ptr<router_t> add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t& registry, Config::MainConfig* cfg);
+void broadcast_matrix_enabled(bool enabled);
 }
