@@ -28,17 +28,18 @@ using json = nlohmann::json;
 
 
 // Create request handler.
-std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry ) {
+std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const Dependencies& deps)
+{
     auto router = std::make_unique<router_t>();
 
     router = add_preset_routes(std::move(router));
     router = add_canvas_status_routes(std::move(router));
-    router = add_scene_routes(std::move(router));
+    router = add_scene_routes(std::move(router), deps.transition_manager);
     router = add_scene_lab_routes(std::move(router));
     router = add_custom_assets_routes(std::move(router));
     router = add_schedule_routes(std::move(router));
     router = add_environment_routes(std::move(router));
-    router = add_post_processing_routes(std::move(router));
+    router = add_post_processing_routes(std::move(router), deps.post_processor);
     router = add_update_routes(std::move(router), Constants::global_update_manager.get());
     router = add_other_routes(std::move(router));
     router = add_live_frame_routes(std::move(router));

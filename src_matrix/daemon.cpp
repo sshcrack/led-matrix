@@ -297,12 +297,10 @@ Daemon::Daemon(int argc, char* argv[])
         }
 
         auto effects = item->create_effects();
-        for (auto &effect : effects)
-            Constants::global_post_processor->register_effect(move(effect));
+        for (auto& effect : effects) post_processor_->register_effect(move(effect));
 
         auto transitions = item->create_transitions();
-        for (auto &transition : transitions)
-            Constants::global_transition_manager->register_transition(move(transition));
+        for (auto& transition : transitions) transition_manager_->register_transition(move(transition));
     }
 
     info("Loaded {} Scenes and {} Image Types",
@@ -347,7 +345,7 @@ Daemon::Daemon(int argc, char* argv[])
         [this, host](auto &settings)
         {
             unique_lock lock(Server::registryMutex);
-            auto router = Server::server_handler(Server::registry);
+            auto router = Server::server_handler(Server::registry, {post_processor_.get(), transition_manager_.get()});
             if (is_debugging_)
                 router->http_get("/exit_debug", [](auto req, auto)
                 {
@@ -521,8 +519,8 @@ Daemon::~Daemon()
 int Daemon::run()
 {
 #ifdef ENABLE_EMULATOR
-    return start_hardware_mainloop(matrix_.get(), pinned_scene_);
+    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get(), pinned_scene_);
 #else
-    return start_hardware_mainloop(matrix_.get());
+    return start_hardware_mainloop(matrix_.get(), post_processor_.get(), transition_manager_.get());
 #endif
 }
