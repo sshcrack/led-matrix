@@ -15,7 +15,7 @@ using namespace spdlog;
 namespace Server
 {
 
-    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, Update::UpdateManager *update_manager)
+    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, std::shared_ptr<Update::UpdateManager> update_manager)
     {
         if (!update_manager)
         {
@@ -92,7 +92,7 @@ namespace Server
 
                 // Start installation in background thread. CHECKING is set before replying, so the browser's
                 // first status poll already belongs to this install (react-web/src/components/updates/updateProgress.ts).
-                auto update_manager_sp = Constants::global_update_manager;
+                const auto& update_manager_sp = update_manager;
                 update_manager_sp->begin_manual_install();
                 std::thread([update_manager_sp, parsed_version]() {
                     auto update = update_manager_sp->get_update_info(parsed_version);

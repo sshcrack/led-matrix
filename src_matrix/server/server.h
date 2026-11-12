@@ -1,9 +1,14 @@
 #pragma once
+#include <memory>
 #include <restinio/core.hpp>
 #include <restinio/websocket/websocket.hpp>
 
 class PostProcessor;
 class TransitionManager;
+
+namespace Update {
+    class UpdateManager;
+}
 
 namespace Server
 {
@@ -17,6 +22,7 @@ namespace Server
     struct Dependencies {
         PostProcessor* post_processor = nullptr;
         TransitionManager* transition_manager = nullptr;
+        std::shared_ptr<Update::UpdateManager> update_manager;
     };
 
     std::unique_ptr<router_t> server_handler(ws_registry_t& registry, const Dependencies& deps);

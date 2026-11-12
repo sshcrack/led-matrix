@@ -5,5 +5,5 @@
 #include <restinio/core.hpp>
 
 namespace Server {
-    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, Update::UpdateManager* update_manager);
+    std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, std::shared_ptr<Update::UpdateManager> update_manager);
 }
