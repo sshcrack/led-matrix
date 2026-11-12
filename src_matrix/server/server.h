@@ -15,10 +15,9 @@ namespace Server
     /// Objects the routes use. Owned by the Daemon, which stops the HTTP server
     /// before destroying them, so routes may hold these pointers.
     struct Dependencies {
-        PostProcessor *post_processor = nullptr;
-        TransitionManager *transition_manager = nullptr;
+        PostProcessor* post_processor = nullptr;
+        TransitionManager* transition_manager = nullptr;
     };
 
-    std::unique_ptr<router_t> server_handler(ws_registry_t &registry, const Dependencies &deps);
-
+    std::unique_ptr<router_t> server_handler(ws_registry_t& registry, const Dependencies& deps);
 }

@@ -297,12 +297,10 @@ Daemon::Daemon(int argc, char* argv[])
         }
 
         auto effects = item->create_effects();
-        for (auto &effect : effects)
-            post_processor_->register_effect(move(effect));
+        for (auto& effect : effects) post_processor_->register_effect(move(effect));
 
         auto transitions = item->create_transitions();
-        for (auto &transition : transitions)
-            transition_manager_->register_transition(move(transition));
+        for (auto& transition : transitions) transition_manager_->register_transition(move(transition));
     }
 
     info("Loaded {} Scenes and {} Image Types",

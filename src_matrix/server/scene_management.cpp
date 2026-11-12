@@ -112,7 +112,8 @@ namespace {
     }
 }
 
-std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager *transition_manager) {
+std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager* transition_manager)
+{
     // GET routes
     router->http_get("/get_curr", [](auto req, auto) {
         std::vector<json> scenes;

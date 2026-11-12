@@ -1,8 +1,10 @@
 #include "post_processing_routes.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/post_processor.h"
-#include "nlohmann/json.hpp"
+
 #include <algorithm>
+
+#include "nlohmann/json.hpp"
+#include "shared/matrix/post_processor.h"
+#include "shared/matrix/server/server_utils.h"
 
 using json = nlohmann::json;
 
@@ -87,8 +89,8 @@ namespace {
     }
 }
 
-std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router, PostProcessor *post_processor) {
-    
+std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique_ptr<router_t> router, PostProcessor* post_processor)
+{
     // Trigger flash effect
     router->http_post("/post_processing/flash", [post_processor](const auto& req, auto) {
         auto* pp = post_processor;
@@ -104,13 +106,14 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
             response["intensity"] = intensity;
             
             return reply_with_json(req, response);
-        } else {
+        }
+        else {
             return reply_with_error(req, "Post-processor not available", restinio::status_service_unavailable());
         }
     });
-    
+
     // Trigger rotate effect
-    router->http_post("/post_processing/rotate", [post_processor](const auto&  req, auto) {
+    router->http_post("/post_processing/rotate", [post_processor](const auto& req, auto) {
         auto* pp = post_processor;
         if (pp) {
             auto [duration, intensity] = parse_duration_intensity(req, rotate_default_duration, rotate_default_intensity, rotate_duration_min, rotate_duration_max, rotate_intensity_min, rotate_intensity_max);
@@ -124,13 +127,14 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
             response["intensity"] = intensity;
             
             return reply_with_json(req, response);
-        } else {
+        }
+        else {
             return reply_with_error(req, "Post-processor not available", restinio::status_service_unavailable());
         }
     });
-    
+
     // Clear all post-processing effects
-    router->http_post("/post_processing/clear", [post_processor](const auto&  req, auto) {
+    router->http_post("/post_processing/clear", [post_processor](const auto& req, auto) {
         auto* pp = post_processor;
         if (pp) {
             pp->clear_effects();
@@ -140,11 +144,12 @@ std::unique_ptr<Server::router_t> Server::add_post_processing_routes(std::unique
             response["message"] = "All post-processing effects cleared";
             
             return reply_with_json(req, response);
-        } else {
+        }
+        else {
             return reply_with_error(req, "Post-processor not available", restinio::status_service_unavailable());
         }
     });
-    
+
     // Get post-processing status
     router->http_get("/post_processing/status", [post_processor](const auto& req, auto) {
         auto* pp = post_processor;

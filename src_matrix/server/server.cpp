@@ -28,7 +28,8 @@ using json = nlohmann::json;
 
 
 // Create request handler.
-std::unique_ptr<router_t> Server::server_handler(ws_registry_t & registry, const Dependencies &deps) {
+std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const Dependencies& deps)
+{
     auto router = std::make_unique<router_t>();
 
     router = add_preset_routes(std::move(router));

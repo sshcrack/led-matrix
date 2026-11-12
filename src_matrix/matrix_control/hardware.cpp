@@ -33,8 +33,8 @@ static std::unique_ptr<MatrixPresenter> create_presenter(RGBMatrixBase *matrix)
 #endif
 }
 
-void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, PostProcessor *post_processor,
-                       TransitionManager *transition_manager, std::shared_ptr<Scenes::Scene> pinned_scene)
+void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_processor, TransitionManager* transition_manager,
+                       std::shared_ptr<Scenes::Scene> pinned_scene)
 {
     info("Press Ctrl+C to quit");
 
@@ -56,13 +56,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, PostProcessor *post_pr
         }
     };
 
-    CanvasCoordinator coordinator(matrix, &wall_clock,
-        post_processor,
-        transition_manager,
-        presenter.get(), config,
-        &exit_canvas_update, &interrupt_received,
-        RuntimeInputs::snapshot,
-        set_curr_scene, broadcast);
+    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), config, &exit_canvas_update,
+                                  &interrupt_received, RuntimeInputs::snapshot, set_curr_scene, broadcast);
 
     string last_scheduled_preset = "";
 
@@ -108,8 +103,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, PostProcessor *post_pr
     info("Finished, shutting down...");
 }
 
-int start_hardware_mainloop(rgb_matrix::RGBMatrixBase *matrix, PostProcessor *post_processor,
-                            TransitionManager *transition_manager, std::shared_ptr<Scenes::Scene> pinned_scene)
+int start_hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_processor, TransitionManager* transition_manager,
+                            std::shared_ptr<Scenes::Scene> pinned_scene)
 {
 
     Constants::height = matrix->height();
