@@ -17,7 +17,7 @@ namespace Scenes {
 class PostEffectSink {
 public:
     virtual ~PostEffectSink() = default;
-    virtual bool add_effect(const std::string &effect_name, float duration, float intensity) = 0;
+    virtual bool add_effect(const std::string& effect_name, float duration, float intensity) = 0;
 };
 
 struct SceneFrameContext {

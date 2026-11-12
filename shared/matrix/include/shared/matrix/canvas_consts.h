@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <atomic>
+#include <string>
+
 #include "shared/matrix/export.h"
 
 namespace Constants {

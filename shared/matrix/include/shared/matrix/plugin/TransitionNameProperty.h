@@ -1,8 +1,9 @@
 #pragma once
 
-#include "shared/matrix/plugin/property.h"
 #include <string>
 #include <vector>
+
+#include "shared/matrix/plugin/property.h"
 
 namespace Plugins {
 
@@ -34,12 +35,11 @@ public:
         j[name] = value;
     }
 
-    void add_additional_data(nlohmann::json& j) const override {
-        add_additional_data(j, {});
-    }
+    void add_additional_data(nlohmann::json& j) const override { add_additional_data(j, {}); }
 
     /// Schema data with the transitions the host has registered.
-    void add_additional_data(nlohmann::json& j, const std::vector<std::string>& transitions) const {
+    void add_additional_data(nlohmann::json& j, const std::vector<std::string>& transitions) const
+    {
         j["enum_name"] = "Transition";
         j["enum_values"] = nlohmann::json::array();
 
@@ -50,10 +50,7 @@ public:
         });
 
         for (const auto& transition : transitions) {
-            j["enum_values"].push_back({
-                {"value", transition},
-                {"display_name", transition}
-            });
+            j["enum_values"].push_back({{"value", transition}, {"display_name", transition}});
         }
 
         // Fallback: ensure at least one concrete transition is always listed

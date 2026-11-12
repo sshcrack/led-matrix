@@ -43,7 +43,7 @@ namespace Scenes {
         int target_fps = 60;
         tmillis_t last_render_time = 0;
         SceneFrameContext frame_context_{};
-        PostEffectSink *post_effect_sink_ = nullptr;
+        PostEffectSink* post_effect_sink_ = nullptr;
         std::chrono::steady_clock::time_point frame_clock_start_{};
         std::chrono::steady_clock::time_point frame_clock_last_{};
         bool frame_clock_started_ = false;
@@ -99,7 +99,8 @@ namespace Scenes {
 
         /// Ask the host for a short post-processing accent. Returns false when
         /// the host has none (previews, desktop worker) or the effect is unknown.
-        bool request_post_effect(const std::string &effect_name, float effect_seconds, float intensity) {
+        bool request_post_effect(const std::string& effect_name, float effect_seconds, float intensity)
+        {
             return post_effect_sink_ != nullptr && post_effect_sink_->add_effect(effect_name, effect_seconds, intensity);
         }
 
@@ -252,7 +253,7 @@ namespace Scenes {
 
         /// The render host lends the scene its post-processing capability (or
         /// nullptr). The host must keep it alive while the scene can render.
-        void set_post_effect_sink(PostEffectSink *sink) { post_effect_sink_ = sink; }
+        void set_post_effect_sink(PostEffectSink* sink) { post_effect_sink_ = sink; }
 
         virtual void after_render_stop();
 

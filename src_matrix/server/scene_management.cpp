@@ -1,16 +1,18 @@
 #include "scene_management.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/preview.h"
+
+#include <filesystem>
+
 #include "nlohmann/json.hpp"
-#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/common/utils/utils.h"
 #include "shared/matrix/canvas_consts.h"
-#include "shared/matrix/transition_manager.h"
 #include "shared/matrix/plugin/TransitionNameProperty.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/preview.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/MimeTypes.h"
-#include "shared/common/utils/utils.h"
-#include <filesystem>
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/transition_manager.h"
+#include "shared/matrix/utils/shared.h"
 
 using json = nlohmann::json;
 
@@ -19,105 +21,101 @@ using json = nlohmann::json;
 #endif
 
 namespace {
-    std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional,
-                                          const std::vector<std::string>& transitions) {
-        std::vector<json> properties_json;
-        properties_json.reserve(properties.size());
-        for (const auto& prop : properties) {
-            json j1;
-            prop->dump_to_json(j1);
-            json j2;
-            j2["name"] = prop->getName();
-            j2["default_value"] = j1[prop->getName()];
-            j2["type_id"] = prop->get_type_id();
-            if (include_additional) {
-                json additional_data;
-                if (const auto* transition_prop = dynamic_cast<const Plugins::TransitionNameProperty*>(prop.get()))
-                    transition_prop->add_additional_data(additional_data, transitions);
-                else
-                    prop->add_additional_data(additional_data);
-                j2["additional"] = std::move(additional_data);
-            }
-            properties_json.push_back(std::move(j2));
+std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional,
+                                       const std::vector<std::string>& transitions)
+{
+    std::vector<json> properties_json;
+    properties_json.reserve(properties.size());
+    for (const auto& prop : properties) {
+        json j1;
+        prop->dump_to_json(j1);
+        json j2;
+        j2["name"] = prop->getName();
+        j2["default_value"] = j1[prop->getName()];
+        j2["type_id"] = prop->get_type_id();
+        if (include_additional) {
+            json additional_data;
+            if (const auto* transition_prop = dynamic_cast<const Plugins::TransitionNameProperty*>(prop.get()))
+                transition_prop->add_additional_data(additional_data, transitions);
+            else
+                prop->add_additional_data(additional_data);
+            j2["additional"] = std::move(additional_data);
         }
-        return properties_json;
+        properties_json.push_back(std::move(j2));
     }
+    return properties_json;
+}
 
-    template<typename T>
-    json make_providers_list(const std::vector<std::shared_ptr<T>>& items, const std::vector<std::string>& transitions) {
-        std::vector<json> j;
-        j.reserve(items.size());
-        for (const auto& item : items) {
-            auto default_item = item->get_default();
-            if (!default_item) {
-                spdlog::warn("make_providers_list: provider '{}' has null get_default(), skipping", item->get_name());
-                continue;
-            }
-            auto properties = default_item->get_properties();
-            j.push_back({
-                {"name", item->get_name()},
-                {"properties", serialize_properties(properties, true, transitions)}
-            });
+template <typename T>
+json make_providers_list(const std::vector<std::shared_ptr<T>>& items, const std::vector<std::string>& transitions)
+{
+    std::vector<json> j;
+    j.reserve(items.size());
+    for (const auto& item : items) {
+        auto default_item = item->get_default();
+        if (!default_item) {
+            spdlog::warn("make_providers_list: provider '{}' has null get_default(), skipping", item->get_name());
+            continue;
         }
-        return j;
+        auto properties = default_item->get_properties();
+        j.push_back({{"name", item->get_name()}, {"properties", serialize_properties(properties, true, transitions)}});
     }
+    return j;
+}
 
-    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg,
-                          const std::vector<std::string>& transitions)
-    {
-        std::vector<json> j;
-        j.reserve(scenes.size());
-        const auto runtime_snapshot = RuntimeInputs::snapshot();
-        for (const auto& scene : scenes) {
-            auto default_item = scene->get_default();
-            if (!default_item) continue;
-            auto properties = default_item->get_properties();
-            auto properties_json = serialize_properties(properties, true, transitions);
-            const auto caps = default_item->get_capabilities();
-            const auto preview_spec = default_item->get_preview_spec();
-            const auto descriptor = default_item->get_descriptor();
-            auto descriptor_json = Scenes::descriptor_to_json(descriptor);
-            for (const auto& custom : cfg->get_custom_scene_variants(scene->get_name())) {
-                descriptor_json["variants"].push_back({
-                    {"id", custom.id}, {"label", custom.label},
-                    {"description", custom.description}, {"properties", custom.properties},
-                    {"tags", json::array({"custom"})}
-                });
-            }
-            const auto runtime_spec = default_item->get_effective_runtime_inputs();
-            const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
-            j.push_back({
-                {"name", scene->get_name()},
-                {"properties", std::move(properties_json)},
-                {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" / Previews::preview_filename(scene->get_name()))},
-                {"needs_desktop", caps.requires_desktop},
-                {"category", default_item->get_category()},
-                {"descriptor", std::move(descriptor_json)},
-                {"runtime_inputs", {
-                    {"required", runtime_spec.required},
-                    {"optional", runtime_spec.optional},
-                    {"eligible", missing_inputs.empty()},
-                    {"missing_required", missing_inputs}
-                }},
-                {"capabilities", {
-                    {"requires_desktop", caps.requires_desktop},
-                    {"requires_audio", caps.requires_audio},
-                    {"requires_network", caps.requires_network},
-                    {"interactive", caps.interactive},
-                    {"can_generate_preview", caps.can_generate_preview},
-                    {"supports_audio", caps.supports_audio},
-                    {"music_director_eligible", caps.music_director_eligible},
-                    {"supports_remote_rendering", caps.supports_remote_rendering}
-                }},
-                {"preview", {
-                    {"enabled", preview_spec.enabled},
-                    {"inputs", preview_spec.inputs},
-                    {"property_overrides", preview_spec.property_overrides}
-                }}
-            });
+json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg,
+                      const std::vector<std::string>& transitions)
+{
+    std::vector<json> j;
+    j.reserve(scenes.size());
+    const auto runtime_snapshot = RuntimeInputs::snapshot();
+    for (const auto& scene : scenes) {
+        auto default_item = scene->get_default();
+        if (!default_item)
+            continue;
+        auto properties = default_item->get_properties();
+        auto properties_json = serialize_properties(properties, true, transitions);
+        const auto caps = default_item->get_capabilities();
+        const auto preview_spec = default_item->get_preview_spec();
+        const auto descriptor = default_item->get_descriptor();
+        auto descriptor_json = Scenes::descriptor_to_json(descriptor);
+        for (const auto& custom : cfg->get_custom_scene_variants(scene->get_name())) {
+            descriptor_json["variants"].push_back({{"id", custom.id},
+                                                   {"label", custom.label},
+                                                   {"description", custom.description},
+                                                   {"properties", custom.properties},
+                                                   {"tags", json::array({"custom"})}});
         }
-        return j;
+        const auto runtime_spec = default_item->get_effective_runtime_inputs();
+        const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
+        j.push_back({{"name", scene->get_name()},
+                     {"properties", std::move(properties_json)},
+                     {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" /
+                                                             Previews::preview_filename(scene->get_name()))},
+                     {"needs_desktop", caps.requires_desktop},
+                     {"category", default_item->get_category()},
+                     {"descriptor", std::move(descriptor_json)},
+                     {"runtime_inputs",
+                      {{"required", runtime_spec.required},
+                       {"optional", runtime_spec.optional},
+                       {"eligible", missing_inputs.empty()},
+                       {"missing_required", missing_inputs}}},
+                     {"capabilities",
+                      {{"requires_desktop", caps.requires_desktop},
+                       {"requires_audio", caps.requires_audio},
+                       {"requires_network", caps.requires_network},
+                       {"interactive", caps.interactive},
+                       {"can_generate_preview", caps.can_generate_preview},
+                       {"supports_audio", caps.supports_audio},
+                       {"music_director_eligible", caps.music_director_eligible},
+                       {"supports_remote_rendering", caps.supports_remote_rendering}}},
+                     {"preview",
+                      {{"enabled", preview_spec.enabled},
+                       {"inputs", preview_spec.inputs},
+                       {"property_overrides", preview_spec.property_overrides}}}});
     }
+    return j;
+}
 }
 
 std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<router_t> router, TransitionManager* transition_manager,
@@ -152,11 +150,13 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
     });
 
     router->http_get("/list_providers", [registered_transitions](auto req, auto) {
-        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_image_providers(), registered_transitions()));
+        return reply_with_json(req,
+                               make_providers_list(Plugins::PluginManager::instance()->get_image_providers(), registered_transitions()));
     });
 
     router->http_get("/list_shader_providers", [registered_transitions](auto req, auto) {
-        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_shader_providers(), registered_transitions()));
+        return reply_with_json(req,
+                               make_providers_list(Plugins::PluginManager::instance()->get_shader_providers(), registered_transitions()));
     });
 
     router->http_get("/list_transitions", [transition_manager](auto req, auto) {

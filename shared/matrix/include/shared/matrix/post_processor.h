@@ -1,13 +1,14 @@
 #pragma once
 
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "led-matrix.h"
 #include "post_processing_effect.h"
 #include "shared/matrix/scene_runtime.h"
-#include <memory>
-#include <mutex>
-#include <vector>
-#include <unordered_map>
-#include <string>
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
@@ -27,7 +28,7 @@ public:
     
     // Add a new post-processing effect by name
     bool add_effect(const std::string& effect_name, float duration = 0.5f, float intensity = 1.0f) override;
-    
+
     // Apply all active post-processing effects to the canvas
     void apply_effects(FrameCanvas* canvas);
     
