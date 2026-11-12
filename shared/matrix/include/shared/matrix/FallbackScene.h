@@ -11,6 +11,8 @@ namespace Scenes
         explicit FallbackScene(const std::string &name) : scene_name(name) {}
         nlohmann::json arguments;
 
+        void set_uuid(std::string id) { uuid = std::move(id); }
+
         int get_weight() const override {
             return -1;
         }
