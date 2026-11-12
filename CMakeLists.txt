@@ -886,6 +886,21 @@ if(ENABLE_EMULATOR)
     add_test(NAME plugin_lifecycle_smoke COMMAND $<TARGET_FILE:plugin_lifecycle_smoke>)
     set_tests_properties(plugin_lifecycle_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(scene_load_failure_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_load_failure_smoke.cpp
+    )
+    target_compile_features(scene_load_failure_smoke PRIVATE cxx_std_23)
+    target_link_libraries(scene_load_failure_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        spdlog::spdlog
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME scene_load_failure_smoke COMMAND $<TARGET_FILE:scene_load_failure_smoke>)
+    set_tests_properties(scene_load_failure_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(runtime_inputs_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_inputs_smoke.cpp
     )

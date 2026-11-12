@@ -83,6 +83,21 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_remote_command(const nlohmann
     return from_json_impl(scene_json, contract->get<int>());
 }
 
+namespace {
+// Keeps type, arguments, variant and uuid so a later config save does not lose the scene.
+std::unique_ptr<Scenes::Scene> make_fallback(const nlohmann::json &j, const std::string &type,
+                                             const nlohmann::json &arguments)
+{
+    auto fallback = std::make_unique<Scenes::FallbackScene>(type);
+    fallback->arguments = arguments;
+    if (const auto variant = j.value("variant", std::string{}); !variant.empty())
+        fallback->set_external_variant_id(variant);
+    std::string id = j.contains("uuid") ? j["uuid"].get<std::string>() : std::string{};
+    fallback->set_uuid(id.empty() ? uuid::generate_uuid_v4() : std::move(id));
+    return fallback;
+}
+}
+
 std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json_impl(const nlohmann::json &j,
                                                           std::optional<int> remote_contract)
 {
@@ -107,21 +122,29 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json_impl(const nlohmann::jso
                                                 *remote_contract, t));
 
         spdlog::debug("Creating scene '{}'", t);
-        scene->update_default_properties();
-        scene->register_properties();
+        try {
+            scene->update_default_properties();
+            scene->register_properties();
 
-        if (const auto variant = j.value("variant", std::string{}); !variant.empty()) {
-            const auto descriptor = scene->get_descriptor();
-            if (find_variant(descriptor, variant) != nullptr)
-                scene->apply_variant(variant);
-            else if (arguments.is_object())
-                scene->variant_id_ = variant; // saved/user variant; complete arguments remain authoritative
-            else
-                throw std::runtime_error(fmt::format("Unknown variant '{}' for scene '{}'", variant, t));
+            if (const auto variant = j.value("variant", std::string{}); !variant.empty()) {
+                const auto descriptor = scene->get_descriptor();
+                if (find_variant(descriptor, variant) != nullptr)
+                    scene->apply_variant(variant);
+                else if (arguments.is_object())
+                    scene->variant_id_ = variant; // saved/user variant; complete arguments remain authoritative
+                else
+                    throw std::runtime_error(fmt::format("Unknown variant '{}' for scene '{}'", variant, t));
+            }
+
+            spdlog::debug("Loading properties for scene '{}'", t);
+            scene->load_properties(arguments);
+        } catch (const std::exception &e) {
+            // Remote callers get the error; a saved config must not stop the daemon.
+            if (remote_contract)
+                throw;
+            spdlog::error("Scene '{}' failed to load its config ({}); keeping it as a FallbackScene", t, e.what());
+            return make_fallback(j, t, arguments);
         }
-
-        spdlog::debug("Loading properties for scene '{}'", t);
-        scene->load_properties(arguments);
         if (j.contains("uuid"))
             scene->uuid = j["uuid"].get<std::string>();
 
@@ -133,16 +156,7 @@ std::unique_ptr<Scenes::Scene> Scenes::Scene::from_json_impl(const nlohmann::jso
     if (remote_contract)
         throw std::runtime_error(fmt::format("Unknown remote scene '{}'", t));
     spdlog::warn("Unknown scene type '{}', returning FallbackScene", t);
-    auto unknown_scene = std::make_unique<Scenes::FallbackScene>(t);
-
-    unknown_scene->arguments = arguments;
-    if (j.contains("uuid"))
-        unknown_scene->uuid = j["uuid"].get<std::string>();
-
-    if (unknown_scene->uuid.empty())
-        unknown_scene->uuid = uuid::generate_uuid_v4();
-
-    return unknown_scene;
+    return make_fallback(j, t, arguments);
 }
 
 void Scenes::Scene::initialize(int width, int height)
