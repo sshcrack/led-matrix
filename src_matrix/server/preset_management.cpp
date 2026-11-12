@@ -8,28 +8,29 @@
 
 using json = nlohmann::json;
 
-std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router) {
-    router->http_get("/set_active", [](auto req, auto) {
+std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
+{
+    router->http_get("/set_active", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "No Id given");
         }
 
         const string id{qp["id"]};
-        const auto presets = config->get_presets();
+        const auto presets = cfg->get_presets();
         if (presets.find(id) == presets.end()) {
             return reply_with_error(req, "Invalid id");
         }
 
-        config->set_curr(id);
-        config->set_operation_mode("manual");
-        config->save();
+        cfg->set_curr(id);
+        cfg->set_operation_mode("manual");
+        cfg->save();
         return reply_success(req);
     });
 
-    router->http_get("/presets", [](auto req, auto) {
+    router->http_get("/presets", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
-        auto presets = config->get_presets();
+        auto presets = cfg->get_presets();
         if (!qp.has("id")) {
             vector<string> keys;
             for (const auto &key: presets | std::views::keys) {
@@ -48,40 +49,43 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         return reply_with_json(req, json(p->second));
     });
 
-    router->http_get("/list_presets", [](auto req, auto) {
-        return reply_with_json(req, json(config->get_presets()));
-    });
+    router->http_get("/list_presets", [cfg](auto req, auto) { return reply_with_json(req, json(cfg->get_presets())); });
 
     router->http_get("/ambiance_packs", [](auto req, auto) {
         return reply_with_json(req, Ambiance::catalog());
     });
-    router->http_post("/ambiance_packs", [](auto req, auto) {
+    router->http_post("/ambiance_packs", [cfg](auto req, auto) {
         const auto query = restinio::parse_query(req->header().query());
-        if (!query.has("id")) return reply_with_error(req, "Pack id is required");
+        if (!query.has("id"))
+            return reply_with_error(req, "Pack id is required");
         try {
             auto preset = Ambiance::create_preset(std::string(query["id"]));
             std::string id;
-            do { id = uuid::generate_uuid_v4(); } while (config->get_presets().contains(id));
-            config->set_presets(id, preset);
-            if (!config->save()) {
-                config->delete_preset(id);
+            do {
+                id = uuid::generate_uuid_v4();
+            } while (cfg->get_presets().contains(id));
+            cfg->set_presets(id, preset);
+            if (!cfg->save()) {
+                cfg->delete_preset(id);
                 return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
             }
             return reply_with_json(req, {{"id", id}, {"display_name", preset->display_name}});
-        } catch (const std::exception &error) {
+        }
+        catch (const std::exception& error) {
             return reply_with_error(req, error.what());
         }
     });
 
     // POST routes
-    router->http_post("/add_preset", [](auto req, auto) {
+    router->http_post("/add_preset", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         spdlog::debug("Adding preset...");
         string str_body = req->body();
         json j;
         try {
             j = json::parse(str_body);
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -92,10 +96,11 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             std::string id;
             if (qp.has("id")) {
                 id = qp["id"];
-            } else {
+            }
+            else {
                 do {
                     id = uuid::generate_uuid_v4();
-                } while (config->get_presets().contains(id));
+                } while (cfg->get_presets().contains(id));
             }
 
             if (id.empty()) {
@@ -106,20 +111,21 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
                 pr->display_name = j.value("display_name", id);
             }
 
-            config->set_presets(id, pr);
-            config->save();
+            cfg->set_presets(id, pr);
+            cfg->save();
             return reply_with_json(req, {
                 {"success", "Preset has been added"},
                 {"id", id},
                 {"display_name", pr->display_name}
             });
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             spdlog::warn("Invalid preset with {}", ex.what());
             return reply_with_error(req, "Could not serialize json");
         }
     });
 
-    router->http_post("/preset", [](auto req, auto) {
+    router->http_post("/preset", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
@@ -131,7 +137,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
 
         try {
             j = json::parse(str_body);
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -140,26 +147,27 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             const auto pr = j.get<std::shared_ptr<ConfigData::Preset>>();
 
             if (pr->display_name.empty()) {
-                const auto presets = config->get_presets();
+                const auto presets = cfg->get_presets();
                 const auto existing = presets.find(id);
                 if (existing != presets.end() && existing->second) {
                     pr->display_name = existing->second->display_name;
                 }
             }
 
-            config->set_presets(id, pr);
-            config->save();
+            cfg->set_presets(id, pr);
+            cfg->save();
             return reply_with_json(req, {
                 {"success", "Preset has been set"},
                 {"id", id}
             });
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             spdlog::warn("Invalid preset with {}", ex.what());
             return reply_with_error(req, "Could not serialize json");
         }
     });
 
-    router->http_post("/preset_display_name", [](auto req, auto) {
+    router->http_post("/preset_display_name", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
@@ -173,7 +181,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         json j;
         try {
             j = json::parse(req->body());
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             spdlog::warn("Invalid json payload {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
@@ -187,11 +196,11 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             return reply_with_error(req, "display_name empty");
         }
 
-        if (!config->set_preset_display_name(id, display_name)) {
+        if (!cfg->set_preset_display_name(id, display_name)) {
             return reply_with_error(req, "Preset not found");
         }
 
-        config->save();
+        cfg->save();
         return reply_with_json(req, {
             {"success", "Preset display name updated"},
             {"id", id},
@@ -200,18 +209,18 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
     });
 
     // DELETE routes
-    router->http_delete("/preset", [](auto req, auto) {
+    router->http_delete("/preset", [cfg](auto req, auto) {
         const auto qp = restinio::parse_query(req->header().query());
         if (!qp.has("id")) {
             return reply_with_error(req, "Id not given");
         }
 
         const std::string id{qp["id"]};
-        if (config->get_curr_id() == id) {
+        if (cfg->get_curr_id() == id) {
             return reply_with_error(req, "Can not delete current preset");
         }
 
-        config->delete_preset(id);
+        cfg->delete_preset(id);
         return reply_with_json(req, {{"success", "Preset has been deleted"}});
     });
 

@@ -64,7 +64,7 @@ restinio::request_handling_status_t stale_or_bad_request(
 }
 }
 
-std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<router_t> router)
+std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
     router->http_get("/scene_lab", [](auto req, auto) {
         return reply_with_json(req, session_payload());
@@ -135,7 +135,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
         }
     });
 
-    router->http_post("/scene_lab/save_variant", [](auto req, auto) {
+    router->http_post("/scene_lab/save_variant", [cfg](auto req, auto) {
         try {
             const auto body = parse_body(req);
             const auto session_id = request_session_id(body);
@@ -145,31 +145,35 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             if (!state.active || !state.scene || state.session_id != *session_id)
                 return reply_with_error(req, "Scene Lab session is stale", restinio::status_conflict());
             const std::string label = body.value("label", std::string{});
-            if (label.empty()) return reply_with_error(req, "Variant label not given");
+            if (label.empty())
+                return reply_with_error(req, "Variant label not given");
             ConfigData::CustomSceneVariant variant;
             variant.id = body.value("id", std::string{});
-            if (variant.id.empty()) variant.id = variant_slug(label);
-            if (!variant.id.starts_with("custom.")) variant.id = "custom." + variant_slug(variant.id).substr(7);
+            if (variant.id.empty())
+                variant.id = variant_slug(label);
+            if (!variant.id.starts_with("custom."))
+                variant.id = "custom." + variant_slug(variant.id).substr(7);
             variant.label = label;
             variant.description = body.value("description", std::string("Saved from Scene Lab"));
             const auto updated = SceneLabRuntime::instance().update(
                 variant.id, state.properties, state.fps, RuntimeInputs::snapshot(),
                 state.generation, state.session_id);
             variant.properties = updated.properties;
-            config->set_custom_scene_variant(state.scene_name, variant);
-            if (!config->save())
+            cfg->set_custom_scene_variant(state.scene_name, variant);
+            if (!cfg->save())
                 return reply_with_error(req, "Could not persist Scene Lab variant", restinio::status_internal_server_error());
             exit_canvas_update.store(true);
             return reply_with_json(req, {
                 {"success", true}, {"scene", state.scene_name}, {"variant", variant},
                 {"generation", updated.generation}
             });
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             return stale_or_bad_request(req, e);
         }
     });
 
-    router->http_post("/scene_lab/save_preset", [](auto req, auto) {
+    router->http_post("/scene_lab/save_preset", [cfg](auto req, auto) {
         try {
             const auto body = parse_body(req);
             const auto session_id = request_session_id(body);
@@ -183,23 +187,27 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
                 {"type", state.scene_name}, {"arguments", state.properties},
                 {"uuid", uuid::generate_uuid_v4()}
             };
-            if (!state.variant.empty()) scene_json["variant"] = state.variant;
+            if (!state.variant.empty())
+                scene_json["variant"] = state.variant;
             auto preset = std::make_shared<ConfigData::Preset>();
             preset->display_name = label;
             preset->transition_duration = 750;
             preset->transition_name = "blend";
             preset->scenes.push_back(std::shared_ptr<Scenes::Scene>(Scenes::Scene::from_json(scene_json)));
             std::string id;
-            do { id = uuid::generate_uuid_v4(); } while (config->get_presets().contains(id));
-            config->set_presets(id, preset);
-            if (!config->save()) {
-                config->delete_preset(id);
+            do {
+                id = uuid::generate_uuid_v4();
+            } while (cfg->get_presets().contains(id));
+            cfg->set_presets(id, preset);
+            if (!cfg->save()) {
+                cfg->delete_preset(id);
                 return reply_with_error(
                     req, "Could not persist Scene Lab preset",
                     restinio::status_internal_server_error());
             }
             return reply_with_json(req, {{"success", true}, {"id", id}, {"display_name", label}});
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e) {
             return stale_or_bad_request(req, e);
         }
     });
