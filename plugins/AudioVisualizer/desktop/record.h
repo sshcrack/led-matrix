@@ -5,6 +5,7 @@
 #include <deque>
 #include <mutex>
 #include <optional>
+#include <chrono>
 #include <string>
 #include <thread>
 #include <vector>
@@ -58,6 +59,10 @@ namespace AudioRecorder
         bool startDefaultOutputLoopback();
         static bool isDefaultOutputLoopbackAvailable();
         static int getDefaultOutputLoopbackIndex();
+        /// Linux: true when the default output changed since the loopback
+        /// capture started (checked at most every few seconds), so the caller
+        /// restarts it on the new output. Always false elsewhere.
+        bool defaultOutputChanged();
         void stopRecording();
         [[nodiscard]] bool isRecording() const;
         [[nodiscard]] double getSampleRate() const;
@@ -86,6 +91,8 @@ namespace AudioRecorder
         pid_t loopbackPid = -1;
         std::thread loopbackThread;
         std::atomic<bool> stopLoopbackThread{false};
+        std::string loopbackSink; // sink whose monitor parec records, empty for @DEFAULT_MONITOR@
+        std::chrono::steady_clock::time_point lastSinkCheck{};
         void linuxLoopbackReadLoop();
         // Joins the reader thread, closes the pipe and reaps parec. Safe to
         // call when the reader already exited on its own.

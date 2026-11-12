@@ -71,6 +71,13 @@ register_plugin(AudioVisualizer
         desktop/frequency_analyzer/utils.cpp
 )
 
+# Header-only producer relevance policy of the desktop plugin; no desktop
+# dependencies, so it runs in every build that has tests (the emulator suite in CI).
+add_executable(desktop_relevance_smoke ${CMAKE_SOURCE_DIR}/tests/desktop_relevance_smoke.cpp)
+target_compile_features(desktop_relevance_smoke PRIVATE cxx_std_23)
+target_include_directories(desktop_relevance_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/desktop)
+add_test(NAME desktop_relevance_smoke COMMAND desktop_relevance_smoke)
+
 if(ENABLE_EMULATOR)
         add_executable(audio_spectrum_visual_regression
                 ${CMAKE_SOURCE_DIR}/tests/audio_spectrum_visual_regression.cpp

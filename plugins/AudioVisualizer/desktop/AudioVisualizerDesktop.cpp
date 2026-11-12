@@ -42,6 +42,7 @@ bool isDedicatedAudioScene(const std::string &name) {
 
 AudioVisualizerDesktop::AudioVisualizerDesktop() = default;
 AudioVisualizerDesktop::~AudioVisualizerDesktop() {
+    mediaSessions.stop();
     if (recorder) recorder->stopRecording();
 }
 
@@ -69,6 +70,7 @@ void AudioVisualizerDesktop::load_config(std::optional<const nlohmann::json> con
 }
 
 void AudioVisualizerDesktop::before_exit() {
+    mediaSessions.stop();
     DesktopAudioState::clear();
     if (recorder) recorder->stopRecording();
     if (implotContext) {
@@ -77,7 +79,10 @@ void AudioVisualizerDesktop::before_exit() {
     }
 }
 
-void AudioVisualizerDesktop::post_init() { implotContext = ImPlot::CreateContext(); }
+void AudioVisualizerDesktop::post_init() {
+    implotContext = ImPlot::CreateContext();
+    mediaSessions.start();
+}
 
 void AudioVisualizerDesktop::addConnectionSettings() {
     const bool running = recorder && recorder->isRecording();
@@ -88,6 +93,15 @@ void AudioVisualizerDesktop::addConnectionSettings() {
         ImGui::TextColored(running ? ImVec4(0.25f, 1.0f, 0.50f, 1.0f)
                                   : ImVec4(0.75f, 0.75f, 0.75f, 1.0f),
                            "%s", running ? "Streaming deep music analysis" : "Waiting for an active matrix connection");
+    const auto media = mediaSessions.snapshot();
+    if (!media.available)
+        ImGui::TextDisabled("Media playback: not detectable on this system");
+    else if (media.playing)
+        ImGui::TextDisabled("Media playback: %s is playing", media.player.empty() ? "a player" : media.player.c_str());
+    else
+        ImGui::TextDisabled("Media playback: nothing playing");
+    ImGui::SetItemTooltip("Playing media (Spotify, a browser, ...) makes this desktop a preferred audio producer, "
+                          "even through quiet passages.");
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings() {
@@ -302,6 +316,7 @@ bool AudioVisualizerDesktop::ensure_recording_locked() {
         if (recorder) recorder->stopRecording();
         currentDeviceName = cfg.deviceName;
         if (musicAnalyzer) musicAnalyzer->reset();
+        relevance.reset();
         diagnosticHistory.clear();
     }
 
@@ -319,6 +334,8 @@ bool AudioVisualizerDesktop::ensure_recording_locked() {
             recorder->stopRecording();
     }
 #endif
+    if (cfg.deviceName == DEFAULT_LOOPBACK_DEVICE_NAME && recorder->defaultOutputChanged())
+        recorder->stopRecording();
 
     if (!recorder->isRecording()) {
         bool started = false;
@@ -351,25 +368,26 @@ void AudioVisualizerDesktop::note_level_locked(const AudioRecorder::CapturedAudi
     if (captured.mono.empty()) return;
     double sum = 0.0;
     for (const float x : captured.mono) sum += static_cast<double>(x) * x;
-    const double rms = std::sqrt(sum / static_cast<double>(captured.mono.size()));
-    lastRelevance = rms > 0.003 ? 100 : 0; // above about -50 dBFS
-    lastRelevanceAt = std::chrono::steady_clock::now();
+    const auto now = std::chrono::steady_clock::now();
+    relevance.note_level(std::sqrt(sum / static_cast<double>(captured.mono.size())), now);
+    lastLevelAt = now;
 }
 
 int AudioVisualizerDesktop::desktop_relevance(const std::string &sceneName) {
-    // Audio that is actually playing makes this desktop the better producer.
-    // Capture runs on standby too (cheap); the analysis/streaming does not.
+    // Audio that is actually playing makes this desktop the better producer:
+    // audible output (held through quiet passages) or a media player that
+    // reports it is playing. Capture runs on standby too (cheap); the
+    // analysis/streaming does not.
     std::lock_guard stateLock(stateMutex);
     if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return 0;
-    // While the stream runs it keeps the verdict fresh. getLastSamples() shares
-    // its read position with the stream, so reading here would steal its samples.
     const auto now = std::chrono::steady_clock::now();
-    if (now - lastRelevanceAt < std::chrono::milliseconds(1500)) return lastRelevance;
-    if (!ensure_recording_locked()) return 0;
-    if (const auto captured = recorder->getLastSamples())
-        note_level_locked(*captured);
-    // An empty read is not silence: keep the last verdict for a few seconds.
-    return now - lastRelevanceAt < std::chrono::seconds(3) ? lastRelevance : 0;
+    const bool mediaPlaying = mediaSessions.snapshot().playing;
+    // While the stream runs it keeps the level fresh. getLastSamples() shares
+    // its read position with the stream, so reading here would steal its samples.
+    if (now - lastLevelAt >= std::chrono::milliseconds(1500) && ensure_recording_locked())
+        if (const auto captured = recorder->getLastSamples())
+            note_level_locked(*captured);
+    return relevance.score(now, mediaPlaying);
 }
 
 std::optional<std::unique_ptr<UdpPacket>> AudioVisualizerDesktop::compute_next_packet(
