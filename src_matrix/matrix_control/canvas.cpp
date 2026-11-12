@@ -25,6 +25,7 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase *matrix,
                                       std::function<void(const std::string &)> broadcast)
     : matrix_(matrix)
     , time_source_(time_source)
+    , post_processor_(post_processor)
     , presenter_(presenter)
     , config_(cfg)
     , exit_flag_(exit_flag)
@@ -219,6 +220,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         }
 
         no_scene_count = 0;
+        scene->set_post_effect_sink(post_processor_);
         if (!scene->is_initialized()) scene->initialize(matrix_width, matrix_height);
         const tmillis_t presentation_duration = lab_mode
             ? 3600000
@@ -246,6 +248,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             auto weighted = scheduler_.build_weighted_scenes(scenes, runtime_inputs,
                 scene != nullptr ? scene->get_name() : "");
             next_scene = scheduler_.select_scene(weighted);
+            if (next_scene != nullptr) next_scene->set_post_effect_sink(post_processor_);
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }
@@ -334,6 +337,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 scenes, latest_inputs, scene->get_name(), director_preferred_scene);
             next_scene = decision.scene;
             Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
+            if (next_scene != nullptr) next_scene->set_post_effect_sink(post_processor_);
             if (next_scene != nullptr && !next_scene->is_initialized())
                 next_scene->initialize(matrix_width, matrix_height);
         }

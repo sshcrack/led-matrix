@@ -2,6 +2,7 @@
 
 #include "led-matrix.h"
 #include "post_processing_effect.h"
+#include "shared/matrix/scene_runtime.h"
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -11,7 +12,7 @@
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
 
-class PostProcessor {
+class PostProcessor final : public Scenes::PostEffectSink {
 private:
     mutable std::mutex effectsMutex;
     std::vector<PostProcessEffect> active_effects;
@@ -25,7 +26,7 @@ public:
     void register_effect(std::unique_ptr<PostProcessingEffect> effect);
     
     // Add a new post-processing effect by name
-    bool add_effect(const std::string& effect_name, float duration = 0.5f, float intensity = 1.0f);
+    bool add_effect(const std::string& effect_name, float duration = 0.5f, float intensity = 1.0f) override;
     
     // Apply all active post-processing effects to the canvas
     void apply_effects(FrameCanvas* canvas);

@@ -478,13 +478,13 @@ bool MusicDirectorScene::switch_child(MusicalState state, const AudioState::Snap
 
             // Cross-fading owns the visual handoff. Optional accents are now
             // restrained, non-glitch effects and never whiten the whole frame.
-            if (switch_effects_->get() && Constants::global_post_processor) {
+            if (switch_effects_->get()) {
                 if (state == MusicalState::Groove)
-                    Constants::global_post_processor->add_effect("glow", 0.44f, 0.08f);
+                    request_post_effect("glow", 0.44f, 0.08f);
                 else if (state == MusicalState::Build)
-                    Constants::global_post_processor->add_effect("shockwave", 0.48f, 0.16f);
+                    request_post_effect("shockwave", 0.48f, 0.16f);
                 else if (state == MusicalState::Peak)
-                    Constants::global_post_processor->add_effect("shockwave", 0.54f, 0.22f);
+                    request_post_effect("shockwave", 0.54f, 0.22f);
             }
             spdlog::info("Music Director selected '{}' variant '{}' score {:.2f}", child_name_, child_variant_, choice.score);
             return true;

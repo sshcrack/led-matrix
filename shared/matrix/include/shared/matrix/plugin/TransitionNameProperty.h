@@ -1,7 +1,8 @@
 #pragma once
 
 #include "shared/matrix/plugin/property.h"
-#include "shared/matrix/canvas_consts.h"
+#include <string>
+#include <vector>
 
 namespace Plugins {
 
@@ -10,8 +11,8 @@ inline constexpr const char* TRANSITION_NAME_GLOBAL_DEFAULT = "__GLOBAL_DEFAULT_
 
 /// A specialised PropertyBase for the per-scene transition name.
 /// It behaves like an enum property (type_id = "enum") and dynamically
-/// populates its option list from the global TransitionManager at serialization
-/// time, removing the need for special-case logic in scene_management.cpp.
+/// receives its option list from the caller at serialization time (the scene
+/// routes pass the registered transitions of the daemon's TransitionManager).
 class TransitionNameProperty final : public PropertyBase {
     std::string value;
 
@@ -34,6 +35,11 @@ public:
     }
 
     void add_additional_data(nlohmann::json& j) const override {
+        add_additional_data(j, {});
+    }
+
+    /// Schema data with the transitions the host has registered.
+    void add_additional_data(nlohmann::json& j, const std::vector<std::string>& transitions) const {
         j["enum_name"] = "Transition";
         j["enum_values"] = nlohmann::json::array();
 
@@ -43,13 +49,11 @@ public:
             {"display_name", "Global Default"}
         });
 
-        if (Constants::global_transition_manager) {
-            for (const auto& transition : Constants::global_transition_manager->get_registered_transitions()) {
-                j["enum_values"].push_back({
-                    {"value", transition},
-                    {"display_name", transition}
-                });
-            }
+        for (const auto& transition : transitions) {
+            j["enum_values"].push_back({
+                {"value", transition},
+                {"display_name", transition}
+            });
         }
 
         // Fallback: ensure at least one concrete transition is always listed

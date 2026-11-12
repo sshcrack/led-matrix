@@ -5,6 +5,8 @@
 #include "nlohmann/json.hpp"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/transition_manager.h"
+#include "shared/matrix/plugin/TransitionNameProperty.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/MimeTypes.h"
 #include "shared/common/utils/utils.h"
@@ -17,7 +19,8 @@ using json = nlohmann::json;
 #endif
 
 namespace {
-    std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional) {
+    std::vector<json> serialize_properties(const std::vector<std::shared_ptr<Plugins::PropertyBase>>& properties, bool include_additional,
+                                          const std::vector<std::string>& transitions) {
         std::vector<json> properties_json;
         properties_json.reserve(properties.size());
         for (const auto& prop : properties) {
@@ -29,7 +32,10 @@ namespace {
             j2["type_id"] = prop->get_type_id();
             if (include_additional) {
                 json additional_data;
-                prop->add_additional_data(additional_data);
+                if (const auto* transition_prop = dynamic_cast<const Plugins::TransitionNameProperty*>(prop.get()))
+                    transition_prop->add_additional_data(additional_data, transitions);
+                else
+                    prop->add_additional_data(additional_data);
                 j2["additional"] = std::move(additional_data);
             }
             properties_json.push_back(std::move(j2));
@@ -38,7 +44,7 @@ namespace {
     }
 
     template<typename T>
-    json make_providers_list(const std::vector<std::shared_ptr<T>>& items) {
+    json make_providers_list(const std::vector<std::shared_ptr<T>>& items, const std::vector<std::string>& transitions) {
         std::vector<json> j;
         j.reserve(items.size());
         for (const auto& item : items) {
@@ -50,13 +56,14 @@ namespace {
             auto properties = default_item->get_properties();
             j.push_back({
                 {"name", item->get_name()},
-                {"properties", serialize_properties(properties, true)}
+                {"properties", serialize_properties(properties, true, transitions)}
             });
         }
         return j;
     }
 
-    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg)
+    json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>& scenes, Config::MainConfig* cfg,
+                          const std::vector<std::string>& transitions)
     {
         std::vector<json> j;
         j.reserve(scenes.size());
@@ -65,7 +72,7 @@ namespace {
             auto default_item = scene->get_default();
             if (!default_item) continue;
             auto properties = default_item->get_properties();
-            auto properties_json = serialize_properties(properties, true);
+            auto properties_json = serialize_properties(properties, true, transitions);
             const auto caps = default_item->get_capabilities();
             const auto preview_spec = default_item->get_preview_spec();
             const auto descriptor = default_item->get_descriptor();
@@ -136,16 +143,20 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         return reply_with_json(req, scenes);
     });
 
-    router->http_get("/list_scenes", [cfg](auto req, auto) {
-        return reply_with_json(req, make_scenes_list(Plugins::PluginManager::instance()->get_scenes(), cfg));
+    const auto registered_transitions = [transition_manager]() {
+        return transition_manager ? transition_manager->get_registered_transitions() : std::vector<std::string>{};
+    };
+
+    router->http_get("/list_scenes", [cfg, registered_transitions](auto req, auto) {
+        return reply_with_json(req, make_scenes_list(Plugins::PluginManager::instance()->get_scenes(), cfg, registered_transitions()));
     });
 
-    router->http_get("/list_providers", [](auto req, auto) {
-        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_image_providers()));
+    router->http_get("/list_providers", [registered_transitions](auto req, auto) {
+        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_image_providers(), registered_transitions()));
     });
 
-    router->http_get("/list_shader_providers", [](auto req, auto) {
-        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_shader_providers()));
+    router->http_get("/list_shader_providers", [registered_transitions](auto req, auto) {
+        return reply_with_json(req, make_providers_list(Plugins::PluginManager::instance()->get_shader_providers(), registered_transitions()));
     });
 
     router->http_get("/list_transitions", [transition_manager](auto req, auto) {

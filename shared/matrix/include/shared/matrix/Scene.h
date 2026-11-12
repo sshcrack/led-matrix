@@ -43,6 +43,7 @@ namespace Scenes {
         int target_fps = 60;
         tmillis_t last_render_time = 0;
         SceneFrameContext frame_context_{};
+        PostEffectSink *post_effect_sink_ = nullptr;
         std::chrono::steady_clock::time_point frame_clock_start_{};
         std::chrono::steady_clock::time_point frame_clock_last_{};
         bool frame_clock_started_ = false;
@@ -95,6 +96,12 @@ namespace Scenes {
         /// Current render-frame timing. Prefer this over reading wall clock time
         /// inside a scene. The matrix renderer and preview generator populate it.
         [[nodiscard]] const SceneFrameContext &frame_context() const { return frame_context_; }
+
+        /// Ask the host for a short post-processing accent. Returns false when
+        /// the host has none (previews, desktop worker) or the effect is unknown.
+        bool request_post_effect(const std::string &effect_name, float effect_seconds, float intensity) {
+            return post_effect_sink_ != nullptr && post_effect_sink_->add_effect(effect_name, effect_seconds, intensity);
+        }
 
         /// Adaptive quality scale (0.5..1) for scenes with optional expensive
         /// detail. It is 1.0 on the desktop scene worker and in previews; on the
@@ -242,6 +249,10 @@ namespace Scenes {
 
         /// Set l_offscreen_canvas to nullptr if you are directly rendering onto the matrix.
         virtual void initialize(int width, int height);
+
+        /// The render host lends the scene its post-processing capability (or
+        /// nullptr). The host must keep it alive while the scene can render.
+        void set_post_effect_sink(PostEffectSink *sink) { post_effect_sink_ = sink; }
 
         virtual void after_render_stop();
 
