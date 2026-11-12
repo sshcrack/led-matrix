@@ -17,20 +17,21 @@ class DesktopRelevanceTracker {
 public:
     using clock = std::chrono::steady_clock;
 
-    static constexpr double AudibleRms = 0.003; // about -50 dBFS
+    static constexpr double AudibleRms = 0.003;  // about -50 dBFS
     static constexpr auto AudibleHold = std::chrono::seconds(10);
     static constexpr int AudibleScore = 100;
     static constexpr int MediaPlayingScore = 90;
 
-    void note_level(const double rms, const clock::time_point now) {
-        if (rms > AudibleRms) lastAudible_ = now;
+    void note_level(const double rms, const clock::time_point now)
+    {
+        if (rms > AudibleRms)
+            lastAudible_ = now;
     }
 
-    [[nodiscard]] bool audible(const clock::time_point now) const {
-        return lastAudible_ && now - *lastAudible_ < AudibleHold;
-    }
+    [[nodiscard]] bool audible(const clock::time_point now) const { return lastAudible_ && now - *lastAudible_ < AudibleHold; }
 
-    [[nodiscard]] int score(const clock::time_point now, const bool mediaPlaying) const {
+    [[nodiscard]] int score(const clock::time_point now, const bool mediaPlaying) const
+    {
         return std::max(audible(now) ? AudibleScore : 0, mediaPlaying ? MediaPlayingScore : 0);
     }
 

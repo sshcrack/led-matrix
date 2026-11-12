@@ -61,7 +61,7 @@ namespace
     /// pactl is missing or the server is unreachable.
     std::string defaultSinkName()
     {
-        FILE *pipe = ::popen("pactl get-default-sink 2>/dev/null", "r");
+        FILE* pipe = ::popen("pactl get-default-sink 2>/dev/null", "r");
         if (!pipe)
             return {};
         std::array<char, 512> buffer{};
@@ -69,8 +69,7 @@ namespace
         if (std::fgets(buffer.data(), static_cast<int>(buffer.size()), pipe))
             name = buffer.data();
         ::pclose(pipe);
-        while (!name.empty() && (name.back() == '\n' || name.back() == '\r' || name.back() == ' '))
-            name.pop_back();
+        while (!name.empty() && (name.back() == '\n' || name.back() == '\r' || name.back() == ' ')) name.pop_back();
         return name;
     }
 }
@@ -298,8 +297,7 @@ namespace AudioRecorder
         // saved for a generic "parec" (e.g. moved to a mic in pavucontrol)
         // from applying here.
         loopbackSink = defaultSinkName();
-        const std::string deviceArg = "--device=" + (loopbackSink.empty() ? std::string("@DEFAULT_MONITOR@")
-                                                                           : loopbackSink + ".monitor");
+        const std::string deviceArg = "--device=" + (loopbackSink.empty() ? std::string("@DEFAULT_MONITOR@") : loopbackSink + ".monitor");
         lastSinkCheck = std::chrono::steady_clock::now();
 
         const pid_t pid = ::fork();
@@ -317,20 +315,10 @@ namespace AudioRecorder
             ::dup2(pipeFds[1], STDOUT_FILENO);
             ::close(pipeFds[0]);
             ::close(pipeFds[1]);
-            ::execlp("parec", "parec",
-                     deviceArg.c_str(),
-                     "--client-name=led-matrix-desktop",
-                     "--stream-name=Desktop audio loopback",
-                     "--property=node.dont-reconnect=true",
-                     "--property=node.dont-fallback=true",
-                     "--property=node.dont-move=true",
-                     "--format=float32le",
-                     "--rate=44100",
-                     "--channels=2",
-                     "--latency-msec=10",
-                     "--process-time-msec=5",
-                     "--raw",
-                     static_cast<char *>(nullptr));
+            ::execlp("parec", "parec", deviceArg.c_str(), "--client-name=led-matrix-desktop", "--stream-name=Desktop audio loopback",
+                     "--property=node.dont-reconnect=true", "--property=node.dont-fallback=true", "--property=node.dont-move=true",
+                     "--format=float32le", "--rate=44100", "--channels=2", "--latency-msec=10", "--process-time-msec=5", "--raw",
+                     static_cast<char*>(nullptr));
             _exit(127);
         }
 

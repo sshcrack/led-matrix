@@ -1,15 +1,16 @@
 #pragma once
 
+#include <portaudio.h>
+
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <mutex>
 #include <optional>
-#include <chrono>
 #include <string>
 #include <thread>
 #include <vector>
-#include <portaudio.h>
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -91,7 +92,7 @@ namespace AudioRecorder
         pid_t loopbackPid = -1;
         std::thread loopbackThread;
         std::atomic<bool> stopLoopbackThread{false};
-        std::string loopbackSink; // sink whose monitor parec records, empty for @DEFAULT_MONITOR@
+        std::string loopbackSink;  // sink whose monitor parec records, empty for @DEFAULT_MONITOR@
         std::chrono::steady_clock::time_point lastSinkCheck{};
         void linuxLoopbackReadLoop();
         // Joins the reader thread, closes the pipe and reaps parec. Safe to

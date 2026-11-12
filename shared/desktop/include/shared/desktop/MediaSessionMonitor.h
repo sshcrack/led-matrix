@@ -1,13 +1,13 @@
 #pragma once
 
-#include "shared/desktop/macro.h"
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
+
+#include "shared/desktop/macro.h"
 
 /// Watches the OS media sessions (MPRIS over D-Bus on Linux, the Global System
 /// Media Transport Controls on Windows) on its own thread and reports whether
@@ -25,8 +25,8 @@ public:
 
     explicit MediaSessionMonitor(std::chrono::milliseconds interval = std::chrono::seconds(2));
     ~MediaSessionMonitor();
-    MediaSessionMonitor(const MediaSessionMonitor &) = delete;
-    MediaSessionMonitor &operator=(const MediaSessionMonitor &) = delete;
+    MediaSessionMonitor(const MediaSessionMonitor&) = delete;
+    MediaSessionMonitor& operator=(const MediaSessionMonitor&) = delete;
 
     void start();
     void stop();

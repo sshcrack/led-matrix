@@ -1,6 +1,18 @@
 #pragma once
 
+#include <implot.h>
+#include <shared/desktop/MediaSessionMonitor.h>
+#include <shared/desktop/plugin/main.h>
+
 #include <chrono>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
+#include <shared_mutex>
+#include <string>
+#include <vector>
+
 #include "AudioProcessor.h"
 #include "DesktopRelevance.h"
 #include "MusicAnalyzer.h"
@@ -8,16 +20,6 @@
 #include "frequency_analyzer/FrequencyAnalyzer.h"
 #include "frequency_analyzer/factory.h"
 #include "record.h"
-#include <implot.h>
-#include <deque>
-#include <memory>
-#include <mutex>
-#include <nlohmann/json.hpp>
-#include <shared/desktop/MediaSessionMonitor.h>
-#include <shared/desktop/plugin/main.h>
-#include <shared_mutex>
-#include <string>
-#include <vector>
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin {
 public:

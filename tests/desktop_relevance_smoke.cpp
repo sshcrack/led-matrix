@@ -1,20 +1,22 @@
 // Producer relevance of a desktop with audio: it must not flip to 0 in quiet
 // passages or between tracks, and a playing media session counts on its own.
-#include "DesktopRelevance.h"
-
 #include <cstdio>
+
+#include "DesktopRelevance.h"
 
 namespace {
 int failures = 0;
-void expect(const bool ok, const char *what) {
+void expect(const bool ok, const char* what)
+{
     if (!ok) {
         std::fprintf(stderr, "FAIL: %s\n", what);
         ++failures;
     }
 }
-} // namespace
+}  // namespace
 
-int main() {
+int main()
+{
     using namespace std::chrono_literals;
     using T = DesktopRelevanceTracker;
     const auto t0 = T::clock::time_point{} + 1h;
@@ -25,7 +27,7 @@ int main() {
 
     r.note_level(0.05, t0);
     expect(r.score(t0, false) == T::AudibleScore, "audible audio scores 100");
-    r.note_level(0.0, t0 + 2s); // quiet passage / gap between tracks
+    r.note_level(0.0, t0 + 2s);  // quiet passage / gap between tracks
     expect(r.score(t0 + 2s, false) == T::AudibleScore, "a quiet read does not drop the score");
     expect(r.score(t0 + T::AudibleHold - 1ms, false) == T::AudibleScore, "audible holds for AudibleHold");
     expect(r.score(t0 + T::AudibleHold, false) == 0, "long silence drops the score");
@@ -39,7 +41,8 @@ int main() {
     r.reset();
     expect(r.score(t0 + 40s, false) == 0, "reset forgets audio");
 
-    if (failures) return 1;
+    if (failures)
+        return 1;
     std::puts("desktop relevance OK");
     return 0;
 }

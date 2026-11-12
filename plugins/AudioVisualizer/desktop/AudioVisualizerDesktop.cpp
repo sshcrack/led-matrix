@@ -79,7 +79,8 @@ void AudioVisualizerDesktop::before_exit() {
     }
 }
 
-void AudioVisualizerDesktop::post_init() {
+void AudioVisualizerDesktop::post_init()
+{
     implotContext = ImPlot::CreateContext();
     mediaSessions.start();
 }
@@ -100,8 +101,9 @@ void AudioVisualizerDesktop::addConnectionSettings() {
         ImGui::TextDisabled("Media playback: %s is playing", media.player.empty() ? "a player" : media.player.c_str());
     else
         ImGui::TextDisabled("Media playback: nothing playing");
-    ImGui::SetItemTooltip("Playing media (Spotify, a browser, ...) makes this desktop a preferred audio producer, "
-                          "even through quiet passages.");
+    ImGui::SetItemTooltip(
+        "Playing media (Spotify, a browser, ...) makes this desktop a preferred audio producer, "
+        "even through quiet passages.");
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings() {
@@ -379,7 +381,8 @@ int AudioVisualizerDesktop::desktop_relevance(const std::string &sceneName) {
     // reports it is playing. Capture runs on standby too (cheap); the
     // analysis/streaming does not.
     std::lock_guard stateLock(stateMutex);
-    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName)) return 0;
+    if (!cfg.streamContinuously && !isDedicatedAudioScene(sceneName))
+        return 0;
     const auto now = std::chrono::steady_clock::now();
     const bool mediaPlaying = mediaSessions.snapshot().playing;
     // While the stream runs it keeps the level fresh. getLastSamples() shares
