@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string>
-
 #include <hello_imgui/hello_imgui.h>
+#include <shared/desktop/WebsocketClient.h>
 #include <shared/desktop/config.h>
 #include <shared/desktop/plugin_loader/loader.h>
+
+#include <string>
 
 namespace desktop_app::detail {
     /// Main ImGui settings window content (device settings, external tools,
@@ -17,6 +18,9 @@ namespace desktop_app::detail {
         void render();
 
     private:
+        /// Whether the matrix selected this desktop as its producer (several desktops may be connected).
+        static void render_producer_role(const WebsocketClient& client);
+
         Plugins::PluginManager *pl;
         Config::ConfigManager *cfg;
 

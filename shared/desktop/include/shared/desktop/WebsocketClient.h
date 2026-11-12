@@ -125,6 +125,13 @@ public:
         return transportStarted_.load();
     }
 
+    [[nodiscard]] DesktopStreamState::ProducerRole producerRole() const { return streamState_.producer_role(); }
+
+    [[nodiscard]] bool isMatrixEnabled() const { return streamState_.matrix_enabled(); }
+
+    /// Last relevance (0..100) this desktop reported to the matrix, -1 before the first report.
+    [[nodiscard]] int lastReportedRelevance() const { return lastReportedRelevance_.load(std::memory_order_relaxed); }
+
     [[nodiscard]] const std::string &clientId() const
     {
         return clientId_;
@@ -162,6 +169,7 @@ private:
 
     std::atomic<bool> senderRunning{false};
     std::atomic<bool> transportStarted_{false};
+    std::atomic<int> lastReportedRelevance_{-1};
     int consecutiveError_ = 0;
 
     // Plugin callbacks are deliberately kept off ixwebsocket's network

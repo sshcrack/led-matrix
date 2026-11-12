@@ -66,6 +66,25 @@ int main()
     require(state.on_control_message("matrix_enabled:1"), "fresh matrix enabled status must parse after reconnect");
     require(!state.can_send_udp(), "standby role received before matrix-enabled must keep UDP paused");
 
+    // UI indication of the producer selection.
+    using Role = DesktopStreamState::ProducerRole;
+    DesktopStreamState roles;
+    require(roles.producer_role() == Role::Disconnected, "fresh state must report disconnected");
+    roles.on_websocket_open();
+    require(roles.producer_role() == Role::Unreported, "connected without producer message must be unreported");
+    require(roles.on_control_message("desktop_producer:1"), "producer message must parse");
+    require(roles.producer_role() == Role::Selected, "desktop_producer:1 must show as selected");
+    require(roles.on_control_message("desktop_producer:0"), "standby message must parse");
+    require(roles.producer_role() == Role::Standby, "desktop_producer:0 must show as standby");
+    require(!roles.matrix_enabled(), "matrix must not show enabled before matrix_enabled:1");
+    require(roles.on_control_message("matrix_enabled:1"), "matrix enabled must parse");
+    require(roles.matrix_enabled(), "matrix_enabled:1 must show enabled");
+    roles.on_websocket_closed();
+    require(roles.producer_role() == Role::Disconnected, "closed connection must report disconnected");
+    require(!roles.matrix_enabled(), "closed connection must not show matrix enabled");
+    roles.on_websocket_open();
+    require(roles.producer_role() == Role::Unreported, "reconnect must forget the previous role");
+
     std::cout << "desktop_stream_state_smoke: OK\n";
     return 0;
 }

@@ -26,6 +26,47 @@ namespace desktop_app::detail {
           ytdlpStatusError(check_ytdlp_available()) {
     }
 
+    void SettingsPanel::render_producer_role(const WebsocketClient& client)
+    {
+        // With several desktops connected, the matrix picks one producer that
+        // streams frames; the others stay on standby (see Server::register_desktop_producer).
+        using Role = DesktopStreamState::ProducerRole;
+        const ImVec4 green(0.2f, 0.8f, 0.3f, 1.0f);
+        const ImVec4 amber(1.0f, 0.7f, 0.2f, 1.0f);
+        switch (client.producerRole()) {
+            case Role::Selected:
+                ImGui::TextColored(green, "Matrix role: selected desktop");
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s",
+                                      "The matrix uses this desktop as its producer: it streams frames "
+                                      "for desktop scenes and receives producer-only plugin requests.");
+                break;
+            case Role::Standby:
+                ImGui::TextColored(amber, "Matrix role: standby (another desktop is selected)");
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s",
+                                      "Another connected desktop streams to the matrix. This desktop takes over "
+                                      "when that one disconnects, or when it stays clearly more relevant "
+                                      "(e.g. it has audio playing) for a few seconds.");
+                break;
+            case Role::Unreported:
+                ImGui::TextDisabled("Matrix role: not reported (older matrix, this desktop streams)");
+                break;
+            case Role::Disconnected:
+                return;
+        }
+        if (const int relevance = client.lastReportedRelevance(); relevance >= 0) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("relevance %d/100", relevance);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s",
+                                  "How useful this desktop is as producer right now, as reported to the matrix. "
+                                  "A standby desktop clearly more relevant than the selected one takes over.");
+        }
+        if (!client.isMatrixEnabled())
+            ImGui::TextDisabled("Matrix is off: streaming paused");
+    }
+
     void SettingsPanel::render() {
         General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
@@ -42,7 +83,8 @@ namespace desktop_app::detail {
             generalCfg.setApiToken(apiToken);
             ws->stop();
         }
-        ImGui::SetItemTooltip("Only needed when LED_MATRIX_API_TOKEN is set on the Pi (/etc/default/led-matrix).");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", "Only needed when LED_MATRIX_API_TOKEN is set on the Pi (/etc/default/led-matrix).");
 
         bool somethingInvalid = false;
         if (hostname.empty()) {
@@ -85,7 +127,9 @@ namespace desktop_app::detail {
             if (udpFpsLimit > 120) udpFpsLimit = 120;
             generalCfg.setUdpFpsLimit(udpFpsLimit);
         }
-        ImGui::SetItemTooltip("Limits the rate at which frames are sent to the Pi. "
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s",
+                              "Limits the rate at which frames are sent to the Pi. "
                               "Lower this if the Pi can't keep up (e.g. 15-25 FPS).");
 
         if (somethingInvalid) {
@@ -199,6 +243,7 @@ namespace desktop_app::detail {
         }
 
         ImGui::Text("Active Scene: %s", ws->getActiveScene().c_str());
+        render_producer_role(*ws);
         auto last = ws->getLastError();
         if (!last.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last Error: %s", last.c_str());
@@ -308,14 +353,18 @@ namespace desktop_app::detail {
         if (ImGui::MenuItem("Install Updates Automatically", nullptr, autoUpdate)) {
             updateManager.setAutoUpdateEnabled(!autoUpdate);
         }
-        ImGui::SetItemTooltip("Download and install updates in the background and restart while hidden in the tray.\n"
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s",
+                              "Download and install updates in the background and restart while hidden in the tray.\n"
                               "Off: ask first.");
 
         bool followMatrix = updateManager.isFollowMatrixEnabled();
         if (ImGui::MenuItem("Match Matrix Version", nullptr, followMatrix)) {
             updateManager.setFollowMatrixEnabled(!followMatrix);
         }
-        ImGui::SetItemTooltip("Run the same release as the matrix, so desktop rendering stays available.\n"
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s",
+                              "Run the same release as the matrix, so desktop rendering stays available.\n"
                               "When a newer release is out and the matrix updates itself, it updates first.");
 
         if (ImGui::BeginMenu("Update Settings")) {
