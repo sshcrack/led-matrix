@@ -132,7 +132,7 @@ Run these on the Pi (via SSH) and check each result.
 
 ```bash
 uname -m                                   # must be aarch64 (arm64). If armv7l/armhf: STOP, a 64-bit OS is required.
-tr -d '\0' < /proc/device-tree/model; echo # Pi model. "Raspberry Pi 5" -> STOP: unsupported by the LED driver library.
+tr -d '\0' < /proc/device-tree/model; echo # Pi model. "Raspberry Pi 5" -> the LED library supports it (RP1), but this app is untested there: tell the human and continue only if they accept that.
 . /etc/os-release && echo "$PRETTY_NAME"   # Debian 12 (Bookworm) or newer; Raspberry Pi OS 64-bit is ideal.
 id pi                                      # user "pi" must exist. If not, ask the human before creating it (sudo adduser pi).
 sudo -n true && echo "sudo ok"             # passwordless sudo? If not, ask the human to run privileged steps or enter the password.
@@ -261,7 +261,7 @@ Apply **one** change, [reconfigure](#changing-settings-later), and ask again.
 | Everything dark, service healthy | Panel init or power | Check 5 V power and ribbon cable direction. Then add `--led-panel-type=FM6126A` to `extra-opts`. |
 | Flicker, noise or shimmering | GPIO timing | Raise `led-slowdown-gpio` by 1 (up to 4). Confirm the sound-disable step. |
 | Colours swapped (red↔green etc.) | RGB order | `--led-rgb-sequence=RBG` (then `BGR`, `GRB`, `GBR`, `BRG`). |
-| Scrambled, striped or half the rows | Multiplexing | `--led-multiplexing=N` (try 1–8, up to 17), then `--led-row-addr-type=N` (1–4). |
+| Scrambled, striped or half the rows | Multiplexing | `--led-multiplexing=N` (try 1–8, up to 24), then `--led-row-addr-type=N` (1–5). |
 | Clock split or in pieces, wrong order | `chain` and `parallel` wrong, or panels cabled differently | Re-check A3. Swap `chain` and `parallel`, or try `--led-pixel-mapper="U-mapper"`. |
 | Upside down or rotated | Mounting | `--led-pixel-mapper="Rotate:180"` (or `90`, `270`). |
 | Only part of the display used | Wrong `rows`, `cols`, `chain` or `parallel` | Recompute from the [cheat sheet](#layout-cheat-sheet). |

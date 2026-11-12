@@ -3,9 +3,9 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO sshcrack/rpi-rgb-led-matrix
-    # v0.1.12: bulk RGB conversion, lazy readback LUTs and Windows compatibility.
-    REF v0.1.12
-    SHA512 d89985274dac7e975f93874b62df65cef46a4226e7b7b8c4cc1c1346159d029a71191251b2e1ba02bc5422fb887c64fd4ffdb6cce8bc15feb9758d39463daf8c
+    # v0.1.13: upstream sync (Raspberry Pi 5 / RP1, frame sequences, FrameCanvas::SubFill, content-streamer C API).
+    REF v0.1.13
+    SHA512 60ea4c80783074f9c4cf4c64a60abe8b437e485c6c0d3670ac6222afa88c65c360524932a8f3218e817308dd5d0f512b7f4abdc09ff957dec26171fdfff31c9a
     HEAD_REF master
 )
 

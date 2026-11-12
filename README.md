@@ -31,7 +31,7 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 ## Quick start
 
 > [!IMPORTANT]
-> **You need:** a **Raspberry Pi 3 or 4** (the Pi 5 is not supported) running **64-bit** Raspberry Pi OS Lite with a user named **`pi`**, HUB75 LED panels, a HUB75 adapter board or HAT, and a separate **5 V supply** for the panels.
+> **You need:** a **Raspberry Pi 3 or 4** (the Pi 5 is untested, see [Shopping list](#shopping-list)) running **64-bit** Raspberry Pi OS Lite with a user named **`pi`**, HUB75 LED panels, a HUB75 adapter board or HAT, and a separate **5 V supply** for the panels.
 
 | I have… | Do this |
 |:--|:--|
@@ -191,7 +191,7 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 | Part | Recommendation |
 |:--|:--|
-| **Computer** | **Raspberry Pi 4** (best), or Pi 3 B/B+ (works, and the maintainer's 128×128 runs on a Pi 3 B with adaptive quality and desktop offload). A 64-bit OS is required. The Pi 5 is not supported by the underlying library. |
+| **Computer** | **Raspberry Pi 4** (best), or Pi 3 B/B+ (works, and the maintainer's 128×128 runs on a Pi 3 B with adaptive quality and desktop offload). A 64-bit OS is required. The Pi 5 is supported by the LED library since [v0.1.13](https://github.com/sshcrack/rpi-rgb-led-matrix/releases/tag/v0.1.13) (RP1 backend, `--led-rp1-pio`), but this app has not been tested on one. |
 | **Panels** | HUB75 RGB panels. **Four 64×64 panels in a 2×2 grid make a 128×128 display**, which is the primary target. 32×32 and 64×32 panels work too, and scenes read the canvas size. |
 | **Adapter** | A HAT or bonnet that level-shifts GPIO to HUB75, e.g. the [Electrodragon Active-3](https://www.electrodragon.com/product/rgb-matrix-panel-drive-board-raspberry-pi/). [Alternatives](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/adapter/README.md). |
 | **Power** | A dedicated **5 V** supply for the panels, sized generously. Panels can draw several amps each at full white. Power the Pi separately and share ground. Don't power panels from the Pi. |
@@ -241,7 +241,7 @@ The [Quick start](#quick-start) covers a normal install. This section is the ref
 
 ### Requirements
 
-- Raspberry Pi 3 or 4 with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
+- Raspberry Pi 3 or 4 (Pi 5 untested) with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
 - Panels wired and powered (see [Hardware](#hardware))
 - The Pi's onboard sound disabled ([step 1 of the Quick start](#1-prepare-the-pi-one-time))
 
@@ -439,7 +439,8 @@ Passed to the daemon via `MATRIX_OPTS` (set them through debconf, see above). Th
 | `--led-brightness=N` | You want less brightness, heat or power draw (1–100). |
 | `--led-rgb-sequence=RBG` | Colours are swapped. Try `RBG`, `BGR`, `GRB`, … |
 | `--led-gpio-mapping=adafruit-hat` | You use an Adafruit HAT or Bonnet rather than a plain adapter. |
-| `--led-multiplexing=N` / `--led-row-addr-type=N` | The image looks scrambled, striped or only half-lit. Try values `0`–`17` / `0`–`4`. |
+| `--led-multiplexing=N` / `--led-row-addr-type=N` | The image looks scrambled, striped or only half-lit. Try values `0`–`24` / `0`–`5`. |
+| `--led-rp1-pio=1` | Pi 5 only (untested with this app): use the low-CPU RP1 PIO backend instead of the default RIO one. |
 | `--led-panel-type=FM6126A` | Panels stay dark or show garbage at init. Common with newer 64×64 panels (also `FM6127`). |
 | `--led-pixel-mapper="Rotate:90"` | You mounted the display rotated, or need the `U-mapper` for snake-wired panels. |
 | `--led-pwm-bits=N`, `--led-limit-refresh=N` | You want to trade colour depth for refresh rate (e.g. to stop flicker on camera). |
@@ -518,7 +519,7 @@ Back up `/var/lib/led-matrix/config.json` to keep your presets.
 | **Nothing lights up** | `systemctl status led-matrix` and `journalctl -u led-matrix -n 50`. Check the panel power and the ribbon cable direction (*in* vs *out*). Try `--led-panel-type=FM6126A`. |
 | **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Quick start step 1](#1-prepare-the-pi-one-time)) and check the power supply. |
 | **Wrong colours** | Set `--led-rgb-sequence` (`RBG`, `BGR`, …). |
-| **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–17) and `--led-row-addr-type` (0–4). |
+| **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–24) and `--led-row-addr-type` (0–5). |
 | **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |
 | **Web UI won't load** | Confirm the IP, port 8080 and `curl localhost:8080/status` on the Pi. If you set an API token, the UI asks for it once. |
 | **Scene is slow or choppy** | Open **Health**. Heavy scenes shift to the desktop scene worker when it is connected, and quality adapts otherwise. Connect the [desktop app](#desktop-app). |
