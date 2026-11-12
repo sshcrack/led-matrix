@@ -184,6 +184,8 @@ Previews are hosted on the rolling [`scene-previews` release](https://github.com
 
 ## Hardware
 
+An unfinished [oak-frame enclosure CAD project](hardware/oak-panel/README.md) includes portable sources and prototype downloads for a four-panel display. It is not ready for full fabrication.
+
 > [!NOTE]
 > This project builds on the excellent [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) library by Henner Zeller. For wiring diagrams, timing issues and panel quirks, its documentation is the reference.
 

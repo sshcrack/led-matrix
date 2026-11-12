@@ -1,0 +1,9 @@
+FIRST PRINT ONLY - PETG fit gauges
+
+Submit FIRST_PRINT_mounting_gauge.stl and FIRST_PRINT_hole_coupon.stl together if the service can arrange them as one job. Both flat face down, actual size / 100%, no auto-scaling. Target Prusa i3 MK3s. Ask the service for slicing and price before printing. They may choose suitable print parameters.
+
+The gauge tests the six adopted M3 mounting positions (170 mm between columns, 73 mm row pitch); it is NOT a load-bearing mounting part. Hold gently against the unplugged panel rear; align by holes, not by gauge outer edges.
+
+The coupon tests printed clearance sizes. From its notched end, holes are 3.2 / 3.4 / 3.5 / 3.6 mm. Try actual hardware gently. This does not identify the panel internal thread.
+
+Do not print the full assembly yet. The STL units are millimetres.
