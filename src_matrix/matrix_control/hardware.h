@@ -5,7 +5,9 @@
 #include <memory>
 #include "shared/matrix/Scene.h"
 
-namespace Config { class MainConfig; }
+namespace Config {
+class MainConfig;
+}
 class PostProcessor;
 class TransitionManager;
 

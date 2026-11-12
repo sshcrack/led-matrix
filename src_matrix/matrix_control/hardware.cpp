@@ -1,23 +1,22 @@
+#include <csignal>
+#include <functional>
 #include <iostream>
 #include <memory>
+#include <restinio/websocket/websocket.hpp>
 
-#include "led-matrix.h"
-#include "canvas.h"
-#include "MatrixPresenter.h"
 #include "LiveFrameSnapshot.h"
+#include "MatrixPresenter.h"
+#include "canvas.h"
+#include "led-matrix.h"
+#include "server/desktop_ws.h"
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/interrupt.h"
-#include "shared/matrix/utils/shared.h"  // exit_canvas_update
+#include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/runtime_inputs.h"
-#include "server/desktop_ws.h"
-
-#include <csignal>
-#include <functional>
-#include <restinio/websocket/websocket.hpp>
+#include "shared/matrix/utils/shared.h"  // exit_canvas_update
 #include "spdlog/spdlog.h"
 
 using namespace rgb_matrix;
@@ -63,8 +62,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 
     while (!interrupt_received)
     {
-        if (cfg->is_scheduling_enabled())
-        {
+        if (cfg->is_scheduling_enabled()) {
             auto active_preset = cfg->get_active_scheduled_preset();
             if (active_preset.has_value() && active_preset.value() != last_scheduled_preset)
             {
@@ -84,8 +82,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
             }
         }
 
-        if (!cfg->is_turned_off())
-        {
+        if (!cfg->is_turned_off()) {
             coordinator.run(pinned_scene);
             exit_canvas_update = false;
             debug("Outer loop iteration, checking again...");
