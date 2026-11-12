@@ -7,7 +7,7 @@ class PostProcessor;
 class TransitionManager;
 
 namespace Update {
-    class UpdateManager;
+class UpdateManager;
 }
 
 namespace Server
