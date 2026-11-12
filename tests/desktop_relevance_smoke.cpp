@@ -39,11 +39,9 @@ int main()
     // Spotify Connect mirror: the session says Playing, the capture works but
     // never hears anything on this PC.
     T mirror;
-    for (auto t = 0s; t <= 30s; t += 2s)
-        mirror.note_level(0.0, t0 + t);
+    for (auto t = 0s; t <= 30s; t += 2s) mirror.note_level(0.0, t0 + t);
     expect(mirror.score(t0 + 30s, true) == 0, "a mirrored session on a silent PC scores 0");
-    expect(mirror.score(t0 + 30s + T::CaptureStale, true) == T::MediaPlayingScore,
-           "media counts again once capture stops delivering");
+    expect(mirror.score(t0 + 30s + T::CaptureStale, true) == T::MediaPlayingScore, "media counts again once capture stops delivering");
 
     r.note_level(T::AudibleRms / 2, t0 + 90s);
     expect(r.score(t0 + 90s, false) == 0, "noise floor is not audio");

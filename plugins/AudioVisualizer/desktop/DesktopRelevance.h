@@ -22,7 +22,7 @@ class DesktopRelevanceTracker {
 public:
     using clock = std::chrono::steady_clock;
 
-    static constexpr double AudibleRms = 0.003; // about -50 dBFS
+    static constexpr double AudibleRms = 0.003;  // about -50 dBFS
     static constexpr auto AudibleHold = std::chrono::seconds(10);
     static constexpr auto MediaBridge = std::chrono::seconds(60);
     /// Capture counts as working while it delivered a level this recently.
@@ -37,15 +37,9 @@ public:
             lastAudible_ = now;
     }
 
-    [[nodiscard]] bool audible(const clock::time_point now) const
-    {
-        return lastAudible_ && now - *lastAudible_ < AudibleHold;
-    }
+    [[nodiscard]] bool audible(const clock::time_point now) const { return lastAudible_ && now - *lastAudible_ < AudibleHold; }
 
-    [[nodiscard]] bool capturing(const clock::time_point now) const
-    {
-        return lastLevel_ && now - *lastLevel_ < CaptureStale;
-    }
+    [[nodiscard]] bool capturing(const clock::time_point now) const { return lastLevel_ && now - *lastLevel_ < CaptureStale; }
 
     /// Whether a playing media session counts here: no working capture to
     /// contradict it, or this PC heard audio recently.
