@@ -186,5 +186,5 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         return response.set_body(restinio::sendfile(gif_path)).done();
     });
 
-    return std::move(router);
+    return router;
 }

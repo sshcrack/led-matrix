@@ -6,9 +6,19 @@
 # thirdparty/ directory (git submodules such as portaudio). vcpkg ports are
 # not part of this build tree, so they never see these flags.
 #
-# Warnings only, no -Werror (yet). Disable with -DLED_MATRIX_WARNINGS=OFF.
+# Warnings only by default. Disable with -DLED_MATRIX_WARNINGS=OFF.
+#
+# -DLED_MATRIX_WERROR=ON turns warnings of the project's own targets into
+# errors (CI's emulator build does this, so a new warning fails the PR). It is
+# off by default so a newer local compiler never blocks a build, and it is only
+# verified for the emulator preset with GCC; the desktop and cross-compile
+# presets have not been brought to a clean baseline yet. Two classes stay
+# warnings: -Wnull-dereference (GCC reports false positives from inlined asio
+# and libstdc++ code instantiated in our translation units) and deprecated
+# declarations (third-party API churn).
 
 option(LED_MATRIX_WARNINGS "Enable extra compiler warnings for project targets" ON)
+option(LED_MATRIX_WERROR "Treat warnings in the project's own targets as errors" OFF)
 
 function(_lm_collect_targets DIR OUT_VAR)
     get_property(_targets DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
@@ -33,6 +43,11 @@ function(led_matrix_enable_project_warnings)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12)
         list(APPEND _cxx_warnings -Wuse-after-free=3)
         list(APPEND _c_warnings -Wuse-after-free=3)
+    endif()
+
+    if(LED_MATRIX_WERROR)
+        list(APPEND _cxx_warnings -Werror -Wno-error=null-dereference -Wno-error=deprecated-declarations)
+        list(APPEND _c_warnings -Werror -Wno-error=null-dereference -Wno-error=deprecated-declarations)
     endif()
 
     _lm_collect_targets("${CMAKE_SOURCE_DIR}" _all_targets)

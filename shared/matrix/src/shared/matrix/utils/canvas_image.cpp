@@ -205,9 +205,9 @@ bool SetImageTransparent(rgb_matrix::FrameCanvas *c, const int x_offset, const i
 
 
     if (!pixels) return false;
-    for (int y = 0; y < img.rows(); y++) {
+    for (int y = 0; y < static_cast<int>(img.rows()); y++) {
         const Magick::PixelPacket *row = pixels + (y * img.columns());
-        for (int x = 0; x < img.columns(); x++) {
+        for (int x = 0; x < static_cast<int>(img.columns()); x++) {
             const auto &q = row[x];
 
             // In ImageMagick, opacity is inverted (0 = opaque, MaxRGB = transparent)

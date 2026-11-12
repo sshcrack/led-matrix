@@ -215,7 +215,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
             mismatch_scene_.clear();
         }
         const bool sustained_mismatch = mismatch_scene_ == current_key && clock_ms_ - mismatch_since_ms_ >= mismatch_hold_ms;
-        if (elapsed_ms >= min_dwell && (sustained_mismatch || (section_event && drifted))) {
+        if (elapsed_ms >= static_cast<tmillis_t>(min_dwell) && (sustained_mismatch || (section_event && drifted))) {
             if (const auto* candidate = better_music_fit(current_error > 0.38f ? 0.08f : 0.18f)) {
                 request(section_event ? "musical section change moved the energy away from this scene"
                                       : "sustained music energy no longer fits the current scene", candidate->scene);

@@ -218,10 +218,10 @@ namespace Plugins {
 
     public:
         explicit Property(const std::string &propertyName, const T &defaultValue,
-                          const bool required = false,
+                          const bool is_required = false,
                           const std::optional<T> &min = std::nullopt,
                           const std::optional<T> &max = std::nullopt)
-            : PropertyBase(propertyName), value(defaultValue), required(required),
+            : PropertyBase(propertyName), value(defaultValue), required(is_required),
               registered(false), min_value(min), max_value(max)
         {
         }

@@ -296,5 +296,5 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         Server::add_cors_headers(response);
         return response.set_body(restinio::sendfile(target_path)).done(); });
 
-    return std::move(router);
+    return router;
 }

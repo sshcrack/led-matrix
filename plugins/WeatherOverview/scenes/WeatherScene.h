@@ -107,7 +107,7 @@ namespace Scenes {
         WeatherParser parser;
         
         // Reference to current weather data for animations
-        WeatherData data = {};
+        WeatherData current_data = {};
 
         // C8: Weather fetch refresh timer
         std::chrono::steady_clock::time_point last_weather_fetch{};

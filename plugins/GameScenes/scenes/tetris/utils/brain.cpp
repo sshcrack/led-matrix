@@ -194,7 +194,7 @@ double bestFutureScore(const Board &board, const Piece &piece, int piece_index) 
 
 Brain::Brain() : score(0) {}
 
-Brain::Brain(NeuralNetwork params) : params(std::move(params)), score(0) {}
+Brain::Brain(NeuralNetwork network) : params(std::move(network)), score(0) {}
 
 std::string Brain::getBestMove(Grid grid) {
     const Board board = settledBoard(grid);

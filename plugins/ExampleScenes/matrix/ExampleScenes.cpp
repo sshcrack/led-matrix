@@ -10,12 +10,12 @@ vector<std::unique_ptr<ImageProviderWrapper>> ExampleScenes::create_image_provid
 }
 
 vector<std::unique_ptr<SceneWrapper>> ExampleScenes::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    auto created = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back(std::make_unique<Scenes::ColorPulseSceneWrapper>());
-    scenes.push_back(std::make_unique<Scenes::PropertyDemoSceneWrapper>());
-    scenes.push_back(std::make_unique<Scenes::RenderingDemoSceneWrapper>());
-    return scenes;
+    created.push_back(std::make_unique<Scenes::ColorPulseSceneWrapper>());
+    created.push_back(std::make_unique<Scenes::PropertyDemoSceneWrapper>());
+    created.push_back(std::make_unique<Scenes::RenderingDemoSceneWrapper>());
+    return created;
 }
 
 ExampleScenes::ExampleScenes() = default;

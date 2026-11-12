@@ -1,6 +1,8 @@
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wimplicit-const-int-float-conversion"
 #pragma ide diagnostic ignored "cert-msc50-cpp"
+#endif
 
 #include "WaveScene.h"
 #include <cmath>
@@ -96,4 +98,6 @@ std::unique_ptr<Scene> WaveSceneWrapper::create() {
     return std::make_unique<WaveScene>();
 }
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif

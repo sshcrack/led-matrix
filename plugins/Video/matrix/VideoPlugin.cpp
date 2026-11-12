@@ -10,9 +10,9 @@ REGISTER_PLUGIN(Video, VideoPlugin)
 
 vector<std::unique_ptr<SceneWrapper>>
 VideoPlugin::create_scenes() {
-  vector<std::unique_ptr<SceneWrapper>> scenes;
-  scenes.push_back(std::make_unique<Scenes::VideoSceneWrapper>());
-  return scenes;
+  vector<std::unique_ptr<SceneWrapper>> created;
+  created.push_back(std::make_unique<Scenes::VideoSceneWrapper>());
+  return created;
 }
 
 vector<std::unique_ptr<ImageProviderWrapper>>
@@ -161,7 +161,7 @@ VideoPlugin::register_routes(std::unique_ptr<router_t> router) {
     return Server::reply_success(req);
   });
 
-  return std::move(router);
+  return router;
 }
 
 void VideoPlugin::on_websocket_message(const std::string &message) {

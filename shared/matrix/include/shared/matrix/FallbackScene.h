@@ -31,7 +31,7 @@ namespace Scenes
             return 0; // Default duration for unknown scene
         }
 
-        bool render(rgb_matrix::FrameCanvas *canvas) override
+        bool render(rgb_matrix::FrameCanvas *) override
         {
             return false;
         }

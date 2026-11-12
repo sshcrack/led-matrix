@@ -60,9 +60,9 @@ int main() {
         std::cerr << "variant effective profile did not merge descriptor metadata\n";
         return 4;
     }
-    const auto json = Scenes::descriptor_to_json(descriptor);
-    if (json.value("family", "") != "test" || json["variants"].size() != 1 ||
-        json["variants"][0].value("id", "") != "boost") {
+    const auto payload = Scenes::descriptor_to_json(descriptor);
+    if (payload.value("family", "") != "test" || payload["variants"].size() != 1 ||
+        payload["variants"][0].value("id", "") != "boost") {
         std::cerr << "descriptor JSON changed unexpectedly\n";
         return 5;
     }

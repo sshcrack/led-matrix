@@ -57,8 +57,8 @@ namespace Scenes {
 
     class ParticleScene : public Scene {
     private:
-        std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer;
-        std::optional<std::shared_ptr<GravityParticles> > animation;
+        std::optional<std::shared_ptr<ParticleMatrixRenderer> > renderer_;
+        std::optional<std::shared_ptr<GravityParticles> > animation_;
         std::optional<uint32_t> random_seed_;
         FixedStepAccumulator simulation_{100.0, 8};
 
@@ -76,11 +76,11 @@ namespace Scenes {
         int16_t random_int16(int16_t a, int16_t b) {
             // Added helper function
             std::uniform_int_distribution<int16_t> dist(a, b - 1);
-            return renderer ? renderer->get()->random_int16(a, b) : dist(scene_rng);
+            return renderer_ ? renderer_->get()->random_int16(a, b) : dist(scene_rng);
         }
 
         virtual void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) = 0;
-        virtual void preRender(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
+        virtual void preRender(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/, std::shared_ptr<GravityParticles> /*animation*/)
         {
 
         }
@@ -104,7 +104,7 @@ namespace Scenes {
         std::string get_category() const override { return "Particles"; }
         [[nodiscard]] bool supports_virtual_time() const override { return true; }
 
-        virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation)
+        virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/, std::shared_ptr<GravityParticles> /*animation*/)
         {
 
         }

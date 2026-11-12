@@ -12,12 +12,12 @@ RGBMatrixAnimations::create_image_providers() {
 }
 
 vector<std::unique_ptr<SceneWrapper>> RGBMatrixAnimations::create_scenes() {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    auto created = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back(std::make_unique<RainSceneWrapper>());
-    scenes.push_back(std::make_unique<SparksSceneWrapper>());
+    created.push_back(std::make_unique<RainSceneWrapper>());
+    created.push_back(std::make_unique<SparksSceneWrapper>());
 
-    return scenes;
+    return created;
 }
 
 RGBMatrixAnimations::RGBMatrixAnimations() = default;

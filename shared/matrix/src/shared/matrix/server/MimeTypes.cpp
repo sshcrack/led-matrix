@@ -34,9 +34,9 @@ std::string MimeTypes::getExtension(const std::string_view type, size_t skip) {
 
 constexpr bool MimeTypes::iequals(std::string_view a, std::string_view b) {
     return std::ranges::equal(a, b,
-                              [](const char a, const char b) {
-                                  return std::tolower(static_cast<unsigned char>(a)) ==
-                                         std::tolower(static_cast<unsigned char>(b));
+                              [](const char ca, const char cb) {
+                                  return std::tolower(static_cast<unsigned char>(ca)) ==
+                                         std::tolower(static_cast<unsigned char>(cb));
                               });
 }
 

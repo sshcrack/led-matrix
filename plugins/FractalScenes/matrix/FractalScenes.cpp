@@ -14,11 +14,11 @@ vector<std::unique_ptr<ImageProviderWrapper>> FractalScenes::create_image_provid
 }
 
 vector<std::unique_ptr<SceneWrapper>> FractalScenes::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<JuliaSetSceneWrapper>());
-    scenes.push_back(std::make_unique<WavePatternSceneWrapper>());
-    scenes.push_back(std::make_unique<GameOfLifeSceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<JuliaSetSceneWrapper>());
+    created.push_back(std::make_unique<WavePatternSceneWrapper>());
+    created.push_back(std::make_unique<GameOfLifeSceneWrapper>());
+    return created;
 }
 
 FractalScenes::FractalScenes() = default;

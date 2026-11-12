@@ -129,7 +129,7 @@ namespace Scenes {
     public:
         /// Set before initialize() for repeatable previews and visual fixtures.
         /// Scenes without random state may ignore this. Production leaves it unset.
-        virtual void set_random_seed(uint32_t seed) {}
+        virtual void set_random_seed(uint32_t /*seed*/) {}
         /// Version of this scene's remote properties and transient state contract.
         /// Bump only for incompatible exchanged-data changes (including units or
         /// meaning), not renderer improvements, refactors or shared-code edits.

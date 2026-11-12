@@ -408,7 +408,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         Server::add_cors_headers(response);
         return response.set_body(string(static_cast<const char *>(blob.data()), blob.length())).done(); });
 
-    return std::move(router);
+    return router;
 }
 
 restinio::request_handling_status_t Server::handle_web_request(const restinio::request_handle_t &req, const restinio::string_view_t requested_path)

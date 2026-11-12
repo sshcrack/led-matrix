@@ -132,7 +132,7 @@ ctest --test-dir emulator_asan_build --output-on-failure
 - `scripts/sanitizers/{lsan,tsan,ubsan,asan}.supp` suppress **third-party frames only** (SDL, GLFW, Mesa, portaudio, GraphicsMagick, ...). Fix our own findings instead of suppressing them.
 - Sanitizer builds define `LED_MATRIX_SANITIZER_BUILD` and do not `dlclose()` plugins, so exit-time reports still symbolize plugin frames.
 - Every build defines `_GLIBCXX_ASSERTIONS` (bounds-checked `operator[]` etc.; aborts with a message instead of corrupting memory).
-- Our targets (not `thirdparty/`, not vcpkg) build with `-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wnull-dereference -Wuse-after-free=3` (`cmake/Warnings.cmake`). Warnings only, no `-Werror`; don't add new ones.
+- Our targets (not `thirdparty/`, not vcpkg) build with `-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wnull-dereference -Wuse-after-free=3` (`cmake/Warnings.cmake`). Warnings only by default; `-DLED_MATRIX_WERROR=ON` makes them errors for our targets (CI's `emulator-tests` build sets it, and the emulator preset was clean at that point on GCC 15; desktop and cross-compile are not enforced yet). Don't add new warnings.
 - Core dumps: the crash reporter writes `crashes/crash-*.txt` and then re-raises the signal, so the kernel still dumps core. The systemd unit sets `LimitCORE=infinity`; on the Pi install `systemd-coredump` (it also sets `fs.suid_dumpable=2`, which the daemon needs because it drops privileges after GPIO init). Then `coredumpctl list led-matrix`, `coredumpctl info led-matrix` (symbolized backtrace) and `coredumpctl debug led-matrix` (gdb; the `RelWithDebInfo` binary has symbols). Locally, run `ulimit -c unlimited` before reproducing.
 - Findings and open risks so far: `docs/memory-safety-report.md`.
 

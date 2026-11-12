@@ -16,13 +16,13 @@ vector<std::unique_ptr<ImageProviderWrapper>> GameScenes::create_image_providers
 }
 
 vector<std::unique_ptr<SceneWrapper>> GameScenes::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<PingPongGameSceneWrapper>());
-    scenes.push_back(std::make_unique<TetrisSceneWrapper>());
-    scenes.push_back(std::make_unique<MazeGameSceneWrapper>());
-    scenes.push_back(std::make_unique<SnakeGameSceneWrapper>());
-    scenes.push_back(std::make_unique<PacmanGameSceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<PingPongGameSceneWrapper>());
+    created.push_back(std::make_unique<TetrisSceneWrapper>());
+    created.push_back(std::make_unique<MazeGameSceneWrapper>());
+    created.push_back(std::make_unique<SnakeGameSceneWrapper>());
+    created.push_back(std::make_unique<PacmanGameSceneWrapper>());
+    return created;
 }
 
 GameScenes::GameScenes() = default;

@@ -287,7 +287,6 @@ bool CountdownScene::render(rgb_matrix::FrameCanvas *canvas)
         int py = 2;
         for (size_t i = 0; i < msg.size(); i++)
         {
-            char c = msg[i];
             // draw simple block per char
             for (int oy = 0; oy < 4; oy++)
             {

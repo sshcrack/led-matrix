@@ -13,15 +13,15 @@ using namespace AmbientScenes;
 REGISTER_PLUGIN(AmbientScenes, AmbientPlugin)
 
 vector<std::unique_ptr<SceneWrapper>> AmbientPlugin::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<StarFieldSceneWrapper>());
-    scenes.push_back(std::make_unique<MetaBlobSceneWrapper>());
-    scenes.push_back(std::make_unique<ClockSceneWrapper>());
-    scenes.push_back(std::make_unique<SortingVisualizerSceneWrapper>());
-    scenes.push_back(std::make_unique<BouncingLogoSceneWrapper>());
-    scenes.push_back(std::make_unique<NeonTunnelSceneWrapper>());
-    scenes.push_back(std::make_unique<DigitalRainSceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<StarFieldSceneWrapper>());
+    created.push_back(std::make_unique<MetaBlobSceneWrapper>());
+    created.push_back(std::make_unique<ClockSceneWrapper>());
+    created.push_back(std::make_unique<SortingVisualizerSceneWrapper>());
+    created.push_back(std::make_unique<BouncingLogoSceneWrapper>());
+    created.push_back(std::make_unique<NeonTunnelSceneWrapper>());
+    created.push_back(std::make_unique<DigitalRainSceneWrapper>());
+    return created;
 }
 
 vector<std::unique_ptr<ImageProviderWrapper> >

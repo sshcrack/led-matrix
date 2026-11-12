@@ -348,7 +348,7 @@ namespace Update
                 return std::unexpected("Could not create file: " + filename);
 
             auto response = cpr::Download(file, cpr::Url{url}, cpr::ConnectTimeout{5000}, cpr::Timeout{180000},
-                cpr::LowSpeed{1024, 10},
+                cpr::LowSpeed{1024, std::chrono::seconds{10}},
                 cpr::ProgressCallback{[this](auto, auto, auto, auto, intptr_t) { return !should_stop_.load(); }});
             file.flush();
             file.close();
@@ -368,7 +368,7 @@ namespace Update
         }
     }
 
-    std::expected<void, std::string> UpdateManager::install_update(const UpdateInfo &update, const string &filename)
+    std::expected<void, std::string> UpdateManager::install_update(const UpdateInfo &, const string &filename)
     {
         try
         {

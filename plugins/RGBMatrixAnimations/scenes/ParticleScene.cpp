@@ -15,19 +15,19 @@ ParticleScene::ParticleScene()
 void ParticleScene::initialize(int width, int height)
 {
     Scene::initialize(width, height);
-    renderer.reset();
-    animation.reset();
+    renderer_.reset();
+    animation_.reset();
     simulation_.reset();
 }
 
 bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
 {
-    if (renderer.has_value())
+    if (renderer_.has_value())
     {
-        renderer.value()->setCanvas(canvas);
+        renderer_.value()->setCanvas(canvas);
     }
 
-    if (!renderer.has_value() || !animation.has_value())
+    if (!renderer_.has_value() || !animation_.has_value())
     {
         spdlog::trace("Init particle scenes");
         // The simulation paints changes only. Its first canvas must not retain
@@ -37,20 +37,20 @@ bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
         if (random_seed_) local_renderer->set_random_seed(*random_seed_);
         auto local_animation = std::make_shared<GravityParticles>(local_renderer, shake->get(), bounce->get());
 
-        renderer = local_renderer;
-        animation = local_animation;
+        renderer_ = local_renderer;
+        animation_ = local_animation;
 
         initializeParticles(local_renderer, local_animation);
     }
 
-    auto current_renderer = renderer.value();
-    auto current_animation = animation.value();
+    auto current_renderer = renderer_.value();
+    auto current_animation = animation_.value();
 
     if (!current_renderer || !current_animation)
     {
         spdlog::warn("Particle scene renderer or animation was unexpectedly null, reinitializing on next frame.");
-        renderer.reset();
-        animation.reset();
+        renderer_.reset();
+        animation_.reset();
         hold_current_frame();
         return true;
     }
@@ -85,22 +85,22 @@ void ParticleScene::register_properties()
 
 void ParticleScene::after_render_stop()
 {
-    if (animation.has_value() && renderer.value())
+    if (animation_.has_value() && renderer_.value())
     {
-        this->particle_on_render_stop(renderer.value(), animation.value());
+        this->particle_on_render_stop(renderer_.value(), animation_.value());
     }
 
-    if (animation.has_value())
+    if (animation_.has_value())
     {
-        animation.value()->clearParticles();
+        animation_.value()->clearParticles();
     }
 
-    if (renderer.has_value())
+    if (renderer_.has_value())
     {
-        renderer.value()->clearImage();
+        renderer_.value()->clearImage();
     }
 
-    animation.reset();
-    renderer.reset();
+    animation_.reset();
+    renderer_.reset();
     simulation_.reset();
 }

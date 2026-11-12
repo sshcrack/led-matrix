@@ -368,7 +368,7 @@ Daemon::Daemon(int argc, char* argv[])
             settings.cleanup_func([]
             {
                 {
-                    unique_lock lock(Server::registryMutex);
+                    unique_lock registry_lock(Server::registryMutex);
                     Server::registry.clear();
                 }
                 Server::desktop_connection_count.store(0);

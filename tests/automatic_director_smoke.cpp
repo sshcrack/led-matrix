@@ -15,7 +15,7 @@ namespace {
 class TestScene final : public Scenes::Scene {
 public:
     TestScene(std::string name, float intensity, float music, float cost, bool needs_audio, std::string family, float motion = .5f,
-              std::vector<std::string> tags = {}, std::vector<std::string> required_inputs = {}, tmillis_t duration = 1000,
+              std::vector<std::string> tags = {}, std::vector<std::string> required_inputs = {}, tmillis_t duration_ms = 1000,
               bool automatic_eligible = true)
         : name_(std::move(name)),
           intensity_(intensity),
@@ -26,7 +26,7 @@ public:
           motion_(motion),
           tags_(std::move(tags)),
           required_inputs_(std::move(required_inputs)),
-          duration_(duration),
+          duration_(duration_ms),
           automatic_eligible_(automatic_eligible)
     {
         update_default_properties();
@@ -594,7 +594,7 @@ int main()
     // A failed presentation cools the scene down with backoff, but never leaves
     // the matrix without a scene when nothing else is eligible.
     AutomaticDirector health_director(93);
-    health_director.report_outcome(twins[0], {.failed = true});
+    health_director.report_outcome(twins[0], {.render_load = std::nullopt, .failed = true});
     ranked = health_director.rank(twins, {});
     if (ranked.size() != 1 || ranked.front().scene->get_name() != "twin_b") {
         std::cerr << "failed scene was not cooled down\n";
@@ -610,7 +610,7 @@ int main()
         std::cerr << "first failure cooldown did not expire after two minutes\n";
         return 37;
     }
-    health_director.report_outcome(twins[0], {.failed = true});
+    health_director.report_outcome(twins[0], {.render_load = std::nullopt, .failed = true});
     health_director.advance_journey(2 * 60000 + 1);
     if (health_director.rank(twins, {}).size() != 1) {
         std::cerr << "repeated failure did not back off the cooldown\n";
@@ -618,7 +618,7 @@ int main()
     }
     health_director.advance_journey(2 * 60000);
     health_director.report_outcome(twins[0], {});
-    health_director.report_outcome(twins[0], {.failed = true});
+    health_director.report_outcome(twins[0], {.render_load = std::nullopt, .failed = true});
     health_director.advance_journey(2 * 60000 + 1);
     if (health_director.rank(twins, {}).size() != 2) {
         std::cerr << "successful presentation did not reset the failure backoff\n";
@@ -745,8 +745,8 @@ int main()
             std::make_shared<TestScene>("rave", .9f, .6f, .2f, false, "party", .9f,
                                         std::vector<std::string>{"energetic", "vivid", "party"}),
         };
-        auto score_of = [](const std::vector<AutomaticDirector::Candidate>& ranked, const std::string& name) -> std::optional<float> {
-            for (const auto& c : ranked)
+        auto score_of = [](const std::vector<AutomaticDirector::Candidate>& candidates, const std::string& name) -> std::optional<float> {
+            for (const auto& c : candidates)
                 if (c.scene->get_name() == name)
                     return c.score;
             return std::nullopt;

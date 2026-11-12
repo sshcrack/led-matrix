@@ -68,11 +68,11 @@ std::optional<std::vector<Magick::Image>> Post::process_images(const int width, 
     }
 }
 
-Post::Post(const std::string &img_url, const bool maybe_fetch_type) : Post(img_url, maybe_fetch_type, false) {}
+Post::Post(const std::string &url, const bool maybe_fetch_type) : Post(url, maybe_fetch_type, false) {}
 
-Post::Post(const std::string &img_url, const bool maybe_fetch_type, const bool block_internal_hosts) {
-    this->img_url = img_url;
-    this->block_internal_hosts = block_internal_hosts;
+Post::Post(const std::string &url, const bool maybe_fetch_type, const bool block_internal) {
+    this->img_url = url;
+    this->block_internal_hosts = block_internal;
 
     // Derive the suffix from the URL path, not dots in the hostname or query.
     const auto url_path = img_url.substr(0, img_url.find_first_of("?#"));

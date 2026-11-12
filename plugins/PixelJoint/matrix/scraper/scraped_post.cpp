@@ -4,8 +4,8 @@
 #include "spdlog/spdlog.h"
 
 namespace pixeljoint {
-    ScrapedPost::ScrapedPost(const std::string_view thumbnail, const std::string_view url)
-        : thumbnail(thumbnail)
+    ScrapedPost::ScrapedPost(const std::string_view thumb, const std::string_view url)
+        : thumbnail(thumb)
           , post_url(url) {
     }
 

@@ -74,5 +74,5 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
                                      {"automatic_active", cfg->is_automatic_mode()}});
     });
 
-    return std::move(router);
+    return router;
 }

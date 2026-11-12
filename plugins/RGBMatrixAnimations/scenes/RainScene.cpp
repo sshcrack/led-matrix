@@ -9,9 +9,9 @@ RainScene::RainScene()
           cols(nullptr),
           vels(nullptr),
           lengths(nullptr),
-          counter(0),
           currentColorId(1),
-          totalColors(0) {
+          totalColors(0),
+          counter(0) {
 
     num_particles = MAKE_PROPERTY_MINMAX("num_particles", int, 4000, 1, 12000);
     num_particles->legacy_name("numParticles");
@@ -83,7 +83,6 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
     uint16_t brightness = 255;
     uint8_t red = 0, green = 255, blue = 0;
     uint8_t shadeSize = 8;
-    uint16_t colID = 0;
 
     // Create color gradient: green -> yellow -> red -> magenta -> blue -> cyan -> green
     for (uint16_t i = 0; i <= 255; i++) {
@@ -92,7 +91,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * i / 255);
             green = brightness;
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -101,7 +100,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = brightness;
             green = uint16_t(brightness * (255 - i) / 255);
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -110,7 +109,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = brightness;
             blue = uint16_t(brightness * i / 255);
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -119,7 +118,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             red = uint16_t(brightness * (255 - i) / 255);
             blue = brightness;
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -128,7 +127,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             green = uint16_t(brightness * i / 255);
             blue = brightness;
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
     for (uint16_t i = 0; i <= 255; i++) {
@@ -137,7 +136,7 @@ void RainScene::createColorPalette(std::shared_ptr<ParticleMatrixRenderer> rende
             brightness = random_int16(50, 255);
             green = brightness;
             blue = uint16_t(brightness * (255 - i) / 255);
-            colID = color_id(RGB_color(red, green, blue));
+            color_id(RGB_color(red, green, blue));
         }
     }
 

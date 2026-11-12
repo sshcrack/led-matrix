@@ -117,15 +117,15 @@ namespace AmbientScenes
             if (should_apply_glow && use_glow_effect->get())
             {
                 // Use a smaller glow radius for better appearance on LED matrix
-                for (int dy = -1; dy <= 1; dy++)
+                for (int gdy = -1; gdy <= 1; gdy++)
                 {
-                    for (int dx = -1; dx <= 1; dx++)
+                    for (int gdx = -1; gdx <= 1; gdx++)
                     {
-                        if (dx == 0 && dy == 0)
+                        if (gdx == 0 && gdy == 0)
                             continue; // Skip center pixel
 
-                        int gx = x0 + dx;
-                        int gy = y0 + dy;
+                        int gx = x0 + gdx;
+                        int gy = y0 + gdy;
 
                         // Check bounds
                         if (gx >= 0 && gx < canvas->width() &&
@@ -133,7 +133,7 @@ namespace AmbientScenes
                         {
 
                             // Calculate distance-based intensity
-                            float dist = sqrt(dx * dx + dy * dy);
+                            float dist = sqrt(gdx * gdx + gdy * gdy);
                             float intensity = 0.5f * (1.0f - dist / 2.0f);
 
                             // Apply dimmer color for glow

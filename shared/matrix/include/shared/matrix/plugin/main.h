@@ -163,11 +163,11 @@ namespace Plugins
         /// Returns true if the request has been handled by this plugin
         virtual std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router)
         {
-            return std::move(router);
+            return router;
         }
 
         /// Return true if the request has been handled by this plugin
-        virtual bool on_udp_packet(const uint8_t pluginId, const uint8_t *data, const size_t size)
+        virtual bool on_udp_packet(const uint8_t /*pluginId*/, const uint8_t * /*data*/, const size_t /*size*/)
         {
             return false;
         }
@@ -182,7 +182,7 @@ namespace Plugins
             return false;
         }
 
-        virtual void on_websocket_message(const std::string &message)
+        virtual void on_websocket_message(const std::string & /*message*/)
         {
             // Default implementation does nothing
         }

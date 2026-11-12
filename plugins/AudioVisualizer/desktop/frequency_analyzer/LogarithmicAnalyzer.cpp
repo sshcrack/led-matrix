@@ -19,7 +19,7 @@ auto LogarithmicAnalyzer::computeBands(
     const float logMaxFreq = std::log(config.maxFreq);
     const float logFreqRange = logMaxFreq - logMinFreq;
 
-    for (size_t i = 0; i < config.numBands; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(config.numBands); ++i) {
         const float bandStartRatio = static_cast<float>(i) / config.numBands;
         const float bandEndRatio = static_cast<float>(i + 1) / config.numBands;
         const float bandStartLogFreq = logMinFreq + bandStartRatio * logFreqRange;
@@ -49,10 +49,10 @@ auto LogarithmicAnalyzer::computeBands(
     // Interpolation pass
     if (shouldInterpolate) {
         size_t prevValidIdx = -1;
-        for (size_t i = 0; i < config.numBands; ++i) {
+        for (size_t i = 0; i < static_cast<size_t>(config.numBands); ++i) {
             if (std::ranges::find(skipped, i) != skipped.end()) {
                 size_t nextValidIdx = -1;
-                for (size_t j = i + 1; j < config.numBands; ++j) {
+                for (size_t j = i + 1; j < static_cast<size_t>(config.numBands); ++j) {
                     if (std::ranges::find(skipped, j) == skipped.end()) {
                         nextValidIdx = j;
                         break;

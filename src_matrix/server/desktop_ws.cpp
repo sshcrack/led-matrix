@@ -172,7 +172,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                     rws::upgrade<traits_t>(
                         *req,
                         rws::activation_t::delayed,
-                        [ &registry, is_scene_worker ](auto wsh, auto m) {
+                        [ &registry, is_scene_worker ](auto conn, auto m) {
                             if(rws::opcode_t::text_frame == m->opcode()) {
                                 const std::string mStr = m->payload();
                                 if (!is_scene_worker) {
@@ -180,7 +180,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                                         // A clearly more relevant standby desktop (e.g. the one that
                                         // actually has audio) takes over the producer role.
                                         const auto change = Server::report_desktop_relevance(
-                                            wsh->connection_id(), *relevance);
+                                            conn->connection_id(), *relevance);
                                         if (change.changed)
                                             spdlog::info("Desktop producer moved to connection {} (more relevant)",
                                                          change.owner);
@@ -201,9 +201,9 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                                             continue;
 
                                         if (plugin->requires_single_desktop_producer()
-                                            && !Server::accepts_desktop_producer_message(wsh->connection_id())) {
+                                            && !Server::accepts_desktop_producer_message(conn->connection_id())) {
                                             spdlog::debug("Ignoring {} message from standby desktop connection {}",
-                                                          pluginName, wsh->connection_id());
+                                                          pluginName, conn->connection_id());
                                             break;
                                         }
 
@@ -215,26 +215,26 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
                             if (rws::opcode_t::ping_frame == m->opcode()) {
                                 auto resp = *m;
                                 resp.set_opcode(rws::opcode_t::pong_frame);
-                                wsh->send_message(resp);
+                                conn->send_message(resp);
                             } else if (rws::opcode_t::connection_close_frame == m->opcode()) {
                                 bool removed_regular_desktop = false;
                                 int previous_count = 0;
                                 {
                                     std::unique_lock lock(registryMutex);
-                                    if (registry.erase(wsh->connection_id()) > 0) {
-                                        if (scene_worker_connections.erase(wsh->connection_id()) == 0) {
+                                    if (registry.erase(conn->connection_id()) > 0) {
+                                        if (scene_worker_connections.erase(conn->connection_id()) == 0) {
                                             removed_regular_desktop = true;
                                             previous_count = desktop_connection_count.fetch_sub(1);
                                             if (previous_count <= 1)
                                                 desktop_connection_count.store(0);
                                         } else {
-                                            unregister_desktop_worker(wsh->connection_id());
+                                            unregister_desktop_worker(conn->connection_id());
                                         }
                                     }
                                 }
 
                                 if (removed_regular_desktop) {
-                                    const auto change = unregister_desktop_producer(wsh->connection_id());
+                                    const auto change = unregister_desktop_producer(conn->connection_id());
                                     publish_desktop_runtime_input(previous_count == 1);
                                     // A clean owner disconnect promotes the newest remaining
                                     // controller and replays the current producer request.
@@ -313,5 +313,5 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
         spdlog::warn("WebSocket connection request rejected: Connection header is not upgrade.");
         return restinio::request_rejected();
     });
-    return std::move(router);
+    return router;
 }

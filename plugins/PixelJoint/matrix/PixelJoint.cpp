@@ -26,9 +26,9 @@ PixelJoint::create_image_providers() {
 
 
 vector<std::unique_ptr<SceneWrapper>> PixelJoint::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<ImageSceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<ImageSceneWrapper>());
+    return created;
 }
 
 PixelJoint::PixelJoint() = default;
@@ -141,5 +141,5 @@ std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> 
         return handle_upload(req);
     });
 
-    return std::move(router);
+    return router;
 }

@@ -28,7 +28,7 @@ std::expected<float, std::string> SongBpmApi::get_bpm(const std::string &, const
 }
 
 #define CHECK(c) do { if (!(c)) { std::cerr << "Failed line " << __LINE__ << ": " << #c << '\n'; return 1; } } while (0)
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     Magick::InitializeMagick(argv[0]);
     rgb_matrix::RGBMatrix::Options options; options.rows = options.cols = 64;
     rgb_matrix::EmulatorOptions emulator; emulator.headless = true;

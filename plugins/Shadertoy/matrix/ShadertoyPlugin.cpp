@@ -92,17 +92,17 @@ vector<std::unique_ptr<Previews::DataProvider>> ShadertoyPlugin::create_preview_
 
 vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
 {
-    auto scenes = vector<std::unique_ptr<SceneWrapper>>();
+    auto created = vector<std::unique_ptr<SceneWrapper>>();
 
-    scenes.push_back(std::make_unique<ShadertoySceneWrapper>());
-    append_builtin_scenes(scenes);
+    created.push_back(std::make_unique<ShadertoySceneWrapper>());
+    append_builtin_scenes(created);
 
     const auto custom_dir = custom_shader_dir();
     std::error_code ec;
     fs::create_directories(custom_dir, ec);
     if (ec) {
         spdlog::warn("Shadertoy: failed to create custom shader dir '{}': {}", custom_dir.string(), ec.message());
-        return scenes;
+        return created;
     }
 
     for (const auto &entry : fs::directory_iterator(custom_dir, ec)) {
@@ -120,10 +120,10 @@ vector<std::unique_ptr<SceneWrapper>> ShadertoyPlugin::create_scenes()
             std::lock_guard lock(customSceneMutex);
             customSceneNamesByFile[entry.path().string()] = custom_wrapper->get_name();
         }
-        scenes.push_back(std::move(custom_wrapper));
+        created.push_back(std::move(custom_wrapper));
     }
 
-    return scenes;
+    return created;
 }
 
 bool ShadertoyPlugin::on_udp_packet(const uint8_t pluginId, const uint8_t *packetData,
@@ -132,7 +132,7 @@ bool ShadertoyPlugin::on_udp_packet(const uint8_t pluginId, const uint8_t *packe
     if (pluginId != 0x02)
         return false; // Not destined for this plugin
 
-    int neededPacketSize = Constants::height * Constants::width * 3; // 3 bytes per pixel (RGB)
+    size_t neededPacketSize = Constants::height * Constants::width * 3; // 3 bytes per pixel (RGB)
     static int consecutiveErrors = 0;
     if (size < neededPacketSize)
     {

@@ -16,7 +16,7 @@ namespace Scenes {
     
     struct Position {
         int x, y;
-        Position(int x = 0, int y = 0) : x(x), y(y) {}
+        Position(int px = 0, int py = 0) : x(px), y(py) {}
         bool operator==(const Position& other) const {
             return x == other.x && y == other.y;
         }

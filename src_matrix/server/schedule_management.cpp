@@ -164,5 +164,5 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         return reply_with_json(req, {{"success", "Schedule deleted"}});
     });
 
-    return std::move(router);
+    return router;
 }

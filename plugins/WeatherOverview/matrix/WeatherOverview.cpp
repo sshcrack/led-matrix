@@ -18,10 +18,10 @@ WeatherOverview::create_image_providers() {
 }
 
 vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
-    vector<std::unique_ptr<SceneWrapper>> scenes;
-    scenes.push_back(std::make_unique<WeatherSceneWrapper>());
-    scenes.push_back(std::make_unique<WeatherAmbienceSceneWrapper>());
-    return scenes;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<WeatherSceneWrapper>());
+    created.push_back(std::make_unique<WeatherAmbienceSceneWrapper>());
+    return created;
 }
 
 std::unique_ptr<router_t> WeatherOverview::register_routes(std::unique_ptr<router_t> router) {
@@ -37,7 +37,7 @@ std::unique_ptr<router_t> WeatherOverview::register_routes(std::unique_ptr<route
             return Server::reply_with_error(req, "Invalid JSON payload");
         }
     });
-    return std::move(router);
+    return router;
 }
 
 std::optional<string> WeatherOverview::before_server_init() {
