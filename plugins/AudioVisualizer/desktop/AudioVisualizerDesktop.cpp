@@ -97,13 +97,17 @@ void AudioVisualizerDesktop::addConnectionSettings() {
     const auto media = mediaSessions.snapshot();
     if (!media.available)
         ImGui::TextDisabled("Media playback: not detectable on this system");
+    else if (media.playing && !relevance.media_trusted(std::chrono::steady_clock::now()))
+        ImGui::TextDisabled("Media playback: %s reports playing, but nothing is heard here (another device?)",
+                            media.player.empty() ? "a player" : media.player.c_str());
     else if (media.playing)
         ImGui::TextDisabled("Media playback: %s is playing", media.player.empty() ? "a player" : media.player.c_str());
     else
         ImGui::TextDisabled("Media playback: nothing playing");
     ImGui::SetItemTooltip(
-        "Playing media (Spotify, a browser, ...) makes this desktop a preferred audio producer, "
-        "even through quiet passages.");
+        "Playing media (Spotify, a browser, ...) keeps this desktop a preferred audio producer through quiet "
+        "passages. It does not count while this PC hears nothing, e.g. when Spotify shows playback that runs "
+        "on another device.");
 }
 
 void AudioVisualizerDesktop::addAnalysisSettings() {
