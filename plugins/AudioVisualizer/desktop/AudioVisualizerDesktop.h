@@ -1,21 +1,25 @@
 #pragma once
 
+#include <implot.h>
+#include <shared/desktop/MediaSessionMonitor.h>
+#include <shared/desktop/plugin/main.h>
+
 #include <chrono>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
+#include <shared_mutex>
+#include <string>
+#include <vector>
+
 #include "AudioProcessor.h"
+#include "DesktopRelevance.h"
 #include "MusicAnalyzer.h"
 #include "config.h"
 #include "frequency_analyzer/FrequencyAnalyzer.h"
 #include "frequency_analyzer/factory.h"
 #include "record.h"
-#include <implot.h>
-#include <deque>
-#include <memory>
-#include <mutex>
-#include <nlohmann/json.hpp>
-#include <shared/desktop/plugin/main.h>
-#include <shared_mutex>
-#include <string>
-#include <vector>
 
 class AudioVisualizerDesktop final : public Plugins::DesktopPlugin {
 public:
@@ -68,8 +72,9 @@ private:
     /// Switch device / start capture as configured. False when capture is unavailable. Needs stateMutex.
     bool ensure_recording_locked();
     void note_level_locked(const AudioRecorder::CapturedAudioFrame &captured);
-    int lastRelevance = 0;
-    std::chrono::steady_clock::time_point lastRelevanceAt{};
+    DesktopRelevanceTracker relevance;
+    std::chrono::steady_clock::time_point lastLevelAt{};
+    MediaSessionMonitor mediaSessions;
     std::string currentDeviceName;
 
 protected:

@@ -56,6 +56,22 @@ namespace
         }
         return false;
     }
+
+    /// Name of the default sink as PipeWire/PulseAudio reports it, empty when
+    /// pactl is missing or the server is unreachable.
+    std::string defaultSinkName()
+    {
+        FILE* pipe = ::popen("pactl get-default-sink 2>/dev/null", "r");
+        if (!pipe)
+            return {};
+        std::array<char, 512> buffer{};
+        std::string name;
+        if (std::fgets(buffer.data(), static_cast<int>(buffer.size()), pipe))
+            name = buffer.data();
+        ::pclose(pipe);
+        while (!name.empty() && (name.back() == '\n' || name.back() == '\r' || name.back() == ' ')) name.pop_back();
+        return name;
+    }
 }
 #endif
 
@@ -271,6 +287,19 @@ namespace AudioRecorder
             return false;
         }
 
+        // Record the default sink's monitor by its name. With @DEFAULT_MONITOR@
+        // alone the stream is pinned to whatever sink was default at start and,
+        // when that sink disappears (headphones, Bluetooth, HDMI), the session
+        // manager moves the capture stream to the default *source*: the
+        // microphone. The node.* properties make PipeWire end the stream
+        // instead; the reader then sees EOF and capture restarts on the new
+        // default output. A distinct client name keeps a stream-restore entry
+        // saved for a generic "parec" (e.g. moved to a mic in pavucontrol)
+        // from applying here.
+        loopbackSink = defaultSinkName();
+        const std::string deviceArg = "--device=" + (loopbackSink.empty() ? std::string("@DEFAULT_MONITOR@") : loopbackSink + ".monitor");
+        lastSinkCheck = std::chrono::steady_clock::now();
+
         const pid_t pid = ::fork();
         if (pid < 0)
         {
@@ -286,15 +315,10 @@ namespace AudioRecorder
             ::dup2(pipeFds[1], STDOUT_FILENO);
             ::close(pipeFds[0]);
             ::close(pipeFds[1]);
-            ::execlp("parec", "parec",
-                     "--device=@DEFAULT_MONITOR@",
-                     "--format=float32le",
-                     "--rate=44100",
-                     "--channels=2",
-                     "--latency-msec=10",
-                     "--process-time-msec=5",
-                     "--raw",
-                     static_cast<char *>(nullptr));
+            ::execlp("parec", "parec", deviceArg.c_str(), "--client-name=led-matrix-desktop", "--stream-name=Desktop audio loopback",
+                     "--property=node.dont-reconnect=true", "--property=node.dont-fallback=true", "--property=node.dont-move=true",
+                     "--format=float32le", "--rate=44100", "--channels=2", "--latency-msec=10", "--process-time-msec=5", "--raw",
+                     static_cast<char*>(nullptr));
             _exit(127);
         }
 
@@ -312,7 +336,8 @@ namespace AudioRecorder
             lastDeliveredSequence = 0;
         }
         loopbackThread = std::thread(&Recorder::linuxLoopbackReadLoop, this);
-        spdlog::info("Recording Linux desktop output through PipeWire/PulseAudio default monitor");
+        spdlog::info("Recording Linux desktop output through PipeWire/PulseAudio monitor of '{}'",
+                     loopbackSink.empty() ? "@DEFAULT_SINK@" : loopbackSink);
         return true;
 #else
         return false;
@@ -396,6 +421,25 @@ namespace AudioRecorder
     }
 
 #endif
+
+    bool Recorder::defaultOutputChanged()
+    {
+#if defined(__linux__)
+        if (!recording || currentDeviceIndex != -2 || loopbackSink.empty())
+            return false;
+        const auto now = std::chrono::steady_clock::now();
+        if (now - lastSinkCheck < std::chrono::seconds(3))
+            return false;
+        lastSinkCheck = now;
+        const std::string sink = defaultSinkName();
+        if (sink.empty() || sink == loopbackSink)
+            return false;
+        spdlog::info("Default output changed from '{}' to '{}', restarting desktop loopback", loopbackSink, sink);
+        return true;
+#else
+        return false;
+#endif
+    }
 
     void Recorder::stopRecording()
     {

@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/desktop/VideoStreamEngineFastStart.cpp
         src/shared/desktop/VideoStreamEngineContinuous.cpp
         src/shared/desktop/audio_state.cpp
+        src/shared/desktop/MediaSessionMonitor.cpp
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SHARED_DESKTOP_EXPORTS)
@@ -40,6 +41,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
 
 if(WIN32)
         target_link_libraries(${PROJECT_NAME} PUBLIC bcrypt)
+        if(MSVC)
+                # MediaSessionMonitor: C++/WinRT media session API (Windows SDK).
+                target_link_libraries(${PROJECT_NAME} PRIVATE WindowsApp)
+        endif()
+else()
+        # MediaSessionMonitor: MPRIS players over the D-Bus session bus.
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
+        target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::DBUS)
 endif()
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
