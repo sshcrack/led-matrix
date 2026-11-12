@@ -30,7 +30,6 @@ SpotifyScenes::create_preview_data_providers() {
 }
 
 vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
-    
     vector<std::unique_ptr<SceneWrapper>> created;
     created.push_back(std::make_unique<CoverOnlySceneWrapper>());
     return created;

@@ -161,7 +161,6 @@ float ease_out_back(float t)
     return 1.0f + t * t * ((k + 1.0f) * t + k);
 }
 
-
 // Vivid version of a palette colour for light effects: full value, a little
 // more saturation. Greyscale artwork stays greyscale (no invented colours).
 Rgb accent_of(const rgb_matrix::Color &c)

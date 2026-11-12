@@ -14,10 +14,11 @@ struct PostProcessEffect {
     std::chrono::steady_clock::time_point start_time;
     float duration_seconds;
     float intensity; // 0.0 to 1.0+
-    
-    PostProcessEffect(const std::string& name, float duration = 0.5f, float initial_intensity = 1.0f) 
-        : effect_name(name), start_time(std::chrono::steady_clock::now()), 
-          duration_seconds(duration), intensity(initial_intensity) {}
+
+    PostProcessEffect(const std::string& name, float duration = 0.5f, float initial_intensity = 1.0f)
+        : effect_name(name), start_time(std::chrono::steady_clock::now()), duration_seconds(duration), intensity(initial_intensity)
+    {
+    }
 };
 
 class PostProcessingEffect {

@@ -11,7 +11,8 @@ static bool Pixel(rgb_matrix::FrameCanvas *canvas, int red, int green, int blue)
     uint8_t r=0,g=0,b=0;
     return canvas->GetPixel(0,0,&r,&g,&b) && r==red && g==green && b==blue;
 }
-int main(int, char **argv) {
+int main(int, char** argv)
+{
     Magick::InitializeMagick(argv[0]);
     rgb_matrix::RGBMatrix::Options options; options.rows=32; options.cols=32;
     rgb_matrix::EmulatorOptions emulator; emulator.headless=true;

@@ -22,13 +22,11 @@ void ParticleScene::initialize(int width, int height)
 
 bool ParticleScene::render(rgb_matrix::FrameCanvas* canvas)
 {
-    if (renderer_.has_value())
-    {
+    if (renderer_.has_value()) {
         renderer_.value()->setCanvas(canvas);
     }
 
-    if (!renderer_.has_value() || !animation_.has_value())
-    {
+    if (!renderer_.has_value() || !animation_.has_value()) {
         spdlog::trace("Init particle scenes");
         // The simulation paints changes only. Its first canvas must not retain
         // pixels from the outgoing scene, even when the first delta is zero.
@@ -85,18 +83,15 @@ void ParticleScene::register_properties()
 
 void ParticleScene::after_render_stop()
 {
-    if (animation_.has_value() && renderer_.value())
-    {
+    if (animation_.has_value() && renderer_.value()) {
         this->particle_on_render_stop(renderer_.value(), animation_.value());
     }
 
-    if (animation_.has_value())
-    {
+    if (animation_.has_value()) {
         animation_.value()->clearParticles();
     }
 
-    if (renderer_.has_value())
-    {
+    if (renderer_.has_value()) {
         renderer_.value()->clearImage();
     }
 

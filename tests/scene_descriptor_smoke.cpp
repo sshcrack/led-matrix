@@ -61,8 +61,7 @@ int main() {
         return 4;
     }
     const auto payload = Scenes::descriptor_to_json(descriptor);
-    if (payload.value("family", "") != "test" || payload["variants"].size() != 1 ||
-        payload["variants"][0].value("id", "") != "boost") {
+    if (payload.value("family", "") != "test" || payload["variants"].size() != 1 || payload["variants"][0].value("id", "") != "boost") {
         std::cerr << "descriptor JSON changed unexpectedly\n";
         return 5;
     }

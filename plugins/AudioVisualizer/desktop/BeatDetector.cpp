@@ -4,10 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-BeatDetector::BeatDetector() 
-    : last_beat_time_(std::chrono::steady_clock::now())
-    , beat_detected_(false) {
-}
+BeatDetector::BeatDetector() : last_beat_time_(std::chrono::steady_clock::now()), beat_detected_(false) {}
 
 void BeatDetector::configure(const BeatDetectionConfig& config) {
     std::lock_guard<std::mutex> lock(beat_mutex_);
@@ -58,7 +55,7 @@ bool BeatDetector::detect_beat_energy(const std::vector<float>& audio_data) {
     if (energy_history_.size() > static_cast<size_t>(config_.historySize)) {
         energy_history_.pop_front();
     }
-    
+
     // Need sufficient history to detect beats
     if (energy_history_.size() < 20) {
         return false;
@@ -89,7 +86,7 @@ bool BeatDetector::detect_beat_spectral_flux(const std::vector<float>& audio_dat
     if (flux_history_.size() > static_cast<size_t>(config_.historySize)) {
         flux_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (flux_history_.size() < 20) {
         return false;
@@ -120,7 +117,7 @@ bool BeatDetector::detect_beat_hfc(const std::vector<float>& audio_data) {
     if (hfc_history_.size() > static_cast<size_t>(config_.historySize)) {
         hfc_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (hfc_history_.size() < 20) {
         return false;
@@ -152,13 +149,13 @@ bool BeatDetector::detect_beat_complex_domain(const std::vector<float>& audio_da
     energy_history_.push_back(energy);
     flux_history_.push_back(flux);
     hfc_history_.push_back(hfc);
-    
+
     if (energy_history_.size() > static_cast<size_t>(config_.historySize)) {
         energy_history_.pop_front();
         flux_history_.pop_front();
         hfc_history_.pop_front();
     }
-    
+
     // Need sufficient history
     if (energy_history_.size() < 20) {
         return false;

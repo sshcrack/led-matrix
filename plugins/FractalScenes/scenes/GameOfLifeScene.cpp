@@ -8,7 +8,8 @@ using namespace Scenes;
 GameOfLifeScene::GameOfLifeScene() : Scene() {
 }
 
-void GameOfLifeScene::initialize(int w, int h) {
+void GameOfLifeScene::initialize(int w, int h)
+{
     Scene::initialize(w, h);
     this->width = matrix_width;
     this->height = matrix_height;

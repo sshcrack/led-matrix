@@ -31,8 +31,7 @@ bool Scenes::WeatherScene::reloadImages()
     picosha2::hash256_hex_string(current_data.icon_url, hash);
 
     fs::path file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
-    if (!fs::exists(file_path) && !current_data.icon_url.empty())
-    {
+    if (!fs::exists(file_path) && !current_data.icon_url.empty()) {
         try_remove(file_path);
         auto res = utils::download_image(current_data.icon_url, file_path);
         if (!res)
@@ -65,9 +64,8 @@ bool Scenes::WeatherScene::reloadImages()
     }
 
     img.forecastIcons.resize(current_data.forecast.size());
-    for (size_t index = 0; index < current_data.forecast.size(); ++index)
-    {
-        const auto &forecast_day = current_data.forecast[index];
+    for (size_t index = 0; index < current_data.forecast.size(); ++index) {
+        const auto& forecast_day = current_data.forecast[index];
         if (!forecast_day.icon_url.empty())
         {
             std::string forecast_hash;

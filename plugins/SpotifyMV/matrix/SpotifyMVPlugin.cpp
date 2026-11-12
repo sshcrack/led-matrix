@@ -10,9 +10,9 @@ REGISTER_PLUGIN(SpotifyMV, SpotifyMVPlugin)
 
 std::vector<std::unique_ptr<SceneWrapper>>
 SpotifyMVPlugin::create_scenes() {
-  std::vector<std::unique_ptr<SceneWrapper>> created;
-  created.push_back(std::make_unique<Scenes::SpotifyMVSceneWrapper>());
-  return created;
+    std::vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<Scenes::SpotifyMVSceneWrapper>());
+    return created;
 }
 
 std::vector<std::unique_ptr<ImageProviderWrapper>>

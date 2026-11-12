@@ -10,9 +10,9 @@ REGISTER_PLUGIN(Video, VideoPlugin)
 
 vector<std::unique_ptr<SceneWrapper>>
 VideoPlugin::create_scenes() {
-  vector<std::unique_ptr<SceneWrapper>> created;
-  created.push_back(std::make_unique<Scenes::VideoSceneWrapper>());
-  return created;
+    vector<std::unique_ptr<SceneWrapper>> created;
+    created.push_back(std::make_unique<Scenes::VideoSceneWrapper>());
+    return created;
 }
 
 vector<std::unique_ptr<ImageProviderWrapper>>

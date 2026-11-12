@@ -86,7 +86,7 @@ namespace Scenes {
         std::vector<std::pair<int, int>> directions;
         if (current_x > 1 && !maze[(current_y) * maze_size + (current_x - 2)])
             directions.push_back({-2, 0});
-        if (current_x < static_cast<int>(maze_size) - 2 && !maze[(current_y) * maze_size + (current_x + 2)])
+        if (current_x < static_cast<int>(maze_size) - 2 && !maze[(current_y)*maze_size + (current_x + 2)])
             directions.push_back({2, 0});
         if (current_y > 1 && !maze[(current_y - 2) * maze_size + current_x])
             directions.push_back({0, -2});
@@ -178,7 +178,7 @@ namespace Scenes {
             open_set.erase(current_it);
             closed_set.push_back({cx, cy});
 
-            for (const auto &[neighbor_x, neighbor_y]: get_neighbors(cx, cy)) {
+            for (const auto& [neighbor_x, neighbor_y] : get_neighbors(cx, cy)) {
                 if (std::find(closed_set.begin(), closed_set.end(),
                               std::make_pair(neighbor_x, neighbor_y)) != closed_set.end()) {
                     continue;

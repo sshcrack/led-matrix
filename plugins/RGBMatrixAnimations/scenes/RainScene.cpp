@@ -4,15 +4,8 @@
 
 using namespace Scenes;
 
-RainScene::RainScene()
-        : ParticleScene(),
-          cols(nullptr),
-          vels(nullptr),
-          lengths(nullptr),
-          currentColorId(1),
-          totalColors(0),
-          counter(0) {
-
+RainScene::RainScene() : ParticleScene(), cols(nullptr), vels(nullptr), lengths(nullptr), currentColorId(1), totalColors(0), counter(0)
+{
     num_particles = MAKE_PROPERTY_MINMAX("num_particles", int, 4000, 1, 12000);
     num_particles->legacy_name("numParticles");
     velocity = MAKE_PROPERTY_MINMAX("velocity", int16_t, 6000, 100, 16000);

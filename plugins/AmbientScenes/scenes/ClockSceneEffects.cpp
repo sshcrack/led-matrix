@@ -117,10 +117,8 @@ namespace AmbientScenes
             if (should_apply_glow && use_glow_effect->get())
             {
                 // Use a smaller glow radius for better appearance on LED matrix
-                for (int gdy = -1; gdy <= 1; gdy++)
-                {
-                    for (int gdx = -1; gdx <= 1; gdx++)
-                    {
+                for (int gdy = -1; gdy <= 1; gdy++) {
+                    for (int gdx = -1; gdx <= 1; gdx++) {
                         if (gdx == 0 && gdy == 0)
                             continue; // Skip center pixel
 

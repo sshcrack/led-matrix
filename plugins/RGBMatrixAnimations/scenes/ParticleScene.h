@@ -80,10 +80,7 @@ namespace Scenes {
         }
 
         virtual void initializeParticles(std::shared_ptr<ParticleMatrixRenderer> renderer, std::shared_ptr<GravityParticles> animation) = 0;
-        virtual void preRender(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/, std::shared_ptr<GravityParticles> /*animation*/)
-        {
-
-        }
+        virtual void preRender(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/, std::shared_ptr<GravityParticles> /*animation*/) {}
 
     public:
         void set_random_seed(uint32_t seed) override {
@@ -104,7 +101,8 @@ namespace Scenes {
         std::string get_category() const override { return "Particles"; }
         [[nodiscard]] bool supports_virtual_time() const override { return true; }
 
-        virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/, std::shared_ptr<GravityParticles> /*animation*/)
+        virtual void particle_on_render_stop(std::shared_ptr<ParticleMatrixRenderer> /*renderer*/,
+                                             std::shared_ptr<GravityParticles> /*animation*/)
         {
 
         }

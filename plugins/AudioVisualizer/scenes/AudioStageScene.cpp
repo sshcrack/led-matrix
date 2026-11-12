@@ -124,7 +124,8 @@ bool AudioStageScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int x = static_cast<int>(cx + sway - half); x <= static_cast<int>(cx + sway + half); ++x) buf_.set(x, y, RGB{0, 0, 0});
         }
         if (guitar)  // neck of the guitar, angled
-            for (int t = 0; t < 12; ++t) buf_.set(static_cast<int>(cx - 3 + t), static_cast<int>(head_top + 13 - t * 0.45f + lean), RGB{0, 0, 0});
+            for (int t = 0; t < 12; ++t)
+                buf_.set(static_cast<int>(cx - 3 + t), static_cast<int>(head_top + 13 - t * 0.45f + lean), RGB{0, 0, 0});
     };
     const float headbang = beat_.v;
     person(W * 0.30f, -0.6f + headbang * 1.2f, 25.0f, true);

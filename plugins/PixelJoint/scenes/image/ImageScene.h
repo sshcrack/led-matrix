@@ -42,10 +42,9 @@ struct CurrAnimation {
     std::unique_ptr<FileInfo> file;
     const tmillis_t end_time_ms;
 
-    CurrAnimation(rgb_matrix::StreamIO *stream,
-                  const tmillis_t end_ms,
-                  std::unique_ptr<FileInfo> info): player(stream), file(std::move(info)),
-                                                                        end_time_ms(end_ms) {
+    CurrAnimation(rgb_matrix::StreamIO* stream, const tmillis_t end_ms, std::unique_ptr<FileInfo> info)
+        : player(stream), file(std::move(info)), end_time_ms(end_ms)
+    {
     }
 
     ~CurrAnimation() {
