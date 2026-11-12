@@ -66,7 +66,7 @@ std::filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
 } // namespace
 
 
-std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router)
+std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
     // Root redirect
     router->http_get("/", [](auto req, auto)
@@ -180,16 +180,16 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
         return reply_with_error(req, "Not found", restinio::status_not_found()); });
 
-    router->http_get("/diagnostics", [](auto req, auto)
+    router->http_get("/diagnostics", [cfg](auto req, auto)
                      {
         auto result = Diagnostics::RuntimeDiagnostics::instance().snapshot();
         result["desktop_connections"] = Server::desktop_connection_count.load();
         const auto runtime_inputs = RuntimeInputs::snapshot();
         result["runtime_inputs"] = RuntimeInputs::to_json(runtime_inputs);
-        result["operation_mode"] = config->get_operation_mode();
-        result["director_mode"] = config->get_automatic_director_mode();
-        result["automatic_mode"] = config->is_automatic_mode();
-        result["configured_director_seed"] = std::to_string(config->get_automatic_director_seed());
+        result["operation_mode"] = cfg->get_operation_mode();
+        result["director_mode"] = cfg->get_automatic_director_mode();
+        result["automatic_mode"] = cfg->is_automatic_mode();
+        result["configured_director_seed"] = std::to_string(cfg->get_automatic_director_seed());
         result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
         const auto remote = RemoteRender::status();
         result["remote_render"] = {
@@ -257,7 +257,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
     router->http_get("/runtime_inputs", [](auto req, auto)
                      { return reply_with_json(req, RuntimeInputs::to_json(RuntimeInputs::snapshot())); });
 
-    router->http_post("/automatic_director/seed", [](auto req, auto) {
+    router->http_post("/automatic_director/seed", [cfg](auto req, auto) {
         try {
             std::uint64_t seed = 0;
             bool seed_supplied = false;
@@ -295,8 +295,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                 seed = (static_cast<std::uint64_t>(random()) << 32U) ^ static_cast<std::uint64_t>(random());
                 if (seed == 0) seed = 1;
             }
-            config->set_automatic_director_seed(seed);
-            if (!config->save())
+            cfg->set_automatic_director_seed(seed);
+            if (!cfg->save())
                 return reply_with_error(req, "Could not persist Automatic Director seed", restinio::status_internal_server_error());
             return reply_with_json(req, {{"success", true}, {"seed", std::to_string(seed)}});
         } catch (const std::exception &e) {
@@ -304,37 +304,37 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
     });
 
-    router->http_get("/automatic_director/mode", [](auto req, auto) {
-        return reply_with_json(req, {{"mode", config->get_automatic_director_mode()}});
+    router->http_get("/automatic_director/mode", [cfg](auto req, auto) {
+        return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}});
     });
 
-    router->http_post("/automatic_director/mode", [](auto req, auto) {
+    router->http_post("/automatic_director/mode", [cfg](auto req, auto) {
         try {
             const auto body = json::parse(req->body());
             if (!body.is_object() || !body.contains("mode") || !body["mode"].is_string())
                 return reply_with_error(req, "Expected {\"mode\": \"mixed|environment|party|chill\"}");
-            config->set_automatic_director_mode(body["mode"].template get<std::string>());
-            if (!config->save())
+            cfg->set_automatic_director_mode(body["mode"].template get<std::string>());
+            if (!cfg->save())
                 return reply_with_error(req, "Could not persist the Automatic Mode style", restinio::status_internal_server_error());
-            return reply_with_json(req, {{"mode", config->get_automatic_director_mode()}});
+            return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}});
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
         }
     });
 
-    router->http_get("/automatic_director/preferences", [](auto req, auto) {
-        return reply_with_json(req, json(config->get_automatic_preferences()));
+    router->http_get("/automatic_director/preferences", [cfg](auto req, auto) {
+        return reply_with_json(req, json(cfg->get_automatic_preferences()));
     });
 
-    router->http_post("/automatic_director/preferences", [](auto req, auto) {
+    router->http_post("/automatic_director/preferences", [cfg](auto req, auto) {
         try {
             const auto body = json::parse(req->body());
             const auto look = body.value("look", std::string{});
             const auto preference = body.value("preference", std::string{});
-            config->set_automatic_preference(look, preference);
-            if (!config->save())
+            cfg->set_automatic_preference(look, preference);
+            if (!cfg->save())
                 return reply_with_error(req, "Could not persist Automatic Mode preference", restinio::status_internal_server_error());
-            return reply_with_json(req, json(config->get_automatic_preferences()));
+            return reply_with_json(req, json(cfg->get_automatic_preferences()));
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
         }

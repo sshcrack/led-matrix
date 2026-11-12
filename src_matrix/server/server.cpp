@@ -34,16 +34,16 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const 
 
     router = add_preset_routes(std::move(router), deps.config);
     router = add_canvas_status_routes(std::move(router), deps.config);
-    router = add_scene_routes(std::move(router), deps.transition_manager);
+    router = add_scene_routes(std::move(router), deps.transition_manager, deps.config);
     router = add_scene_lab_routes(std::move(router), deps.config);
     router = add_custom_assets_routes(std::move(router));
     router = add_schedule_routes(std::move(router), deps.config);
     router = add_environment_routes(std::move(router), deps.config);
     router = add_post_processing_routes(std::move(router), deps.post_processor);
     router = add_update_routes(std::move(router), deps.update_manager);
-    router = add_other_routes(std::move(router));
+    router = add_other_routes(std::move(router), deps.config);
     router = add_live_frame_routes(std::move(router));
-    router = add_desktop_routes(std::move(router), registry);
+    router = add_desktop_routes(std::move(router), registry, deps.config);
 
     const auto pl = Plugins::PluginManager::instance();
     for (const auto &item: pl->get_plugins()) {

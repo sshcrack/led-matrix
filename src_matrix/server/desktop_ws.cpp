@@ -152,11 +152,11 @@ void Server::broadcast_matrix_enabled(bool enabled)
     }
 }
 
-std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry)
+std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> router, ws_registry_t &registry, Config::MainConfig* cfg)
 {
     clear_desktop_producers();
     publish_desktop_runtime_input(false);
-    router->http_get("/desktopWebsocket", [&registry](auto req, auto)
+    router->http_get("/desktopWebsocket", [&registry, cfg](auto req, auto)
                      {
         spdlog::info("WebSocket connection request received.");
         if (restinio::http_connection_header_t::upgrade == req->header().connection()) {
@@ -296,7 +296,7 @@ std::unique_ptr<router_t> Server::add_desktop_routes(std::unique_ptr<router_t> r
             message.set_payload(DesktopControlProtocol::desktop_producer(producer_owner));
             wsh->send_message(message);
 
-            message.set_payload(DesktopControlProtocol::matrix_enabled(!config->is_turned_off()));
+            message.set_payload(DesktopControlProtocol::matrix_enabled(!cfg->is_turned_off()));
             wsh->send_message(message);
 
             send_initial_plugin_messages(wsh, producer_owner);
