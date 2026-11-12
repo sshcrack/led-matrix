@@ -14,17 +14,19 @@
 using namespace Config;
 
 namespace desktop_app::detail {
-    SettingsPanel::SettingsPanel(Plugins::PluginManager *pl, ConfigManager *cfg)
-        : pl(pl), cfg(cfg),
-          hostname(cfg->getGeneralConfig().getHostname()),
-          port(cfg->getGeneralConfig().getPort()),
-          fpsLimit(cfg->getGeneralConfig().getFpsLimit()),
-          udpFpsLimit(cfg->getGeneralConfig().getUdpFpsLimit()),
-          matrixOnOnStart(cfg->getGeneralConfig().isTurnMatrixOnOnStart()),
-          matrixOffOnExit(cfg->getGeneralConfig().isTurnMatrixOffOnExit()),
-          ytdlpPathInput(cfg->getGeneralConfig().getYtDlpPath()),
-          ytdlpStatusError(check_ytdlp_available()) {
-    }
+SettingsPanel::SettingsPanel(Plugins::PluginManager* pluginManager, ConfigManager* configManager)
+    : pl(pluginManager),
+      cfg(configManager),
+      hostname(configManager->getGeneralConfig().getHostname()),
+      port(configManager->getGeneralConfig().getPort()),
+      fpsLimit(configManager->getGeneralConfig().getFpsLimit()),
+      udpFpsLimit(configManager->getGeneralConfig().getUdpFpsLimit()),
+      matrixOnOnStart(cfg->getGeneralConfig().isTurnMatrixOnOnStart()),
+      matrixOffOnExit(cfg->getGeneralConfig().isTurnMatrixOffOnExit()),
+      ytdlpPathInput(cfg->getGeneralConfig().getYtDlpPath()),
+      ytdlpStatusError(check_ytdlp_available())
+{
+}
 
     void SettingsPanel::render_producer_role(const WebsocketClient& client)
     {
@@ -326,7 +328,6 @@ namespace desktop_app::detail {
         if (matrixVersionInfo.compatibility == MatrixVersionChecker::VersionCompatibility::DesktopNewer) {
             if (ImGui::MenuItem("Show Matrix Update Dialog")) {
                 matrixVersionManager.clearDialogs();
-                General &generalCfg = cfg->getGeneralConfig();
                 matrixVersionManager.checkMatrixVersionAsync(generalCfg.getHostname(), generalCfg.getPort());
             }
         }

@@ -130,10 +130,10 @@ std::string Config::General::getHostnameCopy() const
     return hostname;
 }
 
-void Config::General::setHostname(const std::string &hostname)
+void Config::General::setHostname(const std::string& newHostname)
 {
     std::unique_lock lock(mutex_);
-    this->hostname = hostname;
+    hostname = newHostname;
 }
 
 int Config::General::getFpsLimit() const

@@ -37,7 +37,8 @@ namespace desktop_app::detail {
     }
 
     // ---- Window iconify callback ----
-    void window_iconify_callback(GLFWwindow *window, const int iconified) {
+    void window_iconify_callback(GLFWwindow* /*window*/, const int iconified)
+    {
         if (iconified) {
             spdlog::info("Window iconified.");
             HelloImGui::GetRunnerParams()->appWindowParams.hidden = true;

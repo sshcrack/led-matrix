@@ -23,7 +23,10 @@ namespace desktop_app::detail {
     std::string get_noto_color_emoji_path() {
         std::string result;
         const char *cmd = "fc-list :family=file | grep -i 'Noto Color Emoji' | awk -F: '{print $1}' | head -n 1";
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+        struct PipeCloser {
+            void operator()(FILE* f) const { pclose(f); }
+        };
+        std::unique_ptr<FILE, PipeCloser> pipe(popen(cmd, "r"));
         if (!pipe)
             return result;
         char buffer[512];

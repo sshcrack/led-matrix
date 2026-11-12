@@ -152,8 +152,8 @@ int run_app(int argc, char *argv[]) {
     };
     runnerParams.callbacks.BeforeExit = [&] {
         spdlog::info("Exiting application...");
-        for (auto &[_1, pl]: pl->get_plugins()) {
-            pl->before_exit();
+        for (const auto& [name, plugin] : pl->get_plugins()) {
+            plugin->before_exit();
         }
     };
     runnerParams.appWindowParams.windowTitle = DISPLAY_APP_NAME;

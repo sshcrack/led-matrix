@@ -363,9 +363,11 @@ RegistryValidationReport PluginManager::build_report(const std::vector<std::shar
         };
         if (descriptor.family.empty())
             report.errors.emplace_back(fmt::format("Scene '{}' descriptor has an empty family", scene_name));
-        for (const auto [label, value] : std::array<std::pair<std::string_view, float>, 4>{
-                 {{"intensity", descriptor.intensity}, {"motion", descriptor.motion},
-                  {"music_affinity", descriptor.music_affinity}, {"performance_cost", descriptor.performance_cost}}}) {
+        for (const auto& [label, value] :
+             std::array<std::pair<std::string_view, float>, 4>{{{"intensity", descriptor.intensity},
+                                                                {"motion", descriptor.motion},
+                                                                {"music_affinity", descriptor.music_affinity},
+                                                                {"performance_cost", descriptor.performance_cost}}}) {
             if (!score_valid(value))
                 report.errors.emplace_back(fmt::format(
                     "Scene '{}' descriptor {} must be in the range 0..1", scene_name, label));
