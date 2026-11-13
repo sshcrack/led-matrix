@@ -105,6 +105,20 @@ In-transition pacing is unchanged (p95 interval ~23 ms, about 2 late frames per 
 
 The UDP receiver keeps three frames in assembly, so chunks of frame N that arrive after the first chunks of N+1 still complete N. `/diagnostics` → `udp.remote_frames` counts `completed`, `incomplete` (dropped because a newer frame completed or the slots ran out), `reorder_recovered` (completed while a newer frame was pending), `late_chunks` and `duplicate_chunks`. On `ledmat`, one evening's counters were 8,015 completed, 60 incomplete (0.7%) and 0 reordered, late or duplicate frames. A second run was 6,018 completed and 185 incomplete (3%) while the laptop worker also served the desktop app. Losses are dropped datagrams, not reordering. A frame is only known to be incomplete once a newer one has completed, so showing partial frames would not help.
 
+### Shared frame stream for shader, video and music-video scenes (2026-11-13)
+
+Shadertoy, Video and SpotifyMV used to send each frame as one 49 KB UDP datagram, which IP-fragments into ~34 pieces, so losing one piece loses the frame. They now share `FrameStream` (`shared/common/frame_stream.h` for the desktop `Sender`, `shared/matrix/frame_stream.h` for the Pi `Assembler`/`Receiver`): the same 1200-byte chunks and three-slot reassembly as RenderOffload, under each plugin's own packet id. The Pi announces support with the `frame_stream:1` plugin message on WebSocket open; until a desktop sees it (or after it reconnects) it sends the legacy whole frame, and a new Pi still accepts legacy frames from an older desktop. Counters per stream are in `/diagnostics` → `udp.frame_streams.<Plugin>` (the RenderOffload entry is also `udp.remote_frames`), with `legacy_frames` and `missed_frames` (sequence gaps) in addition to the counters above.
+
+The desktop's large-payload throttle compared against the time after the previous send instead of the frame start, so about one frame in six was skipped at 60 FPS. On `ledmat` with `scenic_aurora`:
+
+| Setup | Frames shown on the Pi |
+|---|---|
+| Legacy whole frames | 53.1/s |
+| Chunked, old throttle | 50.5/s, 0 incomplete |
+| Chunked, fixed throttle | 57.0/s, 2.7/s incomplete, 4.5% missed, ~24 Mbit/s |
+
+Presentation stayed at 60/s in every case; a 1.22.1 Pi with the new desktop kept receiving legacy frames without malformed packets.
+
 ### Panel refresh vs 60 FPS frames
 
 `demo -D 4 --led-show-refresh` on `ledmat` with the service's flags (service stopped):

@@ -42,6 +42,9 @@ void WebsocketClient::setup_callback()
         if (msg->type == ix::WebSocketMessageType::Open)
         {
             shared_this->streamState_.on_websocket_open();
+            // Empty plugin name: tell every plugin about the new connection,
+            // ordered before the messages the matrix sends on it.
+            shared_this->enqueuePluginMessage({}, {});
             {
                 std::unique_lock<std::mutex> lock(shared_this->lastErrorMutex);
                 shared_this->lastError.clear();
@@ -145,6 +148,10 @@ void WebsocketClient::pluginMessageLoop()
         }
 
         try {
+            if (item.first.empty()) {
+                for (const auto& [_name, plugin] : Plugins::PluginManager::instance()->get_plugins()) plugin->on_websocket_connected();
+                continue;
+            }
             for (const auto& [_name, plugin] : Plugins::PluginManager::instance()->get_plugins()) {
                 if (plugin->get_plugin_name() != item.first)
                     continue;
@@ -229,9 +236,11 @@ void WebsocketClient::threadLoop()
 
             if (pl->is_large_payload_plugin())
             {
-                auto now = clock::now();
+                // Compare loop start times: stamping the send after building
+                // the frame made the next 60 Hz iteration look early, so about
+                // one frame in six was skipped.
                 auto &last = lastLargePayloadSend[name];
-                if (now - last < largePayloadMinInterval)
+                if (frame_start - last < largePayloadMinInterval)
                     continue;
             }
 
@@ -239,7 +248,7 @@ void WebsocketClient::threadLoop()
             if (packets.empty())
                 continue;
 
-            lastLargePayloadSend[name] = clock::now();
+            lastLargePayloadSend[name] = frame_start;
 
             bool batch_ok = true;
             std::string batch_error;

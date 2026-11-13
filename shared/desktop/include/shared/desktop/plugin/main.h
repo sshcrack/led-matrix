@@ -46,6 +46,10 @@ namespace Plugins
         virtual void udp_init() {}
 
         virtual void on_websocket_message(const std::string /*message*/) {}
+        /// A new connection to the matrix opened. Called on the plugin message
+        /// thread before that connection's messages, so per-connection state
+        /// (e.g. a FrameStream::Sender) can be reset here.
+        virtual void on_websocket_connected() {}
 
         /// How useful this desktop is as the matrix's producer right now, 0..100
         /// (e.g. audio is playing). Polled every couple of seconds from the sender

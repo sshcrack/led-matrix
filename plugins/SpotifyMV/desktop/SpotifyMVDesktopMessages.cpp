@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 
 void SpotifyMVDesktop::on_websocket_message(const std::string message) {
+    if (frames_.on_message(message))
+        return;
     if (message == "producer:active") {
         producer_owner_.store(true, std::memory_order_release);
         last_tools_report_ = {};

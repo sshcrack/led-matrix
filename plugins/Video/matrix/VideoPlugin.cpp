@@ -29,15 +29,13 @@ VideoPlugin::create_shader_providers() {
 bool VideoPlugin::on_udp_packet(const uint8_t pluginId,
                                 const uint8_t *packetData, const size_t size) {
   if (pluginId != 0x03) return false;
-  
-  std::lock_guard<std::mutex> lock(dataMutex);
-  data.assign(packetData, packetData + size);
-  return true;
+
+  return frames_.on_packet(packetData, size);
 }
 
 std::optional<std::vector<std::string>> VideoPlugin::on_websocket_open() {
   std::lock_guard lock(streamMutex);
-  std::vector<std::string> messages{"video"};
+  std::vector<std::string> messages{"video", std::string(FrameStream::CapabilityMessage)};
   if (streamOwner && !streamUrl.empty()) {
     messages.push_back("stream:start");
     messages.push_back("url:" + streamUrl);
@@ -57,10 +55,7 @@ void VideoPlugin::set_stream_url(const void* owner, const std::string& url) {
   if (streamOwner != owner) return;
   streamUrl = url;
   flush_status();
-  {
-    std::lock_guard dataLock(dataMutex);
-    data.clear();
-  }
+  frames_.clear();
   send_msg_to_desktop("url:" + url);
 }
 

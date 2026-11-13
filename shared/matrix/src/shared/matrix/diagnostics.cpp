@@ -141,21 +141,43 @@ void RuntimeDiagnostics::record_udp_malformed() {
     udp_malformed_.fetch_add(1, std::memory_order_relaxed);
 }
 
-nlohmann::json RuntimeDiagnostics::remote_frames_json() const
+namespace {
+nlohmann::json frame_stream_counts(const std::array<std::uint64_t, FrameStreamEventCount>& counts)
 {
-    const auto count = [&](RemoteFrameEvent event) {
-        return remote_frame_events_[static_cast<std::size_t>(event)].load(std::memory_order_relaxed);
-    };
-    return {{"completed", count(RemoteFrameEvent::Completed)},
-            {"incomplete", count(RemoteFrameEvent::Incomplete)},
-            {"reorder_recovered", count(RemoteFrameEvent::ReorderRecovered)},
-            {"late_chunks", count(RemoteFrameEvent::LateChunk)},
-            {"duplicate_chunks", count(RemoteFrameEvent::DuplicateChunk)}};
+    const auto count = [&](FrameStreamEvent event) { return counts[static_cast<std::size_t>(event)]; };
+    return {{"completed", count(FrameStreamEvent::Completed)},
+            {"incomplete", count(FrameStreamEvent::Incomplete)},
+            {"reorder_recovered", count(FrameStreamEvent::ReorderRecovered)},
+            {"late_chunks", count(FrameStreamEvent::LateChunk)},
+            {"duplicate_chunks", count(FrameStreamEvent::DuplicateChunk)},
+            {"legacy_frames", count(FrameStreamEvent::LegacyFrame)},
+            {"missed_frames", count(FrameStreamEvent::MissedFrame)}};
+}
+}  // namespace
+
+nlohmann::json RuntimeDiagnostics::frame_stream_json(std::string_view stream) const
+{
+    std::lock_guard lock(frame_streams_mutex_);
+    const auto it = frame_streams_.find(stream);
+    return frame_stream_counts(it != frame_streams_.end() ? it->second : std::array<std::uint64_t, FrameStreamEventCount>{});
 }
 
-void RuntimeDiagnostics::record_remote_frame_event(RemoteFrameEvent event)
+nlohmann::json RuntimeDiagnostics::frame_streams_json() const
 {
-    remote_frame_events_[static_cast<std::size_t>(event)].fetch_add(1, std::memory_order_relaxed);
+    std::lock_guard lock(frame_streams_mutex_);
+    auto result = nlohmann::json::object();
+    for (const auto& [name, counts] : frame_streams_) result[name] = frame_stream_counts(counts);
+    return result;
+}
+
+void RuntimeDiagnostics::record_frame_stream_event(std::string_view stream, FrameStreamEvent event, std::uint64_t count)
+{
+    // A handful of events per frame and stream; the UDP thread never takes the snapshot lock.
+    std::lock_guard lock(frame_streams_mutex_);
+    auto it = frame_streams_.find(stream);
+    if (it == frame_streams_.end())
+        it = frame_streams_.emplace(std::string(stream), std::array<std::uint64_t, FrameStreamEventCount>{}).first;
+    it->second[static_cast<std::size_t>(event)] += count;
 }
 
 void RuntimeDiagnostics::record_audio_packet(std::uint32_t sequence) {
@@ -375,7 +397,9 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
               {"bytes_per_second", static_cast<double>(udp_bytes_.load(std::memory_order_relaxed)) / uptime_seconds},
               {"malformed", udp_malformed_.load(std::memory_order_relaxed)},
               {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)},
-              {"remote_frames", remote_frames_json()}}},
+              // Kept for the RenderOffload stream; every stream is under frame_streams.
+              {"remote_frames", frame_stream_json("RenderOffload")},
+              {"frame_streams", frame_streams_json()}}},
             {"audio_transport",
              {{"packets", audio_packets_},
               {"sequence_gaps", audio_sequence_gaps_},

@@ -1,10 +1,12 @@
 #pragma once
-#include "shared/matrix/plugin/main.h"
-#include "shared/matrix/input_ids.h"
 #include <chrono>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "shared/matrix/frame_stream.h"
+#include "shared/matrix/input_ids.h"
+#include "shared/matrix/plugin/main.h"
 
 class SpotifyMVPlugin final : public Plugins::BasicPlugin {
 public:
@@ -22,10 +24,8 @@ public:
     return {std::string(RuntimeInputIds::SpotifyMVReady)};
   }
 
-  std::vector<uint8_t> get_frame() {
-    std::lock_guard<std::mutex> lock(frame_mutex_);
-    return frame_;
-  }
+  /// Music-video frames from the desktop (top-down RGB888).
+  [[nodiscard]] const FrameStream::Receiver& frames() const { return frames_; }
 
   std::string get_status() {
     std::lock_guard<std::mutex> lock(status_mutex_);
@@ -40,26 +40,25 @@ public:
     last_track_message_ = msg;
   }
 
-  [[nodiscard]] bool is_stale() {
-    std::lock_guard<std::mutex> lock(frame_mutex_);
-    return std::chrono::steady_clock::now() - last_frame_time_ > kStaleTimeout;
+  [[nodiscard]] bool is_stale() const
+  {
+      const auto age = frames_.age_ms();
+      return !age || *age > std::chrono::duration<double, std::milli>(kStaleTimeout).count();
   }
 
   static constexpr auto kStaleTimeout = std::chrono::seconds(5);
 
 private:
-  std::mutex frame_mutex_;
-  std::vector<uint8_t> frame_;
-  std::chrono::steady_clock::time_point last_frame_time_{};
+    FrameStream::Receiver frames_{"SpotifyMV"};
 
-  std::mutex status_mutex_;
-  std::string status_ = "idle";
-  bool tools_ready_ = false;
-  std::string prepared_track_id_;
-  bool first_frame_ready_ = false;
+    std::mutex status_mutex_;
+    std::string status_ = "idle";
+    bool tools_ready_ = false;
+    std::string prepared_track_id_;
+    bool first_frame_ready_ = false;
 
-  std::mutex track_msg_mutex_;
-  std::string last_track_message_;
+    std::mutex track_msg_mutex_;
+    std::string last_track_message_;
 
-  void publish_runtime_state();
+    void publish_runtime_state();
 };

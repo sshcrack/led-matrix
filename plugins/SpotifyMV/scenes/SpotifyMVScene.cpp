@@ -138,38 +138,13 @@ bool SpotifyMVScene::render(rgb_matrix::FrameCanvas *canvas)
     return true;
   }
 
-  auto frame = plugin_->get_frame();
-  if (!frame.empty())
-  {
-    const int width = Constants::width;
-    const int height = Constants::height;
-    const uint8_t *data = frame.data();
-    const int max_pixels = frame.size() / 3;
-    const int limit = std::min(width * height, max_pixels);
-
-    if (limit == width * height)
-    {
-      // A complete frame is already packed RGB888: one bulk write.
-      canvas->SetRGB(0, 0, width, height, data);
-    }
-    else
-    {
-      for (int idx = 0; idx < limit; ++idx)
-      {
-        int x = idx % width;
-        int y = idx / width;
-        int i = idx * 3;
-        canvas->SetPixel(x, y, data[i], data[i + 1], data[i + 2]);
+  if (plugin_->frames().copy_latest(canvas, Constants::width, Constants::height)) {
+      auto status = plugin_->get_status();
+      if (status == "pending" || status == "searching" || status == "downloading" || status == "processing") {
+          LoadingAnimation::render_overlay(canvas, loading_frame_++, 30, 215, 96);
       }
-    }
 
-    auto status = plugin_->get_status();
-    if (status == "pending" || status == "searching" || status == "downloading" || status == "processing")
-    {
-      LoadingAnimation::render_overlay(canvas, loading_frame_++, 30, 215, 96);
-    }
-
-    return true;
+      return true;
   }
 
   auto status = plugin_->get_status();

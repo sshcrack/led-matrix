@@ -1,12 +1,14 @@
 #pragma once
 
-#include "shared/matrix/plugin/main.h"
-#include <mutex>
-#include <vector>
-#include <filesystem>
-#include <unordered_map>
-#include <thread>
 #include <atomic>
+#include <filesystem>
+#include <mutex>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
+#include "shared/matrix/frame_stream.h"
+#include "shared/matrix/plugin/main.h"
 
 using Plugins::SceneWrapper;
 using Plugins::ImageProviderWrapper;
@@ -36,10 +38,8 @@ public:
     std::string add_custom_shader_scene(const std::filesystem::path &shader_file_path);
     std::string remove_custom_shader_scene(const std::filesystem::path &shader_file_path);
 
-    std::vector<uint8_t> get_data() {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        return data;
-    }
+    /// Shader frames from the desktop (top-down RGB888).
+    [[nodiscard]] const FrameStream::Receiver& frames() const { return frames_; }
 
     void set_last_sent_message(const std::string& message) {
         std::lock_guard<std::mutex> lock(lastMsgMutex);
@@ -49,8 +49,8 @@ public:
 private:
     std::mutex lastMsgMutex;
     std::string last_sent_message;
-    std::mutex dataMutex;
-    std::vector<uint8_t> data;
+    // Older desktops send bottom-up OpenGL readbacks in one datagram.
+    FrameStream::Receiver frames_{"Shadertoy", true};
     std::mutex customSceneMutex;
     std::unordered_map<std::string, std::string> customSceneNamesByFile;
     std::thread watcher_thread_;

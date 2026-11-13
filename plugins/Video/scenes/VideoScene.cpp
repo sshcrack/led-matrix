@@ -153,23 +153,10 @@ bool VideoScene::render(rgb_matrix::FrameCanvas *canvas)
   }
 
   // Render Frame
-  const auto pixels = plugin->get_data();
-  if (pixels.empty())
-  {
-    // loading or waiting
-    render_loading_animation(canvas);
-    return true;
+  if (!plugin->frames().copy_latest(canvas, Constants::width, Constants::height)) {
+      // loading or waiting
+      render_loading_animation(canvas);
   }
-
-  const int width = Constants::width;
-  const int height = Constants::height;
-  // Whole scanlines use the bulk converter; a truncated final scanline keeps
-  // the original partial-frame behavior.
-  const int limit = std::min(width * height, static_cast<int>(pixels.size() / 3));
-  const int rows = limit / width;
-  canvas->SetRGB(0, 0, width, rows, pixels.data());
-  if (const int tail = limit % width; tail != 0)
-    canvas->SetRGB(0, rows, tail, 1, pixels.data() + rows * width * 3);
 
   return true;
 }

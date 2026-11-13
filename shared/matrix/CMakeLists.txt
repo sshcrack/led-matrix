@@ -35,6 +35,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/scene_descriptor.cpp
         src/shared/matrix/media_artwork_state.cpp
         src/shared/matrix/diagnostics.cpp
+        src/shared/matrix/frame_stream.cpp
         src/shared/matrix/transition_manager.cpp
         src/shared/matrix/plugin_registry.cpp
         src/shared/matrix/plugin_messages.cpp

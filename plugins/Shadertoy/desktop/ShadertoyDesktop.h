@@ -1,14 +1,17 @@
 #pragma once
-#include "shared/desktop/plugin/main.h"
-#include <nlohmann/json.hpp>
-#include <memory>
+#include <shared/common/frame_stream.h>
+
 #include <atomic>
-#include <thread>
-#include <shared_mutex>
-#include <mutex>
 #include <cstdint>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
 #include <shadertoy/ShaderToy.hpp>
+#include <shared_mutex>
+#include <thread>
+
 #include "ShaderCache.h"
+#include "shared/desktop/plugin/main.h"
 
 class ShadertoyDesktop final : public Plugins::DesktopPlugin
 {
@@ -18,9 +21,10 @@ public:
 
     void render() override;
     void on_websocket_message(std::string message) override;
+    void on_websocket_connected() override { frames_.reset(); }
 
     ShaderToy::Runtime runtime;
-    std::optional<std::unique_ptr<UdpPacket>> compute_next_packet(std::string sceneName) override;
+    std::vector<std::unique_ptr<UdpPacket>> compute_next_packets(const std::string& sceneName) override;
     std::string get_plugin_name() const override {
         return PLUGIN_NAME;
     }
@@ -57,6 +61,7 @@ private:
 
     std::shared_mutex currDataMutex;
     std::vector<uint8_t> currData;
+    FrameStream::Sender frames_{0x02};
 
     // Cache system
     std::unique_ptr<ShaderCache> mCache;

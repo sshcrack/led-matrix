@@ -227,12 +227,25 @@ VideoDesktop::compute_next_packet(const std::string sceneName) {
   return std::make_unique<VideoPacket>(std::move(frame));
 }
 
+std::vector<std::unique_ptr<UdpPacket>> VideoDesktop::compute_next_packets(const std::string& sceneName)
+{
+    auto packet = compute_next_packet(sceneName);
+    if (!packet)
+        return {};
+    // Chunked and sequenced for matrices that announced it, else the legacy datagram.
+    auto* video = static_cast<VideoPacket*>(packet->get());
+    return frames_.packets(std::move(video->data), matrix_width, matrix_height,
+                           [](std::vector<uint8_t> rgb) { return std::make_unique<VideoPacket>(std::move(rgb)); });
+}
+
 void VideoDesktop::on_websocket_message(const std::string message) {
-  if (message == "stream:stop") {
-    allow_sending_packets = false;
-    engine_->stop();
-    return;
-  }
+    if (frames_.on_message(message))
+        return;
+    if (message == "stream:stop") {
+        allow_sending_packets = false;
+        engine_->stop();
+        return;
+    }
   if (message == "stream:start") {
     allow_sending_packets = true;
     return;

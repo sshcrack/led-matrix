@@ -1171,6 +1171,17 @@ if(ENABLE_EMULATOR)
     add_test(NAME remote_render_smoke COMMAND $<TARGET_FILE:remote_render_smoke>)
     set_tests_properties(remote_render_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(frame_stream_smoke tests/frame_stream_smoke.cpp)
+    set_target_properties(frame_stream_smoke PROPERTIES BUILD_WITH_INSTALL_RPATH FALSE)
+    target_compile_features(frame_stream_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(frame_stream_smoke PRIVATE ENABLE_EMULATOR)
+    target_link_libraries(frame_stream_smoke PRIVATE
+        SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick
+    )
+    add_test(NAME frame_stream_smoke COMMAND $<TARGET_FILE:frame_stream_smoke>)
+    set_tests_properties(frame_stream_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(remote_scene_contract_smoke tests/remote_scene_contract_smoke.cpp)
     target_compile_features(remote_scene_contract_smoke PRIVATE cxx_std_23)
     target_link_libraries(remote_scene_contract_smoke PRIVATE
