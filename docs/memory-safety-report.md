@@ -2,7 +2,8 @@
 
 The original `safety/sanitizers` audit is retained below as historical evidence.
 Its test counts and verification limits describe that audit, not the current
-revision. Tooling and CI status were checked against the tree on 2026-11-10.
+revision. Tooling and CI status were checked against the tree on 2026-11-10; the
+audit's limits were re-verified on 2026-11-13 (see "Gap re-verification").
 
 ## Using the tooling
 
@@ -36,7 +37,8 @@ ctest --test-dir emulator_asan_build --output-on-failure
 - Sanitizer builds skip `dlclose()` of plugins so exit-time reports symbolize.
 - Core dumps: the crash reporter now re-raises the signal after writing
   `crashes/crash-*.txt`, the systemd unit has `LimitCORE=infinity`; use
-  `coredumpctl list|info|debug led-matrix` (install `systemd-coredump`, `gdb`).
+  `sudo coredumpctl list|info|debug led-matrix` (install `systemd-coredump`, `gdb`;
+  both are installed on `ledmat` since 2026-11-13).
 
 ## Historical audit findings
 
@@ -104,6 +106,36 @@ change was needed.
   viewer waiting. Consistent with the pull-based design; not changed.
 - TSan cannot see ordering inside uninstrumented libraries (libgomp, vcpkg
   libraries, Mesa), so races fully inside them are invisible.
+
+## Gap re-verification (2026-11-13)
+
+Each limit above was rechecked against `master` at `5535f30c` (plus the fixes in
+the same change) with GCC 15.2 on x64 Linux (Intel Arc/Mesa 26.0.8 iris) and on
+`ledmat` (Pi 3B, Raspberry Pi OS bookworm, kernel 6.12, led-matrix 1.22.0 `.deb`).
+
+| Original gap | Current evidence | Result |
+|---|---|---|
+| Real GPIO / privilege drop | Running daemon on `ledmat` after GPIO init: real, effective, saved and filesystem UID/GID all `pi` (1000). | Privilege drop verified (unsanitized). |
+| Core dumps from the Pi | `systemd-coredump` was **not** installed; installed it (`fs.suid_dumpable=2`, pipe `core_pattern`). `kill -SEGV` on the service: crash report written, core dumped, service restarted. `coredumpctl debug` gives a file:line backtrace (`crash_reporter.cpp:577` → `RemoteRender::copy_latest`). A process that dropped privileges *before* `suid_dumpable` became 2 does not dump, so the first dump works after the next service restart. | Verified. Modules lacked GNU build-ids, so `coredumpctl info` could not match them; Linux links now add `--build-id`. |
+| Sanitizers on the Pi | Not run. ASan's slowdown would distort the GPIO refresh timing being tested, and it would need replacing the installed service for the run. The Pi-only GPIO/DMA code lives in `rpi-rgb-led-matrix` (Release build, no debug info in the `.deb`). | Still unverified, by choice. |
+| Hardware GL | All 10 `plugins/Shadertoy/shaders/*.frag` through `shadertoy_shader_preview` (ASan+UBSan) on the real display: iris submitted GPU batches (`INTEL_DEBUG=submit`; none under `xvfb-run`). `scene_worker_render_smoke` and `audio_visualizer_render_regression` run on the display, too. No reports. The ctest shader smokes themselves still run under `xvfb-run` (llvmpipe). | Verified on Intel iris; NVIDIA/AMD and Windows drivers not covered. |
+| Weather / IP location | `network_paths_probe` (ASan+UBSan): Open-Meteo geocode + forecast, `Environment::Service` IP location + weather + location persistence. | Success paths verified. |
+| Deezer | Same probe: `GenreLookup` without Spotify credentials published Deezer genres. | Success path verified. |
+| Update download | Same probe: GitHub latest release → `manual_download_and_install` downloaded the arm64 `.deb` and verified its SHA-256 (never installed). | Success path verified. Install runs on the Pi (`tests/update_transaction_test.py`). |
+| Spotify (authenticated) | Not run: it needs the user's OAuth login, and the refresh token rotates, so reusing the Pi's token elsewhere could log the Pi out. | Still unverified. |
+| `audio_analyzer_benchmark` in sanitizer trees | Reproduced: build-tree binaries get the install RUNPATH, which does not exist before installing, and this test (unlike the others) had no `LD_LIBRARY_PATH`. Now has a build RPATH; runs directly from `desktop_asan_build`. | Fixed. |
+
+Full runs: emulator ASan+UBSan ctest 54/54 (the network probe skips without
+`LED_MATRIX_NETWORK_TESTS=1`); `preview_gen` over all 81 previewable scenes;
+desktop ASan+UBSan ctest 48/48. New finding: UBSan signed overflow in
+`AudioStormFrontScene`'s noise hash (`int * 73856093`), fixed by hashing in
+`uint32_t` (same bits, unchanged output).
+
+```bash
+source scripts/sanitizers/env.sh
+LED_MATRIX_NETWORK_TESTS=1 ctest --test-dir emulator_asan_build -L network --output-on-failure
+# LED_MATRIX_NETWORK_TESTS=no-download skips the .deb download
+```
 
 ## CI and work tracking
 

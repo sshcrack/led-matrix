@@ -191,6 +191,14 @@ if(ENABLE_DESKTOP)
                 SharedToolsCommon
                 FFTW3::fftw3f
         )
+        if(NOT WIN32)
+            # Build-tree binaries get the install RPATH (CMAKE_BUILD_WITH_INSTALL_RPATH),
+            # which does not find libSharedToolsCommon.so before installing.
+            set_target_properties(audio_analyzer_benchmark PROPERTIES
+                    BUILD_WITH_INSTALL_RPATH FALSE
+                    BUILD_RPATH "$<TARGET_FILE_DIR:SharedToolsCommon>"
+            )
+        endif()
         add_test(NAME audio_analyzer_benchmark COMMAND audio_analyzer_benchmark)
 
         if(NOT WIN32)

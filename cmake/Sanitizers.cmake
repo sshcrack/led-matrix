@@ -76,3 +76,10 @@ endif()
 if(NOT MSVC)
     add_compile_definitions(_GLIBCXX_ASSERTIONS)
 endif()
+
+# GNU build-ids let systemd-coredump / coredumpctl match each module of a core
+# dump to its binary (Debian's native GCC adds them by default, the Pi
+# cross-compiler does not, so `coredumpctl info` showed "without build-id").
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_link_options("LINKER:--build-id=sha1")
+endif()

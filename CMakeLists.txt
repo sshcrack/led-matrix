@@ -830,6 +830,19 @@ if(ENABLE_EMULATOR)
     add_test(NAME environment_smoke COMMAND $<TARGET_FILE:environment_smoke>)
     set_tests_properties(environment_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    # Live-network probe (real Open-Meteo/Deezer/GitHub requests). Skipped unless
+    # LED_MATRIX_NETWORK_TESTS=1: `LED_MATRIX_NETWORK_TESTS=1 ctest -L network`.
+    add_executable(network_paths_probe
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/network_paths_probe.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/plugins/SpotifyScenes/matrix/manager/genre_lookup.cpp
+    )
+    target_compile_features(network_paths_probe PRIVATE cxx_std_23)
+    target_include_directories(network_paths_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(network_paths_probe PRIVATE SharedToolsCommon SharedToolsMatrix cpr::cpr nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME network_paths_probe COMMAND $<TARGET_FILE:network_paths_probe>)
+    set_tests_properties(network_paths_probe PROPERTIES
+        ENVIRONMENT "${PREVIEW_TEST_ENV}" LABELS network SKIP_RETURN_CODE 77 TIMEOUT 300)
+
     add_executable(update_release_parse_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_release_parse_smoke.cpp
     )
