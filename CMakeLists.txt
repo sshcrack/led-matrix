@@ -340,6 +340,20 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
             --plugin-dir ${CMAKE_BINARY_DIR}/scene_plugins)
     set_tests_properties(scene_worker_contract_smoke PROPERTIES PASS_REGULAR_EXPRESSION "\"ok\":true")
 
+    # Parallel workers share one temp config; a save must never expose a
+    # truncated file to another process reading it (#180).
+    if(NOT WIN32)
+        add_executable(main_config_atomic_save_smoke
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/main_config_atomic_save_smoke.cpp
+        )
+        target_compile_features(main_config_atomic_save_smoke PRIVATE cxx_std_23)
+        target_link_libraries(main_config_atomic_save_smoke PRIVATE
+            SharedToolsCommon SharedToolsMatrix PkgConfig::GraphicsMagick spdlog::spdlog nlohmann_json::nlohmann_json)
+        add_test(NAME main_config_atomic_save_smoke COMMAND $<TARGET_FILE:main_config_atomic_save_smoke>)
+        set_tests_properties(main_config_atomic_save_smoke PROPERTIES ENVIRONMENT
+            "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:SharedToolsMatrix>:$<TARGET_FILE_DIR:SharedToolsCommon>:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
     add_executable(scene_worker_singleton_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_worker_singleton_smoke.cpp
     )

@@ -1,14 +1,17 @@
-#include <mutex>
-#include <utility>
-#include "spdlog/spdlog.h"
-#include <vector>
-#include <algorithm>
-#include <unordered_map>
-#include <random>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/utils/shared.h>
 #include <shared/matrix/utils/uuid.h>
 
+#include <algorithm>
+#include <filesystem>
+#include <mutex>
+#include <random>
+#include <system_error>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include "spdlog/spdlog.h"
 
 using namespace spdlog;
 
@@ -34,6 +37,33 @@ namespace Config {
                 }
             }
 
+            return true;
+        }
+
+        // Write to a sibling temp file and rename it over the target, so a
+        // concurrent reader (another process sharing the file, e.g. parallel
+        // scene workers) sees either the old or the new config, never a
+        // truncated one. The random suffix keeps concurrent writers apart.
+        bool write_file_atomically(const std::string& file_name, const std::string& content)
+        {
+            const std::filesystem::path target(file_name);
+            std::random_device random;
+            const auto temp = std::filesystem::path(file_name + fmt::format(".tmp-{:08x}{:08x}", random(), random()));
+            {
+                std::ofstream file(temp, std::ios::binary | std::ios::trunc);
+                if (!file || !(file << content) || !file.flush()) {
+                    std::error_code ignored;
+                    std::filesystem::remove(temp, ignored);
+                    return false;
+                }
+            }
+            std::error_code ec;
+            std::filesystem::rename(temp, target, ec);
+            if (ec) {
+                error("Could not replace '{}': {}", file_name, ec.message());
+                std::filesystem::remove(temp, ec);
+                return false;
+            }
             return true;
         }
     }
@@ -214,15 +244,11 @@ spdlog::info("Setting preset {}", id);
             json as_json = this->data;
             string out = as_json.dump(2);
 
-            std::ofstream file;
-            file.open(file_name);
-
-            if (!(file << out)) {
+            if (!write_file_atomically(file_name, out)) {
                 error("Could not write to file '{}'", file_name);
                 return false;
             }
 
-            file.close();
             info("Done saving config.");
         } catch (std::exception &ex) {
             error("could not save config: {}", ex.what());
@@ -246,12 +272,10 @@ spdlog::info("Setting preset {}", id);
         }
 
         if (!std::filesystem::exists(config_path)) {
-            debug("Writing default config at '{}'...", file_name);
-            std::ofstream file(config_path);
-            if (!file || !(file << "{}")) {
-                throw std::runtime_error(fmt::format(
-                    "Could not write default config at '{}'", file_name));
-            }
+            // Start from defaults; migrate_presets() then saves them (atomically).
+            debug("No config at '{}', starting from defaults", file_name);
+            this->data = json::object().get<ConfigData::Root>();
+            return;
         }
 
         std::ifstream f(config_path);
