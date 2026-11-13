@@ -793,6 +793,10 @@ int main(int argc, char **argv)
     } catch (const std::exception &e) {
         CrashReporter::report_exception("scene worker fatal exception", e.what());
         spdlog::critical("Scene worker failed: {}", e.what());
+        // --list-scenes / --self-test switch logging off to keep stdout as JSON;
+        // still say why the probe failed so a test log shows it.
+        if (!spdlog::should_log(spdlog::level::critical))
+            std::cerr << "Scene worker failed: " << e.what() << std::endl;
         return 1;
     }
 }
