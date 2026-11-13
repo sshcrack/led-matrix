@@ -17,7 +17,8 @@ namespace desktop_app::detail {
 
 #ifdef _WIN32
     // Console control handler for Windows — must be async-signal-safe
-    static BOOL WINAPI console_ctrl_handler(DWORD ctrlType) {
+    static BOOL WINAPI console_ctrl_handler(DWORD)
+    {
         shouldExit = 1;
         return TRUE;
     }

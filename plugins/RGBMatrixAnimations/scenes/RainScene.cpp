@@ -170,7 +170,7 @@ void RainScene::addNewParticles(std::shared_ptr<ParticleMatrixRenderer> ren, std
     for (int i = 0; i < totalCols; i++) {
         if (lengths[i] < 1) {
             bool colClear = false;
-            uint16_t newPos;
+            uint16_t newPos = 0;
             while (!colClear) {
                 colClear = true;
                 newPos = random_int16(0, matrix_width);

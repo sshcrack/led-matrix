@@ -410,8 +410,7 @@ namespace Update
     {
 #if !defined(ENABLE_UPDATE_TESTING) && defined(ENABLE_EMULATOR)
         return false; // Disable updates in emulator mode
-#endif
-
+#else
         if (!is_auto_update_enabled())
             return false;
 
@@ -420,6 +419,7 @@ namespace Update
         tmillis_t interval_ms = static_cast<tmillis_t>(get_check_interval_hours()) * 60 * 60 * 1000;
 
         return (now - last_check) >= interval_ms;
+#endif
     }
 
     string UpdateManager::get_github_api_url(const std::optional<Common::Version> &version)
@@ -608,29 +608,23 @@ namespace Update
 
     bool UpdateManager::is_platform_supported()
     {
-#ifdef ENABLE_UPDATE_TESTING
+#if defined(ENABLE_UPDATE_TESTING)
         // Allow updates for testing purposes
         return true;
-#endif
-
-#ifdef ENABLE_EMULATOR
+#elif defined(ENABLE_EMULATOR)
         // Disable updates when running in emulator mode
         return false;
-#endif
-
-#ifdef __linux__
-        // Check if running on ARM64
-        struct utsname system_info;
-        if (uname(&system_info) == 0)
-        {
-            string machine = system_info.machine;
-
-            return machine == "aarch64" || machine == "arm64";
-        }
-#endif
-
+#elif defined(__linux__)
         // Only support Linux and arm64 for automatic updates
+        struct utsname system_info;
+        if (uname(&system_info) != 0)
+            return false;
+
+        string machine = system_info.machine;
+        return machine == "aarch64" || machine == "arm64";
+#else
         return false;
+#endif
     }
 
     string UpdateManager::get_user_agent()
