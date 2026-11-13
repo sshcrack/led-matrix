@@ -2,9 +2,10 @@
 
 #include <algorithm>
 #include <atomic>
-#include <memory>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -55,6 +56,12 @@ struct State {
     std::atomic<std::shared_ptr<const SceneContracts>> local_contracts{};
     bool state_publish_pending = false;
     std::uint32_t pending_state_session = 0;
+    // Start/state/stop commands in request order. The publisher thread serialises
+    // and sends them, so the render thread never waits on JSON or the socket.
+    std::deque<nlohmann::json> outbox;
+    std::uint64_t queued_commands = 0;
+    std::uint64_t sent_commands = 0;
+    std::condition_variable sent_cv;
     std::condition_variable publisher_cv;
     std::jthread publisher_thread;
 };
@@ -108,6 +115,8 @@ nlohmann::json audio_snapshot_json()
     return {
         {"available", audio.available},
         {"fresh", audio.fresh()},
+        // Additive: lets the worker age the frame from when the Pi received it.
+        {"age_seconds", audio.age_seconds},
         {"sequence", audio.sequence},
         {"timestamp_ms", audio.timestamp_ms},
         {"flags", audio.flags},
@@ -138,13 +147,26 @@ void ensure_state_publisher(State &s)
         while (!stop.stop_requested()) {
             std::uint32_t session = 0;
             CommandSender sender;
+            std::deque<nlohmann::json> queued;
             {
                 std::unique_lock lock(s.mutex);
-                s.publisher_cv.wait_for(lock, std::chrono::milliseconds(100), [&] {
-                    return stop.stop_requested() || s.state_publish_pending;
-                });
+                s.publisher_cv.wait_for(lock, std::chrono::milliseconds(100),
+                                        [&] { return stop.stop_requested() || s.state_publish_pending || !s.outbox.empty(); });
                 if (stop.stop_requested())
                     return;
+                queued.swap(s.outbox);
+                sender = s.sender;
+            }
+            // Queued commands go first: a state for a new session is only
+            // requested after its start was queued, so it can never overtake it.
+            if (sender)
+                for (const auto& command : queued) sender(command);
+            {
+                std::unique_lock lock(s.mutex);
+                if (!queued.empty()) {
+                    s.sent_commands += queued.size();
+                    s.sent_cv.notify_all();
+                }
                 if (!s.state_publish_pending)
                     continue;
 
@@ -190,6 +212,9 @@ void clear_command_sender()
     auto &s = state();
     std::lock_guard lock(s.mutex);
     s.sender = {};
+    s.sent_commands += s.outbox.size();
+    s.outbox.clear();
+    s.sent_cv.notify_all();
     s.state_publish_pending = false;
     s.pending_state_session = 0;
 }
@@ -231,11 +256,9 @@ std::optional<std::uint32_t> request_scene(
 
     const auto input_snapshot = RuntimeInputs::to_json(RuntimeInputs::snapshot());
     const auto audio_snapshot = audio_snapshot_json();
-    CommandSender sender;
-    nlohmann::json command;
+    auto& s = state();
     std::uint32_t session = 0;
     {
-        auto &s = state();
         std::lock_guard lock(s.mutex);
         if (!s.sender || !worker_supports(s, scene.get_name(), scene.remote_contract_version()))
             return std::nullopt;
@@ -254,9 +277,9 @@ std::optional<std::uint32_t> request_scene(
             s.target_fps = requested_fps;
             s.start_command["target_fps"] = requested_fps;
             session = s.session;
-            sender = s.sender;
-            command = {{"op", "state"}, {"protocol", RemoteRenderProtocol::Version},
-                       {"session", session}, {"target_fps", requested_fps}};
+            s.outbox.push_back(
+                {{"op", "state"}, {"protocol", RemoteRenderProtocol::Version}, {"session", session}, {"target_fps", requested_fps}});
+            ++s.queued_commands;
         } else {
             s.session = allocate_session(s);
             s.last_sequence = 0;
@@ -285,15 +308,17 @@ std::optional<std::uint32_t> request_scene(
                 {"audio", audio_snapshot},
                 {"artwork", MediaArtworkState::to_json(MediaArtworkState::snapshot())},
             };
-            if (!transition.empty())
-                s.start_command["transition"] = transition;
             session = s.session;
-            command = s.start_command;
-            sender = s.sender;
+            // The transition (up to ~65 KB of snapshot) goes only into the sent
+            // command: reconnects resume the scene and never replay a handoff.
+            auto command = s.start_command;
+            if (!transition.empty())
+                command["transition"] = transition;
+            s.outbox.push_back(std::move(command));
+            ++s.queued_commands;
         }
     }
-
-    sender(command);
+    s.publisher_cv.notify_one();
     return session;
 }
 
@@ -390,9 +415,7 @@ std::optional<nlohmann::json> reconnect_command()
     std::lock_guard lock(state().mutex);
     if (state().session == 0 || state().start_command.empty())
         return std::nullopt;
-    auto command = state().start_command;
-    command.erase("transition"); // Reconnect resumes the scene, never replays an old handoff.
-    return command;
+    return state().start_command;  // Never holds a transition: reconnect resumes the scene.
 }
 
 Status status()
@@ -426,15 +449,15 @@ Status status()
 
 void stop()
 {
-    CommandSender sender;
-    nlohmann::json command;
+    auto& s = state();
     {
-        auto &s = state();
         std::lock_guard lock(s.mutex);
         if (s.session == 0)
             return;
-        command = {{"op", "stop"}, {"protocol", RemoteRenderProtocol::Version}, {"session", s.session}};
-        sender = s.sender;
+        if (s.sender) {
+            s.outbox.push_back({{"op", "stop"}, {"protocol", RemoteRenderProtocol::Version}, {"session", s.session}});
+            ++s.queued_commands;
+        }
         s.session = 0;
         s.last_sequence = 0;
         s.scene.clear();
@@ -444,8 +467,16 @@ void stop()
         s.state_publish_pending = false;
         s.pending_state_session = 0;
     }
-    if (sender)
-        sender(command);
+    s.publisher_cv.notify_one();
+}
+
+void flush_commands()
+{
+    auto& s = state();
+    std::unique_lock lock(s.mutex);
+    const auto target = s.queued_commands;
+    s.publisher_cv.notify_one();
+    s.sent_cv.wait(lock, [&] { return s.sent_commands >= target || !s.publisher_thread.joinable(); });
 }
 
 } // namespace RemoteRender

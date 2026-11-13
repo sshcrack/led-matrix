@@ -1,7 +1,9 @@
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
-#include <shared/matrix/remote_render.h>
+#include <shared/matrix/diagnostics.h>
 #include <shared/matrix/media_artwork_state.h>
+#include <shared/matrix/remote_render.h>
+
 #include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
 #ifdef ENABLE_EMULATOR
@@ -37,10 +39,16 @@ protected:
 
 int main(int argc, char **argv)
 {
+    // Commands are sent from RemoteRender's publisher thread; sent() waits for them.
     std::vector<nlohmann::json> commands;
-    RemoteRender::set_command_sender([&](const nlohmann::json &command) {
-        commands.push_back(command);
+    RemoteRender::set_command_sender([&](const nlohmann::json& command) {
+        if (command.value("op", "") != "state" || command.contains("target_fps"))
+            commands.push_back(command);
     });
+    const auto sent = [&]() -> const std::vector<nlohmann::json>& {
+        RemoteRender::flush_commands();
+        return commands;
+    };
 
     RemoteProbeScene scene;
     scene.update_default_properties();
@@ -120,17 +128,16 @@ int main(int argc, char **argv)
     MediaArtworkState::update("remote-render-smoke", palette);
 
     const auto session = RemoteRender::request_scene(scene, 32, 32, 60);
-    if (!session.has_value() || commands.size() != 1 || commands.back().value("op", "") != "start") {
+    if (!session.has_value() || sent().size() != 1 || sent().back().value("op", "") != "start") {
         std::cerr << "remote scene did not emit a start command\n";
         return 3;
     }
     if (RemoteRender::session_requested(0) || !RemoteRender::session_requested(*session)
         || RemoteRender::session_requested(*session + 1)) return 20;
-    if (commands.back().value("protocol", 0) != RemoteRenderProtocol::Version
-        || commands.back().value("scene", std::string{}) != "remote_probe"
-        || commands.back().value("scene_contract", 0) != scene.remote_contract_version()
-        || commands.back().contains("renderer")
-        || !commands.back().value("artwork", nlohmann::json::object()).value("valid", false)) {
+    if (sent().back().value("protocol", 0) != RemoteRenderProtocol::Version ||
+        sent().back().value("scene", std::string{}) != "remote_probe" ||
+        sent().back().value("scene_contract", 0) != scene.remote_contract_version() || sent().back().contains("renderer") ||
+        !sent().back().value("artwork", nlohmann::json::object()).value("valid", false)) {
         std::cerr << "start command still depends on a per-scene desktop renderer\n";
         return 4;
     }
@@ -138,7 +145,7 @@ int main(int argc, char **argv)
     // Identical requests reuse the active session rather than resetting the
     // desktop animation or injecting an unnecessary blank handoff.
     const auto reused = RemoteRender::request_scene(scene, 32, 32, 60);
-    if (!reused.has_value() || *reused != *session || commands.size() != 1) {
+    if (!reused.has_value() || *reused != *session || sent().size() != 1) {
         std::cerr << "identical remote scene request did not reuse its session\n";
         return 2;
     }
@@ -199,17 +206,17 @@ int main(int argc, char **argv)
 
     RemoteRender::stop();
     if (RemoteRender::session_requested(*session)) return 21;
-    if (commands.size() != 2 || commands.back().value("op", "") != "stop") {
+    if (sent().size() != 2 || sent().back().value("op", "") != "stop") {
         std::cerr << "remote scene did not emit a stop command\n";
         return 10;
     }
     const nlohmann::json transition{{"name", "blend"}, {"duration_ms", 750},
         {"from", std::vector<std::uint8_t>(32 * 32 * 3, 17)}};
     const auto transitioning = RemoteRender::request_scene(scene, 32, 32, 60, transition);
-    if (!transitioning || commands.back().at("transition") != transition)
+    if (!transitioning || sent().back().at("transition") != transition)
         return 11;
     const auto handoff = RemoteRender::request_scene(scene, 32, 32, 60);
-    if (handoff != transitioning || commands.back().value("session", 0U) != *transitioning)
+    if (handoff != transitioning || sent().back().value("session", 0U) != *transitioning)
         return 12;
     const auto resume = RemoteRender::reconnect_command();
     if (!resume || resume->contains("transition")) return 13;
@@ -221,21 +228,17 @@ int main(int argc, char **argv)
     // A transition warms the scene at 60 FPS. Reusing it at its native rate
     // must keep the same session/frame and update the worker without a start.
     if (!RemoteRender::submit_frame(*second, 19, 32, 32, frame)) return 26;
-    const auto command_count = commands.size();
+    const auto command_count = sent().size();
     const auto slower = RemoteRender::request_scene(scene, 32, 32, 30);
     const auto slower_resume = RemoteRender::reconnect_command();
-    if (slower != second || RemoteRender::status().last_sequence != 19
-        || !RemoteRender::latest_frame_age_ms(*second).has_value()
-        || commands.size() != command_count + 1
-        || commands.back().value("op", "") != "state"
-        || commands.back().value("target_fps", 0) != 30
-        || commands.back().value("session", 0U) != *second
-        || !slower_resume || slower_resume->value("target_fps", 0) != 30) {
+    if (slower != second || RemoteRender::status().last_sequence != 19 || !RemoteRender::latest_frame_age_ms(*second).has_value() ||
+        sent().size() != command_count + 1 || sent().back().value("op", "") != "state" || sent().back().value("target_fps", 0) != 30 ||
+        sent().back().value("session", 0U) != *second || !slower_resume || slower_resume->value("target_fps", 0) != 30) {
         std::cerr << "reused session did not adopt its native frame rate\n";
         return 24;
     }
-    if (RemoteRender::request_scene(scene, 32, 32, 30) != second
-        || commands.size() != command_count + 1) return 25;
+    if (RemoteRender::request_scene(scene, 32, 32, 30) != second || sent().size() != command_count + 1)
+        return 25;
 
     // The transition loop reads the newest sequence without the state lock.
     if (RemoteRender::latest_sequence(*second) != 19 || RemoteRender::latest_sequence(*second + 1) != 0)
@@ -302,6 +305,37 @@ int main(int argc, char **argv)
                                malformed_payload.data(), malformed_payload.size())) {
         std::cerr << "receiver accepted a chunk count that cannot cover its frame\n";
         return 23;
+    }
+
+    // Wi-Fi reordering: chunks of 25 arrive before the rest of 24. Both frames
+    // must still publish, in order, instead of 24 being thrown away.
+    {
+        const auto remote_frames = [] { return Diagnostics::RuntimeDiagnostics::instance().snapshot()["udp"]["remote_frames"]; };
+        const auto before = remote_frames();
+        auto first = RemoteRenderProtocol::make_frame_packets(*second, 24, 32, 32, frame);
+        auto next = RemoteRenderProtocol::make_frame_packets(*second, 25, 32, 32, frame);
+        const auto send = [&](auto& packets, std::size_t from, std::size_t to) {
+            for (std::size_t i = from; i < to; ++i) {
+                const auto payload = packets[i]->toData();
+                if (!transport.on_udp_packet(RemoteRenderProtocol::PluginId, payload.data(), payload.size()))
+                    return false;
+            }
+            return true;
+        };
+        const auto half = first.size() / 2;
+        if (!send(first, 0, half) || !send(next, 0, half) || !send(first, half, first.size()) ||
+            RemoteRender::latest_sequence(*second) != 24 || !send(next, half, next.size()) ||
+            RemoteRender::latest_sequence(*second) != 25) {
+            std::cerr << "reordered chunks lost a frame\n";
+            return 35;
+        }
+        const auto after = remote_frames();
+        if (after["completed"].get<std::uint64_t>() != before["completed"].get<std::uint64_t>() + 2 ||
+            after["reorder_recovered"].get<std::uint64_t>() != before["reorder_recovered"].get<std::uint64_t>() + 1 ||
+            after["incomplete"] != before["incomplete"]) {
+            std::cerr << "remote frame counters are wrong: " << after.dump() << "\n";
+            return 36;
+        }
     }
 
     if (argc > 1 && std::string_view(argv[1]) == "--benchmark-packets") {

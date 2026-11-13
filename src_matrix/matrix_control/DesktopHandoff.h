@@ -37,6 +37,8 @@ public:
                                                double max_age_ms);
     /// The worker decodes a base64 transition snapshot (`from_base64`).
     [[nodiscard]] virtual bool accepts_base64_snapshot() { return false; }
+    /// The worker resolves `from_frame` references to frames it sent.
+    [[nodiscard]] virtual bool accepts_frame_reference() { return false; }
 
     static DesktopLink &remote_render();
 };
@@ -82,11 +84,15 @@ public:
 
     // ---- transition phase ----
     /// Copy the newest desktop frame of `scene` (the outgoing scene, whose local
-    /// simulation may have stopped advancing) into `canvas`.
+    /// simulation may have stopped advancing) into `canvas`. Remembers which
+    /// frame was copied, so a following begin_desktop_transition() can reference
+    /// it instead of uploading the pixels.
     bool copy_scene_frame(const Scenes::Scene &scene, rgb_matrix::FrameCanvas *canvas, int width, int height);
 
     /// Ask the worker to compose the transition into `next` from the outgoing
-    /// pixels. False when the desktop cannot (then compose locally).
+    /// pixels. False when the desktop cannot (then compose locally). When
+    /// `outgoing` holds the frame the last copy_scene_frame() copied, the worker
+    /// is pointed at that frame instead of receiving it again.
     bool begin_desktop_transition(const Scenes::Scene &next, const rgb_matrix::FrameCanvas &outgoing,
                                   int width, int height, const std::string &name, tmillis_t duration_ms,
                                   tmillis_t now_ms);
@@ -133,6 +139,8 @@ private:
         int width = 0, height = 0;
     };
     std::optional<Transition> transition_;
+    /// The desktop frame the last copy_scene_frame() copied: {session, sequence}.
+    std::optional<std::pair<std::uint32_t, std::uint32_t>> copied_frame_;
     /// Locally composed transition: the incoming scene's desktop session, if any.
     std::optional<std::uint32_t> incoming_;
     int incoming_width_ = 0, incoming_height_ = 0;
