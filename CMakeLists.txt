@@ -761,6 +761,7 @@ if(ENABLE_EMULATOR)
     add_executable(spotify_cover_lifecycle_smoke
         tests/spotify_cover_lifecycle_smoke.cpp
         plugins/SpotifyScenes/scenes/CoverOnlyScene.cpp
+        plugins/SpotifyScenes/scenes/SpotifyArtworkScene.cpp
         plugins/SpotifyScenes/matrix/manager/state.cpp
         plugins/SpotifyScenes/matrix/manager/track.cpp)
     target_compile_features(spotify_cover_lifecycle_smoke PRIVATE cxx_std_23)
