@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -34,6 +35,18 @@ public:
 
     void set_director_state(nlohmann::json state);
     void set_transition_state(nlohmann::json state);
+
+    /// Transition timeline (render thread only). `begin` is called when the
+    /// outgoing scene stops presenting; `mark_composing` once setup that does
+    /// not present (director choice, initialisation, optional beat hold) ends;
+    /// `end` once the transition phase returns. Presentations in between are
+    /// measured as transition frames, the first presentation afterwards as the
+    /// handoff gap. The result is merged into `transition` and appended to
+    /// `transition_history` so stutters can be compared across transitions.
+    void begin_transition_timeline();
+    void mark_transition_composing();
+    void end_transition_timeline();
+    void cancel_transition_timeline();
     void set_render_placement(nlohmann::json state);
     void set_hardware_state(nlohmann::json state);
     [[nodiscard]] std::optional<double> scene_render_p95(const std::string &scene) const;
@@ -95,6 +108,22 @@ private:
     bool have_audio_sequence_ = false;
     nlohmann::json director_state_ = nlohmann::json::object();
     nlohmann::json transition_state_ = nlohmann::json::object();
+    std::deque<nlohmann::json> transition_history_;
+
+    // Written and read only by the render thread (record_presentation and the
+    // timeline calls), so no synchronisation is needed for these fields.
+    struct TransitionTimeline {
+        bool active = false;
+        bool awaiting_handoff = false;
+        std::uint64_t last_presented_us = 0;   // any presentation, never reset
+        std::uint64_t outgoing_last_us = 0;    // last frame before the transition
+        std::uint64_t begin_us = 0;
+        std::uint64_t composing_us = 0;
+        std::uint64_t first_frame_us = 0;
+        std::uint64_t last_frame_us = 0;
+        std::uint64_t frames = 0;
+        std::vector<std::uint32_t> intervals_us;
+    } timeline_;
     nlohmann::json render_placement_state_ = nlohmann::json::object();
     nlohmann::json hardware_state_ = nlohmann::json::object();
 };

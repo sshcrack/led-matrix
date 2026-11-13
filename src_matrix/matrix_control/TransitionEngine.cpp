@@ -122,6 +122,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         }
     }
 
+    Diagnostics::RuntimeDiagnostics::instance().mark_transition_composing();
     scene->before_transition_stop();
 
     constexpr tmillis_t max_transition_ms = 10000;
