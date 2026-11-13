@@ -158,6 +158,9 @@ void VinylScene::draw_tonearm(int W, int H, float needle_r)
     const float px = std::min(cx_ + R * 1.02f, W - 4.5f), py = std::max(cy_ - R * 0.95f, 4.5f);
     const float dxp = px - cx_, dyp = py - cy_;
     const float d = std::sqrt(dxp * dxp + dyp * dyp);
+    // Tiny panels have no room for an arm (the pivot clamps onto the disc centre).
+    if (d < 8.0f)
+        return;
     const float arm = d * 0.8f;
     const float nr = std::clamp(needle_r * R, std::fabs(d - arm) + 0.5f, d + arm - 0.5f);
     // Circle-circle intersection; take the lower of the two solutions.
