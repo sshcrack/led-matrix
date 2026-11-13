@@ -389,7 +389,8 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
             if (prime_incoming_desktop_stream && forced_scene_ != next_scene)
                 broadcast_fn_(scene->get_name());
-        } else {
+        }
+        else {
             Diagnostics::RuntimeDiagnostics::instance().cancel_transition_timeline();
         }
 

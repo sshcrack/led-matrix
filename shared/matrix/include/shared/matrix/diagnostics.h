@@ -115,8 +115,8 @@ private:
     struct TransitionTimeline {
         bool active = false;
         bool awaiting_handoff = false;
-        std::uint64_t last_presented_us = 0;   // any presentation, never reset
-        std::uint64_t outgoing_last_us = 0;    // last frame before the transition
+        std::uint64_t last_presented_us = 0;  // any presentation, never reset
+        std::uint64_t outgoing_last_us = 0;   // last frame before the transition
         std::uint64_t begin_us = 0;
         std::uint64_t composing_us = 0;
         std::uint64_t first_frame_us = 0;
