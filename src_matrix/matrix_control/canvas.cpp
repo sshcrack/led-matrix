@@ -375,7 +375,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             // before TransitionEngine asks them for the first transition frame.
             // The outgoing scene is already frozen into the transition snapshot,
             // so stopping its bulk stream at this point is intentional.
-            const bool prime_incoming_desktop_stream = next_scene->get_capabilities().requires_desktop;
+            // A desktop-fed outgoing scene (shaders) would otherwise keep
+            // streaming ~24 Mbit/s for the whole transition while the worker
+            // streams the incoming scene: together they saturated the Pi 3B's
+            // Wi-Fi and stalled desktop transitions. Announcing the incoming
+            // scene stops it; the Pi only shows the frozen snapshot anyway.
+            const bool prime_incoming_desktop_stream =
+                next_scene->get_capabilities().requires_desktop || scene->get_capabilities().requires_desktop;
             if (prime_incoming_desktop_stream)
                 broadcast_fn_(next_scene->get_name());
 

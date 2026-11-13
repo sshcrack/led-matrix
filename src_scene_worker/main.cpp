@@ -31,6 +31,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -450,6 +451,53 @@ struct RenderRuntime {
         return best ? &best->rgb : nullptr;
     }
 
+    /// Desktop -> desktop transitions: the outgoing scene keeps animating under
+    /// the blend instead of standing still on its last frame. It lives in its own
+    /// matrix (which owns its canvas) until the blend ends.
+    std::unique_ptr<Scenes::Scene> outgoing_scene;
+    rgb_matrix::EmulatorMatrix* outgoing_matrix = nullptr;
+    rgb_matrix::FrameCanvas* outgoing_canvas = nullptr;
+
+    void drop_outgoing()
+    {
+        if (outgoing_scene) {
+            try {
+                outgoing_scene->after_render_stop();
+            }
+            catch (...) {
+            }
+        }
+        outgoing_scene.reset();
+        outgoing_canvas = nullptr;
+        delete outgoing_matrix;
+        outgoing_matrix = nullptr;
+    }
+
+    /// Advance the outgoing scene one frame into `transition_from`. Once the
+    /// blend is over (or the scene stops or throws) it is released; the blend
+    /// then continues from its last frame.
+    void render_outgoing()
+    {
+        if (!outgoing_scene)
+            return;
+        if (!transition || !transition_from) {
+            drop_outgoing();
+            return;
+        }
+        bool keep = false;
+        try {
+            keep = outgoing_scene->render_frame(outgoing_canvas, std::nullopt, true);
+            if (keep && outgoing_scene->frame_was_updated())
+                transition_from->CopyFrom(*outgoing_canvas);
+        }
+        catch (const std::exception& e) {
+            spdlog::warn("Outgoing scene '{}' failed during the transition: {}", outgoing_scene->get_name(), e.what());
+            keep = false;
+        }
+        if (!keep)
+            drop_outgoing();
+    }
+
     rgb_matrix::FrameCanvas *output_frame()
     {
         if (scene->frame_was_updated()) have_scene_frame = true;
@@ -469,6 +517,7 @@ struct RenderRuntime {
 
     void reset()
     {
+        drop_outgoing();
         if (scene) {
             try { scene->after_render_stop(); } catch (...) {}
         }
@@ -510,14 +559,28 @@ struct RenderRuntime {
         // Resolve a referenced outgoing frame before reset() ends its session.
         std::vector<std::uint8_t> referenced;
         bool has_reference = false;
+        // When the reference is this worker's running scene, keep that scene
+        // alive (same size) so it keeps moving during the blend.
+        std::unique_ptr<Scenes::Scene> live_scene;
+        rgb_matrix::EmulatorMatrix* live_matrix = nullptr;
+        rgb_matrix::FrameCanvas* live_canvas = nullptr;
         if (const auto it = command.find("transition"); it != command.end() && it->is_object())
             if (const auto ref = it->find("from_frame"); ref != it->end() && ref->is_object()) {
                 has_reference = true;
                 if (const auto* frame = find_sent_frame(*ref))
                     referenced = *frame;
+                if (!referenced.empty() && scene && matrix && session != 0 && ref->value("session", 0U) == session &&
+                    command.value("width", 128) == width && command.value("height", 128) == height) {
+                    live_scene = std::move(scene);
+                    live_matrix = std::exchange(matrix, nullptr);
+                    live_canvas = std::exchange(canvas, nullptr);
+                }
             }
         sent_frames.clear();
         reset();
+        outgoing_scene = std::move(live_scene);
+        outgoing_matrix = live_matrix;
+        outgoing_canvas = live_canvas;
         session = command.value("session", 0U);
         width = std::clamp(command.value("width", 128), 1, 1024);
         height = std::clamp(command.value("height", 128), 1, 1024);
@@ -788,6 +851,22 @@ int main(int argc, char **argv)
                 probe.transition_from->GetPixel(5, 7, &from[0], &from[1], &from[2]);
                 if (probe.session != 2 || from != std::array<std::uint8_t, 3>{41, 41, 41} || !probe.sent_frames.empty())
                     throw std::runtime_error("worker did not start from the referenced frame");
+                // The outgoing scene was this worker's own: it keeps animating under the blend.
+                if (!probe.outgoing_scene || probe.outgoing_scene->get_name() != "boids")
+                    throw std::runtime_error("worker froze its own outgoing scene");
+                const auto snapshot = capture(probe.transition_from, 128, 128);
+                for (int frame = 0; frame < 3; ++frame) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                    probe.scene->render_frame(probe.canvas, std::nullopt, true);
+                    probe.render_outgoing();
+                }
+                if (!probe.outgoing_scene || capture(probe.transition_from, 128, 128) == snapshot)
+                    throw std::runtime_error("worker did not advance the outgoing scene during the blend");
+                probe.transition_start = Clock::now() - std::chrono::milliseconds(1000);
+                probe.output_frame();
+                probe.render_outgoing();
+                if (probe.transition || probe.outgoing_scene || probe.outgoing_matrix)
+                    throw std::runtime_error("worker kept the outgoing scene after the blend");
                 auto missing = boids;
                 missing["session"] = 3;
                 missing["transition"] = second["transition"];
@@ -910,6 +989,7 @@ int main(int argc, char **argv)
                 bool keep_running = true;
                 try {
                     keep_running = runtime.scene->render_frame(runtime.canvas, std::nullopt, true);
+                    runtime.render_outgoing();
                     const auto rgb = capture(runtime.output_frame(), runtime.width, runtime.height);
                     auto packets = RemoteRenderProtocol::make_frame_packets(
                         runtime.session, ++runtime.sequence,

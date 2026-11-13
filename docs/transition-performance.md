@@ -124,3 +124,18 @@ A worker capped at 45 FPS (two refreshes per frame) gave an even 22 ms median in
 ### Audio relayed to the worker
 
 `state` commands relay the Pi's audio frame with `age_seconds`. The worker ages the frame from when the Pi received it, applies each `sequence` only once, and ignores frames the Pi already considers stale. Before this, every 40 ms state message re-stamped the last frame as fresh, so the worker kept audio-reactive scenes "live" after the music stopped.
+
+### Live outgoing scene and desktop stream overlap (2026-11-13)
+
+Until now every transition blended from one frozen snapshot of the outgoing scene. When the start command references a frame of the worker's own running session (`from_frame`), the worker now keeps that scene alive in its own canvas and renders it every frame under the blend, so both scenes move. The Pi needs no change: 1.22.1 already sends the reference. The outgoing scene is released when the blend ends, stops or throws, and the blend then continues from its last frame. Transitions composed on the Pi still freeze the outgoing scene, because the Pi 3B cannot render two scenes.
+
+A stress preset that alternates shader scenes (streamed by the desktop Shadertoy plugin) with worker scenes found a second problem. `canvas.cpp` announced the incoming scene to the desktop only when the incoming scene was desktop-fed. On a shader → worker transition the desktop therefore kept streaming the shader (~24 Mbit/s at 60 FPS) for the whole blend while the worker streamed the incoming scene. Two such streams saturate the Pi 3B's Wi-Fi. The Pi now also announces the incoming scene when the outgoing scene is desktop-fed, which stops the stream that only the frozen snapshot needed.
+
+Stress preset, 150 s per arm (shader ↔ worker scenes, 3.5 s each, 1.2 s transitions):
+
+| Build | Desktop transitions | Abandoned | Presented FPS (median) | Freeze median | Incomplete offload frames |
+|---|---:|---:|---:|---:|---:|
+| 1.22.1 | 11 | 7 | 41.8 | 124 ms | 116 of 1,860 (6.2%) |
+| This change | 18 | 0 | 59.8 | 78 ms | 7 of 5,365 (0.1%) |
+
+Transitions into a shader scene are still composed on the Pi (shader scenes are not worker scenes) and run at about 31 FPS.
