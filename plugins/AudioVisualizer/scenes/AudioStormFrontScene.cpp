@@ -11,7 +11,7 @@ float vnoise(float x, float y, int period, uint32_t seed)
     const float fx = x - xi, fy = y - yi;
     auto h = [&](int ix, int iy) {
         const int wx = ((ix % period) + period) % period;
-        return hash(static_cast<uint32_t>(wx * 73856093) ^ static_cast<uint32_t>(iy * 19349663) ^ seed);
+        return hash(static_cast<uint32_t>(wx) * 73856093u ^ static_cast<uint32_t>(iy) * 19349663u ^ seed);
     };
     const float sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
     const float a = h(xi, yi) + (h(xi + 1, yi) - h(xi, yi)) * sx;
