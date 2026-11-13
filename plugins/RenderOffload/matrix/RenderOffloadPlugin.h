@@ -1,9 +1,10 @@
 #pragma once
 
+#include <shared/matrix/plugin/main.h>
+
+#include <array>
 #include <cstdint>
 #include <vector>
-
-#include <shared/matrix/plugin/main.h>
 
 class RenderOffloadPlugin final : public Plugins::BasicPlugin {
 public:
@@ -19,13 +20,26 @@ public:
     bool on_udp_packet(uint8_t plugin_id, const uint8_t *data, size_t size) override;
 
 private:
-    std::uint32_t assembly_session_ = 0;
-    std::uint32_t assembly_sequence_ = 0;
-    int assembly_width_ = 0;
-    int assembly_height_ = 0;
-    std::uint16_t assembly_chunk_count_ = 0;
-    std::size_t assembly_received_count_ = 0;
-    bool assembly_submitted_ = false;
-    std::vector<std::uint8_t> assembly_frame_;
-    std::vector<std::uint8_t> assembly_received_;
+    /// One frame being reassembled. Several are kept so chunks of frame N that
+    /// arrive after the first chunks of N+1 (Wi-Fi reordering) still complete N.
+    struct Assembly {
+        bool in_use = false;
+        std::uint32_t session = 0;
+        std::uint32_t sequence = 0;
+        int width = 0;
+        int height = 0;
+        std::uint16_t chunk_count = 0;
+        std::size_t received_count = 0;
+        std::vector<std::uint8_t> frame;
+        std::vector<std::uint8_t> received;
+    };
+    static constexpr std::size_t AssemblySlots = 3;
+
+    Assembly* assembly_for(std::uint32_t session, std::uint32_t sequence);
+    void drop_older(std::uint32_t session, std::uint32_t sequence);
+
+    std::array<Assembly, AssemblySlots> assemblies_;
+    // Newest frame published to RemoteRender; older chunks are late.
+    std::uint32_t published_session_ = 0;
+    std::uint32_t published_sequence_ = 0;
 };

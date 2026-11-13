@@ -52,9 +52,11 @@ public:
     std::vector<nlohmann::json> starts;   // transition payload of every new session
     int stops = 0;
     bool base64 = false;
+    bool reference = false;
 
     void frame(double age = 0.0) { ++sequence; frame_age = age; }
     bool accepts_base64_snapshot() override { return base64; }
+    bool accepts_frame_reference() override { return reference; }
 
     bool worker_available(std::string_view) override { return available; }
     std::optional<std::uint32_t> request_scene(const Scenes::Scene &s, int, int, int,
@@ -143,9 +145,13 @@ int main()
         expect(!tick.frame, "the same frame is not presented twice");
         worker.frame();
         tick = handoff.desktop_transition_tick(canvas, 400);
+        expect(tick.frame && tick.outcome == Outcome::Continue,
+               "the duration counts from the first composed frame, like the worker's blend clock");
+        worker.frame();
+        tick = handoff.desktop_transition_tick(canvas, 600);
         expect(tick.frame && tick.outcome == Outcome::Done, "transition finishes after its duration");
-        const auto stats = handoff.desktop_transition_stats(400);
-        expect(stats.frames == 2 && stats.startup_ms == 200 && stats.presentation_fps == 5.0, "transition stats");
+        const auto stats = handoff.desktop_transition_stats(600);
+        expect(stats.frames == 3 && stats.startup_ms == 200 && stats.presentation_fps == 5.0, "transition stats");
 
         handoff.begin_scene(*to, 32, 32);
         expect(worker.starts.size() == 1 && worker.stops == 0, "the warmed session is adopted, not restarted");
@@ -182,6 +188,38 @@ int main()
                "the base64 snapshot carries exactly the array's pixels");
     }
 
+    {  // Desktop -> desktop: the worker is pointed at the frame it sent instead of receiving it again.
+        FakeWorker worker;
+        worker.base64 = worker.reference = true;
+        DesktopHandoff handoff(worker);
+        expect(handoff.begin_desktop_transition(*from, *outgoing, 32, 32, "blend", 400, 0), "outgoing scene on the desktop");
+        worker.frame();
+        worker.frame();
+        expect(handoff.copy_scene_frame(*from, outgoing, 32, 32), "outgoing desktop frame is copied");
+        expect(handoff.begin_desktop_transition(*to, *outgoing, 32, 32, "blend", 400, 0), "desktop transition starts");
+        const auto& start = worker.starts.at(1);
+        expect(start.contains("from_frame") && start.at("from_frame").at("session") == 1 && start.at("from_frame").at("sequence") == 2 &&
+                   !start.contains("from_base64") && !start.contains("from"),
+               "the start references the copied frame and carries no pixels");
+
+        // A local outgoing frame (no desktop copy) still uploads its pixels.
+        expect(!handoff.copy_scene_frame(*from, outgoing, 32, 32), "the outgoing scene is no longer on the desktop");
+        expect(handoff.begin_desktop_transition(*from, *outgoing, 32, 32, "blend", 400, 0), "transition back starts");
+        expect(worker.starts.at(2).contains("from_base64") && !worker.starts.at(2).contains("from_frame"),
+               "a local outgoing frame is uploaded");
+
+        // An older worker without the feature gets the pixels of the copied frame.
+        FakeWorker old_worker;
+        old_worker.base64 = true;
+        DesktopHandoff old_handoff(old_worker);
+        expect(old_handoff.begin_desktop_transition(*from, *outgoing, 32, 32, "blend", 400, 0), "old worker session");
+        old_worker.frame();
+        expect(old_handoff.copy_scene_frame(*from, outgoing, 32, 32), "old worker frame copied");
+        expect(old_handoff.begin_desktop_transition(*to, *outgoing, 32, 32, "blend", 400, 0) &&
+                   old_worker.starts.at(1).contains("from_base64") && !old_worker.starts.at(1).contains("from_frame"),
+               "a worker without frame references gets the snapshot");
+    }
+
     {   // The worker never answers a transition: compose locally; nothing lingers.
         FakeWorker worker;
         DesktopHandoff handoff(worker);
@@ -214,7 +252,7 @@ int main()
         handoff.begin_scene(*from, 32, 32);
         expect(handoff.scene_mode() == Mode::DesktopPending && worker.scene == from->get_name(),
                "a quality-reduced scene starts on the desktop");
-        worker.frame_age = 0.0;
+        worker.frame();
         expect(handoff.copy_scene_frame(*from, outgoing, 32, 32), "outgoing desktop frame is copied");
         expect(!handoff.copy_scene_frame(*to, outgoing, 32, 32), "another scene's session is not copied");
         to->force_render_quality_scale(0.6f);

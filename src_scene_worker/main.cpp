@@ -279,14 +279,28 @@ std::vector<std::uint8_t> capture(rgb_matrix::FrameCanvas *canvas, int width, in
     return rgb;
 }
 
+/// Last relayed audio frame applied, so repeated relays of the same frame do
+/// not renew its freshness. Only the worker's command loop touches it.
+std::optional<std::uint32_t> applied_audio_sequence;
+
 void apply_audio(const nlohmann::json &item)
 {
     if (!item.is_object() || !item.value("available", false)) {
         AudioState::clear();
+        applied_audio_sequence.reset();
         return;
     }
+    // The Pi keeps relaying its last audio frame after the desktop stream
+    // stops. Applying it again would make stale features look fresh; leave the
+    // local frame to age instead.
+    if (!item.value("fresh", true))
+        return;
+    const auto sequence = item.value("sequence", 0U);
+    if (applied_audio_sequence == sequence)
+        return;
+    applied_audio_sequence = sequence;
     AudioProtocol::Frame frame;
-    frame.sequence = item.value("sequence", 0U);
+    frame.sequence = sequence;
     frame.timestamp_ms = item.value("timestamp_ms", 0U);
     frame.flags = item.value("flags", static_cast<std::uint16_t>(0));
     frame.beat_counter = item.value("beat_counter", std::uint64_t{0});
@@ -302,7 +316,33 @@ void apply_audio(const nlohmann::json &item)
         frame.spectrum = it->get<std::vector<float>>();
     if (const auto it = item.find("waveform"); it != item.end() && it->is_array())
         frame.waveform = it->get<std::vector<float>>();
-    AudioState::update(frame);
+    // Older matrices send no age; then the relay time is the best estimate.
+    const double age_seconds = std::clamp(item.value("age_seconds", 0.0), 0.0, 60.0);
+    AudioState::update(frame, Clock::now() - std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(age_seconds)));
+}
+
+void self_test_audio_relay()
+{
+    const auto relay = [](std::uint32_t sequence, bool fresh, double age_seconds) {
+        apply_audio({{"available", true}, {"fresh", fresh}, {"sequence", sequence}, {"age_seconds", age_seconds}});
+    };
+    relay(7, true, 0.0);
+    if (!AudioState::snapshot().fresh())
+        throw std::runtime_error("relayed audio was not applied");
+    relay(8, true, 2.0);
+    if (AudioState::snapshot().fresh())
+        throw std::runtime_error("relayed audio ignored the Pi-side age");
+    relay(8, true, 0.0);
+    if (AudioState::snapshot().fresh())
+        throw std::runtime_error("a repeated audio relay renewed stale audio");
+    relay(9, false, 0.0);
+    if (AudioState::snapshot().fresh() || AudioState::snapshot().sequence != 8)
+        throw std::runtime_error("audio the Pi marked stale was applied");
+    apply_audio({{"available", false}});
+    relay(8, true, 0.0);
+    if (!AudioState::snapshot().fresh())
+        throw std::runtime_error("audio after a restart was not applied");
+    apply_audio({{"available", false}});
 }
 
 void run_self_test(const std::vector<std::string> &available)
@@ -369,6 +409,47 @@ struct RenderRuntime {
     int transition_ms = 0;
     bool have_scene_frame = false;
 
+    /// Recently sent frames, so a transition can start from the frame the Pi
+    /// shows (`from_frame`) without the Pi sending it back. ~16 frames cover
+    /// the Pi's display lag; frames are 49 KB at 128x128.
+    struct SentFrame {
+        std::uint32_t session = 0;
+        std::uint32_t sequence = 0;
+        std::vector<std::uint8_t> rgb;
+    };
+    static constexpr std::size_t SentFrameHistory = 16;
+    std::deque<SentFrame> sent_frames;
+
+    void remember_sent_frame(const std::vector<std::uint8_t>& rgb)
+    {
+        SentFrame frame;
+        if (sent_frames.size() >= SentFrameHistory) {
+            frame = std::move(sent_frames.front());  // reuse the oldest buffer
+            sent_frames.pop_front();
+        }
+        frame.session = session;
+        frame.sequence = sequence;
+        frame.rgb.assign(rgb.begin(), rgb.end());
+        sent_frames.push_back(std::move(frame));
+    }
+
+    /// The referenced frame, else the closest one of that session.
+    [[nodiscard]] const std::vector<std::uint8_t>* find_sent_frame(const nlohmann::json& reference) const
+    {
+        const auto wanted_session = reference.value("session", 0U);
+        const auto wanted_sequence = reference.value("sequence", 0U);
+        const SentFrame* best = nullptr;
+        for (const auto& frame : sent_frames) {
+            if (frame.session != wanted_session)
+                continue;
+            if (!best || frame.sequence <= wanted_sequence)
+                best = &frame;
+            if (frame.sequence >= wanted_sequence)
+                break;
+        }
+        return best ? &best->rgb : nullptr;
+    }
+
     rgb_matrix::FrameCanvas *output_frame()
     {
         if (scene->frame_was_updated()) have_scene_frame = true;
@@ -426,6 +507,16 @@ struct RenderRuntime {
     void start(const nlohmann::json &command)
     {
         const auto started_at = Clock::now();
+        // Resolve a referenced outgoing frame before reset() ends its session.
+        std::vector<std::uint8_t> referenced;
+        bool has_reference = false;
+        if (const auto it = command.find("transition"); it != command.end() && it->is_object())
+            if (const auto ref = it->find("from_frame"); ref != it->end() && ref->is_object()) {
+                has_reference = true;
+                if (const auto* frame = find_sent_frame(*ref))
+                    referenced = *frame;
+            }
+        sent_frames.clear();
         reset();
         session = command.value("session", 0U);
         width = std::clamp(command.value("width", 128), 1, 1024);
@@ -462,7 +553,12 @@ struct RenderRuntime {
             scene->restore_runtime_state(*state);
         if (const auto it = command.find("transition"); it != command.end()) {
             std::vector<std::uint8_t> rgb;
-            if (const auto encoded = it->find("from_base64"); encoded != it->end()) {
+            if (has_reference) {
+                if (referenced.empty())
+                    throw std::runtime_error("referenced transition frame is no longer available");
+                rgb = std::move(referenced);
+            }
+            else if (const auto encoded = it->find("from_base64"); encoded != it->end()) {
                 auto decoded = RemoteRenderProtocol::decode_base64(encoded->get_ref<const std::string&>());
                 if (!decoded)
                     throw std::runtime_error("invalid base64 transition snapshot");
@@ -624,6 +720,7 @@ int main(int argc, char **argv)
                     throw std::runtime_error("saved contract fixture produced no pixels");
             }
             run_self_test(offloadable_scenes);
+            self_test_audio_relay();
             if (transition_manager.get_registered_transitions().empty())
                 throw std::runtime_error("worker has no registered transitions");
             bool base64_snapshot = false;
@@ -668,6 +765,41 @@ int main(int argc, char **argv)
                 probe.transition_start = Clock::now() - std::chrono::milliseconds(1000);
                 if (probe.output_frame() != probe.canvas || probe.transition)
                     throw std::runtime_error("worker failed transition handoff: " + name);
+            }
+            {  // A transition can start from a frame the worker sent itself.
+                RenderRuntime probe(transition_manager);
+                const nlohmann::json boids{{"protocol", RemoteRenderProtocol::Version},
+                                           {"width", 128},
+                                           {"height", 128},
+                                           {"scene", "boids"},
+                                           {"scene_contract", offloadable_scene_contracts.at("boids")}};
+                auto first = boids;
+                first["session"] = 1;
+                probe.start(first);
+                for (std::uint8_t value : {40, 41, 42}) {
+                    ++probe.sequence;
+                    probe.remember_sent_frame(std::vector<std::uint8_t>(128 * 128 * 3, value));
+                }
+                auto second = boids;
+                second["session"] = 2;
+                second["transition"] = {{"name", "blend"}, {"duration_ms", 750}, {"from_frame", {{"session", 1}, {"sequence", 2}}}};
+                probe.start(second);
+                std::array<std::uint8_t, 3> from{};
+                probe.transition_from->GetPixel(5, 7, &from[0], &from[1], &from[2]);
+                if (probe.session != 2 || from != std::array<std::uint8_t, 3>{41, 41, 41} || !probe.sent_frames.empty())
+                    throw std::runtime_error("worker did not start from the referenced frame");
+                auto missing = boids;
+                missing["session"] = 3;
+                missing["transition"] = second["transition"];
+                bool rejected = false;
+                try {
+                    probe.start(missing);
+                }
+                catch (const std::runtime_error&) {
+                    rejected = true;
+                }
+                if (!rejected)
+                    throw std::runtime_error("worker accepted a transition from a frame it no longer has");
             }
             std::cout << R"({"ok":true,"scenes":["metablob","neontunnel","boids","reaction_diffusion","julia_set"]})" << std::endl;
             clean_exit();
@@ -767,7 +899,8 @@ int main(int argc, char **argv)
                     {"protocol", RemoteRenderProtocol::Version},
                     {"scenes", offloadable_scenes},
                     {"scene_contracts", offloadable_scene_contracts},
-                    {"features", {RemoteRenderProtocol::Features::TransitionSnapshotBase64}},
+                    {"features",
+                     {RemoteRenderProtocol::Features::TransitionSnapshotBase64, RemoteRenderProtocol::Features::TransitionFromFrame}},
                 };
                 websocket.send("msg:RenderOffload:" + heartbeat.dump());
                 next_heartbeat = now + std::chrono::seconds(1);
@@ -788,6 +921,7 @@ int main(int argc, char **argv)
                             break;
                         }
                     }
+                    runtime.remember_sent_frame(rgb);
                 } catch (const std::exception &e) {
                     spdlog::error("Remote scene '{}' render failed: {}", runtime.scene->get_name(), e.what());
                     keep_running = false;

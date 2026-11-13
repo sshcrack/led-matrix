@@ -30,6 +30,10 @@ namespace Features {
 /// (base64 of the RGB888 bytes) instead of `from` (a JSON array of numbers).
 /// The array costs the Pi tens of milliseconds to build and is ~2.7x larger.
 inline constexpr std::string_view TransitionSnapshotBase64 = "transition_snapshot_base64";
+/// The transition start command may reference a frame the worker sent itself
+/// (`from_frame: {session, sequence}`) instead of carrying the pixels. The
+/// worker keeps a short history of sent frames for this.
+inline constexpr std::string_view TransitionFromFrame = "transition_from_frame";
 }  // namespace Features
 
 SHARED_COMMON_API std::string encode_base64(std::span<const std::uint8_t> bytes);

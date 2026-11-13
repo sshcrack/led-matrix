@@ -14,6 +14,15 @@
 
 namespace Diagnostics {
 
+/// Desktop-offload frame reassembly outcomes (UDP receiver thread).
+enum class RemoteFrameEvent {
+    Completed,         ///< frame complete and published
+    Incomplete,        ///< frame dropped with chunks missing
+    ReorderRecovered,  ///< completed although a newer frame had started arriving
+    LateChunk,         ///< chunk of a frame already shown, superseded or dropped
+    DuplicateChunk,
+};
+
 class RuntimeDiagnostics {
 public:
     static RuntimeDiagnostics &instance();
@@ -29,6 +38,7 @@ public:
     void record_udp_datagram(std::size_t bytes);
     void record_udp_packet(bool handled);
     void record_udp_malformed();
+    void record_remote_frame_event(RemoteFrameEvent event);
 
     void record_audio_packet(std::uint32_t sequence);
     void record_audio_decode_error();
@@ -100,6 +110,7 @@ private:
     std::atomic<std::uint64_t> udp_packets_{0};
     std::atomic<std::uint64_t> udp_unhandled_{0};
     std::atomic<std::uint64_t> udp_malformed_{0};
+    std::array<std::atomic<std::uint64_t>, 5> remote_frame_events_{};
 
     std::uint64_t audio_packets_ = 0;
     std::uint64_t audio_sequence_gaps_ = 0;
@@ -128,6 +139,7 @@ private:
         std::optional<nlohmann::json> pending;
     } timeline_;
     void publish_pending_transition();
+    [[nodiscard]] nlohmann::json remote_frames_json() const;
     nlohmann::json render_placement_state_ = nlohmann::json::object();
     nlohmann::json hardware_state_ = nlohmann::json::object();
 };

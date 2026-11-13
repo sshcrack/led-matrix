@@ -148,7 +148,7 @@ int main()
     RemoteRender::set_local_scene_contracts({{next->get_name(), next->remote_contract_version()}});
     RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version,
         {{next->get_name(), next->remote_contract_version()}});
-    bool sent_transition = false;
+    std::atomic<bool> sent_transition{false};
     RemoteRender::set_command_sender([&](const nlohmann::json &command) {
         if (command.value("op", "") != "start") return;
         sent_transition = command.contains("transition")

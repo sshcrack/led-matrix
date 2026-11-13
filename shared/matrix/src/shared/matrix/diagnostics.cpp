@@ -141,6 +141,23 @@ void RuntimeDiagnostics::record_udp_malformed() {
     udp_malformed_.fetch_add(1, std::memory_order_relaxed);
 }
 
+nlohmann::json RuntimeDiagnostics::remote_frames_json() const
+{
+    const auto count = [&](RemoteFrameEvent event) {
+        return remote_frame_events_[static_cast<std::size_t>(event)].load(std::memory_order_relaxed);
+    };
+    return {{"completed", count(RemoteFrameEvent::Completed)},
+            {"incomplete", count(RemoteFrameEvent::Incomplete)},
+            {"reorder_recovered", count(RemoteFrameEvent::ReorderRecovered)},
+            {"late_chunks", count(RemoteFrameEvent::LateChunk)},
+            {"duplicate_chunks", count(RemoteFrameEvent::DuplicateChunk)}};
+}
+
+void RuntimeDiagnostics::record_remote_frame_event(RemoteFrameEvent event)
+{
+    remote_frame_events_[static_cast<std::size_t>(event)].fetch_add(1, std::memory_order_relaxed);
+}
+
 void RuntimeDiagnostics::record_audio_packet(std::uint32_t sequence) {
     std::lock_guard lock(mutex_);
     ++audio_packets_;
@@ -357,7 +374,8 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
               {"datagrams_per_second", static_cast<double>(udp_datagrams_.load(std::memory_order_relaxed)) / uptime_seconds},
               {"bytes_per_second", static_cast<double>(udp_bytes_.load(std::memory_order_relaxed)) / uptime_seconds},
               {"malformed", udp_malformed_.load(std::memory_order_relaxed)},
-              {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)}}},
+              {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)},
+              {"remote_frames", remote_frames_json()}}},
             {"audio_transport",
              {{"packets", audio_packets_},
               {"sequence_gaps", audio_sequence_gaps_},

@@ -102,4 +102,9 @@ std::optional<nlohmann::json> reconnect_command();
 Status status();
 void stop();
 
+/// Start, state and stop commands are serialised and sent in order on a
+/// background thread. Blocks until every command queued so far was handed to
+/// the sender (tests and shutdown).
+void flush_commands();
+
 } // namespace RemoteRender

@@ -1,6 +1,7 @@
 #include "DesktopHandoff.h"
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "led-matrix.h"
@@ -42,6 +43,10 @@ public:
     bool accepts_base64_snapshot() override
     {
         return RemoteRender::worker_has_feature(RemoteRenderProtocol::Features::TransitionSnapshotBase64);
+    }
+    bool accepts_frame_reference() override
+    {
+        return RemoteRender::worker_has_feature(RemoteRenderProtocol::Features::TransitionFromFrame);
     }
 };
 
@@ -203,10 +208,15 @@ void DesktopHandoff::local_frame_rendered(double active_render_ms)
 
 bool DesktopHandoff::copy_scene_frame(const Scenes::Scene &scene, rgb_matrix::FrameCanvas *canvas, int width, int height)
 {
+    copied_frame_.reset();
     if (!session_ || session_scene_ != scene.get_name())
         return false;
     link_.publish_runtime_state(*session_);
-    return link_.copy_latest(*session_, canvas, width, height, SceneFrameMaxAgeMs);
+    const auto sequence = link_.copy_latest_sequence(*session_, canvas, width, height, SceneFrameMaxAgeMs);
+    if (sequence == 0)
+        return false;
+    copied_frame_.emplace(*session_, sequence);
+    return true;
 }
 
 bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const rgb_matrix::FrameCanvas &outgoing,
@@ -214,23 +224,31 @@ bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const r
                                               tmillis_t now_ms)
 {
     transition_.reset();
+    const auto copied = std::exchange(copied_frame_, std::nullopt);
     if (!next.get_capabilities().supports_remote_rendering || !link_.worker_available(next.get_name()))
         return false;
-    // One outgoing RGB snapshot; the worker owns transition timing and composition.
-    std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width * height * 3));
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x) {
-            const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-            outgoing.GetPixel(x, y, &pixels[offset], &pixels[offset + 1], &pixels[offset + 2]);
-        }
     const auto duration = std::clamp<tmillis_t>(duration_ms, 1, MaxTransitionMs);
     nlohmann::json transition{{"name", name}, {"duration_ms", duration}};
-    // A JSON array of 49k numbers took the Pi's render thread ~40 ms to build,
-    // copy and serialize while the outgoing frame stood still.
-    if (link_.accepts_base64_snapshot())
-        transition["from_base64"] = RemoteRenderProtocol::encode_base64(pixels);
-    else
-        transition["from"] = std::move(pixels);
+    if (copied && link_.accepts_frame_reference()) {
+        // The outgoing frame came from the worker: point it at that frame
+        // instead of reading back, encoding and resending ~49 KB.
+        transition["from_frame"] = {{"session", copied->first}, {"sequence", copied->second}};
+    }
+    else {
+        // One outgoing RGB snapshot; the worker owns transition timing and composition.
+        std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width * height * 3));
+        for (int y = 0; y < height; ++y)
+            for (int x = 0; x < width; ++x) {
+                const auto offset = static_cast<std::size_t>((y * width + x) * 3);
+                outgoing.GetPixel(x, y, &pixels[offset], &pixels[offset + 1], &pixels[offset + 2]);
+            }
+        // A JSON array of 49k numbers took the Pi's render thread ~40 ms to build,
+        // copy and serialize while the outgoing frame stood still.
+        if (link_.accepts_base64_snapshot())
+            transition["from_base64"] = RemoteRenderProtocol::encode_base64(pixels);
+        else
+            transition["from"] = std::move(pixels);
+    }
     if (!request(next, width, height, 60, transition))
         return false;
     transition_ = Transition{.next = next.get_name(), .duration_ms = duration, .requested_at = now_ms,
@@ -254,9 +272,14 @@ DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matri
         tick.frame = true;
     }
     const bool presented = t.frames > 0;
-    if (presented && now_ms - t.requested_at >= t.duration_ms) {
+    // The worker starts its blend clock when the start command arrives, and its
+    // first frame arrives here shortly after. Count the duration from that frame,
+    // not from the request, so the Pi does not leave the transition mid-blend
+    // (and change the target FPS) when the start took 100+ ms.
+    if (presented && now_ms - t.first_frame_at >= t.duration_ms) {
         tick.outcome = TransitionOutcome::Done;   // the session continues as the scene's
-    } else if (now_ms - t.last_frame_at > (presented ? TransitionStallMs : TransitionStartupMs)) {
+    }
+    else if (now_ms - t.last_frame_at > (presented ? TransitionStallMs : TransitionStartupMs)) {
         stop();
         // Do not replay a half-finished handoff after a stall; one never started is composed locally.
         tick.outcome = presented ? TransitionOutcome::Abandoned : TransitionOutcome::Failed;

@@ -1,13 +1,14 @@
 #include "RenderOffloadPlugin.h"
 
+#include <shared/common/remote_render_protocol.h>
+#include <shared/matrix/diagnostics.h>
+#include <shared/matrix/remote_render.h>
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cstring>
 #include <limits>
 #include <span>
-
-#include <shared/common/remote_render_protocol.h>
-#include <shared/matrix/remote_render.h>
-#include <spdlog/spdlog.h>
 
 namespace {
 constexpr std::uint8_t PacketId = RemoteRenderProtocol::PluginId;
@@ -119,42 +120,97 @@ bool RenderOffloadPlugin::on_udp_packet(uint8_t plugin_id, const uint8_t *data, 
         || chunk_bytes != expected_chunk_bytes)
         return false;
 
-    if (assembly_session_ == session && sequence < assembly_sequence_)
+    auto& diagnostics = Diagnostics::RuntimeDiagnostics::instance();
+    if (session == published_session_ && sequence <= published_sequence_) {
+        // Late or duplicate chunk of a frame that is already shown or superseded.
+        diagnostics.record_remote_frame_event(Diagnostics::RemoteFrameEvent::LateChunk);
         return true;
+    }
 
-    if (assembly_session_ != session || sequence > assembly_sequence_) {
-        assembly_session_ = session;
-        assembly_sequence_ = sequence;
-        assembly_width_ = width;
-        assembly_height_ = height;
-        assembly_chunk_count_ = chunk_count;
-        assembly_received_count_ = 0;
-        assembly_submitted_ = false;
+    auto* assembly = assembly_for(session, sequence);
+    if (!assembly) {
+        diagnostics.record_remote_frame_event(Diagnostics::RemoteFrameEvent::LateChunk);
+        return true;  // Older than every frame still being assembled.
+    }
+    if (!assembly->in_use) {
+        assembly->in_use = true;
+        assembly->session = session;
+        assembly->sequence = sequence;
+        assembly->width = width;
+        assembly->height = height;
+        assembly->chunk_count = chunk_count;
+        assembly->received_count = 0;
         // Exact chunk geometry and the received bitmap ensure every byte is
         // overwritten before publication. Reuse storage without clearing the
         // whole RGB frame for each sequence (including abandoned frames).
-        assembly_frame_.resize(expected);
-        assembly_received_.assign(chunk_count, 0);
+        assembly->frame.resize(expected);
+        assembly->received.assign(chunk_count, 0);
     }
 
-    if (sequence != assembly_sequence_ || width != assembly_width_ || height != assembly_height_
-        || chunk_count != assembly_chunk_count_ || assembly_frame_.size() != expected)
+    if (width != assembly->width || height != assembly->height || chunk_count != assembly->chunk_count ||
+        assembly->frame.size() != expected)
         return false;
 
-    if (assembly_submitted_ || assembly_received_[chunk_index])
+    if (assembly->received[chunk_index]) {
+        diagnostics.record_remote_frame_event(Diagnostics::RemoteFrameEvent::DuplicateChunk);
+        return true;
+    }
+
+    std::memcpy(assembly->frame.data() + byte_offset, data + HeaderSize, chunk_bytes);
+    assembly->received[chunk_index] = 1;
+    if (++assembly->received_count != assembly->chunk_count)
         return true;
 
-    std::memcpy(assembly_frame_.data() + byte_offset, data + HeaderSize, chunk_bytes);
-    assembly_received_[chunk_index] = 1;
-    ++assembly_received_count_;
+    const bool newer_pending = std::any_of(assemblies_.begin(), assemblies_.end(), [&](const Assembly& other) {
+        return other.in_use && other.session == session && other.sequence > sequence;
+    });
+    const bool submitted = RemoteRender::submit_frame(session, sequence, width, height,
+                                                      std::span<const std::uint8_t>(assembly->frame.data(), assembly->frame.size()));
+    assembly->in_use = false;
+    if (!submitted)
+        return false;
+    diagnostics.record_remote_frame_event(Diagnostics::RemoteFrameEvent::Completed);
+    if (newer_pending)
+        diagnostics.record_remote_frame_event(Diagnostics::RemoteFrameEvent::ReorderRecovered);
+    published_session_ = session;
+    published_sequence_ = sequence;
+    drop_older(session, sequence);  // They can never be shown any more.
+    return true;
+}
 
-    if (assembly_received_count_ != assembly_chunk_count_)
-        return true;
+RenderOffloadPlugin::Assembly* RenderOffloadPlugin::assembly_for(std::uint32_t session, std::uint32_t sequence)
+{
+    Assembly* free_slot = nullptr;
+    Assembly* oldest = nullptr;
+    for (auto& assembly : assemblies_) {
+        if (assembly.in_use && assembly.session != session) {
+            assembly.in_use = false;  // A superseded session's frames never publish.
+        }
+        if (!assembly.in_use) {
+            if (!free_slot)
+                free_slot = &assembly;
+            continue;
+        }
+        if (assembly.sequence == sequence)
+            return &assembly;
+        if (!oldest || assembly.sequence < oldest->sequence)
+            oldest = &assembly;
+    }
+    if (free_slot)
+        return free_slot;
+    if (!oldest || sequence < oldest->sequence)
+        return nullptr;
+    Diagnostics::RuntimeDiagnostics::instance().record_remote_frame_event(Diagnostics::RemoteFrameEvent::Incomplete);
+    oldest->in_use = false;
+    return oldest;
+}
 
-    assembly_submitted_ = RemoteRender::submit_frame(
-        session, sequence, width, height,
-        std::span<const std::uint8_t>(assembly_frame_.data(), assembly_frame_.size()));
-    // Keep the sequence number so late duplicate chunks for this completed
-    // frame are harmless; the next newer sequence will replace the buffer.
-    return assembly_submitted_;
+void RenderOffloadPlugin::drop_older(std::uint32_t session, std::uint32_t sequence)
+{
+    for (auto& assembly : assemblies_) {
+        if (assembly.in_use && assembly.session == session && assembly.sequence < sequence) {
+            assembly.in_use = false;
+            Diagnostics::RuntimeDiagnostics::instance().record_remote_frame_event(Diagnostics::RemoteFrameEvent::Incomplete);
+        }
+    }
 }

@@ -306,11 +306,18 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
         if (alpha >= 1.0f) {
             const auto elapsed_ms = now_ms - first_local_frame_ms;
-            Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
-                {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
-                {"placement", "local"}, {"frames", local_frames}, {"startup_ms", 0},
-                {"presentation_fps", elapsed_ms > 0 && local_frames > 1
-                    ? 1000.0 * static_cast<double>(local_frames - 1) / static_cast<double>(elapsed_ms) : 0.0}});
+            Diagnostics::RuntimeDiagnostics::instance().set_transition_state(
+                {{"name", transition_name},
+                 {"from", scene->get_name()},
+                 {"to", next_scene->get_name()},
+                 {"placement", "local"},
+                 {"frames", local_frames},
+                 {"startup_ms", 0},
+                 // The desktop was asked first but sent no frame within the startup timeout.
+                 {"desktop_fallback", desktop_started},
+                 {"presentation_fps", elapsed_ms > 0 && local_frames > 1
+                                          ? 1000.0 * static_cast<double>(local_frames - 1) / static_cast<double>(elapsed_ms)
+                                          : 0.0}});
             forced_scene = next_scene;
             break;
         }

@@ -81,3 +81,46 @@ Two further observations:
 
 - Through WireGuard (desktop host set to the Pi's `10.6.0.x` address), traffic takes two Wi-Fi hops via the VPN hub. That added about 30 ms to every transition start compared with the LAN address (baseline: 176 ms vs 147 ms median). Use the matrix's LAN address on the home network.
 - Presentation intervals alternate ~11 ms and ~22 ms: `SwapOnVSync` on this panel runs at about 90 Hz while desktop frames arrive at 60 FPS, so each frame is shown for one or two refreshes.
+
+### Frame references, ordered command sending and transition clock
+
+When the outgoing scene is itself rendered on the desktop, the Pi no longer sends its pixels back. `DesktopHandoff::copy_scene_frame()` remembers the `{session, sequence}` of the frame it copied. If the worker lists `transition_from_frame` in its heartbeat `features`, the start command carries `transition.from_frame` instead of a snapshot. The worker keeps its last 16 sent frames, takes the referenced one (or the closest one of that session) before resetting, and refuses the start if that session's frames are gone (the Pi then falls back after the 500 ms startup timeout). A local outgoing scene, or a worker without the feature, still gets `from_base64` or `from`.
+
+`RemoteRender` now queues start, state and stop commands and the state publisher thread serialises and sends them in order, so the render thread no longer waits on JSON or the socket. A stored start command never holds a transition, so a reconnect resumes the scene instead of replaying the handoff.
+
+The Pi now counts a desktop transition's duration from its first composed frame, not from the request. The worker starts its blend when the command arrives, so with a 100 ms start the Pi used to switch to the scene phase (and possibly change the target FPS) mid-blend.
+
+A locally composed transition that follows a failed desktop start reports `desktop_fallback: true`.
+
+Same evening, LAN path, worker built from the same source, `metablob → neontunnel → boids → starfield` (all desktop-rendered):
+
+| Pi build | Transitions | `request_ms` median | Freeze median | Freeze max |
+|---|---:|---:|---:|---:|
+| Base64 snapshot (earlier trial) | 27 | 16.0 | 112 | 155 |
+| Frame reference + queued sending | 13 | 1.0 | 56 | 77 |
+
+In-transition pacing is unchanged (p95 interval ~23 ms, about 2 late frames per transition).
+
+### Frame reassembly on the Pi
+
+The UDP receiver keeps three frames in assembly, so chunks of frame N that arrive after the first chunks of N+1 still complete N. `/diagnostics` → `udp.remote_frames` counts `completed`, `incomplete` (dropped because a newer frame completed or the slots ran out), `reorder_recovered` (completed while a newer frame was pending), `late_chunks` and `duplicate_chunks`. On `ledmat`, one evening's counters were 8,015 completed, 60 incomplete (0.7%) and 0 reordered, late or duplicate frames. A second run was 6,018 completed and 185 incomplete (3%) while the laptop worker also served the desktop app. Losses are dropped datagrams, not reordering. A frame is only known to be incomplete once a newer one has completed, so showing partial frames would not help.
+
+### Panel refresh vs 60 FPS frames
+
+`demo -D 4 --led-show-refresh` on `ledmat` with the service's flags (service stopped):
+
+| Extra flags | Refresh (median) |
+|---|---:|
+| none | 97 Hz |
+| `--led-pwm-bits=10` | 99 Hz |
+| `--led-pwm-bits=9` | 104 Hz |
+| `--led-pwm-lsb-nanoseconds=100` | 117 Hz |
+| `--led-pwm-dither-bits=1` | 157 Hz |
+
+Under the daemon, refresh is about 90 Hz, so a 60 FPS desktop frame is shown for one or two refreshes (11/22 ms). With `--led-limit-refresh=120 --led-pwm-dither-bits=1`, the median interval became an even 16.5 ms. The p95 interval (25 vs 23 ms) and late frames per transition (4 vs 2) did not improve, because network jitter dominates them. The default panel flags therefore stay unchanged. Dithering would also change the low-brightness look.
+
+A worker capped at 45 FPS (two refreshes per frame) gave an even 22 ms median interval. But each lost frame then left a 44 ms gap: p95 was 33 ms vs 23 ms at 60 FPS, with 7.5 vs 2 late frames and 1 vs 0 stalls per transition (about 10 transitions each, same evening). Desktop frames therefore stay at 60 FPS.
+
+### Audio relayed to the worker
+
+`state` commands relay the Pi's audio frame with `age_seconds`. The worker ages the frame from when the Pi received it, applies each `sequence` only once, and ignores frames the Pi already considers stale. Before this, every 40 ms state message re-stamped the last frame as fresh, so the worker kept audio-reactive scenes "live" after the music stopped.
