@@ -5,6 +5,14 @@ register_plugin(SpotifyScenes
         matrix/SpotifyScenes.h
         scenes/CoverOnlyScene.cpp
         scenes/CoverOnlyScene.h
+        scenes/CoverEqualizerScene.cpp
+        scenes/CoverEqualizerScene.h
+        scenes/HalftoneScene.cpp
+        scenes/HalftoneScene.h
+        scenes/SpotifyArtworkScene.cpp
+        scenes/SpotifyArtworkScene.h
+        scenes/VinylScene.cpp
+        scenes/VinylScene.h
         matrix/manager/shared_spotify.cpp
         matrix/manager/shared_spotify.h
         matrix/manager/song_bpm_getter.cpp

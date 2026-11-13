@@ -1,17 +1,22 @@
 #include "SpotifyScenes.h"
-#include "SpotifyPreviewProvider.h"
+
 #include <random>
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/plugin_registry.h"
-#include "manager/shared_spotify.h"
-#include "manager/pkce.h"
-#include "scenes/CoverOnlyScene.h"
-#include "spdlog/spdlog.h"
+
+#include "SpotifyPreviewProvider.h"
 #include "cpr/cpr.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/media_artwork_state.h"
-#include "shared/matrix/preview.h"
+#include "manager/pkce.h"
+#include "manager/shared_spotify.h"
+#include "scenes/CoverEqualizerScene.h"
+#include "scenes/CoverOnlyScene.h"
+#include "scenes/HalftoneScene.h"
+#include "scenes/VinylScene.h"
 #include "shared/matrix/execution_mode.h"
+#include "shared/matrix/media_artwork_state.h"
+#include "shared/matrix/plugin_registry.h"
+#include "shared/matrix/preview.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/spdlog.h"
 
 using namespace Scenes;
 
@@ -32,6 +37,9 @@ SpotifyScenes::create_preview_data_providers() {
 vector<std::unique_ptr<SceneWrapper>> SpotifyScenes::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> created;
     created.push_back(std::make_unique<CoverOnlySceneWrapper>());
+    created.push_back(std::make_unique<VinylSceneWrapper>());
+    created.push_back(std::make_unique<CoverEqualizerSceneWrapper>());
+    created.push_back(std::make_unique<HalftoneSceneWrapper>());
     return created;
 }
 
