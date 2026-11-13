@@ -219,7 +219,7 @@ jobs:
         with:
           configurePreset: ${{ matrix.preset }}
           # LED_MATRIX_WERROR makes a new warning in our own targets fail the job
-          # (GCC builds; cmake/Warnings.cmake skips MSVC, so it is a no-op on Windows).
+          # (GCC: -Werror; MSVC: /W4 /WX, see cmake/Warnings.cmake).
           configurePresetAdditionalArgs: ${{ matrix.name == 'emulator-sanitizers' && '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DLED_MATRIX_SANITIZE=address"]' || '["-DSKIP_WEB_BUILD=ON", "-DCMAKE_C_COMPILER_LAUNCHER=sccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", "-DCMAKE_POLICY_DEFAULT_CMP0141=NEW", "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded", "-DLED_MATRIX_WERROR=ON"]' }}
           buildPreset: ${{ matrix.preset }}
           # emulator-tests uses Ninja's default parallelism (all runner cores) like

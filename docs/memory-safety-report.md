@@ -25,8 +25,9 @@ ctest --test-dir emulator_asan_build --output-on-failure
   The old `ENABLE_SANITIZERS=ON` still works as an alias for `address`.
 - `_GLIBCXX_ASSERTIONS` is on in every build including the Pi release.
 - Warnings (`-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wnull-dereference
-  -Wuse-after-free=3`) apply to our targets only (`cmake/Warnings.cmake`); `-DLED_MATRIX_WERROR=ON`
-  (set by CI for the emulator, desktop-linux and cross-compile builds) makes them errors.
+  -Wuse-after-free=3`; `/W4` on MSVC) apply to our targets only (`cmake/Warnings.cmake`);
+  `-DLED_MATRIX_WERROR=ON` (set by CI for the emulator, desktop-linux, desktop-windows and
+  cross-compile builds) makes them errors.
   Disable with `-DLED_MATRIX_WARNINGS=OFF`.
 - Suppressions (`scripts/sanitizers/*.supp`) are third-party frames only.
   `env.sh` also sets `OMP_NUM_THREADS=1` (GraphicsMagick/libgomp is uninstrumented)

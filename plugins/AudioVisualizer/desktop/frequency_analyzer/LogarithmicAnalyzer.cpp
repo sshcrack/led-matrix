@@ -1,6 +1,7 @@
 #include "LogarithmicAnalyzer.h"
 #include <cmath>
 #include <atomic>
+#include <limits>
 
 auto LogarithmicAnalyzer::computeBands(
     const std::vector<float> &spectrum,
@@ -48,10 +49,11 @@ auto LogarithmicAnalyzer::computeBands(
 
     // Interpolation pass
     if (shouldInterpolate) {
-        size_t prevValidIdx = -1;
+        constexpr size_t invalidIdx = std::numeric_limits<size_t>::max();
+        size_t prevValidIdx = invalidIdx;
         for (size_t i = 0; i < static_cast<size_t>(config.numBands); ++i) {
             if (std::ranges::find(skipped, i) != skipped.end()) {
-                size_t nextValidIdx = -1;
+                size_t nextValidIdx = invalidIdx;
                 for (size_t j = i + 1; j < static_cast<size_t>(config.numBands); ++j) {
                     if (std::ranges::find(skipped, j) == skipped.end()) {
                         nextValidIdx = j;
@@ -59,7 +61,6 @@ auto LogarithmicAnalyzer::computeBands(
                     }
                 }
 
-                size_t invalidIdx = -1;
                 if (prevValidIdx != invalidIdx && nextValidIdx != invalidIdx) {
                     const float ratio = static_cast<float>(i - prevValidIdx) / static_cast<float>(nextValidIdx - prevValidIdx);
                     bands[i] = bands[prevValidIdx] * (1.0f - ratio) + bands[nextValidIdx] * ratio;

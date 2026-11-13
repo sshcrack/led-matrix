@@ -228,7 +228,7 @@ int run_app(int argc, char *argv[]) {
 int inner_main(const int argc, char *argv[]) {
     return run_app(argc, argv);
 }
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     LPWSTR fullCmdLine = GetCommandLineW();
     int argc = 0;
     LPWSTR *argv_w = CommandLineToArgvW(fullCmdLine, &argc);
