@@ -1,6 +1,7 @@
 #include "LogarithmicAnalyzer.h"
-#include <cmath>
+
 #include <atomic>
+#include <cmath>
 #include <limits>
 
 auto LogarithmicAnalyzer::computeBands(

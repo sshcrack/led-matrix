@@ -383,7 +383,8 @@ spdlog::info("Setting preset {}", id);
         return this->data.pluginConfigs;
     }
 
-    void MainConfig::set_plugin_config(const std::string &pluginId, const string &plugin_config) {
+    void MainConfig::set_plugin_config(const std::string& pluginId, const string& plugin_config)
+    {
         std::unique_lock lock(this->data_mutex);
 
         this->data.pluginConfigs[pluginId] = plugin_config;
