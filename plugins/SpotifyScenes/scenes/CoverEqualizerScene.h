@@ -27,6 +27,11 @@ protected:
     void draw(rgb_matrix::FrameCanvas* canvas, float dt) override;
 
 public:
+    void initialize(int width, int height) override
+    {
+        SpotifyArtworkScene::initialize(width, height);
+        set_target_fps(30);  // slow ambient motion; 60 fps would double the Pi cost
+    }
     [[nodiscard]] string get_name() const override { return "spotify_equalizer"; }
     [[nodiscard]] SceneDescriptor get_descriptor() const override;
     void register_properties() override;

@@ -30,6 +30,11 @@ protected:
     void on_track_changed() override { ripples_.clear(); }
 
 public:
+    void initialize(int width, int height) override
+    {
+        SpotifyArtworkScene::initialize(width, height);
+        set_target_fps(30);  // slow ambient motion; 60 fps would double the Pi cost
+    }
     [[nodiscard]] string get_name() const override { return "spotify_halftone"; }
     [[nodiscard]] SceneDescriptor get_descriptor() const override;
     void register_properties() override;
