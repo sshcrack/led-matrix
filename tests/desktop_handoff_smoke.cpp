@@ -1,16 +1,19 @@
 // Desktop handoff through its one seam: an in-memory desktop worker behind
 // DesktopLink and a controlled clock (the `now_ms` / frame-age arguments).
-#include "matrix_control/DesktopHandoff.h"
-
-#include <shared/matrix/Scene.h>
-
 #include <emulator.h>
 #include <led-matrix.h>
+#include <shared/common/remote_render_protocol.h>
+#include <shared/matrix/Scene.h>
+#include <shared/matrix/diagnostics.h>
 
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
+
+#include "matrix_control/DesktopHandoff.h"
 
 namespace {
 int failures = 0;
@@ -48,8 +51,10 @@ public:
     std::optional<double> frame_age;
     std::vector<nlohmann::json> starts;   // transition payload of every new session
     int stops = 0;
+    bool base64 = false;
 
     void frame(double age = 0.0) { ++sequence; frame_age = age; }
+    bool accepts_base64_snapshot() override { return base64; }
 
     bool worker_available(std::string_view) override { return available; }
     std::optional<std::uint32_t> request_scene(const Scenes::Scene &s, int, int, int,
@@ -161,6 +166,22 @@ int main()
                "worker loss falls back immediately");
     }
 
+    {  // A worker that advertises it gets the compact snapshot with the same pixels.
+        FakeWorker array_worker, base64_worker;
+        base64_worker.base64 = true;
+        DesktopHandoff array_handoff(array_worker), base64_handoff(base64_worker);
+        outgoing->Fill(9, 120, 250);
+        expect(array_handoff.begin_desktop_transition(*to, *outgoing, 32, 32, "blend", 400, 0) &&
+                   base64_handoff.begin_desktop_transition(*to, *outgoing, 32, 32, "blend", 400, 0),
+               "both encodings start a transition");
+        const auto& array_start = array_worker.starts.at(0);
+        const auto& base64_start = base64_worker.starts.at(0);
+        const auto decoded = RemoteRenderProtocol::decode_base64(base64_start.at("from_base64").get<std::string>());
+        expect(!base64_start.contains("from") && !array_start.contains("from_base64") && decoded &&
+                   *decoded == array_start.at("from").get<std::vector<std::uint8_t>>(),
+               "the base64 snapshot carries exactly the array's pixels");
+    }
+
     {   // The worker never answers a transition: compose locally; nothing lingers.
         FakeWorker worker;
         DesktopHandoff handoff(worker);
@@ -222,6 +243,43 @@ int main()
         handoff.begin_scene(*to, 32, 32);
         expect(worker.stops == 1 && worker.session == 0 && handoff.scene_mode() == Mode::Local,
                "no usable worker: the session is stopped");
+    }
+
+    {  // Transition timeline: outgoing freeze, transition frames and the handoff gap.
+        auto& diagnostics = Diagnostics::RuntimeDiagnostics::instance();
+        const auto history_size = [&] { return diagnostics.snapshot()["transition_history"].size(); };
+        const auto pause = [] { std::this_thread::sleep_for(std::chrono::milliseconds(3)); };
+        const auto before = history_size();
+        diagnostics.record_presentation(60);  // last outgoing frame
+        pause();
+        diagnostics.begin_transition_timeline();
+        diagnostics.record_presentation(60);  // beat-synchronised hold: still outgoing
+        diagnostics.mark_transition_composing();
+        pause();
+        for (int i = 0; i < 3; ++i) {
+            diagnostics.record_presentation(60);
+            pause();
+        }
+        diagnostics.end_transition_timeline();
+        expect(history_size() == before, "the record waits for the handoff gap");
+        diagnostics.record_presentation(60);  // first scene-phase frame
+        const auto history = diagnostics.snapshot()["transition_history"];
+        expect(history.size() == before + 1, "a finished transition is recorded");
+        const auto& record = history.back();
+        expect(record.value("presented_frames", 0) == 3, "only composed frames count as transition frames");
+        expect(record.at("lead_in_gap_ms").is_number() && record.at("lead_in_gap_ms").get<double>() >= 3.0 &&
+                   record.at("lead_in_gap_ms").get<double>() < record.at("setup_ms").get<double>() + 50.0,
+               "the freeze is measured from the last outgoing frame, including the hold");
+        expect(record.at("handoff_gap_ms").is_number() && record.at("interval_ms_max").is_number(),
+               "handoff gap and intervals are reported");
+
+        diagnostics.begin_transition_timeline();
+        diagnostics.cancel_transition_timeline();
+        diagnostics.record_presentation(60);
+        diagnostics.begin_transition_timeline();
+        diagnostics.end_transition_timeline();  // aborted before composing
+        diagnostics.record_presentation(60);
+        expect(history_size() == before + 1, "cancelled and aborted transitions add no record");
     }
 
     if (failures == 0) std::cout << "DesktopHandoff OK\n";

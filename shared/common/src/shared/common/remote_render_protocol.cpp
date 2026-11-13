@@ -18,7 +18,76 @@ void append_u32(std::vector<std::uint8_t> &out, std::uint32_t value)
     out.push_back(static_cast<std::uint8_t>((value >> 8U) & 0xffU));
     out.push_back(static_cast<std::uint8_t>(value & 0xffU));
 }
+constexpr char Base64Alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+int base64_value(char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return c - 'A';
+    if (c >= 'a' && c <= 'z')
+        return c - 'a' + 26;
+    if (c >= '0' && c <= '9')
+        return c - '0' + 52;
+    if (c == '+')
+        return 62;
+    if (c == '/')
+        return 63;
+    return -1;
+}
 } // namespace
+
+std::string encode_base64(std::span<const std::uint8_t> bytes)
+{
+    std::string out;
+    out.reserve((bytes.size() + 2) / 3 * 4);
+    std::size_t i = 0;
+    for (; i + 3 <= bytes.size(); i += 3) {
+        const std::uint32_t v =
+            (static_cast<std::uint32_t>(bytes[i]) << 16U) | (static_cast<std::uint32_t>(bytes[i + 1]) << 8U) | bytes[i + 2];
+        out.push_back(Base64Alphabet[(v >> 18U) & 63U]);
+        out.push_back(Base64Alphabet[(v >> 12U) & 63U]);
+        out.push_back(Base64Alphabet[(v >> 6U) & 63U]);
+        out.push_back(Base64Alphabet[v & 63U]);
+    }
+    if (const auto rest = bytes.size() - i; rest > 0) {
+        std::uint32_t v = static_cast<std::uint32_t>(bytes[i]) << 16U;
+        if (rest == 2)
+            v |= static_cast<std::uint32_t>(bytes[i + 1]) << 8U;
+        out.push_back(Base64Alphabet[(v >> 18U) & 63U]);
+        out.push_back(Base64Alphabet[(v >> 12U) & 63U]);
+        out.push_back(rest == 2 ? Base64Alphabet[(v >> 6U) & 63U] : '=');
+        out.push_back('=');
+    }
+    return out;
+}
+
+std::optional<std::vector<std::uint8_t>> decode_base64(std::string_view text)
+{
+    if (text.size() % 4 != 0)
+        return std::nullopt;
+    std::vector<std::uint8_t> out;
+    out.reserve(text.size() / 4 * 3);
+    for (std::size_t i = 0; i < text.size(); i += 4) {
+        const bool last = i + 4 == text.size();
+        const int padding = last ? (text[i + 3] == '=') + (text[i + 2] == '=') : 0;
+        if (padding == 1 && text[i + 2] == '=')
+            return std::nullopt;  // "x=y=" style padding
+        std::uint32_t v = 0;
+        for (int k = 0; k < 4; ++k) {
+            const char c = text[i + static_cast<std::size_t>(k)];
+            const int value = k >= 4 - padding ? 0 : base64_value(c);
+            if (value < 0)
+                return std::nullopt;
+            v = (v << 6U) | static_cast<std::uint32_t>(value);
+        }
+        out.push_back(static_cast<std::uint8_t>((v >> 16U) & 0xffU));
+        if (padding < 2)
+            out.push_back(static_cast<std::uint8_t>((v >> 8U) & 0xffU));
+        if (padding < 1)
+            out.push_back(static_cast<std::uint8_t>(v & 0xffU));
+    }
+    return out;
+}
 
 FramePacket::FramePacket(
     std::uint32_t session, std::uint32_t sequence,

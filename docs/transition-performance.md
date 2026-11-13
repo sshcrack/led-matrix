@@ -44,3 +44,40 @@ Measured on the same Pi and attached 128×128 panel with GPIO slowdown 3, altern
 | desktop | neontunnel → metablob | 290 | 58.94 | 101 ms |
 
 Desktop mean: 59.51 FPS. Local mean: 23.46 FPS. These are short, controlled samples, not a guarantee for all scenes or networks. FPS covers first-to-last transition presentation; startup is reported separately and holds the outgoing image. All registered transition types pass worker composition/handoff self-tests; this end-to-end timing run covers blend only. The original Pi service and config were restored after each run.
+
+## Transition start freeze (2026-11-13)
+
+Measured on `ledmat` (Pi 3B, 128×128, release 1.22.0 baseline) with the desktop worker on a laptop; both on Wi-Fi. Each trial ran a temporary manual preset cycling `metablob`, `neontunnel`, `boids` and `starfield` (8 s scenes, 1 s blend, ~27 transitions per trial). The candidate ran as a transient unit with the service's flags and environment, the service was restarted afterwards, and the test preset was deleted.
+
+### Per-transition diagnostics
+
+`/diagnostics` → `transition` now carries frame pacing for the last transition, and `transition_history` keeps the last 32:
+
+| Field | Meaning |
+|---|---|
+| `prepare_ms` | Outgoing scene stopped → transition composing begins (director choice, scene initialisation; after any beat-synchronised hold) |
+| `setup_ms` | Composing begins → first transition frame presented |
+| `lead_in_gap_ms` | Last outgoing presentation → first transition frame: how long the picture stood still |
+| `request_ms` | Desktop transitions: render-thread time to snapshot and send the start command |
+| `interval_ms_p50/p95/max`, `late_frames` (>25 ms), `stalls` (>50 ms) | Presentation intervals inside the transition |
+| `handoff_gap_ms` | Last transition frame → first frame of the scene phase |
+
+### Findings
+
+In Automatic Mode on 1.22.0, desktop-composed transitions froze the outgoing frame for 130–450 ms before the first transition frame. Transitions themselves last about 0.6 s. The controlled baseline gave a 176 ms median (max 291 ms), with `request_ms` at 57 ms. Building, copying and serialising the outgoing snapshot as a 49,152-number JSON array dominated that render-thread cost. Worker scene start is about 1 ms. The rest is WebSocket delivery of the start command and the first UDP frame back.
+
+The start command now sends the snapshot as `from_base64` when the worker lists `transition_snapshot_base64` in its heartbeat `features`. This is additive within protocol 4: older workers keep getting `from`, and new workers accept both. The transition loop also reads the newest frame sequence without `RemoteRender::status()`, which locked the transport and scanned the contract maps on every 1 ms poll.
+
+Same worker build and LAN path, trials interleaved:
+
+| Pi build | Trials | `request_ms` median | Freeze median | Freeze max |
+|---|---|---:|---:|---:|
+| Baseline (array snapshot) | 4 | 53.5–65.7 | 147–170 | 198–309 |
+| Base64 snapshot | 6 | 16.0–16.6 | 101–112 | 124–292 |
+
+The median freeze drops by about 50 ms (~3 frames at 60 FPS). In-transition presentation stays at ~60 FPS with a 12 ms median interval. Late frames (>25 ms) varied between 0.37 and 1.46 per transition across the evening in both arms; the last interleaved pair gave 0.93 (base64) vs 1.04 (baseline), and these gaps were spread evenly through the transitions. A raw UDP test (60 FPS × 41 chunks) showed 0.3–3.5% incomplete frames and a p95 frame-arrival interval of ~25 ms on this Wi-Fi, so these gaps are network jitter rather than Pi work.
+
+Two further observations:
+
+- Through WireGuard (desktop host set to the Pi's `10.6.0.x` address), traffic takes two Wi-Fi hops via the VPN hub. That added about 30 ms to every transition start compared with the LAN address (baseline: 176 ms vs 147 ms median). Use the matrix's LAN address on the home network.
+- Presentation intervals alternate ~11 ms and ~22 ms: `SwapOnVSync` on this panel runs at about 90 Hz while desktop frames arrive at 60 FPS, so each frame is shown for one or two refreshes.

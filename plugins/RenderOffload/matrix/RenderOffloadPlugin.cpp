@@ -73,7 +73,13 @@ void RenderOffloadPlugin::on_websocket_message(const std::string &message)
         const int protocol_version = protocol != command.end() && protocol->is_number_integer()
             && *protocol >= 0 && *protocol <= std::numeric_limits<std::uint8_t>::max()
             ? protocol->get<int>() : 0;
-        RemoteRender::report_worker_heartbeat(protocol_version, std::move(contracts));
+        std::vector<std::string> features;
+        if (const auto advertised = command.find("features"); advertised != command.end() && advertised->is_array()) {
+            for (const auto& feature : *advertised)
+                if (feature.is_string() && features.size() < 64)
+                    features.push_back(feature.get<std::string>());
+        }
+        RemoteRender::report_worker_heartbeat(protocol_version, std::move(contracts), std::move(features));
     } catch (const std::exception &e) {
         spdlog::debug("Ignoring invalid RenderOffload worker message: {}", e.what());
     }

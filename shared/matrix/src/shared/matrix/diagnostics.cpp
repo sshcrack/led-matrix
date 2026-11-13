@@ -68,6 +68,28 @@ void RuntimeDiagnostics::record_render(const std::string &scene, double render_m
 
 void RuntimeDiagnostics::record_presentation(int target_fps) {
     const auto now_us = monotonic_us();
+    if (timeline_.active && timeline_.composing_us == 0) {
+        // Beat-synchronised hold: the outgoing scene is still presenting.
+        timeline_.outgoing_last_us = now_us;
+    }
+    else if (timeline_.active) {
+        if (timeline_.frames++ == 0)
+            timeline_.first_frame_us = now_us;
+        else if (now_us > timeline_.last_frame_us)
+            timeline_.intervals_us.push_back(
+                static_cast<std::uint32_t>(std::min<std::uint64_t>(now_us - timeline_.last_frame_us, UINT32_MAX)));
+        timeline_.last_frame_us = now_us;
+    }
+    else {
+        if (timeline_.awaiting_handoff) {
+            timeline_.awaiting_handoff = false;
+            if (timeline_.pending && timeline_.last_frame_us != 0 && now_us >= timeline_.last_frame_us)
+                (*timeline_.pending)["handoff_gap_ms"] = static_cast<double>(now_us - timeline_.last_frame_us) / 1000.0;
+        }
+        if (timeline_.pending)
+            publish_pending_transition();
+    }
+    timeline_.last_presented_us = now_us;
     presentation_frames_.fetch_add(1, std::memory_order_relaxed);
     const auto previous_us = presentation_last_us_.exchange(now_us, std::memory_order_relaxed);
     if (previous_us == 0 || now_us <= previous_us)
@@ -143,6 +165,92 @@ void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
     std::unique_lock lock(mutex_, std::try_to_lock);
     if (!lock.owns_lock()) return;
     transition_state_ = std::move(state);
+}
+
+void RuntimeDiagnostics::publish_pending_transition()
+{
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock())
+        return;  // retried on the next presentation
+    if (!transition_state_.is_object())
+        transition_state_ = nlohmann::json::object();
+    transition_state_.update(*timeline_.pending);
+    timeline_.pending.reset();
+    transition_history_.push_back(transition_state_);
+    while (transition_history_.size() > 32) transition_history_.pop_front();
+}
+
+void RuntimeDiagnostics::begin_transition_timeline()
+{
+    timeline_.pending.reset();
+    timeline_.active = true;
+    timeline_.awaiting_handoff = false;
+    timeline_.outgoing_last_us = timeline_.last_presented_us;
+    timeline_.begin_us = monotonic_us();
+    timeline_.composing_us = 0;
+    timeline_.first_frame_us = timeline_.last_frame_us = 0;
+    timeline_.frames = 0;
+    timeline_.intervals_us.clear();
+    timeline_.intervals_us.reserve(1024);
+}
+
+void RuntimeDiagnostics::mark_transition_composing()
+{
+    if (timeline_.active && timeline_.composing_us == 0)
+        timeline_.composing_us = monotonic_us();
+}
+
+void RuntimeDiagnostics::cancel_transition_timeline()
+{
+    timeline_.active = false;
+    timeline_.awaiting_handoff = false;
+}
+
+void RuntimeDiagnostics::end_transition_timeline()
+{
+    if (!timeline_.active)
+        return;
+    timeline_.active = false;
+    timeline_.awaiting_handoff = true;
+    const auto ms = [](std::uint64_t from, std::uint64_t to) {
+        return from != 0 && to >= from ? nlohmann::json(static_cast<double>(to - from) / 1000.0) : nlohmann::json(nullptr);
+    };
+    auto sorted = timeline_.intervals_us;
+    std::sort(sorted.begin(), sorted.end());
+    const auto percentile = [&](double p) {
+        if (sorted.empty())
+            return nlohmann::json(nullptr);
+        const auto index = std::min(sorted.size() - 1, static_cast<std::size_t>(p * static_cast<double>(sorted.size())));
+        return nlohmann::json(static_cast<double>(sorted[index]) / 1000.0);
+    };
+    // 60 FPS presentation: >25 ms means at least one refresh was missed,
+    // >50 ms is a visible hitch.
+    const auto late = std::count_if(sorted.begin(), sorted.end(), [](auto us) { return us > 25000; });
+    const auto stalls = std::count_if(sorted.begin(), sorted.end(), [](auto us) { return us > 50000; });
+    if (timeline_.composing_us == 0) {
+        // Aborted before composing anything (e.g. a required input vanished).
+        timeline_.awaiting_handoff = false;
+        return;
+    }
+    const auto composing = timeline_.composing_us;
+    nlohmann::json timing{
+        {"prepare_ms", ms(timeline_.begin_us, composing)},
+        {"setup_ms", ms(composing, timeline_.first_frame_us)},
+        {"lead_in_gap_ms", ms(timeline_.outgoing_last_us, timeline_.first_frame_us)},
+        {"presented_frames", timeline_.frames},
+        {"interval_ms_p50", percentile(0.5)},
+        {"interval_ms_p95", percentile(0.95)},
+        {"interval_ms_max", sorted.empty() ? nlohmann::json(nullptr) : nlohmann::json(static_cast<double>(sorted.back()) / 1000.0)},
+        {"late_frames", late},
+        {"stalls", stalls},
+        {"presented_fps", timeline_.frames > 1 && timeline_.last_frame_us > timeline_.first_frame_us
+                              ? nlohmann::json(1e6 * static_cast<double>(timeline_.frames - 1) /
+                                               static_cast<double>(timeline_.last_frame_us - timeline_.first_frame_us))
+                              : nlohmann::json(nullptr)},
+        {"handoff_gap_ms", nullptr},
+        {"ended_ms", monotonic_ms()},
+    };
+    timeline_.pending = std::move(timing);
 }
 
 void RuntimeDiagnostics::set_hardware_state(nlohmann::json state) {
@@ -223,45 +331,42 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
         };
     }
 
-    return {
-        {"uptime_seconds", uptime_seconds},
-        {"renderer", {
-            {"active_scene", active_scene_},
-            {"frames", render_frames_},
-            {"fps", fps_ema_},
-            {"render_ms_average", render_ms_ema_},
-            {"render_ms_max", render_ms_max_},
-            {"slow_frames", dropped_render_frames_},
-            {"render_samples_skipped", render_samples_skipped_.load(std::memory_order_relaxed)},
-            {"presentation_frames", presentation_frames_.load(std::memory_order_relaxed)},
-            {"presentation_fps_last", presentation_last_interval_us == 0 ? 0.0 : 1000000.0 / static_cast<double>(presentation_last_interval_us)},
-            {"presentation_interval_ms_last", presentation_last_ms},
-            {"presentation_interval_ms_average", presentation_average_ms},
-            {"presentation_interval_ms_max", static_cast<double>(presentation_interval_max_us_.load(std::memory_order_relaxed)) / 1000.0},
-            {"late_presentations", presentation_late_frames_.load(std::memory_order_relaxed)},
-            {"estimated_missed_refreshes", presentation_estimated_missed_refreshes_.load(std::memory_order_relaxed)},
-            {"scene_errors", errors},
-            {"scene_performance", scene_performance}
-        }},
-        {"udp", {
-            {"datagrams", udp_datagrams_.load(std::memory_order_relaxed)},
-            {"packets", udp_packets_.load(std::memory_order_relaxed)},
-            {"bytes", udp_bytes_.load(std::memory_order_relaxed)},
-            {"datagrams_per_second", static_cast<double>(udp_datagrams_.load(std::memory_order_relaxed)) / uptime_seconds},
-            {"bytes_per_second", static_cast<double>(udp_bytes_.load(std::memory_order_relaxed)) / uptime_seconds},
-            {"malformed", udp_malformed_.load(std::memory_order_relaxed)},
-            {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)}
-        }},
-        {"audio_transport", {
-            {"packets", audio_packets_},
-            {"sequence_gaps", audio_sequence_gaps_},
-            {"decode_errors", audio_decode_errors_},
-            {"last_sequence", have_audio_sequence_ ? nlohmann::json(last_audio_sequence_) : nlohmann::json(nullptr)}
-        }},
-        {"director", director_state_},
-        {"transition", transition_state_},
-        {"render_placement", render_placement_state_},
-        {"hardware", hardware_state_}
-    };
+    return {{"uptime_seconds", uptime_seconds},
+            {"renderer",
+             {{"active_scene", active_scene_},
+              {"frames", render_frames_},
+              {"fps", fps_ema_},
+              {"render_ms_average", render_ms_ema_},
+              {"render_ms_max", render_ms_max_},
+              {"slow_frames", dropped_render_frames_},
+              {"render_samples_skipped", render_samples_skipped_.load(std::memory_order_relaxed)},
+              {"presentation_frames", presentation_frames_.load(std::memory_order_relaxed)},
+              {"presentation_fps_last",
+               presentation_last_interval_us == 0 ? 0.0 : 1000000.0 / static_cast<double>(presentation_last_interval_us)},
+              {"presentation_interval_ms_last", presentation_last_ms},
+              {"presentation_interval_ms_average", presentation_average_ms},
+              {"presentation_interval_ms_max", static_cast<double>(presentation_interval_max_us_.load(std::memory_order_relaxed)) / 1000.0},
+              {"late_presentations", presentation_late_frames_.load(std::memory_order_relaxed)},
+              {"estimated_missed_refreshes", presentation_estimated_missed_refreshes_.load(std::memory_order_relaxed)},
+              {"scene_errors", errors},
+              {"scene_performance", scene_performance}}},
+            {"udp",
+             {{"datagrams", udp_datagrams_.load(std::memory_order_relaxed)},
+              {"packets", udp_packets_.load(std::memory_order_relaxed)},
+              {"bytes", udp_bytes_.load(std::memory_order_relaxed)},
+              {"datagrams_per_second", static_cast<double>(udp_datagrams_.load(std::memory_order_relaxed)) / uptime_seconds},
+              {"bytes_per_second", static_cast<double>(udp_bytes_.load(std::memory_order_relaxed)) / uptime_seconds},
+              {"malformed", udp_malformed_.load(std::memory_order_relaxed)},
+              {"unhandled", udp_unhandled_.load(std::memory_order_relaxed)}}},
+            {"audio_transport",
+             {{"packets", audio_packets_},
+              {"sequence_gaps", audio_sequence_gaps_},
+              {"decode_errors", audio_decode_errors_},
+              {"last_sequence", have_audio_sequence_ ? nlohmann::json(last_audio_sequence_) : nlohmann::json(nullptr)}}},
+            {"director", director_state_},
+            {"transition", transition_state_},
+            {"transition_history", transition_history_},
+            {"render_placement", render_placement_state_},
+            {"hardware", hardware_state_}};
 }
 }

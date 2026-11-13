@@ -326,6 +326,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 warn("Automatic Director is cooling down '{}' after a failed presentation", scene->get_name());
         }
         const bool should_handoff = !early_exit || director_switch_triggered;
+        Diagnostics::RuntimeDiagnostics::instance().begin_transition_timeline();
         if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
             const auto latest_inputs = runtime_inputs_fn_();
@@ -384,9 +385,13 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
                 matrix_width, matrix_height,
                 transition_duration, transition_name, forced_scene_, transition_delay,
                 std::move(transition_inputs_still_available), renderer_.last_presented_canvas());
+            Diagnostics::RuntimeDiagnostics::instance().end_transition_timeline();
 
             if (prime_incoming_desktop_stream && forced_scene_ != next_scene)
                 broadcast_fn_(scene->get_name());
+        }
+        else {
+            Diagnostics::RuntimeDiagnostics::instance().cancel_transition_timeline();
         }
 
         advance_journey();

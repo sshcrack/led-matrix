@@ -1,5 +1,7 @@
 #include "TransitionEngine.h"
 
+#include <chrono>
+
 #include "LiveFrameSnapshot.h"
 #include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
@@ -122,6 +124,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         }
     }
 
+    Diagnostics::RuntimeDiagnostics::instance().mark_transition_composing();
     scene->before_transition_stop();
 
     constexpr tmillis_t max_transition_ms = 10000;
@@ -169,8 +172,12 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     }
 
     // The worker composes the transition when it can; the Pi only writes the finished pixels to GPIO.
-    if (handoff_->begin_desktop_transition(*next_scene, *first_offscreen_canvas, matrix_width, matrix_height,
-                                           transition_name, transition_duration, time_source_->now_ms())) {
+    const auto request_started = std::chrono::steady_clock::now();
+    const bool desktop_started = handoff_->begin_desktop_transition(*next_scene, *first_offscreen_canvas, matrix_width, matrix_height,
+                                                                    transition_name, transition_duration, time_source_->now_ms());
+    // Render-thread time spent snapshotting and sending the start command.
+    const double request_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - request_started).count();
+    if (desktop_started) {
         while (!*interrupt_flag_ && !*exit_flag_) {
             if (!runtime_inputs_valid()) return;
             const auto now = time_source_->now_ms();
@@ -188,14 +195,28 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             using Outcome = DesktopHandoff::TransitionOutcome;
             if (tick.outcome == Outcome::Done) {
                 const auto stats = handoff_->desktop_transition_stats(now);
-                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({
-                    {"name", transition_name}, {"from", scene->get_name()}, {"to", next_scene->get_name()},
-                    {"placement", "desktop"}, {"frames", stats.frames},
-                    {"startup_ms", stats.startup_ms}, {"presentation_fps", stats.presentation_fps}});
+                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({{"name", transition_name},
+                                                                                  {"from", scene->get_name()},
+                                                                                  {"to", next_scene->get_name()},
+                                                                                  {"placement", "desktop"},
+                                                                                  {"frames", stats.frames},
+                                                                                  {"startup_ms", stats.startup_ms},
+                                                                                  {"request_ms", request_ms},
+                                                                                  {"presentation_fps", stats.presentation_fps}});
                 forced_scene = next_scene;
                 return; // The session continues as the scene's.
             }
             if (tick.outcome == Outcome::Abandoned) {
+                const auto stats = handoff_->desktop_transition_stats(now);
+                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({{"name", transition_name},
+                                                                                  {"from", scene->get_name()},
+                                                                                  {"to", next_scene->get_name()},
+                                                                                  {"placement", "desktop"},
+                                                                                  {"outcome", "abandoned"},
+                                                                                  {"frames", stats.frames},
+                                                                                  {"startup_ms", stats.startup_ms},
+                                                                                  {"request_ms", request_ms},
+                                                                                  {"presentation_fps", stats.presentation_fps}});
                 forced_scene = next_scene;
                 return;
             }

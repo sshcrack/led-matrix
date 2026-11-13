@@ -5,6 +5,7 @@
 
 #include "led-matrix.h"
 #include "shared/common/crash_reporter.h"
+#include "shared/common/remote_render_protocol.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/diagnostics.h"
 
@@ -31,6 +32,17 @@ public:
     }
     RemoteRender::Status status() override { return RemoteRender::status(); }
     void stop() override { RemoteRender::stop(); }
+    std::uint32_t latest_sequence(std::uint32_t session) override { return RemoteRender::latest_sequence(session); }
+    std::uint32_t copy_latest_sequence(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height,
+                                       double max_age_ms) override
+    {
+        std::uint32_t sequence = 0;
+        return RemoteRender::copy_latest(session, canvas, width, height, max_age_ms, &sequence) ? sequence : 0;
+    }
+    bool accepts_base64_snapshot() override
+    {
+        return RemoteRender::worker_has_feature(RemoteRenderProtocol::Features::TransitionSnapshotBase64);
+    }
 };
 
 double frame_budget_ms(const Scenes::Scene &scene)
@@ -38,6 +50,19 @@ double frame_budget_ms(const Scenes::Scene &scene)
     return 1000.0 / static_cast<double>(std::max(1, scene.get_declared_target_fps()));
 }
 } // namespace
+
+std::uint32_t DesktopLink::latest_sequence(std::uint32_t session)
+{
+    const auto remote = status();
+    return remote.session == session ? remote.last_sequence : 0;
+}
+
+std::uint32_t DesktopLink::copy_latest_sequence(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height,
+                                                double max_age_ms)
+{
+    const auto sequence = latest_sequence(session);
+    return copy_latest(session, canvas, width, height, max_age_ms) ? sequence : 0;
+}
 
 DesktopLink &DesktopLink::remote_render()
 {
@@ -199,7 +224,14 @@ bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const r
             outgoing.GetPixel(x, y, &pixels[offset], &pixels[offset + 1], &pixels[offset + 2]);
         }
     const auto duration = std::clamp<tmillis_t>(duration_ms, 1, MaxTransitionMs);
-    if (!request(next, width, height, 60, {{"name", name}, {"duration_ms", duration}, {"from", pixels}}))
+    nlohmann::json transition{{"name", name}, {"duration_ms", duration}};
+    // A JSON array of 49k numbers took the Pi's render thread ~40 ms to build,
+    // copy and serialize while the outgoing frame stood still.
+    if (link_.accepts_base64_snapshot())
+        transition["from_base64"] = RemoteRenderProtocol::encode_base64(pixels);
+    else
+        transition["from"] = std::move(pixels);
+    if (!request(next, width, height, 60, transition))
         return false;
     transition_ = Transition{.next = next.get_name(), .duration_ms = duration, .requested_at = now_ms,
                              .last_frame_at = now_ms, .width = width, .height = height};
@@ -211,10 +243,12 @@ DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matri
     auto &t = *transition_;
     TransitionTick tick;
     link_.publish_runtime_state(*session_);
-    const auto remote = link_.status();
-    if (remote.session == *session_ && remote.last_sequence != t.last_sequence
-        && link_.copy_latest(*session_, canvas, t.width, t.height, TransitionFrameMaxAgeMs)) {
-        t.last_sequence = remote.last_sequence;
+    // Lock-free: status() locks the transport and scans the contract maps.
+    std::uint32_t sequence = 0;
+    if (link_.latest_sequence(*session_) != t.last_sequence &&
+        (sequence = link_.copy_latest_sequence(*session_, canvas, t.width, t.height, TransitionFrameMaxAgeMs)) != 0 &&
+        sequence != t.last_sequence) {
+        t.last_sequence = sequence;
         t.last_frame_at = now_ms;
         if (t.frames++ == 0) t.first_frame_at = now_ms;
         tick.frame = true;
