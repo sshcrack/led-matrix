@@ -33,6 +33,7 @@ struct FrameSnapshot {
 struct WorkerSnapshot {
     Clock::time_point heartbeat{};
     SceneContracts contracts;
+    std::vector<std::string> features;
     int protocol = 0;
 };
 
@@ -199,18 +200,26 @@ void set_local_scene_contracts(SceneContracts contracts)
                                   std::memory_order_release);
 }
 
-void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts)
+void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts, std::vector<std::string> features)
 {
     auto worker = std::make_shared<WorkerSnapshot>();
     worker->heartbeat = Clock::now();
     worker->protocol = protocol_version;
     worker->contracts = std::move(scene_contracts);
+    worker->features = std::move(features);
     state().latest_worker.store(std::move(worker), std::memory_order_release);
 }
 
 bool worker_available(std::string_view scene)
 {
     return worker_supports(state(), scene);
+}
+
+bool worker_has_feature(std::string_view feature)
+{
+    const auto worker = state().latest_worker.load(std::memory_order_acquire);
+    return worker_alive(worker) && worker->protocol == RemoteRenderProtocol::Version &&
+           std::find(worker->features.begin(), worker->features.end(), feature) != worker->features.end();
 }
 
 std::optional<std::uint32_t> request_scene(
@@ -341,8 +350,14 @@ bool submit_frame(std::uint32_t session, std::uint32_t sequence,
     return true;
 }
 
-bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
-                 int width, int height, double max_age_ms)
+std::uint32_t latest_sequence(std::uint32_t session)
+{
+    const auto frame = state().latest_frame.load(std::memory_order_acquire);
+    return frame && session != 0 && frame->session == session ? frame->sequence : 0;
+}
+
+bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height, double max_age_ms,
+                 std::uint32_t* copied_sequence)
 {
     if (!canvas)
         return false;
@@ -357,6 +372,8 @@ bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
         return false;
 
     canvas->SetRGB(0, 0, width, height, frame->rgb.data());
+    if (copied_sequence)
+        *copied_sequence = frame->sequence;
     return true;
 }
 

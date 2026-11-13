@@ -9,10 +9,11 @@
 #include <led-matrix.h>
 #endif
 
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace {
@@ -235,6 +236,46 @@ int main(int argc, char **argv)
     }
     if (RemoteRender::request_scene(scene, 32, 32, 30) != second
         || commands.size() != command_count + 1) return 25;
+
+    // The transition loop reads the newest sequence without the state lock.
+    if (RemoteRender::latest_sequence(*second) != 19 || RemoteRender::latest_sequence(*second + 1) != 0)
+        return 27;
+#ifdef ENABLE_EMULATOR
+    // The copy reports which frame it copied, so a frame arriving between a
+    // sequence check and the copy is not shown twice.
+    std::uint32_t copied_sequence = 0;
+    if (!RemoteRender::copy_latest(*second, canvas, 32, 32, 300.0, &copied_sequence) || copied_sequence != 19)
+        return 28;
+#endif
+    // Additive capabilities are only used when the live worker lists them.
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", 1}},
+                                          {std::string(RemoteRenderProtocol::Features::TransitionSnapshotBase64)});
+    if (!RemoteRender::worker_has_feature(RemoteRenderProtocol::Features::TransitionSnapshotBase64) ||
+        RemoteRender::worker_has_feature("unknown_feature"))
+        return 30;
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", 1}});
+    if (RemoteRender::worker_has_feature(RemoteRenderProtocol::Features::TransitionSnapshotBase64))
+        return 31;
+
+    // Base64 transition snapshots round-trip every tail length and reject damage.
+    for (std::size_t length = 0; length < 8; ++length) {
+        std::vector<std::uint8_t> bytes(length);
+        for (std::size_t i = 0; i < length; ++i) bytes[i] = static_cast<std::uint8_t>(251 - 37 * i);
+        const auto encoded = RemoteRenderProtocol::encode_base64(bytes);
+        const auto decoded = RemoteRenderProtocol::decode_base64(encoded);
+        if (encoded.size() != (length + 2) / 3 * 4 || !decoded || *decoded != bytes) {
+            std::cerr << "base64 round trip failed for " << length << " bytes\n";
+            return 32;
+        }
+    }
+    if (RemoteRenderProtocol::encode_base64(std::vector<std::uint8_t>{'M', 'a', 'n'}) != "TWFu" ||
+        RemoteRenderProtocol::decode_base64("TWE=") != std::vector<std::uint8_t>{'M', 'a'})
+        return 33;
+    for (const char* bad : {"TWF", "TW=u", "T*Fu", "TQ=A", "=WFu"})
+        if (RemoteRenderProtocol::decode_base64(bad).has_value()) {
+            std::cerr << "malformed base64 '" << bad << "' was accepted\n";
+            return 34;
+        }
 
     // Exercise the real chunk receiver, including incomplete/newer frames and
     // late duplicates. A partial frame must never replace the last complete one.

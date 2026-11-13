@@ -78,16 +78,15 @@ void RuntimeDiagnostics::record_presentation(int target_fps) {
             timeline_.intervals_us.push_back(static_cast<std::uint32_t>(
                 std::min<std::uint64_t>(now_us - timeline_.last_frame_us, UINT32_MAX)));
         timeline_.last_frame_us = now_us;
-    } else if (timeline_.awaiting_handoff) {
-        timeline_.awaiting_handoff = false;
-        const auto reference = timeline_.frames > 0 ? timeline_.last_frame_us : timeline_.last_presented_us;
-        std::lock_guard lock(mutex_);
-        if (!transition_history_.empty() && reference != 0 && now_us >= reference) {
-            const double gap_ms = static_cast<double>(now_us - reference) / 1000.0;
-            transition_history_.back()["handoff_gap_ms"] = gap_ms;
-            if (transition_state_.is_object())
-                transition_state_["handoff_gap_ms"] = gap_ms;
+    }
+    else {
+        if (timeline_.awaiting_handoff) {
+            timeline_.awaiting_handoff = false;
+            if (timeline_.pending && timeline_.last_frame_us != 0 && now_us >= timeline_.last_frame_us)
+                (*timeline_.pending)["handoff_gap_ms"] = static_cast<double>(now_us - timeline_.last_frame_us) / 1000.0;
         }
+        if (timeline_.pending)
+            publish_pending_transition();
     }
     timeline_.last_presented_us = now_us;
     presentation_frames_.fetch_add(1, std::memory_order_relaxed);
@@ -167,7 +166,21 @@ void RuntimeDiagnostics::set_transition_state(nlohmann::json state) {
     transition_state_ = std::move(state);
 }
 
+void RuntimeDiagnostics::publish_pending_transition()
+{
+    std::unique_lock lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock())
+        return;  // retried on the next presentation
+    if (!transition_state_.is_object())
+        transition_state_ = nlohmann::json::object();
+    transition_state_.update(*timeline_.pending);
+    timeline_.pending.reset();
+    transition_history_.push_back(transition_state_);
+    while (transition_history_.size() > 32) transition_history_.pop_front();
+}
+
 void RuntimeDiagnostics::begin_transition_timeline() {
+    timeline_.pending.reset();
     timeline_.active = true;
     timeline_.awaiting_handoff = false;
     timeline_.outgoing_last_us = timeline_.last_presented_us;
@@ -232,13 +245,7 @@ void RuntimeDiagnostics::end_transition_timeline() {
         {"handoff_gap_ms", nullptr},
         {"ended_ms", monotonic_ms()},
     };
-    std::lock_guard lock(mutex_);
-    if (!transition_state_.is_object())
-        transition_state_ = nlohmann::json::object();
-    transition_state_.update(timing);
-    transition_history_.push_back(transition_state_);
-    while (transition_history_.size() > 32)
-        transition_history_.pop_front();
+    timeline_.pending = std::move(timing);
 }
 
 void RuntimeDiagnostics::set_hardware_state(nlohmann::json state) {

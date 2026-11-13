@@ -6,11 +6,11 @@
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
-
-#include <nlohmann/json.hpp>
+#include <vector>
 
 namespace Diagnostics {
 
@@ -123,7 +123,11 @@ private:
         std::uint64_t last_frame_us = 0;
         std::uint64_t frames = 0;
         std::vector<std::uint32_t> intervals_us;
+        // Finished record waiting for the handoff gap and a free mutex. It is
+        // published with try_lock so /diagnostics never stalls a presentation.
+        std::optional<nlohmann::json> pending;
     } timeline_;
+    void publish_pending_transition();
     nlohmann::json render_placement_state_ = nlohmann::json::object();
     nlohmann::json hardware_state_ = nlohmann::json::object();
 };

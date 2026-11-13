@@ -28,6 +28,15 @@ public:
     [[nodiscard]] virtual std::optional<double> latest_frame_age_ms(std::uint32_t session) = 0;
     [[nodiscard]] virtual RemoteRender::Status status() = 0;
     virtual void stop() = 0;
+    /// Newest complete frame of `session`, 0 when none. Default: from status().
+    [[nodiscard]] virtual std::uint32_t latest_sequence(std::uint32_t session);
+    /// Like copy_latest(), but returns the sequence of the frame actually
+    /// copied (0 when none), so a newer frame arriving in between is not
+    /// mistaken for the one already shown.
+    virtual std::uint32_t copy_latest_sequence(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height,
+                                               double max_age_ms);
+    /// The worker decodes a base64 transition snapshot (`from_base64`).
+    [[nodiscard]] virtual bool accepts_base64_snapshot() { return false; }
 
     static DesktopLink &remote_render();
 };

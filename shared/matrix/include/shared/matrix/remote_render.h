@@ -48,14 +48,18 @@ void set_local_scene_contracts(SceneContracts contracts);
 /// A worker advertises only offloadable scene IDs and their data contract versions.
 /// A matching protocol and requested scene contract are required; unknown,
 /// missing and nonpositive contracts are never eligible.
-void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts = {});
+/// `features` lists additive capabilities (RemoteRenderProtocol::Features).
+void report_worker_heartbeat(int protocol_version, SceneContracts scene_contracts = {}, std::vector<std::string> features = {});
 [[nodiscard]] bool worker_available(std::string_view scene = {});
+/// Whether the live worker advertised an additive protocol capability.
+[[nodiscard]] bool worker_has_feature(std::string_view feature);
 
 /// Start (or reuse) a remote-render session for this scene. The scene's
 /// canonical property JSON is sent to the desktop so remote rendering remains
 /// an internal placement decision rather than separate user configuration.
-/// A nonempty transition starts a new session carrying {name, duration_ms, from}
-/// (RGB888 bytes). The worker composes the handoff before continuing the scene;
+/// A nonempty transition starts a new session carrying {name, duration_ms} and
+/// the outgoing RGB888 frame as `from` (number array) or, for a worker with the
+/// TransitionSnapshotBase64 feature, `from_base64`. The worker composes the handoff before continuing the scene;
 /// ordinary requests then reuse this session. A changed target FPS sends an
 /// additive state update without restarting the scene. Reconnects omit the old
 /// handoff and use the most recently requested rate.
@@ -79,12 +83,17 @@ bool submit_frame(std::uint32_t session, std::uint32_t sequence,
 
 /// Copy the latest complete RGB888 frame into a canvas if it is recent enough.
 /// No queue is maintained, so network jitter cannot build up latency.
-bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas,
-                 int width, int height, double max_age_ms = 300.0);
+/// `copied_sequence`, when given, receives the sequence of the copied frame.
+bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height, double max_age_ms = 300.0,
+                 std::uint32_t* copied_sequence = nullptr);
 
 /// Age of the newest received frame for `session`, without taking the state
 /// lock. Empty when no frame of that session has arrived.
 std::optional<double> latest_frame_age_ms(std::uint32_t session);
+
+/// Sequence of the newest complete frame of `session` (0 when none), without
+/// taking the state lock.
+[[nodiscard]] std::uint32_t latest_sequence(std::uint32_t session);
 
 /// Return a start command for a newly reconnected desktop, if a session is
 /// currently requested.

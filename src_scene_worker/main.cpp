@@ -11,11 +11,11 @@
 #endif
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXWebSocket.h>
-#include <nlohmann/json.hpp>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -23,9 +23,10 @@
 #include <deque>
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -424,6 +425,7 @@ struct RenderRuntime {
 
     void start(const nlohmann::json &command)
     {
+        const auto started_at = Clock::now();
         reset();
         session = command.value("session", 0U);
         width = std::clamp(command.value("width", 128), 1, 1024);
@@ -459,7 +461,16 @@ struct RenderRuntime {
         if (const auto state = command.find("runtime_state"); state != command.end())
             scene->restore_runtime_state(*state);
         if (const auto it = command.find("transition"); it != command.end()) {
-            const auto rgb = it->at("from").get<std::vector<std::uint8_t>>();
+            std::vector<std::uint8_t> rgb;
+            if (const auto encoded = it->find("from_base64"); encoded != it->end()) {
+                auto decoded = RemoteRenderProtocol::decode_base64(encoded->get_ref<const std::string&>());
+                if (!decoded)
+                    throw std::runtime_error("invalid base64 transition snapshot");
+                rgb = std::move(*decoded);
+            }
+            else {
+                rgb = it->at("from").get<std::vector<std::uint8_t>>();
+            }
             if (rgb.size() != static_cast<std::size_t>(width * height * 3))
                 throw std::runtime_error("invalid transition snapshot size");
             transition_ms = std::clamp(it->at("duration_ms").get<int>(), 1, 10000);
@@ -480,8 +491,8 @@ struct RenderRuntime {
         next_frame = Clock::now();
         CrashReporter::set_activity(std::string("offloading scene '") + scene->get_name()
             + "' session " + std::to_string(session));
-        spdlog::info("Remote scene '{}' started (session {}, {}x{} @ {} FPS)",
-                     scene->get_name(), session, width, height, target_fps);
+        spdlog::info("Remote scene '{}' started (session {}, {}x{} @ {} FPS) in {:.1f} ms", scene->get_name(), session, width, height,
+                     target_fps, std::chrono::duration<double, std::milli>(Clock::now() - started_at).count());
     }
 };
 
@@ -615,12 +626,27 @@ int main(int argc, char **argv)
             run_self_test(offloadable_scenes);
             if (transition_manager.get_registered_transitions().empty())
                 throw std::runtime_error("worker has no registered transitions");
+            bool base64_snapshot = false;
             for (const auto &name : transition_manager.get_registered_transitions()) {
                 RenderRuntime probe(transition_manager);
-                probe.start({{"protocol", RemoteRenderProtocol::Version}, {"session", 1},
-                    {"width", 128}, {"height", 128}, {"scene", "boids"}, {"scene_contract", offloadable_scene_contracts.at("boids")},
-                    {"transition", {{"name", name}, {"duration_ms", 750},
-                        {"from", std::vector<std::uint8_t>(128 * 128 * 3, 31)}}}});
+                // Alternate both snapshot encodings: older matrices still send the array.
+                const std::vector<std::uint8_t> snapshot(128 * 128 * 3, 31);
+                nlohmann::json transition{{"name", name}, {"duration_ms", 750}};
+                if ((base64_snapshot = !base64_snapshot))
+                    transition["from_base64"] = RemoteRenderProtocol::encode_base64(snapshot);
+                else
+                    transition["from"] = snapshot;
+                probe.start({{"protocol", RemoteRenderProtocol::Version},
+                             {"session", 1},
+                             {"width", 128},
+                             {"height", 128},
+                             {"scene", "boids"},
+                             {"scene_contract", offloadable_scene_contracts.at("boids")},
+                             {"transition", transition}});
+                std::array<std::uint8_t, 3> from{};
+                probe.transition_from->GetPixel(5, 7, &from[0], &from[1], &from[2]);
+                if (from != std::array<std::uint8_t, 3>{31, 31, 31})
+                    throw std::runtime_error("worker decoded a wrong transition snapshot: " + name);
                 probe.scene->render_frame(probe.canvas, 1.0 / 60.0, true);
                 const auto *original_scene = probe.scene.get();
                 const auto elapsed = probe.scene->get_frame_context().elapsed_seconds;
@@ -741,6 +767,7 @@ int main(int argc, char **argv)
                     {"protocol", RemoteRenderProtocol::Version},
                     {"scenes", offloadable_scenes},
                     {"scene_contracts", offloadable_scene_contracts},
+                    {"features", {RemoteRenderProtocol::Features::TransitionSnapshotBase64}},
                 };
                 websocket.send("msg:RenderOffload:" + heartbeat.dump());
                 next_heartbeat = now + std::chrono::seconds(1);
