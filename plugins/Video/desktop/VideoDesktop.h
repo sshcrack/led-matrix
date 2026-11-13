@@ -1,13 +1,16 @@
 #pragma once
-#include "shared/desktop/plugin/main.h"
-#include "VideoSearch.h"
-#include "shared/desktop/VideoStreamEngine.h"
+#include <shared/common/frame_stream.h>
+
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "VideoSearch.h"
+#include "shared/desktop/VideoStreamEngine.h"
+#include "shared/desktop/plugin/main.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -33,6 +36,8 @@ public:
 
   std::optional<std::unique_ptr<UdpPacket>>
   compute_next_packet(const std::string sceneName) override;
+  std::vector<std::unique_ptr<UdpPacket>> compute_next_packets(const std::string& sceneName) override;
+  void on_websocket_connected() override { frames_.reset(); }
 
   void on_websocket_message(const std::string message) override;
 
@@ -62,6 +67,7 @@ private:
   bool enable_audio = true;
   int matrix_width = 128;
   int matrix_height = 128;
+  FrameStream::Sender frames_{0x03};
 
   enum class State { Idle, Downloading, Playing, Error };
   std::atomic<State> state{State::Idle};

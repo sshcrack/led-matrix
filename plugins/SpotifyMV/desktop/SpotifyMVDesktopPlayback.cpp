@@ -110,3 +110,14 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
 
     return std::nullopt;
 }
+
+std::vector<std::unique_ptr<UdpPacket>> SpotifyMVDesktop::compute_next_packets(const std::string& sceneName)
+{
+    auto packet = compute_next_packet(sceneName);
+    if (!packet)
+        return {};
+    // Chunked and sequenced for matrices that announced it, else the legacy datagram.
+    auto* frame = static_cast<SpotifyMVPacket*>(packet->get());
+    return frames_.packets(std::move(frame->data), kWidth, kHeight,
+                           [](std::vector<uint8_t> rgb) { return std::make_unique<SpotifyMVPacket>(std::move(rgb)); });
+}

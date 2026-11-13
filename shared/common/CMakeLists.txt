@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/Version.cpp
         src/shared/common/audio_protocol.cpp
         src/shared/common/remote_render_protocol.cpp
+        src/shared/common/frame_stream.cpp
         src/shared/common/crash_reporter.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)

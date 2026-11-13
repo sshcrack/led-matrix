@@ -376,6 +376,8 @@ void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const st
 
 void ShadertoyDesktop::on_websocket_message(const std::string message)
 {
+    if (frames_.on_message(message))
+        return;
     if (message.starts_with("size:"))
     {
         std::string sizeStr = message.substr(5);
@@ -431,8 +433,7 @@ void ShadertoyDesktop::on_websocket_message(const std::string message)
     }
 }
 
-std::optional<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packet(
-    const std::string sceneName)
+std::vector<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packets(const std::string& sceneName)
 {
     const bool directShaderScene = sceneName == "shadertoy" || sceneName.starts_with("custom_shader:") ||
                                    sceneName.starts_with("shader:");
@@ -440,12 +441,33 @@ std::optional<std::unique_ptr<UdpPacket>> ShadertoyDesktop::compute_next_packet(
     if ((!directShaderScene && !nestedShaderScene) || width == 0 || height == 0 || !initError.empty())
     {
         isActive.store(false, std::memory_order_relaxed);
-        return std::nullopt; // Not for this scene
+        return {};  // Not for this scene
     }
 
     isActive.store(true, std::memory_order_relaxed);
-    std::shared_lock lock(currDataMutex);
-    return std::make_unique<CanvasPacket>(currData);
+    const int w = width.load(std::memory_order_relaxed);
+    const int h = height.load(std::memory_order_relaxed);
+    std::vector<uint8_t> rgb;
+    {
+        std::shared_lock lock(currDataMutex);
+        rgb = currData;
+    }
+    if (rgb.empty())
+        return {};
+    if (frames_.chunked() && rgb.size() == static_cast<std::size_t>(w) * h * 3) {
+        // Chunked frames are top-down; flip the OpenGL readback here once
+        // instead of on the Pi.
+        std::vector<uint8_t> top_down(rgb.size());
+        const auto row = static_cast<std::size_t>(w) * 3;
+        for (int y = 0; y < h; ++y)
+            std::copy_n(rgb.data() + static_cast<std::size_t>(h - 1 - y) * row, row, top_down.data() + static_cast<std::size_t>(y) * row);
+        if (auto chunks = frames_.chunk_packets(top_down, w, h); !chunks.empty())
+            return chunks;
+    }
+    // Older matrices take one bottom-up frame per datagram.
+    std::vector<std::unique_ptr<UdpPacket>> legacy;
+    legacy.push_back(std::make_unique<CanvasPacket>(std::move(rgb)));
+    return legacy;
 }
 
 void ShadertoyDesktop::post_init()

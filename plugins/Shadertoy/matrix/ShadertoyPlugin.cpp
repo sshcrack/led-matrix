@@ -131,30 +131,15 @@ bool ShadertoyPlugin::on_udp_packet(const uint8_t pluginId, const uint8_t *packe
 {
     if (pluginId != 0x02)
         return false; // Not destined for this plugin
-
-    size_t neededPacketSize = Constants::height * Constants::width * 3;  // 3 bytes per pixel (RGB)
-    static int consecutiveErrors = 0;
-    if (size < neededPacketSize)
-    {
-        consecutiveErrors++;
-        if (consecutiveErrors < 10)
-            spdlog::error("Received packet too small: {} bytes, expected at least {} bytes", size, neededPacketSize);
-        return false; // Invalid packet size
-    }
-
-    consecutiveErrors = 0;
-    std::unique_lock lock(dataMutex);
-    data.assign(packetData, packetData + neededPacketSize);
-
-    return true;
+    return frames_.on_packet(packetData, size);
 }
 
 std::optional<std::vector<std::string>> ShadertoyPlugin::on_websocket_open()
 {
     std::shared_lock lock(Server::currSceneMutex);
     std::string sizeMsg = "size:" + std::to_string(Constants::width) + "x" + std::to_string(Constants::height);
-    std::vector<std::string> v = {sizeMsg};
-    
+    std::vector<std::string> v = {sizeMsg, std::string(FrameStream::CapabilityMessage)};
+
     std::lock_guard<std::mutex> lock2(lastMsgMutex);
     if (!last_sent_message.empty()) {
         v.push_back(last_sent_message);

@@ -22,10 +22,7 @@ SpotifyMVPlugin::create_image_providers() {
 
 bool SpotifyMVPlugin::on_udp_packet(uint8_t pluginId, const uint8_t* data, size_t size) {
   if (pluginId != 0x04) return false;
-  std::lock_guard<std::mutex> lock(frame_mutex_);
-  frame_.assign(data, data + size);
-  last_frame_time_ = std::chrono::steady_clock::now();
-  return true;
+  return frames_.on_packet(data, size);
 }
 
 std::optional<std::vector<std::string>> SpotifyMVPlugin::on_websocket_open() {
@@ -35,6 +32,7 @@ std::optional<std::vector<std::string>> SpotifyMVPlugin::on_websocket_open() {
   // Do not clear readiness here: scene-worker websocket connections use this same
   // route and must not invalidate the main desktop client's capability heartbeat.
   msgs.push_back("tools:probe");
+  msgs.push_back(std::string(FrameStream::CapabilityMessage));
 
   {
     std::lock_guard<std::mutex> lock(status_mutex_);
@@ -80,11 +78,7 @@ void SpotifyMVPlugin::on_websocket_message(const std::string& message) {
       first_frame_ready_ = false;
       status_ = "preparing";
     }
-    {
-      std::lock_guard<std::mutex> lock(frame_mutex_);
-      frame_.clear();
-      last_frame_time_ = {};
-    }
+    frames_.clear();
     publish_runtime_state();
     return;
   }
@@ -115,11 +109,7 @@ void SpotifyMVPlugin::on_websocket_message(const std::string& message) {
       first_frame_ready_ = false;
       status_ = "idle";
     }
-    {
-      std::lock_guard<std::mutex> lock(frame_mutex_);
-      frame_.clear();
-      last_frame_time_ = {};
-    }
+    frames_.clear();
     publish_runtime_state();
     return;
   }

@@ -1,11 +1,13 @@
 #pragma once
 
-#include "shared/matrix/plugin/main.h"
 #include <chrono>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
+
+#include "shared/matrix/frame_stream.h"
+#include "shared/matrix/plugin/main.h"
 
 using Plugins::BasicPlugin;
 using Plugins::ImageProviderWrapper;
@@ -43,10 +45,8 @@ public:
   void set_stream_url(const void* owner, const std::string& url);
   void stop_stream(const void* owner);
 
-  std::vector<uint8_t> get_data() {
-    std::lock_guard<std::mutex> lock(dataMutex);
-    return data;
-  };
+  /// Decoded video frames from the desktop (top-down RGB888).
+  [[nodiscard]] const FrameStream::Receiver& frames() const { return frames_; }
 
   std::string get_status() {
     std::lock_guard<std::mutex> lock(statusMutex);
@@ -91,8 +91,7 @@ private:
   std::optional<std::string> playRequest;
   std::chrono::steady_clock::time_point playRequestedAt{};
 
-  std::mutex dataMutex;
-  std::vector<uint8_t> data;
+  FrameStream::Receiver frames_{"Video"};
 
   std::mutex statusMutex;
   std::string status = "idle";

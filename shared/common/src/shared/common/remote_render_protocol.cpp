@@ -89,20 +89,27 @@ std::optional<std::vector<std::uint8_t>> decode_base64(std::string_view text)
     return out;
 }
 
-FramePacket::FramePacket(
-    std::uint32_t session, std::uint32_t sequence,
-    std::uint16_t width, std::uint16_t height,
-    std::uint16_t chunk_index, std::uint16_t chunk_count,
-    std::uint32_t byte_offset, std::vector<std::uint8_t> chunk)
-    : UdpPacket(PluginId), session_(session), sequence_(sequence),
-      width_(width), height_(height), chunk_index_(chunk_index),
-      chunk_count_(chunk_count), byte_offset_(byte_offset), chunk_(std::move(chunk)) {}
+FramePacket::FramePacket(std::uint32_t session, std::uint32_t sequence, std::uint16_t width, std::uint16_t height,
+                         std::uint16_t chunk_index, std::uint16_t chunk_count, std::uint32_t byte_offset, std::vector<std::uint8_t> chunk,
+                         std::uint8_t packet_id, std::uint8_t header_version)
+    : UdpPacket(packet_id),
+      header_version_(header_version),
+      session_(session),
+      sequence_(sequence),
+      width_(width),
+      height_(height),
+      chunk_index_(chunk_index),
+      chunk_count_(chunk_count),
+      byte_offset_(byte_offset),
+      chunk_(std::move(chunk))
+{
+}
 
 std::vector<std::uint8_t> FramePacket::toData() const
 {
     std::vector<std::uint8_t> out;
     out.reserve(HeaderBytes + chunk_.size());
-    out.push_back(Version);
+    out.push_back(header_version_);
     append_u32(out, session_);
     append_u32(out, sequence_);
     append_u16(out, width_);
@@ -118,6 +125,13 @@ std::vector<std::unique_ptr<UdpPacket>> make_frame_packets(
     std::uint32_t session, std::uint32_t sequence,
     std::uint16_t width, std::uint16_t height,
     std::span<const std::uint8_t> rgb)
+{
+    return make_frame_packets(PluginId, Version, session, sequence, width, height, rgb);
+}
+
+std::vector<std::unique_ptr<UdpPacket>> make_frame_packets(std::uint8_t packet_id, std::uint8_t header_version, std::uint32_t session,
+                                                           std::uint32_t sequence, std::uint16_t width, std::uint16_t height,
+                                                           std::span<const std::uint8_t> rgb)
 {
     if (session == 0 || width == 0 || height == 0)
         return {};
@@ -137,9 +151,8 @@ std::vector<std::unique_ptr<UdpPacket>> make_frame_packets(
         const std::size_t count = std::min(ChunkBytes, rgb.size() - offset);
         std::vector<std::uint8_t> chunk(rgb.begin() + static_cast<std::ptrdiff_t>(offset),
                                         rgb.begin() + static_cast<std::ptrdiff_t>(offset + count));
-        packets.push_back(std::make_unique<FramePacket>(
-            session, sequence, width, height, chunk_index, chunk_count,
-            static_cast<std::uint32_t>(offset), std::move(chunk)));
+        packets.push_back(std::make_unique<FramePacket>(session, sequence, width, height, chunk_index, chunk_count,
+                                                        static_cast<std::uint32_t>(offset), std::move(chunk), packet_id, header_version));
     }
     return packets;
 }

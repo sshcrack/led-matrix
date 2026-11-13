@@ -5,23 +5,29 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 namespace Diagnostics {
 
-/// Desktop-offload frame reassembly outcomes (UDP receiver thread).
-enum class RemoteFrameEvent {
+/// Outcomes of a desktop frame stream (UDP receiver thread): the RenderOffload
+/// worker and the shader, video and music-video streams (FrameStream).
+enum class FrameStreamEvent {
     Completed,         ///< frame complete and published
     Incomplete,        ///< frame dropped with chunks missing
     ReorderRecovered,  ///< completed although a newer frame had started arriving
     LateChunk,         ///< chunk of a frame already shown, superseded or dropped
     DuplicateChunk,
+    LegacyFrame,  ///< whole frame in one datagram from an older desktop
+    MissedFrame,  ///< sent but never shown (gap in the sequence, incomplete or never seen)
 };
+inline constexpr std::size_t FrameStreamEventCount = 7;
 
 class RuntimeDiagnostics {
 public:
@@ -38,7 +44,9 @@ public:
     void record_udp_datagram(std::size_t bytes);
     void record_udp_packet(bool handled);
     void record_udp_malformed();
-    void record_remote_frame_event(RemoteFrameEvent event);
+    void record_frame_stream_event(std::string_view stream, FrameStreamEvent event, std::uint64_t count = 1);
+    /// Counters of one stream, keyed like `udp.frame_streams` in the snapshot.
+    [[nodiscard]] nlohmann::json frame_stream_json(std::string_view stream) const;
 
     void record_audio_packet(std::uint32_t sequence);
     void record_audio_decode_error();
@@ -110,7 +118,8 @@ private:
     std::atomic<std::uint64_t> udp_packets_{0};
     std::atomic<std::uint64_t> udp_unhandled_{0};
     std::atomic<std::uint64_t> udp_malformed_{0};
-    std::array<std::atomic<std::uint64_t>, 5> remote_frame_events_{};
+    mutable std::mutex frame_streams_mutex_;
+    std::map<std::string, std::array<std::uint64_t, FrameStreamEventCount>, std::less<>> frame_streams_;
 
     std::uint64_t audio_packets_ = 0;
     std::uint64_t audio_sequence_gaps_ = 0;
@@ -139,7 +148,7 @@ private:
         std::optional<nlohmann::json> pending;
     } timeline_;
     void publish_pending_transition();
-    [[nodiscard]] nlohmann::json remote_frames_json() const;
+    [[nodiscard]] nlohmann::json frame_streams_json() const;
     nlohmann::json render_placement_state_ = nlohmann::json::object();
     nlohmann::json hardware_state_ = nlohmann::json::object();
 };
