@@ -9,6 +9,7 @@
  *               [--audio-profile <balanced|bass|percussion|ambient>]
  *               [--preview-option <provider>:<key>=<json>]
  *               [--quality <0.5..1>] [--virtual-time-only] [--strict]
+ *               [--allow-still]
  *
  * Defaults:
  *   --output    ./previews
@@ -94,6 +95,7 @@ struct Args {
     int matrix_height = 128;
     bool dump_manifest = false;
     bool strict = false;
+    bool allow_still = false;  // --strict without the "stopped changing" check
     bool virtual_time_only = false;
     std::string manifest_out;  // path for --manifest-out; empty = stdout
     std::string metrics_out;   // optional perceptual metrics JSON for regression tests
@@ -134,6 +136,8 @@ static Args parse_args(int argc, char* argv[])
             a.dump_manifest = true;
         else if (std::string(argv[i]) == "--strict")
             a.strict = true;
+        else if (std::string(argv[i]) == "--allow-still")
+            a.allow_still = true;
         else if (std::string(argv[i]) == "--virtual-time-only")
             a.virtual_time_only = true;
         else if (std::string(argv[i]) == "--manifest-out" && i + 1 < argc)
@@ -659,7 +663,7 @@ int main(int argc, char* argv[])
                     ++skipped;
                     continue;
                 }
-                if (args.strict && frames.size() >= 6 && identical_tail_frames >= 5) {
+                if (args.strict && !args.allow_still && frames.size() >= 6 && identical_tail_frames >= 5) {
                     spdlog::warn("Scene '{}' stopped changing during its final {} frames.", scene_name, identical_tail_frames + 1);
                     ++skipped;
                 }
