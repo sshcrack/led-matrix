@@ -135,15 +135,12 @@ int main()
     // /var/lib/led-matrix/update is not writable. Keep both inside `work`.
     std::filesystem::current_path(work);
     ::setenv("TMPDIR", work.c_str(), 1);
-    // The daemon sets the global config before any plugin code runs; GenreLookup reads it.
     auto main_config = std::make_unique<Config::MainConfig>((work / "config.json").string());
-    config = main_config.get();
 
     probe_open_meteo();
     probe_environment_service();
     probe_deezer_genres();
     probe_update_download(*main_config, download);
-    config = nullptr;
     main_config.reset();
 
     std::error_code ec;

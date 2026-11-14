@@ -33,8 +33,12 @@ public:
     /// Authenticated Spotify GET (full URL); empty on any failure.
     using SpotifyFetch = std::function<std::optional<nlohmann::json>(const std::string &url)>;
 
+    /// GetSongBPM API key (pluginConfigs.song_bpm_api_key); empty skips that source.
+    using KeySource = std::function<std::string()>;
+
     static GenreLookup &instance();
     void set_spotify_fetch(SpotifyFetch fetch);
+    void set_song_bpm_key_source(KeySource source);
 
     /// Non-blocking: publish the cached genres for this track or queue a lookup.
     void track_playing(const std::string &track_id, const std::string &title, const std::string &artist,
@@ -61,6 +65,7 @@ private:
         std::vector<std::string> artist_ids;
     };
     SpotifyFetch spotify_fetch_;
+    KeySource song_bpm_key_;
     std::vector<std::string> spotify_genres(const std::vector<std::string> &artist_ids);
     std::optional<Pending> pending_;
     std::string in_flight_;

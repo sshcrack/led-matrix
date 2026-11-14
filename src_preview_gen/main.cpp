@@ -364,12 +364,13 @@ int main(int argc, char* argv[])
         std::error_code ignored;
         fs::remove(cfg_path, ignored);
     });
-    config = new Config::MainConfig(cfg_path.string());
+    auto* config = new Config::MainConfig(cfg_path.string());
 
     // ---- load plugins ------------------------------------------------------
     spdlog::trace("Loading plugins…");
     const auto pl = Plugins::PluginManager::instance();
     pl->initialize();
+    pl->attach_host_config(config);
 
     // Same contract as the daemon: a plugin whose init hook fails would
     // render broken previews, so stop instead of silently continuing.

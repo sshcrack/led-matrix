@@ -698,10 +698,11 @@ int main(int argc, char **argv)
         TransitionManager transition_manager;
 
         const auto temp_config = fs::temp_directory_path() / ("led-matrix-scene-worker-" + std::to_string(args.port) + ".json");
-        config = new Config::MainConfig(temp_config.string());
+        auto* config = new Config::MainConfig(temp_config.string());
 
         auto *plugins = Plugins::PluginManager::instance();
         plugins->initialize();
+        plugins->attach_host_config(config);
         for (auto *plugin : plugins->get_plugins())
             for (auto &effect : plugin->create_transitions())
                 transition_manager.register_transition(std::move(effect));

@@ -20,7 +20,12 @@ std::atomic<bool> release_bpm{false};
 Spotify *spotify = nullptr;
 std::optional<SpotifyState> Spotify::get_currently_playing() { return std::nullopt; }
 bool Spotify::has_changed(bool) { return false; }
-std::expected<float, std::string> SongBpmApi::get_bpm(const std::string &, const std::string &, std::stop_token stop) {
+std::string Spotify::song_bpm_api_key() const
+{
+    return {};
+}
+std::expected<float, std::string> SongBpmApi::get_bpm(const std::string&, const std::string&, const std::string&, std::stop_token stop)
+{
     ++bpm_started;
     while (!release_bpm && !stop.stop_requested()) std::this_thread::sleep_for(1ms);
     if (stop.stop_requested()) { ++cancelled; return std::unexpected("cancelled"); }

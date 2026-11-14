@@ -7,4 +7,3 @@
 
 extern SHARED_MATRIX_API std::atomic<bool> skip_image;
 extern SHARED_MATRIX_API std::atomic<bool> exit_canvas_update;
-extern SHARED_MATRIX_API Config::MainConfig* config;

@@ -262,7 +262,8 @@ Daemon::Daemon(int argc, char* argv[])
 #endif
     config_ = make_unique<Config::MainConfig>(
         string(LED_MATRIX_DATA_DIR) + "/config.json");
-    ::config = config_.get();
+    // config_ is destroyed with the Daemon, after shutdown() unloads plugins.
+    PluginManager::instance()->attach_host_config(config_.get());
 
     // -------------------------------------------------------------------
     // 9. Update manager
@@ -498,9 +499,9 @@ void Daemon::shutdown(bool persist_config) noexcept
     try { pl->delete_references(); }
     catch (...) { error("Releasing scene wrapper references failed"); }
     try { pl->destroy_plugins(); }
-    catch (...) { error("Destroying plugins failed"); }
-
-    ::config = nullptr;
+    catch (...) {
+        error("Destroying plugins failed");
+    }
 }
 
 Daemon::~Daemon()
