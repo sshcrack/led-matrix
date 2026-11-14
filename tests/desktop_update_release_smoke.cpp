@@ -8,6 +8,12 @@
 #include "shared/desktop/SelfUpdate.h"
 #include "shared/desktop/UpdateChecker.h"
 
+// <windows.h> (pulled in by cpr/curl) defines ERROR as a macro, which breaks
+// UpdateStatus::ERROR when it is included after Releases.h.
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace {
 int failures = 0;
 
