@@ -64,6 +64,12 @@ These are calculation digits, **not a certified tolerance**. B/C include photo-t
 
 The withdrawn construction summed these values into 173.73 x 157.90 mm and placed the bottom/top intermediate holes at x = 79.285/94.445 mm. These are **not established Cartesian coordinates or overall spans**: the intermediate inserts have offsets normal to the edge as well as along it, and the caliper measuring-axis directions were not recorded. Preserve the readings; do not silently reinterpret diagonal distances as X/Y projections. The eight sketch IDs and provisional pairings remain records, with no centre hole. Connector orientation and perimeter offsets remain unconfirmed.
 
+## Official drawing candidate found
+
+The official Waveshare wiki supplies a [DWG drawing](https://files.waveshare.com/upload/e/e1/RGB-Matrix-P3-64x64-2D.zip) whose eight-insert layout matches the observed along-edge and normal offsets. Its left view gives corner centres at X = +/-87 and Y = +/-79 mm, a **174 x 158 mm** corner rectangle, within a **191.6 mm** square frame. This is a strong candidate, not a verified physical match; the view, connector orientation, exact frame revision and thread engagement are unspecified. The file's inch unit metadata conflicts with its millimetre-sized dimensions and must not drive automatic import scaling.
+
+[Research and verification evidence](panel-mechanical-source-research.md) records geometry-derived versus dimensioned values, alternative OEM sources and the uncertainty in comparing earlier caliper projections with diagonal distances. `measurement-basis.json` preserves the candidate separately from measured evidence. The old templates remain withdrawn and no enclosure solids have been updated. The next physical check under [#170](https://github.com/sshcrack/led-matrix/issues/170) is the four-corner candidate pattern, with orientation and print scale verified first.
+
 ## Four-corner prototype mounting
 
 The next prototype carrier will use **the four corner inserts only**, leaving the offset intermediate inserts unused. The chosen four-point attachment still needs physical fit and support/deflection checks; no revised carrier exists yet. There is no need to finish measuring the unused intermediate holes to make this prototype.

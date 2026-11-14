@@ -121,5 +121,69 @@
     ],
     "edge_offsets_mm": null,
     "enclosure_transfer": "Do not transfer measured-v1 coordinates to CAD. Establish each hole from edge datums and measuring-axis directions first."
+  },
+  "official_mechanical_drawing_candidate": {
+    "source": "https://files.waveshare.com/upload/e/e1/RGB-Matrix-P3-64x64-2D.zip",
+    "source_archive_sha256": "48ab5ead9c8f301e23bc45c93662eef3d8d692897360c09ec85797032b004163",
+    "assessment": "Strong candidate: matching eight-insert staggered/noncollinear topology; not proven to be the owner panel revision",
+    "body_xy_mm": [
+      191.6,
+      191.6
+    ],
+    "drawing_centred_corner_xy_mm": [
+      [
+        -87,
+        -79
+      ],
+      [
+        -87,
+        79
+      ],
+      [
+        87,
+        -79
+      ],
+      [
+        87,
+        79
+      ]
+    ],
+    "corner_spans_mm": [
+      174,
+      158
+    ],
+    "corner_edge_insets_mm": [
+      8.8,
+      16.8
+    ],
+    "drawing_centred_intermediate_xy_mm": [
+      [
+        -86,
+        0
+      ],
+      [
+        86,
+        0
+      ],
+      [
+        -7.5,
+        -87
+      ],
+      [
+        7.5,
+        87
+      ]
+    ],
+    "datum": "Panel centre, X right and Y up in the drawing left view as drawn; front/rear and connector registration unlabelled",
+    "units": "Interpreted as mm from dimension text and product size; DWG INSUNITS metadata says inches and must not be applied blindly",
+    "evidence": "panel-mechanical-source-research.md; corner 87/79 offsets and 7.5 stagger dimensioned, intermediate +/-86 X and +/-87 Y derived from geometry",
+    "not_established": [
+      "exact PCB/frame revision",
+      "thread and usable insert engagement",
+      "connector positions/orientation",
+      "meaning of second 12-hole plan view",
+      "physical fit"
+    ],
+    "adoption": "Reference evidence only; no change to enclosure solids or withdrawn coordinate-model guard"
   }
 }
