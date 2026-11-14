@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the public oak-panel concept and download bundles."""
+"""Regenerate the public LED-panel concept and download bundles."""
 
 import argparse
 import hashlib
@@ -46,7 +46,7 @@ with ZipFile(first, "w", ZIP_DEFLATED) as z:
     for n in ["FIRST_PRINT_mounting_gauge.stl", "FIRST_PRINT_hole_coupon.stl"]:
         z.write(out / "stl" / n, n)
     z.write(root / "first-print-instructions.txt", "READ-ME-FIRST.txt")
-full = out / "oak-panel-cad-v0.5.zip"
+full = out / "oak-panel-cad-v0.6.zip"
 with ZipFile(full, "w", ZIP_DEFLATED) as z:
     for p in source_files:
         z.write(p, Path("source") / p.name)

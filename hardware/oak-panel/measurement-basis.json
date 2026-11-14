@@ -79,5 +79,34 @@
     "material_target": "PETG; actual stock and quote to be confirmed by service",
     "print_submission": "STL, not machine-specific G-code",
     "note": "Build volumes are supplied design inputs. Material stock and pricing are determined by the chosen print service."
+  },
+  "appearance": {
+    "basis": "Owner requests narrow black wall-mounted bezel instead of oak; private visual reference is not published",
+    "visible_border_mm": 8,
+    "outer_corner_radius_mm": 5,
+    "outer_nominal_mm": [
+      400,
+      400
+    ],
+    "bezel_quadrants": 4,
+    "seam_gap_mm": 0.4,
+    "status": "Packaging study; joints, retention, surface finish and physical print fit unverified"
+  },
+  "rear_halo": {
+    "requested": true,
+    "strip_segments_reserved": 8,
+    "strip_envelope_each_mm": [
+      160,
+      10,
+      3
+    ],
+    "wall_gap_starting_point_mm": 25,
+    "control_intent": [
+      "independent brightness and off",
+      "fixed colour",
+      "optional soft display-colour matching"
+    ],
+    "power_intent": "Same external supply with protected branch; actual strip, driver and additional wattage unselected",
+    "status": "CAD reservations and cover passage only; no lighting hardware or software implemented"
   }
 }

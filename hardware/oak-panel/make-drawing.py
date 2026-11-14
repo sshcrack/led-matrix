@@ -30,17 +30,17 @@ def line(x1, y1, x2, y2, dim=False):
     svg.append(f'<path d="M{x1},{y1} L{x2},{y2}" class="dim"{extra}/>')
 
 
-text(44, 36, "Oak P3 panel — enclosure FDM concept v0.5")
+text(44, 36, "Black-bezel P3 panel — FDM concept v0.6")
 text(
     44,
     59,
-    "2026-11-12 · all dimensions mm · nominal module size; all packaging dimensions provisional",
+    "2026-11-14 · all dimensions mm · nominal module size; all packaging dimensions provisional",
     cls="small",
 )
 # Front elevation, 1 SVG unit per mm.
 x = 70
 y = 124
-rect(x, y, p.outer, p.outer, "#c5a071")
+rect(x, y, p.outer, p.outer, "#202023")
 rect(x + p.border, y + p.border, p.display, p.display, "#e1e1d9")
 for a in (0, p.outer):
     line(x + a, y - 6, x + a, y - 31)
@@ -68,9 +68,9 @@ text(x + p.outer / 2, y + p.outer / 2 + 17, "4 × 64 × 64 P3 modules", "middle"
 text(550, 150, "Front / enclosure envelope")
 for i, t in enumerate(
     [
-        "18 mm visible oak border",
+        f"{p.border:g} mm visible black bezel",
         f"{p.depth:g} mm frame depth",
-        "10 mm wall clearance reservation",
+        f"{p.wall_clearance:g} mm wall clearance reservation",
         f"{p.depth + p.wall_clearance:g} mm front-to-wall depth",
         "384 mm nominal module footprint",
         "24 drawing-based M3 mounting locations",
@@ -111,7 +111,7 @@ svg.append(
     f'<path d="M{x0 + (p.depth + p.wall_clearance) * scale},{y0 - 12} V{y0 + h + 28}" class="dash"/>'
 )
 text(x0 + (p.depth + p.wall_clearance) * scale, y0 + h + 48, "wall", "middle")
-for z in [0, 10, 20, 30, 40, 50, 60, 70]:
+for z in [0, 10, 20, 30, 40, 50, 60, 70, 85]:
     line(x0 + z * scale, y0 + h + 5, x0 + z * scale, y0 + h + 12)
     text(x0 + z * scale, y0 + h + 29, str(z), "middle", "small")
 text(

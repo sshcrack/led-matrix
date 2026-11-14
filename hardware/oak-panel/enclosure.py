@@ -1,4 +1,4 @@
-"""Oak P3 enclosure packaging study. Millimetres. Not manufacturing release.
+"""Wall-mounted P3 enclosure packaging study. Millimetres. Not manufacturing release.
 
 XY = display plane; +Z runs from the viewer toward the wall.
 Run with the Python interpreter from the virtual environment described in README.md.
@@ -20,7 +20,13 @@ class Parameters:
     panel_side: float = 192.0
     panel_pixels: int = 64
     # Panel depths below use approximate owner measurements; other dimensions are design assumptions.
-    border: float = 18.0
+    border: float = 8.0
+    outer_corner_radius: float = 5.0
+    bezel_seam_gap: float = 0.4
+    backlight_strip_width: float = 10.0
+    backlight_strip_thickness: float = 3.0
+    backlight_strip_length: float = 160.0
+    backlight_strip_offset: float = 179.0
     depth: float = 60.0
     cavity_clearance_per_side: float = 2.0
     front_lip_depth: float = 1.2
@@ -46,7 +52,7 @@ class Parameters:
     cover_front: float = 57.0
     cover_thickness: float = 2.0
     cover_edge_clearance_per_side: float = 0.5
-    wall_clearance: float = 10.0
+    wall_clearance: float = 25.0
 
     @property
     def display(self):
@@ -109,6 +115,9 @@ def ring(outer, inner, depth, z):
 
 def build(p):
     assert p.border > p.cavity_clearance_per_side
+    assert 0 < p.outer_corner_radius < p.border
+    assert p.wall_clearance > p.backlight_strip_thickness
+    assert 0 < p.bezel_seam_gap < 1
     assert p.carrier_outer > p.carrier_inner
     assert p.fabric_front >= p.front_lip_depth
     assert p.panel_back < p.chassis_front
@@ -134,48 +143,32 @@ def build(p):
             )
         )
 
-    # Separate mitered rails: front lip and relieved rear are one solid per rail.
-    a = p.outer / 2
-
-    def top_rail(inner, z, d):
-        b = inner / 2
-        return (
-            cq.Workplane("XY")
-            .polyline([(-a, a), (a, a), (b, b), (-b, b)])
-            .close()
-            .extrude(d)
-            .translate((0, 0, z))
-        )
-
-    rail = top_rail(p.display, 0, p.front_lip_depth).union(
-        top_rail(p.cavity, p.front_lip_depth, p.depth - p.front_lip_depth)
+    # Narrow black printed bezel, split into four bed-sized L quadrants.
+    shell = box(p.outer, p.outer, p.depth).edges("|Z").fillet(p.outer_corner_radius)
+    shell = shell.cut(box(p.display, p.display, p.depth + 2, z=-1))
+    shell = shell.cut(box(p.cavity, p.cavity, p.depth, z=p.front_lip_depth))
+    for sign in [-1, 1]:
+        y = sign * (p.cavity + p.outer) / 4
+        for x in range(-136, 137, 34):
+            shell = shell.cut(box(26, p.border + 4, 7, x, y, p.depth - 6))
+    shell = shell.cut(
+        box(10, p.border + 4, 12, 0, -(p.cavity + p.outer) / 4, p.depth - 11)
     )
-    for name, angle in [
-        ("oak_top", 0),
-        ("oak_left", 90),
-        ("oak_bottom", 180),
-        ("oak_right", 270),
-    ]:
-        s = rail.rotate((0, 0, 0), (0, 0, 1), angle)
-        if name in ("oak_top", "oak_bottom"):
-            y = (1 if name == "oak_top" else -1) * (p.cavity + p.outer) / 4
-            # Rear-facing open notches provide an airflow path around the rear cavity.
-            for x in range(-136, 137, 34):
-                s = s.cut(box(26, p.border + 4, 7, x, y, p.depth - 6))
-        if name == "oak_bottom":
-            # Cable exit allowance; connector and strain relief are not selected.
-            s = s.cut(
-                box(10, p.border + 4, 12, 0, -(p.cavity + p.outer) / 4, p.depth - 11)
+    half = p.outer / 2 - p.bezel_seam_gap / 2
+    centre = half / 2 + p.bezel_seam_gap / 2
+    for ix in [-1, 1]:
+        for iy in [-1, 1]:
+            mask = box(half, half, p.depth + 2, ix * centre, iy * centre, -1)
+            quadrant = shell.intersect(mask)
+            add(
+                f"printed_bezel_{ix}_{iy}",
+                quadrant,
+                "concept_part",
+                "PETG",
+                (0.065, 0.065, 0.07),
+                "Black L-shaped quadrant, front face down. Seam alignment, corner joints and attachment unvalidated.",
+                0,
             )
-        add(
-            name,
-            s,
-            "concept_part",
-            "oak",
-            (0.70, 0.50, 0.29),
-            "Miter joinery, inserts and fasteners not designed.",
-            0,
-        )
 
     add(
         "diffuser_carrier",
@@ -351,6 +344,8 @@ def build(p):
     cover = cover.cut(
         box(10, 16, p.cover_thickness + 2, 0, -p.cover_side / 2 + 4, p.cover_front - 1)
     )
+    # Reserved pass-through for the optional rear-light harness.
+    cover = cover.cut(box(6, 10, p.cover_thickness + 2, 170, 0, p.cover_front - 1))
     for ix in [-1, 1]:
         for iy in [-1, 1]:
             half = p.cover_side / 2 - 0.2
@@ -372,6 +367,71 @@ def build(p):
                 "Split vented cover concept; attachment/clips and anti-warp support not designed.",
                 66,
             )
+    add(
+        "halo_driver_space",
+        box(16, 24, p.electronics_depth, 170, 0, p.electronics_front),
+        "keepout",
+        "reserved space",
+        (0.8, 0.5, 0.2),
+        "Optional rear-light driver allowance; interface and power budget unselected.",
+        42,
+    )
+    add(
+        "halo_wire_passage",
+        box(
+            6,
+            10,
+            p.cover_front
+            + p.cover_thickness
+            + p.backlight_strip_thickness
+            - p.electronics_front
+            - p.electronics_depth,
+            170,
+            0,
+            p.electronics_front + p.electronics_depth,
+        ),
+        "keepout",
+        "reserved space",
+        (0.8, 0.5, 0.2),
+        "Harness passage through the split rear cover; actual wire/connector and edge protection unselected.",
+        66,
+    )
+    # Rear light-strip volumes are reservations, not an electrically selected product.
+    # Eight short segments avoid bridging the split-cover seams.
+    backlight_z = p.cover_front + p.cover_thickness
+    for side in [-1, 1]:
+        for segment in [-1, 1]:
+            for axis in ["horizontal", "vertical"]:
+                length = p.backlight_strip_length
+                width = p.backlight_strip_width
+                along = segment * (length / 2 + 4)
+                if axis == "horizontal":
+                    shape = box(
+                        length,
+                        width,
+                        p.backlight_strip_thickness,
+                        along,
+                        side * p.backlight_strip_offset,
+                        backlight_z,
+                    )
+                else:
+                    shape = box(
+                        width,
+                        length,
+                        p.backlight_strip_thickness,
+                        side * p.backlight_strip_offset,
+                        along,
+                        backlight_z,
+                    )
+                add(
+                    f"halo_strip_{axis}_{side}_{segment}",
+                    shape,
+                    "keepout",
+                    "rear LED-strip reservation",
+                    (0.8, 0.5, 0.2),
+                    "Rear-facing LED strip envelope only; type, driver, wattage, optics and mounting unselected.",
+                    70,
+                )
     add(
         "hanger_space",
         box(280, 30, 8, 0, 130, p.depth),
@@ -452,6 +512,11 @@ def export(p, components, out):
             fabric_to_led_gap_mm=p.diffuser_gap,
             mounting_spacer_length_mm=p.spacer_length,
             mounting_clearance_diameter_mm=p.mounting_clearance_diameter,
+            backlight_to_wall_clearance_mm=p.depth
+            + p.wall_clearance
+            - p.cover_front
+            - p.cover_thickness
+            - p.backlight_strip_thickness,
             cable_protrusion_behind_chassis_mm=max(
                 0,
                 p.panel_back
