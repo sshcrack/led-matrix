@@ -4,6 +4,10 @@
 #include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <cstdlib>
+#include <random>
+#include <string>
+#include <string_view>
 #include <functional>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -46,8 +50,15 @@ public:
 
     void begin(const Previews::RunContext&) override
     {
+        if (!WeatherPreviewFixture::enabled())
+            return;
         std::error_code ec;
-        const auto dir = fs::temp_directory_path(ec) / "led-matrix-weather-preview";
+        // Unique per provider session: concurrent preview runs must not delete
+        // each other's icons.
+        static std::atomic<unsigned> session{0};
+        const auto dir = fs::temp_directory_path(ec)
+                         / ("led-matrix-weather-preview-" + std::to_string(std::random_device{}())
+                            + "-" + std::to_string(session.fetch_add(1)));
         fs::remove_all(dir, ec);
         fs::create_directories(dir, ec);
         if (ec)
@@ -76,6 +87,12 @@ public:
 }  // namespace
 
 namespace WeatherPreviewFixture {
+bool enabled()
+{
+    const char* value = std::getenv("LED_MATRIX_PREVIEW_OFFLINE");
+    return value != nullptr && *value != '\0' && std::string_view(value) != "0";
+}
+
 std::optional<std::string> api_response()
 {
     std::lock_guard lock(fixture_mutex);

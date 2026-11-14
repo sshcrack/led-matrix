@@ -1252,7 +1252,7 @@ if(ENABLE_EMULATOR)
     # (clock shows minutes), so only the visual-liveness check is relaxed.
     if(NOT LED_MATRIX_SANITIZE STREQUAL "OFF")
         add_test(NAME sanitizer_scene_sweep
-            COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+            COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV} LED_MATRIX_PREVIEW_OFFLINE=1
                 $<TARGET_FILE:preview_gen>
                 --output ${CMAKE_BINARY_DIR}/sanitizer-scene-sweep
                 --frames 30

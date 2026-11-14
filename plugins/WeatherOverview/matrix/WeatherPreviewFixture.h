@@ -14,6 +14,10 @@
 namespace WeatherPreviewFixture {
 inline constexpr std::string_view InputId = "weather.forecast";
 
+/// True when `LED_MATRIX_PREVIEW_OFFLINE` is set (CI's sanitizer sweep). Normal
+/// preview generation (published scene_previews) keeps the live forecast and icons.
+[[nodiscard]] bool enabled();
+
 /// Open-Meteo response served instead of the live API while the fixture is
 /// active (it still goes through the real parser).
 [[nodiscard]] std::optional<std::string> api_response();

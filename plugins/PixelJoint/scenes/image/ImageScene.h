@@ -107,9 +107,13 @@ public:
         return caps;
     }
 
-    // Previews show a bundled fixture image instead of scraping the network.
+    // Offline previews (LED_MATRIX_PREVIEW_OFFLINE, CI's sanitizer sweep) show a
+    // fixture image instead of scraping the network; published previews keep
+    // the real artwork.
     [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
     {
+        if (!ImagePreviewFixture::enabled())
+            return Scene::get_preview_spec();
         auto spec = Previews::SceneSpec::with_inputs({ImagePreviewFixture::InputId});
         spec.set_property("providers", ImagePreviewFixture::providers_json());
         return spec;

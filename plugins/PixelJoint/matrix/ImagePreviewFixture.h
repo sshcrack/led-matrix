@@ -13,6 +13,10 @@
 namespace ImagePreviewFixture {
 inline constexpr std::string_view InputId = "pixeljoint.images";
 
+/// True when `LED_MATRIX_PREVIEW_OFFLINE` is set (CI's sanitizer sweep). Normal
+/// preview generation (published scene_previews) keeps scraping real artwork.
+[[nodiscard]] bool enabled();
+
 /// Provider list for the scene's `providers` property: one collection holding
 /// the fixture image.
 [[nodiscard]] nlohmann::json providers_json();

@@ -294,6 +294,8 @@ Preview eligibility and dependencies are declared by `Scene::get_preview_spec()`
 
 Plugins own fixture implementations by overriding `BasicPlugin::create_preview_data_providers()` and returning `Previews::DataProvider` adapters. Providers should update the same shared/plugin state the production source updates; `preview_gen` is deliberately unaware of the provider's payload. It discovers providers, resolves the scene's input IDs, calls `begin()`, `update(SceneFrameContext)` for every preview frame, then `end()`. Registry validation rejects duplicate/missing provider IDs and invalid preview property overrides.
 
+Network-dependent scenes (`weather`, `image_scene`) switch to offline fixtures only when `LED_MATRIX_PREVIEW_OFFLINE=1` is set (CI's `sanitizer_scene_sweep` sets it, so a slow network cannot fail `--strict`); normal runs and published previews keep live data.
+
 Current providers include `audio` (owned by AudioVisualizer) and `spotify.playback` (owned by SpotifyScenes). The Spotify provider supplies deterministic playback + local synthetic artwork, so `spotify` previews need no credentials/network. Generic fixture tuning uses repeatable `--preview-option <provider>:<key>=<json>`, e.g. `--preview-option audio:bpm=132 --preview-option spotify.playback:duration_ms=30000`. `--audio-bpm` / `--audio-profile` remain compatibility aliases. Only scenes whose preview spec remains disabled require `scripts/capture_desktop_preview.sh`.
 
 ### Live web matrix capture performance
