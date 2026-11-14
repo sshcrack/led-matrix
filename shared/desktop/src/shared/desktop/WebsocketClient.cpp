@@ -6,9 +6,30 @@
 
 std::atomic<WebsocketClient *> websocketClientInstance{nullptr};
 
+namespace {
+// Held while a plugin thread uses the client and while the registration
+// changes, so a client that was unregistered is never still in use.
+std::mutex& instanceMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+}  // namespace
+
 void WebsocketClient::setInstance(WebsocketClient *instance)
 {
+    std::lock_guard<std::mutex> lock(instanceMutex());
     websocketClientInstance.store(instance, std::memory_order_release);
+}
+
+bool WebsocketClient::sendPluginMessage(const std::string& plugin, const std::string& message)
+{
+    std::lock_guard<std::mutex> lock(instanceMutex());
+    auto* client = websocketClientInstance.load(std::memory_order_acquire);
+    if (!client)
+        return false;
+    client->webSocket.send("msg:" + plugin + ":" + message);
+    return true;
 }
 
 WebsocketClient *WebsocketClient::instance()
@@ -102,6 +123,13 @@ void WebsocketClient::setup_callback()
 
 WebsocketClient::~WebsocketClient()
 {
+    {
+        // A client destroyed while still registered must not leave a dangling
+        // pointer for plugin threads.
+        std::lock_guard<std::mutex> lock(instanceMutex());
+        auto* self = this;
+        websocketClientInstance.compare_exchange_strong(self, nullptr, std::memory_order_acq_rel);
+    }
     transportStarted_.store(false);
     webSocket.disableAutomaticReconnection();
     webSocket.stop();

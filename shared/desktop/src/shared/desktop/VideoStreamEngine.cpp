@@ -43,7 +43,10 @@ void VideoStreamEngine::start(const std::string& url, const std::string& cache_k
     stop();
     first_frame_fired_ = false;
 
-    current_url_ = url;
+    {
+        std::lock_guard<std::mutex> lk(url_mutex_);
+        current_url_ = url;
+    }
     cache_key_ = cache_key;
     seek_ms_.store(seek_ms);
     running_ = true;
@@ -371,6 +374,34 @@ bool VideoStreamEngine::tick() {
 void VideoStreamEngine::set_last_error(const std::string& msg) {
     std::lock_guard<std::mutex> lk(error_mutex_);
     last_error_ = msg;
+}
+
+void VideoStreamEngine::set_on_status_change(std::function<void(const std::string&)> callback)
+{
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        on_status_change.swap(callback);
+    }
+    // `callback` now holds the previous function; it is destroyed outside the lock.
+}
+
+void VideoStreamEngine::set_on_first_frame_ready(std::function<void()> callback)
+{
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        on_first_frame_ready.swap(callback);
+    }
+}
+
+void VideoStreamEngine::clear_callbacks()
+{
+    std::function<void(const std::string&)> status;
+    std::function<void()> first_frame;
+    {
+        std::lock_guard<std::mutex> lk(status_cb_mutex_);
+        status.swap(on_status_change);
+        first_frame.swap(on_first_frame_ready);
+    }
 }
 
 void VideoStreamEngine::notify_status(const std::string& s) {

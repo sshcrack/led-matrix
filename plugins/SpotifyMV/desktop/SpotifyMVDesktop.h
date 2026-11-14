@@ -44,7 +44,9 @@ private:
     std::mutex tools_status_mutex_;
     std::string tools_error_msg_;
     std::string last_checked_ytdlp_path_;
-    std::chrono::steady_clock::time_point last_tools_report_{};
+    // Steady-clock ns of the last tools report, 0 = never. Written by the
+    // WebSocket thread (tools:probe, track:, producer:active) and the UI thread.
+    std::atomic<std::int64_t> last_tools_report_ns_{0};
     // Guards track_requests_. Lock order: track_id_mutex_ before engine_mutex_.
     std::mutex track_id_mutex_;
     SpotifyMVTrackRequests track_requests_;
@@ -69,7 +71,8 @@ private:
     // Outgoing frame during a crossfade, and the freeze frame while the
     // current engine buffers. Guarded by engine_mutex_.
     std::vector<uint8_t> old_last_frame_;
-    int crossfade_duration_ms_ = 500;
+    // Edited from the UI thread, read by the UDP sender thread.
+    std::atomic<int> crossfade_duration_ms_{500};
 
     // Chunk size (seconds of video downloaded/transcoded per chunk). Smaller
     // chunks reduce the chance of a mid-playback stall on slow connections
@@ -90,6 +93,7 @@ private:
     [[nodiscard]] bool request_is_pending(std::uint64_t generation);
     void fail_pending(std::uint64_t generation, const std::string& track_id);
     [[nodiscard]] std::optional<std::chrono::milliseconds> crossfade_elapsed() const;
+    [[nodiscard]] static std::int64_t steady_now_ns();
     void start_crossfade();
     void end_crossfade() { crossfade_started_ns_.store(0, std::memory_order_release); }
 

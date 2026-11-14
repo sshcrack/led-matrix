@@ -56,7 +56,11 @@ void SpotifyMVDesktop::render() {
         return;
     }
 
-    ImGui::SliderInt("Crossfade (ms)", &crossfade_duration_ms_, 0, 2000);
+    {
+        int crossfade_ms = crossfade_duration_ms_.load();
+        if (ImGui::SliderInt("Crossfade (ms)", &crossfade_ms, 0, 2000))
+            crossfade_duration_ms_.store(crossfade_ms);
+    }
 
     {
         int chunk_sec = chunk_duration_sec_.load();
@@ -140,7 +144,7 @@ void SpotifyMVDesktop::render() {
     // ── Crossfade progress ──────────────────────────────────────────────
     if (const auto fade_elapsed = crossfade_elapsed()) {
         auto elapsed_ms = fade_elapsed->count();
-        float ratio = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
+        float ratio = static_cast<float>(elapsed_ms) / static_cast<float>(crossfade_duration_ms_.load());
         float progress = ratio > 1.0f ? 1.0f : ratio;
         ImGui::ProgressBar(progress, ImVec2(-FLT_MIN, 0), "Crossfade");
     }
