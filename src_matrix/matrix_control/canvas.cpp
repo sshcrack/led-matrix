@@ -80,7 +80,8 @@ void CanvasCoordinator::ensure_automatic_catalog()
 void CanvasCoordinator::sync_director_seed()
 {
     // Saving the seed does not restart playback, so it is picked up here: at
-    // run() start and before each automatic scene choice.
+    // run() start and before every automatic scene choice (first pick and
+    // the successor chosen for a transition).
     const auto configured_seed = config_->get_automatic_director_seed();
     const auto configured_generation = config_->get_automatic_director_generation();
     if (automatic_director_.seed() != configured_seed || automatic_director_generation_ != configured_generation) {
@@ -336,6 +337,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         Diagnostics::RuntimeDiagnostics::instance().begin_transition_timeline();
         if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
+            sync_director_seed();
             const auto latest_inputs = runtime_inputs_fn_();
             const auto decision = automatic_director_.choose(
                 scenes, latest_inputs, scene->get_name(), director_preferred_scene);
