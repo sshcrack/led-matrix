@@ -444,6 +444,25 @@ if(ENABLE_DESKTOP)
     )
     add_test(NAME desktop_stream_state_smoke COMMAND $<TARGET_FILE:desktop_stream_state_smoke>)
 
+    # Desktop update paths (release parsing, matrix status, the refusal to install unverified packages) on fixtures.
+    add_executable(desktop_update_release_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_update_release_smoke.cpp
+    )
+    target_compile_features(desktop_update_release_smoke PRIVATE cxx_std_23)
+    target_link_libraries(desktop_update_release_smoke PRIVATE SharedToolsDesktop SharedToolsCommon)
+    add_test(NAME desktop_update_release_smoke COMMAND $<TARGET_FILE:desktop_update_release_smoke>)
+    if(WIN32)
+        add_custom_command(TARGET desktop_update_release_smoke POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsDesktop> $<TARGET_FILE_DIR:desktop_update_release_smoke>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsCommon> $<TARGET_FILE_DIR:desktop_update_release_smoke>
+        )
+    else()
+        set_tests_properties(desktop_update_release_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
     add_executable(ytdlp_policy_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ytdlp_policy_smoke.cpp
     )
@@ -850,6 +869,14 @@ if(ENABLE_EMULATOR)
     target_link_libraries(update_release_parse_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json magic_enum::magic_enum fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
     add_test(NAME update_release_parse_smoke COMMAND $<TARGET_FILE:update_release_parse_smoke>)
     set_tests_properties(update_release_parse_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(releases_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/releases_smoke.cpp
+    )
+    target_compile_features(releases_smoke PRIVATE cxx_std_23)
+    target_link_libraries(releases_smoke PRIVATE SharedToolsCommon nlohmann_json::nlohmann_json spdlog::spdlog)
+    add_test(NAME releases_smoke COMMAND $<TARGET_FILE:releases_smoke>)
+    set_tests_properties(releases_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(request_guard_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/request_guard_smoke.cpp

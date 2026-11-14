@@ -1,22 +1,24 @@
 #ifdef _WIN32
 #include "shared/common/win_compat.h"
 #endif
-#include "shared/matrix/update/UpdateManager.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/interrupt.h"
-#include "shared/common/Version.h"
-#include "spdlog/spdlog.h"
 #include <cpr/cpr.h>
-#include "picosha2.h"
+
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <chrono>
-#include <thread>
-#include <cstdlib>
-#include <algorithm>
+#include <mutex>
 #include <regex>
-#include <atomic>
+#include <thread>
 #include <vector>
+
+#include "shared/common/Version.h"
+#include "shared/matrix/interrupt.h"
+#include "shared/matrix/update/UpdateManager.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/spdlog.h"
 
 #ifdef __linux__
 #include <sys/utsname.h>
@@ -38,7 +40,43 @@ namespace Update
     {
         // Shared between the (unprivileged) daemon and the root update unit; see led-matrix-update.path.
         std::filesystem::path update_request_dir() { return "/var/lib/led-matrix/update"; }
-    }
+
+        std::mutex& state_dir_mutex()
+        {
+            static std::mutex mutex;
+            return mutex;
+        }
+
+        std::filesystem::path& state_dir_override()
+        {
+            static std::filesystem::path dir;
+            return dir;
+        }
+
+        Releases::FetchOptions fetch_options()
+        {
+            return Releases::make_fetch_options("led-matrix", Common::Version::getCurrentVersion(), 30000);
+        }
+
+        void write_error_flag(const std::string& message)
+        {
+            std::error_code ec;
+            std::filesystem::create_directories(UpdateManager::state_dir(), ec);
+            std::ofstream(UpdateManager::state_dir() / ".update_error", std::ios::trunc) << message;
+        }
+        }  // namespace
+
+        std::filesystem::path UpdateManager::state_dir()
+        {
+            std::lock_guard lock(state_dir_mutex());
+            return state_dir_override().empty() ? std::filesystem::path("/var/lib/led-matrix") : state_dir_override();
+        }
+
+        void UpdateManager::set_state_dir_for_testing(std::filesystem::path dir)
+        {
+            std::lock_guard lock(state_dir_mutex());
+            state_dir_override() = std::move(dir);
+        }
 
     UpdateManager::UpdateManager(Config::MainConfig* mainConfig)
         : running_(false),
@@ -132,7 +170,7 @@ namespace Update
                     filesystem::rename(tmp_request, request, request_ec);
                 if (request_ec)
                 {
-                    std::ofstream("/var/lib/led-matrix/.update_error") << "Failed to queue the update request: " << request_ec.message();
+                    write_error_flag("Failed to queue the update request: " + request_ec.message());
                     spdlog::error("Failed to queue the update request: {}", request_ec.message());
                     return;
                 }
@@ -156,7 +194,7 @@ namespace Update
                 do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
             }
             if (spawned != 0 || waited < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-                std::ofstream("/var/lib/led-matrix/.update_error") << "Failed to launch the update transaction unit";
+                write_error_flag("Failed to launch the update transaction unit");
                 spdlog::error("Failed to launch the update transaction unit");
                 return;
             }
@@ -247,72 +285,28 @@ namespace Update
 
     namespace
     {
-        // GitHub sends null for empty optional fields (e.g. a release without notes);
-        // nlohmann's value() throws on those, so treat null like a missing key.
-        std::string string_or(const nlohmann::json &obj, const char *key, const std::string &fallback = "")
-        {
-            const auto it = obj.find(key);
-            return it != obj.end() && it->is_string() ? it->get<std::string>() : fallback;
-        }
-
-        bool bool_or(const nlohmann::json &obj, const char *key, bool fallback)
-        {
-            const auto it = obj.find(key);
-            return it != obj.end() && it->is_boolean() ? it->get<bool>() : fallback;
-        }
-    }
-
-    expected<UpdateInfo, string> UpdateManager::parse_release(const nlohmann::json &release,
-                                                              const std::optional<Common::Version> &version)
+    expected<UpdateInfo, string> to_update_info(const Releases::Release& release, const std::optional<Common::Version>& version)
     {
-        if (!release.is_object())
-            return std::unexpected("Release response is not a JSON object");
-
-        string latest_version_str = string_or(release, "tag_name");
-        if (latest_version_str.empty())
-            return std::unexpected("Release has no tag_name");
-        // Remove 'v' prefix if present
-        if (latest_version_str.starts_with("v"))
-            latest_version_str = latest_version_str.substr(1);
-
-        // Find the led-matrix arm64 deb asset
-        string download_url;
-        string sha256;
-        bool found_asset = false;
-        const auto assets = release.find("assets");
-        if (assets != release.end() && assets->is_array())
-        {
-            for (const auto &asset : *assets)
-            {
-                if (!asset.is_object())
-                    continue;
-                const string asset_name = string_or(asset, "name");
-                if (asset_name.find("led-matrix") != string::npos &&
-                    asset_name.find("arm64") != string::npos &&
-                    asset_name.ends_with(".deb"))
-                {
-                    download_url = string_or(asset, "browser_download_url");
-                    const string digest = string_or(asset, "digest");
-                    if (digest.starts_with("sha256:"))
-                        sha256 = digest.substr(7);
-                    found_asset = true;
-                    break;
-                }
-            }
-        }
-
-        if (!found_asset)
-            return std::unexpected("Could not find led-matrix arm64 asset in release");
-        if (!download_url.starts_with("https://github.com/"))
-            return std::unexpected("Refusing update asset outside https://github.com/: " + download_url);
+        auto asset = Releases::select_asset(release, Releases::is_matrix_package, "led-matrix arm64");
+        if (!asset)
+            return std::unexpected(asset.error());
 
         UpdateInfo info;
-        info.version = version.value_or(Common::Version::fromString(latest_version_str));
-        info.download_url = download_url;
-        info.sha256 = sha256;
-        info.body = string_or(release, "body");
-        info.is_prerelease = bool_or(release, "prerelease", false);
+        info.version = version.value_or(release.version);
+        info.download_url = asset->download_url;
+        info.sha256 = asset->sha256;
+        info.body = release.body;
+        info.is_prerelease = release.prerelease;
         return info;
+    }
+    }
+
+    expected<UpdateInfo, string> UpdateManager::parse_release(const nlohmann::json& json, const std::optional<Common::Version>& version)
+    {
+        auto release = Releases::parse_release(json);
+        if (!release)
+            return std::unexpected(release.error());
+        return to_update_info(*release, version);
     }
 
     // Unified get_update_info method with optional<string> version
@@ -320,18 +314,12 @@ namespace Update
     {
         try
         {
-            string api_url = get_github_api_url(version);
-            debug("Checking for updates at: {}", api_url);
-
-            auto response = cpr::Get(
-                cpr::Url{api_url},
-                cpr::Header{{"User-Agent", get_user_agent()}},
-                cpr::ConnectTimeout{5000}, cpr::Timeout{30000});
-
-            if (response.status_code != 200)
-                return std::unexpected("GitHub API request failed with status: " + to_string(response.status_code));
-
-            return parse_release(nlohmann::json::parse(response.text), version);
+            const auto options = fetch_options();
+            debug("Checking for updates at: {}", Releases::releases_url(options));
+            auto release = version ? Releases::fetch_version(*version, options) : Releases::fetch_latest(options);
+            if (!release)
+                return std::unexpected(release.error());
+            return to_update_info(*release, version);
         }
         catch (const exception &ex)
         {
@@ -343,6 +331,8 @@ namespace Update
     {
         try
         {
+            if (!Releases::is_allowed_download_url(url))
+                return std::unexpected("Refusing to download an update from " + url);
             status_.store(UpdateStatus::DOWNLOADING);
             info("Downloading update from: {}", url);
 
@@ -422,15 +412,6 @@ namespace Update
 #endif
     }
 
-    string UpdateManager::get_github_api_url(const std::optional<Common::Version> &version)
-    {
-        std::string base_url = "https://api.github.com/repos/" + repo_owner_ + "/" + repo_name_ + "/releases";
-        if (version.has_value())
-            return base_url + "/tags/v" + version.value().toString();
-
-        return base_url + "/latest";
-    }
-
     expected<UpdateInfo, string> UpdateManager::manual_check_for_updates()
     {
         auto latest_opt = get_update_info();
@@ -453,6 +434,14 @@ namespace Update
         std::unique_lock transaction_lock(installation_mutex_, std::try_to_lock);
         if (!transaction_lock.owns_lock() || pending_update_.load())
             return std::unexpected("An update is already in progress");
+        // Never install an unverified package: no valid SHA-256 digest, no download. The refusal is
+        // reported like any failed update, through the status and the `.update_error` flag.
+        if (const auto digest = Releases::require_digest(update_info.sha256, "the led-matrix arm64 package"); !digest) {
+            error("Refusing update {}: {}", update_info.version.toString(), digest.error());
+            fail_install(digest.error());
+            write_error_flag(digest.error());
+            return std::unexpected(digest.error());
+        }
         try
         {
             // Private 0700 directory: the root-run update script installs this file, so it must not live at a
@@ -482,11 +471,10 @@ namespace Update
             auto download_res = download_update(update_info.download_url, filename);
             if (download_res.has_value())
             {
-                if (update_info.sha256.empty())
-                    warn("Release asset has no published digest; skipping SHA-256 verification");
+                download_res = Releases::verify_sha256(filename, update_info.sha256);
+                if (download_res.has_value())
+                    info("Verified update SHA-256: {}", update_info.sha256);
                 else
-                    download_res = verify_sha256(filename, update_info.sha256);
-                if (!download_res.has_value())
                     try_remove(filename);
             }
             if (!download_res.has_value())
@@ -517,25 +505,6 @@ namespace Update
             fail_install("Manual update failed: " + string(ex.what()));
             return std::unexpected("Manual update failed: " + string(ex.what()));
         }
-    }
-
-    std::expected<void, std::string> UpdateManager::verify_sha256(const string &filename, const string &expected_hex)
-    {
-        ifstream file(filename, ios::binary);
-        if (!file)
-            return std::unexpected("Could not open downloaded update for verification");
-
-        std::vector<unsigned char> hash(picosha2::k_digest_size);
-        picosha2::hash256(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), hash.begin(), hash.end());
-        const string actual = picosha2::bytes_to_hex_string(hash.begin(), hash.end());
-
-        string expected = expected_hex;
-        std::ranges::transform(expected, expected.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        if (actual != expected)
-            return std::unexpected("SHA-256 mismatch for downloaded update (expected " + expected + ", got " + actual + ")");
-
-        info("Verified update SHA-256: {}", actual);
-        return {};
     }
 
     UpdateStatus UpdateManager::get_status() const
@@ -627,12 +596,6 @@ namespace Update
 #endif
     }
 
-    string UpdateManager::get_user_agent()
-    {
-        Common::Version current_version = Common::Version::getCurrentVersion();
-        return "led-matrix/" + current_version.toString() + " (https://github.com/sshcrack/led-matrix)";
-    }
-
     bool UpdateManager::is_updates_supported() const
     {
         return is_platform_supported() && !repo_owner_.empty() && !repo_name_.empty();
@@ -645,9 +608,9 @@ namespace Update
 #ifdef ENABLE_UPDATE_TESTING
         filesystem::path success_flag = get_exec_dir() / ".update_test_success";
 #else
-        filesystem::path success_flag = "/var/lib/led-matrix/.update_success";
+        filesystem::path success_flag = state_dir() / ".update_success";
 #endif
-        filesystem::path error_flag = "/var/lib/led-matrix/.update_error";
+        filesystem::path error_flag = state_dir() / ".update_error";
 
         // Check for update success flag
         if (filesystem::exists(success_flag))

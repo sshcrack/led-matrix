@@ -1,13 +1,15 @@
 #include "update_routes.h"
+
+#include <chrono>
+#include <future>
+
+#include "nlohmann/json.hpp"
+#include "shared/common/Releases.h"
+#include "shared/common/Version.h"
+#include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/common/Version.h"
-#include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
-#include <cpr/cpr.h>
-#include <future>
-#include <chrono>
 
 using json = nlohmann::json;
 using namespace spdlog;
@@ -32,7 +34,8 @@ std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, st
             response["current_version"] = Common::Version::getCurrentVersion().toString();
             response["latest_version"] = update_manager->get_latest_version().value_or(Common::Version(0, 0, 0)).toString();
             response["update_available"] = update_manager->is_update_available();
-            response["status"] = static_cast<int>(update_manager->get_status());
+            // "status" is the legacy int (older desktops, the web UI); "status_name" is the name they should use.
+            Releases::write_status(response, update_manager->get_status());
             response["error_message"] = update_manager->get_error_message();
 
             return reply_with_json(req, response);
@@ -75,15 +78,13 @@ std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, st
             try {
                 // Check if another installation is already in progress
                 auto current_status = update_manager->get_status();
-                if (current_status == Update::UpdateStatus::CHECKING ||
-                    current_status == Update::UpdateStatus::DOWNLOADING ||
-                    current_status == Update::UpdateStatus::INSTALLING) {
+                if (Releases::is_busy(current_status)) {
                     json response;
                     response["message"] = "Update installation already in progress";
                     response["status"] = "already_running";
                     return reply_with_json(req, response, restinio::status_conflict());
                 }
-                
+
                 // Parse query parameters
                 const auto qp = restinio::parse_query(req->header().query());
                 std::string version = qp.has("version") ? std::string{qp["version"]} : "";
@@ -175,45 +176,15 @@ std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, st
                 if (per_page < 1 || per_page > 20) {
                     per_page = 5; // Default to 5 releases
                 }
-                
-                std::string api_url = "https://api.github.com/repos/sshcrack/led-matrix/releases?per_page=" + std::to_string(per_page);
-                auto response = cpr::Get(cpr::Url{api_url});
-                
-                if (response.status_code != 200) {
+
+                const auto releases =
+                    Releases::fetch_list(per_page, Releases::make_fetch_options("led-matrix", Common::Version::getCurrentVersion(), 15000));
+                if (!releases) {
+                    warn("Could not fetch releases: {}", releases.error());
                     return reply_with_error(req, "Failed to fetch releases from GitHub", restinio::status_service_unavailable());
                 }
-                
-                auto releases_json = json::parse(response.text);
-                json simplified_releases = json::array();
-                
-                for (const auto& release : releases_json) {
-                    // The rolling "scene-previews" release is an asset store, not an app version.
-                    if (!release.value("tag_name", std::string{}).starts_with('v')) {
-                        continue;
-                    }
-                    json simplified;
-                    simplified["version"] = release["tag_name"];
-                    simplified["name"] = release["name"];
-                    simplified["body"] = release["body"];
-                    simplified["published_at"] = release["published_at"];
-                    simplified["is_prerelease"] = release["prerelease"];
-                    simplified["is_draft"] = release["draft"];
-                    
-                    // Find the led-matrix Linux asset
-                    for (const auto& asset : release["assets"]) {
-                        std::string asset_name = asset["name"];
-                        if (asset_name.find("led-matrix") != std::string::npos && 
-                            asset_name.find("arm64") != std::string::npos &&
-                            (asset_name.ends_with(".tar.gz") || asset_name.ends_with(".deb"))) {
-                            simplified["download_url"] = asset["browser_download_url"];
-                            simplified["download_size"] = asset["size"];
-                            break;
-                        }
-                    }
-                    
-                    simplified_releases.push_back(simplified);
-                }
-                
+
+                const auto simplified_releases = Releases::release_list_json(*releases, Releases::is_matrix_package);
                 return reply_with_json(req, simplified_releases);
             }
             catch (const std::exception& ex) {

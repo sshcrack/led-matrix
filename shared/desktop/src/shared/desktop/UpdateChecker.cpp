@@ -11,11 +11,11 @@
 
 namespace UpdateChecker
 {
-    namespace
-    {
-        constexpr const char *RELEASES_API = "https://api.github.com/repos/sshcrack/led-matrix/releases";
-
-        std::string userAgent() { return "led-matrix-desktop/" + UpdateChecker::getCurrentVersion().toString(); }
+namespace {
+std::string userAgent()
+{
+    return "led-matrix-desktop/" + UpdateChecker::getCurrentVersion().toString();
+}
 
         std::string matrixUrl(const MatrixEndpoint &matrix, const std::string &path)
         {
@@ -29,7 +29,7 @@ namespace UpdateChecker
                 headers["Authorization"] = matrix.authorization;
             return headers;
         }
-    } // namespace
+        }  // namespace
 
     MatrixEndpoint MatrixEndpoint::fromConfig()
     {
@@ -105,80 +105,81 @@ namespace UpdateChecker
 
     std::expected<ReleaseInfo, std::string> UpdateChecker::fetchRelease(const std::optional<Common::Version> &version)
     {
-        const std::string url = version ? std::string(RELEASES_API) + "/tags/v" + version->toString()
-                                        : std::string(RELEASES_API) + "/latest";
-        const auto response = cpr::Get(cpr::Url{url}, cpr::Header{{"User-Agent", userAgent()}}, cpr::Timeout{15000});
-        if (response.status_code == 404)
-            return std::unexpected(version ? "No release v" + version->toString() + " on GitHub" : "No release on GitHub");
-        if (response.status_code != 200)
-            return std::unexpected("GitHub returned HTTP " + std::to_string(response.status_code) +
-                                   (response.error ? " (" + response.error.message + ")" : ""));
-        try
-        {
-            ReleaseInfo info = parseReleaseInfo(nlohmann::json::parse(response.text));
-            if (info.version.is_invalid())
-                return std::unexpected("Unexpected release tag '" + info.tagName + "'");
-            return info;
-        }
-        catch (const std::exception &e)
-        {
-            return std::unexpected(std::string("Could not parse the GitHub release: ") + e.what());
-        }
-    }
-
-    ReleaseInfo UpdateChecker::parseReleaseInfo(const nlohmann::json &releaseJson)
-    {
-        ReleaseInfo info;
-        auto str = [&](const char *key) {
-            return releaseJson.contains(key) && releaseJson[key].is_string() ? releaseJson[key].get<std::string>() : std::string{};
-        };
-        info.tagName = str("tag_name");
-        info.name = str("name");
-        info.htmlUrl = str("html_url");
-        info.isPrerelease = releaseJson.value("prerelease", false);
-        info.version = Common::Version::fromString(info.tagName);
-
-        const std::string assetName = SelfUpdate::package_asset_name(info.version.toString());
-        if (releaseJson.contains("assets") && releaseJson["assets"].is_array())
-        {
-            for (const auto &asset: releaseJson["assets"])
-            {
-                if (asset.value("name", "") != assetName)
-                    continue;
-                info.downloadUrl = asset.value("browser_download_url", "");
-                if (asset.contains("digest") && asset["digest"].is_string())
-                {
-                    const std::string digest = asset["digest"].get<std::string>();
-                    if (digest.rfind("sha256:", 0) == 0)
-                        info.sha256 = digest.substr(7);
-                }
-            }
-        }
+        const auto options = Releases::make_fetch_options("led-matrix-desktop", getCurrentVersion(), 15000);
+        const auto release = version ? Releases::fetch_version(*version, options) : Releases::fetch_latest(options);
+        if (!release)
+            return std::unexpected(release.error());
+        ReleaseInfo info = toReleaseInfo(*release);
+        if (info.version.is_invalid())
+            return std::unexpected("Unexpected release tag '" + info.tagName + "'");
         return info;
     }
 
-    std::expected<MatrixUpdateState, std::string> UpdateChecker::fetchMatrixState(const MatrixEndpoint &matrix)
+    ReleaseInfo UpdateChecker::toReleaseInfo(const Releases::Release& release)
+    {
+        ReleaseInfo info;
+        info.tagName = release.tag;
+        info.name = release.name;
+        info.htmlUrl = release.html_url;
+        info.isPrerelease = release.prerelease;
+        info.version = release.version;
+        if (info.version.is_invalid())
+            return info;
+
+        const auto asset = Releases::select_asset(release, Releases::asset_named(SelfUpdate::package_asset_name(info.version.toString())),
+                                                  "desktop package");
+        if (asset) {
+            info.downloadUrl = asset->download_url;
+            info.sha256 = asset->sha256;
+        }
+        else
+            spdlog::debug("Release {}: {}", release.tag, asset.error());
+        return info;
+    }
+
+    ReleaseInfo UpdateChecker::parseReleaseInfo(const nlohmann::json& releaseJson)
+    {
+        const auto release = Releases::parse_release(releaseJson);
+        return release ? toReleaseInfo(*release) : ReleaseInfo{};
+    }
+
+    std::expected<MatrixUpdateState, std::string> UpdateChecker::parseMatrixState(const nlohmann::json& status)
+    {
+        if (!status.is_object())
+            return std::unexpected("the matrix update status is not a JSON object");
+        const auto version = status.find("current_version");
+        MatrixUpdateState state;
+        if (version != status.end() && version->is_string())
+            state.version = Common::Version::fromString(version->get<std::string>());
+        if (state.version.is_invalid())
+            return std::unexpected("matrix reported no version");
+        const auto autoUpdate = status.find("auto_update_enabled");
+        state.autoUpdateEnabled = autoUpdate != status.end() && autoUpdate->is_boolean() && autoUpdate->get<bool>();
+        state.status = Releases::read_status(status);  // by name, or the int of an older matrix
+        state.busy = state.status && Releases::is_busy(*state.status);
+        return state;
+    }
+
+    std::expected<MatrixUpdateState, MatrixFetchError> UpdateChecker::fetchMatrixState(const MatrixEndpoint& matrix)
     {
         const auto response = cpr::Get(cpr::Url{matrixUrl(matrix, "/api/update/status")}, matrixHeaders(matrix),
                                        cpr::Timeout{5000});
+        if (response.status_code == 0)
+            return std::unexpected(MatrixFetchError{MatrixFetchError::Kind::Unreachable, "matrix unreachable"});
         if (response.status_code != 200)
-            return std::unexpected(response.status_code == 0 ? "matrix unreachable"
-                                                             : "matrix returned HTTP " + std::to_string(response.status_code));
+            return std::unexpected(
+                MatrixFetchError{MatrixFetchError::Kind::Http, "matrix returned HTTP " + std::to_string(response.status_code)});
         try
         {
-            const auto j = nlohmann::json::parse(response.text);
-            MatrixUpdateState state;
-            state.version = Common::Version::fromString(j.value("current_version", ""));
-            state.autoUpdateEnabled = j.value("auto_update_enabled", false);
-            const int status = j.value("status", 0); // Update::UpdateStatus: 1 checking, 2 downloading, 3 installing
-            state.busy = status >= 1 && status <= 3;
-            if (state.version.is_invalid())
-                return std::unexpected("matrix reported no version");
-            return state;
+            auto state = parseMatrixState(nlohmann::json::parse(response.text));
+            if (!state)
+                return std::unexpected(MatrixFetchError{MatrixFetchError::Kind::Parse, state.error()});
+            return *state;
         }
         catch (const std::exception &e)
         {
-            return std::unexpected(std::string("could not parse the matrix update status: ") + e.what());
+            return std::unexpected(
+                MatrixFetchError{MatrixFetchError::Kind::Parse, std::string("could not parse the matrix update status: ") + e.what()});
         }
     }
 

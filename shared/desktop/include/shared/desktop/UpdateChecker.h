@@ -2,11 +2,13 @@
 
 #include <cstdint>
 #include <expected>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
-#include <nlohmann/json.hpp>
-#include "shared/desktop/macro.h"
+
+#include "shared/common/Releases.h"
 #include "shared/common/Version.h"
+#include "shared/desktop/macro.h"
 
 // Network side of desktop updates: GitHub releases and the matrix's update API.
 // All calls block; UpdateManager runs them on a worker thread.
@@ -28,7 +30,17 @@ namespace UpdateChecker
     {
         Common::Version version;
         bool autoUpdateEnabled = false;
+        /// Absent when the matrix reports none (a status this build does not know).
+        std::optional<Releases::UpdateStatus> status;
         bool busy = false; // checking, downloading or installing an update
+    };
+
+    /// Why a matrix status request failed. `Unreachable` and `Http` are network problems, `Parse` means the
+    /// matrix answered with something this desktop cannot read.
+    struct SHARED_DESKTOP_API MatrixFetchError {
+        enum class Kind { Unreachable, Http, Parse };
+        Kind kind = Kind::Unreachable;
+        std::string message;
     };
 
     struct SHARED_DESKTOP_API UpdatePreferences
@@ -69,12 +81,19 @@ namespace UpdateChecker
         /// The latest release, or the release of `version` when given.
         static std::expected<ReleaseInfo, std::string> fetchRelease(const std::optional<Common::Version> &version = std::nullopt);
 
-        static std::expected<MatrixUpdateState, std::string> fetchMatrixState(const MatrixEndpoint &matrix);
+        /// GET /api/update/status. The one reader of that response (the version check in the settings uses it too).
+        static std::expected<MatrixUpdateState, MatrixFetchError> fetchMatrixState(const MatrixEndpoint& matrix);
+        /// Reads a status body: the status by name (`status_name`) or, from an older matrix, by its int.
+        static std::expected<MatrixUpdateState, std::string> parseMatrixState(const nlohmann::json& status);
         /// Asks the matrix to install `version` (POST /api/update/install).
         static std::expected<void, std::string> requestMatrixUpdate(const MatrixEndpoint &matrix,
                                                                     const Common::Version &version);
 
+        /// This platform's package out of a GitHub release JSON object, via Releases. `downloadUrl` stays empty when
+        /// the release has no such asset or it is not on an allowed host; `sha256` stays empty without a digest
+        /// (SelfUpdate::download_and_install refuses to install it).
         static ReleaseInfo parseReleaseInfo(const nlohmann::json &releaseJson);
+        static ReleaseInfo toReleaseInfo(const Releases::Release& release);
     };
 
 } // namespace UpdateChecker
