@@ -222,9 +222,19 @@
     "reported_diameter_mm": 5.2,
     "reported_scope": "Owner estimates the same X/Y at every corner",
     "confidence": "Approximate only; owner could not obtain accurate contact measurements",
-    "edge_contact_definition": "Unconfirmed: edge-to-far-shaft span versus edge-to-hole-centre estimate",
-    "diameter_feature": "Unconfirmed: narrow smooth shaft versus threaded screw part",
-    "coordinate_adoption": "None. Await contact definitions; prior coordinate model remains withdrawn.",
-    "thread_specification": "Do not infer thread diameter or pitch from this unconfirmed reference-feature diameter."
+    "edge_contact_definition": "User confirmed: outer plastic edge to far side of narrow shaft, as in diagram",
+    "diameter_feature": "User confirmed: smooth shaft below magnetic disc; not threaded screw part",
+    "coordinate_adoption": "Provisional four-corner edge insets only, based on approximate owner readings and owner-reported same values at all corners. No full CAD or fit template generated; physical fit and sketch-to-connector orientation unverified. Prior eight-hole coordinate model remains withdrawn.",
+    "thread_specification": "Do not infer thread diameter or pitch from this unconfirmed reference-feature diameter.",
+    "derived_centre_insets_mm": {
+      "x": 8.4,
+      "y": 16.0
+    },
+    "derivation": "X = 11 - 5.2/2 = 8.4 mm; Y = 18.6 - 5.2/2 = 16.0 mm",
+    "nominal_envelope_corner_span_mm": {
+      "x": 175.2,
+      "y": 160.0,
+      "basis": "192 mm nominal square minus twice each provisional inset; calculated, not directly measured spans. X/Y orientation must be confirmed."
+    }
   }
 }
