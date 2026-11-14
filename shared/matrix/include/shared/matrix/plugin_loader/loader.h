@@ -53,6 +53,11 @@ namespace Plugins {
 
         std::vector<Plugins::BasicPlugin*> get_plugins();
 
+        /// Hands the host's config to every loaded plugin (BasicPlugin::host_config()).
+        /// Call after initialize() and before the before_server_init() hooks;
+        /// the config must outlive destroy_plugins().
+        void attach_host_config(Config::MainConfig* config);
+
         std::vector<std::shared_ptr<SceneWrapper>> get_scenes();
         void add_scene(std::shared_ptr<SceneWrapper> scene);
         void remove_scene(const std::string& name);

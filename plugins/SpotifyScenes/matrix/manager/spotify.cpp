@@ -1,16 +1,17 @@
 #include "spotify.h"
-#include <cstdio>
-#include <string>
-#include "cpr/cpr.h"
-#include "spdlog/spdlog.h"
-#include <cstdlib>
 
-#include "shared/matrix/utils/shared.h"
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+
+#include "cpr/cpr.h"
 #include "genre_lookup.h"
+#include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/execution_mode.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/utils/utils.h"
+#include "spdlog/spdlog.h"
 
 using namespace spdlog;
 
@@ -96,6 +97,7 @@ bool Spotify::initialize() {
             return std::nullopt;
         return **response;
     });
+    GenreLookup::instance().set_song_bpm_key_source([this] { return song_bpm_api_key(); });
     start_control_thread();
     return true;
 }
@@ -131,7 +133,19 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     return config->save();
 }
 
-Spotify::Spotify(const bool /*allow_missing_credentials*/) {}
+Spotify::Spotify(Config::MainConfig& host_config, const bool /*allow_missing_credentials*/) : config(&host_config) {}
+
+bool Spotify::has_auth() const
+{
+    return config->get_spotify().has_auth();
+}
+
+std::string Spotify::song_bpm_api_key() const
+{
+    const auto plugin_configs = config->get_plugin_configs();
+    const auto key = plugin_configs.find("song_bpm_api_key");
+    return key == plugin_configs.end() ? std::string() : key->second;
+}
 
 std::string Spotify::get_client_id() const {
     const auto saved = config->get_spotify().client_id;
@@ -381,6 +395,7 @@ void Spotify::terminate() {
     RuntimeInputs::set_available(RuntimeInputIds::SpotifyPlayback, false);
     GenreLookup::instance().stop();
     GenreLookup::instance().set_spotify_fetch({});
+    GenreLookup::instance().set_song_bpm_key_source({});
 }
 
 std::optional<SpotifyState> Spotify::get_currently_playing() {

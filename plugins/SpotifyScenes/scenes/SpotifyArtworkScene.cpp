@@ -435,7 +435,8 @@ std::expected<SpotifyArtworkScene::Artwork, std::string> SpotifyArtworkScene::re
         return unexpected("Artwork request cancelled");
     cover_ready.set_value(result);
 
-    auto bpm_res = SongBpmApi::get_bpm(track.get_song_name().value_or(""), track.get_artist_name().value_or(""), stop);
+    const std::string bpm_key = spotify != nullptr ? spotify->song_bpm_api_key() : std::string();
+    auto bpm_res = SongBpmApi::get_bpm(track.get_song_name().value_or(""), track.get_artist_name().value_or(""), bpm_key, stop);
     if (!bpm_res.has_value())
         spdlog::debug("Couldn't get bpm {}", bpm_res.error());
     result.bpm = bpm_res.value_or(120);

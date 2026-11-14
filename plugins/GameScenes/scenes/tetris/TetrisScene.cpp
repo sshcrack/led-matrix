@@ -1,16 +1,18 @@
 #include "TetrisScene.h"
+
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cmath>
 #include <string>
-#include "utils/piece.hpp"
+
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/execution_mode.h"
+#include "spdlog/spdlog.h"
 #include "utils/grid.hpp"
 #include "utils/neuralNetwork.hpp"
-#include "spdlog/spdlog.h"
-#include "shared/matrix/execution_mode.h"
-#include "shared/matrix/utils/shared.h"
-#include <chrono>
-#include <array>
-#include <algorithm>
-#include <atomic>
-#include <cmath>
+#include "utils/piece.hpp"
 
 using namespace std;
 
@@ -18,7 +20,8 @@ namespace {
 constexpr const char *game_scenes_config_key = "GameScenes";
 std::atomic<int> process_high_score{0};
 
-int load_persisted_high_score() {
+int load_persisted_high_score(const Config::MainConfig* config)
+{
     if (SceneExecution::mode() != SceneExecution::Mode::Matrix || config == nullptr) return 0;
     try {
         const auto plugin_configs = config->get_plugin_configs();
@@ -85,15 +88,14 @@ void draw3x5(rgb_matrix::FrameCanvas *canvas, int x, int y, const std::string &t
 }
 
 namespace Scenes {
-    TetrisScene::TetrisScene() :
-            Scene() {
-        bestParams = NeuralNetwork(BEST_PARAMS);
-        brain = Brain(bestParams);
-        high_score = std::max(load_persisted_high_score(),
-                              process_high_score.load(std::memory_order_relaxed));
-        publish_high_score(high_score);
-        last_update_time = std::chrono::steady_clock::now();
-    }
+TetrisScene::TetrisScene(const Plugins::BasicPlugin& owner_plugin) : Scene(), owner(&owner_plugin)
+{
+    bestParams = NeuralNetwork(BEST_PARAMS);
+    brain = Brain(bestParams);
+    high_score = std::max(load_persisted_high_score(owner->host_config()), process_high_score.load(std::memory_order_relaxed));
+    publish_high_score(high_score);
+    last_update_time = std::chrono::steady_clock::now();
+}
 
     void TetrisScene::initialize(int width, int height) {
         Scene::initialize(width, height);
@@ -124,6 +126,7 @@ namespace Scenes {
     }
 
     void TetrisScene::persist_high_score() {
+        auto* config = owner->host_config();
         if (!high_score_dirty || SceneExecution::mode() != SceneExecution::Mode::Matrix || config == nullptr)
             return;
 
@@ -330,6 +333,6 @@ namespace Scenes {
     }
 
     std::unique_ptr<Scenes::Scene> TetrisSceneWrapper::create() {
-        return std::make_unique<TetrisScene>();
+        return std::make_unique<TetrisScene>(owner);
     }
 }

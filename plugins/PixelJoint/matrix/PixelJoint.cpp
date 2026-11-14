@@ -1,17 +1,17 @@
 #include "PixelJoint.h"
-#include "scenes/image/ImageScene.h"
-#include "providers/collection.h"
-#include "providers/pages.h"
 
 #include <vector>
-#include "restinio/uri_helpers.hpp"
-#include "restinio/helpers/file_upload.hpp"
-#include "restinio/helpers/multipart_body.hpp"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/utils/consts.h"
 
 #include "picosha2.h"
+#include "providers/collection.h"
+#include "providers/pages.h"
+#include "restinio/helpers/file_upload.hpp"
+#include "restinio/helpers/multipart_body.hpp"
+#include "restinio/uri_helpers.hpp"
+#include "scenes/image/ImageScene.h"
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/consts.h"
 
 using std::vector;
 using namespace ImageProviders;
@@ -35,10 +35,10 @@ PixelJoint::PixelJoint() = default;
 
 REGISTER_PLUGIN(PixelJoint, PixelJoint)
 
-
-restinio::request_handling_status_t
-handle_providers(const restinio::request_handle_t &req, const string &scene_id, const string &preset_id) {
-    const auto &presets = config->get_presets();
+restinio::request_handling_status_t handle_providers(const restinio::request_handle_t& req, Config::MainConfig& config,
+                                                     const string& scene_id, const string& preset_id)
+{
+    const auto& presets = config.get_presets();
     if (!presets.contains(preset_id)) {
         return Server::reply_with_error(req, "Preset with id not found");
     }
@@ -58,7 +58,6 @@ handle_providers(const restinio::request_handle_t &req, const string &scene_id, 
 
     return Server::reply_with_error(req, "shared/matrix/Scene.h not found");
 }
-
 
 void store_file_to_disk(
     restinio::string_view_t full_file,
@@ -122,19 +121,22 @@ restinio::request_handling_status_t handle_upload(const restinio::request_handle
 
 
 std::unique_ptr<router_t> PixelJoint::register_routes(std::unique_ptr<router_t> router) {
-    router->http_get("/pixeljoint/providers", [](const auto& req, auto) {
-    const auto qp = restinio::parse_query(req->header().query());
-    if (!qp.has("preset_id")) {
-        return Server::reply_with_error(req, "No Preset Id given");
-    }
+    router->http_get("/pixeljoint/providers", [this](const auto& req, auto) {
+        auto* config = host_config();
+        if (!config)
+            return Server::reply_with_error(req, "No config available");
+        const auto qp = restinio::parse_query(req->header().query());
+        if (!qp.has("preset_id")) {
+            return Server::reply_with_error(req, "No Preset Id given");
+        }
 
-    if (!qp.has("scene_id")) {
-        return Server::reply_with_error(req, "No Scene Id given");
-    }
-    const string preset_id{qp["preset_id"]};
-    const string scene_id{qp["scene_id"]};
+        if (!qp.has("scene_id")) {
+            return Server::reply_with_error(req, "No Scene Id given");
+        }
+        const string preset_id{qp["preset_id"]};
+        const string scene_id{qp["scene_id"]};
 
-        return handle_providers(req, preset_id, scene_id);
+        return handle_providers(req, *config, preset_id, scene_id);
     });
 
     router->http_post("/pixeljoint/upload_img", [](const auto& req, auto) {

@@ -8,12 +8,19 @@
 
 #include "./state.h"
 
+namespace Config {
+class MainConfig;
+}
+
 class Spotify {
 public:
     /// Store a token response (initial login or a re-login with new scopes).
-    static bool save_resp_to_config(const std::string& json_resp);
+    bool save_resp_to_config(const std::string& json_resp);
 
 private:
+    // The host's config (credentials, tokens, plugin keys); outlives this client.
+    Config::MainConfig* config;
+
     std::expected<std::optional<nlohmann::json >, std::pair<std::string, std::optional<int>>> authenticated_get(const std::string& url, bool refresh = true);
     std::expected<std::optional<SpotifyState>, std::pair<std::string, std::optional<int>>> inner_fetch_currently_playing();
 
@@ -35,7 +42,7 @@ public:
     bool store_login(const std::string& response, bool pkce);
     bool configure(const std::string& id);
 
-    explicit Spotify(bool allow_missing_credentials = false);
+    explicit Spotify(Config::MainConfig& config, bool allow_missing_credentials = false);
     ~Spotify();  // Add destructor declaration
 
     void start_control_thread();
@@ -45,6 +52,9 @@ public:
     std::string get_client_id() const;
     std::string get_client_secret() const;
     bool is_configured() const { return !get_client_id().empty(); }
+    bool has_auth() const;
+    /// pluginConfigs.song_bpm_api_key, empty when not set.
+    std::string song_bpm_api_key() const;
     std::optional<SpotifyState> get_currently_playing();
     void set_preview_currently_playing(nlohmann::json state_json);
     void clear_preview_currently_playing();

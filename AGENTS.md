@@ -204,6 +204,8 @@ Key headers:
 - Properties (auto-serialized to JSON config): `shared/matrix/include/shared/matrix/plugin/property.h` — use the `MAKE_PROPERTY` macro
 - Desktop plugin entry: `shared/desktop/include/shared/desktop/plugin/main.h`
 
+Plugin code reads the host's config through `BasicPlugin::host_config()` (there is no global config). Hosts attach it with `PluginManager::attach_host_config()` before `before_server_init()`; it is null while the host is still building its config, so scenes created for saved presets must tolerate null. Code that is not the plugin object gets the config, or just the values it needs, passed in (e.g. `TetrisSceneWrapper` passes its plugin to the scene, the `Spotify` client owns a config reference).
+
 For plugins with additional vcpkg dependencies, add a feature entry to `vcpkg.json` named `<kebab-plugin-name>-matrix` or `<kebab-plugin-name>-desktop`.
 
 ## Design constraints (read before proposing features)
