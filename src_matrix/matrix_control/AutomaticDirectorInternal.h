@@ -2,14 +2,15 @@
 #pragma once
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <initializer_list>
 
 #include "AutomaticDirector.h"
+#include "RenderPlacement.h"
 #include "shared/matrix/scene_descriptor.h"
 
 namespace AutomaticDirectorDetail {
@@ -24,14 +25,15 @@ using DirectorContext = AutomaticDirector::Context;
 DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const VisualJourney::Frame& journey);
 Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene);
 float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::EffectiveSceneProfile& profile,
-                     const std::optional<float>& measured_load);
+                     const std::optional<float>& measured_load, const AutomaticDirector::OffloadRule& offloadable);
 
 // Descriptor performance costs are priors on a 0..1 scale where anything above
 // the budget is expected to strain the Pi.
 inline constexpr float performance_budget = 0.90f;
-// SceneRenderer starts desktop offload once a frame exceeds 72% of its budget,
-// so a measured load of 0.72 maps onto the edge of the descriptor budget.
-inline constexpr float measured_load_to_cost = performance_budget / 0.72f;
+// RenderPlacement starts desktop offload once a frame exceeds its pressure
+// budget fraction, so a measured load at that fraction maps onto the edge of
+// the descriptor budget.
+inline constexpr float measured_load_to_cost = performance_budget / static_cast<float>(RenderPlacement::PressureBudgetFraction);
 // Additive ranking weights. A candidate starts at 1.0; the fit terms dominate
 // (up to ~2.3), context bonuses are 0.1-0.4 each, and Spotify lifecycle terms
 // are deliberately larger because track timing is a hard presentation cue.

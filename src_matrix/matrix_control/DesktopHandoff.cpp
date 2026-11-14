@@ -93,6 +93,11 @@ void DesktopHandoff::stop()
     session_scene_.clear();
 }
 
+bool DesktopHandoff::offloadable(const Scenes::Scene& scene, DesktopLink& link)
+{
+    return scene.get_capabilities().supports_remote_rendering && link.worker_available(scene.get_name());
+}
+
 std::optional<std::string> DesktopHandoff::offload_reason(const Scenes::Scene &scene)
 {
     // The desktop always renders full quality, so a quality-reduced Pi scene goes there too.
@@ -141,7 +146,7 @@ void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int heig
 
     const auto caps = scene.get_capabilities();
     reason_ = "local render is within the measured frame budget";
-    if (caps.supports_remote_rendering && link_.worker_available(scene.get_name())) {
+    if (offloadable(scene, link_)) {
         if (session_ && session_scene_ == scene.get_name()) {
             // A transition warmed this scene on the desktop. Re-requesting reuses
             // the session while the scene's properties are unchanged.
@@ -151,7 +156,8 @@ void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int heig
             request_scene_desktop();
             reason_ = std::move(*why);
         }
-    } else {
+    }
+    else {
         const auto remote = link_.status();
         if (session_ || remote.requested)
             stop();
@@ -193,9 +199,7 @@ void DesktopHandoff::local_frame_rendered(double active_render_ms)
     // Learn on the actual Pi instead of guessing from x86/QEMU timings. Sustained
     // pressure starts the desktop in parallel; local rendering continues until the
     // first complete remote frame arrives, so there is never a blank handoff.
-    if (!placement_.local_frame_rendered(active_render_ms, budget_ms_)
-        || !scene_->get_capabilities().supports_remote_rendering
-        || !link_.worker_available(scene_->get_name()))
+    if (!placement_.local_frame_rendered(active_render_ms, budget_ms_) || !offloadable(*scene_, link_))
         return;
     request_scene_desktop();
     if (placement_.has_session()) {
@@ -225,7 +229,7 @@ bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const r
 {
     transition_.reset();
     const auto copied = std::exchange(copied_frame_, std::nullopt);
-    if (!next.get_capabilities().supports_remote_rendering || !link_.worker_available(next.get_name()))
+    if (!offloadable(next, link_))
         return false;
     const auto duration = std::clamp<tmillis_t>(duration_ms, 1, MaxTransitionMs);
     nlohmann::json transition{{"name", name}, {"duration_ms", duration}};
@@ -303,8 +307,7 @@ void DesktopHandoff::begin_local_transition(const Scenes::Scene &next, int width
     incoming_.reset();
     incoming_width_ = width;
     incoming_height_ = height;
-    if (next.get_capabilities().supports_remote_rendering && link_.worker_available(next.get_name())
-        && offload_reason(next).has_value())
+    if (offloadable(next, link_) && offload_reason(next).has_value())
         incoming_ = request(next, width, height, next.get_declared_target_fps());
     if (!incoming_ && (session_ || link_.status().requested))
         stop();
