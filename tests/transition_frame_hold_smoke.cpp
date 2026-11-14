@@ -102,15 +102,21 @@ int main()
         return 1;
     }
 
-    // Put a known bright frame on the actual display. Every reusable transition
-    // canvas starts dark so an erroneous swap is immediately visible.
+    RecordingPresenter presenter(matrix.get());
+    SteppingTimeSource time_source;
+    FrameSink sink(matrix.get(), &time_source, nullptr, &presenter);
+
+    // Put a known bright frame on the actual display through the sink. Every
+    // reusable transition canvas starts dark so an erroneous swap is immediately
+    // visible.
     auto *display = matrix->CreateFrameCanvas();
     display->Fill(212, 212, 212);
-    (void)matrix->SwapOnVSync(display, 1);
+    sink.present(display, 60);
+    presenter.samples.clear();
 
     auto *first = matrix->CreateFrameCanvas();
     auto *second = matrix->CreateFrameCanvas();
-    auto *composite = matrix->CreateFrameCanvas();
+    auto* composite = display;
     first->Fill(18, 18, 18);
     second->Fill(18, 18, 18);
     composite->Fill(18, 18, 18);
@@ -118,18 +124,12 @@ int main()
     auto current = initialize_scene(std::make_shared<HeldScene>());
     auto next = initialize_scene(std::make_shared<StableScene>());
 
-    RecordingPresenter presenter(matrix.get());
-    SteppingTimeSource time_source;
     std::atomic<bool> exit_flag{false};
     std::atomic<bool> interrupt_flag{false};
-    TransitionEngine engine(
-        matrix.get(), &time_source, nullptr, nullptr, &presenter,
-        &exit_flag, &interrupt_flag);
+    TransitionEngine engine(&time_source, nullptr, &sink, &exit_flag, &interrupt_flag);
 
     std::shared_ptr<Scenes::Scene> forced_scene;
-    engine.render_transition_phase(
-        current, next, first, second, composite,
-        32, 32, 100, "blend", forced_scene, 100, {}, display);
+    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", forced_scene, 100, {});
 
     if (presenter.samples.empty()) {
         std::cerr << "transition produced no presented frames\n";
@@ -158,8 +158,7 @@ int main()
     });
     presenter.samples.clear();
     forced_scene.reset();
-    engine.render_transition_phase(current, next, first, second, composite,
-        32, 32, 1000, "blend", forced_scene, 0, {}, display);
+    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 1000, "blend", forced_scene, 0, {});
     if (!sent_transition || presenter.samples.size() != 1 || presenter.samples[0] != 83
         || forced_scene != next || RemoteRender::status().requested) {
         std::cerr << "desktop composition or stalled-worker fallback failed\n";
@@ -168,8 +167,7 @@ int main()
     RemoteRender::set_command_sender([](const nlohmann::json &) {});
     presenter.samples.clear();
     forced_scene.reset();
-    engine.render_transition_phase(current, next, first, second, composite,
-        32, 32, 100, "blend", forced_scene, 0, {}, display);
+    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", forced_scene, 0, {});
     if (presenter.samples.empty() || forced_scene != next) {
         std::cerr << "worker startup timeout failed to render locally\n";
         return 5;

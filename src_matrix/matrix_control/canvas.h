@@ -5,6 +5,13 @@
 #include <memory>
 #include <optional>
 
+#include "AutomaticDirector.h"
+#include "FrameSink.h"
+#include "MatrixPresenter.h"
+#include "SceneRenderer.h"
+#include "SceneScheduler.h"
+#include "TransitionEngine.h"
+#include "TransitionPlanner.h"
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/Scene.h"
@@ -12,13 +19,6 @@
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/transition_manager.h"
-
-#include "MatrixPresenter.h"
-#include "AutomaticDirector.h"
-#include "TransitionPlanner.h"
-#include "SceneScheduler.h"
-#include "SceneRenderer.h"
-#include "TransitionEngine.h"
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
@@ -68,6 +68,8 @@ private:
     void ensure_automatic_catalog();
     void sync_automatic_preferences();
     void prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs);
+    /// Every frame, scene or transition, reaches the panel through this sink.
+    FrameSink frame_sink_;
     /// One owner of the desktop render session across scene and transition phases.
     DesktopHandoff desktop_handoff_;
     SceneRenderer renderer_;

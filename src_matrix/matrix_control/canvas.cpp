@@ -30,12 +30,14 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase* matrix, TimeSource* time_sou
       broadcast_fn_(std::move(broadcast)),
       automatic_director_(cfg->get_automatic_director_seed(),
                           [](const Scenes::Scene& scene) { return DesktopHandoff::offloadable(scene); }),
-      renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_),
-      transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
+      frame_sink_(matrix, time_source, post_processor, presenter),
+      renderer_(matrix, time_source, &frame_sink_, exit_flag, interrupt_flag, &desktop_handoff_),
+      transition_engine_(time_source, transition_manager, &frame_sink_, exit_flag, interrupt_flag, &desktop_handoff_)
 {
-    renderer_.set_brightness_provider([cfg]() -> std::optional<int> {
+    frame_sink_.set_brightness_provider([cfg]() -> std::optional<int> {
         const auto schedule = cfg->get_brightness_schedule();
-        if (!schedule.enabled) return std::nullopt;
+        if (!schedule.enabled)
+            return std::nullopt;
         const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::tm local{};
         localtime_r(&now, &local);
@@ -386,12 +388,9 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             if (prime_incoming_desktop_stream)
                 broadcast_fn_(next_scene->get_name());
 
-            transition_engine_.render_transition_phase(
-                scene, next_scene,
-                first, second, composite,
-                matrix_width, matrix_height,
-                transition_duration, transition_name, forced_scene_, transition_delay,
-                std::move(transition_inputs_still_available), renderer_.last_presented_canvas());
+            transition_engine_.render_transition_phase(scene, next_scene, first, second, composite, matrix_width, matrix_height,
+                                                       transition_duration, transition_name, forced_scene_, transition_delay,
+                                                       std::move(transition_inputs_still_available));
             Diagnostics::RuntimeDiagnostics::instance().end_transition_timeline();
 
             if (prime_incoming_desktop_stream && forced_scene_ != next_scene)

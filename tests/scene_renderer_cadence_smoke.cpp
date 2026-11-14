@@ -145,9 +145,8 @@ int main()
     CountingPresenter presenter;
     std::atomic<bool> exit_flag{false};
     std::atomic<bool> interrupt_flag{false};
-    SceneRenderer renderer(
-        &matrix, &time_source, nullptr, &presenter,
-        &exit_flag, &interrupt_flag);
+    FrameSink sink(&matrix, &time_source, nullptr, &presenter);
+    SceneRenderer renderer(&matrix, &time_source, &sink, &exit_flag, &interrupt_flag);
 
     const auto wall_start = std::chrono::steady_clock::now();
     renderer.render_scene_phase(scene, canvas, 5000);

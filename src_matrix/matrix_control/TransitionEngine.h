@@ -1,53 +1,37 @@
 #pragma once
 
 #include <atomic>
-#include <memory>
 #include <functional>
+#include <memory>
 #include <string>
 
+#include "DesktopHandoff.h"
+#include "FrameSink.h"
 #include "led-matrix.h"
 #include "shared/common/timesource/TimeSource.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
-#include "DesktopHandoff.h"
-#include "MatrixPresenter.h"
 
 using rgb_matrix::FrameCanvas;
 using rgb_matrix::RGBMatrixBase;
 
 class TransitionEngine {
 public:
-    TransitionEngine(RGBMatrixBase *matrix,
-                     TimeSource *time_source,
-                     PostProcessor *post_processor,
-                     TransitionManager *transition_manager,
-                     MatrixPresenter *presenter,
-                     const std::atomic<bool> *exit_flag,
-                     const std::atomic<bool> *interrupt_flag,
-                     DesktopHandoff *handoff = nullptr);
+    TransitionEngine(TimeSource* time_source, TransitionManager* transition_manager, FrameSink* sink, const std::atomic<bool>* exit_flag,
+                     const std::atomic<bool>* interrupt_flag, DesktopHandoff* handoff = nullptr);
 
-    void render_transition_phase(
-        std::shared_ptr<Scenes::Scene> scene,
-        std::shared_ptr<Scenes::Scene> next_scene,
-        FrameCanvas *first_offscreen_canvas,
-        FrameCanvas *second_offscreen_canvas,
-        FrameCanvas *&composite_offscreen_canvas,
-        int matrix_width,
-        int matrix_height,
-        tmillis_t transition_duration,
-        const std::string &transition_name,
-        std::shared_ptr<Scenes::Scene> &forced_scene,
-        tmillis_t start_delay_ms = 0,
-        std::function<bool()> inputs_still_available = {},
-        FrameCanvas *current_display_canvas = nullptr);
+    void render_transition_phase(std::shared_ptr<Scenes::Scene> scene, std::shared_ptr<Scenes::Scene> next_scene,
+                                 FrameCanvas* first_offscreen_canvas, FrameCanvas* second_offscreen_canvas,
+                                 FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
+                                 tmillis_t transition_duration, const std::string& transition_name,
+                                 std::shared_ptr<Scenes::Scene>& forced_scene, tmillis_t start_delay_ms = 0,
+                                 std::function<bool()> inputs_still_available = {});
 
 private:
-    RGBMatrixBase *matrix_;
-    TimeSource *time_source_;
-    PostProcessor *post_processor_;
+    TimeSource* time_source_;
     TransitionManager *transition_manager_;
-    MatrixPresenter *presenter_;
+    FrameSink* sink_;
     const std::atomic<bool> *exit_flag_;
     const std::atomic<bool> *interrupt_flag_;
     /// Shared with SceneRenderer (see Canvas) so a warmed session carries over.

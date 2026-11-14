@@ -205,6 +205,7 @@ else()
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/VisualJourney.cpp
         src_matrix/matrix_control/TransitionPlanner.cpp
         src_matrix/matrix_control/SceneLabRuntime.cpp
+        src_matrix/matrix_control/FrameSink.cpp
         src_matrix/matrix_control/SceneRenderer.cpp
         src_matrix/matrix_control/TransitionEngine.cpp
         src_matrix/matrix_control/DesktopHandoff.cpp
@@ -1050,6 +1051,7 @@ if(ENABLE_EMULATOR)
     add_executable(runtime_selection_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_selection_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneScheduler.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
@@ -1073,6 +1075,7 @@ if(ENABLE_EMULATOR)
 
     add_executable(scene_renderer_cadence_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_renderer_cadence_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
@@ -1116,6 +1119,7 @@ if(ENABLE_EMULATOR)
 
     add_executable(scene_renderer_frame_hold_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_renderer_frame_hold_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
@@ -1136,8 +1140,33 @@ if(ENABLE_EMULATOR)
     add_test(NAME scene_renderer_frame_hold_smoke COMMAND $<TARGET_FILE:scene_renderer_frame_hold_smoke>)
     set_tests_properties(scene_renderer_frame_hold_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(frame_sink_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_sink_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+    )
+    target_compile_features(frame_sink_smoke PRIVATE cxx_std_23)
+    target_compile_definitions(frame_sink_smoke PRIVATE ENABLE_EMULATOR)
+    target_include_directories(frame_sink_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix
+    )
+    target_link_libraries(frame_sink_smoke PRIVATE
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        spdlog::spdlog
+        fmt::fmt
+        PkgConfig::GraphicsMagick
+    )
+    add_test(NAME frame_sink_smoke COMMAND $<TARGET_FILE:frame_sink_smoke>)
+    set_tests_properties(frame_sink_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(transition_frame_hold_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/transition_frame_hold_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
