@@ -6,12 +6,15 @@ This is an unfinished prototype, not a fabrication release. No PCB has been desi
 
 Work and physical test results are tracked in [issue #165](https://github.com/sshcrack/led-matrix/issues/165): [fit verification #170](https://github.com/sshcrack/led-matrix/issues/170), [mechanical completion #171](https://github.com/sshcrack/led-matrix/issues/171), [electronics #172](https://github.com/sshcrack/led-matrix/issues/172), and [halo lighting #208](https://github.com/sshcrack/led-matrix/issues/208). Do not print the full assembly yet.
 
+**Mounting update: measured-v1.** The actual panel has **eight mounting points**, including staggered intermediate holes on its opposite edges. The six-hole drawing assumption is superseded. The v0.6 carrier and STL mounting gauge still contain that old pattern and must not be printed. Only the new paper check reflects these measurements; the complete enclosure has not yet been corrected.
+
 ## Downloads and viewing
 
 [Prototype downloads](https://github.com/sshcrack/led-matrix/releases/tag/hardware-oak-panel) provide:
 
 - `oak-panel-cad-v0.6.zip`: sources, assembly/exploded/part STEP, STL concepts, a dimensioned SVG, a single-panel paper template, the interactive viewer and validation manifests.
-- `oak-panel-first-print-kit.zip`: **only** the two suggested fit-test prints and their instructions.
+- `single-panel-mounting-check.pdf`: current **measured-v1 eight-hole paper check**, also published with a revision-specific filename. Download it separately; the PDFs inside older CAD bundles are superseded.
+- `oak-panel-first-print-kit.zip`: historical six-hole gauge and clearance coupon, **ON HOLD**. Do not submit the mounting gauge for printing.
 
 Extract the CAD bundle and open `exports/oak-enclosure.html` in a browser. For a CAD application such as FreeCAD, open `exports/assembly.step` or an individual part STEP. STEP contains solids; the original parameters and construction history remain in `enclosure.py`. There is no native FreeCAD `.FCStd` project.
 
@@ -34,7 +37,7 @@ On Windows, use `.venv/Scripts/python.exe` in place of `.venv/bin/python`. Exist
 ## Current mechanical basis
 
 - Supplier nominal panel envelope: 192 × 192 mm. Approximate measured depth: 15 mm from LED tips to rear mounting face, and 32 mm including the connected cable bend.
-- The supplied Adafruit 4732 drawing is adopted as a matching-panel assumption: M3, columns ±85 mm and rows -73/0/+73 mm from each panel centre. Physical agreement is unverified. The drawing frame is 191.70 mm square and is centred within the nominal module envelope; the imported reference meshes were not used as drilling templates.
+- The supplied Adafruit 4732 drawing is adopted as a matching-panel assumption: M3, columns ±85 mm and rows -73/0/+73 mm from each panel centre. This assumption is now superseded for fit verification; the modeled carriers have not yet been updated. The drawing frame is 191.70 mm square and is centred within the nominal module envelope; the imported reference meshes were not used as drilling templates.
 - Four 191.6 mm PETG carrier tiles on 192 mm pitch leave 0.4 mm seams. Each has a 4 mm web, a 6 mm forward rim and six integrated 12 mm spacer bosses. The 3.5 mm bores, 10 mm boss outside diameter and screw-head spaces are provisional.
 - Four 50 × 16 × 4 mm bolted joiners connect tile seams. Four vented cover quadrants are approximately 193.3 mm square. All exported printed parts fit a 210 × 250 × 210 mm bed with a 5 mm XY margin on every side.
 - Carriers are oriented for printing rear face down, with the bosses rising from the bed-facing web. PETG is a starting material, not a validated operating-temperature specification. The print service determines settings, filament availability and price.
@@ -44,14 +47,39 @@ On Windows, use `.venv/Scripts/python.exe` in place of `.venv/bin/python`. Exist
 
 The material/manufacturing constraints and measurement confidence are in `measurement-basis.json`. Supplier references: [Waveshare P3 panel](https://www.waveshare.com/rgb-matrix-p3-64x64.htm), [Adafruit 4732](https://www.adafruit.com/product/4732), [PETG guidance](https://help.prusa3d.com/article/petg_2059).
 
+## Measured relative pattern / measured-v1
+
+Raw digital readings, exclusions and confidence are in `mounting-measurements.json`; `mounting_measurements.py` calculates the relative pattern. The reference features are the **narrow smooth shafts below the original magnetic discs**, approximately coaxial with the inserts. They are not the disc diameters or inside threads. The method uses `(mean outside + mean inside) / 2`, or `mean outside - (diameter 1 + diameter 2) / 2` where the inside jaws cannot reach. D uses the two unequal shaft diameters 5.50 and 5.15 mm; invalid D inside readings and all early analog trials are excluded.
+
+| Span | Direct derived centre distance (mm) | Paper-check choice |
+| --- | ---: | --- |
+| A / upper right | 78.787 | A; provisionally F = A |
+| B / lower right | 79.112 | B; provisionally E = B |
+| C / bottom right | 94.395 | G via C = G; first C inside reading excluded, others provisional |
+| D / bottom left | 79.285 | D; provisionally H = D |
+| G / top left | 94.445 | G, a single outside measurement with measured shafts |
+| H / top right | 79.275 | Control only; template uses D |
+
+These are calculation digits, **not a certified tolerance**. B/C include photo-transcribed readings; A and D were explicitly text-confirmed. Repeated measurements do not establish shaft coaxiality or caliper alignment. The user confirmed **H = D, G = C, F = A, E = B** as provisional fit-template assumptions; the control readings are retained separately rather than silently averaged into them.
+
+The resulting outer centre spans are approximately **173.73 x 157.90 mm**. With hole `(0,0)` as the local origin, the bottom intermediate hole is at x = 79.285 mm and the top intermediate hole at x = 94.445 mm. IDs follow the owner's sketch, not a uniform grid. This pattern has **no centre hole**. Its orientation relative to HUB75 connectors and its position within the panel perimeter remain unconfirmed; it must not be centred within the 192 mm outline by assumption.
+
 ## Verify before the next paid print
 
-1. Print `single-panel-mounting-check.pdf` at Actual size / 100%. Confirm the calibration bar is 100 mm. Check the six centres against one panel's rear inserts; the panels may remain glued together. Record accessible matches/misses in the issue.
-2. If the pattern agrees, submit only the first-print kit, preferably as one print job. Print at 100% scale. The gauge aligns by its six holes, not its outside edges; it has no 192 mm panel-outline datum.
-3. Use the notched coupon to try 3.2 / 3.4 / 3.5 / 3.6 mm clearances with actual M3 hardware. This tests printed clearance, not internal thread pitch or safe insert engagement.
-4. After the result, the linked implementation issues govern a one-panel carrier/diffuser trial and the complete mechanical/electrical design. Do not force screws or use unestablished screw lengths.
+1. Download the separate measured-v1 PDF. Print Actual size / 100%, with Fit/Shrink disabled. Measure **both** horizontal and vertical bars: each must be 100 mm. The previous 96 mm result was a 96% print and cannot establish hole-position errors reliably.
+2. On the unplugged panel, align the sheet by insert centres, not panel edges. Check all eight accessible points and record match/miss by ID and approximate error direction/amount. Panels may remain joined. Mark the HUB75 IN edge and panel outline on the sheet to establish orientation; do not force screws.
+3. Establish accurate edge-to-centre offsets and check the relative pattern physically before transferring it into the full enclosure. The old six-hole STL gauge and carrier are on hold. The clearance coupon alone cannot validate mounting positions.
+4. Once the corrected pattern is verified, issue #170 governs the revised small fit gauge and clearance/engagement checks, followed by the one-panel carrier/diffuser trial under #171. Screw length remains unresolved.
 
-The reproducible build checks each represented component as a valid solid, pairwise positive-volume intersections and assembly STEP round-trip solid count/volume. Each printed mesh is checked for watertightness, mesh-to-CAD volume agreement and bed fit. The build does not slice the job or verify real cable routing, tolerances, strength/creep, wall fastening, cooling, RF, electronics, diffuser or halo behaviour. The mounting template and first-print gauge/coupon geometry are unchanged from v0.5, so a check already in progress remains valid.
+Regenerate only the paper check without a CAD build:
+
+```sh
+.venv/bin/python make-mounting-template.py
+```
+
+This writes `exports/single-panel-mounting-check.pdf` and `exports/mounting-pattern-derived.json`. `build.py` includes the new paper check but still exports the historical six-hole concept solids; its first-print instructions and manifest flag that hold explicitly.
+
+The reproducible build checks each represented component as a valid solid, pairwise positive-volume intersections and assembly STEP round-trip solid count/volume. Each printed mesh is checked for watertightness, mesh-to-CAD volume agreement and bed fit. The build does not slice the job or verify real cable routing, tolerances, strength/creep, wall fastening, cooling, RF, electronics, diffuser or halo behaviour. Geometry checks do not validate the obsolete six-hole mounting assumption. The paper check now uses measured-v1; the STL mounting gauge remains superseded.
 
 ## Revision record
 
@@ -64,4 +92,4 @@ The reproducible build checks each represented component as a valid solid, pairw
 | v0.5 | FDM carriers/joiners and split cover replace the metal chassis; 60 mm frame. |
 | v0.6 | Narrow black printed bezel replaces oak; rear halo reservations and provisional 25 mm wall gap. |
 
-Earlier concept exports are superseded by v0.6; the v0.5 mounting checks remain valid. This source publication starts Git history for the hardware work; future iterations should be committed and their validation evidence attached to the issue.
+Earlier appearance concepts are superseded by v0.6. All six-hole mounting checks in v0.5/v0.6 bundles are superseded by the separate measured-v1 paper check. This source publication starts Git history for the hardware work; future iterations should be committed and their validation evidence attached to the issue.

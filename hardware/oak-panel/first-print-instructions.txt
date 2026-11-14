@@ -1,3 +1,11 @@
+ON HOLD - SIX-HOLE MOUNTING GAUGE SUPERSEDED
+
+Do not print FIRST_PRINT_mounting_gauge.stl or the full carrier. They still use the obsolete six-hole drawing assumption. The current measured-v1 PAPER template has eight holes and must be verified before a corrected gauge is designed.
+
+The hole coupon remains a standalone clearance experiment only; it does not establish thread pitch, screw engagement, mounting positions or load capacity.
+
+Historical instructions below are retained for context and are NOT current print approval.
+
 FIRST PRINT ONLY - PETG fit gauges
 
 Submit FIRST_PRINT_mounting_gauge.stl and FIRST_PRINT_hole_coupon.stl together if the service can arrange them as one job. Both flat face down, actual size / 100%, no auto-scaling. Target Prusa i3 MK3s. Ask the service for slicing and price before printing. They may choose suitable print parameters.

@@ -13,7 +13,7 @@ out.mkdir(parents=True, exist_ok=True)
 manifest = {
     "target": "Prusa i3 MK3s, owner-provided 210 x 250 x 210 mm",
     "material": "PETG, confirm actual stock",
-    "status": "Only preflight parts suggested for first print. Assembly parts are unvalidated concepts.",
+    "status": "ON HOLD: six-hole gauge and carriers are superseded by measured-v1 paper verification. Do not print them. All assembly parts are unvalidated concepts.",
     "parts": [],
 }
 

@@ -65,7 +65,8 @@
     "spacer_length_mm": 12,
     "spacer_outer_diameter_mm": 6.5,
     "screw_length": "Not selected; usable insert engagement depth unknown",
-    "earlier_photo_estimates": "Retained as separate evidence; drawing coordinates now govern this revision"
+    "earlier_photo_estimates": "Historical evidence only. The measured eight-hole paper pattern now governs fit verification; full enclosure coordinates await edge datums and orientation.",
+    "status": "SUPERSEDED for fit verification. Six-hole geometry remains in enclosure concept only; not approved for printing."
   },
   "manufacturing": {
     "basis": "FDM-accessible design; no CNC fabrication required for internal parts",
@@ -108,5 +109,17 @@
     ],
     "power_intent": "Same external supply with protected branch; actual strip, driver and additional wattage unselected",
     "status": "CAD reservations and cover passage only; no lighting hardware or software implemented"
+  },
+  "measured_mounting_pattern": {
+    "source": "mounting-measurements.json",
+    "status": "Provisional eight-hole relative pattern; no centre hole; top/bottom intermediate holes oppositely staggered",
+    "pairings": [
+      "H = D",
+      "G = C",
+      "F = A",
+      "E = B"
+    ],
+    "edge_offsets_mm": null,
+    "enclosure_transfer": "Not yet applied: verify paper fit, connector orientation and edge offsets first"
   }
 }
