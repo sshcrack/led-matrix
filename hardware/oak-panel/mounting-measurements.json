@@ -215,5 +215,16 @@
     "basis": "Owner asks whether only corner screws can be used; adopted to simplify prototype mounting and measurement",
     "required_measurements": "Identify four corners in rear view and HUB75 IN edge; perpendicular offsets from each corner insert centre to both adjacent outer plastic panel edges, with contact surfaces and shaft diameter recorded; confirm overall envelope before final coordinate transfer",
     "validation": "No four-corner carrier has been generated or load/deflection tested yet. Confirm coplanar support, insert engagement and physical fit before full printing."
+  },
+  "corner_approximate_report": {
+    "reported_x_mm": 11.0,
+    "reported_y_mm": 18.6,
+    "reported_diameter_mm": 5.2,
+    "reported_scope": "Owner estimates the same X/Y at every corner",
+    "confidence": "Approximate only; owner could not obtain accurate contact measurements",
+    "edge_contact_definition": "Unconfirmed: edge-to-far-shaft span versus edge-to-hole-centre estimate",
+    "diameter_feature": "Unconfirmed: narrow smooth shaft versus threaded screw part",
+    "coordinate_adoption": "None. Await contact definitions; prior coordinate model remains withdrawn.",
+    "thread_specification": "Do not infer thread diameter or pitch from this unconfirmed reference-feature diameter."
   }
 }
