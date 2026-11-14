@@ -6,14 +6,14 @@ This is an unfinished prototype, not a fabrication release. No PCB has been desi
 
 Work and physical test results are tracked in [issue #165](https://github.com/sshcrack/led-matrix/issues/165): [fit verification #170](https://github.com/sshcrack/led-matrix/issues/170), [mechanical completion #171](https://github.com/sshcrack/led-matrix/issues/171), [electronics #172](https://github.com/sshcrack/led-matrix/issues/172), and [halo lighting #208](https://github.com/sshcrack/led-matrix/issues/208). Do not print the full assembly yet.
 
-**Mounting update: measured-v1.** The actual panel has **eight mounting points**, including staggered intermediate holes on its opposite edges. The six-hole drawing assumption is superseded. The v0.6 carrier and STL mounting gauge still contain that old pattern and must not be printed. Only the new paper check reflects these measurements; the complete enclosure has not yet been corrected.
+**Mounting correction: measured-v1 is WITHDRAWN.** The intermediate inserts also have offsets perpendicular to the panel edges relative to the corner-insert lines. The eight-hole template incorrectly assumed collinearity; both its standard and 95 mm compensated versions are unsuitable for fit verification. Raw digital readings remain evidence, but their measuring-axis directions and individual X/Y coordinates need establishing. The v0.6 six-hole carrier/gauge also remain on hold. Do not print any mounting pattern or carrier yet.
 
 ## Downloads and viewing
 
 [Prototype downloads](https://github.com/sshcrack/led-matrix/releases/tag/hardware-oak-panel) provide:
 
 - `oak-panel-cad-v0.6.zip`: sources, assembly/exploded/part STEP, STL concepts, a dimensioned SVG, a single-panel paper template, the interactive viewer and validation manifests.
-- `single-panel-mounting-check.pdf`: current **measured-v1 eight-hole paper check**, also published with a revision-specific filename. Download it separately; the PDFs inside older CAD bundles are superseded.
+- All `single-panel-mounting-check*.pdf` files and `mounting-check-measured-v1.zip` are **WITHDRAWN**. Published standalone PDFs now show a withdrawal notice. Templates embedded in older CAD bundles are also unsuitable.
 - `oak-panel-first-print-kit.zip`: historical six-hole gauge and clearance coupon, **ON HOLD**. Do not submit the mounting gauge for printing.
 
 Extract the CAD bundle and open `exports/oak-enclosure.html` in a browser. For a CAD application such as FreeCAD, open `exports/assembly.step` or an individual part STEP. STEP contains solids; the original parameters and construction history remain in `enclosure.py`. There is no native FreeCAD `.FCStd` project.
@@ -49,7 +49,7 @@ The material/manufacturing constraints and measurement confidence are in `measur
 
 ## Measured relative pattern / measured-v1
 
-Raw digital readings, exclusions and confidence are in `mounting-measurements.json`; `mounting_measurements.py` calculates the relative pattern. The reference features are the **narrow smooth shafts below the original magnetic discs**, approximately coaxial with the inserts. They are not the disc diameters or inside threads. The method uses `(mean outside + mean inside) / 2`, or `mean outside - (diameter 1 + diameter 2) / 2` where the inside jaws cannot reach. D uses the two unequal shaft diameters 5.50 and 5.15 mm; invalid D inside readings and all early analog trials are excluded.
+**This section records the withdrawn construction, not usable drilling/fit coordinates.** Raw digital readings, exclusions and confidence are in `mounting-measurements.json`; `mounting_measurements.py` calculates the relative pattern. The reference features are the **narrow smooth shafts below the original magnetic discs**, approximately coaxial with the inserts. They are not the disc diameters or inside threads. The method uses `(mean outside + mean inside) / 2`, or `mean outside - (diameter 1 + diameter 2) / 2` where the inside jaws cannot reach. D uses the two unequal shaft diameters 5.50 and 5.15 mm; invalid D inside readings and all early analog trials are excluded.
 
 | Span | Direct derived centre distance (mm) | Paper-check choice |
 | --- | ---: | --- |
@@ -62,30 +62,21 @@ Raw digital readings, exclusions and confidence are in `mounting-measurements.js
 
 These are calculation digits, **not a certified tolerance**. B/C include photo-transcribed readings; A and D were explicitly text-confirmed. Repeated measurements do not establish shaft coaxiality or caliper alignment. The user confirmed **H = D, G = C, F = A, E = B** as provisional fit-template assumptions; the control readings are retained separately rather than silently averaged into them.
 
-The resulting outer centre spans are approximately **173.73 x 157.90 mm**. With hole `(0,0)` as the local origin, the bottom intermediate hole is at x = 79.285 mm and the top intermediate hole at x = 94.445 mm. IDs follow the owner's sketch, not a uniform grid. This pattern has **no centre hole**. Its orientation relative to HUB75 connectors and its position within the panel perimeter remain unconfirmed; it must not be centred within the 192 mm outline by assumption.
+The withdrawn construction summed these values into 173.73 x 157.90 mm and placed the bottom/top intermediate holes at x = 79.285/94.445 mm. These are **not established Cartesian coordinates or overall spans**: the intermediate inserts have offsets normal to the edge as well as along it, and the caliper measuring-axis directions were not recorded. Preserve the readings; do not silently reinterpret diagonal distances as X/Y projections. The eight sketch IDs and provisional pairings remain records, with no centre hole. Connector orientation and perimeter offsets remain unconfirmed.
 
-## Verify before the next paid print
+## Four-corner prototype mounting
 
-1. Download the separate measured-v1 PDF. Print Actual size / 100%, with Fit/Shrink disabled. Measure **both** horizontal and vertical bars: each must be 100 mm. The previous 96 mm result was a 96% print and cannot establish hole-position errors reliably.
-2. On the unplugged panel, align the sheet by insert centres, not panel edges. Check all eight accessible points and record match/miss by ID and approximate error direction/amount. Panels may remain joined. Mark the HUB75 IN edge and panel outline on the sheet to establish orientation; do not force screws.
-3. Establish accurate edge-to-centre offsets and check the relative pattern physically before transferring it into the full enclosure. The old six-hole STL gauge and carrier are on hold. The clearance coupon alone cannot validate mounting positions.
-4. Once the corrected pattern is verified, issue #170 governs the revised small fit gauge and clearance/engagement checks, followed by the one-panel carrier/diffuser trial under #171. Screw length remains unresolved.
+The next prototype carrier will use **the four corner inserts only**, leaving the offset intermediate inserts unused. The chosen four-point attachment still needs physical fit and support/deflection checks; no revised carrier exists yet. There is no need to finish measuring the unused intermediate holes to make this prototype.
 
-Regenerate only the paper check without a CAD build:
+Label the corners TL/TR/BL/BR in rear view and identify the HUB75 IN edge. For each corner, measure the insert centre's perpendicular offset from both adjacent **outer plastic panel edges**. These short measurements fit the existing caliper. Use the same original screw-in magnetic foot as the reference at every corner, measuring its narrow smooth shaft and recording its diameter. For an outside-jaw span from the panel's outer side to the shaft surface farthest from that side, centre inset = span minus half the shaft diameter. For example, 12.00 mm to the far side of a 5.50 mm shaft gives a 9.25 mm inset. Keep the measuring axis perpendicular to the edge and reference the actual panel body, not the PCB or adjoining module. Do not use the magnetic disc or threads as the contact feature; if the jaws cannot reach cleanly, clarify the setup rather than interpreting another contact surface with this formula.
 
-```sh
-.venv/bin/python make-mounting-template.py
-```
+Collect two insets per corner (eight readings), shaft diameter, corner/connector orientation and a check of the module envelope. The 192 mm square remains nominal, not a newly measured overall dimension. Edge insets allow a provisional layout within that envelope, followed by a corrected physical fit check; no long caliper is required for those insets. Individual X/Y coordinates must not be inferred by summing the earlier spans through offset intermediate holes.
 
-This writes `exports/single-panel-mounting-check.pdf` and `exports/mounting-pattern-derived.json`. `build.py` includes the new paper check but still exports the historical six-hole concept solids; its first-print instructions and manifest flag that hold explicitly.
+Issue #170 tracks the four-corner measurements and revised paper/gauge check. The old paper templates, compensation variant, STL mounting gauge and full carrier remain on hold. `make-mounting-template.py` and `build.py` now stop before exporting a pattern from the rejected coordinate model. Standalone enclosure solids remain historical concept geometry.
 
-If the print app offers no scaling controls and a 100 mm bar prints as approximately 95 mm, use the separate `single-panel-mounting-check-compensated-95mm.pdf` download with the **same printer, app and settings**. Its geometry is enlarged by `100 / 95 = 1.05263`, while the PDF remains A4. This is a provisional workaround for uniform, repeatable shrinking; **both bars must still print at 100 mm before checking the holes**. Measure the original bars with the caliper for a more precise correction; if the horizontal and vertical results differ, one uniform factor is insufficient. The canonical template and physical CAD dimensions remain unchanged. Generate a compensated copy with:
+The printer route previously shrank a nominal 100 mm bar to approximately 95 mm. A 100/95 correction addresses only uniform print scaling; it cannot fix missing hole offsets. Keep this as separate calibration evidence for a future corrected template, whose horizontal and vertical bars must both be verified.
 
-```sh
-.venv/bin/python make-mounting-template.py --printed-bar-mm 95
-```
-
-The reproducible build checks each represented component as a valid solid, pairwise positive-volume intersections and assembly STEP round-trip solid count/volume. Each printed mesh is checked for watertightness, mesh-to-CAD volume agreement and bed fit. The build does not slice the job or verify real cable routing, tolerances, strength/creep, wall fastening, cooling, RF, electronics, diffuser or halo behaviour. Geometry checks do not validate the obsolete six-hole mounting assumption. The paper check now uses measured-v1; the STL mounting gauge remains superseded.
+The reproducible build checks each represented component as a valid solid, pairwise positive-volume intersections and assembly STEP round-trip solid count/volume. Each printed mesh is checked for watertightness, mesh-to-CAD volume agreement and bed fit. The build does not slice the job or verify real cable routing, tolerances, strength/creep, wall fastening, cooling, RF, electronics, diffuser or halo behaviour. Geometry checks do not validate the obsolete six-hole mounting assumption. The measured-v1 paper check is withdrawn and the STL mounting gauge remains superseded.
 
 ## Revision record
 
@@ -98,4 +89,4 @@ The reproducible build checks each represented component as a valid solid, pairw
 | v0.5 | FDM carriers/joiners and split cover replace the metal chassis; 60 mm frame. |
 | v0.6 | Narrow black printed bezel replaces oak; rear halo reservations and provisional 25 mm wall gap. |
 
-Earlier appearance concepts are superseded by v0.6. All six-hole mounting checks in v0.5/v0.6 bundles are superseded by the separate measured-v1 paper check. This source publication starts Git history for the hardware work; future iterations should be committed and their validation evidence attached to the issue.
+Earlier appearance concepts are superseded by v0.6. All six-hole mounting checks in v0.5/v0.6 bundles and the later measured-v1 paper check are unsuitable for fit verification. This source publication starts Git history for the hardware work; future iterations should be committed and their validation evidence attached to the issue.

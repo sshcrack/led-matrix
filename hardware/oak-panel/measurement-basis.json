@@ -112,7 +112,7 @@
   },
   "measured_mounting_pattern": {
     "source": "mounting-measurements.json",
-    "status": "Provisional eight-hole relative pattern; no centre hole; top/bottom intermediate holes oppositely staggered",
+    "status": "WITHDRAWN collinear coordinate model. Private photos show additional normal offsets at intermediate inserts; individual hole coordinates unresolved.",
     "pairings": [
       "H = D",
       "G = C",
@@ -120,6 +120,6 @@
       "E = B"
     ],
     "edge_offsets_mm": null,
-    "enclosure_transfer": "Not yet applied: verify paper fit, connector orientation and edge offsets first"
+    "enclosure_transfer": "Do not transfer measured-v1 coordinates to CAD. Establish each hole from edge datums and measuring-axis directions first."
   }
 }

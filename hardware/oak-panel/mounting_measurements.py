@@ -9,6 +9,13 @@ def measured_pattern():
     data = json.loads(
         Path(__file__).with_name("mounting-measurements.json").read_text()
     )
+    if not data.get("coordinate_model_usable", False):
+        raise ValueError(
+            "Mounting pattern WITHDRAWN: intermediate inserts are not collinear "
+            "with corner inserts. Establish individual edge-referenced X/Y "
+            "coordinates before generating another fit template. "
+            "Raw measurements remain in mounting-measurements.json."
+        )
     measured = {}
     for name, series in data["series"].items():
         outside = mean(series["outside"])

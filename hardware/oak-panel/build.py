@@ -10,10 +10,16 @@ import subprocess
 import sys
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from mounting_measurements import measured_pattern
+
 root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, default=root / "exports")
 args = parser.parse_args()
+try:
+    measured_pattern()
+except ValueError as error:
+    parser.error(str(error))
 out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=True)
 env = {**os.environ, "OAK_PANEL_OUTPUT": str(out)}
