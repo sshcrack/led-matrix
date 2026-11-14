@@ -1247,6 +1247,21 @@ if(ENABLE_EMULATOR)
             --virtual-time-only
             --strict
     )
+    # Sanitizer builds render every previewable scene, wall-clock ones too, so
+    # scene-level ASan/UBSan reports fail CI. A short capture can be still
+    # (clock shows minutes), so only the visual-liveness check is relaxed.
+    if(NOT LED_MATRIX_SANITIZE STREQUAL "OFF")
+        add_test(NAME sanitizer_scene_sweep
+            COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
+                $<TARGET_FILE:preview_gen>
+                --output ${CMAKE_BINARY_DIR}/sanitizer-scene-sweep
+                --frames 30
+                --fps 30
+                --strict
+                --allow-still
+        )
+        set_tests_properties(sanitizer_scene_sweep PROPERTIES TIMEOUT 600)
+    endif()
     add_test(NAME audio_scene_preview_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>
