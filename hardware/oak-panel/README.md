@@ -79,6 +79,12 @@ Regenerate only the paper check without a CAD build:
 
 This writes `exports/single-panel-mounting-check.pdf` and `exports/mounting-pattern-derived.json`. `build.py` includes the new paper check but still exports the historical six-hole concept solids; its first-print instructions and manifest flag that hold explicitly.
 
+If the print app offers no scaling controls and a 100 mm bar prints as approximately 95 mm, use the separate `single-panel-mounting-check-compensated-95mm.pdf` download with the **same printer, app and settings**. Its geometry is enlarged by `100 / 95 = 1.05263`, while the PDF remains A4. This is a provisional workaround for uniform, repeatable shrinking; **both bars must still print at 100 mm before checking the holes**. Measure the original bars with the caliper for a more precise correction; if the horizontal and vertical results differ, one uniform factor is insufficient. The canonical template and physical CAD dimensions remain unchanged. Generate a compensated copy with:
+
+```sh
+.venv/bin/python make-mounting-template.py --printed-bar-mm 95
+```
+
 The reproducible build checks each represented component as a valid solid, pairwise positive-volume intersections and assembly STEP round-trip solid count/volume. Each printed mesh is checked for watertightness, mesh-to-CAD volume agreement and bed fit. The build does not slice the job or verify real cable routing, tolerances, strength/creep, wall fastening, cooling, RF, electronics, diffuser or halo behaviour. Geometry checks do not validate the obsolete six-hole mounting assumption. The paper check now uses measured-v1; the STL mounting gauge remains superseded.
 
 ## Revision record

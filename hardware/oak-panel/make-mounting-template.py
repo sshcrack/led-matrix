@@ -1,7 +1,9 @@
 """Provisional measured eight-hole check, printed at 1:1 on A4; no edge datum."""
 
 from decimal import Decimal, ROUND_HALF_UP
+import argparse
 import json
+import math
 import os
 from pathlib import Path
 
@@ -12,11 +14,29 @@ from reportlab.pdfgen import canvas
 from mounting_measurements import measured_pattern
 
 root = Path(__file__).resolve().parent
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument(
+    "--printed-bar-mm",
+    type=float,
+    help="Measured print length of an original 100 mm bar; assumes uniform scaling",
+)
+args = parser.parse_args()
+scale = 1.0
+if args.printed_bar_mm is not None:
+    if not math.isfinite(args.printed_bar_mm) or args.printed_bar_mm <= 0:
+        parser.error("Printed bar length must be positive and finite")
+    scale = 100 / args.printed_bar_mm
 out = Path(os.environ.get("OAK_PANEL_OUTPUT", root / "exports"))
 out.mkdir(parents=True, exist_ok=True)
 pattern = measured_pattern()
 (out / "mounting-pattern-derived.json").write_text(json.dumps(pattern, indent=2) + "\n")
 pdf = out / "single-panel-mounting-check.pdf"
+if args.printed_bar_mm is not None:
+    pdf = out / f"single-panel-mounting-check-compensated-{args.printed_bar_mm:g}mm.pdf"
+if pattern["width_mm"] * scale + 6 * scale > 194 or pattern["height_mm"] * scale > 170:
+    parser.error(
+        "Compensated pattern will not fit this A4 layout; use a different print route"
+    )
 c = canvas.Canvas(str(pdf), pagesize=A4)
 c.setTitle("P3 measured eight-hole mounting check - measured-v1 - PROVISIONAL")
 
@@ -42,7 +62,11 @@ text(
 text(
     12,
     270,
-    "Print Actual size / 100%. Disable Fit/Shrink. Verify BOTH 100 mm bars first.",
+    (
+        f"COMPENSATED for a {args.printed_bar_mm:g} mm print: use the SAME printer/app/settings."
+        if args.printed_bar_mm is not None
+        else "Print Actual size / 100%. Disable Fit/Shrink. Verify BOTH 100 mm bars first."
+    ),
 )
 text(
     12,
@@ -53,6 +77,10 @@ text(
 
 x0, y0 = 18, 87
 width, height = pattern["width_mm"], pattern["height_mm"]
+c.saveState()
+c.translate((x0 + width / 2) * mm, (y0 + height / 2) * mm)
+c.scale(scale, scale)
+c.translate(-(x0 + width / 2) * mm, -(y0 + height / 2) * mm)
 c.setLineWidth(0.4)
 c.setDash(2, 3)
 # These lines join centres. They do not represent the panel perimeter.
@@ -95,17 +123,19 @@ text(105, 152, f"Outer centre spans: {width:.2f} x {height:.2f} mm", 9, centre=T
 text(
     105, 143, "Decimals describe calculations, not certified accuracy.", 8, centre=True
 )
+c.restoreState()
 
 c.setLineWidth(0.8)
-line(18, 56, 118, 56)
-for x in [18, 118]:
+line(18, 56, 18 + 100 * scale, 56)
+for x in [18, 18 + 100 * scale]:
     line(x, 53, x, 59)
 text(68, 62, "100 mm HORIZONTAL", 9, True, centre=True)
-line(198, 94, 198, 194)
-for y in [94, 194]:
-    line(195, y, 201, y)
+bar_x = 7 if scale > 1 else 198
+line(bar_x, 144 - 50 * scale, bar_x, 144 + 50 * scale)
+for y in [144 - 50 * scale, 144 + 50 * scale]:
+    line(bar_x - 3, y, bar_x + 3, y)
 c.saveState()
-c.translate(204 * mm, 144 * mm)
+c.translate((12 if scale > 1 else 204) * mm, 144 * mm)
 c.rotate(90)
 c.setFont("Helvetica-Bold", 8)
 c.drawCentredString(0, 0, "100 mm VERTICAL")
@@ -113,7 +143,7 @@ c.restoreState()
 text(
     12,
     44,
-    "1. Both bars must measure 100 mm; a 96 mm bar means the print is still scaled.",
+    "1. BOTH bars must print at 100 mm. If either differs, do not judge hole alignment yet.",
     8,
 )
 text(
@@ -137,7 +167,11 @@ text(
 text(
     12,
     18,
-    "Reference circles are centre markers, not drilling sizes. No screw length specified.",
+    (
+        f"PDF geometry enlarged to {scale * 100:.3f}%; requires uniform {args.printed_bar_mm:g}% print scaling. Recheck bars."
+        if args.printed_bar_mm is not None
+        else "Reference circles are centre markers, not drilling sizes. No screw length specified."
+    ),
     8,
 )
 text(
