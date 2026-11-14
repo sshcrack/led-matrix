@@ -83,8 +83,7 @@ void CanvasCoordinator::sync_director_seed()
     // run() start and before each automatic scene choice.
     const auto configured_seed = config_->get_automatic_director_seed();
     const auto configured_generation = config_->get_automatic_director_generation();
-    if (automatic_director_.seed() != configured_seed
-        || automatic_director_generation_ != configured_generation) {
+    if (automatic_director_.seed() != configured_seed || automatic_director_generation_ != configured_generation) {
         automatic_director_.reseed(configured_seed);
         automatic_director_generation_ = configured_generation;
         info("Automatic Director reseeded with {}", configured_seed);
