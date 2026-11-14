@@ -33,7 +33,8 @@ SHARED_MATRIX_API void interrupt() noexcept;
 
 [[nodiscard]] SHARED_MATRIX_API bool restart_pending() noexcept;
 
-/// Called by the outer playback loop once it has seen the request.
+/// Called by the outer playback loop right before it starts a new run(), so
+/// every request made after that point ends the run it can no longer affect.
 SHARED_MATRIX_API void acknowledge() noexcept;
 
 /// `{pending, restarts, last_restart: {reason, unix_ms} | null}`

@@ -84,8 +84,11 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
 
         if (!cfg->is_turned_off()) {
-            coordinator.run(pinned_scene);
+            // Consume pending restart requests before run() samples config and
+            // playback state: a request that arrives while run() is running (or
+            // returning) stays set and ends the next run() instead of being lost.
             PlaybackControl::acknowledge();
+            coordinator.run(pinned_scene);
             debug("Outer loop iteration, checking again...");
             continue;
         }
