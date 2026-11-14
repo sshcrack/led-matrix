@@ -299,7 +299,7 @@ namespace Update
         info.is_prerelease = release.prerelease;
         return info;
     }
-    }
+    }  // namespace
 
     expected<UpdateInfo, string> UpdateManager::parse_release(const nlohmann::json& json, const std::optional<Common::Version>& version)
     {
