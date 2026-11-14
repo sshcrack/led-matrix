@@ -16,7 +16,7 @@
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/utils/shared.h"  // exit_canvas_update
+#include "shared/matrix/utils/shared.h"  // PlaybackControl
 #include "spdlog/spdlog.h"
 
 using namespace rgb_matrix;
@@ -55,13 +55,22 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
     };
 
-    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), cfg, &exit_canvas_update,
-                                  &interrupt_received, RuntimeInputs::snapshot, set_curr_scene, broadcast);
+    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), cfg,
+                                  &PlaybackControl::restart_flag(), &interrupt_received, RuntimeInputs::snapshot, set_curr_scene,
+                                  broadcast);
 
     string last_scheduled_preset = "";
 
     while (!interrupt_received)
     {
+        // Consume pending restart requests before sampling schedule, power and
+        // playback state: a request made after this point (e.g. power off right
+        // after the check below) stays set and ends the next run() instead of
+        // being lost.
+        PlaybackControl::acknowledge();
+        if (interrupt_received)
+            break;  // a shutdown signal may have landed right before the clear
+
         if (cfg->is_scheduling_enabled()) {
             auto active_preset = cfg->get_active_scheduled_preset();
             if (active_preset.has_value() && active_preset.value() != last_scheduled_preset)
@@ -84,7 +93,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 
         if (!cfg->is_turned_off()) {
             coordinator.run(pinned_scene);
-            exit_canvas_update = false;
             debug("Outer loop iteration, checking again...");
             continue;
         }

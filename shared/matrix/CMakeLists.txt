@@ -24,6 +24,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/shader_providers/general.cpp
         src/shared/matrix/update/UpdateManager.cpp
         src/shared/matrix/interrupt.cpp
+        src/shared/matrix/playback_control.cpp
         src/shared/matrix/server/server_utils.cpp
         src/shared/matrix/server/MimeTypes.cpp
         src/shared/matrix/server/common.cpp

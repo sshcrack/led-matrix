@@ -25,7 +25,7 @@ void publish_desktop_runtime_input(bool availability_changed)
          {"connections", static_cast<std::int64_t>(connections)},
          {"producer_owner_connection", static_cast<std::int64_t>(Server::desktop_producer_owner())}});
     if (availability_changed)
-        exit_canvas_update.store(true);
+        PlaybackControl::restart(connections > 0 ? "desktop_connected" : "desktop_disconnected");
 }
 
 void send_plugin_message(const Server::rws::ws_handle_t& socket,

@@ -844,6 +844,15 @@ if(ENABLE_EMULATOR)
     set_tests_properties(network_paths_probe PROPERTIES
         ENVIRONMENT "${PREVIEW_TEST_ENV}" LABELS network SKIP_RETURN_CODE 77 TIMEOUT 300)
 
+    # Config saves must not restart playback; only PlaybackControl intents do (#197).
+    add_executable(playback_control_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/playback_control_smoke.cpp
+    )
+    target_compile_features(playback_control_smoke PRIVATE cxx_std_23)
+    target_link_libraries(playback_control_smoke PRIVATE SharedToolsCommon SharedToolsMatrix nlohmann_json::nlohmann_json spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME playback_control_smoke COMMAND $<TARGET_FILE:playback_control_smoke>)
+    set_tests_properties(playback_control_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(update_release_parse_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_release_parse_smoke.cpp
     )

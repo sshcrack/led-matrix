@@ -1,9 +1,11 @@
 #pragma once
 
 #include <atomic>
+
 #include "nlohmann/json.hpp"
 #include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/export.h"
+#include "shared/matrix/playback_control.h"
 
 extern SHARED_MATRIX_API std::atomic<bool> skip_image;
 extern SHARED_MATRIX_API std::atomic<bool> exit_canvas_update;
