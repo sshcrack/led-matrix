@@ -63,6 +63,12 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 
     while (!interrupt_received)
     {
+        // Consume pending restart requests before sampling schedule, power and
+        // playback state: a request made after this point (e.g. power off right
+        // after the check below) stays set and ends the next run() instead of
+        // being lost.
+        PlaybackControl::acknowledge();
+
         if (cfg->is_scheduling_enabled()) {
             auto active_preset = cfg->get_active_scheduled_preset();
             if (active_preset.has_value() && active_preset.value() != last_scheduled_preset)
@@ -84,10 +90,6 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
 
         if (!cfg->is_turned_off()) {
-            // Consume pending restart requests before run() samples config and
-            // playback state: a request that arrives while run() is running (or
-            // returning) stays set and ends the next run() instead of being lost.
-            PlaybackControl::acknowledge();
             coordinator.run(pinned_scene);
             debug("Outer loop iteration, checking again...");
             continue;
