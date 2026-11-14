@@ -1,17 +1,18 @@
 #include "PixelJoint.h"
-#include "scenes/image/ImageScene.h"
-#include "providers/collection.h"
-#include "providers/pages.h"
 
 #include <vector>
-#include "restinio/uri_helpers.hpp"
+
+#include "ImagePreviewFixture.h"
+#include "picosha2.h"
+#include "providers/collection.h"
+#include "providers/pages.h"
 #include "restinio/helpers/file_upload.hpp"
 #include "restinio/helpers/multipart_body.hpp"
-#include "shared/matrix/utils/shared.h"
+#include "restinio/uri_helpers.hpp"
+#include "scenes/image/ImageScene.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/consts.h"
-
-#include "picosha2.h"
+#include "shared/matrix/utils/shared.h"
 
 using std::vector;
 using namespace ImageProviders;
@@ -24,6 +25,12 @@ PixelJoint::create_image_providers() {
     return providers;
 }
 
+vector<std::unique_ptr<Previews::DataProvider>> PixelJoint::create_preview_data_providers()
+{
+    vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(ImagePreviewFixture::make_provider());
+    return providers;
+}
 
 vector<std::unique_ptr<SceneWrapper>> PixelJoint::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> created;

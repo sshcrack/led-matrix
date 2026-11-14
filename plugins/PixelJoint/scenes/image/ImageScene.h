@@ -3,18 +3,18 @@
 #include <content-streamer.h>
 #include <shared/matrix/utils/AnimationPlayer.h>
 
-#include "led-matrix.h"
+#include <future>
 #include <optional>
 #include <utility>
-#include <future>
-#include "shared/matrix/config/MainConfig.h"
-#include "spdlog/spdlog.h"
 
+#include "led-matrix.h"
+#include "matrix/ImagePreviewFixture.h"
 #include "shared/matrix/Scene.h"
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/config/data.h"
 #include "shared/matrix/plugin/main.h"
 #include "shared/matrix/utils/utils.h"
-#include "shared/matrix/config/data.h"
-
+#include "spdlog/spdlog.h"
 
 static const tmillis_t distant_future = (1LL << 40); // that is a while.
 struct ImageParams {
@@ -105,6 +105,14 @@ public:
         auto caps = Scenes::Scene::get_capabilities();
         caps.requires_network = true;
         return caps;
+    }
+
+    // Previews show a bundled fixture image instead of scraping the network.
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
+        auto spec = Previews::SceneSpec::with_inputs({ImagePreviewFixture::InputId});
+        spec.set_property("providers", ImagePreviewFixture::providers_json());
+        return spec;
     }
 
     void register_properties() override {

@@ -12,6 +12,7 @@ public:
 
     vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
     vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
+    vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() override;
 
     std::unique_ptr<router_t> register_routes(std::unique_ptr<router_t> router) override;
     std::string get_plugin_name() const override { return PLUGIN_NAME; }

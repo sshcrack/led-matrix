@@ -1,11 +1,14 @@
-#include <iostream>
 #include "WeatherOverview.h"
-#include "scenes/WeatherScene.h"
-#include "scenes/WeatherAmbienceScene.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
-#include "spdlog/spdlog.h"
+
+#include <iostream>
+
 #include "Constants.h"
+#include "WeatherPreviewFixture.h"
+#include "scenes/WeatherAmbienceScene.h"
+#include "scenes/WeatherScene.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/spdlog.h"
 
 using namespace Scenes;
 using json = nlohmann::json;
@@ -22,6 +25,13 @@ vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
     created.push_back(std::make_unique<WeatherSceneWrapper>());
     created.push_back(std::make_unique<WeatherAmbienceSceneWrapper>());
     return created;
+}
+
+vector<std::unique_ptr<Previews::DataProvider>> WeatherOverview::create_preview_data_providers()
+{
+    vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(WeatherPreviewFixture::make_provider());
+    return providers;
 }
 
 std::unique_ptr<router_t> WeatherOverview::register_routes(std::unique_ptr<router_t> router) {
