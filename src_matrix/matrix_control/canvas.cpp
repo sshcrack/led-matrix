@@ -28,7 +28,8 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase* matrix, TimeSource* time_sou
       runtime_inputs_fn_(std::move(runtime_inputs)),
       set_curr_scene_fn_(std::move(set_curr_scene)),
       broadcast_fn_(std::move(broadcast)),
-      automatic_director_(cfg->get_automatic_director_seed()),
+      automatic_director_(cfg->get_automatic_director_seed(),
+                          [](const Scenes::Scene& scene) { return DesktopHandoff::offloadable(scene); }),
       renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_),
       transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
 {

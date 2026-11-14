@@ -69,6 +69,12 @@ public:
 
     explicit DesktopHandoff(DesktopLink &link = DesktopLink::remote_render()) : link_(link) {}
 
+    /// The one rule for "can this scene run on the desktop worker right now":
+    /// the scene opts into generic remote rendering and the worker advertises
+    /// it. Every offload decision asks this, and the Automatic Director gets it
+    /// injected so its costs follow the same rule.
+    [[nodiscard]] static bool offloadable(const Scenes::Scene& scene, DesktopLink& link = DesktopLink::remote_render());
+
     // ---- scene phase ----
     enum class FrameSource { Remote, HoldRemote, Local };
 
