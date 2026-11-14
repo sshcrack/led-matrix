@@ -246,6 +246,7 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     add_executable(led-matrix-scene-worker
         ${CMAKE_CURRENT_SOURCE_DIR}/src_scene_worker/main.cpp
     )
+    target_link_libraries(led-matrix-scene-worker PRIVATE SceneWorkerRuntime)
     target_compile_features(led-matrix-scene-worker PRIVATE cxx_std_23)
     target_compile_definitions(led-matrix-scene-worker PRIVATE ENABLE_EMULATOR SCENE_WORKER)
     if(NOT WIN32)
@@ -376,6 +377,56 @@ if(ENABLE_DESKTOP AND ENABLE_SCENE_WORKER)
     set_tests_properties(desktop_scene_worker_build_dependency_smoke PROPERTIES
         RUN_SERIAL TRUE
     )
+endif()
+# The scene worker's render state (`RenderRuntime`) is a library of its own so tests can run
+# it in-process instead of through the worker executable. It is built next to the worker and
+# in the emulator build, where CI runs the full suite. It links the matrix runtime only (never
+# the desktop one), like the worker does.
+if(ENABLE_EMULATOR OR (ENABLE_DESKTOP AND ENABLE_SCENE_WORKER))
+    find_package(rpi-rgb-led-matrix CONFIG REQUIRED)
+    find_package(nlohmann_json 3.2.0 REQUIRED)
+    find_package(spdlog CONFIG REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GraphicsMagick REQUIRED IMPORTED_TARGET GraphicsMagick++)
+
+    add_library(SceneWorkerRuntime STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_scene_worker/RenderRuntime.cpp
+    )
+    target_compile_features(SceneWorkerRuntime PUBLIC cxx_std_23)
+    target_compile_definitions(SceneWorkerRuntime PUBLIC ENABLE_EMULATOR)
+    target_include_directories(SceneWorkerRuntime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src_scene_worker)
+    set_target_properties(SceneWorkerRuntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(SceneWorkerRuntime PUBLIC
+        SharedToolsCommon
+        SharedToolsMatrix
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog
+        PkgConfig::GraphicsMagick
+    )
+
+    # The composer is shared by the Pi's TransitionEngine and the worker; these run it, and the
+    # worker's RenderRuntime, in-process with a stepped clock.
+    foreach(TEST_NAME transition_composer_smoke scene_worker_runtime_smoke)
+        add_executable(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/tests/${TEST_NAME}.cpp)
+        target_compile_features(${TEST_NAME} PRIVATE cxx_std_23)
+        target_compile_definitions(${TEST_NAME} PRIVATE ENABLE_EMULATOR)
+        target_link_libraries(${TEST_NAME} PRIVATE SceneWorkerRuntime fmt::fmt)
+        add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_NAME}>)
+        if(WIN32)
+            add_custom_command(TARGET ${TEST_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:SharedToolsCommon>"
+                    "$<TARGET_FILE:SharedToolsMatrix>"
+                    $<TARGET_RUNTIME_DLLS:${TEST_NAME}>
+                    "$<TARGET_FILE_DIR:${TEST_NAME}>"
+                COMMAND_EXPAND_LISTS
+            )
+        else()
+            set_tests_properties(${TEST_NAME} PROPERTIES ENVIRONMENT
+                "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:SharedToolsMatrix>:$<TARGET_FILE_DIR:SharedToolsCommon>:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+        endif()
+    endforeach()
 endif()
 # CrashReporter is shared by the Linux/Pi daemon, Linux/Windows desktop, and
 # scene worker. Native development builds exercise both std::terminate and the

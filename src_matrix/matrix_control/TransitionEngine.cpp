@@ -6,10 +6,23 @@
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
+#include "shared/matrix/transition_composer.h"
 #include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 
 using namespace spdlog;
+
+namespace {
+/// The `set_transition_state` record every transition ends with. `details` carries the fields
+/// that depend on where the transition was composed.
+void record_transition(const std::string& name, const Scenes::Scene& from, const Scenes::Scene& to, const char* placement,
+                       nlohmann::json details)
+{
+    nlohmann::json state{{"name", name}, {"from", from.get_name()}, {"to", to.get_name()}, {"placement", placement}};
+    state.update(details);
+    Diagnostics::RuntimeDiagnostics::instance().set_transition_state(std::move(state));
+}
+}  // namespace
 
 TransitionEngine::TransitionEngine(TimeSource* time_source, TransitionManager* transition_manager, FrameSink* sink,
                                    const std::atomic<bool>* exit_flag, const std::atomic<bool>* interrupt_flag, DesktopHandoff* handoff)
@@ -23,35 +36,6 @@ TransitionEngine::TransitionEngine(TimeSource* time_source, TransitionManager* t
 {
 }
 
-void TransitionEngine::copy_canvas(FrameCanvas* dst, FrameCanvas* src, int width, int height)
-{
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            uint8_t r = 0, g = 0, b = 0;
-            src->GetPixel(x, y, &r, &g, &b);
-            dst->SetPixel(x, y, r, g, b);
-        }
-    }
-}
-
-void TransitionEngine::apply_transition_frame(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* to, float alpha_progress, int width,
-                                              int height, const std::string& transition_name)
-{
-    TransitionEffect* transition_effect = nullptr;
-    if (transition_manager_) {
-        transition_effect = transition_manager_->get_transition(transition_name);
-        if (transition_effect == nullptr)
-            transition_effect = transition_manager_->get_transition("blend");
-    }
-
-    if (transition_effect != nullptr) {
-        transition_effect->apply(dst, from, to, alpha_progress, width, height);
-        return;
-    }
-
-    copy_canvas(dst, to, width, height);
-}
-
 tmillis_t TransitionEngine::render_interval_ms_from_visibility(float visibility)
 {
     const auto clamped = std::clamp(visibility, 0.0f, 1.0f);
@@ -62,13 +46,13 @@ tmillis_t TransitionEngine::render_interval_ms_from_visibility(float visibility)
     return std::clamp(interval, min_interval_ms, max_interval_ms);
 }
 
-void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> scene, std::shared_ptr<Scenes::Scene> next_scene,
-                                               FrameCanvas* first_offscreen_canvas, FrameCanvas* second_offscreen_canvas,
-                                               FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
-                                               tmillis_t transition_duration, const std::string& transition_name,
-                                               std::shared_ptr<Scenes::Scene>& forced_scene, tmillis_t start_delay_ms,
-                                               std::function<bool()> inputs_still_available)
+TransitionResult TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> scene, std::shared_ptr<Scenes::Scene> next_scene,
+                                                           FrameCanvas* first_offscreen_canvas, FrameCanvas* second_offscreen_canvas,
+                                                           FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
+                                                           tmillis_t transition_duration, const std::string& transition_name,
+                                                           tmillis_t start_delay_ms, std::function<bool()> inputs_still_available)
 {
+    TransitionResult result;
     CrashReporter::set_activity(std::string("transition '") + transition_name + "': '"
         + scene->get_name() + "' -> '" + next_scene->get_name() + "'");
     tmillis_t next_input_check_ms = time_source_->now_ms();
@@ -82,7 +66,6 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         if (inputs_still_available())
             return true;
         spdlog::debug("Transition aborted because a required Runtime Input disappeared");
-        forced_scene.reset();
         return false;
     };
 
@@ -90,7 +73,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         const auto hold_start = time_source_->now_ms();
         while (time_source_->now_ms() - hold_start < start_delay_ms) {
             if (*interrupt_flag_ || *exit_flag_ || !runtime_inputs_valid())
-                return;
+                return {};
             bool frame_updated = false;
             try {
                 frame_updated = handoff_->copy_scene_frame(*scene, composite_offscreen_canvas, matrix_width, matrix_height);
@@ -139,7 +122,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     };
 
     if (!runtime_inputs_valid())
-        return;
+        return {};
 
     // Snapshot the outgoing frame before changing any remote session. This is
     // especially important when the current scene is already desktop-rendered:
@@ -168,7 +151,8 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     const double request_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - request_started).count();
     if (desktop_started) {
         while (!*interrupt_flag_ && !*exit_flag_) {
-            if (!runtime_inputs_valid()) return;
+            if (!runtime_inputs_valid())
+                return {};
             const auto now = time_source_->now_ms();
             const auto tick = handoff_->desktop_transition_tick(composite_offscreen_canvas, now);
             if (tick.frame) {
@@ -179,57 +163,49 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             using Outcome = DesktopHandoff::TransitionOutcome;
             if (tick.outcome == Outcome::Done) {
                 const auto stats = handoff_->desktop_transition_stats(now);
-                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({{"name", transition_name},
-                                                                                  {"from", scene->get_name()},
-                                                                                  {"to", next_scene->get_name()},
-                                                                                  {"placement", "desktop"},
-                                                                                  {"frames", stats.frames},
-                                                                                  {"startup_ms", stats.startup_ms},
-                                                                                  {"request_ms", request_ms},
-                                                                                  {"presentation_fps", stats.presentation_fps}});
-                forced_scene = next_scene;
-                return; // The session continues as the scene's.
+                record_transition(transition_name, *scene, *next_scene, "desktop",
+                                  {{"frames", stats.frames},
+                                   {"startup_ms", stats.startup_ms},
+                                   {"request_ms", request_ms},
+                                   {"presentation_fps", stats.presentation_fps}});
+                result.forced_scene = next_scene;
+                return result;  // The session continues as the scene's.
             }
             if (tick.outcome == Outcome::Abandoned) {
                 const auto stats = handoff_->desktop_transition_stats(now);
-                Diagnostics::RuntimeDiagnostics::instance().set_transition_state({{"name", transition_name},
-                                                                                  {"from", scene->get_name()},
-                                                                                  {"to", next_scene->get_name()},
-                                                                                  {"placement", "desktop"},
-                                                                                  {"outcome", "abandoned"},
-                                                                                  {"frames", stats.frames},
-                                                                                  {"startup_ms", stats.startup_ms},
-                                                                                  {"request_ms", request_ms},
-                                                                                  {"presentation_fps", stats.presentation_fps}});
-                forced_scene = next_scene;
-                return;
+                record_transition(transition_name, *scene, *next_scene, "desktop",
+                                  {{"outcome", "abandoned"},
+                                   {"frames", stats.frames},
+                                   {"startup_ms", stats.startup_ms},
+                                   {"request_ms", request_ms},
+                                   {"presentation_fps", stats.presentation_fps}});
+                result.forced_scene = next_scene;
+                return result;
             }
             if (tick.outcome == Outcome::Failed)
                 break; // Worker never produced a frame: compose locally.
         }
         if (*interrupt_flag_ || *exit_flag_)
-            return;
+            return {};
     }
 
     handoff_->begin_local_transition(*next_scene, matrix_width, matrix_height);
 
-    bool have_next_frame = false;
+    // The Pi freezes the outgoing scene (the snapshot in `first_offscreen_canvas`); see OutgoingPolicy.
+    // The blend clock started before the desktop attempt, so a stalled worker eats into it.
+    TransitionComposer composer(transition_manager_, TransitionComposer::OutgoingPolicy::Freeze);
+    composer.begin(first_offscreen_canvas, transition_name, transition_duration, matrix_width, matrix_height, transition_start_ms);
+
+    // Whether the incoming canvas received a real frame since the composer last saw it.
+    bool incoming_updated = false;
     const auto render_next = [&]() {
         if (handoff_->incoming_frame(second_offscreen_canvas)) {
-            have_next_frame = true;
+            incoming_updated = true;
             return true;
         }
 
         const bool keep_running = safe_render(next_scene, second_offscreen_canvas);
-        if (next_scene->frame_was_updated()) {
-            have_next_frame = true;
-        } else if (!have_next_frame) {
-            // A not-yet-ready incoming scene (paused media, async artwork, etc.)
-            // must not expose whatever pixels happened to be left in this
-            // reusable transition canvas. Until it has a real frame, blending
-            // from the outgoing snapshot to itself is visually neutral.
-            second_offscreen_canvas->CopyFrom(*first_offscreen_canvas);
-        }
+        incoming_updated = incoming_updated || next_scene->frame_was_updated();
         return keep_running;
     };
 
@@ -240,29 +216,13 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
     while (true) {
         const auto now_ms = time_source_->now_ms();
         if (!runtime_inputs_valid())
-            return;
+            return {};
         if (now_ms - transition_start_ms > max_transition_ms) {
-            apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, 1.0f, matrix_width,
-                                   matrix_height, transition_name);
-            forced_scene = next_scene;
+            result.forced_scene = next_scene;
             break;
         }
 
-        const auto elapsed = now_ms - transition_start_ms;
-        const auto alpha =
-            std::clamp(static_cast<float>(elapsed) / static_cast<float>(std::max<tmillis_t>(1, transition_duration)), 0.0f, 1.0f);
-
-        // Ease scene handoffs in and out. Linear alpha makes the first few
-        // frames of high-contrast scenes read as a luminance pop on LEDs.
-        const float eased_alpha = alpha * alpha * (3.0f - 2.0f * alpha);
-        const auto current_visibility = 1.0f - eased_alpha;
-        const auto next_visibility = eased_alpha;
-
-        // The outgoing scene is intentionally a frozen snapshot. Rendering both
-        // scenes throughout a transition doubles the worst-case Pi workload for
-        // almost no perceptual benefit once the old scene is fading away.
-        (void)current_visibility;
-
+        const float next_visibility = composer.eased_progress(now_ms);
         if ((now_ms - last_next_render_ms) >= render_interval_ms_from_visibility(next_visibility)) {
             next_continue = render_next();
             last_next_render_ms = now_ms;
@@ -270,32 +230,29 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
 
         if (!current_continue || !next_continue || *interrupt_flag_ || *exit_flag_) {
             trace("Exiting scene early.");
-            forced_scene = next_scene;
+            result.forced_scene = next_scene;
             break;
         }
 
         if (local_frames++ == 0) first_local_frame_ms = now_ms;
-        apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, eased_alpha, matrix_width,
-                               matrix_height, transition_name);
+        const auto frame = composer.frame(composite_offscreen_canvas, second_offscreen_canvas, incoming_updated, now_ms);
+        incoming_updated = false;
 
         sink_->present(composite_offscreen_canvas, 60);
 
-        if (alpha >= 1.0f) {
+        if (frame.done) {
             const auto elapsed_ms = now_ms - first_local_frame_ms;
-            Diagnostics::RuntimeDiagnostics::instance().set_transition_state(
-                {{"name", transition_name},
-                 {"from", scene->get_name()},
-                 {"to", next_scene->get_name()},
-                 {"placement", "local"},
-                 {"frames", local_frames},
-                 {"startup_ms", 0},
-                 // The desktop was asked first but sent no frame within the startup timeout.
-                 {"desktop_fallback", desktop_started},
-                 {"presentation_fps", elapsed_ms > 0 && local_frames > 1
-                                          ? 1000.0 * static_cast<double>(local_frames - 1) / static_cast<double>(elapsed_ms)
-                                          : 0.0}});
-            forced_scene = next_scene;
+            record_transition(transition_name, *scene, *next_scene, "local",
+                              {{"frames", local_frames},
+                               {"startup_ms", 0},
+                               // The desktop was asked first but sent no frame within the startup timeout.
+                               {"desktop_fallback", desktop_started},
+                               {"presentation_fps", elapsed_ms > 0 && local_frames > 1
+                                                        ? 1000.0 * static_cast<double>(local_frames - 1) / static_cast<double>(elapsed_ms)
+                                                        : 0.0}});
+            result.forced_scene = next_scene;
             break;
         }
     }
+    return result;
 }

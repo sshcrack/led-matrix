@@ -46,28 +46,33 @@
 #include <unistd.h>
 #endif
 
-#include "emulator.h"
-#include "matrix-factory.h"
-#include "led-matrix.h"
-
-#include <shared/common/remote_render_protocol.h>
-#include <shared/common/desktop_control_protocol.h>
 #include <shared/common/crash_reporter.h>
+#include <shared/common/desktop_control_protocol.h>
+#include <shared/common/remote_render_protocol.h>
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/audio_state.h>
 #include <shared/matrix/canvas_consts.h>
 #include <shared/matrix/execution_mode.h>
 #include <shared/matrix/media_artwork_state.h>
-#include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/plugin/lifecycle.h>
+#include <shared/matrix/plugin_loader/loader.h>
 #include <shared/matrix/preview.h>
 #include <shared/matrix/runtime_inputs.h>
 #include <shared/matrix/utils/consts.h>
 #include <shared/matrix/utils/shared.h>
 
+#include "RenderRuntime.h"
+#include "emulator.h"
+#include "led-matrix.h"
+#include "matrix-factory.h"
+
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
+using SceneWorker::apply_audio;
+using SceneWorker::capture;
+using SceneWorker::ManualClock;
+using SceneWorker::RenderRuntime;
 
 namespace {
 struct Args {
@@ -264,64 +269,6 @@ private:
     int address_len_{};
 };
 
-std::vector<std::uint8_t> capture(rgb_matrix::FrameCanvas *canvas, int width, int height)
-{
-    std::vector<std::uint8_t> rgb(static_cast<std::size_t>(width) * height * 3U);
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            std::uint8_t r = 0, g = 0, b = 0;
-            canvas->GetPixel(x, y, &r, &g, &b);
-            const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-            rgb[offset] = r;
-            rgb[offset + 1] = g;
-            rgb[offset + 2] = b;
-        }
-    }
-    return rgb;
-}
-
-/// Last relayed audio frame applied, so repeated relays of the same frame do
-/// not renew its freshness. Only the worker's command loop touches it.
-std::optional<std::uint32_t> applied_audio_sequence;
-
-void apply_audio(const nlohmann::json &item)
-{
-    if (!item.is_object() || !item.value("available", false)) {
-        AudioState::clear();
-        applied_audio_sequence.reset();
-        return;
-    }
-    // The Pi keeps relaying its last audio frame after the desktop stream
-    // stops. Applying it again would make stale features look fresh; leave the
-    // local frame to age instead.
-    if (!item.value("fresh", true))
-        return;
-    const auto sequence = item.value("sequence", 0U);
-    if (applied_audio_sequence == sequence)
-        return;
-    applied_audio_sequence = sequence;
-    AudioProtocol::Frame frame;
-    frame.sequence = sequence;
-    frame.timestamp_ms = item.value("timestamp_ms", 0U);
-    frame.flags = item.value("flags", static_cast<std::uint16_t>(0));
-    frame.beat_counter = item.value("beat_counter", std::uint64_t{0});
-    frame.onset_counter = item.value("onset_counter", std::uint64_t{0});
-    frame.drop_counter = item.value("drop_counter", std::uint64_t{0});
-    frame.section_counter = item.value("section_counter", std::uint64_t{0});
-    if (const auto it = item.find("features"); it != item.end() && it->is_array()) {
-        const auto count = std::min(frame.features.size(), it->size());
-        for (std::size_t i = 0; i < count; ++i)
-            if ((*it)[i].is_number()) frame.features[i] = (*it)[i].get<float>();
-    }
-    if (const auto it = item.find("spectrum"); it != item.end() && it->is_array())
-        frame.spectrum = it->get<std::vector<float>>();
-    if (const auto it = item.find("waveform"); it != item.end() && it->is_array())
-        frame.waveform = it->get<std::vector<float>>();
-    // Older matrices send no age; then the relay time is the best estimate.
-    const double age_seconds = std::clamp(item.value("age_seconds", 0.0), 0.0, 60.0);
-    AudioState::update(frame, Clock::now() - std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(age_seconds)));
-}
-
 void self_test_audio_relay()
 {
     const auto relay = [](std::uint32_t sequence, bool fresh, double age_seconds) {
@@ -388,272 +335,6 @@ void run_self_test(const std::vector<std::string> &available)
         scene->after_render_stop();
     }
 }
-
-struct RenderRuntime {
-    /// Daemon-independent transition catalogue owned by the worker main().
-    TransitionManager& transitions;
-    explicit RenderRuntime(TransitionManager& transition_manager) : transitions(transition_manager) {}
-
-    rgb_matrix::EmulatorMatrix *matrix = nullptr;
-    rgb_matrix::FrameCanvas *canvas = nullptr;
-    std::unique_ptr<Scenes::Scene> scene;
-    std::uint32_t session = 0;
-    std::uint32_t sequence = 0;
-    int width = 0;
-    int height = 0;
-    int target_fps = 60;
-    Clock::time_point next_frame{};
-    rgb_matrix::FrameCanvas *transition_from = nullptr;
-    rgb_matrix::FrameCanvas *transition_output = nullptr;
-    TransitionEffect *transition = nullptr;
-    Clock::time_point transition_start{};
-    int transition_ms = 0;
-    bool have_scene_frame = false;
-
-    /// Recently sent frames, so a transition can start from the frame the Pi
-    /// shows (`from_frame`) without the Pi sending it back. ~16 frames cover
-    /// the Pi's display lag; frames are 49 KB at 128x128.
-    struct SentFrame {
-        std::uint32_t session = 0;
-        std::uint32_t sequence = 0;
-        std::vector<std::uint8_t> rgb;
-    };
-    static constexpr std::size_t SentFrameHistory = 16;
-    std::deque<SentFrame> sent_frames;
-
-    void remember_sent_frame(const std::vector<std::uint8_t>& rgb)
-    {
-        SentFrame frame;
-        if (sent_frames.size() >= SentFrameHistory) {
-            frame = std::move(sent_frames.front());  // reuse the oldest buffer
-            sent_frames.pop_front();
-        }
-        frame.session = session;
-        frame.sequence = sequence;
-        frame.rgb.assign(rgb.begin(), rgb.end());
-        sent_frames.push_back(std::move(frame));
-    }
-
-    /// The referenced frame, else the closest one of that session.
-    [[nodiscard]] const std::vector<std::uint8_t>* find_sent_frame(const nlohmann::json& reference) const
-    {
-        const auto wanted_session = reference.value("session", 0U);
-        const auto wanted_sequence = reference.value("sequence", 0U);
-        const SentFrame* best = nullptr;
-        for (const auto& frame : sent_frames) {
-            if (frame.session != wanted_session)
-                continue;
-            if (!best || frame.sequence <= wanted_sequence)
-                best = &frame;
-            if (frame.sequence >= wanted_sequence)
-                break;
-        }
-        return best ? &best->rgb : nullptr;
-    }
-
-    /// Desktop -> desktop transitions: the outgoing scene keeps animating under
-    /// the blend instead of standing still on its last frame. It lives in its own
-    /// matrix (which owns its canvas) until the blend ends.
-    std::unique_ptr<Scenes::Scene> outgoing_scene;
-    rgb_matrix::EmulatorMatrix* outgoing_matrix = nullptr;
-    rgb_matrix::FrameCanvas* outgoing_canvas = nullptr;
-
-    void drop_outgoing()
-    {
-        if (outgoing_scene) {
-            try {
-                outgoing_scene->after_render_stop();
-            }
-            catch (...) {
-            }
-        }
-        outgoing_scene.reset();
-        outgoing_canvas = nullptr;
-        delete outgoing_matrix;
-        outgoing_matrix = nullptr;
-    }
-
-    /// Advance the outgoing scene one frame into `transition_from`. Once the
-    /// blend is over (or the scene stops or throws) it is released; the blend
-    /// then continues from its last frame.
-    void render_outgoing()
-    {
-        if (!outgoing_scene)
-            return;
-        if (!transition || !transition_from) {
-            drop_outgoing();
-            return;
-        }
-        bool keep = false;
-        try {
-            keep = outgoing_scene->render_frame(outgoing_canvas, std::nullopt, true);
-            if (keep && outgoing_scene->frame_was_updated())
-                transition_from->CopyFrom(*outgoing_canvas);
-        }
-        catch (const std::exception& e) {
-            spdlog::warn("Outgoing scene '{}' failed during the transition: {}", outgoing_scene->get_name(), e.what());
-            keep = false;
-        }
-        if (!keep)
-            drop_outgoing();
-    }
-
-    rgb_matrix::FrameCanvas *output_frame()
-    {
-        if (scene->frame_was_updated()) have_scene_frame = true;
-        if (!have_scene_frame && transition_from)
-            canvas->CopyFrom(*transition_from);
-        if (!transition) return canvas;
-        const float alpha = std::clamp(
-            std::chrono::duration<float, std::milli>(Clock::now() - transition_start).count()
-                / static_cast<float>(transition_ms), 0.0f, 1.0f);
-        if (alpha >= 1.0f) { transition = nullptr; return canvas; }
-        const float eased = alpha * alpha * (3.0f - 2.0f * alpha);
-        transition->apply(transition_output, transition_from, canvas, eased, width, height);
-        return transition_output;
-    }
-
-    ~RenderRuntime() { reset(); }
-
-    void reset()
-    {
-        drop_outgoing();
-        if (scene) {
-            try { scene->after_render_stop(); } catch (...) {}
-        }
-        scene.reset();
-        have_scene_frame = false;
-        transition = nullptr;
-        transition_from = transition_output = nullptr;
-        canvas = nullptr;
-        delete matrix;
-        matrix = nullptr;
-        session = sequence = 0;
-        width = height = 0;
-        CrashReporter::set_activity("scene worker idle");
-    }
-
-    void apply_state(const nlohmann::json &command)
-    {
-        if (const auto it = command.find("target_fps"); it != command.end()) {
-            const int fps = std::clamp(it->get<int>(), 1, 60);
-            if (fps != target_fps) {
-                target_fps = fps;
-                if (scene) scene->set_runtime_target_fps(fps);
-                // Discard the old rate's deadline; preserve animation state.
-                next_frame = Clock::now() + std::chrono::duration_cast<Clock::duration>(
-                    std::chrono::duration<double>(1.0 / fps));
-            }
-        }
-        if (const auto it = command.find("inputs"); it != command.end())
-            RuntimeInputs::replace_from_json(*it);
-        if (const auto it = command.find("audio"); it != command.end())
-            apply_audio(*it);
-        if (const auto it = command.find("artwork"); it != command.end())
-            MediaArtworkState::replace_from_json(*it);
-    }
-
-    void start(const nlohmann::json &command)
-    {
-        const auto started_at = Clock::now();
-        // Resolve a referenced outgoing frame before reset() ends its session.
-        std::vector<std::uint8_t> referenced;
-        bool has_reference = false;
-        // When the reference is this worker's running scene, keep that scene
-        // alive (same size) so it keeps moving during the blend.
-        std::unique_ptr<Scenes::Scene> live_scene;
-        rgb_matrix::EmulatorMatrix* live_matrix = nullptr;
-        rgb_matrix::FrameCanvas* live_canvas = nullptr;
-        if (const auto it = command.find("transition"); it != command.end() && it->is_object())
-            if (const auto ref = it->find("from_frame"); ref != it->end() && ref->is_object()) {
-                has_reference = true;
-                if (const auto* frame = find_sent_frame(*ref))
-                    referenced = *frame;
-                if (!referenced.empty() && scene && matrix && session != 0 && ref->value("session", 0U) == session &&
-                    command.value("width", 128) == width && command.value("height", 128) == height) {
-                    live_scene = std::move(scene);
-                    live_matrix = std::exchange(matrix, nullptr);
-                    live_canvas = std::exchange(canvas, nullptr);
-                }
-            }
-        sent_frames.clear();
-        reset();
-        outgoing_scene = std::move(live_scene);
-        outgoing_matrix = live_matrix;
-        outgoing_canvas = live_canvas;
-        session = command.value("session", 0U);
-        width = std::clamp(command.value("width", 128), 1, 1024);
-        height = std::clamp(command.value("height", 128), 1, 1024);
-        target_fps = std::clamp(command.value("target_fps", 60), 1, 60);
-        if (session == 0) throw std::runtime_error("remote session id is zero");
-
-        scene = Scenes::Scene::from_remote_command(command);
-
-        rgb_matrix::RGBMatrix::Options led_options;
-        led_options.rows = height;
-        led_options.cols = width;
-        led_options.chain_length = 1;
-        led_options.parallel = 1;
-        rgb_matrix::EmulatorOptions emulator_options;
-        emulator_options.headless = true;
-        emulator_options.refresh_rate_hz = target_fps;
-        matrix = rgb_matrix::EmulatorMatrix::Create(led_options, emulator_options);
-        if (!matrix) throw std::runtime_error("failed to create headless scene-worker canvas");
-        canvas = matrix->CreateFrameCanvas();
-        canvas->Clear();
-
-        if (const auto it = command.find("inputs"); it != command.end())
-            RuntimeInputs::replace_from_json(*it);
-        if (const auto it = command.find("audio"); it != command.end())
-            apply_audio(*it);
-        if (const auto it = command.find("artwork"); it != command.end())
-            MediaArtworkState::replace_from_json(*it);
-
-        scene->initialize(width, height);
-        scene->set_runtime_target_fps(target_fps);
-        scene->restore_frame_timeline(command.value("elapsed_seconds", 0.0));
-        if (const auto state = command.find("runtime_state"); state != command.end())
-            scene->restore_runtime_state(*state);
-        if (const auto it = command.find("transition"); it != command.end()) {
-            std::vector<std::uint8_t> rgb;
-            if (has_reference) {
-                if (referenced.empty())
-                    throw std::runtime_error("referenced transition frame is no longer available");
-                rgb = std::move(referenced);
-            }
-            else if (const auto encoded = it->find("from_base64"); encoded != it->end()) {
-                auto decoded = RemoteRenderProtocol::decode_base64(encoded->get_ref<const std::string&>());
-                if (!decoded)
-                    throw std::runtime_error("invalid base64 transition snapshot");
-                rgb = std::move(*decoded);
-            }
-            else {
-                rgb = it->at("from").get<std::vector<std::uint8_t>>();
-            }
-            if (rgb.size() != static_cast<std::size_t>(width * height * 3))
-                throw std::runtime_error("invalid transition snapshot size");
-            transition_ms = std::clamp(it->at("duration_ms").get<int>(), 1, 10000);
-            transition = transitions.get_transition(it->at("name").get<std::string>());
-            if (!transition)
-                transition = transitions.get_transition("blend");
-            if (!transition) throw std::runtime_error("worker has no transition effect");
-            transition_from = matrix->CreateFrameCanvas();
-            transition_output = matrix->CreateFrameCanvas();
-            for (int y = 0; y < height; ++y)
-                for (int x = 0; x < width; ++x) {
-                    const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-                    transition_from->SetPixel(x, y, rgb[offset], rgb[offset + 1], rgb[offset + 2]);
-                }
-            transition_start = Clock::now();
-        }
-        sequence = 0;
-        next_frame = Clock::now();
-        CrashReporter::set_activity(std::string("offloading scene '") + scene->get_name()
-            + "' session " + std::to_string(session));
-        spdlog::info("Remote scene '{}' started (session {}, {}x{} @ {} FPS) in {:.1f} ms", scene->get_name(), session, width, height,
-                     target_fps, std::chrono::duration<double, std::milli>(Clock::now() - started_at).count());
-    }
-};
 
 } // namespace
 
@@ -789,7 +470,8 @@ int main(int argc, char **argv)
                 throw std::runtime_error("worker has no registered transitions");
             bool base64_snapshot = false;
             for (const auto &name : transition_manager.get_registered_transitions()) {
-                RenderRuntime probe(transition_manager);
+                ManualClock clock;
+                RenderRuntime probe(transition_manager, &clock);
                 // Alternate both snapshot encodings: older matrices still send the array.
                 const std::vector<std::uint8_t> snapshot(128 * 128 * 3, 31);
                 nlohmann::json transition{{"name", name}, {"duration_ms", 750}};
@@ -813,25 +495,24 @@ int main(int argc, char **argv)
                 const auto elapsed = probe.scene->get_frame_context().elapsed_seconds;
                 probe.sequence = 42;
                 probe.apply_state({{"target_fps", 30}});
-                if (probe.target_fps != 30 || probe.scene->get_declared_target_fps() != 30
-                    || probe.scene.get() != original_scene
-                    || probe.session != 1 || probe.sequence != 42
-                    || probe.scene->get_frame_context().elapsed_seconds != elapsed
-                    || !probe.transition)
+                if (probe.target_fps != 30 || probe.scene->get_declared_target_fps() != 30 || probe.scene.get() != original_scene ||
+                    probe.session != 1 || probe.sequence != 42 || probe.scene->get_frame_context().elapsed_seconds != elapsed ||
+                    !probe.composer.active())
                     throw std::runtime_error("rate update restarted the warmed scene");
                 probe.apply_state(nlohmann::json::object());
                 if (probe.target_fps != 30)
                     throw std::runtime_error("legacy state message changed the worker rate");
                 probe.canvas->Fill(210, 120, 80);
-                probe.transition_start = Clock::now() - std::chrono::milliseconds(375);
+                clock.advance_ms(375);
                 if (probe.output_frame() != probe.transition_output)
                     throw std::runtime_error("worker skipped transition: " + name);
-                probe.transition_start = Clock::now() - std::chrono::milliseconds(1000);
-                if (probe.output_frame() != probe.canvas || probe.transition)
+                clock.advance_ms(625);
+                if (probe.output_frame() != probe.canvas || probe.composer.active())
                     throw std::runtime_error("worker failed transition handoff: " + name);
             }
             {  // A transition can start from a frame the worker sent itself.
-                RenderRuntime probe(transition_manager);
+                ManualClock clock;
+                RenderRuntime probe(transition_manager, &clock);
                 const nlohmann::json boids{{"protocol", RemoteRenderProtocol::Version},
                                            {"width", 128},
                                            {"height", 128},
@@ -863,10 +544,10 @@ int main(int argc, char **argv)
                 }
                 if (!probe.outgoing_scene || capture(probe.transition_from, 128, 128) == snapshot)
                     throw std::runtime_error("worker did not advance the outgoing scene during the blend");
-                probe.transition_start = Clock::now() - std::chrono::milliseconds(1000);
+                clock.advance_ms(1000);
                 probe.output_frame();
                 probe.render_outgoing();
-                if (probe.transition || probe.outgoing_scene || probe.outgoing_matrix)
+                if (probe.composer.active() || probe.outgoing_scene || probe.outgoing_matrix)
                     throw std::runtime_error("worker kept the outgoing scene after the blend");
                 auto missing = boids;
                 missing["session"] = 3;

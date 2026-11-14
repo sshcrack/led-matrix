@@ -221,13 +221,12 @@ int main()
         renderer.render_scene_phase(phase, composite, 5000);
 
         // Transition one: A -> B. B paints its single frame, then holds.
-        std::shared_ptr<Scenes::Scene> forced;
-        engine.render_transition_phase(a, b, first, second, composite, 32, 32, duration, "blend", forced, 0, {});
+        (void)engine.render_transition_phase(a, b, first, second, composite, 32, 32, duration, "blend", 0, {});
         // Transition two follows with no scene frame in between. B only holds
         // its frame now, so the outgoing snapshot has to be what is on the
         // panel: the final frame of transition one (B).
         presenter.samples.clear();
-        engine.render_transition_phase(b, c, first, second, composite, 32, 32, duration, "blend", forced, 0, {});
+        (void)engine.render_transition_phase(b, c, first, second, composite, 32, 32, duration, "blend", 0, {});
         if (presenter.samples.empty())
             return fail("second transition presented nothing");
         for (const auto sample : presenter.samples) {
@@ -247,8 +246,7 @@ int main()
         matrix.events.clear();
         auto a = make_scene(50);
         auto b = make_scene(150);
-        std::shared_ptr<Scenes::Scene> forced;
-        engine.render_transition_phase(a, b, first, second, composite, 32, 32, 100, "blend", forced, 0, {});
+        (void)engine.render_transition_phase(a, b, first, second, composite, 32, 32, 100, "blend", 0, {});
         if (backing->brightness() != 40 || matrix.events.empty() || matrix.events.front() != "brightness=40")
             return fail("transition frames skipped the brightness schedule");
         sink.set_brightness_provider({});
@@ -261,15 +259,14 @@ int main()
         LiveFrame::SnapshotStore::instance().set_publish_callback([&](LiveFrame::Snapshot, std::uint64_t) { ++captured; });
         auto a = make_scene(50);
         auto b = make_scene(150);
-        std::shared_ptr<Scenes::Scene> forced;
-        engine.render_transition_phase(a, b, first, second, composite, 32, 32, 100, "blend", forced, 0, {});
+        (void)engine.render_transition_phase(a, b, first, second, composite, 32, 32, 100, "blend", 0, {});
         if (captured != 0)
             return fail("a frame was captured without a viewer request");
 
         (void)LiveFrame::SnapshotStore::instance().request_capture();
         auto c = make_scene(50);
         auto d = make_scene(150);
-        engine.render_transition_phase(c, d, first, second, composite, 32, 32, 100, "blend", forced, 0, {});
+        (void)engine.render_transition_phase(c, d, first, second, composite, 32, 32, 100, "blend", 0, {});
         if (captured != 1)
             return fail("one viewer request was not served by exactly one captured frame");
         LiveFrame::SnapshotStore::instance().set_publish_callback({});
