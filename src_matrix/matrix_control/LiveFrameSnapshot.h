@@ -43,6 +43,16 @@ public:
     void publish_solid_if_requested(int width, int height,
                                     std::uint8_t r, std::uint8_t g, std::uint8_t b);
 
+    /// Monotonic counters for diagnostics and soak tests (relaxed loads, no
+    /// locks). `requests` counts viewer requests, `captures` counts frames that
+    /// were actually read from the matrix and published.
+    struct Stats {
+        std::uint64_t requests = 0;
+        std::uint64_t served_generation = 0;
+        std::uint64_t captures = 0;
+    };
+    [[nodiscard]] Stats stats() const;
+
     /// Install the transport sink that receives only frames captured because
     /// demand was outstanding. capture_generation identifies the newest request
     /// already present when the pixel copy began, so requests racing with that

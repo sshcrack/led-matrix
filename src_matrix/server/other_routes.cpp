@@ -1,29 +1,32 @@
 #include "other_routes.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
-#include "nlohmann/json.hpp"
-#include "shared/matrix/plugin_loader/loader.h"
-#include "shared/matrix/post.h"
-#include "shared/matrix/utils/image_fetch.h"
-#include <filesystem>
-#include <fstream>
-#include "shared/matrix/server/MimeTypes.h"
-#include "shared/matrix/utils/consts.h"
-#include "shared/matrix/canvas_consts.h"
-#include "shared/matrix/utils/canvas_image.h"
+
+#include <shared/common/remote_render_protocol.h>
 #include <spdlog/spdlog.h>
 
-#include "shared/matrix/interrupt.h"
-#include "shared/matrix/diagnostics.h"
-#include <shared/common/remote_render_protocol.h>
-#include "shared/matrix/audio_state.h"
-#include "shared/matrix/server/common.h"
-#include "shared/matrix/runtime_inputs.h"
-#include "shared/matrix/remote_render.h"
-#include "matrix_control/SceneLabRuntime.h"
-#include <random>
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <random>
+
+#include "matrix_control/LiveFrameSnapshot.h"
+#include "matrix_control/SceneLabRuntime.h"
+#include "nlohmann/json.hpp"
+#include "shared/matrix/audio_state.h"
+#include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/diagnostics.h"
+#include "shared/matrix/interrupt.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/post.h"
+#include "shared/matrix/remote_render.h"
+#include "shared/matrix/runtime_inputs.h"
+#include "shared/matrix/server/MimeTypes.h"
+#include "shared/matrix/server/common.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/canvas_image.h"
+#include "shared/matrix/utils/consts.h"
+#include "shared/matrix/utils/image_fetch.h"
+#include "shared/matrix/utils/shared.h"
 
 using json = nlohmann::json;
 
@@ -189,6 +192,8 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         result["automatic_mode"] = cfg->is_automatic_mode();
         result["configured_director_seed"] = std::to_string(cfg->get_automatic_director_seed());
         result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
+        const auto live = LiveFrame::SnapshotStore::instance().stats();
+        result["live_frame"] = {{"requests", live.requests}, {"served_generation", live.served_generation}, {"captures", live.captures}};
         const auto remote = RemoteRender::status();
         result["remote_render"] = {
             {"requested", remote.requested},

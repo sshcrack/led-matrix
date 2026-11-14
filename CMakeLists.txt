@@ -1262,6 +1262,50 @@ if(ENABLE_EMULATOR)
         )
         set_tests_properties(sanitizer_scene_sweep PROPERTIES TIMEOUT 600)
     endif()
+
+    # Daemon + desktop scene worker recovery soak (#143, docs/memory-safety-report.md).
+    # ENABLE_EMULATOR and ENABLE_DESKTOP are mutually exclusive, so the worker
+    # comes from the sibling desktop build (emulator_build -> desktop_build,
+    # emulator_asan_build -> desktop_asan_build, ...) and both are run from
+    # their build/install trees. Opt-in: it needs both builds and takes 1-3 minutes.
+    # Exits 77 (skipped) when either binary is missing.
+    option(LED_MATRIX_SOAK_TESTS "Register the daemon/worker recovery soak (ctest -L soak)" OFF)
+    if(LED_MATRIX_SOAK_TESTS AND UNIX AND NOT APPLE)
+        get_filename_component(SOAK_BUILD_NAME "${CMAKE_BINARY_DIR}" NAME)
+        get_filename_component(SOAK_BUILD_PARENT "${CMAKE_BINARY_DIR}" DIRECTORY)
+        string(REPLACE "emulator" "desktop" SOAK_WORKER_BUILD_NAME "${SOAK_BUILD_NAME}")
+        set(SOAK_TIME_SCALE 1)
+        set(SOAK_COMMAND ${Python3_EXECUTABLE})
+        if(NOT LED_MATRIX_SANITIZE STREQUAL "OFF")
+            # Sanitizer builds run several times slower; env.sh sets *SAN_OPTIONS
+            # and the third-party suppressions.
+            set(SOAK_TIME_SCALE 3)
+            set(SOAK_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/sanitizers/env.sh ${Python3_EXECUTABLE})
+        endif()
+        foreach(SOAK_PROFILE quick full)
+            if(SOAK_PROFILE STREQUAL "quick")
+                set(SOAK_TEST recovery_soak)
+                set(SOAK_TIMEOUT 300)
+            else()
+                set(SOAK_TEST recovery_soak_full)
+                set(SOAK_TIMEOUT 1500)
+            endif()
+            math(EXPR SOAK_TIMEOUT_SCALED "${SOAK_TIMEOUT} * ${SOAK_TIME_SCALE}")
+            add_test(NAME ${SOAK_TEST}
+                COMMAND ${SOAK_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_soak.py
+                    --daemon-install ${CMAKE_INSTALL_PREFIX}
+                    --worker-build ${SOAK_BUILD_PARENT}/${SOAK_WORKER_BUILD_NAME}
+                    --profile ${SOAK_PROFILE}
+                    --time-scale ${SOAK_TIME_SCALE}
+            )
+            # Serial: it owns the install tree's config.json and all of its CPU.
+            set_tests_properties(${SOAK_TEST} PROPERTIES
+                LABELS "soak;soak-${SOAK_PROFILE}"
+                RUN_SERIAL TRUE
+                SKIP_RETURN_CODE 77
+                TIMEOUT ${SOAK_TIMEOUT_SCALED})
+        endforeach()
+    endif()
     add_test(NAME audio_scene_preview_smoke
         COMMAND ${CMAKE_COMMAND} -E env ${PREVIEW_TEST_ENV}
             $<TARGET_FILE:preview_gen>

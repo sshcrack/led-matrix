@@ -151,6 +151,12 @@ void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int heig
             request_scene_desktop();
             reason_ = std::move(*why);
         }
+        else if (session_ || link_.status().requested) {
+            // A cut without a transition (skip, preset change) never retires
+            // the previous scene's session; the worker would keep rendering
+            // and streaming a scene that is no longer shown.
+            stop();
+        }
     } else {
         const auto remote = link_.status();
         if (session_ || remote.requested)

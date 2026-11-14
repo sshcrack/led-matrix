@@ -283,6 +283,20 @@ int main()
                "no usable worker: the session is stopped");
     }
 
+    {  // A cut to a scene that stays on the Pi must retire the previous scene's desktop session.
+        FakeWorker worker;
+        DesktopHandoff handoff(worker);
+        from->force_render_quality_scale(0.6f);
+        handoff.begin_scene(*from, 32, 32);
+        expect(handoff.scene_mode() == Mode::DesktopPending && worker.session != 0, "the quality-reduced scene runs on the desktop");
+        from->force_render_quality_scale(1.0f);
+        handoff.begin_scene(*to, 32, 32);
+        expect(worker.stops == 1 && worker.session == 0 && handoff.scene_mode() == Mode::Local,
+               "a cut to a local scene stops the previous scene's session");
+        handoff.begin_scene(*from, 32, 32);
+        expect(worker.stops == 1, "no session left to stop on the next local scene");
+    }
+
     {  // Transition timeline: outgoing freeze, transition frames and the handoff gap.
         auto& diagnostics = Diagnostics::RuntimeDiagnostics::instance();
         const auto history_size = [&] { return diagnostics.snapshot()["transition_history"].size(); };
