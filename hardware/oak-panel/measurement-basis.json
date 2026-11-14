@@ -1,0 +1,189 @@
+{
+  "panel_xy_mm": {
+    "value": [
+      192,
+      192
+    ],
+    "basis": "Owner-provided Waveshare specification; nominal"
+  },
+  "supplier_depth_mm": {
+    "value": 14,
+    "basis": "Owner-provided dimensioned image; measurement datums unspecified"
+  },
+  "led_tip_to_insert_face_mm": {
+    "value": 15,
+    "basis": "Owner direct measurement, approximate"
+  },
+  "led_tip_to_cable_bend_mm": {
+    "value": 32,
+    "basis": "Owner estimate with photographed power cable bend; not universal for all cable configurations"
+  },
+  "mount_row_candidates_mm": {
+    "value": [
+      16,
+      96,
+      176
+    ],
+    "basis": "Estimated visually from ruler photographs on one panel; not confirmed drilling coordinates"
+  },
+  "mount_edge_inset_mm": {
+    "value": null,
+    "basis": "Ruler datum/perspective ambiguous; not assigned"
+  },
+  "mount_thread": {
+    "value": null,
+    "basis": "Not yet established"
+  },
+  "power": {
+    "panel_voltage_v": 5,
+    "panel_current_a": 4,
+    "panel_max_w": 20,
+    "four_panel_max_w": 80,
+    "basis": "Owner-provided Waveshare specification; not measured power consumption"
+  },
+  "led_tip_to_magnet_back_mm": {
+    "value": 27,
+    "basis": "Owner direct statement: front LED to end of magnet with mounting foot fully screwed in. Approximate, no tolerance established."
+  },
+  "mounting_foot_fit": {
+    "value": "Owner confirms mounting feet screw fully into panel inserts",
+    "basis": "Owner physical fit report; thread diameter/pitch and protruding stud length still unknown"
+  },
+  "adopted_mechanical_mounting": {
+    "basis": "Owner directs use of supplied Adafruit mechanical drawing as matching panel design; fit remains unverified",
+    "thread": "M3 per product description",
+    "side_columns_from_panel_centre_mm": [
+      -85,
+      85
+    ],
+    "rows_from_panel_centre_mm": [
+      -73,
+      0,
+      73
+    ],
+    "mounting_hole_clearance_mm": 3.5,
+    "spacer_length_mm": 12,
+    "spacer_outer_diameter_mm": 6.5,
+    "screw_length": "Not selected; usable insert engagement depth unknown",
+    "earlier_photo_estimates": "Historical evidence only. The measured eight-hole paper pattern now governs fit verification; full enclosure coordinates await edge datums and orientation.",
+    "status": "SUPERSEDED for fit verification. Six-hole geometry remains in enclosure concept only; not approved for printing."
+  },
+  "manufacturing": {
+    "basis": "FDM-accessible design; no CNC fabrication required for internal parts",
+    "printer_target": "Prusa i3 MK3s",
+    "provided_build_volume_mm": [
+      210,
+      250,
+      210
+    ],
+    "alternate_printer": "400 x 400 x 500 mm FDM printer available",
+    "material_target": "PETG; actual stock and quote to be confirmed by service",
+    "print_submission": "STL, not machine-specific G-code",
+    "note": "Build volumes are supplied design inputs. Material stock and pricing are determined by the chosen print service."
+  },
+  "appearance": {
+    "basis": "Owner requests narrow black wall-mounted bezel instead of oak; private visual reference is not published",
+    "visible_border_mm": 8,
+    "outer_corner_radius_mm": 5,
+    "outer_nominal_mm": [
+      400,
+      400
+    ],
+    "bezel_quadrants": 4,
+    "seam_gap_mm": 0.4,
+    "status": "Packaging study; joints, retention, surface finish and physical print fit unverified"
+  },
+  "rear_halo": {
+    "requested": true,
+    "strip_segments_reserved": 8,
+    "strip_envelope_each_mm": [
+      160,
+      10,
+      3
+    ],
+    "wall_gap_starting_point_mm": 25,
+    "control_intent": [
+      "independent brightness and off",
+      "fixed colour",
+      "optional soft display-colour matching"
+    ],
+    "power_intent": "Same external supply with protected branch; actual strip, driver and additional wattage unselected",
+    "status": "CAD reservations and cover passage only; no lighting hardware or software implemented"
+  },
+  "measured_mounting_pattern": {
+    "source": "mounting-measurements.json",
+    "status": "WITHDRAWN collinear coordinate model. Private photos show additional normal offsets at intermediate inserts; individual hole coordinates unresolved.",
+    "pairings": [
+      "H = D",
+      "G = C",
+      "F = A",
+      "E = B"
+    ],
+    "edge_offsets_mm": null,
+    "enclosure_transfer": "Do not transfer measured-v1 coordinates to CAD. Establish each hole from edge datums and measuring-axis directions first."
+  },
+  "official_mechanical_drawing_candidate": {
+    "source": "https://files.waveshare.com/upload/e/e1/RGB-Matrix-P3-64x64-2D.zip",
+    "source_archive_sha256": "48ab5ead9c8f301e23bc45c93662eef3d8d692897360c09ec85797032b004163",
+    "assessment": "Strong candidate: matching eight-insert staggered/noncollinear topology; not proven to be the owner panel revision",
+    "body_xy_mm": [
+      191.6,
+      191.6
+    ],
+    "drawing_centred_corner_xy_mm": [
+      [
+        -87,
+        -79
+      ],
+      [
+        -87,
+        79
+      ],
+      [
+        87,
+        -79
+      ],
+      [
+        87,
+        79
+      ]
+    ],
+    "corner_spans_mm": [
+      174,
+      158
+    ],
+    "corner_edge_insets_mm": [
+      8.8,
+      16.8
+    ],
+    "drawing_centred_intermediate_xy_mm": [
+      [
+        -86,
+        0
+      ],
+      [
+        86,
+        0
+      ],
+      [
+        -7.5,
+        -87
+      ],
+      [
+        7.5,
+        87
+      ]
+    ],
+    "datum": "Panel centre, X right and Y up in the drawing left view as drawn; front/rear and connector registration unlabelled",
+    "units": "Interpreted as mm from dimension text and product size; DWG INSUNITS metadata says inches and must not be applied blindly",
+    "evidence": "panel-mechanical-source-research.md; corner 87/79 offsets and 7.5 stagger dimensioned, intermediate +/-86 X and +/-87 Y derived from geometry",
+    "not_established": [
+      "exact PCB/frame revision",
+      "thread and usable insert engagement",
+      "connector positions/orientation",
+      "meaning of second 12-hole plan view",
+      "physical fit"
+    ],
+    "adoption": "Reference evidence only; no change to enclosure solids or withdrawn coordinate-model guard"
+  }
+}

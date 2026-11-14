@@ -1,0 +1,116 @@
+<style>
+#oak-concept {font-family:var(--font-sans);color:var(--foreground);display:grid;gap:12px}
+#oak-concept .controls {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#oak-concept .model {width:100%;height:440px;display:block;touch-action:none;cursor:grab}
+#oak-concept .model:active {cursor:grabbing}
+#oak-concept .legend {display:flex;gap:16px;flex-wrap:wrap}
+#oak-concept .swatch {display:inline-block;width:10px;height:10px;margin-right:5px}
+#oak-concept .dims {display:flex;gap:20px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+#oak-concept .detail {min-height:42px}
+#oak-concept select {max-width:100%}
+@media(max-width:450px){#oak-concept .model {height:350px}}
+</style>
+<div id="oak-concept">
+  <div class="dims"><span>400 × 400 mm</span><span>60 mm frame</span><span>85 mm including halo gap</span></div>
+  <div class="controls" aria-label="CAD views">
+    <button class="btn" type="button" data-view="assembled" aria-pressed="false">Assembled</button>
+    <button class="btn" type="button" data-view="rear" aria-pressed="false">Inside rear</button>
+    <button class="btn" type="button" data-view="exploded" aria-pressed="true">Layers</button>
+    <label class="form-check"><input class="form-check-input" type="checkbox" id="oak-reserves" checked><span class="form-check-label">Space reservations</span></label>
+  </div>
+  <canvas class="model" role="img" aria-label="Rotatable CAD packaging concept: black bezel, fabric, four panel envelopes, chassis and rear cover. Drag to rotate; the view buttons also work by keyboard."></canvas>
+  <div class="legend text-small"><span><i class="swatch" style="background:rgb(40,40,44)"></i>Black bezel</span><span><i class="swatch" style="background:rgb(148,158,166)"></i>Printed carriers / cover</span><span><i class="swatch" style="background:var(--chart-2)"></i>Reserved space</span></div>
+  <label class="form-label">Inspect component
+    <select class="form-select" id="oak-part"><option value="">All components</option></select>
+  </label>
+  <div class="detail text-small" id="oak-detail" aria-live="polite">Packaging concept · drag to rotate · dimensions provisional</div>
+</div>
+<script id="oak-mesh-data" type="application/json">__MESH_DATA__</script>
+<script>
+(() => {
+  const root=document.getElementById('oak-concept');
+  const meshes=JSON.parse(document.getElementById('oak-mesh-data').textContent);
+  const canvas=root.querySelector('canvas'),gl=canvas.getContext('webgl',{antialias:true,alpha:true});
+  if(!gl)throw new Error('WebGL unavailable for CAD viewer');
+  function shader(type,src){const sh=gl.createShader(type);gl.shaderSource(sh,src);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));return sh;}
+  const program=gl.createProgram();
+  gl.attachShader(program,shader(gl.VERTEX_SHADER,'attribute vec3 pos; attribute vec3 color; varying vec3 col; void main(){gl_Position=vec4(pos,1.0);col=color;}'));
+  gl.attachShader(program,shader(gl.FRAGMENT_SHADER,'precision mediump float; varying vec3 col; void main(){gl_FragColor=vec4(col,1.0);}'));
+  gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+  const buffer=gl.createBuffer();
+  const select=root.querySelector('select'), reserves=root.querySelector('input');
+  const detail=root.querySelector('#oak-detail');
+  const pretty=n=>n.replaceAll('_',' ');
+  meshes.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=pretty(m.name);select.append(o)});
+  let mode='exploded', yaw=-0.68,pitch=0.32,scale=1,panZ=0,drag=null;
+  const saved=window.openai?.widgetState?.privateContent;
+  if(saved && ['assembled','rear','exploded'].includes(saved.mode)){mode=saved.mode;yaw=saved.yaw??yaw;pitch=saved.pitch??pitch;}
+  function project(v,offset=0){
+    const x=v[0],y=v[1],z=v[2]+offset-60;
+    const xx=x*Math.cos(yaw)+z*Math.sin(yaw), zz=-x*Math.sin(yaw)+z*Math.cos(yaw);
+    return [xx,y*Math.cos(pitch)-zz*Math.sin(pitch),y*Math.sin(pitch)+zz*Math.cos(pitch)];
+  }
+  function visible(m){
+    if(m.role==='keepout'&&!reserves.checked)return false;
+    if(mode==='assembled'&&m.role==='keepout')return false;
+    if(mode==='rear'&&m.name==='rear_cover')return false;
+    return true;
+  }
+  function persist(){window.openai?.setWidgetState?.({modelContent:{enclosureView:mode,selectedComponent:select.value||null},privateContent:{mode,yaw,pitch}})?.catch(()=>{});}
+  function draw(){
+    const w=canvas.clientWidth,h=canvas.clientHeight,dpr=window.devicePixelRatio||1;
+    canvas.width=w*dpr;canvas.height=h*dpr;gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+    const style=getComputedStyle(root),muted=style.getPropertyValue('--muted-foreground').trim()||style.color;
+    const token=style.getPropertyValue('--chart-2').trim()||style.color;
+    const objects=meshes.filter(visible).map(m=>({m,pts:m.vertices.map(v=>project(v,mode==='exploded'?m.explode*2.6:0))}));
+    const pts=objects.flatMap(o=>o.pts),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+    if(!pts.length)return;
+    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+    scale=Math.min((w-32)/(maxX-minX),(h-36)/(maxY-minY));
+    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    const xy=p=>[w/2+(p[0]-cx)*scale,h/2-(p[1]-cy)*scale];
+    const triangles=[];
+    objects.forEach(({m,pts})=>m.triangles.forEach(t=>{
+      const a=pts[t[0]],b=pts[t[1]],c=pts[t[2]];
+      const u=b.map((v,i)=>v-a[i]),v=c.map((q,i)=>q-a[i]);
+      const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+      const length=Math.hypot(...n)||1;
+      const light=.58+.35*Math.abs((n[0]*.3+n[1]*.6-n[2]*.74)/length);
+      triangles.push({m,p:[xy(a),xy(b),xy(c)],depth:(a[2]+b[2]+c[2])/3,light});
+    }));
+    // A depth buffer preserves occlusion of the thin parallel CAD layers.
+    const rgbToken=()=>{const probe=document.createElement('span');probe.style.color=token;root.append(probe);const rgb=getComputedStyle(probe).color.match(/[\d.]+/g);probe.remove();return rgb?rgb.slice(0,3).map(Number).map(v=>v/255):[.3,.6,.7];};
+    const reservedColor=rgbToken(),data=[];
+    triangles.forEach(t=>{
+      const m=t.m,selected=!select.value||select.value===m.name;
+      const col=(m.role==='keepout'?reservedColor:m.color).map(c=>c*t.light*(selected?1:.36));
+      t.p.forEach((p,i)=>{data.push((p[0]/w)*2-1,1-(p[1]/h)*2,t.depth/1400,...col)});
+    });
+    // Use each vertex's true Z, rather than a triangle's average depth.
+    let index=0;
+    objects.forEach(({m,pts})=>m.triangles.forEach(t=>t.forEach(i=>{data[index*6+2]=pts[i][2]/1400;index++;})));
+    gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);
+    const pos=gl.getAttribLocation(program,'pos'),color=gl.getAttribLocation(program,'color');
+    gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,24,0);
+    gl.enableVertexAttribArray(color);gl.vertexAttribPointer(color,3,gl.FLOAT,false,24,12);
+    gl.drawArrays(gl.TRIANGLES,0,data.length/6);
+    root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===mode)));
+  }
+  root.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+    mode=b.dataset.view;
+    if(mode==='assembled'){yaw=-.28;pitch=.16;}
+    else if(mode==='rear'){yaw=2.85;pitch=-.13;}
+    else{yaw=-.68;pitch=.32;}
+    draw();persist();
+  }));
+  select.addEventListener('change',()=>{const m=meshes.find(m=>m.name===select.value);detail.textContent=m?`${pretty(m.name)} — ${m.note}`:'Packaging concept · drag to rotate · dimensions provisional';draw();persist();});
+  reserves.addEventListener('change',()=>{draw();persist();});
+  canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId)});
+  canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag[0])*.008;pitch=Math.max(-1.4,Math.min(1.4,pitch+(e.clientY-drag[1])*.008));drag=[e.clientX,e.clientY];draw()});
+  canvas.addEventListener('pointerup',()=>{drag=null;persist()});
+  canvas.addEventListener('pointercancel',()=>{drag=null});
+  new ResizeObserver(draw).observe(canvas);
+  new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});
+  draw();
+})();
+</script>

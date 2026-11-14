@@ -1,0 +1,257 @@
+{
+  "revision": "measured-v1",
+  "status": "WITHDRAWN coordinate model: intermediate inserts are not collinear with corner inserts; raw measurements retained",
+  "units": "mm",
+  "method": "Measure the narrow smooth shafts below the original screw-in magnetic discs. Centre spacing = (mean outside span + mean inside gap) / 2. If inside jaws cannot reach: mean outside span minus half the sum of the two individual shaft diameters.",
+  "excluded": "Earlier analog trials; invalid D inside measurements; unresolved first C inside reading",
+  "orientation": "Owner sketch IDs, not uniform coordinates. Match to actual panel and connector orientation before enclosure coordinates are assigned.",
+  "span_endpoints": {
+    "A": [
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ]
+    ],
+    "B": [
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ]
+    ],
+    "C": [
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ]
+    ],
+    "D": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "E": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "F": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ]
+    ],
+    "G": [
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "H": [
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        2
+      ]
+    ]
+  },
+  "series": {
+    "A": {
+      "inside": [
+        73.53,
+        73.5,
+        73.52,
+        73.5,
+        73.51,
+        73.47,
+        73.48
+      ],
+      "outside": [
+        84.0,
+        84.0,
+        84.09,
+        84.09,
+        84.12,
+        84.1,
+        84.11
+      ],
+      "confidence": "User-confirmed transcription"
+    },
+    "B": {
+      "inside": [
+        73.84,
+        73.8,
+        73.84,
+        73.78,
+        73.81,
+        73.8,
+        73.8,
+        73.8,
+        73.81
+      ],
+      "outside": [
+        84.4,
+        84.44,
+        84.41,
+        84.4,
+        84.42,
+        84.43,
+        84.41
+      ],
+      "confidence": "First inside reading confirmed; remaining digits transcribed from private sheet and visually reviewed, not individually text-confirmed"
+    },
+    "C": {
+      "inside": [
+        88.96,
+        89.0,
+        89.0,
+        89.0
+      ],
+      "outside": [
+        99.8,
+        99.8,
+        99.82,
+        99.78
+      ],
+      "confidence": "Photo transcription, provisional; first inside reading unresolved and excluded. Control only; template uses G via C = G."
+    },
+    "D": {
+      "outside": [
+        84.6,
+        84.62,
+        84.61
+      ],
+      "shaft_diameters": [
+        5.5,
+        5.15
+      ],
+      "confidence": "User-confirmed outside readings and unequal shaft diameters; inside jaws could not reach"
+    },
+    "G": {
+      "outside": [
+        99.77
+      ],
+      "shaft_diameters": [
+        5.5,
+        5.15
+      ],
+      "confidence": "Single confirmed outside reading, same two measured feet"
+    },
+    "H": {
+      "outside": [
+        84.6
+      ],
+      "shaft_diameters": [
+        5.5,
+        5.15
+      ],
+      "confidence": "Single confirmed outside reading, same two measured feet; control only, template uses D via H = D"
+    }
+  },
+  "outside_only_controls": {
+    "F": 84.02,
+    "E": 84.34,
+    "note": "Single controls initially mislabeled G/H, corrected by owner to F/E. No centre spacing independently derived."
+  },
+  "template_representatives": {
+    "A": "A",
+    "B": "B",
+    "C": "G",
+    "D": "D",
+    "E": "B",
+    "F": "A",
+    "G": "G",
+    "H": "D"
+  },
+  "template_assumptions": [
+    "User-confirmed provisional pairings: H = D, G = C, F = A, E = B",
+    "REJECTED: straight parallel outer columns and straight parallel top/bottom rows. Intermediate inserts are not collinear with the corner inserts.",
+    "Top and bottom intermediate holes stagger oppositely; not centred",
+    "Origin is hole (0,0), not panel corner. No accurate edge offsets collected.",
+    "Foot-shaft coaxiality and jaw alignment unverified; decimals are calculation precision, not certified tolerance"
+  ],
+  "coordinate_model_usable": false,
+  "geometry_correction": {
+    "basis": "Owner clarification and private panel photos; no dimensions extracted from photographs",
+    "observation": "Intermediate inserts have an additional offset normal to the nearby panel edge, relative to the corner-insert line; not just an along-edge stagger.",
+    "unknowns": "Individual hole X/Y coordinates from panel edge datums, exact offset sizes, sketch-to-connector orientation, and caliper measuring-axis directions",
+    "interpretation": "Retain raw readings and shaft-centre calculations as evidence. Without measuring-axis directions, do not treat A/B/C/D/G/H as Cartesian projections or sum them into verified overall X/Y spans.",
+    "withdrawn_outputs": "All measured-v1 paper patterns, including the 95 mm compensation copy, and derived coordinate manifests. Correct print scaling cannot correct missing geometry."
+  },
+  "prototype_mounting_direction": {
+    "selected": "Use four corner inserts for the next prototype carrier; leave offset intermediate inserts unused",
+    "basis": "Owner asks whether only corner screws can be used; adopted to simplify prototype mounting and measurement",
+    "required_measurements": "Identify four corners in rear view and HUB75 IN edge; perpendicular offsets from each corner insert centre to both adjacent outer plastic panel edges, with contact surfaces and shaft diameter recorded; confirm overall envelope before final coordinate transfer",
+    "validation": "No four-corner carrier has been generated or load/deflection tested yet. Confirm coplanar support, insert engagement and physical fit before full printing."
+  },
+  "corner_approximate_report": {
+    "reported_x_mm": 11.0,
+    "reported_y_mm": 18.6,
+    "reported_diameter_mm": 5.2,
+    "reported_scope": "Owner estimates the same X/Y at every corner",
+    "confidence": "Approximate only; owner could not obtain accurate contact measurements",
+    "edge_contact_definition": "User confirmed: outer plastic edge to far side of narrow shaft, as in diagram",
+    "diameter_feature": "User confirmed: smooth shaft below magnetic disc; not threaded screw part",
+    "coordinate_adoption": "Provisional four-corner edge insets only, based on approximate owner readings and owner-reported same values at all corners. No full CAD or fit template generated; physical fit and sketch-to-connector orientation unverified. Prior eight-hole coordinate model remains withdrawn.",
+    "thread_specification": "Do not infer thread diameter or pitch from this unconfirmed reference-feature diameter.",
+    "derived_centre_insets_mm": {
+      "x": 8.4,
+      "y": 16.0
+    },
+    "derivation": "X = 11 - 5.2/2 = 8.4 mm; Y = 18.6 - 5.2/2 = 16.0 mm",
+    "nominal_envelope_corner_span_mm": {
+      "x": 175.2,
+      "y": 160.0,
+      "basis": "192 mm nominal square minus twice each provisional inset; calculated, not directly measured spans. X/Y orientation must be confirmed."
+    }
+  },
+  "print_calibration": {
+    "reference": "panel-print-calibration.pdf; original uncorrected horizontal and vertical 100 mm bars",
+    "owner_report_cm": {
+      "x": 9.6,
+      "y": 9.6
+    },
+    "printed_bar_lengths_mm": {
+      "x": 96.0,
+      "y": 96.0
+    },
+    "comparison_enlargement": {
+      "x": 1.0416666666666667,
+      "y": 1.0416666666666667
+    },
+    "scope": "Same printer, app, paper and settings used for this calibration only; do not apply to another print route without checking.",
+    "validation": "Owner-reported readings; comparison-page printed 100 mm bars and physical panel fit still pending."
+  }
+}
