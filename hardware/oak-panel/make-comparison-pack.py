@@ -16,13 +16,13 @@ parser.add_argument("--output", type=Path, default=ROOT / "exports")
 parser.add_argument(
     "--printed-x-mm",
     type=float,
-    default=95,
+    default=96,
     help="Physical horizontal length of the uncorrected 100 mm calibration bar",
 )
 parser.add_argument(
     "--printed-y-mm",
     type=float,
-    default=95,
+    default=96,
     help="Physical vertical length of the uncorrected 100 mm calibration bar",
 )
 args = parser.parse_args()

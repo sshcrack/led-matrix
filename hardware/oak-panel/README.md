@@ -6,7 +6,7 @@ This is an unfinished prototype, not a fabrication release. No PCB has been desi
 
 Work and physical test results are tracked in [issue #165](https://github.com/sshcrack/led-matrix/issues/165): [fit verification #170](https://github.com/sshcrack/led-matrix/issues/170), [mechanical completion #171](https://github.com/sshcrack/led-matrix/issues/171), [electronics #172](https://github.com/sshcrack/led-matrix/issues/172), and [halo lighting #208](https://github.com/sshcrack/led-matrix/issues/208). Do not print the full assembly yet.
 
-**Mounting correction: measured-v1 is WITHDRAWN.** The intermediate inserts also have offsets perpendicular to the panel edges relative to the corner-insert lines. The eight-hole template incorrectly assumed collinearity; both its standard and 95 mm compensated versions are unsuitable for fit verification. Raw digital readings remain evidence, but their measuring-axis directions and individual X/Y coordinates need establishing. The v0.6 six-hole carrier/gauge also remain on hold. Do not print any mounting pattern or carrier yet.
+**Mounting correction: measured-v1 is WITHDRAWN.** The intermediate inserts also have offsets perpendicular to the panel edges relative to the corner-insert lines. The eight-hole template incorrectly assumed collinearity; both its standard and 95 mm compensated versions are unsuitable for fit verification. Raw digital readings remain evidence, but their measuring-axis directions and individual X/Y coordinates need establishing. The v0.6 six-hole carrier/gauge also remain on hold. Do not print withdrawn mounting patterns or the carrier. The separate diagnostic comparison pack below is for fit testing only.
 
 ## Downloads and viewing
 
@@ -25,14 +25,14 @@ Generated exports are download assets, not committed blobs. Source history is ke
 Two new diagnostic downloads are separate from the withdrawn templates:
 
 - `panel-print-calibration.pdf`: **one uncorrected A4 page**, with horizontal and vertical 100 mm bars. Print this first through the intended printer/app/settings and report both physical lengths. The calibration PDF itself is never enlarged.
-- `panel-mounting-source-comparison.pdf`: **three A4 four-corner pages**: A, official Waveshare DWG (174 x 158 mm); B, different Mightary/Furi frame (166 x 172 mm); C, approximate owner insets within a nominal 192 mm module (175.2 x 160 mm). These are alternative hypotheses, not approved carrier geometry. Intermediate holes are deliberately omitted.
+- `panel-mounting-source-comparison.pdf` (also `panel-mounting-source-comparison-96mm.pdf`): **three A4 four-corner pages**: A, official Waveshare DWG (174 x 158 mm); B, different Mightary/Furi frame (166 x 172 mm); C, approximate owner insets within a nominal 192 mm module (175.2 x 160 mm). These are alternative hypotheses, not approved carrier geometry. Intermediate holes are deliberately omitted.
 
-The current comparison pack assumes an original 100 mm calibration bar prints as **95 mm in each axis**, so geometry and its check bars are enlarged to **105.263%**. These factors belong to that print route only. A copy shop printing at true 100% requires a newly generated un-enlarged pack; using the compensated pack there would oversize the pattern. Use the same print route/settings as the calibration sheet, one PDF page per A4 sheet, and verify that **both comparison-page bars print at 100 mm** before assessing fit. The dashed rectangle joins hole centres, not panel edges. Record matches by page A/B/C and corner TL/TR/BL/BR, and mark HUB75 IN orientation.
+The owner reports both uncorrected 100 mm calibration bars printed as **9.6 cm / 96 mm**. The current comparison pack therefore enlarges geometry and check bars to **104.167%** in each axis (100/96). This supersedes the earlier approximate 95 mm assumption. These factors belong to that print route only. A copy shop printing at true 100% requires a newly generated un-enlarged pack; using the compensated pack there would oversize the pattern. Use the same print route/settings as the calibration sheet, one PDF page per A4 sheet, and verify that **both comparison-page bars print at 100 mm** before assessing fit. The dashed rectangle joins hole centres, not panel edges. Record matches by page A/B/C and corner TL/TR/BL/BR, and mark HUB75 IN orientation.
 
-Regenerate with the physical readings from the **uncorrected** calibration sheet (replace the example 95 values with the new X and Y readings):
+Regenerate with the physical readings from the **uncorrected** calibration sheet (the current reported values are 96 mm in each axis):
 
 ```sh
-.venv/bin/python make-comparison-pack.py --printed-x-mm 95 --printed-y-mm 95
+.venv/bin/python make-comparison-pack.py --printed-x-mm 96 --printed-y-mm 96
 ```
 
 The helper always produces a fresh, uncorrected calibration page and writes the assumed readings, applied scales and candidate page mapping into `comparison-print-basis.json`. It is independent of `build.py` and the withdrawn eight-hole solver; it changes no enclosure solids or raw measurements. Sources are linked inside the PDF. No private photos or vendor drawing binaries are embedded.

@@ -236,5 +236,22 @@
       "y": 160.0,
       "basis": "192 mm nominal square minus twice each provisional inset; calculated, not directly measured spans. X/Y orientation must be confirmed."
     }
+  },
+  "print_calibration": {
+    "reference": "panel-print-calibration.pdf; original uncorrected horizontal and vertical 100 mm bars",
+    "owner_report_cm": {
+      "x": 9.6,
+      "y": 9.6
+    },
+    "printed_bar_lengths_mm": {
+      "x": 96.0,
+      "y": 96.0
+    },
+    "comparison_enlargement": {
+      "x": 1.0416666666666667,
+      "y": 1.0416666666666667
+    },
+    "scope": "Same printer, app, paper and settings used for this calibration only; do not apply to another print route without checking.",
+    "validation": "Owner-reported readings; comparison-page printed 100 mm bars and physical panel fit still pending."
   }
 }
