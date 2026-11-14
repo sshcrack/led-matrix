@@ -112,7 +112,8 @@ int main() {
     SteppingTimeSource time_source(100);
     std::atomic<bool> exit_flag{false};
     std::atomic<bool> interrupt_flag{false};
-    SceneRenderer renderer(matrix.get(), &time_source, nullptr, &presenter, &exit_flag, &interrupt_flag);
+    FrameSink sink(matrix.get(), &time_source, nullptr, &presenter);
+    SceneRenderer renderer(matrix.get(), &time_source, &sink, &exit_flag, &interrupt_flag);
 
     const auto input_spec = audio->get_effective_runtime_inputs();
     int availability_checks = 0;
@@ -139,9 +140,8 @@ int main() {
     auto *second = matrix->CreateFrameCanvas();
     std::shared_ptr<Scenes::Scene> forced_scene;
     SteppingTimeSource transition_time(100);
-    TransitionEngine transition_engine(
-        matrix.get(), &transition_time, nullptr, nullptr, &presenter,
-        &exit_flag, &interrupt_flag);
+    FrameSink transition_sink(matrix.get(), &transition_time, nullptr, &presenter);
+    TransitionEngine transition_engine(&transition_time, nullptr, &transition_sink, &exit_flag, &interrupt_flag);
     int transition_input_checks = 0;
     const auto ambient_spec = ambient->get_effective_runtime_inputs();
     const auto audio_spec = audio->get_effective_runtime_inputs();

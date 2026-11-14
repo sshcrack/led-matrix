@@ -2,7 +2,6 @@
 
 #include <chrono>
 
-#include "LiveFrameSnapshot.h"
 #include "shared/common/crash_reporter.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
@@ -12,14 +11,11 @@
 
 using namespace spdlog;
 
-TransitionEngine::TransitionEngine(RGBMatrixBase* matrix, TimeSource* time_source, PostProcessor* post_processor,
-                                   TransitionManager* transition_manager, MatrixPresenter* presenter, const std::atomic<bool>* exit_flag,
-                                   const std::atomic<bool>* interrupt_flag, DesktopHandoff* handoff)
-    : matrix_(matrix),
-      time_source_(time_source),
-      post_processor_(post_processor),
+TransitionEngine::TransitionEngine(TimeSource* time_source, TransitionManager* transition_manager, FrameSink* sink,
+                                   const std::atomic<bool>* exit_flag, const std::atomic<bool>* interrupt_flag, DesktopHandoff* handoff)
+    : time_source_(time_source),
       transition_manager_(transition_manager),
-      presenter_(presenter),
+      sink_(sink),
       exit_flag_(exit_flag),
       interrupt_flag_(interrupt_flag),
       own_handoff_(handoff ? nullptr : std::make_unique<DesktopHandoff>()),
@@ -71,8 +67,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                                                FrameCanvas*& composite_offscreen_canvas, int matrix_width, int matrix_height,
                                                tmillis_t transition_duration, const std::string& transition_name,
                                                std::shared_ptr<Scenes::Scene>& forced_scene, tmillis_t start_delay_ms,
-                                               std::function<bool()> inputs_still_available,
-                                               FrameCanvas *current_display_canvas)
+                                               std::function<bool()> inputs_still_available)
 {
     CrashReporter::set_activity(std::string("transition '") + transition_name + "': '"
         + scene->get_name() + "' -> '" + next_scene->get_name() + "'");
@@ -114,13 +109,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
                 SleepMillis(std::max<tmillis_t>(1, 1000 / std::max(1, scene->get_declared_target_fps())));
                 continue;
             }
-            if (post_processor_)
-                post_processor_->apply_effects(composite_offscreen_canvas);
-            LiveFrame::SnapshotStore::instance().capture_if_requested(composite_offscreen_canvas, matrix_width, matrix_height);
-            composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
-            presenter_->present();
-            Diagnostics::RuntimeDiagnostics::instance().record_presentation(
-                scene->get_declared_target_fps());
+            sink_->present(composite_offscreen_canvas, scene->get_declared_target_fps());
         }
     }
 
@@ -162,12 +151,12 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         current_continue = safe_render(scene, first_offscreen_canvas);
         current_frame_updated = scene->frame_was_updated();
     }
-    if (!current_frame_updated && current_display_canvas != nullptr) {
-        // The outgoing scene has no new pixels. Snapshot the canvas that the
-        // renderer most recently latched on the matrix instead of exposing
-        // arbitrary contents left in this reusable transition buffer. This
-        // copy happens only at the transition boundary, not every frame.
-        first_offscreen_canvas->CopyFrom(*current_display_canvas);
+    if (!current_frame_updated && sink_->visible() != nullptr) {
+        // The outgoing scene has no new pixels. Snapshot the canvas the sink
+        // most recently latched on the matrix instead of exposing arbitrary
+        // contents left in this reusable transition buffer. This copy happens
+        // only at the transition boundary, not every frame.
+        first_offscreen_canvas->CopyFrom(*sink_->visible());
         current_frame_updated = true;
     }
 
@@ -183,12 +172,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
             const auto now = time_source_->now_ms();
             const auto tick = handoff_->desktop_transition_tick(composite_offscreen_canvas, now);
             if (tick.frame) {
-                if (post_processor_) post_processor_->apply_effects(composite_offscreen_canvas);
-                LiveFrame::SnapshotStore::instance().capture_if_requested(
-                    composite_offscreen_canvas, matrix_width, matrix_height);
-                composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
-                presenter_->present();
-                Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
+                sink_->present(composite_offscreen_canvas, 60);
             } else {
                 SleepMillis(1);
             }
@@ -294,15 +278,7 @@ void TransitionEngine::render_transition_phase(std::shared_ptr<Scenes::Scene> sc
         apply_transition_frame(composite_offscreen_canvas, first_offscreen_canvas, second_offscreen_canvas, eased_alpha, matrix_width,
                                matrix_height, transition_name);
 
-        if (post_processor_)
-            post_processor_->apply_effects(composite_offscreen_canvas);
-
-        LiveFrame::SnapshotStore::instance().capture_if_requested(composite_offscreen_canvas, matrix_width, matrix_height);
-
-        composite_offscreen_canvas = matrix_->SwapOnVSync(composite_offscreen_canvas, 1);
-
-        presenter_->present();
-        Diagnostics::RuntimeDiagnostics::instance().record_presentation(60);
+        sink_->present(composite_offscreen_canvas, 60);
 
         if (alpha >= 1.0f) {
             const auto elapsed_ms = now_ms - first_local_frame_ms;
