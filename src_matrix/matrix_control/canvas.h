@@ -66,6 +66,7 @@ private:
     std::shared_ptr<ConfigData::Preset> automatic_preset_;
 
     void ensure_automatic_catalog();
+    void sync_director_seed();
     void sync_automatic_preferences();
     void prepare_automatic_scenes(const RuntimeInputs::Snapshot &runtime_inputs);
     /// One owner of the desktop render session across scene and transition phases.

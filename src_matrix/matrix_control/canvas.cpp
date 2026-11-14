@@ -77,6 +77,20 @@ void CanvasCoordinator::ensure_automatic_catalog()
     info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
 }
 
+void CanvasCoordinator::sync_director_seed()
+{
+    // Saving the seed does not restart playback, so it is picked up here: at
+    // run() start and before each automatic scene choice.
+    const auto configured_seed = config_->get_automatic_director_seed();
+    const auto configured_generation = config_->get_automatic_director_generation();
+    if (automatic_director_.seed() != configured_seed
+        || automatic_director_generation_ != configured_generation) {
+        automatic_director_.reseed(configured_seed);
+        automatic_director_generation_ = configured_generation;
+        info("Automatic Director reseeded with {}", configured_seed);
+    }
+}
+
 void CanvasCoordinator::sync_automatic_preferences()
 {
     const auto mode = AutomaticDirector::parse_mode(config_->get_automatic_director_mode()).value_or(AutomaticDirector::Mode::Mixed);
@@ -106,14 +120,7 @@ void CanvasCoordinator::prepare_automatic_scenes(const RuntimeInputs::Snapshot &
 
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    const auto configured_seed = config_->get_automatic_director_seed();
-    const auto configured_generation = config_->get_automatic_director_generation();
-    if (automatic_director_.seed() != configured_seed
-        || automatic_director_generation_ != configured_generation) {
-        automatic_director_.reseed(configured_seed);
-        automatic_director_generation_ = configured_generation;
-        info("Automatic Director reseeded with {}", configured_seed);
-    }
+    sync_director_seed();
     Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
 
     const auto lab_snapshot = SceneLabRuntime::instance().snapshot(runtime_inputs_fn_());
@@ -177,6 +184,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         if (scene == nullptr) {
             if (automatic_mode) {
+                sync_director_seed();
                 sync_automatic_preferences();
                 prepare_automatic_scenes(runtime_inputs);
                 const auto decision = automatic_director_.choose(scenes, runtime_inputs, exclude_name);
