@@ -395,7 +395,7 @@ namespace Update
             info("Preparing to launch update script in stop() and exit process...");
             pending_update_filename_ = filename;
             pending_update_.store(true);
-            exit_canvas_update = true;
+            PlaybackControl::restart("update_install");
             interrupt_received = true;
 
             return {};

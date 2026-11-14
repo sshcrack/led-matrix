@@ -69,9 +69,9 @@ namespace Config {
     }
 
     void MainConfig::mark_dirty() {
+        // Saving never touches playback: call sites that need the running scene
+        // to restart ask PlaybackControl (shared/matrix/playback_control.h).
         std::unique_lock lock(this->update_mutex);
-
-        exit_canvas_update = true;
         this->dirty = true;
     }
 
@@ -484,10 +484,8 @@ spdlog::info("Setting preset {}", id);
             std::unique_lock lock(this->data_mutex);
             this->data.environment = std::move(settings);
         }
-        // Scenes pick environment changes up live; unlike mark_dirty() this
-        // must not restart the running scene.
-        std::unique_lock lock(this->update_mutex);
-        this->dirty = true;
+        // Scenes pick environment changes up live.
+        mark_dirty();
     }
 
     bool MainConfig::is_scheduling_enabled() {

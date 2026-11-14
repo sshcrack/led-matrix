@@ -348,7 +348,7 @@ Daemon::Daemon(int argc, char* argv[])
                 router->http_get("/exit_debug", [](auto req, auto)
                 {
                     interrupt_received = true;
-                    exit_canvas_update = true;
+                    PlaybackControl::restart("debug_exit");
                     return req->create_response().set_body("Sent interrupt.").done();
                 });
 

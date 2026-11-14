@@ -16,7 +16,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
     router->http_get("/toggle", [cfg](auto req, auto) {
         cfg->set_turned_off(!cfg->is_turned_off());
         Server::broadcast_matrix_enabled(!cfg->is_turned_off());
-        exit_canvas_update.store(true);
+        PlaybackControl::restart("power_toggle");
 
         return reply_with_json(req, {{"turned_off", cfg->is_turned_off()}});
     });
@@ -47,7 +47,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
 
         cfg->set_turned_off(enabled_str == "false");
         Server::broadcast_matrix_enabled(!cfg->is_turned_off());
-        exit_canvas_update.store(true);
+        PlaybackControl::restart("power_set");
 
         return reply_with_json(req, {{"turned_off", cfg->is_turned_off()}});
     });
@@ -61,7 +61,7 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
             return reply_with_error(req, "Mode must be automatic or manual");
         cfg->set_operation_mode(mode);
         cfg->save();
-        exit_canvas_update.store(true);
+        PlaybackControl::restart("operation_mode");
         return reply_with_json(req, {{"operation_mode", cfg->get_operation_mode()}});
     });
 

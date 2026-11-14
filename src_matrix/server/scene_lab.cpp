@@ -4,6 +4,7 @@
 #include <cctype>
 
 #include "matrix_control/SceneLabRuntime.h"
+#include "shared/matrix/playback_control.h"
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/shared.h"
@@ -79,7 +80,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
                 scene, body.value("variant", std::string{}),
                 body.value("properties", json::object()), body.value("fps", 20),
                 RuntimeInputs::snapshot());
-            exit_canvas_update.store(true);
+            PlaybackControl::restart("scene_lab_start");
             return reply_with_json(req, SceneLabRuntime::instance().status_json(RuntimeInputs::snapshot()));
         } catch (const std::exception &e) {
             return reply_with_error(req, e.what());
@@ -101,7 +102,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
                 body.value("properties", current.properties),
                 body.value("fps", current.fps), RuntimeInputs::snapshot(),
                 expected_generation, session_id);
-            exit_canvas_update.store(true);
+            PlaybackControl::restart("scene_lab_update");
             return reply_with_json(req, session_payload());
         } catch (const std::exception &e) {
             return stale_or_bad_request(req, e);
@@ -128,7 +129,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             if (!session_id.has_value())
                 return reply_with_error(req, "session_id is required");
             SceneLabRuntime::instance().stop(session_id);
-            exit_canvas_update.store(true);
+            PlaybackControl::restart("scene_lab_stop");
             return reply_with_json(req, session_payload());
         } catch (const std::exception &e) {
             return stale_or_bad_request(req, e);
@@ -162,7 +163,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             cfg->set_custom_scene_variant(state.scene_name, variant);
             if (!cfg->save())
                 return reply_with_error(req, "Could not persist Scene Lab variant", restinio::status_internal_server_error());
-            exit_canvas_update.store(true);
+            PlaybackControl::restart("scene_lab_save_variant");
             return reply_with_json(req, {
                 {"success", true}, {"scene", state.scene_name}, {"variant", variant},
                 {"generation", updated.generation}

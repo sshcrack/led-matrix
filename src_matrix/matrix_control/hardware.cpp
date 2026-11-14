@@ -16,7 +16,7 @@
 #include "shared/matrix/runtime_inputs.h"
 #include "shared/matrix/server/common.h"
 #include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/utils/shared.h"  // exit_canvas_update
+#include "shared/matrix/utils/shared.h"  // PlaybackControl
 #include "spdlog/spdlog.h"
 
 using namespace rgb_matrix;
@@ -55,8 +55,9 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
     };
 
-    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), cfg, &exit_canvas_update,
-                                  &interrupt_received, RuntimeInputs::snapshot, set_curr_scene, broadcast);
+    CanvasCoordinator coordinator(matrix, &wall_clock, post_processor, transition_manager, presenter.get(), cfg,
+                                  &PlaybackControl::restart_flag(), &interrupt_received, RuntimeInputs::snapshot, set_curr_scene,
+                                  broadcast);
 
     string last_scheduled_preset = "";
 
@@ -84,7 +85,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
 
         if (!cfg->is_turned_off()) {
             coordinator.run(pinned_scene);
-            exit_canvas_update = false;
+            PlaybackControl::acknowledge();
             debug("Outer loop iteration, checking again...");
             continue;
         }
