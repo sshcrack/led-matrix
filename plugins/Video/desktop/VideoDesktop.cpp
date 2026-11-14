@@ -24,18 +24,22 @@ VideoDesktop::~VideoDesktop() {
 void VideoDesktop::post_init() {
   auto cacheRoot = get_data_dir() / "cache" / "video";
   std::filesystem::create_directories(cacheRoot);
-  engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, matrix_width, matrix_height, fps);
+  engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, matrix_width.load(), matrix_height.load(), fps);
   // Resolve once and decode continuously. Downloading separate sections paid
   // yt-dlp/network startup costs again and stalled every 20 seconds.
   engine_->set_continuous_streaming(true);
   refresh_tools_status(true);
-  engine_->on_status_change = [this](const std::string& s) {
-    send_websocket_message("status:" + s);
-    if (s == "playing")      state = State::Playing;
-    else if (s == "downloading") state = State::Downloading;
-    else if (s == "error")   state = State::Error;
-    else if (s == "idle")    state = State::Idle;
-  };
+  engine_->set_on_status_change([this](const std::string& s) {
+      send_websocket_message("status:" + s);
+      if (s == "playing")
+          state = State::Playing;
+      else if (s == "downloading")
+          state = State::Downloading;
+      else if (s == "error")
+          state = State::Error;
+      else if (s == "idle")
+          state = State::Idle;
+  });
 }
 
 void VideoDesktop::load_config(std::optional<const nlohmann::json> config) {
@@ -234,7 +238,7 @@ std::vector<std::unique_ptr<UdpPacket>> VideoDesktop::compute_next_packets(const
         return {};
     // Chunked and sequenced for matrices that announced it, else the legacy datagram.
     auto* video = static_cast<VideoPacket*>(packet->get());
-    return frames_.packets(std::move(video->data), matrix_width, matrix_height,
+    return frames_.packets(std::move(video->data), matrix_width.load(), matrix_height.load(),
                            [](std::vector<uint8_t> rgb) { return std::make_unique<VideoPacket>(std::move(rgb)); });
 }
 
@@ -281,8 +285,8 @@ void VideoDesktop::on_websocket_message(const std::string message) {
     auto xPos = sizeStr.find('x');
     if (xPos == std::string::npos) return;
     try {
-      matrix_width  = std::stoi(sizeStr.substr(0, xPos));
-      matrix_height = std::stoi(sizeStr.substr(xPos + 1));
+        matrix_width.store(std::stoi(sizeStr.substr(0, xPos)));
+        matrix_height.store(std::stoi(sizeStr.substr(xPos + 1)));
     } catch (const std::exception &) {
       // malformed size message from the peer; keep previous dimensions
     }

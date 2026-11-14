@@ -537,6 +537,29 @@ if(ENABLE_DESKTOP)
             ENVIRONMENT "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
     endif()
 
+    # Shutdown / lifetime regressions of the shared desktop layer (WebSocket
+    # client vs plugin threads, engine url, child descriptor inheritance).
+    # Most informative under desktop-linux-tsan / desktop-linux-asan.
+    add_executable(desktop_threading_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop_threading_smoke.cpp
+    )
+    target_compile_features(desktop_threading_smoke PRIVATE cxx_std_23)
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(desktop_threading_smoke PRIVATE SharedToolsDesktop SharedToolsCommon spdlog::spdlog)
+    add_test(NAME desktop_threading_smoke COMMAND $<TARGET_FILE:desktop_threading_smoke>)
+    set_tests_properties(desktop_threading_smoke PROPERTIES TIMEOUT 120)
+    if(WIN32)
+        add_custom_command(TARGET desktop_threading_smoke POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsDesktop> $<TARGET_FILE_DIR:desktop_threading_smoke>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:SharedToolsCommon> $<TARGET_FILE_DIR:desktop_threading_smoke>
+        )
+    else()
+        set_tests_properties(desktop_threading_smoke PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/desktop:${CMAKE_BINARY_DIR}/shared/common:${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib")
+    endif()
+
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "led-matrix-desktop")
     if(NOT WIN32)
         find_package(PkgConfig REQUIRED) # Include functions provided by PkgConfig module.

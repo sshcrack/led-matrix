@@ -21,11 +21,22 @@ class SHARED_DESKTOP_API WebsocketClient : public std::enable_shared_from_this<W
 {
 public:
     static std::shared_ptr<WebsocketClient> create();
+    /// Unregisters itself when it is the active instance.
     ~WebsocketClient();
 
+    /// The active client. Only for the thread that owns the client's lifetime
+    /// (the UI thread): the pointer can be cleared and the client destroyed
+    /// the moment any other thread has read it. Other threads send through
+    /// sendPluginMessage().
     static WebsocketClient *instance();
 
+    /// Blocks until every sendPluginMessage() in flight has returned, so after
+    /// `setInstance(nullptr)` the client can be destroyed safely.
     static void setInstance(WebsocketClient *instance);
+
+    /// Sends `msg:<plugin>:<message>` on the active client from any thread.
+    /// Returns false when there is none (not started yet or already shut down).
+    static bool sendPluginMessage(const std::string& plugin, const std::string& message);
 
     static std::atomic<int>& net_refs()
     {

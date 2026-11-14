@@ -291,6 +291,9 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
     worker_job_ = job;
 #else
     const pid_t desktop_pid = getpid();
+    // Everything the child needs is prepared here: after fork() in a
+    // multi-threaded process it may only make async-signal-safe calls.
+    const auto port_string = std::to_string(port);
     const pid_t pid = fork();
     if (pid < 0) {
         std::lock_guard lock(mutex_);
@@ -305,7 +308,9 @@ bool RenderOffloadDesktop::start_worker(const std::string &host, std::uint16_t p
         if (prctl(PR_SET_PDEATHSIG, SIGTERM) != 0 || getppid() != desktop_pid)
             _exit(125);
 #endif
-        const auto port_string = std::to_string(port);
+        // The worker lives as long as the desktop; it must not keep the
+        // desktop's WebSocket / UDP sockets and pipes open.
+        close_inherited_descriptors();
         execl(executable.c_str(), executable.c_str(), "--host", host.c_str(),
               "--port", port_string.c_str(), "--client-id", client_id.c_str(),
               "--crash-dir", crash_dir.c_str(), static_cast<char *>(nullptr));

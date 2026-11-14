@@ -23,13 +23,15 @@ public:
     void on_websocket_message(std::string message) override;
     void on_websocket_connected() override { frames_.reset(); }
 
-    ShaderToy::Runtime runtime;
+    // Reset in before_exit(), while the GL context is still current.
+    std::unique_ptr<ShaderToy::Runtime> runtime = std::make_unique<ShaderToy::Runtime>();
     std::vector<std::unique_ptr<UdpPacket>> compute_next_packets(const std::string& sceneName) override;
     std::string get_plugin_name() const override {
         return PLUGIN_NAME;
     }
 
     void post_init() override;
+    void before_exit() override;
     void after_swap(ImGuiContext *imCtx) override;
     [[nodiscard]] bool is_large_payload_plugin() const override { return true; }
     void initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn, ImGuiMemFreeFunc*free_fn, void **user_data) override;

@@ -1,9 +1,13 @@
 #include "SpotifyMVDesktop.h"
-#include "shared/desktop/utils.h"
+
 #include <fmt/format.h>
 #include <imgui.h>
-#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <nlohmann/json.hpp>
+
+#include "shared/desktop/utils.h"
 
 REGISTER_PLUGIN(SpotifyMV, SpotifyMVDesktop)
 
@@ -20,14 +24,12 @@ SpotifyMVDesktop::~SpotifyMVDesktop() {
         // must null it out afterward to prevent ~VideoStreamEngine() from
         // holding a dangling capture (the lambda's `this` becomes invalid as
         // member destructors unwind).
-        pending_engine_->on_status_change = nullptr;
-        pending_engine_->on_first_frame_ready = nullptr;
+        pending_engine_->clear_callbacks();
     }
     if (current_engine_) {
         std::lock_guard<std::mutex> lk(engine_mutex_);
         current_engine_->stop();
-        current_engine_->on_status_change = nullptr;
-        current_engine_->on_first_frame_ready = nullptr;
+        current_engine_->clear_callbacks();
     }
 }
 
@@ -36,10 +38,10 @@ void SpotifyMVDesktop::post_init() {
     std::filesystem::create_directories(cacheRoot);
     current_engine_ = std::make_unique<Shared::VideoStreamEngine>(cacheRoot, kWidth, kHeight);
     refresh_tools_status(true);
-    current_engine_->on_status_change = [this](const std::string& s) {
+    current_engine_->set_on_status_change([this](const std::string& s) {
         spdlog::info("Status change " + s);
         send_websocket_message("status:" + s);
-    };
+    });
     current_engine_->set_chunk_duration_sec(chunk_duration_sec_.load());
 }
 
@@ -47,14 +49,14 @@ void SpotifyMVDesktop::load_config(std::optional<const nlohmann::json> config) {
     if (config.has_value()) {
         const auto& cfg = config.value();
         if (cfg.contains("crossfade_duration_ms"))
-            crossfade_duration_ms_ = cfg["crossfade_duration_ms"].get<int>();
+            crossfade_duration_ms_.store(cfg["crossfade_duration_ms"].get<int>());
         if (cfg.contains("chunk_duration_sec"))
             chunk_duration_sec_.store(cfg["chunk_duration_sec"].get<int>());
     }
 }
 
 void SpotifyMVDesktop::save_config(nlohmann::json& config) const {
-    config["crossfade_duration_ms"] = crossfade_duration_ms_;
+    config["crossfade_duration_ms"] = crossfade_duration_ms_.load();
     config["chunk_duration_sec"] = chunk_duration_sec_.load();
 }
 
@@ -88,16 +90,17 @@ bool SpotifyMVDesktop::refresh_tools_status(bool force) {
 
 void SpotifyMVDesktop::report_tools_status() {
     send_websocket_message(tools_available_.load() ? "tools:ready" : "tools:error");
-    last_tools_report_ = std::chrono::steady_clock::now();
+    last_tools_report_ns_.store(steady_now_ns(), std::memory_order_relaxed);
 }
 
 void SpotifyMVDesktop::pre_new_frame() {
     if (!producer_owner_.load(std::memory_order_acquire))
         return;
     const bool changed = refresh_tools_status();
-    const auto now = std::chrono::steady_clock::now();
-    if (changed || last_tools_report_ == std::chrono::steady_clock::time_point{}
-        || now - last_tools_report_ >= std::chrono::seconds(2)) {
+    const auto now = steady_now_ns();
+    const auto last_report = last_tools_report_ns_.load(std::memory_order_relaxed);
+    if (changed || last_report == 0 ||
+        now - last_report >= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(2)).count()) {
         report_tools_status();
     }
 }
@@ -123,8 +126,7 @@ void SpotifyMVDesktop::stop_playback(const bool report_status) {
     }
     for (auto* engine : {pending.get(), current.get()}) {
         if (!engine) continue;
-        engine->on_status_change = nullptr;
-        engine->on_first_frame_ready = nullptr;
+        engine->clear_callbacks();
         engine->stop();
     }
 
@@ -148,6 +150,13 @@ void SpotifyMVDesktop::fail_pending(const std::uint64_t generation, const std::s
     total_errors_++;
     send_websocket_message("track:error:" + track_id);
     send_websocket_message("status:error");
+}
+
+std::int64_t SpotifyMVDesktop::steady_now_ns()
+{
+    // 0 is reserved for "never", so a clock at its epoch cannot look unreported.
+    return std::max<std::int64_t>(
+        1, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
 void SpotifyMVDesktop::start_crossfade() {

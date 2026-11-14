@@ -14,6 +14,15 @@
 
 REGISTER_PLUGIN(Shadertoy, ShadertoyDesktop)
 
+void ShadertoyDesktop::before_exit()
+{
+    // The runtime owns GL textures, framebuffers and programs and deletes them
+    // in its destructor. HelloImGui calls BeforeExit while the GL context is
+    // still current; destroy_plugins() runs after the window and context are
+    // gone, where those glDelete* calls have no context to act on.
+    runtime.reset();
+}
+
 ShadertoyDesktop::~ShadertoyDesktop()
 {
     if (mCache)
@@ -80,7 +89,7 @@ ShaderToy::AudioInput currentAudioInput() {
 }
 void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
 {
-    if (currShaderHasError.load(std::memory_order_relaxed) || !isActive.load(std::memory_order_relaxed))
+    if (!runtime || currShaderHasError.load(std::memory_order_relaxed) || !isActive.load(std::memory_order_relaxed))
         return;
 
     bool changed = false;
@@ -109,11 +118,11 @@ void ShadertoyDesktop::after_swap(ImGuiContext *imCtx)
     }
 
     ImGui::SetCurrentContext(imCtx);
-    runtime.setAudioInput(currentAudioInput());
-    runtime.tick(60);
+    runtime->setAudioInput(currentAudioInput());
+    runtime->tick(60);
 
     const std::vector<uint8_t> data =
-        runtime.renderToBuffer(ShaderToy::Vec2{static_cast<float>(width.load()), static_cast<float>(height.load())});
+        runtime->renderToBuffer(ShaderToy::Vec2{static_cast<float>(width.load()), static_cast<float>(height.load())});
 
     std::unique_lock lock(currDataMutex);
     currData = data;
@@ -123,7 +132,7 @@ void ShadertoyDesktop::renderCanvasCallback(const ImDrawList*, const ImDrawCmd* 
 {
     auto* self = static_cast<ShadertoyDesktop*>(command->UserCallbackData);
     const auto* draw_data = ImGui::GetDrawData();
-    if (self == nullptr || draw_data == nullptr || !self->runtime.isValid())
+    if (self == nullptr || draw_data == nullptr || !self->runtime || !self->runtime->isValid())
         return;
 
     const ImVec2 framebuffer_size{
@@ -143,12 +152,11 @@ void ShadertoyDesktop::renderCanvasCallback(const ImDrawList*, const ImDrawCmd* 
     if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
         return;
 
-    self->runtime.render(ShaderToy::RenderRegion{
-        .framebufferSize = {framebuffer_size.x, framebuffer_size.y},
-        .clipMin = {clip_min.x, clip_min.y},
-        .clipMax = {clip_max.x, clip_max.y},
-        .canvasSize = {static_cast<float>(self->width.load()), static_cast<float>(self->height.load())}
-    });
+    self->runtime->render(
+        ShaderToy::RenderRegion{.framebufferSize = {framebuffer_size.x, framebuffer_size.y},
+                                .clipMin = {clip_min.x, clip_min.y},
+                                .clipMax = {clip_max.x, clip_max.y},
+                                .canvasSize = {static_cast<float>(self->width.load()), static_cast<float>(self->height.load())}});
 }
 
 void ShadertoyDesktop::initialize_imgui(ImGuiContext *im_gui_context, ImGuiMemAllocFunc*alloc_fn,
@@ -214,8 +222,7 @@ void ShadertoyDesktop::render()
             // draw inside ImGui's draw list so its clip rectangle/framebuffer
             // coordinates are valid when the command is executed.
             auto* draw_list = ImGui::GetWindowDrawList();
-            if (runtime.isValid())
-            {
+            if (runtime && runtime->isValid()) {
                 draw_list->AddCallback(renderCanvasCallback, this);
                 draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
             }
@@ -335,7 +342,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& shaderUrl, const std:
     if (cached.has_value())
     {
         spdlog::info("Loading shader from cache for {}", shaderUrl);
-        auto res = runtime.loadFromShaderToyResponse(shaderIdFromUrl(shaderUrl), cached.value());
+        auto res = runtime->loadFromShaderToyResponse(shaderIdFromUrl(shaderUrl), cached.value());
         if (!res.has_value())
         {
             spdlog::error("Failed to load from cache: {}", res.error().what());
@@ -348,7 +355,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& shaderUrl, const std:
     else
     {
         spdlog::info("Loading shader {} from ShaderToy...", shaderUrl);
-        auto res = runtime.loadFromShaderToy(shaderUrl);
+        auto res = runtime->loadFromShaderToy(shaderUrl);
         if (!res.has_value())
         {
             spdlog::error("Failed to load from shadertoy: {}", res.error().what());
@@ -362,7 +369,7 @@ void ShadertoyDesktop::loadCacheFromUrl(const std::string& shaderUrl, const std:
 
 void ShadertoyDesktop::loadLocalShaderFromCode(const std::string &name, const std::string &code, const std::uint64_t generation)
 {
-    auto res = runtime.loadImageShader(name, code, 0);
+    auto res = runtime->loadImageShader(name, code, 0);
     if (!res.has_value())
     {
         spdlog::error("Failed to prepare custom shader '{}': {}", name, res.error().what());

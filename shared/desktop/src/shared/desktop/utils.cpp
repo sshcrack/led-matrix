@@ -124,6 +124,7 @@ int run_command(const std::string& cmd,
     if (pid == 0) {
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); close(devnull); }
+        close_inherited_descriptors();
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
         _exit(127);
     }
@@ -240,6 +241,7 @@ CommandResult run_command_capture(const std::string& cmd,
         dup2(fds[1], STDOUT_FILENO);
         dup2(fds[1], STDERR_FILENO);
         close(fds[1]);
+        close_inherited_descriptors();
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)nullptr);
         _exit(127);
     }

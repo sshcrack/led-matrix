@@ -152,6 +152,14 @@ public:
         });
         plugin_.load_config(nlohmann::json{{"crossfade_duration_ms", crossfade_ms}});
         plugin_.post_init();
+        // The desktop's UI thread: pre_new_frame() runs every frame, concurrently
+        // with the WebSocket thread (these tests' main thread) and the UDP loop.
+        ui_ = std::thread([this] {
+            while (pumping_) {
+                plugin_.pre_new_frame();
+                std::this_thread::sleep_for(1ms);
+            }
+        });
         pump_ = std::thread([this] {
             while (pumping_) {
                 auto packet = plugin_.compute_next_packet("spotifymv");
@@ -173,6 +181,7 @@ public:
     {
         pumping_ = false;
         pump_.join();
+        ui_.join();
         Plugins::DesktopPlugin::set_message_sink(nullptr);
     }
 
@@ -264,6 +273,7 @@ private:
     std::vector<Frame> frames_;
     std::atomic<bool> pumping_{true};
     std::thread pump_;
+    std::thread ui_;
 };
 
 bool saw_color(const std::vector<Harness::Frame>& frames, int color)

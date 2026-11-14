@@ -7,7 +7,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         return;
     if (message == "producer:active") {
         producer_owner_.store(true, std::memory_order_release);
-        last_tools_report_ = {};
+        last_tools_report_ns_.store(0, std::memory_order_relaxed);
         spdlog::info("SpotifyMV: this desktop is the active producer");
         return;
     }
@@ -118,8 +118,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
                 engine_to_cancel = std::move(pending_engine_);
             }
             if (engine_to_cancel) {
-                engine_to_cancel->on_status_change = nullptr;
-                engine_to_cancel->on_first_frame_ready = nullptr;
+                engine_to_cancel->clear_callbacks();
                 engine_to_cancel->stop();
             }
             send_websocket_message("status:playing");
@@ -135,8 +134,7 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         {
             std::lock_guard<std::mutex> lk_eng(engine_mutex_);
             if (pending_engine_) {
-                pending_engine_->on_status_change = nullptr;
-                pending_engine_->on_first_frame_ready = nullptr;
+                pending_engine_->clear_callbacks();
                 to_stop = std::move(pending_engine_);
             }
         }
@@ -158,15 +156,13 @@ void SpotifyMVDesktop::on_websocket_message(const std::string message) {
         // generation: this engine's status is forwarded while it is the
         // pending request, and again once it is current with nothing pending
         // (including after the user returned to it from a skipped track).
-        new_engine->on_status_change = [this, generation](const std::string& status) {
+        new_engine->set_on_status_change([this, generation](const std::string& status) {
             if (track_requests_.status_generation() != generation)
                 return;
             spdlog::info("Status change " + status);
             send_websocket_message("status:" + status);
-        };
-        new_engine->on_first_frame_ready = [this, generation, track_id]() {
-            on_pending_first_frame(generation, track_id);
-        };
+        });
+        new_engine->set_on_first_frame_ready([this, generation, track_id]() { on_pending_first_frame(generation, track_id); });
 
         {
             std::lock_guard<std::mutex> lk_eng(engine_mutex_);
