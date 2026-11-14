@@ -68,6 +68,8 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         // after the check below) stays set and ends the next run() instead of
         // being lost.
         PlaybackControl::acknowledge();
+        if (interrupt_received)
+            break;  // a shutdown signal may have landed right before the clear
 
         if (cfg->is_scheduling_enabled()) {
             auto active_preset = cfg->get_active_scheduled_preset();

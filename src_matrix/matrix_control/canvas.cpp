@@ -170,7 +170,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
     };
 
     int no_scene_count = 0;
-    while (!*exit_flag_) {
+    while (!*exit_flag_ && !(interrupt_flag_ && *interrupt_flag_)) {
         if (lab_mode && !SceneLabRuntime::instance().lease_active(lab_snapshot.generation))
             return;
         advance_journey();
