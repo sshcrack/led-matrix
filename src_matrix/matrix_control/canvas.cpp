@@ -397,9 +397,11 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             if (prime_incoming_desktop_stream)
                 broadcast_fn_(next_scene->get_name());
 
-            transition_engine_.render_transition_phase(scene, next_scene, first, second, composite, matrix_width, matrix_height,
-                                                       transition_duration, transition_name, forced_scene_, transition_delay,
-                                                       std::move(transition_inputs_still_available));
+            forced_scene_ =
+                transition_engine_
+                    .render_transition_phase(scene, next_scene, first, second, composite, matrix_width, matrix_height, transition_duration,
+                                             transition_name, transition_delay, std::move(transition_inputs_still_available))
+                    .forced_scene;
             Diagnostics::RuntimeDiagnostics::instance().end_transition_timeline();
 
             if (prime_incoming_desktop_stream && forced_scene_ != next_scene)

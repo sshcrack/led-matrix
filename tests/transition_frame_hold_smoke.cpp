@@ -128,8 +128,7 @@ int main()
     std::atomic<bool> interrupt_flag{false};
     TransitionEngine engine(&time_source, nullptr, &sink, &exit_flag, &interrupt_flag);
 
-    std::shared_ptr<Scenes::Scene> forced_scene;
-    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", forced_scene, 100, {});
+    auto forced_scene = engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", 100, {}).forced_scene;
 
     if (presenter.samples.empty()) {
         std::cerr << "transition produced no presented frames\n";
@@ -157,8 +156,7 @@ int main()
             32, 32, std::vector<std::uint8_t>(32 * 32 * 3, 83));
     });
     presenter.samples.clear();
-    forced_scene.reset();
-    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 1000, "blend", forced_scene, 0, {});
+    forced_scene = engine.render_transition_phase(current, next, first, second, composite, 32, 32, 1000, "blend", 0, {}).forced_scene;
     if (!sent_transition || presenter.samples.size() != 1 || presenter.samples[0] != 83
         || forced_scene != next || RemoteRender::status().requested) {
         std::cerr << "desktop composition or stalled-worker fallback failed\n";
@@ -166,8 +164,7 @@ int main()
     }
     RemoteRender::set_command_sender([](const nlohmann::json &) {});
     presenter.samples.clear();
-    forced_scene.reset();
-    engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", forced_scene, 0, {});
+    forced_scene = engine.render_transition_phase(current, next, first, second, composite, 32, 32, 100, "blend", 0, {}).forced_scene;
     if (presenter.samples.empty() || forced_scene != next) {
         std::cerr << "worker startup timeout failed to render locally\n";
         return 5;
