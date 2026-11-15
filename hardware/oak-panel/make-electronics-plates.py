@@ -43,6 +43,7 @@ manifest = {
     "dc_socket": DC_SOCKET,
     "depth_budget": depth_budget(),
     "current_body_depth_mm": 60.0,
+    "target_body_depth_mm": 80.0,
     "parts": [],
 }
 meshes = {}
@@ -144,8 +145,8 @@ def render_preview(path):
     fig.text(
         0.5,
         0.01,
-        "Depth needed (LED tip → cover): power plate {:.0f} mm, controller plate {:.0f} mm (Pi stack assumed) "
-        "vs current 60 mm body. Section at mid-plate; orange/green = component outlines, not geometry.".format(
+        "Depth needed (LED tip → cover): power plate {:.0f} mm, controller plate {:.0f} mm (Pi stack ~30 mm measured, 33 mm budgeted) "
+        "vs current 60 mm body; target 80 mm. Section at mid-plate; orange/green = component outlines, not geometry.".format(
             db["power_plate"]["body_depth_needed_mm"], db["controller_plate"]["body_depth_needed_mm"]
         ),
         ha="center",

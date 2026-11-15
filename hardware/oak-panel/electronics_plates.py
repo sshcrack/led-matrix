@@ -21,7 +21,7 @@ TIE_SLOT = (2.2, 5.0)  # cable-tie slot for ties up to 4.8 mm wide
 COMPONENTS = {
     "buck_20a": (74.0, 74.0, 32.0, "amazon.de B0CZP1Q6DD listing: 74 x 74 x 32 mm, 2x 5.3 mm flange holes; hole spacing estimated from photos"),
     "pi3b": (85.0, 56.0, 17.0, "Raspberry Pi 3B mechanical drawing: 85 x 56 mm, M2.5 holes 58 x 49 mm"),
-    "pi_stack": (85.0, 56.0, 33.0, "ASSUMED: Pi + Electrodragon MPC1119 on the 40-pin header + plugged HUB75 ribbons; owner to measure"),
+    "pi_stack": (85.0, 56.0, 33.0, "Pi 3B + Electrodragon MPC1119 + plugged HUB75 ribbon: owner measured about 30 mm (rough, 2026-11-15); 33 mm keeps a 3 mm margin"),
     "lm2596": (43.0, 21.0, 14.0, "typical HW-411 module, measure"),
     "pro_micro": (33.0, 18.0, 6.0, "typical Pro Micro, measure"),
     "level_shifter": (16.0, 13.0, 4.0, "typical 4-channel BSS138 board, measure"),
