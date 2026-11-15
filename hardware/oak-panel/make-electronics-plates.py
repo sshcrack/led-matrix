@@ -134,7 +134,8 @@ pp = parts["power-plate"].val()
 for mx, my in MODULE_CENTRES:
     assert pp.isInside((mx, my, t / 2)), "module seat must stay solid"
     for side in (-1, 1):
-        assert not pp.isInside((mx + side * 30.0, my, t / 2)), "module slot at ~60 mm spacing"
+        for half in (31.0, 33.0, 35.0):  # 62, 66 (listing drawing) and 70 mm spacing
+            assert not pp.isInside((mx + side * half, my, t / 2)), "module slot covers 62..70 mm"
 coupon = parts["dc-socket-coupon"].val()
 assert not coupon.isInside((0, 0, 3))
 for dx in (-DC_SOCKET["screw_spacing"] / 2, DC_SOCKET["screw_spacing"] / 2):

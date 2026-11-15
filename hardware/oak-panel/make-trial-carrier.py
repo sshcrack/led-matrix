@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export one real panel trial carrier plus three test coupons in a single-job geometry layout."""
+"""Export one real panel trial carrier plus four test coupons in a single-job geometry layout."""
 
 import argparse
 import hashlib
@@ -40,6 +40,41 @@ if sorted(centres) != [[-87, -79], [-87, 79], [87, -79], [87, 79]]:
         "Mounting basis changed; review this trial-carrier envelope before export"
     )
 out.mkdir(parents=True, exist_ok=True)
+
+# Pixel grid sample: a square cell around each LED on the panel's 3 mm pitch, to compare
+# separated square pixels (grid + diffuser) with the bare dot look. Rests on the LED tips;
+# the walls sit over the 0.9 mm gaps between the 2.1 mm LEDs. Two depths in one piece.
+PIXEL_GRID = {
+    "pitch": 3.0,  # P3 panel
+    "cells": 16,
+    "wall": 0.8,  # two perimeters with a 0.4 mm nozzle
+    "outer_wall": 1.0,
+    "heights": (3.0, 6.0),  # left 8 columns, right 8 columns
+}
+
+
+def build_pixel_grid_coupon():
+    g = PIXEL_GRID
+    pitch, n, wall, rim = g["pitch"], g["cells"], g["wall"], g["outer_wall"]
+    span = n * pitch + wall + 2 * (rim - wall)  # outer size
+    half = n // 2
+    low, high = g["heights"]
+    # Low half (columns 0..7) and high half (columns 8..15) as one solid, then cut the cells.
+    split = -span / 2 + (rim - wall) + half * pitch + wall  # the shared wall belongs to the high half
+    grid = (
+        cq.Workplane("XY").box(split + span / 2, span, low, centered=False).translate((-span / 2, -span / 2, 0))
+        .union(cq.Workplane("XY").box(span / 2 - split + wall, span, high, centered=False).translate((split - wall, -span / 2, 0)))
+    )
+    x0 = -span / 2 + rim
+    for i in range(n):
+        for j in range(n):
+            cell = pitch - wall
+            grid = grid.cut(
+                cq.Workplane("XY").box(cell, cell, high, centered=False).translate((x0 + i * pitch, x0 + j * pitch, 0))
+            )
+    return grid
+
+
 carrier = build_trial_carrier()
 coupon = cq.Workplane("XY").box(80, 24, 3, centered=(True, True, False))
 for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
@@ -47,8 +82,8 @@ for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
 # Notched end identifies the first (3.2 mm) hole without font dependencies.
 coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 5).translate((-39, -11, 1.5)))
 manifest = {
-    "revision": "trial-carrier-v3",
-    "status": "One-panel carrier geometry trial plus clearance, halo-channel and DC-socket coupons; no wall-mount or finished product approval.",
+    "revision": "trial-carrier-v4",
+    "status": "One-panel carrier geometry trial plus clearance, halo-channel, DC-socket and pixel-grid coupons; no wall-mount or finished product approval.",
     "pattern_mm": centres,
     "corner_span_mm": [174, 158],
     "carrier_clearance_diameter_mm": 3.5,
@@ -68,6 +103,7 @@ manifest = {
     "coupon_from_notched_end_mm": [3.2, 3.4, 3.5, 3.6],
     "halo_channel_coupon": {"strip_mm": HALO_STRIP_MM, **HALO_CHANNEL},
     "dc_socket_coupon": DC_SOCKET,
+    "pixel_grid_coupon": PIXEL_GRID,
     "print_scale_percent": 100,
     "paper_scale_compensation_applied": False,
     "material": "PETG starting material; print service selects settings and quote.",
@@ -81,6 +117,7 @@ for name, shape in [
     ("clearance-hole-coupon", coupon),
     ("halo-channel-coupon", build_halo_channel_coupon()),
     ("dc-socket-coupon", build_dc_socket_coupon()),
+    ("pixel-grid-coupon", build_pixel_grid_coupon()),
 ]:
     solid = shape.val()
     assert solid.isValid() and len(solid.Solids()) == 1, name
@@ -149,6 +186,22 @@ assert not carrier.val().isInside((0, 0, 2))
 for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
     assert not coupon.val().isInside((x + diameter / 2 - 0.01, 0, 1.5))
     assert coupon.val().isInside((x + diameter / 2 + 0.01, 0, 1.5))
+grid = build_pixel_grid_coupon().val()
+g = PIXEL_GRID
+span = g["cells"] * g["pitch"] + g["wall"] + 2 * (g["outer_wall"] - g["wall"])
+first = -span / 2 + g["outer_wall"] + (g["pitch"] - g["wall"]) / 2  # centre of the first cell
+for i in range(g["cells"]):
+    for j in (0, g["cells"] - 1):
+        assert not grid.isInside((first + i * g["pitch"], first + j * g["pitch"], 1.5))  # open cell
+for i in range(g["cells"] - 1):
+    wall_x = first + i * g["pitch"] + g["pitch"] / 2
+    assert grid.isInside((wall_x, first, 1.5))  # wall between cells
+assert grid.isInside((first + g["pitch"] / 2, first, g["heights"][0] - 0.1))
+assert not grid.isInside((first + g["pitch"] / 2, first, g["heights"][0] + 0.1))  # low half
+last_wall = first + (g["cells"] - 2) * g["pitch"] + g["pitch"] / 2
+assert grid.isInside((last_wall, first, g["heights"][1] - 0.1))  # high half
+assert abs(grid.BoundingBox().xlen - span) < 1e-6 and abs(grid.BoundingBox().zlen - g["heights"][1]) < 1e-6
+manifest["pixel_grid_probes"] = "all edge cells open, walls on the 3 mm pitch, 3 mm and 6 mm halves checked"
 manifest["coupon_radius_probes"] = "all four clearance radii checked within 0.01 mm"
 manifest["carrier_probes"] = (
     "four 3.5 mm through bores at web/boss heights, eight symmetric seam bores, six sight holes, "
@@ -166,9 +219,10 @@ scene.add_geometry(
 # The coupons nest in the carrier's 159.6 mm open middle (centres relative to the carrier
 # centre), so the whole job stays a 201.6 mm square and fits the MK3S bed either way round.
 NESTED = {
-    "clearance-hole-coupon": (0.0, 38.0),
-    "halo-channel-coupon": (-32.0, -22.0),
-    "dc-socket-coupon": (32.0, -22.0),
+    "clearance-hole-coupon": (-29.7, 57.5),
+    "halo-channel-coupon": (-50.25, -34.5),
+    "dc-socket-coupon": (-8.0, -49.5),
+    "pixel-grid-coupon": (45.1, 45.1),
 }
 nested_bounds = {}
 for name, (cx, cy) in NESTED.items():
@@ -208,10 +262,10 @@ manifest["single_job_layout"] = {
     "objects": 1 + len(NESTED),
     "bounds_mm": loaded.bounds.tolist(),
     "minimum_xy_margin_mm": 5,
-    "coupon_placement": "all three coupons inside the carrier's open middle",
+    "coupon_placement": "all four coupons inside the carrier's open middle",
     "gap_between_parts_mm": round(float(coupon_gap), 2),
     "fits": "Prusa MK3S 250 x 210 in either orientation, and the 400 x 400 printer",
-    "generic_3mf_roundtrip": "four objects, transformed bounds and volume preserved",
+    "generic_3mf_roundtrip": "five objects, transformed bounds and volume preserved",
     "machine_settings": "none; print service must slice and quote",
 }
 
@@ -226,7 +280,7 @@ def render_preview(path):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
     fig = plt.figure(figsize=(12.2, 7.6), dpi=100)
-    fig.suptitle("Carrier + three test coupons v3 / PETG / 100% scale", fontsize=15)
+    fig.suptitle("Carrier + four test coupons v4 / PETG / 100% scale", fontsize=15)
     ax3 = fig.add_subplot(1, 2, 1, projection="3d")
     mesh = meshes["trial-panel-carrier"]
     light = mesh.face_normals @ [0.3, -0.4, 0.86]
@@ -267,7 +321,7 @@ def render_preview(path):
         ax.add_patch(Circle((5 + OUTER_MM / 2 + x, 5 + OUTER_MM / 2 + y), 5, fill=False, ec="#d9822b", lw=1.2))
     ax.set(xlim=(0, 250), ylim=(0, 210), aspect="equal", xlabel="mm", ylabel="mm")
     ax.set_title(
-        "Single job: hole, halo-channel and DC-socket coupons\nnested in the carrier's open middle, "
+        "Single job: hole, halo-channel, DC-socket and pixel-grid\ncoupons nested in the carrier's open middle, "
         "201.6 mm square, fits the bed either way round",
         fontsize=10,
     )
@@ -289,7 +343,7 @@ render_preview(out / "trial-carrier-preview.png")
 )
 instructions = ROOT / "trial-carrier-instructions.txt"
 (out / "READ-ME-FIRST.txt").write_text(instructions.read_text())
-archive = out / "panel-trial-carrier-kit-v3.zip"
+archive = out / "panel-trial-carrier-kit-v4.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     for name in [
         "trial-panel-carrier.stl",
@@ -300,6 +354,8 @@ with ZipFile(archive, "w", ZIP_DEFLATED) as z:
         "halo-channel-coupon.step",
         "dc-socket-coupon.stl",
         "dc-socket-coupon.step",
+        "pixel-grid-coupon.stl",
+        "pixel-grid-coupon.step",
         "trial-carrier-validation.json",
         "READ-ME-FIRST.txt",
         "single-job-layout.3mf",

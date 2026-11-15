@@ -1,10 +1,10 @@
-ONE-PANEL TRIAL CARRIER + THREE TEST COUPONS v3
+ONE-PANEL TRIAL CARRIER + FOUR TEST COUPONS v4
 
-v3 REPLACES v1 and v2. The carrier is unchanged from v2; v3 adds the halo-channel and DC-socket coupons to the same job.
-Print one carrier and the three coupons only. Do not also print the old gauge or a full enclosure.
+v4 REPLACES v1, v2 and v3. The carrier is unchanged from v2; v3 added the halo-channel and DC-socket coupons, v4 adds the pixel-grid coupon to the same job.
+Print one carrier and the four coupons only. Do not also print the old gauge or a full enclosure.
 
 SUBMIT ONE JOB FOR A QUOTE
-Preferred: single-job-layout.3mf. It contains exactly FOUR separate objects: the carrier and three small coupons that sit inside its open middle, at least 10 mm from the carrier and from each other. The whole job is a 201.6 x 201.6 mm square, so it fits the Prusa i3 MK3S bed (X 250 x Y 210 mm) either way round with at least 5 mm margin, and also fits the 400 x 400 mm printer. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl, clearance-hole-coupon.stl, halo-channel-coupon.stl and dc-socket-coupon.stl together and ask to arrange them as ONE job (the coupons may go in the carrier's open middle). Do not print both the 3MF AND the STL files (that would duplicate the parts).
+Preferred: single-job-layout.3mf. It contains exactly FIVE separate objects: the carrier and four small coupons that sit inside its open middle, at least 10 mm from the carrier and from each other. The whole job is a 201.6 x 201.6 mm square, so it fits the Prusa i3 MK3S bed (X 250 x Y 210 mm) either way round with at least 5 mm margin, and also fits the 400 x 400 mm printer. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl, clearance-hole-coupon.stl, halo-channel-coupon.stl, dc-socket-coupon.stl and pixel-grid-coupon.stl together and ask to arrange them as ONE job (the coupons may go in the carrier's open middle). Do not print both the 3MF AND the STL files (that would duplicate the parts).
 
 PETG is the starting material. Millimetres, 100% scale in all axes. NEVER apply the 104.167% PAPER correction. Print flat rear/base faces on the bed, with bosses pointing UP. The geometry has no unsupported roofs or internal cavities requiring support. The service selects practical wall/infill/layer settings and confirms adhesion needs. No EUR 5 price guarantee: only their slicer can give the quote. The minimum fee applies according to the service's job policy.
 
@@ -26,6 +26,9 @@ HALO CHANNEL COUPON
 DC SOCKET COUPON
 40 x 26 x 6 mm wall section for the Kycon KPJX-PM-4S panel socket: 14 mm body cutout (assumed from the drawing), two 2.8 mm holes on 19 mm for M2.5 screws, 1 mm flange pocket on the outside face. Only test it once the socket has arrived: the flange sits in the pocket, two M2.5 x 12 screws from the other side into the flange. Record whether the body fits through, the flange sits flat, and the brick's plug clicks in and holds.
 
+PIXEL GRID COUPON
+49.2 x 49.2 mm, 16 x 16 square cells on the panel's 3 mm LED pitch, 0.8 mm walls. The left 8 columns are 3 mm deep, the right 8 columns 6 mm deep. Black filament gives the darkest gaps; if the job is one colour, use what the carrier is printed in. To test: lay it on a running panel so each LED sits in the middle of a cell (the walls rest on the LED tips over the gaps between LEDs). Look at it bare, then with baking paper or printer paper on top of each half. Compare with the panel bare and with your other samples, from the normal viewing distance, with a dark scene and with the panel off. Record which depth looks better and whether the pixels look like separate squares.
+
 PHYSICAL CHECK (no screws, no pressure)
 0. Unplug the panel. Unscrew and set aside ALL EIGHT magnetic feet: the four corners AND the four intermediate ones. Leave every insert empty. A foot left in an intermediate insert reaches the carrier's web and stops it seating. The panels may stay glued together.
 1. Flatness first: put the carrier bosses-down on something flat (glass, a stone worktop). Do not press. Try to slide a sheet of printer paper (about 0.1 mm) under each boss. Record which bosses a sheet slides under. This shows print warp before the panel is involved.
@@ -40,7 +43,7 @@ PHYSICAL CHECK (no screws, no pressure)
 10. Mark which edge has HUB75 IN, relative to the notch.
 
 REPORT
-Flatness per boss (step 1), pin alignment per corner (3), paper gaps per corner (4), contact photos (5, private), which sight holes show inserts (6), the cable table and ribbon crossing (7), measurements (8), coupon clearance (9), HUB75 IN edge (10), the halo channel that fits, and later the DC socket fit.
+Flatness per boss (step 1), pin alignment per corner (3), paper gaps per corner (4), contact photos (5, private), which sight holes show inserts (6), the cable table and ribbon crossing (7), measurements (8), coupon clearance (9), HUB75 IN edge (10), the halo channel that fits, the pixel grid look (which depth, with which diffuser, or none), and later the DC socket fit.
 
 AFTER THE RESULT
 Revise this same carrier design as needed, then complete the one-panel diffuser/frame retention trial. A successful trial carrier can be retained for that later prototype if its fit and support are suitable; it is not yet a final product part. Full four-panel enclosure, wall load paths, heat performance and electronics remain unvalidated.

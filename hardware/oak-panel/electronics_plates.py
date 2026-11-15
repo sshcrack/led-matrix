@@ -62,7 +62,7 @@ SADDLE = (3.0, 2.0)  # rib width, height: parts sit on two ribs; the tie passes 
 
 # name: (x, y, z height, source / status)
 COMPONENTS = {
-    "buck_20a": (74.0, 74.0, 32.0, "amazon.de B0CZP1Q6DD listing: 74 x 74 x 32 mm, 2x 5.3 mm flange holes; hole spacing estimated from photos"),
+    "buck_20a": (74.0, 74.0, 32.0, "amazon.de B0CZP1Q6DD listing drawing: 74 x 74 x 32 mm, 2x 5.3 mm flange holes ~66 mm apart, wires exit a hole-free side"),
     "pi3b": (85.0, 56.0, 17.0, "Raspberry Pi 3B mechanical drawing: 85 x 56 mm, M2.5 holes 58 x 49 mm"),
     "pi_stack": (85.0, 56.0, 33.0, "Pi 3B + Electrodragon MPC1119 + plugged HUB75 ribbon: owner measured about 30 mm (rough, 2026-11-15); 33 mm keeps a 3 mm margin"),
     "lm2596": (43.0, 21.0, 14.0, "typical HW-411 module, measure"),
@@ -72,9 +72,11 @@ COMPONENTS = {
     "fuse_holder": (30.0, 12.0, 12.0, "inline blade fuse holder body (approx.), cable-tied"),
 }
 
-# Module flange holes: 5.3 mm, centre spacing estimated ~60 mm from listing photos. Slots
-# cover 54..68 mm so the real spacing fits; M4 screw + washer + nut.
-MODULE_HOLE_SPACING_RANGE = (54.0, 68.0)
+# Module flange holes: 5.3 mm, centred on two opposite sides (the wires leave from one of the
+# other two sides). Spacing ~65.7 mm, scaled from the listing's dimension drawing (74 mm body =
+# 404 px; holes 359 px apart, 4.1 mm in from the edge); not measured on a part. Slots cover
+# 62..70 mm so +/-4 mm of error still fits; M4 screw + washer + nut.
+MODULE_HOLE_SPACING_RANGE = (62.0, 70.0)
 MODULE_SLOT_W = 4.5
 MODULE_CENTRES = [(-40.0, -40.5), (40.0, -40.5)]
 
