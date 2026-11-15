@@ -184,6 +184,12 @@ def fp_circle(name, k, x, y, r, layer, w, fill=False):
             f' (fill {"yes" if fill else "no"}) (layer "{layer}") (uuid "{uid(name, "circ", str(k))}"))\n')
 
 
+def fp_model(name):
+    """3D model reference; gen_3dmodels.py writes the envelope box it points at."""
+    return (f'\t(model "${{KIPRJMOD}}/lib/3dmodels/{name}.wrl"\n'
+            f'\t\t(offset (xyz 0 0 0))\n\t\t(scale (xyz 1 1 1))\n\t\t(rotate (xyz 0 0 0))\n\t)\n')
+
+
 def rect_pad(name, num, x, y, w, h, k, paste=True):
     layers = PAD_LAYERS if paste else '(layers "F.Cu" "F.Mask")'
     return (f'\t(pad "{num}" smd rect (at {f(x)} {f(y)}) (size {f(w)} {f(h)}) {layers}'
@@ -222,6 +228,7 @@ def rdf0022a():
     s += fp_line(name, 3, -1.6, 3.86, 1.6, 3.86, "F.SilkS", 0.12)
     s += fp_circle(name, 4, -3.9, -3.9, 0.15, "F.SilkS", 0.3, fill=True)
     s += fp_rect(name, 5, -3.75, -4.1, 3.75, 4.1, "F.CrtYd", 0.05)
+    s += fp_model(name)
     s += '\t(embedded_fonts no)\n)\n'
     return name, s
 
@@ -254,6 +261,7 @@ def rpw0010a():
     s += fp_line(name, 1, -1.0, -0.6, -0.6, -1.0, "F.Fab", 0.1)
     s += fp_circle(name, 2, -1.45, -1.45, 0.12, "F.SilkS", 0.24, fill=True)
     s += fp_rect(name, 3, -1.5, -1.5, 1.5, 1.5, "F.CrtYd", 0.05)
+    s += fp_model(name)
     s += '\t(embedded_fonts no)\n)\n'
     return name, s
 

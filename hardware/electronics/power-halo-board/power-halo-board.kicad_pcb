@@ -1497,7 +1497,7 @@
 			(uuid "a557b6a3-6502-40e0-858d-3a18e2e82dea")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Fuse.3dshapes/Fuse_Littelfuse-NANO2-451_453.step"
+		(model "${KIPRJMOD}/lib/3dmodels/Fuse_Littelfuse-NANO2-451_453.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -2308,6 +2308,17 @@
 			(uuid "39e5847c-fa0e-4f67-a4e3-417979620c0f")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "ledpanel:TI_RPW0010A_VQFN-HR-10_2x2mm"
 		(layer "F.Cu")
@@ -2507,6 +2518,17 @@
 			(uuid "a6c8ff13-b6a6-41b2-a6e7-d8b1a131c457")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "MountingHole:MountingHole_3.2mm_M3"
 		(layer "F.Cu")
@@ -5435,7 +5457,7 @@
 			(uuid "87f3f504-a192-4f6e-aa24-7f0d0a8be34d")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -7652,6 +7674,17 @@
 			(uuid "d11b65b1-19fd-4446-ba74-c5d9574b2812")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RDF0022A_B3QFN-22_6.5x7.5mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Capacitor_SMD:C_1210_3225Metric"
 		(layer "F.Cu")
@@ -11194,6 +11227,17 @@
 			(uuid "467a3fcc-fa76-48a3-be96-7556f14840ed")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
@@ -14026,6 +14070,17 @@
 			(uuid "d57d23a5-8fd1-49d1-930c-3fc9f56c1e50")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RDF0022A_B3QFN-22_6.5x7.5mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
@@ -15021,6 +15076,17 @@
 			(uuid "114d1745-c51c-4e8f-9608-4e456d31f38f")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RDF0022A_B3QFN-22_6.5x7.5mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "ledpanel:TI_RPW0010A_VQFN-HR-10_2x2mm"
 		(layer "F.Cu")
@@ -15220,6 +15286,17 @@
 			(uuid "7ce1eb93-9788-42f6-ae2b-fecc29ae7c5c")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
@@ -15771,6 +15848,17 @@
 			(uuid "add19c76-1eb7-4be6-bb38-df0057f54898")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RDF0022A_B3QFN-22_6.5x7.5mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "TestPoint:TestPoint_Pad_D1.5mm"
 		(layer "F.Cu")
@@ -21956,7 +22044,7 @@
 			(uuid "5eadda6f-565a-438f-8913-9edb1ec4a0dc")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -28257,7 +28345,7 @@
 			(uuid "5b562513-495b-4ca2-b2c5-e8e017e6daea")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S2P-VH_1x02_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S2P-VH_1x02_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -29948,7 +30036,7 @@
 			(uuid "3274416b-69c1-423f-9676-13966328bffa")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -31451,6 +31539,17 @@
 			(uuid "8e407647-bc35-4a20-936b-4627ab309a21")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RDF0022A_B3QFN-22_6.5x7.5mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Diode_SMD:D_SMB"
 		(layer "F.Cu")
@@ -31918,6 +32017,17 @@
 			(uuid "23238c67-0d9c-4e85-b161-dcf3b6fd78da")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
 		(layer "F.Cu")
@@ -33133,6 +33243,17 @@
 			(uuid "f4e63038-54fc-4fa8-a8a0-560f9e339108")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
 	)
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
@@ -34551,7 +34672,7 @@
 			(uuid "15a5dd07-0df9-4fce-a9b0-d4bc08293268")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S4P-VH_1x04_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -34857,7 +34978,7 @@
 			(uuid "ce22ad68-f8db-45c6-b24c-f7fecc92b222")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_Molex.3dshapes/Molex_Mini-Fit_Jr_5569-04A2_2x02_P4.20mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/Molex_Mini-Fit_Jr_5569-04A2_2x02_P4.20mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -36425,7 +36546,7 @@
 			(uuid "86124da2-2665-49fe-8685-392a28d7ae18")
 		)
 		(embedded_fonts no)
-		(model "${KICAD9_3DMODEL_DIR}/Connector_JST.3dshapes/JST_VH_S3P-VH_1x03_P3.96mm_Horizontal.step"
+		(model "${KIPRJMOD}/lib/3dmodels/JST_VH_S3P-VH_1x03_P3.96mm_Horizontal.wrl"
 			(offset
 				(xyz 0 0 0)
 			)

@@ -62,6 +62,7 @@ halo driver that uses no matrix pins. One board does both. The decisions behind 
 | Path | Content |
 |---|---|
 | `power-halo-board/` | KiCad 9 project: hierarchical schematic (root + Input, Panel ×4, Aux, Halo), routed PCB, project-local symbol and footprint library `lib/`, net classes and rules (`.kicad_pro`, `.kicad_dru`) |
+| `power-halo-board/lib/3dmodels/` | VRML envelope boxes for the parts the stock KiCad libraries reference but never shipped a model for (see `tools/gen_3dmodels.py`) |
 | `tools/circuit.py` | the circuit as data: every part with value, MPN, manufacturer, datasheet, rating and pin-to-net map |
 | `tools/gen_lib.py`, `gen_sch.py`, `gen_project.py` | write the library, schematic and project files from `circuit.py` |
 | `tools/gen_pcb.py` | placement, power zones, Freerouting autorouting, ground pours, stitching, silkscreen |
@@ -70,6 +71,7 @@ halo driver that uses no matrix pins. One board does both. The decisions behind 
 | `tools/spice/` | ngspice decks (thresholds, enable sequence, hot-plug), runner and `results.txt` |
 | `tools/power_budget.py` | worst-case power and thermal budget |
 | `tools/gen_envelope.py` | height envelope and plug keepouts as JSON and STEP for the enclosure |
+| `tools/gen_3dmodels.py` | `lib/3dmodels/`: envelope box per part whose stock KiCad 3D model does not exist, so the 3D viewer shows every component |
 | `docs/wiring.md` | harnesses, pinouts, keying, wire gauge, strain relief, HUB75 and the Electrodragon V2 |
 | `docs/power-and-thermal.md` | supply choice, rails and loads, protection, thermal budget, ventilation |
 | `docs/mechanical-interface.md` | outline, holes, connector positions and directions, heights, keepouts |
@@ -96,7 +98,8 @@ halo driver that uses no matrix pins. One board does both. The decisions behind 
 
 ## Regenerating
 
-Requires KiCad 9 (`kicad-cli` and the `pcbnew` Python module), ngspice, Java 21+, xvfb-run and
+Requires KiCad 9 (`kicad-cli` and the `pcbnew` Python module), KiCad's 3D models
+(`kicad-packages3d`, for the 3D viewer and `kicad-cli pcb render`), ngspice, Java 21+, xvfb-run and
 Freerouting 1.9.0. The jar is not committed: set `FREEROUTING_JAR`, or place it at
 `tools/freerouting-1.9.0.jar`. Freerouting runs headless with analytics off, but checks for new
 versions online at startup. `LEDPANEL_SCRATCH` sets its work directory (default
@@ -104,6 +107,7 @@ versions online at startup. `LEDPANEL_SCRATCH` sets its work directory (default
 
 ```bash
 cd hardware/electronics
+python3 tools/gen_3dmodels.py     # 3D models for the parts KiCad does not model
 python3 tools/gen_lib.py && python3 tools/gen_sch.py && python3 tools/gen_project.py
 mkdir -p .route && kicad-cli sch export netlist -o .route/net.net power-halo-board/power-halo-board.kicad_sch
 python3 tools/gen_pcb.py place .route/net.net
@@ -128,8 +132,9 @@ Hand edits in KiCad are fine: `check_board.py` verifies whatever board is commit
 - Board PDFs: top, bottom, in1, in2, assembly.
 - `fab-PROTOTYPE-UNVALIDATED/`: Gerbers, Excellon drill files with maps, the front position
   file and a README, plus a zip of the same.
-- Board STEP. It is board-only when KiCad's 3D model package is not installed. Use the envelope
-  STEP for enclosure work.
+- Board STEP. It is board-only: the project's own models are VRML (and the exporter only embeds
+  STEP), and the parts KiCad never modelled have no STEP at all. Use the envelope STEP for
+  enclosure work; the 3D viewer shows the full assembly.
 - Outline SVG and DXF, the filled board, and the reports under `reports/`.
 
 `gen_envelope.py` writes `mechanical/`. None of these are a fabrication release.

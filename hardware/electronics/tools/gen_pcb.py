@@ -26,6 +26,7 @@ from pathlib import Path
 import pcbnew
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gen_3dmodels import model_path  # noqa: E402
 from sexpr import find, find_all, parse  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -160,6 +161,18 @@ def fp_load(fpid):
     if fp is None:
         raise SystemExit(f"footprint {fpid} not found")
     return fp
+
+
+def apply_3d_model(fp, fpid):
+    """Repoint footprints whose stock 3D model was never published at the project's envelope box."""
+    path = model_path(fpid.split(":", 1)[1])
+    if path is None:
+        return
+    models = fp.Models()
+    models.clear()
+    model = pcbnew.FP_3DMODEL()
+    model.m_Filename = path
+    models.push_back(model)
 
 
 def placement_for(ref):
@@ -304,6 +317,7 @@ def place(netlist_path):
         if not c["fp"]:
             continue
         fp = fp_load(c["fp"])
+        apply_3d_model(fp, c["fp"])
         fp.SetReference(c["ref"])
         fp.SetValue(c["value"])
         lib, name = c["fp"].split(":", 1)

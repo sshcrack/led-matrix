@@ -118,8 +118,11 @@ Other open items:
 - **Thermal**: estimates only. Measure the TPSM63610 and TPS259470A case temperatures at full
   white with the enclosure closed.
 - **Height envelopes** of the Mini-Fit Jr, VH and XH connectors are conservative assumptions,
-  not drawing values. KiCad's 3D model package is not installed here, so the plain STEP from
-  `check_board.py` contains the board only.
+  not drawing values. The stock KiCad 3D libraries have no model at all for the Mini-Fit Jr
+  5569-04A2, the JST VH side-entry connectors, the NANO2 451/453 fuse or the TI RDF0022A and
+  RPW0010A packages, so `tools/gen_3dmodels.py` fills them in as envelope boxes (F.Fab outline
+  × the same height table). The 3D viewer is therefore dimensionally consistent with the
+  envelope, but it is not vendor geometry, and the STEP export stays board-only.
 - **Fabrication**: no fab DRC or DFM check (2 oz outer copper with 0.2 mm spacing is at the
   edge of standard 2 oz capabilities), no impedance requirement, no panelization.
 - **Freerouting** contacts its update server at startup (prints "New version available").

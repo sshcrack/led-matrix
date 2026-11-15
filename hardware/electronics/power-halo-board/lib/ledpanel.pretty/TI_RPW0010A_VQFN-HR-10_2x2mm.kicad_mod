@@ -32,5 +32,10 @@
 	(fp_line (start -1 -0.6) (end -0.6 -1) (stroke (width 0.1) (type solid)) (layer "F.Fab") (uuid "432e121e-fd5e-5715-960a-04b43d79b0f0"))
 	(fp_circle (center -1.45 -1.45) (end -1.33 -1.45) (stroke (width 0.24) (type solid)) (fill yes) (layer "F.SilkS") (uuid "37e53cce-5dc3-5b21-9e4d-f08356c11384"))
 	(fp_rect (start -1.5 -1.5) (end 1.5 1.5) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd") (uuid "de9413dd-df55-5f31-ab43-d5981d7e8d9d"))
+	(model "${KIPRJMOD}/lib/3dmodels/TI_RPW0010A_VQFN-HR-10_2x2mm.wrl"
+		(offset (xyz 0 0 0))
+		(scale (xyz 1 1 1))
+		(rotate (xyz 0 0 0))
+	)
 	(embedded_fonts no)
 )
