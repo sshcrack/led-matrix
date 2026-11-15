@@ -40,6 +40,24 @@ This is one actual carrier mounting trial, not a finished wall bracket or fabric
 
 The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone diagnostic, not an additional print to order with this trial. The old six-hole `oak-panel-first-print-kit.zip` remains obsolete. Do not print either gauge as an extra unless a later fit problem calls for it.
 
+## Electronics plates (off-the-shelf wiring plan)
+
+`electronics-plates-v1.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.**
+
+- **Power plate** (184 × 120 × 3 mm): both 24→5 V 20 A modules on M4 slots (the listing gives 5.3 mm flange holes; the ~60 mm spacing is estimated from photos, so the slots cover 54–68 mm), cable-tie slots for a WAGO row and the fuse holders, vents.
+- **Controller plate** (same outline): four 6 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), cable-tie slots for the LM2596, Pro Micro and level converter, vents under the Pi.
+- **DC socket coupon**: a 6 mm wall section with the Kycon KPJX-PM-4S cutout (14 mm, assumed from the drawing), 2 × M2.5 holes on 19 mm and a 1 mm flange pocket. The flange sits outside, the screws (6.6 mm + wall, so M2.5 × 12) come from inside into the flange's 2.3 mm holes. Print it first to check the cutout and that the brick's plug latches.
+
+Each plate bolts to the rear face of one trial carrier with M3 screws through four of its symmetric seam holes at (±86, ±54), nuts on the carrier side. Components sit on the plate's rear face.
+
+**Depth finding:** from the LED tips, the panel and carrier take 31 mm. The 32 mm modules then need a **≈71 mm** body and the Pi + Electrodragon stack (33 mm, assumed with plugged ribbons) needs **≈78 mm**, against the current 60 mm. Measure the real stack height; then choose between a deeper body, a smaller wall gap, or lower-profile parts.
+
+```sh
+.venv/bin/python make-electronics-plates.py
+```
+
+The generator checks single valid solids, watertight meshes, bed fit (210 mm square), and probes the seam holes, Pi standoff pilots, module seats/slots and socket coupon holes.
+
 ## Copy-shop calibration and comparison pack
 
 Two new diagnostic downloads are separate from the withdrawn templates:
