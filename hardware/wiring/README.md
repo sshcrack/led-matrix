@@ -19,17 +19,17 @@ flowchart LR
   W24 --> L["LM2596 HW-411<br/>set to 5.1 V"]
   A --> FA["15 A fuse"] --> P12["Panels 1 + 2"]
   B --> FB["15 A fuse"] --> P34["Panels 3 + 4"]
-  B --> FH["3 A fuse"] --> H["Halo +5 V<br/>+ RP2040-Zero 5V"]
+  B --> FH["3 A fuse"] --> H["Halo +5 V<br/>+ Pro Micro RAW"]
   L --> ED["Electrodragon VIN<br/>screw terminal"] --> Pi["Raspberry Pi 3B"]
-  Pi -- "GPIO14 TX (3.3 V)" --> RP["RP2040-Zero"] -- "LED data" --> H
+  Pi -- "GPIO14 TX (3.3 V)" --> LS["BSS138 level converter"] -- "5 V" --> PM["Pro Micro<br/>ATmega32U4 5 V"] -- "LED data (5 V)" --> H
 ```
 
 ```
 brick ─ DIN ─ jack ─ 7.5 A ─┬─ Module A ─ 15 A ─ panels 1+2
                             ├─ Module B ─┬─ 15 A ─ panels 3+4
-                            │            └─ 3 A ─ halo strip + RP2040-Zero
+                            │            └─ 3 A ─ halo strip + Pro Micro RAW
                             └─ LM2596 (5.1 V) ─ Electrodragon VIN ─ Pi
-Pi GPIO14 ─ RP2040-Zero GP1 (UART RX) … RP2040-Zero GP2 ─ [level option] ─ 330 Ω ─ strip DIN
+Pi GPIO14 ─ BSS138 converter (3.3→5 V) ─ Pro Micro RXI … Pro Micro pin 6 ─ 330 Ω ─ strip DIN
 ```
 
 ## Loads
@@ -69,7 +69,7 @@ brick, measure, then connect the modules.
 | Module A OUT+ | 15 A fuse → VCC (red) of the panel 1+2 cable |
 | Module A OUT− | GND (black) of the panel 1+2 cable |
 | Module B OUT+ | WAGO (3-way): 15 A fuse → VCC of the panel 3+4 cable; 3 A fuse → halo +5 V |
-| Module B OUT− | WAGO (3–5-way): GND of the panel 3+4 cable, halo GND, RP2040-Zero GND |
+| Module B OUT− | WAGO (3–5-way): GND of the panel 3+4 cable, halo GND, Pro Micro GND |
 
 The module leads (13 cm, bare) and the panel cables join in WAGOs or through the inline fuse
 holders. Fork crimps are not needed with WAGOs. If you use a barrier strip instead, crimp
@@ -89,22 +89,25 @@ holders. Fork crimps are not needed with WAGOs. If you use a barrier strip inste
 
 ### Halo
 
+Controller: the owner's **Pro Micro (ATmega32U4, 5 V, 16 MHz)**. It runs at 5 V, so its LED data
+needs no level shifter. The Pi's 3.3 V UART goes through the owner's BSS138 level converter
+instead (fine at UART speeds).
+
 | From | To | Note |
 |---|---|---|
-| Electrodragon extra pin **IO14** (silkscreen says "IO12": vendor typo) | RP2040-Zero **GP1** (UART0 RX) | 3.3 V on both ends, no shifter |
-| Electrodragon GND (5V/GND/3.3V header) | RP2040-Zero GND | common reference for the UART |
-| Halo +5 V (after the 3 A fuse) | RP2040-Zero **5V** pin and strip +5 V | do not plug USB into the RP2040-Zero while this is connected, unless its 5V pin is diode-isolated from VBUS on your board |
-| RP2040-Zero **GP2** | 330 Ω → strip **DIN** | via one of the level options below |
+| Electrodragon extra pin **IO14** (silkscreen says "IO12": vendor typo) | level converter **LV1** | Pi UART TX, 3.3 V |
+| Electrodragon **3.3V** pin | level converter **LV** | |
+| Pro Micro **VCC** | level converter **HV** | 5 V side |
+| level converter **HV1** | Pro Micro **RXI** (pin 0, `Serial1`) | Pro Micro TX stays unconnected: nothing ever drives a Pi pin |
+| Electrodragon GND, Pro Micro GND | level converter **GND** (both sides) | common reference |
+| Halo +5 V (after the 3 A fuse) | Pro Micro **RAW** and strip +5 V | do not plug USB into the Pro Micro while this is connected: unplug the RAW wire to flash |
+| Pro Micro **pin 6** | 330 Ω → strip **DIN** | 5 V data |
 | — | 1000 µF / ≥ 10 V electrolytic across strip +5 V/GND at the strip input | absorbs switch-on surge |
 
-Data level options, cheapest first. Stop at the first one that gives stable colours on every LED:
-
-1. Direct: GP2 → 330 Ω → DIN. Many WS2812B batches read 3.3 V data.
-2. Bi-directional BSS138 level converter (I²C type): LV = 3.3 V (RP2040-Zero 3V3), HV = 5 V,
-   data through one channel. Its slow rising edge can garble 800 kHz data.
-3. "Sacrificial" first LED: feed the first LED's +5 V through a 1N4148/1N400x diode (≈4.3 V). It
-   accepts 3.3 V data and regenerates it for the rest.
-4. 74AHCT125 buffer at 5 V: reliable.
+Firmware note: AVR WS2812 libraries (FastLED, Adafruit NeoPixel) turn interrupts off while
+sending, about 1.2 ms for 40 LEDs, and bytes arriving then are lost. The firmware therefore
+updates the LEDs only after a complete, checksummed frame and the Pi sends short frames at a
+low rate (e.g. ≤ 20 per second), so sending and receiving never overlap.
 
 Strip placement: rear frame edges facing the wall (the eight segments reserved in the CAD, about
 40 LEDs), daisy-chained into one data loop, power fed at the start.
@@ -113,7 +116,7 @@ Strip placement: rear frame edges facing the wall (the eight segments reserved i
 
 - Near the jack (bottom): 7.5 A fuse, 24 V WAGOs, modules A and B, panel fuses. Keep the 24 V
   wiring short. Give the module housings air; mount them on the frame or rear cover, not in foam.
-- Middle: Pi + Electrodragon, LM2596, RP2040-Zero.
+- Middle: Pi + Electrodragon, LM2596, Pro Micro + level converter.
 - Anchor every cable within ~5 cm of each connection; the jack's tug load goes into heat-set
   inserts or nuts, not screws in plastic.
 
@@ -129,8 +132,8 @@ Electrodragon/Pi GND. That is intended.
   from `cmdline.txt`.
 - GPIO15 (RX) is the panels' E address line. Confirm the matrix still shows all 64 rows after
   enabling the UART (the library claims GPIO15 as an output at start).
-- Not implemented yet: RP2040-Zero firmware (UART frames → WS2812 via PIO, brightness cap) and the
-  daemon's halo driver (#208).
+- Not implemented yet: Pro Micro firmware (checksummed UART frames → WS2812, brightness cap) and
+  the daemon's halo driver (#208).
 
 ## First power-up
 
@@ -139,7 +142,7 @@ Electrodragon/Pi GND. That is intended.
 3. Add the LM2596, set 5.1 V, then connect the Electrodragon + Pi.
 4. Connect the panels one pair at a time; run a dim scene, then a bright one. Feel the modules and
    fuse holders after 10 minutes at a bright scene.
-5. Add the halo and RP2040-Zero last.
+5. Add the halo and Pro Micro last.
 
 Hot-plugging the DC plug into a running brick is fine: the input fuse has far more margin than the
 short capacitor-charging spike needs.
@@ -152,10 +155,10 @@ short capacitor-charging spike needs.
 | Kycon KPJX-PM-4S panel jack | 1 | | 8–12 |
 | Weishuo Y2-T2405 24→5 V 20 A (amazon.de B0CZP1Q6DD) | 2 | | 44 |
 | LM2596 HW-411 buck | 1 | yes | — |
-| RP2040-Zero | 1 | | 4–6 |
+| Pro Micro ATmega32U4 5 V 16 MHz | 1 | yes | — |
 | BSS138 4-channel level converter | 1 | yes | — |
 | WS2812B 5 V strip, 60 LED/m (~0.7–1 m) | 1 | ? | 8–12 |
-| 1000 µF ≥ 10 V capacitor, 330 Ω resistor, 1N4148 | 1 each | ? | 1 |
+| 1000 µF ≥ 10 V capacitor, 330 Ω resistor | 1 each | ? | 1 |
 | Inline blade fuse holders + fuses 7.5 A, 15 A ×2, 3 A | 4 | ? | 8–10 |
 | WAGO 221 (5-way ×2, 3-way ×4) | | ? | 8–10 |
 | 1.5 mm² stranded wire, insulated forks | | yes | — |
