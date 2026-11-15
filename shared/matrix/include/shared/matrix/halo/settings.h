@@ -18,7 +18,7 @@ struct Settings {
     std::string color = "#ffb070";
     /// LEDs on the strip (sent to the firmware, 1..200).
     int led_count = 40;
-    /// Serial device wired to the Pro Micro.
+    /// Serial device wired to the Pro Micro (is_allowed_device()).
     std::string device = "/dev/serial0";
     /// Shift the 8 edge zones clockwise by this many steps (0..7), and/or
     /// reverse their direction, to fit where the strip starts and which way it
@@ -31,6 +31,11 @@ struct Settings {
     /// Strict check used by the REST route: empty when valid, else the reason.
     [[nodiscard]] std::string validate() const;
 };
+
+/// True for serial device names the daemon may open: /dev/serial<N>, /dev/ttyAMA<N>,
+/// /dev/ttyS<N>, /dev/ttyUSB<N>, /dev/ttyACM<N> and /dev/pts/<N> (tests). The device is
+/// opened as root before the privilege drop, so it must never name an arbitrary file.
+bool is_allowed_device(const std::string &path);
 
 /// Parses "#rrggbb" (case-insensitive). False when malformed.
 bool parse_color(const std::string &text, unsigned char &r, unsigned char &g, unsigned char &b);

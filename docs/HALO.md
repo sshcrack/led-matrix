@@ -16,7 +16,7 @@ every route), and a card on the web UI Integrations page.
 | `brightness` | `50` | 0–100 %, independent of the matrix brightness |
 | `color` | `#ffb070` | Colour of `fixed`, `#rrggbb` |
 | `led_count` | `40` | Strip length, 1–200, sent in every frame (no reflash needed) |
-| `device` | `/dev/serial0` | UART device, 115200 8N1 |
+| `device` | `/dev/serial0` | UART device, 115200 8N1. Only `/dev/serial<N>`, `/dev/ttyAMA<N>`, `/dev/ttyS<N>`, `/dev/ttyUSB<N>`, `/dev/ttyACM<N>` (and `/dev/pts/<N>` for tests) are accepted, and the opened file must be a tty: the daemon opens it as root before the privilege drop |
 | `rotation`, `reverse` | `0`, `false` | Rotate the 8 edge zones / reverse their direction to fit where the strip starts and which way it runs. Zone 0 is the left half of the top edge, going clockwise seen from the front |
 
 `GET /halo` returns `{settings, error, device_open, frames_sent}`. The daemon works without any
@@ -25,7 +25,7 @@ UART: on the emulator and dev machines it logs `no UART at …` once and keeps t
 ## How `match` works (and what it costs)
 
 The sender thread ticks at 15 Hz and, in `match` mode, sets an atomic "sample wanted" flag. The
-render paths (`SceneRenderer`, `TransitionEngine`) call `Halo::Service::offer()` right after
+render path's single output point, `FrameSink::present()`, calls `Halo::Service::offer()` right after
 `LiveFrame::SnapshotStore::capture_if_requested()`, on the composed canvas that is about to be
 swapped in (post-processing and transitions included). `offer()` is one relaxed atomic load while
 the halo is off or between ticks. When a sample is due it reads 128 pixels (8 zones × 8 positions

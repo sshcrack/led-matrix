@@ -31,10 +31,14 @@ Build flags (in `platformio.ini`): `HALO_LED_PIN`, `HALO_DEFAULT_LEDS` (before t
 ## Behaviour
 
 - Dark until the first valid frame. Boot noise, partial frames and bad checksums are ignored.
-- Colours and brightness move towards the latest frame at 50 Hz (about 160 ms time constant), so
-  the Pi's ~15 frames/s look soft.
+- Colours and brightness move a quarter of the way towards the latest frame with every frame
+  (about 0.25 s at the Pi's ~15 frames/s), so changes look soft.
 - Estimated current (60 mA per LED at full white) is capped at 2.5 A by scaling all channels, no
   matter what the Pi sends.
 - No valid frame for 3 s (daemon stopped or crashed): fades to off.
-- `show()` (interrupts off, ~1.2 ms for 40 LEDs) only runs when no frame bytes arrived in the last
-  4 ms; the Pi sends at most every 66 ms and a frame takes about 3 ms on the wire.
+- `show()` turns interrupts off (~30 µs per LED, ~1.2 ms for 40) and UART bytes arriving then are
+  lost. The strip is therefore updated right after each valid frame, in the ~60 ms quiet gap before
+  the next one (the Pi sends one frame every ~66 ms, ~3 ms on the wire). Only when the line has been
+  silent for 150 ms does the firmware tick on its own (50 Hz), to run the failsafe fade.
+- The strip object is sized to the LED count in the frames, so `show()` never clocks out unused
+  pixels; when the count shrinks, the dropped LEDs are blanked once.

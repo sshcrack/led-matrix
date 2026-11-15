@@ -3,8 +3,13 @@
 //
 // - Only complete frames with a valid CRC-8 change anything; boot noise and
 //   half frames are dropped by the parser.
-// - show() disables interrupts (~30 us per LED); it is only called while no
-//   frame is arriving (the Pi sends <= 20 frames/s, a frame takes ~3 ms).
+// - show() disables interrupts (~30 us per LED, ~1.2 ms for 40) and UART bytes
+//   arriving meanwhile are lost. So the strip is updated right after a valid
+//   frame, in the quiet gap before the next one (the Pi sends one frame every
+//   ~66 ms, a frame takes ~3 ms). Free-running ticks only happen once the line
+//   has been silent for kSilentMs (the failsafe fade).
+// - The strip object is sized to the LED count the Pi sends, so show() never
+//   clocks out unused pixels.
 // - The total current estimate is capped regardless of what the Pi sends.
 // - No valid frame for HALO_FAILSAFE_MS: fade to off.
 #include <Adafruit_NeoPixel.h>
@@ -31,12 +36,12 @@
 #define HALO_FAILSAFE_MS 3000UL
 #endif
 
-static const unsigned long kTickMs = 20;         // 50 Hz smoothing / output
+static const unsigned long kSilentTickMs = 20;   // free-running ticks while no frames arrive
+static const unsigned long kSilentMs = 150;      // line silent this long: frames have stopped
 static const unsigned long kRefreshMs = 500;     // re-send an unchanged picture now and then
-static const unsigned long kQuietBeforeShowMs = 4;
-static const uint8_t kSmoothShift = 3;           // 1/8 of the distance per tick (~160 ms time constant)
+static const uint8_t kSmoothShift = 2;           // 1/4 of the distance per step (~0.25 s at 15 frames/s)
 
-static Adafruit_NeoPixel strip(HALO_MAX_LEDS, HALO_LED_PIN, NEO_GRB + NEO_KHZ800);
+static Adafruit_NeoPixel strip(HALO_DEFAULT_LEDS, HALO_LED_PIN, NEO_GRB + NEO_KHZ800);
 static Halo::Parser parser;
 
 // Key colours and brightness, in 8.8 fixed point: current values chase targets.
@@ -96,16 +101,30 @@ static void render(bool force)
     }
     apply_current_cap(out, n);
 
+    if (strip.numPixels() != n) {
+        // Shorter strip: blank the LEDs that drop out once, then resize.
+        strip.clear();
+        strip.show();
+        strip.updateLength(n);
+        force = true;
+    }
     const unsigned long now = millis();
     if (!force && memcmp(out, prev, 3u * n) == 0 && now - last_show_ms < kRefreshMs)
         return;
     memcpy(prev, out, 3u * n);
     for (uint8_t i = 0; i < n; ++i)
         strip.setPixelColor(i, out[3 * i], out[3 * i + 1], out[3 * i + 2]);
-    for (uint16_t i = n; i < HALO_MAX_LEDS; ++i)
-        strip.setPixelColor(i, 0);
     strip.show();
     last_show_ms = millis();
+}
+
+// One smoothing step toward the targets, then output.
+static void step()
+{
+    for (uint8_t i = 0; i < 3 * zones; ++i)
+        cur_rgb[i] = chase(cur_rgb[i], tgt_rgb[i]);
+    cur_bright = chase(cur_bright, tgt_bright);
+    render(false);
 }
 
 void setup()
@@ -119,6 +138,7 @@ void setup()
 
 void loop()
 {
+    bool got_frame = false;
     while (Serial1.available() > 0) {
         last_byte_ms = millis();
         if (parser.feed((uint8_t)Serial1.read())) {
@@ -136,24 +156,25 @@ void loop()
             tgt_bright = (int32_t)f.brightness << 8;
             have_frame = true;
             last_valid_ms = millis();
+            got_frame = true;
         }
     }
-
-    const unsigned long now = millis();
-    if (now - last_tick_ms < kTickMs)
-        return;
-    // Never call show() (interrupts off) while a frame is arriving.
-    if (parser.pending() > 0 && now - last_byte_ms < kQuietBeforeShowMs)
-        return;
-    last_tick_ms = now;
-
     if (!have_frame)
         return;  // stay dark until the first valid frame
-    if (now - last_valid_ms > HALO_FAILSAFE_MS)
-        tgt_bright = 0;  // daemon stopped or crashed: fade to off
 
-    for (uint8_t i = 0; i < 3 * zones; ++i)
-        cur_rgb[i] = chase(cur_rgb[i], tgt_rgb[i]);
-    cur_bright = chase(cur_bright, tgt_bright);
-    render(false);
+    const unsigned long now = millis();
+    if (got_frame && parser.pending() == 0) {
+        // Just after a complete frame: the line is quiet for the next ~60 ms.
+        last_tick_ms = now;
+        step();
+        return;
+    }
+    // Frames have stopped (daemon off, crashed or unplugged): tick on our own
+    // so the failsafe can fade the strip out.
+    if (now - last_byte_ms < kSilentMs || now - last_tick_ms < kSilentTickMs)
+        return;
+    last_tick_ms = now;
+    if (now - last_valid_ms > HALO_FAILSAFE_MS)
+        tgt_bright = 0;
+    step();
 }

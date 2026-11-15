@@ -22,22 +22,32 @@ constexpr auto kReopenDelay = std::chrono::seconds(10);
 // once instead of waiting for its failsafe timeout.
 constexpr int kOffFrames = 20;
 
+// Opens a serial port write-only. Refuses names outside is_allowed_device() and
+// anything that is not a tty: preopen() runs as root, so a bad setting must never
+// make the daemon write frames into a regular file.
 int open_uart(const std::string &device, int &error)
 {
+    if (!is_allowed_device(device)) {
+        error = EPERM;
+        return -1;
+    }
     const int fd = ::open(device.c_str(), O_WRONLY | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
         error = errno;
         return -1;
     }
     termios tio{};
-    if (tcgetattr(fd, &tio) == 0) {  // not a tty (a plain file) is tolerated
-        cfmakeraw(&tio);
-        cfsetospeed(&tio, B115200);
-        cfsetispeed(&tio, B115200);
-        tio.c_cflag |= CLOCAL | CREAD;
-        tio.c_cflag &= ~static_cast<tcflag_t>(CRTSCTS);
-        tcsetattr(fd, TCSANOW, &tio);
+    if (!::isatty(fd) || tcgetattr(fd, &tio) != 0) {
+        ::close(fd);
+        error = ENOTTY;
+        return -1;
     }
+    cfmakeraw(&tio);
+    cfsetospeed(&tio, B115200);
+    cfsetispeed(&tio, B115200);
+    tio.c_cflag |= CLOCAL | CREAD;
+    tio.c_cflag &= ~static_cast<tcflag_t>(CRTSCTS);
+    tcsetattr(fd, TCSANOW, &tio);
     return fd;
 }
 }  // namespace

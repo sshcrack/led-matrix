@@ -17,6 +17,19 @@ int hex_digit(char c)
 }
 }  // namespace
 
+bool is_allowed_device(const std::string &path)
+{
+    static constexpr const char *kPrefixes[] = {"/dev/serial", "/dev/ttyAMA", "/dev/ttyS", "/dev/ttyUSB", "/dev/ttyACM", "/dev/pts/"};
+    for (const char *prefix : kPrefixes) {
+        const std::string p(prefix);
+        if (path.size() <= p.size() || path.compare(0, p.size(), p) != 0 || path.size() > p.size() + 3)
+            continue;
+        return std::all_of(path.begin() + static_cast<std::ptrdiff_t>(p.size()), path.end(),
+                           [](char c) { return c >= '0' && c <= '9'; });
+    }
+    return false;
+}
+
 bool parse_color(const std::string &text, unsigned char &r, unsigned char &g, unsigned char &b)
 {
     if (text.size() != 7 || text[0] != '#')
@@ -42,7 +55,7 @@ void Settings::sanitize()
     brightness = std::clamp(brightness, 0, 100);
     led_count = std::clamp(led_count, 1, static_cast<int>(kMaxLeds));
     rotation = std::clamp(rotation, 0, 7);
-    if (device.empty() || device.size() > 200)
+    if (!is_allowed_device(device))
         device = defaults.device;
 }
 
@@ -59,8 +72,8 @@ std::string Settings::validate() const
         return "led_count must be 1..200";
     if (rotation < 0 || rotation > 7)
         return "rotation must be 0..7";
-    if (device.empty() || device.size() > 200)
-        return "device must be a non-empty path";
+    if (!is_allowed_device(device))
+        return "device must be a serial port such as /dev/serial0, /dev/ttyAMA0, /dev/ttyS0 or /dev/ttyUSB0";
     return {};
 }
 
