@@ -19,7 +19,7 @@ flowchart LR
   W24 --> L["LM2596 HW-411<br/>set to 5.1 V"]
   A --> FA["15 A fuse"] --> P12["Panels 1 + 2"]
   B --> FB["15 A fuse"] --> P34["Panels 3 + 4"]
-  B --> FH["3 A fuse"] --> H["Halo +5 V<br/>+ Pro Micro RAW"]
+  B --> FH["5 A fuse"] --> H["Halo +5 V<br/>+ Pro Micro RAW"]
   L --> ED["Electrodragon VIN<br/>screw terminal"] --> Pi["Raspberry Pi 3B"]
   Pi -- "GPIO14 TX (3.3 V)" --> LS["BSS138 level converter"] -- "5 V" --> PM["Pro Micro<br/>ATmega32U4 5 V"] -- "LED data (5 V)" --> H
 ```
@@ -27,7 +27,7 @@ flowchart LR
 ```
 brick ─ DIN ─ jack ─ 7.5 A ─┬─ Module A ─ 15 A ─ panels 1+2
                             ├─ Module B ─┬─ 15 A ─ panels 3+4
-                            │            └─ 3 A ─ halo strip + Pro Micro RAW
+                            │            └─ 5 A ─ halo strip + Pro Micro RAW
                             └─ LM2596 (5.1 V) ─ Electrodragon VIN ─ Pi
 Pi GPIO14 ─ BSS138 converter (3.3→5 V) ─ Pro Micro RXI … Pro Micro pin 6 ─ 330 Ω ─ strip DIN
 ```
@@ -38,11 +38,11 @@ Pi GPIO14 ─ BSS138 converter (3.3→5 V) ─ Pro Micro RXI … Pro Micro pin 6
 |---|---|---|
 | Panels 1 + 2 | 40 W, 8 A | Module A (20 A) |
 | Panels 3 + 4 | 40 W, 8 A | Module B (20 A) |
-| Halo, ~40 × WS2812B | 12 W, 2.4 A (cap at 50 % in firmware) | Module B |
+| Halo, owner's WS2812B 5 V strip, ~1.3 m (≈40 LEDs at 30/m, ≈78 at 60/m) | up to 23 W, 4.7 A at 60/m full white; firmware caps the total at ≈2.5 A | Module B |
 | Pi 3B + Electrodragon, no USB devices | ~3–6 W, 0.5–1.2 A | LM2596 |
 | **24 V input** | ≈ 98 W load, ≈ 110 W input at ~90 % → **≈ 4.6 A** | brick 160 W |
 
-Each module stays under about 55 % of its rating even on a full-white frame.
+Each module stays under about 65 % of its rating even on a full-white frame.
 
 ## Connections
 
@@ -68,7 +68,7 @@ brick, measure, then connect the modules.
 |---|---|
 | Module A OUT+ | 15 A fuse → VCC (red) of the panel 1+2 cable |
 | Module A OUT− | GND (black) of the panel 1+2 cable |
-| Module B OUT+ | WAGO (3-way): 15 A fuse → VCC of the panel 3+4 cable; 3 A fuse → halo +5 V |
+| Module B OUT+ | WAGO (3-way): 15 A fuse → VCC of the panel 3+4 cable; 5 A fuse → halo +5 V |
 | Module B OUT− | WAGO (3–5-way): GND of the panel 3+4 cable, halo GND, Pro Micro GND |
 
 The module leads (13 cm, bare) and the panel cables join in WAGOs or through the inline fuse
@@ -100,7 +100,7 @@ instead (fine at UART speeds).
 | Pro Micro **VCC** | level converter **HV** | 5 V side |
 | level converter **HV1** | Pro Micro **RXI** (pin 0, `Serial1`) | Pro Micro TX stays unconnected: nothing ever drives a Pi pin |
 | Electrodragon GND, Pro Micro GND | level converter **GND** (both sides) | common reference |
-| Halo +5 V (after the 3 A fuse) | Pro Micro **RAW** and strip +5 V | do not plug USB into the Pro Micro while this is connected: unplug the RAW wire to flash |
+| Halo +5 V (after the 5 A fuse) | Pro Micro **RAW** and strip +5 V | do not plug USB into the Pro Micro while this is connected: unplug the RAW wire to flash |
 | Pro Micro **pin 6** | 330 Ω → strip **DIN** | 5 V data |
 | — | 1000 µF / ≥ 10 V electrolytic across strip +5 V/GND at the strip input | absorbs switch-on surge |
 
@@ -157,9 +157,9 @@ short capacitor-charging spike needs.
 | LM2596 HW-411 buck | 1 | yes | — |
 | Pro Micro ATmega32U4 5 V 16 MHz | 1 | yes | — |
 | BSS138 4-channel level converter | 1 | yes | — |
-| WS2812B 5 V strip, 60 LED/m (~0.7–1 m) | 1 | ? | 8–12 |
+| WS2812B 5 V strip (5 m reel; ~1.3 m used) | 1 | yes | — |
 | 1000 µF ≥ 10 V capacitor, 330 Ω resistor | 1 each | ? | 1 |
-| Inline blade fuse holders + fuses 7.5 A, 15 A ×2, 3 A | 4 | ? | 8–10 |
+| Inline blade fuse holders + fuses 7.5 A, 15 A ×2, 5 A | 4 | ? | 8–10 |
 | WAGO 221 (5-way ×2, 3-way ×4) | | ? | 8–10 |
 | 1.5 mm² stranded wire, insulated forks | | yes | — |
 | Heat-set inserts M2.5 (jack), small screws, cable ties | | ? | 5 |
