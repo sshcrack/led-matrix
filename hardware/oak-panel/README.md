@@ -42,15 +42,16 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 ## Electronics plates (off-the-shelf wiring plan)
 
-`electronics-plates-v1.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.**
+`electronics-plates-v2.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.**
 
-- **Power plate** (184 × 120 × 3 mm): both 24→5 V 20 A modules on M4 slots (the listing gives 5.3 mm flange holes; the ~60 mm spacing is estimated from photos, so the slots cover 54–68 mm), cable-tie slots for a WAGO row and the fuse holders, vents.
-- **Controller plate** (same outline): four 6 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), cable-tie slots for the LM2596, Pro Micro and level converter, vents under the Pi.
+- **Half plates** (184 × 110 × 3 mm): each panel has its tall connectors (HUB75 IN, power header, HUB75 OUT) in one half of its back, 33–64 mm from the panel centre (read from the owner's ruler photo, ±3 mm). The plates cover only the other half and end 15 mm below the lowest connector, so the plugs and their cables pass freely. They bolt through the four seam holes of the free half, (±86, −54) and (±54, −86); the hole set is point-symmetric, so a plate can be turned 180° if a panel hangs the other way up.
+- **Power plate**: both 24→5 V 20 A modules on M4 slots (the listing gives 5.3 mm flange holes; the ~60 mm spacing is estimated from photos, so the slots cover 54–68 mm), cable-tie slots for a WAGO row and the fuse holders, vents.
+- **Controller plate**: four 6 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), cable-tie slots for the LM2596, Pro Micro and level converter, vents under the Pi.
 - **DC socket coupon**: a 6 mm wall section with the Kycon KPJX-PM-4S cutout (14 mm, assumed from the drawing), 2 × M2.5 holes on 19 mm and a 1 mm flange pocket. The flange sits outside, the screws (6.6 mm + wall, so M2.5 × 12) come from inside into the flange's 2.3 mm holes. Print it first to check the cutout and that the brick's plug latches.
 
-Each plate bolts to the rear face of one trial carrier with M3 screws through four of its symmetric seam holes at (±86, ±54), nuts on the carrier side. Components sit on the plate's rear face.
+M3 screws, nuts on the carrier side. Components sit on the plate's rear face.
 
-**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panel envelopes, carriers, both plates with part envelopes and a translucent rear cover at the body depth (`--body-depth`, default 80). Seen from the wall: power plate bottom left, controller plate bottom right. Panel rear connectors are not modelled yet.
+**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panel envelopes, carriers, both plates with part envelopes and a translucent rear cover at the body depth (`--body-depth`, default 80). Seen from the wall: power plate bottom left, controller plate bottom right. Red boxes are the panel connectors with plugs: positions from the photo, heights assumed (PCB ~5 mm behind the LED tips, HUB75 plug 20 mm, power plug + cable 35 mm).
 
 **Depth finding:** from the LED tips, the panel and carrier take 31 mm. The 32 mm modules then need a **≈71 mm** body and the Pi + Electrodragon stack (owner measured about 30 mm with a plugged ribbon on 2026-11-15; 33 mm budgeted for margin) needs **≈78 mm**, against the current 60 mm. Decision: the next enclosure version gets an **80 mm body** and keeps the 25 mm wall gap (panel front about 105 mm off the wall). Stepped-back rear or straight box is still open.
 
