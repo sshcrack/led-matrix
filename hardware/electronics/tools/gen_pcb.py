@@ -109,8 +109,8 @@ GLOBAL_PLACE = {
     "R614": (118.1, 63.0, 270), "C611": (115.1, 62.0, 0), "C612": (115.1, 64.0, 0),
     "R621": (100.6, 60.0, 90), "R616": (100.6, 64.0, 90),
     "D601": (107.5, 52.0, 90), "R615": (109.3, 52.0, 90),
-    "C621": (110.0, 73.0, 270), "D621": (103.5, 72.5, 270), "TP601": (116.4, 67.9, 0),
-    "R622": (115.0, 52.5, 0), "D622": (115.0, 55.0, 0),
+    "C621": (109.4, 74.0, 270), "D621": (115.5, 66.6, 0), "TP601": (106.0, 67.0, 0),
+    "R622": (116.5, 83.6, 180), "D622": (117.2, 60.1, 180),
     "U601": (121.5, 76.0, 90), "C601": (113.0, 81.0, 90), "C602": (111.0, 81.0, 90),
     "R602": (108.0, 81.5, 90), "D602": (106.2, 81.5, 90),
     # ---- mechanical ----
@@ -126,7 +126,7 @@ GLOBAL_ZONES = [
                       (109.5, 8.0, 115.9, 21.0), (109.5, 21.0, 113.4, 40.6), (104.6, 5.0, 107.4, 8.0),
                       (107.0, 21.0, 109.5, 37.0), BAND]),
     ("+5V_AUX", "F.Cu", [(104.0, 56.5, 113.5, 61.3), (111.68, 61.2, 112.02, 62.0)]),
-    ("/Halo/VHALO", "F.Cu", [(112.18, 64.0, 112.52, 64.8), (104.0, 64.7, 124.0, 69.0), (102.5, 64.7, 105.0, 70.0)]),
+    ("/Halo/VHALO", "F.Cu", [(112.18, 64.0, 112.52, 64.8), (104.0, 64.7, 124.0, 69.0)]),
 ]
 
 
@@ -341,10 +341,32 @@ def place(netlist_path):
         for y in (57.3, 58.8):
             add_via(board, "+5V_AUX", x, y, 0.8, 0.4)
 
+    edge_keepout(board)
     made, failed = fanout(board)
     print(f"fanout: {made} vias placed, {len(failed)} pads without a free via site: {failed}")
     pcbnew.SaveBoard(str(PCB), board)
     return board
+
+
+def edge_keepout(board, width=0.85):
+    """Rule areas along the outline: no tracks or vias within ``width`` of the edge (the
+    autorouter does not know the 0.5 mm copper-to-edge rule; pads and pours are unaffected)."""
+    for i, (x1, y1, x2, y2) in enumerate([(0, 0, W, width), (0, H - width, W, H),
+                                          (0, 0, width, H), (W - width, 0, W, H)]):
+        z = pcbnew.ZONE(board)
+        z.SetIsRuleArea(True)
+        z.SetDoNotAllowTracks(True)
+        z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowCopperPour(False)
+        z.SetDoNotAllowFootprints(False)
+        z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        poly = z.Outline()
+        poly.NewOutline()
+        for x, y in [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]:
+            poly.Append(mm(x + OX), mm(y + OY))
+        z.SetZoneName(f"edge-keepout-{i}")
+        board.Add(z)
 
 
 def courtyard_check(board):
@@ -499,6 +521,8 @@ class Obstacles:
         for n, layers, rect, _ in self.pads:
             if n != net and _pt_rect_dist(x, y, rect) < r + self.clr(net, n):
                 return False
+            if n == net and _pt_rect_dist(x, y, rect) < r + 0.1:     # no via-in-pad, even same net
+                return False
         for n, cx, cy, cr in self.circles:
             need = cr + r + (0.25 if n == net else self.clr(net, n.replace("__hole__", "")))
             if math.hypot(x - cx, y - cy) < need:
@@ -565,6 +589,7 @@ def _fp_xf(fp):
 CELL_GND_LINKS = [
     (("C", 7), "2", [(0.475, 0.0), (-0.1, 0.6)]),     # VLDOIN cap: between R4, C8 and R1
 ]
+LINKED_PADS = {("D621", "2")}      # pads whose GND via is a GLOBAL_LINKS entry, not the fanout
 F_CU_ONLY_NETS = {"/Aux/EN_AUX"}   # module EN escape needs no via: GLOBAL_LINKS reach it on F.Cu
 # fixed signal links in global coordinates: (net, [path], width, via at end[, layer])
 GLOBAL_LINKS = [
@@ -581,6 +606,8 @@ GLOBAL_LINKS = [
     ("/Halo/PANEL_ON", [(8.475, 59.35), (7.6, 58.0)], 0.25, True),
     ("/Halo/PANEL_ON", [(7.6, 58.0), (12.6, 58.0), (16.5, 54.1), (17.5, 54.1)], 0.25, True, "B.Cu"),
     ("/Halo/PANEL_ON", [(17.5, 54.1), (18.0, 53.65), (19.06, 53.65)], 0.25, False),
+    # halo TVS anode: GND via beside the pad, inside the VHALO zone (the fill flows around it)
+    ("GND", [(117.5, 66.6), (117.5, 68.4)], 0.5, True),
     # buffer output escapes to B.Cu before the PI_TXD link closes the pocket around U603 pin 4
     ("/Halo/UART_RX", [(17.64, 50.45), (18.6, 50.9)], 0.25, True),
 ]
@@ -595,6 +622,7 @@ def cell_links(board):
             add_track(board, "GND", "F.Cu", pts, 0.3)
             add_via(board, "GND", *pts[-1])
             done.add((ref, pad))
+    done |= LINKED_PADS
     for net, path, width, via, *layer in GLOBAL_LINKS:
         add_track(board, net, layer[0] if layer else "F.Cu", path, width)
         if via:
