@@ -17,6 +17,7 @@ from pathlib import Path
 
 import cadquery as cq
 from electronics_plates import (
+    HALO_STRIP_MM,
     COMPONENTS,
     PANEL_CONNECTORS,
     PCB_REAR,
@@ -88,9 +89,9 @@ for name, (tx, ty) in TILES.items():
         asm.add(box(tx + x, ty + y, PLATE_Z0 + PLATE_T + z0, w, d, h), name=part, color=color)
 
 # Halo: eight strip segments on the rear cover's back face, LEDs toward the wall. Owner's
-# WS2812B 5 V, 30 LEDs/m, IP65 (silicone sleeve ~8 x 3.8 mm per the listing); cut every LED
-# (33.3 mm), so 5 LEDs = 167 mm per segment, 40 LEDs in all. Offset from the v0.6 frame.
-HALO_SEGMENT = (167.0, 8.0, 3.8)  # length, width, thickness
+# WS2812B 5 V, 30 LEDs/m, IP65, measured 10 x 2.63 mm; cut every LED (33.3 mm), so 5 LEDs =
+# 167 mm per segment, 40 LEDs in all. Offset from the v0.6 frame.
+HALO_SEGMENT = (167.0, HALO_STRIP_MM[0], HALO_STRIP_MM[1])  # length, width, thickness
 HALO_OFFSET = 179.0
 hl, hw, ht = HALO_SEGMENT
 for side in (-1, 1):
