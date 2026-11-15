@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export one real panel trial carrier plus a coupon in a single-job geometry layout."""
+"""Export one real panel trial carrier plus three test coupons in a single-job geometry layout."""
 
 import argparse
 import hashlib
@@ -10,6 +10,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import cadquery as cq
 import trimesh
 from trimesh.exchange.threemf import export_3MF
+from electronics_plates import DC_SOCKET, HALO_CHANNEL, HALO_STRIP_MM, build_dc_socket_coupon, build_halo_channel_coupon
 from trial_carrier import (
     build_trial_carrier,
     JOINER_HOLES,
@@ -46,8 +47,8 @@ for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
 # Notched end identifies the first (3.2 mm) hole without font dependencies.
 coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 5).translate((-39, -11, 1.5)))
 manifest = {
-    "revision": "trial-carrier-v2",
-    "status": "One-panel carrier geometry trial plus coupon; no wall-mount or finished product approval.",
+    "revision": "trial-carrier-v3",
+    "status": "One-panel carrier geometry trial plus clearance, halo-channel and DC-socket coupons; no wall-mount or finished product approval.",
     "pattern_mm": centres,
     "corner_span_mm": [174, 158],
     "carrier_clearance_diameter_mm": 3.5,
@@ -65,6 +66,8 @@ manifest = {
     "orientation_notch": "8 x 2 x 2 mm notch in the top outer corner of the +Y rib, centred on X=0",
     "xy_view": "Bed view: looking down on the printed part, bosses toward the viewer, X right, Y up (= panel rear seen from behind)",
     "coupon_from_notched_end_mm": [3.2, 3.4, 3.5, 3.6],
+    "halo_channel_coupon": {"strip_mm": HALO_STRIP_MM, **HALO_CHANNEL},
+    "dc_socket_coupon": DC_SOCKET,
     "print_scale_percent": 100,
     "paper_scale_compensation_applied": False,
     "material": "PETG starting material; print service selects settings and quote.",
@@ -76,6 +79,8 @@ meshes = {}
 for name, shape in [
     ("trial-panel-carrier", carrier),
     ("clearance-hole-coupon", coupon),
+    ("halo-channel-coupon", build_halo_channel_coupon()),
+    ("dc-socket-coupon", build_dc_socket_coupon()),
 ]:
     solid = shape.val()
     assert solid.isValid() and len(solid.Solids()) == 1, name
@@ -150,52 +155,63 @@ manifest["carrier_probes"] = (
     "orientation notch, web, rim and open middle checked"
 )
 scene = trimesh.Scene()
+CARRIER_AT = (5.0, 5.0)
+CENTRE = (CARRIER_AT[0] + OUTER_MM / 2, CARRIER_AT[1] + OUTER_MM / 2)
 scene.add_geometry(
     meshes["trial-panel-carrier"],
     geom_name="trial-panel-carrier",
     node_name="trial-panel-carrier",
-    transform=trimesh.transformations.translation_matrix([5, 5, 0]),
+    transform=trimesh.transformations.translation_matrix([*CARRIER_AT, 0]),
 )
-scene.add_geometry(
-    meshes["clearance-hole-coupon"],
-    geom_name="clearance-hole-coupon",
-    node_name="clearance-hole-coupon",
-    # Nested in the carrier's 159.6 mm open middle: the whole job stays a
-    # 201.6 mm square, so it fits the MK3S bed in either orientation.
-    transform=trimesh.transformations.translation_matrix(
-        [5 + OUTER_MM / 2 - 40, 5 + OUTER_MM / 2 - 12, 0]
-    ),
-)
+# The coupons nest in the carrier's 159.6 mm open middle (centres relative to the carrier
+# centre), so the whole job stays a 201.6 mm square and fits the MK3S bed either way round.
+NESTED = {
+    "clearance-hole-coupon": (0.0, 38.0),
+    "halo-channel-coupon": (-32.0, -22.0),
+    "dc-socket-coupon": (32.0, -22.0),
+}
+nested_bounds = {}
+for name, (cx, cy) in NESTED.items():
+    size = meshes[name].extents
+    offset = [CENTRE[0] + cx - size[0] / 2, CENTRE[1] + cy - size[1] / 2, 0]
+    scene.add_geometry(
+        meshes[name],
+        geom_name=name,
+        node_name=name,
+        transform=trimesh.transformations.translation_matrix(offset),
+    )
+    nested_bounds[name] = meshes[name].bounds + [offset] * 2
 layout = out / "single-job-layout.3mf"
 layout.write_bytes(export_3MF(scene))
 loaded = trimesh.load_scene(layout)
-assert len(loaded.graph.nodes_geometry) == 2
+assert len(loaded.graph.nodes_geometry) == 1 + len(NESTED)
 assert abs(loaded.bounds - scene.bounds).max() < 1e-6
 assert abs(loaded.volume / scene.volume - 1) < 1e-6
 assert loaded.bounds[0][0] >= 5 and loaded.bounds[0][1] >= 5
 assert loaded.bounds[1][0] <= 205 and loaded.bounds[1][1] <= 205
-coupon_bounds = meshes["clearance-hole-coupon"].bounds + [
-    [5 + OUTER_MM / 2 - 40, 5 + OUTER_MM / 2 - 12, 0]
-] * 2
-opening = [5 + 16, 5 + OUTER_MM - 16]
+opening = [CARRIER_AT[0] + 16, CARRIER_AT[0] + OUTER_MM - 16]
 coupon_gap = min(
-    coupon_bounds[0][0] - opening[0],
-    coupon_bounds[0][1] - opening[0],
-    opening[1] - coupon_bounds[1][0],
-    opening[1] - coupon_bounds[1][1],
+    min(b[0][0] - opening[0], b[0][1] - opening[0], opening[1] - b[1][0], opening[1] - b[1][1])
+    for b in nested_bounds.values()
 )
+names = list(nested_bounds)
+for i, a in enumerate(names):
+    for b in names[i + 1 :]:
+        A, B = nested_bounds[a], nested_bounds[b]
+        apart = max(B[0][0] - A[1][0], A[0][0] - B[1][0], B[0][1] - A[1][1], A[0][1] - B[1][1])
+        coupon_gap = min(coupon_gap, apart)
 assert coupon_gap >= 10, coupon_gap
 assert loaded.bounds[0][2] >= -1e-6
 assert loaded.bounds[1][2] <= 16.00001
 manifest["single_job_layout"] = {
     "file": layout.name,
-    "objects": 2,
+    "objects": 1 + len(NESTED),
     "bounds_mm": loaded.bounds.tolist(),
     "minimum_xy_margin_mm": 5,
-    "coupon_placement": "centred inside the carrier's open middle",
+    "coupon_placement": "all three coupons inside the carrier's open middle",
     "gap_between_parts_mm": round(float(coupon_gap), 2),
     "fits": "Prusa MK3S 250 x 210 in either orientation, and the 400 x 400 printer",
-    "generic_3mf_roundtrip": "two objects, transformed bounds and volume preserved",
+    "generic_3mf_roundtrip": "four objects, transformed bounds and volume preserved",
     "machine_settings": "none; print service must slice and quote",
 }
 
@@ -210,7 +226,7 @@ def render_preview(path):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
     fig = plt.figure(figsize=(12.2, 7.6), dpi=100)
-    fig.suptitle("Carrier + clearance coupon v2 / PETG / 100% scale", fontsize=15)
+    fig.suptitle("Carrier + three test coupons v3 / PETG / 100% scale", fontsize=15)
     ax3 = fig.add_subplot(1, 2, 1, projection="3d")
     mesh = meshes["trial-panel-carrier"]
     light = mesh.face_normals @ [0.3, -0.4, 0.86]
@@ -251,7 +267,7 @@ def render_preview(path):
         ax.add_patch(Circle((5 + OUTER_MM / 2 + x, 5 + OUTER_MM / 2 + y), 5, fill=False, ec="#d9822b", lw=1.2))
     ax.set(xlim=(0, 250), ylim=(0, 210), aspect="equal", xlabel="mm", ylabel="mm")
     ax.set_title(
-        "Single job: coupon nested in the carrier's open middle\n"
+        "Single job: hole, halo-channel and DC-socket coupons\nnested in the carrier's open middle, "
         "201.6 mm square, fits the bed either way round",
         fontsize=10,
     )
@@ -273,13 +289,17 @@ render_preview(out / "trial-carrier-preview.png")
 )
 instructions = ROOT / "trial-carrier-instructions.txt"
 (out / "READ-ME-FIRST.txt").write_text(instructions.read_text())
-archive = out / "panel-trial-carrier-kit-v2.zip"
+archive = out / "panel-trial-carrier-kit-v3.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     for name in [
         "trial-panel-carrier.stl",
         "trial-panel-carrier.step",
         "clearance-hole-coupon.stl",
         "clearance-hole-coupon.step",
+        "halo-channel-coupon.stl",
+        "halo-channel-coupon.step",
+        "dc-socket-coupon.stl",
+        "dc-socket-coupon.step",
         "trial-carrier-validation.json",
         "READ-ME-FIRST.txt",
         "single-job-layout.3mf",
@@ -289,6 +309,7 @@ with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     z.write(Path(__file__), "source/make-trial-carrier.py")
     for name in [
         "trial_carrier.py",
+        "electronics_plates.py",
         "measurement-basis.json",
         "mounting-measurements.json",
         "trial-carrier-instructions.txt",
