@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "LiveFrameSnapshot.h"
+#include "halo/halo_service.h"
 #include "shared/matrix/diagnostics.h"
 #include "spdlog/spdlog.h"
 
@@ -17,6 +18,7 @@ void FrameSink::present(FrameCanvas*& canvas, const int target_fps)
         post_processor_->apply_effects(canvas);
 
     LiveFrame::SnapshotStore::instance().capture_if_requested(canvas, matrix_->width(), matrix_->height());
+    Halo::Service::instance().offer(canvas, matrix_->width(), matrix_->height());
 
     apply_scheduled_brightness();
     FrameCanvas* const shown = canvas;

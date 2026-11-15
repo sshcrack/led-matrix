@@ -18,6 +18,7 @@
 #include <spdlog/spdlog.h>
 #include "schedule_management.h"
 #include "environment_routes.h"
+#include "halo_routes.h"
 
 using namespace std;
 using namespace restinio;
@@ -39,6 +40,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const 
     router = add_custom_assets_routes(std::move(router));
     router = add_schedule_routes(std::move(router), deps.config);
     router = add_environment_routes(std::move(router), deps.config);
+    router = add_halo_routes(std::move(router), deps.config);
     router = add_post_processing_routes(std::move(router), deps.post_processor);
     router = add_update_routes(std::move(router), deps.update_manager);
     router = add_other_routes(std::move(router), deps.config);
