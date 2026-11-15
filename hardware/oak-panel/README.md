@@ -56,7 +56,7 @@ Parts taller than the posts pass through the carrier's 159.6 mm opening; `make-e
 
 **Depth:** from the LED tips the tallest parts end at 50.5 mm (modules) and 55 mm (Pi + Electrodragon stack, 33 mm budgeted for the owner's ≈30 mm), so the body needs **≈60 mm** including 3 mm air and a 2 mm rear cover. That keeps the v0.6 body depth; with the 25 mm halo wall gap the panel front sits ≈85 mm off the wall. (Plates on the carrier's rear face, v1/v2, needed ≈78 mm.)
 
-**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panels, carriers, both plates with part envelopes, the panel plugs (red) and a translucent rear cover at the body depth (`--body-depth`, default 60). Seen from the wall: power plate bottom left, controller plate bottom right.
+**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panels, carriers, both plates with part envelopes, the panel plugs (red), the eight halo strip segments (white, owner's WS2812B 5 V 30/m IP65: 5 LEDs = 167 mm each, ~8 × 3.8 mm) on the back of a translucent rear cover at the body depth (`--body-depth`, default 60). Seen from the wall: power plate bottom left, controller plate bottom right.
 
 **Still to check in the fit test:** ribbons between panels cross the seam where the carriers' rims sit (rim 6 mm above the frame top); a ribbon either folds flat under the rim or loops over the carrier's rear face.
 

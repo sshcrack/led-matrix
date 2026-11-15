@@ -4,7 +4,8 @@
 For looking at the depth stack, not for printing. World frame, seen from the wall side
 (behind the display): X right, Y up, Z from the LED tips (Z=0) toward the wall. Panels and
 component boxes are envelopes (outer size only); the panel is drawn as its frame (0..15 mm).
-Red boxes are the panels' rear connectors with plugs (positions from the owner's photo,
+White strips on the rear cover are the halo LED strip segments. Red boxes are the panels' rear
+connectors with plugs (positions from the owner's photo,
 heights from owner measurements: PLUG_TOP in electronics_plates.py).
 
 Writes electronics-assembly.step (coloured parts, opens in FreeCAD and most CAD viewers) and
@@ -56,6 +57,7 @@ C = {
     "small": cq.Color(0.95, 0.80, 0.20, 1.0),
     "cover": cq.Color(0.6, 0.8, 1.0, 0.25),
     "plug": cq.Color(0.85, 0.15, 0.15, 1.0),
+    "halo": cq.Color(0.95, 0.95, 0.95, 1.0),
 }
 
 
@@ -84,6 +86,18 @@ for name, (tx, ty) in TILES.items():
         w, d, h = COMPONENTS[comp][:3]
         color = C["pi"] if comp == "pi_stack" else C["big"] if comp == "buck_20a" else C["small"]
         asm.add(box(tx + x, ty + y, PLATE_Z0 + PLATE_T + z0, w, d, h), name=part, color=color)
+
+# Halo: eight strip segments on the rear cover's back face, LEDs toward the wall. Owner's
+# WS2812B 5 V, 30 LEDs/m, IP65 (silicone sleeve ~8 x 3.8 mm per the listing); cut every LED
+# (33.3 mm), so 5 LEDs = 167 mm per segment, 40 LEDs in all. Offset from the v0.6 frame.
+HALO_SEGMENT = (167.0, 8.0, 3.8)  # length, width, thickness
+HALO_OFFSET = 179.0
+hl, hw, ht = HALO_SEGMENT
+for side in (-1, 1):
+    for seg in (-1, 1):
+        along = seg * (hl / 2 + 4.0)
+        asm.add(box(along, side * HALO_OFFSET, args.body_depth, hl, hw, ht), name=f"halo-strip-h{side:+d}{seg:+d}", color=C["halo"])
+        asm.add(box(side * HALO_OFFSET, along, args.body_depth, hw, hl, ht), name=f"halo-strip-v{side:+d}{seg:+d}", color=C["halo"])
 
 # Rear cover at the chosen body depth (translucent), to see the margin.
 asm.add(box(0, 0, args.body_depth - 2.0, 2 * PANEL, 2 * PANEL, 2.0), name=f"rear-cover-{args.body_depth:.0f}mm", color=C["cover"])

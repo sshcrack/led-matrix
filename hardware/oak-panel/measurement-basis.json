@@ -98,9 +98,9 @@
     "requested": true,
     "strip_segments_reserved": 8,
     "strip_envelope_each_mm": [
-      160,
-      10,
-      3
+      167,
+      8,
+      3.8
     ],
     "wall_gap_starting_point_mm": 25,
     "control_intent": [
@@ -109,7 +109,17 @@
       "optional soft display-colour matching"
     ],
     "power_intent": "Same external supply with protected branch; actual strip, driver and additional wattage unselected",
-    "status": "CAD reservations and cover passage only; no lighting hardware or software implemented"
+    "status": "Strip selected (owner's); Pro Micro firmware and daemon driver on PR branch t3/halo-light-firmware-daemon; enclosure v0.6 still reserves 160 x 10 x 3 mm per segment, v0.7 must use 167 x 8 x 3.8 (plus tolerance) and a mounting channel",
+    "selected_strip": {
+      "product": "Owner's WS2812B, 5 V, 30 LEDs/m, IP65 silicone sleeve, 5 m reel",
+      "envelope_mm": [
+        8.0,
+        3.8
+      ],
+      "basis": "Owner 2026-11-15; width x thickness from the product listing's IP65 drawing (that drawing shows a 24 V variant, owner's strip is 5 V); measure the real strip",
+      "cut_pitch_mm": 33.3,
+      "segments": "8 x 5 LEDs = 167 mm each, 40 LEDs, one data loop"
+    }
   },
   "measured_mounting_pattern": {
     "source": "mounting-measurements.json",
