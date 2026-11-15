@@ -5,9 +5,9 @@
 	(uuid "a05f40dc-18a7-5ae8-aac9-b3e2eb04267d")
 	(paper "A3")
 	(title_block
-		(title "24 V input protection")
+		(title "24 V input protection and hot-swap")
 		(date "2026-11-15")
-		(rev "A0")
+		(rev "B0")
 		(company "led-matrix project")
 		(comment 1 "PROTOTYPE - UNVALIDATED - NOT RELEASED FOR FABRICATION")
 		(comment 2 "Power + halo board")
@@ -918,24 +918,26 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Transistor_FET:PSMN5R2-60YL"
-			(pin_names (hide yes))
+		(symbol "Transistor_FET:CSD18540Q5B"
+			(pin_names (offset 0) (hide yes))
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "Q"
-				(at 5.715 1.905 0)
+				(at 5.08 1.905 0)
 				(effects
 					(font (size 1.27 1.27))
+					(justify left)
 				)
 			)
-			(property "Value" "PSMN5R2-60YL"
-				(at 12.7 0 0)
+			(property "Value" "CSD18540Q5B"
+				(at 5.08 0 0)
 				(effects
 					(font (size 1.27 1.27))
+					(justify left)
 				)
 			)
-			(property "Footprint" "Package_TO_SOT_SMD:LFPAK56"
+			(property "Footprint" "Package_TO_SOT_SMD:TDSON-8-1"
 				(at 5.08 -1.905 0)
 				(effects
 					(font (size 1.27 1.27) (italic yes))
@@ -943,7 +945,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PSMN5R2-60YL.pdf"
+			(property "Datasheet" "http://www.ti.com/lit/gpn/csd18540q5b"
 				(at 5.08 -3.81 0)
 				(effects
 					(font (size 1.27 1.27))
@@ -951,28 +953,28 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "100A, 60V Vds, N-Channel MOSFET, 5.2mOhm Ron, LFPAK56"
+			(property "Description" "100A Id, 60V Vds, NexFET N-Channel Power MOSFET, 2.2mOhm Ron, 41nC Qg(typ), SON8 5x6mm"
 				(at 0 0 0)
 				(effects
 					(font (size 1.27 1.27))
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "N-Channel MOSFET"
+			(property "ki_keywords" "NexFET Power MOSFET N-MOS"
 				(at 0 0 0)
 				(effects
 					(font (size 1.27 1.27))
 					(hide yes)
 				)
 			)
-			(property "ki_fp_filters" "LFPAK56*"
+			(property "ki_fp_filters" "TDSON*"
 				(at 0 0 0)
 				(effects
 					(font (size 1.27 1.27))
 					(hide yes)
 				)
 			)
-			(symbol "PSMN5R2-60YL_0_1"
+			(symbol "CSD18540Q5B_0_1"
 				(polyline
 					(pts (xy 0.254 1.905) (xy 0.254 -1.905))
 					(stroke (width 0.254) (type default))
@@ -1067,10 +1069,10 @@
 					(fill (type none))
 				)
 			)
-			(symbol "PSMN5R2-60YL_1_1"
-				(pin passive line
+			(symbol "CSD18540Q5B_1_1"
+				(pin input line
 					(at -5.08 0 0)
-					(length 2.54)
+					(length 5.08)
 					(name "G"
 						(effects
 							(font (size 1.27 1.27))
@@ -1135,6 +1137,203 @@
 						)
 					)
 					(number "3"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ledpanel:LM5069"
+			(pin_names (offset 1.016))
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at 0 11.43 0)
+				(effects
+					(font (size 1.27 1.27))
+				)
+			)
+			(property "Value" "LM5069MM-2/NOPB"
+				(at 0 -13.97 0)
+				(effects
+					(font (size 1.27 1.27))
+				)
+			)
+			(property "Footprint" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+				(at 0 -16.51 0)
+				(effects
+					(font (size 1.27 1.27))
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm5069.pdf"
+				(at 0 -19.05 0)
+				(effects
+					(font (size 1.27 1.27))
+					(hide yes)
+				)
+			)
+			(property "Description" "TI 9-80 V hot-swap controller with power limiting, UVLO/OVLO, PGD, VSSOP-10 (DGS)"
+				(at 0 -21.59 0)
+				(effects
+					(font (size 1.27 1.27))
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "hot swap inrush controller LM5069"
+				(at 0 0 0)
+				(effects
+					(font (size 1.27 1.27))
+					(hide yes)
+				)
+			)
+			(symbol "LM5069_0_1"
+				(rectangle
+					(start -10.16 10.16)
+					(end 10.16 -10.16)
+					(stroke (width 0.254) (type default))
+					(fill (type background))
+				)
+			)
+			(symbol "LM5069_1_1"
+				(pin power_in line
+					(at -12.7 7.62 0)
+					(length 2.54)
+					(name "VIN"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "2"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 5.08 0)
+					(length 2.54)
+					(name "SENSE"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "1"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 0 0)
+					(length 2.54)
+					(name "UVLO"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "3"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -2.54 0)
+					(length 2.54)
+					(name "OVLO"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "4"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin passive line
+					(at -12.7 -5.08 0)
+					(length 2.54)
+					(name "TIMER"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "6"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin passive line
+					(at -12.7 -7.62 0)
+					(length 2.54)
+					(name "PWR"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "7"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin output line
+					(at 12.7 7.62 180)
+					(length 2.54)
+					(name "GATE"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "10"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin input line
+					(at 12.7 5.08 180)
+					(length 2.54)
+					(name "OUT"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "9"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin open_collector line
+					(at 12.7 0 180)
+					(length 2.54)
+					(name "PGD"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "8"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -12.7 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font (size 1.27 1.27))
+						)
+					)
+					(number "5"
 						(effects
 							(font (size 1.27 1.27))
 						)
@@ -1404,7 +1603,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "24 V input: connector, fuse, ideal-diode reverse protection, TVS, bulk"
+	(text "24 V input: connector, fuse, ideal-diode reverse protection, TVS, small ceramics"
 		(exclude_from_sim no)
 		(at 15.24 25.4 0)
 		(effects
@@ -1448,7 +1647,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "24 V input, Mini-Fit Jr 2x2 right-angle header; pins 1+2 = +24V, 3+4 = 0V"
+		(property "Description" "24 V input, Mini-Fit Jr 2x2 right-angle header; pins 1+2 = +24V, 3+4 = 0V; hot-plug supported"
 			(at 30.48 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -1675,7 +1874,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Input fuse, 8 A very fast-acting, NANO2 2410 (wiring-fault backup; PSU limits normal faults)"
+		(property "Description" "Input fuse, 8 A very fast-acting, NANO2 2410 (wiring-fault backup; hot-swap limits normal faults)"
 			(at 55.88 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -1696,7 +1895,7 @@
 				(hide yes)
 			)
 		)
-		(property "Rating" "8 A, very fast; confirm voltage rating >= 32 V on current data sheet"
+		(property "Rating" "8 A, very fast, melting I2t 20.23 A2s (owner data sheet)"
 			(at 55.88 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -1744,7 +1943,7 @@
 	)
 	(symbol
 		(lib_id "Power_Management:LM74700")
-		(at 91.44 55.88 0)
+		(at 91.44 53.34 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1752,54 +1951,54 @@
 		(dnp no)
 		(uuid "b93ffaf3-3931-5568-913a-09c3eb088e84")
 		(property "Reference" "U1"
-			(at 81.915 64.77 0)
+			(at 81.915 62.23 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "LM74700QDBVRQ1"
-			(at 99.06 64.77 0)
+			(at 99.06 62.23 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
-			(at 81.915 64.77 0)
+			(at 81.915 62.23 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm74700-q1.pdf"
-			(at 81.915 64.77 0)
+			(at 81.915 62.23 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Ideal-diode controller: reverse-polarity / reverse-current protection"
-			(at 91.44 55.88 0)
+			(at 91.44 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "LM74700QDBVRQ1"
-			(at 91.44 55.88 0)
+			(at 91.44 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Texas Instruments"
-			(at 91.44 55.88 0)
+			(at 91.44 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Rating" "3.2-65 V, -65 V reverse"
-			(at 91.44 55.88 0)
+		(property "Rating" "ANODE +-65 V, CATHODE-ANODE -5..75 V abs max"
+			(at 91.44 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1821,12 +2020,12 @@
 		)
 	)
 	(wire
-		(pts (xy 78.74 58.42) (xy 76.2 58.42))
+		(pts (xy 78.74 55.88) (xy 76.2 55.88))
 		(stroke (width 0) (type default))
 		(uuid "e8fc8131-9236-5ca7-b588-656dff9a6bf6")
 	)
 	(label "VCAP"
-		(at 76.2 58.42 180)
+		(at 76.2 55.88 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1835,12 +2034,12 @@
 		(uuid "1688c53b-b302-573b-b91f-035d50ca6d5f")
 	)
 	(wire
-		(pts (xy 78.74 60.96) (xy 76.2 60.96))
+		(pts (xy 78.74 58.42) (xy 76.2 58.42))
 		(stroke (width 0) (type default))
 		(uuid "09fdbe44-b7db-57e5-a03c-bb41c6484083")
 	)
 	(label "VIN_F"
-		(at 76.2 60.96 180)
+		(at 76.2 58.42 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1849,12 +2048,12 @@
 		(uuid "e8a1e7cb-3e60-5835-a3f3-a5aa26e73dc5")
 	)
 	(wire
-		(pts (xy 83.82 45.72) (xy 83.82 43.18))
+		(pts (xy 83.82 43.18) (xy 83.82 40.64))
 		(stroke (width 0) (type default))
 		(uuid "67487323-543c-53d9-ab9b-a5a926917eba")
 	)
 	(label "VIN_F"
-		(at 83.82 43.18 90)
+		(at 83.82 40.64 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1863,12 +2062,12 @@
 		(uuid "8fd40f0b-d1ec-5103-8ebb-0247c9e1ecd9")
 	)
 	(wire
-		(pts (xy 91.44 45.72) (xy 91.44 43.18))
+		(pts (xy 91.44 43.18) (xy 91.44 40.64))
 		(stroke (width 0) (type default))
 		(uuid "e5744a9f-f75e-5dc3-b0c3-02e962dc3a05")
 	)
 	(label "GATE"
-		(at 91.44 43.18 90)
+		(at 91.44 40.64 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1877,13 +2076,13 @@
 		(uuid "a2d30e61-cbda-5c57-9da6-26556298d455")
 	)
 	(wire
-		(pts (xy 91.44 66.04) (xy 91.44 68.58))
+		(pts (xy 91.44 63.5) (xy 91.44 66.04))
 		(stroke (width 0) (type default))
 		(uuid "32cf311d-06c8-5215-b8e7-121aa0961952")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 91.44 68.58 0)
+		(at 91.44 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1891,34 +2090,34 @@
 		(dnp no)
 		(uuid "796c9131-f713-5816-afa4-1ff5ec88cc25")
 		(property "Reference" "#PWR003"
-			(at 91.44 74.93 0)
+			(at 91.44 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 91.44 72.39 0)
+			(at 91.44 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 91.44 68.58 0)
+			(at 91.44 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 91.44 68.58 0)
+			(at 91.44 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 91.44 68.58 0)
+			(at 91.44 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1935,31 +2134,22 @@
 		)
 	)
 	(wire
-		(pts (xy 99.06 45.72) (xy 99.06 43.18))
+		(pts (xy 99.06 43.18) (xy 99.06 40.64))
 		(stroke (width 0) (type default))
 		(uuid "c0f487e2-8765-5a9d-8e0b-f21e01680db1")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 99.06 43.18 90)
+	(label "VIN_P"
+		(at 99.06 40.64 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left)
+			(justify left bottom)
 		)
-		(uuid "2033ac6d-594b-5c27-9fbd-dc6a5ee1a404")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 99.06 43.18 90)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left)
-				(hide yes)
-			)
-		)
+		(uuid "1aea9fa9-982e-543b-9f38-7dddd4e765c0")
 	)
 	(symbol
-		(lib_id "Transistor_FET:PSMN5R2-60YL")
-		(at 119.38 50.8 0)
+		(lib_id "Transistor_FET:CSD18540Q5B")
+		(at 119.38 48.26 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1967,56 +2157,65 @@
 		(dnp no)
 		(uuid "ed1eb642-5631-52cd-b3cb-5cd1b0765edb")
 		(property "Reference" "Q1"
-			(at 125.095 48.895 0)
+			(at 124.46 46.355 0)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Value" "PSMN5R2-60YL"
-			(at 132.08 50.8 0)
+		(property "Value" "CSD18540Q5B"
+			(at 124.46 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:LFPAK56"
-			(at 124.46 52.705 0)
+		(property "Footprint" "Package_TO_SOT_SMD:TDSON-8-1"
+			(at 124.46 50.165 0)
 			(effects
 				(font (size 1.27 1.27) (italic yes))
 				(justify left)
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PSMN5R2-60YL.pdf"
-			(at 124.46 54.61 0)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/csd18540q5b.pdf"
+			(at 124.46 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 				(hide yes)
 			)
 		)
-		(property "Description" "Ideal-diode N-MOSFET (source = input, drain = +24V)"
-			(at 119.38 50.8 0)
+		(property "Description" "Ideal-diode N-MOSFET (source = input, drain = VIN_P)"
+			(at 119.38 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "MPN" "PSMN5R2-60YL"
-			(at 119.38 50.8 0)
+		(property "MPN" "CSD18540Q5B"
+			(at 119.38 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "Nexperia"
-			(at 119.38 50.8 0)
+		(property "Manufacturer" "Texas Instruments"
+			(at 119.38 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Rating" "60 V, 5.2 mOhm"
-			(at 119.38 50.8 0)
+		(property "Rating" "60 V, 1.8 mOhm (10 V), +-20 V VGS, RthJA 40 K/W (1 in2)"
+			(at 119.38 48.26 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Land pattern" "KiCad stock SON 5x6 (TDSON-8-1); compare with the TI Q5B land pattern"
+			(at 119.38 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2037,12 +2236,12 @@
 		)
 	)
 	(wire
-		(pts (xy 114.3 50.8) (xy 111.76 50.8))
+		(pts (xy 114.3 48.26) (xy 111.76 48.26))
 		(stroke (width 0) (type default))
 		(uuid "ff6f7910-3a3f-5a91-a065-0c0908fb8074")
 	)
 	(label "GATE"
-		(at 111.76 50.8 180)
+		(at 111.76 48.26 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2051,35 +2250,26 @@
 		(uuid "e1f3dc67-8855-5851-8216-c34d94f20fb3")
 	)
 	(wire
-		(pts (xy 121.92 45.72) (xy 121.92 43.18))
+		(pts (xy 121.92 43.18) (xy 121.92 40.64))
 		(stroke (width 0) (type default))
 		(uuid "b13a5560-09ae-5886-b503-06858c0c98e9")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 121.92 43.18 90)
+	(label "VIN_P"
+		(at 121.92 40.64 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left)
+			(justify left bottom)
 		)
-		(uuid "2c65b32d-27e8-521d-bb52-e2f08f01d943")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 121.92 43.18 90)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left)
-				(hide yes)
-			)
-		)
+		(uuid "2068b0ea-35d0-5870-b3ab-5e3613c5cf67")
 	)
 	(wire
-		(pts (xy 121.92 55.88) (xy 121.92 58.42))
+		(pts (xy 121.92 53.34) (xy 121.92 55.88))
 		(stroke (width 0) (type default))
 		(uuid "230e0589-bb1e-5098-92a5-314af5adc1ea")
 	)
 	(label "VIN_F"
-		(at 121.92 58.42 270)
+		(at 121.92 55.88 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2192,63 +2382,65 @@
 		(uuid "35cbc1ec-9318-574b-97e3-fdcfdb515006")
 	)
 	(symbol
-		(lib_id "ledpanel:SMBJ30A")
-		(at 160.02 38.1 0)
+		(lib_id "Device:C")
+		(at 149.86 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "416ad5a5-8d56-5da3-b215-95368a9a309c")
-		(property "Reference" "D1"
-			(at 160.02 35.56 0)
+		(property "Reference" "C4"
+			(at 150.495 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Value" "SMBJ30A"
-			(at 160.02 40.64 0)
+		(property "Value" "100nF"
+			(at 150.495 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SMB"
-			(at 160.02 43.18 0)
-			(effects
-				(font (size 1.27 1.27))
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.littelfuse.com/products/tvs-diodes/surface-mount/smbj"
-			(at 160.02 45.72 0)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 150.8252 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Input TVS after the ideal diode (protects 42 V module transient rating)"
-			(at 160.02 48.26 0)
+		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
+			(at 149.86 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "MPN" "SMBJ30A"
-			(at 160.02 38.1 0)
+		(property "Description" "LM74700 ANODE capacitor (>= 22 nF)"
+			(at 149.86 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "Littelfuse"
-			(at 160.02 38.1 0)
+		(property "MPN" "GRM188R71H104KA93D"
+			(at 149.86 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Rating" "VRWM 30 V, VBR 33.3 V min, 600 W 10/1000 us"
-			(at 160.02 38.1 0)
+		(property "Manufacturer" "Murata"
+			(at 149.86 45.72 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "50 V X7R"
+			(at 149.86 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2259,43 +2451,34 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
-					(reference "D1")
+					(reference "C4")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 156.21 38.1) (xy 153.67 38.1))
+		(pts (xy 149.86 41.91) (xy 149.86 39.37))
 		(stroke (width 0) (type default))
 		(uuid "d76ce048-3166-588f-a80e-ed597aab9988")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 153.67 38.1 180)
+	(label "VIN_F"
+		(at 149.86 39.37 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify right)
+			(justify left bottom)
 		)
-		(uuid "1591e275-9a4f-5b04-94c2-47b24842b4a8")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 153.67 38.1 180)
-			(effects
-				(font (size 1.27 1.27))
-				(justify right)
-				(hide yes)
-			)
-		)
+		(uuid "0aa0732f-7c27-5855-a81b-9aaeee06dee7")
 	)
 	(wire
-		(pts (xy 163.83 38.1) (xy 166.37 38.1))
+		(pts (xy 149.86 49.53) (xy 149.86 52.07))
 		(stroke (width 0) (type default))
 		(uuid "8a6e304d-f959-58e0-a5c5-095a0a904378")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 166.37 38.1 90)
+		(at 149.86 52.07 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2303,34 +2486,34 @@
 		(dnp no)
 		(uuid "4e3972f9-60ef-5fa4-938e-7a1d5dc315e3")
 		(property "Reference" "#PWR004"
-			(at 172.72 38.1 90)
+			(at 149.86 58.42 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 170.18 38.1 90)
+			(at 149.86 55.88 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 166.37 38.1 90)
+			(at 149.86 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 166.37 38.1 90)
+			(at 149.86 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 166.37 38.1 90)
+			(at 149.86 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2347,79 +2530,65 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
-		(at 177.8 48.26 0)
+		(lib_id "Device:C")
+		(at 167.64 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "b344905f-1c71-5018-8457-c4cd51ec498f")
-		(property "Reference" "C2"
-			(at 178.435 45.72 0)
+		(property "Reference" "C5"
+			(at 168.275 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
-		(property "Value" "100uF/50V"
-			(at 178.435 50.8 0)
+		(property "Value" "100nF"
+			(at 168.275 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_8x10"
-			(at 178.7652 52.07 0)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 168.6052 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://industrial.panasonic.com/ww/products/capacitors/polymer-capacitors-aluminum-electrolytic-capacitors"
-			(at 177.8 48.26 0)
+		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
+			(at 167.64 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Input bulk / hot-plug damping"
-			(at 177.8 48.26 0)
+		(property "Description" "LM74700 CATHODE / LM5069 VIN capacitor; only small ceramics ahead of the limiter"
+			(at 167.64 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "MPN" "EEE-FK1H101P"
-			(at 177.8 48.26 0)
+		(property "MPN" "GRM188R71H104KA93D"
+			(at 167.64 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "Panasonic"
-			(at 177.8 48.26 0)
+		(property "Manufacturer" "Murata"
+			(at 167.64 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Rating" "50V"
-			(at 177.8 48.26 0)
-			(effects
-				(font (size 1.27 1.27))
-				(hide yes)
-			)
-		)
-		(property "Case" "8x10.2 mm"
-			(at 177.8 48.26 0)
-			(effects
-				(font (size 1.27 1.27))
-				(hide yes)
-			)
-		)
-		(property "Verify" "case size and ripple rating against the current Panasonic FK data sheet"
-			(at 177.8 48.26 0)
+		(property "Rating" "50 V X7R"
+			(at 167.64 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2430,43 +2599,34 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
-					(reference "C2")
+					(reference "C5")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 177.8 44.45) (xy 177.8 41.91))
+		(pts (xy 167.64 41.91) (xy 167.64 39.37))
 		(stroke (width 0) (type default))
 		(uuid "d7e24572-63ac-5b16-94db-49fa6f10e06a")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 177.8 41.91 90)
+	(label "VIN_P"
+		(at 167.64 39.37 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left)
+			(justify left bottom)
 		)
-		(uuid "513bb615-aebe-5376-9717-5f7e2a8b9222")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 177.8 41.91 90)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left)
-				(hide yes)
-			)
-		)
+		(uuid "7a87dd62-2795-580c-a15f-3f441595ae0b")
 	)
 	(wire
-		(pts (xy 177.8 52.07) (xy 177.8 54.61))
+		(pts (xy 167.64 49.53) (xy 167.64 52.07))
 		(stroke (width 0) (type default))
 		(uuid "d71df1ff-e17d-58a6-ad13-25df846fca70")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 177.8 54.61 0)
+		(at 167.64 52.07 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2474,34 +2634,34 @@
 		(dnp no)
 		(uuid "de6ee07d-c390-511f-8adb-89821f3c2213")
 		(property "Reference" "#PWR005"
-			(at 177.8 60.96 0)
+			(at 167.64 58.42 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 177.8 58.42 0)
+			(at 167.64 55.88 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 177.8 54.61 0)
+			(at 167.64 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 177.8 54.61 0)
+			(at 167.64 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 177.8 54.61 0)
+			(at 167.64 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2518,79 +2678,63 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
-		(at 195.58 48.26 0)
+		(lib_id "ledpanel:SMBJ30A")
+		(at 193.04 38.1 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "efb13f9a-872e-5c57-99fd-f8387f5ec1b6")
-		(property "Reference" "C3"
-			(at 196.215 45.72 0)
+		(property "Reference" "D1"
+			(at 193.04 35.56 0)
 			(effects
 				(font (size 1.27 1.27))
-				(justify left)
 			)
 		)
-		(property "Value" "100uF/50V"
-			(at 196.215 50.8 0)
+		(property "Value" "SMBJ30A"
+			(at 193.04 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
-				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_8x10"
-			(at 196.5452 52.07 0)
-			(effects
-				(font (size 1.27 1.27))
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://industrial.panasonic.com/ww/products/capacitors/polymer-capacitors-aluminum-electrolytic-capacitors"
-			(at 195.58 48.26 0)
+		(property "Footprint" "Diode_SMD:D_SMB"
+			(at 193.04 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Input bulk / hot-plug damping"
-			(at 195.58 48.26 0)
+		(property "Datasheet" "https://www.littelfuse.com/products/tvs-diodes/surface-mount/smbj"
+			(at 193.04 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "MPN" "EEE-FK1H101P"
-			(at 195.58 48.26 0)
+		(property "Description" "Input TVS ahead of the hot-swap FET: clamps the cable ring"
+			(at 193.04 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Manufacturer" "Panasonic"
-			(at 195.58 48.26 0)
+		(property "MPN" "SMBJ30A"
+			(at 193.04 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Rating" "50V"
-			(at 195.58 48.26 0)
+		(property "Manufacturer" "Littelfuse"
+			(at 193.04 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Case" "8x10.2 mm"
-			(at 195.58 48.26 0)
-			(effects
-				(font (size 1.27 1.27))
-				(hide yes)
-			)
-		)
-		(property "Verify" "case size and ripple rating against the current Panasonic FK data sheet"
-			(at 195.58 48.26 0)
+		(property "Rating" "VRWM 30 V, VBR 33.3-36.8 V, VC 48.4 V at 12.4 A, 600 W 10/1000 us"
+			(at 193.04 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2601,43 +2745,34 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
-					(reference "C3")
+					(reference "D1")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 195.58 44.45) (xy 195.58 41.91))
+		(pts (xy 189.23 38.1) (xy 186.69 38.1))
 		(stroke (width 0) (type default))
 		(uuid "5dc44bc5-13d4-5c51-8002-fea450c2fa2c")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 195.58 41.91 90)
+	(label "VIN_P"
+		(at 186.69 38.1 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left)
+			(justify right bottom)
 		)
-		(uuid "f5f4baa7-3968-528f-b6aa-d695e02d2c4f")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 195.58 41.91 90)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left)
-				(hide yes)
-			)
-		)
+		(uuid "d5509a84-119e-54a7-bbc7-29dae5c6ddbe")
 	)
 	(wire
-		(pts (xy 195.58 52.07) (xy 195.58 54.61))
+		(pts (xy 196.85 38.1) (xy 199.39 38.1))
 		(stroke (width 0) (type default))
 		(uuid "77da2561-ddf1-5fa4-ad90-784d60052ae5")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 195.58 54.61 0)
+		(at 199.39 38.1 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2645,34 +2780,34 @@
 		(dnp no)
 		(uuid "bdbf622d-bed1-5e60-bf1f-c693538f2356")
 		(property "Reference" "#PWR006"
-			(at 195.58 60.96 0)
+			(at 205.74 38.1 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 195.58 58.42 0)
+			(at 203.2 38.1 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 195.58 54.61 0)
+			(at 199.39 38.1 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 195.58 54.61 0)
+			(at 199.39 38.1 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 195.58 54.61 0)
+			(at 199.39 38.1 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2690,7 +2825,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 213.36 48.26 0)
+		(at 210.82 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2698,61 +2833,61 @@
 		(dnp no)
 		(uuid "1c6081b5-d534-5ae3-bd0f-0245a96c335a")
 		(property "Reference" "R1"
-			(at 215.392 48.26 90)
+			(at 212.852 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "22k"
-			(at 213.36 48.26 90)
+			(at 210.82 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 211.582 48.26 90)
+			(at 209.042 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "24 V present LED, ~1 mA"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-0722KL"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 213.36 48.26 0)
+			(at 210.82 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2770,35 +2905,26 @@
 		)
 	)
 	(wire
-		(pts (xy 213.36 44.45) (xy 213.36 41.91))
+		(pts (xy 210.82 41.91) (xy 210.82 39.37))
 		(stroke (width 0) (type default))
 		(uuid "8d30fee5-033f-5971-a621-f1dfa847cb53")
 	)
-	(global_label "+24V"
-		(shape bidirectional)
-		(at 213.36 41.91 90)
+	(label "VIN_P"
+		(at 210.82 39.37 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left)
+			(justify left bottom)
 		)
-		(uuid "fd261e72-db3d-5604-b490-f24a233dee5c")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 213.36 41.91 90)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left)
-				(hide yes)
-			)
-		)
+		(uuid "b80727c0-22fb-5cc0-9e84-c0698c0a4480")
 	)
 	(wire
-		(pts (xy 213.36 52.07) (xy 213.36 54.61))
+		(pts (xy 210.82 49.53) (xy 210.82 52.07))
 		(stroke (width 0) (type default))
 		(uuid "c04d0dd0-ca90-5106-9318-caaa3789c6e9")
 	)
 	(label "LED24"
-		(at 213.36 54.61 270)
+		(at 210.82 52.07 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2808,7 +2934,7 @@
 	)
 	(symbol
 		(lib_id "Device:LED")
-		(at 238.76 38.1 0)
+		(at 236.22 38.1 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2816,54 +2942,54 @@
 		(dnp no)
 		(uuid "0881a58c-2a1e-5312-8036-0c9bf2194480")
 		(property "Reference" "D2"
-			(at 238.76 35.56 0)
+			(at 236.22 35.56 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "green"
-			(at 238.76 40.64 0)
+			(at 236.22 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "LED_SMD:LED_0603_1608Metric"
-			(at 238.76 38.1 0)
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.kingbrightusa.com/images/catalog/SPEC/APT1608SGC.pdf"
-			(at 238.76 38.1 0)
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "+24V present"
-			(at 238.76 38.1 0)
+		(property "Description" "24 V present at the input"
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "APT1608SGC"
-			(at 238.76 38.1 0)
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Kingbright"
-			(at 238.76 38.1 0)
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "20 mA max, run at ~2 mA"
-			(at 238.76 38.1 0)
+			(at 236.22 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2881,13 +3007,13 @@
 		)
 	)
 	(wire
-		(pts (xy 234.95 38.1) (xy 232.41 38.1))
+		(pts (xy 232.41 38.1) (xy 229.87 38.1))
 		(stroke (width 0) (type default))
 		(uuid "d048f69e-bd2a-5b82-a400-e266ceeeaf58")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 232.41 38.1 270)
+		(at 229.87 38.1 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2895,34 +3021,34 @@
 		(dnp no)
 		(uuid "71a13e1e-ac10-5613-a05c-de5893de8a1a")
 		(property "Reference" "#PWR007"
-			(at 226.06 38.1 270)
+			(at 223.52 38.1 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 228.6 38.1 270)
+			(at 226.06 38.1 270)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 232.41 38.1 270)
+			(at 229.87 38.1 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 232.41 38.1 270)
+			(at 229.87 38.1 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 232.41 38.1 270)
+			(at 229.87 38.1 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2939,12 +3065,12 @@
 		)
 	)
 	(wire
-		(pts (xy 242.57 38.1) (xy 245.11 38.1))
+		(pts (xy 240.03 38.1) (xy 242.57 38.1))
 		(stroke (width 0) (type default))
 		(uuid "8a99e75e-4938-5189-9fd2-577d7d8607f9")
 	)
 	(label "LED24"
-		(at 245.11 38.1 0)
+		(at 242.57 38.1 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2954,7 +3080,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 256.54 38.1 0)
+		(at 254 38.1 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -2962,33 +3088,33 @@
 		(dnp no)
 		(uuid "dc6b1f20-ad89-5358-8e5e-57eba0b62f5f")
 		(property "Reference" "TP1"
-			(at 256.54 31.242 0)
+			(at 254 31.242 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "TP"
-			(at 256.54 33.02 0)
+			(at 254 33.02 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "TestPoint:TestPoint_Pad_D1.5mm"
-			(at 261.62 38.1 0)
+			(at 259.08 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
-			(at 261.62 38.1 0)
+			(at 259.08 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Test point +24V"
-			(at 256.54 38.1 0)
+		(property "Description" "Test point +24V (behind the hot-swap)"
+			(at 254 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3005,13 +3131,13 @@
 		)
 	)
 	(wire
-		(pts (xy 256.54 38.1) (xy 256.54 40.64))
+		(pts (xy 254 38.1) (xy 254 40.64))
 		(stroke (width 0) (type default))
 		(uuid "c6f36764-bc63-5938-af04-4beeb1390771")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 256.54 40.64 270)
+		(at 254 40.64 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3019,7 +3145,7 @@
 		)
 		(uuid "782cf809-ca50-59bd-a982-fd6f61bfb26a")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 256.54 40.64 270)
+			(at 254 40.64 270)
 			(effects
 				(font (size 1.27 1.27))
 				(justify right)
@@ -3029,7 +3155,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 266.7 38.1 0)
+		(at 264.16 38.1 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -3037,33 +3163,33 @@
 		(dnp no)
 		(uuid "81cd0904-ddd4-5fb7-88c9-d975bec985d1")
 		(property "Reference" "TP2"
-			(at 266.7 31.242 0)
+			(at 264.16 31.242 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "TP"
-			(at 266.7 33.02 0)
+			(at 264.16 33.02 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "TestPoint:TestPoint_Pad_D1.5mm"
-			(at 271.78 38.1 0)
+			(at 269.24 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
-			(at 271.78 38.1 0)
+			(at 269.24 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Test point GND"
-			(at 266.7 38.1 0)
+			(at 264.16 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3080,13 +3206,13 @@
 		)
 	)
 	(wire
-		(pts (xy 266.7 38.1) (xy 266.7 40.64))
+		(pts (xy 264.16 38.1) (xy 264.16 40.64))
 		(stroke (width 0) (type default))
 		(uuid "ba7b6c5f-ba33-5848-98b3-6d7893864a63")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 266.7 40.64 0)
+		(at 264.16 40.64 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3094,34 +3220,34 @@
 		(dnp no)
 		(uuid "57409c2b-5434-5f9a-a301-73846c13de0c")
 		(property "Reference" "#PWR008"
-			(at 266.7 46.99 0)
+			(at 264.16 46.99 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 266.7 44.45 0)
+			(at 264.16 44.45 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 266.7 40.64 0)
+			(at 264.16 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 266.7 40.64 0)
+			(at 264.16 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 266.7 40.64 0)
+			(at 264.16 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3137,9 +3263,75 @@
 			)
 		)
 	)
-	(text "Power flags (nets driven only through passive parts)"
+	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 274.32 38.1 0)
+		(unit 1)
 		(exclude_from_sim no)
-		(at 15.24 83.07 0)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "e329bee9-3b69-513f-bcb9-49f4ae3082ff")
+		(property "Reference" "TP3"
+			(at 274.32 31.242 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "TP"
+			(at 274.32 33.02 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.5mm"
+			(at 279.4 38.1 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 279.4 38.1 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Test point VIN_P (ahead of the hot-swap)"
+			(at 274.32 38.1 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "178ee3b1-47fe-5b39-8a99-50868ed9135f"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "TP3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 274.32 38.1) (xy 274.32 40.64))
+		(stroke (width 0) (type default))
+		(uuid "f39939fb-4ff5-5c22-a2a6-4ac95a79614d")
+	)
+	(label "VIN_P"
+		(at 274.32 40.64 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "8f1fba51-82b2-5ab0-aed4-556555ef626d")
+	)
+	(text "24 V hot-swap (LM5069-2): inrush, current and power limit, UVLO/OVLO, PGD -> AUX enable"
+		(exclude_from_sim no)
+		(at 15.24 80.53 0)
 		(effects
 			(font (size 1.8 1.8) (bold yes))
 			(justify left bottom)
@@ -3147,107 +3339,287 @@
 		(uuid "877acdde-1c33-534c-aca2-826f24f3a58a")
 	)
 	(symbol
-		(lib_id "power:PWR_FLAG")
-		(at 20.32 93.98 0)
+		(lib_id "ledpanel:LM5069")
+		(at 38.1 99.06 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
+		(in_bom yes)
+		(on_board yes)
 		(dnp no)
 		(uuid "eb58694d-0eab-5b08-88af-f0d170c3689b")
-		(property "Reference" "#FLG01"
-			(at 20.32 92.075 0)
+		(property "Reference" "U2"
+			(at 38.1 87.63 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "LM5069MM-2/NOPB"
+			(at 38.1 113.03 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+			(at 38.1 115.57 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Value" "PWR_FLAG"
-			(at 20.32 90.17 0)
-			(effects
-				(font (size 1.27 1.27))
-			)
-		)
-		(property "Footprint" ""
-			(at 20.32 93.98 0)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm5069.pdf"
+			(at 38.1 118.11 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
-			(at 20.32 93.98 0)
+		(property "Description" "Hot-swap controller, auto-retry (-2): insertion delay, current + power limit, UVLO/OVLO"
+			(at 38.1 120.65 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
-			(at 20.32 93.98 0)
+		(property "MPN" "LM5069MM-2/NOPB"
+			(at 38.1 99.06 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 38.1 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "VIN 9-80 V (100 V abs), OVLO pin 7 V abs"
+			(at 38.1 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Config" "ILIM 55 mV/7 mOhm = 7.9 A, PLIM ~28 W, UV 17.9/15.9 V, OV 33.5 V, CT 220 nF"
+			(at 38.1 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "2" (uuid "8750bc93-b3c4-52a4-a6f2-569bea44a0ca"))
 		(pin "1" (uuid "0dd4fbc2-d244-5f17-bfae-14158b94dd5b"))
+		(pin "3" (uuid "1aa36c82-992d-5085-931c-7973d8cd8726"))
+		(pin "4" (uuid "078a00de-72f2-5259-8328-fc1c99696b8a"))
+		(pin "6" (uuid "c98a888c-4b45-5a94-966b-40e4f6571b81"))
+		(pin "7" (uuid "a8c3f9bc-c614-54b6-aac5-5245d8d99fef"))
+		(pin "10" (uuid "ccf58c19-5eb3-5f1f-b3cc-2eacc36c2dc5"))
+		(pin "9" (uuid "a3aeec95-9da0-566b-8225-bbef5ce2fc8b"))
+		(pin "8" (uuid "ac5d1f33-6e7d-5da1-9262-3573c516ac69"))
+		(pin "5" (uuid "b5f2d0db-d42f-5416-baac-9e7147a39ad5"))
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
-					(reference "#FLG01")
+					(reference "U2")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 20.32 93.98) (xy 20.32 96.52))
+		(pts (xy 25.4 91.44) (xy 22.86 91.44))
+		(stroke (width 0) (type default))
+		(uuid "5ee47518-d31d-5c13-be17-6b27d31e847a")
+	)
+	(label "VIN_P"
+		(at 22.86 91.44 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "1cd109f9-112f-577f-9083-3f035e450bda")
+	)
+	(wire
+		(pts (xy 25.4 93.98) (xy 22.86 93.98))
 		(stroke (width 0) (type default))
 		(uuid "26e8bd7f-cd4b-5e21-9fbf-db60cb8ca231")
 	)
+	(label "VIN_S"
+		(at 22.86 93.98 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "14b844d6-a029-5e5d-b3a3-13b51a785682")
+	)
+	(wire
+		(pts (xy 25.4 99.06) (xy 22.86 99.06))
+		(stroke (width 0) (type default))
+		(uuid "33df7b42-4516-51d1-8505-9f196ed23c52")
+	)
+	(label "UVLO"
+		(at 22.86 99.06 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "aa65da92-6931-595b-b1e4-2237cf9faf1f")
+	)
+	(wire
+		(pts (xy 25.4 101.6) (xy 22.86 101.6))
+		(stroke (width 0) (type default))
+		(uuid "d3a65465-2a2c-589a-891a-9bc6b4eeb43e")
+	)
+	(label "OVLO"
+		(at 22.86 101.6 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "1aede755-ae5f-59eb-b3c5-542c8f09def6")
+	)
+	(wire
+		(pts (xy 25.4 104.14) (xy 22.86 104.14))
+		(stroke (width 0) (type default))
+		(uuid "022f9c07-b07d-5a24-aa2c-dd7443959c52")
+	)
+	(label "TIMER"
+		(at 22.86 104.14 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "01cb0db8-ddc9-52a2-af9d-6a00955d1274")
+	)
+	(wire
+		(pts (xy 25.4 106.68) (xy 22.86 106.68))
+		(stroke (width 0) (type default))
+		(uuid "b43b7103-47c6-5f37-a276-16c7cd0deb17")
+	)
+	(label "PWR"
+		(at 22.86 106.68 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "b92f7d11-7a66-5133-9241-50a8e1790f52")
+	)
+	(wire
+		(pts (xy 50.8 91.44) (xy 53.34 91.44))
+		(stroke (width 0) (type default))
+		(uuid "454818fc-5990-5739-b74d-4d72b3af531f")
+	)
+	(label "HS_GATE"
+		(at 53.34 91.44 0)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "9005a2d5-6cc8-54f4-abf4-3cfd3a18ce45")
+	)
+	(wire
+		(pts (xy 50.8 93.98) (xy 53.34 93.98))
+		(stroke (width 0) (type default))
+		(uuid "755805c6-6fe3-5584-883c-3e078a6190a1")
+	)
+	(global_label "+24V"
+		(shape bidirectional)
+		(at 53.34 93.98 0)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left)
+		)
+		(uuid "a68a2c89-7b1b-587a-9a2e-4f087f6a6f0d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 53.34 93.98 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(wire
+		(pts (xy 50.8 99.06) (xy 53.34 99.06))
+		(stroke (width 0) (type default))
+		(uuid "c339f7cf-b8bd-5598-92bc-e5b92157d70e")
+	)
+	(global_label "EN_AUX"
+		(shape bidirectional)
+		(at 53.34 99.06 0)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left)
+		)
+		(uuid "4b8030cf-1aea-5245-8bbc-529f0f663222")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 53.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(wire
+		(pts (xy 38.1 111.76) (xy 38.1 114.3))
+		(stroke (width 0) (type default))
+		(uuid "762e4733-6290-5bfa-b592-390fe1b797c2")
+	)
 	(symbol
 		(lib_id "power:GND")
-		(at 20.32 96.52 0)
+		(at 38.1 114.3 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "fad32956-6705-5389-a2cb-6dfe1ace7eba")
+		(uuid "960281c2-ef48-5967-a7fd-e09db0daf92e")
 		(property "Reference" "#PWR009"
-			(at 20.32 102.87 0)
+			(at 38.1 120.65 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 20.32 100.33 0)
+			(at 38.1 118.11 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 20.32 96.52 0)
+			(at 38.1 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 20.32 96.52 0)
+			(at 38.1 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 20.32 96.52 0)
+			(at 38.1 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(pin "1" (uuid "1e7a8832-5482-5192-9ab6-b107485d95bc"))
+		(pin "1" (uuid "b9212396-00ae-5be0-8560-fe243a918b5f"))
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
@@ -3258,49 +3630,1369 @@
 		)
 	)
 	(symbol
-		(lib_id "power:PWR_FLAG")
-		(at 30.48 93.98 0)
+		(lib_id "Device:R")
+		(at 68.58 101.6 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
+		(in_bom yes)
+		(on_board yes)
 		(dnp no)
 		(uuid "ebaccf3d-c42e-5a36-83e3-26035ed0c445")
-		(property "Reference" "#FLG02"
-			(at 30.48 92.075 0)
+		(property "Reference" "R2"
+			(at 70.612 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "7m"
+			(at 68.58 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_2512_6332Metric"
+			(at 66.802 101.6 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Value" "PWR_FLAG"
-			(at 30.48 90.17 0)
-			(effects
-				(font (size 1.27 1.27))
-			)
-		)
-		(property "Footprint" ""
-			(at 30.48 93.98 0)
+		(property "Datasheet" "https://www.vishay.com/docs/30100/wsl.pdf"
+			(at 68.58 101.6 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
-			(at 30.48 93.98 0)
+		(property "Description" "Hot-swap sense resistor 7 mOhm 1 %, Kelvin-connected"
+			(at 68.58 101.6 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
-			(at 30.48 93.98 0)
+		(property "MPN" "WSL2512R0070FEA"
+			(at 68.58 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Vishay"
+			(at 68.58 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "1 W at 70 C, +-75 ppm/K"
+			(at 68.58 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 68.58 101.6 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(pin "1" (uuid "51f819b7-069d-501a-a5be-70a158bd4d10"))
+		(pin "2" (uuid "84369bfe-38df-5b9e-b89d-ab890b117067"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 68.58 97.79) (xy 68.58 95.25))
+		(stroke (width 0) (type default))
+		(uuid "28395658-dbf2-5be0-b55c-e8e0aea3c7c7")
+	)
+	(label "VIN_P"
+		(at 68.58 95.25 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "79c91d32-7470-512b-b069-46bf2fc5f2f3")
+	)
+	(wire
+		(pts (xy 68.58 105.41) (xy 68.58 107.95))
+		(stroke (width 0) (type default))
+		(uuid "4a5809ac-69ac-58e7-ac46-17ca6a3fa131")
+	)
+	(label "VIN_S"
+		(at 68.58 107.95 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "166ec58f-f375-555c-b3f5-cf12948788a8")
+	)
+	(symbol
+		(lib_id "Transistor_FET:CSD18540Q5B")
+		(at 96.52 104.14 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "57fe8adf-d8a1-5390-ad55-fe5ae8cd409d")
+		(property "Reference" "Q2"
+			(at 101.6 102.235 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Value" "CSD18540Q5B"
+			(at 101.6 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:TDSON-8-1"
+			(at 101.6 106.045 0)
+			(effects
+				(font (size 1.27 1.27) (italic yes))
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/csd18540q5b.pdf"
+			(at 101.6 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" "Hot-swap N-MOSFET (drain = sense side, source = +24V)"
+			(at 96.52 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "CSD18540Q5B"
+			(at 96.52 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 96.52 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "60 V, 1.8 mOhm (10 V), +-20 V VGS, RthJA 40 K/W (1 in2)"
+			(at 96.52 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Land pattern" "KiCad stock SON 5x6 (TDSON-8-1); compare with the TI Q5B land pattern"
+			(at 96.52 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "4" (uuid "12547b6e-7275-5bbb-8840-bcce00999f41"))
+		(pin "5" (uuid "cf29960c-4e96-5a7b-a340-75511c1af6f9"))
+		(pin "1" (uuid "69387e9b-8976-51d0-8f4e-7140e0b747cb"))
+		(pin "2" (uuid "6c180c3b-f8f7-52ab-b249-68523212d718"))
+		(pin "3" (uuid "e95f7554-02ab-57c7-9c78-26da96132ab1"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "Q2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 91.44 104.14) (xy 88.9 104.14))
+		(stroke (width 0) (type default))
+		(uuid "44ae7c41-c81f-58ec-b127-3bb67a6f8ff1")
+	)
+	(label "HS_G"
+		(at 88.9 104.14 180)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "fd30a467-d172-502d-bb91-423ad71dd6ca")
+	)
+	(wire
+		(pts (xy 99.06 99.06) (xy 99.06 96.52))
+		(stroke (width 0) (type default))
+		(uuid "5e94cfaf-5d89-5ac3-a27e-b09d4c0d55a7")
+	)
+	(label "VIN_S"
+		(at 99.06 96.52 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "60bbd9e5-1825-5772-8d23-52e5f4db3cab")
+	)
+	(wire
+		(pts (xy 99.06 109.22) (xy 99.06 111.76))
+		(stroke (width 0) (type default))
+		(uuid "8c483767-d2bf-5c68-a7c2-1cae5c144219")
+	)
+	(global_label "+24V"
+		(shape bidirectional)
+		(at 99.06 111.76 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right)
+		)
+		(uuid "6eca080c-dd5c-51da-9540-3063ffbe7c82")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 99.06 111.76 270)
+			(effects
+				(font (size 1.27 1.27))
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 109.22 104.14 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "9957459e-6a0a-5084-84a3-feaac879836a")
+		(property "Reference" "R3"
+			(at 111.252 104.14 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "10"
+			(at 109.22 104.14 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 107.442 104.14 90)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Gate series resistor (damps the hot-swap FET gate)"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "RC0603FR-0710RL"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "0.1 W, 75 V"
+			(at 109.22 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "d1b0543f-b063-5edf-924c-c280cdc5268d"))
+		(pin "2" (uuid "bc15d0c6-92be-53eb-b092-2e6c800b7cf5"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 109.22 100.33) (xy 109.22 97.79))
+		(stroke (width 0) (type default))
+		(uuid "330f07d6-03c9-5875-90b4-edd2820cec96")
+	)
+	(label "HS_GATE"
+		(at 109.22 97.79 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "3e41b894-363a-5672-9422-8fb02dd6b2f4")
+	)
+	(wire
+		(pts (xy 109.22 107.95) (xy 109.22 110.49))
+		(stroke (width 0) (type default))
+		(uuid "828a8049-d328-54d8-a64f-209118aa3a66")
+	)
+	(label "HS_G"
+		(at 109.22 110.49 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "50641787-1b77-5b93-8a86-c696c8f0bd21")
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 127 101.6 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "aed526dc-05b6-5931-ae82-518e894a22e3")
+		(property "Reference" "R4"
+			(at 129.032 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "95.3k"
+			(at 127 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 125.222 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "UVLO/OVLO string top: UV on 17.9 V / off 15.9 V"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "RC0603FR-0795K3L"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "0.1 W, 75 V"
+			(at 127 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "1314a6ef-52b2-58c7-9b83-63c0859ea23a"))
+		(pin "2" (uuid "8cc819b8-8a62-5d36-b414-aa5b679968a4"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 127 97.79) (xy 127 95.25))
+		(stroke (width 0) (type default))
+		(uuid "cb0a1071-af66-5227-8632-f3b906f07159")
+	)
+	(label "VIN_P"
+		(at 127 95.25 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "9960ecec-ba05-52c8-94c9-6c163242f05a")
+	)
+	(wire
+		(pts (xy 127 105.41) (xy 127 107.95))
+		(stroke (width 0) (type default))
+		(uuid "b4f7e041-5e7d-5df7-8c4c-af60d14a6fd4")
+	)
+	(label "UVLO"
+		(at 127 107.95 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "1fed50cb-f47e-546d-85af-72f93e1e0e74")
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 144.78 101.6 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "275af605-b519-5df7-a7f5-b0751caf8a04")
+		(property "Reference" "R5"
+			(at 146.812 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "9.31k"
+			(at 144.78 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 143.002 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "UVLO/OVLO string middle"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "RC0603FR-079K31L"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "0.1 W, 75 V"
+			(at 144.78 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "aecf06c6-4e84-5f5f-84ae-1c8d2944cad5"))
+		(pin "2" (uuid "4ce534d3-d848-5412-9e22-bf4ac05e08db"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 144.78 97.79) (xy 144.78 95.25))
+		(stroke (width 0) (type default))
+		(uuid "cfb16390-748c-5504-9c91-4b988b26017d")
+	)
+	(label "UVLO"
+		(at 144.78 95.25 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "d022a110-360b-5563-a678-ee6af5535bc6")
+	)
+	(wire
+		(pts (xy 144.78 105.41) (xy 144.78 107.95))
+		(stroke (width 0) (type default))
+		(uuid "56a13602-e53d-5afe-b7c0-03473f59b601")
+	)
+	(label "OVLO"
+		(at 144.78 107.95 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "8810006a-50f1-5999-8c84-05798015fe9d")
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 162.56 101.6 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "bdb0bab0-8c22-5fca-8755-b1837e325b83")
+		(property "Reference" "R6"
+			(at 164.592 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "8.45k"
+			(at 162.56 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 160.782 101.6 90)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "UVLO/OVLO string bottom: OV off at 33.5 V (31.4-35.5 V worst case)"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "RC0603FR-078K45L"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "0.1 W, 75 V"
+			(at 162.56 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "0eafee53-e75d-563e-8739-00a6c187704e"))
+		(pin "2" (uuid "d64c25fe-23ed-529f-ad3c-578da58b8473"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 162.56 97.79) (xy 162.56 95.25))
+		(stroke (width 0) (type default))
+		(uuid "39ed851e-3d35-53b7-a3c5-ad47a7f805a7")
+	)
+	(label "OVLO"
+		(at 162.56 95.25 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "cac200ce-0085-57d2-8a54-d7d5bf619980")
+	)
+	(wire
+		(pts (xy 162.56 105.41) (xy 162.56 107.95))
+		(stroke (width 0) (type default))
+		(uuid "af139ec1-e872-5582-8d5a-4e5d5d8d3da7")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 162.56 107.95 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "4d0fd49e-b350-5ed2-b401-7a701ea96934")
+		(property "Reference" "#PWR010"
+			(at 162.56 114.3 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 162.56 111.76 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 162.56 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 162.56 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 162.56 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "13b5fbe3-db99-556c-9388-cbe3b819b8ab"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#PWR010")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 180.34 99.06 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "9f22115b-078b-5ff0-97a8-d873aac439ea")
+		(property "Reference" "R7"
+			(at 182.372 99.06 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "22.1k"
+			(at 180.34 99.06 90)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 178.562 99.06 90)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "RPWR: PLIM = 28 W at VDS 24 V (TI eq. 9)"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "RC0603FR-0722K1L"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Tolerance" "1%"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "0.1 W, 75 V"
+			(at 180.34 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "b6fbe391-4ac4-5f15-a97b-43219c80e842"))
+		(pin "2" (uuid "5564259c-df4f-552d-ac12-88f5c4796c5a"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "R7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 180.34 95.25) (xy 180.34 92.71))
+		(stroke (width 0) (type default))
+		(uuid "0a7763c2-1c46-5698-b265-07e3353687f5")
+	)
+	(label "PWR"
+		(at 180.34 92.71 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "65fde52d-8187-5b10-83df-c5c9164de933")
+	)
+	(wire
+		(pts (xy 180.34 102.87) (xy 180.34 105.41))
+		(stroke (width 0) (type default))
+		(uuid "74be1213-f2d9-519d-b7e0-6f9ef35d1c60")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 180.34 105.41 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "b9e6d0f2-2f93-5823-baa1-7daa49deb5c8")
+		(property "Reference" "#PWR011"
+			(at 180.34 111.76 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 180.34 109.22 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 180.34 105.41 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 180.34 105.41 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 180.34 105.41 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "3865e3f0-698e-57d1-b684-8208feba9152"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#PWR011")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 198.12 101.6 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "ab8de09f-10e9-5a54-920a-434f33e9d11b")
+		(property "Reference" "C6"
+			(at 198.755 99.06 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Value" "220nF"
+			(at 198.755 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 199.0852 105.41 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
+			(at 198.12 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "CT: insertion 160 ms, fault time 10.4 ms (min 6.9 ms)"
+			(at 198.12 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "GRM188R71H224KA93D"
+			(at 198.12 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Murata"
+			(at 198.12 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "50 V X7R"
+			(at 198.12 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "b5866773-12ab-59d9-82cc-d98ef6fc929f"))
+		(pin "2" (uuid "927a3452-5417-5202-ae5f-c2a864356852"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "C6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 198.12 97.79) (xy 198.12 95.25))
+		(stroke (width 0) (type default))
+		(uuid "d46d11ba-320c-59cc-bff6-72d25b1a8eb6")
+	)
+	(label "TIMER"
+		(at 198.12 95.25 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "6438bfc6-47d7-5e23-a3bb-bd00e56c38ac")
+	)
+	(wire
+		(pts (xy 198.12 105.41) (xy 198.12 107.95))
+		(stroke (width 0) (type default))
+		(uuid "ad4a1765-a379-55cf-865c-b457d4ec88c6")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 198.12 107.95 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "217133e8-0611-5c8d-94b7-cab8cb866654")
+		(property "Reference" "#PWR012"
+			(at 198.12 114.3 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 198.12 111.76 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 198.12 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 198.12 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 198.12 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "1f33947c-684e-5ce5-9e0e-c9a9e4b49dba"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#PWR012")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Polarized")
+		(at 215.9 104.14 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "e2a519fd-1126-5111-8e04-86c36d8fc765")
+		(property "Reference" "C2"
+			(at 216.535 101.6 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Value" "100uF/50V"
+			(at 216.535 106.68 0)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:CP_Elec_8x10"
+			(at 216.8652 107.95 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://industrial.panasonic.com/ww/products/capacitors/polymer-capacitors-aluminum-electrolytic-capacitors"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "+24V bulk at the hot-swap output"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "MPN" "EEE-FK1H101P"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Panasonic"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Rating" "50V"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Case" "8x10.2 mm"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Verify" "case size and ripple rating against the current Panasonic FK data sheet"
+			(at 215.9 104.14 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "dc594bda-4320-5bca-b8a7-33a3aa11c243"))
+		(pin "2" (uuid "ec6005ba-ea29-5278-b998-b97b657eda29"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "C2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 215.9 100.33) (xy 215.9 97.79))
+		(stroke (width 0) (type default))
+		(uuid "428e74d2-aab1-55fd-a0ac-24a91ad47660")
+	)
+	(global_label "+24V"
+		(shape bidirectional)
+		(at 215.9 97.79 90)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left)
+		)
+		(uuid "eb136d39-5de9-53a1-a887-ee428eea3c77")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 215.9 97.79 90)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(wire
+		(pts (xy 215.9 107.95) (xy 215.9 110.49))
+		(stroke (width 0) (type default))
+		(uuid "9bdfa8ce-7f8d-5c49-842a-7721f3a97a55")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 215.9 110.49 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "3c0e7d98-0430-5743-8522-297ba526ea72")
+		(property "Reference" "#PWR013"
+			(at 215.9 116.84 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 215.9 114.3 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 215.9 110.49 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 215.9 110.49 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 215.9 110.49 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "5dcef0fc-e261-503c-9281-ca43d5cacbca"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#PWR013")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(text "Power flags (nets driven only through passive parts)"
+		(exclude_from_sim no)
+		(at 15.24 129.5996 0)
+		(effects
+			(font (size 1.8 1.8) (bold yes))
+			(justify left bottom)
+		)
+		(uuid "e05502ea-0af9-5fc5-a2c4-aa940de22919")
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 20.32 139.7 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(dnp no)
+		(uuid "66bc2fdc-b7e0-50e3-92ab-f63e9c5e7cf1")
+		(property "Reference" "#FLG01"
+			(at 20.32 137.795 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 20.32 135.89 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 20.32 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 20.32 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
+			(at 20.32 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "eaebb4f0-45f0-567d-ac11-28312f8f8bf9"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#FLG01")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 20.32 139.7) (xy 20.32 142.24))
+		(stroke (width 0) (type default))
+		(uuid "18617781-06f5-5e8b-9fd6-afca07cc8546")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 20.32 142.24 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "6b85ac7a-c1f8-5412-b620-af74b0a5cf9e")
+		(property "Reference" "#PWR014"
+			(at 20.32 148.59 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 20.32 146.05 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 20.32 142.24 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 20.32 142.24 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 20.32 142.24 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "e5c5884b-4977-5093-beed-0c77b39ea0b5"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#PWR014")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 30.48 139.7 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(dnp no)
+		(uuid "36005c74-b322-5fca-a99e-5b83577b73c9")
+		(property "Reference" "#FLG02"
+			(at 30.48 137.795 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 30.48 135.89 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 30.48 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 30.48 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
+			(at 30.48 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "4c8d3a9b-0eb5-5ea3-b093-137af3557217"))
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
@@ -3311,63 +5003,63 @@
 		)
 	)
 	(wire
-		(pts (xy 30.48 93.98) (xy 30.48 96.52))
+		(pts (xy 30.48 139.7) (xy 30.48 142.24))
 		(stroke (width 0) (type default))
-		(uuid "28395658-dbf2-5be0-b55c-e8e0aea3c7c7")
+		(uuid "731ced29-fa6a-5d9e-8235-a4a94a9b13e9")
 	)
 	(label "VIN_F"
-		(at 30.48 96.52 270)
+		(at 30.48 142.24 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
 			(justify right bottom)
 		)
-		(uuid "79c91d32-7470-512b-b069-46bf2fc5f2f3")
+		(uuid "21ff57e6-ab1b-595c-9f44-471ca0164291")
 	)
 	(symbol
 		(lib_id "power:PWR_FLAG")
-		(at 40.64 93.98 0)
+		(at 40.64 139.7 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
 		(on_board no)
 		(dnp no)
-		(uuid "57fe8adf-d8a1-5390-ad55-fe5ae8cd409d")
+		(uuid "8bc70a22-1a9a-5a50-afc3-f2ce58ba9128")
 		(property "Reference" "#FLG03"
-			(at 40.64 92.075 0)
+			(at 40.64 137.795 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "PWR_FLAG"
-			(at 40.64 90.17 0)
+			(at 40.64 135.89 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 40.64 93.98 0)
+			(at 40.64 139.7 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
-			(at 40.64 93.98 0)
+			(at 40.64 139.7 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
-			(at 40.64 93.98 0)
+			(at 40.64 139.7 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(pin "1" (uuid "69387e9b-8976-51d0-8f4e-7140e0b747cb"))
+		(pin "1" (uuid "3261800a-c0b7-5188-9ccc-f4233385683e"))
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
@@ -3378,21 +5070,88 @@
 		)
 	)
 	(wire
-		(pts (xy 40.64 93.98) (xy 40.64 96.52))
+		(pts (xy 40.64 139.7) (xy 40.64 142.24))
 		(stroke (width 0) (type default))
-		(uuid "8c483767-d2bf-5c68-a7c2-1cae5c144219")
+		(uuid "b281a8af-e637-52c4-95e7-4cdd10171373")
+	)
+	(label "VIN_P"
+		(at 40.64 142.24 270)
+		(fields_autoplaced yes)
+		(effects
+			(font (size 1.27 1.27))
+			(justify right bottom)
+		)
+		(uuid "a4971e8e-1c31-5bc2-85d4-a5655a634c9b")
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 50.8 139.7 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(dnp no)
+		(uuid "783065a9-49c2-53c0-8416-91ad3d1d13d1")
+		(property "Reference" "#FLG04"
+			(at 50.8 137.795 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 50.8 135.89 0)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 50.8 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 50.8 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Description" "Net driven by passive pins only (connector/fuse/FET)"
+			(at 50.8 139.7 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(pin "1" (uuid "16d15236-84a6-5319-8310-0797b05cc564"))
+		(instances
+			(project "power-halo-board"
+				(path "/72933134-cd60-5739-90c7-09537a6a1194/dc0aa1d3-504e-5653-a43e-8ec5baeb1741"
+					(reference "#FLG04")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts (xy 50.8 139.7) (xy 50.8 142.24))
+		(stroke (width 0) (type default))
+		(uuid "f916108c-12c2-59be-936a-93eb9139085a")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 40.64 96.52 270)
+		(at 50.8 142.24 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
 			(justify right)
 		)
-		(uuid "6eca080c-dd5c-51da-9540-3063ffbe7c82")
+		(uuid "b1f7f186-c7ab-505d-a8d3-3fb6f6c9ef4e")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 40.64 96.52 270)
+			(at 50.8 142.24 270)
 			(effects
 				(font (size 1.27 1.27))
 				(justify right)

@@ -7,7 +7,7 @@
 	(title_block
 		(title "AUX 5 V and Raspberry Pi branch")
 		(date "2026-11-15")
-		(rev "A0")
+		(rev "B0")
 		(company "led-matrix project")
 		(comment 1 "PROTOTYPE - UNVALIDATED - NOT RELEASED FOR FABRICATION")
 		(comment 2 "Power + halo board")
@@ -1287,7 +1287,7 @@
 	)
 	(symbol
 		(lib_id "ledpanel:TPSM63610")
-		(at 43.18 48.26 0)
+		(at 45.72 48.26 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1295,61 +1295,61 @@
 		(dnp no)
 		(uuid "02a4c85b-8db2-5ad3-bfe0-abf83eaabeec")
 		(property "Reference" "U501"
-			(at 43.18 34.29 0)
+			(at 45.72 34.29 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "TPSM63610RDFR"
-			(at 43.18 64.77 0)
+			(at 45.72 64.77 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "ledpanel:TI_RDF0022A_B3QFN-22_6.5x7.5mm"
-			(at 43.18 67.31 0)
+			(at 45.72 67.31 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tpsm63610.pdf"
-			(at 43.18 69.85 0)
+			(at 45.72 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "AUX buck 24 V -> 5.0 V for Pi, halo and logic"
-			(at 43.18 72.39 0)
+			(at 45.72 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "TPSM63610RDFR"
-			(at 43.18 48.26 0)
+			(at 45.72 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Texas Instruments"
-			(at 43.18 48.26 0)
+			(at 45.72 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "VIN 3-36 V (42 V transient), 8 A; used at <=4.5 A"
-			(at 43.18 48.26 0)
+			(at 45.72 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Config" "1 MHz (RT 15.8k), auto PFM/PWM (MODE=GND), spread spectrum + tone correction (RSPSP 29.4k); VCC pin internal 1uF, no connection"
-			(at 43.18 48.26 0)
+			(at 45.72 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1387,13 +1387,13 @@
 		)
 	)
 	(wire
-		(pts (xy 25.4 38.1) (xy 22.86 38.1))
+		(pts (xy 27.94 38.1) (xy 25.4 38.1))
 		(stroke (width 0) (type default))
 		(uuid "c322ec14-2ea8-5ae6-bc07-00c800180331")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 22.86 38.1 180)
+		(at 25.4 38.1 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1401,7 +1401,7 @@
 		)
 		(uuid "a04eddec-06b8-5758-903a-97243cd904bc")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 22.86 38.1 180)
+			(at 25.4 38.1 180)
 			(effects
 				(font (size 1.27 1.27))
 				(justify right)
@@ -1410,13 +1410,13 @@
 		)
 	)
 	(wire
-		(pts (xy 25.4 40.64) (xy 22.86 40.64))
+		(pts (xy 27.94 40.64) (xy 25.4 40.64))
 		(stroke (width 0) (type default))
 		(uuid "b0310c3c-5ab1-55e2-bcb3-00ae7d5aa99c")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 22.86 40.64 180)
+		(at 25.4 40.64 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1424,7 +1424,7 @@
 		)
 		(uuid "3fc19d27-e866-5393-97e5-e1e2468504d6")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 22.86 40.64 180)
+			(at 25.4 40.64 180)
 			(effects
 				(font (size 1.27 1.27))
 				(justify right)
@@ -1433,62 +1433,71 @@
 		)
 	)
 	(wire
-		(pts (xy 25.4 45.72) (xy 22.86 45.72))
+		(pts (xy 27.94 45.72) (xy 25.4 45.72))
 		(stroke (width 0) (type default))
 		(uuid "f7c80c2b-23ae-56e5-95a4-5fb3d270dd2d")
 	)
-	(label "EN_AUX"
-		(at 22.86 45.72 180)
+	(global_label "EN_AUX"
+		(shape bidirectional)
+		(at 25.4 45.72 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify right bottom)
+			(justify right)
 		)
-		(uuid "f45f7f4c-7c71-5112-85cf-36326f5307cf")
+		(uuid "292a9771-4e10-5c25-82db-329bf0159a39")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 25.4 45.72 180)
+			(effects
+				(font (size 1.27 1.27))
+				(justify right)
+				(hide yes)
+			)
+		)
 	)
 	(wire
-		(pts (xy 25.4 48.26) (xy 22.86 48.26))
+		(pts (xy 27.94 48.26) (xy 25.4 48.26))
 		(stroke (width 0) (type default))
 		(uuid "2e55c490-d39b-515e-bb97-2ad0f351f968")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 22.86 48.26 270)
+		(at 25.4 48.26 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "64660855-f877-51a6-aabe-28ec8fc2cdd1")
-		(property "Reference" "#PWR110"
-			(at 16.51 48.26 270)
+		(property "Reference" "#PWR085"
+			(at 19.05 48.26 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 19.05 48.26 270)
+			(at 21.59 48.26 270)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 22.86 48.26 270)
+			(at 25.4 48.26 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 22.86 48.26 270)
+			(at 25.4 48.26 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 22.86 48.26 270)
+			(at 25.4 48.26 270)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1498,19 +1507,19 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR110")
+					(reference "#PWR085")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 25.4 50.8) (xy 22.86 50.8))
+		(pts (xy 27.94 50.8) (xy 25.4 50.8))
 		(stroke (width 0) (type default))
 		(uuid "c73bb87b-da1d-5930-9905-d4cea24cbace")
 	)
 	(label "SPSP"
-		(at 22.86 50.8 180)
+		(at 25.4 50.8 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1519,12 +1528,12 @@
 		(uuid "896ecbbe-c7d4-5422-8cba-37d818054ec1")
 	)
 	(wire
-		(pts (xy 25.4 53.34) (xy 22.86 53.34))
+		(pts (xy 27.94 53.34) (xy 25.4 53.34))
 		(stroke (width 0) (type default))
 		(uuid "73aa0fd6-0a13-5e93-9cd6-b026411babca")
 	)
 	(label "RT"
-		(at 22.86 53.34 180)
+		(at 25.4 53.34 180)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1532,16 +1541,16 @@
 		)
 		(uuid "5f4aa183-ba60-51f6-840d-6c184f8a6f0b")
 	)
-	(no_connect (at 25.4 55.88) (uuid "261ef8c5-a131-5d50-b729-e2496c0eef92"))
-	(no_connect (at 25.4 58.42) (uuid "a60f6492-248b-5973-b413-9a51687009b9"))
+	(no_connect (at 27.94 55.88) (uuid "261ef8c5-a131-5d50-b729-e2496c0eef92"))
+	(no_connect (at 27.94 58.42) (uuid "a60f6492-248b-5973-b413-9a51687009b9"))
 	(wire
-		(pts (xy 60.96 38.1) (xy 63.5 38.1))
+		(pts (xy 63.5 38.1) (xy 66.04 38.1))
 		(stroke (width 0) (type default))
 		(uuid "b5e9deb5-2228-50d9-9bd1-b81a3a85ba04")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 63.5 38.1 0)
+		(at 66.04 38.1 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1549,7 +1558,7 @@
 		)
 		(uuid "1880e606-17da-50f2-997d-47949bb3f505")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 63.5 38.1 0)
+			(at 66.04 38.1 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -1558,13 +1567,13 @@
 		)
 	)
 	(wire
-		(pts (xy 60.96 40.64) (xy 63.5 40.64))
+		(pts (xy 63.5 40.64) (xy 66.04 40.64))
 		(stroke (width 0) (type default))
 		(uuid "3a3f447d-68d8-5e21-9feb-fef6e8663338")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 63.5 40.64 0)
+		(at 66.04 40.64 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1572,7 +1581,7 @@
 		)
 		(uuid "f539d1f5-7e60-5332-8abf-1e03850f9913")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 63.5 40.64 0)
+			(at 66.04 40.64 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -1581,13 +1590,13 @@
 		)
 	)
 	(wire
-		(pts (xy 60.96 43.18) (xy 63.5 43.18))
+		(pts (xy 63.5 43.18) (xy 66.04 43.18))
 		(stroke (width 0) (type default))
 		(uuid "3fa8b379-5428-5d81-afa3-566aa539a5e1")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 63.5 43.18 0)
+		(at 66.04 43.18 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1595,7 +1604,7 @@
 		)
 		(uuid "1d42dea7-17f5-5d27-b1f0-f9cb8a554d25")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 63.5 43.18 0)
+			(at 66.04 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -1604,12 +1613,12 @@
 		)
 	)
 	(wire
-		(pts (xy 60.96 48.26) (xy 63.5 48.26))
+		(pts (xy 63.5 48.26) (xy 66.04 48.26))
 		(stroke (width 0) (type default))
 		(uuid "1d091e01-2623-5cf2-a68c-16a6fb79f38f")
 	)
 	(label "FB"
-		(at 63.5 48.26 0)
+		(at 66.04 48.26 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1617,14 +1626,14 @@
 		)
 		(uuid "80204dda-718a-511a-a921-ed2285275e5d")
 	)
-	(no_connect (at 60.96 50.8) (uuid "128d61fc-9b13-58cd-9ce1-ce0f9552a6c6"))
+	(no_connect (at 63.5 50.8) (uuid "128d61fc-9b13-58cd-9ce1-ce0f9552a6c6"))
 	(wire
-		(pts (xy 60.96 53.34) (xy 63.5 53.34))
+		(pts (xy 63.5 53.34) (xy 66.04 53.34))
 		(stroke (width 0) (type default))
 		(uuid "35d6741b-d445-5d37-99f9-d4d47c36c3b2")
 	)
 	(label "RBOOT"
-		(at 63.5 53.34 0)
+		(at 66.04 53.34 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1633,12 +1642,12 @@
 		(uuid "40e48d11-faa4-5fb8-8e60-07729ec65348")
 	)
 	(wire
-		(pts (xy 60.96 55.88) (xy 63.5 55.88))
+		(pts (xy 63.5 55.88) (xy 66.04 55.88))
 		(stroke (width 0) (type default))
 		(uuid "ddf07e00-2b41-5eab-945b-e15d5d7c9606")
 	)
 	(label "CBOOT"
-		(at 63.5 55.88 0)
+		(at 66.04 55.88 0)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -1646,50 +1655,50 @@
 		)
 		(uuid "4d532cba-bd3b-55c5-a8e6-68306aca36ea")
 	)
-	(no_connect (at 60.96 58.42) (uuid "87133d51-ec67-5cac-bd25-717c5854e90c"))
+	(no_connect (at 63.5 58.42) (uuid "87133d51-ec67-5cac-bd25-717c5854e90c"))
 	(wire
-		(pts (xy 30.48 63.5) (xy 30.48 66.04))
+		(pts (xy 33.02 63.5) (xy 33.02 66.04))
 		(stroke (width 0) (type default))
 		(uuid "6aef88f3-307f-5405-acf9-e77da1cc76ba")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 30.48 66.04 0)
+		(at 33.02 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "2c843e87-7751-5d6c-a86b-0ceb6b75e082")
-		(property "Reference" "#PWR111"
-			(at 30.48 72.39 0)
+		(property "Reference" "#PWR086"
+			(at 33.02 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 30.48 69.85 0)
+			(at 33.02 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 30.48 66.04 0)
+			(at 33.02 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 30.48 66.04 0)
+			(at 33.02 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 30.48 66.04 0)
+			(at 33.02 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1699,55 +1708,55 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR111")
+					(reference "#PWR086")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 35.56 63.5) (xy 35.56 66.04))
+		(pts (xy 38.1 63.5) (xy 38.1 66.04))
 		(stroke (width 0) (type default))
 		(uuid "1854ceea-7428-52c5-9b4d-addaf3378d39")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 35.56 66.04 0)
+		(at 38.1 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "3682ab11-8a79-56c2-90ef-681f78e8d731")
-		(property "Reference" "#PWR112"
-			(at 35.56 72.39 0)
+		(property "Reference" "#PWR087"
+			(at 38.1 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 35.56 69.85 0)
+			(at 38.1 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 35.56 66.04 0)
+			(at 38.1 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 35.56 66.04 0)
+			(at 38.1 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 35.56 66.04 0)
+			(at 38.1 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1757,55 +1766,55 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR112")
+					(reference "#PWR087")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 40.64 63.5) (xy 40.64 66.04))
+		(pts (xy 43.18 63.5) (xy 43.18 66.04))
 		(stroke (width 0) (type default))
 		(uuid "ea94e13b-2ba5-5527-840a-7ea78e23b3fc")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 40.64 66.04 0)
+		(at 43.18 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "3221f288-4b9e-5928-ad2d-be1044ec78a3")
-		(property "Reference" "#PWR113"
-			(at 40.64 72.39 0)
+		(property "Reference" "#PWR088"
+			(at 43.18 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 40.64 69.85 0)
+			(at 43.18 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 40.64 66.04 0)
+			(at 43.18 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 40.64 66.04 0)
+			(at 43.18 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 40.64 66.04 0)
+			(at 43.18 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1815,55 +1824,55 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR113")
+					(reference "#PWR088")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 45.72 63.5) (xy 45.72 66.04))
+		(pts (xy 48.26 63.5) (xy 48.26 66.04))
 		(stroke (width 0) (type default))
 		(uuid "284cb5fa-f028-5d9b-b6b4-12b47c7248e9")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 45.72 66.04 0)
+		(at 48.26 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "d4849fd4-20f5-5a9b-816f-8197d42f46bd")
-		(property "Reference" "#PWR114"
-			(at 45.72 72.39 0)
+		(property "Reference" "#PWR089"
+			(at 48.26 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 45.72 69.85 0)
+			(at 48.26 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 45.72 66.04 0)
+			(at 48.26 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 45.72 66.04 0)
+			(at 48.26 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 45.72 66.04 0)
+			(at 48.26 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1873,55 +1882,55 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR114")
+					(reference "#PWR089")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 50.8 63.5) (xy 50.8 66.04))
+		(pts (xy 53.34 63.5) (xy 53.34 66.04))
 		(stroke (width 0) (type default))
 		(uuid "a043979e-5b0a-51a2-81f7-c740d98a3612")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 50.8 66.04 0)
+		(at 53.34 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "c6ce2649-cdac-5a05-923a-d925dc8abd7d")
-		(property "Reference" "#PWR115"
-			(at 50.8 72.39 0)
+		(property "Reference" "#PWR090"
+			(at 53.34 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 50.8 69.85 0)
+			(at 53.34 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 50.8 66.04 0)
+			(at 53.34 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 50.8 66.04 0)
+			(at 53.34 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 50.8 66.04 0)
+			(at 53.34 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1931,55 +1940,55 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR115")
+					(reference "#PWR090")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(wire
-		(pts (xy 55.88 63.5) (xy 55.88 66.04))
+		(pts (xy 58.42 63.5) (xy 58.42 66.04))
 		(stroke (width 0) (type default))
 		(uuid "eb465c3f-a3ce-522a-8e9e-eea09ecefeb6")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 55.88 66.04 0)
+		(at 58.42 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "12732320-2673-5753-9ad6-c6d1655933eb")
-		(property "Reference" "#PWR116"
-			(at 55.88 72.39 0)
+		(property "Reference" "#PWR091"
+			(at 58.42 72.39 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 55.88 69.85 0)
+			(at 58.42 69.85 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 55.88 66.04 0)
+			(at 58.42 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 55.88 66.04 0)
+			(at 58.42 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 55.88 66.04 0)
+			(at 58.42 66.04 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -1989,7 +1998,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR116")
+					(reference "#PWR091")
 					(unit 1)
 				)
 			)
@@ -1997,7 +2006,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 81.28 48.26 0)
+		(at 83.82 48.26 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2005,56 +2014,56 @@
 		(dnp no)
 		(uuid "01ae2e68-183c-547d-8979-fad9d91dc752")
 		(property "Reference" "C501"
-			(at 81.915 45.72 0)
+			(at 84.455 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "10uF"
-			(at 81.915 50.8 0)
+			(at 84.455 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 82.2452 52.07 0)
+			(at 84.7852 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 81.28 48.26 0)
+			(at 83.82 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "CIN at VIN1 (TI: 2x10uF X7R 50V 1210 min)"
-			(at 81.28 48.26 0)
+			(at 83.82 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71H106KA12L"
-			(at 81.28 48.26 0)
+			(at 83.82 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 81.28 48.26 0)
+			(at 83.82 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "50 V X7R"
-			(at 81.28 48.26 0)
+			(at 83.82 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2072,13 +2081,13 @@
 		)
 	)
 	(wire
-		(pts (xy 81.28 44.45) (xy 81.28 41.91))
+		(pts (xy 83.82 44.45) (xy 83.82 41.91))
 		(stroke (width 0) (type default))
 		(uuid "27e54797-dd69-54da-8e41-855352faa95e")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 81.28 41.91 90)
+		(at 83.82 41.91 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2086,7 +2095,7 @@
 		)
 		(uuid "ca850a67-22d0-5ebf-9106-ca666bfada2d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 81.28 41.91 90)
+			(at 83.82 41.91 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2095,48 +2104,48 @@
 		)
 	)
 	(wire
-		(pts (xy 81.28 52.07) (xy 81.28 54.61))
+		(pts (xy 83.82 52.07) (xy 83.82 54.61))
 		(stroke (width 0) (type default))
 		(uuid "a6e76932-c13b-56d3-a542-56aeb5f35741")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 81.28 54.61 0)
+		(at 83.82 54.61 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "21ec6506-d380-5f4c-8848-aa2d6f57d837")
-		(property "Reference" "#PWR117"
-			(at 81.28 60.96 0)
+		(property "Reference" "#PWR092"
+			(at 83.82 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 81.28 58.42 0)
+			(at 83.82 58.42 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 81.28 54.61 0)
+			(at 83.82 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 81.28 54.61 0)
+			(at 83.82 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 81.28 54.61 0)
+			(at 83.82 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2146,7 +2155,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR117")
+					(reference "#PWR092")
 					(unit 1)
 				)
 			)
@@ -2154,7 +2163,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 99.06 48.26 0)
+		(at 101.6 48.26 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2162,56 +2171,56 @@
 		(dnp no)
 		(uuid "76406f81-84bf-5e7f-aad5-a0463267d147")
 		(property "Reference" "C502"
-			(at 99.695 45.72 0)
+			(at 102.235 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "10uF"
-			(at 99.695 50.8 0)
+			(at 102.235 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 100.0252 52.07 0)
+			(at 102.5652 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 99.06 48.26 0)
+			(at 101.6 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "CIN at VIN2"
-			(at 99.06 48.26 0)
+			(at 101.6 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71H106KA12L"
-			(at 99.06 48.26 0)
+			(at 101.6 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 99.06 48.26 0)
+			(at 101.6 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "50 V X7R"
-			(at 99.06 48.26 0)
+			(at 101.6 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2229,13 +2238,13 @@
 		)
 	)
 	(wire
-		(pts (xy 99.06 44.45) (xy 99.06 41.91))
+		(pts (xy 101.6 44.45) (xy 101.6 41.91))
 		(stroke (width 0) (type default))
 		(uuid "3f0608f8-1034-5613-aebd-1b480e2b1e13")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 99.06 41.91 90)
+		(at 101.6 41.91 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2243,7 +2252,7 @@
 		)
 		(uuid "61f702a9-eeaf-57db-ba20-64efe8aa3009")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 99.06 41.91 90)
+			(at 101.6 41.91 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2252,48 +2261,48 @@
 		)
 	)
 	(wire
-		(pts (xy 99.06 52.07) (xy 99.06 54.61))
+		(pts (xy 101.6 52.07) (xy 101.6 54.61))
 		(stroke (width 0) (type default))
 		(uuid "07c2d8f8-6eb7-50b9-a1ef-b27796737b4a")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 99.06 54.61 0)
+		(at 101.6 54.61 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "080e3035-09e7-5301-90c5-c11cae66d9c5")
-		(property "Reference" "#PWR118"
-			(at 99.06 60.96 0)
+		(property "Reference" "#PWR093"
+			(at 101.6 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 99.06 58.42 0)
+			(at 101.6 58.42 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 99.06 54.61 0)
+			(at 101.6 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 99.06 54.61 0)
+			(at 101.6 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 99.06 54.61 0)
+			(at 101.6 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2303,7 +2312,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR118")
+					(reference "#PWR093")
 					(unit 1)
 				)
 			)
@@ -2311,7 +2320,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 116.84 50.8 0)
+		(at 119.38 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2319,56 +2328,56 @@
 		(dnp no)
 		(uuid "669c6f85-acfc-5122-9c27-eda73b8c72a4")
 		(property "Reference" "C503"
-			(at 117.475 48.26 0)
+			(at 120.015 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "47uF"
-			(at 117.475 53.34 0)
+			(at 120.015 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 117.8052 54.61 0)
+			(at 120.3452 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 116.84 50.8 0)
+			(at 119.38 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "COUT at VOUT1"
-			(at 116.84 50.8 0)
+			(at 119.38 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71A476ME15L"
-			(at 116.84 50.8 0)
+			(at 119.38 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 116.84 50.8 0)
+			(at 119.38 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "10 V X7R"
-			(at 116.84 50.8 0)
+			(at 119.38 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2386,13 +2395,13 @@
 		)
 	)
 	(wire
-		(pts (xy 116.84 46.99) (xy 116.84 44.45))
+		(pts (xy 119.38 46.99) (xy 119.38 44.45))
 		(stroke (width 0) (type default))
 		(uuid "74ee8837-f41a-5ac3-b260-9d99a312f74b")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 116.84 44.45 90)
+		(at 119.38 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2400,7 +2409,7 @@
 		)
 		(uuid "9af97851-a7a4-5533-8633-0fc1a2af7b22")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 116.84 44.45 90)
+			(at 119.38 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2409,48 +2418,48 @@
 		)
 	)
 	(wire
-		(pts (xy 116.84 54.61) (xy 116.84 57.15))
+		(pts (xy 119.38 54.61) (xy 119.38 57.15))
 		(stroke (width 0) (type default))
 		(uuid "4e8a05e3-6242-5da3-b244-82fdce80aa26")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 116.84 57.15 0)
+		(at 119.38 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "06fa3668-1dce-5b50-9f66-50fb16dfc933")
-		(property "Reference" "#PWR119"
-			(at 116.84 63.5 0)
+		(property "Reference" "#PWR094"
+			(at 119.38 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 116.84 60.96 0)
+			(at 119.38 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 116.84 57.15 0)
+			(at 119.38 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 116.84 57.15 0)
+			(at 119.38 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 116.84 57.15 0)
+			(at 119.38 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2460,7 +2469,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR119")
+					(reference "#PWR094")
 					(unit 1)
 				)
 			)
@@ -2468,7 +2477,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 134.62 50.8 0)
+		(at 137.16 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2476,56 +2485,56 @@
 		(dnp no)
 		(uuid "90dcb25e-6b14-5c45-9423-b452dbda4c37")
 		(property "Reference" "C504"
-			(at 135.255 48.26 0)
+			(at 137.795 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "47uF"
-			(at 135.255 53.34 0)
+			(at 137.795 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 135.5852 54.61 0)
+			(at 138.1252 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 134.62 50.8 0)
+			(at 137.16 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "COUT at VOUT1"
-			(at 134.62 50.8 0)
+			(at 137.16 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71A476ME15L"
-			(at 134.62 50.8 0)
+			(at 137.16 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 134.62 50.8 0)
+			(at 137.16 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "10 V X7R"
-			(at 134.62 50.8 0)
+			(at 137.16 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2543,13 +2552,13 @@
 		)
 	)
 	(wire
-		(pts (xy 134.62 46.99) (xy 134.62 44.45))
+		(pts (xy 137.16 46.99) (xy 137.16 44.45))
 		(stroke (width 0) (type default))
 		(uuid "8006e076-a8fc-5e08-88b8-d02c3531bc8a")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 134.62 44.45 90)
+		(at 137.16 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2557,7 +2566,7 @@
 		)
 		(uuid "0b69f3ed-5614-5f0d-a359-806d28a63928")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 134.62 44.45 90)
+			(at 137.16 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2566,48 +2575,48 @@
 		)
 	)
 	(wire
-		(pts (xy 134.62 54.61) (xy 134.62 57.15))
+		(pts (xy 137.16 54.61) (xy 137.16 57.15))
 		(stroke (width 0) (type default))
 		(uuid "4d16bcee-493f-5943-8b8b-c10445d8d192")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 134.62 57.15 0)
+		(at 137.16 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "84043f25-80f7-5e52-9ea1-b63102c40adb")
-		(property "Reference" "#PWR120"
-			(at 134.62 63.5 0)
+		(property "Reference" "#PWR095"
+			(at 137.16 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 134.62 60.96 0)
+			(at 137.16 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 134.62 57.15 0)
+			(at 137.16 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 134.62 57.15 0)
+			(at 137.16 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 134.62 57.15 0)
+			(at 137.16 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2617,7 +2626,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR120")
+					(reference "#PWR095")
 					(unit 1)
 				)
 			)
@@ -2625,7 +2634,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 152.4 50.8 0)
+		(at 154.94 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2633,56 +2642,56 @@
 		(dnp no)
 		(uuid "2bc94ffb-1486-5bfe-9c16-470f2b917f20")
 		(property "Reference" "C505"
-			(at 153.035 48.26 0)
+			(at 155.575 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "47uF"
-			(at 153.035 53.34 0)
+			(at 155.575 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 153.3652 54.61 0)
+			(at 155.9052 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 152.4 50.8 0)
+			(at 154.94 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "COUT at VOUT2"
-			(at 152.4 50.8 0)
+			(at 154.94 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71A476ME15L"
-			(at 152.4 50.8 0)
+			(at 154.94 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 152.4 50.8 0)
+			(at 154.94 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "10 V X7R"
-			(at 152.4 50.8 0)
+			(at 154.94 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2700,13 +2709,13 @@
 		)
 	)
 	(wire
-		(pts (xy 152.4 46.99) (xy 152.4 44.45))
+		(pts (xy 154.94 46.99) (xy 154.94 44.45))
 		(stroke (width 0) (type default))
 		(uuid "f00fcf43-b42a-5a0f-8531-81872aaba727")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 152.4 44.45 90)
+		(at 154.94 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2714,7 +2723,7 @@
 		)
 		(uuid "75d496d1-a8c9-598f-a0b9-07de5344b626")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 152.4 44.45 90)
+			(at 154.94 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2723,48 +2732,48 @@
 		)
 	)
 	(wire
-		(pts (xy 152.4 54.61) (xy 152.4 57.15))
+		(pts (xy 154.94 54.61) (xy 154.94 57.15))
 		(stroke (width 0) (type default))
 		(uuid "2ce133de-bde8-5040-9a49-7e3b12f8cf31")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 152.4 57.15 0)
+		(at 154.94 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "7d50dfb7-4eb5-5e12-b134-16135678e044")
-		(property "Reference" "#PWR121"
-			(at 152.4 63.5 0)
+		(property "Reference" "#PWR096"
+			(at 154.94 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 152.4 60.96 0)
+			(at 154.94 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 152.4 57.15 0)
+			(at 154.94 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 152.4 57.15 0)
+			(at 154.94 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 152.4 57.15 0)
+			(at 154.94 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2774,7 +2783,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR121")
+					(reference "#PWR096")
 					(unit 1)
 				)
 			)
@@ -2782,7 +2791,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 170.18 50.8 0)
+		(at 172.72 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2790,56 +2799,56 @@
 		(dnp no)
 		(uuid "d6ca927c-bcd5-511f-8f70-dbeac371bc6c")
 		(property "Reference" "C506"
-			(at 170.815 48.26 0)
+			(at 173.355 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "47uF"
-			(at 170.815 53.34 0)
+			(at 173.355 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_1210_3225Metric"
-			(at 171.1452 54.61 0)
+			(at 173.6852 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 170.18 50.8 0)
+			(at 172.72 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "COUT at VOUT2"
-			(at 170.18 50.8 0)
+			(at 172.72 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM32ER71A476ME15L"
-			(at 170.18 50.8 0)
+			(at 172.72 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 170.18 50.8 0)
+			(at 172.72 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "10 V X7R"
-			(at 170.18 50.8 0)
+			(at 172.72 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2857,13 +2866,13 @@
 		)
 	)
 	(wire
-		(pts (xy 170.18 46.99) (xy 170.18 44.45))
+		(pts (xy 172.72 46.99) (xy 172.72 44.45))
 		(stroke (width 0) (type default))
 		(uuid "714291fd-0907-5bb6-8183-457198475c68")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 170.18 44.45 90)
+		(at 172.72 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -2871,7 +2880,7 @@
 		)
 		(uuid "adae65c8-b084-51a9-ace2-857978538da9")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 170.18 44.45 90)
+			(at 172.72 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -2880,48 +2889,48 @@
 		)
 	)
 	(wire
-		(pts (xy 170.18 54.61) (xy 170.18 57.15))
+		(pts (xy 172.72 54.61) (xy 172.72 57.15))
 		(stroke (width 0) (type default))
 		(uuid "d687b157-3f30-5155-b5ce-e247ab4f2e0a")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 170.18 57.15 0)
+		(at 172.72 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "c32d07cf-ba2c-5b50-adec-fe32f3079f12")
-		(property "Reference" "#PWR122"
-			(at 170.18 63.5 0)
+		(property "Reference" "#PWR097"
+			(at 172.72 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 170.18 60.96 0)
+			(at 172.72 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 170.18 57.15 0)
+			(at 172.72 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 170.18 57.15 0)
+			(at 172.72 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 170.18 57.15 0)
+			(at 172.72 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -2931,7 +2940,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR122")
+					(reference "#PWR097")
 					(unit 1)
 				)
 			)
@@ -2939,7 +2948,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 187.96 50.8 0)
+		(at 190.5 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2947,56 +2956,56 @@
 		(dnp no)
 		(uuid "5d478d74-8507-5ce6-baa1-c4256628aba2")
 		(property "Reference" "C507"
-			(at 188.595 48.26 0)
+			(at 191.135 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "1uF"
-			(at 188.595 53.34 0)
+			(at 191.135 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 188.9252 54.61 0)
+			(at 191.4652 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 187.96 50.8 0)
+			(at 190.5 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "VLDOIN bypass"
-			(at 187.96 50.8 0)
+			(at 190.5 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM188R71C105KA12D"
-			(at 187.96 50.8 0)
+			(at 190.5 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 187.96 50.8 0)
+			(at 190.5 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "16 V X7R"
-			(at 187.96 50.8 0)
+			(at 190.5 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3014,13 +3023,13 @@
 		)
 	)
 	(wire
-		(pts (xy 187.96 46.99) (xy 187.96 44.45))
+		(pts (xy 190.5 46.99) (xy 190.5 44.45))
 		(stroke (width 0) (type default))
 		(uuid "84d1a82e-5046-5e0b-9bc1-c39614c11df4")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 187.96 44.45 90)
+		(at 190.5 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3028,7 +3037,7 @@
 		)
 		(uuid "5a00466e-d9e2-5bda-9d92-dc5a1c1f7eb2")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 187.96 44.45 90)
+			(at 190.5 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -3037,48 +3046,48 @@
 		)
 	)
 	(wire
-		(pts (xy 187.96 54.61) (xy 187.96 57.15))
+		(pts (xy 190.5 54.61) (xy 190.5 57.15))
 		(stroke (width 0) (type default))
 		(uuid "4824889f-7bcd-5ec9-8eb0-9471322b819f")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 187.96 57.15 0)
+		(at 190.5 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "96f57408-322b-5b7c-bdb5-d0890d03233a")
-		(property "Reference" "#PWR123"
-			(at 187.96 63.5 0)
+		(property "Reference" "#PWR098"
+			(at 190.5 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 187.96 60.96 0)
+			(at 190.5 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 187.96 57.15 0)
+			(at 190.5 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 187.96 57.15 0)
+			(at 190.5 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 187.96 57.15 0)
+			(at 190.5 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3088,7 +3097,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR123")
+					(reference "#PWR098")
 					(unit 1)
 				)
 			)
@@ -3096,7 +3105,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 205.74 50.8 0)
+		(at 208.28 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3104,61 +3113,61 @@
 		(dnp no)
 		(uuid "38248b7a-d67a-5d33-a880-fc0bef051833")
 		(property "Reference" "R501"
-			(at 207.772 50.8 90)
+			(at 210.312 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "100k"
-			(at 205.74 50.8 90)
+			(at 208.28 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 203.962 50.8 90)
+			(at 206.502 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "RFBT, VOUT = 1.0 V x (1 + 100k/24.9k) = 5.02 V"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-07100KL"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 205.74 50.8 0)
+			(at 208.28 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3176,13 +3185,13 @@
 		)
 	)
 	(wire
-		(pts (xy 205.74 46.99) (xy 205.74 44.45))
+		(pts (xy 208.28 46.99) (xy 208.28 44.45))
 		(stroke (width 0) (type default))
 		(uuid "14536acb-1f3e-5163-b295-0682678b8e88")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 205.74 44.45 90)
+		(at 208.28 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3190,7 +3199,7 @@
 		)
 		(uuid "6d76c2a7-7cd7-5333-bdaa-bf3fed073acc")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 205.74 44.45 90)
+			(at 208.28 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -3199,12 +3208,12 @@
 		)
 	)
 	(wire
-		(pts (xy 205.74 54.61) (xy 205.74 57.15))
+		(pts (xy 208.28 54.61) (xy 208.28 57.15))
 		(stroke (width 0) (type default))
 		(uuid "8e183ead-f187-5374-a1c0-b48ec0d2194b")
 	)
 	(label "FB"
-		(at 205.74 57.15 270)
+		(at 208.28 57.15 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3214,7 +3223,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 223.52 43.18 0)
+		(at 226.06 43.18 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3222,61 +3231,61 @@
 		(dnp no)
 		(uuid "0435ef33-24b9-5630-b427-fc150eafab26")
 		(property "Reference" "R502"
-			(at 225.552 43.18 90)
+			(at 228.092 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "24.9k"
-			(at 223.52 43.18 90)
+			(at 226.06 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 221.742 43.18 90)
+			(at 224.282 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "RFBB"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-0724K9L"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 223.52 43.18 0)
+			(at 226.06 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3294,12 +3303,12 @@
 		)
 	)
 	(wire
-		(pts (xy 223.52 39.37) (xy 223.52 36.83))
+		(pts (xy 226.06 39.37) (xy 226.06 36.83))
 		(stroke (width 0) (type default))
 		(uuid "f90fe2b8-9367-53c5-b564-7c22a8b210ae")
 	)
 	(label "FB"
-		(at 223.52 36.83 90)
+		(at 226.06 36.83 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3308,48 +3317,48 @@
 		(uuid "e79347e4-e1a0-5027-8a7e-e8d1dbb1d056")
 	)
 	(wire
-		(pts (xy 223.52 46.99) (xy 223.52 49.53))
+		(pts (xy 226.06 46.99) (xy 226.06 49.53))
 		(stroke (width 0) (type default))
 		(uuid "9c125b3e-c256-5725-80dc-96b5cf1cddaf")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 223.52 49.53 0)
+		(at 226.06 49.53 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "440cde71-1544-508f-84a8-a24a2b54be14")
-		(property "Reference" "#PWR124"
-			(at 223.52 55.88 0)
+		(property "Reference" "#PWR099"
+			(at 226.06 55.88 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 223.52 53.34 0)
+			(at 226.06 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 223.52 49.53 0)
+			(at 226.06 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 223.52 49.53 0)
+			(at 226.06 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 223.52 49.53 0)
+			(at 226.06 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3359,7 +3368,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR124")
+					(reference "#PWR099")
 					(unit 1)
 				)
 			)
@@ -3367,7 +3376,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 241.3 50.8 0)
+		(at 243.84 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3375,56 +3384,56 @@
 		(dnp no)
 		(uuid "ec068173-b706-5bce-9614-a1c9432ef7d0")
 		(property "Reference" "C508"
-			(at 241.935 48.26 0)
+			(at 244.475 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Value" "22pF"
-			(at 241.935 53.34 0)
+			(at 244.475 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 242.2652 54.61 0)
+			(at 244.8052 54.61 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
-			(at 241.3 50.8 0)
+			(at 243.84 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "CFF feed-forward"
-			(at 241.3 50.8 0)
+			(at 243.84 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "GRM1885C1H220JA01D"
-			(at 241.3 50.8 0)
+			(at 243.84 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Murata"
-			(at 241.3 50.8 0)
+			(at 243.84 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "50 V C0G"
-			(at 241.3 50.8 0)
+			(at 243.84 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3442,13 +3451,13 @@
 		)
 	)
 	(wire
-		(pts (xy 241.3 46.99) (xy 241.3 44.45))
+		(pts (xy 243.84 46.99) (xy 243.84 44.45))
 		(stroke (width 0) (type default))
 		(uuid "cbc9574c-6afe-5aab-96fd-855069482e04")
 	)
 	(global_label "+5V_AUX"
 		(shape bidirectional)
-		(at 241.3 44.45 90)
+		(at 243.84 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3456,7 +3465,7 @@
 		)
 		(uuid "691b0eda-7971-543d-919e-6748f5f54050")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 241.3 44.45 90)
+			(at 243.84 44.45 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -3465,12 +3474,12 @@
 		)
 	)
 	(wire
-		(pts (xy 241.3 54.61) (xy 241.3 57.15))
+		(pts (xy 243.84 54.61) (xy 243.84 57.15))
 		(stroke (width 0) (type default))
 		(uuid "9d66a30f-cc06-58f9-86da-5a3cdf4996b7")
 	)
 	(label "FB"
-		(at 241.3 57.15 270)
+		(at 243.84 57.15 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3480,7 +3489,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 259.08 43.18 0)
+		(at 261.62 43.18 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3488,61 +3497,61 @@
 		(dnp no)
 		(uuid "5129b98e-e749-592a-a71f-0653ed08c3eb")
 		(property "Reference" "R503"
-			(at 261.112 43.18 90)
+			(at 263.652 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "15.8k"
-			(at 259.08 43.18 90)
+			(at 261.62 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 257.302 43.18 90)
+			(at 259.842 43.18 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "RRT, FSW = 1 MHz"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-0715K8L"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 259.08 43.18 0)
+			(at 261.62 43.18 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3560,12 +3569,12 @@
 		)
 	)
 	(wire
-		(pts (xy 259.08 39.37) (xy 259.08 36.83))
+		(pts (xy 261.62 39.37) (xy 261.62 36.83))
 		(stroke (width 0) (type default))
 		(uuid "ead1f18e-d158-5302-aa2c-a6492a0746cf")
 	)
 	(label "RT"
-		(at 259.08 36.83 90)
+		(at 261.62 36.83 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3574,48 +3583,48 @@
 		(uuid "6851f1ef-1ac3-597c-b644-80a8e58a4a31")
 	)
 	(wire
-		(pts (xy 259.08 46.99) (xy 259.08 49.53))
+		(pts (xy 261.62 46.99) (xy 261.62 49.53))
 		(stroke (width 0) (type default))
 		(uuid "9d999e14-d1c0-5c25-a5f8-f8038d01322a")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 259.08 49.53 0)
+		(at 261.62 49.53 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "20f9fdf4-0f63-53fb-a542-05bd07237155")
-		(property "Reference" "#PWR125"
-			(at 259.08 55.88 0)
+		(property "Reference" "#PWR100"
+			(at 261.62 55.88 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 259.08 53.34 0)
+			(at 261.62 53.34 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 259.08 49.53 0)
+			(at 261.62 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 259.08 49.53 0)
+			(at 261.62 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 259.08 49.53 0)
+			(at 261.62 49.53 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3625,7 +3634,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR125")
+					(reference "#PWR100")
 					(unit 1)
 				)
 			)
@@ -3633,7 +3642,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 276.86 45.72 0)
+		(at 279.4 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3641,61 +3650,61 @@
 		(dnp no)
 		(uuid "b39feeff-56c3-5941-aafc-c647bc0485aa")
 		(property "Reference" "R504"
-			(at 278.892 45.72 90)
+			(at 281.432 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "100"
-			(at 276.86 45.72 90)
+			(at 279.4 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 275.082 45.72 90)
+			(at 277.622 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "RBOOT 100 ohm: SW slew-rate / EMI balance (TI)"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-07100RL"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 276.86 45.72 0)
+			(at 279.4 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3713,12 +3722,12 @@
 		)
 	)
 	(wire
-		(pts (xy 276.86 41.91) (xy 276.86 39.37))
+		(pts (xy 279.4 41.91) (xy 279.4 39.37))
 		(stroke (width 0) (type default))
 		(uuid "ded3c93e-02f3-5d5e-98df-f6910273d34a")
 	)
 	(label "RBOOT"
-		(at 276.86 39.37 90)
+		(at 279.4 39.37 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3727,12 +3736,12 @@
 		(uuid "0eff04da-8ca1-53c6-b5c3-a3cdfb93dc90")
 	)
 	(wire
-		(pts (xy 276.86 49.53) (xy 276.86 52.07))
+		(pts (xy 279.4 49.53) (xy 279.4 52.07))
 		(stroke (width 0) (type default))
 		(uuid "674c1b50-2e15-5ffd-8e0b-aeaa6b87db3d")
 	)
 	(label "CBOOT"
-		(at 276.86 52.07 270)
+		(at 279.4 52.07 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3742,7 +3751,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 294.64 45.72 0)
+		(at 297.18 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3750,61 +3759,61 @@
 		(dnp no)
 		(uuid "f1456a05-839a-5177-9496-39103cd79bf2")
 		(property "Reference" "R507"
-			(at 296.672 45.72 90)
+			(at 299.212 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "29.4k"
-			(at 294.64 45.72 90)
+			(at 297.18 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 292.862 45.72 90)
+			(at 295.402 45.72 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "RSPSP: spread spectrum on with ripple tone correction (TI eq. 7: 29.5k at 24->5 V, 1 MHz)"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-0729K4L"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 294.64 45.72 0)
+			(at 297.18 45.72 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3822,12 +3831,12 @@
 		)
 	)
 	(wire
-		(pts (xy 294.64 41.91) (xy 294.64 39.37))
+		(pts (xy 297.18 41.91) (xy 297.18 39.37))
 		(stroke (width 0) (type default))
 		(uuid "aae1be10-64c4-544d-af16-826f0fd82464")
 	)
 	(label "SPSP"
-		(at 294.64 39.37 90)
+		(at 297.18 39.37 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3836,48 +3845,48 @@
 		(uuid "be3aed1e-f5b5-5243-b9c0-1c46d28dbdb5")
 	)
 	(wire
-		(pts (xy 294.64 49.53) (xy 294.64 52.07))
+		(pts (xy 297.18 49.53) (xy 297.18 52.07))
 		(stroke (width 0) (type default))
 		(uuid "648b4f79-a9ac-58d1-9b73-5f9602204351")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 294.64 52.07 0)
+		(at 297.18 52.07 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "bd359e39-2d28-587c-aa77-6dbe767d981d")
-		(property "Reference" "#PWR126"
-			(at 294.64 58.42 0)
+		(property "Reference" "#PWR101"
+			(at 297.18 58.42 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 294.64 55.88 0)
+			(at 297.18 55.88 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 294.64 52.07 0)
+			(at 297.18 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 294.64 52.07 0)
+			(at 297.18 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 294.64 52.07 0)
+			(at 297.18 52.07 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3887,7 +3896,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR126")
+					(reference "#PWR101")
 					(unit 1)
 				)
 			)
@@ -3895,7 +3904,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 312.42 48.26 0)
+		(at 314.96 48.26 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3903,61 +3912,61 @@
 		(dnp no)
 		(uuid "c717e287-c1a5-5fd7-9c4a-ca257062e719")
 		(property "Reference" "R505"
-			(at 314.452 48.26 90)
+			(at 316.992 48.26 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "200k"
-			(at 312.42 48.26 90)
+			(at 314.96 48.26 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 310.642 48.26 90)
+			(at 313.182 48.26 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 312.42 48.26 0)
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
-		(property "Description" "AUX EN/UVLO top: on at ~15.3 V, off ~11 V"
-			(at 312.42 48.26 0)
+		(property "Description" "AUX EN/UVLO top: on at ~15.3 V, off ~11 V; LM5069 PGD holds EN_AUX low until the hot-swap is done"
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-07200KL"
-			(at 312.42 48.26 0)
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 312.42 48.26 0)
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 312.42 48.26 0)
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 312.42 48.26 0)
+			(at 314.96 48.26 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -3975,13 +3984,13 @@
 		)
 	)
 	(wire
-		(pts (xy 312.42 44.45) (xy 312.42 41.91))
+		(pts (xy 314.96 44.45) (xy 314.96 41.91))
 		(stroke (width 0) (type default))
 		(uuid "b6b8a8a6-dadc-53c8-9b60-97344c95ed59")
 	)
 	(global_label "+24V"
 		(shape bidirectional)
-		(at 312.42 41.91 90)
+		(at 314.96 41.91 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
@@ -3989,7 +3998,7 @@
 		)
 		(uuid "be3ec928-cf28-5ef8-b5f2-e53a0cb88982")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 312.42 41.91 90)
+			(at 314.96 41.91 90)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left)
@@ -3998,22 +4007,31 @@
 		)
 	)
 	(wire
-		(pts (xy 312.42 52.07) (xy 312.42 54.61))
+		(pts (xy 314.96 52.07) (xy 314.96 54.61))
 		(stroke (width 0) (type default))
 		(uuid "aa5c3628-be17-58fa-8d75-44e1b4a93836")
 	)
-	(label "EN_AUX"
-		(at 312.42 54.61 270)
+	(global_label "EN_AUX"
+		(shape bidirectional)
+		(at 314.96 54.61 270)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify right bottom)
+			(justify right)
 		)
-		(uuid "09a3c625-6867-5ad3-87a2-cac3c87dfc1f")
+		(uuid "a32d7c42-5ab0-50d0-9042-a5199873813f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 314.96 54.61 270)
+			(effects
+				(font (size 1.27 1.27))
+				(justify right)
+				(hide yes)
+			)
+		)
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 330.2 48.26 0)
+		(at 332.74 50.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -4021,61 +4039,61 @@
 		(dnp no)
 		(uuid "737035a6-fae2-524a-bba6-342ec452990b")
 		(property "Reference" "R506"
-			(at 332.232 48.26 90)
+			(at 334.772 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Value" "18k"
-			(at 330.2 48.26 90)
+			(at 332.74 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 328.422 48.26 90)
+			(at 330.962 50.8 90)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "AUX EN/UVLO bottom"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "MPN" "RC0603FR-0718KL"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Manufacturer" "Yageo"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Tolerance" "1%"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Rating" "0.1 W, 75 V"
-			(at 330.2 48.26 0)
+			(at 332.74 50.8 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -4093,62 +4111,71 @@
 		)
 	)
 	(wire
-		(pts (xy 330.2 44.45) (xy 330.2 41.91))
+		(pts (xy 332.74 46.99) (xy 332.74 44.45))
 		(stroke (width 0) (type default))
 		(uuid "a50c2e40-a0bb-52c5-b352-f34d4b431956")
 	)
-	(label "EN_AUX"
-		(at 330.2 41.91 90)
+	(global_label "EN_AUX"
+		(shape bidirectional)
+		(at 332.74 44.45 90)
 		(fields_autoplaced yes)
 		(effects
 			(font (size 1.27 1.27))
-			(justify left bottom)
+			(justify left)
 		)
-		(uuid "cf95b1de-6f3d-5f5b-88e0-ffb3715ed7b4")
+		(uuid "535935d1-21eb-5d43-bd85-e91beb175b13")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 332.74 44.45 90)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+				(hide yes)
+			)
+		)
 	)
 	(wire
-		(pts (xy 330.2 52.07) (xy 330.2 54.61))
+		(pts (xy 332.74 54.61) (xy 332.74 57.15))
 		(stroke (width 0) (type default))
 		(uuid "38969c03-f8f8-5af1-9329-7dd9ec8428d7")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 330.2 54.61 0)
+		(at 332.74 57.15 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "0c9b411e-53b5-5e58-9a5a-5feec06e022b")
-		(property "Reference" "#PWR127"
-			(at 330.2 60.96 0)
+		(property "Reference" "#PWR102"
+			(at 332.74 63.5 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Value" "GND"
-			(at 330.2 58.42 0)
+			(at 332.74 60.96 0)
 			(effects
 				(font (size 1.27 1.27))
 			)
 		)
 		(property "Footprint" ""
-			(at 330.2 54.61 0)
+			(at 332.74 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
-			(at 330.2 54.61 0)
+			(at 332.74 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 330.2 54.61 0)
+			(at 332.74 57.15 0)
 			(effects
 				(font (size 1.27 1.27))
 				(hide yes)
@@ -4158,7 +4185,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR127")
+					(reference "#PWR102")
 					(unit 1)
 				)
 			)
@@ -4398,7 +4425,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "60f222f0-d28a-5fe7-b0e1-29d669af4cf6")
-		(property "Reference" "#PWR128"
+		(property "Reference" "#PWR103"
 			(at 45.72 115.57 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -4436,7 +4463,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR128")
+					(reference "#PWR103")
 					(unit 1)
 				)
 			)
@@ -4778,7 +4805,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "fe68a77b-eb55-5dbe-8d8b-a900884b45d3")
-		(property "Reference" "#PWR129"
+		(property "Reference" "#PWR104"
 			(at 104.14 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -4816,7 +4843,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR129")
+					(reference "#PWR104")
 					(unit 1)
 				)
 			)
@@ -4931,7 +4958,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "d6c541fc-8977-5e29-89b2-13b165d27e87")
-		(property "Reference" "#PWR130"
+		(property "Reference" "#PWR105"
 			(at 121.92 111.76 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -4969,7 +4996,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR130")
+					(reference "#PWR105")
 					(unit 1)
 				)
 			)
@@ -5079,7 +5106,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "7fdd0025-5fb8-594e-8063-563558f7d090")
-		(property "Reference" "#PWR131"
+		(property "Reference" "#PWR106"
 			(at 139.7 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -5117,7 +5144,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR131")
+					(reference "#PWR106")
 					(unit 1)
 				)
 			)
@@ -5227,7 +5254,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "b245b501-2b83-5e08-a819-912be5187966")
-		(property "Reference" "#PWR132"
+		(property "Reference" "#PWR107"
 			(at 157.48 114.3 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -5265,7 +5292,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR132")
+					(reference "#PWR107")
 					(unit 1)
 				)
 			)
@@ -5609,7 +5636,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "8e2ddce9-bcbc-59e9-b1e9-52f0076d1419")
-		(property "Reference" "#PWR133"
+		(property "Reference" "#PWR108"
 			(at 218.44 111.76 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -5647,7 +5674,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR133")
+					(reference "#PWR108")
 					(unit 1)
 				)
 			)
@@ -5762,7 +5789,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "76055087-044e-598a-8d18-fcd4d6fe7908")
-		(property "Reference" "#PWR134"
+		(property "Reference" "#PWR109"
 			(at 229.87 93.98 270)
 			(effects
 				(font (size 1.27 1.27))
@@ -5800,7 +5827,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR134")
+					(reference "#PWR109")
 					(unit 1)
 				)
 			)
@@ -6153,7 +6180,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "798730fa-e369-5ea5-8a59-550b401bf254")
-		(property "Reference" "#PWR135"
+		(property "Reference" "#PWR110"
 			(at 284.48 91.44 270)
 			(effects
 				(font (size 1.27 1.27))
@@ -6191,7 +6218,7 @@
 		(instances
 			(project "power-halo-board"
 				(path "/72933134-cd60-5739-90c7-09537a6a1194/d633a8cf-828a-50e2-8025-a670f4170e68"
-					(reference "#PWR135")
+					(reference "#PWR110")
 					(unit 1)
 				)
 			)

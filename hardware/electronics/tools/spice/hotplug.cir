@@ -1,57 +1,118 @@
-* Hot-plug of J1 into an already-running 24 V brick (worst case for input overshoot).
-* Behavioral board model: no vendor models.  Values and sources: docs/verification.md.
-*   PSU output cap 1000u/30m (assumed), cable 1.5 m AWG18 pair: 2 uH loop, 63 mR + 20 mR contacts,
-*   fuse 0453008 ~10 mR cold, Q1 body diode (charge pump not yet running at the first ring),
-*   ceramics 10x 10u X7R 1210 derated to 4.5u each at 24 V, 2x EEE-FK1H101P bulk (ESR swept),
-*   SMBJ30A: VBR 33.3..36.8 V, VC 48.4 V at 12.4 A -> BV 34 V, RS 1.1 R.
-.param esr=0.3 nbulk=2
-Vpsu  psu 0 DC 24
+* Rev B hot-plug: J1 plugged into an already-running 24 V brick, then the LM5069 start-up.
+* Behavioral model (no vendor models).  Sources: docs/verification.md.
+*   Brick output cap 1000u/30m (assumed).  Cable: 2 uH loop, 83 mR (wire + contacts), no damping.
+*   F1 0453008 ~10 mR.  Q1 (CSD18540Q5B): body diode until the LM74700 charge pump is up (0.3 ms),
+*   then the channel.  Ahead of the limiter only C4 + C5 (100 nF each, +-10 %) and the SMBJ30A
+*   (VBR 33.3..36.8 V at 1 mA, VC 48.4 V at 12.4 A -> Rd 0.94 R, Cj ~2 nF).
+*   LM5069-2 with RS 7 mR: current limit 48.5/55/61.5 mV -> 6.93/7.86/8.79 A; power limit
+*   (RPWR 22.1k) PLIM = 24.29 W + 0.1686 W/V * VDS, +-24 %; Q2 RDS(on) ~2 mR.
+*   The gate stays off for the insertion time (155..458 ms with CT 330 nF); the deck shortens it to
+*   1.5 ms because the plug ring has died out long before (shown by the waveform) and the start-up
+*   does not depend on it.  +24V load during start-up: none (AUX waits for PGD, the panels for AUX).
+*   +24V capacitance: 3 x 100 uF electrolytic + 10 x 10 uF X7R at 24 V (~4.5 uF each) = 345 uF.
+.param vb=24 kcap=1 bv=35 kp=1 ilim=7.86 cbulk=345u tau=20u
+Vpsu  psu 0 DC {vb}
 Cpsu  psu psuc 1000u
 Rpsuc psuc 0 30m
-Rpsu  psu  sw  10m
-Ssw   sw   cab ctl 0 swmod
-Vctl  ctl  0 PWL(0 0 10u 0 10.1u 1)
-.model swmod SW(VT=0.5 VH=0.1 RON=5m ROFF=1e9)
-Lcab  cab  c1 2u
-Rcab  c1   vraw 83m
+Rpsu  psu sw 1m
+Ssw   sw  cab ctl 0 swmod
+Vctl  ctl 0 PWL(0 0 10u 0 10.1u 1)
+.model swmod SW(VT=0.5 VH=0.1 RON=1m ROFF=1e9)
+Lcab  cab c1 2u
+Rcab  c1  vraw 83m
 Rfuse vraw vf 10m
-Dq1   vf   p24 dbody
+C4    vf  0 {100n*kcap}
+Dq1   vf  vp dbody
 .model dbody D(IS=1e-9 N=1.2 RS=5m)
-Ccer  p24  cer 45u
-Rcer  cer  cesl 1m
-Lcer  cesl 0 0.3n
-Cblk  p24  blk {100u*nbulk}
-Rblk  blk  0 {esr/nbulk}
-Dtvs  0    p24 dtvs
-.model dtvs D(IS=1e-12 BV=34 IBV=1m RS=1.1)
-Rleak p24  0 10k
-.tran 10n 400u 0 20n
+Sq1   vf  vp q1on 0 swq
+Vq1   q1on 0 PWL(0 0 0.3m 0 0.31m 1)
+.model swq SW(VT=0.5 VH=0.1 RON=5m ROFF=1e9)
+C5    vp  0 {100n*kcap}
+Vtvs  vp  tvsk 0
+Dtvs  0   tvsk dtvs
+.model dtvs D(IS=1e-12 BV={bv} IBV=1m RS=0.94 CJO=2n)
+* LM5069 VIN/LED/divider bleed, ~2.5 mA at 24 V
+Rbl   vp  0 10k
+Rs    vp  vs 7m
+* Q2 channel: gate enabled after the insertion time, then the tighter of current limit, power limit
+* and full enhancement (a fully enhanced MOSFET conducts both ways, so the last term keeps its sign)
+Vg    gon 0 PWL(0 0 1.5m 0 1.6m 1)
+* The limit is applied through a first-order lag (tau): the LM5069 regulates by moving the gate
+* with uA-level currents, so it cannot follow the cable ring; an instantaneous limit would act as
+* a negative resistance and oscillate with the 2 uH cable.  tau = 20 us is the conservative case.
+Blim  lt  0  V = min({ilim}, {kp}*(24.29 + 0.1686*max(V(vsq,p24),0)) / max(V(vsq,p24),0.01))
+Rlag  lt  lim 1k
+Clag  lim 0 {tau/1k}
+Vq2   vs  vsq 0
+Bq2   vsq p24 I = V(gon) * min(V(lim), V(vsq,p24)/2m)
+Cblk  p24 blk {cbulk}
+Rblk  blk 0 30m
+Rlk   p24 0 100k
+.tran 20n 14m 0 20n
 .control
-  foreach case 1 2 3 4
+  foreach case 1 2 3 4 5
     if $case = 1
-      alterparam esr=0.15
-      alterparam nbulk=2
+      alterparam vb=24
+      alterparam kcap=1
+      alterparam bv=35
+      alterparam kp=1
+      alterparam ilim=7.86
+      alterparam cbulk=345u
     end
     if $case = 2
-      alterparam esr=0.3
-      alterparam nbulk=2
+      alterparam vb=26.4
+      alterparam kcap=1.1
+      alterparam bv=36.8
+      alterparam kp=1.24
+      alterparam ilim=8.79
+      alterparam cbulk=415u
     end
     if $case = 3
-      alterparam esr=0.7
-      alterparam nbulk=2
+      alterparam vb=26.4
+      alterparam kcap=1.1
+      alterparam bv=33.3
+      alterparam kp=1.24
+      alterparam ilim=8.79
+      alterparam cbulk=415u
     end
     if $case = 4
-      alterparam esr=1e6
-      alterparam nbulk=2
+      alterparam vb=26.4
+      alterparam kcap=0.9
+      alterparam bv=36.8
+      alterparam kp=0.76
+      alterparam ilim=6.93
+      alterparam cbulk=415u
     end
-    echo "case $case: 1 = ESR 0.15, 2 = 0.3, 3 = 0.7 ohm per bulk cap, 4 = bulk caps omitted"
+    if $case = 5
+      alterparam vb=21.6
+      alterparam kcap=0.9
+      alterparam bv=33.3
+      alterparam kp=0.76
+      alterparam ilim=6.93
+      alterparam cbulk=290u
+    end
+    echo "case $case: 1 typ, 2 26.4 V/max C/max clamp/max limits, 3 = 2 with min clamp, 4 26.4 V slowest start, 5 21.6 V"
     reset
     run
-    meas tran vmax MAX v(p24)
-    meas tran ipk MAX i(Lcab)
+    meas tran ipk MAX i(Lcab) from=0 to=1.5m
+    meas tran ipks MAX i(Lcab) from=1.5m to=14m
     let i2 = i(Lcab)*i(Lcab)
-    meas tran i2t INTEG i2 from=0 to=400u
-    echo "RESULT hotplug case=$case vmax=$&vmax ipeak=$&ipk i2t=$&i2t"
+    meas tran i2t INTEG i2 from=0 to=14m
+    meas tran vpmax MAX v(vp) from=0 to=1.5m
+    meas tran vpmaxs MAX v(vp) from=1.5m to=14m
+    meas tran vfmax MAX v(vf)
+    meas tran v24max MAX v(p24)
+    meas tran itvs MAX i(Vtvs)
+    let ptvs = v(vp)*i(Vtvs)
+    meas tran ptvsmax MAX ptvs
+    let vds = v(vs)-v(p24)
+    let pq2 = i(Vq2)*vds
+    meas tran pq2max MAX pq2 from=1.5m to=14m
+    meas tran eq2 INTEG pq2 from=1.5m to=14m
+    meas tran iq2max MAX i(Vq2) from=1.5m to=14m
+    meas tran tpgd WHEN vds=1.25 FALL=1 from=1.6m
+    let tstart = tpgd - 1.5m
+    echo "RESULT hotplug case=$case ipeak_plug=$&ipk ipeak_start=$&ipks i2t=$&i2t vp_max_plug=$&vpmax vp_max_start=$&vpmaxs vf_max=$&vfmax v24_max=$&v24max itvs_max=$&itvs ptvs_max=$&ptvsmax pq2_max=$&pq2max eq2=$&eq2 iq2_max=$&iq2max t_start=$&tstart"
   end
   quit
 .endc

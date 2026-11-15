@@ -1,24 +1,30 @@
-thresholds.cir: thresholds corner=lo panel_uv_rise=4.18697 panel_uv_fall=3.80827 panel_ov_rise=5.74927 panel_ov_fall=5.22926 halo_ov_rise=5.74069 aux_on=11.8911 aux_off=10.702
-thresholds.cir: thresholds corner=typ panel_uv_rise=4.3087 panel_uv_fall=3.91373 panel_ov_rise=5.91642 panel_ov_fall=5.37408 halo_ov_rise=5.91658 aux_on=15.2963 aux_off=11.0574
-thresholds.cir: thresholds corner=hi panel_uv_rise=4.45528 panel_uv_fall=4.06549 panel_ov_rise=6.1177 panel_ov_fall=5.58247 halo_ov_rise=6.12709 aux_on=16.8381 aux_off=10.6703
-en_sequence.cir: en_sequence jp=1-2 aux5_ready=0.0151419 en_max_before_gpio=0.0205323 panel_on_delay=0.0014702 panel_off_delay=7.58E-05
-en_sequence.cir: en_sequence jp=2-3 aux5_ready=0.0153435 panel_on_after_aux=-0.00044039
-hotplug.cir: hotplug case=1 vmax=23.4472 ipeak=103.013 i2t=0.407166
-hotplug.cir: hotplug case=2 vmax=23.4126 ipeak=91.9172 i2t=0.317352
-hotplug.cir: hotplug case=3 vmax=23.2853 ipeak=83.089 i2t=0.214824
-hotplug.cir: hotplug case=4 vmax=32.8503 ipeak=76.5433 i2t=0.0882657
+thresholds.cir: thresholds corner=lo panel_uv_rise=4.2726 panel_uv_fall=3.91052 hs_uv_on=16.4685 hs_uv_off=15.3363 hs_ov_off=31.5757 hs_ov_on=28.4632 halo_ov_rise=5.74069 aux_on=11.8911 aux_off=10.702
+thresholds.cir: thresholds corner=typ panel_uv_rise=4.40856 panel_uv_fall=4.04118 hs_uv_on=17.9163 hs_uv_off=15.915 hs_ov_off=33.4497 hs_ov_on=31.2529 halo_ov_rise=5.91658 aux_on=15.2963 aux_off=11.0574
+thresholds.cir: thresholds corner=hi panel_uv_rise=4.58521 panel_uv_fall=4.21243 hs_uv_on=19.3973 hs_uv_off=16.5097 hs_ov_off=35.3801 hs_ov_on=34.1144 halo_ov_rise=6.12709 aux_on=16.8381 aux_off=10.6703
+en_sequence.cir: en_sequence jp=1-2 aux5_ready=0.0151419 en_max_before_gpio=0.0205455 panel_on_delay=0.0014549 panel_off_delay=7.6E-05
+en_sequence.cir: en_sequence jp=2-3 aux5_ready=0.0153428 panel_on_after_aux=-0.00045389
+hotplug.cir: hotplug case=1 ipeak_plug=7.30703 ipeak_start=7.8614 i2t=0.0266875 vp_max_plug=38.7772 vp_max_start=24.0015 vf_max=39.4807 v24_max=24.0013 itvs_max=3.79164 ptvs_max=147.029 pq2_max=28.2378 eq2=0.0957297 iq2_max=7.85909 t_start=0.00365109
+hotplug.cir: hotplug case=2 ipeak_plug=8.42946 ipeak_start=8.79233 i2t=0.0398839 vp_max_plug=41.4512 vp_max_start=26.3997 vf_max=42.1659 v24_max=26.3997 itvs_max=4.71534 ptvs_max=195.456 pq2_max=35.5241 eq2=0.139187 iq2_max=8.78976 t_start=0.00423255
+hotplug.cir: hotplug case=3 ipeak_plug=8.42946 ipeak_start=8.79233 i2t=0.0398425 vp_max_plug=38.6653 vp_max_start=26.3997 vf_max=39.3886 v24_max=26.3997 itvs_max=5.47089 ptvs_max=211.533 pq2_max=35.5241 eq2=0.139187 iq2_max=8.78976 t_start=0.00423255
+hotplug.cir: hotplug case=4 ipeak_plug=7.64621 ipeak_start=6.93234 i2t=0.0264757 vp_max_plug=41.1902 vp_max_start=26.3997 vf_max=41.9023 v24_max=26.3997 itvs_max=4.43936 ptvs_max=182.858 pq2_max=21.8026 eq2=0.141022 iq2_max=6.92977 t_start=0.00691258
+hotplug.cir: hotplug case=5 ipeak_plug=6.23733 ipeak_start=6.92897 i2t=0.0172154 vp_max_plug=36.19 vp_max_start=21.6137 vf_max=36.8807 v24_max=21.6124 itvs_max=2.85551 ptvs_max=103.341 pq2_max=21.1542 eq2=0.0653142 iq2_max=6.92687 t_start=0.00331046
 
-PASS panel OV trip (lowest corner 5.75 V) > VOUT max 5.12 V + 0.4 V
-PASS panel OV release (lowest corner 5.23 V) > VOUT max 5.12 V
-PASS panel OV trip (highest corner 6.12 V) <= 6.2 V
-PASS panel UV release (highest corner 4.46 V) < VOUT min 4.9 V
+PASS panel eFuse UV release (highest corner 4.59 V) < VOUT min 4.9 V
+INFO panel eFuse OV is fixed in the TPS259823L: 7.39..7.76 V rising (datasheet, not simulated)
 PASS halo OV trip corners 5.74..6.13 V within 5.5..6.2 V
-PASS AUX turns on below 22 V (highest corner 16.84 V; brick 24 V -3 % = 23.3 V)
-PASS AUX turns off above 6 V (lowest corner 10.67 V)
+PASS hot-swap turns on below 21.6 V (brick 24 V -10 %; highest corner 19.40 V)
+PASS hot-swap OV cut-off below 36 V (converter VIN max; highest corner 35.38 V)
+PASS hot-swap OV cut-off and release above the brick's 26.4 V maximum setting (lowest corners 31.58 / 28.46 V)
+INFO hot-swap OV cut-off vs brick OVP 32.4 V: 31.58..35.38 V (a low part can trip just below the brick's own OVP; only a faulty brick gets there)
+PASS AUX buck EN alone turns on below 22 V (highest corner 16.84 V; LM5069 PGD gates it too)
 PASS JP601 1-2: EN_PANEL stays below VEN_WAKE 0.4 V before GPIO26 (0.021 V)
-PASS JP601 1-2: panels enabled 1.47 ms after GPIO26 high (< 20 ms)
+PASS JP601 1-2: panels enabled 1.45 ms after GPIO26 high (< 20 ms)
 PASS JP601 1-2: panels disabled 0.076 ms after GPIO26 low (< 5 ms)
-PASS JP601 2-3: EN_PANEL crosses 1.263 V -0.44 ms relative to +5V_AUX = 4.75 V (> -2 ms: panel bucks start after AUX is above 4 V)
-PASS hot-plug with bulk caps: +24V peak 23.4 V < 36 V (TPSM63610 VIN max)
-INFO hot-plug without bulk caps (case 4): +24V peak 32.9 V (reference only)
-INFO hot-plug fuse stress: peak 103 A, I2t 0.41 A2s (compare with 0453008 melting I2t; datasheet value not yet verified)
+PASS JP601 2-3: EN_PANEL crosses 1.263 V -0.45 ms relative to +5V_AUX = 4.75 V (> -2 ms: panel bucks start after AUX is above 4 V)
+PASS hot-plug peak input current 8.79 A <= 9.8 A (all corners)
+PASS hot-plug F1 I2t 0.040 A2s <= 4.05 A2s (20 % of the 0453008 melting I2t 20.23 A2s)
+PASS hot-plug +24V at the converters peaks at 26.4 V < 36 V
+PASS hot-plug VIN_P 41.5 V and VIN_F 42.2 V < 60 V (Q1/Q2 VDS; LM5069 100 V, LM74700 ANODE 65 V)
+PASS hot-plug SMBJ30A peak 5.5 A < IPP 12.4 A (10/1000 us rating)
+PASS hot-swap start time 6.91 ms < minimum fault time 10.3 ms (CT 330 nF: 3.76 V x 330 nF / 120 uA)
+PASS hot-swap Q2 start-up: peak 35.5 W for 6.9 ms (CSD18540Q5B SOA ~100 W for 10 ms at 24 V, ~65 W after derating to TC 70 C)

@@ -4,6 +4,9 @@
 Pin numbers and land patterns are transcribed from the TI data sheets:
   * TPSM63610  SLVSGU1A (Dec 2023), Table 5-1, package RDF0022A
   * TPS25947   SLVSFC9C (May 2026), Table 5-1, package RPW0010A
+  * LM61495    SNVSBZ4A (Nov 2021), Table 5-1, package RPH0016B (VQFN-HR-16)
+  * TPS25982   SLVSEI3D (May 2026), Table 5-1, package RGE0024M (VQFN-24, split exposed pad)
+  * LM5069     SNVS452G (Jan 2020), pin functions, package DGS (VSSOP-10, stock KiCad footprint)
 Coordinates are millimetres, KiCad footprint axes (+y down, top view).
 """
 
@@ -123,6 +126,53 @@ def tps259470_symbol():
         "eFuse hot-swap load switch reverse blocking TPS25947", body, pins, 8.89, -8.89 - 2.54)
 
 
+def side_symbol(name, value, fp, ds, desc, kw, left, right, bottom, half_w, top_y, bottom_y):
+    """Rectangular symbol: left/right lists of (type, name, num, y); bottom list of (type, name, num, x)."""
+    pins = [pin(t_, -half_w - 2.54, y, 0, n, num) for t_, n, num, y in left]
+    pins += [pin(t_, half_w + 2.54, y, 180, n, num) for t_, n, num, y in right]
+    pins += [pin(t_, x, bottom_y - 2.54, 90, n, num) for t_, n, num, x in bottom]
+    body = rect(-half_w, top_y, half_w, bottom_y)
+    return symbol(name, "U", value, fp, ds, desc, kw, body, pins, top_y + 1.27, bottom_y - 3.81)
+
+
+def lm61495_symbol():
+    left = [("power_in", "VIN1", 14, 10.16), ("power_in", "VIN2", 2, 7.62), ("input", "EN", 13, 2.54),
+            ("input", "SYNC/MODE", 12, 0), ("input", "SPSP", 11, -2.54), ("input", "RT", 9, -5.08),
+            ("open_collector", "RESET", 10, -10.16)]
+    right = [("power_out", "SW", 16, 10.16), ("passive", "CBOOT", 4, 7.62), ("passive", "RBOOT", 3, 5.08),
+             ("power_in", "BIAS", 5, 0), ("input", "FB", 7, -2.54), ("power_out", "VCC", 6, -7.62)]
+    bottom = [("power_in", "PGND1", 15, -5.08), ("power_in", "PGND2", 1, 0), ("power_in", "AGND", 8, 5.08)]
+    return side_symbol("LM61495", "LM61495RPHR", "ledpanel:TI_RPH0016B_VQFN-HR-16_3.5x4.5mm",
+                       "https://www.ti.com/lit/ds/symlink/lm61495.pdf",
+                       "TI 3-36 V in, 10 A synchronous buck converter, VQFN-HR-16 (RPH)",
+                       "buck converter DC-DC LM61495", left, right, bottom, 12.7, 12.7, -12.7)
+
+
+def tps25982_symbol():
+    left = [("power_in", "IN", n, 12.7 - 2.54 * i) for i, n in enumerate((1, 2, 3, 16, 25))]
+    left += [("input", "EN/UVLO", 6, -2.54), ("passive", "ITIMER", 7, -5.08), ("passive", "ILIM", 8, -7.62),
+             ("output", "IMON", 9, -10.16), ("passive", "RETRY_DLY", 10, -12.7),
+             ("passive", "NRETRY", 11, -15.24), ("input", "LDSTRT", 12, -17.78), ("passive", "dVdt", 15, -20.32)]
+    right = [("passive" if i else "power_out", "OUT", n, 12.7 - 2.54 * i) for i, n in enumerate(range(17, 25))]
+    right += [("open_collector", "PG", 13, -10.16)]
+    bottom = [("power_in", "GND", n, x) for n, x in ((4, -7.62), (5, -2.54), (14, 2.54), (26, 7.62))]
+    return side_symbol("TPS25982", "TPS259823LNRGER", "ledpanel:TI_RGE0024M_VQFN-24_4x4mm",
+                       "https://www.ti.com/lit/ds/symlink/tps25982.pdf",
+                       "TI 2.7-24 V, 15 A, 2.7 mOhm eFuse, adjustable current limit, fixed OVLO, VQFN-24 (RGE) split pad; pad 25 = IN, pad 26 = GND",
+                       "eFuse hot-swap load switch TPS25982", left, right, bottom, 12.7, 15.24, -22.86)
+
+
+def lm5069_symbol():
+    left = [("power_in", "VIN", 2, 7.62), ("input", "SENSE", 1, 5.08), ("input", "UVLO", 3, 0),
+            ("input", "OVLO", 4, -2.54), ("passive", "TIMER", 6, -5.08), ("passive", "PWR", 7, -7.62)]
+    right = [("output", "GATE", 10, 7.62), ("input", "OUT", 9, 5.08), ("open_collector", "PGD", 8, 0)]
+    bottom = [("power_in", "GND", 5, 0)]
+    return side_symbol("LM5069", "LM5069MM-2/NOPB", "Package_SO:VSSOP-10_3x3mm_P0.5mm",
+                       "https://www.ti.com/lit/ds/symlink/lm5069.pdf",
+                       "TI 9-80 V hot-swap controller with power limiting, UVLO/OVLO, PGD, VSSOP-10 (DGS)",
+                       "hot swap inrush controller LM5069", left, right, bottom, 10.16, 10.16, -10.16)
+
+
 def tvs_uni_symbol(name, value, fp, ds, desc):
     body = (poly([(1.27, 1.27), (1.27, -1.27), (-1.27, 0), (1.27, 1.27)], fill="none")
             + poly([(-0.762, 1.27), (-1.27, 1.27), (-1.27, -1.27), (-1.778, -1.27)]))
@@ -136,6 +186,9 @@ def write_symbols():
     out = '(kicad_symbol_lib\n\t(version 20241209)\n\t(generator "ledpanel_gen_lib")\n\t(generator_version "1.0")\n'
     out += tpsm63610_symbol()
     out += tps259470_symbol()
+    out += lm61495_symbol()
+    out += tps25982_symbol()
+    out += lm5069_symbol()
     out += tvs_uni_symbol(
         "SMBJ30A", "SMBJ30A", "Diode_SMD:D_SMB",
         "https://www.littelfuse.com/products/tvs-diodes/surface-mount/smbj",
@@ -266,10 +319,76 @@ def rpw0010a():
     return name, s
 
 
+def rect_union(name, num, rects, k):
+    """One pad number drawn as overlapping rectangles (union = TI land); rects as (x1, y1, x2, y2)."""
+    return "".join(rect_pad(name, num, (x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1, k * 10 + i)
+                   for i, (x1, y1, x2, y2) in enumerate(rects))
+
+
+def rph0016b():
+    """LM61495 VQFN-HR-16 3.5 x 4.5 mm, land pattern per SNVSBZ4A RPH0016B example board layout."""
+    name = "TI_RPH0016B_VQFN-HR-16_3.5x4.5mm"
+    s = fp_header(name, "TI RPH0016B VQFN-HR-16 3.5x4.5 mm (LM61495), land pattern per SNVSBZ4A; L-shaped corner lands as two overlapping rectangles",
+                  "LM61495 VQFN-HR RPH0016B", -3.3, 3.3)
+    k = 0
+    for num, sx in ((1, 1), (15, -1)):          # PGND corner lands
+        r = [(-1.95, -2.10, -0.8, -1.35), (-1.6, -2.45, -0.8, -1.35)]
+        s += rect_union(name, num, [(min(sx * a, sx * c), b, max(sx * a, sx * c), d) for a, b, c, d in r], k); k += 1
+    for num, sx in ((6, 1), (10, -1)):          # VCC / RESET corner lands
+        r = [(-1.95, 1.9, -0.85, 2.25), (-1.6, 1.9, -0.85, 2.45)]
+        s += rect_union(name, num, [(min(sx * a, sx * c), b, max(sx * a, sx * c), d) for a, b, c, d in r], k); k += 1
+    s += rect_pad(name, 2, -1.4125, -0.55, 1.075, 0.4, 100)
+    s += rect_pad(name, 14, 1.4125, -0.55, 1.075, 0.4, 101)
+    for i, y in enumerate((0.525, 1.025, 1.525)):
+        s += rect_pad(name, 3 + i, -1.5375, y, 0.825, 0.25, 110 + i)
+        s += rect_pad(name, 13 - i, 1.5375, y, 0.825, 0.25, 120 + i)
+    s += rect_pad(name, 7, -0.5, 2.1125, 0.25, 0.675, 130)
+    s += rect_pad(name, 9, 0.5, 2.1125, 0.25, 0.675, 131)
+    s += rect_pad(name, 8, 0.0, 2.0375, 0.25, 0.825, 132)
+    s += rect_pad(name, 16, 0.0, -0.9625, 0.35, 2.975, 133)
+    s += fp_rect(name, 0, -1.75, -2.25, 1.75, 2.25, "F.Fab", 0.1)
+    s += fp_line(name, 1, -1.75, -1.75, -1.25, -2.25, "F.Fab", 0.1)
+    s += fp_line(name, 2, -2.2, -0.05, -2.2, 0.3, "F.SilkS", 0.12)
+    s += fp_line(name, 3, 2.2, -0.05, 2.2, 0.3, "F.SilkS", 0.12)
+    s += fp_circle(name, 4, -2.35, -2.6, 0.15, "F.SilkS", 0.3, fill=True)
+    s += fp_rect(name, 5, -2.2, -2.7, 2.2, 2.7, "F.CrtYd", 0.05)
+    s += fp_model(name)
+    s += '\t(embedded_fonts no)\n)\n'
+    return name, s
+
+
+def rge0024m():
+    """TPS25982 VQFN-24 4 x 4 mm, 0.5 mm pitch, split exposed pad (25 = IN, 26 = GND), per SLVSEI3D."""
+    name = "TI_RGE0024M_VQFN-24_4x4mm"
+    s = fp_header(name, "TI RGE0024M VQFN-24 4x4 mm 0.5 mm pitch (TPS25982), split exposed pad: 25 = IN, 26 = GND; land pattern per SLVSEI3D",
+                  "TPS25982 VQFN RGE0024M", -3.0, 3.0)
+    c, lw, lh = 1.9125, 0.575, 0.24
+    for i in range(6):
+        off = -1.25 + 0.5 * i
+        s += rect_pad(name, 1 + i, -c, off, lw, lh, 10 + i)          # left, top to bottom
+        s += rect_pad(name, 7 + i, off, c, lh, lw, 20 + i)           # bottom, left to right
+        s += rect_pad(name, 13 + i, c, -off, lw, lh, 30 + i)         # right, bottom to top
+        s += rect_pad(name, 19 + i, -off, -c, lh, lw, 40 + i)        # top, right to left
+    s += rect_pad(name, 25, 0.0, -0.625, 2.7, 1.45, 50)
+    s += rect_pad(name, 26, 0.0, 0.925, 2.7, 0.85, 51)
+    s += fp_rect(name, 0, -2.0, -2.0, 2.0, 2.0, "F.Fab", 0.1)
+    s += fp_line(name, 1, -2.0, -1.5, -1.5, -2.0, "F.Fab", 0.1)
+    for k_, (x1, y1, x2, y2) in enumerate([(-2.1, -2.1, -1.65, -2.1), (-2.1, -2.1, -2.1, -1.65),
+                                           (2.1, -2.1, 1.65, -2.1), (2.1, -2.1, 2.1, -1.65),
+                                           (-2.1, 2.1, -1.65, 2.1), (-2.1, 2.1, -2.1, 1.65),
+                                           (2.1, 2.1, 1.65, 2.1), (2.1, 2.1, 2.1, 1.65)]):
+        s += fp_line(name, 2 + k_, x1, y1, x2, y2, "F.SilkS", 0.12)
+    s += fp_circle(name, 20, -2.45, -2.45, 0.15, "F.SilkS", 0.3, fill=True)
+    s += fp_rect(name, 21, -2.5, -2.5, 2.5, 2.5, "F.CrtYd", 0.05)
+    s += fp_model(name)
+    s += '\t(embedded_fonts no)\n)\n'
+    return name, s
+
+
 def write_footprints():
     d = LIB / "ledpanel.pretty"
     d.mkdir(parents=True, exist_ok=True)
-    for gen in (rdf0022a, rpw0010a):
+    for gen in (rdf0022a, rpw0010a, rph0016b, rge0024m):
         name, text = gen()
         (d / f"{name}.kicad_mod").write_text(text)
 

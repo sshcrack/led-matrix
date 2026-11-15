@@ -7,7 +7,7 @@
 	(title_block
 		(title "Power + halo board - top level")
 		(date "2026-11-15")
-		(rev "A0")
+		(rev "B0")
 		(company "led-matrix project")
 		(comment 1 "PROTOTYPE - UNVALIDATED - NOT RELEASED FOR FABRICATION")
 		(comment 2 "2x2 Waveshare P3 64x64 HUB75E, Raspberry Pi 3B + Electrodragon V2")
@@ -240,15 +240,15 @@
 		(fields_autoplaced yes)
 		(stroke (width 0.1524) (type solid))
 		(fill (color 0 0 0 0))
-		(uuid "1a246f08-5576-59e5-8648-a345181c7288")
-		(property "Sheetname" "Panel3"
+		(uuid "d633a8cf-828a-50e2-8025-a670f4170e68")
+		(property "Sheetname" "Aux"
 			(at 314.96 45.0084 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "panel_channel.kicad_sch"
+		(property "Sheetfile" "aux_pi.kicad_sch"
 			(at 314.96 71.7046 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -271,15 +271,15 @@
 		(fields_autoplaced yes)
 		(stroke (width 0.1524) (type solid))
 		(fill (color 0 0 0 0))
-		(uuid "011cf115-8a95-52a8-bbca-80f2e9d41f39")
-		(property "Sheetname" "Panel4"
+		(uuid "ea3573dd-3f79-59b5-854a-0672de7dd2dc")
+		(property "Sheetname" "Halo"
 			(at 25.4 90.7284 0)
 			(effects
 				(font (size 1.27 1.27))
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "panel_channel.kicad_sch"
+		(property "Sheetfile" "halo_control.kicad_sch"
 			(at 25.4 117.4246 0)
 			(effects
 				(font (size 1.27 1.27))
@@ -292,68 +292,6 @@
 			)
 		)
 	)
-	(sheet
-		(at 121.92 91.44)
-		(size 76.2 25.4)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(stroke (width 0.1524) (type solid))
-		(fill (color 0 0 0 0))
-		(uuid "d633a8cf-828a-50e2-8025-a670f4170e68")
-		(property "Sheetname" "Aux"
-			(at 121.92 90.7284 0)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left bottom)
-			)
-		)
-		(property "Sheetfile" "aux_pi.kicad_sch"
-			(at 121.92 117.4246 0)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left top)
-			)
-		)
-		(instances
-			(project "power-halo-board"
-				(path "/72933134-cd60-5739-90c7-09537a6a1194" (page "7"))
-			)
-		)
-	)
-	(sheet
-		(at 218.44 91.44)
-		(size 76.2 25.4)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(stroke (width 0.1524) (type solid))
-		(fill (color 0 0 0 0))
-		(uuid "ea3573dd-3f79-59b5-854a-0672de7dd2dc")
-		(property "Sheetname" "Halo"
-			(at 218.44 90.7284 0)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left bottom)
-			)
-		)
-		(property "Sheetfile" "halo_control.kicad_sch"
-			(at 218.44 117.4246 0)
-			(effects
-				(font (size 1.27 1.27))
-				(justify left top)
-			)
-		)
-		(instances
-			(project "power-halo-board"
-				(path "/72933134-cd60-5739-90c7-09537a6a1194" (page "8"))
-			)
-		)
-	)
 	(text "24 V -> 5 V power distribution and halo controller for the 2x2 HUB75 panel display"
 		(exclude_from_sim no)
 		(at 25.4 30.48 0)
@@ -363,7 +301,7 @@
 		)
 		(uuid "2845f68d-92fe-538c-9fbe-d2224631956c")
 	)
-	(text "Inputs: one external 24 V Class I brick (Mean Well GST160A24-R7B, 160 W) via KPJX-4S panel jack -> AWG18 pigtail -> J1."
+	(text "Rev B, PROTOTYPE / UNVALIDATED, one-off hobby build. Input: 24 V brick (Mean Well GST160A24-R7B) via KPJX-PM-4S jack -> pigtail -> J1."
 		(exclude_from_sim no)
 		(at 25.4 150 0)
 		(effects
@@ -372,7 +310,7 @@
 		)
 		(uuid "deb852f5-8844-5a3d-93bc-88a0a34ecd49")
 	)
-	(text "Five TPSM63610 bucks: one per 5 V / 4 A panel (Panel1..4) plus AUX (Pi, halo, logic). No mains on this board."
+	(text "Hot-plug into a running brick is supported: LM74700 ideal diode, SMBJ30A TVS, LM5069-2 hot-swap (inrush, 7.9 A limit, UV 17.9 V, OV 33.5 V)."
 		(exclude_from_sim no)
 		(at 25.4 155.08 0)
 		(effects
@@ -381,7 +319,7 @@
 		)
 		(uuid "cb4f8bfe-73c1-5029-a212-513b3a22e3ef")
 	)
-	(text "Every 5 V output has a TPS259470A eFuse: active current limit, UV/OV lockout, reverse blocking (no backfeed)."
+	(text "Two panel outputs, each feeding a pair of 5 V / 4 A panels: LM61495 buck (8 A) + TPS259823 eFuse (9.8 A limit) + M3.5 barrier terminal."
 		(exclude_from_sim no)
 		(at 25.4 160.16 0)
 		(effects
@@ -390,7 +328,7 @@
 		)
 		(uuid "68e396de-2b71-587d-ad61-1950039ee5bb")
 	)
-	(text "HUB75 data stays on the Electrodragon RPi HAT V2 (2 parallel chains x 2 panels, A-E). This board never touches HUB75 pins."
+	(text "AUX: TPSM63610 for Pi, halo and logic; it starts only after the hot-swap reports power good (PGD on EN_AUX)."
 		(exclude_from_sim no)
 		(at 25.4 165.24 0)
 		(effects
@@ -399,7 +337,7 @@
 		)
 		(uuid "92ca428d-9c47-5a25-9985-5ff0b0d26d7a")
 	)
-	(text "Pi interface: GPIO14 (TXD, UART to halo MCU) and GPIO26 (panel enable) only; both unused at --led-parallel=2."
+	(text "HUB75 data stays on the Electrodragon RGB matrix driver V2 (MPC1119). This board never touches HUB75 pins."
 		(exclude_from_sim no)
 		(at 25.4 170.32 0)
 		(effects
@@ -408,7 +346,7 @@
 		)
 		(uuid "e866b085-a686-560b-906c-9849becd6de1")
 	)
-	(text "Software brightness limits are NOT protection: each panel branch is limited in hardware to 5.0 A (+-10%)."
+	(text "Pi interface: GPIO14 (TXD, UART to halo MCU) and GPIO26 (panel enable) only; both unused at --led-parallel=2."
 		(exclude_from_sim no)
 		(at 25.4 175.4 0)
 		(effects
@@ -417,7 +355,7 @@
 		)
 		(uuid "90e648e2-c187-5498-972e-f34e3f068c62")
 	)
-	(text "Status: prototype design, unvalidated. See hardware/electronics/README.md and docs/verification.md."
+	(text "Software brightness limits are not protection: each panel pair is limited in hardware (eFuse, ~9.8 A)."
 		(exclude_from_sim no)
 		(at 25.4 180.48 0)
 		(effects

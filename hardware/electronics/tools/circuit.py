@@ -4,7 +4,11 @@ Each sheet is a list of groups; each group is a list of parts.  A part maps
 symbol pin numbers to net names.  ``None`` marks an intentionally unconnected
 pin (a no-connect flag is drawn).  Net names listed in GLOBAL_NETS cross
 sheets (global labels); every other name is local to its sheet (KiCad prefixes
-it with the sheet path, so the four panel-channel instances stay separate).
+it with the sheet path, so the two panel-channel instances stay separate).
+
+Revision B (PROTOTYPE / UNVALIDATED): 24 V hot-swap input (LM5069-2 + CSD18540Q5B
+behind the LM74700 ideal diode), two panel outputs of 2 x 4 A each (LM61495 buck +
+TPS259823 eFuse + Dinkle DT-55 M3.5 barrier terminal), AUX and halo as in rev A.
 
 Design values and their derivations are documented in
 ``hardware/electronics/docs/power-and-thermal.md``.
@@ -14,15 +18,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-GLOBAL_NETS = {"+24V", "+5V_AUX", "EN_PANEL", "GND"}
+GLOBAL_NETS = {"+24V", "+5V_AUX", "EN_PANEL", "EN_AUX", "GND"}
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 C1210 = "Capacitor_SMD:C_1210_3225Metric"
+R2512 = "Resistor_SMD:R_2512_6332Metric"
 LED0603 = "LED_SMD:LED_0603_1608Metric"
 
 DS_TPSM = "https://www.ti.com/lit/ds/symlink/tpsm63610.pdf"
 DS_EFUSE = "https://www.ti.com/lit/ds/symlink/tps25947.pdf"
+DS_LM61495 = "https://www.ti.com/lit/ds/symlink/lm61495.pdf"
+DS_TPS25982 = "https://www.ti.com/lit/ds/symlink/tps25982.pdf"
+DS_LM5069 = "https://www.ti.com/lit/ds/symlink/lm5069.pdf"
+DS_CSD18540 = "https://www.ti.com/lit/ds/symlink/csd18540q5b.pdf"
 DS_YAGEO = "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf"
 DS_MURATA = "https://www.murata.com/en-global/products/capacitor/ceramiccapacitor"
 
@@ -66,10 +75,12 @@ MLCC = {
     "47uF/10V": ("GRM32ER71A476ME15L", "10 V X7R", C1210),
     "1uF/16V": ("GRM188R71C105KA12D", "16 V X7R", C0603),
     "100nF/50V": ("GRM188R71H104KA93D", "50 V X7R", C0603),
+    "100nF/50V/0402": ("GRM155R71H104KE14D", "50 V X7R", "Capacitor_SMD:C_0402_1005Metric"),
     "22pF/50V": ("GRM1885C1H220JA01D", "50 V C0G", C0603),
     "10nF/50V": ("GRM188R71H103KA01D", "50 V X7R", C0603),
     "4.7nF/50V": ("GRM188R71H472KA01D", "50 V X7R", C0603),
     "2.2nF/50V": ("GRM188R71H222KA01D", "50 V X7R", C0603),
+    "330nF/50V": ("GRM188R71H334KA61D", "50 V X7R", C0603),
 }
 
 
@@ -166,76 +177,168 @@ def efuse(p, vin, vout, ilm, ilm_desc, itimer, uv="string", en_net=None, flt_net
     return parts
 
 
+def panel_converter(p):
+    """LM61495 24 V -> 5.0 V / 8 A stage (one per panel pair).  Values from SNVSBZ4A Table 9-2
+    (400 kHz, 5 V: RFBT 100k, RFBB 24.9k, CBOOT 0.1 uF, RBOOT short, CVCC 1 uF, RFF 4.99k) and the
+    Table 9-4 BOM (CFF 22 pF with 4 x 47 uF + 100 uF electrolytic, CIN 4 x 10 uF + HF + 100 uF)."""
+    u = Part(p("U", 1), "ledpanel:LM61495", "LM61495RPHR",
+             "ledpanel:TI_RPH0016B_VQFN-HR-16_3.5x4.5mm",
+             {"1": "GND", "15": "GND", "8": "GND", "2": "+24V", "14": "+24V", "16": "SW",
+              "3": "CBOOT", "4": "CBOOT", "5": "VOUT", "6": "VCC", "7": "FB", "9": "RT",
+              "10": None, "11": "GND", "12": "GND", "13": "EN_PANEL"},
+             "LM61495RPHR", "Texas Instruments", DS_LM61495,
+             "Panel buck 24 V -> 5.0 V, 8 A load (two 4 A panels), 400 kHz",
+             {"Rating": "VIN 3-36 V (42 V transient), 10 A; used at <= 8 A",
+              "Config": "400 kHz (RT 40.2k), auto PFM/PWM (MODE = GND), no spread spectrum (SPSP = GND), RBOOT shorted (TI Table 9-2)"})
+    return [
+        u,
+        C(p("C", 1), "10uF/50V", "+24V", desc="CIN (TI: 4 x 10 uF)"),
+        C(p("C", 2), "10uF/50V", "+24V", desc="CIN"),
+        C(p("C", 3), "10uF/50V", "+24V", desc="CIN"),
+        C(p("C", 4), "10uF/50V", "+24V", desc="CIN"),
+        C(p("C", 5), "100nF/50V/0402", "+24V", desc="CHF 0402 right at VIN1/PGND1"),
+        C(p("C", 6), "100nF/50V/0402", "+24V", desc="CHF 0402 right at VIN2/PGND2"),
+        Part(p("L", 1), "Device:L", "3.3uH", "Inductor_SMD:L_Bourns_SRP1050WA", {"1": "SW", "2": "VOUT"},
+             "SRP1050WA-3R3M", "Bourns", "https://www.bourns.com/docs/product-datasheets/srp1050wa.pdf",
+             "Buck inductor 3.3 uH, Isat 20 A, Irms 18.7 A, DCR 7.2 mOhm max",
+             {"Rating": "3.3 uH +-20 %, Irms 18.7 A (40 K rise), Isat 20 A (-30 %), DCR 6.2/7.2 mOhm, 11.0x10.1x5.1 mm"}),
+        C(p("C", 7), "47uF/10V", "VOUT", desc="COUT (TI: 4 x 47 uF)"),
+        C(p("C", 8), "47uF/10V", "VOUT", desc="COUT"),
+        C(p("C", 9), "47uF/10V", "VOUT", desc="COUT"),
+        C(p("C", 10), "47uF/10V", "VOUT", desc="COUT"),
+        C(p("C", 14), "1uF/16V", "VOUT", desc="COUT HF (TI: 2 x 2.2 uF)"),
+        C(p("C", 15), "1uF/16V", "VOUT", desc="COUT HF"),
+        CP(p("C", 16), "100uF/50V", "VOUT", "COUT electrolytic (TI Table 9-4: 100 uF)", "EEE-FK1H101P", "8x10.2"),
+        CP(p("C", 17), "100uF/50V", "+24V", "CIN electrolytic (TI Table 9-4: 100 uF), +24V bulk behind the hot-swap",
+           "EEE-FK1H101P", "8x10.2"),
+        C(p("C", 11), "1uF/16V", "VCC", desc="CVCC 1 uF"),
+        C(p("C", 12), "100nF/50V/0402", "CBOOT", "SW", desc="CBOOT 100 nF"),
+        R(p("R", 4), "40.2k", "RT", "GND", desc="RT: 16.4/(40.2+0.633) = 0.40 MHz"),
+        R(p("R", 1), "100k", "VOUT", "FB", desc="RFBT, VOUT = 1.0 V x (1 + 100k/24.9k) = 5.02 V"),
+        R(p("R", 2), "24.9k", "FB", "GND", desc="RFBB"),
+        R(p("R", 3), "4.99k", "VOUT", "FFN", desc="RFF (TI Table 9-2)"),
+        C(p("C", 13), "22pF/50V", "FFN", "FB", desc="CFF 22 pF (TI Table 9-4)"),
+    ]
+
+
+def panel_efuse(p):
+    """TPS259823L: 9.8 A active current limit, fixed 7.6 V OVLO, EN/UVLO divider from VOUT."""
+    u = Part(p("U", 2), "ledpanel:TPS25982", "TPS259823LNRGER", "ledpanel:TI_RGE0024M_VQFN-24_4x4mm",
+             {"1": "VOUT", "2": "VOUT", "3": "VOUT", "16": "VOUT", "25": "VOUT",
+              **{str(k): "VPANEL" for k in range(17, 25)},
+              "4": "GND", "5": "GND", "14": "GND", "26": "GND",
+              "6": "EFEN", "7": "ITIMER", "8": "ILIM", "9": "IMON", "10": "RETRY", "11": "GND",
+              "12": "GND", "13": "PG", "15": "DVDT"},
+             "TPS259823LNRGER", "Texas Instruments", DS_TPS25982,
+             "Panel pair eFuse: active current limit, 7.6 V OVLO, auto-retry (no reverse blocking)",
+             {"Rating": "2.7-24 V (30 V abs), RON 2.7/4.5 mOhm, ILIM 2-15 A",
+              "ILIM": "RILIM 150 ohm: 9.84 A typ (est. 8.7-11.0 A); fast trip 210 %"})
+    return [
+        u,
+        R(p("R", 11), "100k", "VOUT", "EFEN", desc="EN/UVLO top: UV rise 4.41 V"),
+        R(p("R", 13), "37.4k", "EFEN", "GND", desc="EN/UVLO bottom"),
+        R(p("R", 14), "150", "ILIM", "GND", desc="RILIM: ILIM = 1460/150 + 0.11 = 9.84 A"),
+        R(p("R", 15), "1k", "IMON", "GND", desc="IMON: 246 uA/A -> 0.246 V/A (bring-up measurement)"),
+        C(p("C", 22), "4.7nF/50V", "ITIMER", desc="ITIMER: 2.2 ms overcurrent blanking"),
+        C(p("C", 23), "10nF/50V", "DVDT", desc="dVdt: ~0.46 V/ms output ramp"),
+        C(p("C", 24), "10nF/50V", "RETRY", desc="RETRY_DLY: ~0.4 s auto-retry delay"),
+        R(p("R", 16), "1.5k", "VOUT", "LEDA", desc="Fault LED ~2 mA"),
+        LED(p("D", 1), "red", "LEDA", "PG", "Panel output off while its converter runs (PG low = fault or startup)"),
+    ]
+
+
 # --------------------------------------------------------------------------
 # Sheets
 # --------------------------------------------------------------------------
 
 def sheet_input():
-    def p(k, i):
-        return f"{k}{i}" if i is not None else k
+    fet = lambda ref, d, s, g, desc: Part(
+        ref, "Transistor_FET:CSD18540Q5B", "CSD18540Q5B", "Package_TO_SOT_SMD:TDSON-8-1",
+        {"1": s, "2": s, "3": s, "4": g, "5": d}, "CSD18540Q5B", "Texas Instruments", DS_CSD18540, desc,
+        {"Rating": "60 V, 1.8 mOhm (10 V), +-20 V VGS, RthJA 40 K/W (1 in2)",
+         "Land pattern": "KiCad stock SON 5x6 (TDSON-8-1); compare with the TI Q5B land pattern"})
     g_in = [
         Part("J1", "Connector_Generic:Conn_02x02_Odd_Even", "24V IN",
              "Connector_Molex:Molex_Mini-Fit_Jr_5569-04A2_2x02_P4.20mm_Horizontal",
              {"1": "VIN_RAW", "2": "VIN_RAW", "3": "GND", "4": "GND"}, "39-30-0040", "Molex",
              "https://www.molex.com/en-us/products/part-detail/39300040",
-             "24 V input, Mini-Fit Jr 2x2 right-angle header; pins 1+2 = +24V, 3+4 = 0V",
+             "24 V input, Mini-Fit Jr 2x2 right-angle header; pins 1+2 = +24V, 3+4 = 0V; hot-plug supported",
              {"Rating": "Mini-Fit Jr: up to 9 A/circuit with 16-18 AWG (verify for 4-circuit, 2 contacts paralleled)",
               "Mate": "39-01-2040 receptacle + 39-00-0039 crimp, AWG18"}),
         Part("F1", "Device:Fuse", "8A", "Fuse:Fuse_Littelfuse-NANO2-451_453",
              {"1": "VIN_RAW", "2": "VIN_F"}, "0453008.MR", "Littelfuse",
              "https://www.littelfuse.com/products/fuses/surface-mount-fuses/nano2-fuses/453",
-             "Input fuse, 8 A very fast-acting, NANO2 2410 (wiring-fault backup; PSU limits normal faults)",
-             {"Rating": "8 A, very fast; confirm voltage rating >= 32 V on current data sheet"}),
+             "Input fuse, 8 A very fast-acting, NANO2 2410 (wiring-fault backup; hot-swap limits normal faults)",
+             {"Rating": "8 A, very fast, melting I2t 20.23 A2s (owner data sheet)"}),
         Part("U1", "Power_Management:LM74700", "LM74700QDBVRQ1", "Package_TO_SOT_SMD:SOT-23-6",
-             {"6": "VIN_F", "4": "+24V", "5": "GATE", "1": "VCAP", "3": "VIN_F", "2": "GND"},
+             {"6": "VIN_F", "4": "VIN_P", "5": "GATE", "1": "VCAP", "3": "VIN_F", "2": "GND"},
              "LM74700QDBVRQ1", "Texas Instruments", "https://www.ti.com/lit/ds/symlink/lm74700-q1.pdf",
              "Ideal-diode controller: reverse-polarity / reverse-current protection",
-             {"Rating": "3.2-65 V, -65 V reverse"}),
-        Part("Q1", "Transistor_FET:PSMN5R2-60YL", "PSMN5R2-60YL", "Package_TO_SOT_SMD:LFPAK56",
-             {"4": "GATE", "1": "VIN_F", "2": "VIN_F", "3": "VIN_F", "5": "+24V"},
-             "PSMN5R2-60YL", "Nexperia", "https://assets.nexperia.com/documents/data-sheet/PSMN5R2-60YL.pdf",
-             "Ideal-diode N-MOSFET (source = input, drain = +24V)", {"Rating": "60 V, 5.2 mOhm"}),
+             {"Rating": "ANODE +-65 V, CATHODE-ANODE -5..75 V abs max"}),
+        fet("Q1", "VIN_P", "VIN_F", "GATE", "Ideal-diode N-MOSFET (source = input, drain = VIN_P)"),
         C("C1", "100nF/50V", "VCAP", "VIN_F", desc="LM74700 charge-pump capacitor VCAP-ANODE"),
-        Part("D1", "ledpanel:SMBJ30A", "SMBJ30A", "Diode_SMD:D_SMB", {"1": "+24V", "2": "GND"},
+        C("C4", "100nF/50V", "VIN_F", desc="LM74700 ANODE capacitor (>= 22 nF)"),
+        C("C5", "100nF/50V", "VIN_P", desc="LM74700 CATHODE / LM5069 VIN capacitor; only small ceramics ahead of the limiter"),
+        Part("D1", "ledpanel:SMBJ30A", "SMBJ30A", "Diode_SMD:D_SMB", {"1": "VIN_P", "2": "GND"},
              "SMBJ30A", "Littelfuse", "https://www.littelfuse.com/products/tvs-diodes/surface-mount/smbj",
-             "Input TVS after the ideal diode (protects 42 V module transient rating)",
-             {"Rating": "VRWM 30 V, VBR 33.3 V min, 600 W 10/1000 us"}),
-        CP("C2", "100uF/50V", "+24V", "Input bulk / hot-plug damping", "EEE-FK1H101P", "8x10.2"),
-        CP("C3", "100uF/50V", "+24V", "Input bulk / hot-plug damping", "EEE-FK1H101P", "8x10.2"),
-        R("R1", "22k", "+24V", "LED24", desc="24 V present LED, ~1 mA"),
-        LED("D2", "green", "LED24", "GND", "+24V present"),
-        TP("TP1", "+24V", "Test point +24V"),
+             "Input TVS ahead of the hot-swap FET: clamps the cable ring",
+             {"Rating": "VRWM 30 V, VBR 33.3-36.8 V, VC 48.4 V at 12.4 A, 600 W 10/1000 us"}),
+        R("R1", "22k", "VIN_P", "LED24", desc="24 V present LED, ~1 mA"),
+        LED("D2", "green", "LED24", "GND", "24 V present at the input"),
+        TP("TP1", "+24V", "Test point +24V (behind the hot-swap)"),
         TP("TP2", "GND", "Test point GND"),
+        TP("TP3", "VIN_P", "Test point VIN_P (ahead of the hot-swap)"),
     ]
-    return [("24 V input: connector, fuse, ideal-diode reverse protection, TVS, bulk", g_in)]
+    g_hs = [
+        Part("U2", "ledpanel:LM5069", "LM5069MM-2/NOPB", "Package_SO:VSSOP-10_3x3mm_P0.5mm",
+             {"1": "VIN_S", "2": "VIN_P", "3": "UVLO", "4": "OVLO", "5": "GND", "6": "TIMER",
+              "7": "PWR", "8": "EN_AUX", "9": "+24V", "10": "HS_GATE"},
+             "LM5069MM-2/NOPB", "Texas Instruments", DS_LM5069,
+             "Hot-swap controller, auto-retry (-2): insertion delay, current + power limit, UVLO/OVLO",
+             {"Rating": "VIN 9-80 V (100 V abs), OVLO pin 7 V abs",
+              "Config": "ILIM 55 mV/7 mOhm = 7.9 A, PLIM ~28 W, UV 17.9/15.9 V, OV 33.5 V, CT 220 nF"}),
+        Part("R2", "Device:R", "7m", R2512, {"1": "VIN_P", "2": "VIN_S"}, "WSL2512R0070FEA", "Vishay",
+             "https://www.vishay.com/docs/30100/wsl.pdf", "Hot-swap sense resistor 7 mOhm 1 %, Kelvin-connected",
+             {"Rating": "1 W at 70 C, +-75 ppm/K", "Tolerance": "1%"}),
+        fet("Q2", "VIN_S", "+24V", "HS_G", "Hot-swap N-MOSFET (drain = sense side, source = +24V)"),
+        R("R3", "10", "HS_GATE", "HS_G", desc="Gate series resistor (damps the hot-swap FET gate)"),
+        R("R4", "95.3k", "VIN_P", "UVLO", desc="UVLO/OVLO string top: UV on 17.9 V / off 15.9 V"),
+        R("R5", "9.31k", "UVLO", "OVLO", desc="UVLO/OVLO string middle"),
+        R("R6", "8.45k", "OVLO", "GND", desc="UVLO/OVLO string bottom: OV off at 33.5 V (31.4-35.5 V worst case)"),
+        R("R7", "22.1k", "PWR", "GND", desc="RPWR: PLIM = 28 W at VDS 24 V (TI eq. 9)"),
+        C("C6", "330nF/50V", "TIMER", desc="CT: insertion 240 ms (155-458), fault time 15.5 ms (min 10.3 ms)"),
+        CP("C2", "100uF/50V", "+24V", "+24V bulk at the hot-swap output", "EEE-FK1H101P", "8x10.2"),
+    ]
+    return [("24 V input: connector, fuse, ideal-diode reverse protection, TVS, small ceramics", g_in),
+            ("24 V hot-swap (LM5069-2): inrush, current and power limit, UVLO/OVLO, PGD -> AUX enable", g_hs)]
 
 
 def sheet_panel():
-    """Repeated sheet: one per panel.  Refs use {n} = panel number."""
+    """Repeated sheet: one per panel pair (output).  Refs use {n} = output number."""
     def p(k, i):
         return f"{k}{{n}}{i:02d}" if i is not None else k
-    conv = converter(p, "VOUT", "EN_PANEL", "Panel buck 24 V -> 5.0 V, 4 A load (50% of rating)")
-    fuse = efuse(p, "VOUT", "VPANEL", "665", "5.0 A (+-10%)", "10nF/50V")
     out = [
-        CP(p("C", 21), "220uF/10V", "VPANEL", "Panel branch output buffer", "EEE-FK1A221P", "8x6.2"),
-        Part(p("J", 1), "Connector_Generic:Conn_01x04", "PANEL",
-             "Connector_JST:JST_VH_S4P-VH_1x04_P3.96mm_Horizontal",
-             {"1": "VPANEL", "2": "VPANEL", "3": "GND", "4": "GND"}, "S4P-VH", "JST",
-             "https://www.jst-mfg.com/product/pdf/eng/eVH.pdf",
-             "Panel power out: 1+2 = +5V, 3+4 = GND, to Waveshare VH4 input",
-             {"Rating": "10 A/contact (AWG16), 7 A (AWG18); 2 contacts per pole", "Wire": "AWG18, <= 0.5 m"}),
-        TP(p("TP", 1), "VPANEL", "Test point panel 5 V"),
+        Part(p("J", 1), "Connector:Screw_Terminal_01x02", "PANEL PAIR",
+             "TerminalBlock_Dinkle:TerminalBlock_Dinkle_DT-55-B01X-02_P10.00mm",
+             {"1": "VPANEL", "2": "GND"}, "DT-55-B01W-02", "Dinkle",
+             "https://www.dinkle.com/en/terminal/DT-55-B01W-XX",
+             "Panel pair power out: 1 = +5V, 2 = GND; M3.5 screws, 1.5 mm2 wire in blue forks",
+             {"Rating": "10.00 mm pitch, M3.5, 24 A, 300 V; torque 0.8-1.8 N m",
+              "Wire": "split cable to two panels, 1.5 mm2 stranded; blue insulated M3.5 forks (1.5-2.5 mm2)"}),
+        TP(p("TP", 1), "VPANEL", "Test point panel pair 5 V"),
+        TP(p("TP", 2), "IMON", "Test point eFuse current monitor (0.246 V/A)"),
     ]
-    return [("Panel buck converter (TPSM63610): 24 V -> 5.0 V", conv),
-            ("Panel branch eFuse (TPS259470A): 5.0 A limit, UV 4.31 V, OV 5.92 V, reverse blocking", fuse),
-            ("Panel power connector", out)]
+    return [("Panel buck converter (LM61495): 24 V -> 5.0 V, 8 A", panel_converter(p)),
+            ("Panel pair eFuse (TPS259823L): 9.8 A limit, UV 4.4 V, OV 7.6 V, auto-retry", panel_efuse(p)),
+            ("Panel pair power terminal", out)]
 
 
 def sheet_aux():
     def p(k, i):
         return f"{k}5{i:02d}" if i is not None else k
     conv = converter(p, "+5V_AUX", "EN_AUX", "AUX buck 24 V -> 5.0 V for Pi, halo and logic")
-    conv += [R(p("R", 5), "200k", "+24V", "EN_AUX", desc="AUX EN/UVLO top: on at ~15.3 V, off ~11 V"),
+    conv += [R(p("R", 5), "200k", "+24V", "EN_AUX",
+               desc="AUX EN/UVLO top: on at ~15.3 V, off ~11 V; LM5069 PGD holds EN_AUX low until the hot-swap is done"),
              R(p("R", 6), "18k", "EN_AUX", "GND", desc="AUX EN/UVLO bottom")]
     pi = efuse(p, "+5V_AUX", "VPI", "1.10k", "3.03 A (+-10%)", "4.7nF/50V")
     pi += [
@@ -350,7 +453,7 @@ def sheet_root_parts():
 SHEETS = [
     # (sheet name, file, builder, instances[list of {n}], page)
     ("Input", "input.kicad_sch", sheet_input, [None]),
-    ("Panel", "panel_channel.kicad_sch", sheet_panel, [1, 2, 3, 4]),
+    ("Panel", "panel_channel.kicad_sch", sheet_panel, [1, 2]),
     ("Aux", "aux_pi.kicad_sch", sheet_aux, [None]),
     ("Halo", "halo_control.kicad_sch", sheet_halo, [None]),
 ]

@@ -3,7 +3,8 @@
 * always-on shunt (JP601 2-3) enables them only after +5V_AUX is up.
 *   24 V brick: 0 -> 24 V in 20 ms (GST160A rise time spec 50 ms max).
 *   AUX buck: EN 200k/18k, hysteretic switch at 1.263 V rise / 0.913 V fall, then a 2.2 ms soft start.
-*   Panel buck EN threshold 1.263 V rise (1.0 V min), wake 0.4 V; 4 EN pins modelled as 4x 2 MOhm.
+*   Panel buck (LM61495) EN threshold 1.263 V rise (1.161 V min), wake 0.4 V; 2 EN pins (IEN <= 50 nA)
+*   modelled as 2x 2 MOhm.  (The AUX buck also waits for the LM5069 PGD; not modelled here.)
 *   BSS138 Q601/Q602: level-1 NMOS, VTO 1.3 V (datasheet 0.8..1.5 V).
 .param jp=1
 V24   p24 0 PWL(0 0 20m 24)
@@ -29,7 +30,7 @@ R636  aux5 kill 100k
 M602  enp kill 0 0 nbss
 R637  aux5 enp 47k
 C632  enp 0 100n
-Ren   enp 0 500k
+Ren   enp 0 1Meg
 .model nbss NMOS(LEVEL=1 VTO=1.3 KP=0.35 LAMBDA=0.01)
 .tran 20u 900m 0 50u
 .control

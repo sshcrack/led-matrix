@@ -383,7 +383,7 @@ def sheet_text(sheet, root_uuid, title, comment):
     lib = ["lib_symbols"] + [flattened(l) for l in sorted(sheet.lib_ids)]
     head = ["kicad_sch", ["version", VERSION], ["generator", Q("eeschema")], ["generator_version", Q("9.0")],
             ["uuid", Q(sheet.uuid)], ["paper", Q(sheet.paper)],
-            ["title_block", ["title", Q(title)], ["date", Q("2026-11-15")], ["rev", Q("A0")],
+            ["title_block", ["title", Q(title)], ["date", Q("2026-11-15")], ["rev", Q("B0")],
              ["company", Q("led-matrix project")],
              ["comment", 1, Q("PROTOTYPE - UNVALIDATED - NOT RELEASED FOR FABRICATION")],
              ["comment", 2, Q(comment)]],
@@ -487,13 +487,13 @@ def main():
                   ["instances", ["project", Q(PROJECT), ["path", Q(f"/{root_uuid}"), ["page", Q(str(pg))]]]]])
     text(root, "title", "24 V -> 5 V power distribution and halo controller for the 2x2 HUB75 panel display", 25.4, 30.48, 2.5)
     notes = [
-        "Inputs: one external 24 V Class I brick (Mean Well GST160A24-R7B, 160 W) via KPJX-4S panel jack -> AWG18 pigtail -> J1.",
-        "Five TPSM63610 bucks: one per 5 V / 4 A panel (Panel1..4) plus AUX (Pi, halo, logic). No mains on this board.",
-        "Every 5 V output has a TPS259470A eFuse: active current limit, UV/OV lockout, reverse blocking (no backfeed).",
-        "HUB75 data stays on the Electrodragon RPi HAT V2 (2 parallel chains x 2 panels, A-E). This board never touches HUB75 pins.",
+        "Rev B, PROTOTYPE / UNVALIDATED, one-off hobby build. Input: 24 V brick (Mean Well GST160A24-R7B) via KPJX-PM-4S jack -> pigtail -> J1.",
+        "Hot-plug into a running brick is supported: LM74700 ideal diode, SMBJ30A TVS, LM5069-2 hot-swap (inrush, 7.9 A limit, UV 17.9 V, OV 33.5 V).",
+        "Two panel outputs, each feeding a pair of 5 V / 4 A panels: LM61495 buck (8 A) + TPS259823 eFuse (9.8 A limit) + M3.5 barrier terminal.",
+        "AUX: TPSM63610 for Pi, halo and logic; it starts only after the hot-swap reports power good (PGD on EN_AUX).",
+        "HUB75 data stays on the Electrodragon RGB matrix driver V2 (MPC1119). This board never touches HUB75 pins.",
         "Pi interface: GPIO14 (TXD, UART to halo MCU) and GPIO26 (panel enable) only; both unused at --led-parallel=2.",
-        "Software brightness limits are NOT protection: each panel branch is limited in hardware to 5.0 A (+-10%).",
-        "Status: prototype design, unvalidated. See hardware/electronics/README.md and docs/verification.md.",
+        "Software brightness limits are not protection: each panel pair is limited in hardware (eFuse, ~9.8 A).",
     ]
     for i, n in enumerate(notes):
         text(root, f"note{i}", n, 25.4, 150 + i * 5.08, 1.5, bold=False)
@@ -513,7 +513,7 @@ def main():
     (BOARD / root.file).write_text(sheet_text(root, root_uuid, "Power + halo board - top level",
                                               "2x2 Waveshare P3 64x64 HUB75E, Raspberry Pi 3B + Electrodragon V2"))
     for sh in sub_sheets:
-        title = {"Input": "24 V input protection", "Panel": "Panel power channel (x4)",
+        title = {"Input": "24 V input protection and hot-swap", "Panel": "Panel pair power channel (x2)",
                  "Aux": "AUX 5 V and Raspberry Pi branch", "Halo": "Halo controller and Pi logic interface"}[sh.name]
         (BOARD / sh.file).write_text(sheet_text(sh, root_uuid, title, "Power + halo board"))
     print("sheets:", root.file, *[f"{s.file}({s.paper})" for s in sub_sheets])

@@ -116,7 +116,7 @@ def project():
             "spice_save_all_voltages": False, "subpart_first_id": 65, "subpart_id_separator": 0,
         },
         "sheets": [[uid("root"), "Root"]] + [[uid("sheet", n), n] for n in
-                                              ["Input", "Panel1", "Panel2", "Panel3", "Panel4", "Aux", "Halo"]],
+                                              ["Input", "Panel1", "Panel2", "Aux", "Halo"]],
         "text_variables": {},
     }
 
@@ -134,6 +134,17 @@ DRU = """(version 1)
   (condition "A.NetClass == 'Power24' || A.NetClass == 'Power5'")
   (layer outer)
   (constraint track_width (min 0.4mm)))
+
+# Fine-pitch IC pins (LM5069 VSSOP-10, LM61495 and TPS25982 QFNs, 0.5 mm pitch): the 24 V
+# clearance and the power track width cannot apply between neighbouring pins.  The short Kelvin
+# and pin escapes inside these courtyards follow the datasheet land patterns instead.
+(rule "Fine-pitch IC clearance"
+  (condition "A.intersectsCourtyard('U2') && B.intersectsCourtyard('U2')")
+  (constraint clearance (min 0.15mm)))
+
+(rule "Fine-pitch IC escapes"
+  (condition "A.Type == 'Track' && (A.intersectsCourtyard('U2') || A.intersectsCourtyard('U?01') || A.intersectsCourtyard('U?02'))")
+  (constraint track_width (min 0.15mm)))
 
 (rule "Board edge"
   (constraint edge_clearance (min 0.5mm)))

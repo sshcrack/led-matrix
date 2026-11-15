@@ -53,8 +53,8 @@ def P(x, y):
 # Placement tables
 # --------------------------------------------------------------------------
 
-# Panel / AUX power cell in native orientation: module VIN faces -y (towards the
-# middle band), connector at +y (board edge).  (kind, index): (x, y, rot)
+# AUX power cell (TPSM63610 + TPS259470A) in native orientation: module VIN faces -y (towards
+# the middle band), connector at +y (board edge).  (kind, index): (x, y, rot)
 CELL = {
     ("U", 1): (6.5, 0.0, 0), ("C", 1): (4.1, -6.0, 0), ("C", 2): (8.9, -6.0, 180),
     ("C", 3): (4.1, 6.0, 0), ("C", 4): (4.1, 9.2, 0), ("C", 5): (8.9, 6.0, 180), ("C", 6): (8.9, 9.2, 180),
@@ -72,13 +72,10 @@ CELL_ZONES = [
     ("GND", "F.Cu", [(4.85, -8.1, 8.15, 10.65)]),
     ("VOUT", "F.Cu", [(-2.5, 2.25, 4.6, 11.0), (8.4, 2.25, 13.0, 11.0), (-10.5, 11.0, 13.0, 12.9),
                       (-9.42, 12.9, -9.08, 13.6)]),
-    ("VBR", "F.Cu", [(-8.92, 15.6, -8.58, 16.5), (-16.5, 16.3, 6.5, 23.5)]),
+    ("VBR", "F.Cu", [(-8.92, 15.6, -8.58, 16.5), (-15.5, 16.3, 2.6, 23.5)]),
 ]
 THERMAL_VIAS = [(6.5 + dx, dy) for dy in (-2.25, -0.75, 0.75, 2.25) for dx in (-1.15, 0.0, 1.15)] + \
                [(6.5, -6.0), (6.5, 6.0), (6.5, 9.2), (6.5, -7.6), (6.5, 7.6)]
-
-# panel n -> (cell centre x, orientation) ; top cells are rotated 180 deg about (cx, 32)
-CELLS = {1: (49.5, "top"), 2: (84.5, "top"), 3: (49.5, "bot"), 4: (84.5, "bot")}
 AUX_CELL = (16.0, "top")
 
 
@@ -88,12 +85,94 @@ def cell_xf(cx, orient, x, y, rot=0):
     return cx + x, 54.0 + y, rot % 360
 
 
+# Panel-pair cell (LM61495 + SRP1050WA + TPS259823 + DT-55 terminal), in the converter's own frame
+# P: LM61495 at the origin, rot 0 (SW exits towards -y = board edge, small-signal pins towards +y =
+# the +24V band at P y 8.5..13.5).  Panel 1 sits at the top edge (board = (cx + x, 32 + y)), panel 2
+# at the bottom edge, rotated 180 deg (board = (cx - x, 54 - y)).
+PCELL = {
+    ("U", 1): (0.0, 0.0, 0), ("L", 1): (0.0, -9.5, 90),
+    ("C", 5): (2.7, -1.1, 90), ("C", 6): (-2.7, -1.1, 90), ("C", 12): (-3.65, 0.75, 90),
+    ("C", 1): (-5.75, -1.35, 90), ("C", 2): (-9.15, -1.35, 90), ("C", 3): (5.75, -1.35, 90), ("C", 4): (9.15, -1.35, 90),
+    ("C", 11): (-3.0, 3.45, 180), ("R", 2): (-2.2, 5.0, 180), ("R", 4): (1.4, 4.2, 270),
+    ("R", 1): (-2.2, 6.9, 0), ("C", 13): (0.8, 6.9, 180), ("R", 3): (3.8, 6.9, 180),
+    ("C", 7): (6.0, -18.0, 90), ("C", 8): (9.3, -18.0, 90), ("C", 9): (12.6, -18.0, 90), ("C", 10): (15.9, -18.0, 90),
+    ("C", 14): (18.8, -18.7, 90), ("C", 15): (20.5, -18.7, 90),
+    ("C", 16): (12.0, -9.0, 270), ("C", 17): (-13.5, -9.0, 90),
+    ("U", 2): (-3.5, -24.0, 0),
+    ("C", 22): (-4.2, -20.6, 0), ("R", 14): (-1.2, -20.6, 0), ("R", 15): (1.8, -20.6, 0),
+    ("R", 11): (-4.2, -18.5, 0), ("R", 13): (-1.2, -18.5, 0), ("C", 24): (1.8, -18.5, 0),
+    ("C", 23): (1.2, -22.4, 0), ("D", 1): (3.6, -24.2, 0), ("R", 16): (4.2, -26.4, 0),
+    ("J", 1): (-15.0, -23.65, 180), ("TP", 1): (-2.0, -28.5, 0), ("TP", 2): (3.6, -28.8, 0),
+}
+# zones in frame P: (net-key, [rects])
+PCELL_ZONES = [
+    ("+24V", [(-10.4, -0.85, -1.0, -0.42), (-10.4, -0.85, -4.45, 1.0), (-10.4, 1.0, -6.0, 9.0),
+              (-12.0, -0.85, -10.4, 1.0), (-15.0, -7.6, -12.0, 1.0),     # C17 bulk
+              (1.0, -0.85, 10.4, -0.42), (4.45, -0.85, 10.4, 1.0), (6.0, 1.0, 10.4, 9.0)]),
+    ("GND", [(-11.6, -3.95, -2.85, -1.3), (-2.85, -2.95, -0.8, -1.3),
+             (2.85, -3.95, 11.6, -1.3), (0.8, -2.95, 2.85, -1.3), (9.6, -7.8, 14.4, -3.95)]),
+    ("GND", [(4.3, -21.4, 21.5, -18.85)]),
+    ("GND", [(-28.5, -28.5, -21.5, -18.8)]),
+    ("GND", [(-5.4, -23.87, -5.125, -23.13), (-5.13, -23.5, -4.85, -23.13)]),
+    ("SW", [(-0.175, -2.8, 0.175, -2.3), (-0.55, -3.35, 0.55, -2.65), (-2.5, -6.75, 2.5, -3.2)]),
+    ("VOUT", [(-8.3, -17.15, 21.5, -12.25), (17.8, -18.45, 21.5, -17.15),
+              (-8.3, -25.37, -5.13, -24.13), (-8.3, -24.13, -6.0, -17.15),
+              (-5.13, -25.35, -4.85, -24.13)]),
+    ("VOUT", [(-2.15, -24.37, -1.3, -24.13)]),
+    ("VPANEL", [(-4.9, -30.5, 1.0, -25.625), (-1.875, -25.625, 1.0, -24.62),
+                (-17.0, -30.5, -4.9, -25.65), (-17.0, -30.5, -13.0, -20.1)]),
+]
+PCELL_VIAS = [(-3.6, -3.45), (-2.4, -2.55), (-11.2, -3.0), (3.6, -3.45), (2.4, -2.55), (11.2, -3.0),
+              (-6.0, -2.0), (6.0, -2.0), (10.2, -7.2), (13.8, -7.2),
+              (6.0, -20.9), (9.3, -20.9), (12.6, -20.9), (15.9, -20.9), (19.6, -20.9),
+              (-28.0, -27.9), (-22.0, -27.9), (-28.0, -19.3), (-22.0, -19.3)]
+PCELLS = {1: (65.0, "top"), 2: (66.0, "bot")}
+# fixed links in frame P between the converter's small parts: (net-key, [path], width)
+PCELL_LINKS = [
+    ("FB", [(-1.425, 5.0), (-1.425, 6.9), (0.025, 6.9)], 0.2),      # RFBB - RFBT - CFF
+    ("FFN", [(1.575, 6.9), (3.025, 6.9)], 0.2),                     # CFF - RFF
+]
+# LM61495 (RPH0016B) pin escapes in footprint coordinates: (pin, path, width, via at the end)
+LM61495_LINKS = [
+    ("16", [(0.0, 0.1), (-3.4, 0.1), (-3.65, 0.27)], 0.2, False),             # SW -> CBOOT cap
+    ("3", [(-1.6, 0.525), (-1.6, 1.025)], 0.2, False),                        # CBOOT pins 3+4
+    ("4", [(-1.6, 1.025), (-3.2, 1.025), (-3.65, 1.23)], 0.2, False),         # -> CBOOT cap
+    ("5", [(-1.6, 1.525), (-2.3, 1.525), (-2.6, 1.85)], 0.2, True),           # BIAS -> VOUT via
+    ("6", [(-1.4, 2.2), (-2.225, 3.45)], 0.2, False),                          # VCC -> CVCC
+    ("7", [(-0.5, 2.3), (-0.5, 2.6), (-0.8, 2.9), (-0.8, 4.7), (-1.1, 5.0), (-1.425, 5.0)], 0.2, False),
+    ("8", [(0.0, 2.0375), (0.0, 3.6)], 0.25, True),                          # AGND via
+    ("9", [(0.5, 2.3), (0.5, 2.6), (0.8, 2.9), (1.4, 3.425)], 0.2, False),    # RT -> R4
+    ("11", [(1.6, 1.525), (1.6, 1.025)], 0.2, False),                         # MODE + SPSP = GND
+    ("11", [(1.6, 1.525), (1.95, 1.35), (2.55, 1.35)], 0.2, True),
+    ("13", [(1.6, 0.525), (2.6, 0.525), (3.2, 0.6)], 0.2, True),              # EN escape via
+]
+# TPS259823 (RGE0024M) GND pins into the GND pad 26, which takes one via
+TPS25982_LINKS = [
+    ("11", [(0.75, 1.9125), (0.75, 1.2)], 0.2, False),
+    ("12", [(1.25, 1.9125), (1.25, 1.2)], 0.2, False),
+    ("14", [(1.9125, 0.75), (1.2, 0.75)], 0.2, False),
+    ("26", [(-0.7, 0.925)], 0.25, True),
+]
+
+
+def pcell_xf(n, x, y, rot=0):
+    cx, orient = PCELLS[n]
+    if orient == "top":
+        return cx + x, 32.0 + y, rot % 360
+    return cx - x, 54.0 - y, (rot + 180) % 360
+
+
 GLOBAL_PLACE = {
-    # ---- input (top right) ----
+    # ---- input (top right): J1 -> F1 -> LM74700/Q1 -> TVS -> R2 sense -> Q2 hot-swap -> +24V ----
+    # (J1's Mini-Fit body covers x 113..135, y 23..33; the hot-swap sits left of it)
     "J1": (121.0, 26.0, 270), "F1": (121.0, 17.0, 90), "Q1": (114.0, 12.0, 180),
-    "U1": (120.5, 7.0, 0), "C1": (120.5, 9.6, 0), "D1": (106.0, 4.5, 90),
-    "C2": (106.0, 24.0, 180), "C3": (106.0, 34.0, 180),
-    "R1": (117.0, 37.0, 90), "D2": (119.0, 37.0, 90), "TP1": (112.6, 39.0, 0), "TP2": (123.5, 37.0, 0),
+    "U1": (120.5, 7.0, 0), "C1": (120.5, 9.6, 0), "C4": (124.5, 12.5, 270),
+    "D1": (106.0, 4.5, 90), "C5": (105.4, 9.8, 270), "TP3": (113.5, 16.3, 0),
+    "R1": (102.5, 13.0, 90), "D2": (100.7, 13.0, 90),
+    "R2": (108.5, 21.0, 270), "U2": (102.5, 21.0, 180), "Q2": (108.5, 31.0, 90), "R3": (112.2, 33.0, 270),
+    "C6": (99.8, 17.6, 90), "R7": (98.1, 17.6, 90),
+    "R5": (102.95, 25.0, 180), "R6": (101.0, 27.0, 180), "R4": (104.2, 27.0, 180),
+    "C2": (100.0, 37.0, 180), "TP1": (107.5, 38.0, 0), "TP2": (116.0, 38.0, 0),
     # ---- AUX extras (top left, AUX cell occupies x 0..32, y 0..42) ----
     "R505": (1.6, 36.4, 90), "R506": (1.6, 33.4, 90),
     "R531": (29.5, 25.0, 90), "D531": (27.7, 25.0, 90), "TP502": (24.5, 24.5, 0),
@@ -116,16 +195,18 @@ GLOBAL_PLACE = {
     "R602": (108.0, 81.5, 90), "D602": (106.2, 81.5, 90),
     # ---- mechanical ----
     "H1": (4.0, 4.0, 0), "H2": (132.0, 4.0, 0), "H3": (4.0, 82.0, 0), "H4": (132.0, 82.0, 0),
-    "FID1": (127.0, 46.5, 0), "FID2": (2.5, 72.0, 0), "FID3": (66.5, 3.0, 0),
+    "FID1": (127.0, 46.5, 0), "FID2": (2.5, 72.0, 0), "FID3": (91.0, 3.0, 0),
 }
 
 GLOBAL_ZONES = [
-    # (net, layer, rects, priority)
+    # (net, layer, rects)
     ("/Input/VIN_RAW", "F.Cu", [(119.0, 18.3, 123.0, 31.8)]),
-    ("/Input/VIN_F", "F.Cu", [(116.1, 11.0, 123.0, 15.6)]),
+    ("/Input/VIN_F", "F.Cu", [(116.1, 11.0, 123.0, 15.6), (123.0, 11.0, 125.2, 12.25)]),
+    ("/Input/VIN_P", "F.Cu", [(110.4, 8.0, 115.9, 14.6), (106.6, 14.6, 113.0, 18.9),
+                              (104.6, 5.0, 110.4, 8.0), (104.95, 8.0, 105.85, 9.3)]),
+    ("/Input/VIN_S", "F.Cu", [(106.3, 23.3, 110.7, 32.3)]),
     ("+24V", "F.Cu", [(1.0, 36.6, 3.0, 37.85),    # tab to the AUX EN divider top (R505)
-                      (109.5, 8.0, 115.9, 21.0), (109.5, 21.0, 113.4, 40.6), (104.6, 5.0, 107.4, 8.0),
-                      (107.0, 21.0, 109.5, 37.0), BAND]),
+                      (101.3, 33.45, 109.75, 40.6), BAND]),
     ("+5V_AUX", "F.Cu", [(104.0, 56.5, 113.5, 61.3), (111.68, 61.2, 112.02, 62.0)]),
     ("/Halo/VHALO", "F.Cu", [(112.18, 64.0, 112.52, 64.8), (104.0, 64.7, 124.0, 69.0)]),
 ]
@@ -182,9 +263,8 @@ def placement_for(ref):
     if m:
         kind, grp, idx = m.group(1), int(m.group(2)), int(m.group(3))
         key = (kind, idx)
-        if grp in CELLS and key in CELL:
-            cx, orient = CELLS[grp]
-            return cell_xf(cx, orient, *CELL[key])
+        if grp in PCELLS and key in PCELL:
+            return pcell_xf(grp, *PCELL[key])
         if grp == 5 and key in CELL:
             return cell_xf(*AUX_CELL, *CELL[key])
     raise SystemExit(f"no placement for {ref}")
@@ -275,18 +355,23 @@ def outer_zone_specs():
     same-net rectangles (overlapping same-net zones would need distinct priorities, and one zone
     must not hold disjoint outlines)."""
     merged = {}
-    for n, (cx, orient) in list(CELLS.items()) + [(5, AUX_CELL)]:
-        for key, layer, rects in CELL_ZONES:
-            if n == 5:
-                net = {"+24V": "+24V", "GND": "GND", "VOUT": "+5V_AUX", "VBR": "/Aux/VPI"}[key]
-                if key == "VBR":
-                    rects = [rects[0], (-15.5, 16.3, 2.6, 23.5)]
-            else:
-                net = {"+24V": "+24V", "GND": "GND", "VOUT": f"/Panel{n}/VOUT", "VBR": f"/Panel{n}/VPANEL"}[key]
+    cx, orient = AUX_CELL
+    for key, layer, rects in CELL_ZONES:
+        net = {"+24V": "+24V", "GND": "GND", "VOUT": "+5V_AUX", "VBR": "/Aux/VPI"}[key]
+        if key == "VBR":
+            rects = [rects[0], (-15.5, 16.3, 2.6, 23.5)]
+        for (x1, y1, x2, y2) in rects:
+            a = cell_xf(cx, orient, x1, y1)
+            b = cell_xf(cx, orient, x2, y2)
+            merged.setdefault((net, layer), []).append(
+                (min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])))
+    for n in PCELLS:
+        for key, rects in PCELL_ZONES:
+            net = key if key in ("+24V", "GND") else f"/Panel{n}/{key}"
             for (x1, y1, x2, y2) in rects:
-                a = cell_xf(cx, orient, x1, y1)
-                b = cell_xf(cx, orient, x2, y2)
-                merged.setdefault((net, layer), []).append(
+                a = pcell_xf(n, x1, y1)
+                b = pcell_xf(n, x2, y2)
+                merged.setdefault((net, "F.Cu"), []).append(
                     (min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])))
     for net, layer, rects in GLOBAL_ZONES:
         merged.setdefault((net, layer), []).extend(rects)
@@ -340,9 +425,12 @@ def place(netlist_path):
     # pre-route zones --------------------------------------------------------
     for net, layer, group, name in outer_zone_specs():
         add_zone(board, net, layer, group, priority=10, name=name)
-    for n, (cx, orient) in list(CELLS.items()) + [(5, AUX_CELL)]:
-        for (x, y) in THERMAL_VIAS:
-            gx, gy, _ = cell_xf(cx, orient, x, y)
+    for (x, y) in THERMAL_VIAS:
+        gx, gy, _ = cell_xf(*AUX_CELL, x, y)
+        add_via(board, "GND", gx, gy)
+    for n in PCELLS:
+        for (x, y) in PCELL_VIAS:
+            gx, gy, _ = pcell_xf(n, x, y)
             add_via(board, "GND", gx, gy)
     # In1: solid GND; In2: +5V_AUX distribution
     add_zone(board, "GND", "In1.Cu", [(0.3, 0.3, W - 0.3, H - 0.3)], priority=1, connect="thermal", name="In1-GND")
@@ -604,11 +692,23 @@ CELL_GND_LINKS = [
     (("C", 7), "2", [(0.475, 0.0), (-0.1, 0.6)]),     # VLDOIN cap: between R4, C8 and R1
 ]
 LINKED_PADS = {("D621", "2")}      # pads whose GND via is a GLOBAL_LINKS entry, not the fanout
-F_CU_ONLY_NETS = {"/Aux/EN_AUX"}   # module EN escape needs no via: GLOBAL_LINKS reach it on F.Cu
+F_CU_ONLY_NETS = {"EN_AUX"}   # module EN escape needs no via: GLOBAL_LINKS reach it on F.Cu
 # fixed signal links in global coordinates: (net, [path], width, via at end[, layer])
 GLOBAL_LINKS = [
-    ("/Aux/EN_AUX", [(1.6, 34.225), (2.075, 33.75), (5.0, 33.75)], 0.2, False),   # R506 -> AUX EN via
-    ("/Aux/EN_AUX", [(1.6, 34.225), (1.6, 35.575)], 0.2, False),                  # R506 <-> R505
+    ("EN_AUX", [(1.6, 34.225), (2.075, 33.75), (5.0, 33.75)], 0.2, False),   # R506 -> AUX EN via
+    ("EN_AUX", [(1.6, 34.225), (1.6, 35.575)], 0.2, False),                  # R506 <-> R505
+    # LM5069 (U2, VSSOP-10 rotated 180: pins 6-10 at x 100.3, pins 5-1 at x 104.7, y 20.0..22.0)
+    ("/Input/VIN_S", [(104.7, 22.0), (105.8, 22.0), (106.9, 23.6)], 0.25, False),     # SENSE Kelvin
+    ("/Input/VIN_P", [(104.7, 21.5), (106.1, 21.5), (106.1, 19.2), (107.0, 18.4)], 0.25, False),  # VIN Kelvin
+    ("/Input/UVLO", [(104.0, 21.0), (103.3, 21.0), (103.3, 23.6), (103.725, 24.2), (103.725, 25.0)], 0.2, False),
+    ("/Input/OVLO", [(104.0, 20.5), (102.6, 20.5), (102.6, 23.6), (102.175, 24.2), (102.175, 25.0)], 0.2, False),
+    ("GND", [(104.7, 20.0), (105.0, 19.0)], 0.25, True),
+    ("/Input/TIMER", [(100.3, 20.0), (99.8, 19.5), (99.8, 18.375)], 0.2, False),
+    ("/Input/PWR", [(100.3, 20.5), (99.3, 20.5), (98.1, 19.3), (98.1, 18.375)], 0.2, False),
+    ("EN_AUX", [(100.3, 21.0), (101.75, 21.0)], 0.2, True),                   # PGD escape via
+    ("+24V", [(100.3, 21.5), (98.6, 21.5)], 0.25, True),                       # OUT
+    ("/Input/HS_GATE", [(100.3, 22.0), (99.5, 22.0), (98.9, 22.6), (98.9, 22.9)], 0.2, True),
+    ("/Input/HS_G", [(112.2, 33.775), (110.405, 33.9)], 0.25, False),         # R3 -> Q2 gate
     # panel-mode jumper chain: J603.3 (GPIO26) -> R633 -> JP601.1; JP601.2 -> R634; JP601.3 -> R635
     ("/Halo/PI_PANEL_REQ", [(10.2, 55.5), (10.2, 57.4), (12.4, 59.6), (13.675, 59.6)], 0.25, False),
     ("/Halo/PANEL_REQ_R", [(15.325, 59.6), (15.325, 60.6), (13.925, 62.0), (11.08, 62.0)], 0.25, False),
@@ -629,7 +729,7 @@ GLOBAL_LINKS = [
 
 def cell_links(board):
     done = set()
-    for n, (cx, orient) in list(CELLS.items()) + [(5, AUX_CELL)]:
+    for n, (cx, orient) in [(5, AUX_CELL)]:
         for (kind, idx), pad, path in CELL_GND_LINKS:
             ref = f"{kind}{n}{idx:02d}"
             pts = [cell_xf(cx, orient, x, y)[:2] for x, y in path]
@@ -646,12 +746,19 @@ def cell_links(board):
 
 def module_links(board):
     done = cell_links(board)
+    for n in PCELLS:
+        for key, path, width in PCELL_LINKS:
+            add_track(board, f"/Panel{n}/{key}", "F.Cu", [pcell_xf(n, x, y)[:2] for x, y in path], width)
     for fp in board.GetFootprints():
         fpid = fp.GetFPIDAsString()
         if fpid.endswith("TI_RDF0022A_B3QFN-22_6.5x7.5mm"):
             links = MODULE_LINKS
         elif fpid.endswith("TI_RPW0010A_VQFN-HR-10_2x2mm"):
             links = [(pin, path, "F.Cu", 0.2, False) for pin, path in EFUSE_LINKS]
+        elif fpid.endswith("TI_RPH0016B_VQFN-HR-16_3.5x4.5mm"):
+            links = [(pin, path, "F.Cu", w, via) for pin, path, w, via in LM61495_LINKS]
+        elif fpid.endswith("TI_RGE0024M_VQFN-24_4x4mm"):
+            links = [(pin, path, "F.Cu", w, via) for pin, path, w, via in TPS25982_LINKS]
         else:
             continue
         xf = _fp_xf(fp)
@@ -851,23 +958,21 @@ STACKUP = """		(stackup
 # (ref, offset direction, {pin: label}, connector caption)
 CONNECTOR_LABELS = [
     ("J1", (0, -1), {"1": "+24V", "3": "GND"}, "24V IN"),
-    ("J101", (0, 1), {"1": "+5V", "2": "+5V", "3": "GND", "4": "GND"}, None),
-    ("J201", (0, 1), {"1": "+5V", "2": "+5V", "3": "GND", "4": "GND"}, None),
-    ("J301", (0, -1), {"1": "+5V", "2": "+5V", "3": "GND", "4": "GND"}, None),
-    ("J401", (0, -1), {"1": "+5V", "2": "+5V", "3": "GND", "4": "GND"}, None),
+    ("J101", (0, 1), {"1": "+5V", "2": "GND"}, None),
+    ("J201", (0, -1), {"1": "+5V", "2": "GND"}, None),
     ("J501", (0, 1), {"1": "+5V", "2": "GND"}, None),
     ("J601", (-1, 0), {"1": "+", "2": "D", "3": "-"}, None),          # +5V / DIN / GND
     ("J603", (1, 0), {"1": "-", "2": "TX", "3": "26"}, None),         # GND / TXD / GPIO26
     ("J602", (0, 1), {"1": "UPDI", "2": "+5V", "3": "GND"}, None),
     ("JP601", (0, -1), {"1": "PI", "3": "ON"}, None),
 ]
-REF_POS = {"J1": (114.0, 33.6), "J601": (127.0, 69.6)}
-LED_LABELS = {"D101": "FLT1", "D201": "FLT2", "D301": "FLT3", "D401": "FLT4", "D501": "FLT PI",
+REF_POS = {"J1": (125.0, 35.0), "J601": (127.0, 69.6)}
+LED_LABELS = {"D101": "FLT1", "D201": "FLT2", "D501": "FLT PI",
               "D601": "FLT HALO", "D2": "24V", "D531": "5V AUX", "D602": "STAT"}
 BOARD_TEXT = [
-    (17.0, 75.6, 1.0, "LED PANEL POWER + HALO  REV A"),
+    (17.0, 75.6, 1.0, "LED PANEL POWER + HALO  REV B"),
     (17.0, 77.4, 0.9, "PROTOTYPE - UNVALIDATED"),
-    (17.0, 79.0, 0.8, "24V/160W IN - 4x5V/5A PANEL - 5V PI - 5V HALO"),
+    (17.0, 79.0, 0.8, "24V/160W IN, HOT-PLUG - 2x5V/8A PANEL PAIRS - 5V PI - 5V HALO"),
 ]
 
 
@@ -1030,7 +1135,7 @@ def finish():
     silkscreen(board)
     tb = board.GetTitleBlock()
     tb.SetTitle("LED panel power + halo board")
-    tb.SetRevision("A (prototype, unvalidated)")
+    tb.SetRevision("B (prototype, unvalidated)")
     tb.SetDate("2026-11-15")
     tb.SetCompany("sshcrack/led-matrix")
     tb.SetComment(0, "4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG")
