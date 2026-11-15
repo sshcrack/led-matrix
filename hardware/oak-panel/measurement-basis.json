@@ -185,5 +185,25 @@
       "rigid printed fit and carrier support/load performance"
     ],
     "adoption": "Adopt 174 x 158 mm four-corner pattern for next prototype rigid gauge; no enclosure solids changed yet. Withdrawn eight-hole reconstruction remains disabled."
+  },
+  "single_panel_trial_carrier": {
+    "source": "trial_carrier.py / make-trial-carrier.py",
+    "status": "Prepared for first single-panel fit trial; not a full enclosure or wall-load approval",
+    "panel_mounts": "Four bores on paper-confirmed 174 x 158 mm pattern; intermediate inserts unused",
+    "geometry_mm": {
+      "outer_xy": [
+        191.6,
+        191.6
+      ],
+      "web": 4,
+      "rim_above_web": 6,
+      "boss_above_web": 12,
+      "total_height": 16,
+      "bore": 3.5
+    },
+    "single_job": "Carrier and clearance coupon, 10 mm apart on a 210 x 250 mm bed; >=5 mm XY margin, before brim/skirt",
+    "print_scale_percent": 100,
+    "next_physical_evidence": "All-four seating/alignment, rib/PCB/glue/cable interference, coupon clearance, actual matching thread and usable engagement",
+    "not_implemented": "Final carrier-to-bezel/wall attachment, fabric retention and final screw length; four-module assembly still historical"
   }
 }

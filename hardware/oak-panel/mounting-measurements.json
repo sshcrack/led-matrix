@@ -214,7 +214,7 @@
     "selected": "Use four corner inserts for the next prototype carrier; leave offset intermediate inserts unused",
     "basis": "Owner asks whether only corner screws can be used; adopted to simplify prototype mounting and measurement",
     "required_measurements": "Identify four corners in rear view and HUB75 IN edge; perpendicular offsets from each corner insert centre to both adjacent outer plastic panel edges, with contact surfaces and shaft diameter recorded; confirm overall envelope before final coordinate transfer",
-    "validation": "No four-corner carrier has been generated or load/deflection tested yet. Confirm coplanar support, insert engagement and physical fit before full printing."
+    "validation": "One-panel four-corner trial carrier is now generated and geometrically checked. Physical fit, all-four seating, actual thread/engagement and support remain unverified. No full enclosure approval."
   },
   "corner_approximate_report": {
     "reported_x_mm": 11.0,

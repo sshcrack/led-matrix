@@ -6,7 +6,7 @@ This is an unfinished prototype, not a fabrication release. No PCB has been desi
 
 Work and physical test results are tracked in [issue #165](https://github.com/sshcrack/led-matrix/issues/165): [fit verification #170](https://github.com/sshcrack/led-matrix/issues/170), [mechanical completion #171](https://github.com/sshcrack/led-matrix/issues/171), [electronics #172](https://github.com/sshcrack/led-matrix/issues/172), and [halo lighting #208](https://github.com/sshcrack/led-matrix/issues/208). Do not print the full assembly yet.
 
-**Mounting correction: measured-v1 is WITHDRAWN.** The intermediate inserts also have offsets perpendicular to the panel edges relative to the corner-insert lines. The eight-hole template incorrectly assumed collinearity; both its standard and 95 mm compensated versions are unsuitable for fit verification. Raw digital readings remain evidence, but their measuring-axis directions and individual X/Y coordinates need establishing. The v0.6 six-hole carrier/gauge also remain on hold. Do not print withdrawn mounting patterns or the carrier. The separate diagnostic comparison pack below is for fit testing only.
+**Mounting correction: measured-v1 is WITHDRAWN.** The intermediate inserts also have offsets perpendicular to the panel edges relative to the corner-insert lines. The eight-hole template incorrectly assumed collinearity; both its standard and 95 mm compensated versions are unsuitable for fit verification. Raw digital readings remain evidence, but their measuring-axis directions and individual X/Y coordinates need establishing. The v0.6 six-hole carrier/gauge also remain on hold. Do not print withdrawn mounting patterns or the old full-enclosure carriers. The new one-panel trial kit below is a separate prototype path.
 
 ## Downloads and viewing
 
@@ -20,21 +20,25 @@ Extract the CAD bundle and open `exports/oak-enclosure.html` in a browser. For a
 
 Generated exports are download assets, not committed blobs. Source history is kept in Git. Private photographs, third-party uploaded meshes/PDFs, personal context and machine-specific paths are excluded.
 
-## Next print: four-corner fit kit v1
+## Next print: one-panel trial carrier and coupon
 
-The confirmed paper fit now has a separate **two-part PETG test kit**, `panel-four-corner-fit-kit-v1.zip`, in the prototype downloads. Submit only `four-corner-mounting-gauge.stl` and `clearance-hole-coupon.stl` for a slicing quote. The gauge is **184 x 168 x 3 mm**, with four 3.5 mm holes on the paper-verified **174 x 158 mm** pattern. The coupon is **80 x 24 x 3 mm**, with 3.2/3.4/3.5/3.6 mm holes from its notched end. Individual STEP solids, editable Python and a validation manifest are included.
+`panel-trial-carrier-kit-v1.zip` is the next paid test job. It replaces the standalone gauge as the recommended step, so the mounting check also trials a usable carrier. It contains one **191.6 x 191.6 x 16 mm** carrier and one **80 x 24 x 3 mm** clearance coupon. The carrier has a 4 mm rear web, 6 mm perimeter rib above the web, four 12 mm bosses above the web, and four 3.5 mm bores on the confirmed **174 x 158 mm** pattern. Two additional holes are provisional bottom-left-tile seam interfaces, not panel inserts. Body/perimeter and spacer fit remain assumptions to test.
 
-**3D print at 100% in every axis, in millimetres. Never apply the paper-printer correction to an STL.** Both parts individually fit the 210 x 250 mm target bed with 5 mm XY margin; the service should check whether both, and any brim/skirt, fit one job. Print flat face down; the service chooses suitable PETG settings and provides the quote.
+Submit **`single-job-layout.3mf` as one job**: it already places the two separate objects on a 210 x 250 mm bed with at least 5 mm XY margin and a 10 mm gap. The file has geometry only, no printer settings. Alternatively submit the two individual STLs together for the service to arrange; do not print both formats and duplicate the parts. The service must check brim/adhesion, slice and quote. There is no minimum-price guarantee and no slicer time estimate.
 
-[Fit instructions](four-corner-fit-instructions.txt) cover four-hole alignment, flat contact/rib or glue interference, coupon clearance and recording HUB75 IN orientation. These are fit tools, not load-bearing mounts. Thread identity and usable insert engagement remain unresolved; do not choose screw length from the shaft diameter or force a long screw through the gauge. A gauge can be checked visually without selecting final screws. No further paper or full measurement series is needed before this trial.
+**PETG, millimetres, 100% scale in all axes. Never apply the paper correction to a 3D print.** Print flat rear/base faces down, bosses up. Individual STEP solids, editable Python, dependencies, [instructions](trial-carrier-instructions.txt) and validation evidence are included. The coupon retains the 3.2/3.4/3.5/3.6 mm clearances from its notched end.
 
-Regenerate the kit independently of the historical enclosure pipeline:
+The panel insert faces touch the boss tops. There is a 16 mm total grip from the rear base to that contact plane; **this does not specify screw length**. Actual thread/usable engagement, head and washer details remain unresolved. Existing feet may not reach through that grip. Visual alignment/seating can be checked without fastening; never force an unknown screw. Record four-hole fit, all-four seating, interference with ribs/PCB/glue/cables, coupon clearance and HUB75 IN orientation. Joined panels may stay joined.
+
+This is one actual carrier mounting trial, not a finished wall bracket or fabric clamp. It can be retained for later one-panel prototypes if its fit/support prove suitable. Full enclosure printing remains on hold. Work is tracked under [#170](https://github.com/sshcrack/led-matrix/issues/170) and [#171](https://github.com/sshcrack/led-matrix/issues/171).
 
 ```sh
-.venv/bin/python make-fit-kit.py
+.venv/bin/python make-trial-carrier.py
 ```
 
-The generator reads the confirmed fit evidence, exports only these two tools, checks valid single solids, hole-axis probes, single watertight mesh bodies, CAD/mesh volume agreement, STEP round-trip and bed fit, and packages the files with instructions. It does not export the old carrier. Full v0.6 solids and old six-hole gauge remain on hold pending the rigid fit result; the withdrawn eight-hole reconstruction stays disabled.
+`trial_carrier.py` holds the reusable trial geometry. The generator validates single solids, bores at web/boss heights, web/rim/open-middle and seam-hole probes, single watertight mesh bodies, CAD/mesh volume, STEP round-trip and the two-object 3MF's transformed bounds/volume and bed fit. Source and exports are packaged independently of the withdrawn full-assembly pipeline; historical v0.6 full solids have not changed.
+
+The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone diagnostic, not an additional print to order with this trial. The old six-hole `oak-panel-first-print-kit.zip` remains obsolete. Do not print either gauge as an extra unless a later fit problem calls for it.
 
 ## Copy-shop calibration and comparison pack
 
@@ -101,15 +105,15 @@ The withdrawn construction summed these values into 173.73 x 157.90 mm and place
 
 The official Waveshare wiki supplies a [DWG drawing](https://files.waveshare.com/upload/e/e1/RGB-Matrix-P3-64x64-2D.zip) whose eight-insert layout matches the observed along-edge and normal offsets. Its left view gives corner centres at X = +/-87 and Y = +/-79 mm, a **174 x 158 mm** corner rectangle, within a **191.6 mm** square frame. On 2026-11-15 the owner reports page A fits perfectly and explicitly confirms both printed bars measured 100 mm. The four-corner pattern is therefore paper-verified for a prototype gauge; the complete frame revision remains unproven; the view, connector orientation, exact frame revision and thread engagement are unspecified. The file's inch unit metadata conflicts with its millimetre-sized dimensions and must not drive automatic import scaling.
 
-[Research and verification evidence](panel-mechanical-source-research.md) records geometry-derived versus dimensioned values, alternative OEM sources and the uncertainty in comparing earlier caliper projections with diagonal distances. `measurement-basis.json` preserves the candidate separately from measured evidence. The old templates remain withdrawn and no enclosure solids have been updated. The next physical check under [#170](https://github.com/sshcrack/led-matrix/issues/170) is a small rigid four-corner gauge and actual hardware clearance/engagement, followed by a one-panel carrier. The paper fit does not validate thread depth, rigidity or full enclosure mechanics.
+[Research and verification evidence](panel-mechanical-source-research.md) records geometry-derived versus dimensioned values, alternative OEM sources and the uncertainty in comparing earlier caliper projections with diagonal distances. `measurement-basis.json` preserves the candidate separately from measured evidence. The old templates remain withdrawn and no enclosure solids have been updated. The next physical check under [#170](https://github.com/sshcrack/led-matrix/issues/170) now combines the rigid pattern check with the one-panel trial carrier and clearance coupon in one job. The paper fit does not validate thread depth, rigidity or full enclosure mechanics.
 
 ## Four-corner prototype mounting
 
 Use the four corner inserts only, leaving intermediate inserts unused. The owner has confirmed the 174 x 158 mm source pattern fits on paper, with both scale bars at 100 mm. That replaces the need to repeat the short corner-inset measurements now; earlier approximate readings remain evidence in JSON.
 
-The current trial is the separate fit kit above. Record actual contact/interference and the HUB75 IN edge relative to the long side of the gauge. The next mechanical trial is a one-panel carrier/diffuser assembly after rigid fit and clearance results. Final thread engagement, coplanar support, load paths, temperature and print retention remain unverified.
+The current trial is the separate carrier/coupon kit above. Record actual contact/interference and the HUB75 IN edge relative to the long side of the gauge. The next mechanical trial is a one-panel carrier/diffuser assembly after rigid fit and clearance results. Final thread engagement, coplanar support, load paths, temperature and print retention remain unverified.
 
-`make-mounting-template.py` and `build.py` still stop before exporting the rejected eight-hole coordinate model. `make-fit-kit.py` is a separate, explicit four-corner path based on the confirmed paper pattern. Full enclosure solids retain historical mounting geometry until a one-panel carrier revision is prepared. Track acceptance under [#170](https://github.com/sshcrack/led-matrix/issues/170) and mechanical completion under [#171](https://github.com/sshcrack/led-matrix/issues/171).
+`make-mounting-template.py` and `build.py` still stop before exporting the rejected eight-hole coordinate model. `make-fit-kit.py` is a separate, explicit four-corner path based on the confirmed paper pattern. Full enclosure solids retain historical mounting geometry; the standalone trial carrier uses the corrected four-corner pattern. Track acceptance under [#170](https://github.com/sshcrack/led-matrix/issues/170) and mechanical completion under [#171](https://github.com/sshcrack/led-matrix/issues/171).
 
 The printer route previously shrank a nominal 100 mm bar to approximately 95 mm. A 100/95 correction addresses only uniform print scaling; it cannot fix missing hole offsets. Keep this as separate calibration evidence for a future corrected template, whose horizontal and vertical bars must both be verified.
 

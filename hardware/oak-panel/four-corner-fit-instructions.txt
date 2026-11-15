@@ -1,3 +1,7 @@
+OPTIONAL DIAGNOSTIC ONLY - NEXT PAID JOB IS THE TRIAL CARRIER KIT
+
+Use panel-trial-carrier-kit-v1.zip for the agreed next print. It combines an actual one-panel carrier with the clearance coupon. Do not add this standalone gauge as another paid print by default. Historical gauge instructions follow.
+
 FOUR-CORNER FIT KIT v1 - TWO TEST PRINTS ONLY
 
 Files to print:
