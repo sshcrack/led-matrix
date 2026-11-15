@@ -209,5 +209,43 @@
     "seam_holes": "Eight 3.5 mm provisional seam holes, symmetric under X and Y mirror, so one carrier fits every tile",
     "orientation_mark": "8 x 2 x 2 mm notch on the +Y rib; XY in bed view (bosses toward viewer, X right, Y up)",
     "fit_check_method": "All eight feet removed; no screws or pressure; flatness on a reference surface, then own-weight rest, 3 mm pin alignment, paper gaps and marker contact per boss"
+  },
+  "panel_rear": {
+    "pcb_recess_below_frame_top_mm": {
+      "value": 12,
+      "basis": "Owner measurement 2026-11-15: plastic frame top to the PCB inside the windows"
+    },
+    "low_part_height_mm": {
+      "value": 5,
+      "basis": "Owner estimate 2026-11-15: 220 uF electrolytics in the connector-free half"
+    },
+    "hub75_plug_height_above_pcb_mm": {
+      "value": 20,
+      "basis": "Owner measurement 2026-11-15, plugged IDC connector"
+    },
+    "connectors_xy_mm": {
+      "value": {
+        "hub75_in": [
+          -66,
+          -53,
+          33,
+          64
+        ],
+        "power": [
+          5,
+          19,
+          35,
+          53
+        ],
+        "hub75_out": [
+          42,
+          61,
+          35,
+          64
+        ]
+      },
+      "basis": "Read from owner ruler photos 2026-11-15 (about +-3 mm): (x0, x1, y0, y1) from the panel centre, rear view, connector half as +Y"
+    },
+    "orientation": "Owner photo of the 2x2 array 2026-11-15: all four panels the same way up, data arrows the same direction, connectors in the same half of every panel"
   }
 }

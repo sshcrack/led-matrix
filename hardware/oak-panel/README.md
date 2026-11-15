@@ -42,24 +42,23 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 ## Electronics plates (off-the-shelf wiring plan)
 
-`electronics-plates-v2.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.**
+`electronics-plates-v3.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.** Source: `electronics_plates.py`, `make-electronics-plates.py`.
 
-- **Half plates** (184 × 110 × 3 mm): each panel has its tall connectors (HUB75 IN, power header, HUB75 OUT) in one half of its back, 33–64 mm from the panel centre (read from the owner's ruler photo, ±3 mm). The plates cover only the other half and end 15 mm below the lowest connector, so the plugs and their cables pass freely. They bolt through the four seam holes of the free half, (±86, −54) and (±54, −86); the hole set is point-symmetric, so a plate can be turned 180° if a panel hangs the other way up.
-- **Power plate**: both 24→5 V 20 A modules on M4 slots (the listing gives 5.3 mm flange holes; the ~60 mm spacing is estimated from photos, so the slots cover 54–68 mm), cable-tie slots for a WAGO row and the fuse holders, vents.
-- **Controller plate**: four 6 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), cable-tie slots for the LM2596, Pro Micro and level converter, vents under the Pi.
+Panel rear (owner, 2026-11-15): inside the PCB windows the board sits 12 mm below the frame top (≈3 mm behind the LED tips); the tallest parts in the connector-free half are two 220 µF electrolytics (≈5 mm). Plugged HUB75 connectors reach 20 mm above the board (≈23 mm from the LED tips, below the carrier web at 27 mm); the power cable bend reaches ≈32 mm. All four panels hang the same way up and have their connectors in the same half, 33–64 mm from the panel centre (ruler photo, ±3 mm).
+
+- **Half plates inside the carrier** (184 × 110 × 2.5 mm): each plate lies in its carrier's open middle, 1 mm above the panel frame, and covers only the connector-free half; it ends 15 mm below the lowest connector, so plugs and cables pass freely. Notches clear the carrier's corner bosses; four 8.5 mm posts reach the underside of the carrier's rear web. Assembly: lay the plate on the panel, fit the carrier over it and screw the carrier to the panel, then drive M3 × 12 thread-forming screws from the carrier's rear face through the seam holes (±86, −54) and (±54, −86) into the posts. The hole set is symmetric under 90° turns, so a plate fits whichever half of its panel is free.
+- **Power plate**: both 24→5 V 20 A modules on M4 slots (the listing gives 5.3 mm flange holes; the ~60 mm spacing is estimated from photos, so the slots cover 54–68 mm) and a row of five WAGO saddles. Inline fuse holders ride along their cables.
+- **Controller plate**: four 3.5 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), saddles for the LM2596, Pro Micro and level converter, vents under the Pi.
+- Small parts sit on **saddles** (two 2 mm ribs); a cable tie loops over the part and through the gap under it, so nothing passes under the plate.
 - **DC socket coupon**: a 6 mm wall section with the Kycon KPJX-PM-4S cutout (14 mm, assumed from the drawing), 2 × M2.5 holes on 19 mm and a 1 mm flange pocket. The flange sits outside, the screws (6.6 mm + wall, so M2.5 × 12) come from inside into the flange's 2.3 mm holes. Print it first to check the cutout and that the brick's plug latches.
 
-M3 screws, nuts on the carrier side. Components sit on the plate's rear face.
+Parts taller than the posts pass through the carrier's 159.6 mm opening; `make-electronics-plates.py` checks that, the connector keep-out, the boss notches and the posts, and a solid-intersection check found no overlap with the carrier.
 
-**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panel envelopes, carriers, both plates with part envelopes and a translucent rear cover at the body depth (`--body-depth`, default 80). Seen from the wall: power plate bottom left, controller plate bottom right. Red boxes are the panel connectors with plugs: positions from the photo, heights assumed (PCB ~5 mm behind the LED tips, HUB75 plug 20 mm, power plug + cable 35 mm).
+**Depth:** from the LED tips the tallest parts end at 50.5 mm (modules) and 55 mm (Pi + Electrodragon stack, 33 mm budgeted for the owner's ≈30 mm), so the body needs **≈60 mm** including 3 mm air and a 2 mm rear cover. That keeps the v0.6 body depth; with the 25 mm halo wall gap the panel front sits ≈85 mm off the wall. (Plates on the carrier's rear face, v1/v2, needed ≈78 mm.)
 
-**Depth finding:** from the LED tips, the panel and carrier take 31 mm. The 32 mm modules then need a **≈71 mm** body and the Pi + Electrodragon stack (owner measured about 30 mm with a plugged ribbon on 2026-11-15; 33 mm budgeted for margin) needs **≈78 mm**, against the current 60 mm. Decision: the next enclosure version gets an **80 mm body** and keeps the 25 mm wall gap (panel front about 105 mm off the wall). Stepped-back rear or straight box is still open.
+**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panels, carriers, both plates with part envelopes, the panel plugs (red) and a translucent rear cover at the body depth (`--body-depth`, default 60). Seen from the wall: power plate bottom left, controller plate bottom right.
 
-```sh
-.venv/bin/python make-electronics-plates.py
-```
-
-The generator checks single valid solids, watertight meshes, bed fit (210 mm square), and probes the seam holes, Pi standoff pilots, module seats/slots and socket coupon holes.
+**Still to check in the fit test:** ribbons between panels cross the seam where the carriers' rims sit (rim 6 mm above the frame top); a ribbon either folds flat under the rim or loops over the carrier's rear face.
 
 ## Copy-shop calibration and comparison pack
 

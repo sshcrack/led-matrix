@@ -115,13 +115,13 @@ Strip placement: rear frame edges facing the wall (the eight segments reserved i
 ## Layout in the enclosure
 
 - Near the jack (bottom): 7.5 A fuse, 24 V WAGOs, modules A and B, panel fuses. Keep the 24 V
-  wiring short. Give the module housings air; mount them on the frame or rear cover, not in foam.
+  wiring short. Give the module housings air; they sit on the power plate inside a carrier, not in foam.
 - Middle: Pi + Electrodragon, LM2596, Pro Micro + level converter.
 - Anchor every cable within ~5 cm of each connection. The socket (Kycon KPJX-PM-4S) mounts from
   outside: flange in a pocket on the bottom wall, two M2.5 × 12 screws from inside into its flange.
   It has PCB-style pins: solder the 1.5 mm² pigtail to them and insulate with heat-shrink.
-- Mounting parts: `hardware/oak-panel/electronics_plates.py` (power plate, controller plate, socket
-  test coupon).
+- Mounting parts: `hardware/oak-panel/electronics_plates.py`: half plates that lie inside the carriers on
+  the connector-free half of a panel (power plate, controller plate), plus the socket test coupon.
 
 ## Grounds
 
@@ -166,6 +166,6 @@ To buy:
 | Inline blade fuse holder for 1.5 mm² / 14–16 AWG, ≥ 20 A | 4 | 6–8 | standard (ATO) or mini (ATM), all the same type |
 | Blade fuses 7.5 A, 15 A ×2, 5 A (or an assortment) | | 2–4 | |
 | 1000 µF electrolytic, ≥ 10 V (16 V is common) | 1 | 0.50 | across the halo strip input |
-| M2.5 × 12 screws (socket), M3 × 10 + nuts (plates), M4 × 10 + washers + nuts (modules), M2.5 × 6 thread-forming (Pi) | | 3–5 | |
+| M2.5 × 12 screws (socket), M3 × 12 thread-forming (plates, 8), M4 × 10 + washers + nuts (modules), M2.5 × 6 thread-forming (Pi), small cable ties | | 3–5 | |
 | WAGO 221: 2-way ×5, 3-way ×2, 5-way ×1 | | free | in addition to the two owned 5-way (24 V and GND) |
 | **Total** | | **≈ €110–125** | |

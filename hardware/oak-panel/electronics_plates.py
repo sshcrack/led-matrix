@@ -1,46 +1,66 @@
-"""Electronics mounting plates and DC-socket coupon for the off-the-shelf wiring plan.
+"""Electronics plates (in-carrier half plates) and DC-socket coupon for the off-the-shelf wiring plan.
 
-Millimetres. Prototype study, not validated. Each plate bolts to the rear face of one
-trial carrier (trial_carrier.py) through four of its symmetric seam holes and carries
-components on its rear face. Local frame: Z=0 is the plate face that touches the carrier,
-+Z points toward the wall (components grow in +Z); XY is the panel's rear seen from the
-wall (X right, Y up, origin at the panel centre). Print each plate flat on Z=0.
+Millimetres. Prototype study, not validated. Local frame: XY is the panel's rear seen from the
+wall (X right, Y up, origin at the panel centre); Z=0 is the plate's underside (panel side),
++Z points toward the wall and components grow in +Z. Print each plate flat on Z=0.
+
+Placement: a plate lies INSIDE a trial carrier (trial_carrier.py), in the carrier's open middle,
+PANEL_GAP above the panel's plastic frame. Four posts rise to the underside of the carrier's
+rear web; M3 screws go from the carrier's rear face through four seam holes into the posts.
+Lay the plate on the panel, put the carrier over it (its corner bosses pass through the plate's
+notches), screw the carrier to the panel, then screw the posts. Parts taller than the posts
+must stay inside the carrier's opening (CARRIER_OPENING_HALF).
 
 Half plates: every panel has its tall connectors (HUB75 IN, power header, HUB75 OUT) in one
 half of its back (PANEL_CONNECTORS, +Y here). The plates cover only the other half and stay
-below PLATE_TOP_Y, so the plugs and their cables pass freely. The carrier's seam holes are
-point-symmetric, so a plate can be turned 180 degrees if a panel is mounted the other way up.
+below PLATE_TOP_Y, so the plugs and their cables pass freely. The seam holes are symmetric under
+90 degree turns, so a plate can be turned to whichever half of its panel is free.
 
 Component sizes: see COMPONENTS (source per entry). Wiring: hardware/wiring/README.md.
 """
 
 import cadquery as cq
+from trial_carrier import BOSS_MM, OUTER_MM, PATTERN, SPACER_MM
 
-# Connectors on the panel back, (x0, x1, y0, y1) from the panel centre, read from the owner's
-# ruler photo of a Waveshare P3(2121)64X64-32S-M5.1 (2026-11-15, about +-3 mm). Plugged height
-# above the PCB: HUB75 about 20 mm (owner); the power plug and its cable need more.
+# --- Panel rear (owner measurements and ruler photos, 2026-11-15) ---------------------------
+LED_TO_FRAME_TOP = 15.0  # LED tips to the plastic frame top / insert face, measurement-basis.json
+PCB_RECESS = 12.0  # frame top down to the PCB inside the windows (owner)
+PCB_REAR = LED_TO_FRAME_TOP - PCB_RECESS  # ~3 mm from the LED tips
+LOW_PART_H = 5.0  # 220 uF electrolytics on the PCB (owner estimate)
+# Connectors, (x0, x1, y0, y1) from the panel centre, read from the owner's ruler photo of a
+# Waveshare P3(2121)64X64-32S-M5.1 (about +-3 mm). All four panels hang the same way up.
 PANEL_CONNECTORS = {
     "hub75_in": (-66.0, -53.0, 33.0, 64.0),
     "power": (5.0, 19.0, 35.0, 53.0),
     "hub75_out": (42.0, 61.0, 35.0, 64.0),
 }
+# Plug tops from the LED tips: HUB75 plug 20 mm above the PCB (owner); power cable bend 32 mm
+# (owner, measurement-basis.json led_tip_to_cable_bend_mm).
+PLUG_TOP = {"hub75_in": PCB_REAR + 20.0, "power": 32.0, "hub75_out": PCB_REAR + 20.0}
 CONNECTOR_BAND_Y0 = min(c[2] for c in PANEL_CONNECTORS.values())
-PLATE_TOP_Y = 18.0  # plates end here: >= 15 mm below the lowest connector edge
-# Panel PCB windows from the same photo: upper (connectors) and lower (flat parts only).
 PANEL_WINDOWS = {"connector": (-81.0, 79.0, 10.0, 77.0), "free": (-81.0, 79.0, -79.0, -10.0)}
-PANEL_LOW_PARTS = {"cc3_220uF": (-27.0, -46.0), "cc4_220uF": (27.0, -46.0)}  # electrolytics, height unmeasured
+PANEL_LOW_PARTS = {"cc3_220uF": (-27.0, -46.0), "cc4_220uF": (27.0, -46.0)}
 
+# --- Plate -----------------------------------------------------------------------------------
+PANEL_GAP = 1.0  # plate underside above the frame top
+PLATE_T = 2.5
+PLATE_Z0 = LED_TO_FRAME_TOP + PANEL_GAP  # plate underside, mm from the LED tips
 PLATE_X = 184.0
+PLATE_TOP_Y = 18.0  # plates end here: >= 15 mm below the lowest connector edge
 PLATE_BOTTOM_Y = -92.0
-PLATE_T = 3.0
 PLATE_MM = (PLATE_X, PLATE_TOP_Y - PLATE_BOTTOM_Y, PLATE_T)  # X, Y, thickness
 CORNER_R = 6.0
-# Four of the carrier's eight seam holes, all in the free half.
+CARRIER_OPENING_HALF = (OUTER_MM - 32.0) / 2  # 79.8: inner edge of the carrier's rear web
+OPENING_MARGIN = 2.0
+# Four of the carrier's eight seam holes, all in the free half; posts reach the web underside.
 MOUNT_HOLES = [(-86.0, -54.0), (86.0, -54.0), (-54.0, -86.0), (54.0, -86.0)]
-MOUNT_CLEARANCE = 3.4  # M3 to the carrier's 3.5 mm seam holes, nut on the carrier side
-TIE_SLOT = (2.2, 5.0)  # cable-tie slot for ties up to 4.8 mm wide
+POST_OD = 8.0
+POST_PILOT = 2.5  # M3 thread-forming screw from the carrier's rear face (M3 x 12)
+POST_H = SPACER_MM - PANEL_GAP - PLATE_T  # plate top to the web underside
+BOSS_CLEARANCE = BOSS_MM + 2.0  # notches for the carrier's corner bosses
+SADDLE = (3.0, 2.0)  # rib width, height: parts sit on two ribs; the tie passes under the part
 
-# name: (x, y, z height above plate, source / status)
+# name: (x, y, z height, source / status)
 COMPONENTS = {
     "buck_20a": (74.0, 74.0, 32.0, "amazon.de B0CZP1Q6DD listing: 74 x 74 x 32 mm, 2x 5.3 mm flange holes; hole spacing estimated from photos"),
     "pi3b": (85.0, 56.0, 17.0, "Raspberry Pi 3B mechanical drawing: 85 x 56 mm, M2.5 holes 58 x 49 mm"),
@@ -48,26 +68,33 @@ COMPONENTS = {
     "lm2596": (43.0, 21.0, 14.0, "typical HW-411 module, measure"),
     "pro_micro": (33.0, 18.0, 6.0, "typical Pro Micro, measure"),
     "level_shifter": (16.0, 13.0, 4.0, "typical 4-channel BSS138 board, measure"),
-    "wago_221_415": (18.6, 20.2, 8.4, "WAGO 221-415 (approx.), cable-tied"),
+    "wago_221_415": (18.6, 20.2, 8.4, "WAGO 221-415 (approx.)"),
+    "fuse_holder": (30.0, 12.0, 12.0, "inline blade fuse holder body (approx.), cable-tied"),
 }
 
 # Module flange holes: 5.3 mm, centre spacing estimated ~60 mm from listing photos. Slots
 # cover 54..68 mm so the real spacing fits; M4 screw + washer + nut.
 MODULE_HOLE_SPACING_RANGE = (54.0, 68.0)
 MODULE_SLOT_W = 4.5
-MODULE_CENTRES = [(-42.0, -46.0), (42.0, -46.0)]
-POWER_TIE_ROWS = {"wago": 10.0, "fuse": -3.0}  # y of the tie rows above the modules
+MODULE_CENTRES = [(-40.0, -40.5), (40.0, -40.5)]
 
 PI_HOLES = [(-29.0, -24.5), (-29.0, 24.5), (29.0, -24.5), (29.0, 24.5)]  # 58 x 49
 PI_CENTRE = (-40.0, -44.0)  # hole-pattern centre; the board centre is PI_BOARD_OFFSET_X to +X
 PI_BOARD_OFFSET_X = 10.0  # holes sit 3.5 mm from the board's -X edge
-PI_STANDOFF = (6.0, 6.0, 2.2)  # outer diameter, height, pilot for M2.5 thread-forming screw
-# Small boards on the controller plate: name -> (component, x, y, tie span along X)
-CONTROLLER_SMALL = {
-    "lm2596": ("lm2596", 52.0, 3.0, 50.0),
-    "pro_micro": ("pro_micro", 50.0, -30.0, 40.0),
-    "level_shifter": ("level_shifter", 50.0, -54.0, 24.0),
+PI_STANDOFF = (6.0, 3.5, 2.2)  # outer diameter, height, pilot for M2.5 thread-forming screw
+
+# Cable-tied parts on saddles: plate -> {name: (component, x, y)}
+SADDLE_PARTS = {
+    "power-plate": {
+        **{f"wago_{i}": ("wago_221_415", x, 8.0) for i, x in enumerate((-50.0, -25.0, 0.0, 25.0, 50.0))},
+    },
+    "controller-plate": {
+        "lm2596": ("lm2596", 52.0, 3.0),
+        "pro_micro": ("pro_micro", 52.0, -28.0),
+        "level_shifter": ("level_shifter", 52.0, -52.0),
+    },
 }
+# Inline fuse holders ride along their cables (no fixed seat).
 
 DC_SOCKET = {
     "flange": (25.2, 14.2),  # Kycon KPJX-PM-4S drawing
@@ -75,6 +102,16 @@ DC_SOCKET = {
     "screw_hole": 2.8,  # M2.5 clearance through the wall; screws thread into the flange's 2.3 mm holes
     "body_cutout": 14.0,  # ASSUMED from the drawing's side view (~13.5 mm body); test with the coupon
 }
+
+
+def placements(plate):
+    """Component envelopes on a plate: [(name, component, x, y, z0 above the plate top)]."""
+    if plate == "power-plate":
+        out = [(f"module_{'AB'[i]}", "buck_20a", x, y, 0.0) for i, (x, y) in enumerate(MODULE_CENTRES)]
+    else:
+        out = [("pi_stack", "pi_stack", PI_CENTRE[0] + PI_BOARD_OFFSET_X, PI_CENTRE[1], PI_STANDOFF[1])]
+    out += [(n, c, x, y, SADDLE[1]) for n, (c, x, y) in SADDLE_PARTS[plate].items()]
+    return out
 
 
 def _plate():
@@ -87,25 +124,32 @@ def _plate():
         .edges("|Z")
         .fillet(CORNER_R)
     )
+    for bx, by in PATTERN:
+        plate = plate.cut(cq.Workplane("XY").center(bx, by).circle(BOSS_CLEARANCE / 2).extrude(PLATE_T))
     for hx, hy in MOUNT_HOLES:
-        plate = plate.cut(
-            cq.Workplane("XY").center(hx, hy).circle(MOUNT_CLEARANCE / 2).extrude(PLATE_T)
-        )
+        post = cq.Workplane("XY").center(hx, hy).circle(POST_OD / 2).extrude(POST_H).translate((0, 0, PLATE_T))
+        plate = plate.union(post)
+        plate = plate.cut(cq.Workplane("XY").center(hx, hy).circle(POST_PILOT / 2).extrude(PLATE_T + POST_H))
     return plate
 
 
-def _tie_pair(plate, x, y, span, along_x=True):
-    """Two cable-tie slots `span` apart, a tie loops through them around a part."""
-    w, l = TIE_SLOT
-    for s in (-span / 2, span / 2):
-        cx, cy = (x + s, y) if along_x else (x, y + s)
-        dims = (w, l) if along_x else (l, w)
-        plate = plate.cut(cq.Workplane("XY").center(cx, cy).rect(*dims).extrude(PLATE_T))
+def _saddle(plate, x, y, w, d):
+    """Two ribs under a part; a cable tie loops over the part and through the gap under it."""
+    rw, rh = SADDLE
+    for sx in (-1, 1):
+        rib = (
+            cq.Workplane("XY")
+            .center(x + sx * (w / 2 - rw / 2 - 1.0), y)
+            .rect(rw, max(d - 2.0, 6.0))
+            .extrude(rh)
+            .translate((0, 0, PLATE_T))
+        )
+        plate = plate.union(rib)
     return plate
 
 
 def _vents(plate, x0, x1, y0, y1, pitch=8.0, w=3.0):
-    """Row of slots for air between the panel back and the cavity."""
+    """Slots for air between the panel back and the cavity."""
     x = x0
     while x + w <= x1:
         plate = plate.cut(
@@ -115,8 +159,15 @@ def _vents(plate, x0, x1, y0, y1, pitch=8.0, w=3.0):
     return plate
 
 
+def _add_saddles(plate, name):
+    for comp, x, y in SADDLE_PARTS[name].values():
+        w, d = COMPONENTS[comp][:2]
+        plate = _saddle(plate, x, y, w, d)
+    return plate
+
+
 def build_power_plate():
-    """Two 24->5 V 20 A modules, with WAGOs and inline fuse holders cable-tied above them."""
+    """Two 24->5 V 20 A modules and the WAGO row; fuse holders ride along their cables."""
     plate = _plate()
     lo, hi = MODULE_HOLE_SPACING_RANGE
     for mx, my in MODULE_CENTRES:
@@ -129,12 +180,8 @@ def build_power_plate():
                 .slot2D(abs(b - a) + MODULE_SLOT_W, MODULE_SLOT_W)
                 .extrude(PLATE_T)
             )
-    for wx in (-60.0, -30.0, 0.0, 30.0, 60.0):
-        plate = _tie_pair(plate, wx, POWER_TIE_ROWS["wago"], 26.0, along_x=True)
-    for fx in (-60.0, -20.0, 20.0, 60.0):
-        plate = _tie_pair(plate, fx, POWER_TIE_ROWS["fuse"], 30.0, along_x=True)
-    # Air between the two modules.
-    plate = _vents(plate, -1.5, 1.5, -78.0, -14.0)
+    plate = _add_saddles(plate, "power-plate")
+    plate = _vents(plate, -1.5, 1.5, -74.0, -10.0)  # between the modules
     return plate
 
 
@@ -149,10 +196,8 @@ def build_controller_plate():
             cq.Workplane("XY").center(x, y).circle(od / 2).extrude(h).translate((0, 0, PLATE_T))
         )
         plate = plate.cut(cq.Workplane("XY").center(x, y).circle(pilot / 2).extrude(PLATE_T + h))
-    for _, x, y, span in CONTROLLER_SMALL.values():
-        plate = _tie_pair(plate, x, y, span, along_x=True)
-    # Air under the Pi, between the standoffs.
-    plate = _vents(plate, px - 22.0, px + 22.0, py - 16.0, py + 16.0)
+    plate = _add_saddles(plate, "controller-plate")
+    plate = _vents(plate, px - 22.0, px + 22.0, py - 16.0, py + 16.0)  # under the Pi
     return plate
 
 
@@ -186,17 +231,13 @@ def build_dc_socket_coupon(wall_mm=6.0):
 
 def depth_budget():
     """Depth from the LED tips to each plate's tallest part, and the body depth it needs."""
-    led_to_insert_face = 15.0  # owner measurement, measurement-basis.json
-    carrier = 16.0  # trial carrier, boss face to rear face
     air, cover = 3.0, 2.0
     out = {}
-    for name, tallest in (
-        ("power_plate", COMPONENTS["buck_20a"][2]),
-        ("controller_plate", PI_STANDOFF[1] + COMPONENTS["pi_stack"][2]),
-    ):
-        rear = led_to_insert_face + carrier + PLATE_T + tallest
+    for name in ("power-plate", "controller-plate"):
+        tallest = max(z0 + COMPONENTS[c][2] for _, c, _, _, z0 in placements(name))
+        rear = PLATE_Z0 + PLATE_T + tallest
         out[name] = {
-            "tallest_part_mm": tallest,
+            "tallest_part_above_plate_mm": tallest,
             "led_tip_to_part_rear_mm": rear,
             "body_depth_needed_mm": rear + air + cover,
         }
