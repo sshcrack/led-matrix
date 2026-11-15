@@ -135,8 +135,11 @@ Electrodragon/Pi GND. That is intended.
   from `cmdline.txt`.
 - GPIO15 (RX) is the panels' E address line. Confirm the matrix still shows all 64 rows after
   enabling the UART (the library claims GPIO15 as an output at start).
-- Not implemented yet: Pro Micro firmware (checksummed UART frames → WS2812, brightness cap) and
-  the daemon's halo driver (#208).
+- Software (PR #219): Pro Micro firmware in `firmware/halo-pro-micro/` (checksummed UART frames →
+  WS2812, 2.5 A cap, fade-out failsafe) and the daemon's halo service (`GET/POST /halo`, web UI card
+  on the Integrations page). Setup, protocol and the library check: `docs/HALO.md`. Not yet tested
+  on hardware.
+- Unplug the Pro Micro's RAW wire before connecting USB to flash it.
 
 ## First power-up
 
