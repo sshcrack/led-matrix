@@ -13,6 +13,7 @@
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
 #include <shared/matrix/environment/settings.h>
+#include <shared/matrix/halo/settings.h>
 
 using json = nlohmann::json;
 
@@ -115,6 +116,7 @@ namespace ConfigData
         std::string curr;
         UpdateSettings update_settings;
         Environment::Settings environment;
+        Halo::Settings halo;
 
         // Custom move assignment operator to handle atomic<bool>
         Root &operator=(Root &&other) noexcept
@@ -136,6 +138,7 @@ namespace ConfigData
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
                 environment = std::move(other.environment);
+                halo = std::move(other.halo);
             }
             return *this;
         }
@@ -156,7 +159,8 @@ namespace ConfigData
               automatic_preferences(std::move(other.automatic_preferences)),
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings)),
-              environment(std::move(other.environment))
+              environment(std::move(other.environment)),
+              halo(std::move(other.halo))
         {
         }
 

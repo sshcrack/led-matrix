@@ -81,6 +81,9 @@ namespace Config {
         Environment::Settings get_environment();
         void set_environment(Environment::Settings settings);
         /// Caches an IP-detected location without touching the user's settings.
+        Halo::Settings get_halo();
+        /// Sanitizes and stores the settings and marks the config dirty without restarting the scene.
+        void set_halo(Halo::Settings settings);
         void set_environment_detected(double latitude, double longitude, std::string label);
 
         bool is_scheduling_enabled();

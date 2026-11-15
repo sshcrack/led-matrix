@@ -96,6 +96,7 @@ namespace ConfigData {
             {"automatic_preferences", p.automatic_preferences},
             {"update_settings", p.update_settings},
             {"environment", p.environment},
+            {"halo", p.halo},
             {"turned_off", p.turned_off.load()}
         };
     }
@@ -143,6 +144,7 @@ namespace ConfigData {
         p.environment = j.contains("environment") && j.at("environment").is_object()
             ? j.at("environment").get<Environment::Settings>()
             : Environment::Settings{};
+        p.halo = j.contains("halo") ? j.at("halo").get<Halo::Settings>() : Halo::Settings{};
         // First start with the shared environment: a weather_ambience preset
         // with its own (pre-environment) location becomes the manual location.
         if (!j.contains("environment") && j.contains("presets")) {
