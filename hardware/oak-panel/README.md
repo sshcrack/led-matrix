@@ -20,6 +20,22 @@ Extract the CAD bundle and open `exports/oak-enclosure.html` in a browser. For a
 
 Generated exports are download assets, not committed blobs. Source history is kept in Git. Private photographs, third-party uploaded meshes/PDFs, personal context and machine-specific paths are excluded.
 
+## Next print: four-corner fit kit v1
+
+The confirmed paper fit now has a separate **two-part PETG test kit**, `panel-four-corner-fit-kit-v1.zip`, in the prototype downloads. Submit only `four-corner-mounting-gauge.stl` and `clearance-hole-coupon.stl` for a slicing quote. The gauge is **184 x 168 x 3 mm**, with four 3.5 mm holes on the paper-verified **174 x 158 mm** pattern. The coupon is **80 x 24 x 3 mm**, with 3.2/3.4/3.5/3.6 mm holes from its notched end. Individual STEP solids, editable Python and a validation manifest are included.
+
+**3D print at 100% in every axis, in millimetres. Never apply the paper-printer correction to an STL.** Both parts individually fit the 210 x 250 mm target bed with 5 mm XY margin; the service should check whether both, and any brim/skirt, fit one job. Print flat face down; the service chooses suitable PETG settings and provides the quote.
+
+[Fit instructions](four-corner-fit-instructions.txt) cover four-hole alignment, flat contact/rib or glue interference, coupon clearance and recording HUB75 IN orientation. These are fit tools, not load-bearing mounts. Thread identity and usable insert engagement remain unresolved; do not choose screw length from the shaft diameter or force a long screw through the gauge. A gauge can be checked visually without selecting final screws. No further paper or full measurement series is needed before this trial.
+
+Regenerate the kit independently of the historical enclosure pipeline:
+
+```sh
+.venv/bin/python make-fit-kit.py
+```
+
+The generator reads the confirmed fit evidence, exports only these two tools, checks valid single solids, hole-axis probes, single watertight mesh bodies, CAD/mesh volume agreement, STEP round-trip and bed fit, and packages the files with instructions. It does not export the old carrier. Full v0.6 solids and old six-hole gauge remain on hold pending the rigid fit result; the withdrawn eight-hole reconstruction stays disabled.
+
 ## Copy-shop calibration and comparison pack
 
 Two new diagnostic downloads are separate from the withdrawn templates:
@@ -89,13 +105,11 @@ The official Waveshare wiki supplies a [DWG drawing](https://files.waveshare.com
 
 ## Four-corner prototype mounting
 
-The next prototype carrier will use **the four corner inserts only**, leaving the offset intermediate inserts unused. The chosen four-point attachment still needs physical fit and support/deflection checks; no revised carrier exists yet. There is no need to finish measuring the unused intermediate holes to make this prototype.
+Use the four corner inserts only, leaving intermediate inserts unused. The owner has confirmed the 174 x 158 mm source pattern fits on paper, with both scale bars at 100 mm. That replaces the need to repeat the short corner-inset measurements now; earlier approximate readings remain evidence in JSON.
 
-Label the corners TL/TR/BL/BR in rear view and identify the HUB75 IN edge. For each corner, measure the insert centre's perpendicular offset from both adjacent **outer plastic panel edges**. These short measurements fit the existing caliper. Use the same original screw-in magnetic foot as the reference at every corner, measuring its narrow smooth shaft and recording its diameter. For an outside-jaw span from the panel's outer side to the shaft surface farthest from that side, centre inset = span minus half the shaft diameter. For example, 12.00 mm to the far side of a 5.50 mm shaft gives a 9.25 mm inset. Keep the measuring axis perpendicular to the edge and reference the actual panel body, not the PCB or adjoining module. Do not use the magnetic disc or threads as the contact feature; if the jaws cannot reach cleanly, clarify the setup rather than interpreting another contact surface with this formula.
+The current trial is the separate fit kit above. Record actual contact/interference and the HUB75 IN edge relative to the long side of the gauge. The next mechanical trial is a one-panel carrier/diffuser assembly after rigid fit and clearance results. Final thread engagement, coplanar support, load paths, temperature and print retention remain unverified.
 
-Collect two insets per corner (eight readings), shaft diameter, corner/connector orientation and a check of the module envelope. The 192 mm square remains nominal, not a newly measured overall dimension. Edge insets allow a provisional layout within that envelope, followed by a corrected physical fit check; no long caliper is required for those insets. Individual X/Y coordinates must not be inferred by summing the earlier spans through offset intermediate holes.
-
-Issue #170 tracks the four-corner measurements and revised paper/gauge check. The old paper templates, compensation variant, STL mounting gauge and full carrier remain on hold. `make-mounting-template.py` and `build.py` now stop before exporting a pattern from the rejected coordinate model. Standalone enclosure solids remain historical concept geometry.
+`make-mounting-template.py` and `build.py` still stop before exporting the rejected eight-hole coordinate model. `make-fit-kit.py` is a separate, explicit four-corner path based on the confirmed paper pattern. Full enclosure solids retain historical mounting geometry until a one-panel carrier revision is prepared. Track acceptance under [#170](https://github.com/sshcrack/led-matrix/issues/170) and mechanical completion under [#171](https://github.com/sshcrack/led-matrix/issues/171).
 
 The printer route previously shrank a nominal 100 mm bar to approximately 95 mm. A 100/95 correction addresses only uniform print scaling; it cannot fix missing hole offsets. Keep this as separate calibration evidence for a future corrected template, whose horizontal and vertical bars must both be verified.
 

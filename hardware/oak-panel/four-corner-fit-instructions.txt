@@ -1,0 +1,19 @@
+FOUR-CORNER FIT KIT v1 - TWO TEST PRINTS ONLY
+
+Files to print:
+- four-corner-mounting-gauge.stl: 184 x 168 x 3 mm, four 3.5 mm clearance holes on a 174 x 158 mm pattern.
+- clearance-hole-coupon.stl: 80 x 24 x 3 mm. Starting from the notched end: 3.2, 3.4, 3.5, 3.6 mm holes.
+
+PRINT SERVICE
+Units millimetres. Print flat face down, 100% scale in ALL axes. PETG is the starting material. DO NOT apply the 104.167% correction from the PAPER print route to these 3D files. No printer-specific G-code is supplied. Target Prusa i3 MK3s, 210 x 250 x 210 mm. Both parts individually fit with 5 mm XY margin; ask the service whether they can place both on one bed/job, including any brim/skirt. Ask for a slicing quote before printing. Parameters are for the service to choose; support-free geometry, flat base.
+
+CHECK
+1. Check the gauge is flat and free of blobs/stringing around the holes. Its hole-centre spans should be 174 x 158 mm. Its outside edges are NOT the panel perimeter datum.
+2. With the panel unplugged, align the gauge's four holes to ONE panel's corner inserts. Joined panels may stay joined. Ignore the intermediate inserts. Rotate the gauge if needed to match the long/short axes. Record which of all four holes align and any interference with plastic ribs, glue or cables. Do not force or bend the gauge to produce a match.
+3. Test the coupon with the intended screw shank, gently, as a clearance test. This does NOT identify the insert thread, test printed threads or establish screw length. Record the smallest hole that slides freely; do not screw/force the fastener into a clearance hole.
+4. Only try panel threads with a known matching fastener, by hand, without forcing or tightening against an unknown stop. A 5.2 mm magnetic-foot SHAFT is not proof of the screw thread diameter. Keep final screw length unresolved until thread identity and safe engagement are known. Do not select a long screw just to reach through the gauge.
+5. Report all-four alignment, flat contact/interference, coupon result, and the HUB75 IN edge relative to the gauge long side. Photos stay private unless publication is separately authorized.
+
+These tools are NOT mounting parts and must not support the display. Do not print the full carrier or enclosure yet. After a rigid fit result, the next trial is one carrier/diffuser assembly. Existing full v0.6 CAD still has the superseded six-hole mounts; old first-print ZIPs are not this kit.
+
+The bundle includes individual STEP solids for CAD viewing, editable Python and a validation manifest. The two STLs go to the print service. Mesh/solid checks do not validate the actual print, strength, temperature, thread engagement or assembled fit.
