@@ -253,5 +253,14 @@
     },
     "scope": "Same printer, app, paper and settings used for this calibration only; do not apply to another print route without checking.",
     "validation": "Owner-reported readings; comparison-page printed 100 mm bars and physical panel fit still pending."
+  },
+  "waveshare_four_corner_paper_fit": {
+    "reported_date": "2026-11-15",
+    "pattern": "Page A / official Waveshare drawing / 174 x 158 mm four-corner rectangle",
+    "comparison_file": "panel-mounting-source-comparison-96mm.pdf",
+    "owner_report": "Waveshare one fits perfectly",
+    "scale_check": "Owner explicitly confirms both horizontal and vertical comparison bars measured 100 mm",
+    "result": "Owner-reported four-corner paper fit verified; use this corner pattern for the prototype rigid gauge",
+    "remaining": "Physical rigid gauge, thread identity, usable engagement, support and carrier tests remain unverified. Fit does not establish the whole frame revision, body dimensions, intermediate holes or connector registration."
   }
 }

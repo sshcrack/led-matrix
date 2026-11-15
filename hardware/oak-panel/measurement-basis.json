@@ -125,7 +125,7 @@
   "official_mechanical_drawing_candidate": {
     "source": "https://files.waveshare.com/upload/e/e1/RGB-Matrix-P3-64x64-2D.zip",
     "source_archive_sha256": "48ab5ead9c8f301e23bc45c93662eef3d8d692897360c09ec85797032b004163",
-    "assessment": "Strong candidate: matching eight-insert staggered/noncollinear topology; not proven to be the owner panel revision",
+    "assessment": "Four-corner pattern paper-verified by owner on 2026-11-15: all four centres fit and both comparison bars measured 100 mm. Exact whole-panel/frame revision remains unproven.",
     "body_xy_mm": [
       191.6,
       191.6
@@ -182,8 +182,8 @@
       "thread and usable insert engagement",
       "connector positions/orientation",
       "meaning of second 12-hole plan view",
-      "physical fit"
+      "rigid printed fit and carrier support/load performance"
     ],
-    "adoption": "Reference evidence only; no change to enclosure solids or withdrawn coordinate-model guard"
+    "adoption": "Adopt 174 x 158 mm four-corner pattern for next prototype rigid gauge; no enclosure solids changed yet. Withdrawn eight-hole reconstruction remains disabled."
   }
 }
