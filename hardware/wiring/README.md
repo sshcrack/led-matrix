@@ -149,17 +149,20 @@ short capacitor-charging spike needs.
 
 ## Shopping list
 
-| Item | Qty | Owned | ~€ |
+Owned: Raspberry Pi 3B, four panels, Electrodragon MPC1119, HUB75 ribbons, panel power cables,
+1.5 mm² wire, fork terminals, LM2596 HW-411, Pro Micro 5 V, BSS138 level converter, WS2812B strip
+(30/m, 5 m), resistors, two WAGO 221 5-way.
+
+To buy:
+
+| Item | Qty | ~€ | Note |
 |---|---|---|---|
-| Mean Well GST160A24-R7B | 1 | ? | 45–55 |
-| Kycon KPJX-PM-4S panel jack | 1 | | 8–12 |
-| Weishuo Y2-T2405 24→5 V 20 A (amazon.de B0CZP1Q6DD) | 2 | | 44 |
-| LM2596 HW-411 buck | 1 | yes | — |
-| Pro Micro ATmega32U4 5 V 16 MHz | 1 | yes | — |
-| BSS138 4-channel level converter | 1 | yes | — |
-| WS2812B 5 V strip, 30 LEDs/m (5 m reel; ~1.3 m used) | 1 | yes | — |
-| 1000 µF ≥ 10 V capacitor, 330 Ω resistor | 1 each | ? | 1 |
-| Inline blade fuse holders + fuses 7.5 A, 15 A ×2, 5 A | 4 | ? | 8–10 |
-| WAGO 221 (5-way ×2, 3-way ×4) | | ? | 8–10 |
-| 1.5 mm² stranded wire, insulated forks | | yes | — |
-| Heat-set inserts M2.5 (jack), small screws, cable ties | | ? | 5 |
+| Mean Well GST160A24-R7B (24 V, 160 W, latching 4-pin DIN plug) | 1 | 45–55 | needs a normal IEC C13 ("kettle") mains cord, not included |
+| Kycon KPJX-PM-4S panel-mount 4-pin DIN socket (Mouser/DigiKey) | 1 | 8–12 | the socket in the enclosure that the brick's plug clicks into |
+| Weishuo Y2-T2405 24→5 V 20 A (amazon.de B0CZP1Q6DD) | 2 | 44 | |
+| Inline blade fuse holder for 1.5 mm² / 14–16 AWG, ≥ 20 A | 4 | 6–8 | standard (ATO) or mini (ATM), all the same type |
+| Blade fuses 7.5 A, 15 A ×2, 5 A (or an assortment) | | 2–4 | |
+| 1000 µF electrolytic, ≥ 10 V (16 V is common) | 1 | 0.50 | across the halo strip input |
+| M2.5 heat-set inserts (or M2.5 screws + nuts) | 4 | 3 | to fix the socket |
+| WAGO 221: 2-way ×5, 3-way ×2, 5-way ×1 | | free | in addition to the two owned 5-way (24 V and GND) |
+| **Total** | | **≈ €110–125** | |
