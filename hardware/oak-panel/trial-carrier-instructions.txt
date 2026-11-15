@@ -1,29 +1,42 @@
-ONE-PANEL TRIAL CARRIER + CLEARANCE COUPON v1
+ONE-PANEL TRIAL CARRIER + CLEARANCE COUPON v2
 
-THIS REPLACES THE STANDALONE GAUGE FOR THE NEXT PAID TEST JOB.
+v2 REPLACES v1. Do not submit panel-trial-carrier-kit-v1.zip or a v1 3MF.
 Print one carrier and one coupon only. Do not also print the old gauge or a full enclosure.
 
 SUBMIT ONE JOB FOR A QUOTE
-Preferred: single-job-layout.3mf. It contains exactly TWO separate objects already placed on one 210 x 250 mm bed. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl and clearance-hole-coupon.stl together and ask to arrange them as ONE job. Do not print both the 3MF AND the two STL files (that would duplicate the parts).
+Preferred: single-job-layout.3mf. It contains exactly TWO separate objects: the coupon sits inside the carrier's open middle, about 40 mm from the carrier on every side. The whole job is a 201.6 x 201.6 mm square, so it fits the Prusa i3 MK3S bed (X 250 x Y 210 mm) either way round with at least 5 mm margin, and also fits the 400 x 400 mm printer. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl and clearance-hole-coupon.stl together and ask to arrange them as ONE job (the coupon may go in the carrier's open middle). Do not print both the 3MF AND the two STL files (that would duplicate the parts).
 
 PETG is the starting material. Millimetres, 100% scale in all axes. NEVER apply the 104.167% PAPER correction. Print flat rear/base faces on the bed, with bosses pointing UP. The geometry has no unsupported roofs or internal cavities requiring support. The service selects practical wall/infill/layer settings and confirms adhesion needs. No EUR 5 price guarantee: only their slicer can give the quote. The minimum fee applies according to the service's job policy.
 
 CARRIER
-191.6 x 191.6 x 16 mm. Rear web 4 mm, perimeter rib another 6 mm, four mounting bosses another 12 mm above the web. Four through bores 3.5 mm on the paper-confirmed 174 x 158 mm pattern. The two other 3.5 mm holes are provisional seam-joiner positions for a bottom-left tile, NOT panel mounting holes. Carrier perimeter/body size and 12 mm spacer height remain concept assumptions to be tested.
+191.6 x 191.6 x 16 mm. Rear web 4 mm, perimeter rib another 6 mm, four mounting bosses another 12 mm above the web. Four through bores 3.5 mm on the paper-confirmed 174 x 158 mm pattern.
+- Eight more 3.5 mm holes, two on each edge, are provisional seam-joiner positions. They are symmetric, so the same carrier fits any of the four tiles. They are NOT panel mounting holes.
+- Six 5 mm sight holes in the web sit over the drawing's intermediate inserts: one in the middle of each side edge, and two pairs 15 mm apart in the middle of the top and bottom edges. They are for looking through only, never for screws.
+- A small notch in the top of the rib marks the carrier's "+Y" edge. Use it to describe orientation.
+Carrier perimeter/body size and 12 mm spacer height remain concept assumptions to be tested.
 
 The +16 mm boss faces touch the panel insert faces. The rear web sits 12 mm behind those faces; the printed rear base is 16 mm behind. Screw heads would remain outside the rear base. This is a mounting/interference trial, not finished carrier-to-frame, wall-mount or fabric-clamp hardware. A complete display must not be hung from this trial part.
 
 COUPON
 80 x 24 x 3 mm; from its notched end, holes are 3.2 / 3.4 / 3.5 / 3.6 mm. Record the smallest one that clears the intended fastener freely. These are clearance holes, not printed threads.
 
-PHYSICAL CHECK
-1. Inspect flatness and remove loose stringing without changing hole positions.
-2. With the panel unplugged, align ONLY the four corner bores. The panels may stay glued together. Boss faces point toward the panel. Do not force the carrier or screws to obtain a fit.
-3. Record whether all four boss faces can seat flat, without contact on PCB parts, plastic ribs, glue, HUB75 ribbons or power wiring. The open middle should remain clear. Check intended cable bends in that space and photograph any interference privately.
-4. Test the coupon. Confirm a known matching thread before trying screws in panel inserts. A 5.2 mm smooth foot shaft does not identify the thread. Do not use a guessed screw length or tighten into a blind stop. The carrier's 16 mm grip thickness is not the screw length: usable insert engagement and head/washer details are still unknown. Final length will be selected after this check.
-5. Mark which edge has HUB75 IN and which carrier edge has the two seam-interface holes. Report alignment, flat seating/interference and coupon clearance. Existing magnetic feet may not have enough exposed stud for the 16 mm grip; do not force them or purchase longer screws by guesswork. Visual fit checking can happen without fastening.
+PHYSICAL CHECK (no screws, no pressure)
+0. Unplug the panel. Unscrew and set aside ALL EIGHT magnetic feet: the four corners AND the four intermediate ones. Leave every insert empty. A foot left in an intermediate insert reaches the carrier's web and stops it seating. The panels may stay glued together.
+1. Flatness first: put the carrier bosses-down on something flat (glass, a stone worktop). Do not press. Try to slide a sheet of printer paper (about 0.1 mm) under each boss. Record which bosses a sheet slides under. This shows print warp before the panel is involved.
+2. Turn the carrier over, bosses toward the panel, and lay it on the panel's back so the four corner bores line up with the four corner inserts. Let it rest under its own weight only. Never press, clamp or force it: a light frame bends under hand pressure and hides gaps.
+3. Alignment: push a 3 mm drill bit (smooth end first) or a 3 mm rod through each corner bore to the insert. Record whether it drops in centred at all four corners.
+4. Gaps: with the carrier resting, try to slide a paper sheet between each boss and its insert. Record each corner (top-left, top-right, bottom-left, bottom-right, with the notch at the top). Note anything the carrier touches instead of the inserts: PCB parts, plastic ribs, glue, HUB75 ribbons or power wiring.
+5. Contact: colour the four boss tops with a washable marker, rest the carrier again, lift it straight off and photograph where the marker transferred (insert face, or the frame around it). Keep photos private.
+6. Sight holes: look through the six 5 mm holes. Record which ones show an insert centred in the hole. The left and right side holes should each show one. At the top and bottom edges only one hole of each pair should; which one tells us which way round the drawing is.
+7. Cables: for each connector and each cable that has to cross the carrier's outline, note where it crosses (the outer 16 mm web band, the 4 mm rib, or the open middle) and roughly how far above the insert faces it sits. Check the intended cable bends in the open middle.
+8. Measure with calipers, if you have them: one module's outside body size in both directions; whether neighbouring module bodies touch; and the distance spanning 10 LED pitches across a seam compared with 10 pitches inside one module, in both directions. Also the distance from LED tip to insert face on each module.
+9. Test the coupon. Confirm a known matching thread before trying screws in panel inserts. A 5.2 mm smooth foot shaft does not identify the thread. Do not use a guessed screw length or tighten into a blind stop. The carrier's 16 mm grip thickness is not the screw length: usable insert engagement and head/washer details are still unknown. Final length will be selected after this check. If a screw is tried later, finger-snug only.
+10. Mark which edge has HUB75 IN, relative to the notch.
+
+REPORT
+Flatness per boss (step 1), pin alignment per corner (3), paper gaps per corner (4), contact photos (5, private), which sight holes show inserts (6), the cable table (7), measurements (8), coupon clearance (9), HUB75 IN edge (10).
 
 AFTER THE RESULT
 Revise this same carrier design as needed, then complete the one-panel diffuser/frame retention trial. A successful trial carrier can be retained for that later prototype if its fit and support are suitable; it is not yet a final product part. Full four-panel enclosure, wall load paths, heat performance and electronics remain unvalidated.
 
-The ZIP includes individual STEP solids, editable source, dependencies and validation evidence. CAD/mesh checks and a generic 3MF round-trip do not establish slicer success, actual filament usage, print time, stiffness or physical fit.
+The ZIP includes individual STEP solids, editable source, dependencies, a preview and validation evidence. CAD/mesh checks and a generic 3MF round-trip do not establish slicer success, actual filament usage, print time, stiffness or physical fit.

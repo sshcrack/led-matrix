@@ -10,7 +10,14 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import cadquery as cq
 import trimesh
 from trimesh.exchange.threemf import export_3MF
-from trial_carrier import build_trial_carrier, JOINER_HOLES
+from trial_carrier import (
+    build_trial_carrier,
+    JOINER_HOLES,
+    NOTCH_MM,
+    OUTER_MM,
+    SIGHT_HOLES,
+    SIGHT_HOLE_MM,
+)
 
 ROOT = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
@@ -39,7 +46,7 @@ for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
 # Notched end identifies the first (3.2 mm) hole without font dependencies.
 coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 5).translate((-39, -11, 1.5)))
 manifest = {
-    "revision": "trial-carrier-v1",
+    "revision": "trial-carrier-v2",
     "status": "One-panel carrier geometry trial plus coupon; no wall-mount or finished product approval.",
     "pattern_mm": centres,
     "corner_span_mm": [174, 158],
@@ -52,11 +59,17 @@ manifest = {
         "total_height": 16,
     },
     "provisional_seam_holes_mm": JOINER_HOLES,
+    "seam_holes_note": "Symmetric on all four edges, so one carrier fits every tile of the 2x2 array",
+    "intermediate_insert_sight_holes_mm": {"diameter": SIGHT_HOLE_MM, "centres": SIGHT_HOLES},
+    "sight_holes_note": "Both handedness variants of the drawing's +/-7.5 mm stagger; inspection only, not mounting holes",
+    "orientation_notch": "8 x 2 x 2 mm notch in the top outer corner of the +Y rib, centred on X=0",
+    "xy_view": "Bed view: looking down on the printed part, bosses toward the viewer, X right, Y up (= panel rear seen from behind)",
     "coupon_from_notched_end_mm": [3.2, 3.4, 3.5, 3.6],
     "print_scale_percent": 100,
     "paper_scale_compensation_applied": False,
     "material": "PETG starting material; print service selects settings and quote.",
-    "target_bed_mm": [210, 250, 210],
+    "target_printer": "Prusa i3 MK3S: X 250 x Y 210 x Z 210 mm (owner's '210 x 250' is the same bed)",
+    "layout_fits_beds_mm": [[250, 210, 210], [210, 250, 210], [400, 400, 500]],
     "parts": [],
 }
 meshes = {}
@@ -70,7 +83,7 @@ for name, shape in [
     # Both flat bases lie on Z=0; positive XY is convenient for print-service imports.
     shape = shape.translate((-bounds.xmin, -bounds.ymin, -bounds.zmin))
     bounds = shape.val().BoundingBox()
-    assert bounds.xlen + 10 <= 210 and bounds.ylen + 10 <= 250 and bounds.zlen <= 210
+    assert bounds.xlen + 10 <= 210 and bounds.ylen + 10 <= 210 and bounds.zlen <= 210
     stl, step = out / (name + ".stl"), out / (name + ".step")
     cq.exporters.export(shape, str(stl), tolerance=0.02, angularTolerance=0.1)
     cq.exporters.export(shape, str(step))
@@ -99,7 +112,7 @@ for name, shape in [
             "watertight_single_mesh": True,
             "mesh_volume_relative_error": mesh_error,
             "step_roundtrip": "valid single solid, volume agreement within 1 ppm",
-            "bed_fit": "5 mm margin on all XY sides; check the slicer skirt/brim separately",
+            "bed_fit": "5 mm margin on all XY sides of a 210 mm square; check the slicer skirt/brim separately",
         }
     )
 # Probe full through bores and supporting material at web and boss heights.
@@ -108,9 +121,22 @@ for x, y in centres:
         assert not carrier.val().isInside((x, y, z))
         assert not carrier.val().isInside((x + 1.74, y, z))
         assert carrier.val().isInside((x + 1.76, y, z))
+assert len(JOINER_HOLES) == 8 and len(set(JOINER_HOLES)) == 8
 for x, y in JOINER_HOLES:
+    # One STL for every tile: the seam-hole set is symmetric under X and Y mirror.
+    assert (-x, y) in JOINER_HOLES and (x, -y) in JOINER_HOLES
     assert not carrier.val().isInside((x, y, 2))
-assert carrier.val().isInside((87, 0, 2))
+    assert carrier.val().isInside((x + 1.76, y, 2))
+for x, y in SIGHT_HOLES:
+    assert not carrier.val().isInside((x, y, 2))
+    assert not carrier.val().isInside((x + SIGHT_HOLE_MM / 2 - 0.01, y, 2))
+    assert carrier.val().isInside((x + SIGHT_HOLE_MM / 2 + 0.01, y, 2))
+nx, ny, nz = NOTCH_MM
+assert not carrier.val().isInside((0, OUTER_MM / 2 - ny / 2, 4 + 6 - nz / 2))
+assert carrier.val().isInside((0, OUTER_MM / 2 - ny / 2, 4 + 6 - nz - 0.5))
+assert carrier.val().isInside((0, OUTER_MM / 2 - ny - 0.5, 9))
+assert carrier.val().isInside((0, -(OUTER_MM / 2 - ny / 2), 9))
+assert carrier.val().isInside((90, 0, 2))
 assert not carrier.val().isInside((87, 0, 6))
 assert carrier.val().isInside((94, 0, 8))
 assert not carrier.val().isInside((94, 0, 12))
@@ -120,7 +146,8 @@ for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
     assert coupon.val().isInside((x + diameter / 2 + 0.01, 0, 1.5))
 manifest["coupon_radius_probes"] = "all four clearance radii checked within 0.01 mm"
 manifest["carrier_probes"] = (
-    "four 3.5 mm through bores at web/boss heights, seam bores, web, rim and open middle checked"
+    "four 3.5 mm through bores at web/boss heights, eight symmetric seam bores, six sight holes, "
+    "orientation notch, web, rim and open middle checked"
 )
 scene = trimesh.Scene()
 scene.add_geometry(
@@ -133,7 +160,11 @@ scene.add_geometry(
     meshes["clearance-hole-coupon"],
     geom_name="clearance-hole-coupon",
     node_name="clearance-hole-coupon",
-    transform=trimesh.transformations.translation_matrix([5, 206.6, 0]),
+    # Nested in the carrier's 159.6 mm open middle: the whole job stays a
+    # 201.6 mm square, so it fits the MK3S bed in either orientation.
+    transform=trimesh.transformations.translation_matrix(
+        [5 + OUTER_MM / 2 - 40, 5 + OUTER_MM / 2 - 12, 0]
+    ),
 )
 layout = out / "single-job-layout.3mf"
 layout.write_bytes(export_3MF(scene))
@@ -142,7 +173,18 @@ assert len(loaded.graph.nodes_geometry) == 2
 assert abs(loaded.bounds - scene.bounds).max() < 1e-6
 assert abs(loaded.volume / scene.volume - 1) < 1e-6
 assert loaded.bounds[0][0] >= 5 and loaded.bounds[0][1] >= 5
-assert loaded.bounds[1][0] <= 205 and loaded.bounds[1][1] <= 245
+assert loaded.bounds[1][0] <= 205 and loaded.bounds[1][1] <= 205
+coupon_bounds = meshes["clearance-hole-coupon"].bounds + [
+    [5 + OUTER_MM / 2 - 40, 5 + OUTER_MM / 2 - 12, 0]
+] * 2
+opening = [5 + 16, 5 + OUTER_MM - 16]
+coupon_gap = min(
+    coupon_bounds[0][0] - opening[0],
+    coupon_bounds[0][1] - opening[0],
+    opening[1] - coupon_bounds[1][0],
+    opening[1] - coupon_bounds[1][1],
+)
+assert coupon_gap >= 10, coupon_gap
 assert loaded.bounds[0][2] >= -1e-6
 assert loaded.bounds[1][2] <= 16.00001
 manifest["single_job_layout"] = {
@@ -150,16 +192,88 @@ manifest["single_job_layout"] = {
     "objects": 2,
     "bounds_mm": loaded.bounds.tolist(),
     "minimum_xy_margin_mm": 5,
-    "gap_between_parts_mm": 10,
+    "coupon_placement": "centred inside the carrier's open middle",
+    "gap_between_parts_mm": round(float(coupon_gap), 2),
+    "fits": "Prusa MK3S 250 x 210 in either orientation, and the 400 x 400 printer",
     "generic_3mf_roundtrip": "two objects, transformed bounds and volume preserved",
     "machine_settings": "none; print service must slice and quote",
 }
+
+def render_preview(path):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.patches import Circle, Rectangle
+    from matplotlib.path import Path as MplPath
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    fig = plt.figure(figsize=(12.2, 7.6), dpi=100)
+    fig.suptitle("Carrier + clearance coupon v2 / PETG / 100% scale", fontsize=15)
+    ax3 = fig.add_subplot(1, 2, 1, projection="3d")
+    mesh = meshes["trial-panel-carrier"]
+    light = mesh.face_normals @ [0.3, -0.4, 0.86]
+    shade = 0.35 + 0.45 * (light.clip(-1, 1) + 1) / 2
+    ax3.add_collection3d(
+        Poly3DCollection(
+            mesh.triangles,
+            facecolors=[(0.21 * k / 0.6, 0.34 * k / 0.6, 0.42 * k / 0.6) for k in shade],
+            linewidths=0,
+        )
+    )
+    ax3.set(xlim=(0, OUTER_MM), ylim=(0, OUTER_MM), zlim=(-60, 80))
+    ax3.view_init(elev=32, azim=-62)
+    ax3.set_box_aspect((1, 1, 0.73))
+    ax3.set_axis_off()
+    ax3.set_title(
+        "One-panel trial carrier (bosses up)\n4 mounting bosses, 8 symmetric seam holes,\n"
+        "6 sight holes over intermediate inserts, notch on +Y rib",
+        fontsize=10,
+    )
+    ax = fig.add_subplot(1, 2, 2)
+    ax.add_patch(Rectangle((0, 0), 250, 210, fill=False, lw=1.4, ls="--", ec="0.45"))
+    ax.text(247, 203, "MK3S bed X 250 x Y 210", ha="right", va="top", fontsize=8, color="0.35")
+    loops = []
+    for node in loaded.graph.nodes_geometry:
+        transform, geom = loaded.graph[node]
+        part = loaded.geometry[geom].copy().apply_transform(transform)
+        section = part.section(plane_origin=[0, 0, 1], plane_normal=[0, 0, 1])
+        loops += [MplPath(loop[:, :2]) for loop in section.discrete]
+    # Nesting depth decides solid (even) or hole (odd); draw outermost first.
+    loops.sort(key=lambda loop: -abs(np.ptp(loop.vertices, axis=0).prod()))
+    for loop in loops:
+        depth = sum(
+            other is not loop and other.contains_point(loop.vertices[0]) for other in loops
+        )
+        ax.fill(*loop.vertices.T, color="white" if depth % 2 else "#36566b", lw=0)
+    for x, y in centres:
+        ax.add_patch(Circle((5 + OUTER_MM / 2 + x, 5 + OUTER_MM / 2 + y), 5, fill=False, ec="#d9822b", lw=1.2))
+    ax.set(xlim=(0, 250), ylim=(0, 210), aspect="equal", xlabel="mm", ylabel="mm")
+    ax.set_title(
+        "Single job: coupon nested in the carrier's open middle\n"
+        "201.6 mm square, fits the bed either way round",
+        fontsize=10,
+    )
+    fig.text(
+        0.5,
+        0.02,
+        "Section at the 4 mm web; orange = boss outlines. Geometry preview, not a slicer quote "
+        "or wall-mount approval.",
+        ha="center",
+        fontsize=9,
+    )
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+render_preview(out / "trial-carrier-preview.png")
 (out / "trial-carrier-validation.json").write_text(
     json.dumps(manifest, indent=2) + "\n"
 )
 instructions = ROOT / "trial-carrier-instructions.txt"
 (out / "READ-ME-FIRST.txt").write_text(instructions.read_text())
-archive = out / "panel-trial-carrier-kit-v1.zip"
+archive = out / "panel-trial-carrier-kit-v2.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     for name in [
         "trial-panel-carrier.stl",
@@ -169,6 +283,7 @@ with ZipFile(archive, "w", ZIP_DEFLATED) as z:
         "trial-carrier-validation.json",
         "READ-ME-FIRST.txt",
         "single-job-layout.3mf",
+        "trial-carrier-preview.png",
     ]:
         z.write(out / name, name)
     z.write(Path(__file__), "source/make-trial-carrier.py")

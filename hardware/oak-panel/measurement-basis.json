@@ -72,14 +72,15 @@
     "basis": "FDM-accessible design; no CNC fabrication required for internal parts",
     "printer_target": "Prusa i3 MK3s",
     "provided_build_volume_mm": [
-      210,
       250,
+      210,
       210
     ],
     "alternate_printer": "400 x 400 x 500 mm FDM printer available",
     "material_target": "PETG; actual stock and quote to be confirmed by service",
     "print_submission": "STL, not machine-specific G-code",
-    "note": "Build volumes are supplied design inputs. Material stock and pricing are determined by the chosen print service."
+    "note": "Build volumes are supplied design inputs. Material stock and pricing are determined by the chosen print service.",
+    "build_volume_note": "Prusa i3 MK3S is X 250 x Y 210 x Z 210 mm; the owner's '210 x 250' describes the same bed written Y x X."
   },
   "appearance": {
     "basis": "Owner requests narrow black wall-mounted bezel instead of oak; private visual reference is not published",
@@ -188,8 +189,8 @@
   },
   "single_panel_trial_carrier": {
     "source": "trial_carrier.py / make-trial-carrier.py",
-    "status": "Prepared for first single-panel fit trial; not a full enclosure or wall-load approval",
-    "panel_mounts": "Four bores on paper-confirmed 174 x 158 mm pattern; intermediate inserts unused",
+    "status": "v2 prepared for first single-panel fit trial after independent review; not a full enclosure or wall-load approval",
+    "panel_mounts": "Four bores on paper-confirmed 174 x 158 mm pattern; intermediate inserts unused but visible through six 5 mm sight holes (both handedness variants)",
     "geometry_mm": {
       "outer_xy": [
         191.6,
@@ -201,9 +202,12 @@
       "total_height": 16,
       "bore": 3.5
     },
-    "single_job": "Carrier and clearance coupon, 10 mm apart on a 210 x 250 mm bed; >=5 mm XY margin, before brim/skirt",
+    "single_job": "Coupon nested in the carrier's open middle (39.8 mm clear); 201.6 mm square job, >=5 mm XY margin on the MK3S bed in either orientation, before brim/skirt",
     "print_scale_percent": 100,
-    "next_physical_evidence": "All-four seating/alignment, rib/PCB/glue/cable interference, coupon clearance, actual matching thread and usable engagement",
-    "not_implemented": "Final carrier-to-bezel/wall attachment, fabric retention and final screw length; four-module assembly still historical"
+    "next_physical_evidence": "All-four seating/alignment, sight-hole insert positions, rib/PCB/glue/cable interference, glued pitch/body size, LED-tip-to-insert distance, coupon clearance, actual matching thread and usable engagement",
+    "not_implemented": "Final carrier-to-bezel/wall attachment, fabric retention and final screw length; four-module assembly still historical",
+    "seam_holes": "Eight 3.5 mm provisional seam holes, symmetric under X and Y mirror, so one carrier fits every tile",
+    "orientation_mark": "8 x 2 x 2 mm notch on the +Y rib; XY in bed view (bosses toward viewer, X right, Y up)",
+    "fit_check_method": "All eight feet removed; no screws or pressure; flatness on a reference surface, then own-weight rest, 3 mm pin alignment, paper gaps and marker contact per boss"
   }
 }
