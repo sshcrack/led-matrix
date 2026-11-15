@@ -50,6 +50,8 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 Each plate bolts to the rear face of one trial carrier with M3 screws through four of its symmetric seam holes at (±86, ±54), nuts on the carrier side. Components sit on the plate's rear face.
 
+**Viewing assembly:** `make-electronics-assembly.py` writes `electronics-assembly.glb` (browser viewers such as https://3dviewer.net) and `electronics-assembly.step` (FreeCAD): 2×2 panel envelopes, carriers, both plates with part envelopes and a translucent rear cover at the body depth (`--body-depth`, default 80). Seen from the wall: power plate bottom left, controller plate bottom right. Panel rear connectors are not modelled yet.
+
 **Depth finding:** from the LED tips, the panel and carrier take 31 mm. The 32 mm modules then need a **≈71 mm** body and the Pi + Electrodragon stack (owner measured about 30 mm with a plugged ribbon on 2026-11-15; 33 mm budgeted for margin) needs **≈78 mm**, against the current 60 mm. Decision: the next enclosure version gets an **80 mm body** and keeps the 25 mm wall gap (panel front about 105 mm off the wall). Stepped-back rear or straight box is still open.
 
 ```sh
