@@ -1,0 +1,11 @@
+# generated outputs (fabrication, reports, renders) stay out of git: see README "Outputs"
+exports/
+.route/
+logs/
+__pycache__/
+*.kicad_prl
+fp-info-cache
+*-backups/
+_autosave-*
+*.lck
+tools/freerouting-*.jar

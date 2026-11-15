@@ -1,0 +1,16 @@
+(version 1)
+# Custom rules for the power + halo board.  Generic limits live in the .kicad_pro.
+
+(rule "24V net clearance"
+  (condition "A.NetClass == 'Power24' && B.Net != A.Net")
+  (constraint clearance (min 0.3mm)))
+
+# Branch power nets.  +5V_AUX is excluded: its current runs in the In2 plane and F.Cu zones, and
+# its F.Cu tracks are short taps to pull-ups, LEDs and logic supplies (< 50 mA each).
+(rule "Power track width"
+  (condition "A.NetClass == 'Power24' || A.NetClass == 'Power5'")
+  (layer outer)
+  (constraint track_width (min 0.4mm)))
+
+(rule "Board edge"
+  (constraint edge_clearance (min 0.5mm)))
