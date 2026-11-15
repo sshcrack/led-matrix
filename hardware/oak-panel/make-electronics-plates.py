@@ -35,6 +35,8 @@ from electronics_plates import (
     POST_PILOT,
     build_controller_plate,
     build_dc_socket_coupon,
+    build_halo_channel_coupon,
+    HALO_CHANNEL,
     build_power_plate,
     depth_budget,
     placements,
@@ -52,6 +54,7 @@ parts = {
     "power-plate": build_power_plate(),
     "controller-plate": build_controller_plate(),
     "dc-socket-coupon": build_dc_socket_coupon(),
+    "halo-channel-coupon": build_halo_channel_coupon(),
 }
 manifest = {
     "revision": REVISION,
@@ -70,6 +73,7 @@ manifest = {
     "components": {k: {"x": v[0], "y": v[1], "height": v[2], "source": v[3]} for k, v in COMPONENTS.items()},
     "placements": {p: placements(p) for p in ("power-plate", "controller-plate")},
     "dc_socket": DC_SOCKET,
+    "halo_channel": HALO_CHANNEL,
     "depth_budget": depth_budget(),
     "target_body_depth_mm": 60.0,
     "parts": [],
@@ -135,9 +139,18 @@ coupon = parts["dc-socket-coupon"].val()
 assert not coupon.isInside((0, 0, 3))
 for dx in (-DC_SOCKET["screw_spacing"] / 2, DC_SOCKET["screw_spacing"] / 2):
     assert not coupon.isInside((dx, 0, 3))
+hc = parts["halo-channel-coupon"].val()
+x = hc.BoundingBox().xmin + HALO_CHANNEL["wall"]
+floor, ch, lip = HALO_CHANNEL["floor"], HALO_CHANNEL["inner_height"], HALO_CHANNEL["lip"]
+for w in HALO_CHANNEL["inner_widths"]:
+    assert not hc.isInside((x + w / 2, 10, floor + ch / 2)), "channel open"
+    assert not hc.isInside((x + w / 2, 10, floor + ch + lip / 2)), "LED opening between the lips"
+    assert hc.isInside((x + lip / 2, 10, floor + ch + lip / 2)), "lip present"
+    assert w - 2 * lip > 5.5, "opening wider than the 5 mm LEDs"
+    x += w + HALO_CHANNEL["wall"]
 manifest["probes"] = (
     "posts and pilots, boss notches, connector keep-out, carrier-opening fit of tall parts, "
-    "Pi standoff pilots, module seats/slots and socket coupon holes checked"
+    "Pi standoff pilots, module seats/slots, socket coupon holes and halo channel lips checked"
 )
 
 

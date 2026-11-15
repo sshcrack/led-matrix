@@ -229,6 +229,42 @@ def build_dc_socket_coupon(wall_mm=6.0):
     return coupon.cut(pocket)
 
 
+# Halo strip channel: the strip (LEDs toward the wall) slides in from one end and two lips hold
+# its edges, so no adhesive is needed (IP65 silicone sleeves take tape badly, and it is warm behind
+# the display). The coupon tries three inner widths; the listing says 8 mm, many 5 V 30/m strips
+# are 10 mm. The opening between the lips stays wider than the 5 mm LEDs.
+HALO_CHANNEL = {
+    "inner_widths": (8.6, 9.6, 10.6),
+    "inner_height": 4.3,  # strip ~3.8 mm (listing) + 0.5
+    "lip": 1.0,  # each side
+    "wall": 1.6,
+    "floor": 1.6,
+    "length": 70.0,  # two LEDs at 30/m
+}
+
+
+def build_halo_channel_coupon():
+    """Three short channels side by side to test which width holds the halo strip."""
+    c = HALO_CHANNEL
+    wall, floor, h, lip, length = c["wall"], c["floor"], c["inner_height"], c["lip"], c["length"]
+    total_w = sum(w + wall for w in c["inner_widths"]) + wall
+    height = floor + h + lip
+    coupon = cq.Workplane("XY").box(total_w, length, height, centered=(False, True, False))
+    x = wall
+    for w in c["inner_widths"]:
+        coupon = coupon.cut(cq.Workplane("XY").box(w, length, h, centered=(False, True, False)).translate((x, 0, floor)))
+        coupon = coupon.cut(
+            cq.Workplane("XY").box(w - 2 * lip, length, lip, centered=(False, True, False)).translate((x + lip, 0, floor + h))
+        )
+        # Width label: notches on the near end, one per millimetre above 8.
+        for k in range(int(round(w - 7.6))):
+            coupon = coupon.cut(
+                cq.Workplane("XY").box(1.0, 1.0, 1.0).translate((x + w / 2 - 1.5 * k, -length / 2 + 0.5, floor / 2))
+            )
+        x += w + wall
+    return coupon.translate((-total_w / 2, 0, 0))
+
+
 def depth_budget():
     """Depth from the LED tips to each plate's tallest part, and the body depth it needs."""
     air, cover = 3.0, 2.0

@@ -42,7 +42,7 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 ## Electronics plates (off-the-shelf wiring plan)
 
-`electronics-plates-v3.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds three PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.** Source: `electronics_plates.py`, `make-electronics-plates.py`.
+`electronics-plates-v3.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds four PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.** Source: `electronics_plates.py`, `make-electronics-plates.py`.
 
 Panel rear (owner, 2026-11-15): inside the PCB windows the board sits 12 mm below the frame top (≈3 mm behind the LED tips); the tallest parts in the connector-free half are two 220 µF electrolytics (≈5 mm). Plugged HUB75 connectors reach 20 mm above the board (≈23 mm from the LED tips, below the carrier web at 27 mm); the power cable bend reaches ≈32 mm. All four panels hang the same way up and have their connectors in the same half, 33–64 mm from the panel centre (ruler photo, ±3 mm).
 
@@ -51,6 +51,8 @@ Panel rear (owner, 2026-11-15): inside the PCB windows the board sits 12 mm belo
 - **Controller plate**: four 3.5 mm standoffs on the Pi's 58 × 49 mm pattern (M2.5 thread-forming screws), saddles for the LM2596, Pro Micro and level converter, vents under the Pi.
 - Small parts sit on **saddles** (two 2 mm ribs); a cable tie loops over the part and through the gap under it, so nothing passes under the plate.
 - **DC socket coupon**: a 6 mm wall section with the Kycon KPJX-PM-4S cutout (14 mm, assumed from the drawing), 2 × M2.5 holes on 19 mm and a 1 mm flange pocket. The flange sits outside, the screws (6.6 mm + wall, so M2.5 × 12) come from inside into the flange's 2.3 mm holes. Print it first to check the cutout and that the brick's plug latches.
+
+- **Halo channel coupon** (35 × 70 × 6.9 mm, print flat): three 70 mm channels, inner widths 8.6, 9.6 and 10.6 mm (notches on one end: 1, 2, 3), 4.3 mm inner height, 1 mm lips. Slide a cut piece of the strip in from the end, LEDs facing out between the lips, and keep the width that holds it without squeezing. The enclosure's rear cover then gets that channel for the eight segments, so the strip needs no adhesive (IP65 silicone takes tape badly, and it is warm behind the display).
 
 Parts taller than the posts pass through the carrier's 159.6 mm opening; `make-electronics-plates.py` checks that, the connector keep-out, the boss notches and the posts, and a solid-intersection check found no overlap with the carrier.
 
