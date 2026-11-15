@@ -1,0 +1,24 @@
+thresholds.cir: thresholds corner=lo panel_uv_rise=4.18697 panel_uv_fall=3.80827 panel_ov_rise=5.74927 panel_ov_fall=5.22926 halo_ov_rise=5.74069 aux_on=11.8911 aux_off=10.702
+thresholds.cir: thresholds corner=typ panel_uv_rise=4.3087 panel_uv_fall=3.91373 panel_ov_rise=5.91642 panel_ov_fall=5.37408 halo_ov_rise=5.91658 aux_on=15.2963 aux_off=11.0574
+thresholds.cir: thresholds corner=hi panel_uv_rise=4.45528 panel_uv_fall=4.06549 panel_ov_rise=6.1177 panel_ov_fall=5.58247 halo_ov_rise=6.12709 aux_on=16.8381 aux_off=10.6703
+en_sequence.cir: en_sequence jp=1-2 aux5_ready=0.0151419 en_max_before_gpio=0.0205323 panel_on_delay=0.0014702 panel_off_delay=7.58E-05
+en_sequence.cir: en_sequence jp=2-3 aux5_ready=0.0153435 panel_on_after_aux=-0.00044039
+hotplug.cir: hotplug case=1 vmax=23.4472 ipeak=103.013 i2t=0.407166
+hotplug.cir: hotplug case=2 vmax=23.4126 ipeak=91.9172 i2t=0.317352
+hotplug.cir: hotplug case=3 vmax=23.2853 ipeak=83.089 i2t=0.214824
+hotplug.cir: hotplug case=4 vmax=32.8503 ipeak=76.5433 i2t=0.0882657
+
+PASS panel OV trip (lowest corner 5.75 V) > VOUT max 5.12 V + 0.4 V
+PASS panel OV release (lowest corner 5.23 V) > VOUT max 5.12 V
+PASS panel OV trip (highest corner 6.12 V) <= 6.2 V
+PASS panel UV release (highest corner 4.46 V) < VOUT min 4.9 V
+PASS halo OV trip corners 5.74..6.13 V within 5.5..6.2 V
+PASS AUX turns on below 22 V (highest corner 16.84 V; brick 24 V -3 % = 23.3 V)
+PASS AUX turns off above 6 V (lowest corner 10.67 V)
+PASS JP601 1-2: EN_PANEL stays below VEN_WAKE 0.4 V before GPIO26 (0.021 V)
+PASS JP601 1-2: panels enabled 1.47 ms after GPIO26 high (< 20 ms)
+PASS JP601 1-2: panels disabled 0.076 ms after GPIO26 low (< 5 ms)
+PASS JP601 2-3: EN_PANEL crosses 1.263 V -0.44 ms relative to +5V_AUX = 4.75 V (> -2 ms: panel bucks start after AUX is above 4 V)
+PASS hot-plug with bulk caps: +24V peak 23.4 V < 36 V (TPSM63610 VIN max)
+INFO hot-plug without bulk caps (case 4): +24V peak 32.9 V (reference only)
+INFO hot-plug fuse stress: peak 103 A, I2t 0.41 A2s (compare with 0453008 melting I2t; datasheet value not yet verified)

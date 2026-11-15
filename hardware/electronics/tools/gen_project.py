@@ -13,7 +13,7 @@ from gen_sch import PROJECT, uid  # noqa: E402
 BOARD = Path(__file__).resolve().parent.parent / "power-halo-board"
 
 # Netclass track widths are the autorouter defaults for taps; high-current paths are copper zones.
-# Copper: 4 layers, 1.6 mm, 2 oz outer / 1 oz inner (see docs/pcb-stackup.md)
+# Copper: 4 layers, 1.6 mm, 2 oz outer / 1 oz inner (stackup in gen_pcb.STACKUP, README.md)
 NETCLASSES = [
     # name, track, clearance, via dia, via drill, colour
     ("Default", 0.20, 0.20, 0.6, 0.3),

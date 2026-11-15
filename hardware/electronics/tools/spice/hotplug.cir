@@ -1,0 +1,58 @@
+* Hot-plug of J1 into an already-running 24 V brick (worst case for input overshoot).
+* Behavioral board model: no vendor models.  Values and sources: docs/verification.md.
+*   PSU output cap 1000u/30m (assumed), cable 1.5 m AWG18 pair: 2 uH loop, 63 mR + 20 mR contacts,
+*   fuse 0453008 ~10 mR cold, Q1 body diode (charge pump not yet running at the first ring),
+*   ceramics 10x 10u X7R 1210 derated to 4.5u each at 24 V, 2x EEE-FK1H101P bulk (ESR swept),
+*   SMBJ30A: VBR 33.3..36.8 V, VC 48.4 V at 12.4 A -> BV 34 V, RS 1.1 R.
+.param esr=0.3 nbulk=2
+Vpsu  psu 0 DC 24
+Cpsu  psu psuc 1000u
+Rpsuc psuc 0 30m
+Rpsu  psu  sw  10m
+Ssw   sw   cab ctl 0 swmod
+Vctl  ctl  0 PWL(0 0 10u 0 10.1u 1)
+.model swmod SW(VT=0.5 VH=0.1 RON=5m ROFF=1e9)
+Lcab  cab  c1 2u
+Rcab  c1   vraw 83m
+Rfuse vraw vf 10m
+Dq1   vf   p24 dbody
+.model dbody D(IS=1e-9 N=1.2 RS=5m)
+Ccer  p24  cer 45u
+Rcer  cer  cesl 1m
+Lcer  cesl 0 0.3n
+Cblk  p24  blk {100u*nbulk}
+Rblk  blk  0 {esr/nbulk}
+Dtvs  0    p24 dtvs
+.model dtvs D(IS=1e-12 BV=34 IBV=1m RS=1.1)
+Rleak p24  0 10k
+.tran 10n 400u 0 20n
+.control
+  foreach case 1 2 3 4
+    if $case = 1
+      alterparam esr=0.15
+      alterparam nbulk=2
+    end
+    if $case = 2
+      alterparam esr=0.3
+      alterparam nbulk=2
+    end
+    if $case = 3
+      alterparam esr=0.7
+      alterparam nbulk=2
+    end
+    if $case = 4
+      alterparam esr=1e6
+      alterparam nbulk=2
+    end
+    echo "case $case: 1 = ESR 0.15, 2 = 0.3, 3 = 0.7 ohm per bulk cap, 4 = bulk caps omitted"
+    reset
+    run
+    meas tran vmax MAX v(p24)
+    meas tran ipk MAX i(Lcab)
+    let i2 = i(Lcab)*i(Lcab)
+    meas tran i2t INTEG i2 from=0 to=400u
+    echo "RESULT hotplug case=$case vmax=$&vmax ipeak=$&ipk i2t=$&i2t"
+  end
+  quit
+.endc
+.end

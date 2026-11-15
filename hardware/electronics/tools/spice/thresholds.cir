@@ -1,0 +1,59 @@
+* Divider thresholds with tolerance corners (1% resistors, datasheet min/max thresholds).
+* Panel eFuse UV/OV string 143k / 15.0k / 40.2k (TPS259470A EN/UVLO and OVLO: rise 1.183/1.20/1.223 V,
+* fall 1.076/1.09/1.116 V); halo OVLO 147k / 37.4k; AUX buck EN 200k / 18k (TPSM63610 VEN rise
+* 1.0/1.263/1.365 V, hysteresis 0.1/0.35/0.5 V).  Each pass solves the input voltage at which a pin
+* reaches its threshold:  Vin = Vth * Rtotal / Rbelow  (DC sweep, measured by crossing).
+.param kt=1 kb=1
+Vin in 0 DC 0
+* panel string
+R11 in  uv  {143k*kt}
+R12 uv  ov  {15.0k*kb}
+R13 ov  0   {40.2k*kb}
+* halo OVLO
+R611 in hov {147k*kt}
+R613 hov 0  {37.4k*kb}
+* AUX EN
+R505 in aen {200k*kt}
+R506 aen 0  {18k*kb}
+.dc Vin 0 30 1m
+.control
+* lo: divider ratio high + min thresholds -> lowest trip voltages; hi: the opposite.
+  alterparam kt=0.99
+  alterparam kb=1.01
+  reset
+  run
+  meas dc uvr when v(uv)=1.183 rise=1
+  meas dc uvf when v(uv)=1.076 rise=1
+  meas dc ovr when v(ov)=1.183 rise=1
+  meas dc ovf when v(ov)=1.076 rise=1
+  meas dc hovr when v(hov)=1.183 rise=1
+  meas dc aenr when v(aen)=1.0 rise=1
+  meas dc aenf when v(aen)=0.9 rise=1
+  echo "RESULT thresholds corner=lo panel_uv_rise=$&uvr panel_uv_fall=$&uvf panel_ov_rise=$&ovr panel_ov_fall=$&ovf halo_ov_rise=$&hovr aux_on=$&aenr aux_off=$&aenf"
+  alterparam kt=1
+  alterparam kb=1
+  reset
+  run
+  meas dc uvr when v(uv)=1.2 rise=1
+  meas dc uvf when v(uv)=1.09 rise=1
+  meas dc ovr when v(ov)=1.2 rise=1
+  meas dc ovf when v(ov)=1.09 rise=1
+  meas dc hovr when v(hov)=1.2 rise=1
+  meas dc aenr when v(aen)=1.263 rise=1
+  meas dc aenf when v(aen)=0.913 rise=1
+  echo "RESULT thresholds corner=typ panel_uv_rise=$&uvr panel_uv_fall=$&uvf panel_ov_rise=$&ovr panel_ov_fall=$&ovf halo_ov_rise=$&hovr aux_on=$&aenr aux_off=$&aenf"
+  alterparam kt=1.01
+  alterparam kb=0.99
+  reset
+  run
+  meas dc uvr when v(uv)=1.223 rise=1
+  meas dc uvf when v(uv)=1.116 rise=1
+  meas dc ovr when v(ov)=1.223 rise=1
+  meas dc ovf when v(ov)=1.116 rise=1
+  meas dc hovr when v(hov)=1.223 rise=1
+  meas dc aenr when v(aen)=1.365 rise=1
+  meas dc aenf when v(aen)=0.865 rise=1
+  echo "RESULT thresholds corner=hi panel_uv_rise=$&uvr panel_uv_fall=$&uvf panel_ov_rise=$&ovr panel_ov_fall=$&ovf halo_ov_rise=$&hovr aux_on=$&aenr aux_off=$&aenf"
+  quit
+.endc
+.end
