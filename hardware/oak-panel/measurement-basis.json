@@ -199,7 +199,7 @@
   },
   "single_panel_trial_carrier": {
     "source": "trial_carrier.py / make-trial-carrier.py",
-    "status": "v4 (carrier unchanged from v2, plus halo-channel, DC-socket and pixel-grid coupons in the same job) prepared for the first single-panel fit trial; not a full enclosure or wall-load approval",
+    "status": "v5 (carrier unchanged from v2, plus halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge in the same job) prepared for the first single-panel fit trial; not a full enclosure or wall-load approval",
     "panel_mounts": "Four bores on paper-confirmed 174 x 158 mm pattern; intermediate inserts unused but visible through six 5 mm sight holes (both handedness variants)",
     "geometry_mm": {
       "outer_xy": [

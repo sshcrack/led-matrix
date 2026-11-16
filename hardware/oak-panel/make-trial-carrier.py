@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export one real panel trial carrier plus four test coupons in a single-job geometry layout."""
+"""Export one real panel trial carrier plus five test coupons in a single-job geometry layout."""
 
 import argparse
 import hashlib
@@ -75,6 +75,25 @@ def build_pixel_grid_coupon():
     return grid
 
 
+# Cable tunnel gauge: three tunnels with the clearances a cable gets where it crosses a carrier
+# edge: 6 mm under the 4 mm rim, 12 mm under the web band, and 9 mm in between. Lay the HUB75
+# ribbon or the power cable as it will run and slide the gauge over it.
+CABLE_TUNNELS = {"heights": (6.0, 9.0, 12.0), "width": 23.0, "length": 15.0, "wall": 2.5, "roof": 2.0}
+
+
+def build_cable_tunnel_gauge():
+    t = CABLE_TUNNELS
+    w, wall, roof, length = t["width"], t["wall"], t["roof"], t["length"]
+    gauge = None
+    for i, h in enumerate(t["heights"]):
+        y0 = i * (w + wall)
+        block = cq.Workplane("XY").box(length, w + 2 * wall, h + roof, centered=False).translate((0, y0, 0))
+        block = block.cut(cq.Workplane("XY").box(length, w, h, centered=False).translate((0, y0 + wall, 0)))
+        gauge = block if gauge is None else gauge.union(block)
+    span = len(t["heights"]) * (w + wall) + wall
+    return gauge.translate((-length / 2, -span / 2, 0))
+
+
 carrier = build_trial_carrier()
 coupon = cq.Workplane("XY").box(80, 24, 3, centered=(True, True, False))
 for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
@@ -82,8 +101,8 @@ for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
 # Notched end identifies the first (3.2 mm) hole without font dependencies.
 coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 5).translate((-39, -11, 1.5)))
 manifest = {
-    "revision": "trial-carrier-v4",
-    "status": "One-panel carrier geometry trial plus clearance, halo-channel, DC-socket and pixel-grid coupons; no wall-mount or finished product approval.",
+    "revision": "trial-carrier-v5",
+    "status": "One-panel carrier geometry trial plus clearance, halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge; no wall-mount or finished product approval.",
     "pattern_mm": centres,
     "corner_span_mm": [174, 158],
     "carrier_clearance_diameter_mm": 3.5,
@@ -104,6 +123,7 @@ manifest = {
     "halo_channel_coupon": {"strip_mm": HALO_STRIP_MM, **HALO_CHANNEL},
     "dc_socket_coupon": DC_SOCKET,
     "pixel_grid_coupon": PIXEL_GRID,
+    "cable_tunnel_gauge": CABLE_TUNNELS,
     "print_scale_percent": 100,
     "paper_scale_compensation_applied": False,
     "material": "PETG starting material; print service selects settings and quote.",
@@ -118,6 +138,7 @@ for name, shape in [
     ("halo-channel-coupon", build_halo_channel_coupon()),
     ("dc-socket-coupon", build_dc_socket_coupon()),
     ("pixel-grid-coupon", build_pixel_grid_coupon()),
+    ("cable-tunnel-gauge", build_cable_tunnel_gauge()),
 ]:
     solid = shape.val()
     assert solid.isValid() and len(solid.Solids()) == 1, name
@@ -201,6 +222,15 @@ assert not grid.isInside((first + g["pitch"] / 2, first, g["heights"][0] + 0.1))
 last_wall = first + (g["cells"] - 2) * g["pitch"] + g["pitch"] / 2
 assert grid.isInside((last_wall, first, g["heights"][1] - 0.1))  # high half
 assert abs(grid.BoundingBox().xlen - span) < 1e-6 and abs(grid.BoundingBox().zlen - g["heights"][1]) < 1e-6
+tg = build_cable_tunnel_gauge().val()
+t = CABLE_TUNNELS
+span = len(t["heights"]) * (t["width"] + t["wall"]) + t["wall"]
+for i, h in enumerate(t["heights"]):
+    yc = -span / 2 + t["wall"] + i * (t["width"] + t["wall"]) + t["width"] / 2
+    assert not tg.isInside((0, yc, h - 0.1)) and not tg.isInside((0, yc + t["width"] / 2 - 0.1, 0.5))  # open tunnel
+    assert tg.isInside((0, yc, h + t["roof"] / 2))  # roof
+assert abs(tg.BoundingBox().ylen - span) < 1e-6
+manifest["cable_tunnel_probes"] = "6, 9 and 12 mm tunnels open to full width, roofs present"
 manifest["pixel_grid_probes"] = "all edge cells open, walls on the 3 mm pitch, 3 mm and 6 mm halves checked"
 manifest["coupon_radius_probes"] = "all four clearance radii checked within 0.01 mm"
 manifest["carrier_probes"] = (
@@ -223,6 +253,7 @@ NESTED = {
     "halo-channel-coupon": (-50.25, -34.5),
     "dc-socket-coupon": (-8.0, -49.5),
     "pixel-grid-coupon": (45.1, 45.1),
+    "cable-tunnel-gauge": (40.0, -30.1),
 }
 nested_bounds = {}
 for name, (cx, cy) in NESTED.items():
@@ -262,10 +293,10 @@ manifest["single_job_layout"] = {
     "objects": 1 + len(NESTED),
     "bounds_mm": loaded.bounds.tolist(),
     "minimum_xy_margin_mm": 5,
-    "coupon_placement": "all four coupons inside the carrier's open middle",
+    "coupon_placement": "all five coupons inside the carrier's open middle",
     "gap_between_parts_mm": round(float(coupon_gap), 2),
     "fits": "Prusa MK3S 250 x 210 in either orientation, and the 400 x 400 printer",
-    "generic_3mf_roundtrip": "five objects, transformed bounds and volume preserved",
+    "generic_3mf_roundtrip": "six objects, transformed bounds and volume preserved",
     "machine_settings": "none; print service must slice and quote",
 }
 
@@ -280,7 +311,7 @@ def render_preview(path):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
     fig = plt.figure(figsize=(12.2, 7.6), dpi=100)
-    fig.suptitle("Carrier + four test coupons v4 / PETG / 100% scale", fontsize=15)
+    fig.suptitle("Carrier + five test coupons v5 / PETG / 100% scale", fontsize=15)
     ax3 = fig.add_subplot(1, 2, 1, projection="3d")
     mesh = meshes["trial-panel-carrier"]
     light = mesh.face_normals @ [0.3, -0.4, 0.86]
@@ -321,7 +352,7 @@ def render_preview(path):
         ax.add_patch(Circle((5 + OUTER_MM / 2 + x, 5 + OUTER_MM / 2 + y), 5, fill=False, ec="#d9822b", lw=1.2))
     ax.set(xlim=(0, 250), ylim=(0, 210), aspect="equal", xlabel="mm", ylabel="mm")
     ax.set_title(
-        "Single job: hole, halo-channel, DC-socket and pixel-grid\ncoupons nested in the carrier's open middle, "
+        "Single job: hole, halo-channel, DC-socket, pixel-grid and\ncable-tunnel coupons nested in the carrier's open middle, "
         "201.6 mm square, fits the bed either way round",
         fontsize=10,
     )
@@ -343,7 +374,7 @@ render_preview(out / "trial-carrier-preview.png")
 )
 instructions = ROOT / "trial-carrier-instructions.txt"
 (out / "READ-ME-FIRST.txt").write_text(instructions.read_text())
-archive = out / "panel-trial-carrier-kit-v4.zip"
+archive = out / "panel-trial-carrier-kit-v5.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     for name in [
         "trial-panel-carrier.stl",
@@ -356,6 +387,8 @@ with ZipFile(archive, "w", ZIP_DEFLATED) as z:
         "dc-socket-coupon.step",
         "pixel-grid-coupon.stl",
         "pixel-grid-coupon.step",
+        "cable-tunnel-gauge.stl",
+        "cable-tunnel-gauge.step",
         "trial-carrier-validation.json",
         "READ-ME-FIRST.txt",
         "single-job-layout.3mf",
