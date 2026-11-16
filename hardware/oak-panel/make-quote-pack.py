@@ -89,14 +89,14 @@ for job, (option, qty, parts) in JOBS.items():
     assert len(loaded.geometry) == len(parts) and abs(loaded.volume / scene.volume - 1) < 1e-6, job
     manifest["jobs"].append({
         "file": path.name, "option": option, "quantity": qty, "objects": [n for n, _ in parts],
-        "bounds_mm": [round(v, 1) for v in hi], "solid_volume_cm3": round(volume / 1000, 1),
+        "size_mm": [round(v, 1) for v in hi - lo], "solid_volume_cm3": round(volume / 1000, 1),
     })
 
 total = {o: sum(j["solid_volume_cm3"] * j["quantity"] for j in manifest["jobs"] if j["option"] == o) for o in "AB"}
 manifest["solid_volume_cm3"] = {"B (carriers + plates + joiners)": round(total["B"], 1), "A (B + frame + rear cover)": round(total["A"] + total["B"], 1)}
 (out / "quote-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
-rows = "\n".join(f"| {j['file']} | {j['quantity']} | {'A + B' if j['option'] == 'B' else 'A'} | {j['bounds_mm'][0]} x {j['bounds_mm'][1]} x {j['bounds_mm'][2]} |" for j in manifest["jobs"])
+rows = "\n".join(f"| {j['file']} | {j['quantity']} | {'A + B' if j['option'] == 'B' else 'A'} | {j["size_mm"][0]} x {j["size_mm"][1]} x {j["size_mm"][2]} |" for j in manifest["jobs"])
 (out / "ANFRAGE-LIES-MICH.md").write_text(f"""# Angebotsanfrage: Gehäuse für eine LED-Wandanzeige (NUR KOSTENSCHÄTZUNG)
 
 **Bitte noch nicht drucken.** Ich möchte nur wissen, was der Druck ungefähr kosten würde, um
