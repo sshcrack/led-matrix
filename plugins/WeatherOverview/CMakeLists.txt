@@ -3,6 +3,8 @@ register_plugin(WeatherOverview
     matrix/WeatherOverview.h
     matrix/WeatherParser.cpp
     matrix/WeatherParser.h
+    matrix/WeatherPreviewFixture.cpp
+    matrix/WeatherPreviewFixture.h
     matrix/Constants.cpp
     matrix/Constants.h
     scenes/WeatherScene.cpp

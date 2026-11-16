@@ -249,6 +249,12 @@ namespace Scenes {
             return 6;
         }
 
+        // The live API and icon downloads are replaced by an offline fixture.
+        [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+        {
+            return Previews::SceneSpec::with_inputs({"weather.forecast"});
+        }
+
         SceneCapabilities get_capabilities() const override {
             auto caps = Scene::get_capabilities();
             caps.requires_network = true;
