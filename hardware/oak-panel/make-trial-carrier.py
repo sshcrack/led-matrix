@@ -95,14 +95,36 @@ def build_cable_tunnel_gauge():
 
 
 carrier = build_trial_carrier()
-coupon = cq.Workplane("XY").box(80, 24, 3, centered=(True, True, False))
-for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
-    coupon = coupon.cut(cq.Workplane("XY").center(x, 0).circle(diameter / 2).extrude(3))
-# Notched end identifies the first (3.2 mm) hole without font dependencies.
-coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 5).translate((-39, -11, 1.5)))
+# Screw test coupon (80 x 24 x 10 mm). Row A (+Y): clearance through holes. Row B (-Y): pilot
+# holes for screws that cut their own thread in PETG (M3 for the plates and rear cover, M2.5 for
+# the Pi) and an M3 nut trap for the seam joiners. Notch at the 3.2 mm end.
+SCREW_COUPON = {
+    "size": (80.0, 24.0, 10.0),
+    "clearance_mm": [3.2, 3.4, 3.5, 3.6],  # row A at x -27, -9, 9, 27
+    "pilot_mm": {"M3": [2.4, 2.6, 2.8], "M2.5": [2.0, 2.2]},  # row B at x -30, -18, -6, 6, 18
+    "nut_trap": {"across_flats": 5.8, "depth": 2.5, "through": 3.4, "x": 30.0},  # M3 nut is 5.5 AF
+}
+CLEARANCE_X = [-27, -9, 9, 27]
+PILOT_X = [-30, -18, -6, 6, 18]
+ROW_A, ROW_B = 6.0, -6.0
+sx, sy, sz = SCREW_COUPON["size"]
+coupon = cq.Workplane("XY").box(sx, sy, sz, centered=(True, True, False))
+for x, diameter in zip(CLEARANCE_X, SCREW_COUPON["clearance_mm"]):
+    coupon = coupon.cut(cq.Workplane("XY").center(x, ROW_A).circle(diameter / 2).extrude(sz))
+pilots = SCREW_COUPON["pilot_mm"]["M3"] + SCREW_COUPON["pilot_mm"]["M2.5"]
+for x, diameter in zip(PILOT_X, pilots):
+    coupon = coupon.cut(cq.Workplane("XY").center(x, ROW_B).circle(diameter / 2).extrude(sz))
+nut = SCREW_COUPON["nut_trap"]
+coupon = coupon.cut(cq.Workplane("XY").center(nut["x"], ROW_B).circle(nut["through"] / 2).extrude(sz))
+coupon = coupon.cut(
+    cq.Workplane("XY").center(nut["x"], ROW_B).polygon(6, nut["across_flats"] / 0.8660254)
+    .extrude(nut["depth"]).translate((0, 0, sz - nut["depth"]))
+)
+# Notched corner identifies the 3.2 mm end without font dependencies.
+coupon = coupon.cut(cq.Workplane("XY").box(3, 3, 2 * sz).translate((-sx / 2 + 1, sy / 2 - 1, 0)))
 manifest = {
-    "revision": "trial-carrier-v5",
-    "status": "One-panel carrier geometry trial plus clearance, halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge; no wall-mount or finished product approval.",
+    "revision": "trial-carrier-v6",
+    "status": "One-panel carrier geometry trial plus screw-test, halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge; no wall-mount or finished product approval.",
     "pattern_mm": centres,
     "corner_span_mm": [174, 158],
     "carrier_clearance_diameter_mm": 3.5,
@@ -119,7 +141,7 @@ manifest = {
     "sight_holes_note": "Both handedness variants of the drawing's +/-7.5 mm stagger; inspection only, not mounting holes",
     "orientation_notch": "8 x 2 x 2 mm notch in the top outer corner of the +Y rib, centred on X=0",
     "xy_view": "Bed view: looking down on the printed part, bosses toward the viewer, X right, Y up (= panel rear seen from behind)",
-    "coupon_from_notched_end_mm": [3.2, 3.4, 3.5, 3.6],
+    "screw_test_coupon": SCREW_COUPON,
     "halo_channel_coupon": {"strip_mm": HALO_STRIP_MM, **HALO_CHANNEL},
     "dc_socket_coupon": DC_SOCKET,
     "pixel_grid_coupon": PIXEL_GRID,
@@ -134,7 +156,7 @@ manifest = {
 meshes = {}
 for name, shape in [
     ("trial-panel-carrier", carrier),
-    ("clearance-hole-coupon", coupon),
+    ("screw-test-coupon", coupon),
     ("halo-channel-coupon", build_halo_channel_coupon()),
     ("dc-socket-coupon", build_dc_socket_coupon()),
     ("pixel-grid-coupon", build_pixel_grid_coupon()),
@@ -204,9 +226,17 @@ assert not carrier.val().isInside((87, 0, 6))
 assert carrier.val().isInside((94, 0, 8))
 assert not carrier.val().isInside((94, 0, 12))
 assert not carrier.val().isInside((0, 0, 2))
-for x, diameter in zip([-27, -9, 9, 27], [3.2, 3.4, 3.5, 3.6]):
-    assert not coupon.val().isInside((x + diameter / 2 - 0.01, 0, 1.5))
-    assert coupon.val().isInside((x + diameter / 2 + 0.01, 0, 1.5))
+holes = [(x, ROW_A, d) for x, d in zip(CLEARANCE_X, SCREW_COUPON["clearance_mm"])]
+holes += [(x, ROW_B, d) for x, d in zip(PILOT_X, pilots)]
+for x, y, diameter in holes:
+    for z in (0.5, sz / 2, sz - 0.5):
+        assert not coupon.val().isInside((x + diameter / 2 - 0.01, y, z))
+        assert coupon.val().isInside((x + diameter / 2 + 0.01, y, z))
+af = nut["across_flats"]
+assert not coupon.val().isInside((nut["x"], ROW_B + af / 2 - 0.01, sz - 0.5))  # trap flat (flats face +/-Y)
+assert coupon.val().isInside((nut["x"], ROW_B + af / 2 + 0.01, sz - 0.5))
+assert coupon.val().isInside((nut["x"], ROW_B + af / 2 - 0.01, sz - nut["depth"] - 0.5))  # trap floor
+assert not coupon.val().isInside((nut["x"], ROW_B, 1.0))  # through hole
 grid = build_pixel_grid_coupon().val()
 g = PIXEL_GRID
 span = g["cells"] * g["pitch"] + g["wall"] + 2 * (g["outer_wall"] - g["wall"])
@@ -232,7 +262,7 @@ for i, h in enumerate(t["heights"]):
 assert abs(tg.BoundingBox().ylen - span) < 1e-6
 manifest["cable_tunnel_probes"] = "6, 9 and 12 mm tunnels open to full width, roofs present"
 manifest["pixel_grid_probes"] = "all edge cells open, walls on the 3 mm pitch, 3 mm and 6 mm halves checked"
-manifest["coupon_radius_probes"] = "all four clearance radii checked within 0.01 mm"
+manifest["coupon_radius_probes"] = "4 clearance and 5 pilot radii at three heights, nut trap flats, floor and through hole checked within 0.01 mm"
 manifest["carrier_probes"] = (
     "four 3.5 mm through bores at web/boss heights, eight symmetric seam bores, six sight holes, "
     "orientation notch, web, rim and open middle checked"
@@ -249,7 +279,7 @@ scene.add_geometry(
 # The coupons nest in the carrier's 159.6 mm open middle (centres relative to the carrier
 # centre), so the whole job stays a 201.6 mm square and fits the MK3S bed either way round.
 NESTED = {
-    "clearance-hole-coupon": (-29.7, 57.5),
+    "screw-test-coupon": (-29.7, 57.5),
     "halo-channel-coupon": (-50.25, -34.5),
     "dc-socket-coupon": (-8.0, -49.5),
     "pixel-grid-coupon": (45.1, 45.1),
@@ -311,7 +341,7 @@ def render_preview(path):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
     fig = plt.figure(figsize=(12.2, 7.6), dpi=100)
-    fig.suptitle("Carrier + five test coupons v5 / PETG / 100% scale", fontsize=15)
+    fig.suptitle("Carrier + five test coupons v6 / PETG / 100% scale", fontsize=15)
     ax3 = fig.add_subplot(1, 2, 1, projection="3d")
     mesh = meshes["trial-panel-carrier"]
     light = mesh.face_normals @ [0.3, -0.4, 0.86]
@@ -352,7 +382,7 @@ def render_preview(path):
         ax.add_patch(Circle((5 + OUTER_MM / 2 + x, 5 + OUTER_MM / 2 + y), 5, fill=False, ec="#d9822b", lw=1.2))
     ax.set(xlim=(0, 250), ylim=(0, 210), aspect="equal", xlabel="mm", ylabel="mm")
     ax.set_title(
-        "Single job: hole, halo-channel, DC-socket, pixel-grid and\ncable-tunnel coupons nested in the carrier's open middle, "
+        "Single job: screw-test, halo-channel, DC-socket, pixel-grid and\ncable-tunnel coupons nested in the carrier's open middle, "
         "201.6 mm square, fits the bed either way round",
         fontsize=10,
     )
@@ -374,13 +404,13 @@ render_preview(out / "trial-carrier-preview.png")
 )
 instructions = ROOT / "trial-carrier-instructions.txt"
 (out / "READ-ME-FIRST.txt").write_text(instructions.read_text())
-archive = out / "panel-trial-carrier-kit-v5.zip"
+archive = out / "panel-trial-carrier-kit-v6.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED) as z:
     for name in [
         "trial-panel-carrier.stl",
         "trial-panel-carrier.step",
-        "clearance-hole-coupon.stl",
-        "clearance-hole-coupon.step",
+        "screw-test-coupon.stl",
+        "screw-test-coupon.step",
         "halo-channel-coupon.stl",
         "halo-channel-coupon.step",
         "dc-socket-coupon.stl",

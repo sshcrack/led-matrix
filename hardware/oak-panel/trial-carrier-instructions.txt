@@ -1,10 +1,11 @@
-ONE-PANEL TRIAL CARRIER + FIVE TEST COUPONS v5
+ONE-PANEL TRIAL CARRIER + FIVE TEST COUPONS v6
 
-v5 REPLACES v1 to v4. The carrier is unchanged from v2; v3 added the halo-channel and DC-socket coupons, v4 the pixel-grid coupon, v5 the cable tunnel gauge.
+v6 REPLACES v1 to v5. The carrier is unchanged from v2; v3 added the halo-channel and DC-socket coupons, v4 the pixel-grid coupon, v5 the cable tunnel gauge, v6 turns the clearance coupon into a screw test coupon.
+This is meant to be the ONLY test print before the final parts, so please do every test below.
 Print one carrier and the five coupons only. Do not also print the old gauge or a full enclosure.
 
 SUBMIT ONE JOB FOR A QUOTE
-Preferred: single-job-layout.3mf. It contains exactly SIX separate objects: the carrier and five small coupons that sit inside its open middle, at least 10 mm from the carrier and from each other. The whole job is a 201.6 x 201.6 mm square, so it fits the Prusa i3 MK3S bed (X 250 x Y 210 mm) either way round with at least 5 mm margin, and also fits the 400 x 400 mm printer. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl, clearance-hole-coupon.stl, halo-channel-coupon.stl, dc-socket-coupon.stl, pixel-grid-coupon.stl and cable-tunnel-gauge.stl together and ask to arrange them as ONE job (the coupons may go in the carrier's open middle). Do not print both the 3MF AND the STL files (that would duplicate the parts).
+Preferred: single-job-layout.3mf. It contains exactly SIX separate objects: the carrier and five small coupons that sit inside its open middle, at least 10 mm from the carrier and from each other. The whole job is a 201.6 x 201.6 mm square, so it fits the Prusa i3 MK3S bed (X 250 x Y 210 mm) either way round with at least 5 mm margin, and also fits the 400 x 400 mm printer. It contains geometry only, no machine settings or G-code. The service must check material, bed/brim, slicing and price before printing. If 3MF is unsuitable, submit trial-panel-carrier.stl, screw-test-coupon.stl, halo-channel-coupon.stl, dc-socket-coupon.stl, pixel-grid-coupon.stl and cable-tunnel-gauge.stl together and ask to arrange them as ONE job (the coupons may go in the carrier's open middle). Do not print both the 3MF AND the STL files (that would duplicate the parts).
 
 PETG is the starting material. Millimetres, 100% scale in all axes. NEVER apply the 104.167% PAPER correction. Print flat rear/base faces on the bed, with bosses pointing UP. The geometry has no unsupported roofs or internal cavities requiring support. The service selects practical wall/infill/layer settings and confirms adhesion needs. No EUR 5 price guarantee: only their slicer can give the quote. The minimum fee applies according to the service's job policy.
 
@@ -17,8 +18,11 @@ Carrier perimeter/body size and 12 mm spacer height remain concept assumptions t
 
 The +16 mm boss faces touch the panel insert faces. The rear web sits 12 mm behind those faces; the printed rear base is 16 mm behind. Screw heads would remain outside the rear base. This is a mounting/interference trial, not finished carrier-to-frame, wall-mount or fabric-clamp hardware. A complete display must not be hung from this trial part.
 
-CLEARANCE COUPON
-80 x 24 x 3 mm; from its notched end, holes are 3.2 / 3.4 / 3.5 / 3.6 mm. Record the smallest one that clears the intended fastener freely. These are clearance holes, not printed threads.
+SCREW TEST COUPON
+80 x 24 x 10 mm, notched corner at the left of the top row. Hold it with the notch top-left.
+- Top row, clearance holes (screw should slide through freely): 3.2 / 3.4 / 3.5 / 3.6 mm. Record the smallest one an M3 screw passes freely.
+- Bottom row, pilot holes (screw cuts its own thread into the plastic), from the left: 2.4 / 2.6 / 2.8 mm for M3, then 2.0 / 2.2 mm for M2.5. Screw an M3 x 12 into each M3 hole and an M2.5 x 6 into each M2.5 hole by hand. Record for each: too tight to turn / good (firm, holds when you pull) / too loose (strips or wobbles). Then take the good one out and in again three times: does it still hold? These sizes go into the plates, the Pi mounts and the rear cover.
+- Bottom right: an M3 nut trap (5.8 mm across flats, 2.5 mm deep) on top of a 3.4 mm hole. Press an M3 nut in: record whether it goes in by finger, needs a light tap, or does not fit, and whether it then stays when you turn a screw into it from below. The carriers will be joined this way.
 
 HALO CHANNEL COUPON
 38.5 x 70 x 6.1 mm, three channels for the halo LED strip (owner's strip: 10.0 x 2.63 mm). Inner widths 10.4 / 10.7 / 11.0 mm, marked by 1 / 2 / 3 small notches at one end; 3.3 mm inner height; 1.2 mm lips leave an 8.0-8.6 mm opening for the LEDs. Cut a piece of strip two LEDs long at its cut marks and slide it in from the end of each channel, LEDs facing out between the lips. Record which channel holds it without squeezing or rattling, and whether the lips stayed straight (no sag onto the strip).
@@ -42,11 +46,11 @@ PHYSICAL CHECK (no screws, no pressure)
 6. Sight holes: look through the six 5 mm holes. Record which ones show an insert centred in the hole. The left and right side holes should each show one. At the top and bottom edges only one hole of each pair should; which one tells us which way round the drawing is.
 7. Cables: for each connector and each cable that has to cross the carrier's outline, note where it crosses (the outer 16 mm web band, the 4 mm rib, or the open middle) and roughly how far above the insert faces it sits. Check the intended cable bends in the open middle. In particular: can the HUB75 ribbon between two panels fold flat under the carrier's outer rib (6 mm above the panel frame), or does it have to loop over the carrier's back?
 8. Measure with calipers, if you have them: one module's outside body size in both directions; whether neighbouring module bodies touch; and the distance spanning 10 LED pitches across a seam compared with 10 pitches inside one module, in both directions. Also the distance from LED tip to insert face on each module.
-9. Test the clearance coupon (and the halo channel coupon, see above). Confirm a known matching thread before trying screws in panel inserts. A 5.2 mm smooth foot shaft does not identify the thread. Do not use a guessed screw length or tighten into a blind stop. The carrier's 16 mm grip thickness is not the screw length: usable insert engagement and head/washer details are still unknown. Final length will be selected after this check. If a screw is tried later, finger-snug only.
+9. Test the screw test coupon (and the other coupons, see above). Confirm a known matching thread before trying screws in panel inserts. A 5.2 mm smooth foot shaft does not identify the thread. Do not use a guessed screw length or tighten into a blind stop. The carrier's 16 mm grip thickness is not the screw length: usable insert engagement and head/washer details are still unknown. Final length will be selected after this check. If a screw is tried later, finger-snug only.
 10. Mark which edge has HUB75 IN, relative to the notch.
 
 REPORT
-Flatness per boss (step 1), pin alignment per corner (3), paper gaps per corner (4), contact photos (5, private), which sight holes show inserts (6), the cable table and ribbon crossing (7), measurements (8), coupon clearance (9), HUB75 IN edge (10), the halo channel that fits, the pixel grid look (which depth, with which diffuser, or none), the lowest tunnel each cable passes, and later the DC socket fit.
+Flatness per boss (step 1), pin alignment per corner (3), paper gaps per corner (4), contact photos (5, private), which sight holes show inserts (6), the cable table and ribbon crossing (7), measurements (8), screw test coupon: clearance hole, M3 and M2.5 pilot results, nut trap (9), HUB75 IN edge (10), the halo channel that fits, the pixel grid look (which depth, with which diffuser, or none), the lowest tunnel each cable passes, and later the DC socket fit.
 
 AFTER THE RESULT
 Revise this same carrier design as needed, then complete the one-panel diffuser/frame retention trial. A successful trial carrier can be retained for that later prototype if its fit and support are suitable; it is not yet a final product part. Full four-panel enclosure, wall load paths, heat performance and electronics remain unvalidated.

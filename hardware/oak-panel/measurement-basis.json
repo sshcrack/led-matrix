@@ -199,7 +199,7 @@
   },
   "single_panel_trial_carrier": {
     "source": "trial_carrier.py / make-trial-carrier.py",
-    "status": "v5 (carrier unchanged from v2, plus halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge in the same job) prepared for the first single-panel fit trial; not a full enclosure or wall-load approval",
+    "status": "v6 (carrier unchanged from v2, plus screw-test, halo-channel, DC-socket and pixel-grid coupons and a cable tunnel gauge in the same job; the only planned test print before the final parts) prepared for the first single-panel fit trial; not a full enclosure or wall-load approval",
     "panel_mounts": "Four bores on paper-confirmed 174 x 158 mm pattern; intermediate inserts unused but visible through six 5 mm sight holes (both handedness variants)",
     "geometry_mm": {
       "outer_xy": [
@@ -257,5 +257,12 @@
       "basis": "Read from owner ruler photos 2026-11-15 (about +-3 mm): (x0, x1, y0, y1) from the panel centre, rear view, connector half as +Y"
     },
     "orientation": "Owner photo of the 2x2 array 2026-11-15: all four panels the same way up, data arrows the same direction, connectors in the same half of every panel"
+  },
+  "print_service_pricing": {
+    "minimum_per_print_eur": 5.0,
+    "material_eur_per_kg": 25.0,
+    "time_eur_per_hour": 1.0,
+    "basis": "Owner, 2026-11-16, from the print service (Medienzentrum) price list; cost is quoted after slicing",
+    "owner_preference": "Minimise print rounds: one trial job, then the final parts"
   }
 }
