@@ -164,8 +164,10 @@ and exits 77 (ctest: skipped) when either is missing. It needs no Python package
 Every scenario also requires usable frames (well-formed `LMF1`, 128x128, lit pixels,
 monotonically increasing sequence) within a bound after the fault. Any
 `AddressSanitizer`, `LeakSanitizer`, `ThreadSanitizer`, UBSan `runtime error:` or
-failed `_GLIBCXX_ASSERTIONS` line in a child log, or a daemon that ignores SIGTERM,
-fails the run.
+failed `_GLIBCXX_ASSERTIONS` line in a child log, a nonzero daemon shutdown status,
+or a daemon that ignores SIGTERM fails the run. Kill, stall and disconnect scenarios
+also require local render-counter progress after remote frames become stale, before
+any skip or reconnect; repeated captures of the last desktop frame cannot pass recovery.
 
 ```bash
 # Daemon from the emulator build, worker from the desktop build (both through presets).

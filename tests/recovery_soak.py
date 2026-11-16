@@ -608,6 +608,20 @@ class Soak:
         self.timings.setdefault("recovery_s", []).append(round(waited, 2))
         return waited
 
+    def expect_local_fallback(self, what, within=8.0):
+        """Require real local renders after the last remote frame is stale.
+
+        LMF1 sequences count captures, so repeated copies of the last remote
+        frame can look like recovery until its freshness window expires.
+        """
+        self.wait_for(lambda: not self.remote()["frame_fresh"], within,
+                      f"remote frames to become stale {what}")
+        before = self.api.diag()["renderer"]["frames"]
+        self.wait_for(lambda: (lambda d: not d["remote_render"]["frame_fresh"]
+                              and d["renderer"]["frames"] >= before + 3)(self.api.diag()),
+                      within, f"local rendering progress {what}")
+        self.expect_frames(f"from local fallback {what}", within)
+
     def check_pump_healthy(self, what):
         state = self.pump.snapshot()
         if state["errors"]:
@@ -769,6 +783,7 @@ class Soak:
             self.wait_worker_gone(10)
             if self.remote()["frame_fresh"]:
                 raise SoakFailure("daemon still reports fresh desktop frames after the worker died")
+            self.expect_local_fallback("after the worker died")
             self.skip()  # a hard cut with no worker must stay local
             self.expect_frames("while no worker is attached", 8)
             self.start_worker()
@@ -788,6 +803,7 @@ class Soak:
                 self.pump.reset_gap()
                 self.expect_frames("while the worker is frozen", 10)
                 self.wait_worker_gone(10)
+                self.expect_local_fallback("while the worker is frozen")
                 self.skip()
                 self.expect_frames("after switching with a frozen worker", 8)
             finally:
@@ -807,6 +823,7 @@ class Soak:
             self.pump.reset_gap()
             self.expect_frames("after the desktop control socket dropped", 8)
             self.wait_worker_gone(12)
+            self.expect_local_fallback("while the desktop is away")
             self.expect_frames("while the desktop is away", 8)
             self.ensure_desktop()
             self.wait_worker_ready()
@@ -1031,6 +1048,8 @@ class Soak:
         if self.daemon:
             status = self.daemon.stop(grace=self.t(15))
             self.notes.append(f"daemon exit status on SIGTERM: {status}")
+            if status != 0:
+                problems.append(f"the daemon exited unexpectedly with status {status} on SIGTERM")
             if self.daemon.forced:
                 problems.append(f"the daemon ignored SIGTERM for {self.t(15):.0f}s and had to be killed")
         for child in CHILDREN:
@@ -1041,7 +1060,7 @@ class Soak:
                                 f"{text[start:match.start() + 800]}")
                 break
         if problems:
-            raise SoakFailure("sanitizer/assertion output found:\n" + "\n---\n".join(problems))
+            raise SoakFailure("shutdown or sanitizer/assertion failure:\n" + "\n---\n".join(problems))
 
 
 def resolve(args):
