@@ -1,23 +1,19 @@
 #pragma once
 
-#include <thread>
 #include <atomic>
+#include <expected>
+#include <filesystem>
+#include <functional>
+#include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
-#include <optional>
-#include <functional>
-#include <expected>
-#include <mutex>
-#include "shared/matrix/config/MainConfig.h"
-#include "shared/common/Version.h"
-#include "nlohmann/json.hpp"
+#include <thread>
 
-// Windows.h defines ERROR as 0, which collides with UpdateStatus::ERROR
-#ifdef _WIN32
-#ifdef ERROR
-#undef ERROR
-#endif
-#endif
+#include "nlohmann/json.hpp"
+#include "shared/common/Releases.h"
+#include "shared/common/Version.h"
+#include "shared/matrix/config/MainConfig.h"
 
 namespace Update
 {
@@ -31,16 +27,8 @@ namespace Update
         bool is_prerelease;
     };
 
-    enum class UpdateStatus
-    {
-        IDLE,
-        CHECKING, // a manual install is resolving its release (set before the install request is answered)
-        DOWNLOADING,
-        INSTALLING,
-        ERROR,
-        SUCCESS,
-        DISABLED // Auto-update is disabled
-    };
+    /// Shared with the desktop (JSON names, legacy int values): see shared/common/Releases.h.
+    using UpdateStatus = Releases::UpdateStatus;
 
     class UpdateManager
     {
@@ -71,15 +59,12 @@ namespace Update
 
         void update_loop();
 
-        std::expected<void, std::string> download_update(const std::string &url, const std::string &filename);
-        static std::expected<void, std::string> verify_sha256(const std::string &filename, const std::string &expected_hex);
+        std::expected<void, std::string> download_update(const std::string& url, const std::string& filename);
         std::expected<void, std::string> install_update(const UpdateInfo &info, const std::string &filename);
         bool should_check_for_updates();
         
         static bool is_platform_supported();
 
-        std::string get_github_api_url(const std::optional<Common::Version> &version = std::nullopt);
-        std::string get_user_agent();
     public:
         explicit UpdateManager(Config::MainConfig *config);
 
@@ -89,9 +74,11 @@ namespace Update
         void start();
         void stop();
 
-        /// Parses a GitHub release JSON object into UpdateInfo. Tolerates null or missing
-        /// optional fields (body, prerelease, digest), which GitHub returns for releases
-        /// without notes. `version` overrides the release's tag when set.
+        /// Parses a GitHub release JSON object into UpdateInfo through Releases::parse_release /
+        /// select_asset. Tolerates null or missing optional fields (body, prerelease, digest), which
+        /// GitHub returns for releases without notes. A release without a digest parses (sha256 stays
+        /// empty); manual_download_and_install refuses to install it. `version` overrides the release's
+        /// tag when set.
         static std::expected<UpdateInfo, std::string> parse_release(const nlohmann::json &release,
                                                                      const std::optional<Common::Version> &version = std::nullopt);
 
@@ -99,6 +86,10 @@ namespace Update
         std::expected<UpdateInfo, std::string> manual_check_for_updates();
         std::expected<UpdateInfo, std::string> get_update_info(const std::optional<Common::Version> &version = std::nullopt);
         std::expected<void, std::string> manual_download_and_install(const UpdateInfo &update_info);
+
+        /// Directory of the `.update_success` / `.update_error` flags. /var/lib/led-matrix, except in tests.
+        static std::filesystem::path state_dir();
+        static void set_state_dir_for_testing(std::filesystem::path dir);
 
         UpdateStatus get_status() const;
         /// A manual install was accepted: report CHECKING and drop the previous outcome, so pollers never

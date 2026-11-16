@@ -1,25 +1,25 @@
 #include "shared/desktop/SelfUpdate.h"
 
+#include <cpr/cpr.h>
+#include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <thread>
+#include <vector>
+
+#include "led_matrix_version.h"  // generated
+#include "shared/common/Releases.h"
 #include "shared/common/utils/utils.h"
 #include "shared/desktop/autostart.h"
 #include "shared/desktop/config.h"
 #include "shared/desktop/utils.h"
-#include "led_matrix_version.h" // generated
-
-#include <cpr/cpr.h>
-#include <picosha2.h>
-#include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <chrono>
-#include <thread>
-#include <cctype>
-#include <cstring>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -264,14 +264,6 @@ namespace SelfUpdate
                 return std::unexpected("Could not activate the new version: " + ec.message());
 #endif
             return {};
-        }
-
-        std::string sha256_file(const fs::path &file)
-        {
-            std::ifstream in(file, std::ios::binary);
-            std::vector<unsigned char> hash(picosha2::k_digest_size);
-            picosha2::hash256(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>(), hash.begin(), hash.end());
-            return picosha2::bytes_to_hex_string(hash.begin(), hash.end());
         }
 
         /// Directory holding bin/<exe> inside an extracted package (searched up to 3 levels deep).
@@ -943,6 +935,12 @@ namespace SelfUpdate
                                                           const std::string &version,
                                                           const std::function<void(size_t, size_t)> &progress)
     {
+        // Never install an unverified package: no valid digest or no allowed host, no download.
+        if (const auto digest = Releases::require_digest(sha256, package_asset_name(version)); !digest)
+            return std::unexpected(digest.error());
+        if (!Releases::is_allowed_download_url(url))
+            return std::unexpected("Refusing to download the update from " + url);
+
         InstallLock lock(true); // held until the new version is in place
         if (!lock.held())
             return std::unexpected("Could not lock " + lock_file("install.lock").string());
@@ -983,19 +981,10 @@ namespace SelfUpdate
                 return std::unexpected("Could not write " + file.string());
         }
 
-        // Never install an unverified package. GitHub records a sha256 for every release asset.
-        std::string expected = sha256;
-        std::ranges::transform(expected, expected.begin(), [](unsigned char c) { return std::tolower(c); });
-        if (expected.size() != 64 || !std::ranges::all_of(expected, [](char c) { return std::isxdigit(static_cast<unsigned char>(c)); }))
-        {
+        // GitHub records a sha256 for every release asset; the package must match it.
+        if (const auto verified = Releases::verify_sha256(file, sha256); !verified) {
             fs::remove(file, ec);
-            return std::unexpected("The release has no valid sha256 digest for " + package_asset_name(version) +
-                                   ", so it cannot be verified. Install it manually from the releases page.");
-        }
-        if (const std::string actual = sha256_file(file); actual != expected)
-        {
-            fs::remove(file, ec);
-            return std::unexpected("Checksum mismatch (expected " + expected + ", got " + actual + ")");
+            return std::unexpected(verified.error());
         }
 
         const fs::path staging = root / ("staging-" + version);

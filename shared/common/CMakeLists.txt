@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/common/utils/utils.cpp
         src/shared/common/udp/packet.cpp
         src/shared/common/Version.cpp
+        src/shared/common/Releases.cpp
         src/shared/common/audio_protocol.cpp
         src/shared/common/remote_render_protocol.cpp
         src/shared/common/frame_stream.cpp
@@ -20,6 +21,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${LED_MATRIX_GENERATED_DIR})
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+
+# Releases.cpp: GitHub release discovery (HTTP) and the one SHA-256 check. nlohmann_json is in its public API.
+find_package(cpr CONFIG REQUIRED)
+find_package(nlohmann_json 3.2.0 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE cpr::cpr)
+target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json::nlohmann_json)
 if(WIN32)
     # CrashReporter uses the inbox DbgHelp API for symbolic SEH stack walks and
     # minidumps. No redistributable/runtime dependency is added.

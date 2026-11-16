@@ -28,13 +28,16 @@ CanvasCoordinator::CanvasCoordinator(RGBMatrixBase* matrix, TimeSource* time_sou
       runtime_inputs_fn_(std::move(runtime_inputs)),
       set_curr_scene_fn_(std::move(set_curr_scene)),
       broadcast_fn_(std::move(broadcast)),
-      automatic_director_(cfg->get_automatic_director_seed()),
-      renderer_(matrix, time_source, post_processor, presenter, exit_flag, interrupt_flag, &desktop_handoff_),
-      transition_engine_(matrix, time_source, post_processor, transition_manager, presenter, exit_flag, interrupt_flag, &desktop_handoff_)
+      automatic_director_(cfg->get_automatic_director_seed(),
+                          [](const Scenes::Scene& scene) { return DesktopHandoff::offloadable(scene); }),
+      frame_sink_(matrix, time_source, post_processor, presenter),
+      renderer_(matrix, time_source, &frame_sink_, exit_flag, interrupt_flag, &desktop_handoff_),
+      transition_engine_(time_source, transition_manager, &frame_sink_, exit_flag, interrupt_flag, &desktop_handoff_)
 {
-    renderer_.set_brightness_provider([cfg]() -> std::optional<int> {
+    frame_sink_.set_brightness_provider([cfg]() -> std::optional<int> {
         const auto schedule = cfg->get_brightness_schedule();
-        if (!schedule.enabled) return std::nullopt;
+        if (!schedule.enabled)
+            return std::nullopt;
         const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::tm local{};
         localtime_r(&now, &local);
@@ -77,6 +80,20 @@ void CanvasCoordinator::ensure_automatic_catalog()
     info("Automatic Director catalog contains {} curated scene looks", automatic_scenes_.size());
 }
 
+void CanvasCoordinator::sync_director_seed()
+{
+    // Saving the seed does not restart playback, so it is picked up here: at
+    // run() start and before every automatic scene choice (first pick and
+    // the successor chosen for a transition).
+    const auto configured_seed = config_->get_automatic_director_seed();
+    const auto configured_generation = config_->get_automatic_director_generation();
+    if (automatic_director_.seed() != configured_seed || automatic_director_generation_ != configured_generation) {
+        automatic_director_.reseed(configured_seed);
+        automatic_director_generation_ = configured_generation;
+        info("Automatic Director reseeded with {}", configured_seed);
+    }
+}
+
 void CanvasCoordinator::sync_automatic_preferences()
 {
     const auto mode = AutomaticDirector::parse_mode(config_->get_automatic_director_mode()).value_or(AutomaticDirector::Mode::Mixed);
@@ -106,14 +123,7 @@ void CanvasCoordinator::prepare_automatic_scenes(const RuntimeInputs::Snapshot &
 
 void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 {
-    const auto configured_seed = config_->get_automatic_director_seed();
-    const auto configured_generation = config_->get_automatic_director_generation();
-    if (automatic_director_.seed() != configured_seed
-        || automatic_director_generation_ != configured_generation) {
-        automatic_director_.reseed(configured_seed);
-        automatic_director_generation_ = configured_generation;
-        info("Automatic Director reseeded with {}", configured_seed);
-    }
+    sync_director_seed();
     Diagnostics::RuntimeDiagnostics::instance().set_director_state(automatic_director_.diagnostics());
 
     const auto lab_snapshot = SceneLabRuntime::instance().snapshot(runtime_inputs_fn_());
@@ -163,7 +173,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
     };
 
     int no_scene_count = 0;
-    while (!*exit_flag_) {
+    while (!*exit_flag_ && !(interrupt_flag_ && *interrupt_flag_)) {
         if (lab_mode && !SceneLabRuntime::instance().lease_active(lab_snapshot.generation))
             return;
         advance_journey();
@@ -177,6 +187,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
 
         if (scene == nullptr) {
             if (automatic_mode) {
+                sync_director_seed();
                 sync_automatic_preferences();
                 prepare_automatic_scenes(runtime_inputs);
                 const auto decision = automatic_director_.choose(scenes, runtime_inputs, exclude_name);
@@ -329,6 +340,7 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
         Diagnostics::RuntimeDiagnostics::instance().begin_transition_timeline();
         if (should_handoff && automatic_mode && !lab_mode
             && scheduler_.should_schedule_transition(transition_duration, presentation_duration)) {
+            sync_director_seed();
             const auto latest_inputs = runtime_inputs_fn_();
             const auto decision = automatic_director_.choose(
                 scenes, latest_inputs, scene->get_name(), director_preferred_scene);
@@ -385,12 +397,11 @@ void CanvasCoordinator::run(std::shared_ptr<Scenes::Scene> pinned_scene)
             if (prime_incoming_desktop_stream)
                 broadcast_fn_(next_scene->get_name());
 
-            transition_engine_.render_transition_phase(
-                scene, next_scene,
-                first, second, composite,
-                matrix_width, matrix_height,
-                transition_duration, transition_name, forced_scene_, transition_delay,
-                std::move(transition_inputs_still_available), renderer_.last_presented_canvas());
+            forced_scene_ =
+                transition_engine_
+                    .render_transition_phase(scene, next_scene, first, second, composite, matrix_width, matrix_height, transition_duration,
+                                             transition_name, transition_delay, std::move(transition_inputs_still_available))
+                    .forced_scene;
             Diagnostics::RuntimeDiagnostics::instance().end_transition_timeline();
 
             if (prime_incoming_desktop_stream && forced_scene_ != next_scene)

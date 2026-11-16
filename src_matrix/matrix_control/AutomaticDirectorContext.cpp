@@ -182,11 +182,11 @@ Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& s
 }
 
 /// Only a compatible worker advertising this scene makes Pi cost irrelevant.
-/// Use the same eligibility check as DesktopHandoff for both ranking and dwell.
+/// The offload rule is DesktopHandoff's, injected so ranking and dwell agree with it.
 float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::EffectiveSceneProfile& profile,
-                     const std::optional<float>& measured_load)
+                     const std::optional<float>& measured_load, const AutomaticDirector::OffloadRule& offloadable)
 {
-    if (scene->get_capabilities().supports_remote_rendering && RemoteRender::worker_available(scene->get_name()))
+    if (offloadable && offloadable(*scene))
         return std::min(profile.performance_cost, performance_budget);
     if (!measured_load.has_value())
         return profile.performance_cost;

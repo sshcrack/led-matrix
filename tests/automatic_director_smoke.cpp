@@ -80,6 +80,15 @@ private:
     tmillis_t duration_;
     bool automatic_eligible_;
 };
+
+/// The offload rule production injects (DesktopHandoff::offloadable), over the
+/// RemoteRender transport: a compatible worker advertising the scene.
+AutomaticDirector::OffloadRule remote_render_rule()
+{
+    return [](const Scenes::Scene& scene) {
+        return scene.get_capabilities().supports_remote_rendering && RemoteRender::worker_available(scene.get_name());
+    };
+}
 }  // namespace
 
 int main()
@@ -524,7 +533,7 @@ int main()
         return std::make_shared<TestScene>(std::move(name), .4f, .1f, .3f, false, std::move(family), .4f);
     };
     std::vector<std::shared_ptr<Scenes::Scene>> twins{twin("twin_a"), twin("twin_b")};
-    AutomaticDirector load_director(91);
+    AutomaticDirector load_director(91, remote_render_rule());
     load_director.report_outcome(twins[0], {.render_load = 1.3f});
     load_director.report_outcome(twins[1], {.render_load = 0.2f});
     ranked = load_director.rank(twins, {});
@@ -588,6 +597,35 @@ int main()
                   "deprioritized for Pi render cost") != authored_rank.front().reasons.end()) {
         std::cerr << "offloadable scene retained its authored Pi cost penalty\n";
         return 85;
+    }
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version);
+
+    // Offload availability comes from the injected DesktopHandoff rule, not from
+    // the RemoteRender transport. A director without a rule never offloads even
+    // when a worker advertises the scene; an injected rule decides on its own.
+    RemoteRender::set_local_scene_contracts({{"heavy", 1}});
+    RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"heavy", 1}});
+    const auto heavy = std::make_shared<TestScene>("heavy", .4f, .1f, 1.0f, false, "heavy", .4f);
+    const auto has_heavy_penalty = [&](const AutomaticDirector& subject) {
+        const auto candidates = subject.rank({heavy}, {});
+        const auto& reasons = candidates.front().reasons;
+        return std::find(reasons.begin(), reasons.end(), "deprioritized for Pi render cost") != reasons.end();
+    };
+    if (!has_heavy_penalty(AutomaticDirector(94))) {
+        std::cerr << "director without an offload rule consulted the RemoteRender worker\n";
+        return 86;
+    }
+    bool worker_up = false;
+    const AutomaticDirector injected(
+        94, [&](const Scenes::Scene& scene) { return worker_up && scene.get_capabilities().supports_remote_rendering; });
+    if (!has_heavy_penalty(injected)) {
+        std::cerr << "injected offload rule without a worker still lifted the Pi cost penalty\n";
+        return 87;
+    }
+    worker_up = true;
+    if (has_heavy_penalty(injected)) {
+        std::cerr << "injected offload rule did not lift the Pi cost penalty for an offloadable scene\n";
+        return 88;
     }
     RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version);
 

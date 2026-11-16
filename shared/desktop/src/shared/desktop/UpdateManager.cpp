@@ -163,12 +163,12 @@ namespace UpdateChecker
                     }
                     if (transient)
                     {
-                        spdlog::info("Desktop update check: {}; keeping {} until the matrix answers again", m.error(), v(current));
-                        finish("The matrix can't be reached right now (" + m.error() + "). Try again in a minute.",
+                        spdlog::info("Desktop update check: {}; keeping {} until the matrix answers again", m.error().message, v(current));
+                        finish("The matrix can't be reached right now (" + m.error().message + "). Try again in a minute.",
                                "Matrix unreachable; keeping " + v(current));
                         return;
                     }
-                    spdlog::info("Desktop update check: {}, following the latest release", m.error());
+                    spdlog::info("Desktop update check: {}, following the latest release", m.error().message);
                 }
 
                 // A newer release is out and the matrix updates itself: have it update now, then follow it.

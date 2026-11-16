@@ -1,9 +1,8 @@
 #pragma once
 
-#include "VisualJourney.h"
-
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -14,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "VisualJourney.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/music_style.h"
 #include "shared/matrix/runtime_inputs.h"
@@ -60,7 +60,11 @@ public:
         bool failed = false;
     };
 
-    explicit AutomaticDirector(std::uint64_t seed = std::random_device{}());
+    /// "Can this scene run on the desktop worker now?" Production passes
+    /// DesktopHandoff::offloadable; tests pass a fake. Empty means no worker.
+    using OffloadRule = std::function<bool(const Scenes::Scene&)>;
+
+    explicit AutomaticDirector(std::uint64_t seed = std::random_device{}(), OffloadRule offloadable = {});
 
     [[nodiscard]] std::vector<Candidate> rank(
         const std::vector<std::shared_ptr<Scenes::Scene>>& scenes,
@@ -215,6 +219,7 @@ private:
     VisualJourney journey_;
     std::uint64_t seed_;
     mutable std::mt19937_64 rng_;
+    OffloadRule offloadable_;
     /// Monotonic Automatic Mode clock. It only advances through
     /// advance_journey(), so it is deterministic under tests and survives
     /// reseeds (cooldowns are expressed against it).

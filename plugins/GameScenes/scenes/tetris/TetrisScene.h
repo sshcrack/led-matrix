@@ -22,6 +22,8 @@ namespace Scenes {
         int bestRotation = 0;
         int high_score = 0;
         bool high_score_dirty = false;
+        // Owns the persisted high score (its host config); outlives the scene.
+        const Plugins::BasicPlugin* owner;
 
         void update_high_score();
         void persist_high_score();
@@ -62,7 +64,7 @@ namespace Scenes {
         static constexpr float move_interval = 1.0f / 30.0f;
 
     public:
-        explicit TetrisScene();
+        explicit TetrisScene(const Plugins::BasicPlugin& owner);
 
         bool render(rgb_matrix::FrameCanvas *canvas) override;
 
@@ -91,6 +93,10 @@ namespace Scenes {
     };
 
     class TetrisSceneWrapper : public Plugins::SceneWrapper {
+        const Plugins::BasicPlugin& owner;
+
+    public:
+        explicit TetrisSceneWrapper(const Plugins::BasicPlugin& owner_plugin) : owner(owner_plugin) {}
         std::unique_ptr<Scenes::Scene> create() override;
     };
 }

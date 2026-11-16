@@ -4,7 +4,10 @@
 
 using namespace AutomaticDirectorDetail;
 
-AutomaticDirector::AutomaticDirector(std::uint64_t seed) : journey_(seed), seed_(seed), rng_(seed) {}
+AutomaticDirector::AutomaticDirector(std::uint64_t seed, OffloadRule offloadable)
+    : journey_(seed), seed_(seed), rng_(seed), offloadable_(std::move(offloadable))
+{
+}
 
 std::string AutomaticDirector::look_key(const Scenes::Scene& scene)
 {

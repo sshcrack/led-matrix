@@ -1,10 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <functional>
-#include <shared/matrix/wrappers.h>
 #include <shared/matrix/server/common.h>
+#include <shared/matrix/wrappers.h>
+
+#include <atomic>
+#include <functional>
+#include <string>
+#include <vector>
 // ReSharper disable once CppUnusedIncludeDirective
 // This is included so the plugins don't have to include it every time
 #include "shared/common/plugin_macros.h"
@@ -16,6 +18,10 @@ using std::string;
 using std::vector;
 using router_t = restinio::router::express_router_t<>;
 
+namespace Config {
+class MainConfig;
+}
+
 namespace Plugins
 {
     class BasicPlugin
@@ -24,6 +30,7 @@ namespace Plugins
         vector<std::shared_ptr<ShaderProviderWrapper>> shader_providers;
         vector<std::shared_ptr<SceneWrapper>> scenes;
         vector<std::shared_ptr<Previews::DataProvider>> preview_data_providers;
+        std::atomic<Config::MainConfig*> host_config_{nullptr};
 
         virtual vector<std::unique_ptr<ImageProviderWrapper>>
         create_image_providers() = 0;
@@ -65,6 +72,15 @@ namespace Plugins
         {
             return _plugin_location;
         }
+
+        /// The host's config (daemon, scene worker, preview generator). The
+        /// host attaches it through PluginManager::attach_host_config() before
+        /// before_server_init() and keeps it alive until the plugin is
+        /// destroyed. Null while the host builds its config (scenes created
+        /// for saved presets then see no config) and in hosts without one.
+        [[nodiscard]] Config::MainConfig* host_config() const noexcept { return host_config_.load(std::memory_order_acquire); }
+
+        void set_host_config(Config::MainConfig* config) noexcept { host_config_.store(config, std::memory_order_release); }
 
         virtual ~BasicPlugin() = default;
 

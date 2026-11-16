@@ -10,5 +10,5 @@ void InterruptHandler(int signo)
 {
     interrupt_signal.store(signo);
     interrupt_received = true;
-    exit_canvas_update = true;
+    PlaybackControl::interrupt();
 }

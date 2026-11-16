@@ -112,7 +112,8 @@ int main() {
     SteppingTimeSource time_source(100);
     std::atomic<bool> exit_flag{false};
     std::atomic<bool> interrupt_flag{false};
-    SceneRenderer renderer(matrix.get(), &time_source, nullptr, &presenter, &exit_flag, &interrupt_flag);
+    FrameSink sink(matrix.get(), &time_source, nullptr, &presenter);
+    SceneRenderer renderer(matrix.get(), &time_source, &sink, &exit_flag, &interrupt_flag);
 
     const auto input_spec = audio->get_effective_runtime_inputs();
     int availability_checks = 0;
@@ -136,19 +137,15 @@ int main() {
     RuntimeInputs::publish(RuntimeInputIds::Audio, {}, std::chrono::seconds(1));
     ambient->initialize(32, 32);
     auto *first = matrix->CreateFrameCanvas();
-    auto *second = matrix->CreateFrameCanvas();
-    std::shared_ptr<Scenes::Scene> forced_scene;
+    auto* second = matrix->CreateFrameCanvas();
     SteppingTimeSource transition_time(100);
-    TransitionEngine transition_engine(
-        matrix.get(), &transition_time, nullptr, nullptr, &presenter,
-        &exit_flag, &interrupt_flag);
+    FrameSink transition_sink(matrix.get(), &transition_time, nullptr, &presenter);
+    TransitionEngine transition_engine(&transition_time, nullptr, &transition_sink, &exit_flag, &interrupt_flag);
     int transition_input_checks = 0;
     const auto ambient_spec = ambient->get_effective_runtime_inputs();
     const auto audio_spec = audio->get_effective_runtime_inputs();
-    transition_engine.render_transition_phase(
-        ambient, audio, first, second, canvas, 32, 32, 1000, "blend",
-        forced_scene, 600,
-        [&] {
+    const auto transition =
+        transition_engine.render_transition_phase(ambient, audio, first, second, canvas, 32, 32, 1000, "blend", 600, [&] {
             ++transition_input_checks;
             if (transition_input_checks == 2)
                 RuntimeInputs::set_available(RuntimeInputIds::Audio, false);
@@ -156,7 +153,7 @@ int main() {
             return RuntimeInputs::satisfies(ambient_spec, snapshot)
                 && RuntimeInputs::satisfies(audio_spec, snapshot);
         });
-    if (transition_input_checks < 2 || forced_scene) {
+    if (transition_input_checks < 2 || transition.forced_scene) {
         std::cerr << "transition did not abort after a required Runtime Input disappeared\n";
         return 5;
     }

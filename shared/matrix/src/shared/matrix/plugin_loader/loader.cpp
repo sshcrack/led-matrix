@@ -437,6 +437,11 @@ RegistryValidationReport PluginManager::build_report(const std::vector<std::shar
     return report;
 }
 
+void PluginManager::attach_host_config(Config::MainConfig* config)
+{
+    for (auto* plugin : get_plugins()) plugin->set_host_config(config);
+}
+
 void PluginManager::delete_references() {
     std::lock_guard<std::mutex> lock(scenes_mutex);
     all_scenes.clear();

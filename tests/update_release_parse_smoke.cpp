@@ -1,10 +1,12 @@
 // Release-JSON parsing for the Pi auto-updater. GitHub returns `"body": null` for a release
 // without notes (v1.17.0 / v1.18.0 shipped like that), which used to make every update check fail.
-#include "shared/matrix/update/UpdateManager.h"
-
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
+
+#include "shared/matrix/update/UpdateManager.h"
 
 namespace {
 int failures = 0;
@@ -80,6 +82,41 @@ int main() {
         check(!UpdateManager::parse_release(no_tag).has_value(), "null tag_name is an error");
 
         check(!UpdateManager::parse_release(nlohmann::json::array()).has_value(), "non-object is an error");
+    }
+
+    // Owner decision: never install an unverified package. Parsing a release without a (valid) digest
+    // works (above); installing it is refused before anything is downloaded, and the refusal reaches the
+    // update status, the error message and the `.update_error` flag.
+    {
+        const auto state = std::filesystem::temp_directory_path() / "update_release_parse_smoke_state";
+        std::filesystem::remove_all(state);
+        UpdateManager::set_state_dir_for_testing(state);
+
+        for (const char* digest : {"", "887d1a2c", "sha256-ish"}) {
+            std::filesystem::remove_all(state);
+            UpdateManager manager(nullptr);
+            Update::UpdateInfo info;
+            info.version = Common::Version::fromString("1.18.0");
+            info.download_url = "https://github.com/sshcrack/led-matrix/releases/download/v1.18.0/led-matrix-1.18.0_arm64.deb";
+            info.sha256 = digest;
+            const auto res = manager.manual_download_and_install(info);
+            const std::string what = std::string("digest '") + digest + "': ";
+            check(!res.has_value(), what + "install without a valid digest is refused");
+            check(!res && res.error().find("no valid sha256 digest") != std::string::npos, what + "refusal names the reason");
+            check(manager.get_status() == Update::UpdateStatus::ERROR, what + "status is ERROR");
+            check(manager.get_error_message().find("no valid sha256 digest") != std::string::npos, what + "error message is set");
+            std::ifstream flag(state / ".update_error");
+            std::string flag_text;
+            std::getline(flag, flag_text);
+            check(flag_text.find("no valid sha256 digest") != std::string::npos, what + ".update_error flag is written");
+            // The next status poll reads the flag once and clears it.
+            check(manager.check_and_handle_update_completion(), what + "flag is picked up");
+            check(manager.get_status() == Update::UpdateStatus::ERROR &&
+                      manager.get_error_message().find("no valid sha256 digest") != std::string::npos,
+                  what + "status stays ERROR with the reason");
+            check(!std::filesystem::exists(state / ".update_error"), what + "flag is consumed");
+        }
+        std::filesystem::remove_all(state);
     }
 
     if (failures == 0) std::cout << "update_release_parse_smoke: ok\n";

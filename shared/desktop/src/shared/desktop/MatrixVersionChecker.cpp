@@ -1,9 +1,11 @@
 #include "shared/desktop/MatrixVersionChecker.h"
-#include "shared/desktop/config.h"
+
 #include <spdlog/spdlog.h>
-#include <cpr/cpr.h>
-#include <nlohmann/json.hpp>
+
 #include <thread>
+
+#include "shared/desktop/UpdateChecker.h"
+#include "shared/desktop/config.h"
 
 namespace MatrixVersionChecker
 {
@@ -63,55 +65,25 @@ namespace MatrixVersionChecker
             
             try 
             {
-                std::string url = "http://" + hostname + ":" + std::to_string(port) + "/api/update/status";
-                spdlog::info("Checking matrix version from: {}", url);
-                
-                cpr::Header headers{{"User-Agent", "led-matrix-desktop/" + getDesktopVersion().toString()}};
-                if (const auto auth = Config::matrixAuthorizationHeader(); !auth.empty())
-                    headers["Authorization"] = auth;
-                auto response = cpr::Get(
-                    cpr::Url{url},
-                    headers,
-                    cpr::Timeout{5000} // 5 second timeout
-                );
-                
-                if (response.status_code == 200) 
-                {
-                    auto statusJson = nlohmann::json::parse(response.text);
-                    
-                    if (statusJson.contains("current_version")) 
-                    {
-                        std::string versionStr = statusJson["current_version"];
-                        result.version = Common::Version::fromString(versionStr);
-                        
-                        Common::Version desktopVersion = getDesktopVersion();
-                        result.compatibility = compareVersions(desktopVersion, result.version);
-                        
-                        spdlog::info("Matrix version: {}, Desktop version: {}, Compatibility: {}", 
-                                   result.version.toString(), 
-                                   desktopVersion.toString(),
-                                   static_cast<int>(result.compatibility));
-                    }
-                    else 
-                    {
-                        result.compatibility = VersionCompatibility::ParseError;
-                        result.errorMessage = "Response does not contain current_version field";
-                        spdlog::error("Matrix version check failed: {}", result.errorMessage);
-                    }
-                } 
-                else if (response.status_code == 0) 
-                {
-                    result.compatibility = VersionCompatibility::NetworkError;
-                    result.errorMessage = "Could not connect to matrix (network error)";
+                spdlog::info("Checking matrix version at {}:{}", hostname, port);
+                // The one reader of GET /api/update/status, shared with the desktop updater.
+                const auto state = UpdateChecker::UpdateChecker::fetchMatrixState({hostname, port, Config::matrixAuthorizationHeader()});
+                if (state) {
+                    result.version = state->version;
+                    const Common::Version desktopVersion = getDesktopVersion();
+                    result.compatibility = compareVersions(desktopVersion, result.version);
+
+                    spdlog::info("Matrix version: {}, Desktop version: {}, Compatibility: {}", result.version.toString(),
+                                 desktopVersion.toString(), static_cast<int>(result.compatibility));
+                }
+                else {
+                    using Kind = UpdateChecker::MatrixFetchError::Kind;
+                    result.compatibility =
+                        state.error().kind == Kind::Parse ? VersionCompatibility::ParseError : VersionCompatibility::NetworkError;
+                    result.errorMessage = state.error().message;
                     spdlog::error("Matrix version check failed: {}", result.errorMessage);
                 }
-                else 
-                {
-                    result.compatibility = VersionCompatibility::NetworkError;
-                    result.errorMessage = "HTTP error " + std::to_string(response.status_code);
-                    spdlog::error("Matrix version check failed: {}", result.errorMessage);
-                }
-            } 
+            }
             catch (const std::exception& e) 
             {
                 result.compatibility = VersionCompatibility::ParseError;

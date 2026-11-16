@@ -93,9 +93,10 @@ int main(int argc, char** argv)
     Constants::width = 128;
     Constants::height = 128;
     const fs::path cfg_path = fs::temp_directory_path() / ("director_sim-" + std::to_string(std::random_device{}()) + ".json");
-    config = new Config::MainConfig(cfg_path.string());
+    auto* config = new Config::MainConfig(cfg_path.string());
     const auto pl = Plugins::PluginManager::instance();
     pl->initialize();
+    pl->attach_host_config(config);
 
     std::vector<std::shared_ptr<Scenes::Scene>> catalog;
     for (const auto& wrapper : pl->get_scenes()) {
