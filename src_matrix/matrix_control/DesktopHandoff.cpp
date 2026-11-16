@@ -16,21 +16,17 @@ constexpr tmillis_t MaxTransitionMs = 10000;
 class RemoteRenderLink final : public DesktopLink {
 public:
     bool worker_available(std::string_view scene) override { return RemoteRender::worker_available(scene); }
-    std::optional<std::uint32_t> request_scene(const Scenes::Scene &scene, int width, int height, int target_fps,
-                                               const nlohmann::json &transition) override
+    std::optional<std::uint32_t> request_scene(const Scenes::Scene& scene, int width, int height, int target_fps,
+                                               const nlohmann::json& transition) override
     {
         return RemoteRender::request_scene(scene, width, height, target_fps, transition);
     }
     void publish_runtime_state(std::uint32_t session) override { RemoteRender::publish_runtime_state(session); }
-    bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas *canvas, int width, int height,
-                     double max_age_ms) override
+    bool copy_latest(std::uint32_t session, rgb_matrix::FrameCanvas* canvas, int width, int height, double max_age_ms) override
     {
         return RemoteRender::copy_latest(session, canvas, width, height, max_age_ms);
     }
-    std::optional<double> latest_frame_age_ms(std::uint32_t session) override
-    {
-        return RemoteRender::latest_frame_age_ms(session);
-    }
+    std::optional<double> latest_frame_age_ms(std::uint32_t session) override { return RemoteRender::latest_frame_age_ms(session); }
     RemoteRender::Status status() override { return RemoteRender::status(); }
     void stop() override { RemoteRender::stop(); }
     std::uint32_t latest_sequence(std::uint32_t session) override { return RemoteRender::latest_sequence(session); }
@@ -50,11 +46,11 @@ public:
     }
 };
 
-double frame_budget_ms(const Scenes::Scene &scene)
+double frame_budget_ms(const Scenes::Scene& scene)
 {
     return 1000.0 / static_cast<double>(std::max(1, scene.get_declared_target_fps()));
 }
-} // namespace
+}  // namespace
 
 std::uint32_t DesktopLink::latest_sequence(std::uint32_t session)
 {
@@ -69,14 +65,14 @@ std::uint32_t DesktopLink::copy_latest_sequence(std::uint32_t session, rgb_matri
     return copy_latest(session, canvas, width, height, max_age_ms) ? sequence : 0;
 }
 
-DesktopLink &DesktopLink::remote_render()
+DesktopLink& DesktopLink::remote_render()
 {
     static RemoteRenderLink link;
     return link;
 }
 
-std::optional<std::uint32_t> DesktopHandoff::request(const Scenes::Scene &scene, int width, int height, int fps,
-                                                     const nlohmann::json &transition)
+std::optional<std::uint32_t> DesktopHandoff::request(const Scenes::Scene& scene, int width, int height, int fps,
+                                                     const nlohmann::json& transition)
 {
     auto session = link_.request_scene(scene, width, height, fps, transition);
     if (session) {
@@ -98,7 +94,7 @@ bool DesktopHandoff::offloadable(const Scenes::Scene& scene, DesktopLink& link)
     return scene.get_capabilities().supports_remote_rendering && link.worker_available(scene.get_name());
 }
 
-std::optional<std::string> DesktopHandoff::offload_reason(const Scenes::Scene &scene)
+std::optional<std::string> DesktopHandoff::offload_reason(const Scenes::Scene& scene)
 {
     // The desktop always renders full quality, so a quality-reduced Pi scene goes there too.
     if (scene.get_render_quality_scale() < ReducedQualityThreshold)
@@ -116,12 +112,13 @@ void DesktopHandoff::request_scene_desktop()
     placement_.request_desktop(request(*scene_, width_, height_, scene_->get_declared_target_fps()));
 }
 
-void DesktopHandoff::report(const std::string &reason, nlohmann::json extra)
+void DesktopHandoff::report(const std::string& reason, nlohmann::json extra)
 {
     const auto mode = placement_.mode();
-    const char *activity = mode == RenderPlacement::Mode::DesktopLive ? "desktop"
-        : mode == RenderPlacement::Mode::DesktopPending ? "desktop pending"
-        : mode == RenderPlacement::Mode::LocalFallback ? "local fallback" : "local";
+    const char* activity = mode == RenderPlacement::Mode::DesktopLive      ? "desktop"
+                           : mode == RenderPlacement::Mode::DesktopPending ? "desktop pending"
+                           : mode == RenderPlacement::Mode::LocalFallback  ? "local fallback"
+                                                                           : "local";
     CrashReporter::set_activity(std::string("rendering scene '") + scene_->get_name() + "' (" + activity + ")");
     nlohmann::json payload{
         {"scene", scene_->get_name()},
@@ -134,7 +131,7 @@ void DesktopHandoff::report(const std::string &reason, nlohmann::json extra)
     Diagnostics::RuntimeDiagnostics::instance().set_render_placement(std::move(payload));
 }
 
-void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int height)
+void DesktopHandoff::begin_scene(const Scenes::Scene& scene, int width, int height)
 {
     scene_ = &scene;
     width_ = width;
@@ -152,9 +149,16 @@ void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int heig
             // the session while the scene's properties are unchanged.
             request_scene_desktop();
             reason_ = "desktop session was warmed during the transition";
-        } else if (auto why = offload_reason(scene)) {
+        }
+        else if (auto why = offload_reason(scene)) {
             request_scene_desktop();
             reason_ = std::move(*why);
+        }
+        else if (session_ || link_.status().requested) {
+            // A cut without a transition (skip, preset change) never retires
+            // the previous scene's session; the worker would keep rendering
+            // and streaming a scene that is no longer shown.
+            stop();
         }
     }
     else {
@@ -171,7 +175,7 @@ void DesktopHandoff::begin_scene(const Scenes::Scene &scene, int width, int heig
     report(reason_);
 }
 
-DesktopHandoff::FrameSource DesktopHandoff::scene_frame(rgb_matrix::FrameCanvas *canvas)
+DesktopHandoff::FrameSource DesktopHandoff::scene_frame(rgb_matrix::FrameCanvas* canvas)
 {
     if (placement_.has_session() && !link_.worker_available(scene_->get_name())) {
         placement_.worker_lost();
@@ -210,7 +214,7 @@ void DesktopHandoff::local_frame_rendered(double active_render_ms)
 
 // ---- transition phase ----
 
-bool DesktopHandoff::copy_scene_frame(const Scenes::Scene &scene, rgb_matrix::FrameCanvas *canvas, int width, int height)
+bool DesktopHandoff::copy_scene_frame(const Scenes::Scene& scene, rgb_matrix::FrameCanvas* canvas, int width, int height)
 {
     copied_frame_.reset();
     if (!session_ || session_scene_ != scene.get_name())
@@ -223,9 +227,8 @@ bool DesktopHandoff::copy_scene_frame(const Scenes::Scene &scene, rgb_matrix::Fr
     return true;
 }
 
-bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const rgb_matrix::FrameCanvas &outgoing,
-                                              int width, int height, const std::string &name, tmillis_t duration_ms,
-                                              tmillis_t now_ms)
+bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene& next, const rgb_matrix::FrameCanvas& outgoing, int width, int height,
+                                              const std::string& name, tmillis_t duration_ms, tmillis_t now_ms)
 {
     transition_.reset();
     const auto copied = std::exchange(copied_frame_, std::nullopt);
@@ -255,14 +258,18 @@ bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene &next, const r
     }
     if (!request(next, width, height, 60, transition))
         return false;
-    transition_ = Transition{.next = next.get_name(), .duration_ms = duration, .requested_at = now_ms,
-                             .last_frame_at = now_ms, .width = width, .height = height};
+    transition_ = Transition{.next = next.get_name(),
+                             .duration_ms = duration,
+                             .requested_at = now_ms,
+                             .last_frame_at = now_ms,
+                             .width = width,
+                             .height = height};
     return true;
 }
 
-DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matrix::FrameCanvas *canvas, tmillis_t now_ms)
+DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matrix::FrameCanvas* canvas, tmillis_t now_ms)
 {
-    auto &t = *transition_;
+    auto& t = *transition_;
     TransitionTick tick;
     link_.publish_runtime_state(*session_);
     // Lock-free: status() locks the transport and scans the contract maps.
@@ -272,7 +279,8 @@ DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matri
         sequence != t.last_sequence) {
         t.last_sequence = sequence;
         t.last_frame_at = now_ms;
-        if (t.frames++ == 0) t.first_frame_at = now_ms;
+        if (t.frames++ == 0)
+            t.first_frame_at = now_ms;
         tick.frame = true;
     }
     const bool presented = t.frames > 0;
@@ -281,7 +289,7 @@ DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matri
     // not from the request, so the Pi does not leave the transition mid-blend
     // (and change the target FPS) when the start took 100+ ms.
     if (presented && now_ms - t.first_frame_at >= t.duration_ms) {
-        tick.outcome = TransitionOutcome::Done;   // the session continues as the scene's
+        tick.outcome = TransitionOutcome::Done;  // the session continues as the scene's
     }
     else if (now_ms - t.last_frame_at > (presented ? TransitionStallMs : TransitionStartupMs)) {
         stop();
@@ -293,16 +301,17 @@ DesktopHandoff::TransitionTick DesktopHandoff::desktop_transition_tick(rgb_matri
 
 DesktopHandoff::TransitionStats DesktopHandoff::desktop_transition_stats(tmillis_t now_ms) const
 {
-    if (!transition_) return {};
-    const auto &t = *transition_;
+    if (!transition_)
+        return {};
+    const auto& t = *transition_;
     const auto elapsed_ms = now_ms - t.first_frame_at;
     return {.frames = t.frames,
             .startup_ms = t.first_frame_at - t.requested_at,
-            .presentation_fps = elapsed_ms > 0 && t.frames > 1
-                ? 1000.0 * static_cast<double>(t.frames - 1) / static_cast<double>(elapsed_ms) : 0.0};
+            .presentation_fps =
+                elapsed_ms > 0 && t.frames > 1 ? 1000.0 * static_cast<double>(t.frames - 1) / static_cast<double>(elapsed_ms) : 0.0};
 }
 
-void DesktopHandoff::begin_local_transition(const Scenes::Scene &next, int width, int height)
+void DesktopHandoff::begin_local_transition(const Scenes::Scene& next, int width, int height)
 {
     incoming_.reset();
     incoming_width_ = width;
@@ -313,9 +322,10 @@ void DesktopHandoff::begin_local_transition(const Scenes::Scene &next, int width
         stop();
 }
 
-bool DesktopHandoff::incoming_frame(rgb_matrix::FrameCanvas *canvas)
+bool DesktopHandoff::incoming_frame(rgb_matrix::FrameCanvas* canvas)
 {
-    if (!incoming_) return false;
+    if (!incoming_)
+        return false;
     link_.publish_runtime_state(*incoming_);
     return link_.copy_latest(*incoming_, canvas, incoming_width_, incoming_height_, SceneFrameMaxAgeMs);
 }

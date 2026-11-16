@@ -18,6 +18,12 @@ std::uint64_t SnapshotStore::request_capture()
     return demand_generation_.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
+SnapshotStore::Stats SnapshotStore::stats() const
+{
+    return {demand_generation_.load(std::memory_order_relaxed), served_generation_.load(std::memory_order_relaxed),
+            frame_sequence_.load(std::memory_order_relaxed)};
+}
+
 std::uint64_t SnapshotStore::requested_generation() const
 {
     return demand_generation_.load(std::memory_order_relaxed);
