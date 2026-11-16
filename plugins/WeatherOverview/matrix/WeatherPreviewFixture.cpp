@@ -5,12 +5,12 @@
 
 #include <atomic>
 #include <cstdlib>
-#include <random>
-#include <string>
-#include <string_view>
 #include <functional>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <random>
+#include <string>
+#include <string_view>
 #include <system_error>
 
 namespace fs = std::filesystem;
@@ -56,9 +56,8 @@ public:
         // Unique per provider session: concurrent preview runs must not delete
         // each other's icons.
         static std::atomic<unsigned> session{0};
-        const auto dir = fs::temp_directory_path(ec)
-                         / ("led-matrix-weather-preview-" + std::to_string(std::random_device{}())
-                            + "-" + std::to_string(session.fetch_add(1)));
+        const auto dir = fs::temp_directory_path(ec) / ("led-matrix-weather-preview-" + std::to_string(std::random_device{}()) + "-" +
+                                                        std::to_string(session.fetch_add(1)));
         fs::remove_all(dir, ec);
         fs::create_directories(dir, ec);
         if (ec)

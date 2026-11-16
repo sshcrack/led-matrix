@@ -10,9 +10,9 @@
 #include "restinio/helpers/multipart_body.hpp"
 #include "restinio/uri_helpers.hpp"
 #include "scenes/image/ImageScene.h"
+#include "shared/matrix/config/MainConfig.h"
 #include "shared/matrix/server/server_utils.h"
 #include "shared/matrix/utils/consts.h"
-#include "shared/matrix/config/MainConfig.h"
 
 using std::vector;
 using namespace ImageProviders;
