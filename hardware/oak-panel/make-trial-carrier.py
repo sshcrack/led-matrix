@@ -157,10 +157,13 @@ meshes = {}
 for name, shape in [
     ("trial-panel-carrier", carrier),
     ("screw-test-coupon", coupon),
-    ("halo-channel-coupon", build_halo_channel_coupon()),
+    # Print orientations that need no supports (owner's slicer, 2026-11-16): the halo coupon
+    # lies upside down, lips on the bed, so each channel's roof is a short bridge (the rear
+    # cover will print the same way); the tunnel gauge stands on its end, tunnels vertical.
+    ("halo-channel-coupon", build_halo_channel_coupon().rotate((0, 0, 0), (0, 1, 0), 180)),
     ("dc-socket-coupon", build_dc_socket_coupon()),
     ("pixel-grid-coupon", build_pixel_grid_coupon()),
-    ("cable-tunnel-gauge", build_cable_tunnel_gauge()),
+    ("cable-tunnel-gauge", build_cable_tunnel_gauge().rotate((0, 0, 0), (0, 1, 0), 90)),
 ]:
     solid = shape.val()
     assert solid.isValid() and len(solid.Solids()) == 1, name
