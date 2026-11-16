@@ -85,6 +85,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
 
         bool enabled = j["enabled"].get<bool>();
         cfg->set_scheduling_enabled(enabled);
+        PlaybackControl::restart("scheduling_enabled_changed");
 
         return reply_with_json(req, {{"enabled", enabled}});
     });
@@ -139,6 +140,7 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
             }
 
             cfg->set_schedule(id, schedule);
+            PlaybackControl::restart("schedule_changed");
             return reply_with_json(req, {{"success", "Schedule saved"}, {"id", id}});
         }
         catch (std::exception& ex) {
@@ -156,6 +158,8 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
 
         const string id{qp["id"]};
         const bool success = cfg->delete_schedule(id);
+        if (success)
+            PlaybackControl::restart("schedule_deleted");
 
         if (!success) {
             return reply_with_error(req, "Schedule not found");

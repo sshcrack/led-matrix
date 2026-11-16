@@ -7,7 +7,6 @@
 #include "scenes/WeatherAmbienceScene.h"
 #include "scenes/WeatherScene.h"
 #include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/utils/shared.h"
 #include "spdlog/spdlog.h"
 
 using namespace Scenes;
@@ -50,9 +49,8 @@ std::unique_ptr<router_t> WeatherOverview::register_routes(std::unique_ptr<route
     return router;
 }
 
-std::optional<string> WeatherOverview::before_server_init() {
-    auto conf = config->get_plugin_configs();
-
+std::optional<string> WeatherOverview::before_server_init()
+{
     const std::filesystem::path lib_path(get_plugin_location());
     const auto parent = lib_path.parent_path();
 

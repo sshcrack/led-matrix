@@ -32,6 +32,10 @@ _Avoid_: Save queue (that is its internal mechanism), preset service
 The matrix-side owner of the desktop render session across scene and transition phases (`src_matrix/matrix_control/DesktopHandoff.h`): adopting a session a transition warmed, deciding remote/hold/local per frame, and abandoning or falling back when the desktop scene worker stalls or disappears. Render loops ask it where frames come from; they do not read worker state themselves.
 _Avoid_: Offload manager, remote renderer (RemoteRender is its transport)
 
+**Transition Composer**:
+The one implementation of how a scene-to-scene blend looks (`shared/matrix/include/shared/matrix/transition_composer.h`): effect lookup by name with the `blend` fallback, smoothstep easing, and "no incoming frame yet, so blend from the outgoing snapshot". The Pi's `TransitionEngine` and the desktop scene worker's `RenderRuntime` both compose through it. The one deliberate difference is the `OutgoingPolicy`: the Pi freezes the outgoing scene (a Pi 3 cannot render two scenes per frame), the worker keeps it moving while it still owns that scene. It composes canvases and renders no scenes.
+_Avoid_: Transition manager (that is the effect catalogue), blender
+
 **Plugin Activation**:
 Loading the plugin web UIs once per page (`createPluginActivation` in `react-web/src/core/pluginRegistry.ts`): a plugin's registration and its stylesheet are applied together, only after its module loaded and passed the UI API check.
 _Avoid_: Plugin registration (only the last step)

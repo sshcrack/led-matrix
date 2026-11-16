@@ -1,16 +1,15 @@
 #include "genre_lookup.h"
 
+#include <cpr/cpr.h>
+#include <spdlog/spdlog.h>
+
 #include <chrono>
 #include <fstream>
-#include <set>
-
-#include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
+#include <set>
 
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
-#include "shared/matrix/utils/shared.h"
 
 namespace {
 using nlohmann::json;
@@ -76,14 +75,13 @@ std::vector<std::string> deezer_genres(const std::string &title, const std::stri
 }
 
 /// GetSongBPM: artist genres (mainstream artists only).
-std::vector<std::string> getsongbpm_genres(const std::string &title, const std::string &artist, const std::stop_token &stop)
+std::vector<std::string> getsongbpm_genres(const std::string& title, const std::string& artist, const std::string& api_key,
+                                           const std::stop_token& stop)
 {
-    const auto configs = config->get_plugin_configs();
-    const auto key = configs.find("song_bpm_api_key");
-    if (key == configs.end() || key->second.empty())
+    if (api_key.empty())
         return {};
     const auto url = "https://api.getsong.co/search/?type=both&limit=1&lookup=song:" + std::string(cpr::util::urlEncode(title)) +
-                     "%20artist:" + std::string(cpr::util::urlEncode(artist)) + "&api_key=" + key->second;
+                     "%20artist:" + std::string(cpr::util::urlEncode(artist)) + "&api_key=" + api_key;
     const auto j = get_json(url, stop);
     std::vector<std::string> genres;
     if (j && j->contains("search") && (*j)["search"].is_array() && !(*j)["search"].empty()) {
@@ -109,6 +107,12 @@ void GenreLookup::set_spotify_fetch(SpotifyFetch fetch)
 {
     std::lock_guard lock(mtx_);
     spotify_fetch_ = std::move(fetch);
+}
+
+void GenreLookup::set_song_bpm_key_source(KeySource source)
+{
+    std::lock_guard lock(mtx_);
+    song_bpm_key_ = std::move(source);
 }
 
 std::vector<std::string> GenreLookup::spotify_genres(const std::vector<std::string> &artist_ids)
@@ -247,7 +251,12 @@ void GenreLookup::worker(std::stop_token stop)
             add(deezer_genres(job.title, job.artist, stop), "deezer");
             if (stop.stop_requested())
                 return;
-            add(getsongbpm_genres(job.title, job.artist, stop), "getsongbpm");
+            KeySource key_source;
+            {
+                std::lock_guard lock(mtx_);
+                key_source = song_bpm_key_;
+            }
+            add(getsongbpm_genres(job.title, job.artist, key_source ? key_source() : std::string(), stop), "getsongbpm");
         }
         if (stop.stop_requested())
             return;

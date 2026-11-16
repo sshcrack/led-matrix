@@ -188,6 +188,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         result["director_mode"] = cfg->get_automatic_director_mode();
         result["automatic_mode"] = cfg->is_automatic_mode();
         result["configured_director_seed"] = std::to_string(cfg->get_automatic_director_seed());
+        result["playback"] = PlaybackControl::diagnostics_json();
         result["scene_lab"] = SceneLabRuntime::instance().status_json(runtime_inputs);
         const auto remote = RemoteRender::status();
         result["remote_render"] = {

@@ -24,6 +24,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/config/shader_providers/general.cpp
         src/shared/matrix/update/UpdateManager.cpp
         src/shared/matrix/interrupt.cpp
+        src/shared/matrix/playback_control.cpp
         src/shared/matrix/server/server_utils.cpp
         src/shared/matrix/server/MimeTypes.cpp
         src/shared/matrix/server/common.cpp
@@ -37,6 +38,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/diagnostics.cpp
         src/shared/matrix/frame_stream.cpp
         src/shared/matrix/transition_manager.cpp
+        src/shared/matrix/transition_composer.cpp
         src/shared/matrix/plugin_registry.cpp
         src/shared/matrix/plugin_messages.cpp
         src/shared/matrix/preview.cpp

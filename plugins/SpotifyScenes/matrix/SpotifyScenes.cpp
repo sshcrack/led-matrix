@@ -48,8 +48,11 @@ std::optional<string> SpotifyScenes::before_server_init() {
     // The /spotify/* routes dereference `spotify`, and the daemon starts
     // accepting requests before after_server_init(). Construct the client
     // here so a request arriving during startup never sees a null pointer.
+    auto* config = host_config();
+    if (!config)
+        return "SpotifyScenes: the host did not provide a config";
     if (!spotify)
-        spotify = new Spotify(SceneExecution::is_headless_fixture_host());
+        spotify = new Spotify(*config, SceneExecution::is_headless_fixture_host());
     return std::nullopt;
 }
 
@@ -65,7 +68,7 @@ std::optional<string> SpotifyScenes::after_server_init() {
     PluginRegistry::set("spotify", spotify);
 
     if (!SceneExecution::is_headless_fixture_host())
-        config->save();
+        host_config()->save();
     return std::nullopt;
 }
 
@@ -116,14 +119,13 @@ register_routes(std::unique_ptr<router_t> router) {
         }
         json login_json = {{"attempt", attempt.attempt}, {"phase", SpotifyLogin::to_string(attempt.phase)}};
         if (!attempt.error.empty()) login_json["error"] = attempt.error;
-        return Server::reply_with_json(req, {
-            {"configured", spotify->is_configured()},
-            {"connected", config->get_spotify().has_auth() && !spotify->needs_reconnect.load()},
-            {"client_id", spotify->get_client_id()}, {"redirect_uri", redirect_uri},
-            {"fallback_redirect_uri", kLoopbackRedirect},
-            // The latest sign-in attempt, so the browser that started it can follow it to its end.
-            {"login", std::move(login_json)}
-        });
+        return Server::reply_with_json(req, {{"configured", spotify->is_configured()},
+                                             {"connected", spotify->has_auth() && !spotify->needs_reconnect.load()},
+                                             {"client_id", spotify->get_client_id()},
+                                             {"redirect_uri", redirect_uri},
+                                             {"fallback_redirect_uri", kLoopbackRedirect},
+                                             // The latest sign-in attempt, so the browser that started it can follow it to its end.
+                                             {"login", std::move(login_json)}});
     });
     router->http_post("/spotify/credentials", [this](const auto& req, auto) {
         std::lock_guard lock(setup_mutex);

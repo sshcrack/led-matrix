@@ -25,6 +25,7 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
         cfg->set_curr(id);
         cfg->set_operation_mode("manual");
         cfg->save();
+        PlaybackControl::reload_preset(id);
         return reply_success(req);
     });
 
@@ -113,6 +114,9 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
 
             cfg->set_presets(id, pr);
             cfg->save();
+            // Only the preset on screen needs a restart; other edits are just saved.
+            if (id == cfg->get_curr_id())
+                PlaybackControl::reload_preset(id);
             return reply_with_json(req, {
                 {"success", "Preset has been added"},
                 {"id", id},
@@ -156,6 +160,9 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
 
             cfg->set_presets(id, pr);
             cfg->save();
+            // Only the preset on screen needs a restart; other edits are just saved.
+            if (id == cfg->get_curr_id())
+                PlaybackControl::reload_preset(id);
             return reply_with_json(req, {
                 {"success", "Preset has been set"},
                 {"id", id}

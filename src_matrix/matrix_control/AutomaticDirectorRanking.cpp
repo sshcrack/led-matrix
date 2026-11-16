@@ -351,7 +351,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             const auto memory = memory_.find(scene->get_name());
             const std::optional<float> measured_load = memory != memory_.end()
                 ? memory->second.render_load : std::nullopt;
-            const float cost = effective_cost(scene, profile, measured_load);
+            const float cost = effective_cost(scene, profile, measured_load, offloadable_);
             if (cost > performance_budget) {
                 candidate.score -= (cost - performance_budget) * weight::over_budget;
                 candidate.reasons.push_back(measured_load.has_value() && cost != profile.performance_cost
@@ -535,8 +535,7 @@ tmillis_t AutomaticDirector::presentation_duration(
 
     const auto memory = memory_.find(scene->get_name());
     const auto measured_load = memory != memory_.end() ? memory->second.render_load : std::nullopt;
-    if (effective_cost(scene, profile, measured_load)
-        > performance_budget + 0.12f)
+    if (effective_cost(scene, profile, measured_load, offloadable_) > performance_budget + 0.12f)
         seconds = std::min(seconds, 18.0f);
 
     return static_cast<tmillis_t>(std::clamp(seconds, 12.0f, mode_ == Mode::Party ? 60.0f : 90.0f) * 1000.0f);
