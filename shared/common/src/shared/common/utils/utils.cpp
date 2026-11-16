@@ -15,9 +15,27 @@ constexpr size_t PATH_BUF_SIZE = MAX_PATH;
     constexpr size_t PATH_BUF_SIZE = PATH_MAX;
 #endif
 
+#ifndef _WIN32
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
+
 namespace filesystem = std::filesystem;
 using namespace spdlog;
 
+#ifndef _WIN32
+void close_inherited_descriptors()
+{
+#if defined(__linux__) && defined(SYS_close_range)
+    if (syscall(SYS_close_range, 3U, ~0U, 0U) == 0)
+        return;
+#endif
+    long limit = sysconf(_SC_OPEN_MAX);
+    if (limit < 0 || limit > 65536)
+        limit = 65536;
+    for (int fd = 3; fd < limit; ++fd) close(fd);
+}
+#endif
 
 tmillis_t GetTimeInMillis() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(

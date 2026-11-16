@@ -26,11 +26,8 @@ void Plugins::DesktopPlugin::send_websocket_message(const std::string &message)
         }
     }
 
-    if (WebsocketClient::instance() == nullptr)
-    {
+    // Plugin worker threads send too, so this must not hold a raw client
+    // pointer: the UI thread clears and destroys the client at shutdown.
+    if (!WebsocketClient::sendPluginMessage(get_plugin_name(), message))
         spdlog::warn("WebsocketClient instance is null, cannot send message: {}", message);
-        return;
-    }
-
-    WebsocketClient::instance()->webSocket.send("msg:" + get_plugin_name() + ":" + message);
 }

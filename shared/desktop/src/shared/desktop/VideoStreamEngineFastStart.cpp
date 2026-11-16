@@ -131,6 +131,7 @@ bool VideoStreamEngine::play_decoded_pipe(const std::string& ffCmd) {
         close(fds[0]);
         dup2(fds[1], STDOUT_FILENO);
         close(fds[1]);
+        close_inherited_descriptors();
         execl("/bin/sh", "sh", "-c", ffCmd.c_str(), (char*)nullptr);
         _exit(1);
     }

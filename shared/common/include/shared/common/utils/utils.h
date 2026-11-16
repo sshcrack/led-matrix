@@ -16,3 +16,12 @@ SHARED_COMMON_API std::filesystem::path get_exec_file();
 SHARED_COMMON_API std::filesystem::path get_exec_dir();
 
 SHARED_COMMON_API int get_random_number_inclusive(int start, int end);
+
+#ifndef _WIN32
+/// For the child between fork() and exec(): closes every descriptor above
+/// stderr. Sockets (ixwebsocket does not set close-on-exec), pipes of other
+/// threads and log files would otherwise stay open in yt-dlp / ffmpeg / the
+/// scene worker for as long as they live, which also keeps a closed
+/// connection or a pipe's EOF from reaching its peer. Async-signal-safe.
+SHARED_COMMON_API void close_inherited_descriptors();
+#endif

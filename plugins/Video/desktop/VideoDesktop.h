@@ -65,8 +65,9 @@ private:
   mutable std::mutex current_url_mutex_;
   std::string current_url;
   bool enable_audio = true;
-  int matrix_width = 128;
-  int matrix_height = 128;
+  // "size:" arrives on the WebSocket message thread; the UDP sender thread reads these.
+  std::atomic<int> matrix_width{128};
+  std::atomic<int> matrix_height{128};
   FrameStream::Sender frames_{0x03};
 
   enum class State { Idle, Downloading, Playing, Error };
