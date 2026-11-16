@@ -11,6 +11,7 @@ public:
     using BasicPlugin::BasicPlugin;
 
     vector<std::unique_ptr<SceneWrapper>> create_scenes() override;
+    vector<std::unique_ptr<Previews::DataProvider>> create_preview_data_providers() override;
     vector<std::unique_ptr<ImageProviderWrapper>> create_image_providers() override;
     std::optional<string> before_server_init() override;
     std::optional<string> pre_exit() override;

@@ -4,6 +4,8 @@ register_plugin(PixelJoint
         matrix/PixelJoint.h
         scenes/image/ImageScene.cpp
         scenes/image/ImageScene.h
+        matrix/ImagePreviewFixture.cpp
+        matrix/ImagePreviewFixture.h
         matrix/providers/collection.cpp
         matrix/providers/collection.h
         matrix/providers/pages.cpp

@@ -1,10 +1,13 @@
 #include "WeatherParser.h"
-#include "nlohmann/json.hpp"
-#include "Constants.h"
-#include "icons/weather_icons.h"
-#include "cpr/cpr.h"
-#include "spdlog/spdlog.h"
+
 #include <ctime>
+
+#include "Constants.h"
+#include "WeatherPreviewFixture.h"
+#include "cpr/cpr.h"
+#include "icons/weather_icons.h"
+#include "nlohmann/json.hpp"
+#include "spdlog/spdlog.h"
 #ifdef _WIN32
 inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_s(out, t) == 0 ? out : nullptr; }
 #else
@@ -23,6 +26,9 @@ static std::string get_api_url(const std::string& lat, const std::string& lon) {
 }
 
 std::expected<std::string, std::string> WeatherParser::fetch_api(const std::string& lat, const std::string& lon) {
+    if (auto fixture = WeatherPreviewFixture::api_response())
+        return *std::move(fixture);
+
     cpr::Response r = cpr::Get(
         cpr::Url{get_api_url(lat, lon)},
         cpr::Timeout{5000L});
