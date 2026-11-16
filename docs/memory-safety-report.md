@@ -194,7 +194,8 @@ Notes for running it:
   next to the emulator build dir (`emulator_X_build` -> `desktop_X_build`). Rebuild the
   `install` target first: the daemon runs from the install tree.
 - The daemon's data directory is compiled in (`<install>/data`), so the soak locks and
-  backs up `config.json` there, adds `soak-*` presets, and restores the file afterwards
+  backs up `config.json` there, writes a controlled powered-on, unscheduled config,
+  adds `soak-*` presets, and restores the original file byte-for-byte afterwards
   (also after an earlier run that was killed). Do not run it against an install that
   you are using at the same time. It uses a random free port and its own temporary
   directory for the worker, so other emulators on 8080 are unaffected.

@@ -515,6 +515,19 @@ class Soak:
         if self.had_config:
             shutil.copy2(self.config_path, self.backup_path)
         self.config_guarded = True
+        # Run independently of saved power, schedules, plugin credentials and
+        # playback choices. restore_config() puts back the exact original file.
+        controlled = {
+            "turned_off": False, "scheduling_enabled": False,
+            "operation_mode": "manual", "curr": "soak-initial",
+            "update_settings": {"auto_update_enabled": False},
+            "presets": {"soak-initial": {
+                "display_name": "soak-initial", "transition_duration": 0,
+                "transition_name": "blend", "scenes": [
+                    {"type": "starfield", "uuid": "", "arguments": {"duration": 60000}}]}}
+        }
+        with open(self.config_path, "w") as config:
+            json.dump(controlled, config)
 
     def restore_config(self):
         if not getattr(self, "config_guarded", False):
