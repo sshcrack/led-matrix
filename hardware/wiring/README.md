@@ -159,7 +159,17 @@ Owned: Raspberry Pi 3B, four panels, Electrodragon MPC1119, HUB75 ribbons, panel
 1.5 mm² wire, fork terminals, LM2596 HW-411, Pro Micro 5 V, BSS138 level converter, WS2812B strip
 (30/m, 5 m), resistors, two WAGO 221 5-way.
 
-To buy:
+Ordered 2026-11-16: Conrad: Mean Well GST160A24-R7B, Kycon KPJX-PM-4S-S (shielded variant: same
+pins and rating, metal flange; leave the shield unconnected, check its flange in the socket coupon),
+4 × TRU Components 1587493 inline holders (standard blade, 12 AWG leads; joins the 1.5 mm² wire in
+the WAGOs), blade fuses 15 A / 7.5 A / 5 A × 5 each, 5 × Teapo SY 1000 µF 35 V (13 × 25 mm),
+7 × WAGO 221-413 and 3 × WAGO 221-415 (a 3-way stands in for each 2-way). Amazon: 2 × Weishuo
+Y2-T2405. Owner already has heat-shrink.
+
+Still to buy: an M2.5/M3/M4 screw assortment with nuts and washers (M4 ≥ 12 mm for the modules),
+small cable ties (≤ 4.8 mm wide), and an IEC C13 mains cord if no spare PC/monitor cord is at hand.
+
+Original plan:
 
 | Item | Qty | ~€ | Note |
 |---|---|---|---|
