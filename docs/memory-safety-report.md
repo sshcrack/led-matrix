@@ -150,13 +150,13 @@ and exits 77 (ctest: skipped) when either is missing. It needs no Python package
 
 | Scenario | Fault | Must hold |
 |---|---|---|
-| `idle_viewers` | connected viewers, duplicate `next`, 4 concurrent viewers | `/diagnostics` `live_frame.captures`/`requests` stay flat while the matrix keeps presenting; one `next` is exactly one capture; concurrent requests coalesce |
+| `idle_viewers` | connected viewers, bursts of `next`, 4 concurrent viewers | `/diagnostics` `live_frame.captures`/`requests` stay flat while the matrix keeps presenting; one `next` is exactly one capture; concurrent requests coalesce |
 | `scene_lab_stale` | replaced Scene Lab session | update/heartbeat/stop with the old `session_id` answer 409 |
 | `worker_handoff` | scene changes with the worker attached | each handoff starts a new desktop session with fresh frames |
 | `worker_kill` | SIGKILL the worker 0 to 2.5 s into a handoff, switch while it is gone, restart it | viewer frames never pause beyond the bound, the daemon reports the worker gone, desktop delivery resumes |
 | `worker_stall` | SIGSTOP/SIGCONT the worker (delivery interrupted, socket open) | local fallback, then recovery |
 | `desktop_flap` | the desktop's control socket drops (RST/clean) and reconnects, parking the worker | local fallback, then recovery |
-| `hard_cut` | `/skip` from a desktop-rendered scene to a local one | the worker session of the scene that left is stopped |
+| `hard_cut` | preset cut from a desktop-rendered scene to a single long-lived local target | the worker session of the scene that left is stopped |
 | `stale_frames` | forged UDP frames: unknown/future/pre-restart session, replayed sequence, wrong size, bad chunk counts/indexes, truncated and random datagrams | none reaches the matrix or moves `remote_render.last_sequence` |
 | `viewer_churn` | viewers that vanish with a pending `next`, send junk frames, or drop through a handoff | daemon stays responsive, frames continue |
 | `final_idle` | all viewers and the worker gone | zero capture work again |

@@ -17,7 +17,7 @@ processes, then repeatedly breaks the link between them while a demand-driven
                     interrupted without the socket closing)
   desktop_flap      the desktop's control socket drops and reconnects, which
                     parks the worker without killing it
-  hard_cut          /skip (a transition-less switch) never leaves a desktop
+  hard_cut          preset activation (a transition-less cut) never leaves a desktop
                     session running for a scene that is no longer shown
   stale_frames      forged UDP frames for superseded/unknown sessions, replayed
                     sequences, wrong sizes and malformed packets are rejected
@@ -684,20 +684,27 @@ class Soak:
             if (width, height) != (PANEL, PANEL):
                 raise SoakFailure(f"panel is {width}x{height}")
             before = self.live()
-            for _ in range(3):  # duplicates while waiting are ignored
+            for _ in range(3):
                 viewer.send_text("next")
-            opcode, payload = viewer.recv(self.t(8))
-            _, _, second_seq, _ = parse_frame(payload)
-            try:
-                viewer.recv(self.t(0.8))
-                raise SoakFailure("a duplicate `next` produced a second frame")
-            except TimeoutError:
-                pass
-            if not first_seq < second_seq:
+            # A response may be dispatched between writes. Later requests then
+            # legitimately ask for another frame; only requests still pending
+            # coalesce. Drain the burst and bound work by the messages sent.
+            sequences = []
+            while True:
+                try:
+                    _, payload = viewer.recv(self.t(8 if not sequences else 0.8))
+                except TimeoutError:
+                    if not sequences:
+                        raise
+                    break
+                sequences.append(parse_frame(payload)[2])
+                if len(sequences) > 3:
+                    raise SoakFailure("three `next` messages produced more than three frames")
+            if any(a >= b for a, b in zip([first_seq] + sequences, sequences)):
                 raise SoakFailure("frame sequence did not advance")
             captured = self.live()["captures"] - before["captures"]
-            if captured != 1:
-                raise SoakFailure(f"three queued `next` messages captured {captured} frames, expected 1")
+            if captured != len(sequences):
+                raise SoakFailure(f"request burst captured {captured} frames but delivered {len(sequences)}")
 
             viewers = [self.new_viewer() for _ in range(4)]
             before = self.live()
@@ -833,34 +840,34 @@ class Soak:
         return f"{self.args.flaps} desktop reconnects"
 
     def scenario_hard_cut(self):
-        """A desktop session must never outlive its scene, also across /skip.
+        """Cut a known desktop scene to a long-lived, single local target.
 
-        A natural handoff puts the heavy scene (metablob) on the worker; /skip
-        then cuts straight to a cheap scene (starfield) that the Pi keeps. The
-        worker must stop rendering the scene that left.
+        Preset activation is a hard cut, like /skip, but avoids the random
+        next-scene selection of /skip. The target cannot transition away before
+        we observe cleanup, including at sanitizer time scales.
         """
-        self.activate(self.presets["cut"])
-        leaked = []
         for index in range(self.args.hard_cuts):
+            self.activate(self.presets["cut"])
+
             def heavy_on_desktop():
                 diag = self.api.diag()
                 remote = diag["remote_render"]
                 return (diag["renderer"]["active_scene"] == "metablob" and remote["scene"] == "metablob"
                         and remote["requested"] and remote["frame_fresh"])
             self.wait_for(heavy_on_desktop, 20, "metablob rendered by the worker", interval=0.05)
-            self.skip()
-            time.sleep(self.t(1.2))
+            self.activate(self.presets["local"])
+            self.wait_for(lambda: self.active_scene() == "starfield", 8,
+                          "the local hard-cut target", interval=0.02)
+            self.expect_local_fallback("after cutting to starfield")
             diag = self.api.diag()
-            remote, active = diag["remote_render"], diag["renderer"]["active_scene"]
-            if remote["requested"] and remote["scene"] != active:
-                leaked.append(f"cut {index + 1}: showing '{active}', worker still renders "
-                              f"'{remote['scene']}' (session {remote['session']}, "
-                              f"fresh={remote['frame_fresh']}, placement "
-                              f"{diag['render_placement'].get('placement')})")
-        if leaked:
-            raise SoakFailure("desktop session outlived its scene after /skip:\n  " + "\n  ".join(leaked))
+            if diag["remote_render"]["requested"]:
+                raise SoakFailure(f"cut {index + 1}: starfield is active but worker session remains: "
+                                  f"{diag['remote_render']}")
+            if self.active_scene() != "starfield":
+                raise SoakFailure("hard-cut target changed before cleanup was verified")
+        self.activate(self.presets["rotate"])
         self.expect_frames("after hard cuts", 5)
-        return f"{self.args.hard_cuts} /skip hard cuts left no orphaned desktop session"
+        return f"{self.args.hard_cuts} preset hard cuts left no orphaned desktop session"
 
     def udp_send(self, packets):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -998,6 +1005,7 @@ class Soak:
         self.presets = {
             "rotate": self.add_preset("soak-rotate", ["boids", "metablob", "julia_set", "neontunnel"], 2500),
             "cut": self.add_preset("soak-cut", ["metablob", "starfield"], 2500),
+            "local": self.add_preset("soak-local", ["starfield"], 60000, transition_ms=0),
             "slow": self.add_preset("soak-slow", ["boids", "metablob", "julia_set"], 9000),
         }
         self.activate(self.presets["rotate"])
