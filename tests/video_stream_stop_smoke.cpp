@@ -92,7 +92,7 @@ esac
     // Callers must be able to register readiness callbacks before starting the
     // asynchronous decoder. Registering them after start() is inherently racy:
     // a cached/fast first frame may arrive before the caller gets control back.
-    engine.on_first_frame_ready = [&] { first_frame = true; };
+    engine.set_on_first_frame_ready([&] { first_frame = true; });
     engine.start("https://example.invalid/video", "stop-regression", 0);
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);

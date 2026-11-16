@@ -48,23 +48,41 @@ public:
 
     State get_state() const { return state_.load(); }
     std::string get_last_error() const { std::lock_guard<std::mutex> lk(error_mutex_); return last_error_; }
-    std::string get_current_url() const { return current_url_; }
+    std::string get_current_url() const
+    {
+        std::lock_guard<std::mutex> lk(url_mutex_);
+        return current_url_;
+    }
 
-    // Guarded by status_cb_mutex_ — may be called from processing_thread_
-    // and cleared from stop() concurrently.
-    std::function<void(const std::string&)> on_status_change;
+    // The callbacks run on the engine's worker threads, so they are set and
+    // cleared through these methods (status_cb_mutex_); assigning the
+    // std::function from another thread while a worker copies it is a data race.
+    //
+    // Status ("downloading", "playing", "error", "idle"). A callback already
+    // being invoked may still be running when a setter returns; stop() joins it.
+    void set_on_status_change(std::function<void(const std::string&)> callback);
 
     // Fired exactly once when the first frame is written to current_frame_,
     // whether via fast-start or chunk playback. The frame is already in
     // current_frame_ when this fires (frame_mutex_ is NOT held).
-    // Guarded by status_cb_mutex_. stop() suppresses it while workers join, then
-    // restores it so callers can register before start() without a race.
-    std::function<void()> on_first_frame_ready;
+    // stop() suppresses it while workers join, then restores it so callers
+    // can register before start() without a race.
+    void set_on_first_frame_ready(std::function<void()> callback);
+
+    /// Drops both callbacks, e.g. before the object they capture goes away.
+    void clear_callbacks();
 
 private:
+    // Guarded by status_cb_mutex_.
+    std::function<void(const std::string&)> on_status_change;
+    std::function<void()> on_first_frame_ready;
+
     std::filesystem::path cache_root_;
     int width_, height_;
     double fps_;
+    // Written by start(), read by get_current_url() on the UI thread; worker
+    // threads only read it, and are joined before start() writes again.
+    mutable std::mutex url_mutex_;
     std::string current_url_;
     std::string cache_key_;
 
