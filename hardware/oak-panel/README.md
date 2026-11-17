@@ -40,6 +40,47 @@ This is one actual carrier mounting trial, not a finished wall bracket or fabric
 
 The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone diagnostic, not an additional print to order with this trial. The old six-hole `oak-panel-first-print-kit.zip` remains obsolete. Do not print either gauge as an extra unless a later fit problem calls for it.
 
+## v0.7 rear parts (designed 2026-11-17, not printed)
+
+Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v07/`. The design inputs are the trial kit v6 results (#170), the fastener plan (#172) and the wall mount (#171).
+
+**Parts:**
+- **4 identical carriers.** Same outline and bosses as the trial carrier, with:
+  - 3.4 mm bores for M3 × 20 into the panel inserts;
+  - 8 M3 pilot holes with bosses for joiners and trays;
+  - raised rim notches for cables;
+  - no sight holes.
+- **8 seam joiners**, M3 × 12, with slotted holes for 0–1 mm seams.
+- **4 rear trays.** Each tray is a cover quadrant plus side walls on its two outer edges. It is screwed through cover access holes into the carrier's outer-edge pilots and carries:
+  - halo channels (10.7 mm inner, 2.4 mm walls, printed lips-down like the coupon);
+  - vents;
+  - the DC socket (Kycon, M2.5 × 10) in the bottom-right tray.
+- **Two electronics plates:**
+  - the power modules are held by cable ties;
+  - the Pi sits on 7 mm standoffs for M2.5 × 10.
+- **Two hanging rails** (top trays), which hook behind the two wall screws (≈260 mm apart, heads 10 mm off the wall). Sideways adjustment is ±26 mm.
+- **Two bumpers** (bottom trays).
+
+**Depth from the LED tips:**
+
+| Plane | Distance |
+|---|---|
+| Carrier rear | 31 mm |
+| Cover rear face | 62 mm |
+| Wall | 87 mm (25 mm halo gap) |
+
+**Pilot holes (provisional):** 2.6 mm for M3 and 2.2 mm for M2.5. Set them from the screw coupon test before printing.
+
+**Checks run by `make-v07.py`:**
+- every part is a single valid solid and a watertight mesh;
+- every job fits the MK3S bed with a 5 mm margin;
+- no assembly overlaps between parts, panels, component envelopes, the DC socket body, the wall or the wall screws;
+- probes for pilots, notches and the halo channel.
+
+The only downward overhangs are the halo channel roofs (10.7 mm bridges) and short bridges over holes.
+
+**Not included:** the front. It uses the boesner Pears aluminium frame, 40 × 40, black satin matte, PE124040 (https://www.boesner.com/pears-aluminium-wechselrahmen-13947). The profile is 9 mm wide and 19 mm deep, with a 13 mm rebate. The front waits for the canvas vs. acrylic choice and for the frame in hand.
+
 ## Electronics plates (off-the-shelf wiring plan)
 
 `electronics-plates-v3.zip` ([preview](https://github.com/sshcrack/led-matrix/releases/download/hardware-oak-panel/electronics-plates-preview.png)) holds four PETG parts for [`hardware/wiring/`](../wiring/README.md). **Prototype study: not printed or fitted.** Source: `electronics_plates.py`, `make-electronics-plates.py`.
