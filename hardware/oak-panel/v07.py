@@ -1,4 +1,4 @@
-"""v0.7 rear parts: carriers, seam joiners, rear trays, hanging rails, wall bumpers, electronics plates.
+"""v0.7 rear: carriers, seam joiners, wood rear box, halo channel pieces, hanging rails, wall bumpers, electronics plates.
 
 Millimetres. Designed from the trial kit v6 results (issue #170, 2026-11-17). Not yet printed.
 
@@ -7,7 +7,9 @@ X right and Y up as seen from the WALL looking at the panel backs (rear view), o
 centre of the 2x2 array; Z runs from the LED tips (Z=0) toward the wall. Quadrant-local
 builders take (sx, sy) in {-1, 1}: the quadrant's centre is (sx * PITCH / 2, sy * PITCH / 2)
 and its OUTER edges face +sx and +sy. All four panels hang the same way up, so the carriers are
-identical; the trays differ only by which edges are outer.
+identical. The rear box is wood (cheaper than the printed trays it replaced, 2026-11-17): four
+pine strips stand on the carriers' outer bands and a 3 mm HDF back closes it; small printed
+channel pieces on the HDF hold the halo strip. wood_drawings.py makes the cut and drill sheets.
 
 The front (black metal picture frame, diffuser retention) is NOT designed here: it waits for
 the canvas vs. acrylic comparison and the bought frame's profile.
@@ -33,7 +35,6 @@ M3_CLEAR = 3.4  # screw coupon: smallest hole an M3 passes freely (owner, 2026-1
 M3_PILOT = 2.6  # PROVISIONAL: M3 x 12 cutting its own thread in PETG; set from the coupon test
 M25_PILOT = 2.2  # PROVISIONAL: M2.5 x 10 into PETG; set from the coupon test
 M25_CLEAR = 2.8
-M3_HEAD_ACCESS = 7.0  # screwdriver / head clearance down to a buried screw head
 
 # --- Array and Z stack -----------------------------------------------------------------------
 PITCH = 192.0  # module pitch: 191.6 mm bodies, glued seams 0-1 mm (owner, 2026-11-17)
@@ -41,9 +42,18 @@ HALF = OUTER_MM / 2  # 95.8
 Z_INSERT = 15.0
 Z_WEB_FRONT, Z_REAR = 27.0, 31.0  # carrier web; Z_REAR = carrier rear face
 Z_RIM_FRONT = 21.0
-Z_COVER_IN, Z_COVER_OUT = 60.0, 62.0
-WALL_GAP = 25.0  # cover rear face to wall: halo throw (#208)
-Z_WALL = Z_COVER_OUT + WALL_GAP  # 87
+# Wood rear box. Bauhaus "Rechteckleiste" 240 x 3 x 1.9 cm pine: 19 mm in plane, 30 mm deep.
+STRIP_T, STRIP_D = 19.0, 30.0
+STRIP_OUT = 195.0  # outer faces 3 mm outside the panel block (frame rebate is 400 mm square)
+STRIP_IN = STRIP_OUT - STRIP_T  # 176: keeps >= 2.5 mm to the power modules
+Z_STRIP_BACK = Z_REAR + STRIP_D  # 61: inside ceiling
+HDF_T = 3.0
+Z_BACK = Z_STRIP_BACK + HDF_T  # 64: rear face of the HDF
+STRIP_HOLE = 5.0  # M3 x 40 through the strip: 0.8 mm play per side for hand drilling
+STRIP_CBORE = (10.0, 3.0)  # washer + head sink in, so the HDF lies flat
+WASHER_OD = 9.0  # DIN 9021 M3 (3.2 x 9)
+WOOD_SCREW = (3.0, 20.0)  # countersunk wood screws: halo pieces and HDF corners
+WOOD_PILOT = 2.0
 WALL_SCREW = {"head_gap": 10.0, "head_d": 10.0, "head_t": 3.0, "shank_d": 4.5, "spacing": 260.0}
 # Owner: two screws in wall plugs, level, outer-to-outer ~268 mm with 7-10 mm heads -> ~260 mm
 # centres; heads set to 10 mm off the wall.
@@ -53,7 +63,7 @@ WEB_BAND = 16.0  # web band width from the outer edge
 RIM_W = 4.0
 CORNER_BORE = M3_CLEAR  # M3 x 20 into the panels' M3 inserts: 16 mm grip + 4 mm thread
 # Joint holes: M3 pilots with a boss below the web. On a seam a joiner bridges two carriers; on
-# an outer edge the tray's column screws into the same hole. Same positions on both opposite
+# an outer edge an M3 x 40 through the pine strip screws into the same hole. Same positions on both opposite
 # edges, so all four carriers are identical.
 JOINT_HOLES = [(sx * 86.0, y) for sx in (-1, 1) for y in (-20.0, 15.0)] + [
     (x, sy * 86.0) for x in (-40.0, 40.0) for sy in (-1, 1)
@@ -69,19 +79,21 @@ NOTCH_ZONES_X_EDGE = [(28.0, 70.0), (-48.0, -26.0)]  # y ranges on the +/-X edge
 NOTCH_ZONES_Y_EDGE = [(-30.0, 30.0)]  # x ranges on the +/-Y edges
 ORIENTATION_NOTCH = (8.0, 2.0, 2.0)  # on the +Y rim, connector half up
 
-# --- Tray (rear cover quadrant + outer side walls) -------------------------------------------
-TRAY_WALL = 3.0
-COLUMN = 9.0  # square column under each outer-edge joint hole, joined to the side wall
-COLUMN_FLOOR = 3.0  # screw head bears on this floor; M3 x 12 -> 9 mm into the 11 mm pilot
-# Halo channel, from the coupon test (owner, 2026-11-17): 10.7 mm inner width fits the strip;
-# walls thickened from the coupon's 1.6 mm (one broke) to 2.4 mm. Prints lips-down on the bed,
-# like the coupon. Set in from the edge so the tray columns' screw access stays clear.
-HALO = {"inner_w": 10.7, "inner_h": 3.3, "lip": 1.2, "wall": 2.4, "floor": 1.6, "centre": 73.0}
-HALO_BAND_W = HALO["inner_w"] + 2 * HALO["wall"]
-HALO_DEPTH = HALO["lip"] + HALO["inner_h"] + HALO["floor"]  # 6.1 from the rear face
-HALO_CORNER_END = 60.0  # channels stop short of the corner so the two bands never cross
-HALO_WIRE_HOLE = 6.0
-VENT = (3.0, 36.0, 8.0)  # slot width, length, pitch
+# --- Halo channel pieces (printed, on the HDF over the strips) --------------------------------
+# From the coupon test (owner, 2026-11-17): 10.7 mm inner width fits the strip; walls thickened from
+# the coupon's 1.6 mm (one broke) to 2.4 mm. Two pieces per edge butt at the edge centre; the strip
+# slides in from the corner end. Pieces stop short of the corners, which keeps the HDF corner screws
+# free and the two bands apart. Printed floor-down (lips are a 1.2 mm overhang).
+HALO = {"inner_w": 10.7, "inner_h": 3.3, "lip": 1.2, "wall": 2.4, "floor": 1.6}
+HALO_BAND_W = HALO["inner_w"] + 2 * HALO["wall"]  # 15.5
+HALO_DEPTH = HALO["lip"] + HALO["inner_h"] + HALO["floor"]  # 6.1 above the HDF
+HALO_C = (STRIP_IN + STRIP_OUT) / 2  # 185.5: centred over the strips
+HALO_SPAN = (0.25, 174.0)  # along the edge from its centre; 0.5 mm butt gap
+HALO_SCREWS = (20.0, 95.0, 160.0)  # along the edge from its centre: clear of the M3 counterbores
+HALO_FEED = (168.0, -168.0, 8.0)  # x, y, hole: halo cable from the Pro Micro out through the HDF
+WALL_GAP = 25.0  # channel openings to the wall: halo throw (#208)
+Z_WALL = Z_BACK + HALO_DEPTH + WALL_GAP  # 95.1
+VENT_D, VENT_PITCH = 10.0, 22.0  # drilled vent holes in the HDF
 
 # --- Hanging rail (top trays) and bumpers (bottom trays) -------------------------------------
 # The rail's lip hooks behind the wall-screw heads; its lower edge rests on the shanks. Each
@@ -90,15 +102,16 @@ RAIL_X_IN, RAIL_X_OUT = -88.0, 60.0  # quadrant-local along +sx
 RAIL_WEB_Y = (40.0, 48.0)
 RAIL_LIP_Y0 = 26.0  # lip lower edge: rests on the screw shank
 RAIL_LIP_T = 3.5
-RAIL_SCREWS_X = (-70.0, -14.0, 42.0)  # M3 x 12 from inside the tray, through the cover
-BUMPER = {"d": 16.0, "x": 34.0, "y": -44.0}  # bottom trays; bears on the wall at Z_WALL
+RAIL_SCREWS_X = (-70.0, -14.0, 42.0)  # M3 x 12 from inside, through the HDF
+BUMPER = {"d": 16.0, "x": 34.0, "y": -44.0}  # bottom quadrants; M3 x 12 from inside; bears on the wall
 
 # --- Electronics placement -------------------------------------------------------------------
 POWER_QUADRANT = (-1, -1)  # near the DC socket (wiring README: modules and fuses at the bottom)
 CONTROLLER_QUADRANT = (1, -1)
-DC_SOCKET_X = -78.0  # quadrant-local on the bottom wall of the controller quadrant
-DC_SOCKET_Z = 46.0
-DC_SOCKET_BODY = (14.0, 20.0)  # envelope behind the wall: diameter, depth (approx.)
+DC_SOCKET_X = 18.0  # global, in the bottom strip's outer face (toward the Pi side)
+DC_SOCKET_Z = Z_REAR + STRIP_D / 2  # 46: centred in the strip's 30 mm face
+DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter, length incl. solder cups (approx.)
+DC_SOCKET_PILOT = (2.0, 10.0)  # M2.5 x 10 from outside through the flange into the pine
 PI_STANDOFF_V07 = (6.0, 7.0)  # OD, height: M2.5 x 10 through the 1.6 mm board -> 8.4 mm thread
 PI_CENTRE_V07 = (-32.0, -36.0)  # moved in from the edge: the stack must stay out of the halo band
 
@@ -195,111 +208,157 @@ def joiner_positions():
 
 
 # ============================================================================================
-# Tray: rear-cover quadrant + side walls on its two outer edges
+# Wood rear box (reference solids; cut and drilled by hand from wood_drawings.py)
 # ============================================================================================
-def _outer_columns(sx, sy):
-    cols = [(sx * 86.0, y, "x") for y in (-20.0, 15.0)]
-    cols += [(x, sy * 86.0, "y") for x in (-40.0, 40.0)]
-    return cols
+def strip_screws():
+    """[(x, y, what)] global: M3 x 40 through the strips into carrier pilots and plate posts."""
+    pts = []
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cx, cy = quadrant_centre(sx, sy)
+            pts += [(cx + x, cy + y, "carrier") for x, y in JOINT_HOLES]
+    for quad, plate in ((POWER_QUADRANT, "power plate"), (CONTROLLER_QUADRANT, "controller plate")):
+        cx, cy = quadrant_centre(*quad)
+        pts += [(cx + x, cy + y, plate) for x, y in PLATE_HOLES]
+    return [(x, y, w) for x, y, w in pts if max(abs(x), abs(y)) > STRIP_IN]
 
 
-def _halo_runs(sx, sy):
-    """[(x0, x1, y0, y1, axis)] channel centreline boxes (band extents) for the two outer edges."""
-    c, w = HALO["centre"], HALO_BAND_W
-    runs = [
-        (sx * (c - w / 2), sx * (c + w / 2), -sy * HALF, sy * HALO_CORNER_END, "y"),  # along Y on the X edge
-        (-sx * HALF, sx * HALO_CORNER_END, sy * (c - w / 2), sy * (c + w / 2), "x"),  # along X on the Y edge
-    ]
-    return runs
+def strip_boxes():
+    """{name: (x0, x1, y0, y1)}: top and bottom run the full width, the sides fit between them."""
+    o, i = STRIP_OUT, STRIP_IN
+    return {
+        "strip-top": (-o, o, i, o),
+        "strip-bottom": (-o, o, -o, -i),
+        "strip-left": (-o, -i, -i, i),
+        "strip-right": (i, o, -i, i),
+    }
 
 
-def _keepouts(sx, sy):
-    """Rectangles on the cover (quadrant-local) where vents must not go."""
-    k = []
-    for x, y, _ in _outer_columns(sx, sy):
-        k.append((x - 7, x + 7, y - 7, y + 7))
-    for x0, x1, y0, y1, _ in _halo_runs(sx, sy):
-        k.append((min(x0, x1) - 3, max(x0, x1) + 3, min(y0, y1) - 3, max(y0, y1) + 3))
-    if sy == 1:
-        xs = sorted((sx * RAIL_X_IN, sx * RAIL_X_OUT))
-        k.append((xs[0] - 3, xs[1] + 3, RAIL_LIP_Y0 - 10, RAIL_WEB_Y[1] + 4))
-    else:
-        bx, by = sx * BUMPER["x"], BUMPER["y"]
-        r = BUMPER["d"] / 2 + 4
-        k.append((bx - r, bx + r, by - r, by + r))
-    return k
+def build_strips():
+    out = {}
+    for name, (x0, x1, y0, y1) in strip_boxes().items():
+        s = box(x0, x1, y0, y1, Z_REAR, Z_STRIP_BACK)
+        for x, y, _ in strip_screws():
+            if x0 < x < x1 and y0 < y < y1:
+                s = s.cut(cyl(x, y, STRIP_HOLE, Z_REAR, Z_STRIP_BACK))
+                s = s.cut(cyl(x, y, STRIP_CBORE[0], Z_STRIP_BACK - STRIP_CBORE[1], Z_STRIP_BACK))
+        for x, y, _, d in hdf_holes("corner"):
+            if x0 < x < x1 and y0 < y < y1:
+                s = s.cut(cyl(x, y, WOOD_PILOT, Z_STRIP_BACK - WOOD_SCREW[1] + HDF_T, Z_STRIP_BACK))
+        for x, y in halo_screws():
+            if x0 < x < x1 and y0 < y < y1:
+                depth = WOOD_SCREW[1] - HDF_T - HALO["floor"]
+                s = s.cut(cyl(x, y, WOOD_PILOT, Z_STRIP_BACK - depth, Z_STRIP_BACK))
+        if name == "strip-bottom":
+            s = _add_dc_socket(s)
+        out[name] = s
+    return out
 
 
-def build_tray(sx, sy):
-    lim = HALF
-    tray = box(-lim, lim, -lim, lim, Z_COVER_IN, Z_COVER_OUT)
-    wall_in = HALF - TRAY_WALL
-    tray = tray.union(box(sx * wall_in, sx * HALF, -lim, lim, Z_REAR, Z_COVER_IN))
-    tray = tray.union(box(-lim, lim, sy * wall_in, sy * HALF, Z_REAR, Z_COVER_IN))
-    # Columns: carry the tray on the carrier's outer-edge joint holes. Screw from the rear
-    # through the cover's access hole; the head sits on the column floor.
-    for x, y, axis in _outer_columns(sx, sy):
-        h = COLUMN / 2
-        if axis == "x":
-            col = box(x - sx * h, sx * wall_in, y - h, y + h, Z_REAR, Z_COVER_IN)
-        else:
-            col = box(x - h, x + h, y - sy * h, sy * wall_in, Z_REAR, Z_COVER_IN)
-        tray = tray.union(col)
-        tray = tray.cut(cyl(x, y, M3_CLEAR, Z_REAR, Z_REAR + COLUMN_FLOOR))
-        tray = tray.cut(cyl(x, y, M3_HEAD_ACCESS, Z_REAR + COLUMN_FLOOR, Z_COVER_OUT))
-    # Halo channels (open toward the wall).
-    zf = Z_COVER_OUT - HALO_DEPTH
-    for x0, x1, y0, y1, axis in _halo_runs(sx, sy):
-        tray = tray.union(box(x0, x1, y0, y1, zf, Z_COVER_IN))
-        cx = (x0 + x1) / 2 if axis == "y" else None
-        cy = (y0 + y1) / 2 if axis == "x" else None
-        z_cav0 = zf + HALO["floor"]
-        z_lip = Z_COVER_OUT - HALO["lip"]
-        iw, ow = HALO["inner_w"], HALO["inner_w"] - 2 * HALO["lip"]
-        if axis == "y":
-            tray = tray.cut(box(cx - iw / 2, cx + iw / 2, y0, y1, z_cav0, z_lip))
-            tray = tray.cut(box(cx - ow / 2, cx + ow / 2, y0, y1, z_lip, Z_COVER_OUT))
-            tray = tray.cut(cyl(cx, sy * (HALO_CORNER_END - 8), HALO_WIRE_HOLE, zf, z_cav0))
-        else:
-            tray = tray.cut(box(x0, x1, cy - iw / 2, cy + iw / 2, z_cav0, z_lip))
-            tray = tray.cut(box(x0, x1, cy - ow / 2, cy + ow / 2, z_lip, Z_COVER_OUT))
-            tray = tray.cut(cyl(sx * (HALO_CORNER_END - 8), cy, HALO_WIRE_HOLE, zf, z_cav0))
-    # Rail or bumper screw holes.
-    if sy == 1:
-        ym = sum(RAIL_WEB_Y) / 2
-        for x in RAIL_SCREWS_X:
-            tray = tray.cut(cyl(sx * x, ym, M3_CLEAR, Z_COVER_IN, Z_COVER_OUT))
-    else:
-        tray = tray.cut(cyl(sx * BUMPER["x"], BUMPER["y"], M3_CLEAR, Z_COVER_IN, Z_COVER_OUT))
-    # Vents over the electronics.
-    sw, sl, sp = VENT
-    keep = _keepouts(sx, sy)
-    for y0 in (-56.0, -12.0):
-        x = -60.0
-        while x <= 60.0:
-            r = (x - sw / 2, x + sw / 2, y0, y0 + sl)
-            if all(r[1] < k[0] or r[0] > k[1] or r[3] < k[2] or r[2] > k[3] for k in keep):
-                tray = tray.cut(box(*r, Z_COVER_IN, Z_COVER_OUT))
-            x += sp
-    if (sx, sy) == CONTROLLER_QUADRANT:
-        tray = _add_dc_socket(tray, sy)
-    return tray
-
-
-def _add_dc_socket(tray, sy):
-    """Kycon KPJX-PM-4S in the bottom wall: flange in a 1 mm pocket outside, M2.5 x 10 from inside."""
-    fw, fh = ep.DC_SOCKET["flange"]
-    pad = 1.4  # wall locally 4.4 mm: 3.4 mm screw grip, 1 mm pocket
-    y_out = sy * HALF
-    y_in = sy * (HALF - TRAY_WALL - pad)
+def _add_dc_socket(strip):
+    """Kycon KPJX-PM-4S on the bottom strip's outer face: 14 mm through, M2.5 x 10 from outside."""
     x, z = DC_SOCKET_X, DC_SOCKET_Z
-    tray = tray.union(box(x - fw / 2 - 3, x + fw / 2 + 3, sy * (HALF - TRAY_WALL), y_in, z - fh / 2 - 3, z + fh / 2 + 3))
-    tray = tray.cut(cyl_y(x, z, ep.DC_SOCKET["body_cutout"], y_out, y_in))
-    tray = tray.cut(box(x - fw / 2 - 0.3, x + fw / 2 + 0.3, y_out, y_out - sy * 1.0, z - fh / 2 - 0.3, z + fh / 2 + 0.3))
+    strip = strip.cut(cyl_y(x, z, ep.DC_SOCKET["body_cutout"], -STRIP_OUT, -STRIP_IN))
     s = ep.DC_SOCKET["screw_spacing"] / 2
+    d, depth = DC_SOCKET_PILOT
     for dx in (-s, s):
-        tray = tray.cut(cyl_y(x + dx, z, M25_CLEAR, y_out, y_in))
-    return tray
+        strip = strip.cut(cyl_y(x + dx, z, d, -STRIP_OUT, -STRIP_OUT + depth))
+    return strip
+
+
+def halo_screws():
+    """(x, y) global wood screws through the halo pieces and the HDF into the strips."""
+    pts = []
+    for a in HALO_SCREWS:
+        for s in (-1, 1):
+            pts += [(s * a, HALO_C), (s * a, -HALO_C), (HALO_C, s * a), (-HALO_C, s * a)]
+    return pts
+
+
+def _keep_clear(x, y, r, taken):
+    return all(((x - tx) ** 2 + (y - ty) ** 2) ** 0.5 >= r + tr + 3.0 for tx, ty, tr in taken)
+
+
+def hdf_holes(kind=None):
+    """[(x, y, what, diameter)] global, drilled in the HDF (pilots for the halo pieces are drilled
+    through the printed pieces on assembly and are not listed)."""
+    holes = []
+    o = HALO_C
+    holes += [(sx * o, sy * o, "corner", 3.2) for sx in (-1, 1) for sy in (-1, 1)]
+    for sx in (-1, 1):
+        cx, cy = quadrant_centre(sx, 1)
+        holes += [(cx + sx * x, cy + sum(RAIL_WEB_Y) / 2, "rail", M3_CLEAR) for x in RAIL_SCREWS_X]
+        cx, cy = quadrant_centre(sx, -1)
+        holes.append((cx + sx * BUMPER["x"], cy + BUMPER["y"], "bumper", M3_CLEAR))
+    holes.append((HALO_FEED[0], HALO_FEED[1], "halo cable", HALO_FEED[2]))
+    taken = [(x, y, d / 2) for x, y, _, d in holes]
+    # Keep-outs: rail footprints and bumper footprints (plus the holes above).
+    for sx in (-1, 1):
+        x0, x1 = sorted((sx * (PITCH / 2 + RAIL_X_IN), sx * (PITCH / 2 + RAIL_X_OUT)))
+        for x in range(int(x0), int(x1) + 1, 4):
+            taken.append((x, PITCH / 2 + sum(RAIL_WEB_Y) / 2, 6.0))
+        cx, cy = quadrant_centre(sx, -1)
+        taken.append((cx + sx * BUMPER["x"], cy + BUMPER["y"], BUMPER["d"] / 2))
+    # Vents: a 3 x 3 grid over each power module and over the Pi, and a row along the top.
+    centres = []
+    pcx, pcy = quadrant_centre(*POWER_QUADRANT)
+    centres += [(pcx + mx, pcy + my) for mx, my in ep.MODULE_CENTRES]
+    ccx, ccy = quadrant_centre(*CONTROLLER_QUADRANT)
+    x0, x1, y0, y1 = pi_board_box()
+    centres.append((ccx + (x0 + x1) / 2, ccy + (y0 + y1) / 2))
+    cand = [(gx + i * VENT_PITCH, gy + j * VENT_PITCH) for gx, gy in centres for i in (-1, 0, 1) for j in (-1, 0, 1)]
+    cand += [(x, 160.0) for x in range(-165, 166, 30)]
+    r = VENT_D / 2
+    for x, y in cand:
+        if max(abs(x), abs(y)) + r <= STRIP_IN - 3.0 and _keep_clear(x, y, r, taken):
+            holes.append((float(x), float(y), "vent", VENT_D))
+            taken.append((x, y, r))
+    return [h for h in holes if kind is None or h[2] == kind]
+
+
+def build_hdf():
+    o = STRIP_OUT
+    panel = box(-o, o, -o, o, Z_STRIP_BACK, Z_BACK)
+    for x, y, _, d in hdf_holes():
+        panel = panel.cut(cyl(x, y, d, Z_STRIP_BACK, Z_BACK))
+    for x, y in halo_screws():
+        panel = panel.cut(cyl(x, y, WOOD_SCREW[0] + 0.2, Z_STRIP_BACK, Z_BACK))
+    return panel
+
+
+# ============================================================================================
+# Halo channel piece (printed)
+# ============================================================================================
+def build_halo_piece():
+    """One piece along +X from x = 0, centred on y = 0, floor on z = 0 (print orientation)."""
+    length = HALO_SPAN[1] - HALO_SPAN[0]
+    iw, ow = HALO["inner_w"], HALO["inner_w"] - 2 * HALO["lip"]
+    f, top = HALO["floor"], HALO_DEPTH
+    p = box(0, length, -HALO_BAND_W / 2, HALO_BAND_W / 2, 0, top)
+    p = p.cut(box(0, length, -iw / 2, iw / 2, f, top - HALO["lip"]))
+    p = p.cut(box(0, length, -ow / 2, ow / 2, top - HALO["lip"], top))
+    for a in HALO_SCREWS:
+        x = a - HALO_SPAN[0]
+        p = p.cut(cyl(x, 0, WOOD_SCREW[0] + 0.4, 0, f))
+        cone = cq.Solid.makeCone((WOOD_SCREW[0] + 0.4) / 2, 3.3, 3.3 - (WOOD_SCREW[0] + 0.4) / 2,
+                                 cq.Vector(x, 0, f - (3.3 - (WOOD_SCREW[0] + 0.4) / 2)), cq.Vector(0, 0, 1))
+        p = p.cut(cq.Workplane("XY").add(cone))
+    return p
+
+
+def halo_piece_placements():
+    """[(name, edge, half)]: two pieces per edge."""
+    return [(f"{e}-{'a' if h > 0 else 'b'}", e, h) for e in ("top", "bottom", "left", "right") for h in (1, -1)]
+
+
+def place_halo_piece(piece, edge, half):
+    p = piece.translate((HALO_SPAN[0], 0, 0))
+    if half < 0:
+        p = p.rotate((0, 0, 0), (0, 0, 1), 180)
+    if edge in ("left", "right"):
+        p = p.rotate((0, 0, 0), (0, 0, 1), 90)
+    off = {"top": (0, HALO_C), "bottom": (0, -HALO_C), "left": (-HALO_C, 0), "right": (HALO_C, 0)}[edge]
+    return p.translate((off[0], off[1], Z_BACK))
 
 
 # ============================================================================================
@@ -313,19 +372,19 @@ def rail_z():
 def build_rail(sx):
     lip_front, back = rail_z()
     x0, x1 = sx * RAIL_X_IN, sx * RAIL_X_OUT
-    rail = box(x0, x1, RAIL_WEB_Y[0], RAIL_WEB_Y[1], Z_COVER_OUT, back)
+    rail = box(x0, x1, RAIL_WEB_Y[0], RAIL_WEB_Y[1], Z_BACK, back)
     rail = rail.union(box(x0, x1, RAIL_LIP_Y0, RAIL_WEB_Y[1], lip_front, back))
     ym = sum(RAIL_WEB_Y) / 2
     for x in RAIL_SCREWS_X:
-        rail = rail.cut(cyl(sx * x, ym, M3_PILOT, Z_COVER_OUT, Z_COVER_OUT + 12))
+        rail = rail.cut(cyl(sx * x, ym, M3_PILOT, Z_BACK, Z_BACK + 12))
     return rail
 
 
 def build_bumper(sx):
     x, y = sx * BUMPER["x"], BUMPER["y"]
-    b = cyl(x, y, BUMPER["d"], Z_COVER_OUT, Z_WALL)
+    b = cyl(x, y, BUMPER["d"], Z_BACK, Z_WALL)
     b = b.edges(">Z").chamfer(1.0)
-    return b.cut(cyl(x, y, M3_PILOT, Z_COVER_OUT, Z_COVER_OUT + 12))
+    return b.cut(cyl(x, y, M3_PILOT, Z_BACK, Z_BACK + 12))
 
 
 # ============================================================================================

@@ -42,42 +42,51 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 ## v0.7 rear parts (designed 2026-11-17, not printed)
 
-Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v07/`. The design inputs are the trial kit v6 results (#170), the fastener plan (#172) and the wall mount (#171).
+Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v07/`. The design inputs are the trial kit v6 results (#170), the fastener plan (#172) and the wall mount (#171). On 2026-11-17 the printed rear trays (about 460 cm³ of print) were replaced by a wood box. `wood_drawings.py` writes the cut and drill sheets with 1:1 templates to `exports/v07/wood-cut-drill.pdf`.
 
-**Parts:**
+**Printed parts (about 528 cm³):**
 - **4 identical carriers.** Same outline and bosses as the trial carrier, with:
   - 3.4 mm bores for M3 × 20 into the panel inserts;
-  - 8 M3 pilot holes with bosses for joiners and trays;
+  - 8 M3 pilot holes with bosses for the joiners and the strips;
   - raised rim notches for cables;
   - no sight holes.
 - **8 seam joiners**, M3 × 12, with slotted holes for 0–1 mm seams.
-- **4 rear trays.** Each tray is a cover quadrant plus side walls on its two outer edges. It is screwed through cover access holes into the carrier's outer-edge pilots and carries:
-  - halo channels (10.7 mm inner, 2.4 mm walls, printed lips-down like the coupon);
-  - vents;
-  - the DC socket (Kycon, M2.5 × 10) in the bottom-right tray.
+- **8 halo channel pieces** (10.7 mm inner, 2.4 mm walls, printed floor-down), two per edge on the HDF over the strips, held by countersunk 3 × 20 wood screws through the floor.
 - **Two electronics plates:**
   - the power modules are held by cable ties;
   - the Pi sits on 7 mm standoffs for M2.5 × 10.
-- **Two hanging rails** (top trays), which hook behind the two wall screws (≈260 mm apart, heads 10 mm off the wall). Sideways adjustment is ±26 mm.
-- **Two bumpers** (bottom trays).
+- **Two hanging rails**, which hook behind the two wall screws (≈260 mm apart, heads 10 mm off the wall). Sideways adjustment is ±26 mm. M3 × 12 from inside through the HDF.
+- **Two bumpers**, M3 × 12 from inside through the HDF.
+
+**Wood (bought, cut and drilled by hand):**
+- **Pine strips 19 × 30 mm:** 2 × 390 mm (top, bottom) and 2 × 352 mm (sides, between them). They stand 30 mm deep on the carriers' outer bands, with their outer faces 3 mm outside the panel block.
+  - 22 M3 × 40 with DIN 9021 washers go through 5 mm holes into the carriers' outer pilots (16) and into the plate posts under the strips (6).
+  - Each hole has a 10 mm × 3 mm counterbore so the HDF lies flat.
+  - The DC socket sits in the bottom strip's outer face: 14 mm through, two 2 mm pilots for M2.5 × 10.
+  - With 19 mm strips, the power modules keep at least 2.5 mm to the strips.
+- **HDF back, 3 mm, 390 × 390 mm.** It is fixed by the halo pieces' screws and four corner screws. It has holes for the rails, the bumpers and the halo cable, plus 38 × 10 mm vents.
 
 **Depth from the LED tips:**
 
 | Plane | Distance |
 |---|---|
 | Carrier rear | 31 mm |
-| Cover rear face | 62 mm |
-| Wall | 87 mm (25 mm halo gap) |
+| Strip back (inside ceiling) | 61 mm |
+| HDF rear face | 64 mm |
+| Halo channel openings | 70.1 mm |
+| Wall | 95.1 mm (25 mm from the channel openings) |
 
-**Pilot holes (provisional):** 2.6 mm for M3 and 2.2 mm for M2.5. Set them from the screw coupon test before printing.
+**Pilot holes (provisional):** 2.6 mm for M3 and 2.2 mm for M2.5 in PETG. Set them from the screw coupon test before printing.
 
 **Checks run by `make-v07.py`:**
-- every part is a single valid solid and a watertight mesh;
+- every printed part is a single valid solid and a watertight mesh;
 - every job fits the MK3S bed with a 5 mm margin;
-- no assembly overlaps between parts, panels, component envelopes, the DC socket body, the wall or the wall screws;
-- probes for pilots, notches and the halo channel.
+- no assembly overlaps between printed parts, wood, panels, component envelopes, the DC socket body, the wall or the wall screws;
+- the M3 × 40 thread engagement is at least 8 mm and the screws never reach a panel;
+- the wood screws keep clear of the M3 counterbores;
+- probes for the pilots, notches, strip holes and the halo channel.
 
-The only downward overhangs are the halo channel roofs (10.7 mm bridges) and short bridges over holes.
+The only downward overhangs are the halo channel lips (1.2 mm).
 
 **Not included:** the front. It uses the boesner Pears aluminium frame, 40 × 40, black satin matte, PE124040 (https://www.boesner.com/pears-aluminium-wechselrahmen-13947). The profile is 9 mm wide and 19 mm deep, with a 13 mm rebate. The front waits for the canvas vs. acrylic choice and for the frame in hand.
 

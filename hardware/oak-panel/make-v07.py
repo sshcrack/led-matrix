@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Build, check and export the v0.7 rear parts (v07.py): STL/STEP per part, one 3MF per print job,
-an assembly STEP with reference envelopes, a preview image and a validation manifest.
+"""Build, check and export the v0.7 rear (v07.py): STL/STEP per printed part, one 3MF per print job,
+STEP per wood part, an assembly STEP with reference envelopes and a validation manifest.
+The wood cut/drill sheets come from wood_drawings.py.
 
 Checks: every part one valid solid and a watertight mesh; every print job fits the Prusa MK3S
 bed (250 x 210 mm) with a 5 mm margin; no two parts or reference envelopes (panels, components,
@@ -46,9 +47,10 @@ def flip(shape, z_face):
 parts = {}
 carrier_local = v07.build_carrier()
 parts["carrier"] = dict(asm=[at(carrier_local, sx, sy) for sx, sy in QUADRANTS], print=flip(carrier_local, v07.Z_REAR), qty=4)
-for sx, sy in QUADRANTS:
-    t = v07.build_tray(sx, sy)
-    parts[f"tray-{QNAME[(sx, sy)]}"] = dict(asm=[at(t, sx, sy)], print=flip(t, v07.Z_COVER_OUT), qty=1)
+piece = v07.build_halo_piece()
+parts["halo-piece"] = dict(
+    asm=[v07.place_halo_piece(piece, e, h) for _, e, h in v07.halo_piece_placements()], print=piece, qty=8
+)
 power = v07.build_power_plate_v07()
 ctrl = v07.build_controller_plate_v07()
 parts["power-plate"] = dict(asm=[at(power, *v07.POWER_QUADRANT, v07.plate_z())], print=power, qty=1)
@@ -62,6 +64,10 @@ parts["rail-right"] = dict(asm=[at(rails[1], 1, 1)], print=flip(rails[1], rail_b
 bumper = v07.build_bumper(1)
 parts["bumper"] = dict(asm=[at(v07.build_bumper(sx), sx, -1) for sx in (-1, 1)], print=flip(bumper, v07.Z_WALL), qty=2)
 
+# --- Wood (bought, cut and drilled by hand) ---------------------------------------------------
+wood = dict(v07.build_strips())
+wood["hdf-back"] = v07.build_hdf()
+
 # --- Reference envelopes ---------------------------------------------------------------------
 refs = {}
 for sx, sy in QUADRANTS:
@@ -70,10 +76,8 @@ for sx, sy in QUADRANTS:
 for plate, quad in (("power-plate", v07.POWER_QUADRANT), ("controller-plate", v07.CONTROLLER_QUADRANT)):
     for name, env in v07.component_envelopes(plate):
         refs[f"{plate}:{name}"] = at(env, *quad)
-sx, sy = v07.CONTROLLER_QUADRANT
 d, depth = v07.DC_SOCKET_BODY
-y_in = sy * (v07.HALF - v07.TRAY_WALL - 1.4)
-refs["dc-socket-body"] = at(v07.cyl_y(v07.DC_SOCKET_X, v07.DC_SOCKET_Z, d, y_in, y_in - sy * depth), sx, sy)
+refs["dc-socket-body"] = v07.cyl_y(v07.DC_SOCKET_X, v07.DC_SOCKET_Z, d, -v07.STRIP_OUT, -v07.STRIP_OUT + depth)
 refs["wall"] = v07.box(-300, 300, -300, 300, v07.Z_WALL, v07.Z_WALL + 5)
 ws = v07.WALL_SCREW
 screw_y = v07.PITCH / 2 + v07.RAIL_LIP_Y0 - ws["shank_d"] / 2  # shank top touches the lip edge
@@ -89,6 +93,7 @@ solids = []
 for name, p in parts.items():
     for i, s in enumerate(p["asm"]):
         solids.append((f"{name}#{i}", s.val()))
+solids += [(n, s.val()) for n, s in wood.items()]
 solids += [(n, s.val()) for n, s in refs.items()]
 for n, s in solids:
     assert s.isValid() and len(s.Solids()) == 1, n
@@ -103,23 +108,34 @@ for (na, a), (nb, b) in combinations(solids, 2):
 assert not clashes, clashes
 
 # --- Key clearances --------------------------------------------------------------------------
-band_bottom = v07.Z_COVER_OUT - v07.HALO_DEPTH
 tallest = {}
-for n, s in refs.items():
+for n, s_ in refs.items():
     if ":" in n:
-        bb = s.val().BoundingBox()
+        bb = s_.val().BoundingBox()
         tallest[n] = round(bb.zmax, 2)
-assert max(tallest.values()) <= v07.Z_COVER_IN - 1.0, tallest
-# Parts higher than the halo bands must not sit under them.
-for n, s in refs.items():
-    if ":" not in n:
-        continue
-    bb = s.val().BoundingBox()
-    if bb.zmax > band_bottom - 1.0:
-        for name in ("tray-bottom-left", "tray-bottom-right"):
-            assert parts[name]["asm"][0].val().intersect(
-                v07.box(bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zmin, bb.zmax + 1.0).val()
-            ).Volume() < 1e-3, (n, name)
+        # Components stay clear of the strips' inner faces.
+        side = v07.STRIP_IN - max(abs(bb.xmin), abs(bb.xmax), abs(bb.ymin), abs(bb.ymax))
+        assert side >= 2.0, (n, side)
+assert max(tallest.values()) <= v07.Z_STRIP_BACK - 1.0, tallest
+# Every carrier outer-edge pilot and every plate post under a strip gets an M3 x 40.
+screws = v07.strip_screws()
+assert len(screws) == 22, len(screws)
+tip = v07.Z_STRIP_BACK - v07.STRIP_CBORE[1] - 0.8 - 40.0  # M3 x 40 on a 0.8 mm washer
+grip = {
+    "carrier": v07.Z_REAR - max(tip, v07.Z_WEB_FRONT - v07.JOINT_BOSS[1]),
+    "plate post": v07.Z_WEB_FRONT - max(tip, v07.plate_z()),
+}
+assert tip >= v07.Z_INSERT + 1.0 and tip >= v07.plate_z(), tip  # never touches a panel
+assert min(grip.values()) >= 8.0, grip
+# Wood screws keep clear of the M3 holes and counterbores.
+for hx, hy in v07.halo_screws() + [(x, y) for x, y, _, _ in v07.hdf_holes("corner")]:
+    for x, y, _ in screws:
+        dist = ((hx - x) ** 2 + (hy - y) ** 2) ** 0.5
+        assert dist - v07.STRIP_CBORE[0] / 2 - v07.WOOD_SCREW[0] / 2 >= 1.5, (hx, hy, x, y, dist)
+# The screws through the wood must land in wood.
+boxes = v07.strip_boxes()
+for hx, hy in v07.halo_screws():
+    assert any(x0 + 3 <= hx <= x1 - 3 and y0 + 3 <= hy <= y1 - 3 for x0, x1, y0, y1 in boxes.values()), (hx, hy)
 joint_boss_bottom = v07.Z_WEB_FRONT - v07.JOINT_BOSS[1]
 plate_top = v07.plate_z() + ep.PLATE_T
 assert joint_boss_bottom - plate_top >= 1.0
@@ -135,18 +151,24 @@ for s in (-1, 1):
     shift.append((lo - s * ws["spacing"] / 2, hi - s * ws["spacing"] / 2))
 sideways = (max(a for a, _ in shift), min(b for _, b in shift))
 assert sideways[0] <= -20 and sideways[1] >= 20, sideways
-# Probe: carrier pilot, bores, notches.
+# Probe: carrier pilot, bores, notches; strip holes; halo channel.
 c = carrier_local.val()
 for x, y in v07.JOINT_HOLES:
     assert not c.isInside((x, y, 25.0)) and c.isInside((x + v07.M3_PILOT / 2 + 0.3, y, 25.0))
 for x, y in v07.PATTERN:
     assert not c.isInside((x, y, 20.0)) and c.isInside((x + v07.M3_CLEAR / 2 + 0.3, y, 20.0))
 assert not c.isInside((94.0, 50.0, 22.5)) and c.isInside((94.0, 0.0, 22.5))
-t = parts["tray-top-right"]["asm"][0].val()
-cx, cy = v07.quadrant_centre(1, 1)
-assert not t.isInside((cx + v07.HALO["centre"], cy, v07.Z_COVER_OUT - 0.5))  # channel opening
-assert t.isInside((cx + v07.HALO["centre"] - v07.HALO["inner_w"] / 2 + 0.3, cy, v07.Z_COVER_OUT - 0.5))  # lip
-assert not t.isInside((cx + v07.HALO["centre"] - v07.HALO["inner_w"] / 2 + 0.3, cy, v07.Z_COVER_OUT - 2.0))  # cavity
+top = wood["strip-top"].val()
+x, y, _ = next(p for p in screws if p[1] > v07.STRIP_IN)
+assert not top.isInside((x, y, v07.Z_REAR + 5)) and top.isInside((x + v07.STRIP_HOLE / 2 + 0.5, y, v07.Z_REAR + 5))
+assert not top.isInside((x + 4.5, y, v07.Z_STRIP_BACK - 1)) and top.isInside((x + 4.5, y, v07.Z_STRIP_BACK - 4))
+bottom = wood["strip-bottom"].val()
+assert not bottom.isInside((v07.DC_SOCKET_X, -v07.HALF - 1, v07.DC_SOCKET_Z))
+h = parts["halo-piece"]["asm"][0].val()
+assert not h.isInside((60.0, v07.HALO_C, v07.Z_BACK + v07.HALO_DEPTH - 0.5))  # opening
+assert h.isInside((60.0, v07.HALO_C + v07.HALO["inner_w"] / 2 - 0.3, v07.Z_BACK + v07.HALO_DEPTH - 0.5))  # lip
+assert not h.isInside((60.0, v07.HALO_C + v07.HALO["inner_w"] / 2 - 0.3, v07.Z_BACK + v07.HALO["floor"] + 1))  # cavity
+assert h.isInside((60.0, v07.HALO_C + v07.HALO_BAND_W / 2 - 0.5, v07.Z_BACK + 1))  # wall
 
 # --- Export parts ----------------------------------------------------------------------------
 manifest = {
@@ -160,10 +182,13 @@ manifest = {
     "stack_mm_from_led_tips": {
         "insert_face": v07.Z_INSERT,
         "carrier_rear": v07.Z_REAR,
-        "cover_rear_face": v07.Z_COVER_OUT,
-        "wall": v07.Z_WALL,
+        "strip_back_inside_ceiling": v07.Z_STRIP_BACK,
+        "hdf_rear_face": v07.Z_BACK,
+        "halo_channel_opening": round(v07.Z_BACK + v07.HALO_DEPTH, 2),
+        "wall": round(v07.Z_WALL, 2),
         "tallest_component": max(tallest.values()),
-        "halo_band_bottom": band_bottom,
+        "m3x40_tip": round(tip, 2),
+        "m3x40_thread_engagement": {k: round(v, 2) for k, v in grip.items()},
     },
     "hanging": {
         "wall_screw_spacing_mm": ws["spacing"],
@@ -171,7 +196,8 @@ manifest = {
         "sideways_adjustment_mm": [round(v, 1) for v in sideways],
         "screw_height_above_display_centre_mm": round(screw_y, 1),
     },
-    "assembly_interference": "none (parts, panels, components, DC socket body, wall, wall screws)",
+    "assembly_interference": "none (printed parts, wood, panels, components, DC socket body, wall, wall screws)",
+    "wood": {n: [round(v, 1) for v in (lambda b: (b.xlen, b.ylen, b.zlen))(w.val().BoundingBox())] for n, w in wood.items()},
     "parts": {},
     "jobs": {},
 }
@@ -225,8 +251,8 @@ def layout(job, items, qty):
 
 
 layout("carrier", [("carrier", (5, 5))], 4)
-for q in QNAME.values():
-    layout(f"tray-{q}", [(f"tray-{q}", (5, 5))], 1)
+hw = meshes["halo-piece"].extents
+layout("halo-pieces", [("halo-piece", (5, 5 + i * (hw[1] + 7))) for i in range(8)], 1)
 jw = meshes["joiner"].extents
 layout(
     "power-plate-joiners-bumpers",
@@ -251,6 +277,9 @@ asm = cq.Assembly(name="v07_rear")
 for name, p in parts.items():
     for i, s in enumerate(p["asm"]):
         asm.add(s, name=f"{name}_{i}", color=cq.Color(0.12, 0.12, 0.13))
+for n, s in wood.items():
+    asm.add(s, name=n, color=cq.Color(0.55, 0.42, 0.28))
+    cq.exporters.export(s, str(out / f"wood-{n}.step"))
 for n, s in refs.items():
     asm.add(s, name=n.replace(":", "_"), color=cq.Color(0.5, 0.6, 0.7))
 asm.export(str(out / "assembly-v07.step"))
