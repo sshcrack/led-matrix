@@ -42,7 +42,7 @@ The earlier `panel-four-corner-fit-kit-v1.zip` remains an optional standalone di
 
 ## v0.7 rear parts (designed 2026-11-17, not printed)
 
-Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v07/`. The design inputs are the trial kit v6 results (#170), the fastener plan (#172) and the wall mount (#171). On 2026-11-17 the printed rear trays (about 460 cm³ of print) were replaced by a wood box. `wood_drawings.py` writes the cut and drill sheets with 1:1 templates to `exports/v07/wood-cut-drill.pdf`.
+Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v07/`. The design inputs are the trial kit v6 results (#170), the fastener plan (#172) and the wall mount (#171). On 2026-11-17 the printed rear trays (about 460 cm³ of print) were replaced by a wood box. `wood_drawings.py` writes the cut and drill sheets (German, with a Bauhaus shopping list and 1:1 templates) to `exports/v07/holz-zuschnitt-bohrplan.pdf`.
 
 **Printed parts (about 528 cm³):**
 - **4 identical carriers.** Same outline and bosses as the trial carrier, with:

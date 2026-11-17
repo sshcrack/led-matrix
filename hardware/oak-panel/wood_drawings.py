@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Cut and drill sheets for the v0.7 wood rear (pine strips + HDF back), from v07.py.
+"""Cut and drill sheets for the v0.7 wood rear (pine strips + HDF back), from v07.py. German text
+(the owner's build sheets); numbers come from v07.py.
 
-Writes exports/v07/wood-cut-drill.pdf:
-  1    overview (rear view), cut list, shopping list
-  2    order of work and tools
-  3    strip drilling tables
-  4-5  strip templates at 1:1 (two halves that overlap by 10 mm)
-  6    HDF back: drawing and hole table
-  7-12 HDF templates at 1:1 (six tiles)
+Writes exports/v07/holz-zuschnitt-bohrplan.pdf:
+  1     overview (rear view), cut list
+  2     Bauhaus shopping list: wood, screws, paint, drill bits and tools
+  3     order of work
+  4     strip drilling tables
+  5-6   strip templates at 1:1 (two halves that overlap by 10 mm)
+  7     HDF back: drawing and hole table
+  8-13  HDF templates at 1:1 (six tiles)
 
 Every view is from the wall side: the display lies face down on the table with its top edge away
 from you. The templates only work printed at 100 % ("actual size"); measure the 100 mm bar first.
@@ -25,7 +27,7 @@ import v07
 
 ROOT = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--output", type=Path, default=ROOT / "exports" / "v07" / "wood-cut-drill.pdf")
+parser.add_argument("--output", type=Path, default=ROOT / "exports" / "v07" / "holz-zuschnitt-bohrplan.pdf")
 args = parser.parse_args()
 args.output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -59,10 +61,10 @@ def strip_holes():
     for v in s.values():
         v.sort()
     return {
-        "top": (FULL, "either end", "either end", s["top"]),
-        "bottom": (FULL, "Pi end (right in rear view)", "power end (left in rear view)", s["bottom"]),
-        "left": (SIDE_LEN, "BOTTOM end", "top end", s["left"]),
-        "right": (SIDE_LEN, "TOP end", "bottom end", s["right"]),
+        "top": (FULL, "beliebiges Ende", "beliebiges Ende", s["top"]),
+        "bottom": (FULL, "Pi-Ende (rechts in Rückansicht)", "Netzteil-Ende (links in Rückansicht)", s["bottom"]),
+        "left": (SIDE_LEN, "UNTERES Ende", "oberes Ende", s["left"]),
+        "right": (SIDE_LEN, "OBERES Ende", "unteres Ende", s["right"]),
     }
 
 
@@ -73,9 +75,9 @@ def socket_holes():
     s = ep.DC_SOCKET["screw_spacing"] / 2
     off = v07.DC_SOCKET_Z - v07.Z_REAR
     return [
-        (a, off, ep.DC_SOCKET["body_cutout"], "socket Ø14 through"),
-        (a - s, off, v07.DC_SOCKET_PILOT[0], "pilot Ø2, 10 deep"),
-        (a + s, off, v07.DC_SOCKET_PILOT[0], "pilot Ø2, 10 deep"),
+        (a, off, ep.DC_SOCKET["body_cutout"], "Buchse Ø14 durch"),
+        (a - s, off, v07.DC_SOCKET_PILOT[0], "Vorbohrung Ø2, 10 tief"),
+        (a + s, off, v07.DC_SOCKET_PILOT[0], "Vorbohrung Ø2, 10 tief"),
     ]
 
 
@@ -86,7 +88,9 @@ def hdf_holes():
 
 # --- Drawing helpers -------------------------------------------------------------------------
 c = canvas.Canvas(str(args.output), pagesize=landscape(A4))
-c.setTitle("v0.7 wood rear: cut and drill sheets")
+c.setTitle("v0.7 Holzrückseite: Zuschnitt- und Bohrplan")
+HOLE_DE = {"corner": "Ecke", "rail": "Schiene", "bumper": "Puffer", "halo cable": "Halo-Kabel", "vent": "Lüftung"}
+PLATE_DE = {"carrier": "Träger", "power plate": "Netzteilplatte", "controller plate": "Pi-Platte"}
 
 
 def page(orientation="landscape"):
@@ -147,7 +151,7 @@ def scale_bar(x, y):
     line(x, y, x + 100, y, 0.5)
     for i in range(11):
         line(x + 10 * i, y, x + 10 * i, y + (3 if i % 5 == 0 else 1.6), 0.3)
-    txt(x + 50, y + 4.5, "100 mm: measure this before you use the templates (print at 100 %, not 'fit to page')", 7, anchor="centre")
+    txt(x + 50, y + 4.5, "100 mm: vor Gebrauch nachmessen (drucken mit 100 %, nicht 'an Seite anpassen')", 7, anchor="centre")
 
 
 def header(title, sub=None, w=297):
@@ -159,7 +163,7 @@ def header(title, sub=None, w=297):
 # ============================================================================================
 # Page 1: overview, cut list, shopping list
 # ============================================================================================
-header("v0.7 wood rear: overview", "Seen from the wall side: display face down on the table, top edge away from you. Numbers in mm.")
+header("v0.7 Holzrückseite: Übersicht", "Ansicht von der Wandseite: Display liegt mit den LEDs nach unten auf dem Tisch, Oberkante von dir weg. Maße in mm.")
 S = 0.4  # overview scale
 ox, oy = 18 + OUT * S, 22 + OUT * S  # centre of the drawing on the page
 
@@ -197,12 +201,12 @@ for sx in (-1, 1):
     circle(*P(bx, by), v07.BUMPER["d"] * S, 0.4, colour=(0.7, 0.1, 0.1))
 px, py = P(v07.DC_SOCKET_X, -OUT)
 rect(px - 7 * S, py - 3, 14 * S, 3, fill=(0.2, 0.2, 0.2))
-txt(px + 6, py - 2.5, "DC socket", 7)
-txt(*P(0, OUT + 6), "TOP", 8, True, anchor="centre")
-txt(*P(0, INN - 10), "strip-top 390", 7, anchor="centre")
-txt(*P(0, -INN + 5), "strip-bottom 390", 7, anchor="centre")
+txt(px + 6, py - 2.5, "DC-Buchse", 7)
+txt(*P(0, OUT + 6), "OBEN", 8, True, anchor="centre")
+txt(*P(0, INN - 10), "Leiste oben 390", 7, anchor="centre")
+txt(*P(0, -INN + 5), "Leiste unten 390", 7, anchor="centre")
 c.saveState()
-for xs, label in ((-OUT + 6, "strip-left 352"), (INN + 13, "strip-right 352")):
+for xs, label in ((-OUT + 6, "Leiste links 352"), (INN + 13, "Leiste rechts 352")):
     px, py = P(xs, 0)
     c.translate(px * mm, py * mm)
     c.rotate(90)
@@ -210,114 +214,168 @@ for xs, label in ((-OUT + 6, "strip-left 352"), (INN + 13, "strip-right 352")):
     c.rotate(-90)
     c.translate(-px * mm, -py * mm)
 c.restoreState()
-txt(*P(-96, -60), "power modules", 7, anchor="centre", colour=GREY)
+txt(*P(-96, -60), "Netzteilmodule", 7, anchor="centre", colour=GREY)
 txt(*P(74, -80), "Pi", 7, anchor="centre", colour=GREY)
-txt(*P(-80, 128), "hanging rail", 7, anchor="centre", colour=(0.7, 0.1, 0.1))
-txt(*P(80, 128), "hanging rail", 7, anchor="centre", colour=(0.7, 0.1, 0.1))
+txt(*P(-80, 128), "Aufhängeschiene", 7, anchor="centre", colour=(0.7, 0.1, 0.1))
+txt(*P(80, 128), "Aufhängeschiene", 7, anchor="centre", colour=(0.7, 0.1, 0.1))
 lx = 18
-txt(lx, 8, "Brown: pine strips. Blue: printed halo channel pieces (on the HDF). Red: rails, wall screws, bumpers.", 7)
-txt(lx, 4, "White circles: M3 x 40 holes through the strips (counterbore on the back face). Grey: holes in the HDF.", 7)
+txt(lx, 8, "Braun: Kiefernleisten. Blau: gedruckte Halo-Kanalstücke (auf der HDF). Rot: Aufhängeschienen, Wandschrauben, Puffer.", 7)
+txt(lx, 4, "Weiße Kreise: M3 x 40 durch die Leisten (Ansenkung auf der Rückseite). Grau: Löcher in der HDF.", 7)
 
 rows = [
-    "## Cut list",
-    f"Pine strip 19 x 30 mm: 2 x {fmt(FULL)} (top, bottom), 2 x {fmt(SIDE_LEN)} (sides)",
-    f"   = {fmt(2 * FULL + 2 * SIDE_LEN)} mm + saw cuts: one 2.4 m strip is enough.",
-    "   The 30 mm side is the depth (toward the wall); 19 mm is in the panel plane.",
-    "   Sides = 390 - 2 x the real strip thickness. Measure it; a 15-20 mm strip works.",
-    f"HDF 3 mm: 1 x {fmt(FULL)} x {fmt(FULL)}. Let the store cut it (Zuschnitt).",
+    "## Zuschnitt",
+    "Kiefernleiste 19 x 30 mm:",
+    f"   2 x {fmt(FULL)} mm (oben, unten, volle Breite)",
+    f"   2 x {fmt(SIDE_LEN)} mm (links, rechts, zwischen oben und unten)",
+    f"   zusammen {fmt(2 * FULL + 2 * SIDE_LEN)} mm + Sägeschnitte: eine 2,4-m-Leiste reicht.",
+    "   30 mm ist die Tiefe (Richtung Wand), 19 mm liegen in der Panelebene.",
+    "   Seitenteile = 390 - 2 x echte Leistendicke. Erst messen!",
+    "   Jede Leiste von 15 bis 20 mm Dicke passt.",
+    f"HDF 3 mm: 1 x {fmt(FULL)} x {fmt(FULL)} mm, im Baumarkt zuschneiden lassen.",
     "",
-    "## Shopping (new for the wood version)",
-    "1 x pine strip 30 x 19 mm, 2.4 m (Bauhaus 'Rechteckleiste' 240 x 3 x 1.9 cm)",
-    "1 x HDF 3 mm cut to 390 x 390 (Bauhaus Hartfaserplatte nach Mass;",
-    "   the black one saves painting it)",
-    "22 x M3 x 40 machine screws (+2 spare), any head that fits a 10 mm hole",
-    "22 x M3 washers DIN 9021 (3.2 x 9 mm) (+2 spare)",
-    "28 x wood screws 3 x 20, countersunk (Senkkopf) (+spare)",
-    "Black matte paint for the strips (spray or acrylic), wood glue (optional)",
+    "## Was bleibt gedruckt",
+    "4 Träger, 8 Verbinder, 2 Elektronikplatten,",
+    "2 Aufhängeschienen, 2 Puffer, 8 Halo-Kanalstücke (neu).",
+    "Etwa 528 cm3 statt 900 cm3 Druck.",
     "",
-    "## Screws for the whole rear (replaces the tray plan in #172)",
-    "M3 x 20: 16 (carriers to panel inserts, unchanged)",
-    "M3 x 12: 26 (joiners 16, rails 6, bumpers 2, inner plate posts 2)",
-    "M3 x 40: 22 (strips to carriers 16, outer plate posts 6)",
-    "M2.5 x 10: 6 (Pi 4, DC socket 2)",
-    "Wood 3 x 20 countersunk: 28 (halo pieces 24, HDF corners 4)",
-    "",
-    "## Printed parts that stay",
-    "4 carriers, 8 joiners, 2 electronics plates, 2 rails, 2 bumpers,",
-    "8 halo channel pieces (new). About 528 cm3 instead of 900 cm3.",
+    "## Seiten",
+    "2 Einkaufsliste Bauhaus,  3 Arbeitsablauf,  4 Bohrtabellen Leisten,",
+    "5-6 Schablonen Leisten 1:1,  7 HDF-Rückwand,  8-13 Schablonen HDF 1:1",
 ]
 lines(190, 186, rows, 8.5, 4.3)
 scale_bar(190, 20)
 
 # ============================================================================================
-# Page 2: order of work, tools
+# Page 2: Bauhaus shopping list
 # ============================================================================================
 page()
-header("Order of work and tools")
-rows = [
-    "## Tools",
-    "Fine saw + mitre box (Gehrungslade) for square cuts, drill (a drill stand helps a lot), try square,",
-    "steel ruler or tape, pencil, awl or nail to prick the marks, clamps, masking tape as depth flag.",
-    "Bits: 2, 3, 3.5, 5, 8 mm, a 10 mm brad-point (Holzspiralbohrer mit Zentrierspitze), 14 mm Forstner",
-    "or spade bit, countersink. Sandpaper 120.",
-    "",
-    "## 1  Cut the strips",
-    f"Cut 2 x {fmt(FULL)} and 2 x {fmt(SIDE_LEN)} mm, ends square. Check with the try square; sand the ends.",
-    "Write on each piece which one it is, which face is the BACK (the face the HDF touches) and which long",
-    "edge is OUTER. On the side strips also mark the BOTTOM end; on the bottom strip the POWER end.",
-    "",
-    "## 2  Drill the strips (page 3 table, templates on pages 4-5)",
-    "Tape the template onto the BACK face, outer edge of the template on the outer edge of the wood, end on",
-    "end. Prick every cross. Then, for every M3 hole:",
-    f"   a) 10 mm counterbore, {fmt(CB_DEPTH)} mm deep, on the back face (drill this first: the brad point centres",
-    "      itself on the mark; tape a depth flag on the bit).",
-    "   b) 5 mm straight through the 30 mm. Keep the drill square; with a drill stand this is easy.",
-    "Bottom strip only, on its OUTER face (template on page 5): 14 mm hole through for the DC socket, then",
-    "two 2 mm pilots 10 mm deep for the socket screws. Solder the socket wires before you mount it.",
-    "",
-    "## 3  Test fit before painting",
-    "Lay the four panels face down with carriers on, joiners screwed. Stand the strips on the carriers'",
-    "outer bands: top and bottom over the full width, the sides between them, outer faces 3 mm outside the",
-    "panel edges. Push an M3 x 40 through each hole: it must find the pilot hole below. If one misses, open",
-    "that hole to 6 mm (the 9 mm washer still covers it).",
-    "",
-    "## 4  Paint",
-    "Strips matte black (outer faces and ends matter most). HDF too, unless you bought black HDF.",
-    "",
-    "## 5  Drill the HDF (page 6 table, templates on pages 7-12)",
-    "Tape the six tiles together on the dashed lines, check the 390 mm outline against the board, prick",
-    "the marks, drill. Mark the side you drilled from as the WALL SIDE (outside); clamp a scrap board",
-    "under the HDF so the holes do not splinter.",
-    "",
-    "## 6  Assemble",
-    "Electronics plates and carriers as before. Strips on with M3 x 40 + washer (corner joints may be glued).",
-    "Rails and bumpers onto the HDF: M3 x 12 from the inside face. Lay the HDF on, outer edges flush with",
-    "the strips. Corners: 2 mm pilot through the corner holes into the strip, 3 x 20 wood screw.",
-    "Halo pieces on the HDF over the strips (centred on the strip, butting at each edge's middle): drill",
-    "3 mm through each piece hole and the HDF, then a 2 mm pilot 15 mm deep into the strip; 3 x 20 screws.",
-    "Slide the halo strip in from the corner ends; the cable enters through the 8 mm hole bottom right.",
+header("Einkaufsliste Bauhaus", "Alles für die Holzrückseite und die Schrauben für die ganze Rückseite. Produktnummern sind Hinweise aus bauhaus.info; Bestand im Markt prüfen.")
+cols = (12, 66, 128, 148, 205)
+heads = ("Artikel", "Maße / Ausführung", "Menge", "Wofür", "Hinweis")
+
+
+def table(y, rows_, size=7.6, lead=3.7):
+    for x, h in zip(cols, heads):
+        txt(x, y, h, 8.5, True)
+    y -= 1.8
+    line(12, y, 287, y, 0.3)
+    y -= 4
+    for r in rows_:
+        if isinstance(r, str):
+            y -= 1.5
+            txt(12, y, r, 8.8, True)
+            y -= 4.6
+            continue
+        cells = [str(v).split("\n") for v in r]
+        for x, cell in zip(cols, cells):
+            for i, ln in enumerate(cell):
+                txt(x, y - i * lead, ln, size)
+        y -= lead * max(len(cl) for cl in cells) + 1.6
+        line(12, y + 2.6, 287, y + 2.6, 0.1, (0.8, 0.8, 0.8))
+    return y
+
+
+shop = [
+    "Holz",
+    ("Kiefernleiste, gehobelt\n(Rechteckleiste)", "19 x 30 mm, 2,4 m lang\ngerade aussuchen (über die Länge peilen)", "1",
+     "4 Seitenteile\n(Zuschnitt S. 1)", "z. B. Rechteckleiste 240 x 3 x 1,9 cm (Nr. 30735017,\nlackiert) oder unbehandelt; 15-20 mm Dicke geht auch"),
+    ("HDF-Platte (Hartfaser)", f"3 mm, Zuschnitt {fmt(FULL)} x {fmt(FULL)} mm\nwinklig, Maß genau angeben", "1",
+     "Rückwand", "Hartfaserplatte nach Maß; schwarz (Nr. 14512381)\nspart das Lackieren"),
+    "Schrauben und Scheiben (für die ganze Rückseite)",
+    ("Gewindeschraube M3 x 40", "Linsen-, Flach- oder Zylinderkopf, verzinkt\nKopf muss in ein 10-mm-Loch passen", "22 (+2)",
+     "Leisten an Träger (16)\nund Plattenpfosten (6)", "z. B. Profi Depot Gewindeschraube VZ 3 x 40\n(100er-Packung)"),
+    ("Unterlegscheibe M3, groß", "DIN 9021 / ISO 7093: 3,2 x 9 mm\n(Notlösung: DIN 125, 3,2 x 7 mm)", "22 (+2)",
+     "unter die M3 x 40", "online nicht gefunden: im Markt nach 'Scheibe 3,2'\nfragen; bei 7-mm-Scheiben Löcher nicht auf 6 aufbohren"),
+    ("Spanplattenschraube\nSenkkopf", "3 x 20 mm, Kreuzschlitz PZ1", "28 (+4)",
+     "Halo-Stücke (24),\nHDF-Ecken (4)", "z. B. Nr. 10800509 (20 Stück, also 2 Packungen)\noder SWG 3 x 20 (Nr. 32882140, 200 Stück)"),
+    ("Gewindeschraube M3 x 12", "Linsenkopf ISO 7380", "26 (+4)",
+     "Verbinder 16, Schienen 6,\nPuffer 2, innere Pfosten 2", "Marinetech (Nr. 23678981), 0,13 EUR/Stück:\n30 Stück = 3,90 EUR"),
+    ("Gewindeschraube M3 x 20", "Linsenkopf, verzinkt", "16",
+     "Träger an Panel-Gewinde", "Profi Depot VZ (Nr. 10807533), 100er = 3,95 EUR"),
+    ("Zylinderschraube M2,5 x 10", "DIN 912, Innensechskant", "6",
+     "Pi (4), DC-Buchse (2)", "Suki (Nr. 21307474), 10er = 3,90 EUR"),
+    "Farbe und Kleinkram",
+    ("Lack schwarz matt", "Sprühdose oder Acryllack, kleine Dose", "1",
+     "Leisten (außen, Enden)", "HDF nur, wenn sie nicht schwarz ist"),
+    ("Holzleim (optional)", "z. B. Ponal Express, kleine Flasche", "1",
+     "Eckstöße der Leisten", ""),
+    ("Schleifpapier", "Körnung 120", "1-2 Bogen", "Schnittkanten", ""),
+    ("Kreppband", "", "1", "Schablonen, Tiefenmarke", "falls nicht vorhanden"),
+    "Bohrer und Werkzeug (falls nicht vorhanden)",
+    ("Holzspiralbohrer\nmit Zentrierspitze", "2, 3, 5, 8 und 10 mm\n(3,5 mm Metallbohrer geht für HDF)", "je 1",
+     "alle Löcher; 10 mm für\ndie Ansenkungen", "Satz ist oft günstiger als einzelne Bohrer"),
+    ("Forstnerbohrer oder\nFlachfräsbohrer", "14 mm", "1", "DC-Buchse", "Forstner reißt weniger aus"),
+    ("Kegelsenker", "für 3-mm-Senkkopf (Ø6-10)", "1", "HDF-Ecken", "optional; die Halo-Stücke sind angesenkt"),
+    ("Feinsäge + Gehrungslade", "", "1", "gerade Schnitte", "oder Zuschnitt im Markt (Leiste auf Länge)"),
+    ("Anschlagwinkel, Stahllineal\noder Maßband, Vorstecher", "", "", "anreißen, ankörnen", ""),
+    ("Schraubzwingen", "", "2", "beim Bohren festhalten", ""),
 ]
-lines(14, 186, rows, 8.5, 4.05)
+y = table(186, shop)
+txt(12, max(y - 2, 8), "Bereits geplante Schrauben (M3 x 12, M3 x 20, M2,5 x 10) stehen mit drin, falls sie noch nicht gekauft sind. Muttern sind nicht nötig.", 7.5, colour=(0.3, 0.3, 0.3))
+
+# ============================================================================================
+# Page 3: order of work
+# ============================================================================================
+page()
+header("Arbeitsablauf")
+rows = [
+    "## 1  Leisten zuschneiden",
+    f"2 x {fmt(FULL)} und 2 x {fmt(SIDE_LEN)} mm, Enden rechtwinklig (Gehrungslade). Mit dem Winkel prüfen, Enden schleifen.",
+    "Auf jedes Stück schreiben: welches Teil, welche Fläche die RÜCKSEITE ist (dort liegt die HDF auf) und welche",
+    "Längskante AUSSEN ist. Seitenleisten: das UNTERE Ende markieren. Untere Leiste: das NETZTEIL-Ende markieren.",
+    "",
+    "## 2  Leisten bohren (Tabelle S. 4, Schablonen S. 5-6)",
+    "Schablone auf die RÜCKSEITE kleben: Schablonen-Außenkante auf die Außenkante des Holzes, Ende auf Ende.",
+    "Jedes Kreuz mit dem Vorstecher durchstechen. Dann für jedes M3-Loch:",
+    f"   a) zuerst 10-mm-Ansenkung, {fmt(CB_DEPTH)} mm tief, auf der Rückseite (die Zentrierspitze findet die Markierung;",
+    "      Kreppband als Tiefenmarke auf den Bohrer).",
+    "   b) dann 5 mm ganz durch die 30 mm. Bohrer senkrecht halten; mit Bohrständer ist das einfach.",
+    "Nur untere Leiste, AUSSENFLÄCHE (Schablone S. 6): 14-mm-Loch durch für die DC-Buchse, dann zwei",
+    "2-mm-Vorbohrungen, 10 mm tief, für die Buchsenschrauben. Die Kabel vor dem Einbau an die Buchse löten.",
+    "",
+    "## 3  Probe-Aufbau vor dem Lackieren",
+    "Die vier Panels mit Trägern und Verbindern mit den LEDs nach unten hinlegen. Leisten auf die Außenränder der",
+    "Träger stellen: oben und unten über die volle Breite, die Seiten dazwischen, Außenflächen 3 mm über die Panelkante.",
+    "Durch jedes Loch eine M3 x 40 stecken: sie muss das Vorbohrloch darunter treffen. Wenn eine danebenliegt,",
+    "das Loch auf 6 mm aufbohren (die 9-mm-Scheibe deckt das noch ab).",
+    "",
+    "## 4  Lackieren",
+    "Leisten schwarz matt (vor allem Außenflächen und Enden). Die HDF auch, wenn sie nicht schwarz gekauft ist.",
+    "",
+    "## 5  HDF bohren (Tabelle S. 7, Schablonen S. 8-13)",
+    "Die sechs Kacheln an den gestrichelten Linien zusammenkleben, die 390-mm-Außenkante mit der Platte vergleichen,",
+    "Markierungen durchstechen, bohren. Die Seite, von der du bohrst, ist die WANDSEITE (außen). Ein Reststück",
+    "Holz unterlegen und festzwingen, damit die Löcher nicht ausreißen.",
+    "",
+    "## 6  Zusammenbau",
+    "Elektronikplatten und Träger wie geplant. Leisten mit M3 x 40 + Scheibe anschrauben (Eckstöße dürfen geleimt werden).",
+    "Aufhängeschienen und Puffer an die HDF: M3 x 12 von innen. HDF auflegen, Außenkanten bündig mit den Leisten.",
+    "Ecken: 2-mm-Vorbohrung durch die Eckbohrung in die Leiste, Spanplattenschraube 3 x 20.",
+    "Halo-Stücke auf die HDF über den Leisten (mittig auf der Leiste, Stoß jeweils in der Kantenmitte): durch jedes",
+    "Loch 3 mm durch Stück und HDF bohren, dann 2 mm, 15 mm tief in die Leiste vorbohren; 3 x 20 eindrehen.",
+    "Den Halo-Streifen von den Ecken her einschieben; das Kabel kommt durch das 8-mm-Loch unten rechts.",
+]
+lines(14, 186, rows, 8.5, 4.3)
 
 # ============================================================================================
 # Page 3: strip drilling tables
 # ============================================================================================
 page()
-header("Strips: drilling tables", "Template frame: back face up, outer long edge at the top, distances from the page-left end. Through holes 5 mm, counterbore 10 mm x 3 mm on the back face.")
+header("Leisten: Bohrtabellen", "Lage wie auf den Schablonen: Rückseite oben, Außenkante oben, Maße vom linken Ende. Durchgangslöcher 5 mm, Ansenkung 10 mm x 3 mm auf der Rückseite.")
 data = strip_holes()
 y = 180
-names = {"top": "strip-top", "bottom": "strip-bottom", "left": "strip-left (power side)", "right": "strip-right (Pi side)"}
+names = {"top": "Leiste oben", "bottom": "Leiste unten", "left": "Leiste links (Netzteil-Seite)", "right": "Leiste rechts (Pi-Seite)"}
 for key in ("top", "bottom", "left", "right"):
     length, lend, rend, holes = data[key]
-    txt(14, y, f"{names[key]}  ({fmt(length)} mm long; page-left = {lend}, page-right = {rend})", 9.5, True)
+    txt(14, y, f"{names[key]}  ({fmt(length)} mm lang; links = {lend}, rechts = {rend})", 9.5, True)
     y -= 5
     extra = ""
     if key == "right":
-        extra = "   (= " + ", ".join(fmt(length - a) for a, _, _ in reversed(holes)) + " from the bottom end, as on strip-left)"
-    txt(18, y, "from page-left end:  " + ",  ".join(fmt(a) for a, _, _ in holes) + extra, 9)
+        extra = "   (= " + ", ".join(fmt(length - a) for a, _, _ in reversed(holes)) + " vom unteren Ende, wie links)"
+    txt(18, y, "vom linken Ende:  " + ",  ".join(fmt(a) for a, _, _ in holes) + extra, 9)
     y -= 4.5
-    txt(18, y, f"all {fmt(holes[0][1])} mm in from the outer edge.  " + "  ".join(
-        f"{fmt(a)}: {w}" for a, _, w in holes if w != "carrier") or "", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, f"alle {fmt(holes[0][1])} mm von der Außenkante.  " + "  ".join(
+        f"{fmt(a)}: {PLATE_DE[w]}" for a, _, w in holes if w != "carrier") or "", 8, colour=(0.3, 0.3, 0.3))
     # Sketch at 0.6 scale.
     y -= 13
     sk = 0.6
@@ -325,19 +383,19 @@ for key in ("top", "bottom", "left", "right"):
     for a, inset, _ in holes:
         circle(18 + a * sk, y + (T - inset) * sk, CB_D * sk, 0.25, fill=(1, 1, 1))
         circle(18 + a * sk, y + (T - inset) * sk, v07.STRIP_HOLE * sk, 0.2)
-    txt(18 + length * sk + 3, y + 3, "outer edge on top", 7, colour=GREY)
+    txt(18 + length * sk + 3, y + 3, "Außenkante oben", 7, colour=GREY)
     y -= 12
 if socket_holes():
-    txt(14, y, "strip-bottom, OUTER face (seen from below; page-left = power end): DC socket", 9.5, True)
+    txt(14, y, "Leiste unten, AUSSENFLÄCHE (von unten gesehen; links = Netzteil-Ende): DC-Buchse", 9.5, True)
     y -= 5
     for a, e, d, w in socket_holes():
-        txt(18, y, f"{fmt(a)} mm from the power end ({fmt(FULL - a)} from the Pi end), {fmt(e)} mm from either long edge: {w}", 9)
+        txt(18, y, f"{fmt(a)} mm vom Netzteil-Ende ({fmt(FULL - a)} vom Pi-Ende), {fmt(e)} mm von beiden Längskanten: {w}", 9)
         y -= 4.5
-    txt(18, y, "Socket flange outside, M2.5 x 10 through the flange into the pilots. Solder the wires before mounting.", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Flansch außen, M2,5 x 10 durch den Flansch in die Vorbohrungen. Kabel vor dem Einbau anlöten.", 8, colour=(0.3, 0.3, 0.3))
     y -= 4.5
-    txt(18, y, "Body behind the flange about 20 mm, the wood is 19 mm: if the solder cups sit inside the hole, widen it from", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Buchsenkörper ca. 20 mm hinter dem Flansch, Holz 19 mm: wenn die Lötösen im Loch stecken, von innen auf", 8, colour=(0.3, 0.3, 0.3))
     y -= 4
-    txt(18, y, "the inside to 20 mm, 8 mm deep.", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "20 mm aufbohren, 8 mm tief.", 8, colour=(0.3, 0.3, 0.3))
 
 
 # ============================================================================================
@@ -362,35 +420,35 @@ def band(y, length, holes, label, lend, rend, width, part, socket=False):
     c.restoreState()
     if part == 0:
         line(12, y - 3, 12, y + width + 3, 0.6)
-        txt(13, y + width + 2.5, f"{lend} (cut end)", 6.5, colour=GREY)
+        txt(13, y + width + 2.5, f"{lend} (Schnittkante)", 6.5, colour=GREY)
         line(12 + SPLIT, y - 3, 12 + SPLIT, y + width + 3, 0.3, dash=(2, 2))
-        txt(12 + SPLIT - 1, y - 4.5, f"overlap: align with part 2 at {fmt(SPLIT - OVER)}-{fmt(SPLIT)}", 6.5, anchor="right", colour=GREY)
+        txt(12 + SPLIT - 1, y - 4.5, f"Überlappung: mit Teil 2 bei {fmt(SPLIT - OVER)}-{fmt(SPLIT)} ausrichten", 6.5, anchor="right", colour=GREY)
     else:
         line(12, y - 3, 12, y + width + 3, 0.3, dash=(2, 2))
         line(12 + OVER, y - 3, 12 + OVER, y + width + 3, 0.3, dash=(2, 2))
         line(x_left + length, y - 3, x_left + length, y + width + 3, 0.6)
-        txt(x_left + length - 1, y + width + 2.5, f"{rend} (cut end)", 6.5, anchor="right", colour=GREY)
+        txt(x_left + length - 1, y + width + 2.5, f"{rend} (Schnittkante)", 6.5, anchor="right", colour=GREY)
     for a, inset, d in holes:
         if a0 <= a <= a1:
             txt(x_left + a, y - 4.5, fmt(a), 6.5, anchor="centre")
-    txt(12, y + width + 6, f"{label}  (part {part + 1} of 2)", 8.5, True)
+    txt(12, y + width + 6, f"{label}  (Teil {part + 1} von 2)", 8.5, True)
     if not socket:
-        txt(12 + (a1 - a0) + 3, y + width - 2, "outer edge", 6.5, colour=GREY)
+        txt(12 + (a1 - a0) + 3, y + width - 2, "Außenkante", 6.5, colour=GREY)
 
 
 for part in (0, 1):
     page()
-    header(f"Strip templates, 1:1, part {part + 1} of 2",
-           "Cut along the band edges, tape onto the wood (end on the cut end, top line on the outer edge), prick every centre.")
+    header(f"Schablonen Leisten 1:1, Teil {part + 1} von 2",
+           "An den Bandkanten ausschneiden, aufkleben (Ende auf Schnittkante, obere Linie auf Außenkante), jede Mitte durchstechen.")
     y = 158
     for key in ("top", "bottom", "left", "right"):
         length, lend, rend, holes = data[key]
         hs = [(a, inset, v07.STRIP_HOLE) for a, inset, _ in holes]
-        band(y, length, hs, f"{names[key]}, BACK face", lend, rend, T, part)
+        band(y, length, hs, f"{names[key]}, RÜCKSEITE", lend, rend, T, part)
         y -= T + (21 if part == 0 else 14)
     if part == 1:  # the socket sits at 213 mm: only this half is needed
         sh = [(a, e, d) for a, e, d, _ in socket_holes()]
-        band(y - 14, FULL, sh, "strip-bottom, OUTER face (DC socket)", "power end", "Pi end", v07.STRIP_D, part, socket=True)
+        band(y - 14, FULL, sh, "Leiste unten, AUSSENFLÄCHE (DC-Buchse)", "Netzteil-Ende", "Pi-Ende", v07.STRIP_D, part, socket=True)
     scale_bar(185, 186)
 
 
@@ -398,7 +456,7 @@ for part in (0, 1):
 # Page 6: HDF drawing and table
 # ============================================================================================
 page()
-header("HDF back, 390 x 390 x 3 mm", "Seen from the wall side. X from the LEFT edge, Y from the BOTTOM edge. Halo-piece screw holes are drilled on assembly through the pieces.")
+header("HDF-Rückwand, 390 x 390 x 3 mm", "Ansicht von der Wandseite. X von der LINKEN Kante, Y von der UNTEREN Kante. Die Löcher der Halo-Stücke werden beim Zusammenbau durch die Stücke gebohrt.")
 S = 0.42
 bx, by = 14, 22
 rect(bx, by, FULL * S, FULL * S, fill=(0.96, 0.96, 0.96), width=0.4)
@@ -406,20 +464,20 @@ for X, Y, d, what in hdf_holes():
     circle(bx + X * S, by + Y * S, max(d, 3) * S, 0.3)
 for x, y in v07.halo_screws():
     circle(bx + (x + OUT) * S, by + (y + OUT) * S, 1.2, 0.15, colour=(0.1, 0.3, 0.8))
-txt(bx + FULL * S / 2, by + FULL * S + 2, "TOP", 8, True, anchor="centre")
-txt(bx, by - 5, "origin: bottom-left corner (wall side)", 7, colour=GREY)
-txt(bx + FULL * S, by - 5, "blue dots: halo-piece screws (drill on assembly)", 7, anchor="right", colour=(0.1, 0.3, 0.8))
+txt(bx + FULL * S / 2, by + FULL * S + 2, "OBEN", 8, True, anchor="centre")
+txt(bx, by - 5, "Nullpunkt: Ecke unten links (Wandseite)", 7, colour=GREY)
+txt(bx + FULL * S, by - 5, "blaue Punkte: Schrauben der Halo-Stücke (beim Zusammenbau)", 7, anchor="right", colour=(0.1, 0.3, 0.8))
 
 groups = {}
 for X, Y, d, what in hdf_holes():
     groups.setdefault((what, d), []).append((X, Y))
-rows = ["## Holes (X, Y)"]
+rows = ["## Löcher (X, Y)"]
 for (what, d), pts in groups.items():
     if what == "vent":
         continue
-    rows.append(f"{what}, Ø{fmt(d)}{' countersunk' if what == 'corner' else ''}: " + "  ".join(f"({fmt(X)}, {fmt(Y)})" for X, Y in pts))
+    rows.append(f"{HOLE_DE[what]}, Ø{fmt(d)}{' angesenkt' if what == 'corner' else ''}: " + "  ".join(f"({fmt(X)}, {fmt(Y)})" for X, Y in pts))
 vents = sorted(groups[("vent", v07.VENT_D)], key=lambda p: (-p[1], p[0]))
-rows += ["", f"## Vents Ø{fmt(v07.VENT_D)} ({len(vents)})"]
+rows += ["", f"## Lüftungslöcher Ø{fmt(v07.VENT_D)} ({len(vents)})"]
 by_row = {}
 for X, Y in vents:
     by_row.setdefault(Y, []).append(X)
@@ -427,12 +485,12 @@ for Y in sorted(by_row, reverse=True):
     rows.append(f"Y {fmt(Y)}:  X " + ", ".join(fmt(X) for X in sorted(by_row[Y])))
 rows += [
     "",
-    "## Notes",
-    "Rails and bumpers: M3 x 12 from the inside face into the printed part.",
-    "Corner holes: countersink on the wall side, 3 x 20 wood screw into the strip.",
-    "Halo cable hole (bottom right): the Pro Micro's cable to the halo strip.",
-    "Vents sit over the two power modules (bottom left), the Pi (bottom right)",
-    "and along the top. Drill onto a scrap board so the HDF does not splinter.",
+    "## Hinweise",
+    "Schienen und Puffer: M3 x 12 von innen in das Druckteil.",
+    "Ecklöcher: auf der Wandseite ansenken, 3 x 20 in die Leiste.",
+    "Halo-Kabel (unten rechts): Kabel vom Pro Micro zum Halo-Streifen.",
+    "Lüftung über den Netzteilmodulen (unten links), dem Pi (unten",
+    "rechts) und oben. Auf ein Reststück bohren, damit nichts ausreißt.",
 ]
 y = 186
 for r in rows:
@@ -466,8 +524,8 @@ for ri, (Y0, Y1) in enumerate(reversed(ROWS)):
     for ci, (X0, X1) in enumerate(COLS):
         n += 1
         page()
-        header(f"HDF template tile {n} of 6, 1:1  (row {ri + 1} from the top, column {ci + 1} from the left)",
-               "Wall side. Tape the tiles together so the dashed overlap lines and the hole marks line up.")
+        header(f"Schablone HDF, Kachel {n} von 6, 1:1  (Reihe {ri + 1} von oben, Spalte {ci + 1} von links)",
+               "Wandseite. Kacheln so zusammenkleben, dass die gestrichelten Überlappungslinien und die Lochmarken übereinanderliegen.")
         px0, py0 = 14.0, 16.0
         c.saveState()
         p = c.beginPath()
@@ -476,7 +534,7 @@ for ri, (Y0, Y1) in enumerate(reversed(ROWS)):
         rect(px0 - X0, py0 - Y0, FULL, FULL, width=0.6)
         for X, Y, d, what in hdf_holes():
             target(px0 + X - X0, py0 + Y - Y0, d, arm=3)
-            txt(px0 + X - X0 + d / 2 + 1, py0 + Y - Y0 + d / 2 + 0.6, f"{what} Ø{fmt(d)}", 5.5, colour=GREY)
+            txt(px0 + X - X0 + d / 2 + 1, py0 + Y - Y0 + d / 2 + 0.6, f"{HOLE_DE[what]} Ø{fmt(d)}", 5.5, colour=GREY)
         for x, y in v07.halo_screws():
             circle(px0 + x + OUT - X0, py0 + y + OUT - Y0, 1.0, 0.15, colour=(0.1, 0.3, 0.8))
         # 50 mm reference grid, light
