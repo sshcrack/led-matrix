@@ -128,12 +128,12 @@ void Service::update_settings(const Settings& settings)
     cv_.notify_all();
 }
 
-void Service::test_alignment(int led_count)
+void Service::test_alignment(Alignment alignment)
 {
     {
         std::lock_guard lock(mutex_);
-        test_led_count_ = led_count;
-        test_until_ = led_count > 0 ? std::chrono::steady_clock::now() + kAlignmentTime : std::chrono::steady_clock::time_point{};
+        alignment_ = alignment;
+        test_until_ = alignment.led_count > 0 ? std::chrono::steady_clock::now() + kAlignmentTime : std::chrono::steady_clock::time_point{};
     }
     cv_.notify_all();
 }
@@ -144,7 +144,9 @@ nlohmann::json Service::status()
     {
         std::lock_guard lock(mutex_);
         j["settings"] = settings_;
-        j["test_active"] = std::chrono::steady_clock::now() < test_until_;
+        const bool active = std::chrono::steady_clock::now() < test_until_;
+        j["test_active"] = active;
+        j["test_first_led"] = active ? alignment_.first_led : -1;
     }
     {
         std::lock_guard lock(status_mutex_);
@@ -269,24 +271,36 @@ void Service::send(std::uint8_t brightness, int led_count, std::span<const Rgb> 
 void Service::tick()
 {
     Settings s;
-    int test_led_count;
+    Alignment alignment;
     {
         std::lock_guard lock(mutex_);
         s = settings_;
-        test_led_count = std::chrono::steady_clock::now() < test_until_ ? test_led_count_ : 0;
+        if (std::chrono::steady_clock::now() < test_until_)
+            alignment = alignment_;
     }
-    if (test_led_count > 0) {
+    if (alignment.led_count > 0) {
         sample_wanted_ = false;
         off_frames_left_ = kOffFrames;
         std::array<Rgb, kMaxZones> markers{};
         markers.front() = {255, 255, 255};
-        if (test_led_count > 1) {
+        if (alignment.led_count > 1) {
             // Put the green anchor near LED 1 even for short strips.
-            const auto next = std::max(1, (kMaxZones + test_led_count / 2) / test_led_count);
+            const auto next = std::max(1, (kMaxZones + alignment.led_count / 2) / alignment.led_count);
             markers[next] = {0, 255, 0};
         }
+        if (alignment.first_led >= 0) {
+            // LED 0 is physically fixed. Move the blue top-left reference along the
+            // strip as its draft position changes, using the same orientation as match mode.
+            markers.front() = {255, 0, 0};
+            const int corner = (alignment.reverse ? alignment.first_led : alignment.led_count - alignment.first_led) % alignment.led_count;
+            const int phase = corner * kMaxZones;
+            const int anchor = phase / alignment.led_count;
+            const int blend = 255 * (phase % alignment.led_count) / alignment.led_count;
+            markers[anchor].b = static_cast<std::uint8_t>(255 - blend);
+            markers[(anchor + 1) % kMaxZones].b = static_cast<std::uint8_t>(blend);
+        }
         ensure_open(s.device);
-        send(40, test_led_count, markers);
+        send(40, alignment.led_count, markers);
         return;
     }
     if (!s.enabled) {

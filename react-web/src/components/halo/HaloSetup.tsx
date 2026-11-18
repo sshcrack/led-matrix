@@ -3,13 +3,12 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import { initialHaloAlignment, maxLeds, wrap, type HaloAlignmentLayout } from './useHaloAlignment'
 import type { HaloSettings } from './HaloCard'
 
 export type HaloSetupSettings = Pick<HaloSettings,
   'led_count' | 'reverse' | 'first_led' | 'sample_columns' | 'sample_depth'>
 
-const wrap = (position: number, count: number) => (position % count + count) % count
-const maxLeds = 120 // Stock Pro Micro firmware limit.
 const isIntegerIn = (value: number, min: number, max: number) => Number.isInteger(value) && value >= min && value <= max
 
 // Slots run clockwise from the top-left corner of the display, as seen from the front.
@@ -21,22 +20,18 @@ function onFrame(index: number, count: number): [number, number] {
   return [0, 4 - at]
 }
 
-export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onSave }: {
+export function HaloSetup({ settings, saving, testStatus, livePosition, onAlignmentChange, onSave }: {
   settings: HaloSettings
   saving: boolean
   testStatus: 'starting' | 'active' | 'unavailable' | null
-  onTestCountChange: (ledCount: number) => void
+  livePosition: boolean
+  onAlignmentChange: (layout: HaloAlignmentLayout) => void
   onSave: (layout: HaloSetupSettings) => void
 }) {
   const supportsSlots = settings.first_led !== undefined
-  const legacyAnchor = 2 * (settings.rotation - (settings.reverse ? 1 : 0))
-  const legacyMidpoint = settings.start_between_zones ? (settings.reverse ? -1 : 1) : 0
-  const initialCount = Math.min(settings.led_count, maxLeds)
-  const initialSlot = settings.first_led !== undefined && settings.first_led >= 0
-    ? Math.round(settings.first_led * initialCount / settings.led_count)
-    : Math.round((legacyAnchor + legacyMidpoint + 1) * initialCount / 16)
+  const { led_count: initialCount, first_led: initialSlot } = initialHaloAlignment(settings)
   const [layoutCount, setLayoutCount] = useState(initialCount)
-  const [position, setPosition] = useState(wrap(initialSlot, initialCount))
+  const [position, setPosition] = useState(initialSlot)
   const [selectedSlot, setSelectedSlot] = useState(settings.first_led !== undefined && settings.first_led >= 0)
   const dotButtons = useRef<(HTMLButtonElement | null)[]>([])
   const supportsSampling = settings.sample_columns !== undefined && settings.sample_depth !== undefined
@@ -55,15 +50,17 @@ export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onS
     const index = wrap(slot, layoutCount)
     setPosition(index)
     setSelectedSlot(true)
+    onAlignmentChange({ led_count: layoutCount, first_led: index, reverse })
     if (focus) dotButtons.current[index]?.focus()
   }
   const updateCount = (value: string) => {
     setCount(value)
     const nextCount = Number(value)
     if (!isIntegerIn(nextCount, 1, maxLeds) || nextCount === layoutCount) return
-    setPosition(wrap(Math.round(position * nextCount / layoutCount), nextCount))
+    const nextPosition = wrap(Math.round(position * nextCount / layoutCount), nextCount)
+    setPosition(nextPosition)
     setLayoutCount(nextCount)
-    onTestCountChange(nextCount)
+    onAlignmentChange({ led_count: nextCount, first_led: nextPosition, reverse })
   }
 
   return (
@@ -82,6 +79,7 @@ export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onS
           <div className="relative grid aspect-square w-full place-items-center rounded-sm border border-border bg-background"
             role="group" aria-label="First LED position">
             <span className="text-xs text-muted-foreground">Display front</span>
+            {livePosition && <span aria-hidden="true" className="pointer-events-none absolute left-0 top-0 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-blue-500" />}
             {Array.from({ length: layoutCount }, (_, index) => {
               const [x, y] = onFrame(index, layoutCount)
               const selected = index === position
@@ -98,8 +96,10 @@ export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onS
                     e.preventDefault()
                     selectSlot(index + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1), true)
                   }}>
-                  <span className={selected ? 'size-2.5 shrink-0 rounded-full bg-primary ring-2 ring-primary/30'
-                    : index === next ? 'size-2 shrink-0 rounded-full bg-primary/60'
+                  <span className={selected ? (livePosition ? 'size-2.5 shrink-0 rounded-full bg-red-500 ring-2 ring-red-500/30'
+                    : 'size-2.5 shrink-0 rounded-full bg-primary ring-2 ring-primary/30')
+                    : index === next ? (livePosition ? 'size-2 shrink-0 rounded-full bg-green-500'
+                      : 'size-2 shrink-0 rounded-full bg-primary/60')
                       : 'size-1 shrink-0 rounded-full bg-muted-foreground/55'} />
                 </button>
               )
@@ -127,7 +127,12 @@ export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onS
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="halo-direction">Strip direction, viewed from the front</Label>
-            <Select value={reverse ? 'reverse' : 'forward'} onValueChange={value => { setReverse(value === 'reverse'); setSelectedSlot(true) }}>
+            <Select value={reverse ? 'reverse' : 'forward'} onValueChange={value => {
+              const nextReverse = value === 'reverse'
+              setReverse(nextReverse)
+              setSelectedSlot(true)
+              onAlignmentChange({ led_count: layoutCount, first_led: position, reverse: nextReverse })
+            }}>
               <SelectTrigger id="halo-direction" className="h-10 text-base sm:text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="forward">Clockwise</SelectItem>
@@ -139,7 +144,9 @@ export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onS
       </div>
       {testStatus && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {testStatus === 'active' ? 'Alignment is on. White marks LED 0. Green shows the strip direction.'
+          {testStatus === 'active' ? (livePosition
+            ? 'Red marks LED 0, green shows the strip direction, and blue marks the top-left corner. Pick a dot to move the blue light.'
+            : 'Alignment is on. White marks LED 0. Green shows the strip direction.')
             : testStatus === 'unavailable' ? 'Alignment test unavailable. Reconnecting…'
               : 'Starting the alignment test…'}
         </p>

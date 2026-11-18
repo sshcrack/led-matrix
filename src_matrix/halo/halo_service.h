@@ -42,8 +42,13 @@ public:
     void start(const Settings& settings);
     void stop();
     void update_settings(const Settings& settings);
-    /// Temporarily show the first LED and direction. Zero ends the test.
-    void test_alignment(int led_count);
+    struct Alignment {
+        int led_count = 0;
+        int first_led = -1;
+        bool reverse = false;
+    };
+    /// Temporarily show the first LED, direction and display corner. Zero ends the test.
+    void test_alignment(Alignment alignment);
     [[nodiscard]] nlohmann::json status();
 
     /// Render-thread hook, called with the composed canvas about to be shown.
@@ -70,7 +75,7 @@ private:
     std::mutex mutex_;
     std::condition_variable cv_;
     Settings settings_;
-    int test_led_count_ = 0;
+    Alignment alignment_;
     std::chrono::steady_clock::time_point test_until_{};
     bool stop_ = true;
     std::thread thread_;

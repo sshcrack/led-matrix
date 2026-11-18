@@ -67,8 +67,19 @@ std::unique_ptr<Server::router_t> Server::add_halo_routes(std::unique_ptr<router
         if (!request.is_object() || !request.contains("led_count") || !request["led_count"].is_number_integer() ||
             request["led_count"] < 0 || request["led_count"] > 120)
             return reply_with_error(req, "Test LED count must be 1..120, or 0 to stop the test");
+        Halo::Service::Alignment alignment{.led_count = request["led_count"].get<int>()};
+        if (const auto first = request.find("first_led"); first != request.end()) {
+            if (!first->is_number_integer() || *first < 0 || *first >= alignment.led_count)
+                return reply_with_error(req, "First LED position must be within the test LED count");
+            alignment.first_led = first->get<int>();
+        }
+        if (const auto reverse = request.find("reverse"); reverse != request.end()) {
+            if (!reverse->is_boolean())
+                return reply_with_error(req, "Test direction must be a boolean");
+            alignment.reverse = reverse->get<bool>();
+        }
         auto& service = Halo::Service::instance();
-        service.test_alignment(request["led_count"].get<int>());
+        service.test_alignment(alignment);
         return reply_with_json(req, service.status());
     });
 

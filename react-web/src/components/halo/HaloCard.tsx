@@ -9,7 +9,7 @@ import { Switch } from '~/components/ui/switch'
 import { Button } from '~/components/ui/button'
 import { Sheet } from '~/core/ui/Sheet'
 import { HaloSetup, type HaloSetupSettings } from './HaloSetup'
-import { useHaloAlignment } from './useHaloAlignment'
+import { initialHaloAlignment, type HaloAlignmentLayout, useHaloAlignment } from './useHaloAlignment'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 
@@ -35,6 +35,7 @@ export interface HaloStatus {
   device_open: boolean
   frames_sent: number
   test_active?: boolean
+  test_first_led?: number
 }
 
 type Patch = Partial<Pick<HaloSettings, 'enabled' | 'mode' | 'brightness' | 'color'> & HaloSetupSettings>
@@ -44,9 +45,10 @@ function HaloForm({ status, onSaved }: { status: HaloStatus, onSaved: (next: Hal
   const s = status.settings
   const [saving, setSaving] = useState(false)
   const [setupOpen, setSetupOpen] = useState(false)
-  const [testCount, setTestCount] = useState(s.led_count)
+  const [testLayout, setTestLayout] = useState<HaloAlignmentLayout>(() => initialHaloAlignment(s))
   const canTest = status.test_active !== undefined
-  const testStatus = useHaloAlignment(setupOpen && canTest ? apiUrl : null, testCount)
+  const livePosition = status.test_first_led !== undefined
+  const testStatus = useHaloAlignment(setupOpen && canTest ? apiUrl : null, testLayout)
   // Sliders and the colour picker fire continuously: show the local value and send it once it settles.
   const [draftBrightness, setDraftBrightness] = useState<number | null>(null)
   const [draftColor, setDraftColor] = useState<string | null>(null)
@@ -126,11 +128,11 @@ function HaloForm({ status, onSaved }: { status: HaloStatus, onSaved: (next: Hal
         )}
       </div>
       <Button type="button" variant="outline" className="min-h-10" disabled={saving}
-        onClick={() => { setTestCount(Math.min(s.led_count, 120)); setSetupOpen(true) }}>Set up halo strip</Button>
+        onClick={() => { setTestLayout(initialHaloAlignment(s)); setSetupOpen(true) }}>Set up halo strip</Button>
       <Sheet open={setupOpen} onOpenChange={setSetupOpen} title="Set up halo strip"
         description="Set the strip layout and how the halo samples the display.">
         {setupOpen && <HaloSetup settings={s} saving={saving}
-          testStatus={canTest ? testStatus : null} onTestCountChange={setTestCount}
+          testStatus={canTest ? testStatus : null} livePosition={livePosition} onAlignmentChange={setTestLayout}
           onSave={async layout => { if (await save(layout)) setSetupOpen(false) }} />}
       </Sheet>
     </CardContent>

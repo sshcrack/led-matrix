@@ -360,12 +360,23 @@ void service_over_pty()
     check(frames - before <= 20, "no frames are sent after the off burst");
 
     // An alignment test can run while the halo is disabled, using the draft count.
-    svc.test_alignment(45);
+    svc.test_alignment({.led_count = 45});
     collect(1200);
     check(svc.status()["test_active"] == true && last.led_count == 45 && last.brightness == 40 && last.zones == kMaxZones &&
               last.rgb[0] == 255 && last.rgb[1] == 255 && last.rgb[2] == 255 && last.rgb[3] == 0 && last.rgb[4] == 255 && last.rgb[5] == 0,
           "alignment test marks LED zero and direction");
-    svc.test_alignment(0);
+    svc.test_alignment({.led_count = 60, .first_led = 15});
+    collect(250);
+    check(last.led_count == 60 && last.rgb[0] == 255 && last.rgb[1] == 0 && last.rgb[4] == 255 && last.rgb[3 * 12 + 2] == 255,
+          "clockwise draft shows the first LED, direction and top-left corner");
+    svc.test_alignment({.led_count = 60, .first_led = 30});
+    collect(250);
+    check(last.rgb[3 * 12 + 2] == 0 && last.rgb[3 * 8 + 2] == 255 && svc.status()["test_first_led"] == 30,
+          "selecting a different position moves the top-left marker without saving");
+    svc.test_alignment({.led_count = 60, .first_led = 15, .reverse = true});
+    collect(250);
+    check(last.rgb[3 * 8 + 2] == 0 && last.rgb[3 * 4 + 2] == 255, "reverse follows the draft direction");
+    svc.test_alignment({});
     collect(250);
     check(svc.status()["test_active"] == false && last.led_count == 63 && last.brightness == 0,
           "stopping the test restores the disabled halo and saved LED count");

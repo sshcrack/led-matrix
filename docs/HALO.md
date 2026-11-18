@@ -12,10 +12,12 @@ every route), and a card on the web UI Integrations page. Open **Set up halo str
 direction as seen from the front. The diagram spaces one dot per configured LED around
 the frame. **Display sampling** adjusts the density and depth on the next sampled frame.
 
-Opening setup starts alignment automatically. White marks the strip's first LED and
-green shows the wiring direction. The browser renews the test while setup is open and
-stops it on close. If the browser disconnects, the Pi restores normal output within
-20 seconds. The test uses the draft LED count and leaves the saved layout intact.
+Opening setup starts alignment automatically. Red marks the strip's physical LED 0,
+green shows the wiring direction, and blue shows where the current selection places the
+top-left corner. Click a dot to move the blue light toward that physical corner. LED
+count and direction also preview immediately. Save to keep the layout. The browser
+renews the test while setup is open and stops it on close. If the browser disconnects,
+the Pi restores normal output within 20 seconds.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -34,8 +36,10 @@ stops it on close. If the browser disconnects, the Pi restores normal output wit
 `GET /halo` returns `{settings, error, device_open, frames_sent}`. The daemon works without any
 UART: on the emulator and dev machines it logs `no UART at …` once and keeps the settings.
 `POST /halo/test` accepts `{"led_count": 1..120}` to run the temporary alignment pattern or
-`{"led_count": 0}` to stop it. `GET /halo` includes `test_active`. The test never writes
-the configuration.
+`{"led_count": 0}` to stop it. Pass a draft `first_led` (0 to count minus one) and
+`reverse` (boolean) to include the moving blue corner reference. With just a count,
+the original white and green test remains available. `GET /halo` includes `test_active`
+and `test_first_led` (-1 when no position is under test). The test never writes the configuration.
 
 ## How `match` works (and what it costs)
 
