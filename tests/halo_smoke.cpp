@@ -333,6 +333,19 @@ void service_over_pty()
     collect(1600);
     check(last.led_count == 63 && last.zones == kMaxZones && last.rgb[0] == 128 && last.rgb[3] == 192,
           "midpoint start preserves the original next anchor and configurable LED count");
+
+    // A non-anchor slot takes effect in both directions without moving LED zero.
+    s.first_led = 13;
+    Zones gradient{};
+    for (int i = 0; i < kEdgeZones; ++i) gradient[i].r = static_cast<uint8_t>(i * 30);
+    svc.submit_zones(gradient);
+    svc.update_settings(s);
+    collect(1500);
+    check(last.zones == kMaxZones && last.rgb[0] == 35 && last.rgb[3] == 50, "selected slot clockwise");
+    s.reverse = true;
+    svc.update_settings(s);
+    collect(300);
+    check(last.rgb[0] == 35 && last.rgb[3] == 20, "reversing the strip preserves the selected slot");
     svc.submit_black();
     collect(1500);
     check(last.rgb[0] < 5, "match mode follows the display going dark");

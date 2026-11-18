@@ -317,10 +317,13 @@ void Service::tick()
             std::lock_guard lock(zones_mutex_);
             latest = latest_;
         }
-        zones = smoother_.step(arrange_zones(latest, s.rotation, s.reverse));
+        const auto& smoothed = smoother_.step(latest);
+        zones = s.first_led >= 0 ? smoothed : arrange_zones(smoothed, s.rotation, s.reverse);
         sample_wanted_.store(true, std::memory_order_relaxed);  // ask for a fresh sample before the next tick
     }
-    if (s.mode == "match" && s.start_between_zones)
+    if (s.mode == "match" && s.first_led >= 0)
+        send(brightness, s.led_count, align_to_led(zones, s.first_led, s.led_count, s.reverse));
+    else if (s.mode == "match" && s.start_between_zones)
         send(brightness, s.led_count, start_between_zones(zones));
     else
         send(brightness, s.led_count, zones);

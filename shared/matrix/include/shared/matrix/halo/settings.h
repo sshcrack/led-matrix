@@ -28,6 +28,9 @@ struct Settings {
     bool reverse = false;
     /// Start halfway between the first two arranged zones.
     bool start_between_zones = false;
+    /// Clockwise slot of physical LED zero, from the upper-left corner.
+    /// -1 keeps the legacy zone alignment.
+    int first_led = -1;
     /// Samples per row in each edge zone, and inner row depth in display pixels.
     int sample_columns = kDefaultSampleColumns;
     int sample_depth = kDefaultSampleDepth;

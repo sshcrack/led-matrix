@@ -56,6 +56,7 @@ void Settings::sanitize()
     brightness = std::clamp(brightness, 0, 100);
     led_count = std::clamp(led_count, 1, static_cast<int>(kMaxLeds));
     rotation = std::clamp(rotation, 0, 7);
+    first_led = std::clamp(first_led, -1, led_count - 1);
     sample_columns = std::clamp(sample_columns, 1, kMaxSampleColumns);
     sample_depth = std::clamp(sample_depth, kOuterSampleDepth + 1, kMaxSampleDepth);
     if (!is_allowed_device(device))
@@ -75,6 +76,8 @@ std::string Settings::validate() const
         return "led_count must be 1..200";
     if (rotation < 0 || rotation > 7)
         return "rotation must be 0..7";
+    if (first_led < -1 || first_led >= led_count)
+        return "first_led must be -1 or a position below led_count";
     if (sample_columns < 1 || sample_columns > kMaxSampleColumns)
         return "sample_columns must be 1..16";
     if (sample_depth <= kOuterSampleDepth || sample_depth > kMaxSampleDepth)
@@ -96,6 +99,7 @@ void to_json(nlohmann::json& j, const Settings& s)
         {"rotation", s.rotation},
         {"reverse", s.reverse},
         {"start_between_zones", s.start_between_zones},
+        {"first_led", s.first_led},
         {"sample_columns", s.sample_columns},
         {"sample_depth", s.sample_depth},
     };
@@ -124,6 +128,7 @@ void from_json(const nlohmann::json& j, Settings& s)
     get("rotation", s.rotation);
     get("reverse", s.reverse);
     get("start_between_zones", s.start_between_zones);
+    get("first_led", s.first_led);
     get("sample_columns", s.sample_columns);
     get("sample_depth", s.sample_depth);
     s.sanitize();

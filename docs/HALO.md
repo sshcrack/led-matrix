@@ -7,13 +7,15 @@ the daemon talks to the Pro Micro over a one-way UART from the Pi (GPIO14 TX). W
 ## Settings
 
 `config.json` → `halo`, `GET/POST /halo` (partial update, same cross-origin and token rules as
-every route), and a card on the web UI Integrations page. Open **Set up halo strip** on that card to
-enter the LED count, pick where the first LED sits and set the wiring direction as seen from the front.
-The setup accepts 1–120 LEDs with the stock Pro Micro firmware. **Left edge, middle** places LED 0
-at the blend between the lower and upper left edge zones. **Display sampling** adjusts the sample
-density and inner row depth on the next sampled frame. **Test alignment** marks LED 0 in white
-and the following LEDs in green using the draft LED count. The test lasts 20 seconds, or until
-stopped or the setup is closed. The regular halo settings resume at the end.
+every route), and a card on the web UI Integrations page. Open **Set up halo strip** to enter the count
+(1–120 with the stock Pro Micro), select LED 0 on the clickable perimeter, and set the
+direction as seen from the front. The diagram spaces one dot per configured LED around
+the frame. **Display sampling** adjusts the density and depth on the next sampled frame.
+
+Opening setup starts alignment automatically. White marks the strip's first LED and
+green shows the wiring direction. The browser renews the test while setup is open and
+stops it on close. If the browser disconnects, the Pi restores normal output within
+20 seconds. The test uses the draft LED count and leaves the saved layout intact.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -25,6 +27,7 @@ stopped or the setup is closed. The regular halo settings resume at the end.
 | `device` | `/dev/serial0` | UART device, 115200 8N1. Only `/dev/serial<N>`, `/dev/ttyAMA<N>`, `/dev/ttyS<N>`, `/dev/ttyUSB<N>`, `/dev/ttyACM<N>` (and `/dev/pts/<N>` for tests) are accepted, and the opened file must be a tty: the daemon opens it as root before the privilege drop |
 | `rotation`, `reverse` | `0`, `false` | Rotate the 8 edge zones / reverse their direction to fit where the strip starts and which way it runs. Zone 0 is the left half of the top edge, going clockwise seen from the front |
 | `start_between_zones` | `false` | Place LED 0 halfway between the first two arranged edge colors. The daemon sends 16 colors in this case, including the original anchors |
+| `first_led` | `-1` | Position of LED 0 among equally spaced slots, numbered clockwise from the top-left corner. `-1` uses the legacy zone alignment. Individual positions shift the Pi's 16 shipped color anchors without a protocol or firmware change |
 | `sample_columns` | `8` | 1–16 samples per row (2–32 pixels per zone) |
 | `sample_depth` | `6` | Inner row depth in display pixels (3–24). The outer row is 2 pixels in. Depths are clamped on small displays |
 

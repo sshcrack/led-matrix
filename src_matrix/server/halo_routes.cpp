@@ -17,7 +17,8 @@ std::string apply_halo_patch(const json& patch, Halo::Settings& settings)
     json merged = settings;
     for (const auto& [key, value] : patch.items()) {
         if (key != "enabled" && key != "mode" && key != "brightness" && key != "color" && key != "led_count" && key != "device" &&
-            key != "rotation" && key != "reverse" && key != "start_between_zones" && key != "sample_columns" && key != "sample_depth")
+            key != "rotation" && key != "reverse" && key != "start_between_zones" && key != "sample_columns" && key != "sample_depth" &&
+            key != "first_led")
             return "Unknown halo setting: " + key;
         merged[key] = value;
     }
@@ -28,7 +29,8 @@ std::string apply_halo_patch(const json& patch, Halo::Settings& settings)
         !type_ok("start_between_zones", &json::is_boolean) || !type_ok("mode", &json::is_string) || !type_ok("color", &json::is_string) ||
         !type_ok("device", &json::is_string) || !type_ok("brightness", &json::is_number_integer) ||
         !type_ok("led_count", &json::is_number_integer) || !type_ok("rotation", &json::is_number_integer) ||
-        !type_ok("sample_columns", &json::is_number_integer) || !type_ok("sample_depth", &json::is_number_integer))
+        !type_ok("sample_columns", &json::is_number_integer) || !type_ok("sample_depth", &json::is_number_integer) ||
+        !type_ok("first_led", &json::is_number_integer))
         return "Invalid type for a halo setting";
     Halo::Settings next = merged.get<Halo::Settings>();
     // Sanitizing would silently clamp; validate the raw values instead.
@@ -42,6 +44,11 @@ std::string apply_halo_patch(const json& patch, Halo::Settings& settings)
     raw.rotation = merged["rotation"];
     raw.reverse = merged["reverse"];
     raw.start_between_zones = merged["start_between_zones"];
+    raw.first_led = merged["first_led"];
+    if (patch.contains("led_count") && !patch.contains("first_led") && raw.led_count > 0 && raw.first_led >= raw.led_count) {
+        raw.first_led = raw.led_count - 1;
+        next.first_led = raw.first_led;
+    }
     raw.sample_columns = merged["sample_columns"];
     raw.sample_depth = merged["sample_depth"];
     if (const auto problem = raw.validate(); !problem.empty())

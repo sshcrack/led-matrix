@@ -105,6 +105,27 @@ inline std::array<Rgb, 2 * kEdgeZones> start_between_zones(const Zones& zones)
     return out;
 }
 
+/// Resample the loop from a specific strip position. Slot zero is the top-left
+/// corner, halfway before the first screen sample. Positions count clockwise
+/// as seen from the front, regardless of the strip's wiring direction.
+inline std::array<Rgb, 2 * kEdgeZones> align_to_led(const Zones& zones, int first_led, int led_count, bool reverse)
+{
+    std::array<Rgb, 2 * kEdgeZones> out{};
+    const int units_per_zone = 2 * led_count;
+    const int loop_units = kEdgeZones * units_per_zone;
+    const int start = 2 * first_led * kEdgeZones - led_count;
+    for (int i = 0; i < 2 * kEdgeZones; ++i) {
+        const int pos = (start + (reverse ? -i : i) * led_count + 2 * loop_units) % loop_units;
+        const int zone = pos / units_per_zone, fraction = pos % units_per_zone;
+        const auto a = zones[zone], b = zones[(zone + 1) % kEdgeZones];
+        const auto blend = [=](std::uint8_t left, std::uint8_t right) {
+            return static_cast<std::uint8_t>((left * (units_per_zone - fraction) + right * fraction + led_count) / units_per_zone);
+        };
+        out[i] = {blend(a.r, b.r), blend(a.g, b.g), blend(a.b, b.b)};
+    }
+    return out;
+}
+
 /// Exponential smoothing towards the latest sample (called once per send tick).
 class ZoneSmoother {
 public:

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -6,99 +6,128 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import type { HaloSettings } from './HaloCard'
 
 export type HaloSetupSettings = Pick<HaloSettings,
-  'led_count' | 'rotation' | 'reverse' | 'start_between_zones' | 'sample_columns' | 'sample_depth'>
+  'led_count' | 'reverse' | 'first_led' | 'sample_columns' | 'sample_depth'>
 
-const positions = [
-  ['Top edge, left half', 25, 0], ['Top edge, middle', 50, 0],
-  ['Top edge, right half', 75, 0], ['Top-right corner', 100, 0],
-  ['Right edge, upper half', 100, 25], ['Right edge, middle', 100, 50],
-  ['Right edge, lower half', 100, 75], ['Bottom-right corner', 100, 100],
-  ['Bottom edge, right half', 75, 100], ['Bottom edge, middle', 50, 100],
-  ['Bottom edge, left half', 25, 100], ['Bottom-left corner', 0, 100],
-  ['Left edge, lower half', 0, 75], ['Left edge, middle', 0, 50],
-  ['Left edge, upper half', 0, 25], ['Top-left corner', 0, 0],
-] as const
-
-const wrap = (position: number) => (position + positions.length) % positions.length
+const wrap = (position: number, count: number) => (position % count + count) % count
 const maxLeds = 120 // Stock Pro Micro firmware limit.
+const isIntegerIn = (value: number, min: number, max: number) => Number.isInteger(value) && value >= min && value <= max
 
-export function HaloSetup({ settings, saving, testing, onTest, onSave }: {
+// Slots run clockwise from the top-left corner of the display, as seen from the front.
+function onFrame(index: number, count: number): [number, number] {
+  const at = 4 * index / count
+  if (at < 1) return [at, 0]
+  if (at < 2) return [1, at - 1]
+  if (at < 3) return [3 - at, 1]
+  return [0, 4 - at]
+}
+
+export function HaloSetup({ settings, saving, testStatus, onTestCountChange, onSave }: {
   settings: HaloSettings
   saving: boolean
-  testing: boolean
-  onTest?: (ledCount: number) => void
+  testStatus: 'starting' | 'active' | 'unavailable' | null
+  onTestCountChange: (ledCount: number) => void
   onSave: (layout: HaloSetupSettings) => void
 }) {
-  const supportsMidpoints = settings.start_between_zones !== undefined
-  const startAnchor = 2 * (settings.rotation - (settings.reverse ? 1 : 0))
-  const initialPosition = wrap(startAnchor + (settings.start_between_zones ? (settings.reverse ? -1 : 1) : 0))
+  const supportsSlots = settings.first_led !== undefined
+  const legacyAnchor = 2 * (settings.rotation - (settings.reverse ? 1 : 0))
+  const legacyMidpoint = settings.start_between_zones ? (settings.reverse ? -1 : 1) : 0
+  const initialCount = Math.min(settings.led_count, maxLeds)
+  const initialSlot = settings.first_led !== undefined && settings.first_led >= 0
+    ? Math.round(settings.first_led * initialCount / settings.led_count)
+    : Math.round((legacyAnchor + legacyMidpoint + 1) * initialCount / 16)
+  const [layoutCount, setLayoutCount] = useState(initialCount)
+  const [position, setPosition] = useState(wrap(initialSlot, initialCount))
+  const [selectedSlot, setSelectedSlot] = useState(settings.first_led !== undefined && settings.first_led >= 0)
+  const dotButtons = useRef<(HTMLButtonElement | null)[]>([])
   const supportsSampling = settings.sample_columns !== undefined && settings.sample_depth !== undefined
   const [columns, setColumns] = useState(String(settings.sample_columns ?? 8))
   const [depth, setDepth] = useState(String(settings.sample_depth ?? 6))
   const [count, setCount] = useState(String(settings.led_count))
-  const [position, setPosition] = useState(initialPosition)
   const [reverse, setReverse] = useState(settings.reverse)
   const ledCount = Number(count)
-  const isIntegerIn = (value: number, min: number, max: number) => Number.isInteger(value) && value >= min && value <= max
   const sampleColumns = Number(columns)
   const sampleDepth = Number(depth)
   const validSampling = isIntegerIn(sampleColumns, 1, 16) && isIntegerIn(sampleDepth, 3, 24)
   const validCount = isIntegerIn(ledCount, 1, maxLeds)
   const valid = validCount && (!supportsSampling || validSampling)
-  const step = supportsMidpoints ? 1 : 2
-  const next = wrap(position + (reverse ? -step : step))
+  const next = wrap(position + (reverse ? -1 : 1), layoutCount)
+  const selectSlot = (slot: number, focus = false) => {
+    const index = wrap(slot, layoutCount)
+    setPosition(index)
+    setSelectedSlot(true)
+    if (focus) dotButtons.current[index]?.focus()
+  }
+  const updateCount = (value: string) => {
+    setCount(value)
+    const nextCount = Number(value)
+    if (!isIntegerIn(nextCount, 1, maxLeds) || nextCount === layoutCount) return
+    setPosition(wrap(Math.round(position * nextCount / layoutCount), nextCount))
+    setLayoutCount(nextCount)
+    onTestCountChange(nextCount)
+  }
 
   return (
     <form className="space-y-5" onSubmit={e => {
       e.preventDefault()
       if (!valid || saving) return
-      const anchor = reverse ? Math.ceil(position / 2) : Math.floor(position / 2)
       onSave({
         led_count: ledCount,
-        rotation: (anchor + (reverse ? 1 : 0)) % 8,
         reverse,
-        ...(supportsMidpoints ? { start_between_zones: position % 2 === 1 } : {}),
+        ...(supportsSlots && selectedSlot ? { first_led: position } : {}),
         ...(supportsSampling ? { sample_columns: sampleColumns, sample_depth: sampleDepth } : {}),
       })
     }}>
       <div className="grid gap-5 sm:grid-cols-[auto_1fr]">
-        <figure className="mx-auto flex w-36 flex-col items-center gap-3 p-2 sm:mt-1">
-          <div className="relative grid aspect-square w-full place-items-center rounded-sm border border-border bg-background" aria-hidden="true">
+        <figure className="mx-auto w-full max-w-64 space-y-3 px-4 pt-3 sm:w-56">
+          <div className="relative grid aspect-square w-full place-items-center rounded-sm border border-border bg-background"
+            role="group" aria-label="First LED position">
             <span className="text-xs text-muted-foreground">Display front</span>
-            {positions.map(([label, x, y], index) => {
-              if (index % step) return null
+            {Array.from({ length: layoutCount }, (_, index) => {
+              const [x, y] = onFrame(index, layoutCount)
+              const selected = index === position
+              const size = Math.min(14, 275 / layoutCount) + '%'
               return (
-                <span key={label} style={{ left: x + '%', top: y + '%' }}
-                  className={'absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full ' +
-                    (index === position ? 'z-10 h-6 w-6 bg-primary text-xs font-semibold text-primary-foreground'
-                      : index === next ? 'h-2.5 w-2.5 bg-primary/60' : 'h-1.5 w-1.5 bg-muted-foreground/50')}>
-                  {index === position ? '0' : null}
-                </span>
+                <button key={index} type="button" ref={el => { dotButtons.current[index] = el }}
+                  aria-label={`LED position ${index + 1} of ${layoutCount}`} aria-pressed={selected}
+                  tabIndex={selected ? 0 : -1} disabled={!supportsSlots}
+                  style={{ left: x * 100 + '%', top: y * 100 + '%', width: size, height: size }}
+                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => selectSlot(index)}
+                  onKeyDown={e => {
+                    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) return
+                    e.preventDefault()
+                    selectSlot(index + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1), true)
+                  }}>
+                  <span className={selected ? 'size-2.5 shrink-0 rounded-full bg-primary ring-2 ring-primary/30'
+                    : index === next ? 'size-2 shrink-0 rounded-full bg-primary/60'
+                      : 'size-1 shrink-0 rounded-full bg-muted-foreground/55'} />
+                </button>
               )
             })}
           </div>
-          <figcaption className="text-xs text-muted-foreground">0 marks the first LED</figcaption>
+          <figcaption className="text-center text-xs text-muted-foreground">
+            {supportsSlots ? 'Select where LED 0 sits.' : 'Update the daemon to select individual LED positions.'}
+          </figcaption>
+          {supportsSlots && (
+            <div className="flex items-center justify-center gap-2">
+              <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label="Previous LED position"
+                onClick={() => selectSlot(position - 1)}>−</Button>
+              <span className="min-w-14 text-center text-sm tabular-nums" aria-live="polite">{position + 1} / {layoutCount}</span>
+              <Button type="button" variant="outline" className="h-10 w-10 px-0" aria-label="Next LED position"
+                onClick={() => selectSlot(position + 1)}>+</Button>
+            </div>
+          )}
         </figure>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="halo-led-count">LED count</Label>
             <Input id="halo-led-count" type="number" inputMode="numeric" required min={1} max={maxLeds} step={1}
-              value={count} onChange={e => setCount(e.target.value)} className="h-10 text-base sm:text-sm" />
+              value={count} onChange={e => updateCount(e.target.value)} className="h-10 text-base sm:text-sm" />
             <p className="text-xs text-muted-foreground">Count every LED connected to the strip input. Up to 120.</p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="halo-first-led">First LED position</Label>
-            <Select value={String(position)} onValueChange={value => setPosition(Number(value))}>
-              <SelectTrigger id="halo-first-led" className="h-10 text-base sm:text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {positions.map(([label], index) => index % step === 0
-                  ? <SelectItem key={label} value={String(index)}>{label}</SelectItem> : null)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
             <Label htmlFor="halo-direction">Strip direction, viewed from the front</Label>
-            <Select value={reverse ? 'reverse' : 'forward'} onValueChange={value => setReverse(value === 'reverse')}>
+            <Select value={reverse ? 'reverse' : 'forward'} onValueChange={value => { setReverse(value === 'reverse'); setSelectedSlot(true) }}>
               <SelectTrigger id="halo-direction" className="h-10 text-base sm:text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="forward">Clockwise</SelectItem>
@@ -108,14 +137,12 @@ export function HaloSetup({ settings, saving, testing, onTest, onSave }: {
           </div>
         </div>
       </div>
-      {onTest && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Button type="button" variant="outline" className="min-h-10" disabled={saving || (!validCount && !testing)}
-            onClick={() => onTest(testing ? 0 : ledCount)}>{testing ? 'Stop alignment test' : 'Test alignment'}</Button>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            {testing ? 'White marks LED 0. Green shows the strip direction.' : 'Show the first LED and strip direction for 20 seconds.'}
-          </p>
-        </div>
+      {testStatus && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {testStatus === 'active' ? 'Alignment is on. White marks LED 0. Green shows the strip direction.'
+            : testStatus === 'unavailable' ? 'Alignment test unavailable. Reconnecting…'
+              : 'Starting the alignment test…'}
+        </p>
       )}
       {supportsSampling && (
         <fieldset className="space-y-3 border-t border-border pt-3">
