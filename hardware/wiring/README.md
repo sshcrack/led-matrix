@@ -10,6 +10,8 @@ not shown here.
 
 ## Overview
 
+Printable schematic with pin-by-pin tables: [`schematic.html`](schematic.html) (open it in a browser).
+
 ```mermaid
 flowchart LR
   brick["Mean Well GST160A24-R7B<br/>24 V brick (outside)"] -- "DIN plug (latching)" --> jack["Kycon KPJX-PM-4S<br/>bottom edge"]
