@@ -1,14 +1,13 @@
 #include "halo_service.h"
 
-#include <cerrno>
-#include <cstring>
-#include <fstream>
-
 #include <fcntl.h>
+#include <spdlog/spdlog.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include <spdlog/spdlog.h>
+#include <cerrno>
+#include <cstring>
+#include <fstream>
 
 #include "led-matrix.h"
 
@@ -25,7 +24,7 @@ constexpr int kOffFrames = 20;
 // Opens a serial port write-only. Refuses names outside is_allowed_device() and
 // anything that is not a tty: preopen() runs as root, so a bad setting must never
 // make the daemon write frames into a regular file.
-int open_uart(const std::string &device, int &error)
+int open_uart(const std::string& device, int& error)
 {
     if (!is_allowed_device(device)) {
         error = EPERM;
@@ -52,24 +51,25 @@ int open_uart(const std::string &device, int &error)
 }
 }  // namespace
 
-Service &Service::instance()
+Service& Service::instance()
 {
     static Service service;
     return service;
 }
 
-void Service::preopen(const std::string &config_file)
+void Service::preopen(const std::string& config_file)
 {
     std::string device = Settings{}.device;
     try {
         std::ifstream in(config_file);
         if (in) {
             const auto j = nlohmann::json::parse(in, nullptr, false);
-            if (j.is_object() && j.contains("halo") && j["halo"].is_object() && j["halo"].contains("device")
-                && j["halo"]["device"].is_string())
+            if (j.is_object() && j.contains("halo") && j["halo"].is_object() && j["halo"].contains("device") &&
+                j["halo"]["device"].is_string())
                 device = j["halo"]["device"].get<std::string>();
         }
-    } catch (...) {
+    }
+    catch (...) {
     }
     int error = 0;
     const int fd = open_uart(device, error);
@@ -82,7 +82,7 @@ void Service::preopen(const std::string &config_file)
     spdlog::info("Halo: opened {} before the privilege drop", device);
 }
 
-void Service::start(const Settings &settings)
+void Service::start(const Settings& settings)
 {
     std::lock_guard lock(mutex_);
     if (thread_.joinable())
@@ -117,7 +117,7 @@ void Service::stop()
     }
 }
 
-void Service::update_settings(const Settings &settings)
+void Service::update_settings(const Settings& settings)
 {
     {
         std::lock_guard lock(mutex_);
@@ -142,7 +142,7 @@ nlohmann::json Service::status()
     return j;
 }
 
-void Service::submit_zones(const Zones &zones)
+void Service::submit_zones(const Zones& zones)
 {
     std::lock_guard lock(zones_mutex_);
     latest_ = zones;
@@ -154,7 +154,7 @@ void Service::submit_black()
     submit_zones(Zones{});
 }
 
-void Service::sample(rgb_matrix::FrameCanvas *canvas, int width, int height)
+void Service::sample(rgb_matrix::FrameCanvas* canvas, int width, int height)
 {
     if (!canvas)
         return;
@@ -166,7 +166,7 @@ void Service::sample(rgb_matrix::FrameCanvas *canvas, int width, int height)
     submit_zones(zones);
 }
 
-void Service::note_error(const std::string &message, bool warn)
+void Service::note_error(const std::string& message, bool warn)
 {
     {
         std::lock_guard lock(status_mutex_);
@@ -188,7 +188,7 @@ void Service::close_fd()
     running_open_ = false;
 }
 
-void Service::ensure_open(const std::string &device)
+void Service::ensure_open(const std::string& device)
 {
     if (fd_ >= 0 && fd_device_ != device) {
         close_fd();
@@ -219,7 +219,7 @@ void Service::ensure_open(const std::string &device)
     spdlog::info("Halo: sending to {}", device);
 }
 
-void Service::send(std::uint8_t brightness, int led_count, const Zones &zones)
+void Service::send(std::uint8_t brightness, int led_count, const Zones& zones)
 {
     if (fd_ < 0)
         return;
@@ -272,7 +272,8 @@ void Service::tick()
         Rgb c;
         parse_color(s.color, c.r, c.g, c.b);
         zones.fill(c);
-    } else {
+    }
+    else {
         Zones latest;
         {
             std::lock_guard lock(zones_mutex_);

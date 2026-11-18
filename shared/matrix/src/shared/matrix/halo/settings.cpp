@@ -10,27 +10,28 @@ namespace Halo {
 namespace {
 int hex_digit(char c)
 {
-    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= '0' && c <= '9')
+        return c - '0';
     c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
     return -1;
 }
 }  // namespace
 
-bool is_allowed_device(const std::string &path)
+bool is_allowed_device(const std::string& path)
 {
-    static constexpr const char *kPrefixes[] = {"/dev/serial", "/dev/ttyAMA", "/dev/ttyS", "/dev/ttyUSB", "/dev/ttyACM", "/dev/pts/"};
-    for (const char *prefix : kPrefixes) {
+    static constexpr const char* kPrefixes[] = {"/dev/serial", "/dev/ttyAMA", "/dev/ttyS", "/dev/ttyUSB", "/dev/ttyACM", "/dev/pts/"};
+    for (const char* prefix : kPrefixes) {
         const std::string p(prefix);
         if (path.size() <= p.size() || path.compare(0, p.size(), p) != 0 || path.size() > p.size() + 3)
             continue;
-        return std::all_of(path.begin() + static_cast<std::ptrdiff_t>(p.size()), path.end(),
-                           [](char c) { return c >= '0' && c <= '9'; });
+        return std::all_of(path.begin() + static_cast<std::ptrdiff_t>(p.size()), path.end(), [](char c) { return c >= '0' && c <= '9'; });
     }
     return false;
 }
 
-bool parse_color(const std::string &text, unsigned char &r, unsigned char &g, unsigned char &b)
+bool parse_color(const std::string& text, unsigned char& r, unsigned char& g, unsigned char& b)
 {
     if (text.size() != 7 || text[0] != '#')
         return false;
@@ -77,26 +78,26 @@ std::string Settings::validate() const
     return {};
 }
 
-void to_json(nlohmann::json &j, const Settings &s)
+void to_json(nlohmann::json& j, const Settings& s)
 {
     j = nlohmann::json{
-        {"enabled", s.enabled},   {"mode", s.mode},         {"brightness", s.brightness},
-        {"color", s.color},       {"led_count", s.led_count}, {"device", s.device},
-        {"rotation", s.rotation}, {"reverse", s.reverse},
+        {"enabled", s.enabled},     {"mode", s.mode},     {"brightness", s.brightness}, {"color", s.color},
+        {"led_count", s.led_count}, {"device", s.device}, {"rotation", s.rotation},     {"reverse", s.reverse},
     };
 }
 
-void from_json(const nlohmann::json &j, Settings &s)
+void from_json(const nlohmann::json& j, Settings& s)
 {
     s = Settings{};
     if (!j.is_object())
         return;
-    const auto get = [&](const char *key, auto &out) {
+    const auto get = [&](const char* key, auto& out) {
         if (!j.contains(key))
             return;
         try {
             out = j.at(key).get<std::decay_t<decltype(out)>>();
-        } catch (const nlohmann::json::exception &) {
+        }
+        catch (const nlohmann::json::exception&) {
         }
     };
     get("enabled", s.enabled);

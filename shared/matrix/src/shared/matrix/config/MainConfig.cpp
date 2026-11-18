@@ -488,12 +488,14 @@ spdlog::info("Setting preset {}", id);
         mark_dirty();
     }
 
-    Halo::Settings MainConfig::get_halo() {
+    Halo::Settings MainConfig::get_halo()
+    {
         std::shared_lock lock(this->data_mutex);
         return this->data.halo;
     }
 
-    void MainConfig::set_halo(Halo::Settings settings) {
+    void MainConfig::set_halo(Halo::Settings settings)
+    {
         settings.sanitize();
         {
             std::unique_lock lock(this->data_mutex);

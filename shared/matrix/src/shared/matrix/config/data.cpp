@@ -81,24 +81,22 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Root &p) {
-        j = json{
-            {"presets", p.presets},
-            {"curr", p.curr},
-            {"spotify", p.spotify},
-            {"pluginConfigs", p.pluginConfigs},
-            {"schedules", p.schedules},
-            {"custom_scene_variants", p.custom_scene_variants},
-            {"scheduling_enabled", p.scheduling_enabled},
-            {"brightness_schedule", p.brightness_schedule},
-            {"operation_mode", p.operation_mode},
-            {"automatic_director_seed", p.automatic_director_seed},
-            {"automatic_director_mode", p.automatic_director_mode},
-            {"automatic_preferences", p.automatic_preferences},
-            {"update_settings", p.update_settings},
-            {"environment", p.environment},
-            {"halo", p.halo},
-            {"turned_off", p.turned_off.load()}
-        };
+        j = json{{"presets", p.presets},
+                 {"curr", p.curr},
+                 {"spotify", p.spotify},
+                 {"pluginConfigs", p.pluginConfigs},
+                 {"schedules", p.schedules},
+                 {"custom_scene_variants", p.custom_scene_variants},
+                 {"scheduling_enabled", p.scheduling_enabled},
+                 {"brightness_schedule", p.brightness_schedule},
+                 {"operation_mode", p.operation_mode},
+                 {"automatic_director_seed", p.automatic_director_seed},
+                 {"automatic_director_mode", p.automatic_director_mode},
+                 {"automatic_preferences", p.automatic_preferences},
+                 {"update_settings", p.update_settings},
+                 {"environment", p.environment},
+                 {"halo", p.halo},
+                 {"turned_off", p.turned_off.load()}};
     }
 
     void from_json(const json &j, UpdateSettings &p) {

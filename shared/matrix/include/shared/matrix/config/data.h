@@ -2,6 +2,9 @@
 
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
+#include <shared/matrix/environment/settings.h>
+#include <shared/matrix/halo/settings.h>
+
 #include <atomic>
 #include <cstdint>
 #include <map>
@@ -12,8 +15,6 @@
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
-#include <shared/matrix/environment/settings.h>
-#include <shared/matrix/halo/settings.h>
 
 using json = nlohmann::json;
 
@@ -144,7 +145,7 @@ namespace ConfigData
         }
 
         // Custom move constructor to handle atomic<bool>
-        Root(Root &&other) noexcept
+        Root(Root&& other) noexcept
             : presets(std::move(other.presets)),
               pluginConfigs(std::move(other.pluginConfigs)),
               spotify(std::move(other.spotify)),

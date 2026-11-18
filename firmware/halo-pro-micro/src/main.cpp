@@ -36,10 +36,10 @@
 #define HALO_FAILSAFE_MS 3000UL
 #endif
 
-static const unsigned long kSilentTickMs = 20;   // free-running ticks while no frames arrive
-static const unsigned long kSilentMs = 150;      // line silent this long: frames have stopped
-static const unsigned long kRefreshMs = 500;     // re-send an unchanged picture now and then
-static const uint8_t kSmoothShift = 2;           // 1/4 of the distance per step (~0.25 s at 15 frames/s)
+static const unsigned long kSilentTickMs = 20;  // free-running ticks while no frames arrive
+static const unsigned long kSilentMs = 150;     // line silent this long: frames have stopped
+static const unsigned long kRefreshMs = 500;    // re-send an unchanged picture now and then
+static const uint8_t kSmoothShift = 2;          // 1/4 of the distance per step (~0.25 s at 15 frames/s)
 
 static Adafruit_NeoPixel strip(HALO_DEFAULT_LEDS, HALO_LED_PIN, NEO_GRB + NEO_KHZ800);
 static Halo::Parser parser;
@@ -65,17 +65,15 @@ static int32_t chase(int32_t cur, int32_t target)
 
 // Stay below the supply budget whatever the frame says: scale everything down
 // when the estimated current (60 mA per LED at full white) would exceed it.
-static void apply_current_cap(uint8_t *rgb, uint16_t n)
+static void apply_current_cap(uint8_t* rgb, uint16_t n)
 {
     uint32_t sum = 0;
-    for (uint16_t i = 0; i < 3u * n; ++i)
-        sum += rgb[i];
+    for (uint16_t i = 0; i < 3u * n; ++i) sum += rgb[i];
     // mA = sum / (3 * 255) * 60
     const uint32_t ma = sum * HALO_MA_PER_LED / (3UL * 255UL);
     if (ma <= HALO_MAX_MILLIAMPS)
         return;
-    for (uint16_t i = 0; i < 3u * n; ++i)
-        rgb[i] = (uint8_t)(((uint32_t)rgb[i] * HALO_MAX_MILLIAMPS) / ma);
+    for (uint16_t i = 0; i < 3u * n; ++i) rgb[i] = (uint8_t)(((uint32_t)rgb[i] * HALO_MAX_MILLIAMPS) / ma);
 }
 
 static void render(bool force)
@@ -112,8 +110,7 @@ static void render(bool force)
     if (!force && memcmp(out, prev, 3u * n) == 0 && now - last_show_ms < kRefreshMs)
         return;
     memcpy(prev, out, 3u * n);
-    for (uint8_t i = 0; i < n; ++i)
-        strip.setPixelColor(i, out[3 * i], out[3 * i + 1], out[3 * i + 2]);
+    for (uint8_t i = 0; i < n; ++i) strip.setPixelColor(i, out[3 * i], out[3 * i + 1], out[3 * i + 2]);
     strip.show();
     last_show_ms = millis();
 }
@@ -121,8 +118,7 @@ static void render(bool force)
 // One smoothing step toward the targets, then output.
 static void step()
 {
-    for (uint8_t i = 0; i < 3 * zones; ++i)
-        cur_rgb[i] = chase(cur_rgb[i], tgt_rgb[i]);
+    for (uint8_t i = 0; i < 3 * zones; ++i) cur_rgb[i] = chase(cur_rgb[i], tgt_rgb[i]);
     cur_bright = chase(cur_bright, tgt_bright);
     render(false);
 }
@@ -142,17 +138,15 @@ void loop()
     while (Serial1.available() > 0) {
         last_byte_ms = millis();
         if (parser.feed((uint8_t)Serial1.read())) {
-            const Halo::Frame &f = parser.frame;
+            const Halo::Frame& f = parser.frame;
             const uint8_t n = f.led_count > HALO_MAX_LEDS ? HALO_MAX_LEDS : f.led_count;
             if (!have_frame) {
                 // first frame after power-up: start from black, not mid-colour
-                for (uint8_t i = 0; i < 3 * f.zones; ++i)
-                    cur_rgb[i] = (int32_t)f.rgb[i] << 8;
+                for (uint8_t i = 0; i < 3 * f.zones; ++i) cur_rgb[i] = (int32_t)f.rgb[i] << 8;
             }
             zones = f.zones;
             led_count = n;
-            for (uint8_t i = 0; i < 3 * f.zones; ++i)
-                tgt_rgb[i] = (int32_t)f.rgb[i] << 8;
+            for (uint8_t i = 0; i < 3 * f.zones; ++i) tgt_rgb[i] = (int32_t)f.rgb[i] << 8;
             tgt_bright = (int32_t)f.brightness << 8;
             have_frame = true;
             last_valid_ms = millis();

@@ -5,10 +5,9 @@
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
-
-#include <nlohmann/json.hpp>
 
 #include "shared/matrix/halo/protocol.h"
 #include "shared/matrix/halo/sampler.h"
@@ -30,22 +29,22 @@ namespace Halo {
 /// once per send tick.
 class Service {
 public:
-    static Service &instance();
+    static Service& instance();
 
     /// Opens the UART before the matrix drops root: the library's privilege
     /// drop (setresgid/setresuid, no initgroups) leaves the process without
     /// the `dialout` group, so /dev/serial0 could not be opened afterwards.
     /// Reads "halo.device" from the config file, defaulting to /dev/serial0.
     /// Silently does nothing when the device does not exist.
-    void preopen(const std::string &config_file);
+    void preopen(const std::string& config_file);
 
-    void start(const Settings &settings);
+    void start(const Settings& settings);
     void stop();
-    void update_settings(const Settings &settings);
+    void update_settings(const Settings& settings);
     [[nodiscard]] nlohmann::json status();
 
     /// Render-thread hook, called with the composed canvas about to be shown.
-    void offer(rgb_matrix::FrameCanvas *canvas, int width, int height)
+    void offer(rgb_matrix::FrameCanvas* canvas, int width, int height)
     {
         if (sample_wanted_.load(std::memory_order_relaxed))
             sample(canvas, width, height);
@@ -53,17 +52,17 @@ public:
     /// The display is blanked (matrix turned off): match mode follows to black.
     void submit_black();
     /// Latest edge colours; also what offer() stores. Public for tests.
-    void submit_zones(const Zones &zones);
+    void submit_zones(const Zones& zones);
 
 private:
     Service() = default;
-    void sample(rgb_matrix::FrameCanvas *canvas, int width, int height);
+    void sample(rgb_matrix::FrameCanvas* canvas, int width, int height);
     void run();
     void tick();
-    void ensure_open(const std::string &device);
+    void ensure_open(const std::string& device);
     void close_fd();
-    void send(std::uint8_t brightness, int led_count, const Zones &zones);
-    void note_error(const std::string &message, bool warn);
+    void send(std::uint8_t brightness, int led_count, const Zones& zones);
+    void note_error(const std::string& message, bool warn);
 
     std::mutex mutex_;
     std::condition_variable cv_;

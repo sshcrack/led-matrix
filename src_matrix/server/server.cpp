@@ -1,24 +1,26 @@
 #include "server.h"
-#include <restinio/all.hpp>
-#include "shared/matrix/utils/shared.h"
+
+#include <spdlog/spdlog.h>
+
 #include <nlohmann/json.hpp>
+#include <restinio/all.hpp>
 
 #include "canvas_status.h"
-#include "shared/matrix/plugin_loader/loader.h"
-#include "other_routes.h"
-#include "desktop_ws.h"
-#include "live_frame_ws.h"
-#include "preset_management.h"
-#include "scene_management.h"
-#include "scene_lab.h"
-#include "post_processing_routes.h"
-#include "update_routes.h"
-#include "shared/matrix/server/server_utils.h"
 #include "custom_assets_management.h"
-#include <spdlog/spdlog.h>
-#include "schedule_management.h"
+#include "desktop_ws.h"
 #include "environment_routes.h"
 #include "halo_routes.h"
+#include "live_frame_ws.h"
+#include "other_routes.h"
+#include "post_processing_routes.h"
+#include "preset_management.h"
+#include "scene_lab.h"
+#include "scene_management.h"
+#include "schedule_management.h"
+#include "shared/matrix/plugin_loader/loader.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
+#include "update_routes.h"
 
 using namespace std;
 using namespace restinio;

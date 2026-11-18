@@ -5,28 +5,28 @@
 #include <CLI/CLI.hpp>
 #endif
 
-#include "spdlog/spdlog.h"
-#include "spdlog/cfg/env.h"
+#include "halo/halo_service.h"
+#include "matrix-factory.h"
+#include "matrix_control/SceneLabRuntime.h"
+#include "matrix_control/hardware.h"
+#include "server/live_frame_ws.h"
+#include "server/request_guard.h"
+#include "server/server.h"
 #include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/diagnostics.h"
+#include "shared/matrix/environment/service.h"
 #include "shared/matrix/interrupt.h"
-#include "shared/matrix/utils/consts.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/lifecycle.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
 #include "shared/matrix/update/UpdateManager.h"
-#include "shared/matrix/config/MainConfig.h"
-#include "matrix-factory.h"
-#include "server/server.h"
-#include "shared/matrix/environment/service.h"
-#include "halo/halo_service.h"
-#include "server/live_frame_ws.h"
-#include "server/request_guard.h"
+#include "shared/matrix/utils/consts.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/cfg/env.h"
+#include "spdlog/spdlog.h"
 #include "udp_server.h"
-#include "matrix_control/hardware.h"
-#include "matrix_control/SceneLabRuntime.h"
-#include "shared/matrix/diagnostics.h"
 
 #ifdef __linux__
 #include <pthread.h>
@@ -449,8 +449,12 @@ void Daemon::shutdown(bool persist_config) noexcept
     try { Environment::Service::instance().stop(); }
     catch (...) { error("Stopping environment service failed"); }
 
-    try { Halo::Service::instance().stop(); }
-    catch (...) { error("Stopping halo service failed"); }
+    try {
+        Halo::Service::instance().stop();
+    }
+    catch (...) {
+        error("Stopping halo service failed");
+    }
 
     auto *pl = PluginManager::instance();
     try {

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <string>
-
 #include <nlohmann/json.hpp>
+#include <string>
 
 namespace Halo {
 
@@ -35,14 +34,14 @@ struct Settings {
 /// True for serial device names the daemon may open: /dev/serial<N>, /dev/ttyAMA<N>,
 /// /dev/ttyS<N>, /dev/ttyUSB<N>, /dev/ttyACM<N> and /dev/pts/<N> (tests). The device is
 /// opened as root before the privilege drop, so it must never name an arbitrary file.
-bool is_allowed_device(const std::string &path);
+bool is_allowed_device(const std::string& path);
 
 /// Parses "#rrggbb" (case-insensitive). False when malformed.
-bool parse_color(const std::string &text, unsigned char &r, unsigned char &g, unsigned char &b);
+bool parse_color(const std::string& text, unsigned char& r, unsigned char& g, unsigned char& b);
 
-void to_json(nlohmann::json &j, const Settings &s);
+void to_json(nlohmann::json& j, const Settings& s);
 /// Lenient: missing or wrongly typed keys keep their defaults; the result is
 /// sanitized.
-void from_json(const nlohmann::json &j, Settings &s);
+void from_json(const nlohmann::json& j, Settings& s);
 
 }  // namespace Halo
