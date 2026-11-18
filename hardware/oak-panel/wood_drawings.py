@@ -76,8 +76,8 @@ def socket_holes():
     off = v07.DC_SOCKET_Z - v07.Z_REAR
     return [
         (a, off, ep.DC_SOCKET["body_cutout"], "Buchse Ø14 durch"),
-        (a - s, off, v07.DC_SOCKET_PILOT[0], "Vorbohrung Ø2, 10 tief"),
-        (a + s, off, v07.DC_SOCKET_PILOT[0], "Vorbohrung Ø2, 10 tief"),
+        (a - s, off, v07.DC_SOCKET_BOSS_POCKET[0], "Ø6, 7 tief; darin Ø2 bis 17 tief"),
+        (a + s, off, v07.DC_SOCKET_BOSS_POCKET[0], "Ø6, 7 tief; darin Ø2 bis 17 tief"),
     ]
 
 
@@ -292,8 +292,10 @@ shop = [
      "Verbinder 16, Schienen 6,\nPuffer 2, innere Pfosten 2", "Marinetech (Nr. 23678981), 0,13 EUR/Stück:\n30 Stück = 3,90 EUR"),
     ("Gewindeschraube M3 x 20", "Linsenkopf, verzinkt", "16",
      "Träger an Panel-Gewinde", "Profi Depot VZ (Nr. 10807533), 100er = 3,95 EUR"),
-    ("Zylinderschraube M2,5 x 10", "DIN 912, Innensechskant", "6",
-     "Pi (4), DC-Buchse (2)", "Suki (Nr. 21307474), 10er = 3,90 EUR"),
+    ("Zylinderschraube M2,5 x 10", "DIN 912, Innensechskant", "4",
+     "Pi", "Suki (Nr. 21307474), 10er = 3,90 EUR"),
+    ("Holzschraube Halbrundkopf", "3 x 16 mm (z. B. Spax)", "2 (+2)",
+     "DC-Buchse", "Linsen-/Halbrundkopf, kein Senkkopf"),
     "Farbe und Kleinkram",
     ("Lack schwarz matt", "Sprühdose oder Acryllack, kleine Dose", "1",
      "Leisten (außen, Enden)", "HDF nur, wenn sie nicht schwarz ist"),
@@ -302,7 +304,7 @@ shop = [
     ("Schleifpapier", "Körnung 120", "1-2 Bogen", "Schnittkanten", ""),
     ("Kreppband", "", "1", "Schablonen, Tiefenmarke", "falls nicht vorhanden"),
     "Bohrer und Werkzeug (falls nicht vorhanden)",
-    ("Holzspiralbohrer\nmit Zentrierspitze", "2, 3, 5, 8 und 10 mm\n(3,5 mm Metallbohrer geht für HDF)", "je 1",
+    ("Holzspiralbohrer\nmit Zentrierspitze", "2, 3, 5, 6, 8 und 10 mm\n+ 3,5 mm Metallbohrer (HDF, Buchse)", "je 1",
      "alle Löcher; 10 mm für\ndie Ansenkungen", "Satz ist oft günstiger als einzelne Bohrer"),
     ("Forstnerbohrer oder\nFlachfräsbohrer", "14 mm", "1", "DC-Buchse", "Forstner reißt weniger aus"),
     ("Kegelsenker", "für 3-mm-Senkkopf (Ø6-10)", "1", "HDF-Ecken", "optional; die Halo-Stücke sind angesenkt"),
@@ -330,8 +332,8 @@ rows = [
     f"   a) zuerst 10-mm-Ansenkung, {fmt(CB_DEPTH)} mm tief, auf der Rückseite (die Zentrierspitze findet die Markierung;",
     "      Kreppband als Tiefenmarke auf den Bohrer).",
     "   b) dann 5 mm ganz durch die 30 mm. Bohrer senkrecht halten; mit Bohrständer ist das einfach.",
-    "Nur untere Leiste, AUSSENFLÄCHE (Schablone S. 6): 14-mm-Loch durch für die DC-Buchse, dann zwei",
-    "2-mm-Vorbohrungen, 10 mm tief, für die Buchsenschrauben. Die Kabel vor dem Einbau an die Buchse löten.",
+    "Nur untere Leiste, AUSSENFLÄCHE (Schablone S. 6): erst zwei 6-mm-Taschen, 7 mm tief, darin 2 mm bis 17 mm tief,",
+    "dann 14 mm ganz durch für die DC-Buchse. Vorher an einem Reststück testen. Kabel vor dem Einbau anlöten.",
     "",
     "## 3  Probe-Aufbau vor dem Lackieren",
     "Die vier Panels mit Trägern und Verbindern mit den LEDs nach unten hinlegen. Leisten auf die Außenränder der",
@@ -391,11 +393,11 @@ if socket_holes():
     for a, e, d, w in socket_holes():
         txt(18, y, f"{fmt(a)} mm vom Netzteil-Ende ({fmt(FULL - a)} vom Pi-Ende), {fmt(e)} mm von beiden Längskanten: {w}", 9)
         y -= 4.5
-    txt(18, y, "Flansch außen, M2,5 x 10 durch den Flansch in die Vorbohrungen. Kabel vor dem Einbau anlöten.", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Erst die zwei Ø6-Taschen (für die Kunststoffdome hinter dem Flansch), dann Ø14 ganz durch. Flansch außen aufs Holz.", 8, colour=(0.3, 0.3, 0.3))
     y -= 4.5
-    txt(18, y, "Buchsenkörper ca. 20 mm hinter dem Flansch, Holz 19 mm: wenn die Lötösen im Loch stecken, von innen auf", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Die zwei Löcher der Buchse (Flansch + Dom, 2,3 mm) auf 3,5 mm aufbohren; Halbrundkopf-Holzschrauben 3 x 16 hinein.", 8, colour=(0.3, 0.3, 0.3))
     y -= 4
-    txt(18, y, "20 mm aufbohren, 8 mm tief.", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Kabel vorher anlöten. Zuerst an einem Reststück der Leiste ausprobieren (Datenblatt Kycon KPJX-PM-4S).", 8, colour=(0.3, 0.3, 0.3))
 
 
 # ============================================================================================

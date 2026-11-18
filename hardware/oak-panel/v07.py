@@ -111,7 +111,13 @@ CONTROLLER_QUADRANT = (1, -1)
 DC_SOCKET_X = 18.0  # global, in the bottom strip's outer face (toward the Pi side)
 DC_SOCKET_Z = Z_REAR + STRIP_D / 2  # 46: centred in the strip's 30 mm face
 DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter, length incl. solder cups (approx.)
-DC_SOCKET_PILOT = (2.0, 10.0)  # M2.5 x 10 from outside through the flange into the pine
+# Kycon drawing (datasheet KPJX-PM-4S, 2026-11-18): flange 25.2 x 14.2, holes 2.3 on 19.0; the two
+# plastic screw bosses and the body reach 6.05 behind the flange, the solder cups 9.9. Mounted from
+# outside on the wood: body in the 14 mm hole, bosses in two pockets, and the flange and boss holes
+# opened to 3.5 so two 3 x 16 pan-head wood screws go through them into the pine.
+DC_SOCKET_BOSS_POCKET = (6.0, 7.0)  # diameter, depth from the outer face
+DC_SOCKET_SCREW = (3.0, 16.0)  # pan-head wood screw
+DC_SOCKET_PILOT = (2.0, 17.0)  # diameter, depth from the outer face
 PI_STANDOFF_V07 = (6.0, 7.0)  # OD, height: M2.5 x 10 through the 1.6 mm board -> 8.4 mm thread
 PI_CENTRE_V07 = (-32.0, -36.0)  # moved in from the edge: the stack must stay out of the halo band
 
@@ -256,12 +262,14 @@ def build_strips():
 
 
 def _add_dc_socket(strip):
-    """Kycon KPJX-PM-4S on the bottom strip's outer face: 14 mm through, M2.5 x 10 from outside."""
+    """Kycon KPJX-PM-4S on the bottom strip's outer face: 14 mm through, boss pockets, screw pilots."""
     x, z = DC_SOCKET_X, DC_SOCKET_Z
     strip = strip.cut(cyl_y(x, z, ep.DC_SOCKET["body_cutout"], -STRIP_OUT, -STRIP_IN))
     s = ep.DC_SOCKET["screw_spacing"] / 2
+    bd, bdepth = DC_SOCKET_BOSS_POCKET
     d, depth = DC_SOCKET_PILOT
     for dx in (-s, s):
+        strip = strip.cut(cyl_y(x + dx, z, bd, -STRIP_OUT, -STRIP_OUT + bdepth))
         strip = strip.cut(cyl_y(x + dx, z, d, -STRIP_OUT, -STRIP_OUT + depth))
     return strip
 

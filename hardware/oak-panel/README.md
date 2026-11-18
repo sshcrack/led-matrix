@@ -62,7 +62,7 @@ Source: `v07.py`, built and checked by `make-v07.py`, which writes to `exports/v
 - **Pine strips 19 × 30 mm:** 2 × 390 mm (top, bottom) and 2 × 352 mm (sides, between them). They stand 30 mm deep on the carriers' outer bands, with their outer faces 3 mm outside the panel block.
   - 22 M3 × 40 with DIN 9021 washers go through 5 mm holes into the carriers' outer pilots (16) and into the plate posts under the strips (6).
   - Each hole has a 10 mm × 3 mm counterbore so the HDF lies flat.
-  - The DC socket sits in the bottom strip's outer face: 14 mm through, two 2 mm pilots for M2.5 × 10.
+  - The DC socket sits in the bottom strip's outer face, flange outside: 14 mm through for the body, two 6 mm × 7 mm pockets for the plastic screw bosses behind the flange (Kycon drawing: 6.05 mm deep, holes 2.3 mm on 19 mm). The socket's two holes are opened to 3.5 mm for 3 × 16 pan-head wood screws into 2 mm pilots.
   - With 19 mm strips, the power modules keep at least 2.5 mm to the strips.
 - **HDF back, 3 mm, 390 × 390 mm.** It is fixed by the halo pieces' screws and four corner screws. It has holes for the rails, the bumpers and the halo cable, plus 38 × 10 mm vents.
 
