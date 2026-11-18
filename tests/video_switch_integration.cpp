@@ -1,14 +1,17 @@
 // Exercise the real desktop plugin/decoder through its wire commands. External
 // tools provide identifiable frames and a decoder that stalls before frame one.
-#include "plugins/Video/desktop/VideoDesktop.h"
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <thread>
-#include <sys/stat.h>
-#include <unistd.h>
+
+#include "plugins/Video/desktop/VideoDesktop.h"
 
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -113,6 +116,35 @@ cp "$VIDEO_TEST_ROOT/$color.rgb" "$last"
                 std::this_thread::sleep_for(10ms);
             }
             if (!matching) { std::cerr << "FAIL: wrong pixels after URL change to " << url << '\n'; result = 1; }
+        }
+        // The matrix announces its size on the WebSocket thread while the UDP
+        // loop builds packets and the UI thread polls the plugin every frame.
+        {
+            std::atomic<bool> running{true};
+            std::atomic<int> packets{0};
+            std::thread udp([&] {
+                while (running) {
+                    packets += static_cast<int>(plugin.compute_next_packets("video").size());
+                    std::this_thread::sleep_for(1ms);
+                }
+            });
+            std::thread ui([&] {
+                while (running) {
+                    plugin.pre_new_frame();
+                    std::this_thread::sleep_for(1ms);
+                }
+            });
+            for (int i = 0; i < 200; ++i) {
+                plugin.on_websocket_message("size:128x128");
+                std::this_thread::sleep_for(1ms);
+            }
+            running = false;
+            udp.join();
+            ui.join();
+            if (packets.load() == 0) {
+                std::cerr << "FAIL: no packets while the size was announced\n";
+                result = 1;
+            }
         }
         plugin.on_websocket_message("stream:stop");
         if (plugin.compute_next_packet("video")) {

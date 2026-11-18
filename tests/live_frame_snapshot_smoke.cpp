@@ -85,6 +85,14 @@ int main()
         return 6;
     }
 
+    // The diagnostics counters expose exactly the demand and capture work done:
+    // four requests (two coalesced, one raced) and three published captures.
+    const auto stats = store.stats();
+    if (stats.requests != 4 || stats.captures != 3 || stats.served_generation != raced_generation) {
+        std::cerr << "live-frame stats do not match the demand/capture history\n";
+        return 7;
+    }
+
     std::cout << "live-frame capture is demand-driven, coalesced, and generation-safe\n";
     return 0;
 }

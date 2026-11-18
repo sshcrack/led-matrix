@@ -26,11 +26,12 @@
 #include <unistd.h>
 #endif
 
+#include <shared/common/utils/utils.h>
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
-#include <spdlog/spdlog.h>
-
 
 #ifndef _WIN32
 namespace
@@ -312,6 +313,7 @@ namespace AudioRecorder
             ::dup2(pipeFds[1], STDOUT_FILENO);
             ::close(pipeFds[0]);
             ::close(pipeFds[1]);
+            close_inherited_descriptors();
             ::execlp("parec", "parec", deviceArg.c_str(), "--client-name=led-matrix-desktop", "--stream-name=Desktop audio loopback",
                      "--property=node.dont-reconnect=true", "--property=node.dont-fallback=true", "--property=node.dont-move=true",
                      "--format=float32le", "--rate=44100", "--channels=2", "--latency-msec=10", "--process-time-msec=5", "--raw",

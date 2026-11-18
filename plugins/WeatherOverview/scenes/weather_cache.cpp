@@ -1,10 +1,12 @@
+#include <shared/matrix/utils/utils.h>
+#include <spdlog/spdlog.h>
+
 #include "WeatherScene.h"
 #include "matrix/Constants.h"
+#include "matrix/WeatherPreviewFixture.h"
 #include "picosha2.h"
 #include "shared/matrix/utils/canvas_image.h"
 #include "shared/matrix/utils/image_fetch.h"
-#include <shared/matrix/utils/utils.h>
-#include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;
 
@@ -21,11 +23,22 @@ static void pre_process_image(Magick::Image *img)
 
 bool Scenes::WeatherScene::reloadImages()
 {
-    const auto weather_dir_path = fs::path(weather_dir);
+    // Previews use synthetic icons in their own directory: no downloads, and
+    // nothing leaks into the real icon cache.
+    const auto preview_icons = WeatherPreviewFixture::icon_dir();
+    const auto weather_dir_path = preview_icons ? *preview_icons : fs::path(weather_dir);
     if (!exists(weather_dir_path))
     {
-        fs::create_directory(weather_dir);
+        fs::create_directory(weather_dir_path);
     }
+    const auto fetch_icon = [&](const std::string& url, const fs::path& path) -> std::expected<void, std::string> {
+        if (preview_icons) {
+            if (!WeatherPreviewFixture::write_icon(path, url))
+                return std::unexpected("Could not write the preview icon");
+            return {};
+        }
+        return utils::download_image(url, path);
+    };
 
     std::string hash;
     picosha2::hash256_hex_string(current_data.icon_url, hash);
@@ -33,7 +46,7 @@ bool Scenes::WeatherScene::reloadImages()
     fs::path file_path = weather_dir_path / ("weather_icon_" + hash + ".png");
     if (!fs::exists(file_path) && !current_data.icon_url.empty()) {
         try_remove(file_path);
-        auto res = utils::download_image(current_data.icon_url, file_path);
+        auto res = fetch_icon(current_data.icon_url, file_path);
         if (!res)
         {
             spdlog::warn("Could not download main image {}", res.error());
@@ -75,7 +88,7 @@ bool Scenes::WeatherScene::reloadImages()
             if (!fs::exists(forecast_file))
             {
                 try_remove(forecast_file);
-                auto dl_res = utils::download_image(forecast_day.icon_url, forecast_file);
+                auto dl_res = fetch_icon(forecast_day.icon_url, forecast_file);
                 if (!dl_res)
                 {
                     spdlog::warn("Could not download forecast image {}", dl_res.error());

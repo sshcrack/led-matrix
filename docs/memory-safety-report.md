@@ -3,7 +3,8 @@
 The original `safety/sanitizers` audit is retained below as historical evidence.
 Its test counts and verification limits describe that audit, not the current
 revision. Tooling and CI status were checked against the tree on 2026-11-10; the
-audit's limits were re-verified on 2026-11-13 (see "Gap re-verification").
+audit's limits were re-verified on 2026-11-13 (see "Gap re-verification"); the
+desktop threading audit of 2026-11-14 follows it.
 
 ## Using the tooling
 
@@ -137,10 +138,185 @@ LED_MATRIX_NETWORK_TESTS=1 ctest --test-dir emulator_asan_build -L network --out
 # LED_MATRIX_NETWORK_TESTS=no-download skips the .deb download
 ```
 
+## Daemon/worker recovery soak
+
+`tests/recovery_soak.py` (issue #143) replaces the uncommitted live-emulator driver
+of the original audit. It starts the headless emulator daemon and the desktop scene
+worker as separate processes, keeps a demand-driven `/live_frame` viewer pulling
+frames, and breaks the daemon-to-worker link in turn. The daemon and the worker
+cannot share a build directory (`ENABLE_EMULATOR` and `ENABLE_DESKTOP` are mutually
+exclusive), so it takes the emulator install tree and the desktop build directory
+and exits 77 (ctest: skipped) when either is missing. It needs no Python packages.
+
+| Scenario | Fault | Must hold |
+|---|---|---|
+| `idle_viewers` | connected viewers, bursts of `next`, 4 concurrent viewers | `/diagnostics` `live_frame.captures`/`requests` stay flat while the matrix keeps presenting; one `next` is exactly one capture; concurrent requests coalesce |
+| `scene_lab_stale` | replaced Scene Lab session | update/heartbeat/stop with the old `session_id` answer 409 |
+| `worker_handoff` | scene changes with the worker attached | each handoff starts a new desktop session with fresh frames |
+| `worker_kill` | SIGKILL the worker 0 to 2.5 s into a handoff, switch while it is gone, restart it | viewer frames never pause beyond the bound, the daemon reports the worker gone, desktop delivery resumes |
+| `worker_stall` | SIGSTOP/SIGCONT the worker (delivery interrupted, socket open) | local fallback, then recovery |
+| `desktop_flap` | the desktop's control socket drops (RST/clean) and reconnects, parking the worker | local fallback, then recovery |
+| `hard_cut` | preset cut from a desktop-rendered scene to a single long-lived local target | the worker session of the scene that left is stopped |
+| `stale_frames` | forged UDP frames: unknown/future/pre-restart session, replayed sequence, wrong size, bad chunk counts/indexes, truncated and random datagrams | none reaches the matrix or moves `remote_render.last_sequence` |
+| `viewer_churn` | viewers that vanish with a pending `next`, send junk frames, or drop through a handoff | daemon stays responsive, frames continue |
+| `final_idle` | all viewers and the worker gone | zero capture work again |
+
+Every scenario also requires usable frames (well-formed `LMF1`, 128x128, lit pixels,
+monotonically increasing sequence) within a bound after the fault. Any
+`AddressSanitizer`, `LeakSanitizer`, `ThreadSanitizer`, UBSan `runtime error:` or
+failed `_GLIBCXX_ASSERTIONS` line in a child log, a nonzero daemon shutdown status,
+or a daemon that ignores SIGTERM fails the run. Kill, stall and disconnect scenarios
+also require local render-counter progress after remote frames become stale, before
+any skip or reconnect; repeated captures of the last desktop frame cannot pass recovery.
+
+```bash
+# Daemon from the emulator build, worker from the desktop build (both through presets).
+cmake --preset emulator -DSKIP_WEB_BUILD=ON -DLED_MATRIX_SOAK_TESTS=ON
+cmake --build --preset emulator --target install -j4
+cmake --preset desktop-linux -DSKIP_WEB_BUILD=ON
+cmake --build --preset desktop-linux --target led-matrix-scene-worker -j4
+ctest --test-dir emulator_build -L soak-quick --output-on-failure        # recovery_soak
+ctest --test-dir emulator_build -L soak-full  --output-on-failure        # recovery_soak_full
+
+# Or directly (any scenario subset with --only, any bound scaling with --time-scale):
+tests/recovery_soak.py --daemon-install emulator_build/install --worker-build desktop_build \
+    [--profile quick|full] [--only worker_kill --only stale_frames] [--keep]
+
+# Sanitizers: same layout with the matching presets; env.sh supplies *SAN_OPTIONS and
+# suppressions. The ctest registration does this itself and uses --time-scale 3.
+scripts/sanitizers/env.sh tests/recovery_soak.py \
+    --daemon-install emulator_asan_build/install --worker-build desktop_asan_build --time-scale 3
+```
+
+Notes for running it:
+
+- `LED_MATRIX_SOAK_TESTS` (default OFF) registers the tests; the worker build is found
+  next to the emulator build dir (`emulator_X_build` -> `desktop_X_build`). Rebuild the
+  `install` target first: the daemon runs from the install tree.
+- The daemon's data directory is compiled in (`<install>/data`), so the soak locks and
+  backs up `config.json` there, writes a controlled powered-on, unscheduled config,
+  adds `soak-*` presets, and restores the original file byte-for-byte afterwards
+  (also after an earlier run that was killed). Do not run it against an install that
+  you are using at the same time. It uses a random free port and its own temporary
+  directory for the worker, so other emulators on 8080 are unaffected.
+- Children run in their own process groups, die with the driver (`PR_SET_PDEATHSIG`),
+  on signals, and at a global deadline (150 s quick / 900 s full, times `--time-scale`).
+  Failures print `/diagnostics` counters and the tail of every child log; the work
+  directory with the full logs is kept.
+- Frame size is the 2x2 chain of 64x64 panels (128x128) used throughout this document.
+
+### Recovery soak results (2026-11-14)
+
+GCC 15.2, x64 Linux, a shared 14-core machine (other builds were running), `-j4`
+builds. Wall-clock time of the whole run including daemon start and shutdown:
+
+| Build | `quick` | `full` | Result |
+|---|---|---|---|
+| plain emulator + desktop-linux | 87-94 s | 212 s | pass |
+| `emulator-asan` + `desktop-linux-asan` (`--time-scale 3`) | 148 s | 340 s | pass, no sanitizer output |
+| `emulator-tsan` + `desktop-linux-tsan` (`--time-scale 3`) | 130 s | not run | pass, no sanitizer output |
+
+Usable viewer frames returned a median of 0.1 s (max 0.5 s) after each of 21 faults
+(`quick`) and 65 faults (`full`) in every build. `quick` is 3 handoffs, 3 worker kills,
+1 stall, 1 desktop flap, 3 hard cuts and 24 churned viewers; `full` is 8/10/4/4/10/120.
+
+What it found: a hard cut (`/skip`, preset change: no transition) from a
+desktop-rendered scene to one the Pi keeps left the previous scene's desktop session
+requested and streaming. `DesktopHandoff::begin_scene` only stopped a session when the
+worker was unavailable. Fixed, with a regression case in `desktop_handoff_smoke`.
+The soak also needed the live-frame counters, so `/diagnostics` now has
+`live_frame.{requests,served_generation,captures}`.
+
+Caveats: `renderer.frames` only counts renders on the Pi; use
+`renderer.presentation_frames` to check that the matrix keeps presenting while a desktop
+scene is shown. `/skip` is a hard cut, so whether it starts a desktop session depends on
+the measured render cost; only natural scene changes always go through the worker.
+
+## Desktop threading and worker lifetimes (2026-11-14, #145)
+
+Targeted audit of the areas the original audit left open: plugin /
+`WebsocketClient` message-thread interactions, SpotifyMV / Video process
+handling (`VideoStreamEngine`, yt-dlp / ffmpeg children), and teardown of the
+scene worker and GL objects. Callback ownership was traced through startup,
+reconnect, replacement, cancellation and shutdown; every finding below was
+reproduced (TSan, or a deterministic check) before it was fixed.
+
+| # | Location | Finding | Reproduction | Status |
+|---|---|---|---|---|
+| 15 | `DesktopPlugin::send_websocket_message` | Loaded `WebsocketClient::instance()` twice and used the raw pointer afterwards. Plugin threads (search threads, engine status callbacks) can send while `main.cpp` does `setInstance(nullptr)` and destroys the client: null dereference or use-after-free at exit. | `desktop_threading_smoke` (plugin threads send while 1500 clients are registered, cleared and destroyed; the old code aborts within a second on a null dereference under UBSan) | Fixed: `WebsocketClient::sendPluginMessage` holds a mutex that `setInstance` also takes, and `~WebsocketClient` unregisters itself |
+| 16 | `VideoStreamEngine::current_url_` | `get_current_url()` (UI thread) copied the string while `start()` (SpotifyMV search thread) assigned it. | `desktop_threading_smoke`, TSan data race | Fixed (`url_mutex_`) |
+| 17 | `VideoStreamEngine::on_status_change` / `on_first_frame_ready` | Public `std::function` members, documented as guarded by `status_cb_mutex_`, but SpotifyMV assigned `nullptr` to them without the lock while the old engine's thread copied them in `notify_status`. | `spotify_mv_flow_integration` (skip while the previous track plays), TSan data race | Fixed: private; `set_on_status_change`, `set_on_first_frame_ready`, `clear_callbacks` lock |
+| 18 | `SpotifyMVDesktop::last_tools_report_`, `crossfade_duration_ms_` | Plain `time_point` written by the WebSocket thread and read by the UI thread (`pre_new_frame`); crossfade length edited by the UI slider while the UDP thread read it. | `spotify_mv_flow_integration` now runs `pre_new_frame()` on a UI-thread analog; TSan data race | Fixed (atomics) |
+| 19 | `VideoDesktop::matrix_width/height` | `size:` handled on the WebSocket thread, read by the UDP thread building packets. | `video_switch_integration` (200 `size:` messages against `compute_next_packets`), TSan data race | Fixed (atomics) |
+| 20 | child processes (`run_command`, `run_command_capture`, `play_decoded_pipe`, RenderOffload worker, AudioVisualizer `parec`) | Children inherited every descriptor of the desktop: ixwebsocket and UDP sockets (not close-on-exec), the decoder pipe of a concurrently started child. A long-lived child (the scene worker, `parec`) keeps a closed connection open, and an ffmpeg pipe never reaches EOF while another child still holds its write end. | `desktop_threading_smoke` (`/proc/$$/fd` of the child, also through the engine's fast-start decoder) | Fixed: `close_inherited_descriptors()` (`close_range`, loop fallback) between `fork` and `exec` |
+| 21 | `ShadertoyDesktop::runtime` | `ShaderToy::Runtime` deletes GL textures, framebuffers and programs in its destructor, which ran in `destroy_plugins()` after `HelloImGui::Run` had destroyed the window and context. | Not reproducible on Mesa (calls without a context are no-ops there) | Fixed by inspection: the runtime is released in `before_exit()`, while HelloImGui's context is current |
+
+Also changed: the RenderOffload fork child no longer allocates (`std::to_string`)
+between `fork` and `exec`.
+
+### Paths exercised
+
+- `desktop-linux-tsan` and `desktop-linux-asan` (ASan + UBSan, UB aborts) with
+  `source scripts/sanitizers/env.sh`; ctest of `desktop_threading_smoke`,
+  `video_startup_smoke`, `video_switch_integration`, `video_buffering_integration`,
+  `video_stream_stop_smoke`, `spotify_mv_flow_integration`,
+  `spotify_mv_stop_latency_smoke`, `websocket_plugin_dispatch_smoke`,
+  `ytdlp_policy_smoke`, `desktop_stream_state_smoke`, `frame_cadence_smoke`,
+  `desktop_relevance_smoke`, `scene_worker_singleton_smoke` and the three
+  `scene_worker_*_smoke` tests. No new suppressions; none of the findings were
+  third-party frames.
+- Before the fixes, TSan reported data races in `desktop_threading_smoke`
+  (#16), `video_switch_integration` (#19) and `spotify_mv_flow_integration`
+  (#17, #18); after them all of these pass clean.
+- yt-dlp and ffmpeg are fake scripts on `PATH` (as in the existing integration
+  tests): process spawn, cancellation, reaping and descriptor inheritance are
+  real, downloads and decoding are not.
+
+### Reviewed, no change needed
+
+- `WebsocketClient` start / stop / reconnect: callbacks capture a `weak_ptr`;
+  the UI thread always calls `stop()` (joins ixwebsocket's thread) before the
+  last reference is dropped, so the destructor never runs on the network
+  thread. Plugin messages run on their own thread, which `~WebsocketClient`
+  joins before members are destroyed; `main.cpp` destroys the client before
+  `destroy_plugins()`.
+- `VideoStreamEngine::stop()` / `play_decoded_pipe`: the processing thread
+  reaps the decoder and clears `ffmpeg_pid_` first, so `stop()` signals a pid
+  only while it is unreaped (one theoretical window remains: `stop()` loads the
+  pid, the thread reaps it and the pid is reused before `kill`; needs pid
+  wrap-around within microseconds).
+- Engine and plugin teardown order (`stop()` clears callbacks before joining;
+  `engine_` is the last member of `VideoDesktop`), SpotifyMV's lock order
+  (`track_id_mutex_` before `engine_mutex_`) and the search thread's
+  cancel-and-join on every replacement path.
+- Scene worker: single-threaded render loop; ixwebsocket callbacks only push to
+  a mutex-guarded queue; singleton lock (`flock`) and crash/PDEATHSIG handling
+  untouched. The worker's shutdown protections (supervisor SIGTERM then SIGKILL
+  in `RenderOffloadDesktop::stop_worker`, `PR_SET_PDEATHSIG`, Windows job
+  object) are unchanged.
+- `UpdateManager` detached workers share state through a `shared_ptr` by design.
+
+### Limits
+
+- Windows was not run. `CreateProcess(..., bInheritHandles = TRUE)` still hands
+  every inheritable handle to the child, so a pipe handle can leak into a
+  concurrently started child there (needs `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`;
+  not changed because it cannot be tested here).
+- GL teardown (#21) was not observable on Mesa / Intel iris; NVIDIA / AMD /
+  Windows drivers were not run. The full `led-matrix-desktop` GUI was not run
+  under a sanitizer, so `HelloImGui::Run` exit order is read from the HelloImGui
+  sources, not executed.
+- TSan cannot see ordering inside uninstrumented libraries (Mesa, vcpkg
+  libraries); the TSan tests are probabilistic, a race that needs a specific
+  interleaving can still pass.
+- `VideoDesktop::start_audio` (ffplay child) is not called anywhere and was
+  not changed.
+
 ## CI and work tracking
 
 CI runs the complete unsanitized emulator suite and selected ASan+UBSan
-regressions on pushes/PRs (`build-matrix.yml`). TSan remains a local preset.
+regressions on pushes/PRs (`build-matrix.yml`). TSan remains a local preset. The recovery
+soak above is not part of CI.
 Follow-up investigations and verification work are tracked in the
 [Led Matrix project](https://github.com/users/sshcrack/projects/7); the findings
 and limits above retain the original audit's evidence.

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "ImagePreviewFixture.h"
 #include "picosha2.h"
 #include "providers/collection.h"
 #include "providers/pages.h"
@@ -24,6 +25,12 @@ PixelJoint::create_image_providers() {
     return providers;
 }
 
+vector<std::unique_ptr<Previews::DataProvider>> PixelJoint::create_preview_data_providers()
+{
+    vector<std::unique_ptr<Previews::DataProvider>> providers;
+    providers.push_back(ImagePreviewFixture::make_provider());
+    return providers;
+}
 
 vector<std::unique_ptr<SceneWrapper>> PixelJoint::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> created;

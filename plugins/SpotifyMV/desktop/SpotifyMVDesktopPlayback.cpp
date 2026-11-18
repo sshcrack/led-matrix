@@ -29,7 +29,7 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
             total_swaps_++;
         }
         current_engine_ = std::move(pending_engine_);
-        current_engine_->on_first_frame_ready = nullptr;
+        current_engine_->set_on_first_frame_ready(nullptr);
 
         // Start the fade in the same critical section as the swap. Starting it
         // later (after stopping the old engine) let compute_next_packet()
@@ -44,8 +44,7 @@ void SpotifyMVDesktop::on_pending_first_frame(std::uint64_t generation, const st
     }
 
     if (old_engine) {
-        old_engine->on_status_change = nullptr;
-        old_engine->on_first_frame_ready = nullptr;
+        old_engine->clear_callbacks();
         old_engine->stop();
     }
 
@@ -78,10 +77,12 @@ SpotifyMVDesktop::compute_next_packet(const std::string sceneName) {
             if (!frame.empty()) {
                 if (fade_elapsed.has_value()) {
                     const auto elapsed_ms = fade_elapsed->count();
-                    if (elapsed_ms >= crossfade_duration_ms_ || crossfade_duration_ms_ <= 0 || old_last_frame_.empty()) {
+                    const int crossfade_ms = crossfade_duration_ms_.load();
+                    if (elapsed_ms >= crossfade_ms || crossfade_ms <= 0 || old_last_frame_.empty()) {
                         end_crossfade();
-                    } else {
-                        float alpha = static_cast<float>(elapsed_ms) / crossfade_duration_ms_;
+                    }
+                    else {
+                        float alpha = static_cast<float>(elapsed_ms) / static_cast<float>(crossfade_ms);
                         size_t blend_pixels = (std::min)(frame.size(), old_last_frame_.size());
                         if (blend_pixels < (std::max)(frame.size(), old_last_frame_.size())) {
                             spdlog::warn("SpotifyMV crossfade: frame size mismatch ({} vs {}), blending {} pixels",
