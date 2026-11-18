@@ -110,9 +110,12 @@ POWER_QUADRANT = (-1, -1)  # near the DC socket (wiring README: modules and fuse
 CONTROLLER_QUADRANT = (1, -1)
 DC_SOCKET_X = 18.0  # global, in the bottom strip's outer face (toward the Pi side)
 DC_SOCKET_Z = Z_REAR + STRIP_D / 2  # 46: centred in the strip's 30 mm face
-DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter, length incl. solder cups (approx.)
+DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter, length incl. cups and wire bends
 # Kycon drawing (datasheet KPJX-PM-4S, 2026-11-18): flange 25.2 x 14.2, holes 2.3 on 19.0; the two
-# plastic screw bosses and the body reach 6.05 behind the flange, the solder cups 9.9. Mounted from
+# plastic screw bosses and the body reach 6.05 behind the flange front. Kycon IGES of the shielded
+# KPJX-PM-4S-S (the owner's part, measured 2026-11-18): flange 25.7 x 14.7, about 1.55 thick (metal +
+# plastic); bosses Ø4.8; body at most Ø12.6; solder cups end 14.0 behind the flange front, so about
+# 12.3 into the strip, inside the 14 mm hole (solder before mounting). Mounted from
 # outside on the wood: body in the 14 mm hole, bosses in two pockets, and the flange and boss holes
 # opened to 3.5 so two 3 x 16 pan-head wood screws go through them into the pine.
 DC_SOCKET_BOSS_POCKET = (6.0, 7.0)  # diameter, depth from the outer face

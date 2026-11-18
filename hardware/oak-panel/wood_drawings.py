@@ -397,7 +397,7 @@ if socket_holes():
     y -= 4.5
     txt(18, y, "Die zwei Löcher der Buchse (Flansch + Dom, 2,3 mm) auf 3,5 mm aufbohren; Halbrundkopf-Holzschrauben 3 x 16 hinein.", 8, colour=(0.3, 0.3, 0.3))
     y -= 4
-    txt(18, y, "Kabel vorher anlöten. Zuerst an einem Reststück der Leiste ausprobieren (Datenblatt Kycon KPJX-PM-4S).", 8, colour=(0.3, 0.3, 0.3))
+    txt(18, y, "Kabel vorher anlöten: die Lötösen enden ca. 12 mm tief im Ø14-Loch. Körper max. Ø12,6, Dome Ø4,8 (Kycon-CAD).", 8, colour=(0.3, 0.3, 0.3))
 
 
 # ============================================================================================

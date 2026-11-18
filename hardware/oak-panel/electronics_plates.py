@@ -102,7 +102,7 @@ DC_SOCKET = {
     "flange": (25.2, 14.2),  # Kycon KPJX-PM-4S drawing
     "screw_spacing": 19.0,
     "screw_hole": 2.8,  # M2.5 clearance through the wall; screws thread into the bosses' 2.3 mm holes (Kycon drawing)
-    "body_cutout": 14.0,  # ASSUMED from the drawing's side view (~13.5 mm body); test with the coupon
+    "body_cutout": 14.0,  # body at most 12.6 mm (Kycon IGES of KPJX-PM-4S-S, 2026-11-18); bosses need their own pockets
 }
 
 
