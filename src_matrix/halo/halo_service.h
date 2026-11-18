@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <span>
 #include <string>
 #include <thread>
 
@@ -41,6 +42,8 @@ public:
     void start(const Settings& settings);
     void stop();
     void update_settings(const Settings& settings);
+    /// Temporarily show the first LED and direction. Zero ends the test.
+    void test_alignment(int led_count);
     [[nodiscard]] nlohmann::json status();
 
     /// Render-thread hook, called with the composed canvas about to be shown.
@@ -61,12 +64,14 @@ private:
     void tick();
     void ensure_open(const std::string& device);
     void close_fd();
-    void send(std::uint8_t brightness, int led_count, const Zones& zones);
+    void send(std::uint8_t brightness, int led_count, std::span<const Rgb> zones);
     void note_error(const std::string& message, bool warn);
 
     std::mutex mutex_;
     std::condition_variable cv_;
     Settings settings_;
+    int test_led_count_ = 0;
+    std::chrono::steady_clock::time_point test_until_{};
     bool stop_ = true;
     std::thread thread_;
 

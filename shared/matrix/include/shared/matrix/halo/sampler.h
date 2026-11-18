@@ -8,6 +8,11 @@
 namespace Halo {
 
 constexpr int kEdgeZones = 8;
+constexpr int kDefaultSampleColumns = 8;
+constexpr int kMaxSampleColumns = 16;
+constexpr int kOuterSampleDepth = 2;
+constexpr int kDefaultSampleDepth = 6;
+constexpr int kMaxSampleDepth = 24;
 
 struct Rgb {
     std::uint8_t r = 0, g = 0, b = 0;
@@ -19,16 +24,16 @@ using Zones = std::array<Rgb, kEdgeZones>;
 /// colour of each of the 8 zones, clockwise from the top-left, seen from the
 /// front: top-left, top-right, right-top, right-bottom, bottom-right,
 /// bottom-left, left-bottom, left-top. Per zone it reads `along` x 2 pixels
-/// (two rows 2 and 6 px inside the edge, middle 75 % of the half edge), 16 by default, i.e. 128 reads per
+/// (two rows inside the edge, middle 75 % of the half edge), 16 by default, i.e. 128 reads per
 /// call. `get(x, y)` returns an Rgb.
 template <class GetPixel>
-Zones sample_zones(int width, int height, GetPixel&& get, int along = 8)
+Zones sample_zones(int width, int height, GetPixel&& get, int along = kDefaultSampleColumns, int inner_depth = kDefaultSampleDepth)
 {
     Zones zones{};
     if (width < 4 || height < 4 || along < 1)
         return zones;
-    const int depth_a = std::min(2, width / 2 - 1), depth_b = std::min(6, width / 2 - 1);
-    const int depth_h_a = std::min(2, height / 2 - 1), depth_h_b = std::min(6, height / 2 - 1);
+    const int depth_a = std::min(kOuterSampleDepth, width / 2 - 1), depth_b = std::min(inner_depth, width / 2 - 1);
+    const int depth_h_a = std::min(kOuterSampleDepth, height / 2 - 1), depth_h_b = std::min(inner_depth, height / 2 - 1);
 
     for (int zone = 0; zone < kEdgeZones; ++zone) {
         const int edge = zone / 2;  // 0 top, 1 right, 2 bottom, 3 left
@@ -83,6 +88,19 @@ inline Zones arrange_zones(const Zones& in, int rotation, bool reverse)
     for (int i = 0; i < kEdgeZones; ++i) {
         const int src = reverse ? (kEdgeZones - 1 - i) : i;
         out[i] = in[(src + rot) % kEdgeZones];
+    }
+    return out;
+}
+
+/// Start halfway into the arranged loop while preserving every original anchor.
+inline std::array<Rgb, 2 * kEdgeZones> start_between_zones(const Zones& zones)
+{
+    std::array<Rgb, 2 * kEdgeZones> out{};
+    const auto average = [](std::uint8_t a, std::uint8_t b) { return static_cast<std::uint8_t>((a + b + 1) / 2); };
+    for (int i = 0; i < kEdgeZones; ++i) {
+        const auto a = zones[i], b = zones[(i + 1) % kEdgeZones];
+        out[2 * i] = {average(a.r, b.r), average(a.g, b.g), average(a.b, b.b)};
+        out[2 * i + 1] = b;
     }
     return out;
 }

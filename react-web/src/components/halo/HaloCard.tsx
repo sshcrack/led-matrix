@@ -6,6 +6,9 @@ import { useApiUrl } from '~/components/apiUrl/apiUrlContext'
 import { Card, CardContent } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
+import { Button } from '~/components/ui/button'
+import { Sheet } from '~/core/ui/Sheet'
+import { HaloSetup, type HaloSetupSettings } from './HaloSetup'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 
@@ -19,6 +22,9 @@ export interface HaloSettings {
   device: string
   rotation: number
   reverse: boolean
+  start_between_zones?: boolean
+  sample_columns?: number
+  sample_depth?: number
 }
 
 export interface HaloStatus {
@@ -26,21 +32,29 @@ export interface HaloStatus {
   error: string | null
   device_open: boolean
   frames_sent: number
+  test_active?: boolean
 }
 
-type Patch = Partial<Pick<HaloSettings, 'enabled' | 'mode' | 'brightness' | 'color'>>
+type Patch = Partial<Pick<HaloSettings, 'enabled' | 'mode' | 'brightness' | 'color'> & HaloSetupSettings>
 
 function HaloForm({ status, onSaved }: { status: HaloStatus, onSaved: (next: HaloStatus) => void }) {
   const apiUrl = useApiUrl()
   const s = status.settings
   const [saving, setSaving] = useState(false)
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testPending, setTestPending] = useState(false)
+  const testTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Sliders and the colour picker fire continuously: show the local value and send it once it settles.
   const [draftBrightness, setDraftBrightness] = useState<number | null>(null)
   const [draftColor, setDraftColor] = useState<string | null>(null)
   const brightness = draftBrightness ?? s.brightness
   const color = draftColor ?? s.color
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => () => {
+    clearTimeout(timer.current)
+    clearTimeout(testTimer.current)
+  }, [])
 
   const save = async (patch: Patch) => {
     if (!apiUrl) return
@@ -55,11 +69,38 @@ function HaloForm({ status, onSaved }: { status: HaloStatus, onSaved: (next: Hal
       onSaved((await res.json()) as HaloStatus)
       setDraftBrightness(null)
       setDraftColor(null)
+      return true
     } catch {
       toast.error('Failed to save halo settings')
+      return false
     } finally {
       setSaving(false)
     }
+  }
+  const testAlignment = async (ledCount: number) => {
+    if (!apiUrl) return
+    setTestPending(true)
+    try {
+      const res = await fetch(`${apiUrl}/halo/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ led_count: ledCount }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const result = (await res.json()) as HaloStatus
+      setTesting(Boolean(result.test_active))
+      clearTimeout(testTimer.current)
+      if (result.test_active) testTimer.current = setTimeout(() => setTesting(false), 20_000)
+    } catch {
+      toast.error(ledCount ? 'Could not start the alignment test' : 'Could not stop the test. It will end automatically.')
+    } finally {
+      setTestPending(false)
+    }
+  }
+  const setSetup = (open: boolean) => {
+    if (testPending) return
+    if (!open && testing) void testAlignment(0)
+    setSetupOpen(open)
   }
   const later = (patch: Patch) => {
     clearTimeout(timer.current)
@@ -110,6 +151,14 @@ function HaloForm({ status, onSaved }: { status: HaloStatus, onSaved: (next: Hal
           </div>
         )}
       </div>
+      <Button type="button" variant="outline" className="min-h-10" disabled={saving}
+        onClick={() => setSetupOpen(true)}>Set up halo strip</Button>
+      <Sheet open={setupOpen} onOpenChange={setSetup} title="Set up halo strip"
+        description="Set the strip layout and how the halo samples the display.">
+        {setupOpen && <HaloSetup settings={s} saving={saving || testPending} testing={testing}
+          onTest={status.test_active !== undefined ? testAlignment : undefined}
+          onSave={async layout => { if (await save(layout)) setSetup(false) }} />}
+      </Sheet>
     </CardContent>
   )
 }

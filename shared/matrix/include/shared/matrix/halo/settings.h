@@ -3,6 +3,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+#include "shared/matrix/halo/sampler.h"
+
 namespace Halo {
 
 /// Persisted in config.json under "halo".
@@ -24,6 +26,11 @@ struct Settings {
     /// runs. Zone 0 is the top-left half of the top edge, seen from the front.
     int rotation = 0;
     bool reverse = false;
+    /// Start halfway between the first two arranged zones.
+    bool start_between_zones = false;
+    /// Samples per row in each edge zone, and inner row depth in display pixels.
+    int sample_columns = kDefaultSampleColumns;
+    int sample_depth = kDefaultSampleDepth;
 
     /// Clamps numbers and replaces unknown mode/colour with the defaults.
     void sanitize();

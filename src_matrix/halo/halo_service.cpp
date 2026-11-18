@@ -16,6 +16,7 @@ namespace Halo {
 namespace {
 constexpr auto kTick = std::chrono::milliseconds(66);  // ~15 frames/s
 constexpr auto kIdle = std::chrono::milliseconds(1000);
+constexpr auto kAlignmentTime = std::chrono::seconds(20);
 constexpr auto kReopenDelay = std::chrono::seconds(10);
 // "off" frames after the halo is switched off, so the firmware fades out at
 // once instead of waiting for its failsafe timeout.
@@ -88,6 +89,7 @@ void Service::start(const Settings& settings)
     if (thread_.joinable())
         return;
     settings_ = settings;
+    test_until_ = {};
     stop_ = false;
     next_open_try_ = {};
     off_frames_left_ = 0;
@@ -126,12 +128,23 @@ void Service::update_settings(const Settings& settings)
     cv_.notify_all();
 }
 
+void Service::test_alignment(int led_count)
+{
+    {
+        std::lock_guard lock(mutex_);
+        test_led_count_ = led_count;
+        test_until_ = led_count > 0 ? std::chrono::steady_clock::now() + kAlignmentTime : std::chrono::steady_clock::time_point{};
+    }
+    cv_.notify_all();
+}
+
 nlohmann::json Service::status()
 {
     nlohmann::json j;
     {
         std::lock_guard lock(mutex_);
         j["settings"] = settings_;
+        j["test_active"] = std::chrono::steady_clock::now() < test_until_;
     }
     {
         std::lock_guard lock(status_mutex_);
@@ -158,11 +171,20 @@ void Service::sample(rgb_matrix::FrameCanvas* canvas, int width, int height)
 {
     if (!canvas)
         return;
-    const auto zones = sample_zones(width, height, [canvas](int x, int y) {
-        Rgb c;
-        canvas->GetPixel(x, y, &c.r, &c.g, &c.b);
-        return c;
-    });
+    int columns, depth;
+    {
+        std::lock_guard lock(mutex_);
+        columns = settings_.sample_columns;
+        depth = settings_.sample_depth;
+    }
+    const auto zones = sample_zones(
+        width, height,
+        [canvas](int x, int y) {
+            Rgb c;
+            canvas->GetPixel(x, y, &c.r, &c.g, &c.b);
+            return c;
+        },
+        columns, depth);
     submit_zones(zones);
 }
 
@@ -219,18 +241,18 @@ void Service::ensure_open(const std::string& device)
     spdlog::info("Halo: sending to {}", device);
 }
 
-void Service::send(std::uint8_t brightness, int led_count, const Zones& zones)
+void Service::send(std::uint8_t brightness, int led_count, std::span<const Rgb> zones)
 {
     if (fd_ < 0)
         return;
-    std::uint8_t rgb[3 * kEdgeZones];
-    for (int i = 0; i < kEdgeZones; ++i) {
+    std::uint8_t rgb[3 * kMaxZones];
+    for (size_t i = 0; i < zones.size(); ++i) {
         rgb[3 * i] = zones[i].r;
         rgb[3 * i + 1] = zones[i].g;
         rgb[3 * i + 2] = zones[i].b;
     }
     std::uint8_t buf[kMaxFrameBytes];
-    const size_t n = encode(buf, brightness, static_cast<std::uint8_t>(led_count), kEdgeZones, rgb);
+    const size_t n = encode(buf, brightness, static_cast<std::uint8_t>(led_count), static_cast<std::uint8_t>(zones.size()), rgb);
     if (n == 0)
         return;
     const ssize_t written = ::write(fd_, buf, n);
@@ -247,9 +269,25 @@ void Service::send(std::uint8_t brightness, int led_count, const Zones& zones)
 void Service::tick()
 {
     Settings s;
+    int test_led_count;
     {
         std::lock_guard lock(mutex_);
         s = settings_;
+        test_led_count = std::chrono::steady_clock::now() < test_until_ ? test_led_count_ : 0;
+    }
+    if (test_led_count > 0) {
+        sample_wanted_ = false;
+        off_frames_left_ = kOffFrames;
+        std::array<Rgb, kMaxZones> markers{};
+        markers.front() = {255, 255, 255};
+        if (test_led_count > 1) {
+            // Put the green anchor near LED 1 even for short strips.
+            const auto next = std::max(1, (kMaxZones + test_led_count / 2) / test_led_count);
+            markers[next] = {0, 255, 0};
+        }
+        ensure_open(s.device);
+        send(40, test_led_count, markers);
+        return;
     }
     if (!s.enabled) {
         sample_wanted_ = false;
@@ -282,14 +320,17 @@ void Service::tick()
         zones = smoother_.step(arrange_zones(latest, s.rotation, s.reverse));
         sample_wanted_.store(true, std::memory_order_relaxed);  // ask for a fresh sample before the next tick
     }
-    send(brightness, s.led_count, zones);
+    if (s.mode == "match" && s.start_between_zones)
+        send(brightness, s.led_count, start_between_zones(zones));
+    else
+        send(brightness, s.led_count, zones);
 }
 
 void Service::run()
 {
     std::unique_lock lock(mutex_);
     while (!stop_) {
-        const bool busy = settings_.enabled || off_frames_left_ > 0;
+        const bool busy = settings_.enabled || off_frames_left_ > 0 || std::chrono::steady_clock::now() < test_until_;
         lock.unlock();
         tick();
         lock.lock();

@@ -56,6 +56,8 @@ void Settings::sanitize()
     brightness = std::clamp(brightness, 0, 100);
     led_count = std::clamp(led_count, 1, static_cast<int>(kMaxLeds));
     rotation = std::clamp(rotation, 0, 7);
+    sample_columns = std::clamp(sample_columns, 1, kMaxSampleColumns);
+    sample_depth = std::clamp(sample_depth, kOuterSampleDepth + 1, kMaxSampleDepth);
     if (!is_allowed_device(device))
         device = defaults.device;
 }
@@ -73,6 +75,10 @@ std::string Settings::validate() const
         return "led_count must be 1..200";
     if (rotation < 0 || rotation > 7)
         return "rotation must be 0..7";
+    if (sample_columns < 1 || sample_columns > kMaxSampleColumns)
+        return "sample_columns must be 1..16";
+    if (sample_depth <= kOuterSampleDepth || sample_depth > kMaxSampleDepth)
+        return "sample_depth must be 3..24";
     if (!is_allowed_device(device))
         return "device must be a serial port such as /dev/serial0, /dev/ttyAMA0, /dev/ttyS0 or /dev/ttyUSB0";
     return {};
@@ -81,8 +87,17 @@ std::string Settings::validate() const
 void to_json(nlohmann::json& j, const Settings& s)
 {
     j = nlohmann::json{
-        {"enabled", s.enabled},     {"mode", s.mode},     {"brightness", s.brightness}, {"color", s.color},
-        {"led_count", s.led_count}, {"device", s.device}, {"rotation", s.rotation},     {"reverse", s.reverse},
+        {"enabled", s.enabled},
+        {"mode", s.mode},
+        {"brightness", s.brightness},
+        {"color", s.color},
+        {"led_count", s.led_count},
+        {"device", s.device},
+        {"rotation", s.rotation},
+        {"reverse", s.reverse},
+        {"start_between_zones", s.start_between_zones},
+        {"sample_columns", s.sample_columns},
+        {"sample_depth", s.sample_depth},
     };
 }
 
@@ -108,6 +123,9 @@ void from_json(const nlohmann::json& j, Settings& s)
     get("device", s.device);
     get("rotation", s.rotation);
     get("reverse", s.reverse);
+    get("start_between_zones", s.start_between_zones);
+    get("sample_columns", s.sample_columns);
+    get("sample_depth", s.sample_depth);
     s.sanitize();
 }
 

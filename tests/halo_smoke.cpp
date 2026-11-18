@@ -154,6 +154,15 @@ void sampling()
         return pixel(x, y);
     });
     check(reads == kEdgeZones * 16, "sparse: 16 reads per zone (" + std::to_string(reads) + ")");
+    int custom_reads = 0;
+    const auto deeper = sample_zones(
+        w, h,
+        [&](int, int y) -> Rgb {
+            ++custom_reads;
+            return y == 14 ? Rgb{200, 0, 0} : Rgb{};
+        },
+        12, 14);
+    check(custom_reads == kEdgeZones * 24 && deeper[0] == Rgb{100, 0, 0}, "custom density and depth change the actual samples");
     check(zones[0] == Rgb{255, 0, 0} && zones[1] == Rgb{255, 0, 0}, "top zones red");
     check(zones[2] == Rgb{0, 255, 0} && zones[3] == Rgb{0, 255, 0}, "right zones green");
     check(zones[4] == Rgb{0, 0, 255} && zones[5] == Rgb{0, 0, 255}, "bottom zones blue");
@@ -197,6 +206,12 @@ void settings()
     Settings d;
     check(!d.enabled && d.mode == "match" && d.led_count == 40 && d.device == "/dev/serial0", "defaults");
     check(d.validate().empty(), "defaults validate");
+    check(d.sample_columns == 8 && d.sample_depth == 6, "old-config sampling defaults");
+    Settings custom_sampling = nlohmann::json{{"sample_columns", 16}, {"sample_depth", 24}};
+    const auto sampling_json = nlohmann::json(custom_sampling);
+    check(sampling_json["sample_columns"] == 16 && sampling_json["sample_depth"] == 24, "sampling settings round trip");
+    custom_sampling.sample_columns = 17;
+    check(!custom_sampling.validate().empty(), "sampling density is bounded");
 
     Settings s = nlohmann::json{{"enabled", true}, {"mode", "fixed"},          {"brightness", 30}, {"color", "#00FF7f"},
                                 {"led_count", 33}, {"device", "/dev/ttyAMA0"}, {"rotation", 3},    {"reverse", true}};
@@ -307,6 +322,17 @@ void service_over_pty()
         collect(70);
     }
     check(last.brightness == 255 && last.rgb[0] > 190 && last.rgb[1] == 0, "match mode follows submitted colours");
+    // Start at the left edge midpoint, between the lower and upper left zones.
+    s.rotation = 6;
+    s.start_between_zones = true;
+    s.led_count = 63;
+    svc.update_settings(s);
+    red[6] = {64, 0, 0};
+    red[7] = {192, 0, 0};
+    svc.submit_zones(red);
+    collect(1600);
+    check(last.led_count == 63 && last.zones == kMaxZones && last.rgb[0] == 128 && last.rgb[3] == 192,
+          "midpoint start preserves the original next anchor and configurable LED count");
     svc.submit_black();
     collect(1500);
     check(last.rgb[0] < 5, "match mode follows the display going dark");
@@ -319,6 +345,17 @@ void service_over_pty()
     const int before = frames;
     collect(2500);
     check(frames - before <= 20, "no frames are sent after the off burst");
+
+    // An alignment test can run while the halo is disabled, using the draft count.
+    svc.test_alignment(45);
+    collect(1200);
+    check(svc.status()["test_active"] == true && last.led_count == 45 && last.brightness == 40 && last.zones == kMaxZones &&
+              last.rgb[0] == 255 && last.rgb[1] == 255 && last.rgb[2] == 255 && last.rgb[3] == 0 && last.rgb[4] == 255 && last.rgb[5] == 0,
+          "alignment test marks LED zero and direction");
+    svc.test_alignment(0);
+    collect(250);
+    check(svc.status()["test_active"] == false && last.led_count == 63 && last.brightness == 0,
+          "stopping the test restores the disabled halo and saved LED count");
 
     check(svc.status()["frames_sent"].get<int>() > 0 && svc.status()["device_open"] == true, "status");
     svc.stop();

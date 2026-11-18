@@ -7,7 +7,13 @@ the daemon talks to the Pro Micro over a one-way UART from the Pi (GPIO14 TX). W
 ## Settings
 
 `config.json` → `halo`, `GET/POST /halo` (partial update, same cross-origin and token rules as
-every route), and a card on the web UI Integrations page.
+every route), and a card on the web UI Integrations page. Open **Set up halo strip** on that card to
+enter the LED count, pick where the first LED sits and set the wiring direction as seen from the front.
+The setup accepts 1–120 LEDs with the stock Pro Micro firmware. **Left edge, middle** places LED 0
+at the blend between the lower and upper left edge zones. **Display sampling** adjusts the sample
+density and inner row depth on the next sampled frame. **Test alignment** marks LED 0 in white
+and the following LEDs in green using the draft LED count. The test lasts 20 seconds, or until
+stopped or the setup is closed. The regular halo settings resume at the end.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -18,9 +24,15 @@ every route), and a card on the web UI Integrations page.
 | `led_count` | `40` | Strip length, 1–200, sent in every frame (no reflash needed) |
 | `device` | `/dev/serial0` | UART device, 115200 8N1. Only `/dev/serial<N>`, `/dev/ttyAMA<N>`, `/dev/ttyS<N>`, `/dev/ttyUSB<N>`, `/dev/ttyACM<N>` (and `/dev/pts/<N>` for tests) are accepted, and the opened file must be a tty: the daemon opens it as root before the privilege drop |
 | `rotation`, `reverse` | `0`, `false` | Rotate the 8 edge zones / reverse their direction to fit where the strip starts and which way it runs. Zone 0 is the left half of the top edge, going clockwise seen from the front |
+| `start_between_zones` | `false` | Place LED 0 halfway between the first two arranged edge colors. The daemon sends 16 colors in this case, including the original anchors |
+| `sample_columns` | `8` | 1–16 samples per row (2–32 pixels per zone) |
+| `sample_depth` | `6` | Inner row depth in display pixels (3–24). The outer row is 2 pixels in. Depths are clamped on small displays |
 
 `GET /halo` returns `{settings, error, device_open, frames_sent}`. The daemon works without any
 UART: on the emulator and dev machines it logs `no UART at …` once and keeps the settings.
+`POST /halo/test` accepts `{"led_count": 1..120}` to run the temporary alignment pattern or
+`{"led_count": 0}` to stop it. `GET /halo` includes `test_active`. The test never writes
+the configuration.
 
 ## How `match` works (and what it costs)
 
@@ -43,7 +55,7 @@ One-way, Pi → Pro Micro, 115200 8N1, ≤ 20 frames/s (the daemon sends ~15/s, 
 0xA5 0x5A  LEN  VERSION  BRIGHTNESS  LED_COUNT  ZONES  (R G B)×ZONES  CRC8
 ```
 
-- `LEN` = 4 + 3·ZONES (7…52); `VERSION` = 1; `LED_COUNT` 1…200; `ZONES` 1…16 (the daemon sends 8).
+- `LEN` = 4 + 3·ZONES (7…52); `VERSION` = 1; `LED_COUNT` 1…200; `ZONES` 1…16 (the daemon sends 8 or 16).
 - `CRC8` = CRC-8, polynomial 0x07, init 0, no reflection, over `LEN` and the payload
   (check value for `"123456789"` is `0xF4`).
 - The ZONES colours are key colours spaced evenly around the LED loop; the firmware interpolates
