@@ -118,8 +118,11 @@ Strip placement: rear frame edges facing the wall (the eight segments reserved i
   wiring short. Give the module housings air; they sit on the power plate inside a carrier, not in foam.
 - Middle: Pi + Electrodragon, LM2596, Pro Micro + level converter.
 - Anchor every cable within ~5 cm of each connection. The socket (Kycon KPJX-PM-4S) mounts from
-  outside: flange in a pocket on the bottom wall, two M2.5 × 12 screws from inside into its flange.
-  It has PCB-style pins: solder the 1.5 mm² pigtail to them and insulate with heat-shrink.
+  outside in the bottom pine strip of the v0.7 wood rear. Its four solder cups sit close together in a 2 × 2
+  square, with +V on one diagonal (1, 4) and −V on the other (2, 3). Solder one 0.75 mm² wire per cup (about
+  3.4 A each at the brick's full 6.7 A), with heat-shrink over every cup. Join 1 + 4 and 2 + 3 away from the
+  socket (fuse holder or WAGO), never across the cups. The two side tabs are the shield: leave them free.
+  Solder before mounting and feed the wires through the strip's hole.
 - Mounting parts: `hardware/oak-panel/electronics_plates.py`: half plates that lie inside the carriers on
   the connector-free half of a panel (power plate, controller plate), plus the socket test coupon.
 
