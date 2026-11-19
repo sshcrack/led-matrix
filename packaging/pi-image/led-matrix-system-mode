@@ -78,14 +78,14 @@ readonly)
     set_boot_ro on
     with_boot_rw set_cmdline on
     echo "Read-only from the next boot."
-    ((reboot)) && systemctl reboot
+    if ((reboot)); then systemctl reboot; fi
     ;;
 writable)
     set_boot_ro off
     with_boot_rw set_cmdline off
     echo "Writable from the next boot. Make your changes (e.g. sudo apt full-upgrade),"
     echo "then run: sudo led-matrix-system-mode readonly"
-    ((reboot)) && systemctl reboot
+    if ((reboot)); then systemctl reboot; fi
     ;;
 *)
     echo "usage: led-matrix-system-mode status|readonly|writable [--no-reboot]" >&2
