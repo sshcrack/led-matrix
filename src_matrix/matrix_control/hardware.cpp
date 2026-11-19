@@ -7,6 +7,7 @@
 #include "LiveFrameSnapshot.h"
 #include "MatrixPresenter.h"
 #include "canvas.h"
+#include "halo/halo_service.h"
 #include "led-matrix.h"
 #include "server/desktop_ws.h"
 #include "shared/common/timesource/TimeSource.h"
@@ -98,6 +99,7 @@ void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_pr
         }
 
         matrix->Clear();
+        Halo::Service::instance().submit_black();
         LiveFrame::SnapshotStore::instance().publish_solid_if_requested(
             matrix->width(), matrix->height(), 0, 0, 0);
         SleepMillis(1000);

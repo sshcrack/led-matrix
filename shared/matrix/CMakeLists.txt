@@ -48,6 +48,7 @@ add_library(${PROJECT_NAME} SHARED
         src/shared/matrix/environment/look.cpp
         src/shared/matrix/environment/paint.cpp
         src/shared/matrix/environment/service.cpp
+        src/shared/matrix/halo/settings.cpp
 )
 
 # Matrix scenes are built as separate DLLs by the desktop scene worker. Unlike

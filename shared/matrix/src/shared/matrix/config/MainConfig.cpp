@@ -488,6 +488,23 @@ spdlog::info("Setting preset {}", id);
         mark_dirty();
     }
 
+    Halo::Settings MainConfig::get_halo()
+    {
+        std::shared_lock lock(this->data_mutex);
+        return this->data.halo;
+    }
+
+    void MainConfig::set_halo(Halo::Settings settings)
+    {
+        settings.sanitize();
+        {
+            std::unique_lock lock(this->data_mutex);
+            this->data.halo = std::move(settings);
+        }
+        std::unique_lock lock(this->update_mutex);
+        this->dirty = true;
+    }
+
     bool MainConfig::is_scheduling_enabled() {
         std::shared_lock lock(this->data_mutex);
         return this->data.scheduling_enabled;

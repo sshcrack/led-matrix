@@ -1,5 +1,6 @@
 import SpotifyConnection from '~/components/spotify/SpotifyConnection'
 import EnvironmentCard from '~/components/environment/EnvironmentCard'
+import HaloCard from '~/components/halo/HaloCard'
 
 export default function Integrations() {
   return <div className="space-y-4">
@@ -9,5 +10,6 @@ export default function Integrations() {
     </div>
     <SpotifyConnection settings />
     <EnvironmentCard />
+    <HaloCard />
   </div>
 }

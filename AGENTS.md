@@ -255,6 +255,10 @@ Outdoor scenes follow the real world through `shared/matrix/environment/`:
 - Director: tag scenes with `fits:<id>` for the moments they suit (`dawn|day|dusk|night`, `clear|cloudy|fog|rain|snow|storm`, `spring|summer|autumn|winter`; ids from `Environment::fit_id`) and holiday-only scenes with `occasion:<id>` (skipped in Automatic Mode unless that occasion is active). `AutomaticDirector::Mode` (`mixed|environment|party|chill`, `config.json` → `automatic_director_mode`, `GET/POST /automatic_director/mode`, picker under the home now-playing bar) weighs the fit, scenery and energy differently and changes dwell; `tests/automatic_director_smoke.cpp` covers it.
 - `preview_gen --scenes name/variant` renders a variant (output `name--variant`); use it to check every look (`night`, `rain`, `snow`, `winter`, …) of a scene you change. `tests/environment_smoke.cpp` covers the astronomy, parsing and layering.
 
+## Rear halo light
+
+Optional WS2812B strip behind the display, driven by a Pro Micro (`firmware/halo-pro-micro/`, PlatformIO) that the daemon feeds over UART (`/dev/serial0`, GPIO14 TX). `src_matrix/halo/halo_service.*` is the sender thread (15 Hz, also the firmware heartbeat); `match` mode samples 128 edge pixels from the composed canvas via `Halo::Service::offer()` in `FrameSink::present()` next to `capture_if_requested()` (one relaxed atomic load when idle; never `/live_frame`). Settings: `config.json` → `halo`, `GET/POST /halo`. The frame parser in `shared/matrix/include/shared/matrix/halo/protocol.h` is shared by daemon and firmware; `tests/halo_smoke.cpp` covers it. The UART is opened before the privilege drop (the library drops without `dialout`), so `halo.device` is limited to serial-port names and must be a tty (`Halo::is_allowed_device`). Details and Pi setup: `docs/HALO.md`.
+
 ## API security
 
 `src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):

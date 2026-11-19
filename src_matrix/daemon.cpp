@@ -5,27 +5,28 @@
 #include <CLI/CLI.hpp>
 #endif
 
-#include "spdlog/spdlog.h"
-#include "spdlog/cfg/env.h"
+#include "halo/halo_service.h"
+#include "matrix-factory.h"
+#include "matrix_control/SceneLabRuntime.h"
+#include "matrix_control/hardware.h"
+#include "server/live_frame_ws.h"
+#include "server/request_guard.h"
+#include "server/server.h"
 #include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/config/MainConfig.h"
+#include "shared/matrix/diagnostics.h"
+#include "shared/matrix/environment/service.h"
 #include "shared/matrix/interrupt.h"
-#include "shared/matrix/utils/consts.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/lifecycle.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/post_processor.h"
 #include "shared/matrix/transition_manager.h"
 #include "shared/matrix/update/UpdateManager.h"
-#include "shared/matrix/config/MainConfig.h"
-#include "matrix-factory.h"
-#include "server/server.h"
-#include "shared/matrix/environment/service.h"
-#include "server/live_frame_ws.h"
-#include "server/request_guard.h"
+#include "shared/matrix/utils/consts.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/cfg/env.h"
+#include "spdlog/spdlog.h"
 #include "udp_server.h"
-#include "matrix_control/hardware.h"
-#include "matrix_control/SceneLabRuntime.h"
-#include "shared/matrix/diagnostics.h"
 
 #ifdef __linux__
 #include <pthread.h>
@@ -35,6 +36,10 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+
+#ifndef LED_MATRIX_DATA_DIR
+#define LED_MATRIX_DATA_DIR "."
+#endif
 
 using namespace spdlog;
 using namespace std;
@@ -226,6 +231,10 @@ Daemon::Daemon(int argc, char* argv[])
         throw runtime_error("Failed to parse matrix options");
     }
 
+    // The halo UART must be opened while we are still root: CreateMatrix drops
+    // privileges and the process then lacks the dialout group.
+    Halo::Service::instance().preopen(string(LED_MATRIX_DATA_DIR) + "/config.json");
+
     matrix_.reset(rgb_matrix::MatrixFactory::CreateMatrix(options));
     if (!matrix_)
         throw runtime_error("Failed to create matrix");
@@ -257,9 +266,6 @@ Daemon::Daemon(int argc, char* argv[])
     // 8. Configuration
     // -------------------------------------------------------------------
     debug("Loading config...");
-#ifndef LED_MATRIX_DATA_DIR
-#define LED_MATRIX_DATA_DIR "."
-#endif
     config_ = make_unique<Config::MainConfig>(
         string(LED_MATRIX_DATA_DIR) + "/config.json");
     // config_ is destroyed with the Daemon, after shutdown() unloads plugins.
@@ -284,6 +290,11 @@ Daemon::Daemon(int argc, char* argv[])
             cfg->set_environment_detected(*s.detected_latitude, *s.detected_longitude, s.detected_label);
         cfg->save();
     });
+
+    // -------------------------------------------------------------------
+    // 9c. Rear halo light (Pro Micro over UART); idle unless enabled
+    // -------------------------------------------------------------------
+    Halo::Service::instance().start(config_->get_halo());
 
     // -------------------------------------------------------------------
     // 10. Plugin before-server init + register effects / transitions
@@ -437,6 +448,13 @@ void Daemon::shutdown(bool persist_config) noexcept
     // Its persist callback writes the config; stop it while config_ lives.
     try { Environment::Service::instance().stop(); }
     catch (...) { error("Stopping environment service failed"); }
+
+    try {
+        Halo::Service::instance().stop();
+    }
+    catch (...) {
+        error("Stopping halo service failed");
+    }
 
     auto *pl = PluginManager::instance();
     try {

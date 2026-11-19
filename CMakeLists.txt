@@ -210,6 +210,7 @@ else()
         src_matrix/matrix_control/TransitionEngine.cpp
         src_matrix/matrix_control/DesktopHandoff.cpp
         src_matrix/matrix_control/LiveFrameSnapshot.cpp
+        src_matrix/halo/halo_service.cpp
         src_matrix/server/canvas_status.cpp
         src_matrix/server/custom_assets_management.cpp
         src_matrix/server/desktop_ws.cpp
@@ -221,6 +222,7 @@ else()
         src_matrix/server/scene_lab.cpp
         src_matrix/server/schedule_management.cpp
         src_matrix/server/environment_routes.cpp
+        src_matrix/server/halo_routes.cpp
         src_matrix/server/server.cpp
         src_matrix/server/update_routes.cpp
         src_matrix/udp_server.cpp
@@ -946,6 +948,16 @@ if(ENABLE_EMULATOR)
     add_test(NAME playback_control_smoke COMMAND $<TARGET_FILE:playback_control_smoke>)
     set_tests_properties(playback_control_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
+    add_executable(halo_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/halo_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
+    )
+    target_compile_features(halo_smoke PRIVATE cxx_std_23)
+    target_include_directories(halo_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(halo_smoke PRIVATE SharedToolsCommon SharedToolsMatrix rpi_rgb_led_matrix::rpi-rgb-led-matrix nlohmann_json::nlohmann_json fmt::fmt spdlog::spdlog PkgConfig::GraphicsMagick)
+    add_test(NAME halo_smoke COMMAND $<TARGET_FILE:halo_smoke>)
+    set_tests_properties(halo_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
     add_executable(update_release_parse_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_release_parse_smoke.cpp
     )
@@ -1166,6 +1178,7 @@ if(ENABLE_EMULATOR)
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
     )
     target_compile_features(runtime_selection_smoke PRIVATE cxx_std_23)
     target_compile_definitions(runtime_selection_smoke PRIVATE ENABLE_EMULATOR)
@@ -1189,6 +1202,7 @@ if(ENABLE_EMULATOR)
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
     )
     target_compile_features(scene_renderer_cadence_smoke PRIVATE cxx_std_23)
     target_compile_definitions(scene_renderer_cadence_smoke PRIVATE ENABLE_EMULATOR)
@@ -1233,6 +1247,7 @@ if(ENABLE_EMULATOR)
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
     )
     target_compile_features(scene_renderer_frame_hold_smoke PRIVATE cxx_std_23)
     target_compile_definitions(scene_renderer_frame_hold_smoke PRIVATE ENABLE_EMULATOR)
@@ -1253,6 +1268,7 @@ if(ENABLE_EMULATOR)
     add_executable(frame_sink_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_sink_smoke.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/FrameSink.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/SceneRenderer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
@@ -1280,6 +1296,7 @@ if(ENABLE_EMULATOR)
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/TransitionEngine.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/DesktopHandoff.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/matrix_control/LiveFrameSnapshot.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/halo/halo_service.cpp
     )
     target_compile_features(transition_frame_hold_smoke PRIVATE cxx_std_23)
     target_compile_definitions(transition_frame_hold_smoke PRIVATE ENABLE_EMULATOR)

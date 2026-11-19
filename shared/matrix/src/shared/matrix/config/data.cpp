@@ -81,23 +81,22 @@ namespace ConfigData {
     }
 
     void to_json(json &j, const Root &p) {
-        j = json{
-            {"presets", p.presets},
-            {"curr", p.curr},
-            {"spotify", p.spotify},
-            {"pluginConfigs", p.pluginConfigs},
-            {"schedules", p.schedules},
-            {"custom_scene_variants", p.custom_scene_variants},
-            {"scheduling_enabled", p.scheduling_enabled},
-            {"brightness_schedule", p.brightness_schedule},
-            {"operation_mode", p.operation_mode},
-            {"automatic_director_seed", p.automatic_director_seed},
-            {"automatic_director_mode", p.automatic_director_mode},
-            {"automatic_preferences", p.automatic_preferences},
-            {"update_settings", p.update_settings},
-            {"environment", p.environment},
-            {"turned_off", p.turned_off.load()}
-        };
+        j = json{{"presets", p.presets},
+                 {"curr", p.curr},
+                 {"spotify", p.spotify},
+                 {"pluginConfigs", p.pluginConfigs},
+                 {"schedules", p.schedules},
+                 {"custom_scene_variants", p.custom_scene_variants},
+                 {"scheduling_enabled", p.scheduling_enabled},
+                 {"brightness_schedule", p.brightness_schedule},
+                 {"operation_mode", p.operation_mode},
+                 {"automatic_director_seed", p.automatic_director_seed},
+                 {"automatic_director_mode", p.automatic_director_mode},
+                 {"automatic_preferences", p.automatic_preferences},
+                 {"update_settings", p.update_settings},
+                 {"environment", p.environment},
+                 {"halo", p.halo},
+                 {"turned_off", p.turned_off.load()}};
     }
 
     void from_json(const json &j, UpdateSettings &p) {
@@ -143,6 +142,7 @@ namespace ConfigData {
         p.environment = j.contains("environment") && j.at("environment").is_object()
             ? j.at("environment").get<Environment::Settings>()
             : Environment::Settings{};
+        p.halo = j.contains("halo") ? j.at("halo").get<Halo::Settings>() : Halo::Settings{};
         // First start with the shared environment: a weather_ambience preset
         // with its own (pre-environment) location becomes the manual location.
         if (!j.contains("environment") && j.contains("presets")) {

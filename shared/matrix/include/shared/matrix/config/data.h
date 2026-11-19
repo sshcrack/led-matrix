@@ -2,6 +2,9 @@
 
 #include <shared/common/utils/utils.h>
 #include <shared/matrix/Scene.h>
+#include <shared/matrix/environment/settings.h>
+#include <shared/matrix/halo/settings.h>
+
 #include <atomic>
 #include <cstdint>
 #include <map>
@@ -12,7 +15,6 @@
 
 #include "image_providers/general.h"
 #include "nlohmann/json.hpp"
-#include <shared/matrix/environment/settings.h>
 
 using json = nlohmann::json;
 
@@ -115,6 +117,7 @@ namespace ConfigData
         std::string curr;
         UpdateSettings update_settings;
         Environment::Settings environment;
+        Halo::Settings halo;
 
         // Custom move assignment operator to handle atomic<bool>
         Root &operator=(Root &&other) noexcept
@@ -136,12 +139,13 @@ namespace ConfigData
                 curr = std::move(other.curr);
                 update_settings = std::move(other.update_settings);
                 environment = std::move(other.environment);
+                halo = std::move(other.halo);
             }
             return *this;
         }
 
         // Custom move constructor to handle atomic<bool>
-        Root(Root &&other) noexcept
+        Root(Root&& other) noexcept
             : presets(std::move(other.presets)),
               pluginConfigs(std::move(other.pluginConfigs)),
               spotify(std::move(other.spotify)),
@@ -156,7 +160,8 @@ namespace ConfigData
               automatic_preferences(std::move(other.automatic_preferences)),
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings)),
-              environment(std::move(other.environment))
+              environment(std::move(other.environment)),
+              halo(std::move(other.halo))
         {
         }
 
