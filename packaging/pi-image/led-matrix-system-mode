@@ -1,0 +1,94 @@
+#!/bin/bash
+# Switch the panel's system between read-only (normal) and writable
+# (maintenance, e.g. `apt upgrade`). Both take effect after a reboot.
+#
+#   led-matrix-system-mode status
+#   led-matrix-system-mode readonly [--no-reboot]
+#   led-matrix-system-mode writable [--no-reboot]
+#
+# Read-only means: / is an overlay whose changes live in RAM
+# (overlayroot=tmpfs:recurse=0, so the data partition stays writable) and
+# /boot/firmware is mounted ro. raspi-config cannot turn this overlay off
+# because of the recurse=0 option, so use this script.
+set -euo pipefail
+
+CMDLINE=/boot/firmware/cmdline.txt
+OPTION="overlayroot=tmpfs:recurse=0"
+
+overlay_now() { [[ $(findmnt -n -o FSTYPE /) == overlay ]]; }
+overlay_next() { grep -q 'overlayroot=' "$CMDLINE"; }
+
+status() {
+    echo "now:         $(overlay_now && echo read-only || echo writable)"
+    echo "next boot:   $(overlay_next && echo read-only || echo writable)"
+    echo "data:        $(findmnt -n -o SOURCE,OPTIONS /srv/led-matrix 2>/dev/null || echo 'NOT MOUNTED')"
+}
+
+# /boot/firmware must be writable to change cmdline.txt; restore ro afterwards.
+with_boot_rw() {
+    local was_ro=0
+    if findmnt -n -o OPTIONS /boot/firmware | grep -qE '(^|,)ro(,|$)'; then
+        was_ro=1
+        mount -o remount,rw /boot/firmware
+    fi
+    "$@"
+    sync
+    if ((was_ro)); then mount -o remount,ro /boot/firmware || true; fi
+}
+
+set_cmdline() {
+    local line
+    line=$(sed -E 's/(^| )overlayroot=[^ ]*//g; s/^ +//' "$CMDLINE")
+    [[ $1 == on ]] && line="$OPTION $line"
+    printf '%s\n' "$line" >"$CMDLINE.new"
+    sync
+    mv "$CMDLINE.new" "$CMDLINE"
+}
+
+edit_fstab() {
+    if [[ $1 == on ]]; then
+        sed -i -E '/[[:space:]]\/boot\/firmware[[:space:]]/ { /defaults,ro/! s/defaults/defaults,ro/ }' "$2"
+    else
+        sed -i -E '/[[:space:]]\/boot\/firmware[[:space:]]/ s/defaults,ro/defaults/' "$2"
+    fi
+}
+
+# /boot/firmware read-only (on) or writable (off) from the next boot. While the
+# overlay is active, the real fstab is on the lower root that overlayroot
+# mounts read-only at /media/root-ro (overlayroot-chroot remounts it the same way).
+set_boot_ro() {
+    if overlay_now; then
+        mount -o remount,rw /media/root-ro
+        edit_fstab "$1" /media/root-ro/etc/fstab
+        sync
+        mount -o remount,ro /media/root-ro
+    else
+        edit_fstab "$1" /etc/fstab
+    fi
+}
+
+[[ $EUID -eq 0 ]] || [[ ${1:-status} == status ]] || { echo "Run as root." >&2; exit 1; }
+
+reboot=1
+[[ ${2:-} == --no-reboot ]] && reboot=0
+
+case ${1:-status} in
+status) status ;;
+readonly)
+    set_boot_ro on
+    with_boot_rw set_cmdline on
+    echo "Read-only from the next boot."
+    ((reboot)) && systemctl reboot
+    ;;
+writable)
+    set_boot_ro off
+    with_boot_rw set_cmdline off
+    echo "Writable from the next boot. Make your changes (e.g. sudo apt full-upgrade),"
+    echo "then run: sudo led-matrix-system-mode readonly"
+    ((reboot)) && systemctl reboot
+    ;;
+*)
+    echo "usage: led-matrix-system-mode status|readonly|writable [--no-reboot]" >&2
+    exit 2
+    ;;
+esac

@@ -150,6 +150,10 @@ main() {
     cp "$original_deb" "$deb_file"
     architecture=$(dpkg --print-architecture)
     [[ $architecture == arm64 ]] || fail "Updates require arm64"
+    # On the read-only panel system (overlayroot, docs/PI_IMAGE.md) dpkg would
+    # install into RAM and the old version would be back after the next reboot.
+    [[ $(findmnt -n -o FSTYPE /) != overlay ]] ||
+        fail "The system is read-only; update in maintenance mode (sudo led-matrix-system-mode writable)"
     candidate_version=$(dpkg-deb -f "$deb_file" Version)
     previous_version=$(dpkg-query -W -f '${Version}' led-matrix)
     [[ $candidate_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ &&

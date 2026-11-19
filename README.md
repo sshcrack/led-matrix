@@ -299,6 +299,10 @@ sudo apt remove led-matrix           # keep your data
 sudo apt purge led-matrix            # also removes /var/lib/led-matrix and the stored answers
 ```
 
+### Power-cut-safe card (optional)
+
+To make unplugging the panel safe, build a card with a read-only system and a separate data partition: `packaging/pi-image/` exports the settings from a running Pi and builds a ready-to-flash image. See [docs/PI_IMAGE.md](docs/PI_IMAGE.md). On such a card, self-updates are off for now and OS updates go through `sudo led-matrix-system-mode writable`.
+
 ---
 
 ## Desktop app
