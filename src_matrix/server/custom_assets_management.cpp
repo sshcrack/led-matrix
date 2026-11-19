@@ -1,11 +1,15 @@
 #include "custom_assets_management.h"
-#include "shared/common/utils/utils.h"
-#include "shared/matrix/server/server_utils.h"
-#include "shared/matrix/server/MimeTypes.h"
+
+#include <spdlog/spdlog.h>
+
 #include <filesystem>
 #include <fstream>
 #include <optional>
-#include <spdlog/spdlog.h>
+
+#include "shared/common/utils/durable_file.h"
+#include "shared/common/utils/utils.h"
+#include "shared/matrix/server/MimeTypes.h"
+#include "shared/matrix/server/server_utils.h"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -227,12 +231,12 @@ std::unique_ptr<Server::router_t> Server::add_custom_assets_routes(std::unique_p
         }
 
         const auto target_path = cfg.directory / filename;
-        std::ofstream out(target_path, std::ios::binary);
-        if (!out.is_open()) {
-            return reply_with_error(req, "Could not open target file", restinio::status_internal_server_error());
+        // Durable: a power cut never leaves a truncated asset behind.
+        std::string write_error;
+        if (!DurableFile::replace(target_path, std::string_view(data.data(), data.size()), &write_error)) {
+            spdlog::error("Could not store custom asset '{}': {}", filename, write_error);
+            return reply_with_error(req, "Could not write target file", restinio::status_internal_server_error());
         }
-        out.write(data.data(), static_cast<std::streamsize>(data.size()));
-        out.close();
 
         spdlog::info("Uploaded custom asset '{}' to '{}'", filename, target_path.string());
         return reply_with_json(req, json{

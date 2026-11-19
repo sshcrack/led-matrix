@@ -1,9 +1,13 @@
+#include <shared/common/utils/durable_file.h>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/utils/shared.h>
 #include <shared/matrix/utils/uuid.h>
 
 #include <algorithm>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
+#include <iterator>
 #include <mutex>
 #include <random>
 #include <system_error>
@@ -40,32 +44,43 @@ namespace Config {
             return true;
         }
 
-        // Write to a sibling temp file and rename it over the target, so a
-        // concurrent reader (another process sharing the file, e.g. parallel
-        // scene workers) sees either the old or the new config, never a
-        // truncated one. The random suffix keeps concurrent writers apart.
-        bool write_file_atomically(const std::string& file_name, const std::string& content)
+        ConfigData::Root parse_config(const std::string& text)
         {
-            const std::filesystem::path target(file_name);
-            std::random_device random;
-            const auto temp = std::filesystem::path(file_name + fmt::format(".tmp-{:08x}{:08x}", random(), random()));
-            {
-                std::ofstream file(temp, std::ios::binary | std::ios::trunc);
-                if (!file || !(file << content) || !file.flush()) {
-                    std::error_code ignored;
-                    std::filesystem::remove(temp, ignored);
-                    return false;
-                }
-            }
-            std::error_code ec;
-            std::filesystem::rename(temp, target, ec);
-            if (ec) {
-                error("Could not replace '{}': {}", file_name, ec.message());
-                std::filesystem::remove(temp, ec);
-                return false;
-            }
-            return true;
+            const json parsed = json::parse(text);
+            if (!parsed.is_object())
+                throw std::runtime_error("not a JSON object");
+            return parsed.get<ConfigData::Root>();
         }
+
+        std::optional<std::string> read_whole_file(const std::filesystem::path& path)
+        {
+            std::ifstream in(path, std::ios::binary);
+            if (!in)
+                return std::nullopt;
+            return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        }
+
+        /// `<file>.corrupt-<UTC time>`, with a counter if that name is taken.
+        std::filesystem::path corrupt_path(const std::string& file_name)
+        {
+            const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            std::tm utc{};
+#ifdef _WIN32
+            gmtime_s(&utc, &now);
+#else
+            gmtime_r(&now, &utc);
+#endif
+            char stamp[32];
+            std::strftime(stamp, sizeof(stamp), "%Y%m%dT%H%M%SZ", &utc);
+            std::filesystem::path path(file_name + ".corrupt-" + stamp);
+            for (int i = 2; std::filesystem::exists(path); ++i) path = file_name + ".corrupt-" + stamp + "-" + std::to_string(i);
+            return path;
+        }
+    }
+
+    std::string MainConfig::last_good_path(const std::string& file_name)
+    {
+        return file_name + ".last-good";
     }
 
     void MainConfig::mark_dirty() {
@@ -244,8 +259,11 @@ spdlog::info("Setting preset {}", id);
             json as_json = this->data;
             string out = as_json.dump(2);
 
-            if (!write_file_atomically(file_name, out)) {
-                error("Could not write to file '{}'", file_name);
+            // Durable and atomic: readers (parallel scene workers, #181) and a
+            // power cut see either the old or the new config, never a partial one.
+            std::string write_error;
+            if (!DurableFile::replace(file_name, out, &write_error)) {
+                error("Could not save config: {}", write_error);
                 return false;
             }
 
@@ -258,7 +276,8 @@ spdlog::info("Setting preset {}", id);
         return true;
     }
 
-    void MainConfig::load_from_file() {
+    void MainConfig::load_from_file(LoadMode mode)
+    {
         const std::filesystem::path config_path(file_name);
         const auto parent = config_path.parent_path();
         if (!parent.empty()) {
@@ -271,21 +290,67 @@ spdlog::info("Setting preset {}", id);
             }
         }
 
+        if (mode == LoadMode::Recover) {
+            if (const int removed = DurableFile::remove_stale_temps(config_path))
+                warn("Removed {} unfinished config write(s) left by an interrupted save", removed);
+        }
+
         if (!std::filesystem::exists(config_path)) {
             // Start from defaults; migrate_presets() then saves them (atomically).
+            // A missing file is a deliberate reset (a rename never loses it), so
+            // this does not restore the last good copy.
             debug("No config at '{}', starting from defaults", file_name);
             this->data = json::object().get<ConfigData::Root>();
             return;
         }
 
-        std::ifstream f(config_path);
-        if (!f) {
+        const auto text = read_whole_file(config_path);
+        if (!text) {
+            // Unreadable (permissions), not damaged: never replace it.
             throw std::runtime_error(fmt::format(
                 "Could not open config at '{}'", file_name));
         }
-        json temp = json::parse(f);
 
-        this->data = std::move(temp.get<ConfigData::Root>());
+        std::string problem;
+        try {
+            this->data = parse_config(*text);
+            if (mode == LoadMode::Recover) {
+                const auto last_good = last_good_path(file_name);
+                std::string write_error;
+                if (read_whole_file(last_good) != text && !DurableFile::replace(last_good, *text, &write_error))
+                    warn("Could not refresh the last good config copy: {}", write_error);
+            }
+            return;
+        }
+        catch (const std::exception& e) {
+            if (mode == LoadMode::Strict)
+                throw;
+            problem = text->empty() ? std::string("the file was empty") : std::string(e.what());
+        }
+
+        // Keep the damaged file for inspection; it is never overwritten.
+        const auto aside = corrupt_path(file_name);
+        std::error_code ec;
+        std::filesystem::rename(config_path, aside, ec);
+        if (ec) {
+            throw std::runtime_error(
+                fmt::format("Config at '{}' is damaged ({}) and could not be moved aside: {}", file_name, problem, ec.message()));
+        }
+        problem = fmt::format("'{}' was damaged ({}); kept it as '{}'", file_name, problem, aside.string());
+
+        const auto last_good = last_good_path(file_name);
+        if (const auto backup = read_whole_file(last_good)) {
+            try {
+                this->data = parse_config(*backup);
+                load_recovery_ = problem + fmt::format(" and restored '{}'", last_good);
+                return;
+            }
+            catch (const std::exception& e) {
+                problem += fmt::format("; '{}' was damaged too ({})", last_good, e.what());
+            }
+        }
+        this->data = json::object().get<ConfigData::Root>();
+        load_recovery_ = problem + "; started from the defaults";
     }
 
     void MainConfig::migrate_presets() {
@@ -353,8 +418,13 @@ spdlog::info("Setting preset {}", id);
         }
     }
 
-    MainConfig::MainConfig(const string filename) : file_name(filename) {
-        load_from_file();
+    MainConfig::MainConfig(const string filename, LoadMode mode) : file_name(filename)
+    {
+        load_from_file(mode);
+        if (!load_recovery_.empty()) {
+            error("Recovered the config: {}", load_recovery_);
+            this->save();
+        }
         migrate_presets();
         if (this->data.automatic_director_seed == 0) {
             std::random_device random;
