@@ -858,6 +858,16 @@ if(ENABLE_EMULATOR)
     set_tests_properties(video_scene_switch_integration PROPERTIES ENVIRONMENT
         "PLUGIN_DIR=${CMAKE_BINARY_DIR}/plugins;LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/plugins/Video:${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
 
+    # A power cut must neither lose an acknowledged config save nor keep the
+    # daemon from starting with a damaged config.json (#217).
+    add_executable(main_config_recovery_smoke tests/main_config_recovery_smoke.cpp)
+    target_compile_features(main_config_recovery_smoke PRIVATE cxx_std_23)
+    target_link_libraries(main_config_recovery_smoke PRIVATE SharedToolsMatrix SharedToolsCommon
+        rpi_rgb_led_matrix::rpi-rgb-led-matrix spdlog::spdlog fmt::fmt PkgConfig::GraphicsMagick)
+    add_test(NAME main_config_recovery_smoke COMMAND main_config_recovery_smoke)
+    set_tests_properties(main_config_recovery_smoke PROPERTIES ENVIRONMENT
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/shared/matrix:${CMAKE_BINARY_DIR}/shared/common:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+
     add_executable(ambiance_packs_smoke tests/ambiance_packs_smoke.cpp)
     target_compile_features(ambiance_packs_smoke PRIVATE cxx_std_23)
     target_link_libraries(ambiance_packs_smoke PRIVATE SharedToolsMatrix SharedToolsCommon

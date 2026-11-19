@@ -266,8 +266,8 @@ Daemon::Daemon(int argc, char* argv[])
     // 8. Configuration
     // -------------------------------------------------------------------
     debug("Loading config...");
-    config_ = make_unique<Config::MainConfig>(
-        string(LED_MATRIX_DATA_DIR) + "/config.json");
+    // Recover: a config damaged by a power cut must not keep the panel dark.
+    config_ = make_unique<Config::MainConfig>(string(LED_MATRIX_DATA_DIR) + "/config.json", Config::MainConfig::LoadMode::Recover);
     // config_ is destroyed with the Daemon, after shutdown() unloads plugins.
     PluginManager::instance()->attach_host_config(config_.get());
 

@@ -26,11 +26,33 @@ namespace Config {
         bool dirty;
         const std::string file_name;
 
-        void load_from_file();
-        void migrate_presets();
     public:
-        explicit MainConfig(std::string filename);
+        /// How the constructor treats a config file it cannot read.
+        enum class LoadMode {
+            /// Throw. For tools and tests that share someone else's file.
+            Strict,
+            /// The daemon's mode, so a file damaged by a power cut cannot keep the
+            /// panel from starting: move the damaged file aside as
+            /// `<file>.corrupt-<time>`, load `<file>.last-good` (refreshed after
+            /// each good load) or else the defaults, and save the result.
+            Recover,
+        };
 
+        explicit MainConfig(std::string filename, LoadMode mode = LoadMode::Strict);
+
+        /// Set when `LoadMode::Recover` had to replace the config file: what was
+        /// wrong and what was loaded instead. Empty after a normal load.
+        [[nodiscard]] const std::string& load_recovery() const { return load_recovery_; }
+
+        [[nodiscard]] static std::string last_good_path(const std::string& file_name);
+
+    private:
+        std::string load_recovery_;
+
+        void load_from_file(LoadMode mode);
+        void migrate_presets();
+
+    public:
         void mark_dirty();
         bool is_dirty();
 
