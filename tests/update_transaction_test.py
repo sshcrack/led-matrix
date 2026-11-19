@@ -28,6 +28,7 @@ elif command=='dpkg':
    import signal; os.kill(os.getppid(),signal.SIGTERM)
   if scenario=='install-failure' and state['version']=='1.1.0': sys.exit(1)
   if scenario=='rollback-failure' and state['version']=='1.0.0': sys.exit(1)
+elif command=='findmnt': print('overlay' if scenario=='readonly-system' else 'ext4')
 elif command=='systemctl':
  action=args[0]
  if action=='is-enabled': print('enabled')
@@ -62,7 +63,7 @@ class TransactionTests(unittest.TestCase):
         mock = self.root / 'bin/mock'
         mock.write_text(MOCK)
         mock.chmod(0o755)
-        for name in ('systemctl', 'dpkg', 'dpkg-query', 'dpkg-deb', 'curl'):
+        for name in ('systemctl', 'dpkg', 'dpkg-query', 'dpkg-deb', 'curl', 'findmnt'):
             (mock.parent / name).symlink_to(mock)
         (self.root / 'state.json').write_text(json.dumps({'version': '1.0.0', 'active': True, 'masked': False, 'pid': 100}))
         (self.root / 'data/config.json').write_text('original config')
@@ -122,6 +123,14 @@ class TransactionTests(unittest.TestCase):
         result = self.run_update()
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('dpkg --force', (self.root / 'commands.log').read_text())
+        self.assert_preserved()
+
+    def test_readonly_system_is_refused(self):
+        result = self.run_update('readonly-system')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('dpkg --force', (self.root / 'commands.log').read_text())
+        self.assertIn('read-only', (self.root / 'data/.update_error').read_text())
+        self.assertEqual(json.loads((self.root / 'state.json').read_text())['version'], '1.0.0')
         self.assert_preserved()
 
     def test_rollback_failure_is_reported(self):

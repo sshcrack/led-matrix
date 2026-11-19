@@ -93,6 +93,10 @@ The DEB includes:
 - **prerm/postrm** — clean stop/disable on remove, purge `/var/lib/led-matrix` and debconf answers on `dpkg --purge`
 - **systemd unit** (`/lib/systemd/system/led-matrix.service`) — runs as `root` (required for GPIO `/dev/mem` access), reads `EnvironmentFile=/etc/default/led-matrix`, the library drops privileges to `pi:pi` after init via `--led-drop-priv-user=pi --led-drop-priv-group=pi`
 
+### Read-only panel card
+
+`packaging/pi-image/` builds a power-cut-safe SD card (rootless): `export_state.sh <host> <dir>` copies settings answers, Wi-Fi, SSH keys, firewall and `/var/lib/led-matrix` from a running Pi; `build_image.sh --state <dir> --deb <deb> --out <img>` resizes Raspberry Pi OS Lite (trixie) into boot / 8 GiB read-only system / 4 GiB data partition (`LABEL=LEDDATA` at `/srv/led-matrix`, `state/` bind-mounted at `/var/lib/led-matrix`, `/etc/default/led-matrix` symlinked to `etc/led-matrix.env`), and cloud-init runs `provision.sh` on first boot. The system is `overlayroot=tmpfs:recurse=0` (switch with `led-matrix-system-mode readonly|writable|status`, never raspi-config's overlay switch). On that card `update_service.sh` refuses to install (`dpkg` would write into RAM) until #225. Details: `docs/PI_IMAGE.md`. The live panel `ledmat` is reached on the LAN at `192.168.178.65` (not WireGuard).
+
 ### Service user model
 
 - The systemd service runs as **root** (`User=root`) because `rpi-rgb-led-matrix` needs to open `/dev/mem` for GPIO
