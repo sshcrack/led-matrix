@@ -6,6 +6,7 @@
 
 #include "shared/common/crash_reporter.h"
 #include "shared/common/frame_cadence.h"
+#include "shared/common/utils/utils.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/input_ids.h"
 #include "shared/matrix/runtime_inputs.h"
@@ -133,8 +134,7 @@ void SceneRenderer::render_fallback()
 #else
         constexpr const char *kFontDir = LED_MATRIX_SHARE_DIR;
 #endif
-        if (!ERROR_FONT.LoadFont(
-                (std::filesystem::path(kFontDir) / "7x13.bdf").c_str())) {
+        if (!ERROR_FONT.LoadFont((get_share_dir("led-matrix", kFontDir) / "7x13.bdf").c_str())) {
             spdlog::error("Could not load error font");
             load_font_error = true;
             return;

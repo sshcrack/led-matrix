@@ -292,7 +292,7 @@ Any extra [rpi-rgb-led-matrix flag](https://github.com/hzeller/rpi-rgb-led-matri
 
 ### Update and uninstall
 
-Updates run automatically if you enabled them. You can also use the **Updates** page or `POST /api/update/install`, which installs transactionally with rollback. Manually: install a newer `.deb` with `sudo apt install ./led-matrix-*.deb`.
+Updates run automatically if you enabled them. You can also use the **Updates** page or `POST /api/update/install`. Each update is unpacked as its own version in `/var/lib/led-matrix-app` and switched to in one step; a version that does not come up healthy is switched back automatically ([details](docs/transactional-updates.md)). Manually: install a newer `.deb` with `sudo apt install ./led-matrix-*.deb`.
 
 ```bash
 sudo apt remove led-matrix           # keep your data
@@ -301,7 +301,7 @@ sudo apt purge led-matrix            # also removes /var/lib/led-matrix and the 
 
 ### Power-cut-safe card (optional)
 
-To make unplugging the panel safe, build a card with a read-only system and a separate data partition: `packaging/pi-image/` exports the settings from a running Pi and builds a ready-to-flash image. See [docs/PI_IMAGE.md](docs/PI_IMAGE.md). On such a card, self-updates are off for now and OS updates go through `sudo led-matrix-system-mode writable`.
+To make unplugging the panel safe, build a card with a read-only system and a separate data partition: `packaging/pi-image/` exports the settings from a running Pi and builds a ready-to-flash image. See [docs/PI_IMAGE.md](docs/PI_IMAGE.md). Updates of the app work as usual there (they go to the data partition); OS updates go through `sudo led-matrix-system-mode writable`.
 
 ---
 

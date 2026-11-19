@@ -19,6 +19,7 @@ The rest of the card stays unused. On the data partition:
 | Path | Purpose |
 |---|---|
 | `/srv/led-matrix/state/` | bind-mounted at `/var/lib/led-matrix` (`config.json`, `config.json.last-good`, uploads, crash reports), owned by `pi` |
+| `/srv/led-matrix/app/` | bind-mounted at `/var/lib/led-matrix-app`: updated versions of the app, root only |
 | `/srv/led-matrix/etc/led-matrix.env` | the service environment; `/etc/default/led-matrix` is a symlink to it (root, 0600) |
 | `/srv/led-matrix/provision/` | the first-boot script, its log and the package it installed (root only) |
 
@@ -28,11 +29,13 @@ boot. If the data partition is missing or broken the Pi still boots; the app
 then starts with default settings that live in RAM until a recovery mode exists
 ([#226](https://github.com/sshcrack/led-matrix/issues/226)).
 
-Self-updates are switched off on this card: `dpkg` would install into the RAM
-overlay and the old version would come back at the next reboot. The updater
-refuses with "The system is read-only" if asked anyway. Updates move onto the
-data partition in [#225](https://github.com/sshcrack/led-matrix/issues/225); until
-then, update in maintenance mode (below).
+App updates (automatic, the Updates page, `build_upload.sh`) work as on any
+install: the updater unpacks each version into `/srv/led-matrix/app`
+(bind-mounted at `/var/lib/led-matrix-app`) and switches to it in one rename;
+the package installed at first boot stays on the read-only system as the factory
+copy, used when the data partition has no working version
+([details](transactional-updates.md)). If the data partition is missing, the
+updater refuses instead of installing into RAM.
 
 ## Build and flash a card
 
@@ -71,7 +74,7 @@ system. Its log is `/srv/led-matrix/provision/provision.log`.
 ```bash
 sudo led-matrix-system-mode status      # read-only now / next boot, data mount
 sudo led-matrix-system-mode writable    # reboots with a normal writable system
-sudo apt full-upgrade                    # or install a newer led-matrix .deb
+sudo apt full-upgrade                    # OS updates (app updates need no maintenance mode)
 sudo led-matrix-system-mode readonly    # reboots back into the read-only system
 ```
 

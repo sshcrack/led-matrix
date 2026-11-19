@@ -134,6 +134,17 @@ else
     fi
 fi
 
+# --- Installed versions ---
+# Updates live in /var/lib/led-matrix-app (scripts/update_service.sh). Installing
+# a package with dpkg means "run this package": drop the updated versions so the
+# launcher starts /usr/bin/led-matrix. dpkg-reconfigure only changes settings.
+APP_DIR=/var/lib/led-matrix-app
+install -d -m 755 "$APP_DIR"
+if [ "$1" = "configure" ] && [ -z "$DEBCONF_RECONFIGURE" ]; then
+    rm -f "$APP_DIR/current" "$APP_DIR/previous" "$APP_DIR/trial" "$APP_DIR/trial-config.json"
+    rm -rf "$APP_DIR/versions"
+fi
+
 # --- Enable and start the systemd service ---
 if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload || true

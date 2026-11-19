@@ -90,7 +90,7 @@ json make_scenes_list(const std::vector<std::shared_ptr<Plugins::SceneWrapper>>&
         const auto missing_inputs = RuntimeInputs::missing_required(runtime_spec, runtime_snapshot);
         j.push_back({{"name", scene->get_name()},
                      {"properties", std::move(properties_json)},
-                     {"has_preview", std::filesystem::exists(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews" /
+                     {"has_preview", std::filesystem::exists(get_share_dir("led-matrix", LED_MATRIX_SHARE_DIR) / "scene_previews" /
                                                              Previews::preview_filename(scene->get_name()))},
                      {"needs_desktop", caps.requires_desktop},
                      {"category", default_item->get_category()},
@@ -175,7 +175,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_routes(std::unique_ptr<route
         }
 
         const std::string scene_name{qp["name"]};
-        const std::filesystem::path preview_dir = std::filesystem::path(LED_MATRIX_SHARE_DIR) / "scene_previews";
+        const std::filesystem::path preview_dir = get_share_dir("led-matrix", LED_MATRIX_SHARE_DIR) / "scene_previews";
         const std::filesystem::path gif_path = preview_dir / Previews::preview_filename(scene_name);
 
         // Validate path is inside scene_previews dir

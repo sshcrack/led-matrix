@@ -683,6 +683,12 @@ if(NOT ENABLE_DESKTOP)
         DESTINATION lib/led-matrix
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     )
+    # led-matrix.service starts the app through it: the updated version below
+    # /var/lib/led-matrix-app, or this package's own binary.
+    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/launcher.sh
+        DESTINATION lib/led-matrix
+        RENAME launcher
+    )
 
     # Configure and install systemd service unit
     configure_file(
@@ -845,8 +851,9 @@ if(ENABLE_EMULATOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/release_artifacts_test.py)
         add_test(NAME update_transaction_test COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_transaction_test.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh)
-        set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 45)
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/launcher.sh)
+        set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 90)
     endif()
     add_executable(video_scene_switch_integration tests/video_scene_switch_integration.cpp)
     target_compile_features(video_scene_switch_integration PRIVATE cxx_std_23)

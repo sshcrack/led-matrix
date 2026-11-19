@@ -61,7 +61,8 @@ set_boot_ro() {
         mount -o remount,rw /media/root-ro
         edit_fstab "$1" /media/root-ro/etc/fstab
         sync
-        mount -o remount,ro /media/root-ro
+        # Can be "busy"; the lower root is mounted read-only again at the next boot.
+        mount -o remount,ro /media/root-ro 2>/dev/null || true
     else
         edit_fstab "$1" /etc/fstab
     fi

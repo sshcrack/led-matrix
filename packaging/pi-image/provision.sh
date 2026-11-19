@@ -6,6 +6,8 @@
 # Layout it sets up:
 #   /srv/led-matrix            data partition (LABEL=LEDDATA), writable
 #     state/                   bind-mounted at /var/lib/led-matrix (pi:pi)
+#     app/                     bind-mounted at /var/lib/led-matrix-app (root):
+#                              updated versions of the app (scripts/launcher.sh)
 #     etc/led-matrix.env       /etc/default/led-matrix points here (root, 0600)
 #     provision/               this script, the package and the exported state
 #   /                          read-only (overlayroot, changes live in RAM)
@@ -35,13 +37,20 @@ LABEL=LEDDATA  /srv/led-matrix      ext4  defaults,noatime,nofail,x-systemd.devi
 /srv/led-matrix/state  /var/lib/led-matrix  none  bind,nofail,x-systemd.requires-mounts-for=/srv/led-matrix  0  0
 EOF
 fi
+if ! grep -q '/var/lib/led-matrix-app' /etc/fstab; then
+    cat >>/etc/fstab <<'EOF'
+/srv/led-matrix/app    /var/lib/led-matrix-app  none  bind,nofail,x-systemd.requires-mounts-for=/srv/led-matrix  0  0
+EOF
+fi
 systemctl daemon-reload
 mountpoint -q "$DATA" || mount "$DATA"
-mkdir -p "$DATA/state" "$DATA/etc"
-chmod 755 "$DATA" "$DATA/etc"
+mkdir -p "$DATA/state" "$DATA/etc" "$DATA/app" /var/lib/led-matrix-app
+chmod 755 "$DATA" "$DATA/etc" "$DATA/app"
+chown root:root "$DATA/app"
 chown -R root:root "$PROVISION"
 chmod 700 "$PROVISION"
 mountpoint -q /var/lib/led-matrix || mount /var/lib/led-matrix
+mountpoint -q /var/lib/led-matrix-app || mount /var/lib/led-matrix-app
 
 # Migrated app data (exported from the previous card).
 if [[ -f $PROVISION/state/led-matrix-data.tar.gz && ! -e $DATA/state/config.json ]]; then
@@ -60,9 +69,6 @@ ln -sfn "$DATA/etc/led-matrix.env" /etc/default/led-matrix
 if [[ -f $PROVISION/state/debconf.txt ]]; then
     debconf-set-selections <"$PROVISION/state/debconf.txt"
 fi
-# Self-updates would install into the RAM overlay and vanish at reboot until
-# the app runs from the data partition (#225), so they stay off for now.
-echo "led-matrix led-matrix/auto-update-enable boolean false" | debconf-set-selections
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -107,9 +113,14 @@ systemctl disable --now apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || t
 systemctl disable --now unattended-upgrades.service 2>/dev/null || true
 
 install -m 755 "$PROVISION/led-matrix-system-mode" /usr/local/sbin/led-matrix-system-mode
-# It would remount the overlay root, which overlayfs refuses ("No changes allowed
-# in reconfigure"); nothing else in fstab needs it.
-systemctl mask systemd-remount-fs.service
+# On the read-only system it would remount the overlay root, which overlayfs
+# refuses ("No changes allowed in reconfigure"). Masking it would also keep / read-only
+# in maintenance mode, so skip it only when booting with overlayroot.
+mkdir -p /etc/systemd/system/systemd-remount-fs.service.d
+cat >/etc/systemd/system/systemd-remount-fs.service.d/led-matrix.conf <<'EOF'
+[Unit]
+ConditionKernelCommandLine=!overlayroot
+EOF
 
 # cloud-init has done its job; never run it again on this card.
 touch /etc/cloud/cloud-init.disabled

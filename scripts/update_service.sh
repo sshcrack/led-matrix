@@ -1,27 +1,30 @@
 #!/bin/bash
 # Runs in a separate systemd unit: restarting led-matrix must not kill its updater.
+#
+# Installs a led-matrix .deb as a new version below APP_DIR (see launcher.sh for
+# the layout) instead of running dpkg: the package is unpacked into its own
+# folder, made durable, and only then `current` is switched with one rename. The
+# installed package (/usr/bin/led-matrix) stays as the factory copy. A power cut
+# at any point leaves either the old or the new version running; a new version
+# that does not come up healthy is switched back, here or by the launcher.
 set -Eeuo pipefail
 
+APP_DIR=/var/lib/led-matrix-app
 DATA_DIR=/var/lib/led-matrix
-CACHE_DIR=/var/cache/led-matrix
-BACKUP_DIR=/var/backups/led-matrix
-ENV_FILE=/etc/default/led-matrix
 LOG_FILE=/var/log/led-matrix-update.log
+LAUNCHER=/usr/lib/led-matrix/launcher
 SERVICE=led-matrix.service
 HEALTH_URL="http://127.0.0.1:${LED_MATRIX_UPDATE_PORT:-8080}"
 HEALTH_ATTEMPTS=30
 HEALTH_INTERVAL=2
 HEALTH_SUCCESSES=3
 HEALTH_TIMEOUT=60
-transaction_started=false
+switched=false
 committed=false
-masked=false
 failure_message="Update failed"
 previous_version=""
-previous_deb=""
-transaction=""
 
-log() { printf '%s [UPDATE] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG_FILE"; }
+log() { printf '%s [UPDATE] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG_FILE" >&2 || true; }
 fail() { failure_message="$*"; log "ERROR: $*"; return 1; }
 
 package_matches() {
@@ -30,15 +33,22 @@ package_matches() {
        $(dpkg-deb -f "$1" Architecture) == "$3" ]]
 }
 
+# The binary the service runs (as root, /proc/<pid>/exe is readable).
+running_exe() { readlink "/proc/$1/exe" 2>/dev/null; }
+
+# <version> [<folder the binary must run from>]: a rebuild of the same version
+# that crash-loops is switched back by the launcher, and the old build then
+# answers with the same version, so the version alone does not prove the switch.
 health_check() {
-    local expected_version=$1 healthy=0 previous_pid="" pid response
+    local expected_version=$1 expected_dir=${2:-} healthy=0 previous_pid="" pid response
     local deadline=$((SECONDS + HEALTH_TIMEOUT))
     for ((attempt=0; attempt<HEALTH_ATTEMPTS && SECONDS<deadline; ++attempt)); do
         pid=$(systemctl show "$SERVICE" --property=MainPID --value) || pid=""
         if [[ $pid =~ ^[1-9][0-9]*$ ]] && systemctl is-active --quiet "$SERVICE" &&
-           response=$(curl --noproxy "*" -fsS --max-time 3 "$HEALTH_URL/api/update/status") &&
+           { [[ -z $expected_dir ]] || [[ $(running_exe "$pid") == "$expected_dir"/* ]]; } &&
+           response=$(api_get /api/update/status) &&
            jq -e --arg version "$expected_version" '.current_version == $version' <<< "$response" >/dev/null &&
-           curl --noproxy "*" -fsS --max-time 3 -o /dev/null "$HEALTH_URL/web/"; then
+           api_get /web/ >/dev/null; then
             if [[ $pid == "$previous_pid" ]]; then healthy=$((healthy+1)); else healthy=1; fi
             previous_pid=$pid
             if ((healthy >= HEALTH_SUCCESSES)); then return 0; fi
@@ -51,65 +61,36 @@ health_check() {
     return 1
 }
 
-snapshot_file() {
-    if [[ -e $1 || -L $1 ]]; then cp -a "$1" "$transaction/$2"; fi
-}
-
-restore_file() {
-    if [[ -e $transaction/$2 || -L $transaction/$2 ]]; then
-        cp -a "$transaction/$2" "$1"
-    else
-        rm -f "$1"
-    fi
-}
-
-restore_configuration() {
-    restore_file "$ENV_FILE" environment &&
-        restore_file "$DATA_DIR/config.json" config.json
-}
-
-write_flag() {
-    local temporary
-    temporary=$(mktemp "$DATA_DIR/.update-flag.XXXXXX")
-    printf '%s\n' "$2" > "$temporary"
-    chown pi:pi "$temporary" 2>/dev/null || true
-    mv -fT "$temporary" "$DATA_DIR/$1"
-}
-
 finish() {
     local result=$?
     trap - EXIT INT TERM
     set +e
     if ((result != 0)) && ! $committed; then
-        if $transaction_started; then
-            log "Restoring led-matrix $previous_version and its configuration"
+        if $switched; then
+            log "Switching back to led-matrix $previous_version"
             systemctl stop "$SERVICE"
-            # A failed candidate start may have already unmasked the service.
-            if ! $masked; then systemctl mask --runtime "$SERVICE"; masked=true; fi
-            if DEBIAN_FRONTEND=noninteractive dpkg --force-confdef --force-confold -i "$previous_deb"; then
-                local restored=true
-                restore_configuration || restored=false
-                systemctl unmask --runtime "$SERVICE"
-                masked=false
-                systemctl daemon-reload
-                if $restored && systemctl start "$SERVICE" && health_check "$previous_version"; then
-                    failure_message="$failure_message; rolled back to $previous_version"
-                else
-                    failure_message="$failure_message; rollback installed but health checks failed"
-                fi
+            "$LAUNCHER" rollback "$failure_message"
+            # The launcher may have switched back already (crash loop); its flag
+            # can be consumed by the restarted daemon, so record this failure too.
+            [[ -f $DATA_DIR/.update_error ]] ||
+                write_flag .update_error "$failure_message; rolled back to $previous_version"
+            prune_versions # drops the failed version
+            systemctl reset-failed "$SERVICE" 2>/dev/null
+            if systemctl start "$SERVICE" && health_check "$previous_version"; then
+                log "Rolled back to $previous_version"
             else
-                restore_configuration
-                failure_message="$failure_message; rollback package installation failed"
+                write_flag .update_error "$failure_message; rolled back to $previous_version, but it did not pass the health checks"
             fi
+        else
+            # The old version may have exited for the update: bring it back.
+            systemctl start "$SERVICE"
+            write_flag .update_error "$failure_message"
         fi
-        if $masked; then systemctl unmask --runtime "$SERVICE"; masked=false; fi
-        # Also recover the old service when preflight failed after the daemon exited.
-        if ! $transaction_started; then systemctl start "$SERVICE"; fi
         rm -f "$DATA_DIR/.update_success"
-        write_flag .update_error "$failure_message"
-        log "ERROR: $failure_message"
+        log "Update not applied: $failure_message"
     fi
-    rm -f "$CACHE_DIR/candidate.deb" "$CACHE_DIR/previous.deb.partial"
+    rm -f "$APP_DIR/candidate.deb"
+    rm -rf "$APP_DIR"/versions/.partial-*
     exit "$result"
 }
 
@@ -130,6 +111,49 @@ resolve_request() {
     REQUESTED_DEB=$real
 }
 
+# Keep only what runs now and what it would fall back to.
+prune_versions() {
+    local current previous dir keep
+    current=$(link_target current) previous=$(link_target previous)
+    for dir in "$APP_DIR"/versions/*; do
+        [[ -e $dir ]] || continue
+        keep="versions/$(basename "$dir")"
+        [[ $keep == "$current" ]] && continue
+        [[ $keep == "$previous" ]] && is_complete "$current" && continue
+        rm -rf "$dir"
+    done
+}
+
+# Unpack the package as versions/<version>-<hash> (reused when it is already
+# there, so a retry or redeploying the same build needs no space).
+install_version() { # <deb> <version>
+    local deb=$1 version=$2 hash name partial need avail keep current previous dir
+    hash=$(sha256sum "$deb" | cut -c1-12)
+    name="versions/$version-$hash"
+    is_complete "$name" && { INSTALLED=$name; return 0; }
+
+    prune_versions
+    current=$(link_target current) previous=$(link_target previous)
+    need=$(( $(dpkg-deb -f "$deb" Installed-Size) * 11 / 10 + 10240 )) # KiB
+    avail=$(df -Pk "$APP_DIR" | awk 'NR == 2 { print $4 }')
+    if ((avail < need)) && [[ -n $previous && $previous != "$current" ]] && is_complete "$current"; then
+        rm -rf "${APP_DIR:?}/$previous"
+        avail=$(df -Pk "$APP_DIR" | awk 'NR == 2 { print $4 }')
+    fi
+    ((avail >= need)) || fail "Not enough space for the update: $((need / 1024)) MiB needed, $((avail / 1024)) MiB free"
+
+    partial=$(mktemp -d "$APP_DIR/versions/.partial-XXXXXX")
+    dpkg-deb -x "$deb" "$partial" || fail "Could not unpack the update"
+    [[ -x $partial/usr/bin/led-matrix ]] || fail "The update contains no usr/bin/led-matrix"
+    printf '%s\n' "$version" >"$partial/.version"
+    chmod 755 "$partial"
+    sync -f "$partial"
+    rm -rf "${APP_DIR:?}/$name"
+    mv -T "$partial" "$APP_DIR/$name"
+    sync "$APP_DIR/versions"
+    INSTALLED=$name
+}
+
 main() {
     if [[ ${1:-} == --request ]]; then
         [[ $# == 2 ]] || { log "Usage: $0 --request <file>"; return 1; }
@@ -137,67 +161,72 @@ main() {
         set -- "$REQUESTED_DEB"
     fi
     [[ $# == 1 ]] || { log "Usage: $0 <deb_file>"; return 1; }
-    local original_deb=$1 deb_file candidate_version architecture
+    local original_deb=$1 deb_file candidate_version architecture current
     [[ -f $original_deb ]] || { log "DEB file not found: $original_deb"; return 1; }
-    install -d -m 700 "$CACHE_DIR" "$BACKUP_DIR"
-    exec 9>"$CACHE_DIR/update.lock"
+    [[ -x $LAUNCHER ]] ||
+        { log "This system has no $LAUNCHER yet: install this package once with dpkg"; return 1; }
+    # The launcher holds the shared helpers (links, completeness, flags).
+    APP_DIR=$APP_DIR DATA_DIR=$DATA_DIR source "$LAUNCHER"
+    install -d -m 755 "$APP_DIR" "$APP_DIR/versions"
+    exec 9>>"$APP_DIR/update.lock"
     if ! flock -n 9; then log "Another update is already running"; return 1; fi
     # Do not let a second invocation change the active transaction's flags/service.
     trap finish EXIT
     trap 'exit 1' INT TERM
     rm -f "$DATA_DIR/.update_success" "$DATA_DIR/.update_error"
-    deb_file="$CACHE_DIR/candidate.deb"
-    cp "$original_deb" "$deb_file"
     architecture=$(dpkg --print-architecture)
     [[ $architecture == arm64 ]] || fail "Updates require arm64"
-    # On the read-only panel system (overlayroot, docs/PI_IMAGE.md) dpkg would
-    # install into RAM and the old version would be back after the next reboot.
-    [[ $(findmnt -n -o FSTYPE /) != overlay ]] ||
-        fail "The system is read-only; update in maintenance mode (sudo led-matrix-system-mode writable)"
+    # On the read-only panel card APP_DIR is the data partition. If that is
+    # missing, the folder is part of the RAM overlay and the update would vanish.
+    [[ $(findmnt -n -o FSTYPE -T "$APP_DIR") != overlay ]] ||
+        fail "The app folder $APP_DIR is not on persistent storage (is the data partition mounted?)"
+    deb_file="$APP_DIR/candidate.deb"
+    cp "$original_deb" "$deb_file"
     candidate_version=$(dpkg-deb -f "$deb_file" Version)
-    previous_version=$(dpkg-query -W -f '${Version}' led-matrix)
+    current=$(link_target current)
+    is_complete "$current" || current=""
+    previous_version=$(version_of "$current")
     [[ $candidate_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ &&
        $previous_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Unsupported package version"
     package_matches "$deb_file" "$candidate_version" "$architecture" || fail "Wrong package name or architecture"
     [[ $(systemctl is-enabled "$SERVICE" 2>/dev/null) != masked* ]] || fail "Service is masked"
-    previous_deb="$CACHE_DIR/previous.deb"
-    if [[ -f $CACHE_DIR/current.deb ]] && package_matches "$CACHE_DIR/current.deb" "$previous_version" "$architecture"; then
-        cp -a "$CACHE_DIR/current.deb" "$previous_deb"
-    else
-        log "Caching rollback package $previous_version before installation"
-        curl -fL --connect-timeout 10 --max-time 180 --retry 2 \
-            "https://github.com/sshcrack/led-matrix/releases/download/v$previous_version/led-matrix-${previous_version}_arm64.deb" \
-            -o "$previous_deb.partial" || fail "Could not obtain rollback package; keeping current installation"
-        package_matches "$previous_deb.partial" "$previous_version" "$architecture" || fail "Invalid rollback package"
-        mv "$previous_deb.partial" "$previous_deb"
+
+    log "Unpacking $candidate_version"
+    install_version "$deb_file" "$candidate_version"
+    rm -f "$deb_file"
+    if [[ $INSTALLED == "$current" ]]; then
+        log "This build of $candidate_version is already installed"
+        systemctl start "$SERVICE"
+        write_flag .update_success "$(date '+%Y-%m-%d %H:%M:%S')"
+        committed=true
+        return 0
     fi
+
     # Wait for the old process to flush its last configuration before snapshotting.
     systemctl stop "$SERVICE"
-    transaction="$BACKUP_DIR/current"
-    rm -rf "$transaction"
-    install -d -m 700 "$transaction"
-    snapshot_file "$ENV_FILE" environment
-    snapshot_file "$DATA_DIR/config.json" config.json
-    log "Installing $candidate_version with rollback to $previous_version available"
-    systemctl mask --runtime "$SERVICE"
-    masked=true
-    transaction_started=true
-    DEBIAN_FRONTEND=noninteractive dpkg --force-confdef --force-confold -i "$deb_file" || fail "Candidate package installation failed"
-    restore_configuration
-    systemctl unmask --runtime "$SERVICE"
-    masked=false
-    systemctl daemon-reload
+    log "Switching to $candidate_version, $previous_version stays as the fallback"
+    if [[ -f $DATA_DIR/config.json ]]; then
+        copy_file "$DATA_DIR/config.json" "$APP_DIR/trial-config.json"
+    else
+        rm -f "$APP_DIR/trial-config.json"
+    fi
+    write_file "$APP_DIR/trial" "$INSTALLED 0"
+    if [[ -n $current ]]; then switch_link previous "$current"; else rm -f "$APP_DIR/previous"; fi
+    switch_link current "$INSTALLED"
+    switched=true
+    systemctl reset-failed "$SERVICE" 2>/dev/null || true
     systemctl start "$SERVICE" || fail "Candidate service could not start"
-    health_check "$candidate_version" || fail "Candidate did not pass service, API version and web UI health checks"
-    cp "$deb_file" "$CACHE_DIR/current.deb.partial"
-    mv "$CACHE_DIR/current.deb.partial" "$CACHE_DIR/current.deb"
+    health_check "$candidate_version" "$APP_DIR/$INSTALLED" ||
+        fail "Candidate did not pass service, binary, API version and web UI health checks"
+    rm -f "$APP_DIR/trial" "$APP_DIR/trial-config.json"
+    sync "$APP_DIR"
+    prune_versions
     write_flag .update_success "$(date '+%Y-%m-%d %H:%M:%S')"
     committed=true
     log "Update to $candidate_version passed health checks"
-    rm -f "$deb_file"
-    if [[ $original_deb != "$CACHE_DIR/"* && $original_deb != "$BACKUP_DIR/"* ]]; then
+    if [[ $original_deb == "$DATA_DIR/update/"* ]]; then
         rm -f "$original_deb"
-        [[ $original_deb == "$DATA_DIR/update/"* ]] && rmdir "$(dirname "$original_deb")" 2>/dev/null || true
+        rmdir "$(dirname "$original_deb")" 2>/dev/null || true
     fi
 }
 

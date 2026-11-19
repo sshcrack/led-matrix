@@ -167,3 +167,10 @@ std::filesystem::path get_exec_dir() {
 
     return v.parent_path();
 }
+
+std::filesystem::path get_share_dir(std::string_view app, const std::filesystem::path& fallback)
+{
+    std::error_code ec;
+    auto dir = get_exec_dir().parent_path() / "share" / std::filesystem::path(std::string(app));
+    return std::filesystem::is_directory(dir, ec) ? dir : fallback;
+}

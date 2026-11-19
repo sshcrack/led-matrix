@@ -8,15 +8,17 @@
 #define SHADERTOY_BUILTIN_SHADER_DIR ""
 #endif
 
-#include "scenes/ShadertoyScene.h"
-#include "providers/Random.h"
-#include "providers/Collection.h"
-#include "shared/matrix/canvas_consts.h"
-#include "spdlog/spdlog.h"
-#include "shared/matrix/utils/shared.h"
-#include <filesystem>
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
+
+#include "providers/Collection.h"
+#include "providers/Random.h"
+#include "scenes/ShadertoyScene.h"
+#include "shared/common/utils/utils.h"
+#include "shared/matrix/canvas_consts.h"
+#include "shared/matrix/utils/shared.h"
+#include "spdlog/spdlog.h"
 
 #ifdef SHADERTOY_PREVIEW_RENDERER
 #include "preview/ShaderPreviewProvider.h"
@@ -32,7 +34,14 @@ fs::path custom_shader_dir() {
 }
 
 fs::path builtin_shader_dir() {
-    return std::filesystem::path(SHADERTOY_BUILTIN_SHADER_DIR);
+    const fs::path compiled(SHADERTOY_BUILTIN_SHADER_DIR);
+    if (compiled.empty() || compiled.is_relative())
+        return compiled;
+    // An install unpacked elsewhere (a version folder on the panel's data
+    // partition) ships its shaders in its own share directory.
+    std::error_code ec;
+    const auto own = get_share_dir("led-matrix", {}) / "shaders";
+    return fs::is_directory(own, ec) ? own : compiled;
 }
 
 void append_builtin_scenes(std::vector<std::unique_ptr<SceneWrapper>> &scenes) {
