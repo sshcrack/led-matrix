@@ -79,6 +79,7 @@ rollback() { # <reason>
     previous=$(link_target previous)
     if is_complete "$previous"; then
         switch_link current "$previous"
+        rm -f "$APP_DIR/previous"
     else
         previous=""
         rm -f "$APP_DIR/current" && sync "$APP_DIR"

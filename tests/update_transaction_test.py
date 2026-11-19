@@ -30,12 +30,12 @@ def package(path): return json.loads(Path(path).read_text())
 def interrupt(): os.kill(int(os.environ['UPDATER_PID']), signal.SIGTERM)
 FAKE_BINARY = """#!/bin/bash
 # Fake led-matrix {version}: record that it runs (the launcher execs this).
-python3 - "$@" <<'EOF'
+EXE=$(readlink -f "$0") python3 - "$@" <<'EOF'
 import json, os, sys
 from pathlib import Path
 root = Path(os.environ['FIXTURE_ROOT'])
 state = json.loads((root / 'state.json').read_text())
-state['running'] = '{version}'; state['args'] = sys.argv[1:]
+state['running'] = '{version}'; state['args'] = sys.argv[1:]; state['exe'] = os.environ['EXE']
 (root / 'state.json').write_text(json.dumps(state))
 config = root / 'data/config.json'
 if '{version}' != '1.0.0' and not config.read_text().endswith(' {version}'):
@@ -70,6 +70,9 @@ elif command == 'systemctl':
     elif action == 'stop': state['active'] = False; state['running'] = None; save(state)
     elif action == 'start':
         if state['active']: sys.exit(0)
+        if scenario == 'crash-loop' and state['running'] is None and (Path(os.environ['APP_DIR']) / 'trial').exists():
+            # The new build crashed 3 times; the launcher switched back on its own.
+            subprocess.run(['bash', os.environ['LAUNCHER'], 'rollback', 'crashed'], env=os.environ, check=True)
         result = subprocess.run(['bash', os.environ['LAUNCHER'], 'run', '--led-test'], env=os.environ)
         state = load(); state['active'] = result.returncode == 0; state['pid'] += 100; save(state)
         sys.exit(0 if state['active'] else 1)
@@ -135,7 +138,9 @@ class UpdaterTests(Fixture):
             f'{name}="{value}"' for name, value in
             [('APP_DIR', self.root / 'app'), ('DATA_DIR', self.root / 'data'), ('LOG_FILE', self.root / 'log'),
              ('LAUNCHER', LAUNCHER)]
-        ) + '\nexport UPDATER_PID=$$\nHEALTH_ATTEMPTS=5\nHEALTH_INTERVAL=0\nmain "$@"\n')
+        ) + '\nexport UPDATER_PID=$$\nHEALTH_ATTEMPTS=5\nHEALTH_INTERVAL=0\n'
+          f'running_exe() {{ python3 -c "import json; print(json.load(open(\'{self.root}/state.json\'))[\'exe\'])"; }}\n'
+          'main "$@"\n')
 
     def deb(self, version='1.1.0', package='led-matrix', build=''):
         path = self.root / f'led-matrix-{version}{build}.deb'
@@ -191,6 +196,16 @@ class UpdaterTests(Fixture):
                 result = self.run_update(scenario)
                 self.assert_back_on_factory(result)
                 self.assertIn('rolled back to 1.0.0', self.flag('.update_error'))
+
+    def test_crash_looping_rebuild_of_same_version_is_reported(self):
+        # Same version as the running one: only the binary path tells them apart.
+        result = self.run_update('crash-loop', deb=self.deb('1.0.0', build='broken'))
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.state()['exe'], str(self.root / 'factory'))
+        self.assertIsNone(self.link('current'))
+        self.assertIsNone(self.flag('.update_success'))
+        self.assertIn('rolled back', self.flag('.update_error'))
+        self.assertEqual(list((self.root / 'app/versions').iterdir()), [])
 
     def test_failed_second_update_returns_to_first(self):
         self.assertEqual(self.run_update(deb=self.deb('1.1.0')).returncode, 0)

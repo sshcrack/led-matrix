@@ -33,12 +33,19 @@ package_matches() {
        $(dpkg-deb -f "$1" Architecture) == "$3" ]]
 }
 
+# The binary the service runs (as root, /proc/<pid>/exe is readable).
+running_exe() { readlink "/proc/$1/exe" 2>/dev/null; }
+
+# <version> [<folder the binary must run from>]: a rebuild of the same version
+# that crash-loops is switched back by the launcher, and the old build then
+# answers with the same version, so the version alone does not prove the switch.
 health_check() {
-    local expected_version=$1 healthy=0 previous_pid="" pid response
+    local expected_version=$1 expected_dir=${2:-} healthy=0 previous_pid="" pid response
     local deadline=$((SECONDS + HEALTH_TIMEOUT))
     for ((attempt=0; attempt<HEALTH_ATTEMPTS && SECONDS<deadline; ++attempt)); do
         pid=$(systemctl show "$SERVICE" --property=MainPID --value) || pid=""
         if [[ $pid =~ ^[1-9][0-9]*$ ]] && systemctl is-active --quiet "$SERVICE" &&
+           { [[ -z $expected_dir ]] || [[ $(running_exe "$pid") == "$expected_dir"/* ]]; } &&
            response=$(api_get /api/update/status) &&
            jq -e --arg version "$expected_version" '.current_version == $version' <<< "$response" >/dev/null &&
            api_get /web/ >/dev/null; then
@@ -63,6 +70,11 @@ finish() {
             log "Switching back to led-matrix $previous_version"
             systemctl stop "$SERVICE"
             "$LAUNCHER" rollback "$failure_message"
+            # The launcher may have switched back already (crash loop); its flag
+            # can be consumed by the restarted daemon, so record this failure too.
+            [[ -f $DATA_DIR/.update_error ]] ||
+                write_flag .update_error "$failure_message; rolled back to $previous_version"
+            prune_versions # drops the failed version
             systemctl reset-failed "$SERVICE" 2>/dev/null
             if systemctl start "$SERVICE" && health_check "$previous_version"; then
                 log "Rolled back to $previous_version"
@@ -75,7 +87,7 @@ finish() {
             write_flag .update_error "$failure_message"
         fi
         rm -f "$DATA_DIR/.update_success"
-        log "ERROR: $(cat "$DATA_DIR/.update_error" 2>/dev/null)"
+        log "Update not applied: $failure_message"
     fi
     rm -f "$APP_DIR/candidate.deb"
     rm -rf "$APP_DIR"/versions/.partial-*
@@ -204,7 +216,8 @@ main() {
     switched=true
     systemctl reset-failed "$SERVICE" 2>/dev/null || true
     systemctl start "$SERVICE" || fail "Candidate service could not start"
-    health_check "$candidate_version" || fail "Candidate did not pass service, API version and web UI health checks"
+    health_check "$candidate_version" "$APP_DIR/$INSTALLED" ||
+        fail "Candidate did not pass service, binary, API version and web UI health checks"
     rm -f "$APP_DIR/trial" "$APP_DIR/trial-config.json"
     sync "$APP_DIR"
     prune_versions

@@ -13,6 +13,7 @@ EnvironmentFile=/etc/default/led-matrix
 # back to /usr/bin/led-matrix, and switches back from an update that keeps
 # failing to start (scripts/launcher.sh).
 ExecStart=/usr/lib/led-matrix/launcher run $MATRIX_OPTS
+SyslogIdentifier=led-matrix
 WorkingDirectory=/var/lib/led-matrix
 Restart=on-failure
 # Slow enough that a crashing update reaches the launcher's switch-back

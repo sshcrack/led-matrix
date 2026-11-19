@@ -113,9 +113,14 @@ systemctl disable --now apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || t
 systemctl disable --now unattended-upgrades.service 2>/dev/null || true
 
 install -m 755 "$PROVISION/led-matrix-system-mode" /usr/local/sbin/led-matrix-system-mode
-# It would remount the overlay root, which overlayfs refuses ("No changes allowed
-# in reconfigure"); nothing else in fstab needs it.
-systemctl mask systemd-remount-fs.service
+# On the read-only system it would remount the overlay root, which overlayfs
+# refuses ("No changes allowed in reconfigure"). Masking it would also keep / read-only
+# in maintenance mode, so skip it only when booting with overlayroot.
+mkdir -p /etc/systemd/system/systemd-remount-fs.service.d
+cat >/etc/systemd/system/systemd-remount-fs.service.d/led-matrix.conf <<'EOF'
+[Unit]
+ConditionKernelCommandLine=!overlayroot
+EOF
 
 # cloud-init has done its job; never run it again on this card.
 touch /etc/cloud/cloud-init.disabled
