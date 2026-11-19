@@ -25,9 +25,9 @@ The rest of the card stays unused. On the data partition:
 
 Other settings: the journal stays in RAM (32 MB), swap is zram only, the apt
 timers and unattended upgrades are off, cloud-init is disabled after the first
-boot. If the data partition is missing or broken the Pi still boots; the app
-then starts with default settings that live in RAM until a recovery mode exists
-([#226](https://github.com/sshcrack/led-matrix/issues/226)).
+boot. If the data partition is missing or broken the Pi still boots and the panel
+starts in [recovery mode](RECOVERY.md): it shows `DATA` and the address of a
+page that repairs or resets the partition.
 
 App updates (automatic, the Updates page, `build_upload.sh`) work as on any
 install: the updater unpacks each version into `/srv/led-matrix/app`

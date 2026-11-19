@@ -8,13 +8,17 @@ Type=simple
 # After matrix initialisation the library automatically drops privileges
 # to pi:pi via --led-drop-priv-user/--led-drop-priv-group in MATRIX_OPTS.
 User=root
-EnvironmentFile=/etc/default/led-matrix
+# The panel layout without secrets, on the system partition, so recovery mode
+# can drive the panel when the data partition (and with it the real
+# environment file on the panel card) is missing. The real file wins.
+EnvironmentFile=-/etc/led-matrix/fallback.env
+EnvironmentFile=-/etc/default/led-matrix
 # The launcher runs the updated version from /var/lib/led-matrix-app, falls
 # back to /usr/bin/led-matrix, and switches back from an update that keeps
 # failing to start (scripts/launcher.sh).
 ExecStart=/usr/lib/led-matrix/launcher run $MATRIX_OPTS
 SyslogIdentifier=led-matrix
-WorkingDirectory=/var/lib/led-matrix
+WorkingDirectory=-/var/lib/led-matrix
 Restart=on-failure
 # Slow enough that a crashing update reaches the launcher's switch-back
 # (3 starts) before systemd's start limit (5 starts in 10 s) gives up.

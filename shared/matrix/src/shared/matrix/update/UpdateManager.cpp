@@ -130,7 +130,11 @@ namespace Update
 
         running_.store(false);
         info("UpdateManager stopped");
-        // Launch update script if pending
+        launch_pending_update();
+    }
+
+    void UpdateManager::launch_pending_update()
+    {
         if (pending_update_.load() && !pending_update_filename_.empty())
         {
 #ifdef ENABLE_UPDATE_TESTING

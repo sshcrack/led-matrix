@@ -84,6 +84,11 @@ fi
 
 chmod 600 "$ENV_FILE"
 
+# Panel layout only (no secrets) on the system partition, for recovery mode.
+mkdir -p /etc/led-matrix
+printf '# Written by the led-matrix package: the panel layout for recovery mode.\nMATRIX_OPTS="%s"\n' "$MATRIX_OPTS" >/etc/led-matrix/fallback.env
+chmod 644 /etc/led-matrix/fallback.env
+
 # --- Read package version (also used for config.json update below) ---
 PKG_VERSION=$(dpkg-query -W -f '${Version}' led-matrix 2>/dev/null || echo "1.0.0")
 
@@ -151,6 +156,8 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl enable led-matrix.service || true
     systemctl enable led-matrix-update.path || true
     systemctl start led-matrix-update.path || true
+    systemctl enable led-matrix-recovery.path || true
+    systemctl start led-matrix-recovery.path || true
     systemctl restart led-matrix.service || true
 fi
 

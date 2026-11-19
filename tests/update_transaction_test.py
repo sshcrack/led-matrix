@@ -53,7 +53,7 @@ if command == 'dpkg-deb':
         print(package(args[1])[args[2]])
 elif command == 'dpkg-query': print('1.0.0')
 elif command == 'dpkg': print('arm64')
-elif command == 'findmnt': print('overlay' if scenario == 'no-data-partition' else 'ext4')
+elif command == 'findmnt': print('overlay' if scenario in ('no-data-partition', 'overlay-data') else 'ext4')
 elif command == 'df':
     avail = 1000 if scenario == 'no-space' else 10_000_000
     print('Filesystem 1024-blocks Used Available Capacity Mounted on')
@@ -106,7 +106,9 @@ class Fixture(unittest.TestCase):
         self.env = {**os.environ, 'PATH': f"{self.root / 'bin'}:{os.environ['PATH']}",
                     'FIXTURE_ROOT': str(self.root), 'LAUNCHER': str(LAUNCHER),
                     'APP_DIR': str(self.root / 'app'), 'DATA_DIR': str(self.root / 'data'),
-                    'FACTORY': str(factory), 'CONFIRM_ATTEMPTS': '0'}
+                    'FACTORY': str(factory), 'CONFIRM_ATTEMPTS': '0',
+                    'COUNTER': str(self.root / 'run/starts'), 'MAX_STARTS': '1000',
+                    'RECOVERY_DIR': str(self.root / 'run/recovery'), 'DAEMON_USER': os.environ.get('USER', 'root')}
         self.env.pop('LED_MATRIX_API_TOKEN', None)
 
     def tearDown(self):
@@ -340,6 +342,39 @@ class LauncherTests(Fixture):
         time.sleep(1.5)
         self.assertTrue(self.app('trial').exists())
         lock.close()
+
+    def test_missing_storage_starts_recovery(self):
+        self.install('1.2.0', 'current')
+        (self.root / 'data/config.json').unlink()
+        (self.root / 'data').rmdir()
+        self.start()
+        self.assertEqual(self.state()['running'], '1.0.0')  # the factory copy
+        self.assertEqual(self.state()['args'], ['--recovery=storage', '--led-test'])
+        self.assertTrue((self.root / 'run/recovery').is_dir())
+
+    def test_data_on_the_ram_overlay_starts_recovery(self):
+        self.start(SCENARIO='overlay-data')
+        self.assertEqual(self.state()['args'], ['--recovery=storage', '--led-test'])
+
+    def test_crash_loop_starts_recovery(self):
+        self.install('1.2.0', 'current')
+        for _ in range(3):
+            self.start(MAX_STARTS='3')
+            self.assertEqual(self.state()['running'], '1.2.0')
+            self.stop()
+        self.start(MAX_STARTS='3')
+        self.assertEqual(self.state()['running'], '1.0.0')
+        self.assertEqual(self.state()['args'], ['--recovery=crash', '--led-test'])
+
+    def test_healthy_start_clears_the_crash_count(self):
+        self.install('1.2.0', 'current')
+        (self.root / 'run').mkdir()
+        (self.root / 'run/starts').write_text('5\n')
+        self.start(CONFIRM_ATTEMPTS='20', CONFIRM_INTERVAL='0.05')
+        deadline = time.monotonic() + 10
+        while (self.root / 'run/starts').exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse((self.root / 'run/starts').exists())
 
     def test_rollback_without_trial_does_nothing(self):
         current = self.install('1.2.0', 'current')

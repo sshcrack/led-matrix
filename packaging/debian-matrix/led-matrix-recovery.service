@@ -1,0 +1,7 @@
+[Unit]
+Description=LED Matrix recovery action (repair or reset the data partition)
+# Not part of led-matrix.service: the action restarts it at the end.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/led-matrix/recovery_action.sh

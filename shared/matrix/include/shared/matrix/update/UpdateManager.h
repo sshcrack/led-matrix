@@ -72,7 +72,11 @@ namespace Update
 
         // Start/stop the update manager
         void start();
+        /// Stops the update thread, then launch_pending_update().
         void stop();
+        /// Hands a downloaded update (manual_download_and_install) to the root-side updater; the
+        /// process must exit afterwards. No-op without one. Recovery mode uses it without start().
+        void launch_pending_update();
 
         /// Parses a GitHub release JSON object into UpdateInfo through Releases::parse_release /
         /// select_asset. Tolerates null or missing optional fields (body, prerelease, digest), which

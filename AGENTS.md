@@ -101,6 +101,8 @@ The DEB includes:
 
 `update_service.sh` never runs `dpkg`: it unpacks the release `.deb` into `/var/lib/led-matrix-app/versions/<version>-<hash>/`, switches the `current` symlink with one rename, health-checks, and switches back on failure. `led-matrix.service` runs `/usr/lib/led-matrix/launcher run $MATRIX_OPTS`, which execs `current` → `previous` → the factory `/usr/bin/led-matrix`, counts starts of a version on trial and switches back after 3 failed starts. Binaries find their files relative to themselves (`get_share_dir()` in `shared/common/utils`; don't hardcode `/usr/share/led-matrix`). `dpkg -i`/`apt install` resets to the factory copy. Details and tests: `docs/transactional-updates.md`, `tests/update_transaction_test.py`.
 
+The launcher starts the factory copy with `--recovery=storage|crash` when `/var/lib/led-matrix` is not on writable persistent storage or the service started more than 6 times since boot without its API answering. Recovery mode (`src_matrix/recovery/`) shows an icon, a word and the page address on the panel and serves a repair page; root actions (fsck, reformat, retry) go through `/run/led-matrix-recovery/request` → `led-matrix-recovery.path` → `scripts/recovery_action.sh`. Details: `docs/RECOVERY.md`.
+
 ### Service user model
 
 - The systemd service runs as **root** (`User=root`) because `rpi-rgb-led-matrix` needs to open `/dev/mem` for GPIO
