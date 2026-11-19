@@ -12,6 +12,7 @@
 #include "matrix_control/LiveFrameSnapshot.h"
 #include "matrix_control/SceneLabRuntime.h"
 #include "nlohmann/json.hpp"
+#include "shared/common/utils/utils.h"
 #include "shared/matrix/audio_state.h"
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/diagnostics.h"
@@ -59,7 +60,7 @@ std::filesystem::path plugin_ui_dir(const Plugins::BasicPlugin &plugin)
     std::vector<std::filesystem::path> candidates;
     if (const auto location = plugin.get_plugin_location(); !location.empty())
         candidates.push_back(std::filesystem::path(location).parent_path() / "web");
-    candidates.push_back(std::filesystem::path(LED_MATRIX_SHARE_DIR) / "web" / "plugin-ui" / name);
+    candidates.push_back(get_share_dir("led-matrix", LED_MATRIX_SHARE_DIR) / "web" / "plugin-ui" / name);
     std::error_code ec;
     for (const auto &dir : candidates)
         if (std::filesystem::is_regular_file(dir / "ui.json", ec) && std::filesystem::is_regular_file(dir / "ui.js", ec))
@@ -422,7 +423,7 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
 #ifndef LED_MATRIX_SHARE_DIR
 #define LED_MATRIX_SHARE_DIR "."
 #endif
-    const std::filesystem::path web_dir = std::filesystem::path(LED_MATRIX_SHARE_DIR) / "web";
+    const std::filesystem::path web_dir = get_share_dir("led-matrix", LED_MATRIX_SHARE_DIR) / "web";
 
     // A missing/unreadable web_dir used to surface as a 403 "Invalid path",
     // which looks like a client problem but is really a broken install

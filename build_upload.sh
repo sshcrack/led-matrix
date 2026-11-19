@@ -24,12 +24,16 @@ if [ -z "$deb" ]; then
     exit 1
 fi
 echo "Installing $deb on ledmat..."
-rsync -avz "$deb" ledmat:/tmp/
+# The package goes to the data directory (on the panel card: the data
+# partition), not /tmp, which is RAM there.
+ssh ledmat mkdir -p /var/lib/led-matrix/update/deploy
+rsync -avz "$deb" ledmat:/var/lib/led-matrix/update/deploy/
 # Use the candidate updater, not the previously installed script: this also
 # bootstraps health checks for devices upgrading from an older updater.
 rsync -avz scripts/update_service.sh ledmat:/tmp/led-matrix-update-service.sh
 ssh ledmat sudo -n install -d -m 700 /var/cache/led-matrix/deploy
 ssh ledmat sudo -n install -m 700 /tmp/led-matrix-update-service.sh /var/cache/led-matrix/deploy/update_service.sh
 ssh ledmat sudo -n systemd-run --wait --collect --unit=led-matrix-deploy \
-    /var/cache/led-matrix/deploy/update_service.sh "/tmp/$(basename "$deb")"
+    --property=EnvironmentFile=-/etc/default/led-matrix \
+    /var/cache/led-matrix/deploy/update_service.sh "/var/lib/led-matrix/update/deploy/$(basename "$deb")"
 ssh ledmat rm -f /tmp/led-matrix-update-service.sh

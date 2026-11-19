@@ -2,7 +2,7 @@
 set -e
 
 if [ "$1" = "purge" ]; then
-    rm -rf /var/lib/led-matrix
+    rm -rf /var/lib/led-matrix /var/lib/led-matrix-app
     # Remove debconf answers on purge
     if [ -f /usr/share/debconf/confmodule ]; then
         . /usr/share/debconf/confmodule 2>/dev/null || true

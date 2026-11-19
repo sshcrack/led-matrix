@@ -4,4 +4,6 @@ Description=LED Matrix update transaction
 
 [Service]
 Type=oneshot
+# LED_MATRIX_API_TOKEN for the health checks.
+EnvironmentFile=-/etc/default/led-matrix
 ExecStart=/usr/lib/led-matrix/update_service.sh --request /var/lib/led-matrix/update/request
