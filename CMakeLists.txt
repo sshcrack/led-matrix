@@ -227,6 +227,8 @@ else()
         src_matrix/server/schedule_management.cpp
         src_matrix/server/environment_routes.cpp
         src_matrix/server/halo_routes.cpp
+        src_matrix/server/hardware_routes.cpp
+        src_matrix/hardware/panel_options.cpp
         src_matrix/server/server.cpp
         src_matrix/server/update_routes.cpp
         src_matrix/udp_server.cpp
@@ -695,6 +697,8 @@ if(NOT ENABLE_DESKTOP)
     )
     # Root side of recovery mode (repair/reset the data partition), docs/RECOVERY.md.
     install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/recovery_action.sh DESTINATION lib/led-matrix)
+    # Root side of the panel hardware settings in the web UI (GET/POST /hardware).
+    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_hardware.sh DESTINATION lib/led-matrix)
 
     # Configure and install systemd service unit
     configure_file(
@@ -711,6 +715,8 @@ if(NOT ENABLE_DESKTOP)
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.service"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-recovery.path"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-recovery.service"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-hardware.path"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-hardware.service"
         DESTINATION "lib/systemd/system"
     )
 endif()
@@ -862,6 +868,10 @@ if(ENABLE_EMULATOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/launcher.sh)
         set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 90)
+        add_test(NAME apply_hardware_test COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/apply_hardware_test.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_hardware.sh)
+        set_tests_properties(apply_hardware_test PROPERTIES TIMEOUT 60)
         add_test(NAME recovery_action_test COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_action_test.py
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/recovery_action.sh)
@@ -1012,6 +1022,16 @@ if(ENABLE_EMULATOR)
     target_include_directories(recovery_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
     target_link_libraries(recovery_smoke PRIVATE nlohmann_json::nlohmann_json)
     add_test(NAME recovery_smoke COMMAND $<TARGET_FILE:recovery_smoke>)
+
+    add_executable(panel_options_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/panel_options_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/hardware/panel_options.cpp
+    )
+    target_compile_features(panel_options_smoke PRIVATE cxx_std_23)
+    target_include_directories(panel_options_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(panel_options_smoke PRIVATE rpi_rgb_led_matrix::rpi-rgb-led-matrix nlohmann_json::nlohmann_json)
+    add_test(NAME panel_options_smoke COMMAND $<TARGET_FILE:panel_options_smoke>)
+    set_tests_properties(panel_options_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
 
     add_executable(refresh_monitor_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/refresh_monitor_smoke.cpp

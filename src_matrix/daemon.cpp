@@ -6,6 +6,7 @@
 #endif
 
 #include "halo/halo_service.h"
+#include "hardware/panel_options.h"
 #include "matrix-factory.h"
 #include "matrix_control/SceneLabRuntime.h"
 #include "matrix_control/hardware.h"
@@ -265,6 +266,8 @@ Daemon::Daemon(int argc, char* argv[])
         rgb_matrix::MatrixFactory::PrintMatrixFactoryFlags(stderr);
         throw runtime_error("Failed to parse matrix options");
     }
+
+    PanelHardware::set_running(PanelHardware::from_library(options.led_options, options.runtime_options));
 
     // The halo UART must be opened while we are still root: CreateMatrix drops
     // privileges and the process then lacks the dialout group.

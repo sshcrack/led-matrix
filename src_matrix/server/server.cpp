@@ -10,6 +10,7 @@
 #include "desktop_ws.h"
 #include "environment_routes.h"
 #include "halo_routes.h"
+#include "hardware_routes.h"
 #include "live_frame_ws.h"
 #include "other_routes.h"
 #include "post_processing_routes.h"
@@ -43,6 +44,7 @@ std::unique_ptr<router_t> Server::server_handler(ws_registry_t& registry, const 
     router = add_schedule_routes(std::move(router), deps.config);
     router = add_environment_routes(std::move(router), deps.config);
     router = add_halo_routes(std::move(router), deps.config);
+    router = add_hardware_routes(std::move(router));
     router = add_post_processing_routes(std::move(router), deps.post_processor);
     router = add_update_routes(std::move(router), deps.update_manager);
     router = add_other_routes(std::move(router), deps.config);

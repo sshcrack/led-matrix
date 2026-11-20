@@ -7,6 +7,7 @@ if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
         systemctl disable led-matrix.service 2>/dev/null || true
         systemctl disable --now led-matrix-update.path 2>/dev/null || true
         systemctl disable --now led-matrix-recovery.path 2>/dev/null || true
+        systemctl disable --now led-matrix-hardware.path 2>/dev/null || true
     fi
 fi
 
