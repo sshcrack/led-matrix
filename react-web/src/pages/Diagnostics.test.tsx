@@ -36,3 +36,21 @@ describe.each([
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })
+
+it('shows refresh health and turns steady brightness on', async () => {
+  const refresh = {
+    refresh_cpu: 3, timing_available: true,
+    windows: { '60s': { seconds: 60, refreshes: 5682, refresh_hz: 94.7, median_us: 10565, p99_us: 11025, max_us: 12705, late_per_1000: 0, interrupts_per_second: { device_and_timer: [1, 2, 3, 8459.4] } } },
+    steady_brightness: { enabled: false, state: 'off' },
+  }
+  const fetchMock = vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+    url.endsWith('/steady_brightness') ? { enabled: true } : { ...fixture(true, true), refresh }))))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<Diagnostics />)
+  expect(await screen.findByText('94.7 Hz')).toBeTruthy()
+  expect(screen.getByText('8459/s')).toBeTruthy()
+  screen.getByRole('switch', { name: 'Steady brightness' }).click()
+  await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/steady_brightness'))).toBe(true))
+  const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/steady_brightness')) as unknown as [string, RequestInit]
+  expect(call[1].body).toBe(JSON.stringify({ enabled: true }))
+})

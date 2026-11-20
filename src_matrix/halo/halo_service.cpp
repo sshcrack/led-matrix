@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include "led-matrix.h"
+#include "mini_uart.h"
 
 namespace Halo {
 
@@ -78,7 +79,13 @@ void Service::preopen(const std::string& config_file)
     }
     // An open UART costs CPU even when nothing is sent: on a 64-row panel GPIO15
     // (the UART's RX) is the E address line, so the receiver sees a break every
-    // character (~12k interrupts/s on a Pi 3B). Only hold it while the halo is on.
+    // character (~12k interrupts/s on a Pi 3B). The halo only transmits, so the
+    // mini UART's receiver is switched off while we are still root (it stays off
+    // until reboot, so enabling the halo later is covered too), and the UART is
+    // only held while the halo is on.
+    if (is_allowed_device(device))
+        if (const auto line = disable_mini_uart_receiver(device); !line.empty())
+            spdlog::info("{}", line);
     if (!enabled)
         return;
     int error = 0;

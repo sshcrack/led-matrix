@@ -67,6 +67,8 @@ namespace Config {
         /// "mixed", "environment", "party" or "chill"; throws on anything else.
         void set_automatic_director_mode(const std::string &mode);
         std::map<std::string, std::string> get_automatic_preferences();
+        bool get_steady_brightness();
+        void set_steady_brightness(bool enabled);
         /// Increments whenever preferences change so consumers can cache them.
         std::uint64_t get_automatic_preferences_version() const;
         /// `preference` is "favorite", "on", "hidden" or "default" (removes it).

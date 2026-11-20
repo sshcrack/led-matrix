@@ -297,6 +297,12 @@ void RuntimeDiagnostics::set_hardware_state(nlohmann::json state) {
     hardware_state_ = std::move(state);
 }
 
+void RuntimeDiagnostics::set_refresh_state(nlohmann::json state)
+{
+    std::lock_guard lock(mutex_);
+    refresh_state_ = std::move(state);
+}
+
 void RuntimeDiagnostics::set_render_placement(nlohmann::json state) {
     std::unique_lock lock(mutex_, std::try_to_lock);
     if (!lock.owns_lock()) return;
@@ -409,6 +415,7 @@ nlohmann::json RuntimeDiagnostics::snapshot() const {
             {"transition", transition_state_},
             {"transition_history", transition_history_},
             {"render_placement", render_placement_state_},
-            {"hardware", hardware_state_}};
+            {"hardware", hardware_state_},
+            {"refresh", refresh_state_}};
 }
 }
