@@ -67,9 +67,8 @@ Every refresh is then padded with dark time to the same period. The brightness s
 as long as a stretched refresh still fits, and the whole panel is about 15–17 % dimmer. Turning
 it off restores the `--led-limit-refresh` value from the command line.
 
-Measured with steady brightness on (calibrated to 81 Hz; fastest refresh 10.27 ms):
-
-Same build and halo on (receiver off). Brightness change is the refresh rate relative to idle in
+Measured on ledmat with the same build and the halo on (receiver off). Steady brightness
+calibrated to 81 Hz from a fastest refresh of 10.27 ms. Brightness change is the refresh rate relative to idle in
 the same mode:
 
 | Condition | Steady off: rate | median / p99 / max | Brightness | Steady on: rate | median / p99 / max | Brightness |
