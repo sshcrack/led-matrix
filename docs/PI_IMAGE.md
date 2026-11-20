@@ -37,7 +37,60 @@ copy, used when the data partition has no working version
 ([details](transactional-updates.md)). If the data partition is missing, the
 updater refuses instead of installing into RAM.
 
-## Build and flash a card
+## Generic image (Raspberry Pi Imager)
+
+`build_generic_image.sh` builds the public image. It contains no user, Wi-Fi or keys,
+and the package is already installed, so the first boot needs no internet:
+
+```bash
+sudo packaging/pi-image/build_generic_image.sh --deb led-matrix-<version>_arm64.deb \
+    --out ~/.cache/led-matrix-pi-image/out/led-matrix-<version>-arm64.img.xz
+sudo packaging/pi-image/check_image_secrets.sh ~/.cache/led-matrix-pi-image/out/led-matrix-<version>-arm64.img.xz
+```
+
+**Build requirements.** The build runs as root: it uses loop mounts and an arm64 chroot,
+via qemu-user with a binfmt `F` handler (`qemu-user-static`) on x86. It needs network
+access for apt.
+
+**What `customize_root.sh` sets up in the chroot.** Everything `provision.sh` does that
+does not depend on the person:
+- packages (`overlayroot`, `nftables`, `systemd-coredump`, `avahi-daemon`)
+- the data partition binds
+- journald in RAM, zram swap, no apt timers
+- the hostname `led-matrix`, so `led-matrix.local` resolves through mDNS
+
+It empties the machine ID and removes the SSH host keys and logs.
+
+**Size.** The system partition is 5 GiB and the data partition 256 MiB, so the image
+fits an 8 GB card.
+
+**First boot.** Flash the image with Raspberry Pi Imager and fill in its customisation:
+user, Wi-Fi, SSH key, hostname. cloud-init applies these on the first boot. Then
+`led-matrix-firstboot.service` (`firstboot.sh`) does the rest:
+1. grows the data partition to the end of the card
+2. generates SSH host keys
+3. replaces Imager's `user-data`/`network-config` on the boot partition, which hold the
+   Wi-Fi password
+4. disables cloud-init and switches to the read-only system
+5. reboots
+
+Its log is `/srv/led-matrix/firstboot.log`.
+
+**The `pi` account.** The daemon drops its privileges to `pi`. The image ships without
+that account, because cloud-init skips users that already exist, and an Imager user named
+`pi` would then lose its password. Before the panel service starts,
+`led-matrix-user.service` creates `pi` as a locked account if Imager didn't create it. It
+then hands the panel data to `pi`.
+
+**Secrets check.** `check_image_secrets.sh` fails when the image contains any of:
+- SSH host or user keys, or other private keys
+- password hashes
+- Wi-Fi credentials
+- a machine ID or random seed
+- shell history
+- led-matrix secrets
+
+## Build and flash a card from an existing panel
 
 Run on a Linux computer with an SD card reader. No root is needed to build.
 

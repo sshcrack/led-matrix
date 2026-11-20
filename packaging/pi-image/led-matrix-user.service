@@ -1,0 +1,15 @@
+[Unit]
+Description=Create the LED matrix daemon user (pi) unless Raspberry Pi Imager did
+# cloud-init creates Imager's user in its network stage. The image ships without
+# pi so that an Imager user called pi is created by cloud-init with its password.
+After=local-fs.target cloud-init-network.service cloud-init.service
+Before=led-matrix.service
+RequiresMountsFor=/var/lib/led-matrix
+ConditionPathIsReadWrite=/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/led-matrix-image/ensure_daemon_user.sh
+
+[Install]
+WantedBy=multi-user.target

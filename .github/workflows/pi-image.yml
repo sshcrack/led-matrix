@@ -1,0 +1,84 @@
+name: Panel image
+
+# Builds the generic Raspberry Pi image (packaging/pi-image/build_generic_image.sh)
+# from a release .deb, checks it for secrets and its size, and keeps it as an
+# artifact. create-release.yml can call it to attach the image to a release.
+on:
+  pull_request:
+    paths:
+      - "packaging/pi-image/**"
+      - ".github/workflows/pi-image.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag whose .deb to use (default: latest release)"
+        required: false
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    outputs:
+      artifact:
+        description: "Name of the uploaded image artifact"
+        value: ${{ jobs.image.outputs.artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    outputs:
+      artifact: ${{ steps.meta.outputs.artifact }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-user-static binfmt-support xz-utils fdisk e2fsprogs
+          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+
+      - name: Release package
+        id: meta
+        run: |
+          tag="${{ inputs.tag }}"
+          [ -n "$tag" ] || tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          version=${tag#v}
+          mkdir -p deb
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "led-matrix-${version}_arm64.deb" --dir deb
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "artifact=led-matrix-${version}-arm64-image" >>"$GITHUB_OUTPUT"
+
+      - name: Base image cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/led-matrix-pi-image/*.img.xz*
+          key: raspios-${{ hashFiles('packaging/pi-image/build_generic_image.sh') }}
+
+      - name: Build
+        run: |
+          out=$PWD/out/led-matrix-${{ steps.meta.outputs.version }}-arm64.img.xz
+          sudo env CACHE=$HOME/.cache/led-matrix-pi-image packaging/pi-image/build_generic_image.sh \
+            --deb deb/led-matrix-${{ steps.meta.outputs.version }}_arm64.deb --out "$out"
+          sudo chown -R "$(id -u):$(id -g)" out "$HOME/.cache/led-matrix-pi-image"
+          ls -la out
+
+      - name: No secrets, under 2 GiB
+        run: |
+          img=out/led-matrix-${{ steps.meta.outputs.version }}-arm64.img.xz
+          sudo packaging/pi-image/check_image_secrets.sh "$img"
+          size=$(stat -c %s "$img")
+          echo "Compressed image: $((size / 1024 / 1024)) MiB"
+          [ "$size" -lt $((2 * 1024 * 1024 * 1024)) ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact }}
+          path: out/
+          retention-days: 7
+          compression-level: 0
