@@ -382,6 +382,16 @@ void service_over_pty()
           "stopping the test restores the disabled halo and saved LED count");
 
     check(svc.status()["frames_sent"].get<int>() > 0 && svc.status()["device_open"] == true, "status");
+
+    // After the off burst the UART is released (an open one costs CPU on the Pi),
+    // and switching the halo on again opens it right away.
+    collect(2500);
+    check(svc.status()["device_open"] == false, "a disabled halo releases the UART");
+    s.enabled = true;
+    svc.update_settings(s);
+    const int before_reopen = frames;
+    collect(600);
+    check(svc.status()["device_open"] == true && frames - before_reopen >= 3, "enabling reopens the UART");
     svc.stop();
     close(master);
 

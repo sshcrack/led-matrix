@@ -87,19 +87,25 @@ One-way, Pi → Pro Micro, 115200 8N1, ≤ 20 frames/s (the daemon sends ~15/s, 
 
 **Privileges.** The service starts as root and the matrix library then drops to `pi:pi` with
 `setresgid/setresuid` only (no `initgroups`, `rpi-rgb-led-matrix/lib/led-matrix.cc`
-`drop_privs`), so the process would *not* have the `dialout` group afterwards. The daemon therefore
-opens the configured `halo.device` before creating the matrix (`Halo::Service::preopen`) and keeps
-that descriptor. Consequence: changing `device` to another path while running needs the daemon to
-be able to open it as `pi` (or a restart).
+`drop_privs`). Supplementary groups survive that, so the unit sets `SupplementaryGroups=dialout`
+and the daemon can open the UART later. It holds the UART only while the halo is on or an alignment
+test runs: switched off, it sends the off frames and then closes the device. With the halo enabled
+in `config.json` at start, `Halo::Service::preopen` opens it before the privilege drop as well.
 
 **GPIO14 / GPIO15 check (library source).** With `--led-parallel=2` and the `regular` mapping
 (`lib/hardware-mapping.c`) the library only claims bits of the pins it uses: GPIO14 is `p2_r1`,
 used only for `--led-parallel=3`, so TX is untouched. GPIO15 is the `e` address line, which
 `Framebuffer` adds to its row mask for 64-row panels (`double_rows > 16`); `GPIO::RequestOutputs`
 switches exactly those pins to output with a per-pin function-select write after the kernel set
-up the UART. That replaces the UART's RX function on GPIO15 (the daemon never receives, so that
-is fine) and does not touch GPIO14's TX function. This is from reading the library; it still needs
-confirming on the real panel (all 64 rows lit with the UART enabled).
+up the UART. That takes GPIO15 away from the UART's RX and does not touch GPIO14's TX function.
+
+**An open UART is not free.** With GPIO15 no longer routed to RX, the mini UART's receiver sees a
+constant break: one interrupt per character time, about 12,000 per second at 115200 baud. Clearing
+`CREAD` or setting `IGNBRK` does not stop them, because the driver keeps receive interrupts on while
+the port is open. Measured on ledmat (Pi 3B, 2026-11-20, `digitalrain`): with the port open, the
+daemon used about 105 % CPU instead of 87 %, and about 12 % of frames were late instead of 0.14 %.
+That's why the daemon closes the port while the halo is off. While the halo is on, the cost
+remains.
 
 ## Not verified on hardware
 
