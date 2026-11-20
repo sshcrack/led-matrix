@@ -20,7 +20,8 @@ namespace Config
     class SHARED_DESKTOP_API General
     {
     protected:
-        std::string hostname;
+        // The panel image's mDNS name (packaging/pi-image); a saved hostname wins.
+        std::string hostname = "led-matrix.local";
         uint16_t port = 8080; // Default port
         int fpsLimit = 60; // Default FPS limit
         int udpFpsLimit = 30; // Default UDP send FPS limit

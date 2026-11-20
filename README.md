@@ -31,16 +31,68 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 ## Quick start
 
 > [!IMPORTANT]
-> **You need:** a **Raspberry Pi 3 or 4** (the Pi 5 is untested, see [Shopping list](#shopping-list)) running **64-bit** Raspberry Pi OS Lite with a user named **`pi`**, HUB75 LED panels, a HUB75 adapter board or HAT, and a separate **5 V supply** for the panels.
+> **You need:** a **Raspberry Pi 3 or 4** (the Pi 5 is untested, see [Shopping list](#shopping-list)), a microSD card of **8 GB or more**, HUB75 LED panels, a HUB75 adapter board or HAT, and a separate **5 V supply** for the panels.
 
 | I have… | Do this |
 |:--|:--|
-| A Pi with panels wired up | Follow the four steps below (about 10 minutes) |
+| A Pi with panels wired up | Follow the steps below (about 15 minutes, most of it waiting) |
+| A Pi already running Raspberry Pi OS that I want to keep | [**Install the package**](#install-on-an-existing-raspberry-pi-os) |
 | A Pi with panels, and I'd rather have an AI agent do it | [**Set up with an AI agent**](#set-up-with-an-ai-agent) |
-| Nothing yet (no Pi, panels or adapter) | [**Hardware**](#hardware): what to buy, how to wire and flash it |
+| Nothing yet (no Pi, panels or adapter) | [**Hardware**](#hardware): what to buy and how to wire it |
 | Just a computer, no hardware | [**Try the emulator**](#try-it-without-hardware) |
 
-### 1. Prepare the Pi (one-time)
+### 1. Flash the card
+
+The panel image is Raspberry Pi OS Lite (64-bit) with everything installed. Its system is read-only, so the panel can be unplugged like any appliance ([details](docs/PI_IMAGE.md)).
+
+1. Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) (version 2 or newer).
+2. Add this project's image list: **App Options → Content Repository → Use custom URL**, and enter
+   ```
+   https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json
+   ```
+   (Or start Imager with `rpi-imager --repo <that URL>`.)
+3. Choose your Pi model, then **LED Matrix** as the operating system, and your SD card.
+4. In the customisation, set a username and password, your **Wi-Fi** (skip it for Ethernet) and, if you want to log in later, **SSH**. Set the hostname to **`led-matrix`** (Imager may suggest another name), or remember the one you choose.
+5. Write the card, put it in the Pi and power it on. The first boot takes a few minutes and restarts once.
+
+The image and its checksum are also on the [Releases](https://github.com/sshcrack/led-matrix/releases/latest) page (`led-matrix-<version>-arm64.img.xz`) if you prefer another flashing tool. Imager is still needed for the Wi-Fi and user settings.
+
+### 2. Set up the panel
+
+Open **`http://led-matrix.local:8080/`** on a phone or computer on the same network (or `http://<pi-ip-address>:8080/`; your router shows the address). On a phone, use *Add to Home Screen* to install it like an app.
+
+The page asks you to **set up your panel**. The image starts with settings for four 64×64 panels in a 2×2 grid (two chains of two, 128×128 pixels) on a Pi 3. On the **Panel hardware** card:
+1. Switch on **Show test pattern**. If the picture is already right, press **Looks right** and you are done.
+2. Otherwise choose your layout under **Change panel settings**. Use GPIO slowdown `3` for a Pi 3 and `2` for a Pi 4.
+3. Apply. The panel restarts with the new settings, and goes back to the old ones by itself if it does not come up.
+
+The settings are right when the red corner is top left, the arrow points up and the white frame runs round the whole picture. Other layouts are in [Working out the numbers](#working-out-the-numbers).
+
+### 3. Use it
+
+1. Press the power button (top right) if the matrix is off.
+2. In **Control**, leave the toggle on **Auto** to let the Director pick scenes, or pick **Manual** and click a preset.
+3. Press **+** to build a preset: choose a one-tap starting point (Night sky, Digital calm, Desk clock) or pick scenes yourself.
+4. Open **Scenes** to browse every scene with an animated preview.
+
+Panels dark, flickering or scrambled? Those are almost always one-flag fixes. See [Troubleshooting](#troubleshooting).
+
+### 4. Optional: the desktop app on your PC
+
+The [desktop app](#desktop-app) adds music reactivity (from your PC's audio output), GPU shader scenes, music videos, and render offload for heavy scenes. It installs for your user only, with no admin rights, and keeps itself on the same version as your matrix.
+
+| OS | Install |
+|:--|:--|
+| **Windows** | Run `led-matrix-desktop-<version>-win64.exe` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest) |
+| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
+
+Start it and click **Connect**. It looks for the panel at `led-matrix.local` (port `8080`); enter the Pi's address instead if you changed the hostname or installed the package yourself.
+
+### Install on an existing Raspberry Pi OS
+
+Use this instead of the image when the Pi already runs **64-bit** Raspberry Pi OS (Lite) with a user named **`pi`**.
+
+#### Prepare the Pi (one-time)
 
 SSH into the Pi. Its onboard sound shares hardware with the LED driver, so turn it off, as the upstream library recommends:
 
@@ -50,7 +102,7 @@ sudo sed -i 's/^dtparam=audio=on/dtparam=audio=off/' /boot/firmware/config.txt  
 sudo reboot
 ```
 
-### 2. Install
+#### Install the package
 
 ```bash
 # Download the installer, read it if you like, then run it
@@ -70,31 +122,11 @@ The installer downloads the latest `.deb` from [Releases](https://github.com/ssh
 
 Four 64×64 panels in a 2×2 grid are `64` / `64` / `2` / `2`. Other layouts are in [Working out the numbers](#working-out-the-numbers).
 
-### 3. Open the web UI
-
-Open **`http://<pi-ip-address>:8080/`** on any device on your network (the installer prints the address). On a phone, use *Add to Home Screen* to install it like an app.
-
-1. Press the power button (top right) if the matrix is off.
-2. In **Control**, leave the toggle on **Auto** to let the Director pick scenes, or pick **Manual** and click a preset.
-3. Press **+** to build a preset: choose a one-tap starting point (Night sky, Digital calm, Desk clock) or pick scenes yourself.
-4. Open **Scenes** to browse every scene with an animated preview.
-
-Panels dark, flickering or scrambled? Those are almost always one-flag fixes. See [Troubleshooting](#troubleshooting).
-
-### 4. Optional: install the desktop app on your PC
-
-The [desktop app](#desktop-app) adds music reactivity (from your PC's audio output), GPU shader scenes, music videos, and render offload for heavy scenes. It installs for your user only, with no admin rights, and keeps itself on the same version as your matrix.
-
-| OS | Install |
-|:--|:--|
-| **Windows** | Run `led-matrix-desktop-<version>-win64.exe` from [Releases](https://github.com/sshcrack/led-matrix/releases/latest) |
-| **Linux** (x86_64) | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/install-desktop.sh \| sh` |
-
-Start it, enter the Pi's address and port `8080`, and click **Connect**.
+Then open **`http://<pi-ip-address>:8080/`** (the installer prints the address) and continue with [Use it](#3-use-it).
 
 ### Set up with an AI agent
 
-Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Run the agent on the computer where you want the [desktop app](#desktop-app) (Windows or Linux) and make sure you can `ssh` into the Pi from it. The agent sets up the Pi over SSH, then installs the desktop app on that computer and connects it to the Pi. Paste:
+Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Run the agent on the computer where you want the [desktop app](#desktop-app) (Windows or Linux). If the card isn't flashed yet, it walks you through flashing the panel image with SSH enabled; otherwise make sure you can `ssh` into the Pi from that computer. The agent sets up the Pi over SSH, then installs the desktop app on that computer and connects it to the Pi. Paste:
 
 ```text
 Set up my LED matrix. Read and follow
@@ -220,15 +252,7 @@ The installer asks for these. They end up as `--led-rows`, `--led-cols`, `--led-
 
 ### Flash the Pi
 
-1. On your computer, install [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
-2. Choose your Pi model, then **Raspberry Pi OS Lite (64-bit)** (under *Raspberry Pi OS (other)*), and your SD card.
-3. In the customisation settings, set:
-   - **Username `pi`** (the installer requires this user) and a password
-   - Your **Wi-Fi** name and password (skip if you use Ethernet)
-   - **Enable SSH**
-   - Optionally a hostname such as `ledmatrix`
-4. Write the card, put it in the Pi, and power it on. Give the first boot a couple of minutes.
-5. Connect with `ssh pi@ledmatrix.local` (or `ssh pi@<ip-from-your-router>`) and continue with the [Quick start](#1-prepare-the-pi-one-time).
+Flash the panel image as described in [Flash the card](#1-flash-the-card). To use plain Raspberry Pi OS instead, choose **Raspberry Pi OS Lite (64-bit)** in Imager, set the username **`pi`**, Wi-Fi and SSH in its customisation, and continue with [Install on an existing Raspberry Pi OS](#install-on-an-existing-raspberry-pi-os).
 
 > [!TIP]
 > Prefer not to do this alone? Your [AI agent](#set-up-with-an-ai-agent) can walk you through every step above and run the commands over SSH.
@@ -243,11 +267,11 @@ The [Quick start](#quick-start) covers a normal install. This section is the ref
 
 - Raspberry Pi 3 or 4 (Pi 5 untested) with a **64-bit** Debian-based OS (Debian 12 "Bookworm" or newer), a user named **`pi`**, and internet access
 - Panels wired and powered (see [Hardware](#hardware))
-- The Pi's onboard sound disabled ([step 1 of the Quick start](#1-prepare-the-pi-one-time))
+- The Pi's onboard sound disabled ([Prepare the Pi](#prepare-the-pi-one-time))
 
 ### Install
 
-Use the [installer script](#2-install), or install the package yourself:
+Use the [installer script](#install-the-package), or install the package yourself:
 
 ```bash
 # Download led-matrix-<version>_arm64.deb from the latest release, then:
@@ -301,7 +325,7 @@ sudo apt purge led-matrix            # also removes /var/lib/led-matrix and the 
 
 ### Power-cut-safe card (optional)
 
-To make unplugging the panel safe, build a card with a read-only system and a separate data partition: `packaging/pi-image/` exports the settings from a running Pi and builds a ready-to-flash image. See [docs/PI_IMAGE.md](docs/PI_IMAGE.md). Updates of the app work as usual there (they go to the data partition); OS updates go through `sudo led-matrix-system-mode writable`.
+The [panel image](#1-flash-the-card) is already power-cut-safe. To move an existing install to such a card, `packaging/pi-image/` exports the settings from the running Pi and builds an image with them. See [docs/PI_IMAGE.md](docs/PI_IMAGE.md). Updates of the app work as usual there (they go to the data partition); OS updates go through `sudo led-matrix-system-mode writable`.
 
 ---
 
@@ -521,7 +545,7 @@ Back up `/var/lib/led-matrix/config.json` to keep your presets.
 | Symptom | Try this |
 |:--|:--|
 | **Nothing lights up** | `systemctl status led-matrix` and `journalctl -u led-matrix -n 50`. Check the panel power and the ribbon cable direction (*in* vs *out*). Try `--led-panel-type=FM6126A`. |
-| **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Quick start step 1](#1-prepare-the-pi-one-time)) and check the power supply. |
+| **Flicker or noise** | Raise `--led-slowdown-gpio` (2 → 3 → 4), disable the Pi's onboard sound ([Prepare the Pi](#prepare-the-pi-one-time)) and check the power supply. |
 | **Wrong colours** | Set `--led-rgb-sequence` (`RBG`, `BGR`, …). |
 | **Scrambled, striped or half-lit image** | Try other `--led-multiplexing` values (0–24) and `--led-row-addr-type` (0–5). |
 | **Image is mirrored, rotated or in the wrong order** | Use `--led-pixel-mapper`, or re-check that `chain` and `parallel` match your wiring. |

@@ -73,7 +73,7 @@ SettingsPanel::SettingsPanel(Plugins::PluginManager* pluginManager, ConfigManage
         General &generalCfg = cfg->getGeneralConfig();
         ImGui::SeparatorText("General Device Settings");
 
-        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. 10.4.1.2", &hostname,
+        if (ImGui::InputTextWithHint("LED Matrix hostname", "e.g. led-matrix.local or 10.4.1.2", &hostname,
                                      ImGuiInputTextFlags_CallbackCharFilter, hostname_filter)) {
             std::cout << "Hostname changed to: " << hostname << std::endl;
             generalCfg.setHostname(hostname);

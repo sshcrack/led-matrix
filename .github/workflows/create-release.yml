@@ -177,3 +177,38 @@ jobs:
           gh release upload "$TAG" artifacts/desktop-windows-build/led-matrix-desktop-${{ needs.prepare.outputs.version }}-win64.exe
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The ready-to-flash panel image (docs/PI_IMAGE.md), built from the .deb just
+  # uploaded, plus a Raspberry Pi Imager repository file. The Imager file has a
+  # fixed name, so releases/latest/download/led-matrix-imager.json always points
+  # at the newest image.
+  image:
+    needs: [prepare, create-release]
+    uses: ./.github/workflows/pi-image.yml
+    with:
+      tag: v${{ needs.prepare.outputs.version }}
+
+  publish-image:
+    runs-on: ubuntu-latest
+    needs: [prepare, image]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.image.outputs.artifact }}
+          path: out
+
+      - name: Upload image and Imager repository file
+        run: |
+          VERSION=${{ needs.prepare.outputs.version }}
+          TAG=v$VERSION
+          IMG=led-matrix-$VERSION-arm64.img.xz
+          (cd out && sha256sum -c "$IMG.sha256")
+          python3 -I packaging/pi-image/imager_repo.py --image "out/$IMG" --version "$VERSION" \
+            --url "https://github.com/${{ github.repository }}/releases/download/$TAG/$IMG" \
+            --icon "https://raw.githubusercontent.com/${{ github.repository }}/$TAG/react-web/public/icon-192.png" \
+            --out out/led-matrix-imager.json
+          gh release upload "$TAG" "out/$IMG" "out/$IMG.sha256" out/led-matrix-imager.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

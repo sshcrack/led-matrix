@@ -76,7 +76,8 @@ user, Wi-Fi, SSH key, hostname. cloud-init applies these on the first boot. Then
 
 Its log is `/srv/led-matrix/firstboot.log`.
 
-**Panel layout.** The image starts with one 64×64 panel. Until someone has checked it,
+**Panel layout.** The image starts with the package defaults: four 64×64 panels in a 2×2
+grid (`--led-chain=2 --led-parallel=2`) and GPIO slowdown 3. Until someone has checked it,
 the web UI (`http://led-matrix.local:8080`) shows "Set up your panel"; the **Panel
 hardware** card on the Integrations page shows a test pattern and changes the layout,
 wiring and advanced `--led-*` options (see [Panel hardware](PANEL_HARDWARE.md)).
@@ -86,6 +87,14 @@ Pi OS's locked `pi` account (uid 1000): Raspberry Pi OS's cloud-init sets up Ima
 by renaming that account, so without it no login user and no SSH key would be created.
 When Imager's user has another name, `led-matrix-user.service` creates `pi` again as a
 locked account before the panel service starts. It then hands the panel data to `pi`.
+
+**Releases.** `create-release.yml` builds the image from the release `.deb` (through
+`pi-image.yml`) and uploads `led-matrix-<version>-arm64.img.xz`, its `.sha256` and
+`led-matrix-imager.json`. That last one is a Raspberry Pi Imager repository file written by
+`imager_repo.py`. Its fixed name makes
+`https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json`
+always list the newest image. It sets `init_format: cloudinit-rpi`, so Imager writes
+its customisation as cloud-init files.
 
 **Secrets check.** `check_image_secrets.sh` fails when the image contains any of:
 - SSH host or user keys, or other private keys
