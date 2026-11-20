@@ -56,6 +56,9 @@ is on trial and no updater holds the lock, the launcher also confirms it: three
 healthy checks in a row remove `trial`. A `trial` that does not match `current`
 (cut between writing it and the switch) is dropped.
 
+When storage is broken or no version gets the API to answer, the launcher
+starts the factory copy in [recovery mode](RECOVERY.md) instead.
+
 Installing a package with `dpkg`/`apt` means "run this package": `postinst`
 removes the updated versions (not on `dpkg-reconfigure`). `apt purge` also
 removes `/var/lib/led-matrix-app`.

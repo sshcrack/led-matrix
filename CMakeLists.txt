@@ -194,6 +194,8 @@ else()
         src_matrix/main.cpp
         src_matrix/daemon.cpp
         src_matrix/server/request_guard.cpp
+        src_matrix/recovery/recovery.cpp
+        src_matrix/recovery/recovery_state.cpp
         src_matrix/matrix_control/canvas.cpp
         src_matrix/matrix_control/hardware.cpp
         src_matrix/matrix_control/SceneScheduler.cpp
@@ -689,6 +691,8 @@ if(NOT ENABLE_DESKTOP)
         DESTINATION lib/led-matrix
         RENAME launcher
     )
+    # Root side of recovery mode (repair/reset the data partition), docs/RECOVERY.md.
+    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/recovery_action.sh DESTINATION lib/led-matrix)
 
     # Configure and install systemd service unit
     configure_file(
@@ -703,6 +707,8 @@ if(NOT ENABLE_DESKTOP)
     install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.path"
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-update.service"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-recovery.path"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian-matrix/led-matrix-recovery.service"
         DESTINATION "lib/systemd/system"
     )
 endif()
@@ -854,6 +860,10 @@ if(ENABLE_EMULATOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_service.sh
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/launcher.sh)
         set_tests_properties(update_transaction_test PROPERTIES TIMEOUT 90)
+        add_test(NAME recovery_action_test COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_action_test.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/recovery_action.sh)
+        set_tests_properties(recovery_action_test PROPERTIES TIMEOUT 60)
     endif()
     add_executable(video_scene_switch_integration tests/video_scene_switch_integration.cpp)
     target_compile_features(video_scene_switch_integration PRIVATE cxx_std_23)
@@ -990,6 +1000,15 @@ if(ENABLE_EMULATOR)
     target_link_libraries(releases_smoke PRIVATE SharedToolsCommon nlohmann_json::nlohmann_json spdlog::spdlog)
     add_test(NAME releases_smoke COMMAND $<TARGET_FILE:releases_smoke>)
     set_tests_properties(releases_smoke PROPERTIES ENVIRONMENT "${PREVIEW_TEST_ENV}")
+
+    add_executable(recovery_smoke
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_smoke.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix/recovery/recovery_state.cpp
+    )
+    target_compile_features(recovery_smoke PRIVATE cxx_std_23)
+    target_include_directories(recovery_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src_matrix)
+    target_link_libraries(recovery_smoke PRIVATE nlohmann_json::nlohmann_json)
+    add_test(NAME recovery_smoke COMMAND $<TARGET_FILE:recovery_smoke>)
 
     add_executable(request_guard_smoke
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/request_guard_smoke.cpp

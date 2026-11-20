@@ -1,0 +1,10 @@
+[Unit]
+Description=Run a repair requested from recovery mode
+
+[Path]
+# The unprivileged recovery daemon writes its request here (docs/RECOVERY.md).
+# The launcher creates the directory, owned by the daemon's user.
+PathExists=/run/led-matrix-recovery/request
+
+[Install]
+WantedBy=multi-user.target
