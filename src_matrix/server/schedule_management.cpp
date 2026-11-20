@@ -54,7 +54,8 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
             warn("Invalid brightness schedule payload: {}", ex.what());
             return reply_with_error(req, "Invalid json payload");
         }
-        cfg->set_brightness_schedule(schedule);
+        if (!cfg->set_brightness_schedule(schedule))
+            return reply_with_error(req, "Could not save the brightness schedule", restinio::status_internal_server_error());
         return reply_with_json(req, json(cfg->get_brightness_schedule()));
     });
 
@@ -84,8 +85,10 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         }
 
         bool enabled = j["enabled"].get<bool>();
-        cfg->set_scheduling_enabled(enabled);
+        const bool saved = cfg->set_scheduling_enabled(enabled);
         PlaybackControl::restart("scheduling_enabled_changed");
+        if (!saved)
+            return reply_with_error(req, "Could not save the scheduling setting", restinio::status_internal_server_error());
 
         return reply_with_json(req, {{"enabled", enabled}});
     });
@@ -139,8 +142,10 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
                 return reply_with_error(req, "Preset not found");
             }
 
-            cfg->set_schedule(id, schedule);
+            const bool saved = cfg->set_schedule(id, schedule);
             PlaybackControl::restart("schedule_changed");
+            if (!saved)
+                return reply_with_error(req, "Could not save the schedule", restinio::status_internal_server_error());
             return reply_with_json(req, {{"success", "Schedule saved"}, {"id", id}});
         }
         catch (std::exception& ex) {
@@ -157,13 +162,12 @@ std::unique_ptr<Server::router_t> Server::add_schedule_routes(std::unique_ptr<ro
         }
 
         const string id{qp["id"]};
-        const bool success = cfg->delete_schedule(id);
-        if (success)
-            PlaybackControl::restart("schedule_deleted");
-
-        if (!success) {
+        const auto result = cfg->delete_schedule(id);
+        if (result == Config::Change::NotFound)
             return reply_with_error(req, "Schedule not found");
-        }
+        PlaybackControl::restart("schedule_deleted");
+        if (result == Config::Change::SaveFailed)
+            return reply_with_error(req, "Could not save the deletion", restinio::status_internal_server_error());
 
         return reply_with_json(req, {{"success", "Schedule deleted"}});
     });

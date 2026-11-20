@@ -160,8 +160,7 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
                 variant.id, state.properties, state.fps, RuntimeInputs::snapshot(),
                 state.generation, state.session_id);
             variant.properties = updated.properties;
-            cfg->set_custom_scene_variant(state.scene_name, variant);
-            if (!cfg->save())
+            if (!cfg->set_custom_scene_variant(state.scene_name, variant))
                 return reply_with_error(req, "Could not persist Scene Lab variant", restinio::status_internal_server_error());
             PlaybackControl::restart("scene_lab_save_variant");
             return reply_with_json(req, {
@@ -199,9 +198,8 @@ std::unique_ptr<Server::router_t> Server::add_scene_lab_routes(std::unique_ptr<r
             do {
                 id = uuid::generate_uuid_v4();
             } while (cfg->get_presets().contains(id));
-            cfg->set_presets(id, preset);
-            if (!cfg->save()) {
-                cfg->delete_preset(id);
+            if (!cfg->set_presets(id, preset)) {
+                (void)cfg->delete_preset(id);
                 return reply_with_error(
                     req, "Could not persist Scene Lab preset",
                     restinio::status_internal_server_error());

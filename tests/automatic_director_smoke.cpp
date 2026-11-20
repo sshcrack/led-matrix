@@ -717,7 +717,7 @@ int main()
     {
         Config::MainConfig first(config_path.string());
         persisted_seed = first.get_automatic_director_seed();
-        if (persisted_seed == 0 || !first.save()) {
+        if (persisted_seed == 0 || !first.flush()) {
             std::cerr << "fresh config did not generate/persist a Director seed\n";
             return 7;
         }
@@ -743,7 +743,7 @@ int main()
             std::cerr << "preference changes did not bump the preferences version\n";
             return 49;
         }
-        if (!second.save())
+        if (!second.flush())
             return 10;
     }
     {

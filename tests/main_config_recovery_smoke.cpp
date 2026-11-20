@@ -61,8 +61,7 @@ std::string make_good_config(const std::string& path)
 {
     Config::MainConfig cfg(path, Config::MainConfig::LoadMode::Recover);
     const auto presets = cfg.get_presets();
-    cfg.set_preset_display_name(presets.begin()->first, "Living room");
-    check(cfg.save(), "saving a good config");
+    check(cfg.set_preset_display_name(presets.begin()->first, "Living room") == Config::Change::Saved, "saving a good config");
     return read(path);
 }
 

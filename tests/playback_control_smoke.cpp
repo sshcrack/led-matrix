@@ -73,9 +73,14 @@ int main()
         cfg.set_curr(cfg.get_curr_id());
         expect_no_restart("operation mode, power and preset selection saves");
 
-        check(cfg.is_dirty(), "setters still mark the config dirty");
-        check(cfg.save(), "config saves");
-        expect_no_restart("save()");
+        // Setters save their own changes (#203): a second reader sees them.
+        {
+            Config::MainConfig reread(path);
+            check(reread.get_environment().detected_label == "Berlin", "setters save their own changes");
+            check(reread.get_operation_mode() == "manual", "the operation mode was saved");
+        }
+        check(cfg.flush(), "config flushes");
+        expect_no_restart("flush()");
 
         // Playback intents do restart, each with its reason.
         PlaybackControl::restart("power_toggle");

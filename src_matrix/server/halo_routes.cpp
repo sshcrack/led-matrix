@@ -100,9 +100,9 @@ std::unique_ptr<Server::router_t> Server::add_halo_routes(std::unique_ptr<router
         if (const auto problem = apply_halo_patch(patch, settings); !problem.empty())
             return reply_with_error(req, problem);
 
-        cfg->set_halo(settings);
+        const bool saved = cfg->set_halo(settings);
         Halo::Service::instance().update_settings(cfg->get_halo());
-        if (!cfg->save())
+        if (!saved)
             return reply_with_error(req, "Could not save the halo settings", restinio::status_internal_server_error());
         return reply_with_json(req, Halo::Service::instance().status());
     });
