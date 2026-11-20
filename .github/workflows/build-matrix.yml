@@ -233,6 +233,11 @@ jobs:
           VCPKG_BINARY_SOURCES: ${{ steps.installed-dependencies.outputs.cache-hit == 'true' && format('clear;files,{0}/vcpkg-binary-cache,readwrite', runner.temp) || format('clear;files,{0}/vcpkg-binary-cache,readwrite;nugettimeout,30;nuget,https://nuget.sshcrack.me/v3/index.json,readwrite', runner.temp) }}
           CROSS_COMPILE_ROOT: ${{ (matrix.requires-toolchain && format('{0}/cross-compile', runner.temp)) || '' }}
 
+      # route_methods_test runs the installed daemon.
+      - name: Install emulator tree
+        if: matrix.name == 'emulator-tests'
+        run: cmake --install emulator_build
+
       - name: Run complete emulator suite
         if: matrix.name == 'emulator-tests'
         run: ctest --test-dir emulator_build --output-on-failure --parallel 2

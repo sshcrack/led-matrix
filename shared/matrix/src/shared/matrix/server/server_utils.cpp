@@ -31,6 +31,47 @@ namespace Server {
         return reply_with_json(req, json{{"success", true}});
     }
 
+    request_handling_status_t reply_use_post(const request_handle_t& req)
+    {
+        auto response = req->create_response(status_method_not_allowed())
+                            .append_header_date_field()
+                            .append_header(http_field::allow, "POST")
+                            .append_header(http_field::content_type, "application/json; charset=utf-8");
+        add_cors_headers(response);
+        const std::string path{req->header().path()};
+        return response.set_body(to_string(json{{"error", "This changes the matrix: use POST " + path}})).done();
+    }
+
+    std::optional<std::string> request_param(const request_handle_t& req, std::string_view name)
+    {
+        const auto query = parse_query(req->header().query());
+        if (query.has(name))
+            return std::string{query[name]};
+        const auto& body = req->body();
+        if (body.empty())
+            return std::nullopt;
+        if (const auto j = json::parse(body, nullptr, false); j.is_object()) {
+            const auto it = j.find(std::string{name});
+            if (it == j.end())
+                return std::nullopt;
+            if (it->is_string())
+                return it->get<std::string>();
+            if (it->is_boolean())
+                return it->get<bool>() ? "true" : "false";
+            if (it->is_number())
+                return it->dump();
+            return std::nullopt;
+        }
+        try {
+            const auto form = parse_query(body);
+            if (form.has(name))
+                return std::string{form[name]};
+        }
+        catch (const std::exception&) {
+        }
+        return std::nullopt;
+    }
+
     request_handling_status_t handle_cors_preflight(const request_handle_t &req) {
 #ifdef ENABLE_CORS
         auto response = req->create_response(status_ok())

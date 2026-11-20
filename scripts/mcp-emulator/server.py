@@ -305,7 +305,7 @@ async def list_tools() -> list[types.Tool]:
                     },
                     "path": {
                         "type": "string",
-                        "description": "API path, e.g. /list_scenes or /set_active?preset=default",
+                        "description": "API path, e.g. /list_scenes (GET) or /set_active (POST with body {\"id\": \"<preset id>\"})",
                     },
                     "body": {
                         "type": "object",
@@ -520,7 +520,13 @@ async def call_tool(name: str, arguments: dict | None) -> list[types.TextContent
         preset = str(args["preset"])
         port = int(args.get("port", DEFAULT_PORT))
         try:
-            result = _http_get(f"/set_active?preset={urllib.parse.quote(preset)}", port=port)
+            presets = _http_get("/list_presets", port=port)
+            if isinstance(presets, dict) and preset not in presets:
+                named = [key for key, value in presets.items()
+                         if isinstance(value, dict) and value.get("display_name") == preset]
+                if len(named) == 1:
+                    preset = named[0]
+            result = _http_post("/set_active", {"id": preset}, port=port)
         except RuntimeError as e:
             return [types.TextContent(type="text", text=str(e))]
         return [types.TextContent(type="text", text=json.dumps(result, indent=2) if isinstance(result, (dict, list)) else str(result))]
