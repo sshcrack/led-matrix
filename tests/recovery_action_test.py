@@ -118,6 +118,8 @@ class RecoveryActionTests(unittest.TestCase):
 
     def assert_restarted(self, restarted=True):
         self.assertEqual('systemctl restart --no-block led-matrix.service' in self.commands(), restarted)
+        # Path units watching the data partition fail at boot when it is missing; they start again with the panel.
+        self.assertEqual('systemctl start --no-block led-matrix-update.path led-matrix-hardware.path' in self.commands(), restarted)
         self.assertEqual((self.root / 'counter/starts').exists(), not restarted)
 
     def assert_mounted(self):
