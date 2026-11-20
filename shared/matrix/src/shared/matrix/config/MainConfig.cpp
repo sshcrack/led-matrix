@@ -83,16 +83,28 @@ namespace Config {
         return file_name + ".last-good";
     }
 
-    void MainConfig::mark_dirty() {
-        // Saving never touches playback: call sites that need the running scene
-        // to restart ask PlaybackControl (shared/matrix/playback_control.h).
-        std::unique_lock lock(this->update_mutex);
-        this->dirty = true;
+    // Saving never touches playback: call sites that need the running scene to
+    // restart ask PlaybackControl (shared/matrix/playback_control.h).
+    template <class Fn>
+    bool MainConfig::change(Fn&& fn)
+    {
+        {
+            std::unique_lock lock(this->data_mutex);
+            if (!fn(this->data))
+                return true;  // nothing changed, nothing to save
+        }
+        return this->persist();
     }
 
-    bool MainConfig::is_dirty() {
-        std::shared_lock lock(this->update_mutex);
-        return this->dirty;
+    template <class Fn>
+    Change MainConfig::change_existing(Fn&& fn)
+    {
+        {
+            std::unique_lock lock(this->data_mutex);
+            if (!fn(this->data))
+                return Change::NotFound;
+        }
+        return this->persist() ? Change::Saved : Change::SaveFailed;
     }
 
     string MainConfig::get_curr_id() {
@@ -113,13 +125,11 @@ namespace Config {
         return this->data.operation_mode == "automatic" && !this->data.scheduling_enabled;
     }
 
-    void MainConfig::set_operation_mode(const string &mode) {
+    bool MainConfig::set_operation_mode(const string& mode)
+    {
         if (mode != "automatic" && mode != "manual")
             throw std::invalid_argument("operation mode must be 'automatic' or 'manual'");
-        std::unique_lock lock(this->data_mutex);
-        if (this->data.operation_mode == mode) return;
-        this->data.operation_mode = mode;
-        this->mark_dirty();
+        return change([&](ConfigData::Root& d) { return std::exchange(d.operation_mode, mode) != mode; });
     }
 
     std::uint64_t MainConfig::get_automatic_director_seed() {
@@ -131,14 +141,15 @@ namespace Config {
         return automatic_director_generation_.load(std::memory_order_relaxed);
     }
 
-    void MainConfig::set_automatic_director_seed(std::uint64_t seed) {
+    bool MainConfig::set_automatic_director_seed(std::uint64_t seed)
+    {
         if (seed == 0) throw std::invalid_argument("automatic director seed must be non-zero");
         {
             std::unique_lock lock(this->data_mutex);
             this->data.automatic_director_seed = seed;
         }
         automatic_director_generation_.fetch_add(1, std::memory_order_relaxed);
-        this->mark_dirty();
+        return this->persist();
     }
 
     string MainConfig::get_automatic_director_mode() {
@@ -146,16 +157,11 @@ namespace Config {
         return this->data.automatic_director_mode;
     }
 
-    void MainConfig::set_automatic_director_mode(const string &mode) {
+    bool MainConfig::set_automatic_director_mode(const string& mode)
+    {
         if (mode != "mixed" && mode != "environment" && mode != "party" && mode != "chill")
             throw std::invalid_argument("mode must be 'mixed', 'environment', 'party' or 'chill'");
-        {
-            std::unique_lock lock(this->data_mutex);
-            if (this->data.automatic_director_mode == mode)
-                return;
-            this->data.automatic_director_mode = mode;
-        }
-        this->mark_dirty();
+        return change([&](ConfigData::Root& d) { return std::exchange(d.automatic_director_mode, mode) != mode; });
     }
 
     bool MainConfig::get_steady_brightness()
@@ -164,15 +170,9 @@ namespace Config {
         return this->data.steady_brightness;
     }
 
-    void MainConfig::set_steady_brightness(bool enabled)
+    bool MainConfig::set_steady_brightness(bool enabled)
     {
-        {
-            std::unique_lock lock(this->data_mutex);
-            if (this->data.steady_brightness == enabled)
-                return;
-            this->data.steady_brightness = enabled;
-        }
-        this->mark_dirty();
+        return change([&](ConfigData::Root& d) { return std::exchange(d.steady_brightness, enabled) != enabled; });
     }
 
     std::map<string, string> MainConfig::get_automatic_preferences() {
@@ -184,7 +184,8 @@ namespace Config {
         return automatic_preferences_version_.load(std::memory_order_relaxed);
     }
 
-    void MainConfig::set_automatic_preference(const string &look_key, const string &preference) {
+    bool MainConfig::set_automatic_preference(const string& look_key, const string& preference)
+    {
         if (look_key.empty())
             throw std::invalid_argument("look key must not be empty");
         if (preference != "favorite" && preference != "on" && preference != "hidden" && preference != "default")
@@ -197,7 +198,7 @@ namespace Config {
                 this->data.automatic_preferences[look_key] = preference;
         }
         automatic_preferences_version_.fetch_add(1, std::memory_order_relaxed);
-        this->mark_dirty();
+        return this->persist();
     }
 
     std::shared_ptr<ConfigData::Preset> MainConfig::get_curr() {
@@ -216,50 +217,52 @@ namespace Config {
         return this->data.spotify;
     }
 
-    void MainConfig::set_spotify(ConfigData::SpotifyData spotify) {
-        std::unique_lock lock(this->data_mutex);
-
-        this->data.spotify = std::move(spotify);
-        this->mark_dirty();
+    bool MainConfig::set_spotify(ConfigData::SpotifyData spotify)
+    {
+        return change([&](ConfigData::Root& d) {
+            d.spotify = std::move(spotify);
+            return true;
+        });
     }
 
-    void MainConfig::set_curr(string id) {
-        std::unique_lock lock(this->data_mutex);
-
-        this->data.curr = std::move(id);
-        this->mark_dirty();
+    bool MainConfig::set_curr(string id)
+    {
+        return change([&](ConfigData::Root& d) { return std::exchange(d.curr, id) != id; });
     }
 
-    bool MainConfig::delete_preset(const string &id) {
-        std::unique_lock lock(this->data_mutex);
-
-        const auto it = this->data.presets.find(id);
-        if (it == this->data.presets.end())
-            return false;
-
-        this->data.presets.erase(it);
-        return true;
+    bool MainConfig::play_preset(const string& id)
+    {
+        return change([&](ConfigData::Root& d) {
+            const bool changed = d.curr != id || d.operation_mode != "manual";
+            d.curr = id;
+            d.operation_mode = "manual";
+            return changed;
+        });
     }
 
-    bool MainConfig::set_preset_display_name(const string &id, const string &display_name) {
-        std::unique_lock lock(this->data_mutex);
-
-        const auto it = this->data.presets.find(id);
-        if (it == this->data.presets.end() || !it->second) {
-            return false;
-        }
-
-        it->second->display_name = display_name;
-        this->mark_dirty();
-        return true;
+    Change MainConfig::delete_preset(const string& id)
+    {
+        return change_existing([&](ConfigData::Root& d) { return d.presets.erase(id) > 0; });
     }
 
-    void MainConfig::set_presets(const string &id, std::shared_ptr<ConfigData::Preset> preset) {
-        std::unique_lock lock(this->data_mutex);
-spdlog::info("Setting preset {}", id);
+    Change MainConfig::set_preset_display_name(const string& id, const string& display_name)
+    {
+        return change_existing([&](ConfigData::Root& d) {
+            const auto it = d.presets.find(id);
+            if (it == d.presets.end() || !it->second)
+                return false;
+            it->second->display_name = display_name;
+            return true;
+        });
+    }
 
-        this->data.presets[id] = std::move(preset);
-        this->mark_dirty();
+    bool MainConfig::set_presets(const string& id, std::shared_ptr<ConfigData::Preset> preset)
+    {
+        spdlog::info("Setting preset {}", id);
+        return change([&](ConfigData::Root& d) {
+            d.presets[id] = std::move(preset);
+            return true;
+        });
     }
 
     std::map<string, std::shared_ptr<ConfigData::Preset>> MainConfig::get_presets() {
@@ -267,14 +270,24 @@ spdlog::info("Setting preset {}", id);
         return this->data.presets;
     }
 
-    bool MainConfig::save() {
-        try {
-            debug("Acquiring lock to save config...");
-            std::shared_lock lock(this->data_mutex);
+    bool MainConfig::flush()
+    {
+        return this->persist();
+    }
 
-            info("Saving config at '{}'..", file_name);
-            json as_json = this->data;
-            string out = as_json.dump(2);
+    bool MainConfig::persist()
+    {
+        // One save at a time, and each one serializes the data after the
+        // previous save finished: a slow earlier save can never overwrite the
+        // file with older data than a later one wrote.
+        std::lock_guard save_lock(this->save_mutex);
+        try {
+            string out;
+            {
+                std::shared_lock lock(this->data_mutex);
+                out = json(this->data).dump(2);
+            }
+            debug("Saving config at '{}'", file_name);
 
             // Durable and atomic: readers (parallel scene workers, #181) and a
             // power cut see either the old or the new config, never a partial one.
@@ -283,9 +296,8 @@ spdlog::info("Setting preset {}", id);
                 error("Could not save config: {}", write_error);
                 return false;
             }
-
-            info("Done saving config.");
-        } catch (std::exception &ex) {
+        }
+        catch (std::exception& ex) {
             error("could not save config: {}", ex.what());
             return false;
         }
@@ -431,7 +443,7 @@ spdlog::info("Setting preset {}", id);
             }
 
             info("Migrated preset IDs to UUID keys and persisted updated config");
-            this->save();
+            this->persist();
         }
     }
 
@@ -440,7 +452,7 @@ spdlog::info("Setting preset {}", id);
         load_from_file(mode);
         if (!load_recovery_.empty()) {
             error("Recovered the config: {}", load_recovery_);
-            this->save();
+            this->persist();
         }
         migrate_presets();
         if (this->data.automatic_director_seed == 0) {
@@ -449,9 +461,8 @@ spdlog::info("Setting preset {}", id);
                 (static_cast<std::uint64_t>(random()) << 32U) ^ static_cast<std::uint64_t>(random());
             if (this->data.automatic_director_seed == 0) this->data.automatic_director_seed = 1;
             info("Generated persistent Automatic Director seed {}", this->data.automatic_director_seed);
-            this->save();
+            this->persist();
         }
-        this->dirty = false;
     }
 
     void MainConfig::release_scene_references() {
@@ -470,21 +481,20 @@ spdlog::info("Setting preset {}", id);
         return this->data.pluginConfigs;
     }
 
-    void MainConfig::set_plugin_config(const std::string& pluginId, const string& plugin_config)
+    bool MainConfig::set_plugin_config(const std::string& pluginId, const string& plugin_config)
     {
-        std::unique_lock lock(this->data_mutex);
-
-        this->data.pluginConfigs[pluginId] = plugin_config;
-        this->mark_dirty();
+        return change([&](ConfigData::Root& d) { return std::exchange(d.pluginConfigs[pluginId], plugin_config) != plugin_config; });
     }
 
     bool MainConfig::is_turned_off() {
         return this->data.turned_off;
     }
 
-    void MainConfig::set_turned_off(bool turned_off) {
-        this->data.turned_off.store(turned_off);
-        this->mark_dirty();
+    bool MainConfig::set_turned_off(bool turned_off)
+    {
+        if (this->data.turned_off.exchange(turned_off) == turned_off)
+            return true;
+        return this->persist();
     }
 
     std::map<string, ConfigData::Schedule> MainConfig::get_schedules() {
@@ -498,42 +508,44 @@ spdlog::info("Setting preset {}", id);
         return it == this->data.custom_scene_variants.end() ? vector<ConfigData::CustomSceneVariant>{} : it->second;
     }
 
-    void MainConfig::set_custom_scene_variant(const string &scene_name, const ConfigData::CustomSceneVariant &variant) {
-        std::unique_lock lock(this->data_mutex);
-        auto &variants = this->data.custom_scene_variants[scene_name];
-        const auto it = std::find_if(variants.begin(), variants.end(), [&](const auto &item) { return item.id == variant.id; });
-        if (it == variants.end()) variants.push_back(variant); else *it = variant;
-        this->mark_dirty();
+    bool MainConfig::set_custom_scene_variant(const string& scene_name, const ConfigData::CustomSceneVariant& variant)
+    {
+        return change([&](ConfigData::Root& d) {
+            auto& variants = d.custom_scene_variants[scene_name];
+            const auto it = std::find_if(variants.begin(), variants.end(), [&](const auto& item) { return item.id == variant.id; });
+            if (it == variants.end())
+                variants.push_back(variant);
+            else
+                *it = variant;
+            return true;
+        });
     }
 
-    bool MainConfig::delete_custom_scene_variant(const string &scene_name, const string &variant_id) {
-        std::unique_lock lock(this->data_mutex);
-        auto entry = this->data.custom_scene_variants.find(scene_name);
-        if (entry == this->data.custom_scene_variants.end()) return false;
-        const auto before = entry->second.size();
-        std::erase_if(entry->second, [&](const auto &item) { return item.id == variant_id; });
-        const bool removed = entry->second.size() != before;
-        if (!removed) return false;
-        if (entry->second.empty()) this->data.custom_scene_variants.erase(entry);
-        this->mark_dirty();
-        return true;
+    Change MainConfig::delete_custom_scene_variant(const string& scene_name, const string& variant_id)
+    {
+        return change_existing([&](ConfigData::Root& d) {
+            auto entry = d.custom_scene_variants.find(scene_name);
+            if (entry == d.custom_scene_variants.end())
+                return false;
+            if (std::erase_if(entry->second, [&](const auto& item) { return item.id == variant_id; }) == 0)
+                return false;
+            if (entry->second.empty())
+                d.custom_scene_variants.erase(entry);
+            return true;
+        });
     }
 
-    void MainConfig::set_schedule(const string& id, const ConfigData::Schedule& schedule) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.schedules[id] = schedule;
-        this->mark_dirty();
+    bool MainConfig::set_schedule(const string& id, const ConfigData::Schedule& schedule)
+    {
+        return change([&](ConfigData::Root& d) {
+            d.schedules[id] = schedule;
+            return true;
+        });
     }
 
-    bool MainConfig::delete_schedule(const string& id) {
-        std::unique_lock lock(this->data_mutex);
-        const auto it = this->data.schedules.find(id);
-        if (it == this->data.schedules.end())
-            return false;
-
-        this->data.schedules.erase(it);
-        this->mark_dirty();
-        return true;
+    Change MainConfig::delete_schedule(const string& id)
+    {
+        return change_existing([&](ConfigData::Root& d) { return d.schedules.erase(id) > 0; });
     }
 
     ConfigData::BrightnessSchedule MainConfig::get_brightness_schedule() {
@@ -541,11 +553,13 @@ spdlog::info("Setting preset {}", id);
         return this->data.brightness_schedule;
     }
 
-    void MainConfig::set_brightness_schedule(ConfigData::BrightnessSchedule schedule) {
+    bool MainConfig::set_brightness_schedule(ConfigData::BrightnessSchedule schedule)
+    {
         schedule.sanitize();
-        std::unique_lock lock(this->data_mutex);
-        this->data.brightness_schedule = schedule;
-        this->mark_dirty();
+        return change([&](ConfigData::Root& d) {
+            d.brightness_schedule = std::move(schedule);
+            return true;
+        });
     }
 
     Environment::Settings MainConfig::get_environment() {
@@ -553,26 +567,26 @@ spdlog::info("Setting preset {}", id);
         return this->data.environment;
     }
 
-    void MainConfig::set_environment_detected(double latitude, double longitude, string label) {
-        {
-            std::unique_lock lock(this->data_mutex);
-            auto &env = this->data.environment;
+    bool MainConfig::set_environment_detected(double latitude, double longitude, string label)
+    {
+        return change([&](ConfigData::Root& d) {
+            auto& env = d.environment;
+            const bool changed = env.detected_latitude != latitude || env.detected_longitude != longitude || env.detected_label != label;
             env.detected_latitude = latitude;
             env.detected_longitude = longitude;
             env.detected_label = std::move(label);
-        }
-        std::unique_lock lock(this->update_mutex);
-        this->dirty = true;
+            return changed;
+        });
     }
 
-    void MainConfig::set_environment(Environment::Settings settings) {
+    bool MainConfig::set_environment(Environment::Settings settings)
+    {
         settings.sanitize();
-        {
-            std::unique_lock lock(this->data_mutex);
-            this->data.environment = std::move(settings);
-        }
         // Scenes pick environment changes up live.
-        mark_dirty();
+        return change([&](ConfigData::Root& d) {
+            d.environment = std::move(settings);
+            return true;
+        });
     }
 
     Halo::Settings MainConfig::get_halo()
@@ -581,15 +595,13 @@ spdlog::info("Setting preset {}", id);
         return this->data.halo;
     }
 
-    void MainConfig::set_halo(Halo::Settings settings)
+    bool MainConfig::set_halo(Halo::Settings settings)
     {
         settings.sanitize();
-        {
-            std::unique_lock lock(this->data_mutex);
-            this->data.halo = std::move(settings);
-        }
-        std::unique_lock lock(this->update_mutex);
-        this->dirty = true;
+        return change([&](ConfigData::Root& d) {
+            d.halo = std::move(settings);
+            return true;
+        });
     }
 
     bool MainConfig::is_scheduling_enabled() {
@@ -597,10 +609,9 @@ spdlog::info("Setting preset {}", id);
         return this->data.scheduling_enabled;
     }
 
-    void MainConfig::set_scheduling_enabled(bool enabled) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.scheduling_enabled = enabled;
-        this->mark_dirty();
+    bool MainConfig::set_scheduling_enabled(bool enabled)
+    {
+        return change([&](ConfigData::Root& d) { return std::exchange(d.scheduling_enabled, enabled) != enabled; });
     }
 
     optional<string> MainConfig::get_active_scheduled_preset() {
@@ -651,10 +662,12 @@ spdlog::info("Setting preset {}", id);
         return this->data.update_settings;
     }
 
-    void MainConfig::set_update_settings(const ConfigData::UpdateSettings& settings) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.update_settings = settings;
-        this->mark_dirty();
+    bool MainConfig::set_update_settings(const ConfigData::UpdateSettings& settings)
+    {
+        return change([&](ConfigData::Root& d) {
+            d.update_settings = settings;
+            return true;
+        });
     }
 
     bool MainConfig::is_auto_update_enabled() {
@@ -662,10 +675,9 @@ spdlog::info("Setting preset {}", id);
         return this->data.update_settings.auto_update_enabled;
     }
 
-    void MainConfig::set_auto_update_enabled(bool enabled) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.update_settings.auto_update_enabled = enabled;
-        this->mark_dirty();
+    bool MainConfig::set_auto_update_enabled(bool enabled)
+    {
+        return change([&](ConfigData::Root& d) { return std::exchange(d.update_settings.auto_update_enabled, enabled) != enabled; });
     }
 
     int MainConfig::get_update_check_interval_hours() {
@@ -673,10 +685,9 @@ spdlog::info("Setting preset {}", id);
         return this->data.update_settings.check_interval_hours;
     }
 
-    void MainConfig::set_update_check_interval_hours(int hours) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.update_settings.check_interval_hours = hours;
-        this->mark_dirty();
+    bool MainConfig::set_update_check_interval_hours(int hours)
+    {
+        return change([&](ConfigData::Root& d) { return std::exchange(d.update_settings.check_interval_hours, hours) != hours; });
     }
 
     tmillis_t MainConfig::get_last_check_time() {
@@ -684,9 +695,11 @@ spdlog::info("Setting preset {}", id);
         return this->data.update_settings.last_check_time;
     }
 
-    void MainConfig::set_last_check_time(tmillis_t time) {
-        std::unique_lock lock(this->data_mutex);
-        this->data.update_settings.last_check_time = time;
-        this->mark_dirty();
+    bool MainConfig::set_last_check_time(tmillis_t time)
+    {
+        return change([&](ConfigData::Root& d) {
+            d.update_settings.last_check_time = time;
+            return true;
+        });
     }
 }

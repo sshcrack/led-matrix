@@ -139,7 +139,8 @@ std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, st
             // Update auto-update setting
             if (json_body.contains("auto_update_enabled")) {
                 bool enabled = json_body["auto_update_enabled"];
-                update_manager->set_auto_update_enabled(enabled);
+                if (!update_manager->set_auto_update_enabled(enabled))
+                    return reply_with_error(req, "Could not save the update settings", restinio::status_internal_server_error());
                 info("Auto-update enabled set to: {}", enabled);
             }
 
@@ -149,7 +150,8 @@ std::unique_ptr<router_t> add_update_routes(std::unique_ptr<router_t> router, st
                 if (hours < 1 || hours > 168) {  // Between 1 hour and 1 week
                     return reply_with_error(req, "Check interval must be between 1 and 168 hours");
                 }
-                update_manager->set_check_interval_hours(hours);
+                if (!update_manager->set_check_interval_hours(hours))
+                    return reply_with_error(req, "Could not save the update settings", restinio::status_internal_server_error());
                 info("Update check interval set to: {} hours", hours);
             }
 

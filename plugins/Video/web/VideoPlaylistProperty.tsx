@@ -119,7 +119,9 @@ export default function VideoPlaylistProperty({ property, value, onChange }: Pro
     setRequestError(null)
     setSnapshot({ state: 'searching', query: q, error: '', items: [] })
     try {
-      const res = await fetch(`${apiUrl}/video/search?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`${apiUrl}/video/search`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q }),
+      })
       if (!res.ok) throw new Error(await errorMessage(res))
       pollTimer.current = setTimeout(() => poll(seq), 700)
     } catch (e) {

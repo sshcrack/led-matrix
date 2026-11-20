@@ -310,8 +310,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
                 if (seed == 0)
                     seed = 1;
             }
-            cfg->set_automatic_director_seed(seed);
-            if (!cfg->save())
+            if (!cfg->set_automatic_director_seed(seed))
                 return reply_with_error(req, "Could not persist Automatic Director seed", restinio::status_internal_server_error());
             return reply_with_json(req, {{"success", true}, {"seed", std::to_string(seed)}});
         }
@@ -328,8 +327,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             const auto body = json::parse(req->body());
             if (!body.is_object() || !body.contains("mode") || !body["mode"].is_string())
                 return reply_with_error(req, "Expected {\"mode\": \"mixed|environment|party|chill\"}");
-            cfg->set_automatic_director_mode(body["mode"].template get<std::string>());
-            if (!cfg->save())
+            if (!cfg->set_automatic_director_mode(body["mode"].template get<std::string>()))
                 return reply_with_error(req, "Could not persist the Automatic Mode style", restinio::status_internal_server_error());
             return reply_with_json(req, {{"mode", cfg->get_automatic_director_mode()}});
         }
@@ -347,8 +345,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         const auto body = json::parse(req->body(), nullptr, false);
         if (!body.is_object() || !body.contains("enabled") || !body["enabled"].is_boolean())
             return reply_with_error(req, "Expected {\"enabled\": true|false}");
-        cfg->set_steady_brightness(body["enabled"].template get<bool>());
-        if (!cfg->save())
+        if (!cfg->set_steady_brightness(body["enabled"].template get<bool>()))
             return reply_with_error(req, "Could not persist the steady brightness setting", restinio::status_internal_server_error());
         return reply_with_json(req, {{"enabled", cfg->get_steady_brightness()}});
     });
@@ -361,8 +358,7 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
             const auto body = json::parse(req->body());
             const auto look = body.value("look", std::string{});
             const auto preference = body.value("preference", std::string{});
-            cfg->set_automatic_preference(look, preference);
-            if (!cfg->save())
+            if (!cfg->set_automatic_preference(look, preference))
                 return reply_with_error(req, "Could not persist Automatic Mode preference", restinio::status_internal_server_error());
             return reply_with_json(req, json(cfg->get_automatic_preferences()));
         }

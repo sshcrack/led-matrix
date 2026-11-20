@@ -36,8 +36,11 @@ def main():
     token = os.environ.get('LED_MATRIX_API_TOKEN')
     headers = {'Authorization': 'Bearer ' + token} if token else {}
 
-    def request(path):
-        req = urllib.request.Request(api + path, headers=headers)
+    def request(path, body=None):
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(api + path, data=data, headers=headers, method='GET' if data is None else 'POST')
+        if data is not None:
+            req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, timeout=5) as response:
             return json.load(response)
 
@@ -76,7 +79,7 @@ def main():
                     for _ in range(args.cycles):
                         for key, name, url in selected:
                             marker = len(commands)
-                            await asyncio.to_thread(request, '/set_active?id=' + urllib.parse.quote(key))
+                            await asyncio.to_thread(request, '/set_active', {'id': key})
                             deadline = asyncio.get_running_loop().time() + 3
                             while 'url:' + url not in commands[marker:]:
                                 if listener.done():
@@ -114,8 +117,8 @@ def main():
     try:
         asyncio.run(run())
     finally:
-        request('/set_active?id=' + urllib.parse.quote(original['current']))
-        request('/operation_mode?mode=' + original['operation_mode'])
+        request('/set_active', {'id': original['current']})
+        request('/operation_mode', {'mode': original['operation_mode']})
         print('Restored original preset and operation mode', flush=True)
 
 

@@ -117,46 +117,43 @@ nlohmann::json VideoPlugin::search_snapshot() {
 
 std::unique_ptr<router_t>
 VideoPlugin::register_routes(std::unique_ptr<router_t> router) {
-  // Starts a search on the desktop app (yt-dlp runs there, never on the Pi).
-  router->http_get("/video/search", [this](const auto &req, auto) {
-    const auto qp = restinio::parse_query(req->header().query());
-    const std::string query =
-        qp.has("q") ? clean_query(std::string{qp["q"]}) : std::string{};
-    if (query.empty())
-      return Server::reply_with_error(req, "Missing search query");
-    if (!Server::is_desktop_connected())
-      return Server::reply_with_error(
-          req, "Desktop app is not connected. Start it to search YouTube.",
-          restinio::status_service_unavailable());
-    {
-      std::lock_guard<std::mutex> lock(searchMutex);
-      searchState = SearchState::Searching;
-      searchQuery = query;
-      searchError.clear();
-      searchItems = nlohmann::json::array();
-      searchStarted = std::chrono::steady_clock::now();
-    }
-    send_msg_to_desktop("search:" + query);
-    return Server::reply_with_json(req, search_snapshot());
-  });
+    // Starts a search on the desktop app (yt-dlp runs there, never on the Pi).
+    // It changes the search state, so POST (q: query or JSON body); GET answers 405.
+    router->http_get("/video/search", [](const auto& req, auto) { return Server::reply_use_post(req); });
+    router->http_post("/video/search", [this](const auto& req, auto) {
+        const auto param = Server::request_param(req, "q");
+        const std::string query = param ? clean_query(*param) : std::string{};
+        if (query.empty())
+            return Server::reply_with_error(req, "Missing search query");
+        if (!Server::is_desktop_connected())
+            return Server::reply_with_error(req, "Desktop app is not connected. Start it to search YouTube.",
+                                            restinio::status_service_unavailable());
+        {
+            std::lock_guard<std::mutex> lock(searchMutex);
+            searchState = SearchState::Searching;
+            searchQuery = query;
+            searchError.clear();
+            searchItems = nlohmann::json::array();
+            searchStarted = std::chrono::steady_clock::now();
+        }
+        send_msg_to_desktop("search:" + query);
+        return Server::reply_with_json(req, search_snapshot());
+    });
 
-  router->http_get("/video/search_results", [this](const auto &req, auto) {
-    return Server::reply_with_json(req, search_snapshot());
-  });
+    router->http_get("/video/search_results", [this](const auto& req, auto) { return Server::reply_with_json(req, search_snapshot()); });
 
-  // Skips the playlist rotation and plays this URL right now (if the video
-  // scene is currently showing). Does not modify the saved playlist.
-  router->http_post("/video/play", [this](const auto &req, auto) {
-    const auto qp = restinio::parse_query(req->header().query());
-    const std::string url =
-        qp.has("url") ? std::string{qp["url"]} : std::string{};
-    if (!is_http_url(url))
-      return Server::reply_with_error(req, "Missing or invalid url");
-    set_play_request(url);
-    return Server::reply_success(req);
-  });
+    // Skips the playlist rotation and plays this URL right now (if the video
+    // scene is currently showing). Does not modify the saved playlist.
+    router->http_post("/video/play", [this](const auto& req, auto) {
+        const auto qp = restinio::parse_query(req->header().query());
+        const std::string url = qp.has("url") ? std::string{qp["url"]} : std::string{};
+        if (!is_http_url(url))
+            return Server::reply_with_error(req, "Missing or invalid url");
+        set_play_request(url);
+        return Server::reply_success(req);
+    });
 
-  return router;
+    return router;
 }
 
 void VideoPlugin::on_websocket_message(const std::string &message) {

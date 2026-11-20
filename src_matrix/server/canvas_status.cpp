@@ -7,61 +7,53 @@
 
 std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
-    router->http_get("/skip", [](auto req, auto) {
+    // Routes that change state take POST; GET answers 405 (docs/API.md).
+    router->http_get("/skip", [](auto req, auto) { return reply_use_post(req); });
+    router->http_post("/skip", [](auto req, auto) {
         skip_image.store(true);
-
         return reply_success(req);
     });
 
-    router->http_get("/toggle", [cfg](auto req, auto) {
-        cfg->set_turned_off(!cfg->is_turned_off());
+    router->http_get("/toggle", [](auto req, auto) { return reply_use_post(req); });
+    router->http_post("/toggle", [cfg](auto req, auto) {
+        const bool saved = cfg->set_turned_off(!cfg->is_turned_off());
         Server::broadcast_matrix_enabled(!cfg->is_turned_off());
         PlaybackControl::restart("power_toggle");
-
+        if (!saved)
+            return reply_with_error(req, "Could not save the power state", restinio::status_internal_server_error());
         return reply_with_json(req, {{"turned_off", cfg->is_turned_off()}});
     });
 
-    router->http_get("/set_enabled", [cfg](auto req, auto) {
-        const auto qp = restinio::parse_query(req->header().query());
-        std::string enabled_str = qp.has("enabled") ? std::string{qp["enabled"]} : "";
-        if (enabled_str.empty()) {
-            // Fallback: try JSON body
-            try {
-                auto body_json = nlohmann::json::parse(req->body());
-                if (body_json.contains("enabled")) {
-                    if (body_json["enabled"].is_boolean()) {
-                        bool bval = body_json["enabled"].template get<bool>();
-                        enabled_str = bval ? "true" : "false";
-                    }
-                    else {
-                        enabled_str = body_json["enabled"].template get<std::string>();
-                    }
-                }
-            }
-            catch (...) {
-            }
-        }
-        if (enabled_str.empty()) {
-            return reply_with_error(req, "No enabled given");
-        }
-
-        cfg->set_turned_off(enabled_str == "false");
+    // enabled=true|false: query, JSON body or form body (the desktop app sends a form).
+    router->http_get("/set_enabled", [](auto req, auto) { return reply_use_post(req); });
+    router->http_post("/set_enabled", [cfg](auto req, auto) {
+        const auto enabled = request_param(req, "enabled");
+        if (!enabled || (*enabled != "true" && *enabled != "false"))
+            return reply_with_error(req, "enabled must be true or false");
+        const bool saved = cfg->set_turned_off(*enabled == "false");
         Server::broadcast_matrix_enabled(!cfg->is_turned_off());
         PlaybackControl::restart("power_set");
-
+        if (!saved)
+            return reply_with_error(req, "Could not save the power state", restinio::status_internal_server_error());
         return reply_with_json(req, {{"turned_off", cfg->is_turned_off()}});
     });
 
+    // GET reads the mode; a GET that still names one is refused instead of applied.
     router->http_get("/operation_mode", [cfg](auto req, auto) {
-        const auto qp = restinio::parse_query(req->header().query());
-        if (!qp.has("mode"))
+        if (restinio::parse_query(req->header().query()).has("mode"))
+            return reply_use_post(req);
+        return reply_with_json(req, {{"operation_mode", cfg->get_operation_mode()}});
+    });
+    router->http_post("/operation_mode", [cfg](auto req, auto) {
+        const auto mode = request_param(req, "mode");
+        if (!mode)
             return reply_with_error(req, "No mode given");
-        const std::string mode{qp["mode"]};
-        if (mode != "automatic" && mode != "manual")
+        if (*mode != "automatic" && *mode != "manual")
             return reply_with_error(req, "Mode must be automatic or manual");
-        cfg->set_operation_mode(mode);
-        cfg->save();
+        const bool saved = cfg->set_operation_mode(*mode);
         PlaybackControl::restart("operation_mode");
+        if (!saved)
+            return reply_with_error(req, "Could not save the mode", restinio::status_internal_server_error());
         return reply_with_json(req, {{"operation_mode", cfg->get_operation_mode()}});
     });
 
